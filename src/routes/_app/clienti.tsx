@@ -163,6 +163,13 @@ function ClientiPage() {
                         {c.attivo ? "Attivo" : "Inattivo"}
                       </Badge>
                     </TableCell>
+                    <TableCell>
+                      <Button asChild variant="ghost" size="icon" title="Modifica">
+                        <Link to="/clienti/$clienteId" params={{ clienteId: c.id }} search={{ edit: 1 } as any}>
+                          <Pencil className="size-4" />
+                        </Link>
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
