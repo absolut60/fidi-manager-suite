@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { STATO_LABEL, STATO_TONE, LIVELLO_LABEL, formatEuro, formatDate } from "@/lib/fidi";
+import { STATO_LABEL, STATO_TONE, TIPO_LABEL, TIPO_TONE, LIVELLO_LABEL, formatEuro, formatDate, type TipoRichiesta } from "@/lib/fidi";
 
 export const Route = createFileRoute("/_app/richieste/$richiestaId")({
   component: RichiestaDetail,
@@ -104,6 +104,9 @@ function RichiestaDetail() {
             Richiesta del {formatDate(r.created_at)} · {(r as any).clienti?.partita_iva || "P.IVA non specificata"}
           </p>
         </div>
+        <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>
+          {TIPO_LABEL[r.tipo as TipoRichiesta]}
+        </span>
         <span className={`inline-flex items-center rounded-md px-3 py-1 text-sm font-medium ${STATO_TONE[r.stato]}`}>
           {STATO_LABEL[r.stato]}
         </span>

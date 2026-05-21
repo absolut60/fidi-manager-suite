@@ -21,7 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { STATO_LABEL, STATO_TONE, calcolaLivello, LIVELLO_LABEL, formatEuro, formatDate } from "@/lib/fidi";
+import { STATO_LABEL, STATO_TONE, TIPO_LABEL, TIPO_TONE, calcolaLivello, LIVELLO_LABEL, formatEuro, formatDate, type TipoRichiesta } from "@/lib/fidi";
 
 export const Route = createFileRoute("/_app/richieste")({
   component: RichiestePage,
@@ -29,6 +29,7 @@ export const Route = createFileRoute("/_app/richieste")({
 
 const schema = z.object({
   cliente_id: z.string().uuid("Seleziona un cliente"),
+  tipo: z.enum(["nuovo", "aumento", "diminuzione", "rinnovo"]),
   importo_richiesto: z.coerce.number().positive("Importo deve essere maggiore di 0").max(99999999),
   durata_mesi: z.coerce.number().int().min(1).max(120),
   motivazione: z.string().trim().max(1000).optional().or(z.literal("")),
@@ -38,6 +39,7 @@ type Form = z.infer<typeof schema>;
 function RichiestePage() {
   const [search, setSearch] = useState("");
   const [stato, setStato] = useState<string>("tutti");
+  const [tipoFilter, setTipoFilter] = useState<string>("tutti");
   const [open, setOpen] = useState(false);
 
   const { data: richieste, isLoading } = useQuery({
@@ -54,6 +56,7 @@ function RichiestePage() {
 
   const filtered = (richieste ?? []).filter((r) => {
     if (stato !== "tutti" && r.stato !== stato) return false;
+    if (tipoFilter !== "tutti" && r.tipo !== tipoFilter) return false;
     const q = search.toLowerCase().trim();
     if (!q) return true;
     return (r as any).clienti?.ragione_sociale?.toLowerCase().includes(q);
@@ -90,8 +93,20 @@ function RichiestePage() {
               className="pl-9"
             />
           </div>
+          <Select value={tipoFilter} onValueChange={setTipoFilter}>
+            <SelectTrigger className="w-full sm:w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="tutti">Tutti i tipi</SelectItem>
+              <SelectItem value="nuovo">Nuovo fido</SelectItem>
+              <SelectItem value="aumento">Aumento</SelectItem>
+              <SelectItem value="diminuzione">Diminuzione</SelectItem>
+              <SelectItem value="rinnovo">Rinnovo</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={stato} onValueChange={setStato}>
-            <SelectTrigger className="w-full sm:w-56">
+            <SelectTrigger className="w-full sm:w-44">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -127,6 +142,7 @@ function RichiestePage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Cliente</TableHead>
+                  <TableHead>Tipo</TableHead>
                   <TableHead className="text-right">Importo</TableHead>
                   <TableHead>Durata</TableHead>
                   <TableHead>Livello</TableHead>
@@ -145,6 +161,11 @@ function RichiestePage() {
                       >
                         {(r as any).clienti?.ragione_sociale ?? "—"}
                       </Link>
+                    </TableCell>
+                    <TableCell>
+                      <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>
+                        {TIPO_LABEL[r.tipo as TipoRichiesta]}
+                      </span>
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {formatEuro(Number(r.importo_richiesto))}
@@ -176,6 +197,7 @@ function NewRichiestaDialog({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient();
   const [form, setForm] = useState<Form>({
     cliente_id: "",
+    tipo: "nuovo",
     importo_richiesto: 0,
     durata_mesi: 12,
     motivazione: "",
@@ -203,6 +225,7 @@ function NewRichiestaDialog({ onClose }: { onClose: () => void }) {
       const cliente = clienti?.find((c) => c.id === parsed.cliente_id);
       const { error } = await supabase.from("richieste_fido").insert({
         cliente_id: parsed.cliente_id,
+        tipo: parsed.tipo,
         store_id: cliente?.store_id ?? null,
         importo_richiesto: parsed.importo_richiesto,
         durata_mesi: parsed.durata_mesi,
@@ -256,6 +279,22 @@ function NewRichiestaDialog({ onClose }: { onClose: () => void }) {
           </Select>
           {errors.cliente_id && <p className="text-xs text-destructive">{errors.cliente_id}</p>}
         </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="tipo">Tipo richiesta *</Label>
+          <Select value={form.tipo} onValueChange={(v) => setForm({ ...form, tipo: v as TipoRichiesta })}>
+            <SelectTrigger id="tipo">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="nuovo">Nuovo fido</SelectItem>
+              <SelectItem value="aumento">Aumento fido</SelectItem>
+              <SelectItem value="diminuzione">Diminuzione fido</SelectItem>
+              <SelectItem value="rinnovo">Rinnovo fido</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
