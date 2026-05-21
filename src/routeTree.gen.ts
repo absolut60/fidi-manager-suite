@@ -24,6 +24,7 @@ import { Route as AppAuditRouteImport } from './routes/_app/audit'
 import { Route as AppApprovazioniRouteImport } from './routes/_app/approvazioni'
 import { Route as AppRichiesteRichiestaIdRouteImport } from './routes/_app/richieste.$richiestaId'
 import { Route as AppClientiClienteIdRouteImport } from './routes/_app/clienti.$clienteId'
+import { Route as ApiPublicHooksCheckScadenzeRouteImport } from './routes/api/public/hooks/check-scadenze'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -99,6 +100,12 @@ const AppClientiClienteIdRoute = AppClientiClienteIdRouteImport.update({
   path: '/$clienteId',
   getParentRoute: () => AppClientiRoute,
 } as any)
+const ApiPublicHooksCheckScadenzeRoute =
+  ApiPublicHooksCheckScadenzeRouteImport.update({
+    id: '/api/public/hooks/check-scadenze',
+    path: '/api/public/hooks/check-scadenze',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -115,6 +122,7 @@ export interface FileRoutesByFullPath {
   '/whatsapp': typeof AppWhatsappRoute
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
   '/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
+  '/api/public/hooks/check-scadenze': typeof ApiPublicHooksCheckScadenzeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -131,6 +139,7 @@ export interface FileRoutesByTo {
   '/whatsapp': typeof AppWhatsappRoute
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
   '/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
+  '/api/public/hooks/check-scadenze': typeof ApiPublicHooksCheckScadenzeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -149,6 +158,7 @@ export interface FileRoutesById {
   '/_app/whatsapp': typeof AppWhatsappRoute
   '/_app/clienti/$clienteId': typeof AppClientiClienteIdRoute
   '/_app/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
+  '/api/public/hooks/check-scadenze': typeof ApiPublicHooksCheckScadenzeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -167,6 +177,7 @@ export interface FileRouteTypes {
     | '/whatsapp'
     | '/clienti/$clienteId'
     | '/richieste/$richiestaId'
+    | '/api/public/hooks/check-scadenze'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -183,6 +194,7 @@ export interface FileRouteTypes {
     | '/whatsapp'
     | '/clienti/$clienteId'
     | '/richieste/$richiestaId'
+    | '/api/public/hooks/check-scadenze'
   id:
     | '__root__'
     | '/'
@@ -200,12 +212,14 @@ export interface FileRouteTypes {
     | '/_app/whatsapp'
     | '/_app/clienti/$clienteId'
     | '/_app/richieste/$richiestaId'
+    | '/api/public/hooks/check-scadenze'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
+  ApiPublicHooksCheckScadenzeRoute: typeof ApiPublicHooksCheckScadenzeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -315,6 +329,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppClientiClienteIdRouteImport
       parentRoute: typeof AppClientiRoute
     }
+    '/api/public/hooks/check-scadenze': {
+      id: '/api/public/hooks/check-scadenze'
+      path: '/api/public/hooks/check-scadenze'
+      fullPath: '/api/public/hooks/check-scadenze'
+      preLoaderRoute: typeof ApiPublicHooksCheckScadenzeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -374,6 +395,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
+  ApiPublicHooksCheckScadenzeRoute: ApiPublicHooksCheckScadenzeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
