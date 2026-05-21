@@ -78,6 +78,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:title", content: "FidiManager · Gruppo MADE" },
       { property: "og:description", content: "Gestione fidi commerciali del Gruppo MADE" },
       { property: "og:type", content: "website" },
+      { name: "twitter:title", content: "FidiManager · Gruppo MADE" },
+      { name: "twitter:description", content: "Gestione fidi commerciali del Gruppo MADE" },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/41ce08ad-aa8e-41ca-b7a3-c4b20d22d450/id-preview-89e3cd10--c39b9f1b-be3e-4e5c-8b69-3cf1408dd985.lovable.app-1779358460030.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/41ce08ad-aa8e-41ca-b7a3-c4b20d22d450/id-preview-89e3cd10--c39b9f1b-be3e-4e5c-8b69-3cf1408dd985.lovable.app-1779358460030.png" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
       {
