@@ -44,6 +44,7 @@ function ClienteDetail() {
   const { clienteId } = Route.useParams();
   const qc = useQueryClient();
   const [openNew, setOpenNew] = useState(false);
+  const [openEdit, setOpenEdit] = useState(false);
 
   const { data: cliente, isLoading } = useQuery({
     queryKey: ["cliente", clienteId],
