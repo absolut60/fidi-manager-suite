@@ -124,6 +124,7 @@ function RichiestaDetail() {
             <Info label="Livello corrente" value={`Liv. ${r.livello_corrente}`} />
             <Info label="Inviata il" value={formatDate(r.data_invio)} />
             <Info label="Chiusa il" value={formatDate(r.data_chiusura)} />
+            <Info label="Scadenza fido" value={formatDate(r.data_scadenza)} />
           </div>
           {r.motivazione && (
             <>
