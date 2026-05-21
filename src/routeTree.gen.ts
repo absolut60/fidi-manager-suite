@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as FirmaPrivacyTokenRouteImport } from './routes/firma-privacy.$token'
 import { Route as AppWhatsappRouteImport } from './routes/_app/whatsapp'
 import { Route as AppUtentiRouteImport } from './routes/_app/utenti'
 import { Route as AppRichiesteRouteImport } from './routes/_app/richieste'
@@ -38,6 +39,11 @@ const AppRoute = AppRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FirmaPrivacyTokenRoute = FirmaPrivacyTokenRouteImport.update({
+  id: '/firma-privacy/$token',
+  path: '/firma-privacy/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppWhatsappRoute = AppWhatsappRouteImport.update({
@@ -120,6 +126,7 @@ export interface FileRoutesByFullPath {
   '/richieste': typeof AppRichiesteRouteWithChildren
   '/utenti': typeof AppUtentiRoute
   '/whatsapp': typeof AppWhatsappRoute
+  '/firma-privacy/$token': typeof FirmaPrivacyTokenRoute
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
   '/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
   '/api/public/hooks/check-scadenze': typeof ApiPublicHooksCheckScadenzeRoute
@@ -137,6 +144,7 @@ export interface FileRoutesByTo {
   '/richieste': typeof AppRichiesteRouteWithChildren
   '/utenti': typeof AppUtentiRoute
   '/whatsapp': typeof AppWhatsappRoute
+  '/firma-privacy/$token': typeof FirmaPrivacyTokenRoute
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
   '/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
   '/api/public/hooks/check-scadenze': typeof ApiPublicHooksCheckScadenzeRoute
@@ -156,6 +164,7 @@ export interface FileRoutesById {
   '/_app/richieste': typeof AppRichiesteRouteWithChildren
   '/_app/utenti': typeof AppUtentiRoute
   '/_app/whatsapp': typeof AppWhatsappRoute
+  '/firma-privacy/$token': typeof FirmaPrivacyTokenRoute
   '/_app/clienti/$clienteId': typeof AppClientiClienteIdRoute
   '/_app/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
   '/api/public/hooks/check-scadenze': typeof ApiPublicHooksCheckScadenzeRoute
@@ -175,6 +184,7 @@ export interface FileRouteTypes {
     | '/richieste'
     | '/utenti'
     | '/whatsapp'
+    | '/firma-privacy/$token'
     | '/clienti/$clienteId'
     | '/richieste/$richiestaId'
     | '/api/public/hooks/check-scadenze'
@@ -192,6 +202,7 @@ export interface FileRouteTypes {
     | '/richieste'
     | '/utenti'
     | '/whatsapp'
+    | '/firma-privacy/$token'
     | '/clienti/$clienteId'
     | '/richieste/$richiestaId'
     | '/api/public/hooks/check-scadenze'
@@ -210,6 +221,7 @@ export interface FileRouteTypes {
     | '/_app/richieste'
     | '/_app/utenti'
     | '/_app/whatsapp'
+    | '/firma-privacy/$token'
     | '/_app/clienti/$clienteId'
     | '/_app/richieste/$richiestaId'
     | '/api/public/hooks/check-scadenze'
@@ -219,6 +231,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
+  FirmaPrivacyTokenRoute: typeof FirmaPrivacyTokenRoute
   ApiPublicHooksCheckScadenzeRoute: typeof ApiPublicHooksCheckScadenzeRoute
 }
 
@@ -243,6 +256,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/firma-privacy/$token': {
+      id: '/firma-privacy/$token'
+      path: '/firma-privacy/$token'
+      fullPath: '/firma-privacy/$token'
+      preLoaderRoute: typeof FirmaPrivacyTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/whatsapp': {
@@ -395,6 +415,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
+  FirmaPrivacyTokenRoute: FirmaPrivacyTokenRoute,
   ApiPublicHooksCheckScadenzeRoute: ApiPublicHooksCheckScadenzeRoute,
 }
 export const routeTree = rootRouteImport
