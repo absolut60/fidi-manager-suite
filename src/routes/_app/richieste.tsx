@@ -142,6 +142,7 @@ function RichiestePage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Cliente</TableHead>
+                  <TableHead>Tipo</TableHead>
                   <TableHead className="text-right">Importo</TableHead>
                   <TableHead>Durata</TableHead>
                   <TableHead>Livello</TableHead>
@@ -160,6 +161,11 @@ function RichiestePage() {
                       >
                         {(r as any).clienti?.ragione_sociale ?? "—"}
                       </Link>
+                    </TableCell>
+                    <TableCell>
+                      <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>
+                        {TIPO_LABEL[r.tipo as TipoRichiesta]}
+                      </span>
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {formatEuro(Number(r.importo_richiesto))}
