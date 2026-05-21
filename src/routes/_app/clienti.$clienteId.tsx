@@ -591,9 +591,9 @@ function FirmaContattoDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" variant={contatto.privacy_firmata ? "outline" : "default"}>
+        <Button size="sm" variant="default" disabled={contatto.privacy_firmata}>
           <Pencil className="size-4 mr-1" />
-          {contatto.privacy_firmata ? "Rifirma" : "Raccogli firma"}
+          {contatto.privacy_firmata ? "Firma già presente" : "Raccogli firma"}
         </Button>
       </DialogTrigger>
       <DialogContent>
