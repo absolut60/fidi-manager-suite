@@ -39,6 +39,7 @@ type Form = z.infer<typeof schema>;
 function RichiestePage() {
   const [search, setSearch] = useState("");
   const [stato, setStato] = useState<string>("tutti");
+  const [tipoFilter, setTipoFilter] = useState<string>("tutti");
   const [open, setOpen] = useState(false);
 
   const { data: richieste, isLoading } = useQuery({
