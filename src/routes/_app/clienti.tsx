@@ -115,6 +115,7 @@ function ClientiPage() {
                   <TableHead>Punto vendita</TableHead>
                   <TableHead>Privacy</TableHead>
                   <TableHead>Stato</TableHead>
+                  <TableHead className="w-12"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
