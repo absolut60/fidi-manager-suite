@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import { ArrowLeft, Plus, Mail, Phone, Smartphone, Star, Trash2, FileCheck2, FileX2, Download, Pencil } from "lucide-react";
+import { ArrowLeft, Plus, Mail, Phone, Smartphone, Star, Trash2, FileCheck2, FileX2, Download, Pencil, Link as LinkIcon, Copy } from "lucide-react";
 import { SignaturePad, getCanvasDataURL } from "@/components/signature-pad";
 import { generaPdfPrivacy } from "@/lib/privacy-pdf";
 import { useRef } from "react";
@@ -476,13 +476,82 @@ function PrivacyTab({ cliente, onUpdated }: { cliente: any; onUpdated: () => voi
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <FileX2 className="size-4" /> Non ancora firmata
           </div>
-          <div ref={padRef}>
-            <SignaturePad onChange={(empty) => setHasSig(!empty)} />
+
+          <LinkFirmaPrivacy clienteId={cliente.id} />
+
+          <div className="pt-3 border-t">
+            <p className="text-sm font-medium mb-2">Oppure raccogli la firma adesso:</p>
+            <div ref={padRef}>
+              <SignaturePad onChange={(empty) => setHasSig(!empty)} />
+            </div>
+            <Button onClick={salva} disabled={!hasSig || saving} className="mt-2">
+              {saving ? "Salvataggio..." : "Salva firma e genera PDF"}
+            </Button>
           </div>
-          <Button onClick={salva} disabled={!hasSig || saving}>
-            {saving ? "Salvataggio..." : "Salva firma e genera PDF"}
-          </Button>
         </>
+      )}
+    </Card>
+  );
+}
+
+function LinkFirmaPrivacy({ clienteId }: { clienteId: string }) {
+  const [link, setLink] = useState<string | null>(null);
+  const [expires, setExpires] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function genera() {
+    setLoading(true);
+    try {
+      const { generaTokenFirmaPrivacy } = await import("@/lib/firma-privacy.functions");
+      const res = await generaTokenFirmaPrivacy({ data: { clienteId, giorniValidita: 30 } });
+      const url = `${window.location.origin}/firma-privacy/${res.token}`;
+      setLink(url);
+      setExpires(res.expires_at);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Errore");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function copia() {
+    if (!link) return;
+    await navigator.clipboard.writeText(link);
+    toast.success("Link copiato negli appunti");
+  }
+
+  return (
+    <Card className="p-4 bg-muted/40 border-dashed">
+      <p className="text-sm font-medium mb-1 flex items-center gap-1.5">
+        <LinkIcon className="size-4" /> Link di firma a distanza
+      </p>
+      <p className="text-xs text-muted-foreground mb-3">
+        Genera un link da inviare al cliente (WhatsApp, email, SMS): potrà firmare la privacy dal suo dispositivo.
+      </p>
+      {!link ? (
+        <Button size="sm" variant="outline" onClick={genera} disabled={loading}>
+          {loading ? "Generazione..." : "Genera link"}
+        </Button>
+      ) : (
+        <div className="space-y-2">
+          <Input readOnly value={link} className="text-xs font-mono bg-background" onClick={(e) => (e.target as HTMLInputElement).select()} />
+          <div className="flex gap-2 flex-wrap">
+            <Button size="sm" variant="outline" onClick={copia}>
+              <Copy className="size-3.5 mr-1" /> Copia
+            </Button>
+            <Button size="sm" variant="outline" asChild>
+              <a href={link} target="_blank" rel="noreferrer">Apri</a>
+            </Button>
+            <Button size="sm" variant="ghost" onClick={genera} disabled={loading}>
+              Rigenera
+            </Button>
+          </div>
+          {expires && (
+            <p className="text-xs text-muted-foreground">
+              Valido fino al {new Date(expires).toLocaleDateString("it-IT")}
+            </p>
+          )}
+        </div>
       )}
     </Card>
   );

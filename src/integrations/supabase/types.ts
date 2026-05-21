@@ -115,6 +115,8 @@ export type Database = {
           pec: string | null
           privacy_firmata: boolean
           privacy_pdf_url: string | null
+          privacy_token: string | null
+          privacy_token_expires_at: string | null
           provincia: string | null
           ragione_sociale: string
           scheda_pdf_url: string | null
@@ -149,6 +151,8 @@ export type Database = {
           pec?: string | null
           privacy_firmata?: boolean
           privacy_pdf_url?: string | null
+          privacy_token?: string | null
+          privacy_token_expires_at?: string | null
           provincia?: string | null
           ragione_sociale: string
           scheda_pdf_url?: string | null
@@ -183,6 +187,8 @@ export type Database = {
           pec?: string | null
           privacy_firmata?: boolean
           privacy_pdf_url?: string | null
+          privacy_token?: string | null
+          privacy_token_expires_at?: string | null
           provincia?: string | null
           ragione_sociale?: string
           scheda_pdf_url?: string | null
