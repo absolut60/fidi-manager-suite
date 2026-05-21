@@ -24,6 +24,14 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SignaturePad, getCanvasDataURL } from "@/components/signature-pad";
 import { generaSchedaCliente } from "@/lib/scheda-pdf";
+import { generaPdfPrivacy } from "@/lib/privacy-pdf";
+
+function splitNomeCognome(full: string): { nome: string; cognome: string } {
+  const parts = full.trim().split(/\s+/);
+  if (parts.length === 0 || !parts[0]) return { nome: "", cognome: "" };
+  if (parts.length === 1) return { nome: parts[0], cognome: "" };
+  return { nome: parts[0], cognome: parts.slice(1).join(" ") };
+}
 
 export const Route = createFileRoute("/_app/clienti")({
   component: ClientiPage,
