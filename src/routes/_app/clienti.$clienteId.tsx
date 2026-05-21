@@ -340,3 +340,108 @@ function NewContattoDialog({ clienteId, onClose }: { clienteId: string; onClose:
     </DialogContent>
   );
 }
+
+function PrivacyTab({ cliente, onUpdated }: { cliente: any; onUpdated: () => void }) {
+  const padRef = useRef<HTMLDivElement>(null);
+  const [hasSig, setHasSig] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  async function salva() {
+    if (!padRef.current) return;
+    const dataUrl = getCanvasDataURL(padRef.current);
+    if (!dataUrl) { toast.error("Inserisci la firma"); return; }
+    setSaving(true);
+    try {
+      const now = new Date();
+      // Upload firma PNG
+      const pngBlob = await (await fetch(dataUrl)).blob();
+      const firmaPath = `${cliente.id}/firma-${now.getTime()}.png`;
+      const { error: e1 } = await supabase.storage.from("firme").upload(firmaPath, pngBlob, { upsert: true, contentType: "image/png" });
+      if (e1) throw e1;
+      const { data: firmaUrl } = supabase.storage.from("firme").getPublicUrl(firmaPath);
+
+      // Genera PDF
+      const pdfBytes = await generaPdfPrivacy({
+        ragioneSociale: cliente.ragione_sociale,
+        partitaIva: cliente.partita_iva,
+        codiceFiscale: cliente.codice_fiscale,
+        indirizzo: cliente.indirizzo,
+        citta: cliente.citta,
+        email: cliente.email,
+        firmaPngDataUrl: dataUrl,
+        dataFirma: now,
+      });
+      const pdfPath = `${cliente.id}/privacy-${now.getTime()}.pdf`;
+      const { error: e2 } = await supabase.storage.from("privacy-pdf").upload(pdfPath, pdfBytes, { contentType: "application/pdf", upsert: true });
+      if (e2) throw e2;
+      const { data: pdfUrl } = supabase.storage.from("privacy-pdf").getPublicUrl(pdfPath);
+
+      const { error: e3 } = await supabase.from("clienti").update({
+        privacy_firmata: true,
+        data_firma: now.toISOString(),
+        firma_url: firmaUrl.publicUrl,
+        privacy_pdf_url: pdfUrl.publicUrl,
+      }).eq("id", cliente.id);
+      if (e3) throw e3;
+
+      toast.success("Privacy firmata e PDF generato");
+      onUpdated();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Errore salvataggio");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card className="p-6 space-y-4">
+      <div>
+        <h3 className="font-semibold mb-1">Consenso privacy (GDPR)</h3>
+        <p className="text-sm text-muted-foreground">Raccogli la firma del cliente per generare il PDF dell'informativa.</p>
+      </div>
+
+      {cliente.privacy_firmata ? (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-sm text-success">
+            <FileCheck2 className="size-4" />
+            Firmata il {cliente.data_firma ? new Date(cliente.data_firma).toLocaleString("it-IT") : "—"}
+          </div>
+          {cliente.privacy_pdf_url && (
+            <Button variant="outline" size="sm" asChild>
+              <a href={cliente.privacy_pdf_url} target="_blank" rel="noreferrer">
+                <Download className="size-4 mr-1" /> Scarica PDF
+              </a>
+            </Button>
+          )}
+          {cliente.firma_url && (
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Firma:</div>
+              <img src={cliente.firma_url} alt="Firma cliente" className="border rounded bg-white max-h-32" />
+            </div>
+          )}
+          <div className="pt-2 border-t">
+            <p className="text-xs text-muted-foreground mb-2">Rifirma se necessario:</p>
+            <div ref={padRef}>
+              <SignaturePad onChange={(empty) => setHasSig(!empty)} />
+            </div>
+            <Button onClick={salva} disabled={!hasSig || saving} size="sm" className="mt-2">
+              {saving ? "Salvataggio..." : "Aggiorna firma"}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <FileX2 className="size-4" /> Non ancora firmata
+          </div>
+          <div ref={padRef}>
+            <SignaturePad onChange={(empty) => setHasSig(!empty)} />
+          </div>
+          <Button onClick={salva} disabled={!hasSig || saving}>
+            {saving ? "Salvataggio..." : "Salva firma e genera PDF"}
+          </Button>
+        </>
+      )}
+    </Card>
+  );
+}
