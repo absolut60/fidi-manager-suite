@@ -93,8 +93,20 @@ function RichiestePage() {
               className="pl-9"
             />
           </div>
+          <Select value={tipoFilter} onValueChange={setTipoFilter}>
+            <SelectTrigger className="w-full sm:w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="tutti">Tutti i tipi</SelectItem>
+              <SelectItem value="nuovo">Nuovo fido</SelectItem>
+              <SelectItem value="aumento">Aumento</SelectItem>
+              <SelectItem value="diminuzione">Diminuzione</SelectItem>
+              <SelectItem value="rinnovo">Rinnovo</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={stato} onValueChange={setStato}>
-            <SelectTrigger className="w-full sm:w-56">
+            <SelectTrigger className="w-full sm:w-44">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
