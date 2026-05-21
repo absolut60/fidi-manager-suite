@@ -227,11 +227,20 @@ function ClienteDetail() {
                 <Card key={c.id} className="p-4">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-semibold truncate">{c.nome} {c.cognome}</p>
                         {c.principale && (
                           <Badge className="bg-accent/15 text-accent gap-1 shrink-0">
                             <Star className="size-3 fill-current" /> Principale
+                          </Badge>
+                        )}
+                        {c.privacy_firmata ? (
+                          <Badge className="bg-success/15 text-success gap-1 shrink-0">
+                            <FileCheck2 className="size-3" /> Privacy firmata
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-destructive/15 text-destructive gap-1 shrink-0">
+                            <FileX2 className="size-3" /> Non firmata
                           </Badge>
                         )}
                       </div>
@@ -262,8 +271,26 @@ function ClienteDetail() {
                       </a>
                     )}
                   </div>
+                  <div className="mt-3 pt-3 border-t flex flex-wrap gap-2">
+                    {c.privacy_firmata && (c as any).pdf_privacy_url && (
+                      <Button variant="outline" size="sm" asChild>
+                        <a href={(c as any).pdf_privacy_url} target="_blank" rel="noreferrer">
+                          <Download className="size-4 mr-1" /> Scarica PDF
+                        </a>
+                      </Button>
+                    )}
+                    <FirmaContattoDialog
+                      cliente={cliente}
+                      contatto={c}
+                      onSaved={() => {
+                        qc.invalidateQueries({ queryKey: ["contatti", clienteId] });
+                        qc.invalidateQueries({ queryKey: ["contatti-privacy", clienteId] });
+                      }}
+                    />
+                  </div>
                 </Card>
               ))}
+
             </div>
           )}
         </TabsContent>
@@ -393,14 +420,7 @@ function NewContattoDialog({ clienteId, onClose }: { clienteId: string; onClose:
   );
 }
 
-function PrivacyTab({ cliente, onUpdated }: { cliente: any; onUpdated: () => void }) {
-  const padRef = useRef<HTMLDivElement>(null);
-  const [hasSig, setHasSig] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [contattoSel, setContattoSel] = useState<string>("");
-  const qcLocal = useQueryClient();
-
-
+function PrivacyTab({ cliente }: { cliente: any; onUpdated?: () => void }) {
   const { data: contatti } = useQuery({
     queryKey: ["contatti-privacy", cliente.id],
     queryFn: async () => {
@@ -415,27 +435,102 @@ function PrivacyTab({ cliente, onUpdated }: { cliente: any; onUpdated: () => voi
     },
   });
 
-  const contattoIdEffettivo =
-    contattoSel || contatti?.find((c) => !c.privacy_firmata)?.id || contatti?.[0]?.id || "";
+  const hasContatti = (contatti?.length ?? 0) > 0;
+  const firmati = contatti?.filter((c) => c.privacy_firmata).length ?? 0;
+  const totali = contatti?.length ?? 0;
+
+  return (
+    <Card className="p-6 space-y-4">
+      <div>
+        <h3 className="font-semibold mb-1">Consenso privacy (GDPR)</h3>
+        <p className="text-sm text-muted-foreground">
+          Stato delle firme privacy per i contatti di questo cliente. Per raccogliere una nuova firma, apri la tab <strong>Contatti</strong> e usa il pulsante sulla scheda del singolo contatto.
+        </p>
+      </div>
+
+      {!hasContatti ? (
+        <div className="text-sm text-muted-foreground">
+          Aggiungi prima un contatto al cliente per poter raccogliere la firma privacy.
+        </div>
+      ) : (
+        <>
+          <div className="text-sm">
+            <span className="font-medium">{firmati}</span> di <span className="font-medium">{totali}</span> contatti hanno firmato la privacy.
+          </div>
+
+          <LinkFirmaPrivacy clienteId={cliente.id} />
+
+          <div className="pt-3 border-t space-y-2">
+            <p className="text-sm font-medium">Riepilogo per contatto</p>
+            <ul className="divide-y border rounded-md">
+              {contatti!.map((c) => (
+                <li key={c.id} className="p-3 flex items-center justify-between gap-3 flex-wrap text-sm">
+                  <div className="min-w-0">
+                    <div className="font-medium truncate">
+                      {[c.nome, c.cognome].filter(Boolean).join(" ")}
+                      {c.principale && <span className="text-xs text-muted-foreground ml-2">(principale)</span>}
+                    </div>
+                    {c.privacy_firmata && c.data_firma && (
+                      <div className="text-xs text-muted-foreground">
+                        Firmata il {new Date(c.data_firma).toLocaleString("it-IT")}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {c.privacy_firmata ? (
+                      <Badge className="bg-success/15 text-success gap-1">
+                        <FileCheck2 className="size-3" /> Firmata
+                      </Badge>
+                    ) : (
+                      <Badge className="bg-destructive/15 text-destructive gap-1">
+                        <FileX2 className="size-3" /> Non firmata
+                      </Badge>
+                    )}
+                    {c.privacy_firmata && c.pdf_privacy_url && (
+                      <Button variant="outline" size="sm" asChild>
+                        <a href={c.pdf_privacy_url} target="_blank" rel="noreferrer">
+                          <Download className="size-4 mr-1" /> PDF
+                        </a>
+                      </Button>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </>
+      )}
+    </Card>
+  );
+}
+
+function FirmaContattoDialog({
+  cliente,
+  contatto,
+  onSaved,
+}: {
+  cliente: any;
+  contatto: any;
+  onSaved: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const padRef = useRef<HTMLDivElement>(null);
+  const [hasSig, setHasSig] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   async function salva() {
     if (!padRef.current) return;
     const dataUrl = getCanvasDataURL(padRef.current);
     if (!dataUrl) { toast.error("Inserisci la firma"); return; }
-    if (!contattoIdEffettivo) { toast.error("Seleziona un contatto firmatario"); return; }
-    const contatto = contatti?.find((c) => c.id === contattoIdEffettivo);
-    if (!contatto) { toast.error("Contatto non valido"); return; }
     setSaving(true);
     try {
       const now = new Date();
-      // Upload firma PNG
       const pngBlob = await (await fetch(dataUrl)).blob();
       const firmaPath = `contatti/${contatto.id}/firma-${now.getTime()}.png`;
       const { error: e1 } = await supabase.storage.from("firme").upload(firmaPath, pngBlob, { upsert: true, contentType: "image/png" });
       if (e1) throw e1;
       const { data: firmaUrl } = supabase.storage.from("firme").getPublicUrl(firmaPath);
 
-      // Genera PDF
       const pdfBytes = await generaPdfPrivacy({
         ragioneSociale: cliente.ragione_sociale,
         partitaIva: cliente.partita_iva,
@@ -461,10 +556,8 @@ function PrivacyTab({ cliente, onUpdated }: { cliente: any; onUpdated: () => voi
       if (e3) throw e3;
 
       toast.success("Privacy firmata e PDF generato");
-      qcLocal.invalidateQueries({ queryKey: ["contatti-privacy", cliente.id] });
-      qcLocal.invalidateQueries({ queryKey: ["contatti", cliente.id] });
-      onUpdated();
-
+      onSaved();
+      setOpen(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Errore salvataggio");
     } finally {
@@ -472,86 +565,39 @@ function PrivacyTab({ cliente, onUpdated }: { cliente: any; onUpdated: () => voi
     }
   }
 
-  const hasContatti = (contatti?.length ?? 0) > 0;
+  const nomeContatto = [contatto.nome, contatto.cognome].filter(Boolean).join(" ");
 
   return (
-    <Card className="p-6 space-y-4">
-      <div>
-        <h3 className="font-semibold mb-1">Consenso privacy (GDPR)</h3>
-        <p className="text-sm text-muted-foreground">Raccogli la firma del contatto per generare il PDF dell'informativa.</p>
-      </div>
-
-      {!hasContatti ? (
-        <div className="text-sm text-muted-foreground">
-          Aggiungi prima un contatto al cliente per poter raccogliere la firma privacy.
-        </div>
-      ) : (
-        <>
-          <LinkFirmaPrivacy clienteId={cliente.id} />
-
-          <div className="pt-3 border-t space-y-3">
-            <div>
-              <Label htmlFor="contatto-firma" className="text-sm font-medium">Contatto firmatario</Label>
-              <select
-                id="contatto-firma"
-                value={contattoIdEffettivo}
-                onChange={(e) => setContattoSel(e.target.value)}
-                className="mt-1 w-full border rounded-md px-2 py-2 text-sm bg-background"
-              >
-                {contatti!.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {[c.nome, c.cognome].filter(Boolean).join(" ")}
-                    {c.principale ? " (principale)" : ""}
-                    {c.privacy_firmata ? " — già firmata" : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {(() => {
-              const c = contatti!.find((x) => x.id === contattoIdEffettivo);
-              if (c?.privacy_firmata) {
-                return (
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center gap-2 text-success">
-                      <FileCheck2 className="size-4" />
-                      Firmata il {c.data_firma ? new Date(c.data_firma).toLocaleString("it-IT") : "—"}
-                    </div>
-                    {c.pdf_privacy_url && (
-                      <Button variant="outline" size="sm" asChild>
-                        <a href={c.pdf_privacy_url} target="_blank" rel="noreferrer">
-                          <Download className="size-4 mr-1" /> Scarica PDF
-                        </a>
-                      </Button>
-                    )}
-                    {c.firma_url && (
-                      <img src={c.firma_url} alt="Firma contatto" className="border rounded bg-white max-h-32" />
-                    )}
-                  </div>
-                );
-              }
-              return (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <FileX2 className="size-4" /> Non ancora firmata da questo contatto
-                </div>
-              );
-            })()}
-
-            <div>
-              <p className="text-sm font-medium mb-2">Salva firma adesso:</p>
-              <div ref={padRef}>
-                <SignaturePad onChange={(empty) => setHasSig(!empty)} />
-              </div>
-              <Button onClick={salva} disabled={!hasSig || saving || !contattoIdEffettivo} className="mt-2">
-                {saving ? "Salvataggio..." : "Salva firma e genera PDF"}
-              </Button>
-            </div>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant={contatto.privacy_firmata ? "outline" : "default"}>
+          <Pencil className="size-4 mr-1" />
+          {contatto.privacy_firmata ? "Rifirma" : "Raccogli firma"}
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Firma privacy — {nomeContatto}</DialogTitle>
+          <DialogDescription>
+            Raccogli qui la firma del contatto. Verrà generato un PDF dell'informativa salvato nella scheda.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div ref={padRef}>
+            <SignaturePad onChange={(empty) => setHasSig(!empty)} />
           </div>
-        </>
-      )}
-    </Card>
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={saving}>Annulla</Button>
+          <Button onClick={salva} disabled={!hasSig || saving}>
+            {saving ? "Salvataggio..." : "Salva firma e genera PDF"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
+
 
 
 function LinkFirmaPrivacy({ clienteId }: { clienteId: string }) {
