@@ -88,6 +88,113 @@ export type Database = {
         }
         Relationships: []
       }
+      campagne_whatsapp: {
+        Row: {
+          creata_da: string | null
+          created_at: string
+          id: string
+          inviata_at: string | null
+          invii_falliti: number | null
+          invii_ok: number | null
+          messaggio: string | null
+          nome: string
+          parametri: Json | null
+          template_name: string
+          totale_invii: number | null
+        }
+        Insert: {
+          creata_da?: string | null
+          created_at?: string
+          id?: string
+          inviata_at?: string | null
+          invii_falliti?: number | null
+          invii_ok?: number | null
+          messaggio?: string | null
+          nome: string
+          parametri?: Json | null
+          template_name: string
+          totale_invii?: number | null
+        }
+        Update: {
+          creata_da?: string | null
+          created_at?: string
+          id?: string
+          inviata_at?: string | null
+          invii_falliti?: number | null
+          invii_ok?: number | null
+          messaggio?: string | null
+          nome?: string
+          parametri?: Json | null
+          template_name?: string
+          totale_invii?: number | null
+        }
+        Relationships: []
+      }
+      cantieri: {
+        Row: {
+          attivo: boolean
+          cap: string | null
+          citta: string | null
+          cliente_id: string
+          created_at: string
+          created_by: string | null
+          data_fine_prevista: string | null
+          data_inizio: string | null
+          descrizione: string | null
+          id: string
+          indirizzo: string | null
+          nome: string
+          note: string | null
+          provincia: string | null
+          referente: string | null
+          updated_at: string
+        }
+        Insert: {
+          attivo?: boolean
+          cap?: string | null
+          citta?: string | null
+          cliente_id: string
+          created_at?: string
+          created_by?: string | null
+          data_fine_prevista?: string | null
+          data_inizio?: string | null
+          descrizione?: string | null
+          id?: string
+          indirizzo?: string | null
+          nome: string
+          note?: string | null
+          provincia?: string | null
+          referente?: string | null
+          updated_at?: string
+        }
+        Update: {
+          attivo?: boolean
+          cap?: string | null
+          citta?: string | null
+          cliente_id?: string
+          created_at?: string
+          created_by?: string | null
+          data_fine_prevista?: string | null
+          data_inizio?: string | null
+          descrizione?: string | null
+          id?: string
+          indirizzo?: string | null
+          nome?: string
+          note?: string | null
+          provincia?: string | null
+          referente?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cantieri_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clienti: {
         Row: {
           abi: string | null
@@ -277,6 +384,161 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      esportazioni: {
+        Row: {
+          created_at: string
+          eseguita_da: string | null
+          file_url: string | null
+          filtro_store_id: string | null
+          id: string
+          nome_file: string
+          periodo_a: string | null
+          periodo_da: string | null
+          righe_esportate: number | null
+        }
+        Insert: {
+          created_at?: string
+          eseguita_da?: string | null
+          file_url?: string | null
+          filtro_store_id?: string | null
+          id?: string
+          nome_file: string
+          periodo_a?: string | null
+          periodo_da?: string | null
+          righe_esportate?: number | null
+        }
+        Update: {
+          created_at?: string
+          eseguita_da?: string | null
+          file_url?: string | null
+          filtro_store_id?: string | null
+          id?: string
+          nome_file?: string
+          periodo_a?: string | null
+          periodo_da?: string | null
+          righe_esportate?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esportazioni_filtro_store_id_fkey"
+            columns: ["filtro_store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      importazioni: {
+        Row: {
+          completata_at: string | null
+          created_at: string
+          dimensione_bytes: number | null
+          eseguita_da: string | null
+          fonte: string | null
+          id: string
+          log_errori: Json | null
+          nome_file: string
+          righe_aggiornate: number | null
+          righe_create: number | null
+          righe_elaborate: number | null
+          righe_errore: number | null
+          righe_totali: number | null
+          stato: Database["public"]["Enums"]["stato_importazione"]
+        }
+        Insert: {
+          completata_at?: string | null
+          created_at?: string
+          dimensione_bytes?: number | null
+          eseguita_da?: string | null
+          fonte?: string | null
+          id?: string
+          log_errori?: Json | null
+          nome_file: string
+          righe_aggiornate?: number | null
+          righe_create?: number | null
+          righe_elaborate?: number | null
+          righe_errore?: number | null
+          righe_totali?: number | null
+          stato?: Database["public"]["Enums"]["stato_importazione"]
+        }
+        Update: {
+          completata_at?: string | null
+          created_at?: string
+          dimensione_bytes?: number | null
+          eseguita_da?: string | null
+          fonte?: string | null
+          id?: string
+          log_errori?: Json | null
+          nome_file?: string
+          righe_aggiornate?: number | null
+          righe_create?: number | null
+          righe_elaborate?: number | null
+          righe_errore?: number | null
+          righe_totali?: number | null
+          stato?: Database["public"]["Enums"]["stato_importazione"]
+        }
+        Relationships: []
+      }
+      messaggi_whatsapp: {
+        Row: {
+          campagna_id: string | null
+          consegnato_at: string | null
+          contatto_id: string
+          created_at: string
+          errore: string | null
+          id: string
+          inviato_at: string | null
+          letto_at: string | null
+          messaggio: string | null
+          meta_message_id: string | null
+          numero_dest: string
+          stato: Database["public"]["Enums"]["stato_messaggio_wa"]
+        }
+        Insert: {
+          campagna_id?: string | null
+          consegnato_at?: string | null
+          contatto_id: string
+          created_at?: string
+          errore?: string | null
+          id?: string
+          inviato_at?: string | null
+          letto_at?: string | null
+          messaggio?: string | null
+          meta_message_id?: string | null
+          numero_dest: string
+          stato?: Database["public"]["Enums"]["stato_messaggio_wa"]
+        }
+        Update: {
+          campagna_id?: string | null
+          consegnato_at?: string | null
+          contatto_id?: string
+          created_at?: string
+          errore?: string | null
+          id?: string
+          inviato_at?: string | null
+          letto_at?: string | null
+          messaggio?: string | null
+          meta_message_id?: string | null
+          numero_dest?: string
+          stato?: Database["public"]["Enums"]["stato_messaggio_wa"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messaggi_whatsapp_campagna_id_fkey"
+            columns: ["campagna_id"]
+            isOneToOne: false
+            referencedRelation: "campagne_whatsapp"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messaggi_whatsapp_contatto_id_fkey"
+            columns: ["contatto_id"]
+            isOneToOne: false
+            referencedRelation: "contatti"
             referencedColumns: ["id"]
           },
         ]
@@ -472,6 +734,63 @@ export type Database = {
         }
         Relationships: []
       }
+      storico_fido: {
+        Row: {
+          cliente_id: string
+          created_at: string
+          data_inizio_fido: string | null
+          data_scadenza_fido: string | null
+          eseguito_da: string | null
+          id: string
+          importo_nuovo: number
+          importo_precedente: number | null
+          note: string | null
+          richiesta_id: string | null
+          tipo_variazione: Database["public"]["Enums"]["tipo_variazione_fido"]
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string
+          data_inizio_fido?: string | null
+          data_scadenza_fido?: string | null
+          eseguito_da?: string | null
+          id?: string
+          importo_nuovo: number
+          importo_precedente?: number | null
+          note?: string | null
+          richiesta_id?: string | null
+          tipo_variazione: Database["public"]["Enums"]["tipo_variazione_fido"]
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string
+          data_inizio_fido?: string | null
+          data_scadenza_fido?: string | null
+          eseguito_da?: string | null
+          id?: string
+          importo_nuovo?: number
+          importo_precedente?: number | null
+          note?: string | null
+          richiesta_id?: string | null
+          tipo_variazione?: Database["public"]["Enums"]["tipo_variazione_fido"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "storico_fido_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "storico_fido_richiesta_id_fkey"
+            columns: ["richiesta_id"]
+            isOneToOne: false
+            referencedRelation: "richieste_fido"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -519,6 +838,17 @@ export type Database = {
         | "approvatore_liv3"
         | "amministratore"
       esito_approvazione: "approvata" | "rifiutata"
+      stato_importazione:
+        | "in_elaborazione"
+        | "completata"
+        | "completata_con_errori"
+        | "fallita"
+      stato_messaggio_wa:
+        | "in_coda"
+        | "inviato"
+        | "consegnato"
+        | "letto"
+        | "fallito"
       stato_richiesta:
         | "bozza"
         | "in_approvazione"
@@ -526,6 +856,13 @@ export type Database = {
         | "rifiutata"
         | "annullata"
       tipo_richiesta: "nuovo" | "aumento" | "diminuzione" | "rinnovo"
+      tipo_variazione_fido:
+        | "nuovo"
+        | "aumento"
+        | "diminuzione"
+        | "rinnovo"
+        | "sospensione"
+        | "revoca"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -661,6 +998,19 @@ export const Constants = {
         "amministratore",
       ],
       esito_approvazione: ["approvata", "rifiutata"],
+      stato_importazione: [
+        "in_elaborazione",
+        "completata",
+        "completata_con_errori",
+        "fallita",
+      ],
+      stato_messaggio_wa: [
+        "in_coda",
+        "inviato",
+        "consegnato",
+        "letto",
+        "fallito",
+      ],
       stato_richiesta: [
         "bozza",
         "in_approvazione",
@@ -669,6 +1019,14 @@ export const Constants = {
         "annullata",
       ],
       tipo_richiesta: ["nuovo", "aumento", "diminuzione", "rinnovo"],
+      tipo_variazione_fido: [
+        "nuovo",
+        "aumento",
+        "diminuzione",
+        "rinnovo",
+        "sospensione",
+        "revoca",
+      ],
     },
   },
 } as const
