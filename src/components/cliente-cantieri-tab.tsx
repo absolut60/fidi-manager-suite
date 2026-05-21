@@ -218,10 +218,10 @@ function CantiereDialog({
       };
       if (mode === "new") {
         payload.created_by = user?.id ?? null;
-        const { error } = await supabase.from("cantieri").insert(payload);
+        const { error } = await supabase.from("cantieri").insert(payload as any);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("cantieri").update(payload).eq("id", cantiereId!);
+        const { error } = await supabase.from("cantieri").update(payload as any).eq("id", cantiereId!);
         if (error) throw error;
       }
     },
