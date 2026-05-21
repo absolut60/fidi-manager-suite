@@ -710,18 +710,25 @@ function StepDichiarante({
 }) {
   return (
     <>
+      <div className="rounded-md border bg-muted/40 p-3 text-xs">
+        <p className="font-medium text-foreground mb-1">Firmatario (Titolare / Legale Rappresentante)</p>
+        <p className="text-muted-foreground">
+          I dati sono precompilati dallo Step 3. Per modificarli torna allo step "Contatti".
+        </p>
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <Label>Nome dichiarante *</Label>
-          <Input value={form.dichiarante_nome} onChange={(e) => set("dichiarante_nome", e.target.value)} />
+          <Input value={form.dichiarante_nome} readOnly disabled className="bg-muted/50" />
           {errors.dichiarante_nome && <p className="text-xs text-destructive">{errors.dichiarante_nome}</p>}
         </div>
         <div className="space-y-1.5">
           <Label>Cognome dichiarante *</Label>
-          <Input value={form.dichiarante_cognome} onChange={(e) => set("dichiarante_cognome", e.target.value)} />
+          <Input value={form.dichiarante_cognome} readOnly disabled className="bg-muted/50" />
           {errors.dichiarante_cognome && <p className="text-xs text-destructive">{errors.dichiarante_cognome}</p>}
         </div>
       </div>
+
 
       <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground leading-relaxed">
         In relazione al nuovo Regolamento UE 679/2016, ed ai sensi del decreto legislativo 196 del 30/06/2003, i dati personali
