@@ -104,6 +104,7 @@ export type Database = {
           note: string | null
           partita_iva: string | null
           privacy_firmata: boolean
+          privacy_pdf_url: string | null
           provincia: string | null
           ragione_sociale: string
           store_id: string | null
@@ -125,6 +126,7 @@ export type Database = {
           note?: string | null
           partita_iva?: string | null
           privacy_firmata?: boolean
+          privacy_pdf_url?: string | null
           provincia?: string | null
           ragione_sociale: string
           store_id?: string | null
@@ -146,6 +148,7 @@ export type Database = {
           note?: string | null
           partita_iva?: string | null
           privacy_firmata?: boolean
+          privacy_pdf_url?: string | null
           provincia?: string | null
           ragione_sociale?: string
           store_id?: string | null
