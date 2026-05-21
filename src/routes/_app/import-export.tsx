@@ -92,6 +92,11 @@ function ImportExportPage() {
         <ImportCard />
         <ExportCard />
       </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <HistoryCard kind="importazioni" />
+        <HistoryCard kind="esportazioni" />
+      </div>
     </div>
   );
 }
@@ -163,6 +168,22 @@ function ImportCard() {
   const importMut = useMutation({
     mutationFn: async () => {
       if (!valid.length) throw new Error("Nessuna riga valida");
+      const { data: { user } } = await supabase.auth.getUser();
+
+      // Crea record importazione
+      const { data: imp, error: impErr } = await supabase.from("importazioni").insert({
+        nome_file: fileName ?? "import.xlsx",
+        righe_totali: rows.length,
+        righe_errore: invalid.length,
+        stato: "in_elaborazione",
+        fonte: "upload_manuale",
+        eseguita_da: user?.id ?? null,
+        log_errori: invalid.length > 0
+          ? invalid.slice(0, 100).map((r) => ({ riga: r.idx, errori: r.errors }))
+          : null,
+      }).select("id").single();
+      if (impErr) throw impErr;
+
       const payload = valid.map((r) => ({
         ragione_sociale: r.data.ragione_sociale,
         partita_iva: r.data.partita_iva || null,
@@ -176,18 +197,39 @@ function ImportCard() {
         note: r.data.note || null,
         store_id: storeId || null,
       }));
-      // chunked insert per non superare limiti
-      const chunkSize = 200;
-      for (let i = 0; i < payload.length; i += chunkSize) {
-        const slice = payload.slice(i, i + chunkSize);
-        const { error } = await supabase.from("clienti").insert(slice);
-        if (error) throw error;
+
+      let created = 0;
+      try {
+        const chunkSize = 200;
+        for (let i = 0; i < payload.length; i += chunkSize) {
+          const slice = payload.slice(i, i + chunkSize);
+          const { error } = await supabase.from("clienti").insert(slice);
+          if (error) throw error;
+          created += slice.length;
+        }
+        await supabase.from("importazioni").update({
+          righe_elaborate: payload.length,
+          righe_create: created,
+          stato: invalid.length > 0 ? "completata_con_errori" : "completata",
+          completata_at: new Date().toISOString(),
+        }).eq("id", imp.id);
+      } catch (e) {
+        await supabase.from("importazioni").update({
+          righe_elaborate: created,
+          righe_create: created,
+          stato: "fallita",
+          completata_at: new Date().toISOString(),
+          log_errori: [{ errore: e instanceof Error ? e.message : String(e) }],
+        }).eq("id", imp.id);
+        throw e;
       }
+
       return payload.length;
     },
     onSuccess: (n) => {
       toast.success(`Importati ${n} clienti`);
       qc.invalidateQueries({ queryKey: ["clienti"] });
+      qc.invalidateQueries({ queryKey: ["storico-import-export"] });
       reset();
     },
     onError: (e: Error) => toast.error(e.message),
