@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import { Plus, Search, Building, MapPin, FileCheck2, FileX2, ArrowLeft, ArrowRight, Check } from "lucide-react";
+import { Plus, Search, Building, MapPin, FileCheck2, FileX2, ArrowLeft, ArrowRight, Check, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -115,6 +115,7 @@ function ClientiPage() {
                   <TableHead>Punto vendita</TableHead>
                   <TableHead>Privacy</TableHead>
                   <TableHead>Stato</TableHead>
+                  <TableHead className="w-12"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -161,6 +162,13 @@ function ClientiPage() {
                       <Badge variant={c.attivo ? "default" : "secondary"}>
                         {c.attivo ? "Attivo" : "Inattivo"}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Button asChild variant="ghost" size="icon" title="Modifica">
+                        <Link to="/clienti/$clienteId" params={{ clienteId: c.id }} search={{ edit: 1 } as any}>
+                          <Pencil className="size-4" />
+                        </Link>
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}

@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { ArrowLeft, Plus, Mail, Phone, Smartphone, Star, Trash2, FileCheck2, FileX2, Download, Pencil } from "lucide-react";
@@ -25,6 +25,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export const Route = createFileRoute("/_app/clienti/$clienteId")({
+  validateSearch: (s: Record<string, unknown>) => ({ edit: s.edit === 1 || s.edit === "1" ? 1 : undefined }),
   component: ClienteDetail,
 });
 
@@ -42,9 +43,15 @@ type ContattoForm = z.infer<typeof contattoSchema>;
 
 function ClienteDetail() {
   const { clienteId } = Route.useParams();
+  const { edit } = Route.useSearch();
   const qc = useQueryClient();
   const [openNew, setOpenNew] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
+
+  useEffect(() => {
+    if (edit === 1) setOpenEdit(true);
+  }, [edit]);
+
 
   const { data: cliente, isLoading } = useQuery({
     queryKey: ["cliente", clienteId],
