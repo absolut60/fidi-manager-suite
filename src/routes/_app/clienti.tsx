@@ -121,15 +121,13 @@ function ClientiPage() {
               </TableHeader>
               <TableBody>
                 {filtered.map((c) => (
-                  <TableRow key={c.id} className="cursor-pointer">
+                  <TableRow
+                    key={c.id}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => navigate({ to: "/clienti/$clienteId", params: { clienteId: c.id } })}
+                  >
                     <TableCell className="font-medium">
-                      <Link
-                        to="/clienti/$clienteId"
-                        params={{ clienteId: c.id }}
-                        className="hover:text-primary"
-                      >
-                        {c.ragione_sociale}
-                      </Link>
+                      {c.ragione_sociale}
                     </TableCell>
                     <TableCell className="text-sm font-mono">
                       {(c as any).codice_gestionale || <span className="text-muted-foreground">—</span>}
@@ -164,11 +162,18 @@ function ClientiPage() {
                         {c.attivo ? "Attivo" : "Inattivo"}
                       </Badge>
                     </TableCell>
-                    <TableCell>
-                      <Button asChild variant="ghost" size="icon" title="Modifica">
-                        <Link to="/clienti/$clienteId" params={{ clienteId: c.id }} search={{ edit: 1 } as any}>
-                          <Pencil className="size-4" />
-                        </Link>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Modifica"
+                        onClick={() => navigate({
+                          to: "/clienti/$clienteId",
+                          params: { clienteId: c.id },
+                          search: { edit: 1 } as any,
+                        })}
+                      >
+                        <Pencil className="size-4" />
                       </Button>
                     </TableCell>
                   </TableRow>
