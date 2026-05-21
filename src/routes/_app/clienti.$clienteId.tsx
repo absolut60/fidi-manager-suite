@@ -20,6 +20,8 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ClienteCantieriTab } from "@/components/cliente-cantieri-tab";
+import { ClienteStoricoFidoTab } from "@/components/cliente-storico-fido-tab";
 
 export const Route = createFileRoute("/_app/clienti/$clienteId")({
   validateSearch: (s: Record<string, unknown>) => ({ edit: s.edit === 1 || s.edit === "1" ? 1 : undefined }),
@@ -150,9 +152,11 @@ function ClienteDetail() {
       </div>
 
       <Tabs defaultValue="anagrafica">
-        <TabsList>
+        <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="anagrafica">Anagrafica</TabsTrigger>
           <TabsTrigger value="contatti">Contatti ({contatti?.length ?? 0})</TabsTrigger>
+          <TabsTrigger value="cantieri">Cantieri</TabsTrigger>
+          <TabsTrigger value="storico">Storico fido</TabsTrigger>
           <TabsTrigger value="privacy">Privacy</TabsTrigger>
         </TabsList>
 
@@ -262,6 +266,14 @@ function ClienteDetail() {
               ))}
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="cantieri">
+          <ClienteCantieriTab clienteId={clienteId} />
+        </TabsContent>
+
+        <TabsContent value="storico">
+          <ClienteStoricoFidoTab clienteId={clienteId} />
         </TabsContent>
 
         <TabsContent value="privacy">
