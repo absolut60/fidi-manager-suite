@@ -205,6 +205,7 @@ function NewRichiestaDialog({ onClose }: { onClose: () => void }) {
       const cliente = clienti?.find((c) => c.id === parsed.cliente_id);
       const { error } = await supabase.from("richieste_fido").insert({
         cliente_id: parsed.cliente_id,
+        tipo: parsed.tipo,
         store_id: cliente?.store_id ?? null,
         importo_richiesto: parsed.importo_richiesto,
         durata_mesi: parsed.durata_mesi,
