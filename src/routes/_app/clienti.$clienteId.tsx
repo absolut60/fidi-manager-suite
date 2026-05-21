@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import { ArrowLeft, Plus, Mail, Phone, Smartphone, Star, Trash2, FileCheck2, FileX2, Download } from "lucide-react";
+import { ArrowLeft, Plus, Mail, Phone, Smartphone, Star, Trash2, FileCheck2, FileX2, Download, Pencil } from "lucide-react";
 import { SignaturePad, getCanvasDataURL } from "@/components/signature-pad";
 import { generaPdfPrivacy } from "@/lib/privacy-pdf";
 import { useRef } from "react";
@@ -15,6 +15,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
@@ -40,6 +44,7 @@ function ClienteDetail() {
   const { clienteId } = Route.useParams();
   const qc = useQueryClient();
   const [openNew, setOpenNew] = useState(false);
+  const [openEdit, setOpenEdit] = useState(false);
 
   const { data: cliente, isLoading } = useQuery({
     queryKey: ["cliente", clienteId],
@@ -113,7 +118,7 @@ function ClienteDetail() {
               {cliente.partita_iva ? `P.IVA ${cliente.partita_iva}` : "Partita IVA non inserita"}
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
             {cliente.privacy_firmata ? (
               <Badge className="bg-success/15 text-success gap-1">
                 <FileCheck2 className="size-3" /> Privacy firmata
@@ -123,6 +128,18 @@ function ClienteDetail() {
                 <FileX2 className="size-3" /> Privacy da firmare
               </Badge>
             )}
+            <Dialog open={openEdit} onOpenChange={setOpenEdit}>
+              <DialogTrigger asChild>
+                <Button size="sm" variant="outline" className="gap-1.5">
+                  <Pencil className="size-4" /> Modifica
+                </Button>
+              </DialogTrigger>
+              <EditClienteDialog
+                cliente={cliente}
+                onClose={() => setOpenEdit(false)}
+                onSaved={() => qc.invalidateQueries({ queryKey: ["cliente", clienteId] })}
+              />
+            </Dialog>
           </div>
         </div>
       </div>
@@ -461,5 +478,247 @@ function PrivacyTab({ cliente, onUpdated }: { cliente: any; onUpdated: () => voi
         </>
       )}
     </Card>
+  );
+}
+
+const editSchema = z.object({
+  ragione_sociale: z.string().trim().min(1, "Obbligatoria").max(200),
+  tipo_soggetto: z.enum(["persona_fisica", "azienda"]).nullable().optional(),
+  codice_gestionale: z.string().trim().max(50).optional().or(z.literal("")),
+  partita_iva: z.string().trim().max(20).optional().or(z.literal("")),
+  codice_fiscale: z.string().trim().max(20).optional().or(z.literal("")),
+  store_id: z.string().uuid().nullable().optional(),
+  indirizzo: z.string().trim().max(200).optional().or(z.literal("")),
+  citta: z.string().trim().max(100).optional().or(z.literal("")),
+  cap: z.string().trim().max(10).optional().or(z.literal("")),
+  provincia: z.string().trim().max(5).optional().or(z.literal("")),
+  telefono: z.string().trim().max(30).optional().or(z.literal("")),
+  email: z.string().trim().email("Email non valida").max(255).optional().or(z.literal("")),
+  pec: z.string().trim().email("PEC non valida").max(255).optional().or(z.literal("")),
+  codice_sdi: z.string().trim().max(10).optional().or(z.literal("")),
+  banca: z.string().trim().max(100).optional().or(z.literal("")),
+  agenzia: z.string().trim().max(100).optional().or(z.literal("")),
+  abi: z.string().trim().max(10).optional().or(z.literal("")),
+  cab: z.string().trim().max(10).optional().or(z.literal("")),
+  condizioni_pagamento: z.string().trim().max(500).optional().or(z.literal("")),
+  note: z.string().trim().max(2000).optional().or(z.literal("")),
+});
+
+type EditForm = z.infer<typeof editSchema>;
+
+function EditClienteDialog({ cliente, onClose, onSaved }: { cliente: any; onClose: () => void; onSaved: () => void }) {
+  const [form, setForm] = useState<EditForm>({
+    ragione_sociale: cliente.ragione_sociale ?? "",
+    tipo_soggetto: cliente.tipo_soggetto ?? null,
+    codice_gestionale: cliente.codice_gestionale ?? "",
+    partita_iva: cliente.partita_iva ?? "",
+    codice_fiscale: cliente.codice_fiscale ?? "",
+    store_id: cliente.store_id ?? null,
+    indirizzo: cliente.indirizzo ?? "",
+    citta: cliente.citta ?? "",
+    cap: cliente.cap ?? "",
+    provincia: cliente.provincia ?? "",
+    telefono: cliente.telefono ?? "",
+    email: cliente.email ?? "",
+    pec: cliente.pec ?? "",
+    codice_sdi: cliente.codice_sdi ?? "",
+    banca: cliente.banca ?? "",
+    agenzia: cliente.agenzia ?? "",
+    abi: cliente.abi ?? "",
+    cab: cliente.cab ?? "",
+    condizioni_pagamento: cliente.condizioni_pagamento ?? "",
+    note: cliente.note ?? "",
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const { data: stores } = useQuery({
+    queryKey: ["stores-attivi"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("stores").select("id, nome, codice").eq("attivo", true).order("nome");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const mutation = useMutation({
+    mutationFn: async (input: EditForm) => {
+      const parsed = editSchema.parse(input);
+      const payload: Record<string, any> = {};
+      (Object.keys(parsed) as (keyof EditForm)[]).forEach((k) => {
+        const v = parsed[k];
+        payload[k] = v === "" ? null : v;
+      });
+      const { error } = await supabase.from("clienti").update(payload as any).eq("id", cliente.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Cliente aggiornato");
+      onSaved();
+      onClose();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  function set<K extends keyof EditForm>(k: K, v: EditForm[K]) {
+    setForm((f) => ({ ...f, [k]: v }));
+  }
+
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    const r = editSchema.safeParse(form);
+    if (!r.success) {
+      const errs: Record<string, string> = {};
+      r.error.issues.forEach((i) => { errs[i.path[0] as string] = i.message; });
+      setErrors(errs);
+      toast.error("Controlla i campi evidenziati");
+      return;
+    }
+    setErrors({});
+    mutation.mutate(form);
+  }
+
+  return (
+    <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogHeader>
+        <DialogTitle>Modifica cliente</DialogTitle>
+        <DialogDescription>Aggiorna i dati anagrafici, fiscali e bancari.</DialogDescription>
+      </DialogHeader>
+      <form onSubmit={submit} className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-1.5 sm:col-span-2">
+            <Label>Ragione sociale *</Label>
+            <Input value={form.ragione_sociale} onChange={(e) => set("ragione_sociale", e.target.value)} />
+            {errors.ragione_sociale && <p className="text-xs text-destructive">{errors.ragione_sociale}</p>}
+          </div>
+          <div className="space-y-1.5">
+            <Label>Tipo soggetto</Label>
+            <Select
+              value={form.tipo_soggetto ?? "none"}
+              onValueChange={(v) => set("tipo_soggetto", v === "none" ? null : (v as "persona_fisica" | "azienda"))}
+            >
+              <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">—</SelectItem>
+                <SelectItem value="persona_fisica">Persona fisica</SelectItem>
+                <SelectItem value="azienda">Azienda</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Codice gestionale</Label>
+            <Input value={form.codice_gestionale} onChange={(e) => set("codice_gestionale", e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Partita IVA</Label>
+            <Input value={form.partita_iva} onChange={(e) => set("partita_iva", e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Codice fiscale</Label>
+            <Input value={form.codice_fiscale} onChange={(e) => set("codice_fiscale", e.target.value)} />
+          </div>
+          <div className="space-y-1.5 sm:col-span-2">
+            <Label>Punto vendita</Label>
+            <Select
+              value={form.store_id ?? "none"}
+              onValueChange={(v) => set("store_id", v === "none" ? null : v)}
+            >
+              <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">—</SelectItem>
+                {stores?.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>{s.nome} ({s.codice})</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="border-t pt-3 space-y-3">
+          <h4 className="text-sm font-semibold">Sede</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label>Indirizzo</Label>
+              <Input value={form.indirizzo} onChange={(e) => set("indirizzo", e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Città</Label>
+              <Input value={form.citta} onChange={(e) => set("citta", e.target.value)} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>CAP</Label>
+                <Input value={form.cap} onChange={(e) => set("cap", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Prov.</Label>
+                <Input value={form.provincia} onChange={(e) => set("provincia", e.target.value)} />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="border-t pt-3 space-y-3">
+          <h4 className="text-sm font-semibold">Contatti</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Telefono</Label>
+              <Input value={form.telefono} onChange={(e) => set("telefono", e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Email</Label>
+              <Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} />
+              {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
+            </div>
+            <div className="space-y-1.5">
+              <Label>PEC</Label>
+              <Input type="email" value={form.pec} onChange={(e) => set("pec", e.target.value)} />
+              {errors.pec && <p className="text-xs text-destructive">{errors.pec}</p>}
+            </div>
+            <div className="space-y-1.5">
+              <Label>Codice SDI</Label>
+              <Input value={form.codice_sdi} onChange={(e) => set("codice_sdi", e.target.value)} />
+            </div>
+          </div>
+        </div>
+
+        <div className="border-t pt-3 space-y-3">
+          <h4 className="text-sm font-semibold">Coordinate bancarie</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Banca</Label>
+              <Input value={form.banca} onChange={(e) => set("banca", e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Agenzia</Label>
+              <Input value={form.agenzia} onChange={(e) => set("agenzia", e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>ABI</Label>
+              <Input value={form.abi} onChange={(e) => set("abi", e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>CAB</Label>
+              <Input value={form.cab} onChange={(e) => set("cab", e.target.value)} />
+            </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label>Condizioni di pagamento</Label>
+              <Input value={form.condizioni_pagamento} onChange={(e) => set("condizioni_pagamento", e.target.value)} />
+            </div>
+          </div>
+        </div>
+
+        <div className="border-t pt-3 space-y-1.5">
+          <Label>Note</Label>
+          <Textarea rows={3} value={form.note} onChange={(e) => set("note", e.target.value)} />
+        </div>
+
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onClose}>Annulla</Button>
+          <Button type="submit" disabled={mutation.isPending}>
+            {mutation.isPending ? "Salvataggio..." : "Salva modifiche"}
+          </Button>
+        </DialogFooter>
+      </form>
+    </DialogContent>
   );
 }
