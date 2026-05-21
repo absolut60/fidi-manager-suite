@@ -363,7 +363,18 @@ function ImportCard() {
 /* ============================ EXPORT ============================ */
 
 function ExportCard() {
+  const qc = useQueryClient();
   const [busy, setBusy] = useState<null | "clienti" | "richieste">(null);
+
+  async function logEsportazione(nome_file: string, righe: number) {
+    const { data: { user } } = await supabase.auth.getUser();
+    await supabase.from("esportazioni").insert({
+      nome_file,
+      righe_esportate: righe,
+      eseguita_da: user?.id ?? null,
+    });
+    qc.invalidateQueries({ queryKey: ["storico-import-export"] });
+  }
 
   async function exportClienti() {
     setBusy("clienti");
@@ -388,10 +399,12 @@ function ExportCard() {
         attivo: c.attivo ? "Sì" : "No",
         privacy_firmata: c.privacy_firmata ? "Sì" : "No",
       }));
+      const fname = `clienti_${new Date().toISOString().slice(0, 10)}.xlsx`;
       const ws = XLSX.utils.json_to_sheet(flat);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Clienti");
-      XLSX.writeFile(wb, `clienti_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      XLSX.writeFile(wb, fname);
+      await logEsportazione(fname, flat.length);
       toast.success(`Esportati ${flat.length} clienti`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Errore export");
@@ -424,10 +437,12 @@ function ExportCard() {
         data_scadenza: r.data_scadenza,
         motivazione: r.motivazione,
       }));
+      const fname = `richieste_fido_${new Date().toISOString().slice(0, 10)}.xlsx`;
       const ws = XLSX.utils.json_to_sheet(flat);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Richieste fido");
-      XLSX.writeFile(wb, `richieste_fido_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      XLSX.writeFile(wb, fname);
+      await logEsportazione(fname, flat.length);
       toast.success(`Esportate ${flat.length} richieste`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Errore export");
@@ -470,6 +485,66 @@ function ExportCard() {
           {busy === "richieste" ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
         </Button>
       </div>
+    </Card>
+  );
+}
+
+/* ============================ HISTORY ============================ */
+
+function HistoryCard({ kind }: { kind: "importazioni" | "esportazioni" }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["storico-import-export", kind],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from(kind)
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(10);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const title = kind === "importazioni" ? "Ultime importazioni" : "Ultime esportazioni";
+  const Icon = kind === "importazioni" ? Upload : Download;
+
+  return (
+    <Card className="p-5">
+      <h2 className="font-semibold flex items-center gap-2 mb-3">
+        <Icon className="size-4" /> {title}
+      </h2>
+      {isLoading ? (
+        <p className="text-xs text-muted-foreground">Caricamento…</p>
+      ) : !data || data.length === 0 ? (
+        <p className="text-xs text-muted-foreground">Nessuna operazione registrata.</p>
+      ) : (
+        <div className="space-y-2">
+          {data.map((r: any) => (
+            <div key={r.id} className="flex items-center justify-between gap-2 text-sm border-b last:border-0 pb-2 last:pb-0">
+              <div className="min-w-0">
+                <p className="font-medium truncate">{r.nome_file}</p>
+                <p className="text-xs text-muted-foreground">
+                  {new Date(r.created_at).toLocaleString("it-IT")}
+                </p>
+              </div>
+              <div className="text-right shrink-0">
+                {kind === "importazioni" ? (
+                  <>
+                    <Badge variant={r.stato === "completata" ? "default" : r.stato === "fallita" ? "destructive" : "secondary"}>
+                      {r.stato}
+                    </Badge>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {r.righe_create ?? 0}/{r.righe_totali ?? 0} righe
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-xs text-muted-foreground">{r.righe_esportate ?? 0} righe</p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </Card>
   );
 }
