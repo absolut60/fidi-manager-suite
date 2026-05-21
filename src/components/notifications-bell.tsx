@@ -43,24 +43,11 @@ export function NotificationsBell() {
       if (active && data) setNotifiche(data as Notifica[]);
     };
     load();
-
-    const channel = supabase
-      .channel(`notifiche-${user.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "notifiche",
-          filter: `user_id=eq.${user.id}`,
-        },
-        () => load(),
-      )
-      .subscribe();
+    const refreshTimer = window.setInterval(load, 30_000);
 
     return () => {
       active = false;
-      supabase.removeChannel(channel);
+      window.clearInterval(refreshTimer);
     };
   }, [user?.id]);
 
@@ -68,6 +55,7 @@ export function NotificationsBell() {
 
   async function segnaLetta(id: string) {
     await supabase.from("notifiche").update({ letta: true }).eq("id", id);
+    setNotifiche((prev) => prev.map((n) => (n.id === id ? { ...n, letta: true } : n)));
   }
 
   async function segnaTutteLette() {
@@ -77,6 +65,7 @@ export function NotificationsBell() {
       .update({ letta: true })
       .eq("user_id", user.id)
       .eq("letta", false);
+    setNotifiche((prev) => prev.map((n) => ({ ...n, letta: true })));
   }
 
   return (
