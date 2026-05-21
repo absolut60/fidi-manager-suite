@@ -14,6 +14,7 @@ import {
   Menu,
   X,
   Building,
+  ScrollText,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, RUOLI_LABEL } from "@/hooks/use-auth";
