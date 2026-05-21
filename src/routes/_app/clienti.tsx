@@ -390,8 +390,8 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
       const contattiToInsert: Array<Record<string, unknown>> = [];
 
       // Titolare / Legale Rappresentante → principale = true
-      if (parsed.titolare_nome.trim()) {
-        const { nome, cognome } = splitNome(parsed.titolare_nome);
+      if ((parsed.titolare_nome ?? "").trim()) {
+        const { nome, cognome } = splitNome(parsed.titolare_nome ?? "");
         contattiToInsert.push({
           cliente_id: clienteId,
           nome,
@@ -404,8 +404,8 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
       }
 
       // Referente Amministrativo → principale = false, solo se Nominativo compilato
-      if (parsed.amministrativo_nome.trim()) {
-        const { nome, cognome } = splitNome(parsed.amministrativo_nome);
+      if ((parsed.amministrativo_nome ?? "").trim()) {
+        const { nome, cognome } = splitNome(parsed.amministrativo_nome ?? "");
         contattiToInsert.push({
           cliente_id: clienteId,
           nome,
