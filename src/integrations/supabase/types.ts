@@ -344,10 +344,17 @@ export type Database = {
           cliente_id: string
           cognome: string | null
           created_at: string
+          data_firma: string | null
           email: string | null
+          firma_url: string | null
           id: string
           nome: string
+          pdf_privacy_path: string | null
+          pdf_privacy_url: string | null
           principale: boolean
+          privacy_firmata: boolean
+          privacy_token: string | null
+          privacy_token_expires_at: string | null
           ruolo: string | null
           telefono: string | null
           updated_at: string
@@ -357,10 +364,17 @@ export type Database = {
           cliente_id: string
           cognome?: string | null
           created_at?: string
+          data_firma?: string | null
           email?: string | null
+          firma_url?: string | null
           id?: string
           nome: string
+          pdf_privacy_path?: string | null
+          pdf_privacy_url?: string | null
           principale?: boolean
+          privacy_firmata?: boolean
+          privacy_token?: string | null
+          privacy_token_expires_at?: string | null
           ruolo?: string | null
           telefono?: string | null
           updated_at?: string
@@ -370,10 +384,17 @@ export type Database = {
           cliente_id?: string
           cognome?: string | null
           created_at?: string
+          data_firma?: string | null
           email?: string | null
+          firma_url?: string | null
           id?: string
           nome?: string
+          pdf_privacy_path?: string | null
+          pdf_privacy_url?: string | null
           principale?: boolean
+          privacy_firmata?: boolean
+          privacy_token?: string | null
+          privacy_token_expires_at?: string | null
           ruolo?: string | null
           telefono?: string | null
           updated_at?: string
