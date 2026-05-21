@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
@@ -31,6 +31,8 @@ export const Route = createFileRoute("/_app/clienti")({
 
 function ClientiPage() {
   const navigate = useNavigate();
+  const currentPath = useRouterState({ select: (s) => s.location.pathname });
+  const isListRoute = currentPath === "/clienti";
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
 
@@ -44,6 +46,7 @@ function ClientiPage() {
       if (error) throw error;
       return data;
     },
+    enabled: isListRoute,
   });
 
   const filtered = (clienti ?? []).filter((c) => {
@@ -56,6 +59,10 @@ function ClientiPage() {
       c.citta?.toLowerCase().includes(q)
     );
   });
+
+  if (!isListRoute) {
+    return <Outlet />;
+  }
 
   return (
     <div className="space-y-6">

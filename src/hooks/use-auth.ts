@@ -22,6 +22,8 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const fallbackTimer = window.setTimeout(() => setLoading(false), 3000);
+
     // Setup listener PRIMA di getSession
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);
@@ -29,9 +31,12 @@ export function useAuth() {
       if (!newSession?.user) {
         setProfilo(null);
         setRole(null);
+        setLoading(false);
       } else {
         // Defer per evitare deadlock
-        setTimeout(() => loadUserData(newSession.user.id), 0);
+        setTimeout(() => {
+          loadUserData(newSession.user.id).finally(() => setLoading(false));
+        }, 0);
       }
     });
 
@@ -43,9 +48,18 @@ export function useAuth() {
       } else {
         setLoading(false);
       }
+    }).catch(() => {
+      setSession(null);
+      setUser(null);
+      setProfilo(null);
+      setRole(null);
+      setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      window.clearTimeout(fallbackTimer);
+      subscription.unsubscribe();
+    };
   }, []);
 
   async function loadUserData(userId: string) {

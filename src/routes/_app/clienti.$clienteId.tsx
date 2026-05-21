@@ -17,9 +17,6 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -682,17 +679,15 @@ function EditClienteDialog({ cliente, onClose, onSaved }: { cliente: any; onClos
           </div>
           <div className="space-y-1.5">
             <Label>Tipo soggetto</Label>
-            <Select
+            <select
               value={form.tipo_soggetto ?? "none"}
-              onValueChange={(v) => set("tipo_soggetto", v === "none" ? null : (v as "persona_fisica" | "azienda"))}
+              onChange={(e) => set("tipo_soggetto", e.target.value === "none" ? null : (e.target.value as "persona_fisica" | "azienda"))}
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
             >
-              <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">—</SelectItem>
-                <SelectItem value="persona_fisica">Persona fisica</SelectItem>
-                <SelectItem value="azienda">Azienda</SelectItem>
-              </SelectContent>
-            </Select>
+              <option value="none">—</option>
+              <option value="persona_fisica">Persona fisica</option>
+              <option value="azienda">Azienda</option>
+            </select>
           </div>
           <div className="space-y-1.5">
             <Label>Codice gestionale</Label>
@@ -708,18 +703,16 @@ function EditClienteDialog({ cliente, onClose, onSaved }: { cliente: any; onClos
           </div>
           <div className="space-y-1.5 sm:col-span-2">
             <Label>Punto vendita</Label>
-            <Select
+            <select
               value={form.store_id ?? "none"}
-              onValueChange={(v) => set("store_id", v === "none" ? null : v)}
+              onChange={(e) => set("store_id", e.target.value === "none" ? null : e.target.value)}
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
             >
-              <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">—</SelectItem>
-                {stores?.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>{s.nome} ({s.codice})</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              <option value="none">—</option>
+              {stores?.map((s) => (
+                <option key={s.id} value={s.id}>{s.nome} ({s.codice})</option>
+              ))}
+            </select>
           </div>
         </div>
 
