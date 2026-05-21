@@ -41,6 +41,7 @@ const NAV: NavItem[] = [
   { to: "/whatsapp", label: "WhatsApp", icon: MessageCircle, roles: ["admin"], group: "approvazioni" },
   { to: "/impostazioni", label: "Impostazioni", icon: Settings, roles: ["admin"], group: "admin" },
   { to: "/utenti", label: "Utenti", icon: UsersRound, roles: ["admin"], group: "admin" },
+  { to: "/audit", label: "Audit log", icon: ScrollText, roles: ["admin"], group: "admin" },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
