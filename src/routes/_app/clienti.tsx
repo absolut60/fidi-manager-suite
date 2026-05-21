@@ -379,31 +379,47 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
       } as never).eq("id", clienteId);
       if (e4) throw e4;
 
-      // 5. Inserisci contatti (titolare + amministrativo se compilati)
+      // 5. Inserisci contatti (Titolare + Referente Amministrativo)
+      const splitNome = (full: string): { nome: string; cognome: string | null } => {
+        const parts = full.trim().split(/\s+/);
+        if (parts.length === 0 || !parts[0]) return { nome: "", cognome: null };
+        if (parts.length === 1) return { nome: parts[0], cognome: null };
+        return { nome: parts[0], cognome: parts.slice(1).join(" ") };
+      };
+
       const contattiToInsert: Array<Record<string, unknown>> = [];
-      if (parsed.titolare_nome || parsed.titolare_email || parsed.titolare_cell) {
+
+      // Titolare / Legale Rappresentante → principale = true
+      if (parsed.titolare_nome.trim()) {
+        const { nome, cognome } = splitNome(parsed.titolare_nome);
         contattiToInsert.push({
           cliente_id: clienteId,
-          nome: parsed.titolare_nome || "Titolare",
+          nome,
+          cognome,
           ruolo: "Titolare / Legale Rappresentante",
           email: parsed.titolare_email || null,
           cellulare: parsed.titolare_cell || null,
           principale: true,
         });
       }
-      if (parsed.amministrativo_nome || parsed.amministrativo_email || parsed.amministrativo_cell) {
+
+      // Referente Amministrativo → principale = false, solo se Nominativo compilato
+      if (parsed.amministrativo_nome.trim()) {
+        const { nome, cognome } = splitNome(parsed.amministrativo_nome);
         contattiToInsert.push({
           cliente_id: clienteId,
-          nome: parsed.amministrativo_nome || "Referente amministrativo",
+          nome,
+          cognome,
           ruolo: "Referente Amministrativo",
           email: parsed.amministrativo_email || null,
           cellulare: parsed.amministrativo_cell || null,
           principale: false,
         });
       }
+
       if (contattiToInsert.length > 0) {
         const { error: e5 } = await supabase.from("contatti").insert(contattiToInsert as never);
-        if (e5) throw e5;
+        if (e5) throw new Error(`Salvataggio contatti: ${e5.message}`);
       }
 
       return clienteId;
