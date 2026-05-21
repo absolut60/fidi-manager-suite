@@ -24,6 +24,14 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SignaturePad, getCanvasDataURL } from "@/components/signature-pad";
 import { generaSchedaCliente } from "@/lib/scheda-pdf";
+import { generaPdfPrivacy } from "@/lib/privacy-pdf";
+
+function splitNomeCognome(full: string): { nome: string; cognome: string } {
+  const parts = full.trim().split(/\s+/);
+  if (parts.length === 0 || !parts[0]) return { nome: "", cognome: "" };
+  if (parts.length === 1) return { nome: parts[0], cognome: "" };
+  return { nome: parts[0], cognome: parts.slice(1).join(" ") };
+}
 
 export const Route = createFileRoute("/_app/clienti")({
   component: ClientiPage,
@@ -278,6 +286,10 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
       if (!form.ragione_sociale.trim()) errs.ragione_sociale = "Obbligatorio";
       if (form.email && !z.string().email().safeParse(form.email).success) errs.email = "Email non valida";
     }
+    if (s === 2) {
+      if (!(form.titolare_nome ?? "").trim())
+        errs.titolare_nome = "Nominativo Titolare obbligatorio (sarà il firmatario)";
+    }
     if (s === 3) {
       if (!form.dichiarante_nome.trim()) errs.dichiarante_nome = "Obbligatorio";
       if (!form.dichiarante_cognome.trim()) errs.dichiarante_cognome = "Obbligatorio";
@@ -287,142 +299,193 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
     return Object.keys(errs).length === 0;
   };
 
+  // Auto-precompila dichiarante dal Titolare al passaggio step 2 → 3
+  const goNext = () => {
+    if (!validateStep(step)) return;
+    if (step === 2) {
+      const { nome, cognome } = splitNomeCognome(form.titolare_nome ?? "");
+      setForm((f) => ({ ...f, dichiarante_nome: nome, dichiarante_cognome: cognome }));
+    }
+    setStep((s) => s + 1);
+  };
+
   const submit = useMutation({
     mutationFn: async () => {
       const parsed = schedaSchema.parse(form);
       const dataUrl = padRef.current ? getCanvasDataURL(padRef.current) : null;
       if (!dataUrl) throw new Error("Inserisci la firma");
+      if (!(parsed.titolare_nome ?? "").trim())
+        throw new Error("Nominativo Titolare obbligatorio");
+
       const now = new Date();
       const { data: { user } } = await supabase.auth.getUser();
 
-      // 1. Crea cliente
-      const clientePayload: Record<string, unknown> = {
-        ragione_sociale: parsed.ragione_sociale,
-        tipo_soggetto: parsed.tipo_soggetto,
-        codice_gestionale: parsed.codice_gestionale || null,
-        partita_iva: parsed.partita_iva || null,
-        codice_fiscale: parsed.codice_fiscale || null,
-        indirizzo: parsed.indirizzo || null,
-        cap: parsed.cap || null,
-        citta: parsed.citta || null,
-        provincia: parsed.provincia || null,
-        telefono: parsed.telefono || null,
-        email: parsed.email || null,
-        banca: parsed.banca || null,
-        agenzia: parsed.agenzia || null,
-        abi: parsed.abi || null,
-        cab: parsed.cab || null,
-        codice_sdi: parsed.codice_sdi || null,
-        pec: parsed.pec || null,
-        store_id: parsed.store_id || null,
-        dichiarante_nome: parsed.dichiarante_nome,
-        dichiarante_cognome: parsed.dichiarante_cognome,
-        created_by: user?.id,
-      };
-      const { data: cliente, error: e1 } = await supabase
-        .from("clienti").insert(clientePayload as never).select("id").single();
-      if (e1) throw e1;
-      const clienteId = (cliente as { id: string }).id;
+      // Tracker per rollback in caso di errore in qualunque step successivo
+      let clienteId: string | null = null;
+      const uploadedPaths: Array<{ bucket: string; path: string }> = [];
 
-      // 2. Upload firma
-      const pngBlob = await (await fetch(dataUrl)).blob();
-      const firmaPath = `${clienteId}/firma-${now.getTime()}.png`;
-      const { error: e2 } = await supabase.storage.from("firme")
-        .upload(firmaPath, pngBlob, { upsert: true, contentType: "image/png" });
-      if (e2) throw e2;
-      const { data: firmaUrl } = supabase.storage.from("firme").getPublicUrl(firmaPath);
-
-      // 3. Genera PDF scheda
-      const pdfBytes = await generaSchedaCliente({
-        tipo: parsed.tipo,
-        tipoSoggetto: parsed.tipo_soggetto,
-        ragioneSociale: parsed.ragione_sociale,
-        indirizzo: parsed.indirizzo,
-        cap: parsed.cap,
-        citta: parsed.citta,
-        provincia: parsed.provincia,
-        telefono: parsed.telefono,
-        email: parsed.email,
-        partitaIva: parsed.partita_iva,
-        codiceFiscale: parsed.codice_fiscale,
-        banca: parsed.banca,
-        agenzia: parsed.agenzia,
-        abi: parsed.abi,
-        cab: parsed.cab,
-        codiceSdi: parsed.codice_sdi,
-        pec: parsed.pec,
-        codiceGestionale: parsed.codice_gestionale,
-        titolareNome: parsed.titolare_nome,
-        titolareEmail: parsed.titolare_email,
-        titolareCell: parsed.titolare_cell,
-        amministrativoNome: parsed.amministrativo_nome,
-        amministrativoEmail: parsed.amministrativo_email,
-        amministrativoCell: parsed.amministrativo_cell,
-        dichiaranteNome: parsed.dichiarante_nome,
-        dichiaranteCognome: parsed.dichiarante_cognome,
-        firmaPngDataUrl: dataUrl,
-        dataFirma: now,
-      });
-      const schedaPath = `${clienteId}/scheda-${now.getTime()}.pdf`;
-      const { error: e3 } = await supabase.storage.from("schede-clienti")
-        .upload(schedaPath, pdfBytes, { contentType: "application/pdf", upsert: true });
-      if (e3) throw e3;
-      const { data: schedaSigned } = await supabase.storage.from("schede-clienti")
-        .createSignedUrl(schedaPath, 60 * 60 * 24 * 365 * 5);
-
-      // 4. Aggiorna cliente con firma + privacy + scheda url
-      const { error: e4 } = await supabase.from("clienti").update({
-        privacy_firmata: true,
-        data_firma: now.toISOString(),
-        firma_url: firmaUrl.publicUrl,
-        scheda_pdf_url: schedaSigned?.signedUrl ?? null,
-      } as never).eq("id", clienteId);
-      if (e4) throw e4;
-
-      // 5. Inserisci contatti (Titolare + Referente Amministrativo)
-      const splitNome = (full: string): { nome: string; cognome: string | null } => {
-        const parts = full.trim().split(/\s+/);
-        if (parts.length === 0 || !parts[0]) return { nome: "", cognome: null };
-        if (parts.length === 1) return { nome: parts[0], cognome: null };
-        return { nome: parts[0], cognome: parts.slice(1).join(" ") };
+      const rollback = async (reason: string) => {
+        try {
+          for (const u of uploadedPaths) {
+            await supabase.storage.from(u.bucket).remove([u.path]);
+          }
+          if (clienteId) {
+            await supabase.from("contatti").delete().eq("cliente_id", clienteId);
+            await supabase.from("clienti").delete().eq("id", clienteId);
+          }
+        } catch {
+          // best-effort rollback; non sovrascrive l'errore originale
+        }
+        throw new Error(reason);
       };
 
-      const contattiToInsert: Array<Record<string, unknown>> = [];
+      try {
+        // 1. INSERT cliente
+        const clientePayload: Record<string, unknown> = {
+          ragione_sociale: parsed.ragione_sociale,
+          tipo_soggetto: parsed.tipo_soggetto,
+          codice_gestionale: parsed.codice_gestionale || null,
+          partita_iva: parsed.partita_iva || null,
+          codice_fiscale: parsed.codice_fiscale || null,
+          indirizzo: parsed.indirizzo || null,
+          cap: parsed.cap || null,
+          citta: parsed.citta || null,
+          provincia: parsed.provincia || null,
+          telefono: parsed.telefono || null,
+          email: parsed.email || null,
+          banca: parsed.banca || null,
+          agenzia: parsed.agenzia || null,
+          abi: parsed.abi || null,
+          cab: parsed.cab || null,
+          codice_sdi: parsed.codice_sdi || null,
+          pec: parsed.pec || null,
+          store_id: parsed.store_id || null,
+          dichiarante_nome: parsed.dichiarante_nome,
+          dichiarante_cognome: parsed.dichiarante_cognome,
+          created_by: user?.id,
+        };
+        const { data: cliente, error: e1 } = await supabase
+          .from("clienti").insert(clientePayload as never).select("id").single();
+        if (e1) throw e1;
+        clienteId = (cliente as { id: string }).id;
 
-      // Titolare / Legale Rappresentante → principale = true
-      if ((parsed.titolare_nome ?? "").trim()) {
-        const { nome, cognome } = splitNome(parsed.titolare_nome ?? "");
+        // 2. Upload firma PNG (in bucket "firme", path per contatto Titolare)
+        const pngBlob = await (await fetch(dataUrl)).blob();
+        const firmaPath = `contatti/${clienteId}/firma-${now.getTime()}.png`;
+        const { error: e2 } = await supabase.storage.from("firme")
+          .upload(firmaPath, pngBlob, { upsert: true, contentType: "image/png" });
+        if (e2) throw new Error(`Upload firma: ${e2.message}`);
+        uploadedPaths.push({ bucket: "firme", path: firmaPath });
+        const { data: firmaUrl } = supabase.storage.from("firme").getPublicUrl(firmaPath);
+
+        // 3. Genera PDF privacy del Titolare (firmatario)
+        const titolareFull = (parsed.titolare_nome ?? "").trim();
+        const { nome: titNome, cognome: titCognome } = splitNomeCognome(titolareFull);
+        const pdfPrivacyBytes = await generaPdfPrivacy({
+          ragioneSociale: `${parsed.ragione_sociale} — firma di ${titolareFull}`,
+          partitaIva: parsed.partita_iva || null,
+          codiceFiscale: parsed.codice_fiscale || null,
+          indirizzo: parsed.indirizzo || null,
+          citta: parsed.citta || null,
+          email: parsed.titolare_email || parsed.email || null,
+          firmaPngDataUrl: dataUrl,
+          dataFirma: now,
+        });
+        const pdfPrivacyPath = `contatti/${clienteId}/privacy-${now.getTime()}.pdf`;
+        const { error: ePdfPriv } = await supabase.storage.from("documenti-privacy")
+          .upload(pdfPrivacyPath, pdfPrivacyBytes, { contentType: "application/pdf", upsert: true });
+        if (ePdfPriv) throw new Error(`Upload PDF privacy: ${ePdfPriv.message}`);
+        uploadedPaths.push({ bucket: "documenti-privacy", path: pdfPrivacyPath });
+        const { data: pdfPrivacyUrl } = supabase.storage.from("documenti-privacy").getPublicUrl(pdfPrivacyPath);
+
+        // 4. Genera PDF scheda cliente
+        const pdfBytes = await generaSchedaCliente({
+          tipo: parsed.tipo,
+          tipoSoggetto: parsed.tipo_soggetto,
+          ragioneSociale: parsed.ragione_sociale,
+          indirizzo: parsed.indirizzo,
+          cap: parsed.cap,
+          citta: parsed.citta,
+          provincia: parsed.provincia,
+          telefono: parsed.telefono,
+          email: parsed.email,
+          partitaIva: parsed.partita_iva,
+          codiceFiscale: parsed.codice_fiscale,
+          banca: parsed.banca,
+          agenzia: parsed.agenzia,
+          abi: parsed.abi,
+          cab: parsed.cab,
+          codiceSdi: parsed.codice_sdi,
+          pec: parsed.pec,
+          codiceGestionale: parsed.codice_gestionale,
+          titolareNome: parsed.titolare_nome,
+          titolareEmail: parsed.titolare_email,
+          titolareCell: parsed.titolare_cell,
+          amministrativoNome: parsed.amministrativo_nome,
+          amministrativoEmail: parsed.amministrativo_email,
+          amministrativoCell: parsed.amministrativo_cell,
+          dichiaranteNome: parsed.dichiarante_nome,
+          dichiaranteCognome: parsed.dichiarante_cognome,
+          firmaPngDataUrl: dataUrl,
+          dataFirma: now,
+        });
+        const schedaPath = `${clienteId}/scheda-${now.getTime()}.pdf`;
+        const { error: e3 } = await supabase.storage.from("schede-clienti")
+          .upload(schedaPath, pdfBytes, { contentType: "application/pdf", upsert: true });
+        if (e3) throw new Error(`Upload scheda: ${e3.message}`);
+        uploadedPaths.push({ bucket: "schede-clienti", path: schedaPath });
+        const { data: schedaSigned } = await supabase.storage.from("schede-clienti")
+          .createSignedUrl(schedaPath, 60 * 60 * 24 * 365 * 5);
+
+        // 5. UPDATE cliente con riepilogo firma + scheda url
+        const { error: e4 } = await supabase.from("clienti").update({
+          privacy_firmata: true,
+          data_firma: now.toISOString(),
+          firma_url: firmaUrl.publicUrl,
+          scheda_pdf_url: schedaSigned?.signedUrl ?? null,
+        } as never).eq("id", clienteId);
+        if (e4) throw new Error(`Aggiornamento cliente: ${e4.message}`);
+
+        // 6. INSERT contatti — Titolare (con firma+PDF) e Referente Amm.vo (opzionale)
+        const contattiToInsert: Array<Record<string, unknown>> = [];
+
         contattiToInsert.push({
           cliente_id: clienteId,
-          nome,
-          cognome,
+          nome: titNome,
+          cognome: titCognome || null,
           ruolo: "Titolare / Legale Rappresentante",
           email: parsed.titolare_email || null,
           cellulare: parsed.titolare_cell || null,
           principale: true,
+          privacy_firmata: true,
+          data_firma: now.toISOString(),
+          firma_url: firmaUrl.publicUrl,
+          pdf_privacy_url: pdfPrivacyUrl.publicUrl,
+          pdf_privacy_path: pdfPrivacyPath,
         });
-      }
 
-      // Referente Amministrativo → principale = false, solo se Nominativo compilato
-      if ((parsed.amministrativo_nome ?? "").trim()) {
-        const { nome, cognome } = splitNome(parsed.amministrativo_nome ?? "");
-        contattiToInsert.push({
-          cliente_id: clienteId,
-          nome,
-          cognome,
-          ruolo: "Referente Amministrativo",
-          email: parsed.amministrativo_email || null,
-          cellulare: parsed.amministrativo_cell || null,
-          principale: false,
-        });
-      }
+        if ((parsed.amministrativo_nome ?? "").trim()) {
+          const { nome, cognome } = splitNomeCognome(parsed.amministrativo_nome ?? "");
+          contattiToInsert.push({
+            cliente_id: clienteId,
+            nome,
+            cognome: cognome || null,
+            ruolo: "Referente Amministrativo",
+            email: parsed.amministrativo_email || null,
+            cellulare: parsed.amministrativo_cell || null,
+            principale: false,
+          });
+        }
 
-      if (contattiToInsert.length > 0) {
         const { error: e5 } = await supabase.from("contatti").insert(contattiToInsert as never);
         if (e5) throw new Error(`Salvataggio contatti: ${e5.message}`);
-      }
 
-      return clienteId;
+        return clienteId;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Errore durante il salvataggio";
+        await rollback(msg);
+        return null; // unreachable: rollback throws
+      }
     },
     onSuccess: () => {
       toast.success("Scheda cliente creata e firmata");
@@ -480,7 +543,7 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
           <Button type="button" variant="outline" onClick={onClose}>Annulla</Button>
         )}
         {step < STEPS.length - 1 ? (
-          <Button type="button" onClick={() => { if (validateStep(step)) setStep((s) => s + 1); }}>
+          <Button type="button" onClick={goNext}>
             Avanti <ArrowRight className="size-4 ml-1" />
           </Button>
         ) : (
@@ -688,18 +751,25 @@ function StepDichiarante({
 }) {
   return (
     <>
+      <div className="rounded-md border bg-muted/40 p-3 text-xs">
+        <p className="font-medium text-foreground mb-1">Firmatario (Titolare / Legale Rappresentante)</p>
+        <p className="text-muted-foreground">
+          I dati sono precompilati dallo Step 3. Per modificarli torna allo step "Contatti".
+        </p>
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <Label>Nome dichiarante *</Label>
-          <Input value={form.dichiarante_nome} onChange={(e) => set("dichiarante_nome", e.target.value)} />
+          <Input value={form.dichiarante_nome} readOnly disabled className="bg-muted/50" />
           {errors.dichiarante_nome && <p className="text-xs text-destructive">{errors.dichiarante_nome}</p>}
         </div>
         <div className="space-y-1.5">
           <Label>Cognome dichiarante *</Label>
-          <Input value={form.dichiarante_cognome} onChange={(e) => set("dichiarante_cognome", e.target.value)} />
+          <Input value={form.dichiarante_cognome} readOnly disabled className="bg-muted/50" />
           {errors.dichiarante_cognome && <p className="text-xs text-destructive">{errors.dichiarante_cognome}</p>}
         </div>
       </div>
+
 
       <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground leading-relaxed">
         In relazione al nuovo Regolamento UE 679/2016, ed ai sensi del decreto legislativo 196 del 30/06/2003, i dati personali
