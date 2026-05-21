@@ -12,7 +12,11 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppWhatsappRouteImport } from './routes/_app/whatsapp'
+import { Route as AppUtentiRouteImport } from './routes/_app/utenti'
 import { Route as AppRichiesteRouteImport } from './routes/_app/richieste'
+import { Route as AppImpostazioniRouteImport } from './routes/_app/impostazioni'
+import { Route as AppImportExportRouteImport } from './routes/_app/import-export'
 import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as AppContattiRouteImport } from './routes/_app/contatti'
 import { Route as AppClientiRouteImport } from './routes/_app/clienti'
@@ -34,9 +38,29 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppWhatsappRoute = AppWhatsappRouteImport.update({
+  id: '/whatsapp',
+  path: '/whatsapp',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppUtentiRoute = AppUtentiRouteImport.update({
+  id: '/utenti',
+  path: '/utenti',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppRichiesteRoute = AppRichiesteRouteImport.update({
   id: '/richieste',
   path: '/richieste',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppImpostazioniRoute = AppImpostazioniRouteImport.update({
+  id: '/impostazioni',
+  path: '/impostazioni',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppImportExportRoute = AppImportExportRouteImport.update({
+  id: '/import-export',
+  path: '/import-export',
   getParentRoute: () => AppRoute,
 } as any)
 const AppDashboardRoute = AppDashboardRouteImport.update({
@@ -77,7 +101,11 @@ export interface FileRoutesByFullPath {
   '/clienti': typeof AppClientiRouteWithChildren
   '/contatti': typeof AppContattiRoute
   '/dashboard': typeof AppDashboardRoute
+  '/import-export': typeof AppImportExportRoute
+  '/impostazioni': typeof AppImpostazioniRoute
   '/richieste': typeof AppRichiesteRouteWithChildren
+  '/utenti': typeof AppUtentiRoute
+  '/whatsapp': typeof AppWhatsappRoute
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
   '/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
 }
@@ -88,7 +116,11 @@ export interface FileRoutesByTo {
   '/clienti': typeof AppClientiRouteWithChildren
   '/contatti': typeof AppContattiRoute
   '/dashboard': typeof AppDashboardRoute
+  '/import-export': typeof AppImportExportRoute
+  '/impostazioni': typeof AppImpostazioniRoute
   '/richieste': typeof AppRichiesteRouteWithChildren
+  '/utenti': typeof AppUtentiRoute
+  '/whatsapp': typeof AppWhatsappRoute
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
   '/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
 }
@@ -101,7 +133,11 @@ export interface FileRoutesById {
   '/_app/clienti': typeof AppClientiRouteWithChildren
   '/_app/contatti': typeof AppContattiRoute
   '/_app/dashboard': typeof AppDashboardRoute
+  '/_app/import-export': typeof AppImportExportRoute
+  '/_app/impostazioni': typeof AppImpostazioniRoute
   '/_app/richieste': typeof AppRichiesteRouteWithChildren
+  '/_app/utenti': typeof AppUtentiRoute
+  '/_app/whatsapp': typeof AppWhatsappRoute
   '/_app/clienti/$clienteId': typeof AppClientiClienteIdRoute
   '/_app/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
 }
@@ -114,7 +150,11 @@ export interface FileRouteTypes {
     | '/clienti'
     | '/contatti'
     | '/dashboard'
+    | '/import-export'
+    | '/impostazioni'
     | '/richieste'
+    | '/utenti'
+    | '/whatsapp'
     | '/clienti/$clienteId'
     | '/richieste/$richiestaId'
   fileRoutesByTo: FileRoutesByTo
@@ -125,7 +165,11 @@ export interface FileRouteTypes {
     | '/clienti'
     | '/contatti'
     | '/dashboard'
+    | '/import-export'
+    | '/impostazioni'
     | '/richieste'
+    | '/utenti'
+    | '/whatsapp'
     | '/clienti/$clienteId'
     | '/richieste/$richiestaId'
   id:
@@ -137,7 +181,11 @@ export interface FileRouteTypes {
     | '/_app/clienti'
     | '/_app/contatti'
     | '/_app/dashboard'
+    | '/_app/import-export'
+    | '/_app/impostazioni'
     | '/_app/richieste'
+    | '/_app/utenti'
+    | '/_app/whatsapp'
     | '/_app/clienti/$clienteId'
     | '/_app/richieste/$richiestaId'
   fileRoutesById: FileRoutesById
@@ -171,11 +219,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/whatsapp': {
+      id: '/_app/whatsapp'
+      path: '/whatsapp'
+      fullPath: '/whatsapp'
+      preLoaderRoute: typeof AppWhatsappRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/utenti': {
+      id: '/_app/utenti'
+      path: '/utenti'
+      fullPath: '/utenti'
+      preLoaderRoute: typeof AppUtentiRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/richieste': {
       id: '/_app/richieste'
       path: '/richieste'
       fullPath: '/richieste'
       preLoaderRoute: typeof AppRichiesteRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/impostazioni': {
+      id: '/_app/impostazioni'
+      path: '/impostazioni'
+      fullPath: '/impostazioni'
+      preLoaderRoute: typeof AppImpostazioniRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/import-export': {
+      id: '/_app/import-export'
+      path: '/import-export'
+      fullPath: '/import-export'
+      preLoaderRoute: typeof AppImportExportRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/dashboard': {
@@ -252,7 +328,11 @@ interface AppRouteChildren {
   AppClientiRoute: typeof AppClientiRouteWithChildren
   AppContattiRoute: typeof AppContattiRoute
   AppDashboardRoute: typeof AppDashboardRoute
+  AppImportExportRoute: typeof AppImportExportRoute
+  AppImpostazioniRoute: typeof AppImpostazioniRoute
   AppRichiesteRoute: typeof AppRichiesteRouteWithChildren
+  AppUtentiRoute: typeof AppUtentiRoute
+  AppWhatsappRoute: typeof AppWhatsappRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -260,7 +340,11 @@ const AppRouteChildren: AppRouteChildren = {
   AppClientiRoute: AppClientiRouteWithChildren,
   AppContattiRoute: AppContattiRoute,
   AppDashboardRoute: AppDashboardRoute,
+  AppImportExportRoute: AppImportExportRoute,
+  AppImpostazioniRoute: AppImpostazioniRoute,
   AppRichiesteRoute: AppRichiesteRouteWithChildren,
+  AppUtentiRoute: AppUtentiRoute,
+  AppWhatsappRoute: AppWhatsappRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
@@ -273,3 +357,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
