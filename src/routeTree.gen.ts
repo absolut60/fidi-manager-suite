@@ -12,9 +12,12 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppRichiesteRouteImport } from './routes/_app/richieste'
 import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as AppContattiRouteImport } from './routes/_app/contatti'
 import { Route as AppClientiRouteImport } from './routes/_app/clienti'
+import { Route as AppApprovazioniRouteImport } from './routes/_app/approvazioni'
+import { Route as AppRichiesteRichiestaIdRouteImport } from './routes/_app/richieste.$richiestaId'
 import { Route as AppClientiClienteIdRouteImport } from './routes/_app/clienti.$clienteId'
 
 const LoginRoute = LoginRouteImport.update({
@@ -31,6 +34,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppRichiesteRoute = AppRichiesteRouteImport.update({
+  id: '/richieste',
+  path: '/richieste',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppDashboardRoute = AppDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -46,6 +54,16 @@ const AppClientiRoute = AppClientiRouteImport.update({
   path: '/clienti',
   getParentRoute: () => AppRoute,
 } as any)
+const AppApprovazioniRoute = AppApprovazioniRouteImport.update({
+  id: '/approvazioni',
+  path: '/approvazioni',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRichiesteRichiestaIdRoute = AppRichiesteRichiestaIdRouteImport.update({
+  id: '/$richiestaId',
+  path: '/$richiestaId',
+  getParentRoute: () => AppRichiesteRoute,
+} as any)
 const AppClientiClienteIdRoute = AppClientiClienteIdRouteImport.update({
   id: '/$clienteId',
   path: '/$clienteId',
@@ -55,55 +73,73 @@ const AppClientiClienteIdRoute = AppClientiClienteIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/approvazioni': typeof AppApprovazioniRoute
   '/clienti': typeof AppClientiRouteWithChildren
   '/contatti': typeof AppContattiRoute
   '/dashboard': typeof AppDashboardRoute
+  '/richieste': typeof AppRichiesteRouteWithChildren
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
+  '/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/approvazioni': typeof AppApprovazioniRoute
   '/clienti': typeof AppClientiRouteWithChildren
   '/contatti': typeof AppContattiRoute
   '/dashboard': typeof AppDashboardRoute
+  '/richieste': typeof AppRichiesteRouteWithChildren
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
+  '/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/_app/approvazioni': typeof AppApprovazioniRoute
   '/_app/clienti': typeof AppClientiRouteWithChildren
   '/_app/contatti': typeof AppContattiRoute
   '/_app/dashboard': typeof AppDashboardRoute
+  '/_app/richieste': typeof AppRichiesteRouteWithChildren
   '/_app/clienti/$clienteId': typeof AppClientiClienteIdRoute
+  '/_app/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/login'
+    | '/approvazioni'
     | '/clienti'
     | '/contatti'
     | '/dashboard'
+    | '/richieste'
     | '/clienti/$clienteId'
+    | '/richieste/$richiestaId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/login'
+    | '/approvazioni'
     | '/clienti'
     | '/contatti'
     | '/dashboard'
+    | '/richieste'
     | '/clienti/$clienteId'
+    | '/richieste/$richiestaId'
   id:
     | '__root__'
     | '/'
     | '/_app'
     | '/login'
+    | '/_app/approvazioni'
     | '/_app/clienti'
     | '/_app/contatti'
     | '/_app/dashboard'
+    | '/_app/richieste'
     | '/_app/clienti/$clienteId'
+    | '/_app/richieste/$richiestaId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -135,6 +171,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/richieste': {
+      id: '/_app/richieste'
+      path: '/richieste'
+      fullPath: '/richieste'
+      preLoaderRoute: typeof AppRichiesteRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/dashboard': {
       id: '/_app/dashboard'
       path: '/dashboard'
@@ -155,6 +198,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/clienti'
       preLoaderRoute: typeof AppClientiRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/_app/approvazioni': {
+      id: '/_app/approvazioni'
+      path: '/approvazioni'
+      fullPath: '/approvazioni'
+      preLoaderRoute: typeof AppApprovazioniRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/richieste/$richiestaId': {
+      id: '/_app/richieste/$richiestaId'
+      path: '/$richiestaId'
+      fullPath: '/richieste/$richiestaId'
+      preLoaderRoute: typeof AppRichiesteRichiestaIdRouteImport
+      parentRoute: typeof AppRichiesteRoute
     }
     '/_app/clienti/$clienteId': {
       id: '/_app/clienti/$clienteId'
@@ -178,16 +235,32 @@ const AppClientiRouteWithChildren = AppClientiRoute._addFileChildren(
   AppClientiRouteChildren,
 )
 
+interface AppRichiesteRouteChildren {
+  AppRichiesteRichiestaIdRoute: typeof AppRichiesteRichiestaIdRoute
+}
+
+const AppRichiesteRouteChildren: AppRichiesteRouteChildren = {
+  AppRichiesteRichiestaIdRoute: AppRichiesteRichiestaIdRoute,
+}
+
+const AppRichiesteRouteWithChildren = AppRichiesteRoute._addFileChildren(
+  AppRichiesteRouteChildren,
+)
+
 interface AppRouteChildren {
+  AppApprovazioniRoute: typeof AppApprovazioniRoute
   AppClientiRoute: typeof AppClientiRouteWithChildren
   AppContattiRoute: typeof AppContattiRoute
   AppDashboardRoute: typeof AppDashboardRoute
+  AppRichiesteRoute: typeof AppRichiesteRouteWithChildren
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppApprovazioniRoute: AppApprovazioniRoute,
   AppClientiRoute: AppClientiRouteWithChildren,
   AppContattiRoute: AppContattiRoute,
   AppDashboardRoute: AppDashboardRoute,
+  AppRichiesteRoute: AppRichiesteRouteWithChildren,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
@@ -200,13 +273,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
