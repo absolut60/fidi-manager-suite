@@ -548,7 +548,7 @@ function EditClienteDialog({ cliente, onClose, onSaved }: { cliente: any; onClos
         const v = parsed[k];
         payload[k] = v === "" ? null : v;
       });
-      const { error } = await supabase.from("clienti").update(payload).eq("id", cliente.id);
+      const { error } = await supabase.from("clienti").update(payload as any).eq("id", cliente.id);
       if (error) throw error;
     },
     onSuccess: () => {
