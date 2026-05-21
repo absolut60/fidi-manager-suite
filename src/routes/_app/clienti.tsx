@@ -400,7 +400,16 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
       qc.invalidateQueries({ queryKey: ["clienti"] });
       onClose();
     },
-    onError: (err: Error) => toast.error(err.message || "Errore durante il salvataggio"),
+    onError: (err: any) => {
+      const code = err?.code ?? "";
+      const msg = err?.message ?? "";
+      if (code === "23505" || msg.includes("clienti_codice_gestionale_unique")) {
+        toast.error("Codice gestionale già utilizzato da un altro cliente. Inseriscine uno diverso o lascialo vuoto.");
+        setStep(0);
+        return;
+      }
+      toast.error(msg || "Errore durante il salvataggio");
+    },
   });
 
   const progress = useMemo(() => ((step + 1) / STEPS.length) * 100, [step]);
