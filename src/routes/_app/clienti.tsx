@@ -502,7 +502,7 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
           <Button type="button" variant="outline" onClick={onClose}>Annulla</Button>
         )}
         {step < STEPS.length - 1 ? (
-          <Button type="button" onClick={() => { if (validateStep(step)) setStep((s) => s + 1); }}>
+          <Button type="button" onClick={goNext}>
             Avanti <ArrowRight className="size-4 ml-1" />
           </Button>
         ) : (
