@@ -29,9 +29,12 @@ export function useAuth() {
       if (!newSession?.user) {
         setProfilo(null);
         setRole(null);
+        setLoading(false);
       } else {
         // Defer per evitare deadlock
-        setTimeout(() => loadUserData(newSession.user.id), 0);
+        setTimeout(() => {
+          loadUserData(newSession.user.id).finally(() => setLoading(false));
+        }, 0);
       }
     });
 
