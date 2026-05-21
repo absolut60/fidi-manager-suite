@@ -92,6 +92,11 @@ function ImportExportPage() {
         <ImportCard />
         <ExportCard />
       </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <HistoryCard kind="importazioni" />
+        <HistoryCard kind="esportazioni" />
+      </div>
     </div>
   );
 }
@@ -163,6 +168,22 @@ function ImportCard() {
   const importMut = useMutation({
     mutationFn: async () => {
       if (!valid.length) throw new Error("Nessuna riga valida");
+      const { data: { user } } = await supabase.auth.getUser();
+
+      // Crea record importazione
+      const { data: imp, error: impErr } = await supabase.from("importazioni").insert({
+        nome_file: fileName ?? "import.xlsx",
+        righe_totali: rows.length,
+        righe_errore: invalid.length,
+        stato: "in_elaborazione",
+        fonte: "upload_manuale",
+        eseguita_da: user?.id ?? null,
+        log_errori: invalid.length > 0
+          ? invalid.slice(0, 100).map((r) => ({ riga: r.idx, errori: r.errors }))
+          : null,
+      }).select("id").single();
+      if (impErr) throw impErr;
+
       const payload = valid.map((r) => ({
         ragione_sociale: r.data.ragione_sociale,
         partita_iva: r.data.partita_iva || null,
@@ -176,18 +197,39 @@ function ImportCard() {
         note: r.data.note || null,
         store_id: storeId || null,
       }));
-      // chunked insert per non superare limiti
-      const chunkSize = 200;
-      for (let i = 0; i < payload.length; i += chunkSize) {
-        const slice = payload.slice(i, i + chunkSize);
-        const { error } = await supabase.from("clienti").insert(slice);
-        if (error) throw error;
+
+      let created = 0;
+      try {
+        const chunkSize = 200;
+        for (let i = 0; i < payload.length; i += chunkSize) {
+          const slice = payload.slice(i, i + chunkSize);
+          const { error } = await supabase.from("clienti").insert(slice);
+          if (error) throw error;
+          created += slice.length;
+        }
+        await supabase.from("importazioni").update({
+          righe_elaborate: payload.length,
+          righe_create: created,
+          stato: invalid.length > 0 ? "completata_con_errori" : "completata",
+          completata_at: new Date().toISOString(),
+        }).eq("id", imp.id);
+      } catch (e) {
+        await supabase.from("importazioni").update({
+          righe_elaborate: created,
+          righe_create: created,
+          stato: "fallita",
+          completata_at: new Date().toISOString(),
+          log_errori: [{ errore: e instanceof Error ? e.message : String(e) }],
+        }).eq("id", imp.id);
+        throw e;
       }
+
       return payload.length;
     },
     onSuccess: (n) => {
       toast.success(`Importati ${n} clienti`);
       qc.invalidateQueries({ queryKey: ["clienti"] });
+      qc.invalidateQueries({ queryKey: ["storico-import-export"] });
       reset();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -321,7 +363,18 @@ function ImportCard() {
 /* ============================ EXPORT ============================ */
 
 function ExportCard() {
+  const qc = useQueryClient();
   const [busy, setBusy] = useState<null | "clienti" | "richieste">(null);
+
+  async function logEsportazione(nome_file: string, righe: number) {
+    const { data: { user } } = await supabase.auth.getUser();
+    await supabase.from("esportazioni").insert({
+      nome_file,
+      righe_esportate: righe,
+      eseguita_da: user?.id ?? null,
+    });
+    qc.invalidateQueries({ queryKey: ["storico-import-export"] });
+  }
 
   async function exportClienti() {
     setBusy("clienti");
@@ -346,10 +399,12 @@ function ExportCard() {
         attivo: c.attivo ? "Sì" : "No",
         privacy_firmata: c.privacy_firmata ? "Sì" : "No",
       }));
+      const fname = `clienti_${new Date().toISOString().slice(0, 10)}.xlsx`;
       const ws = XLSX.utils.json_to_sheet(flat);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Clienti");
-      XLSX.writeFile(wb, `clienti_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      XLSX.writeFile(wb, fname);
+      await logEsportazione(fname, flat.length);
       toast.success(`Esportati ${flat.length} clienti`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Errore export");
@@ -382,10 +437,12 @@ function ExportCard() {
         data_scadenza: r.data_scadenza,
         motivazione: r.motivazione,
       }));
+      const fname = `richieste_fido_${new Date().toISOString().slice(0, 10)}.xlsx`;
       const ws = XLSX.utils.json_to_sheet(flat);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Richieste fido");
-      XLSX.writeFile(wb, `richieste_fido_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      XLSX.writeFile(wb, fname);
+      await logEsportazione(fname, flat.length);
       toast.success(`Esportate ${flat.length} richieste`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Errore export");
@@ -428,6 +485,66 @@ function ExportCard() {
           {busy === "richieste" ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
         </Button>
       </div>
+    </Card>
+  );
+}
+
+/* ============================ HISTORY ============================ */
+
+function HistoryCard({ kind }: { kind: "importazioni" | "esportazioni" }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["storico-import-export", kind],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from(kind)
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(10);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const title = kind === "importazioni" ? "Ultime importazioni" : "Ultime esportazioni";
+  const Icon = kind === "importazioni" ? Upload : Download;
+
+  return (
+    <Card className="p-5">
+      <h2 className="font-semibold flex items-center gap-2 mb-3">
+        <Icon className="size-4" /> {title}
+      </h2>
+      {isLoading ? (
+        <p className="text-xs text-muted-foreground">Caricamento…</p>
+      ) : !data || data.length === 0 ? (
+        <p className="text-xs text-muted-foreground">Nessuna operazione registrata.</p>
+      ) : (
+        <div className="space-y-2">
+          {data.map((r: any) => (
+            <div key={r.id} className="flex items-center justify-between gap-2 text-sm border-b last:border-0 pb-2 last:pb-0">
+              <div className="min-w-0">
+                <p className="font-medium truncate">{r.nome_file}</p>
+                <p className="text-xs text-muted-foreground">
+                  {new Date(r.created_at).toLocaleString("it-IT")}
+                </p>
+              </div>
+              <div className="text-right shrink-0">
+                {kind === "importazioni" ? (
+                  <>
+                    <Badge variant={r.stato === "completata" ? "default" : r.stato === "fallita" ? "destructive" : "secondary"}>
+                      {r.stato}
+                    </Badge>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {r.righe_create ?? 0}/{r.righe_totali ?? 0} righe
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-xs text-muted-foreground">{r.righe_esportate ?? 0} righe</p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </Card>
   );
 }
