@@ -280,6 +280,22 @@ function NewRichiestaDialog({ onClose }: { onClose: () => void }) {
           {errors.cliente_id && <p className="text-xs text-destructive">{errors.cliente_id}</p>}
         </div>
 
+        <div className="space-y-1.5">
+          <Label htmlFor="tipo">Tipo richiesta *</Label>
+          <Select value={form.tipo} onValueChange={(v) => setForm({ ...form, tipo: v as TipoRichiesta })}>
+            <SelectTrigger id="tipo">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="nuovo">Nuovo fido</SelectItem>
+              <SelectItem value="aumento">Aumento fido</SelectItem>
+              <SelectItem value="diminuzione">Diminuzione fido</SelectItem>
+              <SelectItem value="rinnovo">Rinnovo fido</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <Label htmlFor="importo">Importo (€) *</Label>
