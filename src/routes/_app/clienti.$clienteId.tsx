@@ -43,9 +43,15 @@ type ContattoForm = z.infer<typeof contattoSchema>;
 
 function ClienteDetail() {
   const { clienteId } = Route.useParams();
+  const { edit } = Route.useSearch();
   const qc = useQueryClient();
   const [openNew, setOpenNew] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
+
+  useEffect(() => {
+    if (edit === 1) setOpenEdit(true);
+  }, [edit]);
+
 
   const { data: cliente, isLoading } = useQuery({
     queryKey: ["cliente", clienteId],
