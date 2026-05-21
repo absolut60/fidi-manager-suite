@@ -55,6 +55,39 @@ export type Database = {
           },
         ]
       }
+      audit_log: {
+        Row: {
+          azione: string
+          created_at: string
+          dettagli: Json | null
+          entita: string
+          entita_id: string | null
+          id: string
+          user_email: string | null
+          user_id: string | null
+        }
+        Insert: {
+          azione: string
+          created_at?: string
+          dettagli?: Json | null
+          entita: string
+          entita_id?: string | null
+          id?: string
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          azione?: string
+          created_at?: string
+          dettagli?: Json | null
+          entita?: string
+          entita_id?: string | null
+          id?: string
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       clienti: {
         Row: {
           attivo: boolean
@@ -71,6 +104,7 @@ export type Database = {
           note: string | null
           partita_iva: string | null
           privacy_firmata: boolean
+          privacy_pdf_url: string | null
           provincia: string | null
           ragione_sociale: string
           store_id: string | null
@@ -92,6 +126,7 @@ export type Database = {
           note?: string | null
           partita_iva?: string | null
           privacy_firmata?: boolean
+          privacy_pdf_url?: string | null
           provincia?: string | null
           ragione_sociale: string
           store_id?: string | null
@@ -113,6 +148,7 @@ export type Database = {
           note?: string | null
           partita_iva?: string | null
           privacy_firmata?: boolean
+          privacy_pdf_url?: string | null
           provincia?: string | null
           ragione_sociale?: string
           store_id?: string | null
@@ -202,6 +238,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      notifiche: {
+        Row: {
+          created_at: string
+          id: string
+          letta: boolean
+          link: string | null
+          messaggio: string | null
+          metadata: Json | null
+          tipo: string
+          titolo: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          letta?: boolean
+          link?: string | null
+          messaggio?: string | null
+          metadata?: Json | null
+          tipo: string
+          titolo: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          letta?: boolean
+          link?: string | null
+          messaggio?: string | null
+          metadata?: Json | null
+          tipo?: string
+          titolo?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       profili: {
         Row: {

@@ -20,9 +20,11 @@ import { Route as AppImportExportRouteImport } from './routes/_app/import-export
 import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as AppContattiRouteImport } from './routes/_app/contatti'
 import { Route as AppClientiRouteImport } from './routes/_app/clienti'
+import { Route as AppAuditRouteImport } from './routes/_app/audit'
 import { Route as AppApprovazioniRouteImport } from './routes/_app/approvazioni'
 import { Route as AppRichiesteRichiestaIdRouteImport } from './routes/_app/richieste.$richiestaId'
 import { Route as AppClientiClienteIdRouteImport } from './routes/_app/clienti.$clienteId'
+import { Route as ApiPublicHooksCheckScadenzeRouteImport } from './routes/api/public/hooks/check-scadenze'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -78,6 +80,11 @@ const AppClientiRoute = AppClientiRouteImport.update({
   path: '/clienti',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAuditRoute = AppAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppApprovazioniRoute = AppApprovazioniRouteImport.update({
   id: '/approvazioni',
   path: '/approvazioni',
@@ -93,11 +100,18 @@ const AppClientiClienteIdRoute = AppClientiClienteIdRouteImport.update({
   path: '/$clienteId',
   getParentRoute: () => AppClientiRoute,
 } as any)
+const ApiPublicHooksCheckScadenzeRoute =
+  ApiPublicHooksCheckScadenzeRouteImport.update({
+    id: '/api/public/hooks/check-scadenze',
+    path: '/api/public/hooks/check-scadenze',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/approvazioni': typeof AppApprovazioniRoute
+  '/audit': typeof AppAuditRoute
   '/clienti': typeof AppClientiRouteWithChildren
   '/contatti': typeof AppContattiRoute
   '/dashboard': typeof AppDashboardRoute
@@ -108,11 +122,13 @@ export interface FileRoutesByFullPath {
   '/whatsapp': typeof AppWhatsappRoute
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
   '/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
+  '/api/public/hooks/check-scadenze': typeof ApiPublicHooksCheckScadenzeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/approvazioni': typeof AppApprovazioniRoute
+  '/audit': typeof AppAuditRoute
   '/clienti': typeof AppClientiRouteWithChildren
   '/contatti': typeof AppContattiRoute
   '/dashboard': typeof AppDashboardRoute
@@ -123,6 +139,7 @@ export interface FileRoutesByTo {
   '/whatsapp': typeof AppWhatsappRoute
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
   '/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
+  '/api/public/hooks/check-scadenze': typeof ApiPublicHooksCheckScadenzeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -130,6 +147,7 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/_app/approvazioni': typeof AppApprovazioniRoute
+  '/_app/audit': typeof AppAuditRoute
   '/_app/clienti': typeof AppClientiRouteWithChildren
   '/_app/contatti': typeof AppContattiRoute
   '/_app/dashboard': typeof AppDashboardRoute
@@ -140,6 +158,7 @@ export interface FileRoutesById {
   '/_app/whatsapp': typeof AppWhatsappRoute
   '/_app/clienti/$clienteId': typeof AppClientiClienteIdRoute
   '/_app/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
+  '/api/public/hooks/check-scadenze': typeof ApiPublicHooksCheckScadenzeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -147,6 +166,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/approvazioni'
+    | '/audit'
     | '/clienti'
     | '/contatti'
     | '/dashboard'
@@ -157,11 +177,13 @@ export interface FileRouteTypes {
     | '/whatsapp'
     | '/clienti/$clienteId'
     | '/richieste/$richiestaId'
+    | '/api/public/hooks/check-scadenze'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/login'
     | '/approvazioni'
+    | '/audit'
     | '/clienti'
     | '/contatti'
     | '/dashboard'
@@ -172,12 +194,14 @@ export interface FileRouteTypes {
     | '/whatsapp'
     | '/clienti/$clienteId'
     | '/richieste/$richiestaId'
+    | '/api/public/hooks/check-scadenze'
   id:
     | '__root__'
     | '/'
     | '/_app'
     | '/login'
     | '/_app/approvazioni'
+    | '/_app/audit'
     | '/_app/clienti'
     | '/_app/contatti'
     | '/_app/dashboard'
@@ -188,12 +212,14 @@ export interface FileRouteTypes {
     | '/_app/whatsapp'
     | '/_app/clienti/$clienteId'
     | '/_app/richieste/$richiestaId'
+    | '/api/public/hooks/check-scadenze'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
+  ApiPublicHooksCheckScadenzeRoute: typeof ApiPublicHooksCheckScadenzeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -275,6 +301,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppClientiRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/audit': {
+      id: '/_app/audit'
+      path: '/audit'
+      fullPath: '/audit'
+      preLoaderRoute: typeof AppAuditRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/approvazioni': {
       id: '/_app/approvazioni'
       path: '/approvazioni'
@@ -295,6 +328,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/clienti/$clienteId'
       preLoaderRoute: typeof AppClientiClienteIdRouteImport
       parentRoute: typeof AppClientiRoute
+    }
+    '/api/public/hooks/check-scadenze': {
+      id: '/api/public/hooks/check-scadenze'
+      path: '/api/public/hooks/check-scadenze'
+      fullPath: '/api/public/hooks/check-scadenze'
+      preLoaderRoute: typeof ApiPublicHooksCheckScadenzeRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -325,6 +365,7 @@ const AppRichiesteRouteWithChildren = AppRichiesteRoute._addFileChildren(
 
 interface AppRouteChildren {
   AppApprovazioniRoute: typeof AppApprovazioniRoute
+  AppAuditRoute: typeof AppAuditRoute
   AppClientiRoute: typeof AppClientiRouteWithChildren
   AppContattiRoute: typeof AppContattiRoute
   AppDashboardRoute: typeof AppDashboardRoute
@@ -337,6 +378,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppApprovazioniRoute: AppApprovazioniRoute,
+  AppAuditRoute: AppAuditRoute,
   AppClientiRoute: AppClientiRouteWithChildren,
   AppContattiRoute: AppContattiRoute,
   AppDashboardRoute: AppDashboardRoute,
@@ -353,6 +395,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
+  ApiPublicHooksCheckScadenzeRoute: ApiPublicHooksCheckScadenzeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -14,11 +14,13 @@ import {
   Menu,
   X,
   Building,
+  ScrollText,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, RUOLI_LABEL } from "@/hooks/use-auth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { NotificationsBell } from "@/components/notifications-bell";
 import { toast } from "sonner";
 
 type NavItem = {
@@ -39,6 +41,7 @@ const NAV: NavItem[] = [
   { to: "/whatsapp", label: "WhatsApp", icon: MessageCircle, roles: ["admin"], group: "approvazioni" },
   { to: "/impostazioni", label: "Impostazioni", icon: Settings, roles: ["admin"], group: "admin" },
   { to: "/utenti", label: "Utenti", icon: UsersRound, roles: ["admin"], group: "admin" },
+  { to: "/audit", label: "Audit log", icon: ScrollText, roles: ["admin"], group: "admin" },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -110,6 +113,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               {role ? RUOLI_LABEL[role] : "—"}
             </div>
           </div>
+          <NotificationsBell />
           <button
             onClick={handleLogout}
             className="size-8 rounded-md hover:bg-sidebar-accent flex items-center justify-center text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors"
