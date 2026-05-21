@@ -509,11 +509,33 @@ function LinkFirmaPrivacy({ clienteId }: { clienteId: string }) {
   const [expires, setExpires] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Carica i contatti del cliente per selezionare il firmatario
+  const { data: contatti } = useQuery({
+    queryKey: ["contatti", clienteId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("contatti")
+        .select("id, nome, cognome, principale, privacy_firmata")
+        .eq("cliente_id", clienteId)
+        .order("principale", { ascending: false })
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const [contattoId, setContattoId] = useState<string | null>(null);
+  const selezionato = contattoId ?? contatti?.find((c) => !c.privacy_firmata)?.id ?? null;
+
   async function genera() {
+    if (!selezionato) {
+      toast.error("Seleziona un contatto");
+      return;
+    }
     setLoading(true);
     try {
       const { generaTokenFirmaPrivacy } = await import("@/lib/firma-privacy.functions");
-      const res = await generaTokenFirmaPrivacy({ data: { clienteId, giorniValidita: 30 } });
+      const res = await generaTokenFirmaPrivacy({ data: { contattoId: selezionato, giorniValidita: 30 } });
       const url = `${window.location.origin}/firma-privacy/${res.token}`;
       setLink(url);
       setExpires(res.expires_at);
@@ -530,38 +552,62 @@ function LinkFirmaPrivacy({ clienteId }: { clienteId: string }) {
     toast.success("Link copiato negli appunti");
   }
 
+  const noContatti = (contatti?.length ?? 0) === 0;
+
   return (
     <Card className="p-4 bg-muted/40 border-dashed">
       <p className="text-sm font-medium mb-1 flex items-center gap-1.5">
-        <LinkIcon className="size-4" /> Link di firma a distanza
+        <LinkIcon className="size-4" /> Link di firma a distanza (per contatto)
       </p>
       <p className="text-xs text-muted-foreground mb-3">
-        Genera un link da inviare al cliente (WhatsApp, email, SMS): potrà firmare la privacy dal suo dispositivo.
+        Genera un link da inviare al contatto del cliente: potrà firmare la privacy dal suo dispositivo.
       </p>
-      {!link ? (
-        <Button size="sm" variant="outline" onClick={genera} disabled={loading}>
-          {loading ? "Generazione..." : "Genera link"}
-        </Button>
+
+      {noContatti ? (
+        <p className="text-sm text-destructive">Aggiungi prima un contatto al cliente nella tab Contatti.</p>
       ) : (
-        <div className="space-y-2">
-          <Input readOnly value={link} className="text-xs font-mono bg-background" onClick={(e) => (e.target as HTMLInputElement).select()} />
-          <div className="flex gap-2 flex-wrap">
-            <Button size="sm" variant="outline" onClick={copia}>
-              <Copy className="size-3.5 mr-1" /> Copia
-            </Button>
-            <Button size="sm" variant="outline" asChild>
-              <a href={link} target="_blank" rel="noreferrer">Apri</a>
-            </Button>
-            <Button size="sm" variant="ghost" onClick={genera} disabled={loading}>
-              Rigenera
-            </Button>
+        <>
+          <div className="space-y-2 mb-3">
+            <Label className="text-xs">Firmatario</Label>
+            <select
+              className="w-full text-sm border rounded-md px-2 py-1.5 bg-background"
+              value={selezionato ?? ""}
+              onChange={(e) => { setContattoId(e.target.value); setLink(null); }}
+            >
+              {contatti?.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {[c.nome, c.cognome].filter(Boolean).join(" ")} {c.principale ? "(principale)" : ""} {c.privacy_firmata ? "— già firmata" : ""}
+                </option>
+              ))}
+            </select>
           </div>
-          {expires && (
-            <p className="text-xs text-muted-foreground">
-              Valido fino al {new Date(expires).toLocaleDateString("it-IT")}
-            </p>
+
+          {!link ? (
+            <Button size="sm" variant="outline" onClick={genera} disabled={loading || !selezionato}>
+              {loading ? "Generazione..." : "Genera link"}
+            </Button>
+          ) : (
+            <div className="space-y-2">
+              <Input readOnly value={link} className="text-xs font-mono bg-background" onClick={(e) => (e.target as HTMLInputElement).select()} />
+              <div className="flex gap-2 flex-wrap">
+                <Button size="sm" variant="outline" onClick={copia}>
+                  <Copy className="size-3.5 mr-1" /> Copia
+                </Button>
+                <Button size="sm" variant="outline" asChild>
+                  <a href={link} target="_blank" rel="noreferrer">Apri</a>
+                </Button>
+                <Button size="sm" variant="ghost" onClick={genera} disabled={loading}>
+                  Rigenera
+                </Button>
+              </div>
+              {expires && (
+                <p className="text-xs text-muted-foreground">
+                  Valido fino al {new Date(expires).toLocaleDateString("it-IT")}
+                </p>
+              )}
+            </div>
           )}
-        </div>
+        </>
       )}
     </Card>
   );
