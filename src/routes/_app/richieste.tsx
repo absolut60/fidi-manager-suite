@@ -21,7 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { STATO_LABEL, STATO_TONE, calcolaLivello, LIVELLO_LABEL, formatEuro, formatDate } from "@/lib/fidi";
+import { STATO_LABEL, STATO_TONE, TIPO_LABEL, TIPO_TONE, calcolaLivello, LIVELLO_LABEL, formatEuro, formatDate, type TipoRichiesta } from "@/lib/fidi";
 
 export const Route = createFileRoute("/_app/richieste")({
   component: RichiestePage,
@@ -29,6 +29,7 @@ export const Route = createFileRoute("/_app/richieste")({
 
 const schema = z.object({
   cliente_id: z.string().uuid("Seleziona un cliente"),
+  tipo: z.enum(["nuovo", "aumento", "diminuzione", "rinnovo"]),
   importo_richiesto: z.coerce.number().positive("Importo deve essere maggiore di 0").max(99999999),
   durata_mesi: z.coerce.number().int().min(1).max(120),
   motivazione: z.string().trim().max(1000).optional().or(z.literal("")),
