@@ -398,6 +398,8 @@ function PrivacyTab({ cliente, onUpdated }: { cliente: any; onUpdated: () => voi
   const [hasSig, setHasSig] = useState(false);
   const [saving, setSaving] = useState(false);
   const [contattoSel, setContattoSel] = useState<string>("");
+  const qcLocal = useQueryClient();
+
 
   const { data: contatti } = useQuery({
     queryKey: ["contatti-privacy", cliente.id],
