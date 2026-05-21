@@ -237,6 +237,7 @@ export type Database = {
           note: string | null
           stato: Database["public"]["Enums"]["stato_richiesta"]
           store_id: string | null
+          tipo: Database["public"]["Enums"]["tipo_richiesta"]
           updated_at: string
         }
         Insert: {
@@ -255,6 +256,7 @@ export type Database = {
           note?: string | null
           stato?: Database["public"]["Enums"]["stato_richiesta"]
           store_id?: string | null
+          tipo?: Database["public"]["Enums"]["tipo_richiesta"]
           updated_at?: string
         }
         Update: {
@@ -273,6 +275,7 @@ export type Database = {
           note?: string | null
           stato?: Database["public"]["Enums"]["stato_richiesta"]
           store_id?: string | null
+          tipo?: Database["public"]["Enums"]["tipo_richiesta"]
           updated_at?: string
         }
         Relationships: [
@@ -381,6 +384,7 @@ export type Database = {
         | "approvata"
         | "rifiutata"
         | "annullata"
+      tipo_richiesta: "nuovo" | "aumento" | "diminuzione" | "rinnovo"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -523,6 +527,7 @@ export const Constants = {
         "rifiutata",
         "annullata",
       ],
+      tipo_richiesta: ["nuovo", "aumento", "diminuzione", "rinnovo"],
     },
   },
 } as const
