@@ -56,6 +56,7 @@ function RichiestePage() {
 
   const filtered = (richieste ?? []).filter((r) => {
     if (stato !== "tutti" && r.stato !== stato) return false;
+    if (tipoFilter !== "tutti" && r.tipo !== tipoFilter) return false;
     const q = search.toLowerCase().trim();
     if (!q) return true;
     return (r as any).clienti?.ragione_sociale?.toLowerCase().includes(q);
