@@ -286,6 +286,10 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
       if (!form.ragione_sociale.trim()) errs.ragione_sociale = "Obbligatorio";
       if (form.email && !z.string().email().safeParse(form.email).success) errs.email = "Email non valida";
     }
+    if (s === 2) {
+      if (!(form.titolare_nome ?? "").trim())
+        errs.titolare_nome = "Nominativo Titolare obbligatorio (sarà il firmatario)";
+    }
     if (s === 3) {
       if (!form.dichiarante_nome.trim()) errs.dichiarante_nome = "Obbligatorio";
       if (!form.dichiarante_cognome.trim()) errs.dichiarante_cognome = "Obbligatorio";
@@ -293,6 +297,16 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
     }
     setErrors(errs);
     return Object.keys(errs).length === 0;
+  };
+
+  // Auto-precompila dichiarante dal Titolare al passaggio step 2 → 3
+  const goNext = () => {
+    if (!validateStep(step)) return;
+    if (step === 2) {
+      const { nome, cognome } = splitNomeCognome(form.titolare_nome ?? "");
+      setForm((f) => ({ ...f, dichiarante_nome: nome, dichiarante_cognome: cognome }));
+    }
+    setStep((s) => s + 1);
   };
 
   const submit = useMutation({
