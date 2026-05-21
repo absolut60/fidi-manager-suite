@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SignaturePad, getCanvasDataURL } from "@/components/signature-pad";
-import { getClientePerFirma, firmaPrivacyConToken } from "@/lib/firma-privacy.functions";
+import { getContattoPerFirma, firmaPrivacyConToken } from "@/lib/firma-privacy.functions";
 
 export const Route = createFileRoute("/firma-privacy/$token")({
   component: FirmaPrivacyPage,
@@ -16,18 +16,20 @@ export const Route = createFileRoute("/firma-privacy/$token")({
 
 function FirmaPrivacyPage() {
   const { token } = Route.useParams();
-  const getCli = useServerFn(getClientePerFirma);
+  const getCt = useServerFn(getContattoPerFirma);
   const submitFn = useServerFn(firmaPrivacyConToken);
 
   const padRef = useRef<HTMLDivElement>(null);
   const [hasSig, setHasSig] = useState(false);
   const [done, setDone] = useState(false);
 
-  const { data: cliente, isLoading, error } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ["firma-privacy", token],
-    queryFn: () => getCli({ data: { token } }),
+    queryFn: () => getCt({ data: { token } }),
     retry: false,
   });
+  const cliente = data?.cliente;
+  const contatto = data?.contatto;
 
   const submit = useMutation({
     mutationFn: async () => {
@@ -70,7 +72,7 @@ function FirmaPrivacyPage() {
               Il tuo consenso è stato registrato. Puoi chiudere questa pagina.
             </p>
           </Card>
-        ) : cliente ? (
+        ) : cliente && contatto ? (
           <>
             <Card className="p-6 space-y-2">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Stai firmando per</p>
@@ -78,6 +80,11 @@ function FirmaPrivacyPage() {
               <div className="text-sm text-muted-foreground space-y-0.5">
                 {cliente.partita_iva && <p>P.IVA {cliente.partita_iva}</p>}
                 {cliente.indirizzo && <p>{cliente.indirizzo}{cliente.citta ? `, ${cliente.citta}` : ""}</p>}
+              </div>
+              <div className="pt-2 border-t mt-2">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Firmatario</p>
+                <p className="text-sm">{[contatto.nome, contatto.cognome].filter(Boolean).join(" ")}</p>
+                {contatto.email && <p className="text-xs text-muted-foreground">{contatto.email}</p>}
               </div>
             </Card>
 
