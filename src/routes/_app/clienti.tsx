@@ -30,6 +30,7 @@ export const Route = createFileRoute("/_app/clienti")({
 });
 
 function ClientiPage() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
 
