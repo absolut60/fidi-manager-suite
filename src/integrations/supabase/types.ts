@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      approvazioni: {
+        Row: {
+          approvatore_id: string
+          created_at: string
+          esito: Database["public"]["Enums"]["esito_approvazione"]
+          id: string
+          importo_approvato: number | null
+          livello: number
+          note: string | null
+          richiesta_id: string
+        }
+        Insert: {
+          approvatore_id: string
+          created_at?: string
+          esito: Database["public"]["Enums"]["esito_approvazione"]
+          id?: string
+          importo_approvato?: number | null
+          livello: number
+          note?: string | null
+          richiesta_id: string
+        }
+        Update: {
+          approvatore_id?: string
+          created_at?: string
+          esito?: Database["public"]["Enums"]["esito_approvazione"]
+          id?: string
+          importo_approvato?: number | null
+          livello?: number
+          note?: string | null
+          richiesta_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "approvazioni_richiesta_id_fkey"
+            columns: ["richiesta_id"]
+            isOneToOne: false
+            referencedRelation: "richieste_fido"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clienti: {
         Row: {
           attivo: boolean
@@ -179,6 +220,78 @@ export type Database = {
           },
         ]
       }
+      richieste_fido: {
+        Row: {
+          cliente_id: string
+          created_at: string
+          created_by: string | null
+          data_chiusura: string | null
+          data_invio: string | null
+          durata_mesi: number
+          id: string
+          importo_approvato: number | null
+          importo_richiesto: number
+          livello_corrente: number
+          livello_richiesto: number
+          motivazione: string | null
+          note: string | null
+          stato: Database["public"]["Enums"]["stato_richiesta"]
+          store_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string
+          created_by?: string | null
+          data_chiusura?: string | null
+          data_invio?: string | null
+          durata_mesi?: number
+          id?: string
+          importo_approvato?: number | null
+          importo_richiesto: number
+          livello_corrente?: number
+          livello_richiesto?: number
+          motivazione?: string | null
+          note?: string | null
+          stato?: Database["public"]["Enums"]["stato_richiesta"]
+          store_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string
+          created_by?: string | null
+          data_chiusura?: string | null
+          data_invio?: string | null
+          durata_mesi?: number
+          id?: string
+          importo_approvato?: number | null
+          importo_richiesto?: number
+          livello_corrente?: number
+          livello_richiesto?: number
+          motivazione?: string | null
+          note?: string | null
+          stato?: Database["public"]["Enums"]["stato_richiesta"]
+          store_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "richieste_fido_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "richieste_fido_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stores: {
         Row: {
           attivo: boolean
@@ -241,6 +354,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calcola_livello_fido: { Args: { _importo: number }; Returns: number }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -260,6 +374,13 @@ export type Database = {
         | "approvatore_liv2"
         | "approvatore_liv3"
         | "amministratore"
+      esito_approvazione: "approvata" | "rifiutata"
+      stato_richiesta:
+        | "bozza"
+        | "in_approvazione"
+        | "approvata"
+        | "rifiutata"
+        | "annullata"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -393,6 +514,14 @@ export const Constants = {
         "approvatore_liv2",
         "approvatore_liv3",
         "amministratore",
+      ],
+      esito_approvazione: ["approvata", "rifiutata"],
+      stato_richiesta: [
+        "bozza",
+        "in_approvazione",
+        "approvata",
+        "rifiutata",
+        "annullata",
       ],
     },
   },
