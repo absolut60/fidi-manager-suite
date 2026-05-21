@@ -461,7 +461,10 @@ function PrivacyTab({ cliente, onUpdated }: { cliente: any; onUpdated: () => voi
       if (e3) throw e3;
 
       toast.success("Privacy firmata e PDF generato");
+      qcLocal.invalidateQueries({ queryKey: ["contatti-privacy", cliente.id] });
+      qcLocal.invalidateQueries({ queryKey: ["contatti", cliente.id] });
       onUpdated();
+
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Errore salvataggio");
     } finally {
