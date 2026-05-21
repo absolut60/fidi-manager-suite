@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import { Plus, Building2, Pencil, Trash2 } from "lucide-react";
+import { Plus, Building2, Pencil, Trash2, Sliders, Save } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -75,6 +75,8 @@ function ImpostazioniPage() {
           <StoreDialog editing={editing} onClose={() => setOpen(false)} />
         </Dialog>
       </div>
+
+      <ConfigurazioniCard />
 
       <Card className="p-4 sm:p-5">
         <h2 className="font-semibold mb-3 flex items-center gap-2">
@@ -230,5 +232,102 @@ function StoreDialog({ editing, onClose }: { editing: StoreRow | null; onClose: 
         </DialogFooter>
       </form>
     </DialogContent>
+  );
+}
+
+type ConfigRow = { chiave: string; valore: string; descrizione: string | null };
+
+const CONFIG_FIELDS: { chiave: string; label: string; suffix?: string; hint?: string }[] = [
+  { chiave: "soglia_livello_1", label: "Soglia Livello 1", suffix: "€", hint: "Importo massimo gestito dal liv. 1" },
+  { chiave: "soglia_livello_2", label: "Soglia Livello 2", suffix: "€", hint: "Importo massimo gestito dal liv. 2 (oltre serve liv. 3)" },
+  { chiave: "durata_default_mesi", label: "Durata di default", suffix: "mesi", hint: "Durata del fido proposta nelle nuove richieste" },
+  { chiave: "reminder_giorni_scadenza", label: "Reminder scadenza", suffix: "giorni", hint: "Giorni di anticipo per segnalare i fidi in scadenza" },
+];
+
+function ConfigurazioniCard() {
+  const qc = useQueryClient();
+  const [values, setValues] = useState<Record<string, string>>({});
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["configurazioni"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("configurazioni").select("*");
+      if (error) throw error;
+      return data as ConfigRow[];
+    },
+  });
+
+  useEffect(() => {
+    if (data) {
+      const map: Record<string, string> = {};
+      data.forEach((r) => { map[r.chiave] = r.valore; });
+      setValues(map);
+    }
+  }, [data]);
+
+  const save = useMutation({
+    mutationFn: async () => {
+      const s1 = Number(values.soglia_livello_1);
+      const s2 = Number(values.soglia_livello_2);
+      if (!isFinite(s1) || !isFinite(s2) || s1 <= 0 || s2 <= s1) {
+        throw new Error("Soglia liv.2 deve essere maggiore di soglia liv.1, entrambe > 0");
+      }
+      const updates = CONFIG_FIELDS.map((f) =>
+        supabase.from("configurazioni").update({ valore: values[f.chiave] ?? "" }).eq("chiave", f.chiave)
+      );
+      const results = await Promise.all(updates);
+      const err = results.find((r) => r.error)?.error;
+      if (err) throw err;
+    },
+    onSuccess: () => {
+      toast.success("Parametri aggiornati");
+      qc.invalidateQueries({ queryKey: ["configurazioni"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <Card className="p-4 sm:p-5">
+      <h2 className="font-semibold mb-1 flex items-center gap-2">
+        <Sliders className="size-4" /> Soglie & parametri fido
+      </h2>
+      <p className="text-xs text-muted-foreground mb-4">
+        Soglie usate per assegnare automaticamente il livello di approvazione e parametri generali.
+      </p>
+      {isLoading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {CONFIG_FIELDS.map((f) => (
+              <div key={f.chiave} className="space-y-1.5">
+                <Label htmlFor={f.chiave}>{f.label}</Label>
+                <div className="relative">
+                  <Input
+                    id={f.chiave}
+                    type="number"
+                    inputMode="numeric"
+                    value={values[f.chiave] ?? ""}
+                    onChange={(e) => setValues((v) => ({ ...v, [f.chiave]: e.target.value }))}
+                    className={f.suffix ? "pr-14" : ""}
+                  />
+                  {f.suffix && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{f.suffix}</span>
+                  )}
+                </div>
+                {f.hint && <p className="text-xs text-muted-foreground">{f.hint}</p>}
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-end mt-4">
+            <Button onClick={() => save.mutate()} disabled={save.isPending} className="gap-1.5">
+              <Save className="size-4" /> {save.isPending ? "Salvataggio..." : "Salva parametri"}
+            </Button>
+          </div>
+        </>
+      )}
+    </Card>
   );
 }

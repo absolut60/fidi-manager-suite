@@ -33,17 +33,31 @@ export const STATO_TONE: Record<StatoRichiesta, string> = {
   annullata: "bg-muted text-muted-foreground",
 };
 
-export function calcolaLivello(importo: number): 1 | 2 | 3 {
-  if (importo <= 10000) return 1;
-  if (importo <= 50000) return 2;
+export type SoglieFido = { liv1: number; liv2: number };
+export const SOGLIE_DEFAULT: SoglieFido = { liv1: 10000, liv2: 50000 };
+
+export function calcolaLivello(importo: number, soglie: SoglieFido = SOGLIE_DEFAULT): 1 | 2 | 3 {
+  if (importo <= soglie.liv1) return 1;
+  if (importo <= soglie.liv2) return 2;
   return 3;
 }
 
+export function livelloLabel(liv: number, soglie: SoglieFido = SOGLIE_DEFAULT): string {
+  if (liv === 1) return `Liv. 1 (≤ ${formatEuroCompact(soglie.liv1)})`;
+  if (liv === 2) return `Liv. 2 (≤ ${formatEuroCompact(soglie.liv2)})`;
+  return `Liv. 3 (> ${formatEuroCompact(soglie.liv2)})`;
+}
+
+// retro-compatibilità: alcune view usano ancora la mappa statica
 export const LIVELLO_LABEL: Record<number, string> = {
-  1: "Liv. 1 (≤ 10.000 €)",
-  2: "Liv. 2 (≤ 50.000 €)",
-  3: "Liv. 3 (> 50.000 €)",
+  1: livelloLabel(1),
+  2: livelloLabel(2),
+  3: livelloLabel(3),
 };
+
+function formatEuroCompact(n: number): string {
+  return new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
+}
 
 export function formatEuro(n: number | null | undefined) {
   if (n == null) return "—";
