@@ -227,11 +227,20 @@ function ClienteDetail() {
                 <Card key={c.id} className="p-4">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-semibold truncate">{c.nome} {c.cognome}</p>
                         {c.principale && (
                           <Badge className="bg-accent/15 text-accent gap-1 shrink-0">
                             <Star className="size-3 fill-current" /> Principale
+                          </Badge>
+                        )}
+                        {c.privacy_firmata ? (
+                          <Badge className="bg-success/15 text-success gap-1 shrink-0">
+                            <FileCheck2 className="size-3" /> Privacy firmata
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-destructive/15 text-destructive gap-1 shrink-0">
+                            <FileX2 className="size-3" /> Non firmata
                           </Badge>
                         )}
                       </div>
@@ -262,8 +271,26 @@ function ClienteDetail() {
                       </a>
                     )}
                   </div>
+                  <div className="mt-3 pt-3 border-t flex flex-wrap gap-2">
+                    {c.privacy_firmata && (c as any).pdf_privacy_url && (
+                      <Button variant="outline" size="sm" asChild>
+                        <a href={(c as any).pdf_privacy_url} target="_blank" rel="noreferrer">
+                          <Download className="size-4 mr-1" /> Scarica PDF
+                        </a>
+                      </Button>
+                    )}
+                    <FirmaContattoDialog
+                      cliente={cliente}
+                      contatto={c}
+                      onSaved={() => {
+                        qc.invalidateQueries({ queryKey: ["contatti", clienteId] });
+                        qc.invalidateQueries({ queryKey: ["contatti-privacy", clienteId] });
+                      }}
+                    />
+                  </div>
                 </Card>
               ))}
+
             </div>
           )}
         </TabsContent>
