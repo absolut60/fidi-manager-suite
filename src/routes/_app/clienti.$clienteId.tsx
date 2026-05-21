@@ -524,11 +524,25 @@ function FirmaContattoDialog({
     if (!dataUrl) { toast.error("Inserisci la firma"); return; }
     setSaving(true);
     try {
+      // 1. Verifica esistenza contatto + stato firma (SELECT, mai INSERT)
+      const { data: existing, error: selErr } = await supabase
+        .from("contatti")
+        .select("id, privacy_firmata")
+        .eq("id", contatto.id)
+        .maybeSingle();
+      if (selErr) throw new Error(`Errore lettura contatto: ${selErr.message}`);
+      if (!existing) throw new Error("Contatto non trovato: impossibile salvare la firma.");
+      if (existing.privacy_firmata) {
+        toast.error("Firma già presente per questo contatto");
+        setSaving(false);
+        return;
+      }
+
       const now = new Date();
       const pngBlob = await (await fetch(dataUrl)).blob();
       const firmaPath = `contatti/${contatto.id}/firma-${now.getTime()}.png`;
       const { error: e1 } = await supabase.storage.from("firme").upload(firmaPath, pngBlob, { upsert: true, contentType: "image/png" });
-      if (e1) throw e1;
+      if (e1) throw new Error(`Upload firma: ${e1.message}`);
       const { data: firmaUrl } = supabase.storage.from("firme").getPublicUrl(firmaPath);
 
       const pdfBytes = await generaPdfPrivacy({
@@ -543,17 +557,24 @@ function FirmaContattoDialog({
       });
       const pdfPath = `contatti/${contatto.id}/privacy-${now.getTime()}.pdf`;
       const { error: e2 } = await supabase.storage.from("documenti-privacy").upload(pdfPath, pdfBytes, { contentType: "application/pdf", upsert: true });
-      if (e2) throw e2;
+      if (e2) throw new Error(`Upload PDF: ${e2.message}`);
       const { data: pdfUrl } = supabase.storage.from("documenti-privacy").getPublicUrl(pdfPath);
 
-      const { error: e3 } = await supabase.from("contatti").update({
-        privacy_firmata: true,
-        data_firma: now.toISOString(),
-        firma_url: firmaUrl.publicUrl,
-        pdf_privacy_url: pdfUrl.publicUrl,
-        pdf_privacy_path: pdfPath,
-      }).eq("id", contatto.id);
-      if (e3) throw e3;
+      // 2. UPDATE sul contatto esistente, mai INSERT
+      const { data: updated, error: e3 } = await supabase
+        .from("contatti")
+        .update({
+          privacy_firmata: true,
+          data_firma: now.toISOString(),
+          firma_url: firmaUrl.publicUrl,
+          pdf_privacy_url: pdfUrl.publicUrl,
+          pdf_privacy_path: pdfPath,
+        })
+        .eq("id", contatto.id)
+        .select("id")
+        .maybeSingle();
+      if (e3) throw new Error(`Salvataggio firma: ${e3.message}`);
+      if (!updated) throw new Error("Aggiornamento non riuscito: nessuna riga modificata (verifica i permessi).");
 
       toast.success("Privacy firmata e PDF generato");
       onSaved();
