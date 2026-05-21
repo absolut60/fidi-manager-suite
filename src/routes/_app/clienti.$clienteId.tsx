@@ -118,7 +118,7 @@ function ClienteDetail() {
               {cliente.partita_iva ? `P.IVA ${cliente.partita_iva}` : "Partita IVA non inserita"}
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
             {cliente.privacy_firmata ? (
               <Badge className="bg-success/15 text-success gap-1">
                 <FileCheck2 className="size-3" /> Privacy firmata
@@ -128,6 +128,18 @@ function ClienteDetail() {
                 <FileX2 className="size-3" /> Privacy da firmare
               </Badge>
             )}
+            <Dialog open={openEdit} onOpenChange={setOpenEdit}>
+              <DialogTrigger asChild>
+                <Button size="sm" variant="outline" className="gap-1.5">
+                  <Pencil className="size-4" /> Modifica
+                </Button>
+              </DialogTrigger>
+              <EditClienteDialog
+                cliente={cliente}
+                onClose={() => setOpenEdit(false)}
+                onSaved={() => qc.invalidateQueries({ queryKey: ["cliente", clienteId] })}
+              />
+            </Dialog>
           </div>
         </div>
       </div>
