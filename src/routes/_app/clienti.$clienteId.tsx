@@ -142,6 +142,7 @@ function ClienteDetail() {
                 </Button>
               </DialogTrigger>
               <EditClienteDialog
+                key={cliente.id}
                 cliente={cliente}
                 onClose={() => setOpenEdit(false)}
                 onSaved={() => qc.invalidateQueries({ queryKey: ["cliente", clienteId] })}
