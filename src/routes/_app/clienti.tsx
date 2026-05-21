@@ -638,7 +638,7 @@ function StepDichiarante({
   form, set, errors, padRef, setHasSig,
 }: {
   form: SchedaForm; set: SetFn; errors: Record<string, string>;
-  padRef: React.RefObject<HTMLDivElement>; setHasSig: (b: boolean) => void;
+  padRef: React.RefObject<HTMLDivElement | null>; setHasSig: (b: boolean) => void;
 }) {
   return (
     <>
