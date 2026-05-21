@@ -129,6 +129,30 @@ export type Database = {
           },
         ]
       }
+      configurazioni: {
+        Row: {
+          chiave: string
+          descrizione: string | null
+          updated_at: string
+          updated_by: string | null
+          valore: string
+        }
+        Insert: {
+          chiave: string
+          descrizione?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          valore: string
+        }
+        Update: {
+          chiave?: string
+          descrizione?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          valore?: string
+        }
+        Relationships: []
+      }
       contatti: {
         Row: {
           cellulare: string | null
@@ -227,6 +251,7 @@ export type Database = {
           created_by: string | null
           data_chiusura: string | null
           data_invio: string | null
+          data_scadenza: string | null
           durata_mesi: number
           id: string
           importo_approvato: number | null
@@ -246,6 +271,7 @@ export type Database = {
           created_by?: string | null
           data_chiusura?: string | null
           data_invio?: string | null
+          data_scadenza?: string | null
           durata_mesi?: number
           id?: string
           importo_approvato?: number | null
@@ -265,6 +291,7 @@ export type Database = {
           created_by?: string | null
           data_chiusura?: string | null
           data_invio?: string | null
+          data_scadenza?: string | null
           durata_mesi?: number
           id?: string
           importo_approvato?: number | null
