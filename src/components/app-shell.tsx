@@ -111,6 +111,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               {role ? RUOLI_LABEL[role] : "—"}
             </div>
           </div>
+          <NotificationsBell />
           <button
             onClick={handleLogout}
             className="size-8 rounded-md hover:bg-sidebar-accent flex items-center justify-center text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors"
