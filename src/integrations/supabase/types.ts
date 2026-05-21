@@ -14,6 +14,130 @@ export type Database = {
   }
   public: {
     Tables: {
+      clienti: {
+        Row: {
+          attivo: boolean
+          cap: string | null
+          citta: string | null
+          codice_fiscale: string | null
+          created_at: string
+          created_by: string | null
+          data_firma: string | null
+          email: string | null
+          firma_url: string | null
+          id: string
+          indirizzo: string | null
+          note: string | null
+          partita_iva: string | null
+          privacy_firmata: boolean
+          provincia: string | null
+          ragione_sociale: string
+          store_id: string | null
+          telefono: string | null
+          updated_at: string
+        }
+        Insert: {
+          attivo?: boolean
+          cap?: string | null
+          citta?: string | null
+          codice_fiscale?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_firma?: string | null
+          email?: string | null
+          firma_url?: string | null
+          id?: string
+          indirizzo?: string | null
+          note?: string | null
+          partita_iva?: string | null
+          privacy_firmata?: boolean
+          provincia?: string | null
+          ragione_sociale: string
+          store_id?: string | null
+          telefono?: string | null
+          updated_at?: string
+        }
+        Update: {
+          attivo?: boolean
+          cap?: string | null
+          citta?: string | null
+          codice_fiscale?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_firma?: string | null
+          email?: string | null
+          firma_url?: string | null
+          id?: string
+          indirizzo?: string | null
+          note?: string | null
+          partita_iva?: string | null
+          privacy_firmata?: boolean
+          provincia?: string | null
+          ragione_sociale?: string
+          store_id?: string | null
+          telefono?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clienti_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contatti: {
+        Row: {
+          cellulare: string | null
+          cliente_id: string
+          cognome: string | null
+          created_at: string
+          email: string | null
+          id: string
+          nome: string
+          principale: boolean
+          ruolo: string | null
+          telefono: string | null
+          updated_at: string
+        }
+        Insert: {
+          cellulare?: string | null
+          cliente_id: string
+          cognome?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          nome: string
+          principale?: boolean
+          ruolo?: string | null
+          telefono?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cellulare?: string | null
+          cliente_id?: string
+          cognome?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          nome?: string
+          principale?: boolean
+          ruolo?: string | null
+          telefono?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contatti_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profili: {
         Row: {
           attivo: boolean
@@ -43,6 +167,50 @@ export type Database = {
           id?: string
           nome?: string | null
           store_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profili_store_fk"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stores: {
+        Row: {
+          attivo: boolean
+          citta: string | null
+          codice: string
+          created_at: string
+          id: string
+          indirizzo: string | null
+          nome: string
+          telefono: string | null
+          updated_at: string
+        }
+        Insert: {
+          attivo?: boolean
+          citta?: string | null
+          codice: string
+          created_at?: string
+          id?: string
+          indirizzo?: string | null
+          nome: string
+          telefono?: string | null
+          updated_at?: string
+        }
+        Update: {
+          attivo?: boolean
+          citta?: string | null
+          codice?: string
+          created_at?: string
+          id?: string
+          indirizzo?: string | null
+          nome?: string
+          telefono?: string | null
           updated_at?: string
         }
         Relationships: []
