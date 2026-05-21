@@ -177,6 +177,7 @@ function NewRichiestaDialog({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient();
   const [form, setForm] = useState<Form>({
     cliente_id: "",
+    tipo: "nuovo",
     importo_richiesto: 0,
     durata_mesi: 12,
     motivazione: "",
