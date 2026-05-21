@@ -13,6 +13,9 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
+import { Route as AppContattiRouteImport } from './routes/_app/contatti'
+import { Route as AppClientiRouteImport } from './routes/_app/clienti'
+import { Route as AppClientiClienteIdRouteImport } from './routes/_app/clienti.$clienteId'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -33,30 +36,74 @@ const AppDashboardRoute = AppDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AppRoute,
 } as any)
+const AppContattiRoute = AppContattiRouteImport.update({
+  id: '/contatti',
+  path: '/contatti',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppClientiRoute = AppClientiRouteImport.update({
+  id: '/clienti',
+  path: '/clienti',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppClientiClienteIdRoute = AppClientiClienteIdRouteImport.update({
+  id: '/$clienteId',
+  path: '/$clienteId',
+  getParentRoute: () => AppClientiRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/clienti': typeof AppClientiRouteWithChildren
+  '/contatti': typeof AppContattiRoute
   '/dashboard': typeof AppDashboardRoute
+  '/clienti/$clienteId': typeof AppClientiClienteIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/clienti': typeof AppClientiRouteWithChildren
+  '/contatti': typeof AppContattiRoute
   '/dashboard': typeof AppDashboardRoute
+  '/clienti/$clienteId': typeof AppClientiClienteIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/_app/clienti': typeof AppClientiRouteWithChildren
+  '/_app/contatti': typeof AppContattiRoute
   '/_app/dashboard': typeof AppDashboardRoute
+  '/_app/clienti/$clienteId': typeof AppClientiClienteIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/dashboard'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/clienti'
+    | '/contatti'
+    | '/dashboard'
+    | '/clienti/$clienteId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/dashboard'
-  id: '__root__' | '/' | '/_app' | '/login' | '/_app/dashboard'
+  to:
+    | '/'
+    | '/login'
+    | '/clienti'
+    | '/contatti'
+    | '/dashboard'
+    | '/clienti/$clienteId'
+  id:
+    | '__root__'
+    | '/'
+    | '/_app'
+    | '/login'
+    | '/_app/clienti'
+    | '/_app/contatti'
+    | '/_app/dashboard'
+    | '/_app/clienti/$clienteId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -95,14 +142,51 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDashboardRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/contatti': {
+      id: '/_app/contatti'
+      path: '/contatti'
+      fullPath: '/contatti'
+      preLoaderRoute: typeof AppContattiRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/clienti': {
+      id: '/_app/clienti'
+      path: '/clienti'
+      fullPath: '/clienti'
+      preLoaderRoute: typeof AppClientiRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/clienti/$clienteId': {
+      id: '/_app/clienti/$clienteId'
+      path: '/$clienteId'
+      fullPath: '/clienti/$clienteId'
+      preLoaderRoute: typeof AppClientiClienteIdRouteImport
+      parentRoute: typeof AppClientiRoute
+    }
   }
 }
 
+interface AppClientiRouteChildren {
+  AppClientiClienteIdRoute: typeof AppClientiClienteIdRoute
+}
+
+const AppClientiRouteChildren: AppClientiRouteChildren = {
+  AppClientiClienteIdRoute: AppClientiClienteIdRoute,
+}
+
+const AppClientiRouteWithChildren = AppClientiRoute._addFileChildren(
+  AppClientiRouteChildren,
+)
+
 interface AppRouteChildren {
+  AppClientiRoute: typeof AppClientiRouteWithChildren
+  AppContattiRoute: typeof AppContattiRoute
   AppDashboardRoute: typeof AppDashboardRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppClientiRoute: AppClientiRouteWithChildren,
+  AppContattiRoute: AppContattiRoute,
   AppDashboardRoute: AppDashboardRoute,
 }
 
@@ -116,3 +200,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
