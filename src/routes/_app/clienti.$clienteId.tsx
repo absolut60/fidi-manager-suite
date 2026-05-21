@@ -555,7 +555,20 @@ function EditClienteDialog({ cliente, onClose, onSaved }: { cliente: any; onClos
         const v = parsed[k];
         payload[k] = v === "" ? null : v;
       });
-      const { error } = await supabase.from("clienti").update(payload as any).eq("id", cliente.id);
+      const { data, error } = await supabase
+        .from("clienti")
+        .update(payload as any)
+        .eq("id", cliente.id)
+        .select("id");
+      if (error) {
+        if ((error as any).code === "23505" || error.message.includes("clienti_codice_gestionale_unique")) {
+          throw new Error("Codice gestionale già utilizzato da un altro cliente.");
+        }
+        throw error;
+      }
+      if (!data || data.length === 0) {
+        throw new Error("Non hai i permessi per modificare questo cliente (è di un altro punto vendita).");
+      }
       if (error) throw error;
     },
     onSuccess: () => {
