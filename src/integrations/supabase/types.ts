@@ -90,69 +90,105 @@ export type Database = {
       }
       clienti: {
         Row: {
+          abi: string | null
+          agenzia: string | null
           attivo: boolean
+          banca: string | null
+          cab: string | null
           cap: string | null
           citta: string | null
           codice_fiscale: string | null
+          codice_gestionale: string | null
+          codice_sdi: string | null
+          condizioni_pagamento: string | null
           created_at: string
           created_by: string | null
           data_firma: string | null
+          dichiarante_cognome: string | null
+          dichiarante_nome: string | null
           email: string | null
           firma_url: string | null
           id: string
           indirizzo: string | null
           note: string | null
           partita_iva: string | null
+          pec: string | null
           privacy_firmata: boolean
           privacy_pdf_url: string | null
           provincia: string | null
           ragione_sociale: string
+          scheda_pdf_url: string | null
           store_id: string | null
           telefono: string | null
+          tipo_soggetto: string | null
           updated_at: string
         }
         Insert: {
+          abi?: string | null
+          agenzia?: string | null
           attivo?: boolean
+          banca?: string | null
+          cab?: string | null
           cap?: string | null
           citta?: string | null
           codice_fiscale?: string | null
+          codice_gestionale?: string | null
+          codice_sdi?: string | null
+          condizioni_pagamento?: string | null
           created_at?: string
           created_by?: string | null
           data_firma?: string | null
+          dichiarante_cognome?: string | null
+          dichiarante_nome?: string | null
           email?: string | null
           firma_url?: string | null
           id?: string
           indirizzo?: string | null
           note?: string | null
           partita_iva?: string | null
+          pec?: string | null
           privacy_firmata?: boolean
           privacy_pdf_url?: string | null
           provincia?: string | null
           ragione_sociale: string
+          scheda_pdf_url?: string | null
           store_id?: string | null
           telefono?: string | null
+          tipo_soggetto?: string | null
           updated_at?: string
         }
         Update: {
+          abi?: string | null
+          agenzia?: string | null
           attivo?: boolean
+          banca?: string | null
+          cab?: string | null
           cap?: string | null
           citta?: string | null
           codice_fiscale?: string | null
+          codice_gestionale?: string | null
+          codice_sdi?: string | null
+          condizioni_pagamento?: string | null
           created_at?: string
           created_by?: string | null
           data_firma?: string | null
+          dichiarante_cognome?: string | null
+          dichiarante_nome?: string | null
           email?: string | null
           firma_url?: string | null
           id?: string
           indirizzo?: string | null
           note?: string | null
           partita_iva?: string | null
+          pec?: string | null
           privacy_firmata?: boolean
           privacy_pdf_url?: string | null
           provincia?: string | null
           ragione_sociale?: string
+          scheda_pdf_url?: string | null
           store_id?: string | null
           telefono?: string | null
+          tipo_soggetto?: string | null
           updated_at?: string
         }
         Relationships: [

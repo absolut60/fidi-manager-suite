@@ -139,6 +139,8 @@ function ClienteDetail() {
             <h3 className="font-semibold mb-4">Dati anagrafici</h3>
             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
               <Field label="Ragione sociale" value={cliente.ragione_sociale} />
+              <Field label="Codice gestionale" value={(cliente as any).codice_gestionale} />
+              <Field label="Tipo soggetto" value={(cliente as any).tipo_soggetto === "persona_fisica" ? "Persona fisica" : (cliente as any).tipo_soggetto === "azienda" ? "Azienda" : null} />
               <Field label="Partita IVA" value={cliente.partita_iva} />
               <Field label="Codice fiscale" value={cliente.codice_fiscale} />
               <Field label="Punto vendita" value={(cliente as any).stores?.nome} />
@@ -146,7 +148,23 @@ function ClienteDetail() {
               <Field label="Città" value={cliente.citta && `${cliente.citta}${cliente.provincia ? ` (${cliente.provincia})` : ""}${cliente.cap ? ` — ${cliente.cap}` : ""}`} />
               <Field label="Telefono" value={cliente.telefono} />
               <Field label="Email" value={cliente.email} />
+              <Field label="PEC" value={(cliente as any).pec} />
+              <Field label="Codice SDI" value={(cliente as any).codice_sdi} />
+              <Field label="Banca" value={(cliente as any).banca} />
+              <Field label="Agenzia" value={(cliente as any).agenzia} />
+              <Field label="ABI" value={(cliente as any).abi} />
+              <Field label="CAB" value={(cliente as any).cab} />
             </dl>
+            {(cliente as any).scheda_pdf_url && (
+              <div className="mt-4 pt-4 border-t">
+                <p className="text-xs font-medium text-muted-foreground mb-2">SCHEDA INSERIMENTO FIRMATA</p>
+                <Button variant="outline" size="sm" asChild>
+                  <a href={(cliente as any).scheda_pdf_url} target="_blank" rel="noreferrer">
+                    <Download className="size-4 mr-1" /> Scarica scheda PDF
+                  </a>
+                </Button>
+              </div>
+            )}
             {cliente.note && (
               <div className="mt-4 pt-4 border-t">
                 <p className="text-xs font-medium text-muted-foreground mb-1">NOTE</p>
