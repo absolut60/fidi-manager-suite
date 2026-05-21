@@ -32,6 +32,7 @@ export const Route = createFileRoute("/_app/clienti")({
 function ClientiPage() {
   const navigate = useNavigate();
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
+  const isListRoute = currentPath === "/clienti";
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
 
@@ -45,6 +46,7 @@ function ClientiPage() {
       if (error) throw error;
       return data;
     },
+    enabled: isListRoute,
   });
 
   const filtered = (clienti ?? []).filter((c) => {
@@ -58,7 +60,7 @@ function ClientiPage() {
     );
   });
 
-  if (currentPath !== "/clienti") {
+  if (!isListRoute) {
     return <Outlet />;
   }
 
