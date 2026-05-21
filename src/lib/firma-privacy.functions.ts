@@ -110,10 +110,10 @@ export const firmaPrivacyConToken = createServerFn({ method: "POST" })
       dataFirma: now,
     });
     const pdfPath = `${cli.id}/privacy-${now.getTime()}.pdf`;
-    const { error: ePdf } = await supabaseAdmin.storage.from("privacy-pdf")
+    const { error: ePdf } = await supabaseAdmin.storage.from("documenti-privacy")
       .upload(pdfPath, pdfBytes, { upsert: true, contentType: "application/pdf" });
     if (ePdf) throw new Error(ePdf.message);
-    const { data: pdfUrl } = supabaseAdmin.storage.from("privacy-pdf").getPublicUrl(pdfPath);
+    const { data: pdfUrl } = supabaseAdmin.storage.from("documenti-privacy").getPublicUrl(pdfPath);
 
     // 3) Aggiorna cliente e invalida il token
     const { error: eUpd } = await supabaseAdmin.from("clienti").update({
