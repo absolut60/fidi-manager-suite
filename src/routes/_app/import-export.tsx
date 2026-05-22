@@ -361,16 +361,23 @@ function ImportCard() {
       {
         ragione_sociale: "Esempio S.r.l.",
         codice_gestionale: "13908",
+        partita_iva: "12345678901",
+        codice_fiscale: "12345678901",
+        fido_gestionale: 50000,
         fido: 50000,
         totale_rischio: 32000,
         fido_residuo: 18000,
         scaduto: 0,
         a_scadere: 32000,
+        saldo_contabile: 0,
+        doc_da_fatturare: 0,
+        doc_da_evadere: 0,
+        effetti_a_rischio: 0,
+        num_insoluti: 0,
+        condizione_pagamento_cod: "RB22",
         condizione_pagamento: "R.B. 60 gg. d.f. f.m.",
         dilazione_concordata: 60,
         dilazione_effettiva: 65,
-        partita_iva: "12345678901",
-        codice_fiscale: "12345678901",
         indirizzo: "Via Roma 1",
         citta: "Milano",
         cap: "20100",
@@ -378,6 +385,7 @@ function ImportCard() {
         telefono: "+39 02 1234567",
         email: "info@esempio.it",
         note: "",
+
       },
     ]);
 
