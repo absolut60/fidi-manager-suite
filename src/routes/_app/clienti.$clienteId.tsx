@@ -255,7 +255,7 @@ function ClienteDetail() {
         </div>
       </div>
 
-      <Tabs defaultValue="anagrafica">
+      <Tabs defaultValue={tab ?? "anagrafica"}>
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="anagrafica">Anagrafica</TabsTrigger>
           <TabsTrigger value="contatti">Contatti ({contatti?.length ?? 0})</TabsTrigger>
