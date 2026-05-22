@@ -55,6 +55,101 @@ export type Database = {
           },
         ]
       }
+      assicurazioni_credito: {
+        Row: {
+          assicuratore: string
+          cliente_id: string
+          created_at: string
+          data_apertura_sinistro: string | null
+          data_inizio: string | null
+          data_scadenza: string | null
+          esito_sinistro: string | null
+          gestita_da: string | null
+          id: string
+          importo_assicurato: number | null
+          importo_massimale: number | null
+          importo_sinistro: number | null
+          note: string | null
+          note_sinistro: string | null
+          numero_polizza: string | null
+          numero_sinistro: string | null
+          sinistro_aperto: boolean | null
+          stato: Database["public"]["Enums"]["stato_polizza"]
+          updated_at: string
+        }
+        Insert: {
+          assicuratore: string
+          cliente_id: string
+          created_at?: string
+          data_apertura_sinistro?: string | null
+          data_inizio?: string | null
+          data_scadenza?: string | null
+          esito_sinistro?: string | null
+          gestita_da?: string | null
+          id?: string
+          importo_assicurato?: number | null
+          importo_massimale?: number | null
+          importo_sinistro?: number | null
+          note?: string | null
+          note_sinistro?: string | null
+          numero_polizza?: string | null
+          numero_sinistro?: string | null
+          sinistro_aperto?: boolean | null
+          stato?: Database["public"]["Enums"]["stato_polizza"]
+          updated_at?: string
+        }
+        Update: {
+          assicuratore?: string
+          cliente_id?: string
+          created_at?: string
+          data_apertura_sinistro?: string | null
+          data_inizio?: string | null
+          data_scadenza?: string | null
+          esito_sinistro?: string | null
+          gestita_da?: string | null
+          id?: string
+          importo_assicurato?: number | null
+          importo_massimale?: number | null
+          importo_sinistro?: number | null
+          note?: string | null
+          note_sinistro?: string | null
+          numero_polizza?: string | null
+          numero_sinistro?: string | null
+          sinistro_aperto?: boolean | null
+          stato?: Database["public"]["Enums"]["stato_polizza"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assicurazioni_credito_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assicurazioni_credito_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti_con_rischio"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assicurazioni_credito_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "assicurazioni_credito_gestita_da_fkey"
+            columns: ["gestita_da"]
+            isOneToOne: false
+            referencedRelation: "profili"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_log: {
         Row: {
           azione: string
@@ -200,6 +295,13 @@ export type Database = {
             referencedRelation: "clienti_con_rischio"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "cantieri_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
         ]
       }
       clienti: {
@@ -207,8 +309,11 @@ export type Database = {
           a_scadere: number | null
           abi: string | null
           agenzia: string | null
+          assicurazione_attiva: boolean
           attivo: boolean
           banca: string | null
+          bloccato: boolean
+          bloccato_da: string | null
           cab: string | null
           cap: string | null
           citta: string | null
@@ -220,6 +325,7 @@ export type Database = {
           condizioni_pagamento: string | null
           created_at: string
           created_by: string | null
+          data_blocco: string | null
           data_firma: string | null
           dichiarante_cognome: string | null
           dichiarante_nome: string | null
@@ -234,7 +340,9 @@ export type Database = {
           fido_residuo: number | null
           firma_url: string | null
           id: string
+          in_gestione_legale: boolean
           indirizzo: string | null
+          motivo_blocco: string | null
           note: string | null
           num_insoluti: number | null
           partita_iva: string | null
@@ -259,8 +367,11 @@ export type Database = {
           a_scadere?: number | null
           abi?: string | null
           agenzia?: string | null
+          assicurazione_attiva?: boolean
           attivo?: boolean
           banca?: string | null
+          bloccato?: boolean
+          bloccato_da?: string | null
           cab?: string | null
           cap?: string | null
           citta?: string | null
@@ -272,6 +383,7 @@ export type Database = {
           condizioni_pagamento?: string | null
           created_at?: string
           created_by?: string | null
+          data_blocco?: string | null
           data_firma?: string | null
           dichiarante_cognome?: string | null
           dichiarante_nome?: string | null
@@ -286,7 +398,9 @@ export type Database = {
           fido_residuo?: number | null
           firma_url?: string | null
           id?: string
+          in_gestione_legale?: boolean
           indirizzo?: string | null
+          motivo_blocco?: string | null
           note?: string | null
           num_insoluti?: number | null
           partita_iva?: string | null
@@ -311,8 +425,11 @@ export type Database = {
           a_scadere?: number | null
           abi?: string | null
           agenzia?: string | null
+          assicurazione_attiva?: boolean
           attivo?: boolean
           banca?: string | null
+          bloccato?: boolean
+          bloccato_da?: string | null
           cab?: string | null
           cap?: string | null
           citta?: string | null
@@ -324,6 +441,7 @@ export type Database = {
           condizioni_pagamento?: string | null
           created_at?: string
           created_by?: string | null
+          data_blocco?: string | null
           data_firma?: string | null
           dichiarante_cognome?: string | null
           dichiarante_nome?: string | null
@@ -338,7 +456,9 @@ export type Database = {
           fido_residuo?: number | null
           firma_url?: string | null
           id?: string
+          in_gestione_legale?: boolean
           indirizzo?: string | null
+          motivo_blocco?: string | null
           note?: string | null
           num_insoluti?: number | null
           partita_iva?: string | null
@@ -360,6 +480,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "clienti_bloccato_da_fkey"
+            columns: ["bloccato_da"]
+            isOneToOne: false
+            referencedRelation: "profili"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "clienti_store_id_fkey"
             columns: ["store_id"]
@@ -468,6 +595,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clienti_con_rischio"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contatti_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
           },
         ]
       }
@@ -662,6 +796,92 @@ export type Database = {
         }
         Relationships: []
       }
+      pratiche_legali: {
+        Row: {
+          cliente_id: string
+          created_at: string
+          data_apertura: string
+          data_chiusura: string | null
+          esito: string | null
+          gestita_da: string | null
+          id: string
+          importo_contestato: number | null
+          importo_recuperato: number | null
+          note: string | null
+          numero_fascicolo: string | null
+          riferimento_avvocato: string | null
+          stato: Database["public"]["Enums"]["stato_pratica_legale"]
+          studio_legale: string | null
+          tipo: Database["public"]["Enums"]["tipo_pratica_legale"]
+          updated_at: string
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string
+          data_apertura?: string
+          data_chiusura?: string | null
+          esito?: string | null
+          gestita_da?: string | null
+          id?: string
+          importo_contestato?: number | null
+          importo_recuperato?: number | null
+          note?: string | null
+          numero_fascicolo?: string | null
+          riferimento_avvocato?: string | null
+          stato?: Database["public"]["Enums"]["stato_pratica_legale"]
+          studio_legale?: string | null
+          tipo: Database["public"]["Enums"]["tipo_pratica_legale"]
+          updated_at?: string
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string
+          data_apertura?: string
+          data_chiusura?: string | null
+          esito?: string | null
+          gestita_da?: string | null
+          id?: string
+          importo_contestato?: number | null
+          importo_recuperato?: number | null
+          note?: string | null
+          numero_fascicolo?: string | null
+          riferimento_avvocato?: string | null
+          stato?: Database["public"]["Enums"]["stato_pratica_legale"]
+          studio_legale?: string | null
+          tipo?: Database["public"]["Enums"]["tipo_pratica_legale"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pratiche_legali_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pratiche_legali_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti_con_rischio"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pratiche_legali_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "pratiche_legali_gestita_da_fkey"
+            columns: ["gestita_da"]
+            isOneToOne: false
+            referencedRelation: "profili"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profili: {
         Row: {
           attivo: boolean
@@ -699,6 +919,107 @@ export type Database = {
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reminder: {
+        Row: {
+          cliente_id: string | null
+          created_at: string
+          data_reminder: string
+          descrizione: string | null
+          id: string
+          inviato: boolean | null
+          inviato_at: string | null
+          letto: boolean | null
+          pratica_id: string | null
+          scadenza_id: string | null
+          sollecito_id: string | null
+          tipo: Database["public"]["Enums"]["tipo_reminder"]
+          titolo: string
+          utente_id: string
+        }
+        Insert: {
+          cliente_id?: string | null
+          created_at?: string
+          data_reminder: string
+          descrizione?: string | null
+          id?: string
+          inviato?: boolean | null
+          inviato_at?: string | null
+          letto?: boolean | null
+          pratica_id?: string | null
+          scadenza_id?: string | null
+          sollecito_id?: string | null
+          tipo: Database["public"]["Enums"]["tipo_reminder"]
+          titolo: string
+          utente_id: string
+        }
+        Update: {
+          cliente_id?: string | null
+          created_at?: string
+          data_reminder?: string
+          descrizione?: string | null
+          id?: string
+          inviato?: boolean | null
+          inviato_at?: string | null
+          letto?: boolean | null
+          pratica_id?: string | null
+          scadenza_id?: string | null
+          sollecito_id?: string | null
+          tipo?: Database["public"]["Enums"]["tipo_reminder"]
+          titolo?: string
+          utente_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reminder_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reminder_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti_con_rischio"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reminder_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "reminder_pratica_id_fkey"
+            columns: ["pratica_id"]
+            isOneToOne: false
+            referencedRelation: "pratiche_legali"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reminder_scadenza_id_fkey"
+            columns: ["scadenza_id"]
+            isOneToOne: false
+            referencedRelation: "scadenze"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reminder_sollecito_id_fkey"
+            columns: ["sollecito_id"]
+            isOneToOne: false
+            referencedRelation: "solleciti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reminder_utente_id_fkey"
+            columns: ["utente_id"]
+            isOneToOne: false
+            referencedRelation: "profili"
             referencedColumns: ["id"]
           },
         ]
@@ -780,10 +1101,238 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "richieste_fido_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+          {
             foreignKeyName: "richieste_fido_store_id_fkey"
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scadenze: {
+        Row: {
+          anno_partita: number | null
+          assicurazione: number | null
+          cliente_id: string
+          cod_blocco: string | null
+          codice_pagamento: string | null
+          created_at: string
+          data_documento: string | null
+          data_pagamento: string | null
+          data_scadenza: string | null
+          descrizione_pagamento: string | null
+          dilazione_effettiva: number | null
+          dilazione_teorica: number | null
+          fido_euro: number | null
+          giorni_ritardo: number | null
+          id: string
+          importato_da: string | null
+          importo_documento: number | null
+          importo_netto_prev: number | null
+          importo_originario: number | null
+          importo_ritardo: number | null
+          importo_scadenza: number | null
+          in_legale: boolean | null
+          numero_documento: string | null
+          sede: number | null
+          sezionale: string | null
+          sollecitato: boolean | null
+          stato_contabile: string | null
+          tipologia_scadenza: string | null
+          ultima_sincronizzazione: string | null
+          updated_at: string
+        }
+        Insert: {
+          anno_partita?: number | null
+          assicurazione?: number | null
+          cliente_id: string
+          cod_blocco?: string | null
+          codice_pagamento?: string | null
+          created_at?: string
+          data_documento?: string | null
+          data_pagamento?: string | null
+          data_scadenza?: string | null
+          descrizione_pagamento?: string | null
+          dilazione_effettiva?: number | null
+          dilazione_teorica?: number | null
+          fido_euro?: number | null
+          giorni_ritardo?: number | null
+          id?: string
+          importato_da?: string | null
+          importo_documento?: number | null
+          importo_netto_prev?: number | null
+          importo_originario?: number | null
+          importo_ritardo?: number | null
+          importo_scadenza?: number | null
+          in_legale?: boolean | null
+          numero_documento?: string | null
+          sede?: number | null
+          sezionale?: string | null
+          sollecitato?: boolean | null
+          stato_contabile?: string | null
+          tipologia_scadenza?: string | null
+          ultima_sincronizzazione?: string | null
+          updated_at?: string
+        }
+        Update: {
+          anno_partita?: number | null
+          assicurazione?: number | null
+          cliente_id?: string
+          cod_blocco?: string | null
+          codice_pagamento?: string | null
+          created_at?: string
+          data_documento?: string | null
+          data_pagamento?: string | null
+          data_scadenza?: string | null
+          descrizione_pagamento?: string | null
+          dilazione_effettiva?: number | null
+          dilazione_teorica?: number | null
+          fido_euro?: number | null
+          giorni_ritardo?: number | null
+          id?: string
+          importato_da?: string | null
+          importo_documento?: number | null
+          importo_netto_prev?: number | null
+          importo_originario?: number | null
+          importo_ritardo?: number | null
+          importo_scadenza?: number | null
+          in_legale?: boolean | null
+          numero_documento?: string | null
+          sede?: number | null
+          sezionale?: string | null
+          sollecitato?: boolean | null
+          stato_contabile?: string | null
+          tipologia_scadenza?: string | null
+          ultima_sincronizzazione?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scadenze_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scadenze_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti_con_rischio"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scadenze_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "scadenze_importato_da_fkey"
+            columns: ["importato_da"]
+            isOneToOne: false
+            referencedRelation: "importazioni"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      solleciti: {
+        Row: {
+          cliente_id: string
+          created_at: string
+          data_risposta: string | null
+          data_sollecito: string
+          id: string
+          importo_ref: number | null
+          inserito_da: string | null
+          nota: string
+          reminder_attivo: boolean | null
+          reminder_data: string | null
+          reminder_inviato: boolean | null
+          risposta: string | null
+          scadenza_id: string | null
+          stato: Database["public"]["Enums"]["stato_sollecito"]
+          tipo: Database["public"]["Enums"]["tipo_sollecito"]
+          updated_at: string
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string
+          data_risposta?: string | null
+          data_sollecito?: string
+          id?: string
+          importo_ref?: number | null
+          inserito_da?: string | null
+          nota: string
+          reminder_attivo?: boolean | null
+          reminder_data?: string | null
+          reminder_inviato?: boolean | null
+          risposta?: string | null
+          scadenza_id?: string | null
+          stato?: Database["public"]["Enums"]["stato_sollecito"]
+          tipo?: Database["public"]["Enums"]["tipo_sollecito"]
+          updated_at?: string
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string
+          data_risposta?: string | null
+          data_sollecito?: string
+          id?: string
+          importo_ref?: number | null
+          inserito_da?: string | null
+          nota?: string
+          reminder_attivo?: boolean | null
+          reminder_data?: string | null
+          reminder_inviato?: boolean | null
+          risposta?: string | null
+          scadenza_id?: string | null
+          stato?: Database["public"]["Enums"]["stato_sollecito"]
+          tipo?: Database["public"]["Enums"]["tipo_sollecito"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solleciti_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solleciti_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti_con_rischio"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solleciti_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "solleciti_inserito_da_fkey"
+            columns: ["inserito_da"]
+            isOneToOne: false
+            referencedRelation: "profili"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solleciti_scadenza_id_fkey"
+            columns: ["scadenza_id"]
+            isOneToOne: false
+            referencedRelation: "scadenze"
             referencedColumns: ["id"]
           },
         ]
@@ -880,10 +1429,68 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "storico_fido_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+          {
             foreignKeyName: "storico_fido_richiesta_id_fkey"
             columns: ["richiesta_id"]
             isOneToOne: false
             referencedRelation: "richieste_fido"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      storico_pratiche_legali: {
+        Row: {
+          created_at: string
+          id: string
+          modificato_da: string | null
+          nota: string | null
+          pratica_id: string
+          stato_nuovo: Database["public"]["Enums"]["stato_pratica_legale"]
+          stato_precedente:
+            | Database["public"]["Enums"]["stato_pratica_legale"]
+            | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          modificato_da?: string | null
+          nota?: string | null
+          pratica_id: string
+          stato_nuovo: Database["public"]["Enums"]["stato_pratica_legale"]
+          stato_precedente?:
+            | Database["public"]["Enums"]["stato_pratica_legale"]
+            | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          modificato_da?: string | null
+          nota?: string | null
+          pratica_id?: string
+          stato_nuovo?: Database["public"]["Enums"]["stato_pratica_legale"]
+          stato_precedente?:
+            | Database["public"]["Enums"]["stato_pratica_legale"]
+            | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "storico_pratiche_legali_modificato_da_fkey"
+            columns: ["modificato_da"]
+            isOneToOne: false
+            referencedRelation: "profili"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "storico_pratiche_legali_pratica_id_fkey"
+            columns: ["pratica_id"]
+            isOneToOne: false
+            referencedRelation: "pratiche_legali"
             referencedColumns: ["id"]
           },
         ]
@@ -1084,6 +1691,37 @@ export type Database = {
           },
         ]
       }
+      riepilogo_insoluti: {
+        Row: {
+          assicurazione_attiva: boolean | null
+          bloccato: boolean | null
+          cliente_id: string | null
+          codice_gestionale: string | null
+          in_gestione_legale: boolean | null
+          max_giorni_ritardo: number | null
+          media_giorni_ritardo: number | null
+          num_scadenze_aperte: number | null
+          num_solleciti: number | null
+          polizze_attive: number | null
+          pratiche_legali_aperte: number | null
+          ragione_sociale: string | null
+          scaduto_0_30: number | null
+          scaduto_30_60: number | null
+          scaduto_oltre_60: number | null
+          store_id: string | null
+          totale_scaduto: number | null
+          ultimo_sollecito: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clienti_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       calcola_livello_fido: { Args: { _importo: number }; Returns: number }
@@ -1118,13 +1756,57 @@ export type Database = {
         | "consegnato"
         | "letto"
         | "fallito"
+      stato_polizza:
+        | "attiva"
+        | "sospesa"
+        | "scaduta"
+        | "sinistro_aperto"
+        | "sinistro_chiuso"
+      stato_pratica_legale:
+        | "aperta"
+        | "in_corso"
+        | "decreto_ottenuto"
+        | "pignoramento_eseguito"
+        | "pignoramento_negativo"
+        | "chiusa_pagamento"
+        | "chiusa_perdita"
+        | "sospesa"
       stato_richiesta:
         | "bozza"
         | "in_approvazione"
         | "approvata"
         | "rifiutata"
         | "annullata"
+      stato_sollecito:
+        | "inviato"
+        | "in_attesa_risposta"
+        | "risposto"
+        | "ignorato"
+        | "risolto"
+      tipo_pratica_legale:
+        | "decreto_ingiuntivo"
+        | "pignoramento"
+        | "precetto"
+        | "azione_legale_generica"
+        | "messa_a_perdita"
+        | "concordato"
+        | "fallimento"
+        | "altro"
+      tipo_reminder:
+        | "scadenza_insoluto"
+        | "sollecito_programmato"
+        | "revisione_pratica_legale"
+        | "rinnovo_assicurazione"
+        | "custom"
       tipo_richiesta: "nuovo" | "aumento" | "diminuzione" | "rinnovo"
+      tipo_sollecito:
+        | "interno"
+        | "email"
+        | "telefono"
+        | "raccomandata"
+        | "avvocato"
+        | "legale"
+        | "altro"
       tipo_variazione_fido:
         | "nuovo"
         | "aumento"
@@ -1280,6 +1962,23 @@ export const Constants = {
         "letto",
         "fallito",
       ],
+      stato_polizza: [
+        "attiva",
+        "sospesa",
+        "scaduta",
+        "sinistro_aperto",
+        "sinistro_chiuso",
+      ],
+      stato_pratica_legale: [
+        "aperta",
+        "in_corso",
+        "decreto_ottenuto",
+        "pignoramento_eseguito",
+        "pignoramento_negativo",
+        "chiusa_pagamento",
+        "chiusa_perdita",
+        "sospesa",
+      ],
       stato_richiesta: [
         "bozza",
         "in_approvazione",
@@ -1287,7 +1986,40 @@ export const Constants = {
         "rifiutata",
         "annullata",
       ],
+      stato_sollecito: [
+        "inviato",
+        "in_attesa_risposta",
+        "risposto",
+        "ignorato",
+        "risolto",
+      ],
+      tipo_pratica_legale: [
+        "decreto_ingiuntivo",
+        "pignoramento",
+        "precetto",
+        "azione_legale_generica",
+        "messa_a_perdita",
+        "concordato",
+        "fallimento",
+        "altro",
+      ],
+      tipo_reminder: [
+        "scadenza_insoluto",
+        "sollecito_programmato",
+        "revisione_pratica_legale",
+        "rinnovo_assicurazione",
+        "custom",
+      ],
       tipo_richiesta: ["nuovo", "aumento", "diminuzione", "rinnovo"],
+      tipo_sollecito: [
+        "interno",
+        "email",
+        "telefono",
+        "raccomandata",
+        "avvocato",
+        "legale",
+        "altro",
+      ],
       tipo_variazione_fido: [
         "nuovo",
         "aumento",
