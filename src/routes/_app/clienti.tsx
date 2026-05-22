@@ -1528,28 +1528,57 @@ function StepAmministrazione({ form, set }: { form: SchedaForm; set: SetFn }) {
 const PRIVACY_TEXT_UI =
   "In relazione al nuovo Regolamento UE 679/2016, ed ai sensi del decreto legislativo 196 del 30/06/2003 vi comunichiamo che nei nostri archivi cartacei e/o informatici sono contenuti i vostri dati personali. I dati verranno trattati per le finalità relative alla gestione del rapporto in essere, non verranno comunicati ad altri soggetti e potranno essere utilizzati per l'invio della corrispondenza. L'interessato potrà chiedere in ogni momento la modifica o la cancellazione in relazione all'art. 14-15-16-17 del Reg. UE 679/2016 inviando una mail a madedistribuzione@pecplus.it";
 
+const INFORMATIVA_FULL = `Made Distribuzione S.p.A. - C.F. 10126430965, con sede in Milano Corso di Porta Nuova 11 (tel. 02404702800 - email gdpr-md@madepoint.it - pec madedistribuzionesrl@pecplus.it) in persona del suo presidente Dott. Gian Luca Bellini, ai sensi dell'articolo 13 del GDPR 2016/679, Le fornisce le seguenti informazioni.
+
+TIPI DI DATI: I dati personali (nome, cognome, estremi documento di riconoscimento, telefono, indirizzo e-mail, etc.) sono quelli forniti al momento della sottoscrizione o nel corso del rapporto contrattuale. Tra i dati conferiti possono figurare anche dati di cui all'art. 9 GDPR (categorie particolari di dati).
+
+FINALITA' DI TRATTAMENTO: I dati saranno trattati per finalita' connesse all'esercizio delle attivita' aziendali (fornitura di prodotti nei campi edile, elettrotecnico e idraulico), per adempimenti fiscali/tributari/contributivi, per comunicazione a Enti pubblici o privati prevista per legge, per backup su server esterni con cifratura. Inoltre, previo consenso, per profilazione e analisi dati, per inserimento in pubblicazioni e social network, per invio di comunicazioni pubblicitarie via e-mail, sms, whatsapp.
+
+CATEGORIE DI SOGGETTI: I dati potranno essere comunicati a dipendenti e collaboratori, societa' EDP, commercialisti, studi legali, clienti e fornitori, distributori e vettori, societa' del Gruppo Made, societa' che svolgono attivita' commerciale e di marketing.
+
+MODALITA': Il trattamento sara' effettuato con strumenti manuali e/o informatici nel rispetto dei principi di correttezza, licceita' e trasparenza. E' possibile la cessione dei dati all'estero per finalita' di backup e utilizzo di software con server esteri (Microsoft 365).
+
+TERMINE DI CONSERVAZIONE: I dati vengono conservati per tutta la durata del rapporto contrattuale e nei termini prescrizionali previsti, in ogni caso per non meno di 10 anni per obblighi fiscali.
+
+DIRITTI DELL'INTERESSATO: Lei potra' esercitare i diritti di accesso (art. 15), rettifica (art. 16), cancellazione (art. 17), limitazione (art. 18), opposizione (art. 21), portabilita' (art. 20) e revoca del consenso (art. 7 co. 3) inviando richiesta a gdpr-md@madepoint.it. E' possibile proporre reclamo al Garante Privacy.
+
+TITOLARE: Made Distribuzione S.p.A. - C.F. 10126430965 - gdpr-md@madepoint.it`;
+
+const CONSENSO_TESTI = {
+  profilazione: "al trattamento, ivi compresa la comunicazione ai soggetti di cui al punto 9 e la cessione al di fuori dell'Unione Europea, dei dati personali, ivi compresi quelli sensibili di cui all'art. 9 GDPR e le immagini dell'interessato per le finalita' di analisi anche con strumenti tecnologici automatizzati (profilazione) al fine di consentire al titolare di poter gestire un consolidato nazionale in tempo reale e al fine di poter analizzare i dati caricati sul software per poter indirizzare al meglio le strategie commerciali del network.",
+  media: "al trattamento, ivi compresa la comunicazione ai soggetti di cui al punto 9 e la cessione al di fuori dell'Unione Europea, dei dati personali, ivi compresi quelli sensibili di cui all'art. 9 GDPR e le immagini dell'interessato per le finalita' di inserimento di dati, fotografie, articoli e riprese audiovisive nel proprio sito internet e nelle proprie pubblicazioni, social network, per la pubblicazione di fotografie e/o riprese audiovisive, corsi on line, pubblicazioni, brochure, presentazioni, cataloghi per fini didattici, pubblicitari e di marketing.",
+  diretto: "al trattamento, ivi compresa la comunicazione ai soggetti di cui al punto 9 e la cessione al di fuori dell'Unione Europea, dei dati personali, ivi compresi quelli sensibili di cui all'art. 9 GDPR e le immagini dell'interessato per le finalita' di invio di informative per finalita' pubblicitarie e di marketing, anche via e-mail, sms, whatsapp.",
+};
+
 function StepFirma({
   form, set, errors, padRef, setHasSig,
 }: {
   form: SchedaForm; set: SetFn; errors: Record<string, string>;
   padRef: React.RefObject<HTMLDivElement | null>; setHasSig: (b: boolean) => void;
 }) {
-  const today = new Date().toLocaleDateString("it-IT");
-  const ConsensoRow = ({ k, label }: { k: "consenso_profilazione" | "consenso_marketing_media" | "consenso_marketing_diretto"; label: string }) => (
-    <div className="flex items-start justify-between gap-4 py-2 border-b last:border-b-0">
-      <p className="text-xs text-muted-foreground flex-1 leading-relaxed">{label}</p>
-      <RadioGroup value={form[k]} onValueChange={(v) => set(k, v as any)} className="flex gap-3 shrink-0">
-        <label className="flex items-center gap-1 text-sm cursor-pointer">
-          <RadioGroupItem value="si" /> Sì
+  const todayISO = new Date().toISOString().slice(0, 10);
+  const [dataFirma, setDataFirma] = useState(todayISO);
+
+  const ConsensoBlock = ({
+    k, testo,
+  }: { k: "consenso_profilazione" | "consenso_marketing_media" | "consenso_marketing_diretto"; testo: string }) => (
+    <div className="rounded-md border p-3 space-y-2">
+      <p className="leading-relaxed" style={{ fontSize: "11px" }}>{testo}</p>
+      <RadioGroup value={form[k]} onValueChange={(v) => set(k, v as "si" | "no")} className="flex flex-col gap-1.5">
+        <label className="flex items-center gap-2 text-sm cursor-pointer">
+          <RadioGroupItem value="si" /> fornisce il consenso
         </label>
-        <label className="flex items-center gap-1 text-sm cursor-pointer">
-          <RadioGroupItem value="no" /> No
+        <label className="flex items-center gap-2 text-sm cursor-pointer">
+          <RadioGroupItem value="no" /> nega il consenso
         </label>
       </RadioGroup>
+      {errors[k] && <p className="text-xs text-destructive">{errors[k]}</p>}
     </div>
   );
+
   return (
     <>
+      {/* SEZIONE 1 — Dati dichiarante */}
       <div className="rounded-md border bg-muted/40 p-3 text-xs">
         <p className="font-medium text-foreground mb-1">Dati del Dichiarante (Titolare / Legale Rappresentante)</p>
         <p className="text-muted-foreground">Nome e cognome precompilati dallo step Contatti.</p>
@@ -1601,26 +1630,31 @@ function StepFirma({
         </div>
       </div>
 
-      <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground leading-relaxed">
-        {PRIVACY_TEXT_UI}
+      {/* SEZIONE 2 — Informativa completa scrollabile */}
+      <div
+        className="rounded-md border bg-muted/40 p-3 overflow-y-auto whitespace-pre-line leading-relaxed"
+        style={{ height: "250px", fontSize: "11px" }}
+      >
+        {INFORMATIVA_FULL}
       </div>
 
-      <div className="rounded-md border p-3 space-y-1">
-        <p className="font-semibold text-sm mb-1">Consensi facoltativi</p>
-        <ConsensoRow k="consenso_profilazione" label="Acconsento al trattamento dei miei dati per finalità di profilazione (analisi preferenze e abitudini di consumo)." />
-        <ConsensoRow k="consenso_marketing_media" label="Acconsento all'invio di comunicazioni promozionali tramite e-mail, SMS, WhatsApp e altri canali digitali." />
-        <ConsensoRow k="consenso_marketing_diretto" label="Acconsento ad essere contattato direttamente (telefono, posta, contatto personale) per finalità di marketing." />
+      {/* SEZIONE 3 — Testo introduttivo grassetto */}
+      <p className="font-bold leading-relaxed" style={{ fontSize: "12px" }}>
+        Il sottoscritto, avendo letto l'informativa fornita dal titolare del trattamento ai sensi dell'art. 13 GDPR sul trattamento e sulla comunicazione dei dati personali (comuni, sensibili) da questo effettuati, con le finalita' connesse all'adempimento del rapporto contrattuale e ai connessi adempimenti di legge, essendo consapevole che in mancanza di consenso ai predetti trattamenti il titolare non potra' - da un lato - assolvere gli obblighi di legge e quindi costituire o proseguire il rapporto contrattuale e - dall'altro - di svolgere la propria attivita' tipica,
+      </p>
+
+      {/* SEZIONE 4 — Tre blocchi consenso */}
+      <div className="space-y-3">
+        <ConsensoBlock k="consenso_profilazione" testo={CONSENSO_TESTI.profilazione} />
+        <ConsensoBlock k="consenso_marketing_media" testo={CONSENSO_TESTI.media} />
+        <ConsensoBlock k="consenso_marketing_diretto" testo={CONSENSO_TESTI.diretto} />
       </div>
 
-      <label className="flex items-center gap-2 text-sm cursor-pointer">
-        <Checkbox checked={form.whatsapp_opt_in} onCheckedChange={(v) => set("whatsapp_opt_in", v === true)} />
-        Autorizzo l'invio di comunicazioni operative via WhatsApp al numero indicato sopra.
-      </label>
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+      {/* SEZIONE 5 — Data + firma */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="space-y-1.5">
           <Label>Data</Label>
-          <Input value={today} readOnly disabled className="bg-muted/50" />
+          <Input type="date" value={dataFirma} onChange={(e) => setDataFirma(e.target.value)} />
         </div>
       </div>
 
