@@ -134,23 +134,43 @@ function ImportExportPage() {
  * A — ANAGRAFICA
  * ============================================================================ */
 
+const optStr = (max: number, msg?: string) =>
+  z.preprocess(
+    (v) => {
+      if (v == null) return undefined;
+      const s = String(v).trim();
+      return s === "" ? undefined : s;
+    },
+    z.string().max(max, msg).optional(),
+  );
+
+const optEmail = z.preprocess(
+  (v) => {
+    if (v == null) return undefined;
+    const s = String(v).trim();
+    return s === "" ? undefined : s;
+  },
+  z.string().email("Email non valida").max(255).optional(),
+);
+
 const anagraficaSchema = z.object({
   ragione_sociale: z.string().trim().min(1, "Ragione sociale obbligatoria").max(200),
-  codice_gestionale: z.string().trim().max(50).optional(),
-  partita_iva: z.string().trim().max(20).optional(),
-  codice_fiscale: z.string().trim().max(20).optional(),
-  forma_giuridica: z.string().trim().max(100).optional(),
-  indirizzo: z.string().trim().max(200).optional(),
-  citta: z.string().trim().max(100).optional(),
-  cap: z.string().trim().max(10).optional(),
-  provincia: z.string().trim().max(5).optional(),
-  telefono: z.string().trim().max(30).optional(),
-  email: z.string().trim().email("Email non valida").max(255).optional().or(z.literal("")),
-  pec: z.string().trim().max(255).optional(),
-  codice_sdi: z.string().trim().max(20).optional(),
-  store_codice: z.string().trim().max(50).optional(),
-  note: z.string().trim().max(1000).optional(),
+  codice_gestionale: optStr(50),
+  partita_iva: optStr(20),
+  codice_fiscale: optStr(20),
+  forma_giuridica: optStr(100),
+  indirizzo: optStr(200),
+  citta: optStr(100),
+  cap: optStr(10),
+  provincia: optStr(5),
+  telefono: optStr(30),
+  email: optEmail,
+  pec: optStr(255),
+  codice_sdi: optStr(20),
+  store_codice: optStr(50),
+  note: optStr(1000),
 });
+
 type AnagraficaRow = z.infer<typeof anagraficaSchema>;
 
 const ANAG_HEADERS: Record<string, keyof AnagraficaRow> = {
