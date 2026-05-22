@@ -509,6 +509,17 @@ const schedaSchema = z.object({
   // STEP 4 — Firma (solo modalità con firma)
   dichiarante_nome: z.string().trim().max(100).optional().or(z.literal("")),
   dichiarante_cognome: z.string().trim().max(100).optional().or(z.literal("")),
+  dichiarante_societa: z.string().trim().max(200).optional().or(z.literal("")),
+  dichiarante_luogo_nascita: z.string().trim().max(100).optional().or(z.literal("")),
+  dichiarante_data_nascita: z.string().optional().or(z.literal("")),
+  dichiarante_codice_fiscale: z.string().trim().max(20).optional().or(z.literal("")),
+  dichiarante_residenza: z.string().trim().max(200).optional().or(z.literal("")),
+  dichiarante_email: z.string().trim().max(255).optional().or(z.literal("")),
+  dichiarante_cell: z.string().trim().max(30).optional().or(z.literal("")),
+  dichiarante_data_firma: z.string().optional().or(z.literal("")),
+  consenso_profilazione: z.enum(["", "si", "no"]).optional().default(""),
+  consenso_marketing_media: z.enum(["", "si", "no"]).optional().default(""),
+  consenso_marketing_diretto: z.enum(["", "si", "no"]).optional().default(""),
 });
 
 type SchedaForm = z.infer<typeof schedaSchema>;
@@ -530,6 +541,10 @@ const emptyForm: SchedaForm = {
   data_richiesta_affidamento: "", importo_affidamento_richiesto: "",
   note_amministrazione: "",
   dichiarante_nome: "", dichiarante_cognome: "",
+  dichiarante_societa: "", dichiarante_luogo_nascita: "", dichiarante_data_nascita: "",
+  dichiarante_codice_fiscale: "", dichiarante_residenza: "",
+  dichiarante_email: "", dichiarante_cell: "", dichiarante_data_firma: "",
+  consenso_profilazione: "", consenso_marketing_media: "", consenso_marketing_diretto: "",
 };
 
 type ModalitaCreazione = "con_firma" | "senza_firma" | null;
@@ -842,12 +857,16 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
           const importoRichiesto = num(parsed.importo_affidamento_richiesto);
           if (importoRichiesto != null && importoRichiesto > 0) {
             try {
+              const importoNum = Number(importoRichiesto);
+              const livelloCalc = importoNum <= 5000 ? 1 : importoNum <= 20000 ? 2 : 3;
               const payload = {
                 cliente_id: clienteId,
                 store_id: parsed.store_id || null,
-                tipo: "nuovo",
+                tipo: "nuovo_fido",
                 stato: "bozza",
                 importo_richiesto: importoRichiesto,
+                livello_richiesto: livelloCalc,
+                livello_corrente: livelloCalc,
                 motivazione: parsed.note_amministrazione || null,
                 created_by: user?.id ?? null,
               };

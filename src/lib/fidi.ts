@@ -5,6 +5,7 @@ export type TipoRichiesta = Database["public"]["Enums"]["tipo_richiesta"];
 
 export const TIPO_LABEL: Record<TipoRichiesta, string> = {
   nuovo: "Nuovo fido",
+  nuovo_fido: "Nuovo fido",
   aumento: "Aumento fido",
   diminuzione: "Diminuzione fido",
   rinnovo: "Rinnovo fido",
@@ -12,6 +13,7 @@ export const TIPO_LABEL: Record<TipoRichiesta, string> = {
 
 export const TIPO_TONE: Record<TipoRichiesta, string> = {
   nuovo: "bg-primary/10 text-primary",
+  nuovo_fido: "bg-primary/10 text-primary",
   aumento: "bg-success/15 text-success",
   diminuzione: "bg-warning/15 text-warning",
   rinnovo: "bg-info/15 text-info",

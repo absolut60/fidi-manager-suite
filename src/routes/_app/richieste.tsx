@@ -29,7 +29,7 @@ export const Route = createFileRoute("/_app/richieste")({
 
 const schema = z.object({
   cliente_id: z.string().uuid("Seleziona un cliente"),
-  tipo: z.enum(["nuovo", "aumento", "diminuzione", "rinnovo"]),
+  tipo: z.enum(["nuovo", "nuovo_fido", "aumento", "diminuzione", "rinnovo"]),
   importo_richiesto: z.coerce.number().positive("Importo deve essere maggiore di 0").max(99999999),
   durata_mesi: z.coerce.number().int().min(1).max(120),
   motivazione: z.string().trim().max(1000).optional().or(z.literal("")),

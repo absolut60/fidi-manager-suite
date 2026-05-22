@@ -557,12 +557,18 @@ export type Database = {
         Row: {
           cellulare: string | null
           cliente_id: string
+          codice_fiscale: string | null
           cognome: string | null
+          consenso_marketing_diretto: boolean
+          consenso_marketing_media: boolean
+          consenso_profilazione: boolean
           created_at: string
           data_firma: string | null
+          data_nascita: string | null
           email: string | null
           firma_url: string | null
           id: string
+          luogo_nascita: string | null
           nome: string
           pdf_privacy_path: string | null
           pdf_privacy_url: string | null
@@ -570,19 +576,27 @@ export type Database = {
           privacy_firmata: boolean
           privacy_token: string | null
           privacy_token_expires_at: string | null
+          residenza: string | null
           ruolo: string | null
           telefono: string | null
           updated_at: string
+          whatsapp_opt_in: boolean
         }
         Insert: {
           cellulare?: string | null
           cliente_id: string
+          codice_fiscale?: string | null
           cognome?: string | null
+          consenso_marketing_diretto?: boolean
+          consenso_marketing_media?: boolean
+          consenso_profilazione?: boolean
           created_at?: string
           data_firma?: string | null
+          data_nascita?: string | null
           email?: string | null
           firma_url?: string | null
           id?: string
+          luogo_nascita?: string | null
           nome: string
           pdf_privacy_path?: string | null
           pdf_privacy_url?: string | null
@@ -590,19 +604,27 @@ export type Database = {
           privacy_firmata?: boolean
           privacy_token?: string | null
           privacy_token_expires_at?: string | null
+          residenza?: string | null
           ruolo?: string | null
           telefono?: string | null
           updated_at?: string
+          whatsapp_opt_in?: boolean
         }
         Update: {
           cellulare?: string | null
           cliente_id?: string
+          codice_fiscale?: string | null
           cognome?: string | null
+          consenso_marketing_diretto?: boolean
+          consenso_marketing_media?: boolean
+          consenso_profilazione?: boolean
           created_at?: string
           data_firma?: string | null
+          data_nascita?: string | null
           email?: string | null
           firma_url?: string | null
           id?: string
+          luogo_nascita?: string | null
           nome?: string
           pdf_privacy_path?: string | null
           pdf_privacy_url?: string | null
@@ -610,9 +632,11 @@ export type Database = {
           privacy_firmata?: boolean
           privacy_token?: string | null
           privacy_token_expires_at?: string | null
+          residenza?: string | null
           ruolo?: string | null
           telefono?: string | null
           updated_at?: string
+          whatsapp_opt_in?: boolean
         }
         Relationships: [
           {
@@ -1834,7 +1858,12 @@ export type Database = {
         | "revisione_pratica_legale"
         | "rinnovo_assicurazione"
         | "custom"
-      tipo_richiesta: "nuovo" | "aumento" | "diminuzione" | "rinnovo"
+      tipo_richiesta:
+        | "nuovo"
+        | "aumento"
+        | "diminuzione"
+        | "rinnovo"
+        | "nuovo_fido"
       tipo_sollecito:
         | "interno"
         | "email"
@@ -2046,7 +2075,13 @@ export const Constants = {
         "rinnovo_assicurazione",
         "custom",
       ],
-      tipo_richiesta: ["nuovo", "aumento", "diminuzione", "rinnovo"],
+      tipo_richiesta: [
+        "nuovo",
+        "aumento",
+        "diminuzione",
+        "rinnovo",
+        "nuovo_fido",
+      ],
       tipo_sollecito: [
         "interno",
         "email",
