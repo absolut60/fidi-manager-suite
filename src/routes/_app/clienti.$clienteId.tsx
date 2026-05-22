@@ -405,7 +405,7 @@ function ClienteDetail() {
         </TabsContent>
 
         <TabsContent value="insoluti">
-          <ClienteInsolutiTab clienteId={clienteId} />
+          <ClienteInsolutiTab cliente={{ id: clienteId, bloccato: (cliente as any).bloccato, in_gestione_legale: (cliente as any).in_gestione_legale, motivo_blocco: (cliente as any).motivo_blocco, data_blocco: (cliente as any).data_blocco }} />
         </TabsContent>
 
         <TabsContent value="privacy">
