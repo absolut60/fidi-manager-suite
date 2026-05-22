@@ -230,6 +230,7 @@ export type ScadRow = { idx: number; codice_gestionale: string; ragione_sociale:
  * -------------------------------------------------------------------------- */
 
 const SCAD_OFFICIAL_MAP: Record<string, string> = {
+  "cod cli": "codice_gestionale",
   "cod_cli": "codice_gestionale",
   "codcli": "codice_gestionale",
   "ragione sociale": "__ragsoc",
