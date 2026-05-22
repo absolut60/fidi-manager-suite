@@ -290,7 +290,6 @@ function AnagraficaImportCard() {
       const { data: { user } } = await supabase.auth.getUser();
 
       // Cache stores per codice + lista ordinata per matching numerico (1 = primo, 2 = secondo, ...)
-      const codStores = Array.from(new Set(valid.map((r) => r.data.store_codice).filter((v): v is string => !!v)));
       const storeMap = new Map<string, string>();
       const { data: allStores } = await supabase.from("stores").select("id, codice").order("codice", { ascending: true });
       (allStores ?? []).forEach((s) => { if (s.codice) storeMap.set(s.codice, s.id); });
@@ -306,89 +305,132 @@ function AnagraficaImportCard() {
       }).select("id").single();
       if (impErr) throw impErr;
 
-      // Lookup esistenti per codice_gestionale o partita_iva
-      const codici = Array.from(new Set(valid.map((r) => r.data.codice_gestionale).filter((v): v is string => !!v)));
-      const pive = Array.from(new Set(valid.map((r) => r.data.partita_iva).filter((v): v is string => !!v)));
-      const existing = new Map<string, string>();
-      if (codici.length) {
-        const { data } = await supabase.from("clienti").select("id, codice_gestionale").in("codice_gestionale", codici);
-        (data ?? []).forEach((c) => { if (c.codice_gestionale) existing.set(`cg:${c.codice_gestionale}`, c.id); });
-      }
-      if (pive.length) {
-        const { data } = await supabase.from("clienti").select("id, partita_iva").in("partita_iva", pive);
-        (data ?? []).forEach((c) => { if (c.partita_iva) existing.set(`pi:${c.partita_iva}`, c.id); });
-      }
-      void codStores;
-
       let created = 0, updated = 0;
       const errorLog: Array<{ riga: number; errore: string }> = [];
-
-      for (const r of valid) {
-        const d = r.data;
-        let storeId: string | null = null;
-        if (d.store_codice) {
-          storeId = storeMap.get(d.store_codice) ?? null;
-          if (!storeId && /^\d+$/.test(d.store_codice.trim())) {
-            const idx = parseInt(d.store_codice.trim(), 10) - 1;
-            if (idx >= 0 && idx < storesByIndex.length) storeId = storesByIndex[idx].id;
-          }
-          if (!storeId) {
-            errorLog.push({ riga: r.idx, errore: `Store '${d.store_codice}' non trovato (warning, riga importata senza store)` });
-          }
-        }
-        const payload: Record<string, unknown> = {
-          ragione_sociale: d.ragione_sociale,
-          codice_gestionale: toStr(d.codice_gestionale),
-          partita_iva: toStr(d.partita_iva),
-          codice_fiscale: toStr(d.codice_fiscale),
-          tipo_soggetto: toStr(d.forma_giuridica),
-          indirizzo: toStr(d.indirizzo),
-          citta: toStr(d.citta),
-          cap: toStr(d.cap),
-          provincia: toStr(d.provincia),
-          telefono: toStr(d.telefono),
-          email: toStr(d.email),
-          pec: toStr(d.pec),
-          codice_sdi: toStr(d.codice_sdi),
-          note: toStr(d.note),
-        };
-        if (storeId) payload.store_id = storeId;
-
-        const existId =
-          (d.codice_gestionale && existing.get(`cg:${d.codice_gestionale}`)) ||
-          (d.partita_iva && existing.get(`pi:${d.partita_iva}`)) || null;
-
-        if (existId) {
-          const { error } = await supabase.from("clienti").update(payload as never).eq("id", existId);
-          if (error) errorLog.push({ riga: r.idx, errore: `Update: ${error.message}` });
-          else updated += 1;
-        } else {
-          const { data, error } = await supabase.from("clienti").insert(payload as never).select("id, codice_gestionale, partita_iva").single();
-          if (error) errorLog.push({ riga: r.idx, errore: `Insert: ${error.message}` });
-          else {
-            created += 1;
-            if (data?.codice_gestionale) existing.set(`cg:${data.codice_gestionale}`, data.id);
-            if (data?.partita_iva) existing.set(`pi:${data.partita_iva}`, data.id);
-          }
-        }
-      }
-
       const skipped = invalid.length;
-      const fullLog = [
-        ...invalid.slice(0, 100).map((r) => ({ riga: r.idx, errore: r.errors.join("; ") })),
-        ...errorLog,
-      ];
-      await supabase.from("importazioni").update({
-        righe_elaborate: valid.length,
-        righe_create: created,
-        righe_aggiornate: updated,
-        righe_errore: skipped + errorLog.length,
-        stato: (skipped + errorLog.length) > 0 ? "completata_con_errori" : "completata",
-        completata_at: new Date().toISOString(),
-        log_errori: fullLog.length ? fullLog : null,
-      }).eq("id", imp.id);
 
-      return { created, updated, skipped, errors: errorLog };
+      // Checkpoint: salva progresso ogni batch così se la pagina si chiude lo stato è coerente
+      const checkpoint = async (stato: "in_elaborazione" | "completata" | "completata_con_errori") => {
+        const fullLog = [
+          ...invalid.slice(0, 100).map((r) => ({ riga: r.idx, errore: r.errors.join("; ") })),
+          ...errorLog.slice(0, 500),
+        ];
+        await supabase.from("importazioni").update({
+          righe_elaborate: created + updated + errorLog.length,
+          righe_create: created,
+          righe_aggiornate: updated,
+          righe_errore: skipped + errorLog.length,
+          stato,
+          completata_at: stato === "in_elaborazione" ? null : new Date().toISOString(),
+          log_errori: fullLog.length ? fullLog : null,
+        }).eq("id", imp.id);
+      };
+
+      // Avviso utente se chiude la tab durante l'import
+      const beforeUnload = (e: BeforeUnloadEvent) => {
+        e.preventDefault();
+        e.returnValue = "Importazione in corso. Sicuro di voler uscire?";
+      };
+      window.addEventListener("beforeunload", beforeUnload);
+
+      try {
+        // Lookup esistenti per codice_gestionale o partita_iva
+        const codici = Array.from(new Set(valid.map((r) => r.data.codice_gestionale).filter((v): v is string => !!v)));
+        const pive = Array.from(new Set(valid.map((r) => r.data.partita_iva).filter((v): v is string => !!v)));
+        const existing = new Map<string, string>();
+        if (codici.length) {
+          const { data } = await supabase.from("clienti").select("id, codice_gestionale").in("codice_gestionale", codici);
+          (data ?? []).forEach((c) => { if (c.codice_gestionale) existing.set(`cg:${c.codice_gestionale}`, c.id); });
+        }
+        if (pive.length) {
+          const { data } = await supabase.from("clienti").select("id, partita_iva").in("partita_iva", pive);
+          (data ?? []).forEach((c) => { if (c.partita_iva) existing.set(`pi:${c.partita_iva}`, c.id); });
+        }
+
+        // Costruisce payload + separa righe da creare (batch insert) dalle righe da aggiornare (update singoli)
+        type Prepared = { idx: number; payload: Record<string, unknown>; existId: string | null };
+        const prepared: Prepared[] = [];
+        for (const r of valid) {
+          const d = r.data;
+          let storeId: string | null = null;
+          if (d.store_codice) {
+            storeId = storeMap.get(d.store_codice) ?? null;
+            if (!storeId && /^\d+$/.test(d.store_codice.trim())) {
+              const idx = parseInt(d.store_codice.trim(), 10) - 1;
+              if (idx >= 0 && idx < storesByIndex.length) storeId = storesByIndex[idx].id;
+            }
+            if (!storeId) {
+              errorLog.push({ riga: r.idx, errore: `Store '${d.store_codice}' non trovato (warning, riga importata senza store)` });
+            }
+          }
+          const payload: Record<string, unknown> = {
+            ragione_sociale: d.ragione_sociale,
+            codice_gestionale: toStr(d.codice_gestionale),
+            partita_iva: toStr(d.partita_iva),
+            codice_fiscale: toStr(d.codice_fiscale),
+            tipo_soggetto: toStr(d.forma_giuridica),
+            indirizzo: toStr(d.indirizzo),
+            citta: toStr(d.citta),
+            cap: toStr(d.cap),
+            provincia: toStr(d.provincia),
+            telefono: toStr(d.telefono),
+            email: toStr(d.email),
+            pec: toStr(d.pec),
+            codice_sdi: toStr(d.codice_sdi),
+            note: toStr(d.note),
+          };
+          if (storeId) payload.store_id = storeId;
+
+          const existId =
+            (d.codice_gestionale && existing.get(`cg:${d.codice_gestionale}`)) ||
+            (d.partita_iva && existing.get(`pi:${d.partita_iva}`)) || null;
+          prepared.push({ idx: r.idx, payload, existId });
+        }
+
+        // BATCH INSERT (nuovi) — 100 alla volta, molto più veloce di insert singoli
+        const toInsert = prepared.filter((p) => !p.existId);
+        const toUpdate = prepared.filter((p) => p.existId);
+        const BATCH = 100;
+
+        for (let i = 0; i < toInsert.length; i += BATCH) {
+          const chunk = toInsert.slice(i, i + BATCH);
+          const { data, error } = await supabase
+            .from("clienti")
+            .insert(chunk.map((c) => c.payload) as never)
+            .select("id");
+          if (error) {
+            // Se il batch fallisce, fallback a insert singoli per isolare la riga rotta
+            for (const c of chunk) {
+              const { error: e2 } = await supabase.from("clienti").insert(c.payload as never);
+              if (e2) errorLog.push({ riga: c.idx, errore: `Insert: ${e2.message}` });
+              else created += 1;
+            }
+          } else {
+            created += data?.length ?? chunk.length;
+          }
+          await checkpoint("in_elaborazione");
+        }
+
+        // UPDATE (esistenti) — singoli perché ogni riga ha eq diversa
+        for (let i = 0; i < toUpdate.length; i += BATCH) {
+          const chunk = toUpdate.slice(i, i + BATCH);
+          await Promise.all(chunk.map(async (c) => {
+            const { error } = await supabase.from("clienti").update(c.payload as never).eq("id", c.existId!);
+            if (error) errorLog.push({ riga: c.idx, errore: `Update: ${error.message}` });
+            else updated += 1;
+          }));
+          await checkpoint("in_elaborazione");
+        }
+
+        await checkpoint((skipped + errorLog.length) > 0 ? "completata_con_errori" : "completata");
+        return { created, updated, skipped, errors: errorLog };
+      } catch (err) {
+        errorLog.push({ riga: 0, errore: `Errore fatale: ${err instanceof Error ? err.message : String(err)}` });
+        await checkpoint("completata_con_errori");
+        throw err;
+      } finally {
+        window.removeEventListener("beforeunload", beforeUnload);
+      }
     },
     onSuccess: (r) => {
       setResult(r);
