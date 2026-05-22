@@ -949,7 +949,7 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
               data_firma: now.toISOString(),
               firma_url: firmaUrl,
               scheda_pdf_url: pdfSchedaUrl,
-            } as never).eq("id", clienteId);
+            } as never).eq("id", clienteId!);
 
             // Aggiorna il contatto titolare con i riferimenti firma/PDF
             const titolare = (contattiCreati ?? []).find((c: any) => c.principale);
