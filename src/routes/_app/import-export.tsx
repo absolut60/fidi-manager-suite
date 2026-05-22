@@ -1919,6 +1919,19 @@ function ExportCard() {
  * ============================================================================ */
 
 function HistoryCard({ kind }: { kind: "importazioni" | "esportazioni" }) {
+  type HistoryRow = {
+    id: string;
+    nome_file?: string | null;
+    fonte?: string | null;
+    stato?: string | null;
+    created_at: string;
+    righe_totali?: number | null;
+    righe_elaborate?: number | null;
+    righe_create?: number | null;
+    righe_aggiornate?: number | null;
+    righe_errore?: number | null;
+    righe_esportate?: number | null;
+  };
   const { data, isLoading, isFetching, refetch } = useQuery({
     queryKey: ["storico-import-export", kind],
     queryFn: async () => {
@@ -1956,7 +1969,7 @@ function HistoryCard({ kind }: { kind: "importazioni" | "esportazioni" }) {
         <p className="text-xs text-muted-foreground">Nessuna operazione registrata.</p>
       ) : (
         <div className="space-y-3">
-          {data.map((r: any) => {
+          {(data as HistoryRow[]).map((r) => {
             const totali = Number(r.righe_totali ?? 0);
             const elaborate = Number(r.righe_elaborate ?? 0);
             const pct =
