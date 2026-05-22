@@ -33,6 +33,18 @@ export type SchedaPdfInput = {
   // Dichiarante
   dichiaranteNome?: string | null;
   dichiaranteCognome?: string | null;
+  dichiaranteSocieta?: string | null;
+  dichiaranteLuogoNascita?: string | null;
+  dichiaranteDataNascita?: string | null;
+  dichiaranteCodiceFiscale?: string | null;
+  dichiaranteResidenza?: string | null;
+  dichiaranteEmail?: string | null;
+  dichiaranteCell?: string | null;
+  // Consensi facoltativi: "si" | "no" | "" | null
+  consensoProfilazione?: string | null;
+  consensoMarketingMedia?: string | null;
+  consensoMarketingDiretto?: string | null;
+  whatsappOptIn?: boolean | null;
   firmaPngDataUrl?: string | null;
   dataFirma: Date;
 };
