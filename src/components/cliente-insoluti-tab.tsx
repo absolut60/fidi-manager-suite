@@ -619,7 +619,7 @@ function CambiaStatoPraticaDialog({ pratica, onClose, onSaved }: { pratica: { id
       if (nuovoStato === "chiusa_pagamento" || nuovoStato === "chiusa_perdita") {
         updates.data_chiusura = new Date().toISOString().slice(0, 10);
       }
-      const { error: eUpd } = await supabase.from("pratiche_legali" as never).update(updates).eq("id", pratica.id);
+      const { error: eUpd } = await supabase.from("pratiche_legali" as never).update(updates as never).eq("id", pratica.id);
       if (eUpd) throw eUpd;
       const { error: eSt } = await supabase.from("storico_pratiche_legali" as never).insert({
         pratica_id: pratica.id,
