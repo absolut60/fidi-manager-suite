@@ -34,20 +34,6 @@ export type SchedaPdfInput = {
   dichiaranteCognome?: string | null;
   firmaPngDataUrl?: string | null;
   dataFirma: Date;
-  // Spazio Amministrazione (opzionale)
-  amministrazione?: {
-    codiceAssegnato?: string | null;
-    sedeOperatore?: string | null;
-    condizioniPagamentoConcordate?: string | null;
-    dataRichiestaAffidamento?: string | null;
-    importoAffidamentoRichiesto?: number | string | null;
-    dataEsitoAffidamento?: string | null;
-    importoAffidato?: number | string | null;
-    fidoAziendaleConcesso?: number | string | null;
-    condizioniPagamentoConcesse?: string | null;
-    dataAffidamentoAziendale?: string | null;
-    note?: string | null;
-  } | null;
 };
 
 const PRIVACY_TEXT =
@@ -226,42 +212,6 @@ export async function generaSchedaCliente(input: SchedaPdfInput): Promise<Uint8A
     y -= 60;
   }
 
-  // ---------- SPAZIO RISERVATO AMMINISTRAZIONE ----------
-  const a = input.amministrazione;
-  const hasAmm =
-    a &&
-    Object.values(a).some((x) => x !== null && x !== undefined && String(x).trim() !== "");
-  if (hasAmm && a) {
-    y -= 8;
-    ensureSpace(220);
-    sectionTitle(page, "SPAZIO RISERVATO AMMINISTRAZIONE", y, bold);
-    y -= 18;
-    y = drawRow(page, y, font, bold, [
-      ["Codice assegnato", v(a.codiceAssegnato), 230],
-      ["Sede / Operatore", v(a.sedeOperatore), 230],
-    ]);
-    y = drawRow(page, y, font, bold, [
-      ["Condizioni pagamento concordate", v(a.condizioniPagamentoConcordate)],
-    ]);
-    y = drawRow(page, y, font, bold, [
-      ["Data richiesta affidamento", fmtDate(a.dataRichiestaAffidamento), 230],
-      ["Importo affidamento richiesto", fmtEuro(a.importoAffidamentoRichiesto), 230],
-    ]);
-    y = drawRow(page, y, font, bold, [
-      ["Data esito affidamento", fmtDate(a.dataEsitoAffidamento), 230],
-      ["Importo affidato", fmtEuro(a.importoAffidato), 230],
-    ]);
-    y = drawRow(page, y, font, bold, [
-      ["Fido aziendale concesso", fmtEuro(a.fidoAziendaleConcesso), 230],
-      ["Data affidamento aziendale", fmtDate(a.dataAffidamentoAziendale), 230],
-    ]);
-    y = drawRow(page, y, font, bold, [
-      ["Condizioni pagamento concesse", v(a.condizioniPagamentoConcesse)],
-    ]);
-    if (a.note && String(a.note).trim()) {
-      y = drawRow(page, y, font, bold, [["Note", v(a.note)]]);
-    }
-  }
 
   // ---------- Footer su tutte le pagine ----------
   const pages = pdf.getPages();

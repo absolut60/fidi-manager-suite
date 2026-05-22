@@ -303,11 +303,6 @@ const schedaSchema = z.object({
   condizioni_pagamento_concordate: z.string().trim().max(200).optional().or(z.literal("")),
   data_richiesta_affidamento: z.string().optional().or(z.literal("")),
   importo_affidamento_richiesto: z.string().optional().or(z.literal("")),
-  data_esito_affidamento: z.string().optional().or(z.literal("")),
-  importo_affidato: z.string().optional().or(z.literal("")),
-  fido_aziendale_concesso: z.string().optional().or(z.literal("")),
-  condizioni_pagamento_concesse: z.string().trim().max(200).optional().or(z.literal("")),
-  data_affidamento_aziendale: z.string().optional().or(z.literal("")),
   note_amministrazione: z.string().trim().max(2000).optional().or(z.literal("")),
   // STEP 4 — Firma (solo modalità con firma)
   dichiarante_nome: z.string().trim().max(100).optional().or(z.literal("")),
@@ -331,9 +326,7 @@ const emptyForm: SchedaForm = {
   amministrativo_nome: "", amministrativo_cognome: "", amministrativo_email: "", amministrativo_cell: "",
   codice_assegnato: "", sede_operatore: "", condizioni_pagamento_concordate: "",
   data_richiesta_affidamento: "", importo_affidamento_richiesto: "",
-  data_esito_affidamento: "", importo_affidato: "",
-  fido_aziendale_concesso: "", condizioni_pagamento_concesse: "",
-  data_affidamento_aziendale: "", note_amministrazione: "",
+  note_amministrazione: "",
   dichiarante_nome: "", dichiarante_cognome: "",
 };
 
@@ -347,7 +340,10 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
 
   const [modalita, setModalita] = useState<ModalitaCreazione>(null);
   const [step, setStep] = useState(0);
-  const [form, setForm] = useState<SchedaForm>(emptyForm);
+  const [form, setForm] = useState<SchedaForm>(() => ({
+    ...emptyForm,
+    data_richiesta_affidamento: new Date().toISOString().slice(0, 10),
+  }));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const padRef = useRef<HTMLDivElement>(null);
   const [hasSig, setHasSig] = useState(false);
@@ -477,11 +473,6 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
             condizioni_pagamento_concordate: parsed.condizioni_pagamento_concordate || null,
             data_richiesta_affidamento: date(parsed.data_richiesta_affidamento),
             importo_affidamento_richiesto: num(parsed.importo_affidamento_richiesto),
-            data_esito_affidamento: date(parsed.data_esito_affidamento),
-            importo_affidato: num(parsed.importo_affidato),
-            fido_aziendale_concesso: num(parsed.fido_aziendale_concesso),
-            condizioni_pagamento_concesse: parsed.condizioni_pagamento_concesse || null,
-            data_affidamento_aziendale: date(parsed.data_affidamento_aziendale),
             note_amministrazione: parsed.note_amministrazione || null,
           });
         }
@@ -523,6 +514,32 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
           .insert(contattiToInsert as never)
           .select("id, principale");
         if (e5) throw new Error(`Salvataggio contatti: ${e5.message}`);
+
+        // 2.bis Se è stato indicato un Importo Affidamento Richiesto, crea
+        //       una richiesta_fido in bozza che segue il normale iter di approvazione.
+        if (canSeeAdminStep) {
+          const importoRichiesto = num(parsed.importo_affidamento_richiesto);
+          if (importoRichiesto != null && importoRichiesto > 0) {
+            try {
+              const { error: eRf } = await supabase.from("richieste_fido").insert({
+                cliente_id: clienteId,
+                store_id: parsed.store_id || null,
+                tipo: "nuovo",
+                stato: "bozza",
+                importo_richiesto: importoRichiesto,
+                motivazione: parsed.note_amministrazione || null,
+                created_by: user?.id ?? null,
+              } as never);
+              if (eRf) {
+                toast.warning(`Cliente creato, ma richiesta fido non generata: ${eRf.message}`);
+              }
+            } catch (rfErr) {
+              const m = rfErr instanceof Error ? rfErr.message : "Errore richiesta fido";
+              toast.warning(`Cliente creato, ma richiesta fido non generata: ${m}`);
+            }
+          }
+        }
+
 
         // 3. Solo ORA, se richiesto, generiamo firma + PDF. Eventuali errori
         //    qui NON devono distruggere il cliente/contatti già salvati.
@@ -571,19 +588,6 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
               dichiaranteCognome: parsed.dichiarante_cognome,
               firmaPngDataUrl: dataUrl,
               dataFirma: now,
-              amministrazione: canSeeAdminStep ? {
-                codiceAssegnato: parsed.codice_assegnato || null,
-                sedeOperatore: parsed.sede_operatore || null,
-                condizioniPagamentoConcordate: parsed.condizioni_pagamento_concordate || null,
-                dataRichiestaAffidamento: parsed.data_richiesta_affidamento || null,
-                importoAffidamentoRichiesto: parsed.importo_affidamento_richiesto || null,
-                dataEsitoAffidamento: parsed.data_esito_affidamento || null,
-                importoAffidato: parsed.importo_affidato || null,
-                fidoAziendaleConcesso: parsed.fido_aziendale_concesso || null,
-                condizioniPagamentoConcesse: parsed.condizioni_pagamento_concesse || null,
-                dataAffidamentoAziendale: parsed.data_affidamento_aziendale || null,
-                note: parsed.note_amministrazione || null,
-              } : null,
             });
 
             const pdfSchedaPath = `clienti/${clienteId}/scheda-${now.getTime()}.pdf`;
@@ -988,30 +992,6 @@ function StepAmministrazione({ form, set }: { form: SchedaForm; set: SetFn }) {
           <Label>Importo Affidamento Richiesto (€)</Label>
           <Input type="number" step="0.01" value={form.importo_affidamento_richiesto} onChange={(e) => set("importo_affidamento_richiesto", e.target.value)} />
         </div>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <Label>Data Esito Affidamento</Label>
-          <Input type="date" value={form.data_esito_affidamento} onChange={(e) => set("data_esito_affidamento", e.target.value)} />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Importo Affidato (€)</Label>
-          <Input type="number" step="0.01" value={form.importo_affidato} onChange={(e) => set("importo_affidato", e.target.value)} />
-        </div>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <Label>Fido Aziendale Concesso (€)</Label>
-          <Input type="number" step="0.01" value={form.fido_aziendale_concesso} onChange={(e) => set("fido_aziendale_concesso", e.target.value)} />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Data Affidamento Aziendale</Label>
-          <Input type="date" value={form.data_affidamento_aziendale} onChange={(e) => set("data_affidamento_aziendale", e.target.value)} />
-        </div>
-      </div>
-      <div className="space-y-1.5">
-        <Label>Condizioni di Pagamento Concesse</Label>
-        <Input value={form.condizioni_pagamento_concesse} onChange={(e) => set("condizioni_pagamento_concesse", e.target.value)} />
       </div>
       <div className="space-y-1.5">
         <Label>Note</Label>
