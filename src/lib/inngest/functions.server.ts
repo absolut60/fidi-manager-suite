@@ -62,8 +62,12 @@ function anagraficaSheetToObjects(sheet: XLSX.WorkSheet) {
 
 /* ---------- Funzione: processa l'import anagrafica in background ---------- */
 export const processAnagraficaImport = inngest.createFunction(
-  { id: "process-anagrafica-import", name: "Process anagrafica import", retries: 2 },
-  { event: "import/anagrafica.requested" },
+  {
+    id: "process-anagrafica-import",
+    name: "Process anagrafica import",
+    retries: 2,
+    triggers: [{ event: "import/anagrafica.requested" }],
+  },
   async ({ event, step, logger }) => {
     const { importazioneId, filePath } = event.data as {
       importazioneId: string;
