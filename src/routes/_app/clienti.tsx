@@ -340,7 +340,10 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
 
   const [modalita, setModalita] = useState<ModalitaCreazione>(null);
   const [step, setStep] = useState(0);
-  const [form, setForm] = useState<SchedaForm>(emptyForm);
+  const [form, setForm] = useState<SchedaForm>(() => ({
+    ...emptyForm,
+    data_richiesta_affidamento: new Date().toISOString().slice(0, 10),
+  }));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const padRef = useRef<HTMLDivElement>(null);
   const [hasSig, setHasSig] = useState(false);
