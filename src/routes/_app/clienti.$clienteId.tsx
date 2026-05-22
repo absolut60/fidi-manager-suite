@@ -1,13 +1,14 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import { ArrowLeft, Plus, Mail, Phone, Smartphone, Star, Trash2, FileCheck2, FileX2, Download, Pencil, Link as LinkIcon, Copy } from "lucide-react";
+import { ArrowLeft, Plus, Mail, Phone, Smartphone, Star, Trash2, FileCheck2, FileX2, Download, Pencil, Link as LinkIcon, Copy, EyeOff, AlertTriangle } from "lucide-react";
 import { SignaturePad, getCanvasDataURL } from "@/components/signature-pad";
 import { generaPdfPrivacy } from "@/lib/privacy-pdf";
 import { useRef } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +23,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ClienteCantieriTab } from "@/components/cliente-cantieri-tab";
 import { ClienteStoricoFidoTab } from "@/components/cliente-storico-fido-tab";
+
 
 export const Route = createFileRoute("/_app/clienti/$clienteId")({
   validateSearch: (s: Record<string, unknown>) => ({ edit: s.edit === 1 || s.edit === "1" ? 1 : undefined }),
