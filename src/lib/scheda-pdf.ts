@@ -1,4 +1,5 @@
 import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from "pdf-lib";
+import { LOGO_MADE_BASE64 } from "./logo-made-base64";
 
 export type SchedaPdfInput = {
   tipo: "nuovo" | "aggiornamento";
@@ -32,6 +33,18 @@ export type SchedaPdfInput = {
   // Dichiarante
   dichiaranteNome?: string | null;
   dichiaranteCognome?: string | null;
+  dichiaranteSocieta?: string | null;
+  dichiaranteLuogoNascita?: string | null;
+  dichiaranteDataNascita?: string | null;
+  dichiaranteCodiceFiscale?: string | null;
+  dichiaranteResidenza?: string | null;
+  dichiaranteEmail?: string | null;
+  dichiaranteCell?: string | null;
+  // Consensi facoltativi: "si" | "no" | "" | null
+  consensoProfilazione?: string | null;
+  consensoMarketingMedia?: string | null;
+  consensoMarketingDiretto?: string | null;
+  whatsappOptIn?: boolean | null;
   firmaPngDataUrl?: string | null;
   dataFirma: Date;
 };
@@ -62,17 +75,25 @@ export async function generaSchedaCliente(input: SchedaPdfInput): Promise<Uint8A
     }
   };
 
-  // ---------- Intestazione ----------
+  // ---------- Intestazione: logo + titolo ----------
+  try {
+    const logoBytes = Uint8Array.from(atob(LOGO_MADE_BASE64), (c) => c.charCodeAt(0));
+    const logo = await pdf.embedPng(logoBytes);
+    const logoH = 32;
+    const logoW = (logo.width / logo.height) * logoH;
+    page.drawImage(logo, { x: MARGIN, y: y - logoH + 6, width: logoW, height: logoH });
+  } catch { /* logo opzionale */ }
+
   const title = "SCHEDA INSERIMENTO CLIENTE";
-  const tw = bold.widthOfTextAtSize(title, 16);
+  const tw = bold.widthOfTextAtSize(title, 14);
   page.drawText(title, {
-    x: (PAGE_W - tw) / 2,
-    y,
-    size: 16,
+    x: PAGE_W - MARGIN - tw,
+    y: y - 6,
+    size: 14,
     font: bold,
     color: rgb(0.05, 0.05, 0.2),
   });
-  y -= 22;
+  y -= 36;
 
   const nuovoBox = input.tipo === "nuovo" ? "[X]" : "[ ]";
   const aggBox = input.tipo === "aggiornamento" ? "[X]" : "[ ]";
@@ -159,6 +180,21 @@ export async function generaSchedaCliente(input: SchedaPdfInput): Promise<Uint8A
     ["Nome", v(input.dichiaranteNome), 230],
     ["Cognome", v(input.dichiaranteCognome), 230],
   ]);
+  y = drawRow(page, y, font, bold, [
+    ["In qualità di legale rappresentante della società", v(input.dichiaranteSocieta)],
+  ]);
+  y = drawRow(page, y, font, bold, [
+    ["Luogo di nascita", v(input.dichiaranteLuogoNascita), 280],
+    ["Data di nascita", fmtDate(input.dichiaranteDataNascita), 180],
+  ]);
+  y = drawRow(page, y, font, bold, [
+    ["Codice fiscale", v(input.dichiaranteCodiceFiscale), 230],
+    ["Residenza", v(input.dichiaranteResidenza), 230],
+  ]);
+  y = drawRow(page, y, font, bold, [
+    ["E-mail", v(input.dichiaranteEmail), 280],
+    ["Cellulare", v(input.dichiaranteCell), 180],
+  ]);
 
   y -= 8;
   // Privacy: wrap to content width
@@ -168,6 +204,16 @@ export async function generaSchedaCliente(input: SchedaPdfInput): Promise<Uint8A
     page.drawText(line, { x: MARGIN + 4, y, size: 8.5, font, color: rgb(0.2, 0.2, 0.2) });
     y -= 11;
   }
+
+  // ---------- CONSENSI FACOLTATIVI ----------
+  y -= 8;
+  ensureSpace(120);
+  sectionTitle(page, "CONSENSI FACOLTATIVI", y, bold);
+  y -= 18;
+  y = drawConsenso(page, y, font, bold, "Trattamento per finalità di profilazione (analisi preferenze/abitudini di consumo).", input.consensoProfilazione);
+  y = drawConsenso(page, y, font, bold, "Comunicazioni promozionali tramite e-mail, SMS, WhatsApp e altri canali digitali.", input.consensoMarketingMedia);
+  y = drawConsenso(page, y, font, bold, "Contatto diretto (telefono, posta, contatto personale) per finalità di marketing.", input.consensoMarketingDiretto);
+  y = drawConsenso(page, y, font, bold, "Autorizzazione all'invio di comunicazioni operative via WhatsApp.", input.whatsappOptIn ? "si" : "no");
 
   y -= 14;
   ensureSpace(110);
@@ -287,6 +333,38 @@ function drawRow(
     x += cellW;
   }
   return y - rowH - 2;
+}
+
+function drawConsenso(
+  page: PDFPage,
+  y: number,
+  font: PDFFont,
+  bold: PDFFont,
+  label: string,
+  value?: string | null,
+): number {
+  const lineH = 11;
+  const lines = wrapText(label, font, 8.5, CONTENT_W - 80);
+  const blockH = Math.max(lineH * lines.length + 6, 22);
+  // box
+  page.drawRectangle({
+    x: MARGIN, y: y - blockH + 4, width: CONTENT_W, height: blockH,
+    borderColor: rgb(0.75, 0.75, 0.8), borderWidth: 0.5,
+  });
+  // testo
+  let ty = y - 6;
+  for (const ln of lines) {
+    page.drawText(ln, { x: MARGIN + 6, y: ty, size: 8.5, font, color: rgb(0.2, 0.2, 0.25) });
+    ty -= lineH;
+  }
+  // checkbox SI / NO
+  const si = value === "si";
+  const no = value === "no";
+  const baseX = MARGIN + CONTENT_W - 70;
+  const cy = y - blockH / 2 - 3;
+  page.drawText(`${si ? "[X]" : "[ ]"} SI`, { x: baseX, y: cy, size: 9, font: bold, color: rgb(0.05, 0.05, 0.25) });
+  page.drawText(`${no ? "[X]" : "[ ]"} NO`, { x: baseX + 32, y: cy, size: 9, font: bold, color: rgb(0.05, 0.05, 0.25) });
+  return y - blockH - 2;
 }
 
 function truncate(text: string, maxWidth: number, font: PDFFont, size: number) {
