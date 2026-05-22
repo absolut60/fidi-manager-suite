@@ -189,13 +189,12 @@ export const processAnagraficaImport = inngest.createFunction(
         const res = await step.run(stepId, async () => {
           const { data, error } = await supabaseAdmin
             .from("clienti")
-            .insert(chunk.map((c) => c.payload))
+            .insert(chunk.map((c) => c.payload) as never)
             .select("id");
           if (error) {
-            // fallback singoli
             let ok = 0; const errs: Array<{ riga: number; errore: string }> = [];
             for (const c of chunk) {
-              const { error: e2 } = await supabaseAdmin.from("clienti").insert(c.payload);
+              const { error: e2 } = await supabaseAdmin.from("clienti").insert(c.payload as never);
               if (e2) errs.push({ riga: c.idx, errore: `Insert: ${e2.message}` });
               else ok++;
             }
@@ -215,7 +214,7 @@ export const processAnagraficaImport = inngest.createFunction(
         const res = await step.run(stepId, async () => {
           let ok = 0; const errs: Array<{ riga: number; errore: string }> = [];
           await Promise.all(chunk.map(async (c) => {
-            const { error } = await supabaseAdmin.from("clienti").update(c.payload).eq("id", c.existId!);
+            const { error } = await supabaseAdmin.from("clienti").update(c.payload as never).eq("id", c.existId!);
             if (error) errs.push({ riga: c.idx, errore: `Update: ${error.message}` });
             else ok++;
           }));
