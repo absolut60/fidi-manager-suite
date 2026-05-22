@@ -75,17 +75,25 @@ export async function generaSchedaCliente(input: SchedaPdfInput): Promise<Uint8A
     }
   };
 
-  // ---------- Intestazione ----------
+  // ---------- Intestazione: logo + titolo ----------
+  try {
+    const logoBytes = Uint8Array.from(atob(LOGO_MADE_BASE64), (c) => c.charCodeAt(0));
+    const logo = await pdf.embedPng(logoBytes);
+    const logoH = 32;
+    const logoW = (logo.width / logo.height) * logoH;
+    page.drawImage(logo, { x: MARGIN, y: y - logoH + 6, width: logoW, height: logoH });
+  } catch { /* logo opzionale */ }
+
   const title = "SCHEDA INSERIMENTO CLIENTE";
-  const tw = bold.widthOfTextAtSize(title, 16);
+  const tw = bold.widthOfTextAtSize(title, 14);
   page.drawText(title, {
-    x: (PAGE_W - tw) / 2,
-    y,
-    size: 16,
+    x: PAGE_W - MARGIN - tw,
+    y: y - 6,
+    size: 14,
     font: bold,
     color: rgb(0.05, 0.05, 0.2),
   });
-  y -= 22;
+  y -= 36;
 
   const nuovoBox = input.tipo === "nuovo" ? "[X]" : "[ ]";
   const aggBox = input.tipo === "aggiornamento" ? "[X]" : "[ ]";
