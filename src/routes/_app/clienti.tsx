@@ -470,11 +470,6 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
             condizioni_pagamento_concordate: parsed.condizioni_pagamento_concordate || null,
             data_richiesta_affidamento: date(parsed.data_richiesta_affidamento),
             importo_affidamento_richiesto: num(parsed.importo_affidamento_richiesto),
-            data_esito_affidamento: date(parsed.data_esito_affidamento),
-            importo_affidato: num(parsed.importo_affidato),
-            fido_aziendale_concesso: num(parsed.fido_aziendale_concesso),
-            condizioni_pagamento_concesse: parsed.condizioni_pagamento_concesse || null,
-            data_affidamento_aziendale: date(parsed.data_affidamento_aziendale),
             note_amministrazione: parsed.note_amministrazione || null,
           });
         }
