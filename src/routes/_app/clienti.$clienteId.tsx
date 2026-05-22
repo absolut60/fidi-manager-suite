@@ -198,7 +198,49 @@ function ClienteDetail() {
                 onSaved={() => qc.invalidateQueries({ queryKey: ["cliente", clienteId] })}
               />
             </Dialog>
+
+            {cliente.attivo && (
+              <Dialog open={openDisattiva} onOpenChange={setOpenDisattiva}>
+                <DialogTrigger asChild>
+                  <Button size="sm" variant="outline" className="gap-1.5">
+                    <EyeOff className="size-4" /> Disattiva
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Disattivare il cliente?</DialogTitle>
+                    <DialogDescription>
+                      Il cliente non comparirà più nelle liste, ma i dati e lo storico restano nel sistema. Potrai riattivarlo in seguito.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setOpenDisattiva(false)} disabled={disattivaMut.isPending}>Annulla</Button>
+                    <Button onClick={() => disattivaMut.mutate()} disabled={disattivaMut.isPending}>
+                      {disattivaMut.isPending ? "Disattivazione…" : "Disattiva cliente"}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
+
+            {isAdmin && (
+              <Dialog open={openElimina} onOpenChange={(v) => { setOpenElimina(v); }}>
+                <DialogTrigger asChild>
+                  <Button size="sm" variant="destructive" className="gap-1.5">
+                    <Trash2 className="size-4" /> Elimina
+                  </Button>
+                </DialogTrigger>
+                <EliminaClienteDialog
+                  clienteId={clienteId}
+                  ragioneSociale={cliente.ragione_sociale}
+                  onClose={() => setOpenElimina(false)}
+                  onConfirm={() => eliminaMut.mutate()}
+                  pending={eliminaMut.isPending}
+                />
+              </Dialog>
+            )}
           </div>
+
         </div>
       </div>
 
