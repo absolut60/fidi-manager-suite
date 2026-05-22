@@ -49,6 +49,45 @@ function toStr(v: unknown): string | null {
   return s === "" ? null : s;
 }
 
+/**
+ * Parse a worksheet skipping title/preamble rows.
+ * Finds the header row (first row containing `headerKeyword` in any cell),
+ * skips an optional description row right after, and returns objects keyed
+ * by the header cells. Each object includes a __row property with the
+ * original 1-based Excel row number for error reporting.
+ */
+function sheetToObjects(
+  sheet: XLSX.WorkSheet,
+  headerKeyword: string,
+): Array<Record<string, unknown> & { __row: number }> {
+  const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "", blankrows: false });
+  const kw = normalize(headerKeyword);
+  let headerIdx = -1;
+  for (let i = 0; i < matrix.length; i++) {
+    const row = matrix[i] ?? [];
+    if (row.some((c) => {
+      const n = normalize(String(c ?? ""));
+      return n === kw || n.startsWith(kw + " ");
+    })) {
+      headerIdx = i;
+      break;
+    }
+  }
+  if (headerIdx === -1) return [];
+  const headers = (matrix[headerIdx] ?? []).map((c) => String(c ?? "").trim());
+  // Skip description row right after headers (per template convention).
+  const dataStart = headerIdx + 2;
+  const out: Array<Record<string, unknown> & { __row: number }> = [];
+  for (let i = dataStart; i < matrix.length; i++) {
+    const row = matrix[i] ?? [];
+    if (!row.some((c) => String(c ?? "").trim() !== "")) continue;
+    const obj: Record<string, unknown> = {};
+    headers.forEach((h, j) => { if (h) obj[h] = row[j] ?? ""; });
+    out.push(Object.assign(obj, { __row: i + 1 }));
+  }
+  return out;
+}
+
 function ImportExportPage() {
   return (
     <div className="space-y-6">
@@ -135,17 +174,18 @@ function AnagraficaImportCard() {
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf, { type: "array" });
       const sheet = wb.Sheets[wb.SheetNames[0]];
-      const raw = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
-      if (!raw.length) { toast.error("File vuoto"); return; }
-      const parsed: ParsedRow<AnagraficaRow>[] = raw.map((r, i) => {
+      const raw = sheetToObjects(sheet, "codice");
+      if (!raw.length) { toast.error("Nessuna riga dati trovata (intestazione 'Codice' mancante o file vuoto)"); return; }
+      const parsed: ParsedRow<AnagraficaRow>[] = raw.map((r) => {
         const mapped: Record<string, string> = {};
         for (const k of Object.keys(r)) {
+          if (k === "__row") continue;
           const f = ANAG_HEADERS[normalize(k)];
           if (f) mapped[f] = String(r[k] ?? "").trim();
         }
         const res = anagraficaSchema.safeParse(mapped);
         return {
-          idx: i + 2,
+          idx: r.__row,
           data: (res.success ? res.data : mapped) as AnagraficaRow,
           errors: res.success ? [] : res.error.issues.map((e) => `${e.path[0]}: ${e.message}`),
         };
@@ -366,8 +406,8 @@ function RischioImportCard() {
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf, { type: "array" });
       const sheet = wb.Sheets[wb.SheetNames[0]];
-      const raw = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
-      if (!raw.length) { toast.error("File vuoto"); return; }
+      const raw = sheetToObjects(sheet, "codice");
+      if (!raw.length) { toast.error("Nessuna riga dati trovata (intestazione 'Codice' mancante o file vuoto)"); return; }
 
       const numFields = new Set([
         "saldo_contabile", "doc_da_fatturare", "doc_da_evadere", "effetti_a_rischio",
@@ -377,14 +417,15 @@ function RischioImportCard() {
 
       const parsed: RischioRow[] = [];
       const missing: number[] = [];
-      raw.forEach((r, i) => {
+      raw.forEach((r) => {
         const mapped: Record<string, unknown> = {};
         for (const k of Object.keys(r)) {
+          if (k === "__row") continue;
           const f = RISCHIO_HEADERS[normalize(k)];
           if (f) mapped[f] = r[k];
         }
         const codice = toStr(mapped.codice_gestionale);
-        if (!codice) { missing.push(i + 2); return; }
+        if (!codice) { missing.push(r.__row); return; }
         const payload: Record<string, unknown> = {};
         for (const [k, v] of Object.entries(mapped)) {
           if (k === "codice_gestionale" || k === "ragione_sociale") continue;
@@ -393,7 +434,7 @@ function RischioImportCard() {
           else payload[k] = toStr(v);
         }
         parsed.push({
-          idx: i + 2,
+          idx: r.__row,
           codice_gestionale: codice,
           ragione_sociale: toStr(mapped.ragione_sociale) ?? "",
           payload,
