@@ -237,8 +237,8 @@ function AnagraficaImportCard() {
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf, { type: "array" });
       const sheet = wb.Sheets[wb.SheetNames[0]];
-      const raw = sheetToObjects(sheet, "ragione_sociale", { forceSkipDescription: true });
-      if (!raw.length) { toast.error("Nessuna riga dati trovata (intestazione 'ragione_sociale' mancante o file vuoto)"); return; }
+      const raw = anagraficaSheetToObjects(sheet);
+      if (!raw.length) { toast.error("Nessuna riga dati trovata: verifica che la riga 2 contenga le intestazioni e che i dati inizino dalla riga 4"); return; }
 
       const parsed: ParsedRow<AnagraficaRow>[] = raw.map((r) => {
         const mapped: Record<string, string> = {};
