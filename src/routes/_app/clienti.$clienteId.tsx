@@ -46,12 +46,61 @@ function ClienteDetail() {
   const { clienteId } = Route.useParams();
   const { edit } = Route.useSearch();
   const qc = useQueryClient();
+  const navigate = useNavigate();
+  const { role } = useAuth();
+  const isAdmin = role === "amministratore";
   const [openNew, setOpenNew] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
+  const [openDisattiva, setOpenDisattiva] = useState(false);
+  const [openElimina, setOpenElimina] = useState(false);
 
   useEffect(() => {
     if (edit === 1) setOpenEdit(true);
   }, [edit]);
+
+  const disattivaMut = useMutation({
+    mutationFn: async () => {
+      const { error, data } = await supabase
+        .from("clienti")
+        .update({ attivo: false })
+        .eq("id", clienteId)
+        .select("id");
+      if (error) throw error;
+      if (!data || data.length === 0) throw new Error("Non hai i permessi per disattivare questo cliente.");
+    },
+    onSuccess: () => {
+      toast.success("Cliente disattivato");
+      qc.invalidateQueries({ queryKey: ["clienti"] });
+      qc.invalidateQueries({ queryKey: ["cliente", clienteId] });
+      setOpenDisattiva(false);
+      navigate({ to: "/clienti" });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const eliminaMut = useMutation({
+    mutationFn: async () => {
+      // Blocca se ci sono richieste fido collegate
+      const { count, error: cErr } = await supabase
+        .from("richieste_fido")
+        .select("id", { count: "exact", head: true })
+        .eq("cliente_id", clienteId);
+      if (cErr) throw cErr;
+      if ((count ?? 0) > 0) {
+        throw new Error(`Impossibile eliminare: il cliente ha ${count} richieste fido collegate. Disattivalo invece.`);
+      }
+      const { error } = await supabase.from("clienti").delete().eq("id", clienteId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Cliente eliminato definitivamente");
+      qc.invalidateQueries({ queryKey: ["clienti"] });
+      setOpenElimina(false);
+      navigate({ to: "/clienti" });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
 
 
   const { data: cliente, isLoading } = useQuery({
