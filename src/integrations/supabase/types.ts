@@ -193,6 +193,13 @@ export type Database = {
             referencedRelation: "clienti"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "cantieri_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti_con_rischio"
+            referencedColumns: ["id"]
+          },
         ]
       }
       clienti: {
@@ -208,6 +215,8 @@ export type Database = {
           codice_fiscale: string | null
           codice_gestionale: string | null
           codice_sdi: string | null
+          condizione_pagamento_cod: string | null
+          condizione_pagamento_desc: string | null
           condizioni_pagamento: string | null
           created_at: string
           created_by: string | null
@@ -216,13 +225,18 @@ export type Database = {
           dichiarante_nome: string | null
           dilazione_concordata: number | null
           dilazione_effettiva: number | null
+          doc_da_evadere: number | null
+          doc_da_fatturare: number | null
+          effetti_a_rischio: number | null
           email: string | null
           fido: number | null
+          fido_gestionale: number | null
           fido_residuo: number | null
           firma_url: string | null
           id: string
           indirizzo: string | null
           note: string | null
+          num_insoluti: number | null
           partita_iva: string | null
           pec: string | null
           privacy_firmata: boolean
@@ -231,12 +245,14 @@ export type Database = {
           privacy_token_expires_at: string | null
           provincia: string | null
           ragione_sociale: string
+          saldo_contabile: number | null
           scaduto: number | null
           scheda_pdf_url: string | null
           store_id: string | null
           telefono: string | null
           tipo_soggetto: string | null
           totale_rischio: number | null
+          ultima_sincronizzazione: string | null
           updated_at: string
         }
         Insert: {
@@ -251,6 +267,8 @@ export type Database = {
           codice_fiscale?: string | null
           codice_gestionale?: string | null
           codice_sdi?: string | null
+          condizione_pagamento_cod?: string | null
+          condizione_pagamento_desc?: string | null
           condizioni_pagamento?: string | null
           created_at?: string
           created_by?: string | null
@@ -259,13 +277,18 @@ export type Database = {
           dichiarante_nome?: string | null
           dilazione_concordata?: number | null
           dilazione_effettiva?: number | null
+          doc_da_evadere?: number | null
+          doc_da_fatturare?: number | null
+          effetti_a_rischio?: number | null
           email?: string | null
           fido?: number | null
+          fido_gestionale?: number | null
           fido_residuo?: number | null
           firma_url?: string | null
           id?: string
           indirizzo?: string | null
           note?: string | null
+          num_insoluti?: number | null
           partita_iva?: string | null
           pec?: string | null
           privacy_firmata?: boolean
@@ -274,12 +297,14 @@ export type Database = {
           privacy_token_expires_at?: string | null
           provincia?: string | null
           ragione_sociale: string
+          saldo_contabile?: number | null
           scaduto?: number | null
           scheda_pdf_url?: string | null
           store_id?: string | null
           telefono?: string | null
           tipo_soggetto?: string | null
           totale_rischio?: number | null
+          ultima_sincronizzazione?: string | null
           updated_at?: string
         }
         Update: {
@@ -294,6 +319,8 @@ export type Database = {
           codice_fiscale?: string | null
           codice_gestionale?: string | null
           codice_sdi?: string | null
+          condizione_pagamento_cod?: string | null
+          condizione_pagamento_desc?: string | null
           condizioni_pagamento?: string | null
           created_at?: string
           created_by?: string | null
@@ -302,13 +329,18 @@ export type Database = {
           dichiarante_nome?: string | null
           dilazione_concordata?: number | null
           dilazione_effettiva?: number | null
+          doc_da_evadere?: number | null
+          doc_da_fatturare?: number | null
+          effetti_a_rischio?: number | null
           email?: string | null
           fido?: number | null
+          fido_gestionale?: number | null
           fido_residuo?: number | null
           firma_url?: string | null
           id?: string
           indirizzo?: string | null
           note?: string | null
+          num_insoluti?: number | null
           partita_iva?: string | null
           pec?: string | null
           privacy_firmata?: boolean
@@ -317,12 +349,14 @@ export type Database = {
           privacy_token_expires_at?: string | null
           provincia?: string | null
           ragione_sociale?: string
+          saldo_contabile?: number | null
           scaduto?: number | null
           scheda_pdf_url?: string | null
           store_id?: string | null
           telefono?: string | null
           tipo_soggetto?: string | null
           totale_rischio?: number | null
+          ultima_sincronizzazione?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -426,6 +460,13 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contatti_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti_con_rischio"
             referencedColumns: ["id"]
           },
         ]
@@ -732,6 +773,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "richieste_fido_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti_con_rischio"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "richieste_fido_store_id_fkey"
             columns: ["store_id"]
             isOneToOne: false
@@ -825,6 +873,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "storico_fido_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti_con_rischio"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "storico_fido_richiesta_id_fkey"
             columns: ["richiesta_id"]
             isOneToOne: false
@@ -856,7 +911,179 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      clienti_con_rischio: {
+        Row: {
+          a_scadere: number | null
+          abi: string | null
+          agenzia: string | null
+          attivo: boolean | null
+          banca: string | null
+          cab: string | null
+          cap: string | null
+          citta: string | null
+          codice_fiscale: string | null
+          codice_gestionale: string | null
+          codice_sdi: string | null
+          condizione_pagamento_cod: string | null
+          condizione_pagamento_desc: string | null
+          condizioni_pagamento: string | null
+          created_at: string | null
+          created_by: string | null
+          data_firma: string | null
+          dichiarante_cognome: string | null
+          dichiarante_nome: string | null
+          dilazione_concordata: number | null
+          dilazione_effettiva: number | null
+          doc_da_evadere: number | null
+          doc_da_fatturare: number | null
+          effetti_a_rischio: number | null
+          email: string | null
+          fido: number | null
+          fido_gestionale: number | null
+          fido_residuo: number | null
+          firma_url: string | null
+          id: string | null
+          indirizzo: string | null
+          note: string | null
+          num_insoluti: number | null
+          partita_iva: string | null
+          pec: string | null
+          percentuale_utilizzo_fido: number | null
+          privacy_firmata: boolean | null
+          privacy_pdf_url: string | null
+          privacy_token: string | null
+          privacy_token_expires_at: string | null
+          provincia: string | null
+          ragione_sociale: string | null
+          saldo_contabile: number | null
+          scaduto: number | null
+          scheda_pdf_url: string | null
+          semaforo_rischio: string | null
+          store_id: string | null
+          telefono: string | null
+          tipo_soggetto: string | null
+          totale_rischio: number | null
+          ultima_sincronizzazione: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          a_scadere?: number | null
+          abi?: string | null
+          agenzia?: string | null
+          attivo?: boolean | null
+          banca?: string | null
+          cab?: string | null
+          cap?: string | null
+          citta?: string | null
+          codice_fiscale?: string | null
+          codice_gestionale?: string | null
+          codice_sdi?: string | null
+          condizione_pagamento_cod?: string | null
+          condizione_pagamento_desc?: string | null
+          condizioni_pagamento?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          data_firma?: string | null
+          dichiarante_cognome?: string | null
+          dichiarante_nome?: string | null
+          dilazione_concordata?: number | null
+          dilazione_effettiva?: number | null
+          doc_da_evadere?: number | null
+          doc_da_fatturare?: number | null
+          effetti_a_rischio?: number | null
+          email?: string | null
+          fido?: number | null
+          fido_gestionale?: number | null
+          fido_residuo?: number | null
+          firma_url?: string | null
+          id?: string | null
+          indirizzo?: string | null
+          note?: string | null
+          num_insoluti?: number | null
+          partita_iva?: string | null
+          pec?: string | null
+          percentuale_utilizzo_fido?: never
+          privacy_firmata?: boolean | null
+          privacy_pdf_url?: string | null
+          privacy_token?: string | null
+          privacy_token_expires_at?: string | null
+          provincia?: string | null
+          ragione_sociale?: string | null
+          saldo_contabile?: number | null
+          scaduto?: number | null
+          scheda_pdf_url?: string | null
+          semaforo_rischio?: never
+          store_id?: string | null
+          telefono?: string | null
+          tipo_soggetto?: string | null
+          totale_rischio?: number | null
+          ultima_sincronizzazione?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          a_scadere?: number | null
+          abi?: string | null
+          agenzia?: string | null
+          attivo?: boolean | null
+          banca?: string | null
+          cab?: string | null
+          cap?: string | null
+          citta?: string | null
+          codice_fiscale?: string | null
+          codice_gestionale?: string | null
+          codice_sdi?: string | null
+          condizione_pagamento_cod?: string | null
+          condizione_pagamento_desc?: string | null
+          condizioni_pagamento?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          data_firma?: string | null
+          dichiarante_cognome?: string | null
+          dichiarante_nome?: string | null
+          dilazione_concordata?: number | null
+          dilazione_effettiva?: number | null
+          doc_da_evadere?: number | null
+          doc_da_fatturare?: number | null
+          effetti_a_rischio?: number | null
+          email?: string | null
+          fido?: number | null
+          fido_gestionale?: number | null
+          fido_residuo?: number | null
+          firma_url?: string | null
+          id?: string | null
+          indirizzo?: string | null
+          note?: string | null
+          num_insoluti?: number | null
+          partita_iva?: string | null
+          pec?: string | null
+          percentuale_utilizzo_fido?: never
+          privacy_firmata?: boolean | null
+          privacy_pdf_url?: string | null
+          privacy_token?: string | null
+          privacy_token_expires_at?: string | null
+          provincia?: string | null
+          ragione_sociale?: string | null
+          saldo_contabile?: number | null
+          scaduto?: number | null
+          scheda_pdf_url?: string | null
+          semaforo_rischio?: never
+          store_id?: string | null
+          telefono?: string | null
+          tipo_soggetto?: string | null
+          totale_rischio?: number | null
+          ultima_sincronizzazione?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clienti_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       calcola_livello_fido: { Args: { _importo: number }; Returns: number }
