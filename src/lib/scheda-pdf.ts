@@ -88,8 +88,8 @@ export async function generaSchedaCliente(input: SchedaPdfInput): Promise<Uint8A
   });
   y -= 22;
 
-  const nuovoBox = input.tipo === "nuovo" ? "☒" : "☐";
-  const aggBox = input.tipo === "aggiornamento" ? "☒" : "☐";
+  const nuovoBox = input.tipo === "nuovo" ? "[X]" : "[ ]";
+  const aggBox = input.tipo === "aggiornamento" ? "[X]" : "[ ]";
   page.drawText(`${nuovoBox} NUOVO INSERIMENTO     ${aggBox} AGGIORNAMENTO`, {
     x: MARGIN, y, size: 10, font, color: rgb(0.2, 0.2, 0.2),
   });
