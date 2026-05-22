@@ -29,8 +29,15 @@ import { formatEuro } from "@/lib/fidi";
 
 
 
+const TAB_VALUES = ["anagrafica", "contatti", "cantieri", "storico", "insoluti", "privacy"] as const;
+const INSOLUTI_SUB_VALUES = ["riepilogo", "scadenziario", "solleciti", "legali", "assicurazioni"] as const;
+
 export const Route = createFileRoute("/_app/clienti/$clienteId")({
-  validateSearch: (s: Record<string, unknown>) => ({ edit: s.edit === 1 || s.edit === "1" ? 1 : undefined }),
+  validateSearch: (s: Record<string, unknown>) => ({
+    edit: s.edit === 1 || s.edit === "1" ? 1 : undefined,
+    tab: typeof s.tab === "string" && (TAB_VALUES as readonly string[]).includes(s.tab) ? s.tab as typeof TAB_VALUES[number] : undefined,
+    insolutiTab: typeof s.insolutiTab === "string" && (INSOLUTI_SUB_VALUES as readonly string[]).includes(s.insolutiTab) ? s.insolutiTab as typeof INSOLUTI_SUB_VALUES[number] : undefined,
+  }),
   component: ClienteDetail,
 });
 
