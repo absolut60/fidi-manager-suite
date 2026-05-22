@@ -317,16 +317,22 @@ export type Database = {
           cab: string | null
           cap: string | null
           citta: string | null
+          codice_assegnato: string | null
           codice_fiscale: string | null
           codice_gestionale: string | null
           codice_sdi: string | null
           condizione_pagamento_cod: string | null
           condizione_pagamento_desc: string | null
           condizioni_pagamento: string | null
+          condizioni_pagamento_concesse: string | null
+          condizioni_pagamento_concordate: string | null
           created_at: string
           created_by: string | null
+          data_affidamento_aziendale: string | null
           data_blocco: string | null
+          data_esito_affidamento: string | null
           data_firma: string | null
+          data_richiesta_affidamento: string | null
           dichiarante_cognome: string | null
           dichiarante_nome: string | null
           dilazione_concordata: number | null
@@ -336,14 +342,18 @@ export type Database = {
           effetti_a_rischio: number | null
           email: string | null
           fido: number | null
+          fido_aziendale_concesso: number | null
           fido_gestionale: number | null
           fido_residuo: number | null
           firma_url: string | null
           id: string
+          importo_affidamento_richiesto: number | null
+          importo_affidato: number | null
           in_gestione_legale: boolean
           indirizzo: string | null
           motivo_blocco: string | null
           note: string | null
+          note_amministrazione: string | null
           num_insoluti: number | null
           partita_iva: string | null
           pec: string | null
@@ -356,6 +366,7 @@ export type Database = {
           saldo_contabile: number | null
           scaduto: number | null
           scheda_pdf_url: string | null
+          sede_operatore: string | null
           store_id: string | null
           telefono: string | null
           tipo_soggetto: string | null
@@ -375,16 +386,22 @@ export type Database = {
           cab?: string | null
           cap?: string | null
           citta?: string | null
+          codice_assegnato?: string | null
           codice_fiscale?: string | null
           codice_gestionale?: string | null
           codice_sdi?: string | null
           condizione_pagamento_cod?: string | null
           condizione_pagamento_desc?: string | null
           condizioni_pagamento?: string | null
+          condizioni_pagamento_concesse?: string | null
+          condizioni_pagamento_concordate?: string | null
           created_at?: string
           created_by?: string | null
+          data_affidamento_aziendale?: string | null
           data_blocco?: string | null
+          data_esito_affidamento?: string | null
           data_firma?: string | null
+          data_richiesta_affidamento?: string | null
           dichiarante_cognome?: string | null
           dichiarante_nome?: string | null
           dilazione_concordata?: number | null
@@ -394,14 +411,18 @@ export type Database = {
           effetti_a_rischio?: number | null
           email?: string | null
           fido?: number | null
+          fido_aziendale_concesso?: number | null
           fido_gestionale?: number | null
           fido_residuo?: number | null
           firma_url?: string | null
           id?: string
+          importo_affidamento_richiesto?: number | null
+          importo_affidato?: number | null
           in_gestione_legale?: boolean
           indirizzo?: string | null
           motivo_blocco?: string | null
           note?: string | null
+          note_amministrazione?: string | null
           num_insoluti?: number | null
           partita_iva?: string | null
           pec?: string | null
@@ -414,6 +435,7 @@ export type Database = {
           saldo_contabile?: number | null
           scaduto?: number | null
           scheda_pdf_url?: string | null
+          sede_operatore?: string | null
           store_id?: string | null
           telefono?: string | null
           tipo_soggetto?: string | null
@@ -433,16 +455,22 @@ export type Database = {
           cab?: string | null
           cap?: string | null
           citta?: string | null
+          codice_assegnato?: string | null
           codice_fiscale?: string | null
           codice_gestionale?: string | null
           codice_sdi?: string | null
           condizione_pagamento_cod?: string | null
           condizione_pagamento_desc?: string | null
           condizioni_pagamento?: string | null
+          condizioni_pagamento_concesse?: string | null
+          condizioni_pagamento_concordate?: string | null
           created_at?: string
           created_by?: string | null
+          data_affidamento_aziendale?: string | null
           data_blocco?: string | null
+          data_esito_affidamento?: string | null
           data_firma?: string | null
+          data_richiesta_affidamento?: string | null
           dichiarante_cognome?: string | null
           dichiarante_nome?: string | null
           dilazione_concordata?: number | null
@@ -452,14 +480,18 @@ export type Database = {
           effetti_a_rischio?: number | null
           email?: string | null
           fido?: number | null
+          fido_aziendale_concesso?: number | null
           fido_gestionale?: number | null
           fido_residuo?: number | null
           firma_url?: string | null
           id?: string
+          importo_affidamento_richiesto?: number | null
+          importo_affidato?: number | null
           in_gestione_legale?: boolean
           indirizzo?: string | null
           motivo_blocco?: string | null
           note?: string | null
+          note_amministrazione?: string | null
           num_insoluti?: number | null
           partita_iva?: string | null
           pec?: string | null
@@ -472,6 +504,7 @@ export type Database = {
           saldo_contabile?: number | null
           scaduto?: number | null
           scheda_pdf_url?: string | null
+          sede_operatore?: string | null
           store_id?: string | null
           telefono?: string | null
           tipo_soggetto?: string | null
