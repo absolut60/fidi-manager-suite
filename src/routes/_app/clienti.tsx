@@ -70,6 +70,13 @@ function fmtEuro(v: unknown): string {
   return new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
 }
 
+type ScadenziarioState = {
+  totale_scaduto: number;
+  totale_a_scadere: number;
+  ha_scaduto: boolean;
+  ha_a_scadere: boolean;
+};
+
 function ClientiPage() {
   const navigate = useNavigate();
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
@@ -82,8 +89,11 @@ function ClientiPage() {
   const [soloBloccati, setSoloBloccati] = useState(false);
   const [privacyFiltro, setPrivacyFiltro] = useState<string>("tutti");
   const [soloAssicurati, setSoloAssicurati] = useState(false);
+  const [scadenziarioFiltro, setScadenziarioFiltro] = useState<string>("tutti");
   const [open, setOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   const { data: stores } = useQuery({
     queryKey: ["stores", "all"],
@@ -93,14 +103,56 @@ function ClientiPage() {
     },
   });
 
+  // Aggregato scadenziario (una sola query, cached) per badge + filtro
+  const { data: scadenziarioMap } = useQuery({
+    queryKey: ["clienti-scadenziario-agg"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_clienti_scadenziario");
+      if (error) throw error;
+      const map = new Map<string, ScadenziarioState>();
+      for (const r of (data ?? []) as any[]) {
+        map.set(r.cliente_id, {
+          totale_scaduto: Number(r.totale_scaduto) || 0,
+          totale_a_scadere: Number(r.totale_a_scadere) || 0,
+          ha_scaduto: !!r.ha_scaduto,
+          ha_a_scadere: !!r.ha_a_scadere,
+        });
+      }
+      return map;
+    },
+    staleTime: 60_000,
+  });
+
+  // ID set per filtro scadenziario (server-side via .in)
+  const scadenziarioIdsFilter = useMemo(() => {
+    if (!scadenziarioMap || scadenziarioFiltro === "tutti") return null;
+    const ids: string[] = [];
+    if (scadenziarioFiltro === "scaduto") {
+      for (const [id, s] of scadenziarioMap) if (s.ha_scaduto) ids.push(id);
+    } else if (scadenziarioFiltro === "a_scadere") {
+      for (const [id, s] of scadenziarioMap) if (s.ha_a_scadere && !s.ha_scaduto) ids.push(id);
+    } else if (scadenziarioFiltro === "in_regola") {
+      // gestito come exclude più sotto: nessun filtro include
+      return { mode: "exclude" as const, ids: Array.from(scadenziarioMap.keys()) };
+    }
+    return { mode: "include" as const, ids };
+  }, [scadenziarioMap, scadenziarioFiltro]);
+
+  // Reset pagina ogni volta che cambia un filtro
+  useEffect(() => {
+    setPage(1);
+  }, [search, statoCliente, storeFiltro, statoFido, semaforoFiltro, soloBloccati, privacyFiltro, soloAssicurati, scadenziarioFiltro, pageSize]);
+
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
   const { data: clientiResp, isLoading } = useQuery({
-    queryKey: ["clienti", { search, statoCliente, storeFiltro, soloBloccati, privacyFiltro, soloAssicurati }],
+    queryKey: ["clienti", { search, statoCliente, storeFiltro, soloBloccati, privacyFiltro, soloAssicurati, scadenziarioFiltro, page, pageSize, scadenziarioReady: !!scadenziarioMap || scadenziarioFiltro === "tutti" }],
     queryFn: async () => {
       let q = supabase
         .from("clienti")
         .select("*, stores(nome, codice)", { count: "exact" })
-        .order("ragione_sociale", { ascending: true })
-        .range(0, 4999);
+        .order("ragione_sociale", { ascending: true });
 
       if (statoCliente === "attivi") q = q.eq("attivo", true);
       else if (statoCliente === "disattivati") q = q.eq("attivo", false);
@@ -109,6 +161,20 @@ function ClientiPage() {
       if (privacyFiltro === "firmata") q = q.eq("privacy_firmata", true);
       else if (privacyFiltro === "da_firmare") q = q.eq("privacy_firmata", false);
       if (soloAssicurati) q = q.eq("assicurazione_attiva", true);
+
+      if (scadenziarioIdsFilter) {
+        if (scadenziarioIdsFilter.mode === "include") {
+          if (scadenziarioIdsFilter.ids.length === 0) {
+            return { rows: [], count: 0 };
+          }
+          q = q.in("id", scadenziarioIdsFilter.ids);
+        } else {
+          if (scadenziarioIdsFilter.ids.length > 0) {
+            q = q.not("id", "in", `(${scadenziarioIdsFilter.ids.join(",")})`);
+          }
+        }
+      }
+
       const term = search.replace(/[(),]/g, " ").trim();
       if (term) {
         const like = `%${term}%`;
@@ -117,16 +183,20 @@ function ClientiPage() {
         );
       }
 
+      q = q.range(from, to);
+
       const { data, error, count } = await q;
       if (error) throw error;
       return { rows: data ?? [], count: count ?? (data?.length ?? 0) };
     },
-    enabled: isListRoute,
+    enabled: isListRoute && (scadenziarioFiltro === "tutti" || !!scadenziarioMap),
   });
   const clienti = clientiResp?.rows;
   const totaleClienti = clientiResp?.count ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totaleClienti / pageSize));
 
-  // Filtri derivati lato client (stato fido + semaforo non sono campi DB diretti)
+  // Filtri derivati lato client (semaforo + stato fido non sono campi DB diretti)
+  // NB: agiscono solo sulla pagina corrente
   const filtered = useMemo(() => {
     return (clienti ?? []).filter((c: any) => {
       if (semaforoFiltro !== "tutti" && calcSemaforo(c) !== semaforoFiltro) return false;
@@ -138,7 +208,6 @@ function ClientiPage() {
         if (scaduto > 0) matches.add("scaduto");
         if (!fido) matches.add("non_assegnato");
         else if (!c.bloccato && scaduto === 0) matches.add("attivo");
-        // "in_revisione" non ricavabile direttamente dai campi del cliente
         const intersect = Array.from(statoFido).some((s) => matches.has(s));
         if (!intersect) return false;
       }
@@ -154,7 +223,8 @@ function ClientiPage() {
     (semaforoFiltro !== "tutti" ? 1 : 0) +
     (soloBloccati ? 1 : 0) +
     (privacyFiltro !== "tutti" ? 1 : 0) +
-    (soloAssicurati ? 1 : 0);
+    (soloAssicurati ? 1 : 0) +
+    (scadenziarioFiltro !== "tutti" ? 1 : 0);
 
   function resetFiltri() {
     setSearch("");
@@ -165,6 +235,7 @@ function ClientiPage() {
     setSoloBloccati(false);
     setPrivacyFiltro("tutti");
     setSoloAssicurati(false);
+    setScadenziarioFiltro("tutti");
   }
 
   const STATO_FIDO_OPTS: Array<{ value: string; label: string }> = [
@@ -244,6 +315,16 @@ function ClientiPage() {
           </SelectContent>
         </Select>
 
+        <Select value={scadenziarioFiltro} onValueChange={setScadenziarioFiltro}>
+          <SelectTrigger className={stack ? "w-full" : "w-44"}><SelectValue placeholder="Scadenziario" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="tutti">Scadenziario: tutti</SelectItem>
+            <SelectItem value="scaduto">Con scaduto</SelectItem>
+            <SelectItem value="a_scadere">Solo a scadere</SelectItem>
+            <SelectItem value="in_regola">Tutto in regola</SelectItem>
+          </SelectContent>
+        </Select>
+
         <Select value={statoCliente} onValueChange={(v) => setStatoCliente(v as typeof statoCliente)}>
           <SelectTrigger className={stack ? "w-full" : "w-40"}><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -284,6 +365,26 @@ function ClientiPage() {
   if (!isListRoute) {
     return <Outlet />;
   }
+
+  // Calcolo numeri pagina (max 5 visibili + ellipsis)
+  const pageNumbers = useMemo(() => {
+    const pages: (number | "...")[] = [];
+    const maxVisible = 5;
+    if (totalPages <= maxVisible + 2) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      let start = Math.max(2, page - 1);
+      let end = Math.min(totalPages - 1, page + 1);
+      if (page <= 3) { start = 2; end = 4; }
+      if (page >= totalPages - 2) { start = totalPages - 3; end = totalPages - 1; }
+      if (start > 2) pages.push("...");
+      for (let i = start; i <= end; i++) pages.push(i);
+      if (end < totalPages - 1) pages.push("...");
+      pages.push(totalPages);
+    }
+    return pages;
+  }, [page, totalPages]);
 
   return (
     <div className="space-y-6">
@@ -343,10 +444,24 @@ function ClientiPage() {
           </Sheet>
         </div>
 
-        <div className="mb-3 text-sm text-muted-foreground">
-          <strong className="text-foreground">{filtered.length}</strong> clienti trovati
-          {attiviCount > 0 && <span className="ml-1">(filtri attivi: {attiviCount})</span>}
-          <span className="ml-2">· Totale in archivio: <strong className="text-foreground">{totaleClienti}</strong></span>
+        <div className="mb-3 text-sm text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span>
+            Pagina <strong className="text-foreground">{page}</strong> di <strong className="text-foreground">{totalPages}</strong>
+            <span className="ml-1">— <strong className="text-foreground">{totaleClienti}</strong> clienti totali</span>
+          </span>
+          {attiviCount > 0 && <span>(filtri attivi: {attiviCount})</span>}
+          <span className="ml-auto flex items-center gap-2">
+            <span className="text-xs">Per pagina:</span>
+            <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+              <SelectTrigger className="h-7 w-[72px] text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="25">25</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+              </SelectContent>
+            </Select>
+          </span>
         </div>
 
 
@@ -378,6 +493,7 @@ function ClientiPage() {
                   <TableHead>Città</TableHead>
                   <TableHead>Punto vendita</TableHead>
                   <TableHead className="text-right">Fido residuo</TableHead>
+                  <TableHead>Scadenziario</TableHead>
                   <TableHead>Privacy</TableHead>
                   <TableHead>Stato</TableHead>
                   <TableHead className="w-12"></TableHead>
@@ -388,6 +504,7 @@ function ClientiPage() {
                   const sem = calcSemaforo(c as any);
                   const residuo = (c as any).fido_residuo;
                   const residuoNum = residuo == null ? null : Number(residuo);
+                  const sc = scadenziarioMap?.get(c.id);
                   return (
                   <TableRow
                     key={c.id}
@@ -424,6 +541,23 @@ function ClientiPage() {
                       {fmtEuro(residuo)}
                     </TableCell>
                     <TableCell>
+                      {!sc ? (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      ) : sc.ha_scaduto ? (
+                        <Badge className="bg-destructive/15 text-destructive hover:bg-destructive/20 gap-1" title="Importo scaduto">
+                          <AlertCircle className="size-3" /> {fmtEuro(sc.totale_scaduto)}
+                        </Badge>
+                      ) : sc.ha_a_scadere ? (
+                        <Badge className="bg-yellow-500/15 text-yellow-700 dark:text-yellow-500 hover:bg-yellow-500/20 gap-1" title="A scadere">
+                          <Clock className="size-3" /> {fmtEuro(sc.totale_a_scadere)}
+                        </Badge>
+                      ) : (
+                        <Badge className="bg-success/15 text-success hover:bg-success/20 gap-1" title="Tutto pagato">
+                          <CheckCircle2 className="size-3" /> In regola
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
                       {c.privacy_firmata ? (
                         <Badge className="bg-success/15 text-success hover:bg-success/20 gap-1">
                           <FileCheck2 className="size-3" /> Firmata
@@ -458,6 +592,50 @@ function ClientiPage() {
                 })}
               </TableBody>
              </Table>
+          </div>
+        )}
+
+        {/* Paginazione */}
+        {totaleClienti > 0 && (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="text-xs text-muted-foreground">
+              Risultati {from + 1}–{Math.min(to + 1, totaleClienti)} di {totaleClienti}
+            </div>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="gap-1"
+              >
+                <ChevronLeft className="size-4" /> Precedente
+              </Button>
+              {pageNumbers.map((p, idx) =>
+                p === "..." ? (
+                  <span key={`e-${idx}`} className="px-2 text-muted-foreground">…</span>
+                ) : (
+                  <Button
+                    key={p}
+                    variant={p === page ? "default" : "outline"}
+                    size="sm"
+                    className="min-w-9"
+                    onClick={() => setPage(p)}
+                  >
+                    {p}
+                  </Button>
+                )
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+                className="gap-1"
+              >
+                Successivo <ChevronRight className="size-4" />
+              </Button>
+            </div>
           </div>
         )}
       </Card>
