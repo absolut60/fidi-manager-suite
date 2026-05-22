@@ -984,6 +984,437 @@ function ScadenziarioImportCard() {
 }
 
 /* ============================================================================
+ * D — SCADENZIARIO + ASSICURAZIONI (file unico, due fogli)
+ * ============================================================================ */
+
+type ScadBlockRow = {
+  excelRow: number;
+  cod_cli: string;
+  data_scadenza: string | null;
+  descrizione_pagamento: string | null;
+  note_legale: string | null;
+  note_solleciti: string | null;
+  cod_blocco: string | null;
+  importo_scadenza: number | null;
+  fido_euro: number | null;
+  assicurazione: number | null;
+  bloccato: boolean;
+};
+
+type AssicRow = {
+  excelRow: number;
+  cod_cli: string;
+  data_inizio: string | null;
+  data_scadenza: string | null;
+  importo_assicurato: number | null;
+  codice_pagamento: string | null;
+};
+
+function parseScadenziarioSheet(sheet: XLSX.WorkSheet): { rows: ScadBlockRow[]; totRead: number } {
+  const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "", blankrows: false });
+  // Header at row 11 (index 10); data from row 12 (index 11)
+  const rows: ScadBlockRow[] = [];
+  let currentCod: string | null = null;
+  let totRead = 0;
+  for (let i = 11; i < matrix.length; i++) {
+    const row = matrix[i] ?? [];
+    if (!row.some((c) => String(c ?? "").trim() !== "")) continue;
+    const colA = String(row[0] ?? "").trim();
+    const colF = String(row[5] ?? "").trim();
+    // skip subtotals
+    if (/totale/i.test(colA) || /bloccato\s+totale/i.test(colF)) continue;
+    // header row of a client block
+    if (colA) {
+      const m = colA.match(/-\s*(\d+)\s*$/);
+      if (m) currentCod = m[1];
+      // first row of block usually has no data scadenza; continue to also try parsing if it has one
+    }
+    const dataScadRaw = row[1];
+    const data_scadenza = excelDateToISO(dataScadRaw);
+    if (!data_scadenza) continue;
+    if (!currentCod) continue;
+    totRead += 1;
+    const descr = toStr(row[2]);
+    const noteLeg = toStr(row[3]);
+    const noteSoll = toStr(row[4]);
+    const blocco = toStr(row[5]);
+    const isBloccato = !!blocco && /bloccato/i.test(blocco);
+    const cleanNote = (s: string | null) => {
+      if (!s) return null;
+      const t = s.trim();
+      if (!t || /^\(vuoto\)$/i.test(t)) return null;
+      return t;
+    };
+    rows.push({
+      excelRow: i + 1,
+      cod_cli: currentCod,
+      data_scadenza,
+      descrizione_pagamento: descr,
+      note_legale: cleanNote(noteLeg),
+      note_solleciti: cleanNote(noteSoll),
+      cod_blocco: blocco,
+      importo_scadenza: toNum(row[7]),
+      fido_euro: toNum(row[8]),
+      assicurazione: toNum(row[9]),
+      bloccato: isBloccato,
+    });
+  }
+  return { rows, totRead };
+}
+
+function parseAssicurazioneSheet(sheet: XLSX.WorkSheet): AssicRow[] {
+  const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "", blankrows: false });
+  const out: AssicRow[] = [];
+  for (let i = 1; i < matrix.length; i++) {
+    const row = matrix[i] ?? [];
+    if (!row.some((c) => String(c ?? "").trim() !== "")) continue;
+    const cod = toStr(row[2]);
+    if (!cod) continue;
+    out.push({
+      excelRow: i + 1,
+      cod_cli: String(cod).replace(/\.0$/, ""),
+      data_inizio: excelDateToISO(row[0]),
+      data_scadenza: excelDateToISO(row[1]),
+      importo_assicurato: toNum(row[9]),
+      codice_pagamento: toStr(row[10]),
+    });
+  }
+  return out;
+}
+
+function ScadenziarioAssicurazioniImportCard() {
+  const qc = useQueryClient();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [scadRows, setScadRows] = useState<ScadBlockRow[]>([]);
+  const [assicRows, setAssicRows] = useState<AssicRow[]>([]);
+  const [scadRead, setScadRead] = useState(0);
+  const [warnings, setWarnings] = useState<string[]>([]);
+  const [dragOver, setDragOver] = useState(false);
+  const [parsing, setParsing] = useState(false);
+  const [result, setResult] = useState<null | { log: string[] }>(null);
+
+  function reset() {
+    setFileName(null); setScadRows([]); setAssicRows([]); setScadRead(0); setWarnings([]); setResult(null);
+    if (fileRef.current) fileRef.current.value = "";
+  }
+
+  async function handleFile(file: File) {
+    setParsing(true); setResult(null);
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: "array", cellDates: false });
+      const findSheet = (kw: string) => {
+        const name = wb.SheetNames.find((n) => normalize(n) === normalize(kw))
+          ?? wb.SheetNames.find((n) => normalize(n).includes(normalize(kw)));
+        return name ? wb.Sheets[name] : null;
+      };
+      const sScad = findSheet("scadenziario");
+      const sAssic = findSheet("assicurazione");
+      const w: string[] = [];
+      let parsedScad: ScadBlockRow[] = [];
+      let scadTot = 0;
+      if (!sScad) w.push("Foglio 'SCADENZIARIO' non trovato.");
+      else {
+        const r = parseScadenziarioSheet(sScad);
+        parsedScad = r.rows;
+        scadTot = r.totRead;
+      }
+      let parsedAssic: AssicRow[] = [];
+      if (!sAssic) w.push("Foglio 'ASSICURAZIONE' non trovato.");
+      else parsedAssic = parseAssicurazioneSheet(sAssic);
+      setFileName(file.name);
+      setScadRows(parsedScad);
+      setAssicRows(parsedAssic);
+      setScadRead(scadTot);
+      setWarnings(w);
+      toast.success(`Letti: ${parsedScad.length} scadenze, ${parsedAssic.length} polizze`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Errore lettura file");
+    } finally {
+      setParsing(false);
+    }
+  }
+
+  const importMut = useMutation({
+    mutationFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      const log: string[] = [...warnings];
+
+      const { data: imp } = await supabase.from("importazioni").insert({
+        nome_file: fileName ?? "scadenziario_assicurazioni.xlsx",
+        righe_totali: scadRows.length + assicRows.length,
+        stato: "in_elaborazione",
+        fonte: "scadenziario_assicurazioni",
+        eseguita_da: user?.id ?? null,
+      }).select("id").single();
+
+      // === Risolvi clienti per entrambi i fogli ===
+      const allCodes = Array.from(new Set([
+        ...scadRows.map((r) => r.cod_cli),
+        ...assicRows.map((r) => r.cod_cli),
+      ]));
+      const clientMap = new Map<string, string>();
+      if (allCodes.length) {
+        const { data } = await supabase.from("clienti").select("id, codice_gestionale").in("codice_gestionale", allCodes);
+        (data ?? []).forEach((c) => { if (c.codice_gestionale) clientMap.set(String(c.codice_gestionale), c.id); });
+      }
+
+      // ====== SCADENZIARIO ======
+      let scadCreated = 0, scadUpdated = 0, scadSkipped = 0;
+      const matchedClients = new Set<string>();
+      const clientsToBlock = new Set<string>();
+      const clientsLegale = new Set<string>();
+
+      // pre-carica scadenze esistenti per upsert (chiave cliente+data+descr)
+      const clientIds = Array.from(new Set(Array.from(clientMap.values())));
+      const existingScad = new Map<string, string>();
+      if (clientIds.length) {
+        const { data } = await supabase
+          .from("scadenze" as never)
+          .select("id, cliente_id, data_scadenza, descrizione_pagamento")
+          .in("cliente_id", clientIds);
+        ((data ?? []) as Array<{ id: string; cliente_id: string; data_scadenza: string | null; descrizione_pagamento: string | null }>).forEach((s) => {
+          existingScad.set(`${s.cliente_id}|${s.data_scadenza ?? ""}|${s.descrizione_pagamento ?? ""}`, s.id);
+        });
+      }
+
+      // pre-carica solleciti esistenti (per dedup per cliente+nota)
+      const existingSoll = new Set<string>();
+      if (clientIds.length) {
+        const { data } = await supabase
+          .from("solleciti" as never)
+          .select("cliente_id, nota")
+          .in("cliente_id", clientIds);
+        ((data ?? []) as Array<{ cliente_id: string; nota: string }>).forEach((s) => {
+          existingSoll.add(`${s.cliente_id}|${(s.nota ?? "").trim()}`);
+        });
+      }
+
+      // pre-carica pratiche legali aperte
+      const openLegale = new Set<string>();
+      if (clientIds.length) {
+        const { data } = await supabase
+          .from("pratiche_legali" as never)
+          .select("cliente_id, stato")
+          .in("cliente_id", clientIds);
+        ((data ?? []) as Array<{ cliente_id: string; stato: string }>).forEach((p) => {
+          if (p.stato !== "chiusa") openLegale.add(p.cliente_id);
+        });
+      }
+
+      const now = new Date().toISOString();
+      for (const r of scadRows) {
+        const cid = clientMap.get(r.cod_cli);
+        if (!cid) {
+          scadSkipped += 1;
+          log.push(`Riga ${r.excelRow}: cliente ${r.cod_cli} non trovato`);
+          continue;
+        }
+        matchedClients.add(cid);
+        const key = `${cid}|${r.data_scadenza ?? ""}|${r.descrizione_pagamento ?? ""}`;
+        const existId = existingScad.get(key);
+        const payload: Record<string, unknown> = {
+          cliente_id: cid,
+          data_scadenza: r.data_scadenza,
+          descrizione_pagamento: r.descrizione_pagamento,
+          importo_scadenza: r.importo_scadenza,
+          fido_euro: r.fido_euro,
+          assicurazione: r.assicurazione,
+          cod_blocco: r.cod_blocco,
+          importato_da: user?.id ?? null,
+          ultima_sincronizzazione: now,
+        };
+        if (existId) {
+          const { error } = await supabase.from("scadenze" as never).update(payload as never).eq("id", existId);
+          if (error) { scadSkipped += 1; log.push(`Riga ${r.excelRow}: ${error.message}`); }
+          else scadUpdated += 1;
+        } else {
+          const { error } = await supabase.from("scadenze" as never).insert(payload as never);
+          if (error) { scadSkipped += 1; log.push(`Riga ${r.excelRow}: ${error.message}`); }
+          else scadCreated += 1;
+        }
+
+        if (r.bloccato) clientsToBlock.add(cid);
+
+        // Note Solleciti
+        if (r.note_solleciti) {
+          const dkey = `${cid}|${r.note_solleciti.trim()}`;
+          if (!existingSoll.has(dkey)) {
+            const { error } = await supabase.from("solleciti" as never).insert({
+              cliente_id: cid, tipo: "interno", nota: r.note_solleciti, inserito_da: user?.id ?? null,
+            } as never);
+            if (!error) existingSoll.add(dkey);
+            else log.push(`Riga ${r.excelRow}: sollecito ${error.message}`);
+          }
+        }
+
+        // Note Legale
+        if (r.note_legale && !openLegale.has(cid) && !clientsLegale.has(cid)) {
+          const { error } = await supabase.from("pratiche_legali" as never).insert({
+            cliente_id: cid, tipo: "azione_legale_generica", stato: "aperta",
+            note: r.note_legale, gestita_da: user?.id ?? null,
+          } as never);
+          if (!error) { openLegale.add(cid); clientsLegale.add(cid); }
+          else log.push(`Riga ${r.excelRow}: pratica legale ${error.message}`);
+        }
+      }
+
+      // Blocco clienti
+      if (clientsToBlock.size) {
+        await supabase.from("clienti").update({
+          bloccato: true, data_blocco: now, motivo_blocco: "Import scadenziario: T_BLOCCO=BLOCCATO",
+        } as never).in("id", Array.from(clientsToBlock));
+      }
+
+      // ====== ASSICURAZIONI ======
+      let assicCreated = 0, assicUpdated = 0, assicSkipped = 0;
+      const assicClients = new Set<string>();
+
+      // pre-carica polizze esistenti per cliente (POUEY)
+      const existingPol = new Map<string, string>();
+      if (clientIds.length) {
+        const { data } = await supabase
+          .from("assicurazioni_credito" as never)
+          .select("id, cliente_id")
+          .in("cliente_id", clientIds);
+        ((data ?? []) as Array<{ id: string; cliente_id: string }>).forEach((p) => {
+          if (!existingPol.has(p.cliente_id)) existingPol.set(p.cliente_id, p.id);
+        });
+      }
+
+      for (const a of assicRows) {
+        const cid = clientMap.get(a.cod_cli);
+        if (!cid) {
+          assicSkipped += 1;
+          log.push(`Assic riga ${a.excelRow}: cliente ${a.cod_cli} non trovato`);
+          continue;
+        }
+        assicClients.add(cid);
+        const payload: Record<string, unknown> = {
+          cliente_id: cid,
+          assicuratore: "POUEY",
+          data_inizio: a.data_inizio,
+          data_scadenza: a.data_scadenza,
+          importo_assicurato: a.importo_assicurato,
+          stato: "attiva",
+        };
+        const existId = existingPol.get(cid);
+        if (existId) {
+          const { error } = await supabase.from("assicurazioni_credito" as never).update(payload as never).eq("id", existId);
+          if (error) { assicSkipped += 1; log.push(`Assic riga ${a.excelRow}: ${error.message}`); }
+          else assicUpdated += 1;
+        } else {
+          const { error } = await supabase.from("assicurazioni_credito" as never).insert(payload as never);
+          if (error) { assicSkipped += 1; log.push(`Assic riga ${a.excelRow}: ${error.message}`); }
+          else { assicCreated += 1; existingPol.set(cid, "new"); }
+        }
+      }
+
+      if (assicClients.size) {
+        await supabase.from("clienti").update({ assicurazione_attiva: true } as never)
+          .in("id", Array.from(assicClients));
+      }
+
+      const summary = [
+        `SCADENZIARIO: lette ${scadRead}, abbinati ${matchedClients.size} clienti, ${scadCreated} create, ${scadUpdated} aggiornate, ${scadSkipped} saltate`,
+        `ASSICURAZIONI: lette ${assicRows.length}, ${assicCreated} create, ${assicUpdated} aggiornate, ${assicSkipped} saltate`,
+        `Clienti bloccati: ${clientsToBlock.size}, pratiche legali create: ${clientsLegale.size}`,
+      ];
+
+      await supabase.from("importazioni").update({
+        righe_elaborate: scadRows.length + assicRows.length,
+        righe_create: scadCreated + assicCreated,
+        righe_aggiornate: scadUpdated + assicUpdated,
+        righe_errore: scadSkipped + assicSkipped,
+        stato: (scadSkipped + assicSkipped) > 0 ? "completata_con_errori" : "completata",
+        completata_at: new Date().toISOString(),
+        log_errori: log.length ? log.slice(0, 300).map((m) => ({ messaggio: m })) : null,
+      }).eq("id", imp!.id);
+
+      return { log: [...summary, ...log] };
+    },
+    onSuccess: (r) => {
+      setResult(r);
+      toast.success("Import scadenziario+assicurazioni completato");
+      qc.invalidateQueries({ queryKey: ["clienti"] });
+      qc.invalidateQueries({ queryKey: ["scadenze"] });
+      qc.invalidateQueries({ queryKey: ["assicurazioni"] });
+      qc.invalidateQueries({ queryKey: ["pratiche_legali"] });
+      qc.invalidateQueries({ queryKey: ["solleciti"] });
+      qc.invalidateQueries({ queryKey: ["storico-import-export"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <Card className="p-5">
+      <h2 className="font-semibold flex items-center gap-2 mb-1">
+        <ShieldCheck className="size-4" /> C · Importa Scadenziario e Assicurazioni
+      </h2>
+      <p className="text-xs text-muted-foreground mb-4">
+        File Excel con due fogli: <code>SCADENZIARIO</code> (intestazioni riga 11, struttura a blocchi cliente) e <code>ASSICURAZIONE</code> (intestazioni riga 1).
+        Match cliente per <code>codice_gestionale</code>. Crea solleciti, pratiche legali e blocchi automatici.
+      </p>
+      {!fileName ? (
+        <div
+          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files?.[0]; if (f) handleFile(f); }}
+          onClick={() => fileRef.current?.click()}
+          className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+            dragOver ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+          }`}
+        >
+          <FileSpreadsheet className="size-10 mx-auto text-muted-foreground mb-2" />
+          <p className="text-sm font-medium">Trascina il file qui o clicca per selezionare</p>
+          <p className="text-xs text-muted-foreground mt-1">.xlsx con fogli SCADENZIARIO + ASSICURAZIONE</p>
+          <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
+          {parsing && <Loader2 className="size-4 animate-spin mx-auto mt-3" />}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between p-3 rounded-md bg-muted">
+            <div className="flex items-center gap-2 min-w-0">
+              <FileSpreadsheet className="size-4 shrink-0" />
+              <span className="text-sm truncate">{fileName}</span>
+            </div>
+            <Button variant="ghost" size="icon" onClick={reset}><X className="size-4" /></Button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="default" className="gap-1"><CalendarClock className="size-3" /> {scadRows.length} scadenze</Badge>
+            <Badge variant="default" className="gap-1"><ShieldCheck className="size-3" /> {assicRows.length} polizze</Badge>
+            {warnings.length > 0 && (
+              <Badge variant="destructive" className="gap-1"><AlertCircle className="size-3" /> {warnings.length} avvisi</Badge>
+            )}
+          </div>
+          {warnings.length > 0 && (
+            <div className="rounded-md border p-2 text-xs text-destructive space-y-0.5">
+              {warnings.map((w, i) => <p key={i}>{w}</p>)}
+            </div>
+          )}
+          {result && (
+            <div className="rounded-md border p-3 bg-muted/30 space-y-1 max-h-60 overflow-auto">
+              <p className="text-xs font-medium mb-1">Esito import</p>
+              {result.log.slice(0, 100).map((m, i) => (
+                <p key={i} className="text-xs font-mono text-muted-foreground">{m}</p>
+              ))}
+            </div>
+          )}
+          <Button className="w-full gap-1.5"
+            disabled={(!scadRows.length && !assicRows.length) || importMut.isPending}
+            onClick={() => importMut.mutate()}>
+            {importMut.isPending && <Loader2 className="size-4 animate-spin" />}
+            Importa {scadRows.length} scadenze + {assicRows.length} polizze
+          </Button>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+/* ============================================================================
  * EXPORT
  * ============================================================================ */
 
