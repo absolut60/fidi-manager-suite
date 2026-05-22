@@ -572,24 +572,13 @@ function Field({ label, value }: { label: string; value?: string | null }) {
 
 function NewContattoDialog({ clienteId, onClose }: { clienteId: string; onClose: () => void }) {
   const qc = useQueryClient();
-  const [form, setForm] = useState<ContattoForm>({
-    nome: "", cognome: "", ruolo: "", email: "", telefono: "", cellulare: "", principale: false,
-  });
+  const [form, setForm] = useState<ContattoForm>(emptyContattoForm());
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const mutation = useMutation({
     mutationFn: async (input: ContattoForm) => {
       const parsed = contattoSchema.parse(input);
-      const payload = {
-        cliente_id: clienteId,
-        nome: parsed.nome,
-        cognome: parsed.cognome || null,
-        ruolo: parsed.ruolo || null,
-        email: parsed.email || null,
-        telefono: parsed.telefono || null,
-        cellulare: parsed.cellulare || null,
-        principale: parsed.principale,
-      };
+      const payload = { cliente_id: clienteId, ...contattoFormToPayload(parsed) };
       const { error } = await supabase.from("contatti").insert(payload);
       if (error) throw error;
     },
@@ -619,47 +608,14 @@ function NewContattoDialog({ clienteId, onClose }: { clienteId: string; onClose:
   }
 
   return (
-    <DialogContent>
+    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
       <DialogHeader>
         <DialogTitle>Nuovo contatto</DialogTitle>
         <DialogDescription>Aggiungi un referente per questo cliente.</DialogDescription>
       </DialogHeader>
-      <form onSubmit={submit} className="space-y-3">
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="nome">Nome *</Label>
-            <Input id="nome" value={form.nome} onChange={(e) => set("nome", e.target.value)} />
-            {errors.nome && <p className="text-xs text-destructive">{errors.nome}</p>}
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="cognome">Cognome</Label>
-            <Input id="cognome" value={form.cognome} onChange={(e) => set("cognome", e.target.value)} />
-          </div>
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="ruolo">Ruolo</Label>
-          <Input id="ruolo" placeholder="es. Responsabile acquisti" value={form.ruolo} onChange={(e) => set("ruolo", e.target.value)} />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="email">Email</Label>
-          <Input id="email" type="email" value={form.email} onChange={(e) => set("email", e.target.value)} />
-          {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="telefono">Telefono</Label>
-            <Input id="telefono" value={form.telefono} onChange={(e) => set("telefono", e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="cellulare">Cellulare</Label>
-            <Input id="cellulare" value={form.cellulare} onChange={(e) => set("cellulare", e.target.value)} />
-          </div>
-        </div>
-        <div className="flex items-center gap-2 pt-1">
-          <Checkbox id="principale" checked={form.principale} onCheckedChange={(v) => set("principale", v === true)} />
-          <Label htmlFor="principale" className="cursor-pointer text-sm font-normal">Contatto principale</Label>
-        </div>
-        <DialogFooter>
+      <form onSubmit={submit}>
+        <ContattoFormFields form={form} errors={errors} set={set} />
+        <DialogFooter className="mt-4">
           <Button type="button" variant="outline" onClick={onClose}>Annulla</Button>
           <Button type="submit" disabled={mutation.isPending}>
             {mutation.isPending ? "Salvataggio..." : "Aggiungi"}
@@ -669,6 +625,182 @@ function NewContattoDialog({ clienteId, onClose }: { clienteId: string; onClose:
     </DialogContent>
   );
 }
+
+function EditContattoDialog({ contatto, onClose }: { contatto: any; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [form, setForm] = useState<ContattoForm>({
+    nome: contatto.nome ?? "",
+    cognome: contatto.cognome ?? "",
+    ruolo: contatto.ruolo ?? "",
+    email: contatto.email ?? "",
+    telefono: contatto.telefono ?? "",
+    cellulare: contatto.cellulare ?? "",
+    whatsapp: contatto.whatsapp ?? "",
+    luogo_nascita: contatto.luogo_nascita ?? "",
+    data_nascita: contatto.data_nascita ?? "",
+    codice_fiscale: contatto.codice_fiscale ?? "",
+    residenza: contatto.residenza ?? "",
+    principale: !!contatto.principale,
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const mutation = useMutation({
+    mutationFn: async (input: ContattoForm) => {
+      const parsed = contattoSchema.parse(input);
+      const { error } = await supabase
+        .from("contatti")
+        .update(contattoFormToPayload(parsed))
+        .eq("id", contatto.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Contatto aggiornato");
+      qc.invalidateQueries({ queryKey: ["contatti", contatto.cliente_id] });
+      qc.invalidateQueries({ queryKey: ["contatti-all"] });
+      onClose();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    const r = contattoSchema.safeParse(form);
+    if (!r.success) {
+      const errs: Record<string, string> = {};
+      r.error.issues.forEach((i) => { errs[i.path[0] as string] = i.message; });
+      setErrors(errs);
+      return;
+    }
+    setErrors({});
+    mutation.mutate(form);
+  }
+
+  function set<K extends keyof ContattoForm>(k: K, v: ContattoForm[K]) {
+    setForm((f) => ({ ...f, [k]: v }));
+  }
+
+  return (
+    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogHeader>
+        <DialogTitle>Modifica contatto</DialogTitle>
+        <DialogDescription>Aggiorna i dati del referente.</DialogDescription>
+      </DialogHeader>
+      <form onSubmit={submit}>
+        <ContattoFormFields form={form} errors={errors} set={set} />
+        <DialogFooter className="mt-4">
+          <Button type="button" variant="outline" onClick={onClose}>Annulla</Button>
+          <Button type="submit" disabled={mutation.isPending}>
+            {mutation.isPending ? "Salvataggio..." : "Salva modifiche"}
+          </Button>
+        </DialogFooter>
+      </form>
+    </DialogContent>
+  );
+}
+
+function ContattoCard({
+  cliente, clienteId, contatto, onDelete,
+}: {
+  cliente: any; clienteId: string; contatto: any; onDelete: () => void;
+}) {
+  const qc = useQueryClient();
+  const [openEdit, setOpenEdit] = useState(false);
+  const waNumber = (contatto.whatsapp ?? "").replace(/[^\d+]/g, "");
+  const waHref = waNumber ? `https://wa.me/${waNumber.replace(/^\+/, "")}` : null;
+  return (
+    <Card className="p-4">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="font-semibold truncate">{contatto.nome} {contatto.cognome}</p>
+            {contatto.principale && (
+              <Badge className="bg-accent/15 text-accent gap-1 shrink-0">
+                <Star className="size-3 fill-current" /> Principale
+              </Badge>
+            )}
+            {contatto.privacy_firmata ? (
+              <Badge className="bg-success/15 text-success gap-1 shrink-0">
+                <FileCheck2 className="size-3" /> Privacy firmata
+              </Badge>
+            ) : (
+              <Badge className="bg-destructive/15 text-destructive gap-1 shrink-0">
+                <FileX2 className="size-3" /> Non firmata
+              </Badge>
+            )}
+          </div>
+          {contatto.ruolo && <p className="text-xs text-muted-foreground mt-0.5">{contatto.ruolo}</p>}
+        </div>
+        <div className="flex">
+          <Dialog open={openEdit} onOpenChange={setOpenEdit}>
+            <DialogTrigger asChild>
+              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+                <Pencil className="size-4" />
+              </Button>
+            </DialogTrigger>
+            {openEdit && <EditContattoDialog contatto={contatto} onClose={() => setOpenEdit(false)} />}
+          </Dialog>
+          <Button
+            variant="ghost" size="icon"
+            onClick={onDelete}
+            className="text-muted-foreground hover:text-destructive"
+          >
+            <Trash2 className="size-4" />
+          </Button>
+        </div>
+      </div>
+      <div className="mt-3 space-y-1.5 text-sm">
+        {contatto.email && (
+          <a href={`mailto:${contatto.email}`} className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
+            <Mail className="size-3.5" /> {contatto.email}
+          </a>
+        )}
+        {contatto.cellulare && (
+          <a href={`tel:${contatto.cellulare}`} className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
+            <Smartphone className="size-3.5" /> {contatto.cellulare}
+          </a>
+        )}
+        {contatto.whatsapp && (
+          <a
+            href={waHref ?? "#"}
+            target="_blank" rel="noreferrer"
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
+          >
+            <MessageCircle className="size-3.5" /> {contatto.whatsapp}
+          </a>
+        )}
+      </div>
+      <div className="mt-3 pt-3 border-t">
+        <p className="text-xs font-medium text-muted-foreground mb-2">Consensi privacy</p>
+        <div className="flex flex-wrap gap-1.5">
+          <ConsensoBadge ok={!!contatto.consenso_profilazione} label="Profilazione" />
+          <ConsensoBadge ok={!!contatto.consenso_marketing_media} label="Marketing" />
+          <ConsensoBadge ok={!!contatto.consenso_marketing_diretto} label="WhatsApp" />
+        </div>
+        {contatto.data_firma && (
+          <p className="text-xs text-muted-foreground mt-2">
+            Firmata il {new Date(contatto.data_firma).toLocaleString("it-IT")}
+          </p>
+        )}
+      </div>
+      <div className="mt-3 pt-3 border-t flex flex-wrap gap-2">
+        {contatto.privacy_firmata && (contatto.pdf_privacy_path || contatto.pdf_privacy_url) && (
+          <PdfPrivacyButton path={contatto.pdf_privacy_path} url={contatto.pdf_privacy_url}>
+            Scarica PDF
+          </PdfPrivacyButton>
+        )}
+        <FirmaContattoDialog
+          cliente={cliente}
+          contatto={contatto}
+          onSaved={() => {
+            qc.invalidateQueries({ queryKey: ["contatti", clienteId] });
+            qc.invalidateQueries({ queryKey: ["contatti-privacy", clienteId] });
+          }}
+        />
+      </div>
+    </Card>
+  );
+}
+
 
 function PrivacyTab({ cliente }: { cliente: any; onUpdated?: () => void }) {
   const { data: contatti } = useQuery({
