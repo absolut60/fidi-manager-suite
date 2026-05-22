@@ -546,6 +546,7 @@ const emptyForm: SchedaForm = {
   dichiarante_codice_fiscale: "", dichiarante_residenza: "",
   dichiarante_email: "", dichiarante_cell: "", dichiarante_data_firma: "",
   consenso_profilazione: "", consenso_marketing_media: "", consenso_marketing_diretto: "",
+  whatsapp_opt_in: false,
 };
 
 type ModalitaCreazione = "con_firma" | "senza_firma" | null;
