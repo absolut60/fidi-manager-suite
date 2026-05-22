@@ -541,6 +541,10 @@ const emptyForm: SchedaForm = {
   data_richiesta_affidamento: "", importo_affidamento_richiesto: "",
   note_amministrazione: "",
   dichiarante_nome: "", dichiarante_cognome: "",
+  dichiarante_societa: "", dichiarante_luogo_nascita: "", dichiarante_data_nascita: "",
+  dichiarante_codice_fiscale: "", dichiarante_residenza: "",
+  dichiarante_email: "", dichiarante_cell: "", dichiarante_data_firma: "",
+  consenso_profilazione: "", consenso_marketing_media: "", consenso_marketing_diretto: "",
 };
 
 type ModalitaCreazione = "con_firma" | "senza_firma" | null;
