@@ -49,6 +49,45 @@ function toStr(v: unknown): string | null {
   return s === "" ? null : s;
 }
 
+/**
+ * Parse a worksheet skipping title/preamble rows.
+ * Finds the header row (first row containing `headerKeyword` in any cell),
+ * skips an optional description row right after, and returns objects keyed
+ * by the header cells. Each object includes a __row property with the
+ * original 1-based Excel row number for error reporting.
+ */
+function sheetToObjects(
+  sheet: XLSX.WorkSheet,
+  headerKeyword: string,
+): Array<Record<string, unknown> & { __row: number }> {
+  const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "", blankrows: false });
+  const kw = normalize(headerKeyword);
+  let headerIdx = -1;
+  for (let i = 0; i < matrix.length; i++) {
+    const row = matrix[i] ?? [];
+    if (row.some((c) => {
+      const n = normalize(String(c ?? ""));
+      return n === kw || n.startsWith(kw + " ");
+    })) {
+      headerIdx = i;
+      break;
+    }
+  }
+  if (headerIdx === -1) return [];
+  const headers = (matrix[headerIdx] ?? []).map((c) => String(c ?? "").trim());
+  // Skip description row right after headers (per template convention).
+  const dataStart = headerIdx + 2;
+  const out: Array<Record<string, unknown> & { __row: number }> = [];
+  for (let i = dataStart; i < matrix.length; i++) {
+    const row = matrix[i] ?? [];
+    if (!row.some((c) => String(c ?? "").trim() !== "")) continue;
+    const obj: Record<string, unknown> = {};
+    headers.forEach((h, j) => { if (h) obj[h] = row[j] ?? ""; });
+    out.push(Object.assign(obj, { __row: i + 1 }));
+  }
+  return out;
+}
+
 function ImportExportPage() {
   return (
     <div className="space-y-6">
