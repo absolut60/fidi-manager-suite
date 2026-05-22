@@ -49,10 +49,129 @@ const contattoSchema = z.object({
   email: z.string().trim().email("Email non valida").max(255).optional().or(z.literal("")),
   telefono: z.string().trim().max(30).optional().or(z.literal("")),
   cellulare: z.string().trim().max(30).optional().or(z.literal("")),
+  whatsapp: z.string().trim().max(30).optional().or(z.literal("")),
+  luogo_nascita: z.string().trim().max(100).optional().or(z.literal("")),
+  data_nascita: z.string().trim().max(20).optional().or(z.literal("")),
+  codice_fiscale: z.string().trim().max(20).optional().or(z.literal("")),
+  residenza: z.string().trim().max(200).optional().or(z.literal("")),
   principale: z.boolean().default(false),
 });
 
 type ContattoForm = z.infer<typeof contattoSchema>;
+
+function emptyContattoForm(): ContattoForm {
+  return {
+    nome: "", cognome: "", ruolo: "",
+    email: "", telefono: "", cellulare: "", whatsapp: "",
+    luogo_nascita: "", data_nascita: "", codice_fiscale: "", residenza: "",
+    principale: false,
+  };
+}
+
+function ContattoFormFields({
+  form, errors, set,
+}: {
+  form: ContattoForm;
+  errors: Record<string, string>;
+  set: <K extends keyof ContattoForm>(k: K, v: ContattoForm[K]) => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="space-y-3">
+        <h4 className="text-sm font-semibold">Dati anagrafici</h4>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label>Nome *</Label>
+            <Input value={form.nome} onChange={(e) => set("nome", e.target.value)} />
+            {errors.nome && <p className="text-xs text-destructive">{errors.nome}</p>}
+          </div>
+          <div className="space-y-1.5">
+            <Label>Cognome</Label>
+            <Input value={form.cognome} onChange={(e) => set("cognome", e.target.value)} />
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <Label>Ruolo</Label>
+          <Input placeholder="es. Responsabile acquisti" value={form.ruolo} onChange={(e) => set("ruolo", e.target.value)} />
+        </div>
+        <div className="flex items-center gap-2">
+          <Checkbox id="principale" checked={form.principale} onCheckedChange={(v) => set("principale", v === true)} />
+          <Label htmlFor="principale" className="cursor-pointer text-sm font-normal">Contatto principale</Label>
+        </div>
+      </div>
+
+      <div className="space-y-3 border-t pt-3">
+        <h4 className="text-sm font-semibold">Recapiti</h4>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label>Email</Label>
+            <Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} />
+            {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
+          </div>
+          <div className="space-y-1.5">
+            <Label>Telefono</Label>
+            <Input value={form.telefono} onChange={(e) => set("telefono", e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Cellulare</Label>
+            <Input value={form.cellulare} onChange={(e) => set("cellulare", e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>WhatsApp</Label>
+            <Input placeholder="+39 333 1234567" value={form.whatsapp} onChange={(e) => set("whatsapp", e.target.value)} />
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-3 border-t pt-3">
+        <h4 className="text-sm font-semibold">Dati personali</h4>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label>Luogo di nascita</Label>
+            <Input value={form.luogo_nascita} onChange={(e) => set("luogo_nascita", e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Data di nascita</Label>
+            <Input type="date" value={form.data_nascita} onChange={(e) => set("data_nascita", e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Codice fiscale</Label>
+            <Input value={form.codice_fiscale} onChange={(e) => set("codice_fiscale", e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Residenza</Label>
+            <Input value={form.residenza} onChange={(e) => set("residenza", e.target.value)} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function contattoFormToPayload(parsed: ContattoForm) {
+  return {
+    nome: parsed.nome,
+    cognome: parsed.cognome || null,
+    ruolo: parsed.ruolo || null,
+    email: parsed.email || null,
+    telefono: parsed.telefono || null,
+    cellulare: parsed.cellulare || null,
+    whatsapp: parsed.whatsapp || null,
+    luogo_nascita: parsed.luogo_nascita || null,
+    data_nascita: parsed.data_nascita || null,
+    codice_fiscale: parsed.codice_fiscale || null,
+    residenza: parsed.residenza || null,
+    principale: parsed.principale,
+  };
+}
+
+function ConsensoBadge({ ok, label }: { ok: boolean; label: string }) {
+  return ok ? (
+    <Badge className="bg-success/15 text-success border-success/30">{label} ✓</Badge>
+  ) : (
+    <Badge variant="outline" className="text-muted-foreground">{label} —</Badge>
+  );
+}
 
 function ClienteDetail() {
   const { clienteId } = Route.useParams();
