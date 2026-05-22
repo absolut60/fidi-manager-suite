@@ -250,14 +250,24 @@ function ImportCard() {
         email: toNullable(d.email),
         note: toNullable(d.note),
         condizioni_pagamento: toNullable(d.condizioni_pagamento),
+        condizione_pagamento_cod: toNullable(d.condizione_pagamento_cod),
+        condizione_pagamento_desc: toNullable(d.condizioni_pagamento),
         fido: toNullable(d.fido),
+        fido_gestionale: toNullable(d.fido_gestionale ?? d.fido),
         totale_rischio: toNullable(d.totale_rischio),
         fido_residuo: toNullable(d.fido_residuo),
         scaduto: toNullable(d.scaduto),
         a_scadere: toNullable(d.a_scadere),
+        saldo_contabile: toNullable(d.saldo_contabile),
+        doc_da_fatturare: toNullable(d.doc_da_fatturare),
+        doc_da_evadere: toNullable(d.doc_da_evadere),
+        effetti_a_rischio: toNullable(d.effetti_a_rischio),
+        num_insoluti: toNullable(d.num_insoluti),
         dilazione_concordata: toNullable(d.dilazione_concordata),
         dilazione_effettiva: toNullable(d.dilazione_effettiva),
+        ultima_sincronizzazione: new Date().toISOString(),
         store_id: storeId || null,
+
       });
 
       // Carica clienti esistenti per deduplicazione (codice_gestionale o partita_iva)
