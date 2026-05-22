@@ -1,12 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { FileSignature, Search, Download, Check, X } from "lucide-react";
+import { FileSignature, Search, Check, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { PdfPrivacyButton } from "@/components/pdf-privacy-button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -26,13 +25,20 @@ function fmtDate(v: unknown): string {
   try { return new Date(String(v)).toLocaleDateString("it-IT"); } catch { return String(v); }
 }
 
-export default function PrivacyPage() {
+function CB({ ok }: { ok: boolean }) {
+  return ok
+    ? <Badge className="bg-success/15 text-success border-success/30"><Check className="size-3" /></Badge>
+    : <Badge variant="outline" className="text-muted-foreground"><X className="size-3" /></Badge>;
+}
+
+function PrivacyPage() {
   const navigate = useNavigate();
   const { role } = useAuth();
   const isStoreManager = role === "store_manager";
 
-  const [stato, setStato] = useState<string>("tutti");
-  const [storeId, setStoreId] = useState<string>("all");
+  const [stato, setStato] = useState("tutti");
+  const [storeId, setStoreId] = useState("all");
+  const [consensoFiltro, setConsensoFiltro] = useState("tutti");
   const [q, setQ] = useState("");
 
   const { data: stores } = useQuery({
@@ -49,7 +55,7 @@ export default function PrivacyPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("contatti")
-        .select("id, nome, cognome, ruolo, privacy_firmata, data_firma, pdf_privacy_url, pdf_privacy_path, cliente_id, clienti!inner(id, ragione_sociale, store_id, stores(nome))")
+        .select("id, nome, cognome, ruolo, privacy_firmata, data_firma, pdf_privacy_url, pdf_privacy_path, consenso_profilazione, consenso_marketing_media, consenso_marketing_diretto, cliente_id, clienti!inner(id, ragione_sociale, store_id, stores(nome))")
         .order("data_firma", { ascending: false, nullsFirst: false });
       if (error) throw error;
       return data ?? [];
@@ -61,15 +67,17 @@ export default function PrivacyPage() {
       if (storeId !== "all" && r.clienti?.store_id !== storeId) return false;
       if (stato === "firmata" && !r.privacy_firmata) return false;
       if (stato === "non_firmata" && r.privacy_firmata) return false;
+      if (consensoFiltro === "profilazione" && !r.consenso_profilazione) return false;
+      if (consensoFiltro === "marketing" && !r.consenso_marketing_media) return false;
+      if (consensoFiltro === "whatsapp" && !r.consenso_marketing_diretto) return false;
       if (q) {
         const ql = q.toLowerCase();
-        const fullName = `${r.nome ?? ""} ${r.cognome ?? ""}`.toLowerCase();
-        if (!String(r.clienti?.ragione_sociale ?? "").toLowerCase().includes(ql) &&
-            !fullName.includes(ql)) return false;
+        const hay = `${r.nome ?? ""} ${r.cognome ?? ""} ${r.clienti?.ragione_sociale ?? ""}`.toLowerCase();
+        if (!hay.includes(ql)) return false;
       }
       return true;
     });
-  }, [data, stato, storeId, q]);
+  }, [data, stato, storeId, consensoFiltro, q]);
 
   return (
     <div className="space-y-6">
@@ -78,7 +86,7 @@ export default function PrivacyPage() {
           <FileSignature className="size-7 text-primary" /> Privacy contatti
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Stato firme privacy di tutti i contatti {isStoreManager ? "del tuo store" : ""}
+          Stato firme e consensi privacy di tutti i contatti {isStoreManager ? "del tuo store" : ""}
         </p>
       </div>
 
@@ -102,6 +110,17 @@ export default function PrivacyPage() {
                 <SelectItem value="tutti">Tutti</SelectItem>
                 <SelectItem value="firmata">Firmata</SelectItem>
                 <SelectItem value="non_firmata">Non firmata</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="w-56">
+            <Select value={consensoFiltro} onValueChange={setConsensoFiltro}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="tutti">Tutti i consensi</SelectItem>
+                <SelectItem value="profilazione">Profilazione ✓</SelectItem>
+                <SelectItem value="marketing">Marketing ✓</SelectItem>
+                <SelectItem value="whatsapp">WhatsApp ✓</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -136,7 +155,9 @@ export default function PrivacyPage() {
                 <TableHead>Contatto</TableHead>
                 <TableHead>Ruolo</TableHead>
                 <TableHead className="text-center">Privacy base</TableHead>
+                <TableHead className="text-center">Profilaz.</TableHead>
                 <TableHead className="text-center">Marketing</TableHead>
+                <TableHead className="text-center">WhatsApp</TableHead>
                 <TableHead>Data firma</TableHead>
                 <TableHead className="text-right">PDF</TableHead>
               </TableRow>
@@ -160,16 +181,20 @@ export default function PrivacyPage() {
                   <TableCell className="text-muted-foreground">{r.ruolo ?? "—"}</TableCell>
                   <TableCell className="text-center">
                     {r.privacy_firmata ? (
-                      <Badge className="bg-success text-success-foreground"><Check className="size-3" /> Firmata</Badge>
+                      <Badge className="bg-success/15 text-success border-success/30">Firmata</Badge>
                     ) : (
-                      <Badge variant="outline" className="text-muted-foreground"><X className="size-3" /> No</Badge>
+                      <Badge className="bg-destructive/15 text-destructive border-destructive/30">Da firmare</Badge>
                     )}
                   </TableCell>
-                  <TableCell className="text-center text-muted-foreground text-xs">—</TableCell>
+                  <TableCell className="text-center"><CB ok={!!r.consenso_profilazione} /></TableCell>
+                  <TableCell className="text-center"><CB ok={!!r.consenso_marketing_media} /></TableCell>
+                  <TableCell className="text-center"><CB ok={!!r.consenso_marketing_diretto} /></TableCell>
                   <TableCell>{fmtDate(r.data_firma)}</TableCell>
                   <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                     {r.pdf_privacy_path || r.pdf_privacy_url ? (
-                      <PdfPrivacyButton path={r.pdf_privacy_path} url={r.pdf_privacy_url} />
+                      <PdfPrivacyButton path={r.pdf_privacy_path} url={r.pdf_privacy_url}>
+                        Scarica PDF
+                      </PdfPrivacyButton>
                     ) : (
                       <span className="text-xs text-muted-foreground">—</span>
                     )}
