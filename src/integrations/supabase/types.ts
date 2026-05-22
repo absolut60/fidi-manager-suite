@@ -688,6 +688,7 @@ export type Database = {
           created_at: string
           dimensione_bytes: number | null
           eseguita_da: string | null
+          file_path: string | null
           fonte: string | null
           id: string
           log_errori: Json | null
@@ -704,6 +705,7 @@ export type Database = {
           created_at?: string
           dimensione_bytes?: number | null
           eseguita_da?: string | null
+          file_path?: string | null
           fonte?: string | null
           id?: string
           log_errori?: Json | null
@@ -720,6 +722,7 @@ export type Database = {
           created_at?: string
           dimensione_bytes?: number | null
           eseguita_da?: string | null
+          file_path?: string | null
           fonte?: string | null
           id?: string
           log_errori?: Json | null

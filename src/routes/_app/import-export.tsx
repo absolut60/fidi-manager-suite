@@ -238,20 +238,22 @@ function AnagraficaImportCard() {
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [file, setFile] = useState<File | null>(null);
   const [rows, setRows] = useState<ParsedRow<AnagraficaRow>[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [parsing, setParsing] = useState(false);
+  const [importazioneId, setImportazioneId] = useState<string | null>(null);
   const [result, setResult] = useState<null | { created: number; updated: number; skipped: number; errors: Array<{ riga: number; errore: string }> }>(null);
 
   function reset() {
-    setFileName(null); setRows([]); setResult(null);
+    setFileName(null); setFile(null); setRows([]); setResult(null); setImportazioneId(null);
     if (fileRef.current) fileRef.current.value = "";
   }
 
-  async function handleFile(file: File) {
-    setParsing(true); setResult(null);
+  async function handleFile(f: File) {
+    setParsing(true); setResult(null); setImportazioneId(null);
     try {
-      const buf = await file.arrayBuffer();
+      const buf = await f.arrayBuffer();
       const wb = XLSX.read(buf, { type: "array" });
       const sheet = wb.Sheets[wb.SheetNames[0]];
       const raw = anagraficaSheetToObjects(sheet);
@@ -261,8 +263,8 @@ function AnagraficaImportCard() {
         const mapped: Record<string, string> = {};
         for (const k of Object.keys(r)) {
           if (k === "__row") continue;
-          const f = ANAG_HEADERS[normalize(k)];
-          if (f) mapped[f] = String(r[k] ?? "").trim();
+          const fkey = ANAG_HEADERS[normalize(k)];
+          if (fkey) mapped[fkey] = String(r[k] ?? "").trim();
         }
         const res = anagraficaSchema.safeParse(mapped);
         return {
@@ -271,9 +273,10 @@ function AnagraficaImportCard() {
           errors: res.success ? [] : res.error.issues.map((e) => `${e.path[0]}: ${e.message}`),
         };
       });
-      setFileName(file.name);
+      setFileName(f.name);
+      setFile(f);
       setRows(parsed);
-      toast.success(`${parsed.length} righe lette`);
+      toast.success(`${parsed.length} righe lette (anteprima)`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Errore lettura file");
     } finally {
@@ -284,17 +287,14 @@ function AnagraficaImportCard() {
   const valid = rows.filter((r) => r.errors.length === 0 && r.data.ragione_sociale);
   const invalid = rows.filter((r) => r.errors.length > 0);
 
+  // Avvio import: upload + inserimento importazione + trigger Inngest.
+  // Il processing prosegue lato server anche se l'utente chiude la pagina.
   const importMut = useMutation({
     mutationFn: async () => {
-      if (!valid.length) throw new Error("Nessuna riga valida");
+      if (!file) throw new Error("Nessun file selezionato");
       const { data: { user } } = await supabase.auth.getUser();
 
-      // Cache stores per codice + lista ordinata per matching numerico (1 = primo, 2 = secondo, ...)
-      const storeMap = new Map<string, string>();
-      const { data: allStores } = await supabase.from("stores").select("id, codice").order("codice", { ascending: true });
-      (allStores ?? []).forEach((s) => { if (s.codice) storeMap.set(s.codice, s.id); });
-      const storesByIndex = allStores ?? [];
-
+      // 1) Crea record importazione (così abbiamo l'ID per nominare il file)
       const { data: imp, error: impErr } = await supabase.from("importazioni").insert({
         nome_file: fileName ?? "anagrafica.xlsx",
         righe_totali: rows.length,
@@ -305,141 +305,65 @@ function AnagraficaImportCard() {
       }).select("id").single();
       if (impErr) throw impErr;
 
-      let created = 0, updated = 0;
-      const errorLog: Array<{ riga: number; errore: string }> = [];
-      const skipped = invalid.length;
-
-      // Checkpoint: salva progresso ogni batch così se la pagina si chiude lo stato è coerente
-      const checkpoint = async (stato: "in_elaborazione" | "completata" | "completata_con_errori") => {
-        const fullLog = [
-          ...invalid.slice(0, 100).map((r) => ({ riga: r.idx, errore: r.errors.join("; ") })),
-          ...errorLog.slice(0, 500),
-        ];
+      // 2) Upload file su storage
+      const filePath = `${imp.id}/${file.name}`;
+      const { error: upErr } = await supabase.storage.from("import-files").upload(filePath, file, {
+        contentType: file.type || "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        upsert: true,
+      });
+      if (upErr) {
         await supabase.from("importazioni").update({
-          righe_elaborate: created + updated + errorLog.length,
-          righe_create: created,
-          righe_aggiornate: updated,
-          righe_errore: skipped + errorLog.length,
-          stato,
-          completata_at: stato === "in_elaborazione" ? null : new Date().toISOString(),
-          log_errori: fullLog.length ? fullLog : null,
+          stato: "completata_con_errori", completata_at: new Date().toISOString(),
+          log_errori: [{ riga: 0, errore: `Upload fallito: ${upErr.message}` }],
         }).eq("id", imp.id);
-      };
-
-      // Avviso utente se chiude la tab durante l'import
-      const beforeUnload = (e: BeforeUnloadEvent) => {
-        e.preventDefault();
-        e.returnValue = "Importazione in corso. Sicuro di voler uscire?";
-      };
-      window.addEventListener("beforeunload", beforeUnload);
-
-      try {
-        // Lookup esistenti per codice_gestionale o partita_iva
-        const codici = Array.from(new Set(valid.map((r) => r.data.codice_gestionale).filter((v): v is string => !!v)));
-        const pive = Array.from(new Set(valid.map((r) => r.data.partita_iva).filter((v): v is string => !!v)));
-        const existing = new Map<string, string>();
-        if (codici.length) {
-          const { data } = await supabase.from("clienti").select("id, codice_gestionale").in("codice_gestionale", codici);
-          (data ?? []).forEach((c) => { if (c.codice_gestionale) existing.set(`cg:${c.codice_gestionale}`, c.id); });
-        }
-        if (pive.length) {
-          const { data } = await supabase.from("clienti").select("id, partita_iva").in("partita_iva", pive);
-          (data ?? []).forEach((c) => { if (c.partita_iva) existing.set(`pi:${c.partita_iva}`, c.id); });
-        }
-
-        // Costruisce payload + separa righe da creare (batch insert) dalle righe da aggiornare (update singoli)
-        type Prepared = { idx: number; payload: Record<string, unknown>; existId: string | null };
-        const prepared: Prepared[] = [];
-        for (const r of valid) {
-          const d = r.data;
-          let storeId: string | null = null;
-          if (d.store_codice) {
-            storeId = storeMap.get(d.store_codice) ?? null;
-            if (!storeId && /^\d+$/.test(d.store_codice.trim())) {
-              const idx = parseInt(d.store_codice.trim(), 10) - 1;
-              if (idx >= 0 && idx < storesByIndex.length) storeId = storesByIndex[idx].id;
-            }
-            if (!storeId) {
-              errorLog.push({ riga: r.idx, errore: `Store '${d.store_codice}' non trovato (warning, riga importata senza store)` });
-            }
-          }
-          const payload: Record<string, unknown> = {
-            ragione_sociale: d.ragione_sociale,
-            codice_gestionale: toStr(d.codice_gestionale),
-            partita_iva: toStr(d.partita_iva),
-            codice_fiscale: toStr(d.codice_fiscale),
-            tipo_soggetto: toStr(d.forma_giuridica),
-            indirizzo: toStr(d.indirizzo),
-            citta: toStr(d.citta),
-            cap: toStr(d.cap),
-            provincia: toStr(d.provincia),
-            telefono: toStr(d.telefono),
-            email: toStr(d.email),
-            pec: toStr(d.pec),
-            codice_sdi: toStr(d.codice_sdi),
-            note: toStr(d.note),
-          };
-          if (storeId) payload.store_id = storeId;
-
-          const existId =
-            (d.codice_gestionale && existing.get(`cg:${d.codice_gestionale}`)) ||
-            (d.partita_iva && existing.get(`pi:${d.partita_iva}`)) || null;
-          prepared.push({ idx: r.idx, payload, existId });
-        }
-
-        // BATCH INSERT (nuovi) — 100 alla volta, molto più veloce di insert singoli
-        const toInsert = prepared.filter((p) => !p.existId);
-        const toUpdate = prepared.filter((p) => p.existId);
-        const BATCH = 100;
-
-        for (let i = 0; i < toInsert.length; i += BATCH) {
-          const chunk = toInsert.slice(i, i + BATCH);
-          const { data, error } = await supabase
-            .from("clienti")
-            .insert(chunk.map((c) => c.payload) as never)
-            .select("id");
-          if (error) {
-            // Se il batch fallisce, fallback a insert singoli per isolare la riga rotta
-            for (const c of chunk) {
-              const { error: e2 } = await supabase.from("clienti").insert(c.payload as never);
-              if (e2) errorLog.push({ riga: c.idx, errore: `Insert: ${e2.message}` });
-              else created += 1;
-            }
-          } else {
-            created += data?.length ?? chunk.length;
-          }
-          await checkpoint("in_elaborazione");
-        }
-
-        // UPDATE (esistenti) — singoli perché ogni riga ha eq diversa
-        for (let i = 0; i < toUpdate.length; i += BATCH) {
-          const chunk = toUpdate.slice(i, i + BATCH);
-          await Promise.all(chunk.map(async (c) => {
-            const { error } = await supabase.from("clienti").update(c.payload as never).eq("id", c.existId!);
-            if (error) errorLog.push({ riga: c.idx, errore: `Update: ${error.message}` });
-            else updated += 1;
-          }));
-          await checkpoint("in_elaborazione");
-        }
-
-        await checkpoint((skipped + errorLog.length) > 0 ? "completata_con_errori" : "completata");
-        return { created, updated, skipped, errors: errorLog };
-      } catch (err) {
-        errorLog.push({ riga: 0, errore: `Errore fatale: ${err instanceof Error ? err.message : String(err)}` });
-        await checkpoint("completata_con_errori");
-        throw err;
-      } finally {
-        window.removeEventListener("beforeunload", beforeUnload);
+        throw upErr;
       }
+      await supabase.from("importazioni").update({ file_path: filePath }).eq("id", imp.id);
+
+      // 3) Trigger Inngest via serverFn
+      const { triggerAnagraficaImport } = await import("@/lib/import.functions");
+      await triggerAnagraficaImport({ data: { importazioneId: imp.id, filePath } });
+
+      return imp.id;
     },
-    onSuccess: (r) => {
-      setResult(r);
-      toast.success(`Anagrafica: ${r.created} creati, ${r.updated} aggiornati, ${r.skipped + r.errors.length} saltati`);
-      qc.invalidateQueries({ queryKey: ["clienti"] });
+    onSuccess: (id) => {
+      setImportazioneId(id);
+      toast.success("Import avviato in background. Puoi chiudere la pagina, prosegue lato server.");
       qc.invalidateQueries({ queryKey: ["storico-import-export"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  // Polling stato importazione mentre è in corso
+  const { data: progress } = useQuery({
+    queryKey: ["importazione-stato", importazioneId],
+    queryFn: async () => {
+      if (!importazioneId) return null;
+      const { data } = await supabase.from("importazioni")
+        .select("stato, righe_totali, righe_elaborate, righe_create, righe_aggiornate, righe_errore, log_errori, completata_at")
+        .eq("id", importazioneId).single();
+      return data;
+    },
+    enabled: !!importazioneId && !result,
+    refetchInterval: 2000,
+  });
+
+  // Quando il job termina aggiorno il riepilogo e invalido le query clienti
+  if (progress && !result && (progress.stato === "completata" || progress.stato === "completata_con_errori")) {
+    const errs = Array.isArray(progress.log_errori) ? (progress.log_errori as Array<{ riga: number; errore: string }>) : [];
+    setResult({
+      created: progress.righe_create ?? 0,
+      updated: progress.righe_aggiornate ?? 0,
+      skipped: (progress.righe_errore ?? 0) - errs.length < 0 ? 0 : (progress.righe_errore ?? 0) - errs.length,
+      errors: errs,
+    });
+    qc.invalidateQueries({ queryKey: ["clienti"] });
+    qc.invalidateQueries({ queryKey: ["storico-import-export"] });
+    toast.success("Import completato");
+  }
+
+  const inProgress = !!importazioneId && !result;
+
 
   function downloadTemplate() {
     const ws = XLSX.utils.json_to_sheet([{
@@ -467,16 +391,31 @@ function AnagraficaImportCard() {
       </div>
       <p className="text-xs text-muted-foreground mb-4">
         Crea o aggiorna i clienti (upsert su <code>codice_gestionale</code> o <code>partita_iva</code>).
+        L'elaborazione gira in background: puoi chiudere la pagina senza interrompere l'import.
       </p>
+      {inProgress && progress ? (
+        <div className="space-y-2 mb-4 p-3 rounded-md border bg-muted/30 text-sm">
+          <div className="flex items-center gap-2">
+            <Loader2 className="size-4 animate-spin" />
+            <span className="font-medium">Import in corso in background</span>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {progress.righe_elaborate ?? 0} / {progress.righe_totali ?? rows.length} righe ·
+            {" "}{progress.righe_create ?? 0} create ·
+            {" "}{progress.righe_aggiornate ?? 0} aggiornate ·
+            {" "}{progress.righe_errore ?? 0} errori
+          </div>
+        </div>
+      ) : null}
       <ImportZone
         fileName={fileName} parsing={parsing} dragOver={dragOver}
         setDragOver={setDragOver} fileRef={fileRef} onFile={handleFile} onReset={reset}
         valid={valid.length} invalid={invalid}
         result={result}
         action={
-          <Button className="w-full gap-1.5" disabled={!valid.length || importMut.isPending} onClick={() => importMut.mutate()}>
-            {importMut.isPending && <Loader2 className="size-4 animate-spin" />}
-            Importa {valid.length} righe
+          <Button className="w-full gap-1.5" disabled={!valid.length || importMut.isPending || inProgress} onClick={() => importMut.mutate()}>
+            {(importMut.isPending || inProgress) && <Loader2 className="size-4 animate-spin" />}
+            {inProgress ? "Elaborazione in background..." : `Avvia import (${valid.length} righe)`}
           </Button>
         }
       />
