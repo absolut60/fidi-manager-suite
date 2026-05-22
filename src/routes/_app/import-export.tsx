@@ -79,8 +79,15 @@ function sheetToObjects(
   }
   if (headerIdx === -1) return [];
   const headers = (matrix[headerIdx] ?? []).map((c) => String(c ?? "").trim());
-  // Skip description row right after headers (per template convention).
-  const dataStart = headerIdx + 2;
+  // Find the keyword column to decide whether the next row is a description or data.
+  const kwColIdx = headers.findIndex((h) => {
+    const n = normalize(h);
+    return n === kw || n.startsWith(kw + " ");
+  });
+  const nextRow = matrix[headerIdx + 1] ?? [];
+  const nextKwCell = kwColIdx >= 0 ? String(nextRow[kwColIdx] ?? "").trim() : "";
+  // Skip the row after headers only when the keyword column is empty there (= description row).
+  const dataStart = nextKwCell === "" ? headerIdx + 2 : headerIdx + 1;
   const out: Array<Record<string, unknown> & { __row: number }> = [];
   for (let i = dataStart; i < matrix.length; i++) {
     const row = matrix[i] ?? [];
