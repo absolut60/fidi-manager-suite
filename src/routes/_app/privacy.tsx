@@ -48,7 +48,7 @@ export default function PrivacyPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("contatti")
-        .select("id, nome, cognome, ruolo, privacy_firmata, data_firma, pdf_privacy_url, cliente_id, clienti!inner(id, ragione_sociale, store_id, stores(nome))")
+        .select("id, nome, cognome, ruolo, privacy_firmata, data_firma, pdf_privacy_url, pdf_privacy_path, cliente_id, clienti!inner(id, ragione_sociale, store_id, stores(nome))")
         .order("data_firma", { ascending: false, nullsFirst: false });
       if (error) throw error;
       return data ?? [];
