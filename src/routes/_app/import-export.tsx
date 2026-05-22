@@ -174,17 +174,18 @@ function AnagraficaImportCard() {
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf, { type: "array" });
       const sheet = wb.Sheets[wb.SheetNames[0]];
-      const raw = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
-      if (!raw.length) { toast.error("File vuoto"); return; }
-      const parsed: ParsedRow<AnagraficaRow>[] = raw.map((r, i) => {
+      const raw = sheetToObjects(sheet, "codice");
+      if (!raw.length) { toast.error("Nessuna riga dati trovata (intestazione 'Codice' mancante o file vuoto)"); return; }
+      const parsed: ParsedRow<AnagraficaRow>[] = raw.map((r) => {
         const mapped: Record<string, string> = {};
         for (const k of Object.keys(r)) {
+          if (k === "__row") continue;
           const f = ANAG_HEADERS[normalize(k)];
           if (f) mapped[f] = String(r[k] ?? "").trim();
         }
         const res = anagraficaSchema.safeParse(mapped);
         return {
-          idx: i + 2,
+          idx: r.__row,
           data: (res.success ? res.data : mapped) as AnagraficaRow,
           errors: res.success ? [] : res.error.issues.map((e) => `${e.path[0]}: ${e.message}`),
         };
