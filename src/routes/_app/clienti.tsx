@@ -509,6 +509,17 @@ const schedaSchema = z.object({
   // STEP 4 — Firma (solo modalità con firma)
   dichiarante_nome: z.string().trim().max(100).optional().or(z.literal("")),
   dichiarante_cognome: z.string().trim().max(100).optional().or(z.literal("")),
+  dichiarante_societa: z.string().trim().max(200).optional().or(z.literal("")),
+  dichiarante_luogo_nascita: z.string().trim().max(100).optional().or(z.literal("")),
+  dichiarante_data_nascita: z.string().optional().or(z.literal("")),
+  dichiarante_codice_fiscale: z.string().trim().max(20).optional().or(z.literal("")),
+  dichiarante_residenza: z.string().trim().max(200).optional().or(z.literal("")),
+  dichiarante_email: z.string().trim().max(255).optional().or(z.literal("")),
+  dichiarante_cell: z.string().trim().max(30).optional().or(z.literal("")),
+  dichiarante_data_firma: z.string().optional().or(z.literal("")),
+  consenso_profilazione: z.enum(["", "si", "no"]).optional().default(""),
+  consenso_marketing_media: z.enum(["", "si", "no"]).optional().default(""),
+  consenso_marketing_diretto: z.enum(["", "si", "no"]).optional().default(""),
 });
 
 type SchedaForm = z.infer<typeof schedaSchema>;
