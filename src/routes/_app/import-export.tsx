@@ -707,6 +707,29 @@ type ScadRow = {
   payload: Record<string, unknown>;
 };
 
+const SCAD_OFFICIAL_MAP: Record<string, string> = {
+  "cod_cli": "codice_gestionale",
+  "codcli": "codice_gestionale",
+  "ragione sociale": "__ragsoc",
+  "codice pagamento scad": "codice_pagamento",
+  "descrizione pagamento": "descrizione_pagamento",
+  "numero documento origine": "numero_documento",
+  "sezionale documento": "sezionale",
+  "data documento": "data_documento",
+  "anno partita": "anno_partita",
+  "tipologia scadenza": "tipologia_scadenza",
+  "data scadenza": "data_scadenza",
+  "stato contabile": "stato_contabile",
+  "importo scadenza": "importo_scadenza",
+  "importo documento": "importo_documento",
+  "giorni ritardo": "giorni_ritardo",
+  "dilazione effettiva": "dilazione_effettiva",
+  "importo ritardo": "importo_ritardo",
+  "data pagamento": "data_pagamento",
+  "importo originario effetto": "importo_originario",
+  "importo scadenza netto prev": "importo_netto_prev",
+};
+
 function excelDateToISO(v: unknown): string | null {
   if (v == null || v === "") return null;
   if (typeof v === "number") {
@@ -734,6 +757,43 @@ function excelDateToISO(v: unknown): string | null {
   const d = new Date(s);
   if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
   return null;
+}
+
+function parseOfficialScadenziarioSheet(sheet: XLSX.WorkSheet): { rows: ScadRow[]; missing: number[]; totRead: number } {
+  const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "", blankrows: false });
+  if (matrix.length < 3) return { rows: [], missing: [], totRead: 0 };
+  const headers = (matrix[1] ?? []).map((c) => normalize(String(c ?? "")));
+  const numFields = new Set(["importo_scadenza", "importo_documento", "importo_originario", "importo_netto_prev", "importo_ritardo"]);
+  const intFields = new Set(["giorni_ritardo", "dilazione_effettiva", "anno_partita"]);
+  const dateFields = new Set(["data_documento", "data_scadenza", "data_pagamento"]);
+  const rows: ScadRow[] = [];
+  const missing: number[] = [];
+  let totRead = 0;
+  for (let i = 2; i < matrix.length; i++) {
+    const row = matrix[i] ?? [];
+    if (!row.some((c) => String(c ?? "").trim() !== "")) continue;
+    totRead++;
+    const mapped: Record<string, unknown> = {};
+    let ragSoc = "";
+    headers.forEach((h, j) => {
+      const field = SCAD_OFFICIAL_MAP[h];
+      if (!field) return;
+      if (field === "__ragsoc") { ragSoc = String(row[j] ?? "").trim(); return; }
+      mapped[field] = row[j];
+    });
+    const codice = toStr(mapped.codice_gestionale)?.replace(/\.0$/, "");
+    if (!codice) { missing.push(i + 1); continue; }
+    const payload: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(mapped)) {
+      if (k === "codice_gestionale") continue;
+      if (numFields.has(k)) payload[k] = toNum(v);
+      else if (intFields.has(k)) payload[k] = toInt(v);
+      else if (dateFields.has(k)) payload[k] = excelDateToISO(v);
+      else payload[k] = toStr(v);
+    }
+    rows.push({ idx: i + 1, codice_gestionale: codice, ragione_sociale: ragSoc, payload });
+  }
+  return { rows, missing, totRead };
 }
 
 function ScadenziarioImportCard() {
