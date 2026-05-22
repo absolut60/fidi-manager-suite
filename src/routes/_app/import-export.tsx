@@ -817,7 +817,9 @@ function ScadenziarioImportCard() {
       const wb = XLSX.read(buf, { type: "array", cellDates: false });
       const sheetName = wb.SheetNames.find((name) => normalize(name) === "scadenziario");
       if (!sheetName) throw new Error("Foglio SCADENZIARIO non trovato nel file");
-      const nextParsed = parseOfficialScadenziarioSheet(wb.Sheets[sheetName]);
+      const sheet = wb.Sheets[sheetName];
+      if (!sheet) throw new Error("Foglio SCADENZIARIO non trovato nel file");
+      const nextParsed = parseOfficialScadenziarioSheet(sheet);
       if (!nextParsed.totRead) throw new Error("Nessuna riga dati trovata nel foglio SCADENZIARIO");
       setFileName(f.name); setFile(f); setParsed(nextParsed);
       toast.success(`${nextParsed.totRead} righe lette: ${nextParsed.rows.length} valide, ${nextParsed.missing.length} senza COD_CLI`);
