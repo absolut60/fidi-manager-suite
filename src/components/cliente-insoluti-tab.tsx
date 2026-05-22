@@ -101,20 +101,36 @@ function RiepilogoSection({ clienteId }: { clienteId: string }) {
   const { data, isLoading } = useQuery({
     queryKey: ["riepilogo-insoluti", clienteId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("riepilogo_insoluti" as never)
-        .select("*")
-        .eq("cliente_id", clienteId)
-        .maybeSingle();
+      const { data: scad, error } = await supabase
+        .from("scadenze")
+        .select("importo_scadenza, giorni_ritardo, stato_contabile")
+        .eq("cliente_id", clienteId);
       if (error) throw error;
-      return data as null | {
-        num_scadenze_aperte: number;
-        totale_scaduto: number;
-        max_giorni_ritardo: number;
-        scaduto_0_30: number;
-        scaduto_30_60: number;
-        scaduto_oltre_60: number;
-        ultimo_sollecito: string | null;
+      const rows = (scad ?? []) as Array<{ importo_scadenza: number | null; giorni_ritardo: number | null; stato_contabile: string | null }>;
+      const aperte = rows.filter((s) => s.stato_contabile === "Aperta");
+      const scadute = aperte.filter((s) => Number(s.giorni_ritardo ?? 0) > 0);
+      const sumImp = (arr: typeof rows) => arr.reduce((acc, r) => acc + Number(r.importo_scadenza ?? 0), 0);
+      const maxGg = aperte.reduce((m, r) => Math.max(m, Number(r.giorni_ritardo ?? 0)), 0);
+      const fascia = (min: number, max: number | null) =>
+        sumImp(scadute.filter((s) => {
+          const g = Number(s.giorni_ritardo ?? 0);
+          return g >= min && (max == null || g <= max);
+        }));
+      const { data: ultSoll } = await supabase
+        .from("solleciti")
+        .select("data_sollecito")
+        .eq("cliente_id", clienteId)
+        .order("data_sollecito", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return {
+        num_scadenze_aperte: aperte.length,
+        totale_scaduto: sumImp(scadute),
+        max_giorni_ritardo: maxGg,
+        scaduto_0_30: fascia(1, 30),
+        scaduto_30_60: fascia(31, 60),
+        scaduto_oltre_60: fascia(61, null),
+        ultimo_sollecito: (ultSoll as { data_sollecito: string | null } | null)?.data_sollecito ?? null,
       };
     },
   });
@@ -135,8 +151,8 @@ function RiepilogoSection({ clienteId }: { clienteId: string }) {
       <Card className="p-5">
         <h3 className="font-semibold mb-3 text-sm">Fasce di scaduto</h3>
         <div className="space-y-3">
-          <FasciaBar label="0–30 giorni" value={Number(d.scaduto_0_30)} pct={pct(Number(d.scaduto_0_30))} color="bg-success" />
-          <FasciaBar label="30–60 giorni" value={Number(d.scaduto_30_60)} pct={pct(Number(d.scaduto_30_60))} color="bg-yellow-500" />
+          <FasciaBar label="0–30 giorni" value={Number(d.scaduto_0_30)} pct={pct(Number(d.scaduto_0_30))} color="bg-yellow-500" />
+          <FasciaBar label="31–60 giorni" value={Number(d.scaduto_30_60)} pct={pct(Number(d.scaduto_30_60))} color="bg-orange-500" />
           <FasciaBar label="oltre 60 giorni" value={Number(d.scaduto_oltre_60)} pct={pct(Number(d.scaduto_oltre_60))} color="bg-destructive" />
         </div>
       </Card>
