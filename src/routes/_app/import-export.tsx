@@ -5,17 +5,36 @@ import * as XLSX from "xlsx";
 import { z } from "zod";
 import { toast } from "sonner";
 import {
-  FileSpreadsheet, Upload, Download, CheckCircle2, AlertCircle, X, FileDown, Loader2, TrendingUp, CalendarClock, ShieldCheck,
+  FileSpreadsheet,
+  Upload,
+  Download,
+  CheckCircle2,
+  AlertCircle,
+  X,
+  FileDown,
+  Loader2,
+  TrendingUp,
+  CalendarClock,
+  ShieldCheck,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { useBackgroundImport, type BackgroundImportProgress } from "@/lib/use-background-import";
 
@@ -26,7 +45,13 @@ export const Route = createFileRoute("/_app/import-export")({
 /* ============================================================================
  * Shared: progress block for background imports
  * ============================================================================ */
-function BgProgressBlock({ progress, fallbackTotal }: { progress: BackgroundImportProgress; fallbackTotal: number }) {
+function BgProgressBlock({
+  progress,
+  fallbackTotal,
+}: {
+  progress: BackgroundImportProgress;
+  fallbackTotal: number;
+}) {
   return (
     <div className="space-y-2 mb-4 p-3 rounded-md border bg-muted/30 text-sm">
       <div className="flex items-center gap-2">
@@ -35,8 +60,7 @@ function BgProgressBlock({ progress, fallbackTotal }: { progress: BackgroundImpo
       </div>
       <div className="text-xs text-muted-foreground">
         {progress.righe_elaborate ?? 0} / {progress.righe_totali ?? fallbackTotal} righe ·{" "}
-        {progress.righe_create ?? 0} create ·{" "}
-        {progress.righe_aggiornate ?? 0} aggiornate ·{" "}
+        {progress.righe_create ?? 0} create · {progress.righe_aggiornate ?? 0} aggiornate ·{" "}
         {progress.righe_errore ?? 0} errori
       </div>
     </div>
@@ -86,15 +110,21 @@ function sheetToObjects(
   headerKeyword: string,
   opts: { forceSkipDescription?: boolean } = {},
 ): Array<Record<string, unknown> & { __row: number }> {
-  const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "", blankrows: false });
+  const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
+    header: 1,
+    defval: "",
+    blankrows: false,
+  });
   const kw = normalize(headerKeyword);
   let headerIdx = -1;
   for (let i = 0; i < matrix.length; i++) {
     const row = matrix[i] ?? [];
-    if (row.some((c) => {
-      const n = normalize(String(c ?? ""));
-      return n === kw || n.startsWith(kw + " ");
-    })) {
+    if (
+      row.some((c) => {
+        const n = normalize(String(c ?? ""));
+        return n === kw || n.startsWith(kw + " ");
+      })
+    ) {
       headerIdx = i;
       break;
     }
@@ -114,21 +144,30 @@ function sheetToObjects(
     if (s.length > 25 && /\s/.test(s) && !/@/.test(s) && !/^\d/.test(s)) return true;
     return false;
   };
-  const skipDesc = opts.forceSkipDescription || nextKwCell === "" || looksLikeDescription(nextKwCell);
+  const skipDesc =
+    opts.forceSkipDescription || nextKwCell === "" || looksLikeDescription(nextKwCell);
   const dataStart = skipDesc ? headerIdx + 2 : headerIdx + 1;
   const out: Array<Record<string, unknown> & { __row: number }> = [];
   for (let i = dataStart; i < matrix.length; i++) {
     const row = matrix[i] ?? [];
     if (!row.some((c) => String(c ?? "").trim() !== "")) continue;
     const obj: Record<string, unknown> = {};
-    headers.forEach((h, j) => { if (h) obj[h] = row[j] ?? ""; });
+    headers.forEach((h, j) => {
+      if (h) obj[h] = row[j] ?? "";
+    });
     out.push(Object.assign(obj, { __row: i + 1 }));
   }
   return out;
 }
 
-function anagraficaSheetToObjects(sheet: XLSX.WorkSheet): Array<Record<string, unknown> & { __row: number }> {
-  const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "", blankrows: false });
+function anagraficaSheetToObjects(
+  sheet: XLSX.WorkSheet,
+): Array<Record<string, unknown> & { __row: number }> {
+  const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
+    header: 1,
+    defval: "",
+    blankrows: false,
+  });
   if (!matrix.length) return [];
 
   const rowHasRagSoc = (r: unknown[] | undefined) =>
@@ -154,12 +193,13 @@ function anagraficaSheetToObjects(sheet: XLSX.WorkSheet): Array<Record<string, u
     const r = row ?? [];
     if (!r.some((c) => String(c ?? "").trim() !== "")) return;
     const obj: Record<string, unknown> = {};
-    headers.forEach((h, j) => { if (h) obj[h] = r[j] ?? ""; });
+    headers.forEach((h, j) => {
+      if (h) obj[h] = r[j] ?? "";
+    });
     out.push(Object.assign(obj, { __row: dataStart + idx + 1 }));
   });
   return out;
 }
-
 
 function ImportExportPage() {
   return (
@@ -197,23 +237,17 @@ function ImportExportPage() {
  * ============================================================================ */
 
 const optStr = (max: number, msg?: string) =>
-  z.preprocess(
-    (v) => {
-      if (v == null) return undefined;
-      const s = String(v).trim();
-      return s === "" ? undefined : s;
-    },
-    z.string().max(max, msg).optional(),
-  );
-
-const optEmail = z.preprocess(
-  (v) => {
+  z.preprocess((v) => {
     if (v == null) return undefined;
     const s = String(v).trim();
     return s === "" ? undefined : s;
-  },
-  z.string().email("Email non valida").max(255).optional(),
-);
+  }, z.string().max(max, msg).optional());
+
+const optEmail = z.preprocess((v) => {
+  if (v == null) return undefined;
+  const s = String(v).trim();
+  return s === "" ? undefined : s;
+}, z.string().email("Email non valida").max(255).optional());
 
 const anagraficaSchema = z.object({
   ragione_sociale: z.string().trim().min(1, "Ragione sociale obbligatoria").max(200),
@@ -236,21 +270,37 @@ const anagraficaSchema = z.object({
 type AnagraficaRow = z.infer<typeof anagraficaSchema>;
 
 const ANAG_HEADERS: Record<string, keyof AnagraficaRow> = {
-  "ragione sociale": "ragione_sociale", "ragionesociale": "ragione_sociale", "denominazione": "ragione_sociale",
-  "codice gestionale": "codice_gestionale", "codice": "codice_gestionale", "cod gestionale": "codice_gestionale",
-  "partita iva": "partita_iva", "p iva": "partita_iva", "piva": "partita_iva",
-  "codice fiscale": "codice_fiscale", "cf": "codice_fiscale",
+  "ragione sociale": "ragione_sociale",
+  ragionesociale: "ragione_sociale",
+  denominazione: "ragione_sociale",
+  "codice gestionale": "codice_gestionale",
+  codice: "codice_gestionale",
+  "cod gestionale": "codice_gestionale",
+  "partita iva": "partita_iva",
+  "p iva": "partita_iva",
+  piva: "partita_iva",
+  "codice fiscale": "codice_fiscale",
+  cf: "codice_fiscale",
   "forma giuridica": "forma_giuridica",
-  "indirizzo": "indirizzo", "via": "indirizzo",
-  "citta": "citta", "città": "citta",
-  "cap": "cap",
-  "provincia": "provincia", "prov": "provincia",
-  "telefono": "telefono", "tel": "telefono",
-  "email": "email", "e mail": "email", "mail": "email",
-  "pec": "pec",
-  "codice sdi": "codice_sdi", "sdi": "codice_sdi",
-  "store codice": "store_codice", "store": "store_codice", "punto vendita": "store_codice",
-  "note": "note",
+  indirizzo: "indirizzo",
+  via: "indirizzo",
+  citta: "citta",
+  città: "citta",
+  cap: "cap",
+  provincia: "provincia",
+  prov: "provincia",
+  telefono: "telefono",
+  tel: "telefono",
+  email: "email",
+  "e mail": "email",
+  mail: "email",
+  pec: "pec",
+  "codice sdi": "codice_sdi",
+  sdi: "codice_sdi",
+  "store codice": "store_codice",
+  store: "store_codice",
+  "punto vendita": "store_codice",
+  note: "note",
 };
 
 type ParsedRow<T> = { idx: number; data: T; errors: string[] };
@@ -264,21 +314,37 @@ function AnagraficaImportCard() {
   const [dragOver, setDragOver] = useState(false);
   const [parsing, setParsing] = useState(false);
   const [importazioneId, setImportazioneId] = useState<string | null>(null);
-  const [result, setResult] = useState<null | { created: number; updated: number; skipped: number; errors: Array<{ riga: number; errore: string }> }>(null);
+  const [result, setResult] = useState<null | {
+    created: number;
+    updated: number;
+    skipped: number;
+    errors: Array<{ riga: number; errore: string }>;
+  }>(null);
 
   function reset() {
-    setFileName(null); setFile(null); setRows([]); setResult(null); setImportazioneId(null);
+    setFileName(null);
+    setFile(null);
+    setRows([]);
+    setResult(null);
+    setImportazioneId(null);
     if (fileRef.current) fileRef.current.value = "";
   }
 
   async function handleFile(f: File) {
-    setParsing(true); setResult(null); setImportazioneId(null);
+    setParsing(true);
+    setResult(null);
+    setImportazioneId(null);
     try {
       const buf = await f.arrayBuffer();
       const wb = XLSX.read(buf, { type: "array" });
       const sheet = wb.Sheets[wb.SheetNames[0]];
       const raw = anagraficaSheetToObjects(sheet);
-      if (!raw.length) { toast.error("Nessuna riga dati trovata: verifica che la riga 2 contenga le intestazioni e che i dati inizino dalla riga 4"); return; }
+      if (!raw.length) {
+        toast.error(
+          "Nessuna riga dati trovata: verifica che la riga 2 contenga le intestazioni e che i dati inizino dalla riga 4",
+        );
+        return;
+      }
 
       const parsed: ParsedRow<AnagraficaRow>[] = raw.map((r) => {
         const mapped: Record<string, string> = {};
@@ -313,30 +379,41 @@ function AnagraficaImportCard() {
   const importMut = useMutation({
     mutationFn: async () => {
       if (!file) throw new Error("Nessun file selezionato");
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
       // 1) Crea record importazione (così abbiamo l'ID per nominare il file)
-      const { data: imp, error: impErr } = await supabase.from("importazioni").insert({
-        nome_file: fileName ?? "anagrafica.xlsx",
-        righe_totali: rows.length,
-        righe_errore: invalid.length,
-        stato: "in_elaborazione",
-        fonte: "anagrafica",
-        eseguita_da: user?.id ?? null,
-      }).select("id").single();
+      const { data: imp, error: impErr } = await supabase
+        .from("importazioni")
+        .insert({
+          nome_file: fileName ?? "anagrafica.xlsx",
+          righe_totali: rows.length,
+          righe_errore: invalid.length,
+          stato: "in_elaborazione",
+          fonte: "anagrafica",
+          eseguita_da: user?.id ?? null,
+        })
+        .select("id")
+        .single();
       if (impErr) throw impErr;
 
       // 2) Upload file su storage
       const filePath = `${imp.id}/${file.name}`;
       const { error: upErr } = await supabase.storage.from("import-files").upload(filePath, file, {
-        contentType: file.type || "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        contentType:
+          file.type || "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         upsert: true,
       });
       if (upErr) {
-        await supabase.from("importazioni").update({
-          stato: "completata_con_errori", completata_at: new Date().toISOString(),
-          log_errori: [{ riga: 0, errore: `Upload fallito: ${upErr.message}` }],
-        }).eq("id", imp.id);
+        await supabase
+          .from("importazioni")
+          .update({
+            stato: "completata_con_errori",
+            completata_at: new Date().toISOString(),
+            log_errori: [{ riga: 0, errore: `Upload fallito: ${upErr.message}` }],
+          })
+          .eq("id", imp.id);
         throw upErr;
       }
       await supabase.from("importazioni").update({ file_path: filePath }).eq("id", imp.id);
@@ -360,9 +437,13 @@ function AnagraficaImportCard() {
     queryKey: ["importazione-stato", importazioneId],
     queryFn: async () => {
       if (!importazioneId) return null;
-      const { data } = await supabase.from("importazioni")
-        .select("stato, righe_totali, righe_elaborate, righe_create, righe_aggiornate, righe_errore, log_errori, completata_at")
-        .eq("id", importazioneId).single();
+      const { data } = await supabase
+        .from("importazioni")
+        .select(
+          "stato, righe_totali, righe_elaborate, righe_create, righe_aggiornate, righe_errore, log_errori, completata_at",
+        )
+        .eq("id", importazioneId)
+        .single();
       return data;
     },
     enabled: !!importazioneId && !result,
@@ -370,12 +451,21 @@ function AnagraficaImportCard() {
   });
 
   // Quando il job termina aggiorno il riepilogo e invalido le query clienti
-  if (progress && !result && (progress.stato === "completata" || progress.stato === "completata_con_errori")) {
-    const errs = Array.isArray(progress.log_errori) ? (progress.log_errori as Array<{ riga: number; errore: string }>) : [];
+  if (
+    progress &&
+    !result &&
+    (progress.stato === "completata" || progress.stato === "completata_con_errori")
+  ) {
+    const errs = Array.isArray(progress.log_errori)
+      ? (progress.log_errori as Array<{ riga: number; errore: string }>)
+      : [];
     setResult({
       created: progress.righe_create ?? 0,
       updated: progress.righe_aggiornate ?? 0,
-      skipped: (progress.righe_errore ?? 0) - errs.length < 0 ? 0 : (progress.righe_errore ?? 0) - errs.length,
+      skipped:
+        (progress.righe_errore ?? 0) - errs.length < 0
+          ? 0
+          : (progress.righe_errore ?? 0) - errs.length,
       errors: errs,
     });
     qc.invalidateQueries({ queryKey: ["clienti"] });
@@ -385,16 +475,26 @@ function AnagraficaImportCard() {
 
   const inProgress = !!importazioneId && !result;
 
-
   function downloadTemplate() {
-    const ws = XLSX.utils.json_to_sheet([{
-      codice_gestionale: "13908", ragione_sociale: "Esempio S.r.l.",
-      partita_iva: "12345678901", codice_fiscale: "12345678901",
-      forma_giuridica: "azienda",
-      indirizzo: "Via Roma 1", citta: "Milano", cap: "20100", provincia: "MI",
-      telefono: "+39 02 1234567", email: "info@esempio.it", pec: "esempio@pec.it",
-      codice_sdi: "0000000", store_codice: "", note: "",
-    }]);
+    const ws = XLSX.utils.json_to_sheet([
+      {
+        codice_gestionale: "13908",
+        ragione_sociale: "Esempio S.r.l.",
+        partita_iva: "12345678901",
+        codice_fiscale: "12345678901",
+        forma_giuridica: "azienda",
+        indirizzo: "Via Roma 1",
+        citta: "Milano",
+        cap: "20100",
+        provincia: "MI",
+        telefono: "+39 02 1234567",
+        email: "info@esempio.it",
+        pec: "esempio@pec.it",
+        codice_sdi: "0000000",
+        store_codice: "",
+        note: "",
+      },
+    ]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Anagrafica");
     XLSX.writeFile(wb, "template_anagrafica_clienti.xlsx");
@@ -411,8 +511,9 @@ function AnagraficaImportCard() {
         </Button>
       </div>
       <p className="text-xs text-muted-foreground mb-4">
-        Crea o aggiorna i clienti (upsert su <code>codice_gestionale</code> o <code>partita_iva</code>).
-        L'elaborazione gira in background: puoi chiudere la pagina senza interrompere l'import.
+        Crea o aggiorna i clienti (upsert su <code>codice_gestionale</code> o{" "}
+        <code>partita_iva</code>). L'elaborazione gira in background: puoi chiudere la pagina senza
+        interrompere l'import.
       </p>
       {inProgress && progress ? (
         <div className="space-y-2 mb-4 p-3 rounded-md border bg-muted/30 text-sm">
@@ -421,20 +522,29 @@ function AnagraficaImportCard() {
             <span className="font-medium">Import in corso in background</span>
           </div>
           <div className="text-xs text-muted-foreground">
-            {progress.righe_elaborate ?? 0} / {progress.righe_totali ?? rows.length} righe ·
-            {" "}{progress.righe_create ?? 0} create ·
-            {" "}{progress.righe_aggiornate ?? 0} aggiornate ·
-            {" "}{progress.righe_errore ?? 0} errori
+            {progress.righe_elaborate ?? 0} / {progress.righe_totali ?? rows.length} righe ·{" "}
+            {progress.righe_create ?? 0} create · {progress.righe_aggiornate ?? 0} aggiornate ·{" "}
+            {progress.righe_errore ?? 0} errori
           </div>
         </div>
       ) : null}
       <ImportZone
-        fileName={fileName} parsing={parsing} dragOver={dragOver}
-        setDragOver={setDragOver} fileRef={fileRef} onFile={handleFile} onReset={reset}
-        valid={valid.length} invalid={invalid}
+        fileName={fileName}
+        parsing={parsing}
+        dragOver={dragOver}
+        setDragOver={setDragOver}
+        fileRef={fileRef}
+        onFile={handleFile}
+        onReset={reset}
+        valid={valid.length}
+        invalid={invalid}
         result={result}
         action={
-          <Button className="w-full gap-1.5" disabled={!valid.length || importMut.isPending || inProgress} onClick={() => importMut.mutate()}>
+          <Button
+            className="w-full gap-1.5"
+            disabled={!valid.length || importMut.isPending || inProgress}
+            onClick={() => importMut.mutate()}
+          >
             {(importMut.isPending || inProgress) && <Loader2 className="size-4 animate-spin" />}
             {inProgress ? "Elaborazione in background..." : `Avvia import (${valid.length} righe)`}
           </Button>
@@ -449,7 +559,7 @@ function AnagraficaImportCard() {
  * ============================================================================ */
 
 const RISCHIO_HEADERS: Record<string, string> = {
-  "codice": "codice_gestionale",
+  codice: "codice_gestionale",
   "cod cliente": "codice_gestionale",
   "codice cliente": "codice_gestionale",
   "ragione sociale": "ragione_sociale",
@@ -467,19 +577,19 @@ const RISCHIO_HEADERS: Record<string, string> = {
   "doc da evadere": "doc_da_evadere",
   "eff a rischio": "effetti_a_rischio",
   "effetti a rischio": "effetti_a_rischio",
-  "fido": "fido_gestionale",
+  fido: "fido_gestionale",
   "fido azienda": "fido_gestionale",
   "fido concesso": "fido_gestionale",
   "fido gestionale": "fido_gestionale",
   "totale rischio": "totale_rischio",
   "tot rischio": "totale_rischio",
   "fido residuo": "fido_residuo",
-  "residuo": "fido_residuo",
-  "scaduto": "scaduto",
+  residuo: "fido_residuo",
+  scaduto: "scaduto",
   "a scadere": "a_scadere",
   "num insoluti": "num_insoluti",
   "n insoluti": "num_insoluti",
-  "insoluti": "num_insoluti",
+  insoluti: "num_insoluti",
   "dilaz azienda": "dilazione_concordata",
   "dilazione azienda": "dilazione_concordata",
   "dilaz concordata": "dilazione_concordata",
@@ -499,38 +609,62 @@ function RischioImportCard() {
   const [fileName, setFileName] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
-  const bg = useBackgroundImport({ fonte: "analisi_rischio", invalidateKeys: [["clienti"], ["cliente"]] });
+  const bg = useBackgroundImport({
+    fonte: "analisi_rischio",
+    invalidateKeys: [["clienti"], ["cliente"]],
+  });
 
   function reset() {
-    setFileName(null); setFile(null); bg.reset();
+    setFileName(null);
+    setFile(null);
+    bg.reset();
     if (fileRef.current) fileRef.current.value = "";
   }
 
   function handleFile(f: File) {
-    setFileName(f.name); setFile(f); bg.reset();
+    setFileName(f.name);
+    setFile(f);
+    bg.reset();
     toast.success(`File pronto: ${f.name}`);
   }
 
   function downloadTemplate() {
-    const ws = XLSX.utils.json_to_sheet([{
-      "Codice": "13908", "Ragione sociale": "Esempio S.r.l.",
-      "Cod.pag.": "RB22", "Descr.cod.pag.": "R.B. 60 gg. d.f. f.m.",
-      "Saldo contab.": 1500, "Doc. da fatt.": 500, "Doc. da evad.": 0, "Eff. a rischio": 0,
-      "Fido": 50000, "Totale rischio": 32000, "Fido residuo": 18000,
-      "Scaduto": 0, "A scadere": 32000, "Num.insoluti": 0,
-      "Dilaz.azienda": 60, "Dilaz.effettiva": 65,
-    }]);
+    const ws = XLSX.utils.json_to_sheet([
+      {
+        Codice: "13908",
+        "Ragione sociale": "Esempio S.r.l.",
+        "Cod.pag.": "RB22",
+        "Descr.cod.pag.": "R.B. 60 gg. d.f. f.m.",
+        "Saldo contab.": 1500,
+        "Doc. da fatt.": 500,
+        "Doc. da evad.": 0,
+        "Eff. a rischio": 0,
+        Fido: 50000,
+        "Totale rischio": 32000,
+        "Fido residuo": 18000,
+        Scaduto: 0,
+        "A scadere": 32000,
+        "Num.insoluti": 0,
+        "Dilaz.azienda": 60,
+        "Dilaz.effettiva": 65,
+      },
+    ]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Analisi rischio");
     XLSX.writeFile(wb, "template_analisi_rischio.xlsx");
   }
 
-  const result = bg.done && bg.progress ? {
-    created: bg.progress.righe_create ?? 0,
-    updated: bg.progress.righe_aggiornate ?? 0,
-    skipped: bg.progress.righe_errore ?? 0,
-    errors: Array.isArray(bg.progress.log_errori) ? (bg.progress.log_errori as Array<{ riga: number; errore: string }>) : [],
-  } : null;
+  const result =
+    bg.done && bg.progress
+      ? {
+          created: bg.progress.righe_create ?? 0,
+          updated: bg.progress.righe_aggiornate ?? 0,
+          skipped: bg.progress.righe_errore ?? 0,
+          errors: Array.isArray(bg.progress.log_errori)
+            ? (bg.progress.log_errori as Array<{ riga: number; errore: string }>)
+            : [],
+        }
+      : null;
 
   return (
     <Card className="p-5">
@@ -543,17 +677,29 @@ function RischioImportCard() {
         </Button>
       </div>
       <p className="text-xs text-muted-foreground mb-4">
-        Aggiorna dati rischio dei clienti esistenti (match su <code>Codice</code>). Elaborazione in background.
+        Aggiorna dati rischio dei clienti esistenti (match su <code>Codice</code>). Elaborazione in
+        background.
       </p>
-      {bg.inProgress && bg.progress ? <BgProgressBlock progress={bg.progress} fallbackTotal={0} /> : null}
+      {bg.inProgress && bg.progress ? (
+        <BgProgressBlock progress={bg.progress} fallbackTotal={0} />
+      ) : null}
       <ImportZone
-        fileName={fileName} parsing={false} dragOver={dragOver}
-        setDragOver={setDragOver} fileRef={fileRef} onFile={handleFile} onReset={reset}
-        valid={file ? 1 : 0} invalid={[]}
+        fileName={fileName}
+        parsing={false}
+        dragOver={dragOver}
+        setDragOver={setDragOver}
+        fileRef={fileRef}
+        onFile={handleFile}
+        onReset={reset}
+        valid={file ? 1 : 0}
+        invalid={[]}
         result={result}
         action={
-          <Button className="w-full gap-1.5" disabled={!file || bg.isPending || bg.inProgress}
-            onClick={() => file && bg.start({ file, rowsTotali: 0 })}>
+          <Button
+            className="w-full gap-1.5"
+            disabled={!file || bg.isPending || bg.inProgress}
+            onClick={() => file && bg.start({ file, rowsTotali: 0 })}
+          >
             {(bg.isPending || bg.inProgress) && <Loader2 className="size-4 animate-spin" />}
             {bg.inProgress ? "Elaborazione in background..." : "Avvia import rischio"}
           </Button>
@@ -562,7 +708,6 @@ function RischioImportCard() {
     </Card>
   );
 }
-
 
 /* ============================================================================
  * IMPORT ZONE (shared UI)
@@ -578,16 +723,41 @@ function ImportZone(props: {
   onReset: () => void;
   valid: number;
   invalid: Array<{ idx: number; errors: string[] }>;
-  result: null | { created: number; updated: number; skipped: number; errors: Array<{ riga: number; errore: string }> };
+  result: null | {
+    created: number;
+    updated: number;
+    skipped: number;
+    errors: Array<{ riga: number; errore: string }>;
+  };
   action: React.ReactNode;
 }) {
-  const { fileName, parsing, dragOver, setDragOver, fileRef, onFile, onReset, valid, invalid, result, action } = props;
+  const {
+    fileName,
+    parsing,
+    dragOver,
+    setDragOver,
+    fileRef,
+    onFile,
+    onReset,
+    valid,
+    invalid,
+    result,
+    action,
+  } = props;
   if (!fileName) {
     return (
       <div
-        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragOver(true);
+        }}
         onDragLeave={() => setDragOver(false)}
-        onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files?.[0]; if (f) onFile(f); }}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragOver(false);
+          const f = e.dataTransfer.files?.[0];
+          if (f) onFile(f);
+        }}
         onClick={() => fileRef.current?.click()}
         className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
           dragOver ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
@@ -596,8 +766,16 @@ function ImportZone(props: {
         <FileSpreadsheet className="size-10 mx-auto text-muted-foreground mb-2" />
         <p className="text-sm font-medium">Trascina il file qui o clicca per selezionare</p>
         <p className="text-xs text-muted-foreground mt-1">.xlsx, .xls, .csv</p>
-        <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden"
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); }} />
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".xlsx,.xls,.csv"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) onFile(f);
+          }}
+        />
         {parsing && <Loader2 className="size-4 animate-spin mx-auto mt-3" />}
       </div>
     );
@@ -609,18 +787,29 @@ function ImportZone(props: {
           <FileSpreadsheet className="size-4 shrink-0" />
           <span className="text-sm truncate">{fileName}</span>
         </div>
-        <Button variant="ghost" size="icon" onClick={onReset}><X className="size-4" /></Button>
+        <Button variant="ghost" size="icon" onClick={onReset}>
+          <X className="size-4" />
+        </Button>
       </div>
       <div className="flex gap-2 flex-wrap">
-        <Badge variant="default" className="gap-1"><CheckCircle2 className="size-3" /> {valid} valide</Badge>
+        <Badge variant="default" className="gap-1">
+          <CheckCircle2 className="size-3" /> {valid} valide
+        </Badge>
         {invalid.length > 0 && (
-          <Badge variant="destructive" className="gap-1"><AlertCircle className="size-3" /> {invalid.length} errori</Badge>
+          <Badge variant="destructive" className="gap-1">
+            <AlertCircle className="size-3" /> {invalid.length} errori
+          </Badge>
         )}
       </div>
       {invalid.length > 0 && (
         <div className="max-h-40 overflow-auto rounded-md border">
           <Table>
-            <TableHeader><TableRow><TableHead className="w-16">Riga</TableHead><TableHead>Errori</TableHead></TableRow></TableHeader>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-16">Riga</TableHead>
+                <TableHead>Errori</TableHead>
+              </TableRow>
+            </TableHeader>
             <TableBody>
               {invalid.slice(0, 50).map((r) => (
                 <TableRow key={r.idx}>
@@ -643,7 +832,9 @@ function ImportZone(props: {
           {result.errors.length > 0 && (
             <div className="max-h-32 overflow-auto text-xs text-muted-foreground space-y-0.5">
               {result.errors.slice(0, 30).map((e, i) => (
-                <p key={i}><span className="font-mono">Riga {e.riga}:</span> {e.errore}</p>
+                <p key={i}>
+                  <span className="font-mono">Riga {e.riga}:</span> {e.errore}
+                </p>
               ))}
             </div>
           )}
@@ -662,7 +853,7 @@ const SCAD_HEADERS: Record<string, string> = {
   "cod cli": "codice_gestionale",
   "codice cliente": "codice_gestionale",
   "cod cliente": "codice_gestionale",
-  "codice": "codice_gestionale",
+  codice: "codice_gestionale",
   "ragione sociale": "ragione_sociale",
   "codice pagamento scad": "codice_pagamento",
   "codice pagamento": "codice_pagamento",
@@ -673,15 +864,15 @@ const SCAD_HEADERS: Record<string, string> = {
   "numero documento": "numero_documento",
   "num doc": "numero_documento",
   "sezionale documento": "sezionale",
-  "sezionale": "sezionale",
+  sezionale: "sezionale",
   "data documento": "data_documento",
   "data doc": "data_documento",
   "data scadenza": "data_scadenza",
   "anno partita": "anno_partita",
-  "tipologia": "tipologia_scadenza",
+  tipologia: "tipologia_scadenza",
   "tipologia scadenza": "tipologia_scadenza",
   "importo scadenza": "importo_scadenza",
-  "importo": "importo_scadenza",
+  importo: "importo_scadenza",
   "importo documento": "importo_documento",
   "importo originario": "importo_originario",
   "importo netto prev": "importo_netto_prev",
@@ -694,9 +885,9 @@ const SCAD_HEADERS: Record<string, string> = {
   "cod blocco": "cod_blocco",
   "codice blocco": "cod_blocco",
   "fido euro": "fido_euro",
-  "fido": "fido_euro",
-  "assicurazione": "assicurazione",
-  "sede": "sede",
+  fido: "fido_euro",
+  assicurazione: "assicurazione",
+  sede: "sede",
   "in legale": "in_legale",
 };
 
@@ -708,8 +899,8 @@ type ScadRow = {
 };
 
 const SCAD_OFFICIAL_MAP: Record<string, string> = {
-  "cod_cli": "codice_gestionale",
-  "codcli": "codice_gestionale",
+  cod_cli: "codice_gestionale",
+  codcli: "codice_gestionale",
   "ragione sociale": "__ragsoc",
   "codice pagamento scad": "codice_pagamento",
   "descrizione pagamento": "descrizione_pagamento",
@@ -759,11 +950,25 @@ function excelDateToISO(v: unknown): string | null {
   return null;
 }
 
-function parseOfficialScadenziarioSheet(sheet: XLSX.WorkSheet): { rows: ScadRow[]; missing: number[]; totRead: number } {
-  const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "", blankrows: false });
+function parseOfficialScadenziarioSheet(sheet: XLSX.WorkSheet): {
+  rows: ScadRow[];
+  missing: number[];
+  totRead: number;
+} {
+  const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
+    header: 1,
+    defval: "",
+    blankrows: false,
+  });
   if (matrix.length < 3) return { rows: [], missing: [], totRead: 0 };
   const headers = (matrix[1] ?? []).map((c) => normalize(String(c ?? "")));
-  const numFields = new Set(["importo_scadenza", "importo_documento", "importo_originario", "importo_netto_prev", "importo_ritardo"]);
+  const numFields = new Set([
+    "importo_scadenza",
+    "importo_documento",
+    "importo_originario",
+    "importo_netto_prev",
+    "importo_ritardo",
+  ]);
   const intFields = new Set(["giorni_ritardo", "dilazione_effettiva", "anno_partita"]);
   const dateFields = new Set(["data_documento", "data_scadenza", "data_pagamento"]);
   const rows: ScadRow[] = [];
@@ -778,11 +983,17 @@ function parseOfficialScadenziarioSheet(sheet: XLSX.WorkSheet): { rows: ScadRow[
     headers.forEach((h, j) => {
       const field = SCAD_OFFICIAL_MAP[h];
       if (!field) return;
-      if (field === "__ragsoc") { ragSoc = String(row[j] ?? "").trim(); return; }
+      if (field === "__ragsoc") {
+        ragSoc = String(row[j] ?? "").trim();
+        return;
+      }
       mapped[field] = row[j];
     });
     const codice = toStr(mapped.codice_gestionale)?.replace(/\.0$/, "");
-    if (!codice) { missing.push(i + 1); continue; }
+    if (!codice) {
+      missing.push(i + 1);
+      continue;
+    }
     const payload: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(mapped)) {
       if (k === "codice_gestionale") continue;
@@ -800,18 +1011,30 @@ function ScadenziarioImportCard() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
-  const [parsed, setParsed] = useState<{ rows: ScadRow[]; missing: number[]; totRead: number } | null>(null);
+  const [parsed, setParsed] = useState<{
+    rows: ScadRow[];
+    missing: number[];
+    totRead: number;
+  } | null>(null);
   const [parsing, setParsing] = useState(false);
   const [dragOver, setDragOver] = useState(false);
-  const bg = useBackgroundImport({ fonte: "scadenziario", invalidateKeys: [["scadenze"], ["clienti"]] });
+  const bg = useBackgroundImport({
+    fonte: "scadenziario",
+    invalidateKeys: [["scadenze"], ["clienti"]],
+  });
 
   function reset() {
-    setFileName(null); setFile(null); setParsed(null); bg.reset();
+    setFileName(null);
+    setFile(null);
+    setParsed(null);
+    bg.reset();
     if (fileRef.current) fileRef.current.value = "";
   }
 
   async function handleFile(f: File) {
-    setParsing(true); setParsed(null); bg.reset();
+    setParsing(true);
+    setParsed(null);
+    bg.reset();
     try {
       const buf = await f.arrayBuffer();
       const wb = XLSX.read(buf, { type: "array", cellDates: false });
@@ -821,10 +1044,16 @@ function ScadenziarioImportCard() {
       if (!sheet) throw new Error("Foglio SCADENZIARIO non trovato nel file");
       const nextParsed = parseOfficialScadenziarioSheet(sheet);
       if (!nextParsed.totRead) throw new Error("Nessuna riga dati trovata nel foglio SCADENZIARIO");
-      setFileName(f.name); setFile(f); setParsed(nextParsed);
-      toast.success(`${nextParsed.totRead} righe lette: ${nextParsed.rows.length} valide, ${nextParsed.missing.length} senza COD_CLI`);
+      setFileName(f.name);
+      setFile(f);
+      setParsed(nextParsed);
+      toast.success(
+        `${nextParsed.totRead} righe lette: ${nextParsed.rows.length} valide, ${nextParsed.missing.length} senza COD_CLI`,
+      );
     } catch (e) {
-      setFileName(null); setFile(null); setParsed(null);
+      setFileName(null);
+      setFile(null);
+      setParsed(null);
       if (fileRef.current) fileRef.current.value = "";
       toast.error(e instanceof Error ? e.message : "Errore lettura file");
     } finally {
@@ -836,7 +1065,8 @@ function ScadenziarioImportCard() {
     if (!file || !parsed) return;
     const chunkSize = 500;
     const stagedChunks = [] as Array<{ rows: ScadRow[] }>;
-    for (let i = 0; i < parsed.rows.length; i += chunkSize) stagedChunks.push({ rows: parsed.rows.slice(i, i + chunkSize) });
+    for (let i = 0; i < parsed.rows.length; i += chunkSize)
+      stagedChunks.push({ rows: parsed.rows.slice(i, i + chunkSize) });
     bg.start({
       file,
       rowsTotali: parsed.totRead,
@@ -848,17 +1078,91 @@ function ScadenziarioImportCard() {
 
   function downloadTemplate() {
     const head = [
-      "COD_CLI", "Ragione Sociale", "Codice Pagamento Scad", "Descrizione Pagamento",
-      "Numero Documento Origine", "Sezionale Documento", "Data Documento", "Anno Partita",
-      "Tipologia Scadenza", "Data Scadenza", "Stato Contabile", "Importo Scadenza",
-      "Importo Documento", "Giorni Ritardo", "Dilazione Effettiva", "Importo Ritardo",
-      "Data Pagamento", "Importo Originario Effetto", "Importo Scadenza Netto Prev",
+      "COD_CLI",
+      "Ragione Sociale",
+      "Codice Pagamento Scad",
+      "Descrizione Pagamento",
+      "Numero Documento Origine",
+      "Sezionale Documento",
+      "Data Documento",
+      "Anno Partita",
+      "Tipologia Scadenza",
+      "Data Scadenza",
+      "Stato Contabile",
+      "Importo Scadenza",
+      "Importo Documento",
+      "Giorni Ritardo",
+      "Dilazione Effettiva",
+      "Importo Ritardo",
+      "Data Pagamento",
+      "Importo Originario Effetto",
+      "Importo Scadenza Netto Prev",
     ];
     const empty = new Array(head.length).fill("");
     const samples = [
-      ["13908", "Esempio Alfa S.r.l.", "RB60", "R.B. 60 gg. d.f.", "FT-2025-0001", "1", "01/06/2025", 2025, "RB", "30/08/2025", "Aperta", 1200, 1200, 0, 60, 0, "", 1200, 1200],
-      ["13908", "Esempio Alfa S.r.l.", "RB60", "R.B. 60 gg. d.f.", "FT-2025-0002", "1", "15/06/2025", 2025, "RB", "13/09/2025", "Aperta", 850.5, 850.5, 12, 60, 8.4, "", 850.5, 850.5],
-      ["14210", "Esempio Beta S.p.A.", "BB30", "Bonifico 30 gg. d.f.", "FT-2025-0123", "2", "10/05/2025", 2025, "BB", "09/06/2025", "Chiusa", 3200, 3200, 0, 30, 0, "08/06/2025", 3200, 3200],
+      [
+        "13908",
+        "Esempio Alfa S.r.l.",
+        "RB60",
+        "R.B. 60 gg. d.f.",
+        "FT-2025-0001",
+        "1",
+        "01/06/2025",
+        2025,
+        "RB",
+        "30/08/2025",
+        "Aperta",
+        1200,
+        1200,
+        0,
+        60,
+        0,
+        "",
+        1200,
+        1200,
+      ],
+      [
+        "13908",
+        "Esempio Alfa S.r.l.",
+        "RB60",
+        "R.B. 60 gg. d.f.",
+        "FT-2025-0002",
+        "1",
+        "15/06/2025",
+        2025,
+        "RB",
+        "13/09/2025",
+        "Aperta",
+        850.5,
+        850.5,
+        12,
+        60,
+        8.4,
+        "",
+        850.5,
+        850.5,
+      ],
+      [
+        "14210",
+        "Esempio Beta S.p.A.",
+        "BB30",
+        "Bonifico 30 gg. d.f.",
+        "FT-2025-0123",
+        "2",
+        "10/05/2025",
+        2025,
+        "BB",
+        "09/06/2025",
+        "Chiusa",
+        3200,
+        3200,
+        0,
+        30,
+        0,
+        "08/06/2025",
+        3200,
+        3200,
+      ],
     ];
     const ws = XLSX.utils.aoa_to_sheet([empty, head, ...samples]);
     const wb = XLSX.utils.book_new();
@@ -866,12 +1170,17 @@ function ScadenziarioImportCard() {
     XLSX.writeFile(wb, "template_scadenziario.xlsx");
   }
 
-  const result = bg.done && bg.progress ? {
-    created: bg.progress.righe_create ?? 0,
-    updated: bg.progress.righe_aggiornate ?? 0,
-    skipped: bg.progress.righe_errore ?? 0,
-    errors: Array.isArray(bg.progress.log_errori) ? (bg.progress.log_errori as Array<{ riga: number; errore: string }>) : [],
-  } : null;
+  const result =
+    bg.done && bg.progress
+      ? {
+          created: bg.progress.righe_create ?? 0,
+          updated: bg.progress.righe_aggiornate ?? 0,
+          skipped: bg.progress.righe_errore ?? 0,
+          errors: Array.isArray(bg.progress.log_errori)
+            ? (bg.progress.log_errori as Array<{ riga: number; errore: string }>)
+            : [],
+        }
+      : null;
 
   return (
     <Card className="p-5">
@@ -884,27 +1193,44 @@ function ScadenziarioImportCard() {
         </Button>
       </div>
       <p className="text-xs text-muted-foreground mb-4">
-        Carica il file Excel: viene letto solo il foglio <code>SCADENZIARIO</code> (intestazioni in riga 2, dati da riga 3). Match cliente su <code>COD_CLI</code>. Chiave univoca: COD_CLI + Numero Documento + Sezionale.
+        Carica il file Excel: viene letto solo il foglio <code>SCADENZIARIO</code> (intestazioni in
+        riga 2, dati da riga 3). Match cliente su <code>COD_CLI</code>. Chiave univoca: COD_CLI +
+        Numero Documento + Sezionale.
       </p>
-      {bg.inProgress && bg.progress ? <BgProgressBlock progress={bg.progress} fallbackTotal={0} /> : null}
+      {bg.inProgress && bg.progress ? (
+        <BgProgressBlock progress={bg.progress} fallbackTotal={0} />
+      ) : null}
       <ImportZone
-        fileName={fileName} parsing={parsing} dragOver={dragOver}
-        setDragOver={setDragOver} fileRef={fileRef} onFile={handleFile} onReset={reset}
+        fileName={fileName}
+        parsing={parsing}
+        dragOver={dragOver}
+        setDragOver={setDragOver}
+        fileRef={fileRef}
+        onFile={handleFile}
+        onReset={reset}
         valid={parsed?.rows.length ?? 0}
-        invalid={(parsed?.missing ?? []).slice(0, 50).map((idx) => ({ idx, errors: ["COD_CLI mancante"] }))}
+        invalid={(parsed?.missing ?? [])
+          .slice(0, 50)
+          .map((idx) => ({ idx, errors: ["COD_CLI mancante"] }))}
         result={result}
         action={
-          <Button className="w-full gap-1.5" disabled={!file || !parsed || !parsed.rows.length || bg.isPending || bg.inProgress || parsing}
-            onClick={startImport}>
+          <Button
+            className="w-full gap-1.5"
+            disabled={
+              !file || !parsed || !parsed.rows.length || bg.isPending || bg.inProgress || parsing
+            }
+            onClick={startImport}
+          >
             {(bg.isPending || bg.inProgress) && <Loader2 className="size-4 animate-spin" />}
-            {bg.inProgress ? "Elaborazione in background..." : `Avvia import scadenziario (${parsed?.totRead ?? 0} righe)`}
+            {bg.inProgress
+              ? "Elaborazione in background..."
+              : `Avvia import scadenziario (${parsed?.totRead ?? 0} righe)`}
           </Button>
         }
       />
     </Card>
   );
 }
-
 
 /* ============================================================================
  * D — SCADENZIARIO + ASSICURAZIONI (file unico, due fogli)
@@ -934,7 +1260,11 @@ type AssicRow = {
 };
 
 function parseScadenziarioSheet(sheet: XLSX.WorkSheet): { rows: ScadBlockRow[]; totRead: number } {
-  const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "", blankrows: false });
+  const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
+    header: 1,
+    defval: "",
+    blankrows: false,
+  });
   // Header at row 11 (index 10); data from row 12 (index 11)
   const rows: ScadBlockRow[] = [];
   let currentCod: string | null = null;
@@ -986,7 +1316,11 @@ function parseScadenziarioSheet(sheet: XLSX.WorkSheet): { rows: ScadBlockRow[]; 
 }
 
 function parseAssicurazioneSheet(sheet: XLSX.WorkSheet): AssicRow[] {
-  const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "", blankrows: false });
+  const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
+    header: 1,
+    defval: "",
+    blankrows: false,
+  });
   const out: AssicRow[] = [];
   for (let i = 1; i < matrix.length; i++) {
     const row = matrix[i] ?? [];
@@ -1018,18 +1352,25 @@ function ScadenziarioAssicurazioniImportCard() {
   const [result, setResult] = useState<null | { log: string[] }>(null);
 
   function reset() {
-    setFileName(null); setScadRows([]); setAssicRows([]); setScadRead(0); setWarnings([]); setResult(null);
+    setFileName(null);
+    setScadRows([]);
+    setAssicRows([]);
+    setScadRead(0);
+    setWarnings([]);
+    setResult(null);
     if (fileRef.current) fileRef.current.value = "";
   }
 
   async function handleFile(file: File) {
-    setParsing(true); setResult(null);
+    setParsing(true);
+    setResult(null);
     try {
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf, { type: "array", cellDates: false });
       const findSheet = (kw: string) => {
-        const name = wb.SheetNames.find((n) => normalize(n) === normalize(kw))
-          ?? wb.SheetNames.find((n) => normalize(n).includes(normalize(kw)));
+        const name =
+          wb.SheetNames.find((n) => normalize(n) === normalize(kw)) ??
+          wb.SheetNames.find((n) => normalize(n).includes(normalize(kw)));
         return name ? wb.Sheets[name] : null;
       };
       const sScad = findSheet("scadenziario");
@@ -1061,30 +1402,42 @@ function ScadenziarioAssicurazioniImportCard() {
 
   const importMut = useMutation({
     mutationFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       const log: string[] = [...warnings];
 
-      const { data: imp } = await supabase.from("importazioni").insert({
-        nome_file: fileName ?? "scadenziario_assicurazioni.xlsx",
-        righe_totali: scadRows.length + assicRows.length,
-        stato: "in_elaborazione",
-        fonte: "scadenziario_assicurazioni",
-        eseguita_da: user?.id ?? null,
-      }).select("id").single();
+      const { data: imp } = await supabase
+        .from("importazioni")
+        .insert({
+          nome_file: fileName ?? "scadenziario_assicurazioni.xlsx",
+          righe_totali: scadRows.length + assicRows.length,
+          stato: "in_elaborazione",
+          fonte: "scadenziario_assicurazioni",
+          eseguita_da: user?.id ?? null,
+        })
+        .select("id")
+        .single();
 
       // === Risolvi clienti per entrambi i fogli ===
-      const allCodes = Array.from(new Set([
-        ...scadRows.map((r) => r.cod_cli),
-        ...assicRows.map((r) => r.cod_cli),
-      ]));
+      const allCodes = Array.from(
+        new Set([...scadRows.map((r) => r.cod_cli), ...assicRows.map((r) => r.cod_cli)]),
+      );
       const clientMap = new Map<string, string>();
       if (allCodes.length) {
-        const { data } = await supabase.from("clienti").select("id, codice_gestionale").in("codice_gestionale", allCodes);
-        (data ?? []).forEach((c) => { if (c.codice_gestionale) clientMap.set(String(c.codice_gestionale), c.id); });
+        const { data } = await supabase
+          .from("clienti")
+          .select("id, codice_gestionale")
+          .in("codice_gestionale", allCodes);
+        (data ?? []).forEach((c) => {
+          if (c.codice_gestionale) clientMap.set(String(c.codice_gestionale), c.id);
+        });
       }
 
       // ====== SCADENZIARIO ======
-      let scadCreated = 0, scadUpdated = 0, scadSkipped = 0;
+      let scadCreated = 0,
+        scadUpdated = 0,
+        scadSkipped = 0;
       const matchedClients = new Set<string>();
       const clientsToBlock = new Set<string>();
       const clientsLegale = new Set<string>();
@@ -1097,8 +1450,18 @@ function ScadenziarioAssicurazioniImportCard() {
           .from("scadenze" as never)
           .select("id, cliente_id, data_scadenza, descrizione_pagamento")
           .in("cliente_id", clientIds);
-        ((data ?? []) as Array<{ id: string; cliente_id: string; data_scadenza: string | null; descrizione_pagamento: string | null }>).forEach((s) => {
-          existingScad.set(`${s.cliente_id}|${s.data_scadenza ?? ""}|${s.descrizione_pagamento ?? ""}`, s.id);
+        (
+          (data ?? []) as Array<{
+            id: string;
+            cliente_id: string;
+            data_scadenza: string | null;
+            descrizione_pagamento: string | null;
+          }>
+        ).forEach((s) => {
+          existingScad.set(
+            `${s.cliente_id}|${s.data_scadenza ?? ""}|${s.descrizione_pagamento ?? ""}`,
+            s.id,
+          );
         });
       }
 
@@ -1149,13 +1512,20 @@ function ScadenziarioAssicurazioniImportCard() {
           ultima_sincronizzazione: now,
         };
         if (existId) {
-          const { error } = await supabase.from("scadenze" as never).update(payload as never).eq("id", existId);
-          if (error) { scadSkipped += 1; log.push(`Riga ${r.excelRow}: ${error.message}`); }
-          else scadUpdated += 1;
+          const { error } = await supabase
+            .from("scadenze" as never)
+            .update(payload as never)
+            .eq("id", existId);
+          if (error) {
+            scadSkipped += 1;
+            log.push(`Riga ${r.excelRow}: ${error.message}`);
+          } else scadUpdated += 1;
         } else {
           const { error } = await supabase.from("scadenze" as never).insert(payload as never);
-          if (error) { scadSkipped += 1; log.push(`Riga ${r.excelRow}: ${error.message}`); }
-          else scadCreated += 1;
+          if (error) {
+            scadSkipped += 1;
+            log.push(`Riga ${r.excelRow}: ${error.message}`);
+          } else scadCreated += 1;
         }
 
         if (r.bloccato) clientsToBlock.add(cid);
@@ -1165,7 +1535,10 @@ function ScadenziarioAssicurazioniImportCard() {
           const dkey = `${cid}|${r.note_solleciti.trim()}`;
           if (!existingSoll.has(dkey)) {
             const { error } = await supabase.from("solleciti" as never).insert({
-              cliente_id: cid, tipo: "interno", nota: r.note_solleciti, inserito_da: user?.id ?? null,
+              cliente_id: cid,
+              tipo: "interno",
+              nota: r.note_solleciti,
+              inserito_da: user?.id ?? null,
             } as never);
             if (!error) existingSoll.add(dkey);
             else log.push(`Riga ${r.excelRow}: sollecito ${error.message}`);
@@ -1175,23 +1548,35 @@ function ScadenziarioAssicurazioniImportCard() {
         // Note Legale
         if (r.note_legale && !openLegale.has(cid) && !clientsLegale.has(cid)) {
           const { error } = await supabase.from("pratiche_legali" as never).insert({
-            cliente_id: cid, tipo: "azione_legale_generica", stato: "aperta",
-            note: r.note_legale, gestita_da: user?.id ?? null,
+            cliente_id: cid,
+            tipo: "azione_legale_generica",
+            stato: "aperta",
+            note: r.note_legale,
+            gestita_da: user?.id ?? null,
           } as never);
-          if (!error) { openLegale.add(cid); clientsLegale.add(cid); }
-          else log.push(`Riga ${r.excelRow}: pratica legale ${error.message}`);
+          if (!error) {
+            openLegale.add(cid);
+            clientsLegale.add(cid);
+          } else log.push(`Riga ${r.excelRow}: pratica legale ${error.message}`);
         }
       }
 
       // Blocco clienti
       if (clientsToBlock.size) {
-        await supabase.from("clienti").update({
-          bloccato: true, data_blocco: now, motivo_blocco: "Import scadenziario: T_BLOCCO=BLOCCATO",
-        } as never).in("id", Array.from(clientsToBlock));
+        await supabase
+          .from("clienti")
+          .update({
+            bloccato: true,
+            data_blocco: now,
+            motivo_blocco: "Import scadenziario: T_BLOCCO=BLOCCATO",
+          } as never)
+          .in("id", Array.from(clientsToBlock));
       }
 
       // ====== ASSICURAZIONI ======
-      let assicCreated = 0, assicUpdated = 0, assicSkipped = 0;
+      let assicCreated = 0,
+        assicUpdated = 0,
+        assicSkipped = 0;
       const assicClients = new Set<string>();
 
       // pre-carica polizze esistenti per cliente (POUEY)
@@ -1225,18 +1610,32 @@ function ScadenziarioAssicurazioniImportCard() {
         };
         const existId = existingPol.get(cid);
         if (existId) {
-          const { error } = await supabase.from("assicurazioni_credito" as never).update(payload as never).eq("id", existId);
-          if (error) { assicSkipped += 1; log.push(`Assic riga ${a.excelRow}: ${error.message}`); }
-          else assicUpdated += 1;
+          const { error } = await supabase
+            .from("assicurazioni_credito" as never)
+            .update(payload as never)
+            .eq("id", existId);
+          if (error) {
+            assicSkipped += 1;
+            log.push(`Assic riga ${a.excelRow}: ${error.message}`);
+          } else assicUpdated += 1;
         } else {
-          const { error } = await supabase.from("assicurazioni_credito" as never).insert(payload as never);
-          if (error) { assicSkipped += 1; log.push(`Assic riga ${a.excelRow}: ${error.message}`); }
-          else { assicCreated += 1; existingPol.set(cid, "new"); }
+          const { error } = await supabase
+            .from("assicurazioni_credito" as never)
+            .insert(payload as never);
+          if (error) {
+            assicSkipped += 1;
+            log.push(`Assic riga ${a.excelRow}: ${error.message}`);
+          } else {
+            assicCreated += 1;
+            existingPol.set(cid, "new");
+          }
         }
       }
 
       if (assicClients.size) {
-        await supabase.from("clienti").update({ assicurazione_attiva: true } as never)
+        await supabase
+          .from("clienti")
+          .update({ assicurazione_attiva: true } as never)
           .in("id", Array.from(assicClients));
       }
 
@@ -1246,15 +1645,18 @@ function ScadenziarioAssicurazioniImportCard() {
         `Clienti bloccati: ${clientsToBlock.size}, pratiche legali create: ${clientsLegale.size}`,
       ];
 
-      await supabase.from("importazioni").update({
-        righe_elaborate: scadRows.length + assicRows.length,
-        righe_create: scadCreated + assicCreated,
-        righe_aggiornate: scadUpdated + assicUpdated,
-        righe_errore: scadSkipped + assicSkipped,
-        stato: (scadSkipped + assicSkipped) > 0 ? "completata_con_errori" : "completata",
-        completata_at: new Date().toISOString(),
-        log_errori: log.length ? log.slice(0, 300).map((m) => ({ messaggio: m })) : null,
-      }).eq("id", imp!.id);
+      await supabase
+        .from("importazioni")
+        .update({
+          righe_elaborate: scadRows.length + assicRows.length,
+          righe_create: scadCreated + assicCreated,
+          righe_aggiornate: scadUpdated + assicUpdated,
+          righe_errore: scadSkipped + assicSkipped,
+          stato: scadSkipped + assicSkipped > 0 ? "completata_con_errori" : "completata",
+          completata_at: new Date().toISOString(),
+          log_errori: log.length ? log.slice(0, 300).map((m) => ({ messaggio: m })) : null,
+        })
+        .eq("id", imp!.id);
 
       return { log: [...summary, ...log] };
     },
@@ -1277,14 +1679,23 @@ function ScadenziarioAssicurazioniImportCard() {
         <ShieldCheck className="size-4" /> C · Importa Scadenziario e Assicurazioni
       </h2>
       <p className="text-xs text-muted-foreground mb-4">
-        File Excel con due fogli: <code>SCADENZIARIO</code> (intestazioni riga 11, struttura a blocchi cliente) e <code>ASSICURAZIONE</code> (intestazioni riga 1).
-        Match cliente per <code>codice_gestionale</code>. Crea solleciti, pratiche legali e blocchi automatici.
+        File Excel con due fogli: <code>SCADENZIARIO</code> (intestazioni riga 11, struttura a
+        blocchi cliente) e <code>ASSICURAZIONE</code> (intestazioni riga 1). Match cliente per{" "}
+        <code>codice_gestionale</code>. Crea solleciti, pratiche legali e blocchi automatici.
       </p>
       {!fileName ? (
         <div
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragOver(true);
+          }}
           onDragLeave={() => setDragOver(false)}
-          onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files?.[0]; if (f) handleFile(f); }}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragOver(false);
+            const f = e.dataTransfer.files?.[0];
+            if (f) handleFile(f);
+          }}
           onClick={() => fileRef.current?.click()}
           className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
             dragOver ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
@@ -1292,9 +1703,19 @@ function ScadenziarioAssicurazioniImportCard() {
         >
           <FileSpreadsheet className="size-10 mx-auto text-muted-foreground mb-2" />
           <p className="text-sm font-medium">Trascina il file qui o clicca per selezionare</p>
-          <p className="text-xs text-muted-foreground mt-1">.xlsx con fogli SCADENZIARIO + ASSICURAZIONE</p>
-          <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden"
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
+          <p className="text-xs text-muted-foreground mt-1">
+            .xlsx con fogli SCADENZIARIO + ASSICURAZIONE
+          </p>
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".xlsx,.xls"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) handleFile(f);
+            }}
+          />
           {parsing && <Loader2 className="size-4 animate-spin mx-auto mt-3" />}
         </div>
       ) : (
@@ -1304,31 +1725,45 @@ function ScadenziarioAssicurazioniImportCard() {
               <FileSpreadsheet className="size-4 shrink-0" />
               <span className="text-sm truncate">{fileName}</span>
             </div>
-            <Button variant="ghost" size="icon" onClick={reset}><X className="size-4" /></Button>
+            <Button variant="ghost" size="icon" onClick={reset}>
+              <X className="size-4" />
+            </Button>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Badge variant="default" className="gap-1"><CalendarClock className="size-3" /> {scadRows.length} scadenze</Badge>
-            <Badge variant="default" className="gap-1"><ShieldCheck className="size-3" /> {assicRows.length} polizze</Badge>
+            <Badge variant="default" className="gap-1">
+              <CalendarClock className="size-3" /> {scadRows.length} scadenze
+            </Badge>
+            <Badge variant="default" className="gap-1">
+              <ShieldCheck className="size-3" /> {assicRows.length} polizze
+            </Badge>
             {warnings.length > 0 && (
-              <Badge variant="destructive" className="gap-1"><AlertCircle className="size-3" /> {warnings.length} avvisi</Badge>
+              <Badge variant="destructive" className="gap-1">
+                <AlertCircle className="size-3" /> {warnings.length} avvisi
+              </Badge>
             )}
           </div>
           {warnings.length > 0 && (
             <div className="rounded-md border p-2 text-xs text-destructive space-y-0.5">
-              {warnings.map((w, i) => <p key={i}>{w}</p>)}
+              {warnings.map((w, i) => (
+                <p key={i}>{w}</p>
+              ))}
             </div>
           )}
           {result && (
             <div className="rounded-md border p-3 bg-muted/30 space-y-1 max-h-60 overflow-auto">
               <p className="text-xs font-medium mb-1">Esito import</p>
               {result.log.slice(0, 100).map((m, i) => (
-                <p key={i} className="text-xs font-mono text-muted-foreground">{m}</p>
+                <p key={i} className="text-xs font-mono text-muted-foreground">
+                  {m}
+                </p>
               ))}
             </div>
           )}
-          <Button className="w-full gap-1.5"
+          <Button
+            className="w-full gap-1.5"
             disabled={(!scadRows.length && !assicRows.length) || importMut.isPending}
-            onClick={() => importMut.mutate()}>
+            onClick={() => importMut.mutate()}
+          >
             {importMut.isPending && <Loader2 className="size-4 animate-spin" />}
             Importa {scadRows.length} scadenze + {assicRows.length} polizze
           </Button>
@@ -1347,9 +1782,13 @@ function ExportCard() {
   const [busy, setBusy] = useState<null | "clienti" | "richieste">(null);
 
   async function logEsportazione(nome_file: string, righe: number) {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     await supabase.from("esportazioni").insert({
-      nome_file, righe_esportate: righe, eseguita_da: user?.id ?? null,
+      nome_file,
+      righe_esportate: righe,
+      eseguita_da: user?.id ?? null,
     });
     qc.invalidateQueries({ queryKey: ["storico-import-export"] });
   }
@@ -1359,13 +1798,21 @@ function ExportCard() {
     try {
       const { data, error } = await supabase
         .from("clienti")
-        .select("ragione_sociale, partita_iva, codice_fiscale, indirizzo, citta, cap, provincia, telefono, email, attivo, privacy_firmata, stores(codice, nome)")
+        .select(
+          "ragione_sociale, partita_iva, codice_fiscale, indirizzo, citta, cap, provincia, telefono, email, attivo, privacy_firmata, stores(codice, nome)",
+        )
         .order("ragione_sociale");
       if (error) throw error;
       const flat = (data ?? []).map((c) => ({
-        ragione_sociale: c.ragione_sociale, partita_iva: c.partita_iva, codice_fiscale: c.codice_fiscale,
-        indirizzo: c.indirizzo, citta: c.citta, cap: c.cap, provincia: c.provincia,
-        telefono: c.telefono, email: c.email,
+        ragione_sociale: c.ragione_sociale,
+        partita_iva: c.partita_iva,
+        codice_fiscale: c.codice_fiscale,
+        indirizzo: c.indirizzo,
+        citta: c.citta,
+        cap: c.cap,
+        provincia: c.provincia,
+        telefono: c.telefono,
+        email: c.email,
         store_codice: (c.stores as { codice: string } | null)?.codice ?? "",
         store_nome: (c.stores as { nome: string } | null)?.nome ?? "",
         attivo: c.attivo ? "Sì" : "No",
@@ -1380,7 +1827,9 @@ function ExportCard() {
       toast.success(`Esportati ${flat.length} clienti`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Errore export");
-    } finally { setBusy(null); }
+    } finally {
+      setBusy(null);
+    }
   }
 
   async function exportRichieste() {
@@ -1388,17 +1837,25 @@ function ExportCard() {
     try {
       const { data, error } = await supabase
         .from("richieste_fido")
-        .select("tipo, importo_richiesto, importo_approvato, durata_mesi, stato, livello_richiesto, livello_corrente, data_invio, data_chiusura, data_scadenza, motivazione, clienti(ragione_sociale, partita_iva), stores(codice, nome)")
+        .select(
+          "tipo, importo_richiesto, importo_approvato, durata_mesi, stato, livello_richiesto, livello_corrente, data_invio, data_chiusura, data_scadenza, motivazione, clienti(ragione_sociale, partita_iva), stores(codice, nome)",
+        )
         .order("created_at", { ascending: false });
       if (error) throw error;
       const flat = (data ?? []).map((r) => ({
         cliente: (r.clienti as { ragione_sociale: string } | null)?.ragione_sociale ?? "",
         partita_iva: (r.clienti as { partita_iva: string | null } | null)?.partita_iva ?? "",
         store: (r.stores as { codice: string } | null)?.codice ?? "",
-        tipo: r.tipo, stato: r.stato,
-        importo_richiesto: r.importo_richiesto, importo_approvato: r.importo_approvato,
-        durata_mesi: r.durata_mesi, livello_richiesto: r.livello_richiesto, livello_corrente: r.livello_corrente,
-        data_invio: r.data_invio, data_chiusura: r.data_chiusura, data_scadenza: r.data_scadenza,
+        tipo: r.tipo,
+        stato: r.stato,
+        importo_richiesto: r.importo_richiesto,
+        importo_approvato: r.importo_approvato,
+        durata_mesi: r.durata_mesi,
+        livello_richiesto: r.livello_richiesto,
+        livello_corrente: r.livello_corrente,
+        data_invio: r.data_invio,
+        data_chiusura: r.data_chiusura,
+        data_scadenza: r.data_scadenza,
         motivazione: r.motivazione,
       }));
       const fname = `richieste_fido_${new Date().toISOString().slice(0, 10)}.xlsx`;
@@ -1410,7 +1867,9 @@ function ExportCard() {
       toast.success(`Esportate ${flat.length} richieste`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Errore export");
-    } finally { setBusy(null); }
+    } finally {
+      setBusy(null);
+    }
   }
 
   return (
@@ -1420,13 +1879,35 @@ function ExportCard() {
       </h2>
       <p className="text-xs text-muted-foreground mb-4">Scarica i dati in formato Excel (.xlsx).</p>
       <div className="space-y-3">
-        <Button variant="outline" className="w-full justify-between" disabled={busy !== null} onClick={exportClienti}>
-          <span className="flex items-center gap-2"><FileSpreadsheet className="size-4" /> Anagrafica clienti</span>
-          {busy === "clienti" ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+        <Button
+          variant="outline"
+          className="w-full justify-between"
+          disabled={busy !== null}
+          onClick={exportClienti}
+        >
+          <span className="flex items-center gap-2">
+            <FileSpreadsheet className="size-4" /> Anagrafica clienti
+          </span>
+          {busy === "clienti" ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <Download className="size-4" />
+          )}
         </Button>
-        <Button variant="outline" className="w-full justify-between" disabled={busy !== null} onClick={exportRichieste}>
-          <span className="flex items-center gap-2"><FileSpreadsheet className="size-4" /> Richieste fido</span>
-          {busy === "richieste" ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+        <Button
+          variant="outline"
+          className="w-full justify-between"
+          disabled={busy !== null}
+          onClick={exportRichieste}
+        >
+          <span className="flex items-center gap-2">
+            <FileSpreadsheet className="size-4" /> Richieste fido
+          </span>
+          {busy === "richieste" ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <Download className="size-4" />
+          )}
         </Button>
       </div>
     </Card>
@@ -1441,7 +1922,11 @@ function HistoryCard({ kind }: { kind: "importazioni" | "esportazioni" }) {
   const { data, isLoading, isFetching, refetch } = useQuery({
     queryKey: ["storico-import-export", kind],
     queryFn: async () => {
-      const { data, error } = await supabase.from(kind).select("*").order("created_at", { ascending: false }).limit(10);
+      const { data, error } = await supabase
+        .from(kind)
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(10);
       if (error) throw error;
       return data;
     },
@@ -1457,7 +1942,9 @@ function HistoryCard({ kind }: { kind: "importazioni" | "esportazioni" }) {
   return (
     <Card className="p-5">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="font-semibold flex items-center gap-2"><Icon className="size-4" /> {title}</h2>
+        <h2 className="font-semibold flex items-center gap-2">
+          <Icon className="size-4" /> {title}
+        </h2>
         <Button size="sm" variant="outline" onClick={() => refetch()} disabled={isFetching}>
           <Loader2 className={`size-3 mr-1 ${isFetching ? "animate-spin" : "hidden"}`} />
           Aggiorna
@@ -1472,15 +1959,21 @@ function HistoryCard({ kind }: { kind: "importazioni" | "esportazioni" }) {
           {data.map((r: any) => {
             const totali = Number(r.righe_totali ?? 0);
             const elaborate = Number(r.righe_elaborate ?? 0);
-            const pct = totali > 0 ? Math.min(100, Math.round((elaborate / totali) * 100)) : (r.stato === "in_elaborazione" ? 0 : 100);
+            const pct =
+              totali > 0
+                ? Math.min(100, Math.round((elaborate / totali) * 100))
+                : r.stato === "in_elaborazione"
+                  ? 0
+                  : 100;
             const inCorso = r.stato === "in_elaborazione";
-            const variant = r.stato === "completata"
-              ? "default"
-              : r.stato === "fallita"
-              ? "destructive"
-              : r.stato === "completata_con_errori"
-              ? "secondary"
-              : "outline";
+            const variant =
+              r.stato === "completata"
+                ? "default"
+                : r.stato === "fallita"
+                  ? "destructive"
+                  : r.stato === "completata_con_errori"
+                    ? "secondary"
+                    : "outline";
             return (
               <div key={r.id} className="border-b last:border-0 pb-3 last:pb-0 space-y-1.5">
                 <div className="flex items-start justify-between gap-2 text-sm">
@@ -1492,7 +1985,10 @@ function HistoryCard({ kind }: { kind: "importazioni" | "esportazioni" }) {
                     </p>
                   </div>
                   <div className="text-right shrink-0">
-                    <Badge variant={variant as "default" | "destructive" | "secondary" | "outline"} className="gap-1">
+                    <Badge
+                      variant={variant as "default" | "destructive" | "secondary" | "outline"}
+                      className="gap-1"
+                    >
                       {inCorso ? <Loader2 className="size-3 animate-spin" /> : null}
                       {r.stato}
                     </Badge>
@@ -1513,7 +2009,9 @@ function HistoryCard({ kind }: { kind: "importazioni" | "esportazioni" }) {
                     </div>
                     <p className="text-[11px] text-muted-foreground">
                       {elaborate}/{totali || "?"} righe ({pct}%)
-                      {r.righe_errore ? <span className="text-destructive ml-2">· {r.righe_errore} errori</span> : null}
+                      {r.righe_errore ? (
+                        <span className="text-destructive ml-2">· {r.righe_errore} errori</span>
+                      ) : null}
                     </p>
                   </div>
                 ) : null}
