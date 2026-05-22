@@ -75,17 +75,49 @@ function ClientiPage() {
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
   const isListRoute = currentPath === "/clienti";
   const [search, setSearch] = useState("");
-  const [statoFiltro, setStatoFiltro] = useState<"attivi" | "disattivati" | "tutti">("attivi");
+  const [statoCliente, setStatoCliente] = useState<"attivi" | "disattivati" | "tutti">("attivi");
+  const [storeFiltro, setStoreFiltro] = useState<string>("tutti");
+  const [statoFido, setStatoFido] = useState<Set<string>>(new Set());
+  const [semaforoFiltro, setSemaforoFiltro] = useState<string>("tutti");
+  const [soloBloccati, setSoloBloccati] = useState(false);
+  const [privacyFiltro, setPrivacyFiltro] = useState<string>("tutti");
+  const [soloAssicurati, setSoloAssicurati] = useState(false);
   const [open, setOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  const { data: stores } = useQuery({
+    queryKey: ["stores", "all"],
+    queryFn: async () => {
+      const { data } = await supabase.from("stores").select("id, nome, codice").eq("attivo", true).order("nome");
+      return data ?? [];
+    },
+  });
 
   const { data: clientiResp, isLoading } = useQuery({
-    queryKey: ["clienti"],
+    queryKey: ["clienti", { search, statoCliente, storeFiltro, soloBloccati, privacyFiltro, soloAssicurati }],
     queryFn: async () => {
-      const { data, error, count } = await supabase
+      let q = supabase
         .from("clienti")
         .select("*, stores(nome, codice)", { count: "exact" })
         .order("ragione_sociale", { ascending: true })
         .range(0, 4999);
+
+      if (statoCliente === "attivi") q = q.eq("attivo", true);
+      else if (statoCliente === "disattivati") q = q.eq("attivo", false);
+      if (storeFiltro !== "tutti") q = q.eq("store_id", storeFiltro);
+      if (soloBloccati) q = q.eq("bloccato", true);
+      if (privacyFiltro === "firmata") q = q.eq("privacy_firmata", true);
+      else if (privacyFiltro === "da_firmare") q = q.eq("privacy_firmata", false);
+      if (soloAssicurati) q = q.eq("assicurazione_attiva", true);
+      const term = search.replace(/[(),]/g, " ").trim();
+      if (term) {
+        const like = `%${term}%`;
+        q = q.or(
+          `ragione_sociale.ilike.${like},partita_iva.ilike.${like},codice_gestionale.ilike.${like},citta.ilike.${like}`,
+        );
+      }
+
+      const { data, error, count } = await q;
       if (error) throw error;
       return { rows: data ?? [], count: count ?? (data?.length ?? 0) };
     },
@@ -94,18 +126,160 @@ function ClientiPage() {
   const clienti = clientiResp?.rows;
   const totaleClienti = clientiResp?.count ?? 0;
 
-  const filtered = (clienti ?? []).filter((c) => {
-    if (statoFiltro === "attivi" && !c.attivo) return false;
-    if (statoFiltro === "disattivati" && c.attivo) return false;
-    const q = search.toLowerCase().trim();
-    if (!q) return true;
+  // Filtri derivati lato client (stato fido + semaforo non sono campi DB diretti)
+  const filtered = useMemo(() => {
+    return (clienti ?? []).filter((c: any) => {
+      if (semaforoFiltro !== "tutti" && calcSemaforo(c) !== semaforoFiltro) return false;
+      if (statoFido.size > 0) {
+        const fido = Number(c.fido ?? 0);
+        const scaduto = Number(c.scaduto ?? 0);
+        const matches = new Set<string>();
+        if (c.bloccato) matches.add("sospeso");
+        if (scaduto > 0) matches.add("scaduto");
+        if (!fido) matches.add("non_assegnato");
+        else if (!c.bloccato && scaduto === 0) matches.add("attivo");
+        // "in_revisione" non ricavabile direttamente dai campi del cliente
+        const intersect = Array.from(statoFido).some((s) => matches.has(s));
+        if (!intersect) return false;
+      }
+      return true;
+    });
+  }, [clienti, semaforoFiltro, statoFido]);
+
+  const attiviCount =
+    (search ? 1 : 0) +
+    (statoCliente !== "attivi" ? 1 : 0) +
+    (storeFiltro !== "tutti" ? 1 : 0) +
+    (statoFido.size > 0 ? 1 : 0) +
+    (semaforoFiltro !== "tutti" ? 1 : 0) +
+    (soloBloccati ? 1 : 0) +
+    (privacyFiltro !== "tutti" ? 1 : 0) +
+    (soloAssicurati ? 1 : 0);
+
+  function resetFiltri() {
+    setSearch("");
+    setStatoCliente("attivi");
+    setStoreFiltro("tutti");
+    setStatoFido(new Set());
+    setSemaforoFiltro("tutti");
+    setSoloBloccati(false);
+    setPrivacyFiltro("tutti");
+    setSoloAssicurati(false);
+  }
+
+  const STATO_FIDO_OPTS: Array<{ value: string; label: string }> = [
+    { value: "attivo", label: "Attivo" },
+    { value: "scaduto", label: "Scaduto" },
+    { value: "in_revisione", label: "In revisione" },
+    { value: "sospeso", label: "Sospeso" },
+    { value: "non_assegnato", label: "Non assegnato" },
+  ];
+
+  function toggleStatoFido(v: string) {
+    setStatoFido((prev) => {
+      const next = new Set(prev);
+      if (next.has(v)) next.delete(v); else next.add(v);
+      return next;
+    });
+  }
+
+  function FiltriContent({ stack = false }: { stack?: boolean }) {
+    const wrap = stack ? "grid grid-cols-1 gap-3" : "flex flex-wrap gap-3 items-center";
     return (
-      c.ragione_sociale?.toLowerCase().includes(q) ||
-      c.partita_iva?.toLowerCase().includes(q) ||
-      (c as any).codice_gestionale?.toLowerCase().includes(q) ||
-      c.citta?.toLowerCase().includes(q)
+      <div className={wrap}>
+        {!stack && (
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Cerca ragione sociale, P.IVA, cod. gest., città..."
+              className="pl-9"
+            />
+          </div>
+        )}
+
+        <Select value={storeFiltro} onValueChange={setStoreFiltro}>
+          <SelectTrigger className={stack ? "w-full" : "w-48"}><SelectValue placeholder="Punto vendita" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="tutti">Tutti i punti vendita</SelectItem>
+            {(stores ?? []).map((s) => (
+              <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className={stack ? "w-full justify-between" : "w-48 justify-between"}>
+              <span className="truncate">
+                {statoFido.size === 0 ? "Stato fido" : `Stato fido (${statoFido.size})`}
+              </span>
+              <SlidersHorizontal className="size-4 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-56 p-2" align="start">
+            {STATO_FIDO_OPTS.map((o) => (
+              <label key={o.value} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm">
+                <Checkbox checked={statoFido.has(o.value)} onCheckedChange={() => toggleStatoFido(o.value)} />
+                {o.label}
+              </label>
+            ))}
+            {statoFido.size > 0 && (
+              <Button variant="ghost" size="sm" className="w-full mt-1" onClick={() => setStatoFido(new Set())}>
+                Pulisci
+              </Button>
+            )}
+          </PopoverContent>
+        </Popover>
+
+        <Select value={semaforoFiltro} onValueChange={setSemaforoFiltro}>
+          <SelectTrigger className={stack ? "w-full" : "w-40"}><SelectValue placeholder="Semaforo" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="tutti">Tutti i semafori</SelectItem>
+            <SelectItem value="verde">🟢 Verde</SelectItem>
+            <SelectItem value="giallo">🟡 Giallo</SelectItem>
+            <SelectItem value="arancione">🟠 Arancione</SelectItem>
+            <SelectItem value="rosso">🔴 Rosso</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select value={statoCliente} onValueChange={(v) => setStatoCliente(v as typeof statoCliente)}>
+          <SelectTrigger className={stack ? "w-full" : "w-40"}><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="attivi">Solo attivi</SelectItem>
+            <SelectItem value="disattivati">Solo disattivati</SelectItem>
+            <SelectItem value="tutti">Tutti</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select value={privacyFiltro} onValueChange={setPrivacyFiltro}>
+          <SelectTrigger className={stack ? "w-full" : "w-44"}><SelectValue placeholder="Privacy" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="tutti">Privacy: tutti</SelectItem>
+            <SelectItem value="firmata">Privacy firmata</SelectItem>
+            <SelectItem value="da_firmare">Privacy da firmare</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <label className="flex items-center gap-2 text-sm px-2 py-1 cursor-pointer whitespace-nowrap">
+          <Checkbox checked={soloBloccati} onCheckedChange={(v) => setSoloBloccati(!!v)} />
+          Solo bloccati
+        </label>
+
+        <label className="flex items-center gap-2 text-sm px-2 py-1 cursor-pointer whitespace-nowrap">
+          <Checkbox checked={soloAssicurati} onCheckedChange={(v) => setSoloAssicurati(!!v)} />
+          Solo assicurati POUEY
+        </label>
+
+        {attiviCount > 0 && (
+          <Button variant="ghost" size="sm" onClick={resetFiltri} className="gap-1">
+            <X className="size-4" /> Azzera filtri
+          </Button>
+        )}
+      </div>
     );
-  });
+  }
 
   if (!isListRoute) {
     return <Outlet />;
@@ -132,27 +306,49 @@ function ClientiPage() {
       </div>
 
       <Card className="p-4 sm:p-5">
-        <div className="flex flex-col sm:flex-row gap-3 mb-4">
+        {/* Desktop: barra filtri inline */}
+        <div className="hidden md:block mb-4">
+          <FiltriContent />
+        </div>
+
+        {/* Mobile: search inline + bottone "Filtri" con badge */}
+        <div className="md:hidden flex gap-2 mb-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cerca per ragione sociale, P.IVA, codice gestionale o città..."
+              placeholder="Cerca cliente..."
               className="pl-9"
             />
           </div>
-          <Select value={statoFiltro} onValueChange={(v) => setStatoFiltro(v as typeof statoFiltro)}>
-            <SelectTrigger className="w-full sm:w-48">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="attivi">Solo attivi</SelectItem>
-              <SelectItem value="disattivati">Solo disattivati</SelectItem>
-              <SelectItem value="tutti">Tutti</SelectItem>
-            </SelectContent>
-          </Select>
+          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" className="gap-1.5 relative">
+                <SlidersHorizontal className="size-4" />
+                Filtri
+                {attiviCount > 0 && (
+                  <Badge variant="default" className="ml-1 h-5 min-w-5 px-1.5 text-xs">{attiviCount}</Badge>
+                )}
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[90vw] sm:max-w-md overflow-y-auto">
+              <SheetHeader>
+                <SheetTitle>Filtri</SheetTitle>
+              </SheetHeader>
+              <div className="mt-4">
+                <FiltriContent stack />
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
+
+        <div className="mb-3 text-sm text-muted-foreground">
+          <strong className="text-foreground">{filtered.length}</strong> clienti trovati
+          {attiviCount > 0 && <span className="ml-1">(filtri attivi: {attiviCount})</span>}
+          <span className="ml-2">· Totale in archivio: <strong className="text-foreground">{totaleClienti}</strong></span>
+        </div>
+
 
         {isLoading ? (
           <div className="space-y-2">
