@@ -446,7 +446,7 @@ function RischioImportCard() {
           continue;
         }
         const { error } = await supabase.from("clienti")
-          .update({ ...r.payload, ultima_sincronizzazione: now })
+          .update({ ...r.payload, ultima_sincronizzazione: now } as never)
           .eq("id", id);
         if (error) errorLog.push({ riga: r.idx, errore: `Update: ${error.message}` });
         else updated += 1;
