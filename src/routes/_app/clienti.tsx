@@ -857,12 +857,16 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
           const importoRichiesto = num(parsed.importo_affidamento_richiesto);
           if (importoRichiesto != null && importoRichiesto > 0) {
             try {
+              const importoNum = Number(importoRichiesto);
+              const livelloCalc = importoNum <= 5000 ? 1 : importoNum <= 20000 ? 2 : 3;
               const payload = {
                 cliente_id: clienteId,
                 store_id: parsed.store_id || null,
-                tipo: "nuovo",
+                tipo: "nuovo_fido",
                 stato: "bozza",
                 importo_richiesto: importoRichiesto,
+                livello_richiesto: livelloCalc,
+                livello_corrente: livelloCalc,
                 motivazione: parsed.note_amministrazione || null,
                 created_by: user?.id ?? null,
               };
