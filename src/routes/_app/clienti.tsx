@@ -1525,8 +1525,6 @@ function StepAmministrazione({ form, set }: { form: SchedaForm; set: SetFn }) {
   );
 }
 
-const PRIVACY_TEXT_UI =
-  "In relazione al nuovo Regolamento UE 679/2016, ed ai sensi del decreto legislativo 196 del 30/06/2003 vi comunichiamo che nei nostri archivi cartacei e/o informatici sono contenuti i vostri dati personali. I dati verranno trattati per le finalità relative alla gestione del rapporto in essere, non verranno comunicati ad altri soggetti e potranno essere utilizzati per l'invio della corrispondenza. L'interessato potrà chiedere in ogni momento la modifica o la cancellazione in relazione all'art. 14-15-16-17 del Reg. UE 679/2016 inviando una mail a madedistribuzione@pecplus.it";
 
 const INFORMATIVA_FULL = `Made Distribuzione S.p.A. - C.F. 10126430965, con sede in Milano Corso di Porta Nuova 11 (tel. 02404702800 - email gdpr-md@madepoint.it - pec madedistribuzionesrl@pecplus.it) in persona del suo presidente Dott. Gian Luca Bellini, ai sensi dell'articolo 13 del GDPR 2016/679, Le fornisce le seguenti informazioni.
 
