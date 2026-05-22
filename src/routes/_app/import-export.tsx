@@ -25,6 +25,15 @@ export const Route = createFileRoute("/_app/import-export")({
 // Schema riga import — tutti i campi opzionali tranne ragione_sociale
 const rowSchema = z.object({
   ragione_sociale: z.string().trim().min(1, "Ragione sociale obbligatoria").max(200),
+  codice_gestionale: z.string().trim().max(50).optional().or(z.literal("")),
+  fido: z.coerce.number().optional().or(z.literal("")).transform((v) => (v === "" || v === undefined || Number.isNaN(v as number) ? undefined : Number(v))),
+  totale_rischio: z.coerce.number().optional().or(z.literal("")).transform((v) => (v === "" || v === undefined || Number.isNaN(v as number) ? undefined : Number(v))),
+  fido_residuo: z.coerce.number().optional().or(z.literal("")).transform((v) => (v === "" || v === undefined || Number.isNaN(v as number) ? undefined : Number(v))),
+  scaduto: z.coerce.number().optional().or(z.literal("")).transform((v) => (v === "" || v === undefined || Number.isNaN(v as number) ? undefined : Number(v))),
+  a_scadere: z.coerce.number().optional().or(z.literal("")).transform((v) => (v === "" || v === undefined || Number.isNaN(v as number) ? undefined : Number(v))),
+  condizioni_pagamento: z.string().trim().max(500).optional().or(z.literal("")),
+  dilazione_concordata: z.coerce.number().int().optional().or(z.literal("")).transform((v) => (v === "" || v === undefined || Number.isNaN(v as number) ? undefined : Math.trunc(Number(v)))),
+  dilazione_effettiva: z.coerce.number().int().optional().or(z.literal("")).transform((v) => (v === "" || v === undefined || Number.isNaN(v as number) ? undefined : Math.trunc(Number(v)))),
   partita_iva: z.string().trim().max(20).optional().or(z.literal("")),
   codice_fiscale: z.string().trim().max(20).optional().or(z.literal("")),
   indirizzo: z.string().trim().max(200).optional().or(z.literal("")),
@@ -35,6 +44,7 @@ const rowSchema = z.object({
   email: z.string().trim().email("Email non valida").max(255).optional().or(z.literal("")),
   note: z.string().trim().max(1000).optional().or(z.literal("")),
 });
+
 
 type ParsedRow = {
   idx: number;
