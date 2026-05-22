@@ -964,29 +964,9 @@ function StepAmministrazione({ form, set }: { form: SchedaForm; set: SetFn }) {
           <Input type="number" step="0.01" value={form.importo_affidamento_richiesto} onChange={(e) => set("importo_affidamento_richiesto", e.target.value)} />
         </div>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <Label>Data Esito Affidamento</Label>
-          <Input type="date" value={form.data_esito_affidamento} onChange={(e) => set("data_esito_affidamento", e.target.value)} />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Importo Affidato (€)</Label>
-          <Input type="number" step="0.01" value={form.importo_affidato} onChange={(e) => set("importo_affidato", e.target.value)} />
-        </div>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <Label>Fido Aziendale Concesso (€)</Label>
-          <Input type="number" step="0.01" value={form.fido_aziendale_concesso} onChange={(e) => set("fido_aziendale_concesso", e.target.value)} />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Data Affidamento Aziendale</Label>
-          <Input type="date" value={form.data_affidamento_aziendale} onChange={(e) => set("data_affidamento_aziendale", e.target.value)} />
-        </div>
-      </div>
       <div className="space-y-1.5">
-        <Label>Condizioni di Pagamento Concesse</Label>
-        <Input value={form.condizioni_pagamento_concesse} onChange={(e) => set("condizioni_pagamento_concesse", e.target.value)} />
+        <Label>Note</Label>
+        <Textarea rows={3} value={form.note_amministrazione} onChange={(e) => set("note_amministrazione", e.target.value)} />
       </div>
       <div className="space-y-1.5">
         <Label>Note</Label>
