@@ -690,7 +690,8 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
       const now = new Date();
       const { data: { user } } = await supabase.auth.getUser();
 
-      let clienteId: string | null = null;
+      const isAggiornamento = parsed.tipo === "aggiornamento" && !!clienteEsistenteId;
+      let clienteId: string | null = isAggiornamento ? clienteEsistenteId : null;
       const uploadedPaths: Array<{ bucket: string; path: string }> = [];
 
       const rollback = async (reason: string) => {
@@ -698,7 +699,8 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
           for (const u of uploadedPaths) {
             await supabase.storage.from(u.bucket).remove([u.path]);
           }
-          if (clienteId) {
+          // In aggiornamento NON eliminiamo il cliente esistente
+          if (!isAggiornamento && clienteId) {
             await supabase.from("contatti").delete().eq("cliente_id", clienteId);
             await supabase.from("clienti").delete().eq("id", clienteId);
           }
@@ -707,7 +709,7 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
       };
 
       try {
-        // 1. INSERT cliente (dati Step 1 + Step 3 se admin)
+        // 1. INSERT/UPDATE cliente (dati Step 1 + Step 3 se admin)
         const num = (s?: string) => {
           if (!s) return null;
           const n = Number(String(s).replace(",", "."));
@@ -736,12 +738,13 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
           store_id: parsed.store_id || null,
           dichiarante_nome: parsed.dichiarante_nome || null,
           dichiarante_cognome: parsed.dichiarante_cognome || null,
-          created_by: user?.id,
         };
+        if (!isAggiornamento) {
+          clientePayload.created_by = user?.id;
+        }
         if (canSeeAdminStep) {
           Object.assign(clientePayload, {
             codice_assegnato: parsed.codice_assegnato || null,
-            sede_operatore: parsed.sede_operatore || null,
             condizioni_pagamento_concordate: parsed.condizioni_pagamento_concordate || null,
             data_richiesta_affidamento: date(parsed.data_richiesta_affidamento),
             importo_affidamento_richiesto: num(parsed.importo_affidamento_richiesto),
@@ -749,18 +752,22 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
           });
         }
 
-        // PRIMA: INSERT cliente e ottieni clienteId
-        const { data: cliente, error: e1 } = await supabase
-          .from("clienti").insert(clientePayload as never).select("id").single();
-        if (e1) throw new Error(`Inserimento cliente: ${e1.message}`);
-        if (!cliente || !(cliente as { id?: string }).id) {
-          throw new Error("Inserimento cliente: id non restituito");
+        if (isAggiornamento) {
+          const { error: eUpd } = await supabase
+            .from("clienti").update(clientePayload as never).eq("id", clienteId!);
+          if (eUpd) throw new Error(`Aggiornamento cliente: ${eUpd.message}`);
+        } else {
+          const { data: cliente, error: e1 } = await supabase
+            .from("clienti").insert(clientePayload as never).select("id").single();
+          if (e1) throw new Error(`Inserimento cliente: ${e1.message}`);
+          if (!cliente || !(cliente as { id?: string }).id) {
+            throw new Error("Inserimento cliente: id non restituito");
+          }
+          clienteId = (cliente as { id: string }).id;
         }
-        clienteId = (cliente as { id: string }).id;
 
-        // 2. INSERT contatti SUBITO (Titolare sempre, Amm.vo se compilato).
-        //    I dati firma/PDF verranno aggiunti dopo, se la generazione PDF va a buon fine.
-        const titolareInsert: Record<string, unknown> = {
+        // 2. INSERT/UPDATE contatti (Titolare sempre, Amm.vo se compilato).
+        const titolarePayload: Record<string, unknown> = {
           cliente_id: clienteId,
           nome: parsed.titolare_nome,
           cognome: parsed.titolare_cognome || null,
@@ -769,23 +776,52 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
           cellulare: parsed.titolare_cell || null,
           principale: true,
         };
-        const contattiToInsert: Array<Record<string, unknown>> = [titolareInsert];
-        if ((parsed.amministrativo_nome ?? "").trim()) {
-          contattiToInsert.push({
-            cliente_id: clienteId,
-            nome: parsed.amministrativo_nome,
-            cognome: parsed.amministrativo_cognome || null,
-            ruolo: "Referente Amministrativo",
-            email: parsed.amministrativo_email || null,
-            cellulare: parsed.amministrativo_cell || null,
-            principale: false,
-          });
+        const ammPayload: Record<string, unknown> | null = (parsed.amministrativo_nome ?? "").trim()
+          ? {
+              cliente_id: clienteId,
+              nome: parsed.amministrativo_nome,
+              cognome: parsed.amministrativo_cognome || null,
+              ruolo: "Referente Amministrativo",
+              email: parsed.amministrativo_email || null,
+              cellulare: parsed.amministrativo_cell || null,
+              principale: false,
+            }
+          : null;
+
+        let contattiCreati: Array<{ id: string; principale: boolean }> = [];
+        if (isAggiornamento) {
+          if (titolareEsistenteId) {
+            const { error } = await supabase.from("contatti")
+              .update(titolarePayload as never).eq("id", titolareEsistenteId);
+            if (error) throw new Error(`Aggiornamento titolare: ${error.message}`);
+            contattiCreati.push({ id: titolareEsistenteId, principale: true });
+          } else {
+            const { data, error } = await supabase.from("contatti")
+              .insert(titolarePayload as never).select("id, principale").single();
+            if (error) throw new Error(`Inserimento titolare: ${error.message}`);
+            if (data) contattiCreati.push(data as { id: string; principale: boolean });
+          }
+          if (ammPayload) {
+            if (amministrativoEsistenteId) {
+              const { error } = await supabase.from("contatti")
+                .update(ammPayload as never).eq("id", amministrativoEsistenteId);
+              if (error) throw new Error(`Aggiornamento referente: ${error.message}`);
+            } else {
+              const { error } = await supabase.from("contatti")
+                .insert(ammPayload as never);
+              if (error) throw new Error(`Inserimento referente: ${error.message}`);
+            }
+          }
+        } else {
+          const contattiToInsert: Array<Record<string, unknown>> = [titolarePayload];
+          if (ammPayload) contattiToInsert.push(ammPayload);
+          const { data, error: e5 } = await supabase
+            .from("contatti")
+            .insert(contattiToInsert as never)
+            .select("id, principale");
+          if (e5) throw new Error(`Salvataggio contatti: ${e5.message}`);
+          contattiCreati = (data ?? []) as Array<{ id: string; principale: boolean }>;
         }
-        const { data: contattiCreati, error: e5 } = await supabase
-          .from("contatti")
-          .insert(contattiToInsert as never)
-          .select("id, principale");
-        if (e5) throw new Error(`Salvataggio contatti: ${e5.message}`);
 
         // 2.bis Se è stato indicato un Importo Affidamento Richiesto, crea
         //       una richiesta_fido in bozza che segue il normale iter di approvazione.
