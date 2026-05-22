@@ -194,78 +194,177 @@ function FasciaBar({ label, value, pct, color }: { label: string; value: number;
 
 /* ============================== SCADENZIARIO ============================== */
 
-function ScadenziarioSection({ clienteId, canEdit }: { clienteId: string; canEdit: boolean }) {
-  const qc = useQueryClient();
+type ScadenzaRow = {
+  id: string;
+  numero_documento: string | null;
+  sezionale: string | null;
+  data_documento: string | null;
+  data_scadenza: string | null;
+  descrizione_pagamento: string | null;
+  importo_scadenza: number | null;
+  giorni_ritardo: number | null;
+  stato_contabile: string | null;
+};
+
+function ScadenziarioSection({ clienteId }: { clienteId: string; canEdit?: boolean }) {
   const { data: scadenze, isLoading } = useQuery({
     queryKey: ["scadenze", clienteId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("scadenze" as never)
-        .select("*")
+        .from("scadenze")
+        .select("id, numero_documento, sezionale, data_documento, data_scadenza, descrizione_pagamento, importo_scadenza, giorni_ritardo, stato_contabile")
         .eq("cliente_id", clienteId)
         .eq("stato_contabile", "Aperta")
         .order("data_scadenza", { ascending: true });
       if (error) throw error;
-      return data as Array<{ id: string; numero_documento: string | null; data_scadenza: string | null; importo_scadenza: number; giorni_ritardo: number; tipologia_scadenza: string | null; stato_contabile: string }>;
+      return (data ?? []) as ScadenzaRow[];
     },
-  });
-
-  const chiudi = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("scadenze" as never).update({ stato_contabile: "Chiusa", data_pagamento: new Date().toISOString().slice(0, 10) } as never).eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Scadenza chiusa");
-      qc.invalidateQueries({ queryKey: ["scadenze", clienteId] });
-      qc.invalidateQueries({ queryKey: ["riepilogo-insoluti", clienteId] });
-    },
-    onError: (e: Error) => toast.error(e.message),
   });
 
   if (isLoading) return <Skeleton className="h-40" />;
-  if (!scadenze || scadenze.length === 0) {
-    return <Card className="p-8 text-center text-sm text-muted-foreground">Nessuna scadenza aperta</Card>;
-  }
+  const rows = scadenze ?? [];
+  const scadute = rows.filter((s) => Number(s.giorni_ritardo ?? 0) > 0);
+  const aScadere = rows.filter((s) => Number(s.giorni_ritardo ?? 0) <= 0);
+
   return (
-    <Card>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>N. Documento</TableHead>
-            <TableHead>Data scadenza</TableHead>
-            <TableHead className="text-right">Importo</TableHead>
-            <TableHead className="text-right">Gg ritardo</TableHead>
-            <TableHead>Tipologia</TableHead>
-            <TableHead>Stato</TableHead>
-            {canEdit && <TableHead className="w-32"></TableHead>}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {scadenze.map((s) => {
-            const gg = Number(s.giorni_ritardo ?? 0);
-            const rowCls = gg > 60 ? "bg-destructive/5" : gg > 30 ? "bg-yellow-500/5" : gg > 0 ? "bg-success/5" : "";
-            return (
-              <TableRow key={s.id} className={rowCls}>
-                <TableCell className="font-mono text-xs">{s.numero_documento ?? "—"}</TableCell>
-                <TableCell className="text-sm">{fmtDate(s.data_scadenza)}</TableCell>
-                <TableCell className="text-right tabular-nums">{fmtEuro(s.importo_scadenza)}</TableCell>
-                <TableCell className="text-right tabular-nums font-medium">{gg}</TableCell>
-                <TableCell className="text-xs">{s.tipologia_scadenza ?? "—"}</TableCell>
-                <TableCell><Badge variant="outline">{s.stato_contabile}</Badge></TableCell>
-                {canEdit && (
-                  <TableCell>
-                    <Button size="sm" variant="outline" onClick={() => chiudi.mutate(s.id)} disabled={chiudi.isPending}>
-                      <CheckCircle2 className="size-3.5 mr-1" /> Chiudi
-                    </Button>
-                  </TableCell>
-                )}
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
-    </Card>
+    <div className="space-y-6">
+      <ScadutoBlock rows={scadute} />
+      <AScadereBlock rows={aScadere} />
+    </div>
+  );
+}
+
+function ScadutoBlock({ rows }: { rows: ScadenzaRow[] }) {
+  const totale = rows.reduce((acc, r) => acc + Number(r.importo_scadenza ?? 0), 0);
+  const ggMedi = rows.length ? Math.round(rows.reduce((a, r) => a + Number(r.giorni_ritardo ?? 0), 0) / rows.length) : 0;
+
+  return (
+    <div className="space-y-3">
+      <h3 className="text-sm font-semibold uppercase text-destructive flex items-center gap-2">
+        <AlertTriangle className="size-4" /> Scaduto
+      </h3>
+      {rows.length === 0 ? (
+        <Card className="p-8 text-center flex flex-col items-center gap-2">
+          <CheckCircle2 className="size-8 text-success" />
+          <p className="text-sm text-muted-foreground">Nessuno scaduto</p>
+        </Card>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <KpiCard label="Totale scaduto" value={fmtEuro(totale)} tone="destructive" icon={AlertTriangle} />
+            <KpiCard label="Fatture scadute" value={String(rows.length)} tone="info" icon={FileText} />
+            <KpiCard label="Giorni medi ritardo" value={`${ggMedi} gg`} tone="warning" icon={Clock} />
+          </div>
+          <Card>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>N. Documento</TableHead>
+                  <TableHead>Sezionale</TableHead>
+                  <TableHead>Data Doc.</TableHead>
+                  <TableHead>Data Scadenza</TableHead>
+                  <TableHead>Cond. Pagamento</TableHead>
+                  <TableHead className="text-right">Importo</TableHead>
+                  <TableHead className="text-right">Gg Ritardo</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((s) => {
+                  const gg = Number(s.giorni_ritardo ?? 0);
+                  const rowCls = gg > 60 ? "bg-destructive/10" : gg > 30 ? "bg-orange-500/10" : "bg-yellow-500/10";
+                  return (
+                    <TableRow key={s.id} className={rowCls}>
+                      <TableCell className="font-mono text-xs">{s.numero_documento ?? "—"}</TableCell>
+                      <TableCell className="text-xs">{s.sezionale ?? "—"}</TableCell>
+                      <TableCell className="text-sm">{fmtDate(s.data_documento)}</TableCell>
+                      <TableCell className="text-sm">{fmtDate(s.data_scadenza)}</TableCell>
+                      <TableCell className="text-xs">{s.descrizione_pagamento ?? "—"}</TableCell>
+                      <TableCell className="text-right tabular-nums">{fmtEuro(s.importo_scadenza)}</TableCell>
+                      <TableCell className="text-right tabular-nums font-medium">{gg}</TableCell>
+                    </TableRow>
+                  );
+                })}
+                <TableRow className="bg-muted/40">
+                  <TableCell colSpan={5} className="font-semibold text-right">Totale</TableCell>
+                  <TableCell className="text-right font-bold text-destructive tabular-nums">{fmtEuro(totale)}</TableCell>
+                  <TableCell />
+                </TableRow>
+              </TableBody>
+            </Table>
+          </Card>
+        </>
+      )}
+    </div>
+  );
+}
+
+function AScadereBlock({ rows }: { rows: ScadenzaRow[] }) {
+  const totale = rows.reduce((acc, r) => acc + Number(r.importo_scadenza ?? 0), 0);
+  const prossima = rows
+    .map((r) => r.data_scadenza)
+    .filter((d): d is string => !!d)
+    .sort()[0] ?? null;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+
+  return (
+    <div className="space-y-3">
+      <h3 className="text-sm font-semibold uppercase text-primary flex items-center gap-2">
+        <Calendar className="size-4" /> A scadere
+      </h3>
+      {rows.length === 0 ? (
+        <Card className="p-8 text-center text-sm text-muted-foreground">Nessuna scadenza aperta</Card>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <KpiCard label="Totale a scadere" value={fmtEuro(totale)} tone="info" icon={FileText} />
+            <KpiCard label="Fatture" value={String(rows.length)} tone="default" icon={FileText} />
+            <KpiCard label="Prossima scadenza" value={fmtDate(prossima)} tone="warning" icon={Calendar} />
+          </div>
+          <Card>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>N. Documento</TableHead>
+                  <TableHead>Sezionale</TableHead>
+                  <TableHead>Data Doc.</TableHead>
+                  <TableHead>Data Scadenza</TableHead>
+                  <TableHead>Cond. Pagamento</TableHead>
+                  <TableHead className="text-right">Importo</TableHead>
+                  <TableHead className="text-right">Gg Ritardo</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((s) => {
+                  let rowCls = "bg-success/5";
+                  if (s.data_scadenza) {
+                    const d = new Date(s.data_scadenza); d.setHours(0, 0, 0, 0);
+                    const days = Math.round((d.getTime() - today.getTime()) / 86400000);
+                    if (days <= 7) rowCls = "bg-orange-500/10";
+                    else if (days <= 30) rowCls = "bg-yellow-500/10";
+                  }
+                  return (
+                    <TableRow key={s.id} className={rowCls}>
+                      <TableCell className="font-mono text-xs">{s.numero_documento ?? "—"}</TableCell>
+                      <TableCell className="text-xs">{s.sezionale ?? "—"}</TableCell>
+                      <TableCell className="text-sm">{fmtDate(s.data_documento)}</TableCell>
+                      <TableCell className="text-sm">{fmtDate(s.data_scadenza)}</TableCell>
+                      <TableCell className="text-xs">{s.descrizione_pagamento ?? "—"}</TableCell>
+                      <TableCell className="text-right tabular-nums">{fmtEuro(s.importo_scadenza)}</TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground">{Number(s.giorni_ritardo ?? 0)}</TableCell>
+                    </TableRow>
+                  );
+                })}
+                <TableRow className="bg-muted/40">
+                  <TableCell colSpan={5} className="font-semibold text-right">Totale</TableCell>
+                  <TableCell className="text-right font-bold tabular-nums">{fmtEuro(totale)}</TableCell>
+                  <TableCell />
+                </TableRow>
+              </TableBody>
+            </Table>
+          </Card>
+        </>
+      )}
+    </div>
   );
 }
 
