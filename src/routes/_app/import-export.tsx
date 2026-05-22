@@ -406,8 +406,8 @@ function RischioImportCard() {
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf, { type: "array" });
       const sheet = wb.Sheets[wb.SheetNames[0]];
-      const raw = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
-      if (!raw.length) { toast.error("File vuoto"); return; }
+      const raw = sheetToObjects(sheet, "codice");
+      if (!raw.length) { toast.error("Nessuna riga dati trovata (intestazione 'Codice' mancante o file vuoto)"); return; }
 
       const numFields = new Set([
         "saldo_contabile", "doc_da_fatturare", "doc_da_evadere", "effetti_a_rischio",
@@ -417,14 +417,15 @@ function RischioImportCard() {
 
       const parsed: RischioRow[] = [];
       const missing: number[] = [];
-      raw.forEach((r, i) => {
+      raw.forEach((r) => {
         const mapped: Record<string, unknown> = {};
         for (const k of Object.keys(r)) {
+          if (k === "__row") continue;
           const f = RISCHIO_HEADERS[normalize(k)];
           if (f) mapped[f] = r[k];
         }
         const codice = toStr(mapped.codice_gestionale);
-        if (!codice) { missing.push(i + 2); return; }
+        if (!codice) { missing.push(r.__row); return; }
         const payload: Record<string, unknown> = {};
         for (const [k, v] of Object.entries(mapped)) {
           if (k === "codice_gestionale" || k === "ragione_sociale") continue;
@@ -433,7 +434,7 @@ function RischioImportCard() {
           else payload[k] = toStr(v);
         }
         parsed.push({
-          idx: i + 2,
+          idx: r.__row,
           codice_gestionale: codice,
           ragione_sociale: toStr(mapped.ragione_sociale) ?? "",
           payload,
