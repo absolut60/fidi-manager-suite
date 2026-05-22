@@ -326,9 +326,7 @@ const emptyForm: SchedaForm = {
   amministrativo_nome: "", amministrativo_cognome: "", amministrativo_email: "", amministrativo_cell: "",
   codice_assegnato: "", sede_operatore: "", condizioni_pagamento_concordate: "",
   data_richiesta_affidamento: "", importo_affidamento_richiesto: "",
-  data_esito_affidamento: "", importo_affidato: "",
-  fido_aziendale_concesso: "", condizioni_pagamento_concesse: "",
-  data_affidamento_aziendale: "", note_amministrazione: "",
+  note_amministrazione: "",
   dichiarante_nome: "", dichiarante_cognome: "",
 };
 
