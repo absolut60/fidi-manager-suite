@@ -676,13 +676,9 @@ function PrivacyTab({ cliente }: { cliente: any; onUpdated?: () => void }) {
                         <FileX2 className="size-3" /> Non firmata
                       </Badge>
                     )}
-                    {c.privacy_firmata && c.pdf_privacy_url && (
+                    {c.privacy_firmata && (c.pdf_privacy_path || c.pdf_privacy_url) && (
                       <>
-                        <Button variant="outline" size="sm" asChild>
-                          <a href={c.pdf_privacy_url} target="_blank" rel="noreferrer">
-                            <Download className="size-4 mr-1" /> PDF
-                          </a>
-                        </Button>
+                        <PdfPrivacyButton path={c.pdf_privacy_path} url={c.pdf_privacy_url} />
                         <Button
                           variant="outline"
                           size="sm"
