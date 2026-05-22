@@ -1,4 +1,5 @@
 import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from "pdf-lib";
+import { LOGO_MADE_BASE64 } from "./logo-made-base64";
 
 export type SchedaPdfInput = {
   tipo: "nuovo" | "aggiornamento";
