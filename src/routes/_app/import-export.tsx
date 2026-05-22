@@ -108,9 +108,25 @@ function sheetToObjects(
 
 function anagraficaSheetToObjects(sheet: XLSX.WorkSheet): Array<Record<string, unknown> & { __row: number }> {
   const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "", blankrows: false });
-  if (matrix.length < 4) return [];
-  const headers = (matrix[1] ?? []).map((c) => String(c ?? "").trim());
-  const dataRows = matrix.slice(3);
+  if (!matrix.length) return [];
+
+  const rowHasRagSoc = (r: unknown[] | undefined) =>
+    (r ?? []).some((c) => normalize(String(c ?? "")) === "ragione sociale");
+
+  let headerIdx = -1;
+  let dataStart = -1;
+  if (rowHasRagSoc(matrix[0])) {
+    headerIdx = 0;
+    dataStart = 1;
+  } else if (rowHasRagSoc(matrix[1])) {
+    headerIdx = 1;
+    dataStart = 3; // riga 3 = descrizioni, dati da riga 4
+  } else {
+    return [];
+  }
+
+  const headers = (matrix[headerIdx] ?? []).map((c) => String(c ?? "").trim());
+  const dataRows = matrix.slice(dataStart);
 
   const out: Array<Record<string, unknown> & { __row: number }> = [];
   dataRows.forEach((row, idx) => {
@@ -118,7 +134,7 @@ function anagraficaSheetToObjects(sheet: XLSX.WorkSheet): Array<Record<string, u
     if (!r.some((c) => String(c ?? "").trim() !== "")) return;
     const obj: Record<string, unknown> = {};
     headers.forEach((h, j) => { if (h) obj[h] = r[j] ?? ""; });
-    out.push(Object.assign(obj, { __row: idx + 4 }));
+    out.push(Object.assign(obj, { __row: dataStart + idx + 1 }));
   });
   return out;
 }
@@ -273,13 +289,12 @@ function AnagraficaImportCard() {
       if (!valid.length) throw new Error("Nessuna riga valida");
       const { data: { user } } = await supabase.auth.getUser();
 
-      // Cache stores per codice
+      // Cache stores per codice + lista ordinata per matching numerico (1 = primo, 2 = secondo, ...)
       const codStores = Array.from(new Set(valid.map((r) => r.data.store_codice).filter((v): v is string => !!v)));
       const storeMap = new Map<string, string>();
-      if (codStores.length) {
-        const { data } = await supabase.from("stores").select("id, codice").in("codice", codStores);
-        (data ?? []).forEach((s) => storeMap.set(s.codice, s.id));
-      }
+      const { data: allStores } = await supabase.from("stores").select("id, codice").order("codice", { ascending: true });
+      (allStores ?? []).forEach((s) => { if (s.codice) storeMap.set(s.codice, s.id); });
+      const storesByIndex = allStores ?? [];
 
       const { data: imp, error: impErr } = await supabase.from("importazioni").insert({
         nome_file: fileName ?? "anagrafica.xlsx",
@@ -303,16 +318,23 @@ function AnagraficaImportCard() {
         const { data } = await supabase.from("clienti").select("id, partita_iva").in("partita_iva", pive);
         (data ?? []).forEach((c) => { if (c.partita_iva) existing.set(`pi:${c.partita_iva}`, c.id); });
       }
+      void codStores;
 
       let created = 0, updated = 0;
       const errorLog: Array<{ riga: number; errore: string }> = [];
 
       for (const r of valid) {
         const d = r.data;
-        const storeId = d.store_codice ? storeMap.get(d.store_codice) ?? null : null;
-        if (d.store_codice && !storeId) {
-          errorLog.push({ riga: r.idx, errore: `Store '${d.store_codice}' non trovato` });
-          continue;
+        let storeId: string | null = null;
+        if (d.store_codice) {
+          storeId = storeMap.get(d.store_codice) ?? null;
+          if (!storeId && /^\d+$/.test(d.store_codice.trim())) {
+            const idx = parseInt(d.store_codice.trim(), 10) - 1;
+            if (idx >= 0 && idx < storesByIndex.length) storeId = storesByIndex[idx].id;
+          }
+          if (!storeId) {
+            errorLog.push({ riga: r.idx, errore: `Store '${d.store_codice}' non trovato (warning, riga importata senza store)` });
+          }
         }
         const payload: Record<string, unknown> = {
           ragione_sociale: d.ragione_sociale,
