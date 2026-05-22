@@ -108,17 +108,18 @@ function sheetToObjects(
 
 function anagraficaSheetToObjects(sheet: XLSX.WorkSheet): Array<Record<string, unknown> & { __row: number }> {
   const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "", blankrows: false });
+  if (matrix.length < 4) return [];
   const headers = (matrix[1] ?? []).map((c) => String(c ?? "").trim());
-  if (!headers.some((h) => normalize(h) === "ragione sociale")) return [];
+  const dataRows = matrix.slice(3);
 
   const out: Array<Record<string, unknown> & { __row: number }> = [];
-  for (let i = 3; i < matrix.length; i++) {
-    const row = matrix[i] ?? [];
-    if (!row.some((c) => String(c ?? "").trim() !== "")) continue;
+  dataRows.forEach((row, idx) => {
+    const r = row ?? [];
+    if (!r.some((c) => String(c ?? "").trim() !== "")) return;
     const obj: Record<string, unknown> = {};
-    headers.forEach((h, j) => { if (h) obj[h] = row[j] ?? ""; });
-    out.push(Object.assign(obj, { __row: i + 1 }));
-  }
+    headers.forEach((h, j) => { if (h) obj[h] = r[j] ?? ""; });
+    out.push(Object.assign(obj, { __row: idx + 4 }));
+  });
   return out;
 }
 
