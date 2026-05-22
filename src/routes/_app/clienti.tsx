@@ -37,11 +37,49 @@ export const Route = createFileRoute("/_app/clienti")({
   component: ClientiPage,
 });
 
+type SemaforoColor = "rosso" | "arancione" | "giallo" | "verde";
+
+function calcSemaforo(c: {
+  fido_residuo?: number | null;
+  fido_gestionale?: number | null;
+  scaduto?: number | null;
+}): SemaforoColor {
+  const residuo = c.fido_residuo == null ? null : Number(c.fido_residuo);
+  const fidoGest = c.fido_gestionale == null ? null : Number(c.fido_gestionale);
+  const scaduto = c.scaduto == null ? null : Number(c.scaduto);
+  if (residuo != null && residuo < 0) return "rosso";
+  if (residuo != null && fidoGest != null && fidoGest > 0 && residuo < fidoGest * 0.1) return "arancione";
+  if (scaduto != null && scaduto > 0) return "giallo";
+  return "verde";
+}
+
+const SEMAFORO_DOT: Record<SemaforoColor, string> = {
+  rosso: "bg-destructive",
+  arancione: "bg-orange-500",
+  giallo: "bg-yellow-500",
+  verde: "bg-success",
+};
+
+const SEMAFORO_LABEL: Record<SemaforoColor, string> = {
+  rosso: "Rischio critico",
+  arancione: "Fido quasi esaurito",
+  giallo: "Scaduto presente",
+  verde: "Posizione regolare",
+};
+
+function fmtEuro(v: unknown): string {
+  if (v == null || v === "") return "—";
+  const n = Number(v);
+  if (!Number.isFinite(n)) return "—";
+  return new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
+}
+
 function ClientiPage() {
   const navigate = useNavigate();
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
   const isListRoute = currentPath === "/clienti";
   const [search, setSearch] = useState("");
+  const [statoFiltro, setStatoFiltro] = useState<"attivi" | "disattivati" | "tutti">("attivi");
   const [open, setOpen] = useState(false);
 
   const { data: clienti, isLoading } = useQuery({
@@ -58,6 +96,8 @@ function ClientiPage() {
   });
 
   const filtered = (clienti ?? []).filter((c) => {
+    if (statoFiltro === "attivi" && !c.attivo) return false;
+    if (statoFiltro === "disattivati" && c.attivo) return false;
     const q = search.toLowerCase().trim();
     if (!q) return true;
     return (
@@ -93,14 +133,26 @@ function ClientiPage() {
       </div>
 
       <Card className="p-4 sm:p-5">
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Cerca per ragione sociale, P.IVA, codice gestionale o città..."
-            className="pl-9"
-          />
+        <div className="flex flex-col sm:flex-row gap-3 mb-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Cerca per ragione sociale, P.IVA, codice gestionale o città..."
+              className="pl-9"
+            />
+          </div>
+          <Select value={statoFiltro} onValueChange={(v) => setStatoFiltro(v as typeof statoFiltro)}>
+            <SelectTrigger className="w-full sm:w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="attivi">Solo attivi</SelectItem>
+              <SelectItem value="disattivati">Solo disattivati</SelectItem>
+              <SelectItem value="tutti">Tutti</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {isLoading ? (
@@ -124,23 +176,35 @@ function ClientiPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-8"></TableHead>
                   <TableHead>Ragione sociale</TableHead>
                   <TableHead>Cod. gest.</TableHead>
                   <TableHead>P. IVA</TableHead>
                   <TableHead>Città</TableHead>
                   <TableHead>Punto vendita</TableHead>
+                  <TableHead className="text-right">Fido residuo</TableHead>
                   <TableHead>Privacy</TableHead>
                   <TableHead>Stato</TableHead>
                   <TableHead className="w-12"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((c) => (
+                {filtered.map((c) => {
+                  const sem = calcSemaforo(c as any);
+                  const residuo = (c as any).fido_residuo;
+                  const residuoNum = residuo == null ? null : Number(residuo);
+                  return (
                   <TableRow
                     key={c.id}
                     className="cursor-pointer hover:bg-muted/50"
                     onClick={() => navigate({ to: "/clienti/$clienteId", params: { clienteId: c.id } })}
                   >
+                    <TableCell>
+                      <span
+                        className={`inline-block size-2.5 rounded-full ${SEMAFORO_DOT[sem]}`}
+                        title={SEMAFORO_LABEL[sem]}
+                      />
+                    </TableCell>
                     <TableCell className="font-medium">
                       {c.ragione_sociale}
                     </TableCell>
@@ -160,6 +224,9 @@ function ClientiPage() {
                     </TableCell>
                     <TableCell className="text-sm">
                       {(c as any).stores?.nome || <span className="text-muted-foreground">—</span>}
+                    </TableCell>
+                    <TableCell className={`text-right text-sm font-medium ${residuoNum != null && residuoNum < 0 ? "text-destructive" : ""}`}>
+                      {fmtEuro(residuo)}
                     </TableCell>
                     <TableCell>
                       {c.privacy_firmata ? (
@@ -192,7 +259,8 @@ function ClientiPage() {
                       </Button>
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
