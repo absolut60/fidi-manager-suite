@@ -467,8 +467,8 @@ export async function generaSchedaCliente(input: SchedaPdfInput): Promise<Uint8A
       const pngBytes = Uint8Array.from(atob(input.firmaPngDataUrl.split(",")[1]), (c) => c.charCodeAt(0));
       const firmaImg = await pdfDoc.embedPng(pngBytes);
       const firmaDims = firmaImg.scale(1);
-      const firmaImgW = 113;
-      const firmaImgH = Math.min((firmaImgW * firmaDims.height) / firmaDims.width, 34);
+      const firmaImgH = 50;
+      const firmaImgW = (firmaImgH * firmaDims.width) / firmaDims.height;
       page2.drawImage(firmaImg, { x: firmaX + 14, y: firmaY + 4, width: firmaImgW, height: firmaImgH });
     } catch (e) {
       console.warn("Firma PNG non incorporata:", e);
