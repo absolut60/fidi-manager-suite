@@ -258,9 +258,13 @@ function ClientiPage() {
                   );
                 })}
               </TableBody>
-            </Table>
+             </Table>
           </div>
         )}
+        <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
+          <span>Visualizzati: <strong className="text-foreground">{filtered.length}</strong></span>
+          <span>Totale clienti: <strong className="text-foreground">{totaleClienti}</strong></span>
+        </div>
       </Card>
     </div>
   );
