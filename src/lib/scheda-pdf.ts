@@ -180,6 +180,21 @@ export async function generaSchedaCliente(input: SchedaPdfInput): Promise<Uint8A
     ["Nome", v(input.dichiaranteNome), 230],
     ["Cognome", v(input.dichiaranteCognome), 230],
   ]);
+  y = drawRow(page, y, font, bold, [
+    ["In qualità di legale rappresentante della società", v(input.dichiaranteSocieta)],
+  ]);
+  y = drawRow(page, y, font, bold, [
+    ["Luogo di nascita", v(input.dichiaranteLuogoNascita), 280],
+    ["Data di nascita", fmtDate(input.dichiaranteDataNascita), 180],
+  ]);
+  y = drawRow(page, y, font, bold, [
+    ["Codice fiscale", v(input.dichiaranteCodiceFiscale), 230],
+    ["Residenza", v(input.dichiaranteResidenza), 230],
+  ]);
+  y = drawRow(page, y, font, bold, [
+    ["E-mail", v(input.dichiaranteEmail), 280],
+    ["Cellulare", v(input.dichiaranteCell), 180],
+  ]);
 
   y -= 8;
   // Privacy: wrap to content width
@@ -189,6 +204,16 @@ export async function generaSchedaCliente(input: SchedaPdfInput): Promise<Uint8A
     page.drawText(line, { x: MARGIN + 4, y, size: 8.5, font, color: rgb(0.2, 0.2, 0.2) });
     y -= 11;
   }
+
+  // ---------- CONSENSI FACOLTATIVI ----------
+  y -= 8;
+  ensureSpace(120);
+  sectionTitle(page, "CONSENSI FACOLTATIVI", y, bold);
+  y -= 18;
+  y = drawConsenso(page, y, font, bold, "Trattamento per finalità di profilazione (analisi preferenze/abitudini di consumo).", input.consensoProfilazione);
+  y = drawConsenso(page, y, font, bold, "Comunicazioni promozionali tramite e-mail, SMS, WhatsApp e altri canali digitali.", input.consensoMarketingMedia);
+  y = drawConsenso(page, y, font, bold, "Contatto diretto (telefono, posta, contatto personale) per finalità di marketing.", input.consensoMarketingDiretto);
+  y = drawConsenso(page, y, font, bold, "Autorizzazione all'invio di comunicazioni operative via WhatsApp.", input.whatsappOptIn ? "si" : "no");
 
   y -= 14;
   ensureSpace(110);
