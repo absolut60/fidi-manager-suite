@@ -23,6 +23,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ClienteCantieriTab } from "@/components/cliente-cantieri-tab";
 import { ClienteStoricoFidoTab } from "@/components/cliente-storico-fido-tab";
+import { ClienteInsolutiTab } from "@/components/cliente-insoluti-tab";
 import { formatEuro } from "@/lib/fidi";
 
 
