@@ -1788,6 +1788,16 @@ export type Database = {
     }
     Functions: {
       calcola_livello_fido: { Args: { _importo: number }; Returns: number }
+      get_clienti_scadenziario: {
+        Args: never
+        Returns: {
+          cliente_id: string
+          ha_a_scadere: boolean
+          ha_scaduto: boolean
+          totale_a_scadere: number
+          totale_scaduto: number
+        }[]
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
