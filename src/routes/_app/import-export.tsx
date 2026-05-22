@@ -1297,6 +1297,7 @@ function ScadenziarioAssicurazioniImportCard() {
           data_inizio: a.data_inizio,
           data_scadenza: a.data_scadenza,
           importo_assicurato: a.importo_assicurato,
+          importo_massimale: a.importo_assicurato,
           stato: "attiva",
         };
         const existId = existingPol.get(cid);
