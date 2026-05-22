@@ -559,19 +559,6 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
               dichiaranteCognome: parsed.dichiarante_cognome,
               firmaPngDataUrl: dataUrl,
               dataFirma: now,
-              amministrazione: canSeeAdminStep ? {
-                codiceAssegnato: parsed.codice_assegnato || null,
-                sedeOperatore: parsed.sede_operatore || null,
-                condizioniPagamentoConcordate: parsed.condizioni_pagamento_concordate || null,
-                dataRichiestaAffidamento: parsed.data_richiesta_affidamento || null,
-                importoAffidamentoRichiesto: parsed.importo_affidamento_richiesto || null,
-                dataEsitoAffidamento: parsed.data_esito_affidamento || null,
-                importoAffidato: parsed.importo_affidato || null,
-                fidoAziendaleConcesso: parsed.fido_aziendale_concesso || null,
-                condizioniPagamentoConcesse: parsed.condizioni_pagamento_concesse || null,
-                dataAffidamentoAziendale: parsed.data_affidamento_aziendale || null,
-                note: parsed.note_amministrazione || null,
-              } : null,
             });
 
             const pdfSchedaPath = `clienti/${clienteId}/scheda-${now.getTime()}.pdf`;
