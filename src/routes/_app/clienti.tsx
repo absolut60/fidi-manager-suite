@@ -75,18 +75,21 @@ function ClientiPage() {
   const [statoFiltro, setStatoFiltro] = useState<"attivi" | "disattivati" | "tutti">("attivi");
   const [open, setOpen] = useState(false);
 
-  const { data: clienti, isLoading } = useQuery({
+  const { data: clientiResp, isLoading } = useQuery({
     queryKey: ["clienti"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error, count } = await supabase
         .from("clienti")
-        .select("*, stores(nome, codice)")
-        .order("ragione_sociale", { ascending: true });
+        .select("*, stores(nome, codice)", { count: "exact" })
+        .order("ragione_sociale", { ascending: true })
+        .range(0, 4999);
       if (error) throw error;
-      return data;
+      return { rows: data ?? [], count: count ?? (data?.length ?? 0) };
     },
     enabled: isListRoute,
   });
+  const clienti = clientiResp?.rows;
+  const totaleClienti = clientiResp?.count ?? 0;
 
   const filtered = (clienti ?? []).filter((c) => {
     if (statoFiltro === "attivi" && !c.attivo) return false;
@@ -255,9 +258,13 @@ function ClientiPage() {
                   );
                 })}
               </TableBody>
-            </Table>
+             </Table>
           </div>
         )}
+        <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
+          <span>Visualizzati: <strong className="text-foreground">{filtered.length}</strong></span>
+          <span>Totale clienti: <strong className="text-foreground">{totaleClienti}</strong></span>
+        </div>
       </Card>
     </div>
   );
