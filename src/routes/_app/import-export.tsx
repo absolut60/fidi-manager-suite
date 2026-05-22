@@ -63,6 +63,7 @@ function toStr(v: unknown): string | null {
 function sheetToObjects(
   sheet: XLSX.WorkSheet,
   headerKeyword: string,
+  opts: { forceSkipDescription?: boolean } = {},
 ): Array<Record<string, unknown> & { __row: number }> {
   const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "", blankrows: false });
   const kw = normalize(headerKeyword);
@@ -79,15 +80,21 @@ function sheetToObjects(
   }
   if (headerIdx === -1) return [];
   const headers = (matrix[headerIdx] ?? []).map((c) => String(c ?? "").trim());
-  // Find the keyword column to decide whether the next row is a description or data.
   const kwColIdx = headers.findIndex((h) => {
     const n = normalize(h);
     return n === kw || n.startsWith(kw + " ");
   });
   const nextRow = matrix[headerIdx + 1] ?? [];
   const nextKwCell = kwColIdx >= 0 ? String(nextRow[kwColIdx] ?? "").trim() : "";
-  // Skip the row after headers only when the keyword column is empty there (= description row).
-  const dataStart = nextKwCell === "" ? headerIdx + 2 : headerIdx + 1;
+  // Heuristic: row is a description row if its cell in keyword column is empty,
+  // OR looks like a descriptive sentence (long text with spaces, not an email/number/code).
+  const looksLikeDescription = (s: string) => {
+    if (!s) return true;
+    if (s.length > 25 && /\s/.test(s) && !/@/.test(s) && !/^\d/.test(s)) return true;
+    return false;
+  };
+  const skipDesc = opts.forceSkipDescription || nextKwCell === "" || looksLikeDescription(nextKwCell);
+  const dataStart = skipDesc ? headerIdx + 2 : headerIdx + 1;
   const out: Array<Record<string, unknown> & { __row: number }> = [];
   for (let i = dataStart; i < matrix.length; i++) {
     const row = matrix[i] ?? [];
@@ -98,6 +105,7 @@ function sheetToObjects(
   }
   return out;
 }
+
 
 function ImportExportPage() {
   return (
@@ -213,8 +221,8 @@ function AnagraficaImportCard() {
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf, { type: "array" });
       const sheet = wb.Sheets[wb.SheetNames[0]];
-      const raw = sheetToObjects(sheet, "ragione sociale");
-      if (!raw.length) { toast.error("Nessuna riga dati trovata (intestazione 'Ragione Sociale' mancante o file vuoto)"); return; }
+      const raw = sheetToObjects(sheet, "ragione_sociale", { forceSkipDescription: true });
+      if (!raw.length) { toast.error("Nessuna riga dati trovata (intestazione 'ragione_sociale' mancante o file vuoto)"); return; }
 
       const parsed: ParsedRow<AnagraficaRow>[] = raw.map((r) => {
         const mapped: Record<string, string> = {};
