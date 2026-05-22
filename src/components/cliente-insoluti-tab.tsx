@@ -196,7 +196,7 @@ function ScadenziarioSection({ clienteId, canEdit }: { clienteId: string; canEdi
 
   const chiudi = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("scadenze" as never).update({ stato_contabile: "Chiusa", data_pagamento: new Date().toISOString().slice(0, 10) }).eq("id", id);
+      const { error } = await supabase.from("scadenze" as never).update({ stato_contabile: "Chiusa", data_pagamento: new Date().toISOString().slice(0, 10) } as never).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
