@@ -25,6 +25,15 @@ export const Route = createFileRoute("/_app/import-export")({
 // Schema riga import — tutti i campi opzionali tranne ragione_sociale
 const rowSchema = z.object({
   ragione_sociale: z.string().trim().min(1, "Ragione sociale obbligatoria").max(200),
+  codice_gestionale: z.string().trim().max(50).optional().or(z.literal("")),
+  fido: z.coerce.number().optional().or(z.literal("")).transform((v) => (v === "" || v === undefined || Number.isNaN(v as number) ? undefined : Number(v))),
+  totale_rischio: z.coerce.number().optional().or(z.literal("")).transform((v) => (v === "" || v === undefined || Number.isNaN(v as number) ? undefined : Number(v))),
+  fido_residuo: z.coerce.number().optional().or(z.literal("")).transform((v) => (v === "" || v === undefined || Number.isNaN(v as number) ? undefined : Number(v))),
+  scaduto: z.coerce.number().optional().or(z.literal("")).transform((v) => (v === "" || v === undefined || Number.isNaN(v as number) ? undefined : Number(v))),
+  a_scadere: z.coerce.number().optional().or(z.literal("")).transform((v) => (v === "" || v === undefined || Number.isNaN(v as number) ? undefined : Number(v))),
+  condizioni_pagamento: z.string().trim().max(500).optional().or(z.literal("")),
+  dilazione_concordata: z.coerce.number().int().optional().or(z.literal("")).transform((v) => (v === "" || v === undefined || Number.isNaN(v as number) ? undefined : Math.trunc(Number(v)))),
+  dilazione_effettiva: z.coerce.number().int().optional().or(z.literal("")).transform((v) => (v === "" || v === undefined || Number.isNaN(v as number) ? undefined : Math.trunc(Number(v)))),
   partita_iva: z.string().trim().max(20).optional().or(z.literal("")),
   codice_fiscale: z.string().trim().max(20).optional().or(z.literal("")),
   indirizzo: z.string().trim().max(200).optional().or(z.literal("")),
@@ -35,6 +44,7 @@ const rowSchema = z.object({
   email: z.string().trim().email("Email non valida").max(255).optional().or(z.literal("")),
   note: z.string().trim().max(1000).optional().or(z.literal("")),
 });
+
 
 type ParsedRow = {
   idx: number;
@@ -48,6 +58,24 @@ const HEADER_MAP: Record<string, keyof z.infer<typeof rowSchema>> = {
   "ragionesociale": "ragione_sociale",
   "nome": "ragione_sociale",
   "denominazione": "ragione_sociale",
+  "codice gestionale": "codice_gestionale",
+  "codice": "codice_gestionale",
+  "cod gestionale": "codice_gestionale",
+  "fido": "fido",
+  "totale rischio": "totale_rischio",
+  "totale esposizione": "totale_rischio",
+  "esposizione": "totale_rischio",
+  "fido residuo": "fido_residuo",
+  "residuo": "fido_residuo",
+  "scaduto": "scaduto",
+  "a scadere": "a_scadere",
+  "ascadere": "a_scadere",
+  "condizione pagamento": "condizioni_pagamento",
+  "condizioni pagamento": "condizioni_pagamento",
+  "condizioni di pagamento": "condizioni_pagamento",
+  "pagamento": "condizioni_pagamento",
+  "dilazione concordata": "dilazione_concordata",
+  "dilazione effettiva": "dilazione_effettiva",
   "partita iva": "partita_iva",
   "p.iva": "partita_iva",
   "piva": "partita_iva",
@@ -73,6 +101,7 @@ const HEADER_MAP: Record<string, keyof z.infer<typeof rowSchema>> = {
   "note": "note",
   "notes": "note",
 };
+
 
 function normalize(h: string) {
   return String(h ?? "").trim().toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ");
@@ -184,39 +213,99 @@ function ImportCard() {
       }).select("id").single();
       if (impErr) throw impErr;
 
-      const payload = valid.map((r) => ({
-        ragione_sociale: r.data.ragione_sociale,
-        partita_iva: r.data.partita_iva || null,
-        codice_fiscale: r.data.codice_fiscale || null,
-        indirizzo: r.data.indirizzo || null,
-        citta: r.data.citta || null,
-        cap: r.data.cap || null,
-        provincia: r.data.provincia || null,
-        telefono: r.data.telefono || null,
-        email: r.data.email || null,
-        note: r.data.note || null,
+      const toNullable = <T,>(v: T | "" | undefined): T | null =>
+        v === "" || v === undefined ? null : v;
+
+      const buildPayload = (d: z.infer<typeof rowSchema>) => ({
+        ragione_sociale: d.ragione_sociale,
+        codice_gestionale: toNullable(d.codice_gestionale),
+        partita_iva: toNullable(d.partita_iva),
+        codice_fiscale: toNullable(d.codice_fiscale),
+        indirizzo: toNullable(d.indirizzo),
+        citta: toNullable(d.citta),
+        cap: toNullable(d.cap),
+        provincia: toNullable(d.provincia),
+        telefono: toNullable(d.telefono),
+        email: toNullable(d.email),
+        note: toNullable(d.note),
+        condizioni_pagamento: toNullable(d.condizioni_pagamento),
+        fido: toNullable(d.fido),
+        totale_rischio: toNullable(d.totale_rischio),
+        fido_residuo: toNullable(d.fido_residuo),
+        scaduto: toNullable(d.scaduto),
+        a_scadere: toNullable(d.a_scadere),
+        dilazione_concordata: toNullable(d.dilazione_concordata),
+        dilazione_effettiva: toNullable(d.dilazione_effettiva),
         store_id: storeId || null,
-      }));
+      });
+
+      // Carica clienti esistenti per deduplicazione (codice_gestionale o partita_iva)
+      const codici = Array.from(new Set(valid.map((r) => r.data.codice_gestionale).filter((v): v is string => !!v)));
+      const pive = Array.from(new Set(valid.map((r) => r.data.partita_iva).filter((v): v is string => !!v)));
+
+      const existing = new Map<string, string>(); // chiave -> id
+      if (codici.length) {
+        const { data } = await supabase.from("clienti").select("id, codice_gestionale").in("codice_gestionale", codici);
+        (data ?? []).forEach((c: any) => { if (c.codice_gestionale) existing.set(`cg:${c.codice_gestionale}`, c.id); });
+      }
+      if (pive.length) {
+        const { data } = await supabase.from("clienti").select("id, partita_iva").in("partita_iva", pive);
+        (data ?? []).forEach((c: any) => { if (c.partita_iva) existing.set(`pi:${c.partita_iva}`, c.id); });
+      }
 
       let created = 0;
+      let updated = 0;
+      const errorLog: Array<{ riga: number; errore: string }> = [];
+
       try {
-        const chunkSize = 200;
-        for (let i = 0; i < payload.length; i += chunkSize) {
-          const slice = payload.slice(i, i + chunkSize);
-          const { error } = await supabase.from("clienti").insert(slice);
-          if (error) throw error;
-          created += slice.length;
+        for (const r of valid) {
+          const payload = buildPayload(r.data);
+          const existingId =
+            (r.data.codice_gestionale && existing.get(`cg:${r.data.codice_gestionale}`)) ||
+            (r.data.partita_iva && existing.get(`pi:${r.data.partita_iva}`)) ||
+            null;
+
+          if (existingId) {
+            // UPDATE — non sovrascrivere store_id se non specificato
+            const { store_id: _storeId, ...rest } = payload;
+            const updatePayload = storeId ? payload : rest;
+            const { error } = await supabase.from("clienti").update(updatePayload).eq("id", existingId);
+
+            if (error) {
+              errorLog.push({ riga: r.idx, errore: `Update: ${error.message}` });
+            } else {
+              updated += 1;
+            }
+          } else {
+            const { data, error } = await supabase.from("clienti").insert(payload).select("id, codice_gestionale, partita_iva").single();
+            if (error) {
+              errorLog.push({ riga: r.idx, errore: `Insert: ${error.message}` });
+            } else {
+              created += 1;
+              if (data?.codice_gestionale) existing.set(`cg:${data.codice_gestionale}`, data.id);
+              if (data?.partita_iva) existing.set(`pi:${data.partita_iva}`, data.id);
+            }
+          }
         }
+
+        const logFinale = [
+          ...(invalid.length > 0 ? invalid.slice(0, 100).map((r) => ({ riga: r.idx, errori: r.errors })) : []),
+          ...errorLog,
+        ];
         await supabase.from("importazioni").update({
-          righe_elaborate: payload.length,
+          righe_elaborate: valid.length,
           righe_create: created,
-          stato: invalid.length > 0 ? "completata_con_errori" : "completata",
+          righe_aggiornate: updated,
+          righe_errore: invalid.length + errorLog.length,
+          stato: (invalid.length + errorLog.length) > 0 ? "completata_con_errori" : "completata",
           completata_at: new Date().toISOString(),
+          log_errori: logFinale.length ? logFinale : null,
         }).eq("id", imp.id);
       } catch (e) {
         await supabase.from("importazioni").update({
-          righe_elaborate: created,
+          righe_elaborate: created + updated,
           righe_create: created,
+          righe_aggiornate: updated,
           stato: "fallita",
           completata_at: new Date().toISOString(),
           log_errori: [{ errore: e instanceof Error ? e.message : String(e) }],
@@ -224,11 +313,12 @@ function ImportCard() {
         throw e;
       }
 
-      return payload.length;
+      return { created, updated };
     },
-    onSuccess: (n) => {
-      toast.success(`Importati ${n} clienti`);
+    onSuccess: ({ created, updated }) => {
+      toast.success(`Import completato: ${created} creati, ${updated} aggiornati`);
       qc.invalidateQueries({ queryKey: ["clienti"] });
+
       qc.invalidateQueries({ queryKey: ["storico-import-export"] });
       reset();
     },
@@ -239,6 +329,15 @@ function ImportCard() {
     const ws = XLSX.utils.json_to_sheet([
       {
         ragione_sociale: "Esempio S.r.l.",
+        codice_gestionale: "13908",
+        fido: 50000,
+        totale_rischio: 32000,
+        fido_residuo: 18000,
+        scaduto: 0,
+        a_scadere: 32000,
+        condizione_pagamento: "R.B. 60 gg. d.f. f.m.",
+        dilazione_concordata: 60,
+        dilazione_effettiva: 65,
         partita_iva: "12345678901",
         codice_fiscale: "12345678901",
         indirizzo: "Via Roma 1",
@@ -250,6 +349,7 @@ function ImportCard() {
         note: "",
       },
     ]);
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Clienti");
     XLSX.writeFile(wb, "template_import_clienti.xlsx");
@@ -534,8 +634,9 @@ function HistoryCard({ kind }: { kind: "importazioni" | "esportazioni" }) {
                       {r.stato}
                     </Badge>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {r.righe_create ?? 0}/{r.righe_totali ?? 0} righe
+                      {r.righe_create ?? 0} nuovi · {r.righe_aggiornate ?? 0} agg. / {r.righe_totali ?? 0}
                     </p>
+
                   </>
                 ) : (
                   <p className="text-xs text-muted-foreground">{r.righe_esportate ?? 0} righe</p>

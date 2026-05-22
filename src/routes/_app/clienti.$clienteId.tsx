@@ -1,13 +1,14 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import { ArrowLeft, Plus, Mail, Phone, Smartphone, Star, Trash2, FileCheck2, FileX2, Download, Pencil, Link as LinkIcon, Copy } from "lucide-react";
+import { ArrowLeft, Plus, Mail, Phone, Smartphone, Star, Trash2, FileCheck2, FileX2, Download, Pencil, Link as LinkIcon, Copy, EyeOff, AlertTriangle } from "lucide-react";
 import { SignaturePad, getCanvasDataURL } from "@/components/signature-pad";
 import { generaPdfPrivacy } from "@/lib/privacy-pdf";
 import { useRef } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +23,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ClienteCantieriTab } from "@/components/cliente-cantieri-tab";
 import { ClienteStoricoFidoTab } from "@/components/cliente-storico-fido-tab";
+
 
 export const Route = createFileRoute("/_app/clienti/$clienteId")({
   validateSearch: (s: Record<string, unknown>) => ({ edit: s.edit === 1 || s.edit === "1" ? 1 : undefined }),
@@ -44,12 +46,61 @@ function ClienteDetail() {
   const { clienteId } = Route.useParams();
   const { edit } = Route.useSearch();
   const qc = useQueryClient();
+  const navigate = useNavigate();
+  const { role } = useAuth();
+  const isAdmin = role === "amministratore";
   const [openNew, setOpenNew] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
+  const [openDisattiva, setOpenDisattiva] = useState(false);
+  const [openElimina, setOpenElimina] = useState(false);
 
   useEffect(() => {
     if (edit === 1) setOpenEdit(true);
   }, [edit]);
+
+  const disattivaMut = useMutation({
+    mutationFn: async () => {
+      const { error, data } = await supabase
+        .from("clienti")
+        .update({ attivo: false })
+        .eq("id", clienteId)
+        .select("id");
+      if (error) throw error;
+      if (!data || data.length === 0) throw new Error("Non hai i permessi per disattivare questo cliente.");
+    },
+    onSuccess: () => {
+      toast.success("Cliente disattivato");
+      qc.invalidateQueries({ queryKey: ["clienti"] });
+      qc.invalidateQueries({ queryKey: ["cliente", clienteId] });
+      setOpenDisattiva(false);
+      navigate({ to: "/clienti" });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const eliminaMut = useMutation({
+    mutationFn: async () => {
+      // Blocca se ci sono richieste fido collegate
+      const { count, error: cErr } = await supabase
+        .from("richieste_fido")
+        .select("id", { count: "exact", head: true })
+        .eq("cliente_id", clienteId);
+      if (cErr) throw cErr;
+      if ((count ?? 0) > 0) {
+        throw new Error(`Impossibile eliminare: il cliente ha ${count} richieste fido collegate. Disattivalo invece.`);
+      }
+      const { error } = await supabase.from("clienti").delete().eq("id", clienteId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Cliente eliminato definitivamente");
+      qc.invalidateQueries({ queryKey: ["clienti"] });
+      setOpenElimina(false);
+      navigate({ to: "/clienti" });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
 
 
   const { data: cliente, isLoading } = useQuery({
@@ -147,7 +198,49 @@ function ClienteDetail() {
                 onSaved={() => qc.invalidateQueries({ queryKey: ["cliente", clienteId] })}
               />
             </Dialog>
+
+            {cliente.attivo && (
+              <Dialog open={openDisattiva} onOpenChange={setOpenDisattiva}>
+                <DialogTrigger asChild>
+                  <Button size="sm" variant="outline" className="gap-1.5">
+                    <EyeOff className="size-4" /> Disattiva
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Disattivare il cliente?</DialogTitle>
+                    <DialogDescription>
+                      Il cliente non comparirà più nelle liste, ma i dati e lo storico restano nel sistema. Potrai riattivarlo in seguito.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setOpenDisattiva(false)} disabled={disattivaMut.isPending}>Annulla</Button>
+                    <Button onClick={() => disattivaMut.mutate()} disabled={disattivaMut.isPending}>
+                      {disattivaMut.isPending ? "Disattivazione…" : "Disattiva cliente"}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
+
+            {isAdmin && (
+              <Dialog open={openElimina} onOpenChange={(v) => { setOpenElimina(v); }}>
+                <DialogTrigger asChild>
+                  <Button size="sm" variant="destructive" className="gap-1.5">
+                    <Trash2 className="size-4" /> Elimina
+                  </Button>
+                </DialogTrigger>
+                <EliminaClienteDialog
+                  clienteId={clienteId}
+                  ragioneSociale={cliente.ragione_sociale}
+                  onClose={() => setOpenElimina(false)}
+                  onConfirm={() => eliminaMut.mutate()}
+                  pending={eliminaMut.isPending}
+                />
+              </Dialog>
+            )}
           </div>
+
         </div>
       </div>
 
@@ -980,3 +1073,52 @@ function EditClienteDialog({ cliente, onClose, onSaved }: { cliente: any; onClos
     </DialogContent>
   );
 }
+
+function EliminaClienteDialog({
+  clienteId: _clienteId,
+  ragioneSociale,
+  onClose,
+  onConfirm,
+  pending,
+}: {
+  clienteId: string;
+  ragioneSociale: string;
+  onClose: () => void;
+  onConfirm: () => void;
+  pending: boolean;
+}) {
+  const [conferma, setConferma] = useState("");
+  const ok = conferma.trim().toUpperCase() === "ELIMINA";
+  return (
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle className="flex items-center gap-2 text-destructive">
+          <AlertTriangle className="size-5" /> Elimina definitivamente
+        </DialogTitle>
+        <DialogDescription>
+          Stai per eliminare in modo permanente <strong>{ragioneSociale}</strong> e tutti i suoi dati (contatti, cantieri, storico).
+          Questa operazione è irreversibile. Se il cliente ha richieste fido collegate l'operazione verrà bloccata.
+        </DialogDescription>
+      </DialogHeader>
+      <div className="space-y-2">
+        <Label htmlFor="conferma-elimina" className="text-sm">
+          Per confermare digita <code className="font-mono font-bold">ELIMINA</code>:
+        </Label>
+        <Input
+          id="conferma-elimina"
+          value={conferma}
+          onChange={(e) => setConferma(e.target.value)}
+          placeholder="ELIMINA"
+          autoComplete="off"
+        />
+      </div>
+      <DialogFooter>
+        <Button variant="outline" onClick={onClose} disabled={pending}>Annulla</Button>
+        <Button variant="destructive" onClick={onConfirm} disabled={!ok || pending}>
+          {pending ? "Eliminazione…" : "Elimina definitivamente"}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  );
+}
+
