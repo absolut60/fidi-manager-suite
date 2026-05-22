@@ -968,10 +968,6 @@ function StepAmministrazione({ form, set }: { form: SchedaForm; set: SetFn }) {
         <Label>Note</Label>
         <Textarea rows={3} value={form.note_amministrazione} onChange={(e) => set("note_amministrazione", e.target.value)} />
       </div>
-      <div className="space-y-1.5">
-        <Label>Note</Label>
-        <Textarea rows={3} value={form.note_amministrazione} onChange={(e) => set("note_amministrazione", e.target.value)} />
-      </div>
     </>
   );
 }
