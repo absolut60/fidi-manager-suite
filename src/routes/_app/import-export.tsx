@@ -115,7 +115,11 @@ function ImportExportPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ScadenziarioImportCard />
         <ExportCard />
+      </div>
+
+      <div className="grid grid-cols-1 gap-6">
         <HistoryCard kind="importazioni" />
       </div>
     </div>
