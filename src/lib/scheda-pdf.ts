@@ -335,6 +335,38 @@ function drawRow(
   return y - rowH - 2;
 }
 
+function drawConsenso(
+  page: PDFPage,
+  y: number,
+  font: PDFFont,
+  bold: PDFFont,
+  label: string,
+  value?: string | null,
+): number {
+  const lineH = 11;
+  const lines = wrapText(label, font, 8.5, CONTENT_W - 80);
+  const blockH = Math.max(lineH * lines.length + 6, 22);
+  // box
+  page.drawRectangle({
+    x: MARGIN, y: y - blockH + 4, width: CONTENT_W, height: blockH,
+    borderColor: rgb(0.75, 0.75, 0.8), borderWidth: 0.5,
+  });
+  // testo
+  let ty = y - 6;
+  for (const ln of lines) {
+    page.drawText(ln, { x: MARGIN + 6, y: ty, size: 8.5, font, color: rgb(0.2, 0.2, 0.25) });
+    ty -= lineH;
+  }
+  // checkbox SI / NO
+  const si = value === "si";
+  const no = value === "no";
+  const baseX = MARGIN + CONTENT_W - 70;
+  const cy = y - blockH / 2 - 3;
+  page.drawText(`${si ? "[X]" : "[ ]"} SI`, { x: baseX, y: cy, size: 9, font: bold, color: rgb(0.05, 0.05, 0.25) });
+  page.drawText(`${no ? "[X]" : "[ ]"} NO`, { x: baseX + 32, y: cy, size: 9, font: bold, color: rgb(0.05, 0.05, 0.25) });
+  return y - blockH - 2;
+}
+
 function truncate(text: string, maxWidth: number, font: PDFFont, size: number) {
   if (font.widthOfTextAtSize(text, size) <= maxWidth) return text;
   let t = text;
