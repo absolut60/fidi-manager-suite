@@ -294,7 +294,10 @@ function ClienteDetail() {
               </div>
             )}
           </Card>
+
+          <DatiRischioCard cliente={cliente} />
         </TabsContent>
+
 
         <TabsContent value="contatti" className="space-y-4">
           <div className="flex justify-end">
