@@ -1222,10 +1222,6 @@ function StepAmministrazione({ form, set }: { form: SchedaForm; set: SetFn }) {
           <Label>Codice assegnato</Label>
           <Input value={form.codice_assegnato} onChange={(e) => set("codice_assegnato", e.target.value)} />
         </div>
-        <div className="space-y-1.5">
-          <Label>Sede / Operatore</Label>
-          <Input value={form.sede_operatore} onChange={(e) => set("sede_operatore", e.target.value)} />
-        </div>
       </div>
       <div className="space-y-1.5">
         <Label>Condizioni di pagamento concordate</Label>
