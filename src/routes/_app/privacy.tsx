@@ -167,12 +167,8 @@ export default function PrivacyPage() {
                   <TableCell className="text-center text-muted-foreground text-xs">—</TableCell>
                   <TableCell>{fmtDate(r.data_firma)}</TableCell>
                   <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                    {r.pdf_privacy_url ? (
-                      <Button asChild size="sm" variant="outline">
-                        <a href={r.pdf_privacy_url} target="_blank" rel="noopener noreferrer" download>
-                          <Download className="size-4" /> PDF
-                        </a>
-                      </Button>
+                    {r.pdf_privacy_path || r.pdf_privacy_url ? (
+                      <PdfPrivacyButton path={r.pdf_privacy_path} url={r.pdf_privacy_url} />
                     ) : (
                       <span className="text-xs text-muted-foreground">—</span>
                     )}
