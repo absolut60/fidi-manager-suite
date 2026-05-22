@@ -17,6 +17,13 @@ export type BackgroundImportProgress = {
   completata_at: string | null;
 };
 
+type StartImportArgs = {
+  file: File;
+  rowsTotali: number;
+  rigeErroreClient?: number;
+  stagedChunks?: Array<{ rows: unknown[] }>;
+};
+
 export function useBackgroundImport(opts: {
   fonte: Fonte;
   invalidateKeys?: string[][];
@@ -27,8 +34,8 @@ export function useBackgroundImport(opts: {
   const [done, setDone] = useState(false);
 
   const startMut = useMutation({
-    mutationFn: async (args: { file: File; rowsTotali: number; rigeErroreClient?: number }) => {
-      const { file, rowsTotali, rigeErroreClient = 0 } = args;
+    mutationFn: async (args: StartImportArgs) => {
+      const { file, rowsTotali, rigeErroreClient = 0, stagedChunks } = args;
       const { data: { user } } = await supabase.auth.getUser();
       const { data: imp, error: impErr } = await supabase.from("importazioni").insert({
         nome_file: file.name,
@@ -40,17 +47,45 @@ export function useBackgroundImport(opts: {
       }).select("id").single();
       if (impErr) throw impErr;
 
-      const filePath = `${imp.id}/${file.name}`;
-      const { error: upErr } = await supabase.storage.from("import-files").upload(filePath, file, {
-        contentType: file.type || "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        upsert: true,
-      });
-      if (upErr) {
+      let filePath = `${imp.id}/${file.name}`;
+      try {
+        if (stagedChunks?.length) {
+          const basePath = `_staging/${imp.id}`;
+          await Promise.all(stagedChunks.map(async (chunk, index) => {
+            const body = new Blob([JSON.stringify(chunk.rows)], { type: "application/json" });
+            const { error } = await supabase.storage.from("import-files").upload(`${basePath}/chunk-${index}.json`, body, {
+              contentType: "application/json",
+              upsert: true,
+            });
+            if (error) throw new Error(`Upload chunk ${index + 1}/${stagedChunks.length} fallito: ${error.message}`);
+          }));
+          const manifest = new Blob([JSON.stringify({
+            mode: "client-staged",
+            sourceFileName: file.name,
+            rowsTotali,
+            chunkCount: stagedChunks.length,
+            createdAt: new Date().toISOString(),
+          })], { type: "application/json" });
+          filePath = `${basePath}/manifest.json`;
+          const { error } = await supabase.storage.from("import-files").upload(filePath, manifest, {
+            contentType: "application/json",
+            upsert: true,
+          });
+          if (error) throw new Error(`Upload manifest fallito: ${error.message}`);
+        } else {
+          const { error } = await supabase.storage.from("import-files").upload(filePath, file, {
+            contentType: file.type || "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            upsert: true,
+          });
+          if (error) throw error;
+        }
+      } catch (upErr) {
+        const message = upErr instanceof Error ? upErr.message : String(upErr);
         await supabase.from("importazioni").update({
           stato: "completata_con_errori", completata_at: new Date().toISOString(),
-          log_errori: [{ riga: 0, errore: `Upload fallito: ${upErr.message}` }],
+          log_errori: [{ riga: 0, errore: `Upload fallito: ${message}` }],
         }).eq("id", imp.id);
-        throw upErr;
+        throw new Error(message);
       }
       await supabase.from("importazioni").update({ file_path: filePath }).eq("id", imp.id);
 
@@ -93,7 +128,7 @@ export function useBackgroundImport(opts: {
   }
 
   return {
-    start: (args: { file: File; rowsTotali: number; rigeErroreClient?: number }) => startMut.mutate(args),
+    start: (args: StartImportArgs) => startMut.mutate(args),
     isPending: startMut.isPending,
     importazioneId,
     inProgress: !!importazioneId && !done,
