@@ -495,92 +495,9 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
         }
         clienteId = (cliente as { id: string }).id;
 
-        let firmaUrl: string | null = null;
-        let pdfSchedaUrl: string | null = null;
-        let pdfSchedaPath: string | null = null;
-
-        if (conFirma && dataUrl) {
-          // 2. Upload firma PNG
-          const pngBlob = await (await fetch(dataUrl)).blob();
-          const firmaPath = `clienti/${clienteId}/firma-${now.getTime()}.png`;
-          const { error: e2 } = await supabase.storage.from("firme")
-            .upload(firmaPath, pngBlob, { upsert: true, contentType: "image/png" });
-          if (e2) throw new Error(`Upload firma: ${e2.message}`);
-          uploadedPaths.push({ bucket: "firme", path: firmaPath });
-          firmaUrl = supabase.storage.from("firme").getPublicUrl(firmaPath).data.publicUrl;
-
-          // 3. Genera PDF scheda cliente (replica layout MADE)
-          const storeNome =
-            (stores ?? []).find((s) => s.id === parsed.store_id)?.nome ?? null;
-          const pdfBytes = await generaSchedaCliente({
-            tipo: parsed.tipo,
-            tipoSoggetto: parsed.tipo_soggetto,
-            ragioneSociale: parsed.ragione_sociale,
-            indirizzo: parsed.indirizzo,
-            cap: parsed.cap,
-            citta: parsed.citta,
-            provincia: parsed.provincia,
-            telefono: parsed.telefono,
-            email: parsed.email,
-            partitaIva: parsed.partita_iva,
-            codiceFiscale: parsed.codice_fiscale,
-            banca: parsed.banca,
-            agenzia: parsed.agenzia,
-            abi: parsed.abi,
-            cab: parsed.cab,
-            codiceSdi: parsed.codice_sdi,
-            pec: parsed.pec,
-            codiceGestionale: parsed.codice_gestionale,
-            puntoVendita: storeNome,
-            titolareNome: parsed.titolare_nome,
-            titolareCognome: parsed.titolare_cognome,
-            titolareEmail: parsed.titolare_email,
-            titolareCell: parsed.titolare_cell,
-            amministrativoNome: parsed.amministrativo_nome,
-            amministrativoCognome: parsed.amministrativo_cognome,
-            amministrativoEmail: parsed.amministrativo_email,
-            amministrativoCell: parsed.amministrativo_cell,
-            dichiaranteNome: parsed.dichiarante_nome,
-            dichiaranteCognome: parsed.dichiarante_cognome,
-            firmaPngDataUrl: dataUrl,
-            dataFirma: now,
-            amministrazione: canSeeAdminStep ? {
-              codiceAssegnato: parsed.codice_assegnato || null,
-              sedeOperatore: parsed.sede_operatore || null,
-              condizioniPagamentoConcordate: parsed.condizioni_pagamento_concordate || null,
-              dataRichiestaAffidamento: parsed.data_richiesta_affidamento || null,
-              importoAffidamentoRichiesto: parsed.importo_affidamento_richiesto || null,
-              dataEsitoAffidamento: parsed.data_esito_affidamento || null,
-              importoAffidato: parsed.importo_affidato || null,
-              fidoAziendaleConcesso: parsed.fido_aziendale_concesso || null,
-              condizioniPagamentoConcesse: parsed.condizioni_pagamento_concesse || null,
-              dataAffidamentoAziendale: parsed.data_affidamento_aziendale || null,
-              note: parsed.note_amministrazione || null,
-            } : null,
-          });
-
-          // PDF salvato su "documenti-privacy" come da requisito
-          pdfSchedaPath = `clienti/${clienteId}/scheda-${now.getTime()}.pdf`;
-          const { error: e3 } = await supabase.storage.from("documenti-privacy")
-            .upload(pdfSchedaPath, pdfBytes, { contentType: "application/pdf", upsert: true });
-          if (e3) throw new Error(`Upload scheda PDF: ${e3.message}`);
-          uploadedPaths.push({ bucket: "documenti-privacy", path: pdfSchedaPath });
-          pdfSchedaUrl = supabase.storage.from("documenti-privacy").getPublicUrl(pdfSchedaPath).data.publicUrl;
-
-          // 4. UPDATE cliente con riepilogo firma
-          const { error: e4 } = await supabase.from("clienti").update({
-            privacy_firmata: true,
-            data_firma: now.toISOString(),
-            firma_url: firmaUrl,
-            scheda_pdf_url: pdfSchedaUrl,
-          } as never).eq("id", clienteId);
-          if (e4) throw new Error(`Aggiornamento cliente: ${e4.message}`);
-        }
-
-        // 5. INSERT contatti (Titolare sempre, Amm.vo se compilato)
-        const contattiToInsert: Array<Record<string, unknown>> = [];
-
-        const titolareContact: Record<string, unknown> = {
+        // 2. INSERT contatti SUBITO (Titolare sempre, Amm.vo se compilato).
+        //    I dati firma/PDF verranno aggiunti dopo, se la generazione PDF va a buon fine.
+        const titolareInsert: Record<string, unknown> = {
           cliente_id: clienteId,
           nome: parsed.titolare_nome,
           cognome: parsed.titolare_cognome || null,
@@ -589,17 +506,7 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
           cellulare: parsed.titolare_cell || null,
           principale: true,
         };
-        if (conFirma && firmaUrl && pdfSchedaUrl) {
-          Object.assign(titolareContact, {
-            privacy_firmata: true,
-            data_firma: now.toISOString(),
-            firma_url: firmaUrl,
-            pdf_privacy_url: pdfSchedaUrl,
-            pdf_privacy_path: pdfSchedaPath,
-          });
-        }
-        contattiToInsert.push(titolareContact);
-
+        const contattiToInsert: Array<Record<string, unknown>> = [titolareInsert];
         if ((parsed.amministrativo_nome ?? "").trim()) {
           contattiToInsert.push({
             cliente_id: clienteId,
@@ -611,12 +518,109 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
             principale: false,
           });
         }
-
-        const { error: e5 } = await supabase.from("contatti").insert(contattiToInsert as never);
+        const { data: contattiCreati, error: e5 } = await supabase
+          .from("contatti")
+          .insert(contattiToInsert as never)
+          .select("id, principale");
         if (e5) throw new Error(`Salvataggio contatti: ${e5.message}`);
+
+        // 3. Solo ORA, se richiesto, generiamo firma + PDF. Eventuali errori
+        //    qui NON devono distruggere il cliente/contatti già salvati.
+        if (conFirma && dataUrl) {
+          try {
+            // Upload firma PNG
+            const pngBlob = await (await fetch(dataUrl)).blob();
+            const firmaPath = `clienti/${clienteId}/firma-${now.getTime()}.png`;
+            const { error: e2 } = await supabase.storage.from("firme")
+              .upload(firmaPath, pngBlob, { upsert: true, contentType: "image/png" });
+            if (e2) throw new Error(`Upload firma: ${e2.message}`);
+            const firmaUrl = supabase.storage.from("firme").getPublicUrl(firmaPath).data.publicUrl;
+
+            // Genera PDF scheda cliente
+            const storeNome =
+              (stores ?? []).find((s) => s.id === parsed.store_id)?.nome ?? null;
+            const pdfBytes = await generaSchedaCliente({
+              tipo: parsed.tipo,
+              tipoSoggetto: parsed.tipo_soggetto,
+              ragioneSociale: parsed.ragione_sociale,
+              indirizzo: parsed.indirizzo,
+              cap: parsed.cap,
+              citta: parsed.citta,
+              provincia: parsed.provincia,
+              telefono: parsed.telefono,
+              email: parsed.email,
+              partitaIva: parsed.partita_iva,
+              codiceFiscale: parsed.codice_fiscale,
+              banca: parsed.banca,
+              agenzia: parsed.agenzia,
+              abi: parsed.abi,
+              cab: parsed.cab,
+              codiceSdi: parsed.codice_sdi,
+              pec: parsed.pec,
+              codiceGestionale: parsed.codice_gestionale,
+              puntoVendita: storeNome,
+              titolareNome: parsed.titolare_nome,
+              titolareCognome: parsed.titolare_cognome,
+              titolareEmail: parsed.titolare_email,
+              titolareCell: parsed.titolare_cell,
+              amministrativoNome: parsed.amministrativo_nome,
+              amministrativoCognome: parsed.amministrativo_cognome,
+              amministrativoEmail: parsed.amministrativo_email,
+              amministrativoCell: parsed.amministrativo_cell,
+              dichiaranteNome: parsed.dichiarante_nome,
+              dichiaranteCognome: parsed.dichiarante_cognome,
+              firmaPngDataUrl: dataUrl,
+              dataFirma: now,
+              amministrazione: canSeeAdminStep ? {
+                codiceAssegnato: parsed.codice_assegnato || null,
+                sedeOperatore: parsed.sede_operatore || null,
+                condizioniPagamentoConcordate: parsed.condizioni_pagamento_concordate || null,
+                dataRichiestaAffidamento: parsed.data_richiesta_affidamento || null,
+                importoAffidamentoRichiesto: parsed.importo_affidamento_richiesto || null,
+                dataEsitoAffidamento: parsed.data_esito_affidamento || null,
+                importoAffidato: parsed.importo_affidato || null,
+                fidoAziendaleConcesso: parsed.fido_aziendale_concesso || null,
+                condizioniPagamentoConcesse: parsed.condizioni_pagamento_concesse || null,
+                dataAffidamentoAziendale: parsed.data_affidamento_aziendale || null,
+                note: parsed.note_amministrazione || null,
+              } : null,
+            });
+
+            const pdfSchedaPath = `clienti/${clienteId}/scheda-${now.getTime()}.pdf`;
+            const { error: e3 } = await supabase.storage.from("documenti-privacy")
+              .upload(pdfSchedaPath, pdfBytes, { contentType: "application/pdf", upsert: true });
+            if (e3) throw new Error(`Upload scheda PDF: ${e3.message}`);
+            const pdfSchedaUrl = supabase.storage.from("documenti-privacy").getPublicUrl(pdfSchedaPath).data.publicUrl;
+
+            // Aggiorna cliente con riepilogo firma
+            await supabase.from("clienti").update({
+              privacy_firmata: true,
+              data_firma: now.toISOString(),
+              firma_url: firmaUrl,
+              scheda_pdf_url: pdfSchedaUrl,
+            } as never).eq("id", clienteId);
+
+            // Aggiorna il contatto titolare con i riferimenti firma/PDF
+            const titolare = (contattiCreati ?? []).find((c: any) => c.principale);
+            if (titolare) {
+              await supabase.from("contatti").update({
+                privacy_firmata: true,
+                data_firma: now.toISOString(),
+                firma_url: firmaUrl,
+                pdf_privacy_url: pdfSchedaUrl,
+                pdf_privacy_path: pdfSchedaPath,
+              } as never).eq("id", (titolare as { id: string }).id);
+            }
+          } catch (pdfErr) {
+            // NON eseguire rollback: cliente e contatti restano salvati.
+            const m = pdfErr instanceof Error ? pdfErr.message : "Errore generazione PDF";
+            toast.warning(`Cliente salvato senza PDF firmato: ${m}`);
+          }
+        }
 
         return clienteId;
       } catch (err) {
+
         const msg = err instanceof Error ? err.message : "Errore durante il salvataggio";
         await rollback(msg);
         return null;
