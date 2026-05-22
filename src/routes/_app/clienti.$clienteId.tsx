@@ -1073,3 +1073,52 @@ function EditClienteDialog({ cliente, onClose, onSaved }: { cliente: any; onClos
     </DialogContent>
   );
 }
+
+function EliminaClienteDialog({
+  clienteId: _clienteId,
+  ragioneSociale,
+  onClose,
+  onConfirm,
+  pending,
+}: {
+  clienteId: string;
+  ragioneSociale: string;
+  onClose: () => void;
+  onConfirm: () => void;
+  pending: boolean;
+}) {
+  const [conferma, setConferma] = useState("");
+  const ok = conferma.trim().toUpperCase() === "ELIMINA";
+  return (
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle className="flex items-center gap-2 text-destructive">
+          <AlertTriangle className="size-5" /> Elimina definitivamente
+        </DialogTitle>
+        <DialogDescription>
+          Stai per eliminare in modo permanente <strong>{ragioneSociale}</strong> e tutti i suoi dati (contatti, cantieri, storico).
+          Questa operazione è irreversibile. Se il cliente ha richieste fido collegate l'operazione verrà bloccata.
+        </DialogDescription>
+      </DialogHeader>
+      <div className="space-y-2">
+        <Label htmlFor="conferma-elimina" className="text-sm">
+          Per confermare digita <code className="font-mono font-bold">ELIMINA</code>:
+        </Label>
+        <Input
+          id="conferma-elimina"
+          value={conferma}
+          onChange={(e) => setConferma(e.target.value)}
+          placeholder="ELIMINA"
+          autoComplete="off"
+        />
+      </div>
+      <DialogFooter>
+        <Button variant="outline" onClick={onClose} disabled={pending}>Annulla</Button>
+        <Button variant="destructive" onClick={onConfirm} disabled={!ok || pending}>
+          {pending ? "Eliminazione…" : "Elimina definitivamente"}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  );
+}
+
