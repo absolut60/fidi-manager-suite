@@ -13,6 +13,7 @@ import {
   Upload,
   TrendingUp,
 } from "lucide-react";
+import { DashboardReminders } from "@/components/dashboard-reminders";
 
 export const Route = createFileRoute("/_app/dashboard")({
   component: DashboardPage,
