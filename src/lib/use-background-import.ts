@@ -22,6 +22,7 @@ type StartImportArgs = {
   rowsTotali: number;
   rigeErroreClient?: number;
   stagedChunks?: Array<{ rows: unknown[] }>;
+  stagedMissingRows?: number[];
 };
 
 export function useBackgroundImport(opts: {
@@ -35,7 +36,7 @@ export function useBackgroundImport(opts: {
 
   const startMut = useMutation({
     mutationFn: async (args: StartImportArgs) => {
-      const { file, rowsTotali, rigeErroreClient = 0, stagedChunks } = args;
+      const { file, rowsTotali, rigeErroreClient = 0, stagedChunks, stagedMissingRows = [] } = args;
       const { data: { user } } = await supabase.auth.getUser();
       const { data: imp, error: impErr } = await supabase.from("importazioni").insert({
         nome_file: file.name,
@@ -63,6 +64,8 @@ export function useBackgroundImport(opts: {
             mode: "client-staged",
             sourceFileName: file.name,
             rowsTotali,
+            validRows: stagedChunks.reduce((sum, chunk) => sum + chunk.rows.length, 0),
+            missingRows: stagedMissingRows,
             chunkCount: stagedChunks.length,
             createdAt: new Date().toISOString(),
           })], { type: "application/json" });
