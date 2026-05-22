@@ -441,12 +441,14 @@ function RischioImportCard() {
 
       const parsed: RischioRow[] = [];
       const missing: number[] = [];
+      const unknownHeaders = new Set<string>();
       raw.forEach((r) => {
         const mapped: Record<string, unknown> = {};
         for (const k of Object.keys(r)) {
           if (k === "__row") continue;
           const f = RISCHIO_HEADERS[normalize(k)];
           if (f) mapped[f] = r[k];
+          else if (String(k).trim()) unknownHeaders.add(k);
         }
         const codice = toStr(mapped.codice_gestionale);
         if (!codice) { missing.push(r.__row); return; }
@@ -467,6 +469,10 @@ function RischioImportCard() {
       setFileName(file.name);
       setRows(parsed);
       setMissingCode(missing);
+      if (unknownHeaders.size) {
+        console.warn("[import-rischio] colonne ignorate:", Array.from(unknownHeaders));
+        toast.warning(`Colonne ignorate: ${Array.from(unknownHeaders).join(", ")}`);
+      }
       toast.success(`${parsed.length} righe lette${missing.length ? `, ${missing.length} senza codice` : ""}`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Errore lettura file");
