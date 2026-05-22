@@ -43,6 +43,7 @@ const NAV: NavItem[] = [
   { to: "/approvazioni", label: "Approvazioni", icon: CheckCheck, roles: ["admin", "approvatore"], group: "approvazioni" },
   { to: "/assicurazioni", label: "Assicurazioni", icon: ShieldCheck, roles: ["admin", "approvatore"], group: "approvazioni" },
   { to: "/legali", label: "Pratiche Legali", icon: Gavel, roles: ["admin", "approvatore"], group: "approvazioni" },
+  { to: "/scadenziario", label: "Scadenziario", icon: CalendarClock, roles: ["admin", "approvatore"], group: "approvazioni" },
   { to: "/privacy", label: "Privacy", icon: FileSignature, roles: ["admin", "approvatore"], group: "approvazioni" },
   { to: "/import-export", label: "Import / Export", icon: FileSpreadsheet, roles: ["admin"], group: "approvazioni" },
   { to: "/whatsapp", label: "WhatsApp", icon: MessageCircle, roles: ["admin"], group: "approvazioni" },
