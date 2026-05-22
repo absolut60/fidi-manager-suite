@@ -301,7 +301,7 @@ function ClientiPage() {
               Nuova scheda cliente
             </Button>
           </DialogTrigger>
-          <SchedaClienteDialog onClose={() => setOpen(false)} />
+          <SchedaClienteDialog onClose={() => { setOpen(false); setSearch(""); }} />
         </Dialog>
       </div>
 
@@ -550,6 +550,76 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
   const padRef = useRef<HTMLDivElement>(null);
   const [hasSig, setHasSig] = useState(false);
 
+  // Stato per modalità Aggiornamento: cliente selezionato e contatti esistenti
+  const [clienteEsistenteId, setClienteEsistenteId] = useState<string | null>(null);
+  const [titolareEsistenteId, setTitolareEsistenteId] = useState<string | null>(null);
+  const [amministrativoEsistenteId, setAmministrativoEsistenteId] = useState<string | null>(null);
+
+  // Carica un cliente esistente e precompila il form (modalità Aggiornamento)
+  async function caricaClienteEsistente(clienteId: string) {
+    const { data: cliente, error } = await supabase
+      .from("clienti").select("*").eq("id", clienteId).maybeSingle();
+    if (error || !cliente) {
+      toast.error("Impossibile caricare il cliente selezionato");
+      return;
+    }
+    const { data: contatti } = await supabase
+      .from("contatti").select("*").eq("cliente_id", clienteId).order("principale", { ascending: false });
+    const titolare = (contatti ?? []).find((c: any) => c.principale) ?? null;
+    const amm = (contatti ?? []).find((c: any) => !c.principale) ?? null;
+
+    setClienteEsistenteId(clienteId);
+    setTitolareEsistenteId(titolare?.id ?? null);
+    setAmministrativoEsistenteId(amm?.id ?? null);
+
+    const c = cliente as any;
+    setForm((f) => ({
+      ...f,
+      tipo: "aggiornamento",
+      tipo_soggetto: (c.tipo_soggetto === "persona_fisica" ? "persona_fisica" : "azienda") as SchedaForm["tipo_soggetto"],
+      ragione_sociale: c.ragione_sociale ?? "",
+      codice_gestionale: c.codice_gestionale ?? "",
+      indirizzo: c.indirizzo ?? "",
+      cap: c.cap ?? "",
+      citta: c.citta ?? "",
+      provincia: c.provincia ?? "",
+      telefono: c.telefono ?? "",
+      email: c.email ?? "",
+      partita_iva: c.partita_iva ?? "",
+      codice_fiscale: c.codice_fiscale ?? "",
+      banca: c.banca ?? "",
+      agenzia: c.agenzia ?? "",
+      abi: c.abi ?? "",
+      cab: c.cab ?? "",
+      codice_sdi: c.codice_sdi ?? "",
+      pec: c.pec ?? "",
+      store_id: c.store_id ?? "",
+      titolare_nome: titolare?.nome ?? "",
+      titolare_cognome: titolare?.cognome ?? "",
+      titolare_email: titolare?.email ?? "",
+      titolare_cell: titolare?.cellulare ?? titolare?.telefono ?? "",
+      amministrativo_nome: amm?.nome ?? "",
+      amministrativo_cognome: amm?.cognome ?? "",
+      amministrativo_email: amm?.email ?? "",
+      amministrativo_cell: amm?.cellulare ?? amm?.telefono ?? "",
+      codice_assegnato: c.codice_assegnato ?? "",
+      sede_operatore: c.sede_operatore ?? "",
+      condizioni_pagamento_concordate: c.condizioni_pagamento_concordate ?? "",
+      data_richiesta_affidamento: c.data_richiesta_affidamento ?? "",
+      importo_affidamento_richiesto: c.importo_affidamento_richiesto != null ? String(c.importo_affidamento_richiesto) : "",
+      note_amministrazione: c.note_amministrazione ?? "",
+      dichiarante_nome: c.dichiarante_nome ?? "",
+      dichiarante_cognome: c.dichiarante_cognome ?? "",
+    }));
+    toast.success(`Cliente "${c.ragione_sociale}" caricato`);
+  }
+
+  function resetClienteEsistente() {
+    setClienteEsistenteId(null);
+    setTitolareEsistenteId(null);
+    setAmministrativoEsistenteId(null);
+  }
+
   // Steps dinamici in base a modalità e ruolo
   const steps = useMemo(() => {
     const s = ["Impresa", "Contatti"];
@@ -576,7 +646,12 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
     const label = steps[s];
     const errs: Record<string, string> = {};
     if (label === "Impresa") {
-      if (!form.ragione_sociale.trim()) errs.ragione_sociale = "Obbligatorio";
+      if (form.tipo === "aggiornamento" && !clienteEsistenteId) {
+        errs.ragione_sociale = "Seleziona il cliente da aggiornare dal campo di ricerca sopra";
+        toast.error("Seleziona prima un cliente esistente dal campo di ricerca");
+      } else if (!form.ragione_sociale.trim()) {
+        errs.ragione_sociale = "Obbligatorio";
+      }
       if (form.email && !z.string().email().safeParse(form.email).success) errs.email = "Email non valida";
     }
     if (label === "Contatti") {
@@ -620,7 +695,8 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
       const now = new Date();
       const { data: { user } } = await supabase.auth.getUser();
 
-      let clienteId: string | null = null;
+      const isAggiornamento = parsed.tipo === "aggiornamento" && !!clienteEsistenteId;
+      let clienteId: string | null = isAggiornamento ? clienteEsistenteId : null;
       const uploadedPaths: Array<{ bucket: string; path: string }> = [];
 
       const rollback = async (reason: string) => {
@@ -628,7 +704,8 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
           for (const u of uploadedPaths) {
             await supabase.storage.from(u.bucket).remove([u.path]);
           }
-          if (clienteId) {
+          // In aggiornamento NON eliminiamo il cliente esistente
+          if (!isAggiornamento && clienteId) {
             await supabase.from("contatti").delete().eq("cliente_id", clienteId);
             await supabase.from("clienti").delete().eq("id", clienteId);
           }
@@ -637,7 +714,7 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
       };
 
       try {
-        // 1. INSERT cliente (dati Step 1 + Step 3 se admin)
+        // 1. INSERT/UPDATE cliente (dati Step 1 + Step 3 se admin)
         const num = (s?: string) => {
           if (!s) return null;
           const n = Number(String(s).replace(",", "."));
@@ -666,12 +743,13 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
           store_id: parsed.store_id || null,
           dichiarante_nome: parsed.dichiarante_nome || null,
           dichiarante_cognome: parsed.dichiarante_cognome || null,
-          created_by: user?.id,
         };
+        if (!isAggiornamento) {
+          clientePayload.created_by = user?.id;
+        }
         if (canSeeAdminStep) {
           Object.assign(clientePayload, {
             codice_assegnato: parsed.codice_assegnato || null,
-            sede_operatore: parsed.sede_operatore || null,
             condizioni_pagamento_concordate: parsed.condizioni_pagamento_concordate || null,
             data_richiesta_affidamento: date(parsed.data_richiesta_affidamento),
             importo_affidamento_richiesto: num(parsed.importo_affidamento_richiesto),
@@ -679,18 +757,22 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
           });
         }
 
-        // PRIMA: INSERT cliente e ottieni clienteId
-        const { data: cliente, error: e1 } = await supabase
-          .from("clienti").insert(clientePayload as never).select("id").single();
-        if (e1) throw new Error(`Inserimento cliente: ${e1.message}`);
-        if (!cliente || !(cliente as { id?: string }).id) {
-          throw new Error("Inserimento cliente: id non restituito");
+        if (isAggiornamento) {
+          const { error: eUpd } = await supabase
+            .from("clienti").update(clientePayload as never).eq("id", clienteId!);
+          if (eUpd) throw new Error(`Aggiornamento cliente: ${eUpd.message}`);
+        } else {
+          const { data: cliente, error: e1 } = await supabase
+            .from("clienti").insert(clientePayload as never).select("id").single();
+          if (e1) throw new Error(`Inserimento cliente: ${e1.message}`);
+          if (!cliente || !(cliente as { id?: string }).id) {
+            throw new Error("Inserimento cliente: id non restituito");
+          }
+          clienteId = (cliente as { id: string }).id;
         }
-        clienteId = (cliente as { id: string }).id;
 
-        // 2. INSERT contatti SUBITO (Titolare sempre, Amm.vo se compilato).
-        //    I dati firma/PDF verranno aggiunti dopo, se la generazione PDF va a buon fine.
-        const titolareInsert: Record<string, unknown> = {
+        // 2. INSERT/UPDATE contatti (Titolare sempre, Amm.vo se compilato).
+        const titolarePayload: Record<string, unknown> = {
           cliente_id: clienteId,
           nome: parsed.titolare_nome,
           cognome: parsed.titolare_cognome || null,
@@ -699,23 +781,52 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
           cellulare: parsed.titolare_cell || null,
           principale: true,
         };
-        const contattiToInsert: Array<Record<string, unknown>> = [titolareInsert];
-        if ((parsed.amministrativo_nome ?? "").trim()) {
-          contattiToInsert.push({
-            cliente_id: clienteId,
-            nome: parsed.amministrativo_nome,
-            cognome: parsed.amministrativo_cognome || null,
-            ruolo: "Referente Amministrativo",
-            email: parsed.amministrativo_email || null,
-            cellulare: parsed.amministrativo_cell || null,
-            principale: false,
-          });
+        const ammPayload: Record<string, unknown> | null = (parsed.amministrativo_nome ?? "").trim()
+          ? {
+              cliente_id: clienteId,
+              nome: parsed.amministrativo_nome,
+              cognome: parsed.amministrativo_cognome || null,
+              ruolo: "Referente Amministrativo",
+              email: parsed.amministrativo_email || null,
+              cellulare: parsed.amministrativo_cell || null,
+              principale: false,
+            }
+          : null;
+
+        let contattiCreati: Array<{ id: string; principale: boolean }> = [];
+        if (isAggiornamento) {
+          if (titolareEsistenteId) {
+            const { error } = await supabase.from("contatti")
+              .update(titolarePayload as never).eq("id", titolareEsistenteId);
+            if (error) throw new Error(`Aggiornamento titolare: ${error.message}`);
+            contattiCreati.push({ id: titolareEsistenteId, principale: true });
+          } else {
+            const { data, error } = await supabase.from("contatti")
+              .insert(titolarePayload as never).select("id, principale").single();
+            if (error) throw new Error(`Inserimento titolare: ${error.message}`);
+            if (data) contattiCreati.push(data as { id: string; principale: boolean });
+          }
+          if (ammPayload) {
+            if (amministrativoEsistenteId) {
+              const { error } = await supabase.from("contatti")
+                .update(ammPayload as never).eq("id", amministrativoEsistenteId);
+              if (error) throw new Error(`Aggiornamento referente: ${error.message}`);
+            } else {
+              const { error } = await supabase.from("contatti")
+                .insert(ammPayload as never);
+              if (error) throw new Error(`Inserimento referente: ${error.message}`);
+            }
+          }
+        } else {
+          const contattiToInsert: Array<Record<string, unknown>> = [titolarePayload];
+          if (ammPayload) contattiToInsert.push(ammPayload);
+          const { data, error: e5 } = await supabase
+            .from("contatti")
+            .insert(contattiToInsert as never)
+            .select("id, principale");
+          if (e5) throw new Error(`Salvataggio contatti: ${e5.message}`);
+          contattiCreati = (data ?? []) as Array<{ id: string; principale: boolean }>;
         }
-        const { data: contattiCreati, error: e5 } = await supabase
-          .from("contatti")
-          .insert(contattiToInsert as never)
-          .select("id, principale");
-        if (e5) throw new Error(`Salvataggio contatti: ${e5.message}`);
 
         // 2.bis Se è stato indicato un Importo Affidamento Richiesto, crea
         //       una richiesta_fido in bozza che segue il normale iter di approvazione.
@@ -843,7 +954,7 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
               data_firma: now.toISOString(),
               firma_url: firmaUrl,
               scheda_pdf_url: pdfSchedaUrl,
-            } as never).eq("id", clienteId);
+            } as never).eq("id", clienteId!);
 
             // Aggiorna il contatto titolare con i riferimenti firma/PDF
             const titolare = (contattiCreati ?? []).find((c: any) => c.principale);
@@ -967,7 +1078,15 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
 
       <div className="space-y-4 mt-2">
         {currentStepLabel === "Impresa" && (
-          <StepImpresa form={form} set={set} errors={errors} stores={stores ?? []} />
+          <StepImpresa
+            form={form}
+            set={set}
+            errors={errors}
+            stores={stores ?? []}
+            clienteEsistenteId={clienteEsistenteId}
+            onSelectClienteEsistente={caricaClienteEsistente}
+            onResetClienteEsistente={resetClienteEsistente}
+          />
         )}
         {currentStepLabel === "Contatti" && (
           <StepContatti form={form} set={set} errors={errors} />
@@ -1014,15 +1133,120 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
 
 type SetFn = <K extends keyof SchedaForm>(k: K, v: SchedaForm[K]) => void;
 
+function ClientePicker({
+  clienteEsistenteId,
+  ragioneSocialeAttuale,
+  onSelect,
+  onReset,
+}: {
+  clienteEsistenteId: string | null;
+  ragioneSocialeAttuale: string;
+  onSelect: (clienteId: string) => void | Promise<void>;
+  onReset: () => void;
+}) {
+  const [term, setTerm] = useState("");
+  const [open, setOpen] = useState(false);
+  const termTrim = term.trim();
+  const { data: results, isFetching } = useQuery({
+    queryKey: ["clienti-picker", termTrim],
+    queryFn: async () => {
+      if (termTrim.length < 2) return [];
+      const like = `%${termTrim.replace(/[(),]/g, " ")}%`;
+      const { data, error } = await supabase
+        .from("clienti")
+        .select("id, ragione_sociale, codice_gestionale, partita_iva, citta")
+        .or(`ragione_sociale.ilike.${like},codice_gestionale.ilike.${like}`)
+        .order("ragione_sociale")
+        .limit(20);
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: termTrim.length >= 2 && !clienteEsistenteId,
+  });
+
+  if (clienteEsistenteId) {
+    return (
+      <div className="rounded-md border border-primary/40 bg-primary/5 p-3 flex items-center justify-between gap-3">
+        <div className="text-sm">
+          <p className="font-medium text-foreground">Aggiornamento di: {ragioneSocialeAttuale}</p>
+          <p className="text-xs text-muted-foreground">Modifica i campi sotto e salva per aggiornare il cliente.</p>
+        </div>
+        <Button type="button" variant="outline" size="sm" onClick={onReset}>
+          <X className="size-4 mr-1" /> Cambia cliente
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-md border bg-muted/30 p-3 space-y-2">
+      <Label className="text-sm">Cerca cliente da aggiornare *</Label>
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+        <Input
+          value={term}
+          onChange={(e) => { setTerm(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          placeholder="Digita ragione sociale o codice gestionale..."
+          className="pl-9"
+        />
+      </div>
+      {open && termTrim.length >= 2 && (
+        <div className="rounded-md border bg-popover max-h-64 overflow-y-auto">
+          {isFetching ? (
+            <p className="px-3 py-2 text-xs text-muted-foreground">Ricerca in corso…</p>
+          ) : (results ?? []).length === 0 ? (
+            <p className="px-3 py-2 text-xs text-muted-foreground">Nessun cliente trovato</p>
+          ) : (
+            (results ?? []).map((c: any) => (
+              <button
+                key={c.id}
+                type="button"
+                className="w-full text-left px-3 py-2 hover:bg-accent text-sm border-b last:border-b-0"
+                onClick={() => { onSelect(c.id); setOpen(false); setTerm(""); }}
+              >
+                <div className="font-medium">{c.ragione_sociale}</div>
+                <div className="text-xs text-muted-foreground">
+                  {c.codice_gestionale ? `Cod. ${c.codice_gestionale}` : "—"}
+                  {c.partita_iva ? ` · P.IVA ${c.partita_iva}` : ""}
+                  {c.citta ? ` · ${c.citta}` : ""}
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+      {termTrim.length > 0 && termTrim.length < 2 && (
+        <p className="text-xs text-muted-foreground">Digita almeno 2 caratteri…</p>
+      )}
+    </div>
+  );
+}
+
 function StepImpresa({
-  form, set, errors, stores,
-}: { form: SchedaForm; set: SetFn; errors: Record<string, string>; stores: Array<{ id: string; nome: string; codice: string }> }) {
+  form, set, errors, stores, clienteEsistenteId, onSelectClienteEsistente, onResetClienteEsistente,
+}: {
+  form: SchedaForm;
+  set: SetFn;
+  errors: Record<string, string>;
+  stores: Array<{ id: string; nome: string; codice: string }>;
+  clienteEsistenteId: string | null;
+  onSelectClienteEsistente: (clienteId: string) => void | Promise<void>;
+  onResetClienteEsistente: () => void;
+}) {
   return (
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <Label>Tipo modulo</Label>
-          <RadioGroup value={form.tipo} onValueChange={(v) => set("tipo", v as SchedaForm["tipo"])} className="flex gap-4">
+          <RadioGroup
+            value={form.tipo}
+            onValueChange={(v) => {
+              set("tipo", v as SchedaForm["tipo"]);
+              if (v !== "aggiornamento") onResetClienteEsistente();
+            }}
+            className="flex gap-4"
+          >
             <label className="flex items-center gap-2 text-sm cursor-pointer">
               <RadioGroupItem value="nuovo" /> Nuovo inserimento
             </label>
@@ -1043,6 +1267,17 @@ function StepImpresa({
           </RadioGroup>
         </div>
       </div>
+
+      {form.tipo === "aggiornamento" && (
+        <ClientePicker
+          clienteEsistenteId={clienteEsistenteId}
+          ragioneSocialeAttuale={form.ragione_sociale}
+          onSelect={onSelectClienteEsistente}
+          onReset={onResetClienteEsistente}
+        />
+      )}
+
+
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="space-y-1.5 sm:col-span-2">
@@ -1221,10 +1456,6 @@ function StepAmministrazione({ form, set }: { form: SchedaForm; set: SetFn }) {
         <div className="space-y-1.5">
           <Label>Codice assegnato</Label>
           <Input value={form.codice_assegnato} onChange={(e) => set("codice_assegnato", e.target.value)} />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Sede / Operatore</Label>
-          <Input value={form.sede_operatore} onChange={(e) => set("sede_operatore", e.target.value)} />
         </div>
       </div>
       <div className="space-y-1.5">
