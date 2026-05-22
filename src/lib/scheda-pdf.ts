@@ -4,8 +4,8 @@ import { LOGO_MADE_BASE64 } from "./logo-made-base64";
 export interface SchedaPdfInput {
   tipo: "nuovo" | "aggiornamento";
   ragioneSociale: string;
-  dichiaranteNome: string;
-  dichiaranteCognome: string;
+  dichiaranteNome?: string;
+  dichiaranteCognome?: string;
   luogoNascita?: string;
   dataNascita?: string;
   codiceFiscaleDich?: string;
