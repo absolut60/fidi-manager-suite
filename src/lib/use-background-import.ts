@@ -52,14 +52,14 @@ export function useBackgroundImport(opts: {
       try {
         if (stagedChunks?.length) {
           const basePath = `_staging/${imp.id}`;
-          await Promise.all(stagedChunks.map(async (chunk, index) => {
+          for (const [index, chunk] of stagedChunks.entries()) {
             const body = new Blob([JSON.stringify(chunk.rows)], { type: "application/json" });
             const { error } = await supabase.storage.from("import-files").upload(`${basePath}/chunk-${index}.json`, body, {
               contentType: "application/json",
               upsert: true,
             });
             if (error) throw new Error(`Upload chunk ${index + 1}/${stagedChunks.length} fallito: ${error.message}`);
-          }));
+          }
           const manifest = new Blob([JSON.stringify({
             mode: "client-staged",
             sourceFileName: file.name,
