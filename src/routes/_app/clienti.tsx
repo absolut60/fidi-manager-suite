@@ -520,6 +520,7 @@ const schedaSchema = z.object({
   consenso_profilazione: z.enum(["", "si", "no"]).optional().default(""),
   consenso_marketing_media: z.enum(["", "si", "no"]).optional().default(""),
   consenso_marketing_diretto: z.enum(["", "si", "no"]).optional().default(""),
+  whatsapp_opt_in: z.boolean().optional().default(false),
 });
 
 type SchedaForm = z.infer<typeof schedaSchema>;
