@@ -1511,30 +1511,87 @@ function StepFirma({
   padRef: React.RefObject<HTMLDivElement | null>; setHasSig: (b: boolean) => void;
 }) {
   const today = new Date().toLocaleDateString("it-IT");
+  const ConsensoRow = ({ k, label }: { k: "consenso_profilazione" | "consenso_marketing_media" | "consenso_marketing_diretto"; label: string }) => (
+    <div className="flex items-start justify-between gap-4 py-2 border-b last:border-b-0">
+      <p className="text-xs text-muted-foreground flex-1 leading-relaxed">{label}</p>
+      <RadioGroup value={form[k]} onValueChange={(v) => set(k, v as any)} className="flex gap-3 shrink-0">
+        <label className="flex items-center gap-1 text-sm cursor-pointer">
+          <RadioGroupItem value="si" /> Sì
+        </label>
+        <label className="flex items-center gap-1 text-sm cursor-pointer">
+          <RadioGroupItem value="no" /> No
+        </label>
+      </RadioGroup>
+    </div>
+  );
   return (
     <>
       <div className="rounded-md border bg-muted/40 p-3 text-xs">
-        <p className="font-medium text-foreground mb-1">Firmatario (Titolare / Legale Rappresentante)</p>
-        <p className="text-muted-foreground">
-          Precompilato dallo step Contatti — puoi modificarlo se serve.
-        </p>
+        <p className="font-medium text-foreground mb-1">Dati del Dichiarante (Titolare / Legale Rappresentante)</p>
+        <p className="text-muted-foreground">Nome e cognome precompilati dallo step Contatti.</p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
-          <Label>Nome dichiarante *</Label>
+          <Label>Nome *</Label>
           <Input value={form.dichiarante_nome} onChange={(e) => set("dichiarante_nome", e.target.value)} />
           {errors.dichiarante_nome && <p className="text-xs text-destructive">{errors.dichiarante_nome}</p>}
         </div>
         <div className="space-y-1.5">
-          <Label>Cognome dichiarante *</Label>
+          <Label>Cognome *</Label>
           <Input value={form.dichiarante_cognome} onChange={(e) => set("dichiarante_cognome", e.target.value)} />
           {errors.dichiarante_cognome && <p className="text-xs text-destructive">{errors.dichiarante_cognome}</p>}
+        </div>
+      </div>
+      <div className="space-y-1.5">
+        <Label>Società / Ente rappresentato</Label>
+        <Input value={form.dichiarante_societa} onChange={(e) => set("dichiarante_societa", e.target.value)} placeholder={form.ragione_sociale} />
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label>Luogo di nascita</Label>
+          <Input value={form.dichiarante_luogo_nascita} onChange={(e) => set("dichiarante_luogo_nascita", e.target.value)} />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Data di nascita</Label>
+          <Input type="date" value={form.dichiarante_data_nascita} onChange={(e) => set("dichiarante_data_nascita", e.target.value)} />
+        </div>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label>Codice fiscale</Label>
+          <Input value={form.dichiarante_codice_fiscale} onChange={(e) => set("dichiarante_codice_fiscale", e.target.value.toUpperCase())} />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Residenza</Label>
+          <Input value={form.dichiarante_residenza} onChange={(e) => set("dichiarante_residenza", e.target.value)} placeholder="Via, n°, CAP, Città (Prov.)" />
+        </div>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label>E-mail</Label>
+          <Input type="email" value={form.dichiarante_email} onChange={(e) => set("dichiarante_email", e.target.value)} />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Cellulare</Label>
+          <Input value={form.dichiarante_cell} onChange={(e) => set("dichiarante_cell", e.target.value)} />
         </div>
       </div>
 
       <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground leading-relaxed">
         {PRIVACY_TEXT_UI}
       </div>
+
+      <div className="rounded-md border p-3 space-y-1">
+        <p className="font-semibold text-sm mb-1">Consensi facoltativi</p>
+        <ConsensoRow k="consenso_profilazione" label="Acconsento al trattamento dei miei dati per finalità di profilazione (analisi preferenze e abitudini di consumo)." />
+        <ConsensoRow k="consenso_marketing_media" label="Acconsento all'invio di comunicazioni promozionali tramite e-mail, SMS, WhatsApp e altri canali digitali." />
+        <ConsensoRow k="consenso_marketing_diretto" label="Acconsento ad essere contattato direttamente (telefono, posta, contatto personale) per finalità di marketing." />
+      </div>
+
+      <label className="flex items-center gap-2 text-sm cursor-pointer">
+        <Checkbox checked={form.whatsapp_opt_in} onCheckedChange={(v) => set("whatsapp_opt_in", v === true)} />
+        Autorizzo l'invio di comunicazioni operative via WhatsApp al numero indicato sopra.
+      </label>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
         <div className="space-y-1.5">
