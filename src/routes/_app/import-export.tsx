@@ -800,17 +800,48 @@ function ScadenziarioImportCard() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
+  const [parsed, setParsed] = useState<{ rows: ScadRow[]; missing: number[]; totRead: number } | null>(null);
+  const [parsing, setParsing] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const bg = useBackgroundImport({ fonte: "scadenziario", invalidateKeys: [["scadenze"], ["clienti"]] });
 
   function reset() {
-    setFileName(null); setFile(null); bg.reset();
+    setFileName(null); setFile(null); setParsed(null); bg.reset();
     if (fileRef.current) fileRef.current.value = "";
   }
 
-  function handleFile(f: File) {
-    setFileName(f.name); setFile(f); bg.reset();
-    toast.success(`File pronto: ${f.name}`);
+  async function handleFile(f: File) {
+    setParsing(true); setParsed(null); bg.reset();
+    try {
+      const buf = await f.arrayBuffer();
+      const wb = XLSX.read(buf, { type: "array", cellDates: false });
+      const sheetName = wb.SheetNames.find((name) => normalize(name) === "scadenziario");
+      if (!sheetName) throw new Error("Foglio SCADENZIARIO non trovato nel file");
+      const nextParsed = parseOfficialScadenziarioSheet(wb.Sheets[sheetName]);
+      if (!nextParsed.totRead) throw new Error("Nessuna riga dati trovata nel foglio SCADENZIARIO");
+      setFileName(f.name); setFile(f); setParsed(nextParsed);
+      toast.success(`${nextParsed.totRead} righe lette: ${nextParsed.rows.length} valide, ${nextParsed.missing.length} senza COD_CLI`);
+    } catch (e) {
+      setFileName(null); setFile(null); setParsed(null);
+      if (fileRef.current) fileRef.current.value = "";
+      toast.error(e instanceof Error ? e.message : "Errore lettura file");
+    } finally {
+      setParsing(false);
+    }
+  }
+
+  function startImport() {
+    if (!file || !parsed) return;
+    const chunkSize = 500;
+    const stagedChunks = [] as Array<{ rows: ScadRow[] }>;
+    for (let i = 0; i < parsed.rows.length; i += chunkSize) stagedChunks.push({ rows: parsed.rows.slice(i, i + chunkSize) });
+    bg.start({
+      file,
+      rowsTotali: parsed.totRead,
+      rigeErroreClient: parsed.missing.length,
+      stagedChunks,
+      stagedMissingRows: parsed.missing,
+    });
   }
 
   function downloadTemplate() {
@@ -855,15 +886,16 @@ function ScadenziarioImportCard() {
       </p>
       {bg.inProgress && bg.progress ? <BgProgressBlock progress={bg.progress} fallbackTotal={0} /> : null}
       <ImportZone
-        fileName={fileName} parsing={false} dragOver={dragOver}
+        fileName={fileName} parsing={parsing} dragOver={dragOver}
         setDragOver={setDragOver} fileRef={fileRef} onFile={handleFile} onReset={reset}
-        valid={file ? 1 : 0} invalid={[]}
+        valid={parsed?.rows.length ?? 0}
+        invalid={(parsed?.missing ?? []).slice(0, 50).map((idx) => ({ idx, errors: ["COD_CLI mancante"] }))}
         result={result}
         action={
-          <Button className="w-full gap-1.5" disabled={!file || bg.isPending || bg.inProgress}
-            onClick={() => file && bg.start({ file, rowsTotali: 0 })}>
+          <Button className="w-full gap-1.5" disabled={!file || !parsed || !parsed.rows.length || bg.isPending || bg.inProgress || parsing}
+            onClick={startImport}>
             {(bg.isPending || bg.inProgress) && <Loader2 className="size-4 animate-spin" />}
-            {bg.inProgress ? "Elaborazione in background..." : "Avvia import scadenziario"}
+            {bg.inProgress ? "Elaborazione in background..." : `Avvia import scadenziario (${parsed?.totRead ?? 0} righe)`}
           </Button>
         }
       />
