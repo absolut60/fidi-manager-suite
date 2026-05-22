@@ -52,11 +52,17 @@ function BgProgressBlock({
   progress: BackgroundImportProgress;
   fallbackTotal: number;
 }) {
+  const total = Number(progress.righe_totali ?? fallbackTotal ?? 0);
+  const elaborate = Number(progress.righe_elaborate ?? 0);
+  const pct = total > 0 ? Math.min(100, Math.round((elaborate / total) * 100)) : 0;
   return (
     <div className="space-y-2 mb-4 p-3 rounded-md border bg-muted/30 text-sm">
       <div className="flex items-center gap-2">
         <Loader2 className="size-4 animate-spin" />
         <span className="font-medium">Import in corso in background</span>
+      </div>
+      <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+        <div className="h-full bg-primary transition-all duration-500" style={{ width: `${pct}%` }} />
       </div>
       <div className="text-xs text-muted-foreground">
         {progress.righe_elaborate ?? 0} / {progress.righe_totali ?? fallbackTotal} righe ·{" "}
