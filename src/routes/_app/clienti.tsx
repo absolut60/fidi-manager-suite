@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, useNavigate, useRouterState } from "@tanstack/
 import { useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import { Plus, Search, Building, MapPin, FileCheck2, FileX2, ArrowLeft, ArrowRight, Check, Pencil } from "lucide-react";
+import { Plus, Search, Building, MapPin, FileCheck2, FileX2, ArrowLeft, ArrowRight, Check, Pencil, PenTool, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -24,14 +24,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SignaturePad, getCanvasDataURL } from "@/components/signature-pad";
 import { generaSchedaCliente } from "@/lib/scheda-pdf";
-import { generaPdfPrivacy } from "@/lib/privacy-pdf";
-
-function splitNomeCognome(full: string): { nome: string; cognome: string } {
-  const parts = full.trim().split(/\s+/);
-  if (parts.length === 0 || !parts[0]) return { nome: "", cognome: "" };
-  if (parts.length === 1) return { nome: parts[0], cognome: "" };
-  return { nome: parts[0], cognome: parts.slice(1).join(" ") };
-}
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/_app/clienti")({
   component: ClientiPage,
@@ -271,12 +264,13 @@ function ClientiPage() {
 }
 
 // ============================================================================
-// WIZARD SCHEDA CLIENTE
+// WIZARD SCHEDA CLIENTE — Modalità "Crea con firma" / "Crea senza firma"
 // ============================================================================
 
 const schedaSchema = z.object({
   tipo: z.enum(["nuovo", "aggiornamento"]),
   tipo_soggetto: z.enum(["persona_fisica", "azienda"]),
+  // STEP 1 — Impresa
   ragione_sociale: z.string().trim().min(1, "Obbligatorio").max(200),
   codice_gestionale: z.string().trim().max(50).optional().or(z.literal("")),
   indirizzo: z.string().trim().max(200).optional().or(z.literal("")),
@@ -294,16 +288,30 @@ const schedaSchema = z.object({
   codice_sdi: z.string().trim().max(20).optional().or(z.literal("")),
   pec: z.string().trim().max(255).optional().or(z.literal("")),
   store_id: z.string().uuid().optional().or(z.literal("")),
-  // Contatti
-  titolare_nome: z.string().trim().max(150).optional().or(z.literal("")),
+  // STEP 2 — Contatti (nome/cognome separati)
+  titolare_nome: z.string().trim().max(100).optional().or(z.literal("")),
+  titolare_cognome: z.string().trim().max(100).optional().or(z.literal("")),
   titolare_email: z.string().trim().max(255).optional().or(z.literal("")),
   titolare_cell: z.string().trim().max(30).optional().or(z.literal("")),
-  amministrativo_nome: z.string().trim().max(150).optional().or(z.literal("")),
+  amministrativo_nome: z.string().trim().max(100).optional().or(z.literal("")),
+  amministrativo_cognome: z.string().trim().max(100).optional().or(z.literal("")),
   amministrativo_email: z.string().trim().max(255).optional().or(z.literal("")),
   amministrativo_cell: z.string().trim().max(30).optional().or(z.literal("")),
-  // Dichiarante
-  dichiarante_nome: z.string().trim().min(1, "Obbligatorio").max(100),
-  dichiarante_cognome: z.string().trim().min(1, "Obbligatorio").max(100),
+  // STEP 3 — Amministrazione (admin/approvatori)
+  codice_assegnato: z.string().trim().max(50).optional().or(z.literal("")),
+  sede_operatore: z.string().trim().max(100).optional().or(z.literal("")),
+  condizioni_pagamento_concordate: z.string().trim().max(200).optional().or(z.literal("")),
+  data_richiesta_affidamento: z.string().optional().or(z.literal("")),
+  importo_affidamento_richiesto: z.string().optional().or(z.literal("")),
+  data_esito_affidamento: z.string().optional().or(z.literal("")),
+  importo_affidato: z.string().optional().or(z.literal("")),
+  fido_aziendale_concesso: z.string().optional().or(z.literal("")),
+  condizioni_pagamento_concesse: z.string().trim().max(200).optional().or(z.literal("")),
+  data_affidamento_aziendale: z.string().optional().or(z.literal("")),
+  note_amministrazione: z.string().trim().max(2000).optional().or(z.literal("")),
+  // STEP 4 — Firma (solo modalità con firma)
+  dichiarante_nome: z.string().trim().max(100).optional().or(z.literal("")),
+  dichiarante_cognome: z.string().trim().max(100).optional().or(z.literal("")),
 });
 
 type SchedaForm = z.infer<typeof schedaSchema>;
@@ -319,20 +327,38 @@ const emptyForm: SchedaForm = {
   banca: "", agenzia: "", abi: "", cab: "",
   codice_sdi: "", pec: "",
   store_id: "",
-  titolare_nome: "", titolare_email: "", titolare_cell: "",
-  amministrativo_nome: "", amministrativo_email: "", amministrativo_cell: "",
+  titolare_nome: "", titolare_cognome: "", titolare_email: "", titolare_cell: "",
+  amministrativo_nome: "", amministrativo_cognome: "", amministrativo_email: "", amministrativo_cell: "",
+  codice_assegnato: "", sede_operatore: "", condizioni_pagamento_concordate: "",
+  data_richiesta_affidamento: "", importo_affidamento_richiesto: "",
+  data_esito_affidamento: "", importo_affidato: "",
+  fido_aziendale_concesso: "", condizioni_pagamento_concesse: "",
+  data_affidamento_aziendale: "", note_amministrazione: "",
   dichiarante_nome: "", dichiarante_cognome: "",
 };
 
-const STEPS = ["Impresa", "Banca / Fatt. elettronica", "Contatti", "Dichiarante e firma"] as const;
+type ModalitaCreazione = "con_firma" | "senza_firma" | null;
 
 function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient();
+  const { role } = useAuth();
+  const isStoreManager = role === "store_manager";
+  const canSeeAdminStep = !isStoreManager; // admin + approvatori
+
+  const [modalita, setModalita] = useState<ModalitaCreazione>(null);
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<SchedaForm>(emptyForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const padRef = useRef<HTMLDivElement>(null);
   const [hasSig, setHasSig] = useState(false);
+
+  // Steps dinamici in base a modalità e ruolo
+  const steps = useMemo(() => {
+    const s = ["Impresa", "Contatti"];
+    if (canSeeAdminStep) s.push("Amministrazione");
+    if (modalita === "con_firma") s.push("Firma");
+    return s;
+  }, [modalita, canSeeAdminStep]);
 
   const { data: stores } = useQuery({
     queryKey: ["stores"],
@@ -349,30 +375,35 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
   }
 
   const validateStep = (s: number): boolean => {
+    const label = steps[s];
     const errs: Record<string, string> = {};
-    if (s === 0) {
+    if (label === "Impresa") {
       if (!form.ragione_sociale.trim()) errs.ragione_sociale = "Obbligatorio";
       if (form.email && !z.string().email().safeParse(form.email).success) errs.email = "Email non valida";
     }
-    if (s === 2) {
-      if (!(form.titolare_nome ?? "").trim())
-        errs.titolare_nome = "Nominativo Titolare obbligatorio (sarà il firmatario)";
+    if (label === "Contatti") {
+      if (!(form.titolare_nome ?? "").trim()) errs.titolare_nome = "Nome Titolare obbligatorio";
+      if (!(form.titolare_cognome ?? "").trim()) errs.titolare_cognome = "Cognome Titolare obbligatorio";
     }
-    if (s === 3) {
-      if (!form.dichiarante_nome.trim()) errs.dichiarante_nome = "Obbligatorio";
-      if (!form.dichiarante_cognome.trim()) errs.dichiarante_cognome = "Obbligatorio";
+    if (label === "Firma") {
+      if (!(form.dichiarante_nome ?? "").trim()) errs.dichiarante_nome = "Obbligatorio";
+      if (!(form.dichiarante_cognome ?? "").trim()) errs.dichiarante_cognome = "Obbligatorio";
       if (!hasSig) errs.firma = "Firma obbligatoria";
     }
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
 
-  // Auto-precompila dichiarante dal Titolare al passaggio step 2 → 3
   const goNext = () => {
     if (!validateStep(step)) return;
-    if (step === 2) {
-      const { nome, cognome } = splitNomeCognome(form.titolare_nome ?? "");
-      setForm((f) => ({ ...f, dichiarante_nome: nome, dichiarante_cognome: cognome }));
+    // Quando si passa allo step Firma, precompila il dichiarante dal Titolare
+    const next = steps[step + 1];
+    if (next === "Firma") {
+      setForm((f) => ({
+        ...f,
+        dichiarante_nome: f.dichiarante_nome || f.titolare_nome || "",
+        dichiarante_cognome: f.dichiarante_cognome || f.titolare_cognome || "",
+      }));
     }
     setStep((s) => s + 1);
   };
@@ -380,15 +411,17 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
   const submit = useMutation({
     mutationFn: async () => {
       const parsed = schedaSchema.parse(form);
-      const dataUrl = padRef.current ? getCanvasDataURL(padRef.current) : null;
-      if (!dataUrl) throw new Error("Inserisci la firma");
-      if (!(parsed.titolare_nome ?? "").trim())
-        throw new Error("Nominativo Titolare obbligatorio");
+      const conFirma = modalita === "con_firma";
+
+      let dataUrl: string | null = null;
+      if (conFirma) {
+        dataUrl = padRef.current ? getCanvasDataURL(padRef.current) : null;
+        if (!dataUrl) throw new Error("Inserisci la firma");
+      }
 
       const now = new Date();
       const { data: { user } } = await supabase.auth.getUser();
 
-      // Tracker per rollback in caso di errore in qualunque step successivo
       let clienteId: string | null = null;
       const uploadedPaths: Array<{ bucket: string; path: string }> = [];
 
@@ -401,14 +434,19 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
             await supabase.from("contatti").delete().eq("cliente_id", clienteId);
             await supabase.from("clienti").delete().eq("id", clienteId);
           }
-        } catch {
-          // best-effort rollback; non sovrascrive l'errore originale
-        }
+        } catch { /* best-effort */ }
         throw new Error(reason);
       };
 
       try {
-        // 1. INSERT cliente
+        // 1. INSERT cliente (dati Step 1 + Step 3 se admin)
+        const num = (s?: string) => {
+          if (!s) return null;
+          const n = Number(String(s).replace(",", "."));
+          return Number.isFinite(n) ? n : null;
+        };
+        const date = (s?: string) => (s && s.trim() ? s : null);
+
         const clientePayload: Record<string, unknown> = {
           ragione_sociale: parsed.ragione_sociale,
           tipo_soggetto: parsed.tipo_soggetto,
@@ -428,116 +466,145 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
           codice_sdi: parsed.codice_sdi || null,
           pec: parsed.pec || null,
           store_id: parsed.store_id || null,
-          dichiarante_nome: parsed.dichiarante_nome,
-          dichiarante_cognome: parsed.dichiarante_cognome,
+          dichiarante_nome: parsed.dichiarante_nome || null,
+          dichiarante_cognome: parsed.dichiarante_cognome || null,
           created_by: user?.id,
         };
+        if (canSeeAdminStep) {
+          Object.assign(clientePayload, {
+            codice_assegnato: parsed.codice_assegnato || null,
+            sede_operatore: parsed.sede_operatore || null,
+            condizioni_pagamento_concordate: parsed.condizioni_pagamento_concordate || null,
+            data_richiesta_affidamento: date(parsed.data_richiesta_affidamento),
+            importo_affidamento_richiesto: num(parsed.importo_affidamento_richiesto),
+            data_esito_affidamento: date(parsed.data_esito_affidamento),
+            importo_affidato: num(parsed.importo_affidato),
+            fido_aziendale_concesso: num(parsed.fido_aziendale_concesso),
+            condizioni_pagamento_concesse: parsed.condizioni_pagamento_concesse || null,
+            data_affidamento_aziendale: date(parsed.data_affidamento_aziendale),
+            note_amministrazione: parsed.note_amministrazione || null,
+          });
+        }
+
+        // PRIMA: INSERT cliente e ottieni clienteId
         const { data: cliente, error: e1 } = await supabase
           .from("clienti").insert(clientePayload as never).select("id").single();
-        if (e1) throw e1;
+        if (e1) throw new Error(`Inserimento cliente: ${e1.message}`);
+        if (!cliente || !(cliente as { id?: string }).id) {
+          throw new Error("Inserimento cliente: id non restituito");
+        }
         clienteId = (cliente as { id: string }).id;
 
-        // 2. Upload firma PNG (in bucket "firme", path per contatto Titolare)
-        const pngBlob = await (await fetch(dataUrl)).blob();
-        const firmaPath = `contatti/${clienteId}/firma-${now.getTime()}.png`;
-        const { error: e2 } = await supabase.storage.from("firme")
-          .upload(firmaPath, pngBlob, { upsert: true, contentType: "image/png" });
-        if (e2) throw new Error(`Upload firma: ${e2.message}`);
-        uploadedPaths.push({ bucket: "firme", path: firmaPath });
-        const { data: firmaUrl } = supabase.storage.from("firme").getPublicUrl(firmaPath);
+        let firmaUrl: string | null = null;
+        let pdfSchedaUrl: string | null = null;
+        let pdfSchedaPath: string | null = null;
 
-        // 3. Genera PDF privacy del Titolare (firmatario)
-        const titolareFull = (parsed.titolare_nome ?? "").trim();
-        const { nome: titNome, cognome: titCognome } = splitNomeCognome(titolareFull);
-        const pdfPrivacyBytes = await generaPdfPrivacy({
-          ragioneSociale: `${parsed.ragione_sociale} — firma di ${titolareFull}`,
-          partitaIva: parsed.partita_iva || null,
-          codiceFiscale: parsed.codice_fiscale || null,
-          indirizzo: parsed.indirizzo || null,
-          citta: parsed.citta || null,
-          email: parsed.titolare_email || parsed.email || null,
-          firmaPngDataUrl: dataUrl,
-          dataFirma: now,
-        });
-        const pdfPrivacyPath = `contatti/${clienteId}/privacy-${now.getTime()}.pdf`;
-        const { error: ePdfPriv } = await supabase.storage.from("documenti-privacy")
-          .upload(pdfPrivacyPath, pdfPrivacyBytes, { contentType: "application/pdf", upsert: true });
-        if (ePdfPriv) throw new Error(`Upload PDF privacy: ${ePdfPriv.message}`);
-        uploadedPaths.push({ bucket: "documenti-privacy", path: pdfPrivacyPath });
-        const { data: pdfPrivacyUrl } = supabase.storage.from("documenti-privacy").getPublicUrl(pdfPrivacyPath);
+        if (conFirma && dataUrl) {
+          // 2. Upload firma PNG
+          const pngBlob = await (await fetch(dataUrl)).blob();
+          const firmaPath = `clienti/${clienteId}/firma-${now.getTime()}.png`;
+          const { error: e2 } = await supabase.storage.from("firme")
+            .upload(firmaPath, pngBlob, { upsert: true, contentType: "image/png" });
+          if (e2) throw new Error(`Upload firma: ${e2.message}`);
+          uploadedPaths.push({ bucket: "firme", path: firmaPath });
+          firmaUrl = supabase.storage.from("firme").getPublicUrl(firmaPath).data.publicUrl;
 
-        // 4. Genera PDF scheda cliente
-        const pdfBytes = await generaSchedaCliente({
-          tipo: parsed.tipo,
-          tipoSoggetto: parsed.tipo_soggetto,
-          ragioneSociale: parsed.ragione_sociale,
-          indirizzo: parsed.indirizzo,
-          cap: parsed.cap,
-          citta: parsed.citta,
-          provincia: parsed.provincia,
-          telefono: parsed.telefono,
-          email: parsed.email,
-          partitaIva: parsed.partita_iva,
-          codiceFiscale: parsed.codice_fiscale,
-          banca: parsed.banca,
-          agenzia: parsed.agenzia,
-          abi: parsed.abi,
-          cab: parsed.cab,
-          codiceSdi: parsed.codice_sdi,
-          pec: parsed.pec,
-          codiceGestionale: parsed.codice_gestionale,
-          titolareNome: parsed.titolare_nome,
-          titolareEmail: parsed.titolare_email,
-          titolareCell: parsed.titolare_cell,
-          amministrativoNome: parsed.amministrativo_nome,
-          amministrativoEmail: parsed.amministrativo_email,
-          amministrativoCell: parsed.amministrativo_cell,
-          dichiaranteNome: parsed.dichiarante_nome,
-          dichiaranteCognome: parsed.dichiarante_cognome,
-          firmaPngDataUrl: dataUrl,
-          dataFirma: now,
-        });
-        const schedaPath = `${clienteId}/scheda-${now.getTime()}.pdf`;
-        const { error: e3 } = await supabase.storage.from("schede-clienti")
-          .upload(schedaPath, pdfBytes, { contentType: "application/pdf", upsert: true });
-        if (e3) throw new Error(`Upload scheda: ${e3.message}`);
-        uploadedPaths.push({ bucket: "schede-clienti", path: schedaPath });
-        const { data: schedaSigned } = await supabase.storage.from("schede-clienti")
-          .createSignedUrl(schedaPath, 60 * 60 * 24 * 365 * 5);
+          // 3. Genera PDF scheda cliente (replica layout MADE)
+          const storeNome =
+            (stores ?? []).find((s) => s.id === parsed.store_id)?.nome ?? null;
+          const pdfBytes = await generaSchedaCliente({
+            tipo: parsed.tipo,
+            tipoSoggetto: parsed.tipo_soggetto,
+            ragioneSociale: parsed.ragione_sociale,
+            indirizzo: parsed.indirizzo,
+            cap: parsed.cap,
+            citta: parsed.citta,
+            provincia: parsed.provincia,
+            telefono: parsed.telefono,
+            email: parsed.email,
+            partitaIva: parsed.partita_iva,
+            codiceFiscale: parsed.codice_fiscale,
+            banca: parsed.banca,
+            agenzia: parsed.agenzia,
+            abi: parsed.abi,
+            cab: parsed.cab,
+            codiceSdi: parsed.codice_sdi,
+            pec: parsed.pec,
+            codiceGestionale: parsed.codice_gestionale,
+            puntoVendita: storeNome,
+            titolareNome: parsed.titolare_nome,
+            titolareCognome: parsed.titolare_cognome,
+            titolareEmail: parsed.titolare_email,
+            titolareCell: parsed.titolare_cell,
+            amministrativoNome: parsed.amministrativo_nome,
+            amministrativoCognome: parsed.amministrativo_cognome,
+            amministrativoEmail: parsed.amministrativo_email,
+            amministrativoCell: parsed.amministrativo_cell,
+            dichiaranteNome: parsed.dichiarante_nome,
+            dichiaranteCognome: parsed.dichiarante_cognome,
+            firmaPngDataUrl: dataUrl,
+            dataFirma: now,
+            amministrazione: canSeeAdminStep ? {
+              codiceAssegnato: parsed.codice_assegnato || null,
+              sedeOperatore: parsed.sede_operatore || null,
+              condizioniPagamentoConcordate: parsed.condizioni_pagamento_concordate || null,
+              dataRichiestaAffidamento: parsed.data_richiesta_affidamento || null,
+              importoAffidamentoRichiesto: parsed.importo_affidamento_richiesto || null,
+              dataEsitoAffidamento: parsed.data_esito_affidamento || null,
+              importoAffidato: parsed.importo_affidato || null,
+              fidoAziendaleConcesso: parsed.fido_aziendale_concesso || null,
+              condizioniPagamentoConcesse: parsed.condizioni_pagamento_concesse || null,
+              dataAffidamentoAziendale: parsed.data_affidamento_aziendale || null,
+              note: parsed.note_amministrazione || null,
+            } : null,
+          });
 
-        // 5. UPDATE cliente con riepilogo firma + scheda url
-        const { error: e4 } = await supabase.from("clienti").update({
-          privacy_firmata: true,
-          data_firma: now.toISOString(),
-          firma_url: firmaUrl.publicUrl,
-          scheda_pdf_url: schedaSigned?.signedUrl ?? null,
-        } as never).eq("id", clienteId);
-        if (e4) throw new Error(`Aggiornamento cliente: ${e4.message}`);
+          // PDF salvato su "documenti-privacy" come da requisito
+          pdfSchedaPath = `clienti/${clienteId}/scheda-${now.getTime()}.pdf`;
+          const { error: e3 } = await supabase.storage.from("documenti-privacy")
+            .upload(pdfSchedaPath, pdfBytes, { contentType: "application/pdf", upsert: true });
+          if (e3) throw new Error(`Upload scheda PDF: ${e3.message}`);
+          uploadedPaths.push({ bucket: "documenti-privacy", path: pdfSchedaPath });
+          pdfSchedaUrl = supabase.storage.from("documenti-privacy").getPublicUrl(pdfSchedaPath).data.publicUrl;
 
-        // 6. INSERT contatti — Titolare (con firma+PDF) e Referente Amm.vo (opzionale)
+          // 4. UPDATE cliente con riepilogo firma
+          const { error: e4 } = await supabase.from("clienti").update({
+            privacy_firmata: true,
+            data_firma: now.toISOString(),
+            firma_url: firmaUrl,
+            scheda_pdf_url: pdfSchedaUrl,
+          } as never).eq("id", clienteId);
+          if (e4) throw new Error(`Aggiornamento cliente: ${e4.message}`);
+        }
+
+        // 5. INSERT contatti (Titolare sempre, Amm.vo se compilato)
         const contattiToInsert: Array<Record<string, unknown>> = [];
 
-        contattiToInsert.push({
+        const titolareContact: Record<string, unknown> = {
           cliente_id: clienteId,
-          nome: titNome,
-          cognome: titCognome || null,
+          nome: parsed.titolare_nome,
+          cognome: parsed.titolare_cognome || null,
           ruolo: "Titolare / Legale Rappresentante",
           email: parsed.titolare_email || null,
           cellulare: parsed.titolare_cell || null,
           principale: true,
-          privacy_firmata: true,
-          data_firma: now.toISOString(),
-          firma_url: firmaUrl.publicUrl,
-          pdf_privacy_url: pdfPrivacyUrl.publicUrl,
-          pdf_privacy_path: pdfPrivacyPath,
-        });
+        };
+        if (conFirma && firmaUrl && pdfSchedaUrl) {
+          Object.assign(titolareContact, {
+            privacy_firmata: true,
+            data_firma: now.toISOString(),
+            firma_url: firmaUrl,
+            pdf_privacy_url: pdfSchedaUrl,
+            pdf_privacy_path: pdfSchedaPath,
+          });
+        }
+        contattiToInsert.push(titolareContact);
 
         if ((parsed.amministrativo_nome ?? "").trim()) {
-          const { nome, cognome } = splitNomeCognome(parsed.amministrativo_nome ?? "");
           contattiToInsert.push({
             cliente_id: clienteId,
-            nome,
-            cognome: cognome || null,
+            nome: parsed.amministrativo_nome,
+            cognome: parsed.amministrativo_cognome || null,
             ruolo: "Referente Amministrativo",
             email: parsed.amministrativo_email || null,
             cellulare: parsed.amministrativo_cell || null,
@@ -552,11 +619,15 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Errore durante il salvataggio";
         await rollback(msg);
-        return null; // unreachable: rollback throws
+        return null;
       }
     },
     onSuccess: () => {
-      toast.success("Scheda cliente creata e firmata");
+      toast.success(
+        modalita === "con_firma"
+          ? "Scheda cliente creata e firmata"
+          : "Scheda cliente creata"
+      );
       qc.invalidateQueries({ queryKey: ["clienti"] });
       onClose();
     },
@@ -564,7 +635,7 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
       const code = err?.code ?? "";
       const msg = err?.message ?? "";
       if (code === "23505" || msg.includes("clienti_codice_gestionale_unique")) {
-        toast.error("Codice gestionale già utilizzato da un altro cliente. Inseriscine uno diverso o lascialo vuoto.");
+        toast.error("Codice gestionale già utilizzato. Inseriscine uno diverso o lascialo vuoto.");
         setStep(0);
         return;
       }
@@ -572,33 +643,84 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
     },
   });
 
-  const progress = useMemo(() => ((step + 1) / STEPS.length) * 100, [step]);
+  const progress = useMemo(() => ((step + 1) / steps.length) * 100, [step, steps.length]);
+  const currentStepLabel = steps[step];
+
+  // --- Selezione modalità iniziale ---
+  if (modalita === null) {
+    return (
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Nuova scheda cliente</DialogTitle>
+          <DialogDescription>Scegli come vuoi creare la scheda.</DialogDescription>
+        </DialogHeader>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 py-2">
+          <button
+            type="button"
+            onClick={() => { setModalita("con_firma"); setStep(0); }}
+            className="text-left rounded-lg border bg-card p-4 hover:border-primary hover:bg-accent/40 transition"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <PenTool className="size-5 text-primary" />
+              <span className="font-semibold">Crea con firma</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Flusso completo con consenso privacy, firma grafometrica e generazione automatica del PDF MADE.
+            </p>
+          </button>
+          <button
+            type="button"
+            onClick={() => { setModalita("senza_firma"); setStep(0); }}
+            className="text-left rounded-lg border bg-card p-4 hover:border-primary hover:bg-accent/40 transition"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <FileText className="size-5 text-primary" />
+              <span className="font-semibold">Crea senza firma</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Inserimento rapido dell'anagrafica e dei contatti, senza firma né PDF (potrai raccoglierla dopo).
+            </p>
+          </button>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Annulla</Button>
+        </DialogFooter>
+      </DialogContent>
+    );
+  }
+
+  const isLastStep = step >= steps.length - 1;
 
   return (
     <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
       <DialogHeader>
-        <DialogTitle>Scheda inserimento cliente</DialogTitle>
+        <DialogTitle>
+          Scheda inserimento cliente
+          <span className="ml-2 text-xs font-normal text-muted-foreground">
+            {modalita === "con_firma" ? "(con firma)" : "(senza firma)"}
+          </span>
+        </DialogTitle>
         <DialogDescription>
-          Step {step + 1} di {STEPS.length} — {STEPS[step]}
+          Step {step + 1} di {steps.length} — {currentStepLabel}
         </DialogDescription>
       </DialogHeader>
 
-      {/* Progress */}
       <div className="h-1.5 bg-muted rounded-full overflow-hidden">
         <div className="h-full bg-primary transition-all" style={{ width: `${progress}%` }} />
       </div>
 
       <div className="space-y-4 mt-2">
-        {step === 0 && (
+        {currentStepLabel === "Impresa" && (
           <StepImpresa form={form} set={set} errors={errors} stores={stores ?? []} />
         )}
-        {step === 1 && <StepBanca form={form} set={set} />}
-        {step === 2 && <StepContatti form={form} set={set} />}
-        {step === 3 && (
-          <StepDichiarante
-            form={form} set={set} errors={errors}
-            padRef={padRef} setHasSig={setHasSig}
-          />
+        {currentStepLabel === "Contatti" && (
+          <StepContatti form={form} set={set} errors={errors} />
+        )}
+        {currentStepLabel === "Amministrazione" && (
+          <StepAmministrazione form={form} set={set} />
+        )}
+        {currentStepLabel === "Firma" && (
+          <StepFirma form={form} set={set} errors={errors} padRef={padRef} setHasSig={setHasSig} />
         )}
       </div>
 
@@ -608,9 +730,11 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
             <ArrowLeft className="size-4 mr-1" /> Indietro
           </Button>
         ) : (
-          <Button type="button" variant="outline" onClick={onClose}>Annulla</Button>
+          <Button type="button" variant="outline" onClick={() => setModalita(null)}>
+            <ArrowLeft className="size-4 mr-1" /> Cambia modalità
+          </Button>
         )}
-        {step < STEPS.length - 1 ? (
+        {!isLastStep ? (
           <Button type="button" onClick={goNext}>
             Avanti <ArrowRight className="size-4 ml-1" />
           </Button>
@@ -618,9 +742,13 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
           <Button
             type="button"
             disabled={submit.isPending}
-            onClick={() => { if (validateStep(3)) submit.mutate(); }}
+            onClick={() => { if (validateStep(step)) submit.mutate(); }}
           >
-            {submit.isPending ? "Salvataggio..." : (<><Check className="size-4 mr-1" /> Crea scheda e firma</>)}
+            {submit.isPending ? "Salvataggio..." : (
+              <><Check className="size-4 mr-1" />
+                {modalita === "con_firma" ? "Crea scheda e firma" : "Crea scheda"}
+              </>
+            )}
           </Button>
         )}
       </DialogFooter>
@@ -715,25 +843,7 @@ function StepImpresa({
         </div>
       </div>
 
-      <div className="space-y-1.5">
-        <Label>Punto vendita</Label>
-        <Select value={form.store_id || undefined} onValueChange={(v) => set("store_id", v)}>
-          <SelectTrigger><SelectValue placeholder={stores.length ? "Seleziona..." : "Nessuno disponibile"} /></SelectTrigger>
-          <SelectContent>
-            {stores.map((s) => (
-              <SelectItem key={s.id} value={s.id}>{s.codice} — {s.nome}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-    </>
-  );
-}
-
-function StepBanca({ form, set }: { form: SchedaForm; set: SetFn }) {
-  return (
-    <>
-      <h3 className="font-semibold text-sm">Dati bancari</h3>
+      <h3 className="font-semibold text-sm pt-2">Dati bancari</h3>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="space-y-1.5 sm:col-span-2">
           <Label>Banca</Label>
@@ -766,17 +876,39 @@ function StepBanca({ form, set }: { form: SchedaForm; set: SetFn }) {
           <Input type="email" value={form.pec} onChange={(e) => set("pec", e.target.value)} />
         </div>
       </div>
+
+      <div className="space-y-1.5">
+        <Label>Punto vendita</Label>
+        <Select value={form.store_id || undefined} onValueChange={(v) => set("store_id", v)}>
+          <SelectTrigger><SelectValue placeholder={stores.length ? "Seleziona..." : "Nessuno disponibile"} /></SelectTrigger>
+          <SelectContent>
+            {stores.map((s) => (
+              <SelectItem key={s.id} value={s.id}>{s.codice} — {s.nome}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
     </>
   );
 }
 
-function StepContatti({ form, set }: { form: SchedaForm; set: SetFn }) {
+function StepContatti({
+  form, set, errors,
+}: { form: SchedaForm; set: SetFn; errors: Record<string, string> }) {
   return (
     <>
-      <h3 className="font-semibold text-sm">Titolare / Legale Rappresentante</h3>
-      <div className="space-y-1.5">
-        <Label>Nominativo</Label>
-        <Input value={form.titolare_nome} onChange={(e) => set("titolare_nome", e.target.value)} />
+      <h3 className="font-semibold text-sm">Titolare / Legale Rappresentante *</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label>Nome *</Label>
+          <Input value={form.titolare_nome} onChange={(e) => set("titolare_nome", e.target.value)} />
+          {errors.titolare_nome && <p className="text-xs text-destructive">{errors.titolare_nome}</p>}
+        </div>
+        <div className="space-y-1.5">
+          <Label>Cognome *</Label>
+          <Input value={form.titolare_cognome} onChange={(e) => set("titolare_cognome", e.target.value)} />
+          {errors.titolare_cognome && <p className="text-xs text-destructive">{errors.titolare_cognome}</p>}
+        </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
@@ -784,15 +916,24 @@ function StepContatti({ form, set }: { form: SchedaForm; set: SetFn }) {
           <Input type="email" value={form.titolare_email} onChange={(e) => set("titolare_email", e.target.value)} />
         </div>
         <div className="space-y-1.5">
-          <Label>Cell.</Label>
+          <Label>Cellulare</Label>
           <Input value={form.titolare_cell} onChange={(e) => set("titolare_cell", e.target.value)} />
         </div>
       </div>
 
-      <h3 className="font-semibold text-sm pt-3">Referente Amministrativo <span className="text-muted-foreground font-normal">(se diverso dal Titolare)</span></h3>
-      <div className="space-y-1.5">
-        <Label>Nominativo</Label>
-        <Input value={form.amministrativo_nome} onChange={(e) => set("amministrativo_nome", e.target.value)} />
+      <h3 className="font-semibold text-sm pt-3">
+        Referente Amministrativo{" "}
+        <span className="text-muted-foreground font-normal">(opzionale, se diverso dal Titolare)</span>
+      </h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label>Nome</Label>
+          <Input value={form.amministrativo_nome} onChange={(e) => set("amministrativo_nome", e.target.value)} />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Cognome</Label>
+          <Input value={form.amministrativo_cognome} onChange={(e) => set("amministrativo_cognome", e.target.value)} />
+        </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
@@ -800,50 +941,122 @@ function StepContatti({ form, set }: { form: SchedaForm; set: SetFn }) {
           <Input type="email" value={form.amministrativo_email} onChange={(e) => set("amministrativo_email", e.target.value)} />
         </div>
         <div className="space-y-1.5">
-          <Label>Cell.</Label>
+          <Label>Cellulare</Label>
           <Input value={form.amministrativo_cell} onChange={(e) => set("amministrativo_cell", e.target.value)} />
         </div>
       </div>
       <p className="text-xs text-muted-foreground">
-        I contatti compilati saranno automaticamente collegati al cliente nella sezione "Contatti".
+        I contatti saranno collegati automaticamente al cliente nella sezione "Contatti".
       </p>
     </>
   );
 }
 
-function StepDichiarante({
+function StepAmministrazione({ form, set }: { form: SchedaForm; set: SetFn }) {
+  return (
+    <>
+      <div className="rounded-md border bg-muted/40 p-3 text-xs">
+        <p className="font-medium text-foreground mb-1">Spazio riservato Amministrazione</p>
+        <p className="text-muted-foreground">
+          Sezione visibile solo ad amministratori e approvatori. Tutti i campi sono opzionali.
+        </p>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label>Codice assegnato</Label>
+          <Input value={form.codice_assegnato} onChange={(e) => set("codice_assegnato", e.target.value)} />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Sede / Operatore</Label>
+          <Input value={form.sede_operatore} onChange={(e) => set("sede_operatore", e.target.value)} />
+        </div>
+      </div>
+      <div className="space-y-1.5">
+        <Label>Condizioni di pagamento concordate</Label>
+        <Input value={form.condizioni_pagamento_concordate} onChange={(e) => set("condizioni_pagamento_concordate", e.target.value)} />
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label>Data Richiesta Affidamento</Label>
+          <Input type="date" value={form.data_richiesta_affidamento} onChange={(e) => set("data_richiesta_affidamento", e.target.value)} />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Importo Affidamento Richiesto (€)</Label>
+          <Input type="number" step="0.01" value={form.importo_affidamento_richiesto} onChange={(e) => set("importo_affidamento_richiesto", e.target.value)} />
+        </div>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label>Data Esito Affidamento</Label>
+          <Input type="date" value={form.data_esito_affidamento} onChange={(e) => set("data_esito_affidamento", e.target.value)} />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Importo Affidato (€)</Label>
+          <Input type="number" step="0.01" value={form.importo_affidato} onChange={(e) => set("importo_affidato", e.target.value)} />
+        </div>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label>Fido Aziendale Concesso (€)</Label>
+          <Input type="number" step="0.01" value={form.fido_aziendale_concesso} onChange={(e) => set("fido_aziendale_concesso", e.target.value)} />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Data Affidamento Aziendale</Label>
+          <Input type="date" value={form.data_affidamento_aziendale} onChange={(e) => set("data_affidamento_aziendale", e.target.value)} />
+        </div>
+      </div>
+      <div className="space-y-1.5">
+        <Label>Condizioni di Pagamento Concesse</Label>
+        <Input value={form.condizioni_pagamento_concesse} onChange={(e) => set("condizioni_pagamento_concesse", e.target.value)} />
+      </div>
+      <div className="space-y-1.5">
+        <Label>Note</Label>
+        <Textarea rows={3} value={form.note_amministrazione} onChange={(e) => set("note_amministrazione", e.target.value)} />
+      </div>
+    </>
+  );
+}
+
+const PRIVACY_TEXT_UI =
+  "In relazione al nuovo Regolamento UE 679/2016, ed ai sensi del decreto legislativo 196 del 30/06/2003 vi comunichiamo che nei nostri archivi cartacei e/o informatici sono contenuti i vostri dati personali. I dati verranno trattati per le finalità relative alla gestione del rapporto in essere, non verranno comunicati ad altri soggetti e potranno essere utilizzati per l'invio della corrispondenza. L'interessato potrà chiedere in ogni momento la modifica o la cancellazione in relazione all'art. 14-15-16-17 del Reg. UE 679/2016 inviando una mail a madedistribuzione@pecplus.it";
+
+function StepFirma({
   form, set, errors, padRef, setHasSig,
 }: {
   form: SchedaForm; set: SetFn; errors: Record<string, string>;
   padRef: React.RefObject<HTMLDivElement | null>; setHasSig: (b: boolean) => void;
 }) {
+  const today = new Date().toLocaleDateString("it-IT");
   return (
     <>
       <div className="rounded-md border bg-muted/40 p-3 text-xs">
         <p className="font-medium text-foreground mb-1">Firmatario (Titolare / Legale Rappresentante)</p>
         <p className="text-muted-foreground">
-          I dati sono precompilati dallo Step 3. Per modificarli torna allo step "Contatti".
+          Precompilato dallo step Contatti — puoi modificarlo se serve.
         </p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <Label>Nome dichiarante *</Label>
-          <Input value={form.dichiarante_nome} readOnly disabled className="bg-muted/50" />
+          <Input value={form.dichiarante_nome} onChange={(e) => set("dichiarante_nome", e.target.value)} />
           {errors.dichiarante_nome && <p className="text-xs text-destructive">{errors.dichiarante_nome}</p>}
         </div>
         <div className="space-y-1.5">
           <Label>Cognome dichiarante *</Label>
-          <Input value={form.dichiarante_cognome} readOnly disabled className="bg-muted/50" />
+          <Input value={form.dichiarante_cognome} onChange={(e) => set("dichiarante_cognome", e.target.value)} />
           {errors.dichiarante_cognome && <p className="text-xs text-destructive">{errors.dichiarante_cognome}</p>}
         </div>
       </div>
 
-
       <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground leading-relaxed">
-        In relazione al nuovo Regolamento UE 679/2016, ed ai sensi del decreto legislativo 196 del 30/06/2003, i dati personali
-        forniti verranno trattati per le finalità relative alla gestione del rapporto in essere, non verranno comunicati ad
-        altri soggetti e potranno essere utilizzati per l'invio della corrispondenza. L'interessato potrà chiedere in ogni
-        momento la modifica o la cancellazione dei propri dati ai sensi degli artt. 14-17 del Reg. UE 679/2016.
+        {PRIVACY_TEXT_UI}
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+        <div className="space-y-1.5">
+          <Label>Data</Label>
+          <Input value={today} readOnly disabled className="bg-muted/50" />
+        </div>
       </div>
 
       <div className="space-y-1.5">
