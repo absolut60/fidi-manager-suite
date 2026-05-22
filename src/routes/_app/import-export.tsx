@@ -5,7 +5,7 @@ import * as XLSX from "xlsx";
 import { z } from "zod";
 import { toast } from "sonner";
 import {
-  FileSpreadsheet, Upload, Download, CheckCircle2, AlertCircle, X, FileDown, Loader2, TrendingUp, CalendarClock,
+  FileSpreadsheet, Upload, Download, CheckCircle2, AlertCircle, X, FileDown, Loader2, TrendingUp, CalendarClock, ShieldCheck,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
