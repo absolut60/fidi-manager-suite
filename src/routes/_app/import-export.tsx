@@ -755,15 +755,21 @@ function ScadenziarioImportCard() {
 
   function downloadTemplate() {
     const head = [
-      "COD_CLI", "Ragione sociale", "Codice Pagamento Scad", "Descrizione Pagamento",
-      "Numero Documento Origine", "Sezionale Documento", "Data Documento", "Data Scadenza",
-      "Anno Partita", "Tipologia", "Importo scadenza", "Importo documento", "Giorni ritardo",
-      "Stato contabile", "Cod blocco", "Fido euro", "In legale",
+      "COD_CLI", "Ragione Sociale", "Codice Pagamento Scad", "Descrizione Pagamento",
+      "Numero Documento Origine", "Sezionale Documento", "Data Documento", "Anno Partita",
+      "Tipologia Scadenza", "Data Scadenza", "Stato Contabile", "Importo Scadenza",
+      "Importo Documento", "Giorni Ritardo", "Dilazione Effettiva", "Importo Ritardo",
+      "Data Pagamento", "Importo Originario Effetto", "Importo Scadenza Netto Prev",
     ];
-    const sample = ["13908", "Esempio S.r.l.", "RB22", "R.B. 60 gg. d.f.", "FT-2024-001", "1", "01/06/2025", "30/08/2025", 2025, "RB", 1200, 1200, 0, "Aperta", "", 15000, false];
-    const ws = XLSX.utils.aoa_to_sheet([head, sample]);
+    const empty = new Array(head.length).fill("");
+    const samples = [
+      ["13908", "Esempio Alfa S.r.l.", "RB60", "R.B. 60 gg. d.f.", "FT-2025-0001", "1", "01/06/2025", 2025, "RB", "30/08/2025", "Aperta", 1200, 1200, 0, 60, 0, "", 1200, 1200],
+      ["13908", "Esempio Alfa S.r.l.", "RB60", "R.B. 60 gg. d.f.", "FT-2025-0002", "1", "15/06/2025", 2025, "RB", "13/09/2025", "Aperta", 850.5, 850.5, 12, 60, 8.4, "", 850.5, 850.5],
+      ["14210", "Esempio Beta S.p.A.", "BB30", "Bonifico 30 gg. d.f.", "FT-2025-0123", "2", "10/05/2025", 2025, "BB", "09/06/2025", "Chiusa", 3200, 3200, 0, 30, 0, "08/06/2025", 3200, 3200],
+    ];
+    const ws = XLSX.utils.aoa_to_sheet([empty, head, ...samples]);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Scadenziario");
+    XLSX.utils.book_append_sheet(wb, ws, "SCADENZIARIO");
     XLSX.writeFile(wb, "template_scadenziario.xlsx");
   }
 
@@ -785,7 +791,7 @@ function ScadenziarioImportCard() {
         </Button>
       </div>
       <p className="text-xs text-muted-foreground mb-4">
-        Carica lo scadenziario (match cliente su <code>COD_CLI</code>). Elaborazione in background.
+        Carica il file Excel: viene letto solo il foglio <code>SCADENZIARIO</code> (intestazioni in riga 2, dati da riga 3). Match cliente su <code>COD_CLI</code>. Chiave univoca: COD_CLI + Numero Documento + Sezionale.
       </p>
       {bg.inProgress && bg.progress ? <BgProgressBlock progress={bg.progress} fallbackTotal={0} /> : null}
       <ImportZone
