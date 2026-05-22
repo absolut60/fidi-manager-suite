@@ -108,9 +108,25 @@ function sheetToObjects(
 
 function anagraficaSheetToObjects(sheet: XLSX.WorkSheet): Array<Record<string, unknown> & { __row: number }> {
   const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "", blankrows: false });
-  if (matrix.length < 4) return [];
-  const headers = (matrix[1] ?? []).map((c) => String(c ?? "").trim());
-  const dataRows = matrix.slice(3);
+  if (!matrix.length) return [];
+
+  const rowHasRagSoc = (r: unknown[] | undefined) =>
+    (r ?? []).some((c) => normalize(String(c ?? "")) === "ragione sociale");
+
+  let headerIdx = -1;
+  let dataStart = -1;
+  if (rowHasRagSoc(matrix[0])) {
+    headerIdx = 0;
+    dataStart = 1;
+  } else if (rowHasRagSoc(matrix[1])) {
+    headerIdx = 1;
+    dataStart = 3; // riga 3 = descrizioni, dati da riga 4
+  } else {
+    return [];
+  }
+
+  const headers = (matrix[headerIdx] ?? []).map((c) => String(c ?? "").trim());
+  const dataRows = matrix.slice(dataStart);
 
   const out: Array<Record<string, unknown> & { __row: number }> = [];
   dataRows.forEach((row, idx) => {
@@ -118,7 +134,7 @@ function anagraficaSheetToObjects(sheet: XLSX.WorkSheet): Array<Record<string, u
     if (!r.some((c) => String(c ?? "").trim() !== "")) return;
     const obj: Record<string, unknown> = {};
     headers.forEach((h, j) => { if (h) obj[h] = r[j] ?? ""; });
-    out.push(Object.assign(obj, { __row: idx + 4 }));
+    out.push(Object.assign(obj, { __row: dataStart + idx + 1 }));
   });
   return out;
 }
