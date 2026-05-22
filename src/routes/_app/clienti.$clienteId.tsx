@@ -380,12 +380,13 @@ function ClienteDetail() {
                     )}
                   </div>
                   <div className="mt-3 pt-3 border-t flex flex-wrap gap-2">
-                    {c.privacy_firmata && (c as any).pdf_privacy_url && (
-                      <Button variant="outline" size="sm" asChild>
-                        <a href={(c as any).pdf_privacy_url} target="_blank" rel="noreferrer">
-                          <Download className="size-4 mr-1" /> Scarica PDF
-                        </a>
-                      </Button>
+                    {c.privacy_firmata && ((c as any).pdf_privacy_path || (c as any).pdf_privacy_url) && (
+                      <PdfPrivacyButton
+                        path={(c as any).pdf_privacy_path}
+                        url={(c as any).pdf_privacy_url}
+                      >
+                        Scarica PDF
+                      </PdfPrivacyButton>
                     )}
                     <FirmaContattoDialog
                       cliente={cliente}
