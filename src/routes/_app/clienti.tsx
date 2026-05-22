@@ -1128,6 +1128,96 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
 
 type SetFn = <K extends keyof SchedaForm>(k: K, v: SchedaForm[K]) => void;
 
+function ClientePicker({
+  clienteEsistenteId,
+  ragioneSocialeAttuale,
+  onSelect,
+  onReset,
+}: {
+  clienteEsistenteId: string | null;
+  ragioneSocialeAttuale: string;
+  onSelect: (clienteId: string) => void | Promise<void>;
+  onReset: () => void;
+}) {
+  const [term, setTerm] = useState("");
+  const [open, setOpen] = useState(false);
+  const termTrim = term.trim();
+  const { data: results, isFetching } = useQuery({
+    queryKey: ["clienti-picker", termTrim],
+    queryFn: async () => {
+      if (termTrim.length < 2) return [];
+      const like = `%${termTrim.replace(/[(),]/g, " ")}%`;
+      const { data, error } = await supabase
+        .from("clienti")
+        .select("id, ragione_sociale, codice_gestionale, partita_iva, citta")
+        .or(`ragione_sociale.ilike.${like},codice_gestionale.ilike.${like}`)
+        .order("ragione_sociale")
+        .limit(20);
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: termTrim.length >= 2 && !clienteEsistenteId,
+  });
+
+  if (clienteEsistenteId) {
+    return (
+      <div className="rounded-md border border-primary/40 bg-primary/5 p-3 flex items-center justify-between gap-3">
+        <div className="text-sm">
+          <p className="font-medium text-foreground">Aggiornamento di: {ragioneSocialeAttuale}</p>
+          <p className="text-xs text-muted-foreground">Modifica i campi sotto e salva per aggiornare il cliente.</p>
+        </div>
+        <Button type="button" variant="outline" size="sm" onClick={onReset}>
+          <X className="size-4 mr-1" /> Cambia cliente
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-md border bg-muted/30 p-3 space-y-2">
+      <Label className="text-sm">Cerca cliente da aggiornare *</Label>
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+        <Input
+          value={term}
+          onChange={(e) => { setTerm(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          placeholder="Digita ragione sociale o codice gestionale..."
+          className="pl-9"
+        />
+      </div>
+      {open && termTrim.length >= 2 && (
+        <div className="rounded-md border bg-popover max-h-64 overflow-y-auto">
+          {isFetching ? (
+            <p className="px-3 py-2 text-xs text-muted-foreground">Ricerca in corso…</p>
+          ) : (results ?? []).length === 0 ? (
+            <p className="px-3 py-2 text-xs text-muted-foreground">Nessun cliente trovato</p>
+          ) : (
+            (results ?? []).map((c: any) => (
+              <button
+                key={c.id}
+                type="button"
+                className="w-full text-left px-3 py-2 hover:bg-accent text-sm border-b last:border-b-0"
+                onClick={() => { onSelect(c.id); setOpen(false); setTerm(""); }}
+              >
+                <div className="font-medium">{c.ragione_sociale}</div>
+                <div className="text-xs text-muted-foreground">
+                  {c.codice_gestionale ? `Cod. ${c.codice_gestionale}` : "—"}
+                  {c.partita_iva ? ` · P.IVA ${c.partita_iva}` : ""}
+                  {c.citta ? ` · ${c.citta}` : ""}
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+      {termTrim.length > 0 && termTrim.length < 2 && (
+        <p className="text-xs text-muted-foreground">Digita almeno 2 caratteri…</p>
+      )}
+    </div>
+  );
+}
+
 function StepImpresa({
   form, set, errors, stores, clienteEsistenteId, onSelectClienteEsistente, onResetClienteEsistente,
 }: {
