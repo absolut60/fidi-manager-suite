@@ -105,29 +105,42 @@ export async function generaPdfPrivacy(input: PrivacyPdfInput): Promise<Uint8Arr
     { x: margin, y, size: 9, font },
   );
 
-  // Firma
-  y -= 50;
+  // Firma: etichetta a sinistra, firma sopra la riga tratteggiata
+  y -= 60;
   page.drawText("Firma:", { x: margin, y, size: 10, font: fontBold });
+
+  const sigBoxX = margin + 60;
+  const sigBoxWidth = 280;
+  const sigMaxHeight = 50;
+  const lineY = y - 4;
 
   const pngBytes = await fetch(input.firmaPngDataUrl).then((r) => r.arrayBuffer());
   const pngImage = await pdf.embedPng(pngBytes);
-  const sigDims = pngImage.scale(0.35);
+  const scaleFactor = Math.min(
+    sigBoxWidth / pngImage.width,
+    sigMaxHeight / pngImage.height,
+    0.5,
+  );
+  const sigW = pngImage.width * scaleFactor;
+  const sigH = pngImage.height * scaleFactor;
+
+  // Firma posizionata SOPRA la riga (la base della firma poggia sulla riga)
   page.drawImage(pngImage, {
-    x: margin + 60,
-    y: y - sigDims.height + 8,
-    width: Math.min(sigDims.width, 280),
-    height: Math.min(sigDims.height, 70),
+    x: sigBoxX,
+    y: lineY + 2,
+    width: sigW,
+    height: sigH,
   });
 
-  // Linea firma
+  // Riga della firma
   page.drawLine({
-    start: { x: margin + 60, y: y - 50 },
-    end: { x: margin + 60 + 280, y: y - 50 },
+    start: { x: sigBoxX, y: lineY },
+    end: { x: sigBoxX + sigBoxWidth, y: lineY },
     thickness: 0.5,
     color: rgb(0.5, 0.5, 0.5),
   });
 
-  y -= 70;
+  y = lineY - 20;
   page.drawText(
     `Data: ${input.dataFirma.toLocaleString("it-IT")}`,
     { x: margin, y, size: 9, font, color: rgb(0.3, 0.3, 0.3) },
