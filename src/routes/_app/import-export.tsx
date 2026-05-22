@@ -791,7 +791,7 @@ function ScadenziarioImportCard() {
         </Button>
       </div>
       <p className="text-xs text-muted-foreground mb-4">
-        Carica lo scadenziario (match cliente su <code>COD_CLI</code>). Elaborazione in background.
+        Carica il file Excel: viene letto solo il foglio <code>SCADENZIARIO</code> (intestazioni in riga 2, dati da riga 3). Match cliente su <code>COD_CLI</code>. Chiave univoca: COD_CLI + Numero Documento + Sezionale.
       </p>
       {bg.inProgress && bg.progress ? <BgProgressBlock progress={bg.progress} fallbackTotal={0} /> : null}
       <ImportZone
