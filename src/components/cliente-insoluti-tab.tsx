@@ -366,7 +366,7 @@ function NuovoSollecitoDialog({ clienteId, onClose, onSaved }: { clienteId: stri
       } as never).select("id").single();
       if (error) throw error;
 
-      // Crea reminder per admin + approvatore_liv3
+      // Crea reminder per admin + approvatore_liv3 + notifica nella campanella
       if (parsed.reminder_attivo && parsed.reminder_data) {
         const { data: utenti } = await supabase
           .from("user_roles")
@@ -385,6 +385,16 @@ function NuovoSollecitoDialog({ clienteId, onClose, onSaved }: { clienteId: stri
           data_reminder: parsed.reminder_data,
         }));
         if (reminderRows.length) await supabase.from("reminder" as never).insert(reminderRows as never);
+
+        const notificheRows = uniqueIds.map((uid) => ({
+          user_id: uid,
+          tipo: "reminder_sollecito",
+          titolo: `Reminder sollecito — ${cName}`,
+          messaggio: `Programma sollecito per ${parsed.reminder_data}: ${parsed.nota.slice(0, 120)}`,
+          link: `/clienti/${clienteId}`,
+          metadata: { cliente_id: clienteId, sollecito_id: (sol as { id: string }).id, data_reminder: parsed.reminder_data },
+        }));
+        if (notificheRows.length) await supabase.from("notifiche").insert(notificheRows as never);
       }
     },
     onSuccess: () => {

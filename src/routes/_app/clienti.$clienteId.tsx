@@ -23,6 +23,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ClienteCantieriTab } from "@/components/cliente-cantieri-tab";
 import { ClienteStoricoFidoTab } from "@/components/cliente-storico-fido-tab";
+import { ClienteInsolutiTab } from "@/components/cliente-insoluti-tab";
 import { formatEuro } from "@/lib/fidi";
 
 
@@ -253,6 +254,7 @@ function ClienteDetail() {
           <TabsTrigger value="contatti">Contatti ({contatti?.length ?? 0})</TabsTrigger>
           <TabsTrigger value="cantieri">Cantieri</TabsTrigger>
           <TabsTrigger value="storico">Storico fido</TabsTrigger>
+          <TabsTrigger value="insoluti">Insoluti</TabsTrigger>
           <TabsTrigger value="privacy">Privacy</TabsTrigger>
         </TabsList>
 
@@ -400,6 +402,10 @@ function ClienteDetail() {
 
         <TabsContent value="storico">
           <ClienteStoricoFidoTab clienteId={clienteId} />
+        </TabsContent>
+
+        <TabsContent value="insoluti">
+          <ClienteInsolutiTab cliente={{ id: clienteId, bloccato: (cliente as any).bloccato, in_gestione_legale: (cliente as any).in_gestione_legale, motivo_blocco: (cliente as any).motivo_blocco, data_blocco: (cliente as any).data_blocco }} />
         </TabsContent>
 
         <TabsContent value="privacy">

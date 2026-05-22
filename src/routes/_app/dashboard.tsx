@@ -13,6 +13,7 @@ import {
   Upload,
   TrendingUp,
 } from "lucide-react";
+import { DashboardReminders } from "@/components/dashboard-reminders";
 
 export const Route = createFileRoute("/_app/dashboard")({
   component: DashboardPage,
@@ -77,6 +78,8 @@ function DashboardPage() {
           <MetricCard key={m.label} metric={m} loading={loading} />
         ))}
       </div>
+
+      <DashboardReminders />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card className="p-6">
