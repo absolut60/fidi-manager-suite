@@ -412,7 +412,7 @@ function ClienteDetail() {
         </TabsContent>
 
         <TabsContent value="insoluti">
-          <ClienteInsolutiTab cliente={{ id: clienteId, bloccato: (cliente as any).bloccato, in_gestione_legale: (cliente as any).in_gestione_legale, motivo_blocco: (cliente as any).motivo_blocco, data_blocco: (cliente as any).data_blocco }} />
+          <ClienteInsolutiTab cliente={{ id: clienteId, bloccato: (cliente as any).bloccato, in_gestione_legale: (cliente as any).in_gestione_legale, motivo_blocco: (cliente as any).motivo_blocco, data_blocco: (cliente as any).data_blocco }} defaultSubTab={insolutiTab} />
         </TabsContent>
 
         <TabsContent value="privacy">
