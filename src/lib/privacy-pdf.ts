@@ -48,12 +48,21 @@ export async function generaPdfPrivacy(input: PrivacyPdfInput): Promise<Uint8Arr
   });
   y -= 18;
 
+  const fallback = (v: string | null | undefined) => {
+    const s = v == null ? "" : String(v).trim();
+    return s.length > 0 ? s : "—";
+  };
+  const indirizzoCompleto = [input.indirizzo, input.citta]
+    .map((x) => (x == null ? "" : String(x).trim()))
+    .filter((s) => s.length > 0)
+    .join(", ");
+
   const rows: Array<[string, string]> = [
-    ["Ragione sociale", input.ragioneSociale],
-    ["Partita IVA", input.partitaIva ?? "—"],
-    ["Codice Fiscale", input.codiceFiscale ?? "—"],
-    ["Indirizzo", `${input.indirizzo ?? ""} ${input.citta ?? ""}`.trim() || "—"],
-    ["Email", input.email ?? "—"],
+    ["Ragione sociale", fallback(input.ragioneSociale)],
+    ["Partita IVA", fallback(input.partitaIva)],
+    ["Codice Fiscale", fallback(input.codiceFiscale)],
+    ["Indirizzo", indirizzoCompleto.length > 0 ? indirizzoCompleto : "—"],
+    ["Email", fallback(input.email)],
   ];
 
   for (const [k, v] of rows) {
