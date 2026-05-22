@@ -17,10 +17,31 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { useBackgroundImport, type BackgroundImportProgress } from "@/lib/use-background-import";
 
 export const Route = createFileRoute("/_app/import-export")({
   component: ImportExportPage,
 });
+
+/* ============================================================================
+ * Shared: progress block for background imports
+ * ============================================================================ */
+function BgProgressBlock({ progress, fallbackTotal }: { progress: BackgroundImportProgress; fallbackTotal: number }) {
+  return (
+    <div className="space-y-2 mb-4 p-3 rounded-md border bg-muted/30 text-sm">
+      <div className="flex items-center gap-2">
+        <Loader2 className="size-4 animate-spin" />
+        <span className="font-medium">Import in corso in background</span>
+      </div>
+      <div className="text-xs text-muted-foreground">
+        {progress.righe_elaborate ?? 0} / {progress.righe_totali ?? fallbackTotal} righe ·{" "}
+        {progress.righe_create ?? 0} create ·{" "}
+        {progress.righe_aggiornate ?? 0} aggiornate ·{" "}
+        {progress.righe_errore ?? 0} errori
+      </div>
+    </div>
+  );
+}
 
 /* ============================================================================
  * UTILS
