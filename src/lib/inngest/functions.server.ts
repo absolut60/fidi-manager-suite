@@ -1,122 +1,62 @@
 import * as XLSX from "xlsx";
 import { inngest } from "./client";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import {
+  anagraficaSheetToObjects, parseRischioSheet, parseScadenziarioSimpleSheet,
+  parseScadenziarioBlockSheet, parseAssicurazioneSheet, toStr, normalize,
+} from "./parsers.server";
 
-/* ---------- Utils (copia minimale lato server) ---------- */
-function normalize(h: string) {
-  return String(h ?? "")
-    .toLowerCase()
-    .replace(/[._\-/]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-function toStr(v: unknown): string | null {
-  if (v == null) return null;
-  const s = String(v).trim();
-  return s === "" ? null : s;
-}
+type EventData = { importazioneId: string; filePath: string; userId?: string };
 
-const ANAG_HEADERS: Record<string, string> = {
-  "ragione sociale": "ragione_sociale", "ragionesociale": "ragione_sociale", "denominazione": "ragione_sociale",
-  "codice gestionale": "codice_gestionale", "codice": "codice_gestionale", "cod gestionale": "codice_gestionale",
-  "partita iva": "partita_iva", "p iva": "partita_iva", "piva": "partita_iva",
-  "codice fiscale": "codice_fiscale", "cf": "codice_fiscale",
-  "forma giuridica": "forma_giuridica",
-  "indirizzo": "indirizzo", "via": "indirizzo",
-  "citta": "citta", "città": "citta",
-  "cap": "cap",
-  "provincia": "provincia", "prov": "provincia",
-  "telefono": "telefono", "tel": "telefono",
-  "email": "email", "e mail": "email", "mail": "email",
-  "pec": "pec",
-  "codice sdi": "codice_sdi", "sdi": "codice_sdi",
-  "store codice": "store_codice", "store": "store_codice", "punto vendita": "store_codice",
-  "note": "note",
-};
+/* ============================================================================
+ * Utility comuni
+ * ============================================================================ */
 
-function anagraficaSheetToObjects(sheet: XLSX.WorkSheet) {
-  const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "", blankrows: false });
-  if (!matrix.length) return [];
-  const rowHasRagSoc = (r: unknown[] | undefined) =>
-    (r ?? []).some((c) => normalize(String(c ?? "")) === "ragione sociale");
-  let headerIdx = -1, dataStart = -1;
-  if (rowHasRagSoc(matrix[0])) { headerIdx = 0; dataStart = 1; }
-  else if (rowHasRagSoc(matrix[1])) { headerIdx = 1; dataStart = 3; }
-  else return [];
-  const headers = (matrix[headerIdx] ?? []).map((c) => String(c ?? "").trim());
-  const out: Array<Record<string, string> & { __row: number }> = [];
-  for (let i = dataStart; i < matrix.length; i++) {
-    const row = matrix[i] ?? [];
-    if (!row.some((c) => String(c ?? "").trim() !== "")) continue;
-    const obj: Record<string, string> = {};
-    headers.forEach((h, j) => {
-      if (!h) return;
-      const f = ANAG_HEADERS[normalize(h)];
-      if (f) obj[f] = String(row[j] ?? "").trim();
-    });
-    if (!obj.ragione_sociale) continue;
-    out.push(Object.assign(obj, { __row: i + 1 }));
-  }
-  return out;
+async function downloadWorkbook(filePath: string) {
+  const { data: file, error } = await supabaseAdmin.storage.from("import-files").download(filePath);
+  if (error || !file) throw new Error(`Download fallito: ${error?.message ?? "no data"}`);
+  const buf = await file.arrayBuffer();
+  return XLSX.read(buf, { type: "array", cellDates: false });
 }
 
-/* ---------- Funzione: processa l'import anagrafica in background ---------- */
+async function setImportazioneError(importazioneId: string, message: string) {
+  await supabaseAdmin.from("importazioni").update({
+    stato: "completata_con_errori",
+    completata_at: new Date().toISOString(),
+    log_errori: [{ riga: 0, errore: `Errore fatale: ${message}` }],
+  }).eq("id", importazioneId);
+}
+
+/* ============================================================================
+ * A — ANAGRAFICA
+ * ============================================================================ */
+
 export const processAnagraficaImport = inngest.createFunction(
-  {
-    id: "process-anagrafica-import",
-    name: "Process anagrafica import",
-    retries: 2,
-    triggers: [{ event: "import/anagrafica.requested" }],
-  },
+  { id: "process-anagrafica-import", name: "Process anagrafica import", retries: 2,
+    triggers: [{ event: "import/anagrafica.requested" }] },
   async ({ event, step, logger }) => {
-    const { importazioneId, filePath } = event.data as {
-      importazioneId: string;
-      filePath: string;
-    };
-
+    const { importazioneId, filePath } = event.data as EventData;
     const errorLog: Array<{ riga: number; errore: string }> = [];
-    let created = 0;
-    let updated = 0;
-    let skipped = 0;
+    let created = 0, updated = 0, skipped = 0;
 
-    const updateStato = async (
-      stato: "in_elaborazione" | "completata" | "completata_con_errori",
-      done = false,
-    ) => {
+    const update = async (stato: "in_elaborazione" | "completata" | "completata_con_errori", done = false) => {
       await supabaseAdmin.from("importazioni").update({
         righe_elaborate: created + updated + errorLog.length,
-        righe_create: created,
-        righe_aggiornate: updated,
-        righe_errore: skipped + errorLog.length,
-        stato,
-        completata_at: done ? new Date().toISOString() : null,
+        righe_create: created, righe_aggiornate: updated, righe_errore: skipped + errorLog.length,
+        stato, completata_at: done ? new Date().toISOString() : null,
         log_errori: errorLog.length ? errorLog.slice(0, 500) : null,
       }).eq("id", importazioneId);
     };
 
     try {
-      // 1) Download + parse
-      const rows = await step.run("download-and-parse", async () => {
-        const { data: file, error } = await supabaseAdmin.storage.from("import-files").download(filePath);
-        if (error || !file) throw new Error(`Download fallito: ${error?.message ?? "no data"}`);
-        const buf = await file.arrayBuffer();
-        const wb = XLSX.read(buf, { type: "array" });
-        const sheet = wb.Sheets[wb.SheetNames[0]];
-        const parsed = anagraficaSheetToObjects(sheet);
-        return parsed;
+      const rows = await step.run("parse", async () => {
+        const wb = await downloadWorkbook(filePath);
+        return anagraficaSheetToObjects(wb.Sheets[wb.SheetNames[0]]);
       });
+      logger.info(`Anagrafica: ${rows.length} righe`);
+      await supabaseAdmin.from("importazioni").update({ righe_totali: rows.length, stato: "in_elaborazione" }).eq("id", importazioneId);
+      if (!rows.length) { await update("completata_con_errori", true); return { rows: 0 }; }
 
-      logger.info(`Parsed ${rows.length} righe`);
-      await supabaseAdmin.from("importazioni").update({
-        righe_totali: rows.length, stato: "in_elaborazione",
-      }).eq("id", importazioneId);
-
-      if (!rows.length) {
-        await updateStato("completata_con_errori", true);
-        return { rows: 0 };
-      }
-
-      // 2) Lookup stores
       const { stores, storesByIndex } = await step.run("load-stores", async () => {
         const { data } = await supabaseAdmin.from("stores").select("id, codice").order("codice");
         const map: Record<string, string> = {};
@@ -124,25 +64,21 @@ export const processAnagraficaImport = inngest.createFunction(
         return { stores: map, storesByIndex: data ?? [] };
       });
 
-      // 3) Lookup clienti esistenti
       const codici = Array.from(new Set(rows.map((r) => r.codice_gestionale).filter(Boolean)));
       const pive = Array.from(new Set(rows.map((r) => r.partita_iva).filter(Boolean)));
       const existing = await step.run("lookup-existing", async () => {
         const map: Record<string, string> = {};
         if (codici.length) {
-          const { data } = await supabaseAdmin.from("clienti")
-            .select("id, codice_gestionale").in("codice_gestionale", codici);
+          const { data } = await supabaseAdmin.from("clienti").select("id, codice_gestionale").in("codice_gestionale", codici);
           (data ?? []).forEach((c) => { if (c.codice_gestionale) map[`cg:${c.codice_gestionale}`] = c.id; });
         }
         if (pive.length) {
-          const { data } = await supabaseAdmin.from("clienti")
-            .select("id, partita_iva").in("partita_iva", pive);
+          const { data } = await supabaseAdmin.from("clienti").select("id, partita_iva").in("partita_iva", pive);
           (data ?? []).forEach((c) => { if (c.partita_iva) map[`pi:${c.partita_iva}`] = c.id; });
         }
         return map;
       });
 
-      // 4) Prepara payload
       type Prepared = { idx: number; payload: Record<string, unknown>; existId: string | null };
       const prepared: Prepared[] = [];
       for (const r of rows) {
@@ -157,23 +93,14 @@ export const processAnagraficaImport = inngest.createFunction(
         }
         const payload: Record<string, unknown> = {
           ragione_sociale: r.ragione_sociale,
-          codice_gestionale: toStr(r.codice_gestionale),
-          partita_iva: toStr(r.partita_iva),
-          codice_fiscale: toStr(r.codice_fiscale),
-          tipo_soggetto: toStr(r.forma_giuridica),
-          indirizzo: toStr(r.indirizzo),
-          citta: toStr(r.citta),
-          cap: toStr(r.cap),
-          provincia: toStr(r.provincia),
-          telefono: toStr(r.telefono),
-          email: toStr(r.email),
-          pec: toStr(r.pec),
-          codice_sdi: toStr(r.codice_sdi),
-          note: toStr(r.note),
+          codice_gestionale: toStr(r.codice_gestionale), partita_iva: toStr(r.partita_iva),
+          codice_fiscale: toStr(r.codice_fiscale), tipo_soggetto: toStr(r.forma_giuridica),
+          indirizzo: toStr(r.indirizzo), citta: toStr(r.citta), cap: toStr(r.cap), provincia: toStr(r.provincia),
+          telefono: toStr(r.telefono), email: toStr(r.email), pec: toStr(r.pec),
+          codice_sdi: toStr(r.codice_sdi), note: toStr(r.note),
         };
         if (storeId) payload.store_id = storeId;
-        const existId =
-          (r.codice_gestionale && existing[`cg:${r.codice_gestionale}`]) ||
+        const existId = (r.codice_gestionale && existing[`cg:${r.codice_gestionale}`]) ||
           (r.partita_iva && existing[`pi:${r.partita_iva}`]) || null;
         prepared.push({ idx: r.__row, payload, existId });
       }
@@ -182,15 +109,10 @@ export const processAnagraficaImport = inngest.createFunction(
       const toUpdate = prepared.filter((p) => p.existId);
       const BATCH = 100;
 
-      // 5) Insert a batch
       for (let i = 0; i < toInsert.length; i += BATCH) {
         const chunk = toInsert.slice(i, i + BATCH);
-        const stepId = `insert-batch-${i}`;
-        const res = await step.run(stepId, async () => {
-          const { data, error } = await supabaseAdmin
-            .from("clienti")
-            .insert(chunk.map((c) => c.payload) as never)
-            .select("id");
+        const res = await step.run(`insert-batch-${i}`, async () => {
+          const { data, error } = await supabaseAdmin.from("clienti").insert(chunk.map((c) => c.payload) as never).select("id");
           if (error) {
             let ok = 0; const errs: Array<{ riga: number; errore: string }> = [];
             for (const c of chunk) {
@@ -204,14 +126,12 @@ export const processAnagraficaImport = inngest.createFunction(
         });
         created += res.ok;
         errorLog.push(...res.errs);
-        await updateStato("in_elaborazione");
+        await update("in_elaborazione");
       }
 
-      // 6) Update a batch
       for (let i = 0; i < toUpdate.length; i += BATCH) {
         const chunk = toUpdate.slice(i, i + BATCH);
-        const stepId = `update-batch-${i}`;
-        const res = await step.run(stepId, async () => {
+        const res = await step.run(`update-batch-${i}`, async () => {
           let ok = 0; const errs: Array<{ riga: number; errore: string }> = [];
           await Promise.all(chunk.map(async (c) => {
             const { error } = await supabaseAdmin.from("clienti").update(c.payload as never).eq("id", c.existId!);
@@ -222,16 +142,390 @@ export const processAnagraficaImport = inngest.createFunction(
         });
         updated += res.ok;
         errorLog.push(...res.errs);
-        await updateStato("in_elaborazione");
+        await update("in_elaborazione");
       }
 
-      const finalState = errorLog.length > 0 ? "completata_con_errori" : "completata";
-      await updateStato(finalState, true);
+      await update(errorLog.length ? "completata_con_errori" : "completata", true);
       return { created, updated, skipped, errors: errorLog.length };
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      errorLog.push({ riga: 0, errore: `Errore fatale: ${msg}` });
-      await updateStato("completata_con_errori", true);
+      await setImportazioneError(importazioneId, err instanceof Error ? err.message : String(err));
+      throw err;
+    }
+  },
+);
+
+/* ============================================================================
+ * B — ANALISI RISCHIO
+ * ============================================================================ */
+
+export const processRischioImport = inngest.createFunction(
+  { id: "process-rischio-import", name: "Process rischio import", retries: 2,
+    triggers: [{ event: "import/analisi_rischio.requested" }] },
+  async ({ event, step, logger }) => {
+    const { importazioneId, filePath } = event.data as EventData;
+    try {
+      const { rows, missing } = await step.run("parse", async () => {
+        const wb = await downloadWorkbook(filePath);
+        return parseRischioSheet(wb.Sheets[wb.SheetNames[0]]);
+      });
+      logger.info(`Rischio: ${rows.length} righe, ${missing.length} senza codice`);
+
+      const errorLog: Array<{ riga: number; errore: string }> = missing.map((idx) => ({ riga: idx, errore: "Codice gestionale mancante" }));
+      let updated = 0;
+
+      await supabaseAdmin.from("importazioni").update({
+        righe_totali: rows.length + missing.length, stato: "in_elaborazione",
+      }).eq("id", importazioneId);
+
+      const codici = Array.from(new Set(rows.map((r) => r.codice_gestionale)));
+      const map = new Map<string, string>();
+      if (codici.length) {
+        const { data } = await supabaseAdmin.from("clienti").select("id, codice_gestionale").in("codice_gestionale", codici);
+        (data ?? []).forEach((c) => { if (c.codice_gestionale) map.set(c.codice_gestionale, c.id); });
+      }
+
+      const now = new Date().toISOString();
+      const BATCH = 50;
+      for (let i = 0; i < rows.length; i += BATCH) {
+        const chunk = rows.slice(i, i + BATCH);
+        const res = await step.run(`update-batch-${i}`, async () => {
+          let ok = 0; const errs: Array<{ riga: number; errore: string }> = [];
+          await Promise.all(chunk.map(async (r) => {
+            const id = map.get(r.codice_gestionale);
+            if (!id) { errs.push({ riga: r.idx, errore: `Codice ${r.codice_gestionale} non trovato${r.ragione_sociale ? ` (${r.ragione_sociale})` : ""}` }); return; }
+            const { error } = await supabaseAdmin.from("clienti").update({ ...r.payload, ultima_sincronizzazione: now } as never).eq("id", id);
+            if (error) errs.push({ riga: r.idx, errore: `Update: ${error.message}` });
+            else ok++;
+          }));
+          return { ok, errs };
+        });
+        updated += res.ok;
+        errorLog.push(...res.errs);
+        await supabaseAdmin.from("importazioni").update({
+          righe_elaborate: Math.min(i + BATCH, rows.length),
+          righe_aggiornate: updated, righe_errore: errorLog.length,
+          stato: "in_elaborazione",
+        }).eq("id", importazioneId);
+      }
+
+      await supabaseAdmin.from("importazioni").update({
+        righe_elaborate: rows.length, righe_create: 0, righe_aggiornate: updated,
+        righe_errore: errorLog.length,
+        stato: errorLog.length ? "completata_con_errori" : "completata",
+        completata_at: new Date().toISOString(),
+        log_errori: errorLog.length ? errorLog.slice(0, 500) : null,
+      }).eq("id", importazioneId);
+
+      return { updated, errors: errorLog.length };
+    } catch (err) {
+      await setImportazioneError(importazioneId, err instanceof Error ? err.message : String(err));
+      throw err;
+    }
+  },
+);
+
+/* ============================================================================
+ * C — SCADENZIARIO (semplice)
+ * ============================================================================ */
+
+export const processScadenziarioImport = inngest.createFunction(
+  { id: "process-scadenziario-import", name: "Process scadenziario import", retries: 2,
+    triggers: [{ event: "import/scadenziario.requested" }] },
+  async ({ event, step, logger }) => {
+    const { importazioneId, filePath, userId } = event.data as EventData;
+    try {
+      const { rows, missing } = await step.run("parse", async () => {
+        const wb = await downloadWorkbook(filePath);
+        return parseScadenziarioSimpleSheet(wb.Sheets[wb.SheetNames[0]]);
+      });
+      logger.info(`Scadenziario: ${rows.length} righe`);
+
+      const errorLog: Array<{ riga: number; errore: string }> = missing.map((idx) => ({ riga: idx, errore: "Codice cliente mancante" }));
+      let inserted = 0;
+
+      await supabaseAdmin.from("importazioni").update({
+        righe_totali: rows.length + missing.length, stato: "in_elaborazione",
+      }).eq("id", importazioneId);
+
+      const codici = Array.from(new Set(rows.map((r) => r.codice_gestionale)));
+      const clientMap = new Map<string, string>();
+      if (codici.length) {
+        const { data } = await supabaseAdmin.from("clienti").select("id, codice_gestionale").in("codice_gestionale", codici);
+        (data ?? []).forEach((c) => { if (c.codice_gestionale) clientMap.set(c.codice_gestionale, c.id); });
+      }
+
+      const clientIds = Array.from(new Set(Array.from(clientMap.values())));
+      const existingMap = new Map<string, string>();
+      if (clientIds.length) {
+        const { data } = await supabaseAdmin.from("scadenze" as never)
+          .select("id, cliente_id, numero_documento, sezionale, anno_partita, data_scadenza")
+          .in("cliente_id", clientIds);
+        ((data ?? []) as Array<{ id: string; cliente_id: string; numero_documento: string | null; sezionale: string | null; anno_partita: number | null; data_scadenza: string | null }>).forEach((s) => {
+          existingMap.set(`${s.cliente_id}|${s.numero_documento ?? ""}|${s.sezionale ?? ""}|${s.anno_partita ?? ""}|${s.data_scadenza ?? ""}`, s.id);
+        });
+      }
+
+      const now = new Date().toISOString();
+      const BATCH = 50;
+      for (let i = 0; i < rows.length; i += BATCH) {
+        const chunk = rows.slice(i, i + BATCH);
+        const res = await step.run(`scad-batch-${i}`, async () => {
+          let ok = 0; const errs: Array<{ riga: number; errore: string }> = [];
+          for (const r of chunk) {
+            const cid = clientMap.get(r.codice_gestionale);
+            if (!cid) { errs.push({ riga: r.idx, errore: `Cliente ${r.codice_gestionale} non trovato${r.ragione_sociale ? ` (${r.ragione_sociale})` : ""}` }); continue; }
+            const p = r.payload as Record<string, unknown>;
+            const key = `${cid}|${(p.numero_documento as string) ?? ""}|${(p.sezionale as string) ?? ""}|${(p.anno_partita as number) ?? ""}|${(p.data_scadenza as string) ?? ""}`;
+            const existId = existingMap.get(key);
+            const row = { ...p, cliente_id: cid, importato_da: userId ?? null, ultima_sincronizzazione: now };
+            if (existId) {
+              const { error } = await supabaseAdmin.from("scadenze" as never).update(row as never).eq("id", existId);
+              if (error) errs.push({ riga: r.idx, errore: `Update: ${error.message}` }); else ok++;
+            } else {
+              const { error } = await supabaseAdmin.from("scadenze" as never).insert(row as never);
+              if (error) errs.push({ riga: r.idx, errore: `Insert: ${error.message}` }); else ok++;
+            }
+          }
+          return { ok, errs };
+        });
+        inserted += res.ok;
+        errorLog.push(...res.errs);
+        await supabaseAdmin.from("importazioni").update({
+          righe_elaborate: Math.min(i + BATCH, rows.length),
+          righe_create: inserted, righe_errore: errorLog.length, stato: "in_elaborazione",
+        }).eq("id", importazioneId);
+      }
+
+      await supabaseAdmin.from("importazioni").update({
+        righe_elaborate: rows.length, righe_create: inserted, righe_aggiornate: 0,
+        righe_errore: errorLog.length,
+        stato: errorLog.length ? "completata_con_errori" : "completata",
+        completata_at: new Date().toISOString(),
+        log_errori: errorLog.length ? errorLog.slice(0, 500) : null,
+      }).eq("id", importazioneId);
+
+      return { inserted, errors: errorLog.length };
+    } catch (err) {
+      await setImportazioneError(importazioneId, err instanceof Error ? err.message : String(err));
+      throw err;
+    }
+  },
+);
+
+/* ============================================================================
+ * D — SCADENZIARIO + ASSICURAZIONI (file unico, due fogli)
+ * ============================================================================ */
+
+export const processScadAssicImport = inngest.createFunction(
+  { id: "process-scad-assic-import", name: "Process scadenziario+assicurazioni import", retries: 2,
+    triggers: [{ event: "import/scadenziario_assicurazioni.requested" }] },
+  async ({ event, step, logger }) => {
+    const { importazioneId, filePath, userId } = event.data as EventData;
+    try {
+      const parsed = await step.run("parse", async () => {
+        const wb = await downloadWorkbook(filePath);
+        const findSheet = (kw: string) => {
+          const name = wb.SheetNames.find((n) => normalize(n) === normalize(kw))
+            ?? wb.SheetNames.find((n) => normalize(n).includes(normalize(kw)));
+          return name ? wb.Sheets[name] : null;
+        };
+        const sScad = findSheet("scadenziario");
+        const sAssic = findSheet("assicurazione");
+        const warnings: string[] = [];
+        let scadRows: Awaited<ReturnType<typeof parseScadenziarioBlockSheet>>["rows"] = [];
+        let scadTot = 0;
+        if (!sScad) warnings.push("Foglio 'SCADENZIARIO' non trovato.");
+        else { const r = parseScadenziarioBlockSheet(sScad); scadRows = r.rows; scadTot = r.totRead; }
+        const assicRows = sAssic ? parseAssicurazioneSheet(sAssic) : [];
+        if (!sAssic) warnings.push("Foglio 'ASSICURAZIONE' non trovato.");
+        return { scadRows, assicRows, scadTot, warnings };
+      });
+
+      const { scadRows, assicRows, scadTot, warnings } = parsed;
+      logger.info(`Scad+Assic: ${scadRows.length} scadenze, ${assicRows.length} polizze`);
+
+      const log: string[] = [...warnings];
+      await supabaseAdmin.from("importazioni").update({
+        righe_totali: scadRows.length + assicRows.length, stato: "in_elaborazione",
+      }).eq("id", importazioneId);
+
+      const allCodes = Array.from(new Set([...scadRows.map((r) => r.cod_cli), ...assicRows.map((r) => r.cod_cli)]));
+      const clientMap = new Map<string, string>();
+      if (allCodes.length) {
+        const { data } = await supabaseAdmin.from("clienti").select("id, codice_gestionale").in("codice_gestionale", allCodes);
+        (data ?? []).forEach((c) => { if (c.codice_gestionale) clientMap.set(String(c.codice_gestionale), c.id); });
+      }
+      const clientIds = Array.from(new Set(Array.from(clientMap.values())));
+
+      // pre-load scadenze esistenti
+      const existingScad = new Map<string, string>();
+      if (clientIds.length) {
+        const { data } = await supabaseAdmin.from("scadenze" as never)
+          .select("id, cliente_id, data_scadenza, descrizione_pagamento").in("cliente_id", clientIds);
+        ((data ?? []) as Array<{ id: string; cliente_id: string; data_scadenza: string | null; descrizione_pagamento: string | null }>).forEach((s) => {
+          existingScad.set(`${s.cliente_id}|${s.data_scadenza ?? ""}|${s.descrizione_pagamento ?? ""}`, s.id);
+        });
+      }
+
+      // pre-load solleciti
+      const existingSoll = new Set<string>();
+      if (clientIds.length) {
+        const { data } = await supabaseAdmin.from("solleciti" as never)
+          .select("cliente_id, nota").in("cliente_id", clientIds);
+        ((data ?? []) as Array<{ cliente_id: string; nota: string }>).forEach((s) => {
+          existingSoll.add(`${s.cliente_id}|${(s.nota ?? "").trim()}`);
+        });
+      }
+
+      // pre-load pratiche legali aperte
+      const openLegale = new Set<string>();
+      if (clientIds.length) {
+        const { data } = await supabaseAdmin.from("pratiche_legali" as never)
+          .select("cliente_id, stato").in("cliente_id", clientIds);
+        ((data ?? []) as Array<{ cliente_id: string; stato: string }>).forEach((p) => {
+          if (p.stato !== "chiusa") openLegale.add(p.cliente_id);
+        });
+      }
+
+      let scadCreated = 0, scadUpdated = 0, scadSkipped = 0;
+      const matchedClients = new Set<string>();
+      const clientsToBlock = new Set<string>();
+      const clientsLegale = new Set<string>();
+      const now = new Date().toISOString();
+
+      const BATCH = 40;
+      for (let i = 0; i < scadRows.length; i += BATCH) {
+        const chunk = scadRows.slice(i, i + BATCH);
+        const res = await step.run(`scad-batch-${i}`, async () => {
+          let c = 0, u = 0, s = 0; const logs: string[] = [];
+          const block: string[] = []; const legale: string[] = [];
+          for (const r of chunk) {
+            const cid = clientMap.get(r.cod_cli);
+            if (!cid) { s++; logs.push(`Riga ${r.excelRow}: cliente ${r.cod_cli} non trovato`); continue; }
+            matchedClients.add(cid);
+            const key = `${cid}|${r.data_scadenza ?? ""}|${r.descrizione_pagamento ?? ""}`;
+            const existId = existingScad.get(key);
+            const payload: Record<string, unknown> = {
+              cliente_id: cid, data_scadenza: r.data_scadenza,
+              descrizione_pagamento: r.descrizione_pagamento,
+              importo_scadenza: r.importo_scadenza, fido_euro: r.fido_euro,
+              assicurazione: r.assicurazione, cod_blocco: r.cod_blocco,
+              importato_da: userId ?? null, ultima_sincronizzazione: now,
+            };
+            if (existId) {
+              const { error } = await supabaseAdmin.from("scadenze" as never).update(payload as never).eq("id", existId);
+              if (error) { s++; logs.push(`Riga ${r.excelRow}: ${error.message}`); } else u++;
+            } else {
+              const { error } = await supabaseAdmin.from("scadenze" as never).insert(payload as never);
+              if (error) { s++; logs.push(`Riga ${r.excelRow}: ${error.message}`); } else c++;
+            }
+            if (r.bloccato) block.push(cid);
+            if (r.note_solleciti) {
+              const dkey = `${cid}|${r.note_solleciti.trim()}`;
+              if (!existingSoll.has(dkey)) {
+                const { error } = await supabaseAdmin.from("solleciti" as never).insert({
+                  cliente_id: cid, tipo: "interno", nota: r.note_solleciti, inserito_da: userId ?? null,
+                } as never);
+                if (!error) existingSoll.add(dkey);
+                else logs.push(`Riga ${r.excelRow}: sollecito ${error.message}`);
+              }
+            }
+            if (r.note_legale && !openLegale.has(cid) && !clientsLegale.has(cid)) {
+              const { error } = await supabaseAdmin.from("pratiche_legali" as never).insert({
+                cliente_id: cid, tipo: "azione_legale_generica", stato: "aperta",
+                note: r.note_legale, gestita_da: userId ?? null,
+              } as never);
+              if (!error) { openLegale.add(cid); clientsLegale.add(cid); legale.push(cid); }
+              else logs.push(`Riga ${r.excelRow}: pratica legale ${error.message}`);
+            }
+          }
+          return { c, u, s, logs, block, legale };
+        });
+        scadCreated += res.c; scadUpdated += res.u; scadSkipped += res.s;
+        log.push(...res.logs);
+        res.block.forEach((id) => clientsToBlock.add(id));
+        res.legale.forEach((id) => clientsLegale.add(id));
+        await supabaseAdmin.from("importazioni").update({
+          righe_elaborate: Math.min(i + BATCH, scadRows.length),
+          righe_create: scadCreated, righe_aggiornate: scadUpdated, righe_errore: scadSkipped,
+          stato: "in_elaborazione",
+        }).eq("id", importazioneId);
+      }
+
+      if (clientsToBlock.size) {
+        await supabaseAdmin.from("clienti").update({
+          bloccato: true, data_blocco: now, motivo_blocco: "Import scadenziario: T_BLOCCO=BLOCCATO",
+        } as never).in("id", Array.from(clientsToBlock));
+      }
+
+      // ASSICURAZIONI
+      let assicCreated = 0, assicUpdated = 0, assicSkipped = 0;
+      const assicClients = new Set<string>();
+      const existingPol = new Map<string, string>();
+      if (clientIds.length) {
+        const { data } = await supabaseAdmin.from("assicurazioni_credito" as never)
+          .select("id, cliente_id").in("cliente_id", clientIds);
+        ((data ?? []) as Array<{ id: string; cliente_id: string }>).forEach((p) => {
+          if (!existingPol.has(p.cliente_id)) existingPol.set(p.cliente_id, p.id);
+        });
+      }
+
+      for (let i = 0; i < assicRows.length; i += BATCH) {
+        const chunk = assicRows.slice(i, i + BATCH);
+        const res = await step.run(`assic-batch-${i}`, async () => {
+          let c = 0, u = 0, s = 0; const logs: string[] = []; const clients: string[] = [];
+          for (const a of chunk) {
+            const cid = clientMap.get(a.cod_cli);
+            if (!cid) { s++; logs.push(`Assic riga ${a.excelRow}: cliente ${a.cod_cli} non trovato`); continue; }
+            clients.push(cid);
+            const payload: Record<string, unknown> = {
+              cliente_id: cid, assicuratore: "POUEY",
+              data_inizio: a.data_inizio, data_scadenza: a.data_scadenza,
+              importo_assicurato: a.importo_assicurato, importo_massimale: a.importo_assicurato,
+              stato: "attiva",
+            };
+            const existId = existingPol.get(cid);
+            if (existId) {
+              const { error } = await supabaseAdmin.from("assicurazioni_credito" as never).update(payload as never).eq("id", existId);
+              if (error) { s++; logs.push(`Assic riga ${a.excelRow}: ${error.message}`); } else u++;
+            } else {
+              const { error } = await supabaseAdmin.from("assicurazioni_credito" as never).insert(payload as never);
+              if (error) { s++; logs.push(`Assic riga ${a.excelRow}: ${error.message}`); }
+              else { c++; existingPol.set(cid, "new"); }
+            }
+          }
+          return { c, u, s, logs, clients };
+        });
+        assicCreated += res.c; assicUpdated += res.u; assicSkipped += res.s;
+        log.push(...res.logs);
+        res.clients.forEach((id) => assicClients.add(id));
+      }
+
+      if (assicClients.size) {
+        await supabaseAdmin.from("clienti").update({ assicurazione_attiva: true } as never)
+          .in("id", Array.from(assicClients));
+      }
+
+      const summary = [
+        `SCADENZIARIO: lette ${scadTot}, abbinati ${matchedClients.size} clienti, ${scadCreated} create, ${scadUpdated} aggiornate, ${scadSkipped} saltate`,
+        `ASSICURAZIONI: lette ${assicRows.length}, ${assicCreated} create, ${assicUpdated} aggiornate, ${assicSkipped} saltate`,
+        `Clienti bloccati: ${clientsToBlock.size}, pratiche legali create: ${clientsLegale.size}`,
+      ];
+      const fullLog = [...summary, ...log];
+
+      await supabaseAdmin.from("importazioni").update({
+        righe_elaborate: scadRows.length + assicRows.length,
+        righe_create: scadCreated + assicCreated,
+        righe_aggiornate: scadUpdated + assicUpdated,
+        righe_errore: scadSkipped + assicSkipped,
+        stato: (scadSkipped + assicSkipped) > 0 ? "completata_con_errori" : "completata",
+        completata_at: new Date().toISOString(),
+        log_errori: fullLog.length ? fullLog.slice(0, 500).map((m) => ({ messaggio: m })) : null,
+      }).eq("id", importazioneId);
+
+      return { scadCreated, scadUpdated, assicCreated, assicUpdated };
+    } catch (err) {
+      await setImportazioneError(importazioneId, err instanceof Error ? err.message : String(err));
       throw err;
     }
   },
