@@ -977,7 +977,7 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
               scheda_pdf_url: pdfSchedaUrl,
             } as never).eq("id", clienteId!);
 
-            // Aggiorna il contatto titolare con i riferimenti firma/PDF
+            // Aggiorna il contatto titolare con i riferimenti firma/PDF + dati dichiarante + consensi
             const titolare = (contattiCreati ?? []).find((c: any) => c.principale);
             if (titolare) {
               await supabase.from("contatti").update({
@@ -986,6 +986,16 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
                 firma_url: firmaUrl,
                 pdf_privacy_url: pdfSchedaUrl,
                 pdf_privacy_path: pdfSchedaPath,
+                luogo_nascita: parsed.dichiarante_luogo_nascita || null,
+                data_nascita: parsed.dichiarante_data_nascita || null,
+                codice_fiscale: parsed.dichiarante_codice_fiscale || null,
+                residenza: parsed.dichiarante_residenza || null,
+                email: parsed.dichiarante_email || parsed.titolare_email || null,
+                cellulare: parsed.dichiarante_cell || parsed.titolare_cell || null,
+                whatsapp_opt_in: parsed.whatsapp_opt_in === true,
+                consenso_profilazione: parsed.consenso_profilazione === "si",
+                consenso_marketing_media: parsed.consenso_marketing_media === "si",
+                consenso_marketing_diretto: parsed.consenso_marketing_diretto === "si",
               } as never).eq("id", (titolare as { id: string }).id);
             }
           } catch (pdfErr) {
