@@ -197,6 +197,7 @@ export type Database = {
       }
       clienti: {
         Row: {
+          a_scadere: number | null
           abi: string | null
           agenzia: string | null
           attivo: boolean
@@ -213,7 +214,11 @@ export type Database = {
           data_firma: string | null
           dichiarante_cognome: string | null
           dichiarante_nome: string | null
+          dilazione_concordata: number | null
+          dilazione_effettiva: number | null
           email: string | null
+          fido: number | null
+          fido_residuo: number | null
           firma_url: string | null
           id: string
           indirizzo: string | null
@@ -226,13 +231,16 @@ export type Database = {
           privacy_token_expires_at: string | null
           provincia: string | null
           ragione_sociale: string
+          scaduto: number | null
           scheda_pdf_url: string | null
           store_id: string | null
           telefono: string | null
           tipo_soggetto: string | null
+          totale_rischio: number | null
           updated_at: string
         }
         Insert: {
+          a_scadere?: number | null
           abi?: string | null
           agenzia?: string | null
           attivo?: boolean
@@ -249,7 +257,11 @@ export type Database = {
           data_firma?: string | null
           dichiarante_cognome?: string | null
           dichiarante_nome?: string | null
+          dilazione_concordata?: number | null
+          dilazione_effettiva?: number | null
           email?: string | null
+          fido?: number | null
+          fido_residuo?: number | null
           firma_url?: string | null
           id?: string
           indirizzo?: string | null
@@ -262,13 +274,16 @@ export type Database = {
           privacy_token_expires_at?: string | null
           provincia?: string | null
           ragione_sociale: string
+          scaduto?: number | null
           scheda_pdf_url?: string | null
           store_id?: string | null
           telefono?: string | null
           tipo_soggetto?: string | null
+          totale_rischio?: number | null
           updated_at?: string
         }
         Update: {
+          a_scadere?: number | null
           abi?: string | null
           agenzia?: string | null
           attivo?: boolean
@@ -285,7 +300,11 @@ export type Database = {
           data_firma?: string | null
           dichiarante_cognome?: string | null
           dichiarante_nome?: string | null
+          dilazione_concordata?: number | null
+          dilazione_effettiva?: number | null
           email?: string | null
+          fido?: number | null
+          fido_residuo?: number | null
           firma_url?: string | null
           id?: string
           indirizzo?: string | null
@@ -298,10 +317,12 @@ export type Database = {
           privacy_token_expires_at?: string | null
           provincia?: string | null
           ragione_sociale?: string
+          scaduto?: number | null
           scheda_pdf_url?: string | null
           store_id?: string | null
           telefono?: string | null
           tipo_soggetto?: string | null
+          totale_rischio?: number | null
           updated_at?: string
         }
         Relationships: [
