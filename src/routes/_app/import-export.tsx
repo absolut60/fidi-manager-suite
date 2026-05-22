@@ -106,6 +106,22 @@ function sheetToObjects(
   return out;
 }
 
+function anagraficaSheetToObjects(sheet: XLSX.WorkSheet): Array<Record<string, unknown> & { __row: number }> {
+  const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "", blankrows: false });
+  const headers = (matrix[1] ?? []).map((c) => String(c ?? "").trim());
+  if (!headers.some((h) => normalize(h) === "ragione sociale")) return [];
+
+  const out: Array<Record<string, unknown> & { __row: number }> = [];
+  for (let i = 3; i < matrix.length; i++) {
+    const row = matrix[i] ?? [];
+    if (!row.some((c) => String(c ?? "").trim() !== "")) continue;
+    const obj: Record<string, unknown> = {};
+    headers.forEach((h, j) => { if (h) obj[h] = row[j] ?? ""; });
+    out.push(Object.assign(obj, { __row: i + 1 }));
+  }
+  return out;
+}
+
 
 function ImportExportPage() {
   return (
