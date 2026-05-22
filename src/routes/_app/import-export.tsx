@@ -634,8 +634,9 @@ function HistoryCard({ kind }: { kind: "importazioni" | "esportazioni" }) {
                       {r.stato}
                     </Badge>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {r.righe_create ?? 0}/{r.righe_totali ?? 0} righe
+                      {r.righe_create ?? 0} nuovi · {r.righe_aggiornate ?? 0} agg. / {r.righe_totali ?? 0}
                     </p>
+
                   </>
                 ) : (
                   <p className="text-xs text-muted-foreground">{r.righe_esportate ?? 0} righe</p>
