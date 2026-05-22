@@ -15,6 +15,9 @@ import {
   X,
   Building,
   ScrollText,
+  ShieldCheck,
+  Gavel,
+  FileSignature,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, RUOLI_LABEL } from "@/hooks/use-auth";
@@ -37,6 +40,9 @@ const NAV: NavItem[] = [
   { to: "/clienti", label: "Clienti", icon: Building, group: "main" },
   { to: "/contatti", label: "Contatti", icon: Users, group: "main" },
   { to: "/approvazioni", label: "Approvazioni", icon: CheckCheck, roles: ["admin", "approvatore"], group: "approvazioni" },
+  { to: "/assicurazioni", label: "Assicurazioni", icon: ShieldCheck, roles: ["admin", "approvatore"], group: "approvazioni" },
+  { to: "/legali", label: "Pratiche Legali", icon: Gavel, roles: ["admin", "approvatore"], group: "approvazioni" },
+  { to: "/privacy", label: "Privacy", icon: FileSignature, roles: ["admin", "approvatore"], group: "approvazioni" },
   { to: "/import-export", label: "Import / Export", icon: FileSpreadsheet, roles: ["admin"], group: "approvazioni" },
   { to: "/whatsapp", label: "WhatsApp", icon: MessageCircle, roles: ["admin"], group: "approvazioni" },
   { to: "/impostazioni", label: "Impostazioni", icon: Settings, roles: ["admin"], group: "admin" },
