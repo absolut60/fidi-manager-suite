@@ -668,11 +668,21 @@ function PrivacyTab({ cliente }: { cliente: any; onUpdated?: () => void }) {
                       </Badge>
                     )}
                     {c.privacy_firmata && c.pdf_privacy_url && (
-                      <Button variant="outline" size="sm" asChild>
-                        <a href={c.pdf_privacy_url} target="_blank" rel="noreferrer">
-                          <Download className="size-4 mr-1" /> PDF
-                        </a>
-                      </Button>
+                      <>
+                        <Button variant="outline" size="sm" asChild>
+                          <a href={c.pdf_privacy_url} target="_blank" rel="noreferrer">
+                            <Download className="size-4 mr-1" /> PDF
+                          </a>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => toast.info("Funzione in arrivo")}
+                          title={`Invia PDF a ${[c.nome, c.cognome].filter(Boolean).join(" ")}`}
+                        >
+                          Invia PDF
+                        </Button>
+                      </>
                     )}
                   </div>
                 </li>
