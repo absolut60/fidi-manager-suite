@@ -1,0 +1,340 @@
+import * as XLSX from "xlsx";
+
+/* ============================================================================
+ * Helpers di conversione / normalizzazione
+ * ============================================================================ */
+
+export function normalize(h: string) {
+  return String(h ?? "")
+    .toLowerCase()
+    .replace(/[._\-/]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export function toNum(v: unknown): number | null {
+  if (v === "" || v == null) return null;
+  if (typeof v === "number") return Number.isFinite(v) ? v : null;
+  const s = String(v).trim().replace(/\./g, "").replace(",", ".");
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+
+export function toInt(v: unknown): number | null {
+  const n = toNum(v);
+  return n == null ? null : Math.trunc(n);
+}
+
+export function toStr(v: unknown): string | null {
+  if (v == null) return null;
+  const s = String(v).trim();
+  return s === "" ? null : s;
+}
+
+export function excelDateToISO(v: unknown): string | null {
+  if (v == null || v === "") return null;
+  if (typeof v === "number") {
+    const d = XLSX.SSF?.parse_date_code?.(v);
+    if (d) {
+      const m = String(d.m).padStart(2, "0");
+      const day = String(d.d).padStart(2, "0");
+      return `${d.y}-${m}-${day}`;
+    }
+  }
+  const s = String(v).trim();
+  if (!s) return null;
+  const m1 = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/);
+  if (m1) {
+    const dd = m1[1].padStart(2, "0");
+    const mm = m1[2].padStart(2, "0");
+    let yy = m1[3];
+    if (yy.length === 2) yy = (Number(yy) > 50 ? "19" : "20") + yy;
+    return `${yy}-${mm}-${dd}`;
+  }
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+  return null;
+}
+
+export function sheetToObjects(
+  sheet: XLSX.WorkSheet,
+  headerKeyword: string,
+): Array<Record<string, unknown> & { __row: number }> {
+  const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "", blankrows: false });
+  const kw = normalize(headerKeyword);
+  let headerIdx = -1;
+  for (let i = 0; i < matrix.length; i++) {
+    const row = matrix[i] ?? [];
+    if (row.some((c) => {
+      const n = normalize(String(c ?? ""));
+      return n === kw || n.startsWith(kw + " ");
+    })) { headerIdx = i; break; }
+  }
+  if (headerIdx === -1) return [];
+  const headers = (matrix[headerIdx] ?? []).map((c) => String(c ?? "").trim());
+  const kwColIdx = headers.findIndex((h) => {
+    const n = normalize(h);
+    return n === kw || n.startsWith(kw + " ");
+  });
+  const nextRow = matrix[headerIdx + 1] ?? [];
+  const nextKwCell = kwColIdx >= 0 ? String(nextRow[kwColIdx] ?? "").trim() : "";
+  const looksLikeDescription = (s: string) => {
+    if (!s) return true;
+    if (s.length > 25 && /\s/.test(s) && !/@/.test(s) && !/^\d/.test(s)) return true;
+    return false;
+  };
+  const skipDesc = nextKwCell === "" || looksLikeDescription(nextKwCell);
+  const dataStart = skipDesc ? headerIdx + 2 : headerIdx + 1;
+  const out: Array<Record<string, unknown> & { __row: number }> = [];
+  for (let i = dataStart; i < matrix.length; i++) {
+    const row = matrix[i] ?? [];
+    if (!row.some((c) => String(c ?? "").trim() !== "")) continue;
+    const obj: Record<string, unknown> = {};
+    headers.forEach((h, j) => { if (h) obj[h] = row[j] ?? ""; });
+    out.push(Object.assign(obj, { __row: i + 1 }));
+  }
+  return out;
+}
+
+/* ============================================================================
+ * ANAGRAFICA
+ * ============================================================================ */
+
+export const ANAG_HEADERS: Record<string, string> = {
+  "ragione sociale": "ragione_sociale", "ragionesociale": "ragione_sociale", "denominazione": "ragione_sociale",
+  "codice gestionale": "codice_gestionale", "codice": "codice_gestionale", "cod gestionale": "codice_gestionale",
+  "partita iva": "partita_iva", "p iva": "partita_iva", "piva": "partita_iva",
+  "codice fiscale": "codice_fiscale", "cf": "codice_fiscale",
+  "forma giuridica": "forma_giuridica",
+  "indirizzo": "indirizzo", "via": "indirizzo",
+  "citta": "citta", "città": "citta",
+  "cap": "cap",
+  "provincia": "provincia", "prov": "provincia",
+  "telefono": "telefono", "tel": "telefono",
+  "email": "email", "e mail": "email", "mail": "email",
+  "pec": "pec",
+  "codice sdi": "codice_sdi", "sdi": "codice_sdi",
+  "store codice": "store_codice", "store": "store_codice", "punto vendita": "store_codice",
+  "note": "note",
+};
+
+export function anagraficaSheetToObjects(sheet: XLSX.WorkSheet) {
+  const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "", blankrows: false });
+  if (!matrix.length) return [];
+  const rowHasRagSoc = (r: unknown[] | undefined) =>
+    (r ?? []).some((c) => normalize(String(c ?? "")) === "ragione sociale");
+  let headerIdx = -1, dataStart = -1;
+  if (rowHasRagSoc(matrix[0])) { headerIdx = 0; dataStart = 1; }
+  else if (rowHasRagSoc(matrix[1])) { headerIdx = 1; dataStart = 3; }
+  else return [];
+  const headers = (matrix[headerIdx] ?? []).map((c) => String(c ?? "").trim());
+  const out: Array<Record<string, string> & { __row: number }> = [];
+  for (let i = dataStart; i < matrix.length; i++) {
+    const row = matrix[i] ?? [];
+    if (!row.some((c) => String(c ?? "").trim() !== "")) continue;
+    const obj: Record<string, string> = {};
+    headers.forEach((h, j) => {
+      if (!h) return;
+      const f = ANAG_HEADERS[normalize(h)];
+      if (f) obj[f] = String(row[j] ?? "").trim();
+    });
+    if (!obj.ragione_sociale) continue;
+    out.push(Object.assign(obj, { __row: i + 1 }));
+  }
+  return out;
+}
+
+/* ============================================================================
+ * RISCHIO
+ * ============================================================================ */
+
+export const RISCHIO_HEADERS: Record<string, string> = {
+  "codice": "codice_gestionale", "cod cliente": "codice_gestionale", "codice cliente": "codice_gestionale",
+  "ragione sociale": "ragione_sociale",
+  "cod pag": "condizione_pagamento_cod", "cod pagamento": "condizione_pagamento_cod", "codice pagamento": "condizione_pagamento_cod",
+  "descr cod pag": "condizione_pagamento_desc", "descrizione cod pag": "condizione_pagamento_desc", "descrizione pagamento": "condizione_pagamento_desc",
+  "saldo contab": "saldo_contabile", "saldo contabile": "saldo_contabile",
+  "doc da fatt": "doc_da_fatturare", "doc da fatturare": "doc_da_fatturare",
+  "doc da evad": "doc_da_evadere", "doc da evadere": "doc_da_evadere",
+  "eff a rischio": "effetti_a_rischio", "effetti a rischio": "effetti_a_rischio",
+  "fido": "fido_gestionale", "fido azienda": "fido_gestionale", "fido concesso": "fido_gestionale", "fido gestionale": "fido_gestionale",
+  "totale rischio": "totale_rischio", "tot rischio": "totale_rischio",
+  "fido residuo": "fido_residuo", "residuo": "fido_residuo",
+  "scaduto": "scaduto", "a scadere": "a_scadere",
+  "num insoluti": "num_insoluti", "n insoluti": "num_insoluti", "insoluti": "num_insoluti",
+  "dilaz azienda": "dilazione_concordata", "dilazione azienda": "dilazione_concordata", "dilaz concordata": "dilazione_concordata",
+  "dilaz effettiva": "dilazione_effettiva", "dilazione effettiva": "dilazione_effettiva",
+};
+
+export type RischioRow = { idx: number; codice_gestionale: string; ragione_sociale: string; payload: Record<string, unknown> };
+
+export function parseRischioSheet(sheet: XLSX.WorkSheet): { rows: RischioRow[]; missing: number[] } {
+  const raw = sheetToObjects(sheet, "codice");
+  const numFields = new Set(["saldo_contabile", "doc_da_fatturare", "doc_da_evadere", "effetti_a_rischio", "fido_gestionale", "totale_rischio", "fido_residuo", "scaduto", "a_scadere"]);
+  const intFields = new Set(["num_insoluti", "dilazione_concordata", "dilazione_effettiva"]);
+  const rows: RischioRow[] = [];
+  const missing: number[] = [];
+  for (const r of raw) {
+    const mapped: Record<string, unknown> = {};
+    for (const k of Object.keys(r)) {
+      if (k === "__row") continue;
+      const f = RISCHIO_HEADERS[normalize(k)];
+      if (f) mapped[f] = r[k];
+    }
+    const codice = toStr(mapped.codice_gestionale);
+    if (!codice) { missing.push(r.__row); continue; }
+    const payload: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(mapped)) {
+      if (k === "codice_gestionale" || k === "ragione_sociale") continue;
+      if (numFields.has(k)) payload[k] = toNum(v);
+      else if (intFields.has(k)) payload[k] = toInt(v);
+      else payload[k] = toStr(v);
+    }
+    rows.push({ idx: r.__row, codice_gestionale: codice, ragione_sociale: toStr(mapped.ragione_sociale) ?? "", payload });
+  }
+  return { rows, missing };
+}
+
+/* ============================================================================
+ * SCADENZIARIO (foglio singolo)
+ * ============================================================================ */
+
+export const SCAD_HEADERS: Record<string, string> = {
+  "cod cli": "codice_gestionale", "codice cliente": "codice_gestionale", "cod cliente": "codice_gestionale", "codice": "codice_gestionale",
+  "ragione sociale": "ragione_sociale",
+  "codice pagamento scad": "codice_pagamento", "codice pagamento": "codice_pagamento", "cod pag": "codice_pagamento",
+  "descrizione pagamento": "descrizione_pagamento", "descr pagamento": "descrizione_pagamento",
+  "numero documento origine": "numero_documento", "numero documento": "numero_documento", "num doc": "numero_documento",
+  "sezionale documento": "sezionale", "sezionale": "sezionale",
+  "data documento": "data_documento", "data doc": "data_documento",
+  "data scadenza": "data_scadenza",
+  "anno partita": "anno_partita",
+  "tipologia": "tipologia_scadenza", "tipologia scadenza": "tipologia_scadenza",
+  "importo scadenza": "importo_scadenza", "importo": "importo_scadenza",
+  "importo documento": "importo_documento", "importo originario": "importo_originario",
+  "importo netto prev": "importo_netto_prev", "importo ritardo": "importo_ritardo",
+  "giorni ritardo": "giorni_ritardo",
+  "stato contabile": "stato_contabile", "data pagamento": "data_pagamento",
+  "dilazione teorica": "dilazione_teorica", "dilazione effettiva": "dilazione_effettiva",
+  "cod blocco": "cod_blocco", "codice blocco": "cod_blocco",
+  "fido euro": "fido_euro", "fido": "fido_euro",
+  "assicurazione": "assicurazione", "sede": "sede", "in legale": "in_legale",
+};
+
+export type ScadRow = { idx: number; codice_gestionale: string; ragione_sociale: string; payload: Record<string, unknown> };
+
+export function parseScadenziarioSimpleSheet(sheet: XLSX.WorkSheet): { rows: ScadRow[]; missing: number[] } {
+  const raw = sheetToObjects(sheet, "cod cli");
+  const data = raw.length ? raw : sheetToObjects(sheet, "codice");
+  const numFields = new Set(["importo_scadenza", "importo_documento", "importo_originario", "importo_netto_prev", "importo_ritardo", "fido_euro", "assicurazione"]);
+  const intFields = new Set(["giorni_ritardo", "dilazione_teorica", "dilazione_effettiva", "anno_partita", "sede"]);
+  const dateFields = new Set(["data_documento", "data_scadenza", "data_pagamento"]);
+  const boolFields = new Set(["in_legale"]);
+  const rows: ScadRow[] = [];
+  const missing: number[] = [];
+  for (const r of data) {
+    const mapped: Record<string, unknown> = {};
+    for (const k of Object.keys(r)) {
+      if (k === "__row") continue;
+      const f = SCAD_HEADERS[normalize(k)];
+      if (f) mapped[f] = r[k];
+    }
+    const codice = toStr(mapped.codice_gestionale);
+    if (!codice) { missing.push(r.__row); continue; }
+    const payload: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(mapped)) {
+      if (k === "codice_gestionale" || k === "ragione_sociale") continue;
+      if (numFields.has(k)) payload[k] = toNum(v);
+      else if (intFields.has(k)) payload[k] = toInt(v);
+      else if (dateFields.has(k)) payload[k] = excelDateToISO(v);
+      else if (boolFields.has(k)) {
+        const s = String(v ?? "").trim().toLowerCase();
+        payload[k] = ["true", "1", "si", "sì", "x", "y", "yes"].includes(s);
+      } else payload[k] = toStr(v);
+    }
+    rows.push({ idx: r.__row, codice_gestionale: codice, ragione_sociale: toStr(mapped.ragione_sociale) ?? "", payload });
+  }
+  return { rows, missing };
+}
+
+/* ============================================================================
+ * SCADENZIARIO + ASSICURAZIONI (file unico, due fogli)
+ * ============================================================================ */
+
+export type ScadBlockRow = {
+  excelRow: number; cod_cli: string;
+  data_scadenza: string | null; descrizione_pagamento: string | null;
+  note_legale: string | null; note_solleciti: string | null;
+  cod_blocco: string | null;
+  importo_scadenza: number | null; fido_euro: number | null; assicurazione: number | null;
+  bloccato: boolean;
+};
+
+export type AssicRow = {
+  excelRow: number; cod_cli: string;
+  data_inizio: string | null; data_scadenza: string | null;
+  importo_assicurato: number | null; codice_pagamento: string | null;
+};
+
+export function parseScadenziarioBlockSheet(sheet: XLSX.WorkSheet): { rows: ScadBlockRow[]; totRead: number } {
+  const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "", blankrows: false });
+  const rows: ScadBlockRow[] = [];
+  let currentCod: string | null = null;
+  let totRead = 0;
+  for (let i = 11; i < matrix.length; i++) {
+    const row = matrix[i] ?? [];
+    if (!row.some((c) => String(c ?? "").trim() !== "")) continue;
+    const colA = String(row[0] ?? "").trim();
+    const colF = String(row[5] ?? "").trim();
+    if (/totale/i.test(colA) || /bloccato\s+totale/i.test(colF)) continue;
+    if (colA) {
+      const m = colA.match(/-\s*(\d+)\s*$/);
+      if (m) currentCod = m[1];
+    }
+    const data_scadenza = excelDateToISO(row[1]);
+    if (!data_scadenza) continue;
+    if (!currentCod) continue;
+    totRead += 1;
+    const descr = toStr(row[2]);
+    const noteLeg = toStr(row[3]);
+    const noteSoll = toStr(row[4]);
+    const blocco = toStr(row[5]);
+    const isBloccato = !!blocco && /bloccato/i.test(blocco);
+    const cleanNote = (s: string | null) => {
+      if (!s) return null;
+      const t = s.trim();
+      if (!t || /^\(vuoto\)$/i.test(t)) return null;
+      return t;
+    };
+    rows.push({
+      excelRow: i + 1, cod_cli: currentCod, data_scadenza,
+      descrizione_pagamento: descr,
+      note_legale: cleanNote(noteLeg), note_solleciti: cleanNote(noteSoll),
+      cod_blocco: blocco,
+      importo_scadenza: toNum(row[7]), fido_euro: toNum(row[8]), assicurazione: toNum(row[9]),
+      bloccato: isBloccato,
+    });
+  }
+  return { rows, totRead };
+}
+
+export function parseAssicurazioneSheet(sheet: XLSX.WorkSheet): AssicRow[] {
+  const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "", blankrows: false });
+  const out: AssicRow[] = [];
+  for (let i = 1; i < matrix.length; i++) {
+    const row = matrix[i] ?? [];
+    if (!row.some((c) => String(c ?? "").trim() !== "")) continue;
+    const cod = toStr(row[2]);
+    if (!cod) continue;
+    out.push({
+      excelRow: i + 1,
+      cod_cli: String(cod).replace(/\.0$/, ""),
+      data_inizio: excelDateToISO(row[0]),
+      data_scadenza: excelDateToISO(row[1]),
+      importo_assicurato: toNum(row[9]),
+      codice_pagamento: toStr(row[10]),
+    });
+  }
+  return out;
+}
