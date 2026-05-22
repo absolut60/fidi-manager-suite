@@ -356,8 +356,8 @@ export async function generaSchedaCliente(input: SchedaPdfInput): Promise<Uint8A
   const rowH = 21;
   const lblW = 108;
   const tableRows: Array<[string, string]> = [
-    ["Nome", input.dichiaranteNome],
-    ["Cognome", input.dichiaranteCognome],
+    ["Nome", input.dichiaranteNome || ""],
+    ["Cognome", input.dichiaranteCognome || ""],
     ["Societa'", input.ragioneSociale],
     ["Luogo e data di nascita", `${input.luogoNascita || ""} ${input.dataNascita || ""}`],
     ["Codice fiscale", input.codiceFiscaleDich || ""],
