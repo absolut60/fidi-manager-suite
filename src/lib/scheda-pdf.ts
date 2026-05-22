@@ -34,20 +34,6 @@ export type SchedaPdfInput = {
   dichiaranteCognome?: string | null;
   firmaPngDataUrl?: string | null;
   dataFirma: Date;
-  // Spazio Amministrazione (opzionale)
-  amministrazione?: {
-    codiceAssegnato?: string | null;
-    sedeOperatore?: string | null;
-    condizioniPagamentoConcordate?: string | null;
-    dataRichiestaAffidamento?: string | null;
-    importoAffidamentoRichiesto?: number | string | null;
-    dataEsitoAffidamento?: string | null;
-    importoAffidato?: number | string | null;
-    fidoAziendaleConcesso?: number | string | null;
-    condizioniPagamentoConcesse?: string | null;
-    dataAffidamentoAziendale?: string | null;
-    note?: string | null;
-  } | null;
 };
 
 const PRIVACY_TEXT =
