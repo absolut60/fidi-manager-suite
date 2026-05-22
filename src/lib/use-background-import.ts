@@ -1,0 +1,104 @@
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { triggerImport } from "@/lib/import.functions";
+
+type Fonte = "anagrafica" | "analisi_rischio" | "scadenziario" | "scadenziario_assicurazioni";
+
+export type BackgroundImportProgress = {
+  stato: string | null;
+  righe_totali: number | null;
+  righe_elaborate: number | null;
+  righe_create: number | null;
+  righe_aggiornate: number | null;
+  righe_errore: number | null;
+  log_errori: unknown;
+  completata_at: string | null;
+};
+
+export function useBackgroundImport(opts: {
+  fonte: Fonte;
+  invalidateKeys?: string[][];
+  onDone?: (p: BackgroundImportProgress) => void;
+}) {
+  const qc = useQueryClient();
+  const [importazioneId, setImportazioneId] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+
+  const startMut = useMutation({
+    mutationFn: async (args: { file: File; rowsTotali: number; rigeErroreClient?: number }) => {
+      const { file, rowsTotali, rigeErroreClient = 0 } = args;
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: imp, error: impErr } = await supabase.from("importazioni").insert({
+        nome_file: file.name,
+        righe_totali: rowsTotali,
+        righe_errore: rigeErroreClient,
+        stato: "in_elaborazione",
+        fonte: opts.fonte,
+        eseguita_da: user?.id ?? null,
+      }).select("id").single();
+      if (impErr) throw impErr;
+
+      const filePath = `${imp.id}/${file.name}`;
+      const { error: upErr } = await supabase.storage.from("import-files").upload(filePath, file, {
+        contentType: file.type || "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        upsert: true,
+      });
+      if (upErr) {
+        await supabase.from("importazioni").update({
+          stato: "completata_con_errori", completata_at: new Date().toISOString(),
+          log_errori: [{ riga: 0, errore: `Upload fallito: ${upErr.message}` }],
+        }).eq("id", imp.id);
+        throw upErr;
+      }
+      await supabase.from("importazioni").update({ file_path: filePath }).eq("id", imp.id);
+
+      await triggerImport({ data: { fonte: opts.fonte, importazioneId: imp.id, filePath } });
+      return imp.id;
+    },
+    onSuccess: (id) => {
+      setImportazioneId(id);
+      setDone(false);
+      toast.success("Import avviato in background. Puoi chiudere la pagina, prosegue lato server.");
+      qc.invalidateQueries({ queryKey: ["storico-import-export"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const { data: progress } = useQuery({
+    queryKey: ["importazione-stato", importazioneId],
+    queryFn: async () => {
+      if (!importazioneId) return null;
+      const { data } = await supabase.from("importazioni")
+        .select("stato, righe_totali, righe_elaborate, righe_create, righe_aggiornate, righe_errore, log_errori, completata_at")
+        .eq("id", importazioneId).single();
+      return data as BackgroundImportProgress | null;
+    },
+    enabled: !!importazioneId && !done,
+    refetchInterval: 2000,
+  });
+
+  if (progress && !done && (progress.stato === "completata" || progress.stato === "completata_con_errori")) {
+    setDone(true);
+    (opts.invalidateKeys ?? []).forEach((k) => qc.invalidateQueries({ queryKey: k }));
+    qc.invalidateQueries({ queryKey: ["storico-import-export"] });
+    toast.success("Import completato");
+    opts.onDone?.(progress);
+  }
+
+  function reset() {
+    setImportazioneId(null);
+    setDone(false);
+  }
+
+  return {
+    start: (args: { file: File; rowsTotali: number; rigeErroreClient?: number }) => startMut.mutate(args),
+    isPending: startMut.isPending,
+    importazioneId,
+    inProgress: !!importazioneId && !done,
+    done,
+    progress: progress ?? null,
+    reset,
+  };
+}
