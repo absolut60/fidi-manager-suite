@@ -267,9 +267,10 @@ function ImportCard() {
 
           if (existingId) {
             // UPDATE — non sovrascrivere store_id se non specificato
-            const updatePayload: Record<string, any> = { ...payload };
-            if (!storeId) delete updatePayload.store_id;
+            const { store_id: _storeId, ...rest } = payload;
+            const updatePayload = storeId ? payload : rest;
             const { error } = await supabase.from("clienti").update(updatePayload).eq("id", existingId);
+
             if (error) {
               errorLog.push({ riga: r.idx, errore: `Update: ${error.message}` });
             } else {
