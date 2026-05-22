@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { PdfPrivacyButton } from "@/components/pdf-privacy-button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -48,7 +49,7 @@ export default function PrivacyPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("contatti")
-        .select("id, nome, cognome, ruolo, privacy_firmata, data_firma, pdf_privacy_url, cliente_id, clienti!inner(id, ragione_sociale, store_id, stores(nome))")
+        .select("id, nome, cognome, ruolo, privacy_firmata, data_firma, pdf_privacy_url, pdf_privacy_path, cliente_id, clienti!inner(id, ragione_sociale, store_id, stores(nome))")
         .order("data_firma", { ascending: false, nullsFirst: false });
       if (error) throw error;
       return data ?? [];
@@ -167,12 +168,8 @@ export default function PrivacyPage() {
                   <TableCell className="text-center text-muted-foreground text-xs">—</TableCell>
                   <TableCell>{fmtDate(r.data_firma)}</TableCell>
                   <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                    {r.pdf_privacy_url ? (
-                      <Button asChild size="sm" variant="outline">
-                        <a href={r.pdf_privacy_url} target="_blank" rel="noopener noreferrer" download>
-                          <Download className="size-4" /> PDF
-                        </a>
-                      </Button>
+                    {r.pdf_privacy_path || r.pdf_privacy_url ? (
+                      <PdfPrivacyButton path={r.pdf_privacy_path} url={r.pdf_privacy_url} />
                     ) : (
                       <span className="text-xs text-muted-foreground">—</span>
                     )}
