@@ -244,11 +244,11 @@ export const processScadenziarioImport = inngest.createFunction(
       // STEP 1 — parse + stage su storage (output dello step: solo metadata leggero)
       const stage = await step.run("parse-and-stage", async () => {
         if (filePath.endsWith("/manifest.json")) {
-          const manifest = await downloadJsonFromImportFiles<{ rowsTotali?: number; chunkCount?: number }>(filePath);
+          const manifest = await downloadJsonFromImportFiles<{ rowsTotali?: number; validRows?: number; chunkCount?: number; missingRows?: number[] }>(filePath);
           return {
             totRead: Number(manifest.rowsTotali ?? 0),
-            totRows: Number(manifest.rowsTotali ?? 0),
-            missing: [] as number[],
+            totRows: Number(manifest.validRows ?? manifest.rowsTotali ?? 0),
+            missing: manifest.missingRows ?? [],
             chunkCount: Number(manifest.chunkCount ?? 0),
             codici: [] as string[],
             stagedByClient: true,
