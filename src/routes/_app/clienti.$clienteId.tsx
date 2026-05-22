@@ -616,7 +616,7 @@ function PrivacyTab({ cliente }: { cliente: any; onUpdated?: () => void }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("contatti")
-        .select("id, nome, cognome, principale, privacy_firmata, data_firma, firma_url, pdf_privacy_url")
+        .select("id, nome, cognome, principale, privacy_firmata, data_firma, firma_url, pdf_privacy_url, pdf_privacy_path")
         .eq("cliente_id", cliente.id)
         .order("principale", { ascending: false })
         .order("nome");
