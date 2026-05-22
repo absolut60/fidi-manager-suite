@@ -213,39 +213,98 @@ function ImportCard() {
       }).select("id").single();
       if (impErr) throw impErr;
 
-      const payload = valid.map((r) => ({
-        ragione_sociale: r.data.ragione_sociale,
-        partita_iva: r.data.partita_iva || null,
-        codice_fiscale: r.data.codice_fiscale || null,
-        indirizzo: r.data.indirizzo || null,
-        citta: r.data.citta || null,
-        cap: r.data.cap || null,
-        provincia: r.data.provincia || null,
-        telefono: r.data.telefono || null,
-        email: r.data.email || null,
-        note: r.data.note || null,
+      const toNullable = <T,>(v: T | "" | undefined): T | null =>
+        v === "" || v === undefined ? null : v;
+
+      const buildPayload = (d: z.infer<typeof rowSchema>) => ({
+        ragione_sociale: d.ragione_sociale,
+        codice_gestionale: toNullable(d.codice_gestionale),
+        partita_iva: toNullable(d.partita_iva),
+        codice_fiscale: toNullable(d.codice_fiscale),
+        indirizzo: toNullable(d.indirizzo),
+        citta: toNullable(d.citta),
+        cap: toNullable(d.cap),
+        provincia: toNullable(d.provincia),
+        telefono: toNullable(d.telefono),
+        email: toNullable(d.email),
+        note: toNullable(d.note),
+        condizioni_pagamento: toNullable(d.condizioni_pagamento),
+        fido: toNullable(d.fido),
+        totale_rischio: toNullable(d.totale_rischio),
+        fido_residuo: toNullable(d.fido_residuo),
+        scaduto: toNullable(d.scaduto),
+        a_scadere: toNullable(d.a_scadere),
+        dilazione_concordata: toNullable(d.dilazione_concordata),
+        dilazione_effettiva: toNullable(d.dilazione_effettiva),
         store_id: storeId || null,
-      }));
+      });
+
+      // Carica clienti esistenti per deduplicazione (codice_gestionale o partita_iva)
+      const codici = Array.from(new Set(valid.map((r) => r.data.codice_gestionale).filter((v): v is string => !!v)));
+      const pive = Array.from(new Set(valid.map((r) => r.data.partita_iva).filter((v): v is string => !!v)));
+
+      const existing = new Map<string, string>(); // chiave -> id
+      if (codici.length) {
+        const { data } = await supabase.from("clienti").select("id, codice_gestionale").in("codice_gestionale", codici);
+        (data ?? []).forEach((c: any) => { if (c.codice_gestionale) existing.set(`cg:${c.codice_gestionale}`, c.id); });
+      }
+      if (pive.length) {
+        const { data } = await supabase.from("clienti").select("id, partita_iva").in("partita_iva", pive);
+        (data ?? []).forEach((c: any) => { if (c.partita_iva) existing.set(`pi:${c.partita_iva}`, c.id); });
+      }
 
       let created = 0;
+      let updated = 0;
+      const errorLog: Array<{ riga: number; errore: string }> = [];
+
       try {
-        const chunkSize = 200;
-        for (let i = 0; i < payload.length; i += chunkSize) {
-          const slice = payload.slice(i, i + chunkSize);
-          const { error } = await supabase.from("clienti").insert(slice);
-          if (error) throw error;
-          created += slice.length;
+        for (const r of valid) {
+          const payload = buildPayload(r.data);
+          const existingId =
+            (r.data.codice_gestionale && existing.get(`cg:${r.data.codice_gestionale}`)) ||
+            (r.data.partita_iva && existing.get(`pi:${r.data.partita_iva}`)) ||
+            null;
+
+          if (existingId) {
+            // UPDATE — non sovrascrivere store_id se non specificato
+            const updatePayload: Record<string, any> = { ...payload };
+            if (!storeId) delete updatePayload.store_id;
+            const { error } = await supabase.from("clienti").update(updatePayload).eq("id", existingId);
+            if (error) {
+              errorLog.push({ riga: r.idx, errore: `Update: ${error.message}` });
+            } else {
+              updated += 1;
+            }
+          } else {
+            const { data, error } = await supabase.from("clienti").insert(payload).select("id, codice_gestionale, partita_iva").single();
+            if (error) {
+              errorLog.push({ riga: r.idx, errore: `Insert: ${error.message}` });
+            } else {
+              created += 1;
+              if (data?.codice_gestionale) existing.set(`cg:${data.codice_gestionale}`, data.id);
+              if (data?.partita_iva) existing.set(`pi:${data.partita_iva}`, data.id);
+            }
+          }
         }
+
+        const logFinale = [
+          ...(invalid.length > 0 ? invalid.slice(0, 100).map((r) => ({ riga: r.idx, errori: r.errors })) : []),
+          ...errorLog,
+        ];
         await supabase.from("importazioni").update({
-          righe_elaborate: payload.length,
+          righe_elaborate: valid.length,
           righe_create: created,
-          stato: invalid.length > 0 ? "completata_con_errori" : "completata",
+          righe_aggiornate: updated,
+          righe_errore: invalid.length + errorLog.length,
+          stato: (invalid.length + errorLog.length) > 0 ? "completata_con_errori" : "completata",
           completata_at: new Date().toISOString(),
+          log_errori: logFinale.length ? logFinale : null,
         }).eq("id", imp.id);
       } catch (e) {
         await supabase.from("importazioni").update({
-          righe_elaborate: created,
+          righe_elaborate: created + updated,
           righe_create: created,
+          righe_aggiornate: updated,
           stato: "fallita",
           completata_at: new Date().toISOString(),
           log_errori: [{ errore: e instanceof Error ? e.message : String(e) }],
@@ -253,11 +312,12 @@ function ImportCard() {
         throw e;
       }
 
-      return payload.length;
+      return { created, updated };
     },
-    onSuccess: (n) => {
-      toast.success(`Importati ${n} clienti`);
+    onSuccess: ({ created, updated }) => {
+      toast.success(`Import completato: ${created} creati, ${updated} aggiornati`);
       qc.invalidateQueries({ queryKey: ["clienti"] });
+
       qc.invalidateQueries({ queryKey: ["storico-import-export"] });
       reset();
     },
