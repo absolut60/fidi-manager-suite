@@ -1,513 +1,461 @@
-import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from "pdf-lib";
+import { PDFDocument, StandardFonts, rgb, PDFPage } from "pdf-lib";
 import { LOGO_MADE_BASE64 } from "./logo-made-base64";
 
 export interface SchedaPdfInput {
   tipo: "nuovo" | "aggiornamento";
   ragioneSociale: string;
-  dichiaranteNome?: string | null;
-  dichiaranteCognome?: string | null;
-  luogoNascita?: string | null;
-  dataNascita?: string | null;
-  codiceFiscaleDich?: string | null;
-  partitaIva?: string | null;
-  residenza?: string | null;
-  emailDich?: string | null;
-  cellulareDich?: string | null;
-  consensoProfilazione: boolean | string | null;
-  consensoMarketingMedia: boolean | string | null;
-  consensoMarketingDiretto: boolean | string | null;
-  dataFirma: string | Date;
-  firmaPngDataUrl?: string | null;
-  // Campi legacy accettati per compatibilita' (mappati internamente):
-  dichiaranteLuogoNascita?: string | null;
-  dichiaranteDataNascita?: string | null;
-  dichiaranteCodiceFiscale?: string | null;
-  dichiaranteResidenza?: string | null;
-  dichiaranteEmail?: string | null;
-  dichiaranteCell?: string | null;
-  dichiaranteSocieta?: string | null;
-  [extra: string]: unknown;
+  dichiaranteNome: string;
+  dichiaranteCognome: string;
+  luogoNascita?: string;
+  dataNascita?: string;
+  codiceFiscaleDich?: string;
+  partitaIva?: string;
+  residenza?: string;
+  emailDich?: string;
+  cellulareDich?: string;
+  consensoProfilazione: boolean;
+  consensoMarketingMedia: boolean;
+  consensoMarketingDiretto: boolean;
+  dataFirma: string;
+  firmaPngDataUrl?: string;
 }
 
-// ---------- costanti pagina ----------
-const PAGE_W = 595;
-const PAGE_H = 842;
+const PAGE_W = 595.28;
+const PAGE_H = 841.89;
 const ML = 42;
 const MR = 42;
 const MT = 34;
 const MB = 56;
-const CW = PAGE_W - ML - MR; // 511
-const COL_W = (CW - 5) / 2;
-const COL_L_X = ML;
-const COL_R_X = ML + COL_W + 5;
+const CW = PAGE_W - ML - MR;
+const GRAY = rgb(0.33, 0.33, 0.33);
+const LGRAY = rgb(0.8, 0.8, 0.8);
+const BGRAY = rgb(0.96, 0.96, 0.96);
+const BLACK = rgb(0, 0, 0);
+const NAVY = rgb(0.05, 0.12, 0.24);
 
-// ---------- helpers testo (ASCII only) ----------
-function ascii(s: string | null | undefined): string {
-  if (s === null || s === undefined) return "";
-  return String(s)
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[\u2013\u2014]/g, "-")
-    .replace(/[\u2018\u2019\u02BC]/g, "'")
-    .replace(/[\u201C\u201D]/g, '"')
-    .replace(/[\u2022]/g, "-")
-    .replace(/[\u00A0]/g, " ")
-    .replace(/[^\x20-\x7E\n]/g, "");
-}
-
-function wrapLines(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
-  const paragraphs = text.split("\n");
-  const out: string[] = [];
-  for (const para of paragraphs) {
-    if (!para.trim()) {
-      out.push("");
-      continue;
-    }
-    const words = para.split(/\s+/);
-    let line = "";
-    for (const w of words) {
-      const candidate = line ? line + " " + w : w;
-      if (font.widthOfTextAtSize(candidate, size) <= maxWidth) {
-        line = candidate;
-      } else {
-        if (line) out.push(line);
-        // parola troppo lunga: spezza brutalmente
-        if (font.widthOfTextAtSize(w, size) > maxWidth) {
-          let chunk = "";
-          for (const ch of w) {
-            if (font.widthOfTextAtSize(chunk + ch, size) > maxWidth) {
-              out.push(chunk);
-              chunk = ch;
-            } else {
-              chunk += ch;
-            }
-          }
-          line = chunk;
-        } else {
-          line = w;
-        }
-      }
-    }
-    if (line) out.push(line);
-  }
-  return out;
-}
-
-type DrawOpts = {
-  font?: PDFFont;
-  bold?: boolean;
-  color?: ReturnType<typeof rgb>;
-  lineGap?: number;
-};
-
-function drawText(
-  page: PDFPage,
-  text: string,
-  x: number,
-  y: number,
-  size: number,
-  maxWidth: number,
-  font: PDFFont,
-  boldFont: PDFFont,
-  opts: { bold?: boolean; color?: ReturnType<typeof rgb>; lineGap?: number; align?: "left" | "center" } = {},
-): number {
-  const useFont = opts.bold ? boldFont : font;
-  const color = opts.color ?? rgb(0, 0, 0);
-  const lineGap = opts.lineGap ?? 2;
-  const lines = wrapLines(ascii(text), useFont, size, maxWidth);
-  let cy = y;
-  for (const ln of lines) {
-    let cx = x;
-    if (opts.align === "center") {
-      const w = useFont.widthOfTextAtSize(ln, size);
-      cx = x + (maxWidth - w) / 2;
-    }
-    page.drawText(ln, { x: cx, y: cy, size, font: useFont, color });
-    cy -= size + lineGap;
-  }
-  return y - cy; // altezza occupata
-}
-
-function drawSectionTitle(
-  page: PDFPage,
-  text: string,
-  x: number,
-  y: number,
-  width: number,
-  size: number,
-  boldFont: PDFFont,
-): number {
-  return drawText(page, text, x, y, size, width, boldFont, boldFont, {
-    bold: true,
-    align: "center",
-  });
-}
-
-// ---------- header / footer ----------
-async function drawHeader(page: PDFPage, logoImg: { width: number; height: number } & any) {
-  const logoW = 142;
-  const logoH = 43;
-  const x = (PAGE_W - logoW) / 2;
-  const y = PAGE_H - MT - logoH;
-  page.drawImage(logoImg, { x, y, width: logoW, height: logoH });
-  page.drawLine({
-    start: { x: ML, y: PAGE_H - MT - 47 },
-    end: { x: PAGE_W - MR, y: PAGE_H - MT - 47 },
-    thickness: 0.5,
-    color: rgb(0.7, 0.7, 0.7),
-  });
-}
-
-function drawFooter(
-  page: PDFPage,
-  pageNum: number,
-  totalPages: number,
-  font: PDFFont,
-  bold: PDFFont,
-  logoImg: any,
-) {
-  page.drawLine({
-    start: { x: ML, y: 56 },
-    end: { x: PAGE_W - MR, y: 56 },
-    thickness: 0.5,
-    color: rgb(0.7, 0.7, 0.7),
-  });
-  try {
-    page.drawImage(logoImg, { x: 42, y: 32, width: 57, height: 20 });
-  } catch { /* noop */ }
-  page.drawText("MADE DISTRIBUZIONE S.P.A.", {
-    x: 104, y: 46, size: 6.5, font: bold, color: rgb(0, 0, 0),
-  });
-  page.drawText("Sede Amministrativa: Via G. di Vittorio 3 - 20010 CASOREZZO (MI)", {
-    x: 104, y: 40, size: 6, font, color: rgb(0.35, 0.35, 0.35),
-  });
-  page.drawText("C.F. 10126430965 | REA Milano MI 2507310 | Capitale Sociale Euro 1.572.000 i.v.", {
-    x: 104, y: 34, size: 6, font, color: rgb(0.35, 0.35, 0.35),
-  });
-  const rev = "REV.06 NOV-2025";
-  const wRev = bold.widthOfTextAtSize(rev, 6.5);
-  page.drawText(rev, { x: 553 - wRev, y: 43, size: 6.5, font: bold });
-  const pag = `Pag. ${pageNum} di ${totalPages}`;
-  const wPag = bold.widthOfTextAtSize(pag, 6.5);
-  page.drawText(pag, { x: 553 - wPag, y: 37, size: 6.5, font: bold });
-}
-
-// ---------- contenuto informativa ----------
-const INTRO_TEXT = `Made Distribuzione S.p.A. - C.F. 10126430965, con sede in Milano Corso di Porta Nuova 11 (tel. 02404702800 - email gdpr-md@madepoint.it - pec madedistribuzionesrl@pecplus.it) in persona del suo presidente e legale rappresentante pro tempore, in qualita' di Titolare del trattamento, La informa, ai sensi degli artt. 13 e 14 del Regolamento UE 2016/679 (di seguito "GDPR" o "Regolamento"), che i Suoi dati personali saranno trattati con le modalita' e per le finalita' di seguito indicate.`;
-
-const COL_L_TEXT = `1. FONTE DEI DATI PERSONALI
-I dati personali in possesso del Titolare sono raccolti direttamente presso l'interessato ovvero presso terzi (es. visure camerali, banche dati pubbliche, informazioni commerciali).
-
-2. CATEGORIE DI DATI TRATTATI
-Il Titolare tratta dati anagrafici, di contatto, fiscali, bancari, commerciali, nonche' dati relativi all'attivita' economica svolta dall'interessato e/o dalla societa' rappresentata, ivi inclusi eventuali dati relativi a procedure pregiudizievoli o pagamenti.
-
-3. FINALITA' DEL TRATTAMENTO E BASE GIURIDICA
-I dati personali saranno trattati per le seguenti finalita':
-a) esecuzione di obblighi contrattuali e precontrattuali (art. 6, par. 1, lett. b GDPR);
-b) adempimento di obblighi di legge, contabili e fiscali (art. 6, par. 1, lett. c GDPR);
-c) gestione del credito, valutazione dell'affidabilita' e della solvibilita', recupero crediti (art. 6, par. 1, lett. f GDPR - legittimo interesse del Titolare);
-d) tutela dei diritti del Titolare in sede giudiziale e stragiudiziale (art. 6, par. 1, lett. f GDPR);
-e) previo consenso, finalita' di profilazione, marketing diretto e comunicazioni promozionali tramite canali tradizionali e digitali (art. 6, par. 1, lett. a GDPR).
-
-4. NATURA DEL CONFERIMENTO
-Il conferimento dei dati per le finalita' di cui ai punti a), b), c), d) e' obbligatorio: l'eventuale rifiuto comporta l'impossibilita' di instaurare o proseguire il rapporto. Il conferimento per le finalita' di cui al punto e) e' facoltativo: l'eventuale rifiuto non pregiudica il rapporto contrattuale.
-
-5. MODALITA' DEL TRATTAMENTO
-Il trattamento e' effettuato con strumenti manuali, informatici e telematici, con logiche strettamente correlate alle finalita' indicate e in modo da garantire la sicurezza e la riservatezza dei dati, nel rispetto delle misure tecniche e organizzative previste dal GDPR.
-
-6. CONSERVAZIONE DEI DATI
-I dati saranno conservati per il tempo necessario al perseguimento delle finalita' per cui sono stati raccolti e, comunque, nel rispetto degli obblighi di legge (es. 10 anni per la documentazione contabile e fiscale). Per le finalita' di marketing i dati saranno conservati fino a revoca del consenso e comunque per un periodo non superiore a 24 mesi.
-
-7. COMUNICAZIONE E DIFFUSIONE
-I dati potranno essere comunicati a soggetti terzi che svolgono attivita' funzionali al perseguimento delle finalita' indicate, quali consulenti, professionisti, istituti di credito, societa' di assicurazione del credito, societa' di recupero crediti, autorita' pubbliche, nonche' a soggetti designati come Responsabili del trattamento ex art. 28 GDPR. I dati non saranno oggetto di diffusione.
-
-8. TRASFERIMENTO DATI EXTRA UE
-Eventuali trasferimenti di dati personali verso Paesi extra UE avverranno nel rispetto delle garanzie previste dagli artt. 44 e ss. del GDPR (decisioni di adeguatezza, clausole contrattuali tipo).
-
-9. DECISIONI AUTOMATIZZATE E PROFILAZIONE
-Nell'ambito della valutazione dell'affidabilita' creditizia il Titolare puo' utilizzare strumenti di analisi automatizzata. L'interessato ha diritto di ottenere l'intervento umano, esprimere la propria opinione e contestare la decisione.`;
-
-const COL_R_TEXT = `A. TITOLARE DEL TRATTAMENTO
-Made Distribuzione S.p.A., Corso di Porta Nuova 11 - 20121 Milano, C.F./P.IVA 10126430965, email gdpr-md@madepoint.it, pec madedistribuzionesrl@pecplus.it.
-
-B. RESPONSABILE DELLA PROTEZIONE DEI DATI (DPO)
-Il Titolare non ha designato un DPO non rientrando nei casi obbligatori previsti dall'art. 37 GDPR. Le richieste degli interessati potranno essere indirizzate al Titolare ai recapiti sopra indicati.
-
-C. CATEGORIE DI DESTINATARI
-I dati potranno essere comunicati a: societa' del gruppo, consulenti fiscali e legali, istituti bancari, societa' di assicurazione del credito, societa' di factoring, societa' di recupero crediti, fornitori di servizi informatici, autorita' giudiziarie ed enti pubblici quando previsto dalla legge.
-
-D. DIRITTI DELL'INTERESSATO
-L'interessato puo' esercitare in ogni momento i diritti previsti dagli artt. 15-22 del GDPR, tra cui:
-- accesso ai propri dati personali;
-- rettifica dei dati inesatti o incompleti;
-- cancellazione (diritto all'oblio) nei casi previsti;
-- limitazione del trattamento;
-- portabilita' dei dati;
-- opposizione al trattamento;
-- revoca del consenso prestato, senza pregiudizio della liceita' del trattamento basato sul consenso prestato prima della revoca.
-
-E. MODALITA' DI ESERCIZIO DEI DIRITTI
-Le richieste possono essere inviate via email a gdpr-md@madepoint.it o via pec a madedistribuzionesrl@pecplus.it. Il Titolare provvedera' a fornire riscontro entro i termini di legge.
-
-F. DIRITTO DI RECLAMO
-L'interessato ha diritto di proporre reclamo all'Autorita' Garante per la protezione dei dati personali (www.garanteprivacy.it).
-
-G. AGGIORNAMENTI
-La presente informativa puo' essere soggetta ad aggiornamenti. La versione vigente e' sempre disponibile presso la sede del Titolare e su richiesta dell'interessato.
-
-10. SICUREZZA
-Il Titolare adotta misure tecniche e organizzative adeguate a garantire la sicurezza dei dati, prevenire accessi non autorizzati, perdita, distruzione o divulgazione.
-
-11. DATI DI MINORI
-Il trattamento non e' rivolto a soggetti di eta' inferiore ai 16 anni. Il Titolare non raccoglie consapevolmente dati di minori.
-
-12. CONSENSO FACOLTATIVO PER PROFILAZIONE
-Previo consenso, i dati potranno essere trattati per attivita' di profilazione finalizzate ad analizzare preferenze, abitudini e scelte di consumo dell'interessato.
-
-13. CONSENSO FACOLTATIVO PER MARKETING DIGITALE
-Previo consenso, i dati potranno essere trattati per l'invio di comunicazioni promozionali tramite email, SMS, WhatsApp e altri canali digitali.
-
-14. CONSENSO FACOLTATIVO PER MARKETING TRADIZIONALE
-Previo consenso, i dati potranno essere trattati per contatto diretto tramite telefono, posta cartacea o contatto personale per finalita' di marketing.
-
-15. REVOCA DEL CONSENSO
-I consensi facoltativi possono essere revocati in qualsiasi momento scrivendo a gdpr-md@madepoint.it, senza pregiudizio della liceita' dei trattamenti effettuati prima della revoca.
-
-16. RIFERIMENTI NORMATIVI
-Regolamento UE 2016/679 (GDPR), D.Lgs. 196/2003 come modificato dal D.Lgs. 101/2018, provvedimenti del Garante per la protezione dei dati personali.`;
-
-const CONSENSO_INTRO = `preso atto dell'informativa che precede ai sensi degli articoli 13 e 14 del GDPR, consapevole che il consenso e' facoltativo e revocabile in qualsiasi momento, in relazione alle finalita' facoltative ivi indicate dichiara quanto segue:`;
-
-const BLOCCO_1 = `1) Trattamento dei dati personali per finalita' di profilazione, intesa come analisi delle preferenze, delle abitudini e delle scelte di consumo dell'interessato.`;
-const BLOCCO_2 = `2) Trattamento dei dati personali per l'invio di comunicazioni promozionali e di marketing tramite e-mail, SMS, WhatsApp e altri canali digitali.`;
-const BLOCCO_3 = `3) Trattamento dei dati personali per finalita' di marketing diretto tramite contatto telefonico, posta cartacea o contatto personale presso il punto vendita.`;
-
-// ---------- coerenza input ----------
-function toBool(v: unknown): boolean {
-  if (typeof v === "boolean") return v;
-  if (typeof v === "string") return v.toLowerCase() === "si" || v.toLowerCase() === "sì" || v === "true";
-  return false;
-}
-
-function fmtDataFirma(v: string | Date | undefined | null): string {
-  if (!v) return "";
-  if (v instanceof Date) {
-    const d = String(v.getDate()).padStart(2, "0");
-    const m = String(v.getMonth() + 1).padStart(2, "0");
-    return `${d}/${m}/${v.getFullYear()}`;
-  }
-  return String(v);
-}
-
-function fmtLuogoData(luogo?: string | null, data?: string | null): string {
-  const L = ascii(luogo || "");
-  let D = "";
-  if (data) {
-    const dt = new Date(data);
-    if (Number.isFinite(dt.getTime())) {
-      const dd = String(dt.getDate()).padStart(2, "0");
-      const mm = String(dt.getMonth() + 1).padStart(2, "0");
-      D = `${dd}/${mm}/${dt.getFullYear()}`;
-    } else {
-      D = ascii(data);
-    }
-  }
-  if (L && D) return `${L} - ${D}`;
-  return L || D || "";
-}
-
-// ---------- main ----------
 export async function generaSchedaCliente(input: SchedaPdfInput): Promise<Uint8Array> {
   const pdfDoc = await PDFDocument.create();
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
+  // Logo
   const logoBytes = Uint8Array.from(atob(LOGO_MADE_BASE64), (c) => c.charCodeAt(0));
   const logoImg = await pdfDoc.embedPng(logoBytes);
+  const logoDims = logoImg.scale(1);
+  const LOGO_W = 113;
+  const LOGO_H = (LOGO_W * logoDims.height) / logoDims.width;
 
-  // normalizza input (accetta sia nuovi nomi che legacy)
-  const luogoNascita = input.luogoNascita ?? input.dichiaranteLuogoNascita ?? "";
-  const dataNascita = input.dataNascita ?? input.dichiaranteDataNascita ?? "";
-  const codiceFiscaleDich = input.codiceFiscaleDich ?? input.dichiaranteCodiceFiscale ?? "";
-  const residenza = input.residenza ?? input.dichiaranteResidenza ?? "";
-  const emailDich = input.emailDich ?? input.dichiaranteEmail ?? "";
-  const cellulareDich = input.cellulareDich ?? input.dichiaranteCell ?? "";
-  const societa = input.dichiaranteSocieta ?? input.ragioneSociale;
+  function wrapText(text: string, maxWidth: number, fontSize: number, f: typeof font): string[] {
+    const words = text.split(" ");
+    const lines: string[] = [];
+    let current = "";
+    for (const word of words) {
+      const test = current ? current + " " + word : word;
+      const w = f.widthOfTextAtSize(test, fontSize);
+      if (w > maxWidth && current) {
+        lines.push(current);
+        current = word;
+      } else {
+        current = test;
+      }
+    }
+    if (current) lines.push(current);
+    return lines;
+  }
 
-  const cProf = toBool(input.consensoProfilazione);
-  const cMedia = toBool(input.consensoMarketingMedia);
-  const cDir = toBool(input.consensoMarketingDiretto);
+  function drawWrapped(
+    page: PDFPage,
+    text: string,
+    x: number,
+    y: number,
+    maxW: number,
+    size: number,
+    f: typeof font,
+    color = BLACK,
+  ): number {
+    const lines = wrapText(text, maxW, size, f);
+    const lineH = size * 1.4;
+    lines.forEach((line, i) => {
+      page.drawText(line, { x, y: y - i * lineH, size, font: f, color });
+    });
+    return lines.length * lineH;
+  }
 
-  const dataFirma = fmtDataFirma(input.dataFirma);
+  function drawHeader(page: PDFPage) {
+    const lx = (PAGE_W - LOGO_W) / 2;
+    const ly = PAGE_H - MT - LOGO_H;
+    page.drawImage(logoImg, { x: lx, y: ly, width: LOGO_W, height: LOGO_H });
+    page.drawLine({
+      start: { x: ML, y: ly - 6 },
+      end: { x: PAGE_W - MR, y: ly - 6 },
+      thickness: 0.4,
+      color: LGRAY,
+    });
+  }
 
-  // =================== PAGINA 1 ===================
-  const p1 = pdfDoc.addPage([PAGE_W, PAGE_H]);
-  await drawHeader(p1, logoImg);
+  function drawFooter(page: PDFPage, pageNum: number, total: number) {
+    const fy = MB;
+    page.drawLine({
+      start: { x: ML, y: fy + 40 },
+      end: { x: PAGE_W - MR, y: fy + 40 },
+      thickness: 0.4,
+      color: LGRAY,
+    });
+    const flw = LOGO_W * 0.35;
+    const flh = (flw * logoDims.height) / logoDims.width;
+    page.drawImage(logoImg, { x: ML, y: fy + 6, width: flw, height: flh });
+    const fx = ML + flw + 8;
+    page.drawText("MADE DISTRIBUZIONE S.P.A.", { x: fx, y: fy + 26, size: 6.5, font: bold, color: BLACK });
+    page.drawText("Sede Amministrativa: Via G. di Vittorio 3 - 20010 CASOREZZO (MI)", {
+      x: fx,
+      y: fy + 18,
+      size: 5.8,
+      font,
+      color: GRAY,
+    });
+    page.drawText("C.F. 10126430965  |  REA Milano MI 2507310  |  Capitale Sociale Euro 1.572.000 i.v.", {
+      x: fx,
+      y: fy + 10,
+      size: 5.8,
+      font,
+      color: GRAY,
+    });
+    page.drawText("REV.06 NOV-2025", {
+      x: PAGE_W - MR - bold.widthOfTextAtSize("REV.06 NOV-2025", 6.5),
+      y: fy + 18,
+      size: 6.5,
+      font: bold,
+      color: BLACK,
+    });
+    const pag = `Pag. ${pageNum} di ${total}`;
+    page.drawText(pag, {
+      x: PAGE_W - MR - bold.widthOfTextAtSize(pag, 6.5),
+      y: fy + 10,
+      size: 6.5,
+      font: bold,
+      color: BLACK,
+    });
+  }
 
-  let y = PAGE_H - MT - 47 - 14;
+  // ── PAGINA 1 ──────────────────────────────────────────
+  const page1 = pdfDoc.addPage([PAGE_W, PAGE_H]);
+  drawHeader(page1);
+  drawFooter(page1, 1, 2);
 
-  const titolo = "INFORMATIVA RESA AI SENSI DEGLI ARTT. 13-14 DEL GDPR (GENERAL DATA PROTECTION REGULATION) 2016/679";
-  const titH = drawSectionTitle(p1, titolo, ML, y, CW, 11, bold);
-  y -= titH + 6;
+  const headerBottom = PAGE_H - MT - LOGO_H - 11;
+  let y = headerBottom - 8;
+  const minY = MB + 50;
 
-  // Intro full width
-  const introH = drawText(p1, INTRO_TEXT, ML, y, 8, CW, font, bold, { lineGap: 1.5 });
-  y -= introH + 8;
+  const titleText =
+    "INFORMATIVA RESA AI SENSI DEGLI ARTT. 13-14 DEL GDPR (GENERAL DATA PROTECTION REGULATION) 2016/679";
+  const titleH = drawWrapped(page1, titleText, ML, y, CW, 10, bold, NAVY);
+  y -= titleH + 8;
 
-  // Linea verticale separatrice tra colonne
-  const colsTop = y;
-  const colsBottom = MB + 6;
-  const vx = ML + COL_W + 2.5;
-  p1.drawLine({
-    start: { x: vx, y: colsTop },
-    end: { x: vx, y: colsBottom },
+  const introText =
+    "Made Distribuzione S.p.A. - C.F. 10126430965, con sede in Milano Corso di Porta Nuova 11 (tel. 02404702800 - email gdpr-md@madepoint.it pec madedistribuzionesrl@pecplus.it) in persona del suo presidente Dott. Gian Luca Bellini, ai sensi dell'articolo 13 del GDPR 2016/679, Le fornisce le seguenti informazioni:";
+  const introH = drawWrapped(page1, introText, ML, y, CW, 8, font);
+  y -= introH + 10;
+
+  const half = (CW - 14) / 2;
+  const colXL = ML;
+  const colXR = ML + half + 14;
+  const colY = y;
+  page1.drawLine({
+    start: { x: ML + half + 7, y: colY },
+    end: { x: ML + half + 7, y: minY },
     thickness: 0.3,
-    color: rgb(0.75, 0.75, 0.75),
+    color: LGRAY,
   });
 
-  // Colonna sinistra
-  drawText(p1, COL_L_TEXT, COL_L_X, y, 7, COL_W, font, bold, { lineGap: 1.4 });
-  // Colonna destra
-  drawText(p1, COL_R_TEXT, COL_R_X, y, 7, COL_W, font, bold, { lineGap: 1.4 });
+  function drawCol(
+    page: PDFPage,
+    items: Array<{ text: string; isBold?: boolean; indent?: number }>,
+    x: number,
+    startY: number,
+    w: number,
+    stopY: number,
+  ): number {
+    let cy = startY;
+    for (const item of items) {
+      const f = item.isBold ? bold : font;
+      const ix = x + (item.indent || 0);
+      const iw = w - (item.indent || 0);
+      const h = drawWrapped(page, item.text, ix, cy, iw, 8, f);
+      cy -= h + 3;
+      if (cy < stopY) break;
+    }
+    return cy;
+  }
 
-  // =================== PAGINA 2 ===================
-  const p2 = pdfDoc.addPage([PAGE_W, PAGE_H]);
-  await drawHeader(p2, logoImg);
-
-  let y2 = PAGE_H - MT - 47 - 16;
-
-  const titH2 = drawSectionTitle(p2, "FORMULAZIONE DEL CONSENSO", ML, y2, CW, 10, bold);
-  y2 -= titH2 + 8;
-
-  const introH2 = drawText(p2, "Il sottoscritto,", ML, y2, 8, CW, font, bold);
-  y2 -= introH2 + 4;
-
-  // Tabella dati dichiarante
-  const labelW = 108;
-  const valueW = CW - labelW;
-  const rowH = 22;
-  const rows: Array<[string, string]> = [
-    ["Nome", ascii(input.dichiaranteNome)],
-    ["Cognome", ascii(input.dichiaranteCognome)],
-    ["Societa'", ascii(societa)],
-    ["Luogo e data di nascita", fmtLuogoData(luogoNascita, dataNascita)],
-    ["Codice fiscale", ascii(codiceFiscaleDich)],
-    ["P.IVA", ascii(input.partitaIva)],
-    ["Residenza", ascii(residenza)],
-    ["Email", ascii(emailDich)],
-    ["Cell.", ascii(cellulareDich)],
+  const colLItems = [
+    { text: "TIPI DI DATI", isBold: true },
+    {
+      text: "1. Dati personali - I dati personali (nome, cognome, estremi documento di riconoscimento e copia dello stesso, telefono, indirizzo e-mail, etc.), sono quelli che saranno forniti al momento della sottoscrizione o comunque prima dell'avvio del rapporto contrattuale ovvero nel corso dello stesso.",
+    },
+    {
+      text: "2. Particolari categorie di dati (dati sensibili) - Tra i dati conferiti possono figurare anche i dati di cui all'art. 9 GDPR, ossia i dati personali che rivelino l'origine razziale o etnica, l'appartenenza sindacale, dati relativi alla salute della persona.",
+    },
+    { text: "TIPI E FINALITA' DI TRATTAMENTO", isBold: true },
+    {
+      text: "3. Trattamenti derivanti da obblighi contrattuali (trattamenti che prescindono da consenso) - I dati personali comuni e/o sensibili e/o giudiziari saranno oggetto, anche senza il Vostro consenso ai sensi dell'art. 6, lettere b) e f) GDPR:",
+    },
+    {
+      text: "i. di trattamento relativo alle funzioni connesse all'esercizio delle proprie attivita' aziendali (fornitura di prodotti, materiali, opere e servizi nei campi edile, elettrotecnico e idraulico);",
+      indent: 12,
+    },
+    {
+      text: "ii. di trattamento relativo all'esame e all'archiviazione dell'anagrafica cliente e del curriculum vitae;",
+      indent: 12,
+    },
+    {
+      text: "iii. di trattamento connesso alla fase precontrattuale e agli adempimenti del rapporto contrattuale: produzione in ambito giudiziale, registrazione fatture, elaborazione certificazioni, stipula di coperture assicurative, comunicazione a commercialisti, avvocati, banche e compagnie assicurative;",
+      indent: 12,
+    },
+    {
+      text: "4. Trattamenti derivanti da obblighi di legge (trattamenti che prescindono da consenso) - I dati saranno oggetto ai sensi dell'art. 6, lettera c) GDPR:",
+    },
+    { text: "iv. di trattamento connesso a finalita' fiscale/tributaria/contributiva;", indent: 12 },
+    { text: "v. di trattamento connesso alla comunicazione a Enti pubblici o privati prevista per legge;", indent: 12 },
+    { text: "vi. di trattamento connesso agli obblighi di legge in tema di tutela della vita e della salute;", indent: 12 },
+    {
+      text: "vii. di trasferimento a terzi per finalita' di backup su server esterni anche fuori UE con cifratura.",
+      indent: 12,
+    },
+    { text: "5. Trattamenti a prescindere da obblighi contrattuali o di legge - I dati personali saranno oggetto:" },
+    {
+      text: "viii. di trattamento costituito dalla conservazione e analisi con strumenti tecnologici automatizzati (profilazione) per gestire un consolidato nazionale in tempo reale e indirizzare le strategie commerciali del network;",
+      indent: 12,
+    },
+    {
+      text: "ix. di inserimento di dati, fotografie, articoli e riprese audiovisive nel sito internet, social network, pubblicazioni, brochure, cataloghi per fini didattici, pubblicitari e di marketing;",
+      indent: 12,
+    },
+    {
+      text: "x. di invio di informative per finalita' pubblicitarie e di marketing anche via e-mail, sms, whatsapp.",
+      indent: 12,
+    },
+    {
+      text: "6. Definizione di trattamento - Il trattamento di dati personali e' definito dall'art. 4 GDPR come qualsiasi operazione compiuta con o senza l'ausilio di processi automatizzati applicata a dati personali.",
+    },
+    {
+      text: "7. Trattamento di particolari categorie di dati (dati sensibili) - I dati particolari ex art. 9 GDPR non rientrano normalmente nel trattamento sopra descritto e verranno trattati solo in presenza di Vostro consenso.",
+    },
+    {
+      text: "8. Trattamento di dati giudiziari - I dati giudiziari verranno trattati solo se necessario e su consenso dell'interessato.",
+    },
+    { text: "CATEGORIE DI SOGGETTI AI QUALI I DATI POSSONO ESSERE COMUNICATI", isBold: true },
+    {
+      text: "9. I dati personali forniti potranno essere oggetto di comunicazione a tutti i dipendenti e collaboratori coinvolti, nonche' agli Enti esterni destinatari delle pratiche che riguardano il cliente/fornitore, e ai soggetti esterni che interagiscono con il titolare, sempre ed esclusivamente per attivita' funzionali alle finalita' sopra descritte; tali categorie sono:",
+    },
   ];
 
-  for (const [label, value] of rows) {
-    const topY = y2;
-    const bottomY = y2 - rowH;
-    // label cell
-    p2.drawRectangle({
-      x: ML, y: bottomY, width: labelW, height: rowH,
-      color: rgb(0.96, 0.96, 0.96),
-      borderColor: rgb(0.7, 0.7, 0.7),
-      borderWidth: 0.4,
-    });
-    // value cell
-    p2.drawRectangle({
-      x: ML + labelW, y: bottomY, width: valueW, height: rowH,
-      color: rgb(1, 1, 1),
-      borderColor: rgb(0.7, 0.7, 0.7),
-      borderWidth: 0.4,
-    });
-    // label centrato
-    const lblW = bold.widthOfTextAtSize(label, 8);
-    p2.drawText(label, {
-      x: ML + (labelW - lblW) / 2,
-      y: bottomY + rowH / 2 - 3,
-      size: 8,
-      font: bold,
-    });
-    // value left aligned, troncato
-    let val = value || "";
-    while (val && font.widthOfTextAtSize(val, 8) > valueW - 8) val = val.slice(0, -1);
-    if (val !== (value || "") && val.length > 1) val = val.slice(0, -1) + "...";
-    p2.drawText(val, {
-      x: ML + labelW + 5,
-      y: bottomY + rowH / 2 - 3,
-      size: 8,
-      font,
-    });
-    y2 = bottomY;
-  }
+  const colRItems = [
+    {
+      text: "A. Societa' operanti nel campo E.D.P., anche residenti all'estero, per la cura dell'information management del titolare, della sicurezza e della riservatezza dei dati;",
+    },
+    {
+      text: "B. Commercialisti, societa' di servizi nel campo della consulenza del lavoro e nell'elaborazione di sistemi di paghe e stipendi, nonche' Studi Legali per eventuali controversie;",
+    },
+    {
+      text: "C. Clienti e Fornitori per lo svolgimento delle attivita' commerciali, di servizio e amministrative del titolare;",
+    },
+    {
+      text: "D. Distributori, agenti, vettori, corrieri, trasportatori e comunque ogni altra Societa' utilizzata nell'ambito dei servizi offerti dal titolare;",
+    },
+    { text: "E. Societa' del Gruppo Made;" },
+    {
+      text: "F. Societa' o soggetti che svolgono attivita' commerciale di vendita e/o fornitura di beni e/o servizi, di pubblicita', nell'ambito dell'attivita' commerciale promozionale e di marketing;",
+    },
+    {
+      text: "G. soggetti terzi con cui sia necessario o anche solo opportuno collaborare nell'ambito dell'organizzazione dell'attivita' aziendale.",
+    },
+    { text: "MODALITA' DI TRATTAMENTO", isBold: true },
+    {
+      text: "10. Principi - Il trattamento dei dati personali sara' improntato ai principi di correttezza, licceita', trasparenza e di tutela della Sua riservatezza e dei Suoi diritti.",
+    },
+    {
+      text: "11. Strumenti - Il trattamento dei dati sara' effettuato sia con strumenti manuali e/o informatici e/o telematici con logiche di organizzazione ed elaborazione strettamente correlate alle finalita' stesse.",
+    },
+    {
+      text: "12. Cessione dei dati all'estero - E' possibile la cessione dei dati all'estero e al di fuori dell'Unione Europea per finalita' di backup dati, per l'utilizzo di software che utilizzano server all'estero (Microsoft 365) e nel caso di servizi resi all'estero.",
+    },
+    { text: "TERMINE DI CONSERVAZIONE DEI DATI", isBold: true },
+    {
+      text: "13. I dati personali vengono conservati per tutta la durata del rapporto contrattuale e, nel caso di cessazione del rapporto, nei termini prescrizionali normativamente previsti. In ogni caso per non meno di 10 anni in ragione degli obblighi di conservazione a fini fiscali.",
+    },
+    { text: "CONSENSO DELL'INTERESSATO", isBold: true },
+    {
+      text: "14. Il conferimento dei dati personali al trattamento finora spiegato ha natura obbligatoria ai sensi delle leggi e dei contratti che regolamentano il rapporto contrattuale.",
+    },
+    { text: "15. Si informa in particolare che:" },
+    {
+      text: "a) e' obbligatorio fornire i dati per le finalita' di cui al punto 3 e 4. Il mancato consenso comporta l'impossibilita' di assolvere gli obblighi di legge e quindi di costituire o proseguire il rapporto contrattuale;",
+      indent: 12,
+    },
+    { text: "b) e' facoltativo fornire i dati per il trattamento di cui al punto 5;", indent: 12 },
+    { text: "c) e' facoltativo fornire i dati giudiziari.", indent: 12 },
+    { text: "DIRITTI DELL'INTERESSATO", isBold: true },
+    { text: "16. Ella potra', in qualsiasi momento, esercitare i diritti:" },
+    { text: "a. di accesso ai dati personali ai sensi dell'art. 15 GDPR;", indent: 12 },
+    {
+      text: "b. di ottenere la rettifica (art. 16 GDPR), la cancellazione (art. 17 GDPR) o la limitazione del trattamento (art. 18 GDPR);",
+      indent: 12,
+    },
+    { text: "c. di opporsi al trattamento ai sensi dell'art. 21 GDPR;", indent: 12 },
+    { text: "d. alla portabilita' dei dati ai sensi dell'art. 20 GDPR;", indent: 12 },
+    { text: "e. di revocare il consenso (art. 7 co. 3 GDPR);", indent: 12 },
+    { text: "f. di proporre reclamo all'autorita' di controllo (Garante Privacy).", indent: 12 },
+    {
+      text: "L'esercizio dei suoi diritti potra' avvenire attraverso l'invio di una richiesta mediante e-mail all'indirizzo gdpr-md@madepoint.it.",
+    },
+    {
+      text: "La revoca del consenso, la richiesta di cancellazione, l'opposizione e la richiesta di portabilita' dei dati comportera' l'impossibilita' di adempiere alle obbligazioni inerenti al rapporto e dunque rendera' impossibile la sua prosecuzione.",
+    },
+    { text: "DATI DEL TITOLARE E CONTATTI", isBold: true },
+    {
+      text: "Il Titolare del trattamento dati e' Made Distribuzione S.p.A. - c.f. 10126430965, con sede in Milano Corso di Porta Nuova 11 (tel. 02404702800 - email: gdpr-md@madepoint.it - pec: madedistribuzionesrl@pecplus.it). La persona a cui e' possibile rivolgersi per esercitare i diritti e' raggiungibile all'indirizzo e-mail: gdpr-md@madepoint.it.",
+    },
+  ];
 
-  y2 -= 10;
+  drawCol(page1, colLItems, colXL, colY, half, minY);
+  drawCol(page1, colRItems, colXR, colY, half, minY);
 
-  // Intro consenso
-  const intCH = drawText(p2, CONSENSO_INTRO, ML, y2, 8, CW, font, bold, { lineGap: 1.5 });
-  y2 -= intCH + 6;
+  // ── PAGINA 2 ──────────────────────────────────────────
+  const page2 = pdfDoc.addPage([PAGE_W, PAGE_H]);
+  drawHeader(page2);
+  drawFooter(page2, 2, 2);
 
-  // Helper blocco consenso
-  function drawConsentBlock(text: string, value: boolean) {
-    const h = drawText(p2, text, ML, y2, 8, CW, font, bold, { lineGap: 1.5 });
-    y2 -= h + 3;
-    // riga "[X] fornisce il consenso"  centrata
-    const fornisce = `${value ? "[X]" : "[ ]"} fornisce il consenso`;
-    const nega = `${!value ? "[X]" : "[ ]"} nega il consenso`;
-    const wF = bold.widthOfTextAtSize(fornisce, 8);
-    p2.drawText(fornisce, { x: ML + (CW - wF) / 2, y: y2, size: 8, font: bold });
-    y2 -= 11;
-    const wN = bold.widthOfTextAtSize(nega, 8);
-    p2.drawText(nega, { x: ML + (CW - wN) / 2, y: y2, size: 8, font: bold });
-    y2 -= 12;
-  }
+  let y2 = headerBottom - 8;
 
-  drawConsentBlock(BLOCCO_1, cProf);
+  const t2 = "FORMULAZIONE DEL CONSENSO";
+  const t2w = bold.widthOfTextAtSize(t2, 10);
+  page2.drawText(t2, { x: (PAGE_W - t2w) / 2, y: y2, size: 10, font: bold, color: BLACK });
+  y2 -= 20;
 
-  const inH1 = drawText(p2, "Inoltre,", ML, y2, 8, CW, font, bold);
-  y2 -= inH1 + 4;
-
-  drawConsentBlock(BLOCCO_2, cMedia);
-
-  const inH2 = drawText(p2, "Inoltre,", ML, y2, 8, CW, font, bold);
-  y2 -= inH2 + 4;
-
-  drawConsentBlock(BLOCCO_3, cDir);
-
+  page2.drawText("Il sottoscritto,", { x: ML, y: y2, size: 8, font, color: BLACK });
   y2 -= 16;
 
-  // Riga firma
-  p2.drawText(`Li ${dataFirma}    _______________`, {
-    x: ML, y: y2, size: 9, font,
+  const rowH = 21;
+  const lblW = 108;
+  const tableRows: Array<[string, string]> = [
+    ["Nome", input.dichiaranteNome],
+    ["Cognome", input.dichiaranteCognome],
+    ["Societa'", input.ragioneSociale],
+    ["Luogo e data di nascita", `${input.luogoNascita || ""} ${input.dataNascita || ""}`],
+    ["Codice fiscale", input.codiceFiscaleDich || ""],
+    ["P.IVA", input.partitaIva || ""],
+    ["Residenza", input.residenza || ""],
+    ["Email", input.emailDich || ""],
+    ["Cell.", input.cellulareDich || ""],
+  ];
+
+  page2.drawRectangle({
+    x: ML,
+    y: y2 - rowH * tableRows.length,
+    width: CW,
+    height: rowH * tableRows.length,
+    borderColor: LGRAY,
+    borderWidth: 0.5,
+    color: rgb(1, 1, 1),
+  });
+
+  tableRows.forEach(([lbl, val], i) => {
+    const ry = y2 - (i + 1) * rowH;
+    page2.drawRectangle({ x: ML, y: ry, width: lblW, height: rowH, color: BGRAY, borderWidth: 0 });
+    page2.drawLine({ start: { x: ML, y: ry }, end: { x: ML + CW, y: ry }, thickness: 0.3, color: LGRAY });
+    page2.drawLine({
+      start: { x: ML + lblW, y: ry },
+      end: { x: ML + lblW, y: ry + rowH },
+      thickness: 0.3,
+      color: LGRAY,
+    });
+    const lw = font.widthOfTextAtSize(lbl, 8);
+    page2.drawText(lbl, { x: ML + (lblW - lw) / 2, y: ry + rowH / 2 - 4, size: 8, font, color: BLACK });
+    page2.drawText((val || "").slice(0, 65), {
+      x: ML + lblW + 4,
+      y: ry + rowH / 2 - 4,
+      size: 8,
+      font,
+      color: BLACK,
+    });
+  });
+
+  y2 -= rowH * tableRows.length + 14;
+
+  const introConsText =
+    "avendo letto l'informativa fornita dal titolare del trattamento ai sensi dell'art. 13 GDPR sul trattamento e sulla comunicazione dei dati personali (comuni, sensibili) da questo effettuati, con la finalita' connesse all'adempimento del rapporto contrattuale e ai connessi adempimenti di legge, essendo consapevole che in mancanza di consenso ai predetti trattamenti il titolare non potra' - da un lato - assolvere gli obblighi di legge e quindi costituire o proseguire il rapporto contrattuale e - dall'altro - di svolgere la propria attivita' tipica,";
+  const introConsH = drawWrapped(page2, introConsText, ML, y2, CW, 8, font);
+  y2 -= introConsH + 10;
+
+  function drawConsentBlock(page: PDFPage, yPos: number, text: string, dato: boolean): number {
+    const h = drawWrapped(page, text, ML, yPos, CW, 8, font);
+    yPos -= h + 6;
+    const cx = PAGE_W / 2 - 56;
+    const si = dato ? "[X]" : "[ ]";
+    const no = dato ? "[ ]" : "[X]";
+    page.drawText(`${si}  fornisce il consenso`, { x: cx, y: yPos, size: 8, font, color: BLACK });
+    yPos -= 14;
+    page.drawText(`${no}  nega il consenso`, { x: cx, y: yPos, size: 8, font, color: BLACK });
+    yPos -= 14;
+    return yPos;
+  }
+
+  y2 = drawConsentBlock(
+    page2,
+    y2,
+    "al trattamento, ivi compresa la comunicazione ai soggetti di cui al punto 9 e la cessione al di fuori dell'Unione Europea, dei dati personali, ivi compresi quelli sensibili di cui all'art. 9 GDPR e le immagini dell'interessato per le finalita' di analisi anche con strumenti tecnologici automatizzati (profilazione) al fine di consentire al titolare di poter gestire un consolidato nazionale in tempo reale e al fine di poter analizzare i dati caricati sul software per poter indirizzare al meglio le strategie commerciali del network.",
+    input.consensoProfilazione,
+  );
+  page2.drawText("Inoltre,", { x: ML, y: y2, size: 8, font, color: BLACK });
+  y2 -= 12;
+
+  y2 = drawConsentBlock(
+    page2,
+    y2,
+    "al trattamento, ivi compresa la comunicazione ai soggetti di cui al punto 9 e la cessione al di fuori dell'Unione Europea, dei dati personali, ivi compresi quelli sensibili di cui all'art. 9 GDPR e le immagini dell'interessato per le finalita' di inserimento di dati, fotografie, articoli e riprese audiovisive nel proprio sito internet e nelle proprie pubblicazioni, social network, per la pubblicazione di fotografie e/o riprese audiovisive, corsi on line, pubblicazioni, brochure, presentazioni, cataloghi per fini didattici, pubblicitari e di marketing",
+    input.consensoMarketingMedia,
+  );
+  page2.drawText("Inoltre,", { x: ML, y: y2, size: 8, font, color: BLACK });
+  y2 -= 12;
+
+  y2 = drawConsentBlock(
+    page2,
+    y2,
+    "al trattamento, ivi compresa la comunicazione ai soggetti di cui al punto 9 e la cessione al di fuori dell'Unione Europea, dei dati personali, ivi compresi quelli sensibili di cui all'art. 9 GDPR e le immagini dell'interessato per le finalita' di invio di informative per finalita' pubblicitarie e di marketing, anche via e-mail, sms, whatsapp.",
+    input.consensoMarketingDiretto,
+  );
+
+  const firmaY = MB + 108;
+  page2.drawText(`Li ${input.dataFirma} _______________`, { x: ML, y: firmaY, size: 8, font, color: BLACK });
+  const firmaX = ML + CW * 0.55;
+  page2.drawLine({
+    start: { x: firmaX, y: firmaY },
+    end: { x: PAGE_W - MR, y: firmaY },
+    thickness: 0.5,
+    color: BLACK,
+  });
+  const firmaLbl = "Firma";
+  const firmaLblW = font.widthOfTextAtSize(firmaLbl, 8);
+  page2.drawText(firmaLbl, {
+    x: firmaX + (PAGE_W - MR - firmaX - firmaLblW) / 2,
+    y: firmaY - 14,
+    size: 8,
+    font,
+    color: BLACK,
   });
 
   if (input.firmaPngDataUrl) {
     try {
-      const base64 = input.firmaPngDataUrl.includes(",")
-        ? input.firmaPngDataUrl.split(",")[1]
-        : input.firmaPngDataUrl;
-      const sigBytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-      const sigImg = await pdfDoc.embedPng(sigBytes);
-      const sigW = 150;
-      const sigH = (sigImg.height / sigImg.width) * sigW;
-      p2.drawImage(sigImg, {
-        x: 350,
-        y: y2 - 5,
-        width: sigW,
-        height: Math.min(sigH, 50),
-      });
-    } catch { /* firma opzionale */ }
-  } else {
-    p2.drawLine({
-      start: { x: 350, y: y2 - 2 },
-      end: { x: 500, y: y2 - 2 },
-      thickness: 0.5,
-      color: rgb(0.5, 0.5, 0.5),
-    });
+      const pngBytes = Uint8Array.from(atob(input.firmaPngDataUrl.split(",")[1]), (c) => c.charCodeAt(0));
+      const firmaImg = await pdfDoc.embedPng(pngBytes);
+      const firmaDims = firmaImg.scale(1);
+      const firmaImgW = 113;
+      const firmaImgH = Math.min((firmaImgW * firmaDims.height) / firmaDims.width, 34);
+      page2.drawImage(firmaImg, { x: firmaX + 14, y: firmaY + 4, width: firmaImgW, height: firmaImgH });
+    } catch (e) {
+      console.warn("Firma PNG non incorporata:", e);
+    }
   }
-  // "Firma" centrato sotto a x=425
-  const firmaLbl = "Firma";
-  const wFL = font.widthOfTextAtSize(firmaLbl, 8);
-  p2.drawText(firmaLbl, { x: 425 - wFL / 2, y: y2 - 18, size: 8, font });
-
-  // ---------- footer su tutte le pagine ----------
-  const pages = pdfDoc.getPages();
-  pages.forEach((p, i) => drawFooter(p, i + 1, pages.length, font, bold, logoImg));
 
   return pdfDoc.save();
 }
