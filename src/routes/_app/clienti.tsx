@@ -646,7 +646,12 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
     const label = steps[s];
     const errs: Record<string, string> = {};
     if (label === "Impresa") {
-      if (!form.ragione_sociale.trim()) errs.ragione_sociale = "Obbligatorio";
+      if (form.tipo === "aggiornamento" && !clienteEsistenteId) {
+        errs.ragione_sociale = "Seleziona il cliente da aggiornare dal campo di ricerca sopra";
+        toast.error("Seleziona prima un cliente esistente dal campo di ricerca");
+      } else if (!form.ragione_sociale.trim()) {
+        errs.ragione_sociale = "Obbligatorio";
+      }
       if (form.email && !z.string().email().safeParse(form.email).success) errs.email = "Email non valida";
     }
     if (label === "Contatti") {
