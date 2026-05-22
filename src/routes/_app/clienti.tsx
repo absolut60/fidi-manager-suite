@@ -303,11 +303,6 @@ const schedaSchema = z.object({
   condizioni_pagamento_concordate: z.string().trim().max(200).optional().or(z.literal("")),
   data_richiesta_affidamento: z.string().optional().or(z.literal("")),
   importo_affidamento_richiesto: z.string().optional().or(z.literal("")),
-  data_esito_affidamento: z.string().optional().or(z.literal("")),
-  importo_affidato: z.string().optional().or(z.literal("")),
-  fido_aziendale_concesso: z.string().optional().or(z.literal("")),
-  condizioni_pagamento_concesse: z.string().trim().max(200).optional().or(z.literal("")),
-  data_affidamento_aziendale: z.string().optional().or(z.literal("")),
   note_amministrazione: z.string().trim().max(2000).optional().or(z.literal("")),
   // STEP 4 — Firma (solo modalità con firma)
   dichiarante_nome: z.string().trim().max(100).optional().or(z.literal("")),
