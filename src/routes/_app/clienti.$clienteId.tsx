@@ -253,6 +253,7 @@ function ClienteDetail() {
           <TabsTrigger value="contatti">Contatti ({contatti?.length ?? 0})</TabsTrigger>
           <TabsTrigger value="cantieri">Cantieri</TabsTrigger>
           <TabsTrigger value="storico">Storico fido</TabsTrigger>
+          <TabsTrigger value="insoluti">Insoluti</TabsTrigger>
           <TabsTrigger value="privacy">Privacy</TabsTrigger>
         </TabsList>
 
