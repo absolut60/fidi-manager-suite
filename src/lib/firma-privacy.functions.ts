@@ -116,7 +116,12 @@ export const firmaPrivacyConToken = createServerFn({ method: "POST" })
     const { error: eFirma } = await supabaseAdmin.storage.from("firme")
       .upload(firmaPath, pngBytes, { upsert: true, contentType: "image/png" });
     if (eFirma) throw new Error(eFirma.message);
-    const { data: firmaUrl } = supabaseAdmin.storage.from("firme").getPublicUrl(firmaPath);
+    // Bucket "firme" privato: genera URL firmato a lunga scadenza (10 anni)
+    const { data: firmaSigned, error: eSigned } = await supabaseAdmin.storage
+      .from("firme")
+      .createSignedUrl(firmaPath, 60 * 60 * 24 * 365 * 10);
+    if (eSigned) throw new Error(eSigned.message);
+    const firmaUrl = { publicUrl: firmaSigned.signedUrl };
 
     // 2) Genera PDF (intestato al cliente, firmato dal contatto)
     const pdfBytes = await generaPdfPrivacy({
