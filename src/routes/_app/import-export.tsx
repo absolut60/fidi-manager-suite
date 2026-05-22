@@ -232,11 +232,11 @@ function AnagraficaImportCard() {
           (d.partita_iva && existing.get(`pi:${d.partita_iva}`)) || null;
 
         if (existId) {
-          const { error } = await supabase.from("clienti").update(payload).eq("id", existId);
+          const { error } = await supabase.from("clienti").update(payload as never).eq("id", existId);
           if (error) errorLog.push({ riga: r.idx, errore: `Update: ${error.message}` });
           else updated += 1;
         } else {
-          const { data, error } = await supabase.from("clienti").insert(payload).select("id, codice_gestionale, partita_iva").single();
+          const { data, error } = await supabase.from("clienti").insert(payload as never).select("id, codice_gestionale, partita_iva").single();
           if (error) errorLog.push({ riga: r.idx, errore: `Insert: ${error.message}` });
           else {
             created += 1;
