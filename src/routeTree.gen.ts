@@ -26,6 +26,7 @@ import { Route as AppClientiRouteImport } from './routes/_app/clienti'
 import { Route as AppAuditRouteImport } from './routes/_app/audit'
 import { Route as AppAssicurazioniRouteImport } from './routes/_app/assicurazioni'
 import { Route as AppApprovazioniRouteImport } from './routes/_app/approvazioni'
+import { Route as ApiPublicInngestRouteImport } from './routes/api/public/inngest'
 import { Route as AppRichiesteRichiestaIdRouteImport } from './routes/_app/richieste.$richiestaId'
 import { Route as AppClientiClienteIdRouteImport } from './routes/_app/clienti.$clienteId'
 import { Route as ApiPublicHooksCheckScadenzeRouteImport } from './routes/api/public/hooks/check-scadenze'
@@ -115,6 +116,11 @@ const AppApprovazioniRoute = AppApprovazioniRouteImport.update({
   path: '/approvazioni',
   getParentRoute: () => AppRoute,
 } as any)
+const ApiPublicInngestRoute = ApiPublicInngestRouteImport.update({
+  id: '/api/public/inngest',
+  path: '/api/public/inngest',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppRichiesteRichiestaIdRoute = AppRichiesteRichiestaIdRouteImport.update({
   id: '/$richiestaId',
   path: '/$richiestaId',
@@ -157,6 +163,7 @@ export interface FileRoutesByFullPath {
   '/firma-privacy/$token': typeof FirmaPrivacyTokenRoute
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
   '/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
+  '/api/public/inngest': typeof ApiPublicInngestRoute
   '/api/public/hooks/check-reminder-ritardi': typeof ApiPublicHooksCheckReminderRitardiRoute
   '/api/public/hooks/check-scadenze': typeof ApiPublicHooksCheckScadenzeRoute
 }
@@ -179,6 +186,7 @@ export interface FileRoutesByTo {
   '/firma-privacy/$token': typeof FirmaPrivacyTokenRoute
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
   '/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
+  '/api/public/inngest': typeof ApiPublicInngestRoute
   '/api/public/hooks/check-reminder-ritardi': typeof ApiPublicHooksCheckReminderRitardiRoute
   '/api/public/hooks/check-scadenze': typeof ApiPublicHooksCheckScadenzeRoute
 }
@@ -203,6 +211,7 @@ export interface FileRoutesById {
   '/firma-privacy/$token': typeof FirmaPrivacyTokenRoute
   '/_app/clienti/$clienteId': typeof AppClientiClienteIdRoute
   '/_app/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
+  '/api/public/inngest': typeof ApiPublicInngestRoute
   '/api/public/hooks/check-reminder-ritardi': typeof ApiPublicHooksCheckReminderRitardiRoute
   '/api/public/hooks/check-scadenze': typeof ApiPublicHooksCheckScadenzeRoute
 }
@@ -227,6 +236,7 @@ export interface FileRouteTypes {
     | '/firma-privacy/$token'
     | '/clienti/$clienteId'
     | '/richieste/$richiestaId'
+    | '/api/public/inngest'
     | '/api/public/hooks/check-reminder-ritardi'
     | '/api/public/hooks/check-scadenze'
   fileRoutesByTo: FileRoutesByTo
@@ -249,6 +259,7 @@ export interface FileRouteTypes {
     | '/firma-privacy/$token'
     | '/clienti/$clienteId'
     | '/richieste/$richiestaId'
+    | '/api/public/inngest'
     | '/api/public/hooks/check-reminder-ritardi'
     | '/api/public/hooks/check-scadenze'
   id:
@@ -272,6 +283,7 @@ export interface FileRouteTypes {
     | '/firma-privacy/$token'
     | '/_app/clienti/$clienteId'
     | '/_app/richieste/$richiestaId'
+    | '/api/public/inngest'
     | '/api/public/hooks/check-reminder-ritardi'
     | '/api/public/hooks/check-scadenze'
   fileRoutesById: FileRoutesById
@@ -281,6 +293,7 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
   FirmaPrivacyTokenRoute: typeof FirmaPrivacyTokenRoute
+  ApiPublicInngestRoute: typeof ApiPublicInngestRoute
   ApiPublicHooksCheckReminderRitardiRoute: typeof ApiPublicHooksCheckReminderRitardiRoute
   ApiPublicHooksCheckScadenzeRoute: typeof ApiPublicHooksCheckScadenzeRoute
 }
@@ -406,6 +419,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppApprovazioniRouteImport
       parentRoute: typeof AppRoute
     }
+    '/api/public/inngest': {
+      id: '/api/public/inngest'
+      path: '/api/public/inngest'
+      fullPath: '/api/public/inngest'
+      preLoaderRoute: typeof ApiPublicInngestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_app/richieste/$richiestaId': {
       id: '/_app/richieste/$richiestaId'
       path: '/$richiestaId'
@@ -500,6 +520,7 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
   FirmaPrivacyTokenRoute: FirmaPrivacyTokenRoute,
+  ApiPublicInngestRoute: ApiPublicInngestRoute,
   ApiPublicHooksCheckReminderRitardiRoute:
     ApiPublicHooksCheckReminderRitardiRoute,
   ApiPublicHooksCheckScadenzeRoute: ApiPublicHooksCheckScadenzeRoute,
