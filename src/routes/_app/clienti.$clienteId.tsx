@@ -55,7 +55,7 @@ type ContattoForm = z.infer<typeof contattoSchema>;
 
 function ClienteDetail() {
   const { clienteId } = Route.useParams();
-  const { edit } = Route.useSearch();
+  const { edit, tab, insolutiTab } = Route.useSearch();
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { role } = useAuth();
