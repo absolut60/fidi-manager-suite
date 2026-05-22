@@ -1073,7 +1073,15 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
 
       <div className="space-y-4 mt-2">
         {currentStepLabel === "Impresa" && (
-          <StepImpresa form={form} set={set} errors={errors} stores={stores ?? []} />
+          <StepImpresa
+            form={form}
+            set={set}
+            errors={errors}
+            stores={stores ?? []}
+            clienteEsistenteId={clienteEsistenteId}
+            onSelectClienteEsistente={caricaClienteEsistente}
+            onResetClienteEsistente={resetClienteEsistente}
+          />
         )}
         {currentStepLabel === "Contatti" && (
           <StepContatti form={form} set={set} errors={errors} />
