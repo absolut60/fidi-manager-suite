@@ -403,6 +403,10 @@ function ClienteDetail() {
           <ClienteStoricoFidoTab clienteId={clienteId} />
         </TabsContent>
 
+        <TabsContent value="insoluti">
+          <ClienteInsolutiTab clienteId={clienteId} />
+        </TabsContent>
+
         <TabsContent value="privacy">
           <PrivacyTab cliente={cliente} onUpdated={() => qc.invalidateQueries({ queryKey: ["cliente", clienteId] })} />
         </TabsContent>
