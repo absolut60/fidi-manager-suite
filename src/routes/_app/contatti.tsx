@@ -1,119 +1,207 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Users, Mail, Phone, Smartphone, Star } from "lucide-react";
+import { Search, Users, Star, Check, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
 
 export const Route = createFileRoute("/_app/contatti")({
   component: ContattiPage,
 });
 
+function CB({ ok }: { ok: boolean }) {
+  return ok
+    ? <Badge className="bg-success/15 text-success border-success/30"><Check className="size-3" /></Badge>
+    : <Badge variant="outline" className="text-muted-foreground"><X className="size-3" /></Badge>;
+}
+
+function fmtDate(v: unknown): string {
+  if (!v) return "—";
+  try { return new Date(String(v)).toLocaleDateString("it-IT"); } catch { return String(v); }
+}
+
 function ContattiPage() {
+  const navigate = useNavigate();
+  const { role } = useAuth();
+  const isStoreManager = role === "store_manager";
   const [search, setSearch] = useState("");
+  const [storeId, setStoreId] = useState("all");
+  const [clienteId, setClienteId] = useState("all");
+  const [statoConsenso, setStatoConsenso] = useState("tutti");
+
+  const { data: stores } = useQuery({
+    queryKey: ["stores-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("stores").select("id, nome").order("nome");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
 
   const { data, isLoading } = useQuery({
     queryKey: ["contatti-all"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("contatti")
-        .select("*, clienti(id, ragione_sociale)")
+        .select("*, clienti!inner(id, ragione_sociale, store_id, stores(nome))")
         .order("principale", { ascending: false })
         .order("nome");
       if (error) throw error;
-      return data;
+      return data ?? [];
     },
   });
 
-  const filtered = (data ?? []).filter((c) => {
-    const q = search.toLowerCase().trim();
-    if (!q) return true;
-    return (
-      c.nome?.toLowerCase().includes(q) ||
-      c.cognome?.toLowerCase().includes(q) ||
-      c.email?.toLowerCase().includes(q) ||
-      (c as any).clienti?.ragione_sociale?.toLowerCase().includes(q)
-    );
-  });
+  const clientiOptions = useMemo(() => {
+    const m = new Map<string, string>();
+    (data ?? []).forEach((c: any) => {
+      if (c.clienti) m.set(c.clienti.id, c.clienti.ragione_sociale);
+    });
+    return Array.from(m.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+  }, [data]);
+
+  const filtered = useMemo(() => {
+    return (data ?? []).filter((c: any) => {
+      if (storeId !== "all" && c.clienti?.store_id !== storeId) return false;
+      if (clienteId !== "all" && c.clienti?.id !== clienteId) return false;
+      const n = (c.consenso_profilazione ? 1 : 0)
+        + (c.consenso_marketing_media ? 1 : 0)
+        + (c.consenso_marketing_diretto ? 1 : 0);
+      if (statoConsenso === "almeno_uno" && n === 0) return false;
+      if (statoConsenso === "nessuno" && n > 0) return false;
+      if (search.trim()) {
+        const q = search.toLowerCase();
+        const hay = `${c.nome ?? ""} ${c.cognome ?? ""} ${c.email ?? ""} ${c.clienti?.ragione_sociale ?? ""}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [data, search, storeId, clienteId, statoConsenso]);
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Contatti</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
+          <Users className="size-7 text-primary" /> Contatti
+        </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Referenti collegati ai clienti
+          Referenti collegati ai clienti con stato consensi privacy
         </p>
       </div>
 
-      <Card className="p-4 sm:p-5">
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Cerca per nome, email o cliente..."
-            className="pl-9"
-          />
+      <Card className="p-4">
+        <div className="flex flex-wrap gap-3 items-end">
+          <div className="flex-1 min-w-[200px]">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Cerca nome, email o cliente..."
+                className="pl-9"
+              />
+            </div>
+          </div>
+          <div className="w-56">
+            <Select value={clienteId} onValueChange={setClienteId}>
+              <SelectTrigger><SelectValue placeholder="Cliente" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tutti i clienti</SelectItem>
+                {clientiOptions.map(([id, nome]) => (
+                  <SelectItem key={id} value={id}>{nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {!isStoreManager && (
+            <div className="w-56">
+              <Select value={storeId} onValueChange={setStoreId}>
+                <SelectTrigger><SelectValue placeholder="Store" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tutti gli store</SelectItem>
+                  {stores?.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          <div className="w-56">
+            <Select value={statoConsenso} onValueChange={setStatoConsenso}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="tutti">Tutti i consensi</SelectItem>
+                <SelectItem value="almeno_uno">Almeno uno firmato</SelectItem>
+                <SelectItem value="nessuno">Nessuno firmato</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
+      </Card>
 
+      <Card className="overflow-hidden">
         {isLoading ? (
-          <div className="space-y-2">
-            {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}
+          <div className="p-4 space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="size-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
-              <Users className="size-5 text-muted-foreground" />
-            </div>
-            <p className="font-medium text-sm">Nessun contatto</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              I contatti vengono creati dalla scheda di ogni cliente.
-            </p>
-          </div>
+          <div className="p-12 text-center text-sm text-muted-foreground">Nessun contatto trovato</div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {filtered.map((c) => (
-              <Card key={c.id} className="p-4 hover:shadow-sm transition-shadow">
-                <div className="flex items-center gap-2 mb-1">
-                  <p className="font-semibold truncate">{c.nome} {c.cognome}</p>
-                  {c.principale && (
-                    <Star className="size-3.5 fill-accent text-accent shrink-0" />
-                  )}
-                </div>
-                {c.ruolo && <p className="text-xs text-muted-foreground mb-2">{c.ruolo}</p>}
-                {(c as any).clienti && (
-                  <Link
-                    to="/clienti/$clienteId"
-                    params={{ clienteId: (c as any).clienti.id }}
-                  >
-                    <Badge variant="outline" className="mb-3 hover:bg-muted text-xs">
-                      {(c as any).clienti.ragione_sociale}
-                    </Badge>
-                  </Link>
-                )}
-                <div className="space-y-1 text-xs">
-                  {c.email && (
-                    <a href={`mailto:${c.email}`} className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground">
-                      <Mail className="size-3" /> <span className="truncate">{c.email}</span>
-                    </a>
-                  )}
-                  {c.telefono && (
-                    <a href={`tel:${c.telefono}`} className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground">
-                      <Phone className="size-3" /> {c.telefono}
-                    </a>
-                  )}
-                  {c.cellulare && (
-                    <a href={`tel:${c.cellulare}`} className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground">
-                      <Smartphone className="size-3" /> {c.cellulare}
-                    </a>
-                  )}
-                </div>
-              </Card>
-            ))}
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nome</TableHead>
+                <TableHead>Cliente</TableHead>
+                <TableHead>Ruolo</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Cellulare</TableHead>
+                <TableHead className="text-center">Profilaz.</TableHead>
+                <TableHead className="text-center">Marketing</TableHead>
+                <TableHead className="text-center">WhatsApp</TableHead>
+                <TableHead>Data firma</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((c: any) => (
+                <TableRow
+                  key={c.id}
+                  className="cursor-pointer hover:bg-muted/40"
+                  onClick={() => navigate({
+                    to: "/clienti/$clienteId",
+                    params: { clienteId: c.clienti.id },
+                    search: { tab: "contatti" },
+                  })}
+                >
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-1.5">
+                      {c.principale && <Star className="size-3 fill-accent text-accent" />}
+                      {c.nome} {c.cognome}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {c.clienti?.ragione_sociale}
+                    <div className="text-xs text-muted-foreground">{c.clienti?.stores?.nome ?? "—"}</div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{c.ruolo ?? "—"}</TableCell>
+                  <TableCell className="text-muted-foreground text-xs">{c.email ?? "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">{c.cellulare ?? "—"}</TableCell>
+                  <TableCell className="text-center"><CB ok={!!c.consenso_profilazione} /></TableCell>
+                  <TableCell className="text-center"><CB ok={!!c.consenso_marketing_media} /></TableCell>
+                  <TableCell className="text-center"><CB ok={!!c.consenso_marketing_diretto} /></TableCell>
+                  <TableCell className="text-muted-foreground">{fmtDate(c.data_firma)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         )}
       </Card>
     </div>
