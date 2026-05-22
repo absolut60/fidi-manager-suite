@@ -329,6 +329,15 @@ function ImportCard() {
     const ws = XLSX.utils.json_to_sheet([
       {
         ragione_sociale: "Esempio S.r.l.",
+        codice_gestionale: "13908",
+        fido: 50000,
+        totale_rischio: 32000,
+        fido_residuo: 18000,
+        scaduto: 0,
+        a_scadere: 32000,
+        condizione_pagamento: "R.B. 60 gg. d.f. f.m.",
+        dilazione_concordata: 60,
+        dilazione_effettiva: 65,
         partita_iva: "12345678901",
         codice_fiscale: "12345678901",
         indirizzo: "Via Roma 1",
@@ -340,6 +349,7 @@ function ImportCard() {
         note: "",
       },
     ]);
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Clienti");
     XLSX.writeFile(wb, "template_import_clienti.xlsx");
