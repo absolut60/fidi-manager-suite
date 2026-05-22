@@ -15,6 +15,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as FirmaPrivacyTokenRouteImport } from './routes/firma-privacy.$token'
 import { Route as AppWhatsappRouteImport } from './routes/_app/whatsapp'
 import { Route as AppUtentiRouteImport } from './routes/_app/utenti'
+import { Route as AppScadenziarioRouteImport } from './routes/_app/scadenziario'
 import { Route as AppRichiesteRouteImport } from './routes/_app/richieste'
 import { Route as AppPrivacyRouteImport } from './routes/_app/privacy'
 import { Route as AppLegaliRouteImport } from './routes/_app/legali'
@@ -59,6 +60,11 @@ const AppWhatsappRoute = AppWhatsappRouteImport.update({
 const AppUtentiRoute = AppUtentiRouteImport.update({
   id: '/utenti',
   path: '/utenti',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppScadenziarioRoute = AppScadenziarioRouteImport.update({
+  id: '/scadenziario',
+  path: '/scadenziario',
   getParentRoute: () => AppRoute,
 } as any)
 const AppRichiesteRoute = AppRichiesteRouteImport.update({
@@ -158,6 +164,7 @@ export interface FileRoutesByFullPath {
   '/legali': typeof AppLegaliRoute
   '/privacy': typeof AppPrivacyRoute
   '/richieste': typeof AppRichiesteRouteWithChildren
+  '/scadenziario': typeof AppScadenziarioRoute
   '/utenti': typeof AppUtentiRoute
   '/whatsapp': typeof AppWhatsappRoute
   '/firma-privacy/$token': typeof FirmaPrivacyTokenRoute
@@ -181,6 +188,7 @@ export interface FileRoutesByTo {
   '/legali': typeof AppLegaliRoute
   '/privacy': typeof AppPrivacyRoute
   '/richieste': typeof AppRichiesteRouteWithChildren
+  '/scadenziario': typeof AppScadenziarioRoute
   '/utenti': typeof AppUtentiRoute
   '/whatsapp': typeof AppWhatsappRoute
   '/firma-privacy/$token': typeof FirmaPrivacyTokenRoute
@@ -206,6 +214,7 @@ export interface FileRoutesById {
   '/_app/legali': typeof AppLegaliRoute
   '/_app/privacy': typeof AppPrivacyRoute
   '/_app/richieste': typeof AppRichiesteRouteWithChildren
+  '/_app/scadenziario': typeof AppScadenziarioRoute
   '/_app/utenti': typeof AppUtentiRoute
   '/_app/whatsapp': typeof AppWhatsappRoute
   '/firma-privacy/$token': typeof FirmaPrivacyTokenRoute
@@ -231,6 +240,7 @@ export interface FileRouteTypes {
     | '/legali'
     | '/privacy'
     | '/richieste'
+    | '/scadenziario'
     | '/utenti'
     | '/whatsapp'
     | '/firma-privacy/$token'
@@ -254,6 +264,7 @@ export interface FileRouteTypes {
     | '/legali'
     | '/privacy'
     | '/richieste'
+    | '/scadenziario'
     | '/utenti'
     | '/whatsapp'
     | '/firma-privacy/$token'
@@ -278,6 +289,7 @@ export interface FileRouteTypes {
     | '/_app/legali'
     | '/_app/privacy'
     | '/_app/richieste'
+    | '/_app/scadenziario'
     | '/_app/utenti'
     | '/_app/whatsapp'
     | '/firma-privacy/$token'
@@ -340,6 +352,13 @@ declare module '@tanstack/react-router' {
       path: '/utenti'
       fullPath: '/utenti'
       preLoaderRoute: typeof AppUtentiRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/scadenziario': {
+      id: '/_app/scadenziario'
+      path: '/scadenziario'
+      fullPath: '/scadenziario'
+      preLoaderRoute: typeof AppScadenziarioRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/richieste': {
@@ -493,6 +512,7 @@ interface AppRouteChildren {
   AppLegaliRoute: typeof AppLegaliRoute
   AppPrivacyRoute: typeof AppPrivacyRoute
   AppRichiesteRoute: typeof AppRichiesteRouteWithChildren
+  AppScadenziarioRoute: typeof AppScadenziarioRoute
   AppUtentiRoute: typeof AppUtentiRoute
   AppWhatsappRoute: typeof AppWhatsappRoute
 }
@@ -509,6 +529,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppLegaliRoute: AppLegaliRoute,
   AppPrivacyRoute: AppPrivacyRoute,
   AppRichiesteRoute: AppRichiesteRouteWithChildren,
+  AppScadenziarioRoute: AppScadenziarioRoute,
   AppUtentiRoute: AppUtentiRoute,
   AppWhatsappRoute: AppWhatsappRoute,
 }
