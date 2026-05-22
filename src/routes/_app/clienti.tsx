@@ -550,6 +550,76 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
   const padRef = useRef<HTMLDivElement>(null);
   const [hasSig, setHasSig] = useState(false);
 
+  // Stato per modalità Aggiornamento: cliente selezionato e contatti esistenti
+  const [clienteEsistenteId, setClienteEsistenteId] = useState<string | null>(null);
+  const [titolareEsistenteId, setTitolareEsistenteId] = useState<string | null>(null);
+  const [amministrativoEsistenteId, setAmministrativoEsistenteId] = useState<string | null>(null);
+
+  // Carica un cliente esistente e precompila il form (modalità Aggiornamento)
+  async function caricaClienteEsistente(clienteId: string) {
+    const { data: cliente, error } = await supabase
+      .from("clienti").select("*").eq("id", clienteId).maybeSingle();
+    if (error || !cliente) {
+      toast.error("Impossibile caricare il cliente selezionato");
+      return;
+    }
+    const { data: contatti } = await supabase
+      .from("contatti").select("*").eq("cliente_id", clienteId).order("principale", { ascending: false });
+    const titolare = (contatti ?? []).find((c: any) => c.principale) ?? null;
+    const amm = (contatti ?? []).find((c: any) => !c.principale) ?? null;
+
+    setClienteEsistenteId(clienteId);
+    setTitolareEsistenteId(titolare?.id ?? null);
+    setAmministrativoEsistenteId(amm?.id ?? null);
+
+    const c = cliente as any;
+    setForm((f) => ({
+      ...f,
+      tipo: "aggiornamento",
+      tipo_soggetto: (c.tipo_soggetto === "persona_fisica" ? "persona_fisica" : "azienda") as SchedaForm["tipo_soggetto"],
+      ragione_sociale: c.ragione_sociale ?? "",
+      codice_gestionale: c.codice_gestionale ?? "",
+      indirizzo: c.indirizzo ?? "",
+      cap: c.cap ?? "",
+      citta: c.citta ?? "",
+      provincia: c.provincia ?? "",
+      telefono: c.telefono ?? "",
+      email: c.email ?? "",
+      partita_iva: c.partita_iva ?? "",
+      codice_fiscale: c.codice_fiscale ?? "",
+      banca: c.banca ?? "",
+      agenzia: c.agenzia ?? "",
+      abi: c.abi ?? "",
+      cab: c.cab ?? "",
+      codice_sdi: c.codice_sdi ?? "",
+      pec: c.pec ?? "",
+      store_id: c.store_id ?? "",
+      titolare_nome: titolare?.nome ?? "",
+      titolare_cognome: titolare?.cognome ?? "",
+      titolare_email: titolare?.email ?? "",
+      titolare_cell: titolare?.cellulare ?? titolare?.telefono ?? "",
+      amministrativo_nome: amm?.nome ?? "",
+      amministrativo_cognome: amm?.cognome ?? "",
+      amministrativo_email: amm?.email ?? "",
+      amministrativo_cell: amm?.cellulare ?? amm?.telefono ?? "",
+      codice_assegnato: c.codice_assegnato ?? "",
+      sede_operatore: c.sede_operatore ?? "",
+      condizioni_pagamento_concordate: c.condizioni_pagamento_concordate ?? "",
+      data_richiesta_affidamento: c.data_richiesta_affidamento ?? "",
+      importo_affidamento_richiesto: c.importo_affidamento_richiesto != null ? String(c.importo_affidamento_richiesto) : "",
+      note_amministrazione: c.note_amministrazione ?? "",
+      dichiarante_nome: c.dichiarante_nome ?? "",
+      dichiarante_cognome: c.dichiarante_cognome ?? "",
+    }));
+    toast.success(`Cliente "${c.ragione_sociale}" caricato`);
+  }
+
+  function resetClienteEsistente() {
+    setClienteEsistenteId(null);
+    setTitolareEsistenteId(null);
+    setAmministrativoEsistenteId(null);
+  }
+
   // Steps dinamici in base a modalità e ruolo
   const steps = useMemo(() => {
     const s = ["Impresa", "Contatti"];
