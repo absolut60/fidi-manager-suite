@@ -13,11 +13,29 @@ export interface SchedaPdfInput {
   residenza?: string;
   emailDich?: string;
   cellulareDich?: string;
-  consensoProfilazione: boolean;
-  consensoMarketingMedia: boolean;
-  consensoMarketingDiretto: boolean;
-  dataFirma: string;
+  consensoProfilazione: boolean | string;
+  consensoMarketingMedia: boolean | string;
+  consensoMarketingDiretto: boolean | string;
+  dataFirma: string | Date;
   firmaPngDataUrl?: string;
+}
+
+function toBool(v: unknown): boolean {
+  if (typeof v === "boolean") return v;
+  if (typeof v === "string") {
+    const s = v.toLowerCase().trim();
+    return s === "si" || s === "sì" || s === "true" || s === "yes";
+  }
+  return false;
+}
+
+function fmtFirma(v: string | Date): string {
+  if (v instanceof Date) {
+    const d = String(v.getDate()).padStart(2, "0");
+    const m = String(v.getMonth() + 1).padStart(2, "0");
+    return `${d}/${m}/${v.getFullYear()}`;
+  }
+  return v;
 }
 
 const PAGE_W = 595.28;
