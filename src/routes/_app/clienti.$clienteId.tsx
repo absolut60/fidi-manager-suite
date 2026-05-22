@@ -29,8 +29,15 @@ import { formatEuro } from "@/lib/fidi";
 
 
 
+const TAB_VALUES = ["anagrafica", "contatti", "cantieri", "storico", "insoluti", "privacy"] as const;
+const INSOLUTI_SUB_VALUES = ["riepilogo", "scadenziario", "solleciti", "legali", "assicurazioni"] as const;
+
 export const Route = createFileRoute("/_app/clienti/$clienteId")({
-  validateSearch: (s: Record<string, unknown>) => ({ edit: s.edit === 1 || s.edit === "1" ? 1 : undefined }),
+  validateSearch: (s: Record<string, unknown>) => ({
+    edit: s.edit === 1 || s.edit === "1" ? 1 : undefined,
+    tab: typeof s.tab === "string" && (TAB_VALUES as readonly string[]).includes(s.tab) ? s.tab as typeof TAB_VALUES[number] : undefined,
+    insolutiTab: typeof s.insolutiTab === "string" && (INSOLUTI_SUB_VALUES as readonly string[]).includes(s.insolutiTab) ? s.insolutiTab as typeof INSOLUTI_SUB_VALUES[number] : undefined,
+  }),
   component: ClienteDetail,
 });
 
@@ -48,7 +55,7 @@ type ContattoForm = z.infer<typeof contattoSchema>;
 
 function ClienteDetail() {
   const { clienteId } = Route.useParams();
-  const { edit } = Route.useSearch();
+  const { edit, tab, insolutiTab } = Route.useSearch();
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { role } = useAuth();
@@ -248,7 +255,7 @@ function ClienteDetail() {
         </div>
       </div>
 
-      <Tabs defaultValue="anagrafica">
+      <Tabs defaultValue={tab ?? "anagrafica"}>
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="anagrafica">Anagrafica</TabsTrigger>
           <TabsTrigger value="contatti">Contatti ({contatti?.length ?? 0})</TabsTrigger>
@@ -405,7 +412,7 @@ function ClienteDetail() {
         </TabsContent>
 
         <TabsContent value="insoluti">
-          <ClienteInsolutiTab cliente={{ id: clienteId, bloccato: (cliente as any).bloccato, in_gestione_legale: (cliente as any).in_gestione_legale, motivo_blocco: (cliente as any).motivo_blocco, data_blocco: (cliente as any).data_blocco }} />
+          <ClienteInsolutiTab cliente={{ id: clienteId, bloccato: (cliente as any).bloccato, in_gestione_legale: (cliente as any).in_gestione_legale, motivo_blocco: (cliente as any).motivo_blocco, data_blocco: (cliente as any).data_blocco }} defaultSubTab={insolutiTab} />
         </TabsContent>
 
         <TabsContent value="privacy">

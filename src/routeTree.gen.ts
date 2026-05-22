@@ -16,12 +16,15 @@ import { Route as FirmaPrivacyTokenRouteImport } from './routes/firma-privacy.$t
 import { Route as AppWhatsappRouteImport } from './routes/_app/whatsapp'
 import { Route as AppUtentiRouteImport } from './routes/_app/utenti'
 import { Route as AppRichiesteRouteImport } from './routes/_app/richieste'
+import { Route as AppPrivacyRouteImport } from './routes/_app/privacy'
+import { Route as AppLegaliRouteImport } from './routes/_app/legali'
 import { Route as AppImpostazioniRouteImport } from './routes/_app/impostazioni'
 import { Route as AppImportExportRouteImport } from './routes/_app/import-export'
 import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as AppContattiRouteImport } from './routes/_app/contatti'
 import { Route as AppClientiRouteImport } from './routes/_app/clienti'
 import { Route as AppAuditRouteImport } from './routes/_app/audit'
+import { Route as AppAssicurazioniRouteImport } from './routes/_app/assicurazioni'
 import { Route as AppApprovazioniRouteImport } from './routes/_app/approvazioni'
 import { Route as AppRichiesteRichiestaIdRouteImport } from './routes/_app/richieste.$richiestaId'
 import { Route as AppClientiClienteIdRouteImport } from './routes/_app/clienti.$clienteId'
@@ -62,6 +65,16 @@ const AppRichiesteRoute = AppRichiesteRouteImport.update({
   path: '/richieste',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPrivacyRoute = AppPrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppLegaliRoute = AppLegaliRouteImport.update({
+  id: '/legali',
+  path: '/legali',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppImpostazioniRoute = AppImpostazioniRouteImport.update({
   id: '/impostazioni',
   path: '/impostazioni',
@@ -90,6 +103,11 @@ const AppClientiRoute = AppClientiRouteImport.update({
 const AppAuditRoute = AppAuditRouteImport.update({
   id: '/audit',
   path: '/audit',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAssicurazioniRoute = AppAssicurazioniRouteImport.update({
+  id: '/assicurazioni',
+  path: '/assicurazioni',
   getParentRoute: () => AppRoute,
 } as any)
 const AppApprovazioniRoute = AppApprovazioniRouteImport.update({
@@ -124,12 +142,15 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/approvazioni': typeof AppApprovazioniRoute
+  '/assicurazioni': typeof AppAssicurazioniRoute
   '/audit': typeof AppAuditRoute
   '/clienti': typeof AppClientiRouteWithChildren
   '/contatti': typeof AppContattiRoute
   '/dashboard': typeof AppDashboardRoute
   '/import-export': typeof AppImportExportRoute
   '/impostazioni': typeof AppImpostazioniRoute
+  '/legali': typeof AppLegaliRoute
+  '/privacy': typeof AppPrivacyRoute
   '/richieste': typeof AppRichiesteRouteWithChildren
   '/utenti': typeof AppUtentiRoute
   '/whatsapp': typeof AppWhatsappRoute
@@ -143,12 +164,15 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/approvazioni': typeof AppApprovazioniRoute
+  '/assicurazioni': typeof AppAssicurazioniRoute
   '/audit': typeof AppAuditRoute
   '/clienti': typeof AppClientiRouteWithChildren
   '/contatti': typeof AppContattiRoute
   '/dashboard': typeof AppDashboardRoute
   '/import-export': typeof AppImportExportRoute
   '/impostazioni': typeof AppImpostazioniRoute
+  '/legali': typeof AppLegaliRoute
+  '/privacy': typeof AppPrivacyRoute
   '/richieste': typeof AppRichiesteRouteWithChildren
   '/utenti': typeof AppUtentiRoute
   '/whatsapp': typeof AppWhatsappRoute
@@ -164,12 +188,15 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/_app/approvazioni': typeof AppApprovazioniRoute
+  '/_app/assicurazioni': typeof AppAssicurazioniRoute
   '/_app/audit': typeof AppAuditRoute
   '/_app/clienti': typeof AppClientiRouteWithChildren
   '/_app/contatti': typeof AppContattiRoute
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/import-export': typeof AppImportExportRoute
   '/_app/impostazioni': typeof AppImpostazioniRoute
+  '/_app/legali': typeof AppLegaliRoute
+  '/_app/privacy': typeof AppPrivacyRoute
   '/_app/richieste': typeof AppRichiesteRouteWithChildren
   '/_app/utenti': typeof AppUtentiRoute
   '/_app/whatsapp': typeof AppWhatsappRoute
@@ -185,12 +212,15 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/approvazioni'
+    | '/assicurazioni'
     | '/audit'
     | '/clienti'
     | '/contatti'
     | '/dashboard'
     | '/import-export'
     | '/impostazioni'
+    | '/legali'
+    | '/privacy'
     | '/richieste'
     | '/utenti'
     | '/whatsapp'
@@ -204,12 +234,15 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/approvazioni'
+    | '/assicurazioni'
     | '/audit'
     | '/clienti'
     | '/contatti'
     | '/dashboard'
     | '/import-export'
     | '/impostazioni'
+    | '/legali'
+    | '/privacy'
     | '/richieste'
     | '/utenti'
     | '/whatsapp'
@@ -224,12 +257,15 @@ export interface FileRouteTypes {
     | '/_app'
     | '/login'
     | '/_app/approvazioni'
+    | '/_app/assicurazioni'
     | '/_app/audit'
     | '/_app/clienti'
     | '/_app/contatti'
     | '/_app/dashboard'
     | '/_app/import-export'
     | '/_app/impostazioni'
+    | '/_app/legali'
+    | '/_app/privacy'
     | '/_app/richieste'
     | '/_app/utenti'
     | '/_app/whatsapp'
@@ -300,6 +336,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRichiesteRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/privacy': {
+      id: '/_app/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof AppPrivacyRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/legali': {
+      id: '/_app/legali'
+      path: '/legali'
+      fullPath: '/legali'
+      preLoaderRoute: typeof AppLegaliRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/impostazioni': {
       id: '/_app/impostazioni'
       path: '/impostazioni'
@@ -340,6 +390,13 @@ declare module '@tanstack/react-router' {
       path: '/audit'
       fullPath: '/audit'
       preLoaderRoute: typeof AppAuditRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/assicurazioni': {
+      id: '/_app/assicurazioni'
+      path: '/assicurazioni'
+      fullPath: '/assicurazioni'
+      preLoaderRoute: typeof AppAssicurazioniRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/approvazioni': {
@@ -406,12 +463,15 @@ const AppRichiesteRouteWithChildren = AppRichiesteRoute._addFileChildren(
 
 interface AppRouteChildren {
   AppApprovazioniRoute: typeof AppApprovazioniRoute
+  AppAssicurazioniRoute: typeof AppAssicurazioniRoute
   AppAuditRoute: typeof AppAuditRoute
   AppClientiRoute: typeof AppClientiRouteWithChildren
   AppContattiRoute: typeof AppContattiRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppImportExportRoute: typeof AppImportExportRoute
   AppImpostazioniRoute: typeof AppImpostazioniRoute
+  AppLegaliRoute: typeof AppLegaliRoute
+  AppPrivacyRoute: typeof AppPrivacyRoute
   AppRichiesteRoute: typeof AppRichiesteRouteWithChildren
   AppUtentiRoute: typeof AppUtentiRoute
   AppWhatsappRoute: typeof AppWhatsappRoute
@@ -419,12 +479,15 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppApprovazioniRoute: AppApprovazioniRoute,
+  AppAssicurazioniRoute: AppAssicurazioniRoute,
   AppAuditRoute: AppAuditRoute,
   AppClientiRoute: AppClientiRouteWithChildren,
   AppContattiRoute: AppContattiRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppImportExportRoute: AppImportExportRoute,
   AppImpostazioniRoute: AppImpostazioniRoute,
+  AppLegaliRoute: AppLegaliRoute,
+  AppPrivacyRoute: AppPrivacyRoute,
   AppRichiesteRoute: AppRichiesteRouteWithChildren,
   AppUtentiRoute: AppUtentiRoute,
   AppWhatsappRoute: AppWhatsappRoute,
