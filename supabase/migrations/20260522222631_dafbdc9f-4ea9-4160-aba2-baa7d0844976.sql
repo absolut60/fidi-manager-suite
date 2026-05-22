@@ -1,0 +1,1 @@
+ALTER TABLE public.contatti ADD COLUMN IF NOT EXISTS whatsapp text;

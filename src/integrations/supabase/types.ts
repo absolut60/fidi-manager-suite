@@ -580,6 +580,7 @@ export type Database = {
           ruolo: string | null
           telefono: string | null
           updated_at: string
+          whatsapp: string | null
           whatsapp_opt_in: boolean
         }
         Insert: {
@@ -608,6 +609,7 @@ export type Database = {
           ruolo?: string | null
           telefono?: string | null
           updated_at?: string
+          whatsapp?: string | null
           whatsapp_opt_in?: boolean
         }
         Update: {
@@ -636,6 +638,7 @@ export type Database = {
           ruolo?: string | null
           telefono?: string | null
           updated_at?: string
+          whatsapp?: string | null
           whatsapp_opt_in?: boolean
         }
         Relationships: [
