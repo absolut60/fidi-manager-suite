@@ -693,6 +693,293 @@ function ImportZone(props: {
 }
 
 /* ============================================================================
+ * C — SCADENZIARIO
+ * ============================================================================ */
+
+const SCAD_HEADERS: Record<string, string> = {
+  "cod cli": "codice_gestionale",
+  "codice cliente": "codice_gestionale",
+  "cod cliente": "codice_gestionale",
+  "codice": "codice_gestionale",
+  "ragione sociale": "ragione_sociale",
+  "codice pagamento scad": "codice_pagamento",
+  "codice pagamento": "codice_pagamento",
+  "cod pag": "codice_pagamento",
+  "descrizione pagamento": "descrizione_pagamento",
+  "descr pagamento": "descrizione_pagamento",
+  "numero documento origine": "numero_documento",
+  "numero documento": "numero_documento",
+  "num doc": "numero_documento",
+  "sezionale documento": "sezionale",
+  "sezionale": "sezionale",
+  "data documento": "data_documento",
+  "data doc": "data_documento",
+  "data scadenza": "data_scadenza",
+  "anno partita": "anno_partita",
+  "tipologia": "tipologia_scadenza",
+  "tipologia scadenza": "tipologia_scadenza",
+  "importo scadenza": "importo_scadenza",
+  "importo": "importo_scadenza",
+  "importo documento": "importo_documento",
+  "importo originario": "importo_originario",
+  "importo netto prev": "importo_netto_prev",
+  "importo ritardo": "importo_ritardo",
+  "giorni ritardo": "giorni_ritardo",
+  "stato contabile": "stato_contabile",
+  "data pagamento": "data_pagamento",
+  "dilazione teorica": "dilazione_teorica",
+  "dilazione effettiva": "dilazione_effettiva",
+  "cod blocco": "cod_blocco",
+  "codice blocco": "cod_blocco",
+  "fido euro": "fido_euro",
+  "fido": "fido_euro",
+  "assicurazione": "assicurazione",
+  "sede": "sede",
+  "in legale": "in_legale",
+};
+
+type ScadRow = {
+  idx: number;
+  codice_gestionale: string;
+  ragione_sociale: string;
+  payload: Record<string, unknown>;
+};
+
+function excelDateToISO(v: unknown): string | null {
+  if (v == null || v === "") return null;
+  if (typeof v === "number") {
+    // Excel serial date
+    const d = XLSX.SSF?.parse_date_code?.(v);
+    if (d) {
+      const m = String(d.m).padStart(2, "0");
+      const day = String(d.d).padStart(2, "0");
+      return `${d.y}-${m}-${day}`;
+    }
+  }
+  const s = String(v).trim();
+  if (!s) return null;
+  // dd/mm/yyyy or dd-mm-yyyy
+  const m1 = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/);
+  if (m1) {
+    const dd = m1[1].padStart(2, "0");
+    const mm = m1[2].padStart(2, "0");
+    let yy = m1[3];
+    if (yy.length === 2) yy = (Number(yy) > 50 ? "19" : "20") + yy;
+    return `${yy}-${mm}-${dd}`;
+  }
+  // yyyy-mm-dd
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+  return null;
+}
+
+function ScadenziarioImportCard() {
+  const qc = useQueryClient();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [rows, setRows] = useState<ScadRow[]>([]);
+  const [missingCode, setMissingCode] = useState<number[]>([]);
+  const [dragOver, setDragOver] = useState(false);
+  const [parsing, setParsing] = useState(false);
+  const [result, setResult] = useState<null | { updated: number; skipped: number; errors: Array<{ riga: number; errore: string }> }>(null);
+
+  function reset() {
+    setFileName(null); setRows([]); setMissingCode([]); setResult(null);
+    if (fileRef.current) fileRef.current.value = "";
+  }
+
+  async function handleFile(file: File) {
+    setParsing(true); setResult(null);
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: "array", cellDates: false });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const raw = sheetToObjects(sheet, "cod cli");
+      // fallback if header keyword differs
+      const data = raw.length ? raw : sheetToObjects(sheet, "codice");
+      if (!data.length) { toast.error("Nessuna riga dati trovata (intestazione non riconosciuta)"); return; }
+
+      const numFields = new Set([
+        "importo_scadenza", "importo_documento", "importo_originario",
+        "importo_netto_prev", "importo_ritardo", "fido_euro", "assicurazione",
+      ]);
+      const intFields = new Set(["giorni_ritardo", "dilazione_teorica", "dilazione_effettiva", "anno_partita", "sede"]);
+      const dateFields = new Set(["data_documento", "data_scadenza", "data_pagamento"]);
+      const boolFields = new Set(["in_legale"]);
+
+      const parsed: ScadRow[] = [];
+      const missing: number[] = [];
+      const unknown = new Set<string>();
+      for (const r of data) {
+        const mapped: Record<string, unknown> = {};
+        for (const k of Object.keys(r)) {
+          if (k === "__row") continue;
+          const f = SCAD_HEADERS[normalize(k)];
+          if (f) mapped[f] = r[k];
+          else if (String(k).trim()) unknown.add(k);
+        }
+        const codice = toStr(mapped.codice_gestionale);
+        if (!codice) { missing.push(r.__row); continue; }
+        const payload: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(mapped)) {
+          if (k === "codice_gestionale" || k === "ragione_sociale") continue;
+          if (numFields.has(k)) payload[k] = toNum(v);
+          else if (intFields.has(k)) payload[k] = toInt(v);
+          else if (dateFields.has(k)) payload[k] = excelDateToISO(v);
+          else if (boolFields.has(k)) {
+            const s = String(v ?? "").trim().toLowerCase();
+            payload[k] = ["true", "1", "si", "sì", "x", "y", "yes"].includes(s);
+          } else payload[k] = toStr(v);
+        }
+        parsed.push({ idx: r.__row, codice_gestionale: codice, ragione_sociale: toStr(mapped.ragione_sociale) ?? "", payload });
+      }
+      setFileName(file.name);
+      setRows(parsed);
+      setMissingCode(missing);
+      if (unknown.size) console.warn("[import-scadenziario] colonne ignorate:", Array.from(unknown));
+      toast.success(`${parsed.length} righe lette${missing.length ? `, ${missing.length} senza codice` : ""}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Errore lettura file");
+    } finally {
+      setParsing(false);
+    }
+  }
+
+  const importMut = useMutation({
+    mutationFn: async () => {
+      if (!rows.length) throw new Error("Nessuna riga da importare");
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const { data: imp, error: impErr } = await supabase.from("importazioni").insert({
+        nome_file: fileName ?? "scadenziario.xlsx",
+        righe_totali: rows.length + missingCode.length,
+        righe_errore: missingCode.length,
+        stato: "in_elaborazione",
+        fonte: "scadenziario",
+        eseguita_da: user?.id ?? null,
+      }).select("id").single();
+      if (impErr) throw impErr;
+
+      // Risolvi clienti
+      const codici = Array.from(new Set(rows.map((r) => r.codice_gestionale)));
+      const clientMap = new Map<string, string>();
+      if (codici.length) {
+        const { data } = await supabase.from("clienti").select("id, codice_gestionale").in("codice_gestionale", codici);
+        (data ?? []).forEach((c) => { if (c.codice_gestionale) clientMap.set(c.codice_gestionale, c.id); });
+      }
+
+      let inserted = 0;
+      const errorLog: Array<{ riga: number; errore: string }> = [
+        ...missingCode.map((idx) => ({ riga: idx, errore: "Codice cliente mancante" })),
+      ];
+      const now = new Date().toISOString();
+
+      // Carica scadenze esistenti per upsert manuale (chiave: cliente_id + numero_documento + sezionale + anno_partita + data_scadenza)
+      const clientIds = Array.from(new Set(Array.from(clientMap.values())));
+      const existingMap = new Map<string, string>();
+      if (clientIds.length) {
+        const { data } = await supabase
+          .from("scadenze" as never)
+          .select("id, cliente_id, numero_documento, sezionale, anno_partita, data_scadenza")
+          .in("cliente_id", clientIds);
+        ((data ?? []) as Array<{ id: string; cliente_id: string; numero_documento: string | null; sezionale: string | null; anno_partita: number | null; data_scadenza: string | null }>).forEach((s) => {
+          existingMap.set(
+            `${s.cliente_id}|${s.numero_documento ?? ""}|${s.sezionale ?? ""}|${s.anno_partita ?? ""}|${s.data_scadenza ?? ""}`,
+            s.id,
+          );
+        });
+      }
+
+      for (const r of rows) {
+        const cid = clientMap.get(r.codice_gestionale);
+        if (!cid) {
+          errorLog.push({ riga: r.idx, errore: `Cliente ${r.codice_gestionale} non trovato${r.ragione_sociale ? ` (${r.ragione_sociale})` : ""}` });
+          continue;
+        }
+        const p = r.payload as Record<string, unknown>;
+        const key = `${cid}|${(p.numero_documento as string) ?? ""}|${(p.sezionale as string) ?? ""}|${(p.anno_partita as number) ?? ""}|${(p.data_scadenza as string) ?? ""}`;
+        const existId = existingMap.get(key);
+        const row = { ...p, cliente_id: cid, importato_da: user?.id ?? null, ultima_sincronizzazione: now };
+        if (existId) {
+          const { error } = await supabase.from("scadenze" as never).update(row as never).eq("id", existId);
+          if (error) errorLog.push({ riga: r.idx, errore: `Update: ${error.message}` });
+          else inserted += 1;
+        } else {
+          const { error } = await supabase.from("scadenze" as never).insert(row as never);
+          if (error) errorLog.push({ riga: r.idx, errore: `Insert: ${error.message}` });
+          else inserted += 1;
+        }
+      }
+
+      await supabase.from("importazioni").update({
+        righe_elaborate: rows.length,
+        righe_create: inserted,
+        righe_aggiornate: 0,
+        righe_errore: errorLog.length,
+        stato: errorLog.length > 0 ? "completata_con_errori" : "completata",
+        completata_at: new Date().toISOString(),
+        log_errori: errorLog.length ? errorLog.slice(0, 200) : null,
+      }).eq("id", imp.id);
+
+      return { updated: inserted, skipped: errorLog.length, errors: errorLog };
+    },
+    onSuccess: (r) => {
+      setResult(r);
+      toast.success(`Scadenziario: ${r.updated} righe importate, ${r.skipped} saltate`);
+      qc.invalidateQueries({ queryKey: ["scadenze"] });
+      qc.invalidateQueries({ queryKey: ["clienti"] });
+      qc.invalidateQueries({ queryKey: ["storico-import-export"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  function downloadTemplate() {
+    const head = [
+      "COD_CLI", "Ragione sociale", "Codice Pagamento Scad", "Descrizione Pagamento",
+      "Numero Documento Origine", "Sezionale Documento", "Data Documento", "Data Scadenza",
+      "Anno Partita", "Tipologia", "Importo scadenza", "Importo documento", "Giorni ritardo",
+      "Stato contabile", "Cod blocco", "Fido euro", "In legale",
+    ];
+    const sample = ["13908", "Esempio S.r.l.", "RB22", "R.B. 60 gg. d.f.", "FT-2024-001", "1", "01/06/2025", "30/08/2025", 2025, "RB", 1200, 1200, 0, "Aperta", "", 15000, false];
+    const ws = XLSX.utils.aoa_to_sheet([head, sample]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Scadenziario");
+    XLSX.writeFile(wb, "template_scadenziario.xlsx");
+  }
+
+  const invalidParsed = missingCode.map((i) => ({ idx: i, errors: ["Codice mancante"] }));
+
+  return (
+    <Card className="p-5">
+      <div className="flex items-center justify-between mb-1">
+        <h2 className="font-semibold flex items-center gap-2">
+          <CalendarClock className="size-4" /> C · Importa Scadenziario
+        </h2>
+        <Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={downloadTemplate}>
+          <FileDown className="size-3.5" /> Template
+        </Button>
+      </div>
+      <p className="text-xs text-muted-foreground mb-4">
+        Carica lo scadenziario (match cliente su <code>COD_CLI</code>). Upsert per documento + scadenza.
+      </p>
+      <ImportZone
+        fileName={fileName} parsing={parsing} dragOver={dragOver}
+        setDragOver={setDragOver} fileRef={fileRef} onFile={handleFile} onReset={reset}
+        valid={rows.length} invalid={invalidParsed}
+        result={result ? { created: result.updated, updated: 0, skipped: result.skipped, errors: result.errors } : null}
+        action={
+          <Button className="w-full gap-1.5" disabled={!rows.length || importMut.isPending} onClick={() => importMut.mutate()}>
+            {importMut.isPending && <Loader2 className="size-4 animate-spin" />}
+            Importa {rows.length} scadenze
+          </Button>
+        }
+      />
+    </Card>
+  );
+}
+
+/* ============================================================================
  * EXPORT
  * ============================================================================ */
 
