@@ -27,6 +27,12 @@ async function setImportazioneError(importazioneId: string, message: string) {
   }).eq("id", importazioneId);
 }
 
+async function downloadJsonFromImportFiles<T>(path: string): Promise<T> {
+  const { data: file, error } = await supabaseAdmin.storage.from("import-files").download(path);
+  if (error || !file) throw new Error(`Download ${path}: ${error?.message ?? "no data"}`);
+  return JSON.parse(await file.text()) as T;
+}
+
 /* ============================================================================
  * A — ANAGRAFICA
  * ============================================================================ */
@@ -237,6 +243,17 @@ export const processScadenziarioImport = inngest.createFunction(
     try {
       // STEP 1 — parse + stage su storage (output dello step: solo metadata leggero)
       const stage = await step.run("parse-and-stage", async () => {
+        if (filePath.endsWith("/manifest.json")) {
+          const manifest = await downloadJsonFromImportFiles<{ rowsTotali?: number; chunkCount?: number }>(filePath);
+          return {
+            totRead: Number(manifest.rowsTotali ?? 0),
+            totRows: Number(manifest.rowsTotali ?? 0),
+            missing: [] as number[],
+            chunkCount: Number(manifest.chunkCount ?? 0),
+            codici: [] as string[],
+            stagedByClient: true,
+          };
+        }
         const wb = await downloadWorkbook(filePath);
         const sheet = findSheetByName(wb, "SCADENZIARIO");
         if (!sheet) throw new Error("Foglio SCADENZIARIO non trovato nel file");
@@ -250,9 +267,9 @@ export const processScadenziarioImport = inngest.createFunction(
           const { error } = await supabaseAdmin.storage.from("import-files").upload(path, body, { upsert: true, contentType: "application/json" });
           if (error) throw new Error(`Staging chunk ${i}: ${error.message}`);
         }
-        return { totRead, totRows: rows.length, missing, chunkCount, codici: codiciAll };
+        return { totRead, totRows: rows.length, missing, chunkCount, codici: codiciAll, stagedByClient: false };
       });
-      const { totRead, totRows, missing, chunkCount, codici } = stage;
+      const { totRead, totRows, missing, chunkCount, codici, stagedByClient } = stage;
       logger.info(`Scadenziario stage: ${totRows}/${totRead} righe in ${chunkCount} chunk`);
 
       const errorLog: Array<{ riga: number; errore: string }> = missing.map((idx: number) => ({ riga: idx, errore: "COD_CLI mancante" }));
@@ -266,10 +283,19 @@ export const processScadenziarioImport = inngest.createFunction(
       // STEP 2 — lookup clienti (output piccolo)
       const clientMap = await step.run("lookup-clienti", async () => {
         const out: Record<string, string> = {};
-        if (!codici.length) return out;
+        let lookupCodici = codici;
+        if (!lookupCodici.length && stagedByClient) {
+          const discovered = new Set<string>();
+          for (let ci = 0; ci < chunkCount; ci++) {
+            const slice = await downloadJsonFromImportFiles<Array<{ codice_gestionale: string }>>(`_staging/${importazioneId}/chunk-${ci}.json`);
+            slice.forEach((r) => { if (r.codice_gestionale) discovered.add(r.codice_gestionale); });
+          }
+          lookupCodici = Array.from(discovered);
+        }
+        if (!lookupCodici.length) return out;
         const BATCH_LOOKUP = 500;
-        for (let i = 0; i < codici.length; i += BATCH_LOOKUP) {
-          const slice = codici.slice(i, i + BATCH_LOOKUP);
+        for (let i = 0; i < lookupCodici.length; i += BATCH_LOOKUP) {
+          const slice = lookupCodici.slice(i, i + BATCH_LOOKUP);
           const { data } = await supabaseAdmin.from("clienti").select("id, codice_gestionale").in("codice_gestionale", slice as string[]);
           (data ?? []).forEach((c) => { if (c.codice_gestionale) out[c.codice_gestionale] = c.id; });
         }
