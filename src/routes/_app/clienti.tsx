@@ -1129,14 +1129,29 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
 type SetFn = <K extends keyof SchedaForm>(k: K, v: SchedaForm[K]) => void;
 
 function StepImpresa({
-  form, set, errors, stores,
-}: { form: SchedaForm; set: SetFn; errors: Record<string, string>; stores: Array<{ id: string; nome: string; codice: string }> }) {
+  form, set, errors, stores, clienteEsistenteId, onSelectClienteEsistente, onResetClienteEsistente,
+}: {
+  form: SchedaForm;
+  set: SetFn;
+  errors: Record<string, string>;
+  stores: Array<{ id: string; nome: string; codice: string }>;
+  clienteEsistenteId: string | null;
+  onSelectClienteEsistente: (clienteId: string) => void | Promise<void>;
+  onResetClienteEsistente: () => void;
+}) {
   return (
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <Label>Tipo modulo</Label>
-          <RadioGroup value={form.tipo} onValueChange={(v) => set("tipo", v as SchedaForm["tipo"])} className="flex gap-4">
+          <RadioGroup
+            value={form.tipo}
+            onValueChange={(v) => {
+              set("tipo", v as SchedaForm["tipo"]);
+              if (v !== "aggiornamento") onResetClienteEsistente();
+            }}
+            className="flex gap-4"
+          >
             <label className="flex items-center gap-2 text-sm cursor-pointer">
               <RadioGroupItem value="nuovo" /> Nuovo inserimento
             </label>
@@ -1157,6 +1172,17 @@ function StepImpresa({
           </RadioGroup>
         </div>
       </div>
+
+      {form.tipo === "aggiornamento" && (
+        <ClientePicker
+          clienteEsistenteId={clienteEsistenteId}
+          ragioneSocialeAttuale={form.ragione_sociale}
+          onSelect={onSelectClienteEsistente}
+          onReset={onResetClienteEsistente}
+        />
+      )}
+
+
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="space-y-1.5 sm:col-span-2">
