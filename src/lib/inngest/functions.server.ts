@@ -57,8 +57,8 @@ export const processAnagraficaImport = inngest.createFunction(
     const { importazioneId, filePath } = event.data as EventData;
     const errorLog: Array<{ riga: number; errore: string }> = [];
     let created = 0,
-      updated = 0,
-      skipped = 0;
+      updated = 0;
+    const skipped = 0;
 
     const update = async (
       stato: "in_elaborazione" | "completata" | "completata_con_errori",
