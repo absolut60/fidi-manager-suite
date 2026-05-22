@@ -410,7 +410,83 @@ function ClienteDetail() {
   );
 }
 
+function DatiRischioCard({ cliente }: { cliente: any }) {
+  const fidoGest = Number(cliente.fido_gestionale ?? 0);
+  const totRischio = Number(cliente.totale_rischio ?? 0);
+  const fidoResiduo = cliente.fido_residuo == null ? null : Number(cliente.fido_residuo);
+  const scaduto = Number(cliente.scaduto ?? 0);
+
+  let semaforo: { label: string; color: string; dot: string } = {
+    label: "Verde", color: "bg-success/15 text-success border-success/30", dot: "bg-success",
+  };
+  if (fidoResiduo !== null && fidoResiduo < 0) {
+    semaforo = { label: "Rosso", color: "bg-destructive/15 text-destructive border-destructive/30", dot: "bg-destructive" };
+  } else if (fidoResiduo !== null && fidoGest > 0 && fidoResiduo < fidoGest * 0.1) {
+    semaforo = { label: "Arancione", color: "bg-warning/15 text-warning border-warning/30", dot: "bg-warning" };
+  } else if (scaduto > 0) {
+    semaforo = { label: "Giallo", color: "bg-yellow-500/15 text-yellow-700 dark:text-yellow-400 border-yellow-500/30", dot: "bg-yellow-500" };
+  }
+
+  const utilizzo = fidoGest > 0 ? Math.round((totRischio / fidoGest) * 1000) / 10 : null;
+  const dilConc = cliente.dilazione_concordata as number | null;
+  const dilEff = cliente.dilazione_effettiva as number | null;
+  const dilSfora = dilConc != null && dilEff != null && dilEff > dilConc;
+
+  const hasAnyData =
+    cliente.fido_gestionale != null || cliente.fido != null ||
+    cliente.totale_rischio != null || cliente.fido_residuo != null ||
+    cliente.scaduto != null || cliente.a_scadere != null ||
+    cliente.condizioni_pagamento || (cliente as any).condizione_pagamento_desc ||
+    dilConc != null || dilEff != null;
+
+  if (!hasAnyData) return null;
+
+  const condPag = (cliente as any).condizione_pagamento_desc || cliente.condizioni_pagamento;
+
+  return (
+    <Card className="p-6">
+      <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
+        <h3 className="font-semibold flex items-center gap-2">
+          <AlertTriangle className="size-4" /> Dati rischio
+        </h3>
+        <div className={`flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium ${semaforo.color}`}>
+          <span className={`inline-block size-2.5 rounded-full ${semaforo.dot}`} />
+          Semaforo: {semaforo.label}
+          {utilizzo != null && <span className="text-xs opacity-80">· utilizzo fido {utilizzo}%</span>}
+        </div>
+      </div>
+      <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3 text-sm">
+        <Field label="Fido gestionale" value={formatEuro(cliente.fido_gestionale ?? cliente.fido)} />
+        <Field label="Totale rischio" value={formatEuro(cliente.totale_rischio)} />
+        <Field label="Fido residuo" value={formatEuro(cliente.fido_residuo)} />
+        <Field label="Scaduto" value={formatEuro(cliente.scaduto)} />
+        <Field label="A scadere" value={formatEuro(cliente.a_scadere)} />
+        <Field label="Condizione di pagamento" value={condPag} />
+        <div>
+          <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Dilazione concordata</dt>
+          <dd className="mt-0.5">{dilConc != null ? `${dilConc} gg` : <span className="text-muted-foreground">—</span>}</dd>
+        </div>
+        <div>
+          <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Dilazione effettiva</dt>
+          <dd className={`mt-0.5 ${dilSfora ? "text-destructive font-medium" : ""}`}>
+            {dilEff != null ? `${dilEff} gg${dilSfora ? ` (+${dilEff - (dilConc ?? 0)})` : ""}` : <span className="text-muted-foreground">—</span>}
+          </dd>
+        </div>
+        {(cliente as any).num_insoluti != null && (
+          <Field label="Insoluti" value={String((cliente as any).num_insoluti)} />
+        )}
+      </dl>
+      {(cliente as any).ultima_sincronizzazione && (
+        <p className="text-xs text-muted-foreground mt-4 pt-3 border-t">
+          Ultima sincronizzazione: {new Date((cliente as any).ultima_sincronizzazione).toLocaleString("it-IT")}
+        </p>
+      )}
+    </Card>
+  );
+}
+
 function Field({ label, value }: { label: string; value?: string | null }) {
+
   return (
     <div>
       <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</dt>
