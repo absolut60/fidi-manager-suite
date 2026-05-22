@@ -1,0 +1,1 @@
+alter view public.clienti_con_rischio set (security_invoker = true);
