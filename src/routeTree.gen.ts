@@ -16,6 +16,7 @@ import { Route as FirmaPrivacyTokenRouteImport } from './routes/firma-privacy.$t
 import { Route as AppWhatsappRouteImport } from './routes/_app/whatsapp'
 import { Route as AppUtentiRouteImport } from './routes/_app/utenti'
 import { Route as AppRichiesteRouteImport } from './routes/_app/richieste'
+import { Route as AppPrivacyRouteImport } from './routes/_app/privacy'
 import { Route as AppLegaliRouteImport } from './routes/_app/legali'
 import { Route as AppImpostazioniRouteImport } from './routes/_app/impostazioni'
 import { Route as AppImportExportRouteImport } from './routes/_app/import-export'
@@ -62,6 +63,11 @@ const AppUtentiRoute = AppUtentiRouteImport.update({
 const AppRichiesteRoute = AppRichiesteRouteImport.update({
   id: '/richieste',
   path: '/richieste',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPrivacyRoute = AppPrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => AppRoute,
 } as any)
 const AppLegaliRoute = AppLegaliRouteImport.update({
@@ -144,6 +150,7 @@ export interface FileRoutesByFullPath {
   '/import-export': typeof AppImportExportRoute
   '/impostazioni': typeof AppImpostazioniRoute
   '/legali': typeof AppLegaliRoute
+  '/privacy': typeof AppPrivacyRoute
   '/richieste': typeof AppRichiesteRouteWithChildren
   '/utenti': typeof AppUtentiRoute
   '/whatsapp': typeof AppWhatsappRoute
@@ -165,6 +172,7 @@ export interface FileRoutesByTo {
   '/import-export': typeof AppImportExportRoute
   '/impostazioni': typeof AppImpostazioniRoute
   '/legali': typeof AppLegaliRoute
+  '/privacy': typeof AppPrivacyRoute
   '/richieste': typeof AppRichiesteRouteWithChildren
   '/utenti': typeof AppUtentiRoute
   '/whatsapp': typeof AppWhatsappRoute
@@ -188,6 +196,7 @@ export interface FileRoutesById {
   '/_app/import-export': typeof AppImportExportRoute
   '/_app/impostazioni': typeof AppImpostazioniRoute
   '/_app/legali': typeof AppLegaliRoute
+  '/_app/privacy': typeof AppPrivacyRoute
   '/_app/richieste': typeof AppRichiesteRouteWithChildren
   '/_app/utenti': typeof AppUtentiRoute
   '/_app/whatsapp': typeof AppWhatsappRoute
@@ -211,6 +220,7 @@ export interface FileRouteTypes {
     | '/import-export'
     | '/impostazioni'
     | '/legali'
+    | '/privacy'
     | '/richieste'
     | '/utenti'
     | '/whatsapp'
@@ -232,6 +242,7 @@ export interface FileRouteTypes {
     | '/import-export'
     | '/impostazioni'
     | '/legali'
+    | '/privacy'
     | '/richieste'
     | '/utenti'
     | '/whatsapp'
@@ -254,6 +265,7 @@ export interface FileRouteTypes {
     | '/_app/import-export'
     | '/_app/impostazioni'
     | '/_app/legali'
+    | '/_app/privacy'
     | '/_app/richieste'
     | '/_app/utenti'
     | '/_app/whatsapp'
@@ -322,6 +334,13 @@ declare module '@tanstack/react-router' {
       path: '/richieste'
       fullPath: '/richieste'
       preLoaderRoute: typeof AppRichiesteRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/privacy': {
+      id: '/_app/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof AppPrivacyRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/legali': {
@@ -452,6 +471,7 @@ interface AppRouteChildren {
   AppImportExportRoute: typeof AppImportExportRoute
   AppImpostazioniRoute: typeof AppImpostazioniRoute
   AppLegaliRoute: typeof AppLegaliRoute
+  AppPrivacyRoute: typeof AppPrivacyRoute
   AppRichiesteRoute: typeof AppRichiesteRouteWithChildren
   AppUtentiRoute: typeof AppUtentiRoute
   AppWhatsappRoute: typeof AppWhatsappRoute
@@ -467,6 +487,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppImportExportRoute: AppImportExportRoute,
   AppImpostazioniRoute: AppImpostazioniRoute,
   AppLegaliRoute: AppLegaliRoute,
+  AppPrivacyRoute: AppPrivacyRoute,
   AppRichiesteRoute: AppRichiesteRouteWithChildren,
   AppUtentiRoute: AppUtentiRoute,
   AppWhatsappRoute: AppWhatsappRoute,
@@ -486,3 +507,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
