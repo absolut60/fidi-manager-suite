@@ -758,7 +758,8 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
             // Genera PDF scheda cliente
             const storeNome =
               (stores ?? []).find((s) => s.id === parsed.store_id)?.nome ?? null;
-            const pdfBytes = await generaSchedaCliente({
+
+            const schedaPayload = {
               tipo: parsed.tipo,
               tipoSoggetto: parsed.tipo_soggetto,
               ragioneSociale: parsed.ragione_sociale,
@@ -790,7 +791,20 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
               dichiaranteCognome: parsed.dichiarante_cognome,
               firmaPngDataUrl: dataUrl,
               dataFirma: now,
-            });
+            };
+
+            // [DEBUG] Parametri passati a generaSchedaCliente
+            console.log("[scheda-pdf] input payload:", schedaPayload);
+
+            const pdfBytes = await generaSchedaCliente(schedaPayload);
+
+            // [DEBUG] Dimensione PDF generato
+            console.log(
+              `[scheda-pdf] pdfBytes size: ${pdfBytes?.byteLength ?? 0} bytes`,
+              (pdfBytes?.byteLength ?? 0) < 5000
+                ? "⚠️ PDF sospettosamente piccolo (<5000 bytes)"
+                : "✓ dimensione OK"
+            );
 
             const pdfSchedaPath = `clienti/${clienteId}/scheda-${now.getTime()}.pdf`;
             const { error: e3 } = await supabase.storage.from("documenti-privacy")
@@ -818,11 +832,18 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
               } as never).eq("id", (titolare as { id: string }).id);
             }
           } catch (pdfErr) {
+            // [DEBUG] Errore completo con stack trace
+            console.error("[scheda-pdf] errore generazione/upload PDF:", pdfErr);
+            if (pdfErr instanceof Error) {
+              console.error("[scheda-pdf] stack:", pdfErr.stack);
+            }
+
             // NON eseguire rollback: cliente e contatti restano salvati.
             const m = pdfErr instanceof Error ? pdfErr.message : "Errore generazione PDF";
             toast.warning(`Cliente salvato senza PDF firmato: ${m}`);
           }
         }
+
 
         return clienteId;
       } catch (err) {
