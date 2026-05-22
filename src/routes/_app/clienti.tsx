@@ -679,6 +679,9 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
       if (!(form.dichiarante_nome ?? "").trim()) errs.dichiarante_nome = "Obbligatorio";
       if (!(form.dichiarante_cognome ?? "").trim()) errs.dichiarante_cognome = "Obbligatorio";
       if (!hasSig) errs.firma = "Firma obbligatoria";
+      if (form.consenso_profilazione !== "si" && form.consenso_profilazione !== "no") errs.consenso_profilazione = "Scegli un'opzione";
+      if (form.consenso_marketing_media !== "si" && form.consenso_marketing_media !== "no") errs.consenso_marketing_media = "Scegli un'opzione";
+      if (form.consenso_marketing_diretto !== "si" && form.consenso_marketing_diretto !== "no") errs.consenso_marketing_diretto = "Scegli un'opzione";
     }
     setErrors(errs);
     return Object.keys(errs).length === 0;
