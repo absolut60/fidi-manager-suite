@@ -27,7 +27,11 @@ export const Route = createFileRoute("/_app/import-export")({
  * ============================================================================ */
 
 function normalize(h: string) {
-  return String(h ?? "").trim().toLowerCase().replace(/[._-]+/g, " ").replace(/\s+/g, " ");
+  return String(h ?? "")
+    .toLowerCase()
+    .replace(/[._\-/]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function toNum(v: unknown): number | null {
