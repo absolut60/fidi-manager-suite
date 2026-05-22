@@ -495,141 +495,21 @@ type RischioRow = {
 };
 
 function RischioImportCard() {
-  const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState<string | null>(null);
-  const [rows, setRows] = useState<RischioRow[]>([]);
-  const [missingCode, setMissingCode] = useState<number[]>([]);
+  const [file, setFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
-  const [parsing, setParsing] = useState(false);
-  const [result, setResult] = useState<null | { updated: number; skipped: number; errors: Array<{ riga: number; errore: string }> }>(null);
+  const bg = useBackgroundImport({ fonte: "analisi_rischio", invalidateKeys: [["clienti"], ["cliente"]] });
 
   function reset() {
-    setFileName(null); setRows([]); setMissingCode([]); setResult(null);
+    setFileName(null); setFile(null); bg.reset();
     if (fileRef.current) fileRef.current.value = "";
   }
 
-  async function handleFile(file: File) {
-    setParsing(true); setResult(null);
-    try {
-      const buf = await file.arrayBuffer();
-      const wb = XLSX.read(buf, { type: "array" });
-      const sheet = wb.Sheets[wb.SheetNames[0]];
-      const raw = sheetToObjects(sheet, "codice");
-      if (!raw.length) { toast.error("Nessuna riga dati trovata (intestazione 'Codice' mancante o file vuoto)"); return; }
-
-      const numFields = new Set([
-        "saldo_contabile", "doc_da_fatturare", "doc_da_evadere", "effetti_a_rischio",
-        "fido_gestionale", "totale_rischio", "fido_residuo", "scaduto", "a_scadere",
-      ]);
-      const intFields = new Set(["num_insoluti", "dilazione_concordata", "dilazione_effettiva"]);
-
-      const parsed: RischioRow[] = [];
-      const missing: number[] = [];
-      const unknownHeaders = new Set<string>();
-      raw.forEach((r) => {
-        const mapped: Record<string, unknown> = {};
-        for (const k of Object.keys(r)) {
-          if (k === "__row") continue;
-          const f = RISCHIO_HEADERS[normalize(k)];
-          if (f) mapped[f] = r[k];
-          else if (String(k).trim()) unknownHeaders.add(k);
-        }
-        const codice = toStr(mapped.codice_gestionale);
-        if (!codice) { missing.push(r.__row); return; }
-        const payload: Record<string, unknown> = {};
-        for (const [k, v] of Object.entries(mapped)) {
-          if (k === "codice_gestionale" || k === "ragione_sociale") continue;
-          if (numFields.has(k)) payload[k] = toNum(v);
-          else if (intFields.has(k)) payload[k] = toInt(v);
-          else payload[k] = toStr(v);
-        }
-        parsed.push({
-          idx: r.__row,
-          codice_gestionale: codice,
-          ragione_sociale: toStr(mapped.ragione_sociale) ?? "",
-          payload,
-        });
-      });
-      setFileName(file.name);
-      setRows(parsed);
-      setMissingCode(missing);
-      if (unknownHeaders.size) {
-        console.warn("[import-rischio] colonne ignorate:", Array.from(unknownHeaders));
-        toast.warning(`Colonne ignorate: ${Array.from(unknownHeaders).join(", ")}`);
-      }
-      toast.success(`${parsed.length} righe lette${missing.length ? `, ${missing.length} senza codice` : ""}`);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Errore lettura file");
-    } finally {
-      setParsing(false);
-    }
+  function handleFile(f: File) {
+    setFileName(f.name); setFile(f); bg.reset();
+    toast.success(`File pronto: ${f.name}`);
   }
-
-  const importMut = useMutation({
-    mutationFn: async () => {
-      if (!rows.length) throw new Error("Nessuna riga valida");
-      const { data: { user } } = await supabase.auth.getUser();
-
-      const { data: imp, error: impErr } = await supabase.from("importazioni").insert({
-        nome_file: fileName ?? "rischio.xlsx",
-        righe_totali: rows.length + missingCode.length,
-        righe_errore: missingCode.length,
-        stato: "in_elaborazione",
-        fonte: "analisi_rischio",
-        eseguita_da: user?.id ?? null,
-      }).select("id").single();
-      if (impErr) throw impErr;
-
-      // Lookup esistenti
-      const codici = Array.from(new Set(rows.map((r) => r.codice_gestionale)));
-      const map = new Map<string, string>();
-      if (codici.length) {
-        const { data } = await supabase.from("clienti").select("id, codice_gestionale").in("codice_gestionale", codici);
-        (data ?? []).forEach((c) => { if (c.codice_gestionale) map.set(c.codice_gestionale, c.id); });
-      }
-
-      let updated = 0;
-      const errorLog: Array<{ riga: number; errore: string }> = [
-        ...missingCode.map((idx) => ({ riga: idx, errore: "Codice gestionale mancante" })),
-      ];
-      const now = new Date().toISOString();
-
-      for (const r of rows) {
-        const id = map.get(r.codice_gestionale);
-        if (!id) {
-          errorLog.push({ riga: r.idx, errore: `Codice ${r.codice_gestionale} non trovato${r.ragione_sociale ? ` (${r.ragione_sociale})` : ""}` });
-          continue;
-        }
-        const { error } = await supabase.from("clienti")
-          .update({ ...r.payload, ultima_sincronizzazione: now } as never)
-          .eq("id", id);
-        if (error) errorLog.push({ riga: r.idx, errore: `Update: ${error.message}` });
-        else updated += 1;
-      }
-
-      const skipped = errorLog.length;
-      await supabase.from("importazioni").update({
-        righe_elaborate: rows.length,
-        righe_create: 0,
-        righe_aggiornate: updated,
-        righe_errore: skipped,
-        stato: skipped > 0 ? "completata_con_errori" : "completata",
-        completata_at: new Date().toISOString(),
-        log_errori: skipped ? errorLog.slice(0, 200) : null,
-      }).eq("id", imp.id);
-
-      return { updated, skipped, errors: errorLog };
-    },
-    onSuccess: (r) => {
-      setResult(r);
-      toast.success(`Rischio: ${r.updated} aggiornati, ${r.skipped} saltati`);
-      qc.invalidateQueries({ queryKey: ["clienti"] });
-      qc.invalidateQueries({ queryKey: ["cliente"] });
-      qc.invalidateQueries({ queryKey: ["storico-import-export"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
 
   function downloadTemplate() {
     const ws = XLSX.utils.json_to_sheet([{
@@ -645,7 +525,12 @@ function RischioImportCard() {
     XLSX.writeFile(wb, "template_analisi_rischio.xlsx");
   }
 
-  const invalidParsed = missingCode.map((i) => ({ idx: i, errors: ["Codice mancante"] }));
+  const result = bg.done && bg.progress ? {
+    created: bg.progress.righe_create ?? 0,
+    updated: bg.progress.righe_aggiornate ?? 0,
+    skipped: bg.progress.righe_errore ?? 0,
+    errors: Array.isArray(bg.progress.log_errori) ? (bg.progress.log_errori as Array<{ riga: number; errore: string }>) : [],
+  } : null;
 
   return (
     <Card className="p-5">
@@ -658,23 +543,26 @@ function RischioImportCard() {
         </Button>
       </div>
       <p className="text-xs text-muted-foreground mb-4">
-        Aggiorna dati rischio dei clienti esistenti (match su <code>Codice</code>). Le righe senza match vengono saltate.
+        Aggiorna dati rischio dei clienti esistenti (match su <code>Codice</code>). Elaborazione in background.
       </p>
+      {bg.inProgress && bg.progress ? <BgProgressBlock progress={bg.progress} fallbackTotal={0} /> : null}
       <ImportZone
-        fileName={fileName} parsing={parsing} dragOver={dragOver}
+        fileName={fileName} parsing={false} dragOver={dragOver}
         setDragOver={setDragOver} fileRef={fileRef} onFile={handleFile} onReset={reset}
-        valid={rows.length} invalid={invalidParsed}
-        result={result ? { created: 0, updated: result.updated, skipped: result.skipped, errors: result.errors } : null}
+        valid={file ? 1 : 0} invalid={[]}
+        result={result}
         action={
-          <Button className="w-full gap-1.5" disabled={!rows.length || importMut.isPending} onClick={() => importMut.mutate()}>
-            {importMut.isPending && <Loader2 className="size-4 animate-spin" />}
-            Aggiorna {rows.length} clienti
+          <Button className="w-full gap-1.5" disabled={!file || bg.isPending || bg.inProgress}
+            onClick={() => file && bg.start({ file, rowsTotali: 0 })}>
+            {(bg.isPending || bg.inProgress) && <Loader2 className="size-4 animate-spin" />}
+            {bg.inProgress ? "Elaborazione in background..." : "Avvia import rischio"}
           </Button>
         }
       />
     </Card>
   );
 }
+
 
 /* ============================================================================
  * IMPORT ZONE (shared UI)
