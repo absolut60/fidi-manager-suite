@@ -301,7 +301,7 @@ function ClientiPage() {
               Nuova scheda cliente
             </Button>
           </DialogTrigger>
-          <SchedaClienteDialog onClose={() => setOpen(false)} />
+          <SchedaClienteDialog onClose={() => { setOpen(false); setSearch(""); }} />
         </Dialog>
       </div>
 
