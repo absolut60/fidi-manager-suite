@@ -233,81 +233,115 @@ export const processScadenziarioImport = inngest.createFunction(
     triggers: [{ event: "import/scadenziario.requested" }] },
   async ({ event, step, logger }) => {
     const { importazioneId, filePath, userId } = event.data as EventData;
+    const CHUNK_SIZE = 500;
     try {
-      const parsed = await step.run("parse", async () => {
+      // STEP 1 — parse + stage su storage (output dello step: solo metadata leggero)
+      const stage = await step.run("parse-and-stage", async () => {
         const wb = await downloadWorkbook(filePath);
         const sheet = findSheetByName(wb, "SCADENZIARIO");
         if (!sheet) throw new Error("Foglio SCADENZIARIO non trovato nel file");
-        return parseScadenziarioOfficialSheet(sheet);
+        const { rows, missing, totRead } = parseScadenziarioOfficialSheet(sheet);
+        const codiciAll = Array.from(new Set(rows.map((r) => r.codice_gestionale)));
+        const chunkCount = Math.ceil(rows.length / CHUNK_SIZE);
+        for (let i = 0; i < chunkCount; i++) {
+          const slice = rows.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+          const path = `_staging/${importazioneId}/chunk-${i}.json`;
+          const body = new Blob([JSON.stringify(slice)], { type: "application/json" });
+          const { error } = await supabaseAdmin.storage.from("import-files").upload(path, body, { upsert: true, contentType: "application/json" });
+          if (error) throw new Error(`Staging chunk ${i}: ${error.message}`);
+        }
+        return { totRead, totRows: rows.length, missing, chunkCount, codici: codiciAll };
       });
-      const { rows, missing, totRead } = parsed;
-      logger.info(`Scadenziario: ${rows.length} righe valide su ${totRead} lette`);
+      const { totRead, totRows, missing, chunkCount, codici } = stage;
+      logger.info(`Scadenziario stage: ${totRows}/${totRead} righe in ${chunkCount} chunk`);
 
       const errorLog: Array<{ riga: number; errore: string }> = missing.map((idx: number) => ({ riga: idx, errore: "COD_CLI mancante" }));
       let created = 0;
       let updated = 0;
 
       await supabaseAdmin.from("importazioni").update({
-        righe_totali: totRead, stato: "in_elaborazione",
+        righe_totali: totRead, righe_elaborate: 0, stato: "in_elaborazione",
       }).eq("id", importazioneId);
 
-      const codici = Array.from(new Set(rows.map((r) => r.codice_gestionale)));
-      const clientMap = new Map<string, string>();
-      if (codici.length) {
-        const { data } = await supabaseAdmin.from("clienti").select("id, codice_gestionale").in("codice_gestionale", codici as string[]);
-        (data ?? []).forEach((c) => { if (c.codice_gestionale) clientMap.set(c.codice_gestionale, c.id); });
-      }
+      // STEP 2 — lookup clienti (output piccolo)
+      const clientMap = await step.run("lookup-clienti", async () => {
+        const out: Record<string, string> = {};
+        if (!codici.length) return out;
+        const BATCH_LOOKUP = 500;
+        for (let i = 0; i < codici.length; i += BATCH_LOOKUP) {
+          const slice = codici.slice(i, i + BATCH_LOOKUP);
+          const { data } = await supabaseAdmin.from("clienti").select("id, codice_gestionale").in("codice_gestionale", slice as string[]);
+          (data ?? []).forEach((c) => { if (c.codice_gestionale) out[c.codice_gestionale] = c.id; });
+        }
+        return out;
+      });
 
-      const clientIds = Array.from(new Set(Array.from(clientMap.values())));
-      const existingMap = new Map<string, string>();
-      if (clientIds.length) {
-        const { data } = await supabaseAdmin.from("scadenze" as never)
-          .select("id, cliente_id, numero_documento, sezionale")
-          .in("cliente_id", clientIds);
-        ((data ?? []) as Array<{ id: string; cliente_id: string; numero_documento: string | null; sezionale: string | null }>).forEach((s) => {
-          existingMap.set(`${s.cliente_id}|${s.numero_documento ?? ""}|${s.sezionale ?? ""}`, s.id);
-        });
-      }
+      // STEP 3 — processa ogni chunk separatamente
+      const matchedClientIds = new Set<string>();
+      let elaborate = 0;
+      for (let ci = 0; ci < chunkCount; ci++) {
+        const res = await step.run(`process-chunk-${ci}`, async () => {
+          const path = `_staging/${importazioneId}/chunk-${ci}.json`;
+          const { data: file, error } = await supabaseAdmin.storage.from("import-files").download(path);
+          if (error || !file) throw new Error(`Download chunk ${ci}: ${error?.message}`);
+          const slice = JSON.parse(await file.text()) as Array<{ idx: number; codice_gestionale: string; ragione_sociale: string; payload: Record<string, unknown> }>;
 
-      const now = new Date().toISOString();
-      const matchedClients = new Set<string>();
-      const BATCH = 50;
-      for (let i = 0; i < rows.length; i += BATCH) {
-        const chunk = rows.slice(i, i + BATCH);
-        const res = await step.run(`scad-batch-${i}`, async () => {
+          // lookup esistenti per i clienti di questo chunk
+          const cids = Array.from(new Set(slice.map((r) => clientMap[r.codice_gestionale]).filter(Boolean) as string[]));
+          const existingMap = new Map<string, string>();
+          if (cids.length) {
+            const { data } = await supabaseAdmin.from("scadenze" as never)
+              .select("id, cliente_id, numero_documento, sezionale")
+              .in("cliente_id", cids);
+            ((data ?? []) as Array<{ id: string; cliente_id: string; numero_documento: string | null; sezionale: string | null }>).forEach((s) => {
+              existingMap.set(`${s.cliente_id}|${s.numero_documento ?? ""}|${s.sezionale ?? ""}`, s.id);
+            });
+          }
+          const now = new Date().toISOString();
           let c = 0, u = 0;
           const errs: Array<{ riga: number; errore: string }> = [];
-          for (const r of chunk) {
-            const cid = clientMap.get(r.codice_gestionale);
+          const matched: string[] = [];
+          for (const r of slice) {
+            const cid = clientMap[r.codice_gestionale];
             if (!cid) { errs.push({ riga: r.idx, errore: `Cliente ${r.codice_gestionale} non trovato${r.ragione_sociale ? ` (${r.ragione_sociale})` : ""}` }); continue; }
-            matchedClients.add(cid);
-            const p = r.payload as Record<string, unknown>;
+            matched.push(cid);
+            const p = r.payload;
             const key = `${cid}|${(p.numero_documento as string) ?? ""}|${(p.sezionale as string) ?? ""}`;
             const existId = existingMap.get(key);
             const row = { ...p, cliente_id: cid, importato_da: userId ?? null, ultima_sincronizzazione: now };
             if (existId) {
-              const { error } = await supabaseAdmin.from("scadenze" as never).update(row as never).eq("id", existId);
-              if (error) errs.push({ riga: r.idx, errore: `Update: ${error.message}` }); else u++;
+              const { error: e } = await supabaseAdmin.from("scadenze" as never).update(row as never).eq("id", existId);
+              if (e) errs.push({ riga: r.idx, errore: `Update: ${e.message}` }); else u++;
             } else {
-              const { error } = await supabaseAdmin.from("scadenze" as never).insert(row as never);
-              if (error) errs.push({ riga: r.idx, errore: `Insert: ${error.message}` }); else c++;
+              const { error: e } = await supabaseAdmin.from("scadenze" as never).insert(row as never);
+              if (e) errs.push({ riga: r.idx, errore: `Insert: ${e.message}` }); else c++;
             }
           }
-          return { c, u, errs };
+          return { c, u, errs, matched, count: slice.length };
         });
         created += res.c;
         updated += res.u;
         errorLog.push(...res.errs);
+        res.matched.forEach((id) => matchedClientIds.add(id));
+        elaborate += res.count;
         await supabaseAdmin.from("importazioni").update({
-          righe_elaborate: Math.min(i + BATCH, rows.length),
-          righe_create: created, righe_aggiornate: updated, righe_errore: errorLog.length, stato: "in_elaborazione",
+          righe_elaborate: elaborate,
+          righe_create: created, righe_aggiornate: updated, righe_errore: errorLog.length,
+          stato: "in_elaborazione",
         }).eq("id", importazioneId);
       }
 
-      logger.info(`Scadenziario completato: lette=${totRead}, clienti abbinati=${matchedClients.size}, create=${created}, aggiornate=${updated}, saltate=${errorLog.length}`);
+      // STEP 4 — cleanup staging (best-effort, non fa fallire l'import)
+      await step.run("cleanup-staging", async () => {
+        const paths = Array.from({ length: chunkCount }, (_, i) => `_staging/${importazioneId}/chunk-${i}.json`);
+        if (paths.length) await supabaseAdmin.storage.from("import-files").remove(paths);
+        return { removed: paths.length };
+      });
+
+      logger.info(`Scadenziario completato: lette=${totRead}, clienti abbinati=${matchedClientIds.size}, create=${created}, aggiornate=${updated}, saltate=${errorLog.length}`);
 
       await supabaseAdmin.from("importazioni").update({
-        righe_elaborate: rows.length, righe_create: created, righe_aggiornate: updated,
+        righe_elaborate: totRead, righe_create: created, righe_aggiornate: updated,
         righe_errore: errorLog.length,
         stato: errorLog.length ? "completata_con_errori" : "completata",
         completata_at: new Date().toISOString(),

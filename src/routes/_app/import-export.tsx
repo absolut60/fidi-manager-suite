@@ -1344,12 +1344,16 @@ function ExportCard() {
  * ============================================================================ */
 
 function HistoryCard({ kind }: { kind: "importazioni" | "esportazioni" }) {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isFetching, refetch } = useQuery({
     queryKey: ["storico-import-export", kind],
     queryFn: async () => {
       const { data, error } = await supabase.from(kind).select("*").order("created_at", { ascending: false }).limit(10);
       if (error) throw error;
       return data;
+    },
+    refetchInterval: (q) => {
+      const rows = (q.state.data as Array<{ stato?: string }> | undefined) ?? [];
+      return rows.some((r) => r.stato === "in_elaborazione") ? 3000 : false;
     },
   });
 
@@ -1358,38 +1362,70 @@ function HistoryCard({ kind }: { kind: "importazioni" | "esportazioni" }) {
 
   return (
     <Card className="p-5">
-      <h2 className="font-semibold flex items-center gap-2 mb-3"><Icon className="size-4" /> {title}</h2>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="font-semibold flex items-center gap-2"><Icon className="size-4" /> {title}</h2>
+        <Button size="sm" variant="outline" onClick={() => refetch()} disabled={isFetching}>
+          <Loader2 className={`size-3 mr-1 ${isFetching ? "animate-spin" : "hidden"}`} />
+          Aggiorna
+        </Button>
+      </div>
       {isLoading ? (
         <p className="text-xs text-muted-foreground">Caricamento…</p>
       ) : !data || data.length === 0 ? (
         <p className="text-xs text-muted-foreground">Nessuna operazione registrata.</p>
       ) : (
-        <div className="space-y-2">
-          {data.map((r: any) => (
-            <div key={r.id} className="flex items-center justify-between gap-2 text-sm border-b last:border-0 pb-2 last:pb-0">
-              <div className="min-w-0">
-                <p className="font-medium truncate">{r.nome_file}</p>
-                <p className="text-xs text-muted-foreground">
-                  {r.fonte ? <span className="mr-2">[{r.fonte}]</span> : null}
-                  {new Date(r.created_at).toLocaleString("it-IT")}
-                </p>
-              </div>
-              <div className="text-right shrink-0">
-                {kind === "importazioni" ? (
-                  <>
-                    <Badge variant={r.stato === "completata" ? "default" : r.stato === "fallita" ? "destructive" : "secondary"}>
+        <div className="space-y-3">
+          {data.map((r: any) => {
+            const totali = Number(r.righe_totali ?? 0);
+            const elaborate = Number(r.righe_elaborate ?? 0);
+            const pct = totali > 0 ? Math.min(100, Math.round((elaborate / totali) * 100)) : (r.stato === "in_elaborazione" ? 0 : 100);
+            const inCorso = r.stato === "in_elaborazione";
+            const variant = r.stato === "completata"
+              ? "default"
+              : r.stato === "fallita"
+              ? "destructive"
+              : r.stato === "completata_con_errori"
+              ? "secondary"
+              : "outline";
+            return (
+              <div key={r.id} className="border-b last:border-0 pb-3 last:pb-0 space-y-1.5">
+                <div className="flex items-start justify-between gap-2 text-sm">
+                  <div className="min-w-0">
+                    <p className="font-medium truncate">{r.nome_file}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {r.fonte ? <span className="mr-2">[{r.fonte}]</span> : null}
+                      {new Date(r.created_at).toLocaleString("it-IT")}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <Badge variant={variant as "default" | "destructive" | "secondary" | "outline"} className="gap-1">
+                      {inCorso ? <Loader2 className="size-3 animate-spin" /> : null}
                       {r.stato}
                     </Badge>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {r.righe_create ?? 0} nuovi · {r.righe_aggiornate ?? 0} agg. / {r.righe_totali ?? 0}
+                      {kind === "importazioni"
+                        ? `${r.righe_create ?? 0} nuovi · ${r.righe_aggiornate ?? 0} agg. / ${r.righe_totali ?? 0}`
+                        : `${r.righe_esportate ?? 0} righe`}
                     </p>
-                  </>
-                ) : (
-                  <p className="text-xs text-muted-foreground">{r.righe_esportate ?? 0} righe</p>
-                )}
+                  </div>
+                </div>
+                {kind === "importazioni" && (inCorso || (totali > 0 && elaborate < totali)) ? (
+                  <div className="space-y-1">
+                    <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                      <div
+                        className={`h-full transition-all duration-500 ${inCorso ? "bg-primary" : "bg-secondary"}`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      {elaborate}/{totali || "?"} righe ({pct}%)
+                      {r.righe_errore ? <span className="text-destructive ml-2">· {r.righe_errore} errori</span> : null}
+                    </p>
+                  </div>
+                ) : null}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </Card>
