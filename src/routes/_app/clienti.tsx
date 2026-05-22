@@ -362,11 +362,7 @@ function ClientiPage() {
     );
   }
 
-  if (!isListRoute) {
-    return <Outlet />;
-  }
-
-  // Calcolo numeri pagina (max 5 visibili + ellipsis)
+  // Calcolo numeri pagina (max 5 visibili + ellipsis) — hook prima dell'early return
   const pageNumbers = useMemo(() => {
     const pages: (number | "...")[] = [];
     const maxVisible = 5;
@@ -385,6 +381,11 @@ function ClientiPage() {
     }
     return pages;
   }, [page, totalPages]);
+
+  if (!isListRoute) {
+    return <Outlet />;
+  }
+
 
   return (
     <div className="space-y-6">
