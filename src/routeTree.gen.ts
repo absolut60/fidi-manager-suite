@@ -26,6 +26,7 @@ import { Route as AppApprovazioniRouteImport } from './routes/_app/approvazioni'
 import { Route as AppRichiesteRichiestaIdRouteImport } from './routes/_app/richieste.$richiestaId'
 import { Route as AppClientiClienteIdRouteImport } from './routes/_app/clienti.$clienteId'
 import { Route as ApiPublicHooksCheckScadenzeRouteImport } from './routes/api/public/hooks/check-scadenze'
+import { Route as ApiPublicHooksCheckReminderRitardiRouteImport } from './routes/api/public/hooks/check-reminder-ritardi'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -112,6 +113,12 @@ const ApiPublicHooksCheckScadenzeRoute =
     path: '/api/public/hooks/check-scadenze',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksCheckReminderRitardiRoute =
+  ApiPublicHooksCheckReminderRitardiRouteImport.update({
+    id: '/api/public/hooks/check-reminder-ritardi',
+    path: '/api/public/hooks/check-reminder-ritardi',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -129,6 +136,7 @@ export interface FileRoutesByFullPath {
   '/firma-privacy/$token': typeof FirmaPrivacyTokenRoute
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
   '/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
+  '/api/public/hooks/check-reminder-ritardi': typeof ApiPublicHooksCheckReminderRitardiRoute
   '/api/public/hooks/check-scadenze': typeof ApiPublicHooksCheckScadenzeRoute
 }
 export interface FileRoutesByTo {
@@ -147,6 +155,7 @@ export interface FileRoutesByTo {
   '/firma-privacy/$token': typeof FirmaPrivacyTokenRoute
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
   '/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
+  '/api/public/hooks/check-reminder-ritardi': typeof ApiPublicHooksCheckReminderRitardiRoute
   '/api/public/hooks/check-scadenze': typeof ApiPublicHooksCheckScadenzeRoute
 }
 export interface FileRoutesById {
@@ -167,6 +176,7 @@ export interface FileRoutesById {
   '/firma-privacy/$token': typeof FirmaPrivacyTokenRoute
   '/_app/clienti/$clienteId': typeof AppClientiClienteIdRoute
   '/_app/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
+  '/api/public/hooks/check-reminder-ritardi': typeof ApiPublicHooksCheckReminderRitardiRoute
   '/api/public/hooks/check-scadenze': typeof ApiPublicHooksCheckScadenzeRoute
 }
 export interface FileRouteTypes {
@@ -187,6 +197,7 @@ export interface FileRouteTypes {
     | '/firma-privacy/$token'
     | '/clienti/$clienteId'
     | '/richieste/$richiestaId'
+    | '/api/public/hooks/check-reminder-ritardi'
     | '/api/public/hooks/check-scadenze'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -205,6 +216,7 @@ export interface FileRouteTypes {
     | '/firma-privacy/$token'
     | '/clienti/$clienteId'
     | '/richieste/$richiestaId'
+    | '/api/public/hooks/check-reminder-ritardi'
     | '/api/public/hooks/check-scadenze'
   id:
     | '__root__'
@@ -224,6 +236,7 @@ export interface FileRouteTypes {
     | '/firma-privacy/$token'
     | '/_app/clienti/$clienteId'
     | '/_app/richieste/$richiestaId'
+    | '/api/public/hooks/check-reminder-ritardi'
     | '/api/public/hooks/check-scadenze'
   fileRoutesById: FileRoutesById
 }
@@ -232,6 +245,7 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
   FirmaPrivacyTokenRoute: typeof FirmaPrivacyTokenRoute
+  ApiPublicHooksCheckReminderRitardiRoute: typeof ApiPublicHooksCheckReminderRitardiRoute
   ApiPublicHooksCheckScadenzeRoute: typeof ApiPublicHooksCheckScadenzeRoute
 }
 
@@ -356,6 +370,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksCheckScadenzeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/check-reminder-ritardi': {
+      id: '/api/public/hooks/check-reminder-ritardi'
+      path: '/api/public/hooks/check-reminder-ritardi'
+      fullPath: '/api/public/hooks/check-reminder-ritardi'
+      preLoaderRoute: typeof ApiPublicHooksCheckReminderRitardiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -416,6 +437,8 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
   FirmaPrivacyTokenRoute: FirmaPrivacyTokenRoute,
+  ApiPublicHooksCheckReminderRitardiRoute:
+    ApiPublicHooksCheckReminderRitardiRoute,
   ApiPublicHooksCheckScadenzeRoute: ApiPublicHooksCheckScadenzeRoute,
 }
 export const routeTree = rootRouteImport

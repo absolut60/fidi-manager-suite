@@ -42,7 +42,7 @@ export const Route = createFileRoute("/api/public/hooks/check-reminder-ritardi")
 
             for (const uid of utentiIds) {
               await supabaseAdmin.from("reminder").insert({
-                tipo: "ritardo_grave",
+                tipo: "scadenza_insoluto",
                 titolo,
                 descrizione: descr,
                 cliente_id: s.cliente_id,
