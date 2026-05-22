@@ -19,19 +19,43 @@ export type SchedaPdfInput = {
   codiceSdi?: string | null;
   pec?: string | null;
   codiceGestionale?: string | null;
-  // Contatti
+  puntoVendita?: string | null;
+  // Contatti — nome/cognome separati
   titolareNome?: string | null;
+  titolareCognome?: string | null;
   titolareEmail?: string | null;
   titolareCell?: string | null;
   amministrativoNome?: string | null;
+  amministrativoCognome?: string | null;
   amministrativoEmail?: string | null;
   amministrativoCell?: string | null;
   // Dichiarante
-  dichiaranteNome: string;
-  dichiaranteCognome: string;
-  firmaPngDataUrl: string;
+  dichiaranteNome?: string | null;
+  dichiaranteCognome?: string | null;
+  firmaPngDataUrl?: string | null;
   dataFirma: Date;
+  // Spazio Amministrazione (opzionale)
+  amministrazione?: {
+    codiceAssegnato?: string | null;
+    sedeOperatore?: string | null;
+    condizioniPagamentoConcordate?: string | null;
+    dataRichiestaAffidamento?: string | null;
+    importoAffidamentoRichiesto?: number | string | null;
+    dataEsitoAffidamento?: string | null;
+    importoAffidato?: number | string | null;
+    fidoAziendaleConcesso?: number | string | null;
+    condizioniPagamentoConcesse?: string | null;
+    dataAffidamentoAziendale?: string | null;
+    note?: string | null;
+  } | null;
 };
+
+const PRIVACY_TEXT =
+  "In relazione al nuovo Regolamento UE 679/2016, ed ai sensi del decreto legislativo 196 del 30/06/2003 vi comunichiamo che nei nostri archivi cartacei e/o informatici sono contenuti i vostri dati personali. I dati verranno trattati per le finalità relative alla gestione del rapporto in essere, non verranno comunicati ad altri soggetti e potranno essere utilizzati per l'invio della corrispondenza. L'interessato potrà chiedere in ogni momento la modifica o la cancellazione in relazione all'art. 14-15-16-17 del Reg. UE 679/2016 inviando una mail a madedistribuzione@pecplus.it";
+
+const FOOTER_LINE_1 =
+  "MADE DISTRIBUZIONE S.p.A. – Corso di Porta Nuova, 11 - 20121 (MI) • P.IVA e C.F. 10126430965";
+const FOOTER_LINE_2 = "SchCli_0419 Imp Rev 02";
 
 const PAGE_W = 595;
 const PAGE_H = 842;
@@ -46,36 +70,36 @@ export async function generaSchedaCliente(input: SchedaPdfInput): Promise<Uint8A
   let y = PAGE_H - MARGIN;
 
   const ensureSpace = (needed: number) => {
-    if (y - needed < MARGIN + 30) {
+    if (y - needed < MARGIN + 40) {
       page = pdf.addPage([PAGE_W, PAGE_H]);
       y = PAGE_H - MARGIN;
     }
   };
 
-  // Header
-  page.drawText("SCHEDA INSERIMENTO CLIENTE", {
-    x: MARGIN, y, size: 16, font: bold, color: rgb(0.05, 0.05, 0.2),
+  // ---------- Intestazione ----------
+  const title = "SCHEDA INSERIMENTO CLIENTE";
+  const tw = bold.widthOfTextAtSize(title, 16);
+  page.drawText(title, {
+    x: (PAGE_W - tw) / 2,
+    y,
+    size: 16,
+    font: bold,
+    color: rgb(0.05, 0.05, 0.2),
   });
-  y -= 18;
-  page.drawText(
-    input.tipo === "nuovo" ? "☒ NUOVO INSERIMENTO    ☐ AGGIORNAMENTO" : "☐ NUOVO INSERIMENTO    ☒ AGGIORNAMENTO",
-    { x: MARGIN, y, size: 10, font, color: rgb(0.2, 0.2, 0.2) },
-  );
   y -= 22;
 
-  // Sezione DATI IMPRESA
+  const nuovoBox = input.tipo === "nuovo" ? "☒" : "☐";
+  const aggBox = input.tipo === "aggiornamento" ? "☒" : "☐";
+  page.drawText(`${nuovoBox} NUOVO INSERIMENTO     ${aggBox} AGGIORNAMENTO`, {
+    x: MARGIN, y, size: 10, font, color: rgb(0.2, 0.2, 0.2),
+  });
+  y -= 22;
+
+  // ---------- DATI IMPRESA ----------
   sectionTitle(page, "DATI IMPRESA", y, bold);
   y -= 18;
 
-  const soggetto = input.tipoSoggetto === "persona_fisica"
-    ? "☒ Persona fisica    ☐ Azienda"
-    : input.tipoSoggetto === "azienda"
-    ? "☐ Persona fisica    ☒ Azienda"
-    : "☐ Persona fisica    ☐ Azienda";
-  page.drawText(soggetto, { x: MARGIN + 4, y, size: 10, font });
-  y -= 16;
-
-  y = drawRow(page, y, font, bold, [["Ragione sociale / Nominativo", input.ragioneSociale]]);
+  y = drawRow(page, y, font, bold, [["Ragione sociale / Nominativo", v(input.ragioneSociale)]]);
   y = drawRow(page, y, font, bold, [["Indirizzo", v(input.indirizzo)]]);
   y = drawRow(page, y, font, bold, [
     ["CAP", v(input.cap), 80],
@@ -86,8 +110,10 @@ export async function generaSchedaCliente(input: SchedaPdfInput): Promise<Uint8A
     ["Telefono", v(input.telefono), 230],
     ["E-mail", v(input.email), 230],
   ]);
-  y = drawRow(page, y, font, bold, [["P.IVA", v(input.partitaIva)]]);
-  y = drawRow(page, y, font, bold, [["Codice Fiscale", v(input.codiceFiscale)]]);
+  y = drawRow(page, y, font, bold, [
+    ["P.IVA", v(input.partitaIva), 230],
+    ["Codice Fiscale", v(input.codiceFiscale), 230],
+  ]);
   y = drawRow(page, y, font, bold, [
     ["Banca", v(input.banca), 280],
     ["ABI", v(input.abi), 180],
@@ -96,121 +122,184 @@ export async function generaSchedaCliente(input: SchedaPdfInput): Promise<Uint8A
     ["Agenzia", v(input.agenzia), 280],
     ["CAB", v(input.cab), 180],
   ]);
-  y -= 4;
-  page.drawText("(Per Fatturazione Elettronica)", {
-    x: MARGIN + 4, y, size: 8, font, color: rgb(0.4, 0.4, 0.4),
-  });
-  y -= 12;
   y = drawRow(page, y, font, bold, [
     ["COD SDI", v(input.codiceSdi), 200],
     ["PEC", v(input.pec), 260],
   ]);
+  y = drawRow(page, y, font, bold, [
+    ["Punto vendita", v(input.puntoVendita), 280],
+    ["Codice gestionale", v(input.codiceGestionale), 180],
+  ]);
 
-  y -= 10;
-  ensureSpace(200);
+  y -= 8;
+  ensureSpace(180);
 
-  // DATI CONTATTI
+  // ---------- DATI CONTATTI ----------
   sectionTitle(page, "DATI CONTATTI", y, bold);
   y -= 18;
 
   page.drawText("Titolare / Legale Rappresentante", { x: MARGIN + 4, y, size: 10, font: bold });
   y -= 14;
-  y = drawRow(page, y, font, bold, [["Nominativo", v(input.titolareNome)]]);
+  y = drawRow(page, y, font, bold, [
+    ["Nome", v(input.titolareNome), 230],
+    ["Cognome", v(input.titolareCognome), 230],
+  ]);
   y = drawRow(page, y, font, bold, [
     ["E-mail", v(input.titolareEmail), 280],
     ["Cell.", v(input.titolareCell), 180],
   ]);
+
   y -= 6;
   page.drawText("Referente Amministrativo (se diverso da Titolare)", {
     x: MARGIN + 4, y, size: 10, font: bold,
   });
   y -= 14;
-  y = drawRow(page, y, font, bold, [["Nominativo", v(input.amministrativoNome)]]);
+  y = drawRow(page, y, font, bold, [
+    ["Nome", v(input.amministrativoNome), 230],
+    ["Cognome", v(input.amministrativoCognome), 230],
+  ]);
   y = drawRow(page, y, font, bold, [
     ["E-mail", v(input.amministrativoEmail), 280],
     ["Cell.", v(input.amministrativoCell), 180],
   ]);
 
   y -= 10;
-  ensureSpace(220);
+  ensureSpace(260);
 
-  // DATI PERSONA DICHIARANTE
+  // ---------- DATI PERSONA DICHIARANTE ----------
   sectionTitle(page, "DATI PERSONA DICHIARANTE", y, bold);
   y -= 18;
   y = drawRow(page, y, font, bold, [
-    ["Nome", input.dichiaranteNome, 230],
-    ["Cognome", input.dichiaranteCognome, 230],
+    ["Nome", v(input.dichiaranteNome), 230],
+    ["Cognome", v(input.dichiaranteCognome), 230],
   ]);
 
-  y -= 6;
-  const informativa = [
-    "In relazione al nuovo Regolamento UE 679/2016, ed ai sensi del decreto legislativo 196 del",
-    "30/06/2003 vi comunichiamo che nei nostri archivi cartacei e/o informatici sono contenuti i",
-    "vostri dati personali. I dati verranno trattati per le finalità relative alla gestione del rapporto",
-    "in essere, non verranno comunicati ad altri soggetti e potranno essere utilizzati per l'invio",
-    "della corrispondenza. L'interessato potrà chiedere in ogni momento la modifica o la",
-    "cancellazione in relazione all'art. 14-15-16-17 del Reg. UE 679/2016.",
-  ];
-  for (const l of informativa) {
-    page.drawText(l, { x: MARGIN + 4, y, size: 8.5, font, color: rgb(0.2, 0.2, 0.2) });
+  y -= 8;
+  // Privacy: wrap to content width
+  const wrapped = wrapText(PRIVACY_TEXT, font, 8.5, CONTENT_W - 8);
+  for (const line of wrapped) {
+    ensureSpace(12);
+    page.drawText(line, { x: MARGIN + 4, y, size: 8.5, font, color: rgb(0.2, 0.2, 0.2) });
     y -= 11;
   }
 
   y -= 14;
   ensureSpace(110);
 
-  // Firma + data
   page.drawText("Data", { x: MARGIN + 4, y, size: 10, font: bold });
   page.drawText(input.dataFirma.toLocaleDateString("it-IT"), {
     x: MARGIN + 40, y, size: 10, font,
   });
-  page.drawText("Il Dichiarante", { x: MARGIN + 250, y, size: 10, font: bold });
+  page.drawText("Firma del Dichiarante", { x: MARGIN + 250, y, size: 10, font: bold });
   y -= 8;
 
-  // Firma image
-  const pngBytes = await fetch(input.firmaPngDataUrl).then((r) => r.arrayBuffer());
-  const png = await pdf.embedPng(pngBytes);
-  const sigW = 250;
-  const sigH = 70;
-  page.drawImage(png, {
-    x: MARGIN + 240,
-    y: y - sigH,
-    width: sigW,
-    height: sigH,
-  });
-  page.drawLine({
-    start: { x: MARGIN + 240, y: y - sigH - 2 },
-    end: { x: MARGIN + 240 + sigW, y: y - sigH - 2 },
-    thickness: 0.5,
-    color: rgb(0.5, 0.5, 0.5),
-  });
-  y -= sigH + 16;
-
-  if (input.codiceGestionale) {
-    page.drawText(`Codice gestionale: ${input.codiceGestionale}`, {
-      x: MARGIN + 4, y, size: 9, font, color: rgb(0.3, 0.3, 0.3),
+  // Firma (se presente)
+  if (input.firmaPngDataUrl) {
+    try {
+      const pngBytes = await fetch(input.firmaPngDataUrl).then((r) => r.arrayBuffer());
+      const png = await pdf.embedPng(pngBytes);
+      const sigW = 250;
+      const sigH = 60;
+      page.drawImage(png, {
+        x: MARGIN + 240,
+        y: y - sigH,
+        width: sigW,
+        height: sigH,
+      });
+      page.drawLine({
+        start: { x: MARGIN + 240, y: y - sigH - 2 },
+        end: { x: MARGIN + 240 + sigW, y: y - sigH - 2 },
+        thickness: 0.5,
+        color: rgb(0.5, 0.5, 0.5),
+      });
+      y -= sigH + 12;
+    } catch {
+      y -= 60;
+    }
+  } else {
+    page.drawLine({
+      start: { x: MARGIN + 240, y: y - 50 },
+      end: { x: MARGIN + 240 + 250, y: y - 50 },
+      thickness: 0.5,
+      color: rgb(0.5, 0.5, 0.5),
     });
-    y -= 14;
+    y -= 60;
   }
 
-  // Footer su tutte le pagine
+  // ---------- SPAZIO RISERVATO AMMINISTRAZIONE ----------
+  const a = input.amministrazione;
+  const hasAmm =
+    a &&
+    Object.values(a).some((x) => x !== null && x !== undefined && String(x).trim() !== "");
+  if (hasAmm && a) {
+    y -= 8;
+    ensureSpace(220);
+    sectionTitle(page, "SPAZIO RISERVATO AMMINISTRAZIONE", y, bold);
+    y -= 18;
+    y = drawRow(page, y, font, bold, [
+      ["Codice assegnato", v(a.codiceAssegnato), 230],
+      ["Sede / Operatore", v(a.sedeOperatore), 230],
+    ]);
+    y = drawRow(page, y, font, bold, [
+      ["Condizioni pagamento concordate", v(a.condizioniPagamentoConcordate)],
+    ]);
+    y = drawRow(page, y, font, bold, [
+      ["Data richiesta affidamento", fmtDate(a.dataRichiestaAffidamento), 230],
+      ["Importo affidamento richiesto", fmtEuro(a.importoAffidamentoRichiesto), 230],
+    ]);
+    y = drawRow(page, y, font, bold, [
+      ["Data esito affidamento", fmtDate(a.dataEsitoAffidamento), 230],
+      ["Importo affidato", fmtEuro(a.importoAffidato), 230],
+    ]);
+    y = drawRow(page, y, font, bold, [
+      ["Fido aziendale concesso", fmtEuro(a.fidoAziendaleConcesso), 230],
+      ["Data affidamento aziendale", fmtDate(a.dataAffidamentoAziendale), 230],
+    ]);
+    y = drawRow(page, y, font, bold, [
+      ["Condizioni pagamento concesse", v(a.condizioniPagamentoConcesse)],
+    ]);
+    if (a.note && String(a.note).trim()) {
+      y = drawRow(page, y, font, bold, [["Note", v(a.note)]]);
+    }
+  }
+
+  // ---------- Footer su tutte le pagine ----------
   const pages = pdf.getPages();
   pages.forEach((p, i) => {
-    p.drawText(
-      `SchCli_Digital — ${input.ragioneSociale} — pag. ${i + 1}/${pages.length}`,
-      { x: MARGIN, y: 24, size: 7, font, color: rgb(0.55, 0.55, 0.55) },
-    );
-    p.drawText(
-      `Generato il ${input.dataFirma.toLocaleString("it-IT")}`,
-      { x: PAGE_W - MARGIN - 160, y: 24, size: 7, font, color: rgb(0.55, 0.55, 0.55) },
-    );
+    const w1 = font.widthOfTextAtSize(FOOTER_LINE_1, 7);
+    p.drawText(FOOTER_LINE_1, {
+      x: (PAGE_W - w1) / 2, y: 28, size: 7, font, color: rgb(0.45, 0.45, 0.45),
+    });
+    const w2 = font.widthOfTextAtSize(FOOTER_LINE_2, 7);
+    p.drawText(FOOTER_LINE_2, {
+      x: (PAGE_W - w2) / 2, y: 18, size: 7, font, color: rgb(0.55, 0.55, 0.55),
+    });
+    p.drawText(`Pag. ${i + 1}/${pages.length}`, {
+      x: PAGE_W - MARGIN - 50, y: 18, size: 7, font, color: rgb(0.55, 0.55, 0.55),
+    });
   });
 
   return pdf.save();
 }
 
+// ---------- helpers ----------
+
 function v(s?: string | null) {
-  return s && s.trim() ? s : "—";
+  return s && String(s).trim() ? String(s) : "—";
+}
+
+function fmtDate(s?: string | null) {
+  if (!s) return "—";
+  const d = new Date(s);
+  if (!Number.isFinite(d.getTime())) return String(s);
+  return d.toLocaleDateString("it-IT");
+}
+
+function fmtEuro(v?: number | string | null) {
+  if (v === null || v === undefined || v === "") return "—";
+  const n = typeof v === "number" ? v : Number(v);
+  if (!Number.isFinite(n)) return "—";
+  return new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(n);
 }
 
 function sectionTitle(page: PDFPage, label: string, y: number, bold: PDFFont) {
@@ -257,4 +346,21 @@ function truncate(text: string, maxWidth: number, font: PDFFont, size: number) {
     t = t.slice(0, -1);
   }
   return t + "…";
+}
+
+function wrapText(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
+  const words = text.split(/\s+/);
+  const lines: string[] = [];
+  let current = "";
+  for (const w of words) {
+    const candidate = current ? current + " " + w : w;
+    if (font.widthOfTextAtSize(candidate, size) <= maxWidth) {
+      current = candidate;
+    } else {
+      if (current) lines.push(current);
+      current = w;
+    }
+  }
+  if (current) lines.push(current);
+  return lines;
 }
