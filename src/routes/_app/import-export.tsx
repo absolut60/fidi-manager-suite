@@ -58,6 +58,24 @@ const HEADER_MAP: Record<string, keyof z.infer<typeof rowSchema>> = {
   "ragionesociale": "ragione_sociale",
   "nome": "ragione_sociale",
   "denominazione": "ragione_sociale",
+  "codice gestionale": "codice_gestionale",
+  "codice": "codice_gestionale",
+  "cod gestionale": "codice_gestionale",
+  "fido": "fido",
+  "totale rischio": "totale_rischio",
+  "totale esposizione": "totale_rischio",
+  "esposizione": "totale_rischio",
+  "fido residuo": "fido_residuo",
+  "residuo": "fido_residuo",
+  "scaduto": "scaduto",
+  "a scadere": "a_scadere",
+  "ascadere": "a_scadere",
+  "condizione pagamento": "condizioni_pagamento",
+  "condizioni pagamento": "condizioni_pagamento",
+  "condizioni di pagamento": "condizioni_pagamento",
+  "pagamento": "condizioni_pagamento",
+  "dilazione concordata": "dilazione_concordata",
+  "dilazione effettiva": "dilazione_effettiva",
   "partita iva": "partita_iva",
   "p.iva": "partita_iva",
   "piva": "partita_iva",
@@ -83,6 +101,7 @@ const HEADER_MAP: Record<string, keyof z.infer<typeof rowSchema>> = {
   "note": "note",
   "notes": "note",
 };
+
 
 function normalize(h: string) {
   return String(h ?? "").trim().toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ");
