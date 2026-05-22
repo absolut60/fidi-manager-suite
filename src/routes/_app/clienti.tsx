@@ -515,6 +515,32 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
           .select("id, principale");
         if (e5) throw new Error(`Salvataggio contatti: ${e5.message}`);
 
+        // 2.bis Se è stato indicato un Importo Affidamento Richiesto, crea
+        //       una richiesta_fido in bozza che segue il normale iter di approvazione.
+        if (canSeeAdminStep) {
+          const importoRichiesto = num(parsed.importo_affidamento_richiesto);
+          if (importoRichiesto != null && importoRichiesto > 0) {
+            try {
+              const { error: eRf } = await supabase.from("richieste_fido").insert({
+                cliente_id: clienteId,
+                store_id: parsed.store_id || null,
+                tipo: "nuovo",
+                stato: "bozza",
+                importo_richiesto: importoRichiesto,
+                motivazione: parsed.note_amministrazione || null,
+                created_by: user?.id ?? null,
+              } as never);
+              if (eRf) {
+                toast.warning(`Cliente creato, ma richiesta fido non generata: ${eRf.message}`);
+              }
+            } catch (rfErr) {
+              const m = rfErr instanceof Error ? rfErr.message : "Errore richiesta fido";
+              toast.warning(`Cliente creato, ma richiesta fido non generata: ${m}`);
+            }
+          }
+        }
+
+
         // 3. Solo ORA, se richiesto, generiamo firma + PDF. Eventuali errori
         //    qui NON devono distruggere il cliente/contatti già salvati.
         if (conFirma && dataUrl) {
