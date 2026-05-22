@@ -37,11 +37,49 @@ export const Route = createFileRoute("/_app/clienti")({
   component: ClientiPage,
 });
 
+type SemaforoColor = "rosso" | "arancione" | "giallo" | "verde";
+
+function calcSemaforo(c: {
+  fido_residuo?: number | null;
+  fido_gestionale?: number | null;
+  scaduto?: number | null;
+}): SemaforoColor {
+  const residuo = c.fido_residuo == null ? null : Number(c.fido_residuo);
+  const fidoGest = c.fido_gestionale == null ? null : Number(c.fido_gestionale);
+  const scaduto = c.scaduto == null ? null : Number(c.scaduto);
+  if (residuo != null && residuo < 0) return "rosso";
+  if (residuo != null && fidoGest != null && fidoGest > 0 && residuo < fidoGest * 0.1) return "arancione";
+  if (scaduto != null && scaduto > 0) return "giallo";
+  return "verde";
+}
+
+const SEMAFORO_DOT: Record<SemaforoColor, string> = {
+  rosso: "bg-destructive",
+  arancione: "bg-orange-500",
+  giallo: "bg-yellow-500",
+  verde: "bg-success",
+};
+
+const SEMAFORO_LABEL: Record<SemaforoColor, string> = {
+  rosso: "Rischio critico",
+  arancione: "Fido quasi esaurito",
+  giallo: "Scaduto presente",
+  verde: "Posizione regolare",
+};
+
+function fmtEuro(v: unknown): string {
+  if (v == null || v === "") return "—";
+  const n = Number(v);
+  if (!Number.isFinite(n)) return "—";
+  return new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
+}
+
 function ClientiPage() {
   const navigate = useNavigate();
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
   const isListRoute = currentPath === "/clienti";
   const [search, setSearch] = useState("");
+  const [statoFiltro, setStatoFiltro] = useState<"attivi" | "disattivati" | "tutti">("attivi");
   const [open, setOpen] = useState(false);
 
   const { data: clienti, isLoading } = useQuery({
@@ -58,6 +96,8 @@ function ClientiPage() {
   });
 
   const filtered = (clienti ?? []).filter((c) => {
+    if (statoFiltro === "attivi" && !c.attivo) return false;
+    if (statoFiltro === "disattivati" && c.attivo) return false;
     const q = search.toLowerCase().trim();
     if (!q) return true;
     return (
