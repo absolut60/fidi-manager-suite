@@ -27,7 +27,11 @@ export const Route = createFileRoute("/_app/import-export")({
  * ============================================================================ */
 
 function normalize(h: string) {
-  return String(h ?? "").trim().toLowerCase().replace(/[._-]+/g, " ").replace(/\s+/g, " ");
+  return String(h ?? "")
+    .toLowerCase()
+    .replace(/[._\-/]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function toNum(v: unknown): number | null {
@@ -361,21 +365,41 @@ function AnagraficaImportCard() {
 
 const RISCHIO_HEADERS: Record<string, string> = {
   "codice": "codice_gestionale",
+  "cod cliente": "codice_gestionale",
+  "codice cliente": "codice_gestionale",
   "ragione sociale": "ragione_sociale",
   "cod pag": "condizione_pagamento_cod",
+  "cod pagamento": "condizione_pagamento_cod",
+  "codice pagamento": "condizione_pagamento_cod",
   "descr cod pag": "condizione_pagamento_desc",
+  "descrizione cod pag": "condizione_pagamento_desc",
+  "descrizione pagamento": "condizione_pagamento_desc",
   "saldo contab": "saldo_contabile",
+  "saldo contabile": "saldo_contabile",
   "doc da fatt": "doc_da_fatturare",
+  "doc da fatturare": "doc_da_fatturare",
   "doc da evad": "doc_da_evadere",
+  "doc da evadere": "doc_da_evadere",
   "eff a rischio": "effetti_a_rischio",
+  "effetti a rischio": "effetti_a_rischio",
   "fido": "fido_gestionale",
+  "fido azienda": "fido_gestionale",
+  "fido concesso": "fido_gestionale",
+  "fido gestionale": "fido_gestionale",
   "totale rischio": "totale_rischio",
+  "tot rischio": "totale_rischio",
   "fido residuo": "fido_residuo",
+  "residuo": "fido_residuo",
   "scaduto": "scaduto",
   "a scadere": "a_scadere",
   "num insoluti": "num_insoluti",
+  "n insoluti": "num_insoluti",
+  "insoluti": "num_insoluti",
   "dilaz azienda": "dilazione_concordata",
+  "dilazione azienda": "dilazione_concordata",
+  "dilaz concordata": "dilazione_concordata",
   "dilaz effettiva": "dilazione_effettiva",
+  "dilazione effettiva": "dilazione_effettiva",
 };
 
 type RischioRow = {
@@ -417,12 +441,14 @@ function RischioImportCard() {
 
       const parsed: RischioRow[] = [];
       const missing: number[] = [];
+      const unknownHeaders = new Set<string>();
       raw.forEach((r) => {
         const mapped: Record<string, unknown> = {};
         for (const k of Object.keys(r)) {
           if (k === "__row") continue;
           const f = RISCHIO_HEADERS[normalize(k)];
           if (f) mapped[f] = r[k];
+          else if (String(k).trim()) unknownHeaders.add(k);
         }
         const codice = toStr(mapped.codice_gestionale);
         if (!codice) { missing.push(r.__row); return; }
@@ -443,6 +469,10 @@ function RischioImportCard() {
       setFileName(file.name);
       setRows(parsed);
       setMissingCode(missing);
+      if (unknownHeaders.size) {
+        console.warn("[import-rischio] colonne ignorate:", Array.from(unknownHeaders));
+        toast.warning(`Colonne ignorate: ${Array.from(unknownHeaders).join(", ")}`);
+      }
       toast.success(`${parsed.length} righe lette${missing.length ? `, ${missing.length} senza codice` : ""}`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Errore lettura file");
