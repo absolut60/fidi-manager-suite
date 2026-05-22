@@ -391,16 +391,31 @@ function AnagraficaImportCard() {
       </div>
       <p className="text-xs text-muted-foreground mb-4">
         Crea o aggiorna i clienti (upsert su <code>codice_gestionale</code> o <code>partita_iva</code>).
+        L'elaborazione gira in background: puoi chiudere la pagina senza interrompere l'import.
       </p>
+      {inProgress && progress ? (
+        <div className="space-y-2 mb-4 p-3 rounded-md border bg-muted/30 text-sm">
+          <div className="flex items-center gap-2">
+            <Loader2 className="size-4 animate-spin" />
+            <span className="font-medium">Import in corso in background</span>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {progress.righe_elaborate ?? 0} / {progress.righe_totali ?? rows.length} righe ·
+            {" "}{progress.righe_create ?? 0} create ·
+            {" "}{progress.righe_aggiornate ?? 0} aggiornate ·
+            {" "}{progress.righe_errore ?? 0} errori
+          </div>
+        </div>
+      ) : null}
       <ImportZone
         fileName={fileName} parsing={parsing} dragOver={dragOver}
         setDragOver={setDragOver} fileRef={fileRef} onFile={handleFile} onReset={reset}
         valid={valid.length} invalid={invalid}
         result={result}
         action={
-          <Button className="w-full gap-1.5" disabled={!valid.length || importMut.isPending} onClick={() => importMut.mutate()}>
-            {importMut.isPending && <Loader2 className="size-4 animate-spin" />}
-            Importa {valid.length} righe
+          <Button className="w-full gap-1.5" disabled={!valid.length || importMut.isPending || inProgress} onClick={() => importMut.mutate()}>
+            {(importMut.isPending || inProgress) && <Loader2 className="size-4 animate-spin" />}
+            {inProgress ? "Elaborazione in background..." : `Avvia import (${valid.length} righe)`}
           </Button>
         }
       />
