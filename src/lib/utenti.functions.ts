@@ -46,7 +46,7 @@ export const inviteUtente = createServerFn({ method: "POST" })
     }).parse(d)
   )
   .handler(async ({ data, context }) => {
-    await assertAdmin(supabaseAdmin, context.userId);
+    await assertAdmin(context.userId);
 
     if (data.ruoli.includes("store_manager") && !data.storeId) {
       throw new Error("Il ruolo Store Manager richiede un punto vendita");
@@ -106,7 +106,7 @@ export const updateUtenteRuoli = createServerFn({ method: "POST" })
     }).parse(d)
   )
   .handler(async ({ data, context }) => {
-    await assertAdmin(supabaseAdmin, context.userId);
+    await assertAdmin(context.userId);
 
     if (data.ruoli.includes("store_manager") && !data.storeId) {
       throw new Error("Il ruolo Store Manager richiede un punto vendita");
