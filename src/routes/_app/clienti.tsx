@@ -650,7 +650,7 @@ function ClientiPage() {
     </label>
   );
 
-  function FiltriContent({ stack = false }: { stack?: boolean }) {
+  function renderFiltriContent(stack = false) {
     if (stack) {
       return (
         <div className="grid grid-cols-1 gap-3">
@@ -764,7 +764,7 @@ function ClientiPage() {
               )}
             </div>
           </div>
-          <FiltriContent />
+          {renderFiltriContent()}
         </div>
 
 
@@ -788,7 +788,7 @@ function ClientiPage() {
                 <SheetTitle>Filtri</SheetTitle>
               </SheetHeader>
               <div className="mt-4">
-                <FiltriContent stack />
+                {renderFiltriContent(true)}
               </div>
             </SheetContent>
           </Sheet>
