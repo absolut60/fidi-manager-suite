@@ -666,13 +666,14 @@ export const processScadenziarioChunk = inngest.createFunction(
       const batchErrs: Array<{ riga: number; errore: string }> = [];
       const matched: string[] = [];
       const rawValidRows: Array<Record<string, unknown>> = [];
+      let skipped = 0;
+      const skippedCodes = new Set<string>();
       for (const r of rows) {
         const cid = clientMap[r.codice_gestionale];
         if (!cid) {
-          rowErrs.push({
-            riga: r.idx,
-            errore: `Cliente ${r.codice_gestionale} non trovato${r.ragione_sociale ? ` (${r.ragione_sociale})` : ""}`,
-          });
+          // Cliente non in anagrafica: salta silenziosamente (non conta come errore)
+          skipped++;
+          if (r.codice_gestionale) skippedCodes.add(String(r.codice_gestionale));
           continue;
         }
         matched.push(cid);
