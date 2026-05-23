@@ -4,7 +4,6 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
   anagraficaSheetToObjects,
   parseRischioSheet,
-  parseScadenziarioOfficialSheet,
   parseScadenziarioBlockSheet,
   parseAssicurazioneSheet,
   scanScadenziarioMeta,
