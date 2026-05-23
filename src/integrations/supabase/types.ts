@@ -1850,6 +1850,10 @@ export type Database = {
         | "approvata"
         | "rifiutata"
         | "annullata"
+        | "in_attesa_liv1"
+        | "in_attesa_liv2"
+        | "in_attesa_liv3"
+        | "integrazioni_richieste"
       stato_sollecito:
         | "inviato"
         | "in_attesa_risposta"
@@ -2063,6 +2067,10 @@ export const Constants = {
         "approvata",
         "rifiutata",
         "annullata",
+        "in_attesa_liv1",
+        "in_attesa_liv2",
+        "in_attesa_liv3",
+        "integrazioni_richieste",
       ],
       stato_sollecito: [
         "inviato",
