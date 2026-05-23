@@ -1511,17 +1511,12 @@ export const processBloccoFidoImport = inngest.createFunction(
                 }
               }
 
-              if (
-                r.ultima_data_fatturazione !== null ||
-                (r.ind_blocco == null && r.fido == null && r.assicurazione == null)
-              ) {
-                payload.ultima_data_fatturazione = r.ultima_data_fatturazione;
-                const attivo =
-                  r.ultima_data_fatturazione != null &&
-                  r.ultima_data_fatturazione >= cutoff2025;
-                payload.cliente_attivo = attivo;
-                if (!attivo) cNonAtt++;
-              }
+              payload.ultima_data_fatturazione = r.ultima_data_fatturazione;
+              const attivo =
+                r.ultima_data_fatturazione != null &&
+                r.ultima_data_fatturazione >= cutoff2025;
+              payload.cliente_attivo = attivo;
+              if (!attivo) cNonAtt++;
 
               if (r.fido != null && r.fido > 0) {
                 payload.fido_gestionale = r.fido;
