@@ -1156,9 +1156,7 @@ function ScadenziarioImportCard() {
   const [parsing, setParsing] = useState(false);
   const [dragOver, setDragOver] = useState(false);
 
-  // Progress tracking (3 phases)
-  const [chunkCurrent, setChunkCurrent] = useState(0);
-  const [chunkTotal, setChunkTotal] = useState(0);
+  // Progress tracking (2 phases: uploading 0-20%, processing 20-100%)
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -1167,10 +1165,6 @@ function ScadenziarioImportCard() {
   const bg = useBackgroundImport({
     fonte: "scadenziario",
     invalidateKeys: [["scadenze"], ["clienti"]],
-    onChunkUploaded: (uploaded, total) => {
-      setChunkCurrent(uploaded);
-      setChunkTotal(total);
-    },
     onUploadComplete: () => setUploadDone(true),
     onError: (msg) => setErrorMsg(msg),
   });
@@ -1188,8 +1182,6 @@ function ScadenziarioImportCard() {
     setFileName(null);
     setFile(null);
     setParsed(null);
-    setChunkCurrent(0);
-    setChunkTotal(0);
     setStartedAt(null);
     setErrorMsg(null);
     setUploadDone(false);
@@ -1233,12 +1225,6 @@ function ScadenziarioImportCard() {
 
   function startImport() {
     if (!file || !parsed) return;
-    const chunkSize = 500;
-    const stagedChunks = [] as Array<{ rows: ScadRow[] }>;
-    for (let i = 0; i < parsed.rows.length; i += chunkSize)
-      stagedChunks.push({ rows: parsed.rows.slice(i, i + chunkSize) });
-    setChunkCurrent(0);
-    setChunkTotal(stagedChunks.length);
     setUploadDone(false);
     setErrorMsg(null);
     setStartedAt(Date.now());
@@ -1246,12 +1232,10 @@ function ScadenziarioImportCard() {
       file,
       rowsTotali: parsed.totRead,
       rigeErroreClient: parsed.missing.length,
-      stagedChunks,
-      stagedMissingRows: parsed.missing,
     });
   }
 
-  // Phase + pct derivation
+  // Phase + pct derivation (2 fasi)
   const totRead = parsed?.totRead ?? bg.progress?.righe_totali ?? 0;
   const righeElaborate = bg.progress?.righe_elaborate ?? 0;
   const righeTotali = bg.progress?.righe_totali ?? totRead;
@@ -1263,7 +1247,7 @@ function ScadenziarioImportCard() {
     pct = 0;
   } else if (parsing) {
     phase = "reading";
-    pct = 10;
+    pct = 5;
   } else if (bg.done && bg.progress) {
     const stato = bg.progress.stato;
     if (stato === "completata_con_errori" || (bg.progress.righe_errore ?? 0) > 0) {
@@ -1273,18 +1257,19 @@ function ScadenziarioImportCard() {
     }
     pct = 100;
   } else if (bg.inProgress && uploadDone) {
+    // Fase 2: elaborazione in background (20% → 100%)
     phase = "processing";
     pct =
       righeTotali > 0
-        ? 30 + Math.min(70, (righeElaborate / righeTotali) * 70)
-        : 30;
+        ? 20 + Math.min(80, (righeElaborate / righeTotali) * 80)
+        : 20;
   } else if (bg.isPending || (bg.inProgress && !uploadDone)) {
+    // Fase 1: upload file (0% → 20%)
     phase = "uploading";
-    pct =
-      chunkTotal > 0 ? 15 + Math.min(15, (chunkCurrent / chunkTotal) * 15) : 15;
+    pct = 10;
   } else if (parsed) {
     phase = "ready";
-    pct = 15;
+    pct = 0;
   } else {
     phase = "reading";
     pct = 0;
@@ -1293,7 +1278,7 @@ function ScadenziarioImportCard() {
   const elapsedMs = startedAt ? now - startedAt : 0;
   let remainingMs: number | null = null;
   if (phase === "processing" && righeElaborate > 0 && righeTotali > 0 && startedAt) {
-    const procStart = startedAt; // approximation
+    const procStart = startedAt;
     const elapsed = now - procStart;
     const totalEstimate = (elapsed / righeElaborate) * righeTotali;
     remainingMs = Math.max(0, totalEstimate - elapsed);
