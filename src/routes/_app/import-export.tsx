@@ -1416,8 +1416,8 @@ function ScadenziarioImportCard() {
           pct={pct}
           righeElaborate={righeElaborate}
           righeTotali={righeTotali}
-          chunkCurrent={chunkCurrent}
-          chunkTotal={chunkTotal}
+          chunkCurrent={0}
+          chunkTotal={0}
           elapsedMs={elapsedMs}
           remainingMs={remainingMs}
           errorMsg={errorMsg}
