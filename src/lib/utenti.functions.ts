@@ -14,7 +14,7 @@ const RUOLI_VALIDI = [
   "amministratore",
 ] as const;
 
-async function assertAdmin(supabase: ReturnType<typeof supabaseAdmin.from> extends never ? never : typeof supabaseAdmin, userId: string) {
+async function assertAdmin(userId: string) {
   const { data, error } = await supabaseAdmin
     .from("user_roles")
     .select("role")
