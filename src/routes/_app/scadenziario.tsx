@@ -7,6 +7,8 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { classificaScadenza } from "@/lib/scadenze";
@@ -33,6 +35,7 @@ type ScadRow = {
   data_scadenza: string | null;
   stato_contabile: string | null;
   tempi_scadenza: string | null;
+  codice_pagamento: string | null;
 };
 type Cliente = {
   id: string;
@@ -40,6 +43,7 @@ type Cliente = {
   codice_gestionale: string | null;
   store_id: string | null;
   bloccato: boolean;
+  ind_blocco: number | null;
 };
 type StoreRow = { id: string; nome: string };
 
@@ -57,11 +61,24 @@ function fasciaBadge(f: "0_30" | "31_60" | "oltre_60" | null) {
   return <Badge variant="outline">—</Badge>;
 }
 
+function blockBadge(c: Cliente) {
+  if (c.bloccato) return <Badge className="bg-destructive text-destructive-foreground hover:bg-destructive">Bloccato</Badge>;
+  if (Number(c.ind_blocco ?? 0) === 1) return <Badge className="bg-orange-500 text-white hover:bg-orange-500">Rev.</Badge>;
+  return <span className="text-muted-foreground text-xs">—</span>;
+}
+
+function isBonifico(codice: string | null | undefined): boolean {
+  if (!codice) return false;
+  return codice.trim().toUpperCase().startsWith("BO");
+}
+
 function ScadenziarioPage() {
   const navigate = useNavigate();
   const [storeId, setStoreId] = useState("all");
   const [fascia, setFascia] = useState<string>("tutte");
   const [importoMin, setImportoMin] = useState("");
+  const [statoBlocco, setStatoBlocco] = useState<"tutti" | "bloccati" | "non_bloccati">("tutti");
+  const [escludiBonifici, setEscludiBonifici] = useState(true);
 
   const { data: stores } = useQuery({
     queryKey: ["stores-list"],
@@ -73,28 +90,36 @@ function ScadenziarioPage() {
   });
 
   const { data: clienti } = useQuery({
-    queryKey: ["clienti-min"],
+    queryKey: ["clienti-min-scad"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("clienti")
-        .select("id, ragione_sociale, codice_gestionale, store_id, bloccato")
-        .range(0, 4999);
-      if (error) throw error;
-      return (data ?? []) as Cliente[];
+      const all: Cliente[] = [];
+      const size = 1000;
+      let off = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("clienti")
+          .select("id, ragione_sociale, codice_gestionale, store_id, bloccato, ind_blocco")
+          .range(off, off + size - 1);
+        if (error) throw error;
+        const batch = (data ?? []) as Cliente[];
+        all.push(...batch);
+        if (batch.length < size) break;
+        off += size;
+      }
+      return all;
     },
   });
 
   const { data: scad, isLoading } = useQuery({
-    queryKey: ["scadenze-globali"],
+    queryKey: ["scadenze-globali-v2"],
     queryFn: async () => {
       const all: ScadRow[] = [];
       const pageSize = 1000;
       let from = 0;
-      // paginate to bypass 1000 row default
       while (true) {
         const { data, error } = await supabase
           .from("scadenze")
-          .select("cliente_id, importo_scadenza, giorni_ritardo, data_scadenza, stato_contabile, tempi_scadenza")
+          .select("cliente_id, importo_scadenza, giorni_ritardo, data_scadenza, stato_contabile, tempi_scadenza, codice_pagamento")
           .range(from, from + pageSize - 1);
         if (error) throw error;
         const batch = (data ?? []) as ScadRow[];
@@ -112,6 +137,18 @@ function ScadenziarioPage() {
     return m;
   }, [clienti]);
 
+  const bonificiCount = useMemo(() => {
+    if (!escludiBonifici) return 0;
+    return (scad ?? []).filter((r) => {
+      const cat = classificaScadenza(r);
+      return cat !== "pagato" && isBonifico(r.codice_pagamento);
+    }).length;
+  }, [scad, escludiBonifici]);
+
+  const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
+  const limit60 = useMemo(() => { const d = new Date(today); d.setDate(d.getDate() + 60); return d; }, [today]);
+
+  // Aggregazione per cliente, applicando filtri store / blocco / bonifici
   const aggregato = useMemo(() => {
     const map = new Map<string, {
       cliente: Cliente;
@@ -122,6 +159,9 @@ function ScadenziarioPage() {
       const cli = clientiMap.get(s.cliente_id);
       if (!cli) return;
       if (storeId !== "all" && cli.store_id !== storeId) return;
+      if (statoBlocco === "bloccati" && !cli.bloccato) return;
+      if (statoBlocco === "non_bloccati" && cli.bloccato) return;
+      if (escludiBonifici && isBonifico(s.codice_pagamento)) return;
       const cat = classificaScadenza(s);
       if (cat === "pagato") return;
       const entry = map.get(s.cliente_id) ?? { cliente: cli, scadute: [], aScadere: [] };
@@ -130,70 +170,57 @@ function ScadenziarioPage() {
       map.set(s.cliente_id, entry);
     });
     return map;
-  }, [scad, clientiMap, storeId]);
+  }, [scad, clientiMap, storeId, statoBlocco, escludiBonifici]);
 
   const minImp = Number(importoMin) || 0;
 
-  const scaduteRows = useMemo(() => {
-    const rows = Array.from(aggregato.values()).map((e) => {
-      const tot = e.scadute.reduce((a, r) => a + Number(r.importo_scadenza ?? 0), 0);
+  // Riga unica per ogni cliente con almeno una scadenza aperta
+  const rows = useMemo(() => {
+    const out = Array.from(aggregato.values()).map((e) => {
+      const totScad = e.scadute.reduce((a, r) => a + Number(r.importo_scadenza ?? 0), 0);
       const maxGg = e.scadute.reduce((m, r) => Math.max(m, Number(r.giorni_ritardo ?? 0)), 0);
-      return {
-        cliente: e.cliente,
-        nFatture: e.scadute.length,
-        totale: tot,
-        maxGg,
-        fascia: fasciaOf(maxGg),
-      };
-    }).filter((r) => r.nFatture > 0);
-    return rows
-      .filter((r) => r.totale >= minImp)
-      .filter((r) => {
-        if (fascia === "tutte") return true;
-        return r.fascia === fascia;
-      })
-      .sort((a, b) => b.totale - a.totale);
-  }, [aggregato, minImp, fascia]);
-
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const limit60 = new Date(today); limit60.setDate(limit60.getDate() + 60);
-
-  const aScadereRows = useMemo(() => {
-    const rows = Array.from(aggregato.values()).map((e) => {
-      const filtered = e.aScadere.filter((r) => {
+      const aScadFiltered = e.aScadere.filter((r) => {
         if (!r.data_scadenza) return false;
         const d = new Date(r.data_scadenza); d.setHours(0, 0, 0, 0);
         return d >= today && d <= limit60;
       });
-      const tot = filtered.reduce((a, r) => a + Number(r.importo_scadenza ?? 0), 0);
-      const prossima = filtered
+      const totAScad = aScadFiltered.reduce((a, r) => a + Number(r.importo_scadenza ?? 0), 0);
+      const prossima = aScadFiltered
         .map((r) => r.data_scadenza)
         .filter((d): d is string => !!d)
         .sort()[0] ?? null;
       return {
         cliente: e.cliente,
-        nFatture: filtered.length,
-        totale: tot,
+        nScadute: e.scadute.length,
+        totScad,
+        nAScadere: aScadFiltered.length,
+        totAScad,
         prossima,
+        maxGg,
+        fascia: fasciaOf(maxGg),
       };
-    }).filter((r) => r.nFatture > 0 && r.totale >= minImp);
-    return rows.sort((a, b) => (a.prossima ?? "").localeCompare(b.prossima ?? ""));
-  }, [aggregato, minImp, today, limit60]);
+    }).filter((r) => r.nScadute > 0 || r.nAScadere > 0);
+    return out
+      .filter((r) => r.totScad >= minImp)
+      .filter((r) => {
+        if (fascia === "tutte") return true;
+        if (r.nScadute === 0) return false;
+        return r.fascia === fascia;
+      })
+      .sort((a, b) => b.totScad - a.totScad);
+  }, [aggregato, minImp, fascia, today, limit60]);
 
-  // KPI globali (non filtrati per store/fascia/importo)
+  // KPI calcolati sulla lista filtrata (rows)
   const kpi = useMemo(() => {
-    const rows = scad ?? [];
-    let totScad = 0, totAScadere = 0;
-    const clientiScaduti = new Set<string>();
+    let totScad = 0, totAScad = 0, clientiScad = 0, bloccati = 0;
     rows.forEach((r) => {
-      const cat = classificaScadenza(r);
-      const imp = Number(r.importo_scadenza ?? 0);
-      if (cat === "scaduto") { totScad += imp; clientiScaduti.add(r.cliente_id); }
-      else if (cat === "a_scadere") totAScadere += imp;
+      totScad += r.totScad;
+      totAScad += r.totAScad;
+      if (r.nScadute > 0) clientiScad += 1;
+      if (r.cliente.bloccato) bloccati += 1;
     });
-    const bloccati = (clienti ?? []).filter((c) => c.bloccato).length;
-    return { totScad, totAScadere, clientiScaduti: clientiScaduti.size, bloccati };
-  }, [scad, clienti]);
+    return { totScad, totAScad, clientiScad, bloccati };
+  }, [rows]);
 
   function apriCliente(id: string) {
     navigate({ to: "/clienti/$clienteId", params: { clienteId: id }, search: { tab: "insoluti", insolutiTab: "scadenziario" } as never });
@@ -205,21 +232,21 @@ function ScadenziarioPage() {
         <CalendarClock className="size-6 text-primary" />
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Scadenziario</h1>
-          <p className="text-sm text-muted-foreground">Panoramica scaduti e prossime scadenze.</p>
+          <p className="text-sm text-muted-foreground">Clienti con scadenze aperte — scaduto e a scadere a 60gg.</p>
         </div>
       </header>
 
       {/* KPI */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard label="Totale scaduto" value={fmtEuro(kpi.totScad)} icon={AlertTriangle} tone="destructive" />
-        <KpiCard label="Clienti con scaduto" value={String(kpi.clientiScaduti)} icon={FileText} tone="warning" />
-        <KpiCard label="Totale a scadere" value={fmtEuro(kpi.totAScadere)} icon={Calendar} tone="info" />
+        <KpiCard label="Clienti con scaduto" value={String(kpi.clientiScad)} icon={FileText} tone="warning" />
+        <KpiCard label="Totale a scadere" value={fmtEuro(kpi.totAScad)} icon={Calendar} tone="info" />
         <KpiCard label="Clienti bloccati" value={String(kpi.bloccati)} icon={Ban} tone="destructive" />
       </div>
 
       {/* Filtri */}
-      <Card className="p-4">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <Card className="p-4 space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
             <label className="text-xs font-medium text-muted-foreground">Store</label>
             <Select value={storeId} onValueChange={setStoreId}>
@@ -243,19 +270,39 @@ function ScadenziarioPage() {
             </Select>
           </div>
           <div>
+            <label className="text-xs font-medium text-muted-foreground">Stato blocco</label>
+            <Select value={statoBlocco} onValueChange={(v) => setStatoBlocco(v as typeof statoBlocco)}>
+              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="tutti">Tutti</SelectItem>
+                <SelectItem value="bloccati">Solo bloccati</SelectItem>
+                <SelectItem value="non_bloccati">Solo non bloccati</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
             <label className="text-xs font-medium text-muted-foreground">Importo minimo €</label>
             <Input className="mt-1" type="number" inputMode="numeric" value={importoMin} onChange={(e) => setImportoMin(e.target.value)} placeholder="0" />
           </div>
         </div>
+        <div className="flex items-center justify-between gap-3 pt-2 border-t">
+          <div className="flex items-center gap-2">
+            <Switch id="escl-bonif" checked={escludiBonifici} onCheckedChange={setEscludiBonifici} />
+            <Label htmlFor="escl-bonif" className="text-sm cursor-pointer">Escludi bonifici (cod. pagamento BO*)</Label>
+          </div>
+          {escludiBonifici && (
+            <span className="text-xs text-muted-foreground">Esclusi {bonificiCount} bonifici</span>
+          )}
+        </div>
       </Card>
 
-      {/* SCADUTO */}
+      {/* TABELLA UNICA */}
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase text-destructive flex items-center gap-2">
-          <AlertTriangle className="size-4" /> Scaduto — tutti i clienti
+        <h2 className="text-sm font-semibold uppercase text-foreground flex items-center gap-2">
+          <FileText className="size-4" /> Clienti con scadenze aperte ({rows.length})
         </h2>
-        {isLoading ? <Skeleton className="h-40" /> : scaduteRows.length === 0 ? (
-          <Card className="p-8 text-center text-sm text-muted-foreground">Nessun cliente con scaduto</Card>
+        {isLoading ? <Skeleton className="h-40" /> : rows.length === 0 ? (
+          <Card className="p-8 text-center text-sm text-muted-foreground">Nessun cliente con scadenze aperte</Card>
         ) : (
           <Card>
             <Table>
@@ -264,64 +311,34 @@ function ScadenziarioPage() {
                   <TableHead>Cliente</TableHead>
                   <TableHead>Cod. Gestionale</TableHead>
                   <TableHead>Store</TableHead>
-                  <TableHead className="text-right">N. Fatture</TableHead>
+                  <TableHead>Stato blocco</TableHead>
+                  <TableHead className="text-right">N. Fatt. scadute</TableHead>
                   <TableHead className="text-right">Totale scaduto</TableHead>
-                  <TableHead className="text-right">Max gg ritardo</TableHead>
+                  <TableHead className="text-right">N. Fatt. a scadere</TableHead>
+                  <TableHead className="text-right">Totale a scadere</TableHead>
+                  <TableHead>Prossima scad.</TableHead>
                   <TableHead>Fascia</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {scaduteRows.map((r) => {
+                {rows.map((r) => {
                   const storeName = stores?.find((s) => s.id === r.cliente.store_id)?.nome ?? "—";
                   return (
                     <TableRow key={r.cliente.id} className="cursor-pointer" onClick={() => apriCliente(r.cliente.id)}>
                       <TableCell className="font-medium">{r.cliente.ragione_sociale}</TableCell>
                       <TableCell className="font-mono text-xs">{r.cliente.codice_gestionale ?? "—"}</TableCell>
                       <TableCell className="text-xs">{storeName}</TableCell>
-                      <TableCell className="text-right tabular-nums">{r.nFatture}</TableCell>
-                      <TableCell className="text-right tabular-nums font-semibold text-destructive">{fmtEuro(r.totale)}</TableCell>
-                      <TableCell className="text-right tabular-nums">{r.maxGg}</TableCell>
-                      <TableCell>{fasciaBadge(r.fascia)}</TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </Card>
-        )}
-      </section>
-
-      {/* A SCADERE */}
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase text-primary flex items-center gap-2">
-          <Calendar className="size-4" /> A scadere — prossimi 60 giorni
-        </h2>
-        {isLoading ? <Skeleton className="h-40" /> : aScadereRows.length === 0 ? (
-          <Card className="p-8 text-center text-sm text-muted-foreground">Nessuna scadenza nei prossimi 60 giorni</Card>
-        ) : (
-          <Card>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Cod. Gestionale</TableHead>
-                  <TableHead>Store</TableHead>
-                  <TableHead className="text-right">N. Fatture</TableHead>
-                  <TableHead className="text-right">Totale a scadere</TableHead>
-                  <TableHead>Prossima scadenza</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {aScadereRows.map((r) => {
-                  const storeName = stores?.find((s) => s.id === r.cliente.store_id)?.nome ?? "—";
-                  return (
-                    <TableRow key={r.cliente.id} className="cursor-pointer" onClick={() => apriCliente(r.cliente.id)}>
-                      <TableCell className="font-medium">{r.cliente.ragione_sociale}</TableCell>
-                      <TableCell className="font-mono text-xs">{r.cliente.codice_gestionale ?? "—"}</TableCell>
-                      <TableCell className="text-xs">{storeName}</TableCell>
-                      <TableCell className="text-right tabular-nums">{r.nFatture}</TableCell>
-                      <TableCell className="text-right tabular-nums font-semibold">{fmtEuro(r.totale)}</TableCell>
+                      <TableCell>{blockBadge(r.cliente)}</TableCell>
+                      <TableCell className="text-right tabular-nums">{r.nScadute || "—"}</TableCell>
+                      <TableCell className="text-right tabular-nums font-semibold text-destructive">
+                        {r.totScad > 0 ? fmtEuro(r.totScad) : "—"}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">{r.nAScadere || "—"}</TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {r.totAScad > 0 ? fmtEuro(r.totAScad) : "—"}
+                      </TableCell>
                       <TableCell className="text-sm">{fmtDate(r.prossima)}</TableCell>
+                      <TableCell>{fasciaBadge(r.fascia)}</TableCell>
                     </TableRow>
                   );
                 })}
