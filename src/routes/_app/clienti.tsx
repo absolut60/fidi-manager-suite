@@ -111,6 +111,7 @@ function ClientiPage() {
     return () => clearTimeout(t);
   }, [searchInput]);
   const [statoCliente, setStatoCliente] = useState<"attivi" | "disattivati" | "tutti">("attivi");
+  const [statoAttivita, setStatoAttivita] = useState<"tutti" | "attivi" | "non_attivi">("tutti");
   const [storeFiltro, setStoreFiltro] = useState<string>("tutti");
   const [statoFido, setStatoFido] = useState<Set<string>>(new Set());
   const [semaforoFiltro, setSemaforoFiltro] = useState<string>("tutti");
@@ -291,7 +292,7 @@ function ClientiPage() {
   // Reset pagina ogni volta che cambia un filtro
   useEffect(() => {
     setPage(1);
-  }, [search, statoCliente, storeFiltro, statoFido, semaforoFiltro, soloBloccati, privacyFiltro, soloAssicurati, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fidoFascia, fidoRangeDeb, pageSize]);
+  }, [search, statoCliente, statoAttivita, storeFiltro, statoFido, semaforoFiltro, soloBloccati, privacyFiltro, soloAssicurati, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fidoFascia, fidoRangeDeb, pageSize]);
 
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -305,6 +306,8 @@ function ClientiPage() {
 
     if (statoCliente === "attivi") q = q.eq("attivo", true);
     else if (statoCliente === "disattivati") q = q.eq("attivo", false);
+    if (statoAttivita === "attivi") q = q.eq("cliente_attivo", true);
+    else if (statoAttivita === "non_attivi") q = q.eq("cliente_attivo", false);
     if (storeFiltro !== "tutti") q = q.eq("store_id", storeFiltro);
     if (soloBloccati) q = q.eq("bloccato", true);
     if (privacyFiltro === "firmata") q = q.eq("privacy_firmata", true);
@@ -350,7 +353,7 @@ function ClientiPage() {
   const scadReady = scadenziarioFiltro === "tutti" || !!scadenziarioMap;
 
   const { data: clientiResp, isLoading } = useQuery({
-    queryKey: ["clienti", { search, statoCliente, storeFiltro, soloBloccati, privacyFiltro, soloAssicurati, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fidoFascia, fidoRangeDeb, page, pageSize }],
+    queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, soloBloccati, privacyFiltro, soloAssicurati, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fidoFascia, fidoRangeDeb, page, pageSize }],
     queryFn: async () => {
       const built = buildBaseQuery("*, stores(nome, codice)", "exact");
       if ("empty" in built) return { rows: [], count: 0 };
@@ -405,6 +408,7 @@ function ClientiPage() {
   function resetFiltri() {
     setSearchInput(""); setSearch("");
     setStatoCliente("attivi");
+    setStatoAttivita("tutti");
     setStoreFiltro("tutti");
     setStatoFido(new Set());
     setSemaforoFiltro("tutti");
