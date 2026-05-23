@@ -317,6 +317,7 @@ export type Database = {
           cab: string | null
           cap: string | null
           citta: string | null
+          cliente_attivo: boolean
           codice_assegnato: string | null
           codice_fiscale: string | null
           codice_gestionale: string | null
@@ -350,6 +351,7 @@ export type Database = {
           importo_affidamento_richiesto: number | null
           importo_affidato: number | null
           in_gestione_legale: boolean
+          ind_blocco: number
           indirizzo: string | null
           motivo_blocco: string | null
           note: string | null
@@ -371,6 +373,7 @@ export type Database = {
           telefono: string | null
           tipo_soggetto: string | null
           totale_rischio: number | null
+          ultima_data_fatturazione: string | null
           ultima_sincronizzazione: string | null
           updated_at: string
         }
@@ -386,6 +389,7 @@ export type Database = {
           cab?: string | null
           cap?: string | null
           citta?: string | null
+          cliente_attivo?: boolean
           codice_assegnato?: string | null
           codice_fiscale?: string | null
           codice_gestionale?: string | null
@@ -419,6 +423,7 @@ export type Database = {
           importo_affidamento_richiesto?: number | null
           importo_affidato?: number | null
           in_gestione_legale?: boolean
+          ind_blocco?: number
           indirizzo?: string | null
           motivo_blocco?: string | null
           note?: string | null
@@ -440,6 +445,7 @@ export type Database = {
           telefono?: string | null
           tipo_soggetto?: string | null
           totale_rischio?: number | null
+          ultima_data_fatturazione?: string | null
           ultima_sincronizzazione?: string | null
           updated_at?: string
         }
@@ -455,6 +461,7 @@ export type Database = {
           cab?: string | null
           cap?: string | null
           citta?: string | null
+          cliente_attivo?: boolean
           codice_assegnato?: string | null
           codice_fiscale?: string | null
           codice_gestionale?: string | null
@@ -488,6 +495,7 @@ export type Database = {
           importo_affidamento_richiesto?: number | null
           importo_affidato?: number | null
           in_gestione_legale?: boolean
+          ind_blocco?: number
           indirizzo?: string | null
           motivo_blocco?: string | null
           note?: string | null
@@ -509,6 +517,7 @@ export type Database = {
           telefono?: string | null
           tipo_soggetto?: string | null
           totale_rischio?: number | null
+          ultima_data_fatturazione?: string | null
           ultima_sincronizzazione?: string | null
           updated_at?: string
         }
