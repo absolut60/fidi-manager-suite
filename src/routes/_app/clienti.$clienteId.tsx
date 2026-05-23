@@ -574,6 +574,7 @@ function DatiRischioCard({ cliente }: { cliente: any }) {
             })()}
           </dd>
         </div>
+      </dl>
       {(cliente as any).ultima_sincronizzazione && (
         <p className="text-xs text-muted-foreground mt-4 pt-3 border-t">
           Ultima sincronizzazione: {new Date((cliente as any).ultima_sincronizzazione).toLocaleString("it-IT")}
