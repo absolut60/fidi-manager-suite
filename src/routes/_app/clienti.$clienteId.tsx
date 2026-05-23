@@ -838,6 +838,24 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
                 )}
               </dd>
             </div>
+            <div>
+              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Assicurazione crediti</dt>
+              <dd className="mt-0.5 flex items-center gap-2 flex-wrap">
+                {assicurato ? (
+                  <>
+                    <Badge className="bg-success/15 text-success border-success/30 hover:bg-success/15 gap-1">
+                      <Shield className="size-3" /> {polizzaAttiva?.assicuratore || "POUEY"} attiva
+                    </Badge>
+                    {polizzaAttiva?.importo_massimale != null && (
+                      <span className="tabular-nums">{formatEuro(polizzaAttiva.importo_massimale)}</span>
+                    )}
+                  </>
+                ) : (
+                  <span className="text-muted-foreground">Non assicurato</span>
+                )}
+              </dd>
+            </div>
+
           </dl>
         </Card>
       </section>
