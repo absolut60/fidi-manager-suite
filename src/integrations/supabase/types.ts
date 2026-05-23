@@ -713,6 +713,7 @@ export type Database = {
         Row: {
           chunks_completati: number | null
           chunks_totali: number | null
+          codici_mancanti: Json | null
           completata_at: string | null
           created_at: string
           dimensione_bytes: number | null
@@ -726,12 +727,14 @@ export type Database = {
           righe_create: number | null
           righe_elaborate: number | null
           righe_errore: number | null
+          righe_saltate: number
           righe_totali: number | null
           stato: Database["public"]["Enums"]["stato_importazione"]
         }
         Insert: {
           chunks_completati?: number | null
           chunks_totali?: number | null
+          codici_mancanti?: Json | null
           completata_at?: string | null
           created_at?: string
           dimensione_bytes?: number | null
@@ -745,12 +748,14 @@ export type Database = {
           righe_create?: number | null
           righe_elaborate?: number | null
           righe_errore?: number | null
+          righe_saltate?: number
           righe_totali?: number | null
           stato?: Database["public"]["Enums"]["stato_importazione"]
         }
         Update: {
           chunks_completati?: number | null
           chunks_totali?: number | null
+          codici_mancanti?: Json | null
           completata_at?: string | null
           created_at?: string
           dimensione_bytes?: number | null
@@ -764,6 +769,7 @@ export type Database = {
           righe_create?: number | null
           righe_elaborate?: number | null
           righe_errore?: number | null
+          righe_saltate?: number
           righe_totali?: number | null
           stato?: Database["public"]["Enums"]["stato_importazione"]
         }
@@ -1815,19 +1821,34 @@ export type Database = {
         }
         Returns: boolean
       }
-      increment_importazione_counters: {
-        Args: {
-          _create: number
-          _elaborate: number
-          _error: number
-          _id: string
-          _update: number
-        }
-        Returns: {
-          chunks_completati: number
-          chunks_totali: number
-        }[]
-      }
+      increment_importazione_counters:
+        | {
+            Args: {
+              _create: number
+              _elaborate: number
+              _error: number
+              _id: string
+              _update: number
+            }
+            Returns: {
+              chunks_completati: number
+              chunks_totali: number
+            }[]
+          }
+        | {
+            Args: {
+              _create: number
+              _elaborate: number
+              _error: number
+              _id: string
+              _skipped?: number
+              _update: number
+            }
+            Returns: {
+              chunks_completati: number
+              chunks_totali: number
+            }[]
+          }
       storage_path_cliente_id: { Args: { _name: string }; Returns: string }
       user_can_access_cliente: {
         Args: { _cliente_id: string }
