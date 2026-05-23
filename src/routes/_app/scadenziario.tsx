@@ -186,10 +186,10 @@ function ScadenziarioPage() {
     let totScad = 0, totAScadere = 0;
     const clientiScaduti = new Set<string>();
     rows.forEach((r) => {
-      const gg = Number(r.giorni_ritardo ?? 0);
+      const cat = classificaScadenza(r);
       const imp = Number(r.importo_scadenza ?? 0);
-      if (gg > 0) { totScad += imp; clientiScaduti.add(r.cliente_id); }
-      else totAScadere += imp;
+      if (cat === "scaduto") { totScad += imp; clientiScaduti.add(r.cliente_id); }
+      else if (cat === "a_scadere") totAScadere += imp;
     });
     const bloccati = (clienti ?? []).filter((c) => c.bloccato).length;
     return { totScad, totAScadere, clientiScaduti: clientiScaduti.size, bloccati };
