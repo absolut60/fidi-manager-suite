@@ -208,6 +208,53 @@ function ClientiPage() {
     return { mode: "include" as const, ids };
   }, [scadenziarioMap, scadenziarioFiltro]);
 
+  // ID set per filtro "A scadere" (scadenze aperte, non scadute, entro N giorni)
+  const A_SCADERE_GIORNI: Record<string, number | null> = {
+    tutti: null,
+    "7": 7,
+    "30": 30,
+    "60": 60,
+    "oltre60": -1, // marker: oltre 60 giorni
+  };
+  const { data: aScadereIds } = useQuery({
+    queryKey: ["clienti-a-scadere-ids", aScadereFiltro],
+    queryFn: async () => {
+      if (aScadereFiltro === "tutti") return null;
+      const today = new Date();
+      const todayStr = today.toISOString().slice(0, 10);
+      const ids = new Set<string>();
+      let off = 0;
+      const size = 1000;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        let q = supabase
+          .from("scadenze")
+          .select("cliente_id, data_scadenza")
+          .eq("stato_contabile", "Aperta")
+          .eq("giorni_ritardo", 0)
+          .gte("data_scadenza", todayStr);
+        if (aScadereFiltro === "oltre60") {
+          const d = new Date(today); d.setDate(d.getDate() + 60);
+          q = q.gt("data_scadenza", d.toISOString().slice(0, 10));
+        } else {
+          const giorni = Number(aScadereFiltro);
+          const d = new Date(today); d.setDate(d.getDate() + giorni);
+          q = q.lte("data_scadenza", d.toISOString().slice(0, 10));
+        }
+        const { data, error } = await q.range(off, off + size - 1);
+        if (error) throw error;
+        const batch = (data ?? []) as any[];
+        for (const r of batch) if (r.cliente_id) ids.add(r.cliente_id);
+        if (batch.length < size) break;
+        off += size;
+        if (off > 50000) break;
+      }
+      return Array.from(ids);
+    },
+    enabled: aScadereFiltro !== "tutti",
+    staleTime: 60_000,
+  });
+
   // ID set per filtro semaforo (server-side via .in)
   const semaforoIds = useMemo<string[] | null>(() => {
     if (semaforoFiltro === "tutti" || !classifList) return null;
@@ -229,26 +276,27 @@ function ClientiPage() {
     }).map((c: any) => c.id);
   }, [classifList, statoFido]);
 
-  // Intersezione id set "include"
+  // Intersezione id set "include" (semaforo ∩ stato_fido ∩ scadenziario ∩ a_scadere)
   const includeIdsFilter = useMemo<string[] | null>(() => {
     const sources: string[][] = [];
     if (semaforoIds) sources.push(semaforoIds);
     if (statoFidoIds) sources.push(statoFidoIds);
     if (scadenziarioIdsFilter?.mode === "include") sources.push(scadenziarioIdsFilter.ids);
+    if (aScadereIds) sources.push(aScadereIds);
     if (sources.length === 0) return null;
     const sets = sources.map((s) => new Set(s));
     return sources[0].filter((id) => sets.every((s) => s.has(id)));
-  }, [semaforoIds, statoFidoIds, scadenziarioIdsFilter]);
+  }, [semaforoIds, statoFidoIds, scadenziarioIdsFilter, aScadereIds]);
 
   // Reset pagina ogni volta che cambia un filtro
   useEffect(() => {
     setPage(1);
-  }, [search, statoCliente, storeFiltro, statoFido, semaforoFiltro, soloBloccati, privacyFiltro, soloAssicurati, scadenziarioFiltro, fidoModalita, fidoFascia, fidoRangeDeb, pageSize]);
+  }, [search, statoCliente, storeFiltro, statoFido, semaforoFiltro, soloBloccati, privacyFiltro, soloAssicurati, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fidoFascia, fidoRangeDeb, pageSize]);
 
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
-  // Costruisce la query con TUTTI i filtri server-side (senza range)
+  // Costruisce la query con TUTTI i filtri server-side (cumulativi AND, senza range di paginazione)
   function buildBaseQuery(selectCols: string, count: "exact" | undefined) {
     let q = supabase
       .from("clienti")
@@ -263,17 +311,21 @@ function ClientiPage() {
     else if (privacyFiltro === "da_firmare") q = q.eq("privacy_firmata", false);
     if (soloAssicurati) q = q.eq("assicurazione_attiva", true);
 
-    // Fido residuo
-    if (fidoModalita === "fasce") {
-      if (fidoFascia === "negativo") q = q.lt("fido_residuo", 0);
-      else if (fidoFascia === "basso") q = q.gte("fido_residuo", 0).lte("fido_residuo", 5000);
-      else if (fidoFascia === "medio") q = q.gt("fido_residuo", 5000).lte("fido_residuo", 20000);
-      else if (fidoFascia === "alto") q = q.gt("fido_residuo", 20000);
-    } else {
-      q = q.gte("fido_residuo", fidoRangeDeb[0]).lte("fido_residuo", fidoRangeDeb[1]);
-    }
+    // Fido residuo: fascia E range slider applicati insieme
+    if (fidoFascia === "negativo") q = q.lt("fido_residuo", 0);
+    else if (fidoFascia === "basso") q = q.gte("fido_residuo", 0).lte("fido_residuo", 5000);
+    else if (fidoFascia === "medio") q = q.gt("fido_residuo", 5000).lte("fido_residuo", 20000);
+    else if (fidoFascia === "alto") q = q.gt("fido_residuo", 20000);
+    if (fidoRangeDeb[0] !== FIDO_RANGE_MIN) q = q.gte("fido_residuo", fidoRangeDeb[0]);
+    if (fidoRangeDeb[1] !== FIDO_RANGE_MAX) q = q.lte("fido_residuo", fidoRangeDeb[1]);
 
-    // Include intersect (semaforo / stato fido / scadenziario include)
+    // Totale rischio (fasce)
+    if (totaleRischioFiltro === "basso") q = q.gte("totale_rischio", 0).lte("totale_rischio", 10000);
+    else if (totaleRischioFiltro === "medio") q = q.gt("totale_rischio", 10000).lte("totale_rischio", 50000);
+    else if (totaleRischioFiltro === "alto") q = q.gt("totale_rischio", 50000).lte("totale_rischio", 100000);
+    else if (totaleRischioFiltro === "molto_alto") q = q.gt("totale_rischio", 100000);
+
+    // Include intersect (semaforo / stato fido / scadenziario include / a_scadere)
     if (includeIdsFilter) {
       if (includeIdsFilter.length === 0) return { empty: true as const };
       q = q.in("id", includeIdsFilter);
@@ -292,6 +344,7 @@ function ClientiPage() {
     }
     return { q };
   }
+
 
   const classifReady = (semaforoFiltro === "tutti" && statoFido.size === 0) || !!classifList;
   const scadReady = scadenziarioFiltro === "tutti" || !!scadenziarioMap;
