@@ -6,7 +6,7 @@ import { Plus, Search, Building, MapPin, FileCheck2, FileX2, ArrowLeft, ArrowRig
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Slider } from "@/components/ui/slider";
+import * as RadixSlider from "@radix-ui/react-slider";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -99,6 +99,28 @@ function determinaTipoRichiesta(
 
 const FIDO_RANGE_MIN = -100000;
 const FIDO_RANGE_MAX = 500000;
+
+function SearchInput({
+  value,
+  onChange,
+  placeholder = "Cerca ragione sociale, P.IVA, cod. gest., città...",
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <div className="relative">
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+      <Input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="pl-9"
+      />
+    </div>
+  );
+}
 
 function ClientiPage() {
   const navigate = useNavigate();
