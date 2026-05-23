@@ -122,9 +122,10 @@ function ScadenziarioPage() {
       const cli = clientiMap.get(s.cliente_id);
       if (!cli) return;
       if (storeId !== "all" && cli.store_id !== storeId) return;
+      const cat = classificaScadenza(s);
+      if (cat === "pagato") return;
       const entry = map.get(s.cliente_id) ?? { cliente: cli, scadute: [], aScadere: [] };
-      const gg = Number(s.giorni_ritardo ?? 0);
-      if (gg > 0) entry.scadute.push(s);
+      if (cat === "scaduto") entry.scadute.push(s);
       else entry.aScadere.push(s);
       map.set(s.cliente_id, entry);
     });
