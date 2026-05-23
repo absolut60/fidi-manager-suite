@@ -443,7 +443,16 @@ export const processScadenziarioImport = inngest.createFunction(
         return out;
       });
 
-      // STEP 3 — processa ogni chunk separatamente
+      // STEP 3 — processa ogni chunk con UPSERT in BATCH
+      // ⚡ HOT PATH PERFORMANCE — NON MODIFICARE SENZA BENCHMARK
+      // ============================================================
+      // Questa è una delle funzioni critiche per la performance dell'app
+      // (insieme a calcolaFidoProposto in src/routes/_app/clienti.tsx).
+      // Strategia: 1 sola query upsert per chunk (500 righe) invece di 500 query separate.
+      // Richiede l'indice UNIQUE: scadenze_cliente_doc_sez_uniq su
+      //   (cliente_id, numero_documento, sezionale) NULLS NOT DISTINCT
+      // Per distinguere insert vs update si fa un pre-fetch leggero (solo id+chiave) per chunk.
+      // ============================================================
       const matchedClientIds = new Set<string>();
       let elaborate = 0;
       for (let ci = 0; ci < chunkCount; ci++) {
@@ -460,35 +469,12 @@ export const processScadenziarioImport = inngest.createFunction(
             payload: Record<string, unknown>;
           }>;
 
-          // lookup esistenti per i clienti di questo chunk
-          const cids = Array.from(
-            new Set(slice.map((r) => clientMap[r.codice_gestionale]).filter(Boolean) as string[]),
-          );
-          const existingMap = new Map<string, string>();
-          if (cids.length) {
-            const { data } = await supabaseAdmin
-              .from("scadenze" as never)
-              .select("id, cliente_id, numero_documento, sezionale")
-              .in("cliente_id", cids);
-            (
-              (data ?? []) as Array<{
-                id: string;
-                cliente_id: string;
-                numero_documento: string | null;
-                sezionale: string | null;
-              }>
-            ).forEach((s) => {
-              existingMap.set(
-                `${s.cliente_id}|${s.numero_documento ?? ""}|${s.sezionale ?? ""}`,
-                s.id,
-              );
-            });
-          }
-          const now = new Date().toISOString();
-          let c = 0,
-            u = 0;
+          // Costruisci le righe valide e separa quelle senza cliente abbinato
           const errs: Array<{ riga: number; errore: string }> = [];
           const matched: string[] = [];
+          const now = new Date().toISOString();
+          const validRows: Array<Record<string, unknown>> = [];
+          const validKeys = new Set<string>();
           for (const r of slice) {
             const cid = clientMap[r.codice_gestionale];
             if (!cid) {
@@ -500,27 +486,57 @@ export const processScadenziarioImport = inngest.createFunction(
             }
             matched.push(cid);
             const p = r.payload;
-            const key = `${cid}|${(p.numero_documento as string) ?? ""}|${(p.sezionale as string) ?? ""}`;
-            const existId = existingMap.get(key);
-            const row = {
+            const numDoc = (p.numero_documento as string | null | undefined) ?? null;
+            const sez = (p.sezionale as string | null | undefined) ?? null;
+            validRows.push({
               ...p,
               cliente_id: cid,
               importato_da: userId ?? null,
               ultima_sincronizzazione: now,
-            };
-            if (existId) {
-              const { error: e } = await supabaseAdmin
-                .from("scadenze" as never)
-                .update(row as never)
-                .eq("id", existId);
-              if (e) errs.push({ riga: r.idx, errore: `Update: ${e.message}` });
-              else u++;
+            });
+            validKeys.add(`${cid}|${numDoc ?? ""}|${sez ?? ""}`);
+          }
+
+          // Pre-fetch righe esistenti per distinguere create vs update nei contatori
+          const cids = Array.from(new Set(matched));
+          const existingKeys = new Set<string>();
+          if (cids.length) {
+            const { data } = await supabaseAdmin
+              .from("scadenze" as never)
+              .select("cliente_id, numero_documento, sezionale")
+              .in("cliente_id", cids);
+            (
+              (data ?? []) as Array<{
+                cliente_id: string;
+                numero_documento: string | null;
+                sezionale: string | null;
+              }>
+            ).forEach((s) => {
+              existingKeys.add(
+                `${s.cliente_id}|${s.numero_documento ?? ""}|${s.sezionale ?? ""}`,
+              );
+            });
+          }
+
+          let c = 0;
+          let u = 0;
+          if (validRows.length) {
+            // 🚀 UPSERT BATCH: 1 query per ~500 righe (era 1 query PER riga)
+            const { error: upErr } = await supabaseAdmin
+              .from("scadenze" as never)
+              .upsert(validRows as never, {
+                onConflict: "cliente_id,numero_documento,sezionale",
+                ignoreDuplicates: false,
+              });
+            if (upErr) {
+              // Errore di batch: registralo per tutte le righe del chunk
+              errs.push({ riga: ci, errore: `Upsert batch: ${upErr.message}` });
             } else {
-              const { error: e } = await supabaseAdmin
-                .from("scadenze" as never)
-                .insert(row as never);
-              if (e) errs.push({ riga: r.idx, errore: `Insert: ${e.message}` });
-              else c++;
+              // Conta create vs update sulla base del pre-fetch
+              for (const key of validKeys) {
+                if (existingKeys.has(key)) u++;
+                else c++;
+              }
             }
           }
           return { c, u, errs, matched, count: slice.length };
