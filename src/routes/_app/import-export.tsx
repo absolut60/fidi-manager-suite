@@ -1425,8 +1425,36 @@ function ScadenziarioImportCard() {
         riga 2, dati da riga 3). Match cliente su <code>COD_CLI</code>. Chiave univoca: COD_CLI +
         Numero Documento + Sezionale.
       </p>
-      {bg.inProgress && bg.progress ? (
-        <BgProgressBlock progress={bg.progress} fallbackTotal={0} />
+      {showProgress ? (
+        <ScadenziarioProgressBlock
+          phase={phase}
+          pct={pct}
+          righeElaborate={righeElaborate}
+          righeTotali={righeTotali}
+          chunkCurrent={chunkCurrent}
+          chunkTotal={chunkTotal}
+          elapsedMs={elapsedMs}
+          remainingMs={remainingMs}
+          errorMsg={errorMsg}
+          result={
+            bg.done && bg.progress
+              ? {
+                  create: bg.progress.righe_create ?? 0,
+                  aggiornate: bg.progress.righe_aggiornate ?? 0,
+                  errori: bg.progress.righe_errore ?? 0,
+                  chiuse: 0,
+                }
+              : null
+          }
+          onRetry={
+            errorMsg
+              ? () => {
+                  setErrorMsg(null);
+                  startImport();
+                }
+              : undefined
+          }
+        />
       ) : null}
       <ImportZone
         fileName={fileName}
