@@ -465,6 +465,18 @@ export const processScadenziarioImport = inngest.createFunction(
       //   (cliente_id, numero_documento, sezionale) NULLS NOT DISTINCT
       // Per distinguere insert vs update si fa un pre-fetch leggero (solo id+chiave) per chunk.
       // ============================================================
+      // STEP 3 — processa ogni chunk con UPSERT in BATCH
+      // ⚡ HOT PATH PERFORMANCE — NON MODIFICARE SENZA BENCHMARK
+      // ============================================================
+      // Questa è una delle funzioni critiche per la performance dell'app
+      // (insieme a calcolaFidoProposto in src/routes/_app/clienti.tsx).
+      // Strategia: 1 sola query upsert per chunk (500 righe) invece di 500 query separate.
+      // Richiede l'indice UNIQUE: scadenze_cliente_doc_sez_anno_uniq su
+      //   (cliente_id, numero_documento, sezionale, anno_partita) NULLS NOT DISTINCT
+      // Per distinguere insert vs update si fa un pre-fetch leggero (solo chiave) per chunk.
+      // Ogni riga upsertata riceve ultima_sincronizzazione = timestampInizioImport,
+      // così la reconciliation finale può individuare le scadenze "fantasma".
+      // ============================================================
       const matchedClientIds = new Set<string>();
       let elaborate = 0;
       for (let ci = 0; ci < chunkCount; ci++) {
@@ -484,7 +496,6 @@ export const processScadenziarioImport = inngest.createFunction(
           // Costruisci le righe valide e separa quelle senza cliente abbinato
           const errs: Array<{ riga: number; errore: string }> = [];
           const matched: string[] = [];
-          const now = new Date().toISOString();
           const validRows: Array<Record<string, unknown>> = [];
           const validKeys = new Set<string>();
           for (const r of slice) {
@@ -500,13 +511,14 @@ export const processScadenziarioImport = inngest.createFunction(
             const p = r.payload;
             const numDoc = (p.numero_documento as string | null | undefined) ?? null;
             const sez = (p.sezionale as string | null | undefined) ?? null;
+            const anno = (p.anno_partita as number | null | undefined) ?? null;
             validRows.push({
               ...p,
               cliente_id: cid,
               importato_da: userId ?? null,
-              ultima_sincronizzazione: now,
+              ultima_sincronizzazione: timestampInizioImport,
             });
-            validKeys.add(`${cid}|${numDoc ?? ""}|${sez ?? ""}`);
+            validKeys.add(`${cid}|${numDoc ?? ""}|${sez ?? ""}|${anno ?? ""}`);
           }
 
           // Pre-fetch righe esistenti per distinguere create vs update nei contatori
@@ -515,17 +527,18 @@ export const processScadenziarioImport = inngest.createFunction(
           if (cids.length) {
             const { data } = await supabaseAdmin
               .from("scadenze" as never)
-              .select("cliente_id, numero_documento, sezionale")
+              .select("cliente_id, numero_documento, sezionale, anno_partita")
               .in("cliente_id", cids);
             (
               (data ?? []) as Array<{
                 cliente_id: string;
                 numero_documento: string | null;
                 sezionale: string | null;
+                anno_partita: number | null;
               }>
             ).forEach((s) => {
               existingKeys.add(
-                `${s.cliente_id}|${s.numero_documento ?? ""}|${s.sezionale ?? ""}`,
+                `${s.cliente_id}|${s.numero_documento ?? ""}|${s.sezionale ?? ""}|${s.anno_partita ?? ""}`,
               );
             });
           }
@@ -537,7 +550,7 @@ export const processScadenziarioImport = inngest.createFunction(
             const { error: upErr } = await supabaseAdmin
               .from("scadenze" as never)
               .upsert(validRows as never, {
-                onConflict: "cliente_id,numero_documento,sezionale",
+                onConflict: "cliente_id,numero_documento,sezionale,anno_partita",
                 ignoreDuplicates: false,
               });
             if (upErr) {
@@ -570,6 +583,52 @@ export const processScadenziarioImport = inngest.createFunction(
           .eq("id", importazioneId);
       }
 
+      // STEP 3-bis — RECONCILIATION SCADENZE FANTASMA
+      // ============================================================
+      // Per ogni cliente presente nel file, chiude le scadenze ancora "Aperta"
+      // nel DB che non hanno ricevuto un aggiornamento in questo import
+      // (ultima_sincronizzazione < timestampInizioImport).
+      // I clienti NON presenti nel file non vengono toccati: l'export può essere parziale.
+      // ============================================================
+      if (matchedClientIds.size) {
+        const reconc = await step.run("reconciliation-scadenze-fantasma", async () => {
+          const cids = Array.from(matchedClientIds);
+          const BATCH_RECONC = 200;
+          let totChiuse = 0;
+          let totClienti = 0;
+          const nota = `Chiusa automaticamente: assente nel file di sincronizzazione del ${timestampInizioImport}`;
+          const dataPagamento = new Date().toISOString();
+          for (let i = 0; i < cids.length; i += BATCH_RECONC) {
+            const slice = cids.slice(i, i + BATCH_RECONC);
+            // Pre-conta per sapere quante righe verranno effettivamente chiuse
+            const { data: toClose } = await supabaseAdmin
+              .from("scadenze" as never)
+              .select("id, cliente_id")
+              .in("cliente_id", slice)
+              .eq("stato_contabile", "Aperta")
+              .lt("ultima_sincronizzazione", timestampInizioImport);
+            const rows = (toClose ?? []) as Array<{ id: string; cliente_id: string }>;
+            if (!rows.length) continue;
+            const ids = rows.map((r) => r.id);
+            const clientiCoinvolti = new Set(rows.map((r) => r.cliente_id));
+            const { error } = await supabaseAdmin
+              .from("scadenze" as never)
+              .update({
+                stato_contabile: "Chiusa",
+                data_pagamento: dataPagamento,
+                note: nota,
+              } as never)
+              .in("id", ids);
+            if (error) throw new Error(`Reconciliation: ${error.message}`);
+            totChiuse += rows.length;
+            totClienti += clientiCoinvolti.size;
+          }
+          return { totChiuse, totClienti };
+        });
+        chiuseAutomaticamente = reconc.totChiuse;
+        clientiRiconciliati = reconc.totClienti;
+      }
+
       // STEP 4 — cleanup staging (best-effort, non fa fallire l'import)
       await step.run("cleanup-staging", async () => {
         const paths = Array.from(
@@ -581,8 +640,9 @@ export const processScadenziarioImport = inngest.createFunction(
       });
 
       logger.info(
-        `Scadenziario completato: lette=${totRead}, clienti abbinati=${matchedClientIds.size}, create=${created}, aggiornate=${updated}, saltate=${errorLog.length}`,
+        `Scadenziario completato: lette=${totRead}, clienti abbinati=${matchedClientIds.size}, create=${created}, aggiornate=${updated}, chiuse auto=${chiuseAutomaticamente} (su ${clientiRiconciliati} clienti), saltate=${errorLog.length}`,
       );
+
 
       await supabaseAdmin
         .from("importazioni")
