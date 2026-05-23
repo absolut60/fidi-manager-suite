@@ -111,6 +111,7 @@ function ClientiPage() {
     return () => clearTimeout(t);
   }, [searchInput]);
   const [statoCliente, setStatoCliente] = useState<"attivi" | "disattivati" | "tutti">("attivi");
+  const [statoAttivita, setStatoAttivita] = useState<"tutti" | "attivi" | "non_attivi">("tutti");
   const [storeFiltro, setStoreFiltro] = useState<string>("tutti");
   const [statoFido, setStatoFido] = useState<Set<string>>(new Set());
   const [semaforoFiltro, setSemaforoFiltro] = useState<string>("tutti");
