@@ -1229,6 +1229,11 @@ function ScadenziarioImportCard() {
       file,
       rowsTotali: parsed.totRead,
       rigeErroreClient: parsed.missing.length,
+      scadenziarioStaging: {
+        rows: parsed.rows as unknown as Array<Record<string, unknown>>,
+        missing: parsed.missing,
+        chunkSize: 1000,
+      },
     });
   }
 
