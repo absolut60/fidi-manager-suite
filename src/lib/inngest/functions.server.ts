@@ -644,6 +644,32 @@ export const processScadenziarioImport = inngest.createFunction(
       );
 
 
+      // Costruisci log finale strutturato
+      const skippedCodes = Array.from(
+        new Set(
+          errorLog
+            .map((e) => {
+              const m = e.errore.match(/Cliente\s+([^\s]+)\s+non trovato/i);
+              return m ? m[1] : null;
+            })
+            .filter((x): x is string => !!x),
+        ),
+      );
+      const summaryLines = [
+        `Righe lette dal file: ${totRead}`,
+        `Clienti abbinati: ${matchedClientIds.size}`,
+        `Scadenze create (nuove): ${created}`,
+        `Scadenze aggiornate: ${updated}`,
+        `Scadenze chiuse automaticamente (non presenti nel file): ${chiuseAutomaticamente}`,
+        `Clienti riconciliati: ${clientiRiconciliati}`,
+        `Righe saltate (cliente non trovato): ${errorLog.length}${skippedCodes.length ? ` — codici: ${skippedCodes.slice(0, 50).join(", ")}${skippedCodes.length > 50 ? "…" : ""}` : ""}`,
+        `Errori: ${errorLog.length}`,
+      ];
+      const logFinale: Array<{ riga: number; errore: string }> = [
+        ...summaryLines.map((m) => ({ riga: 0, errore: m })),
+        ...errorLog,
+      ];
+
       await supabaseAdmin
         .from("importazioni")
         .update({
@@ -653,9 +679,10 @@ export const processScadenziarioImport = inngest.createFunction(
           righe_errore: errorLog.length,
           stato: errorLog.length ? "completata_con_errori" : "completata",
           completata_at: new Date().toISOString(),
-          log_errori: errorLog.length ? errorLog.slice(0, 500) : null,
+          log_errori: logFinale.slice(0, 500),
         })
         .eq("id", importazioneId);
+
 
       return { created, updated, errors: errorLog.length };
     } catch (err) {
