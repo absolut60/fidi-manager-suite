@@ -971,7 +971,18 @@ const SCAD_OFFICIAL_MAP: Record<string, string> = {
   "data pagamento": "data_pagamento",
   "importo originario effetto": "importo_originario",
   "importo scadenza netto prev": "importo_netto_prev",
+  "tempi scadenza": "tempi_scadenza",
+  // Chiave sintetica per "_Tempi Scadenza" (vedi normalizeOfficialHeader)
+  "__tempi scadenza": "tempi_scadenza_key",
 };
+
+// Distingue "Tempi Scadenza" da "_Tempi Scadenza" (entrambi collassano dopo normalize()).
+function normalizeOfficialHeader(raw: unknown): string {
+  const s = String(raw ?? "");
+  const n = normalize(s);
+  if (n === "tempi scadenza" && s.trim().startsWith("_")) return "__tempi scadenza";
+  return n;
+}
 
 function excelDateToISO(v: unknown): string | null {
   if (v == null || v === "") return null;
