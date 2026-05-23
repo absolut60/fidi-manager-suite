@@ -540,6 +540,17 @@ function ClientiPage() {
     </Select>
   );
 
+  const StatoAttivitaSelect = (
+    <Select value={statoAttivita} onValueChange={(v) => setStatoAttivita(v as typeof statoAttivita)}>
+      <SelectTrigger className="w-full"><SelectValue placeholder="Stato attività" /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="tutti">Attività: tutti</SelectItem>
+        <SelectItem value="attivi">Solo attivi</SelectItem>
+        <SelectItem value="non_attivi">Solo non attivi</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+
   const ScadenziarioSelect = (
     <Select value={scadenziarioFiltro} onValueChange={setScadenziarioFiltro}>
       <SelectTrigger className="w-full"><SelectValue placeholder="Scadenziario" /></SelectTrigger>
@@ -640,6 +651,7 @@ function ClientiPage() {
           {FidoRangeSlider}
           {BloccatiChk}
           {AssicuratiChk}
+          {StatoAttivitaSelect}
           {attiviCount > 0 && (
             <Button variant="ghost" size="sm" onClick={resetFiltri} className="gap-1 justify-start">
               <X className="size-4" /> Azzera tutti
@@ -661,6 +673,9 @@ function ClientiPage() {
           {FidoFasciaSelect}
           {TotaleRischioSelect}
           {AScadereSelect}
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {StatoAttivitaSelect}
         </div>
         <div className="flex flex-col lg:flex-row gap-3 lg:items-center">
           <div className="flex-1">{FidoRangeSlider}</div>
@@ -855,11 +870,11 @@ function ClientiPage() {
                   const residuoNum = residuo == null ? null : Number(residuo);
                   const sc = scadenziarioMap?.get(c.id);
                   return (
-                  <TableRow
-                    key={c.id}
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => navigate({ to: "/clienti/$clienteId", params: { clienteId: c.id } })}
-                  >
+                   <TableRow
+                     key={c.id}
+                     className={`cursor-pointer hover:bg-muted/50 ${c.cliente_attivo === false ? "bg-muted/40 text-muted-foreground" : ""}`}
+                     onClick={() => navigate({ to: "/clienti/$clienteId", params: { clienteId: c.id } })}
+                   >
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <Checkbox
                         checked={selectedIds.has(c.id)}
@@ -923,11 +938,23 @@ function ClientiPage() {
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell>
-                      <Badge variant={c.attivo ? "default" : "secondary"}>
-                        {c.attivo ? "Attivo" : "Inattivo"}
-                      </Badge>
-                    </TableCell>
+                     <TableCell>
+                       <div className="flex flex-col gap-1 items-start">
+                         <Badge variant={c.cliente_attivo === false ? "secondary" : "default"}>
+                           {c.cliente_attivo === false ? "Non attivo" : "Attivo"}
+                         </Badge>
+                         {c.ind_blocco === 1 && (
+                           <Badge className="bg-yellow-500/15 text-yellow-700 dark:text-yellow-500 hover:bg-yellow-500/20" title="Blocco con possibilità di sblocco">
+                             Blocco revocabile
+                           </Badge>
+                         )}
+                         {c.ind_blocco === 2 && (
+                           <Badge className="bg-destructive/15 text-destructive hover:bg-destructive/20" title="Bloccato">
+                             Bloccato
+                           </Badge>
+                         )}
+                       </div>
+                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <Button
                         variant="ghost"

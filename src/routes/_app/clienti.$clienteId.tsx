@@ -550,6 +550,30 @@ function DatiRischioCard({ cliente }: { cliente: any }) {
         {(cliente as any).num_insoluti != null && (
           <Field label="Insoluti" value={String((cliente as any).num_insoluti)} />
         )}
+        <div>
+          <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Ultima data fatturazione</dt>
+          <dd className="mt-0.5 flex items-center gap-2">
+            {(cliente as any).ultima_data_fatturazione
+              ? new Date((cliente as any).ultima_data_fatturazione).toLocaleDateString("it-IT")
+              : <span className="text-muted-foreground">—</span>}
+            {(cliente as any).cliente_attivo === false ? (
+              <span className="text-xs rounded px-1.5 py-0.5 bg-muted text-muted-foreground border">Non attivo</span>
+            ) : (
+              <span className="text-xs rounded px-1.5 py-0.5 bg-success/15 text-success border border-success/30">Attivo</span>
+            )}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Stato blocco</dt>
+          <dd className="mt-0.5">
+            {(() => {
+              const ib = (cliente as any).ind_blocco ?? 0;
+              if (ib === 2) return <span className="text-destructive font-medium">Bloccato</span>;
+              if (ib === 1) return <span className="text-yellow-700 dark:text-yellow-500 font-medium">Bloccato con possibilità di sblocco</span>;
+              return <span className="text-muted-foreground">Non bloccato</span>;
+            })()}
+          </dd>
+        </div>
       </dl>
       {(cliente as any).ultima_sincronizzazione && (
         <p className="text-xs text-muted-foreground mt-4 pt-3 border-t">
