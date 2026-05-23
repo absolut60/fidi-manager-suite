@@ -766,6 +766,8 @@ export const processScadenziarioChunk = inngest.createFunction(
         created: c,
         updated: u,
         elaborate: rows.length + missing.length,
+        skipped,
+        skippedCodes: Array.from(skippedCodes),
         rowErrs,
         batchErrs,
         matchedCids: Array.from(new Set(matched)),
