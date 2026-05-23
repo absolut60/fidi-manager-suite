@@ -127,7 +127,10 @@ export function useBackgroundImport(opts: {
       toast.success("Import avviato in background. Puoi chiudere la pagina, prosegue lato server.");
       qc.invalidateQueries({ queryKey: ["storico-import-export"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      toast.error(e.message);
+      opts.onError?.(e.message);
+    },
   });
 
   const { data: progress } = useQuery({
