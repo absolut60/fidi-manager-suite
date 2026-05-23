@@ -594,6 +594,7 @@ export const processScadenziarioImport = inngest.createFunction(
 type ChunkEventData = {
   importazioneId: string;
   filePath: string;
+  chunkPath?: string;
   userId?: string;
   chunkIndex: number;
   totalChunks: number;
@@ -616,6 +617,7 @@ export const processScadenziarioChunk = inngest.createFunction(
     const {
       importazioneId,
       filePath,
+      chunkPath,
       userId,
       chunkIndex,
       totalChunks,
@@ -625,8 +627,13 @@ export const processScadenziarioChunk = inngest.createFunction(
       timestampInizio,
     } = data;
 
-    // STEP A: download + parse SOLO il range
+    // STEP A: download + parse SOLO il range, oppure carica chunk JSON pre-staged
     const parsed = await step.run("download-parse-range", async () => {
+      if (chunkPath) {
+        const staged = await downloadJsonFromStorage<StagedScadenziarioChunk>(chunkPath);
+        const codici = Array.from(new Set(staged.rows.map((r) => r.codice_gestionale)));
+        return { rows: staged.rows, missing: staged.missing, codici };
+      }
       const wb = await downloadWorkbookLean(filePath, "SCADENZIARIO");
       const sheet = findSheetByName(wb, "SCADENZIARIO");
       if (!sheet) throw new Error("Foglio SCADENZIARIO non trovato");
