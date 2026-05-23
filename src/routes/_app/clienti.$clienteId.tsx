@@ -567,10 +567,10 @@ function DatiRischioCard({ cliente }: { cliente: any }) {
             {(cliente as any).ultima_data_fatturazione
               ? new Date((cliente as any).ultima_data_fatturazione).toLocaleDateString("it-IT")
               : <span className="text-muted-foreground">—</span>}
-            {(cliente as any).cliente_attivo === false ? (
-              <span className="text-xs rounded px-1.5 py-0.5 bg-muted text-muted-foreground border">Non attivo</span>
-            ) : (
+            {(cliente as any).cliente_attivo !== false && (cliente as any).ultima_data_fatturazione ? (
               <span className="text-xs rounded px-1.5 py-0.5 bg-success/15 text-success border border-success/30">Attivo</span>
+            ) : (
+              <span className="text-xs rounded px-1.5 py-0.5 bg-muted text-muted-foreground border">Non attivo</span>
             )}
           </dd>
         </div>
