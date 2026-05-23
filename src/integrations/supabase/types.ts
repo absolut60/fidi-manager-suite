@@ -711,6 +711,8 @@ export type Database = {
       }
       importazioni: {
         Row: {
+          chunks_completati: number | null
+          chunks_totali: number | null
           completata_at: string | null
           created_at: string
           dimensione_bytes: number | null
@@ -728,6 +730,8 @@ export type Database = {
           stato: Database["public"]["Enums"]["stato_importazione"]
         }
         Insert: {
+          chunks_completati?: number | null
+          chunks_totali?: number | null
           completata_at?: string | null
           created_at?: string
           dimensione_bytes?: number | null
@@ -745,6 +749,8 @@ export type Database = {
           stato?: Database["public"]["Enums"]["stato_importazione"]
         }
         Update: {
+          chunks_completati?: number | null
+          chunks_totali?: number | null
           completata_at?: string | null
           created_at?: string
           dimensione_bytes?: number | null
@@ -1808,6 +1814,19 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      increment_importazione_counters: {
+        Args: {
+          _create: number
+          _elaborate: number
+          _error: number
+          _id: string
+          _update: number
+        }
+        Returns: {
+          chunks_completati: number
+          chunks_totali: number
+        }[]
       }
       storage_path_cliente_id: { Args: { _name: string }; Returns: string }
       user_can_access_cliente: {
