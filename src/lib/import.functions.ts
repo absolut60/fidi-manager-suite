@@ -3,7 +3,13 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { sendInngestEvent } from "./inngest/client";
 
-const FonteEnum = z.enum(["anagrafica", "analisi_rischio", "scadenziario", "scadenziario_assicurazioni"]);
+const FonteEnum = z.enum([
+  "anagrafica",
+  "analisi_rischio",
+  "scadenziario",
+  "scadenziario_assicurazioni",
+  "blocco_fido_assicurazione",
+]);
 
 /**
  * Avvia un import in background tramite Inngest.
