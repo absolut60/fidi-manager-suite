@@ -725,6 +725,15 @@ export const processScadenziarioChunk = inngest.createFunction(
       let c = 0;
       let u = 0;
       if (validRows.length) {
+        // DIAGNOSTIC — rimuovere dopo il fix tempi_scadenza
+        if (chunkIndex === 0) {
+          console.log("DIAGNOSTIC headers ricevuti:", JSON.stringify(headers));
+          console.log(
+            "DIAGNOSTIC primo validRow keys:",
+            JSON.stringify(Object.keys(validRows[0])),
+          );
+          console.log("DIAGNOSTIC primo validRow:", JSON.stringify(validRows[0]));
+        }
         const { error: upErr, count } = await (
           supabaseAdmin.from("scadenze" as never) as never as {
             upsert: (
