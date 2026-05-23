@@ -730,8 +730,11 @@ export const processScadenziarioImport = inngest.createFunction(
           righe_elaborate: totRead,
           righe_create: created,
           righe_aggiornate: updated,
-          righe_errore: errorLog.length,
-          stato: errorLog.length ? "completata_con_errori" : "completata",
+          righe_errore: errorLog.length + batchErrors.length,
+          stato:
+            errorLog.length + batchErrors.length > 0
+              ? "completata_con_errori"
+              : "completata",
           completata_at: new Date().toISOString(),
           log_errori: logFinale.slice(0, 500),
         })
