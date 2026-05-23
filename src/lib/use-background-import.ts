@@ -4,7 +4,12 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { triggerImport } from "@/lib/import.functions";
 
-type Fonte = "anagrafica" | "analisi_rischio" | "scadenziario" | "scadenziario_assicurazioni";
+type Fonte =
+  | "anagrafica"
+  | "analisi_rischio"
+  | "scadenziario"
+  | "scadenziario_assicurazioni"
+  | "blocco_fido_assicurazione";
 
 export type BackgroundImportProgress = {
   stato: string | null;
