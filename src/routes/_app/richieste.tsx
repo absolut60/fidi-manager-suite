@@ -136,6 +136,10 @@ function RichiestePage() {
               <SelectItem value="tutti">Tutti gli stati</SelectItem>
               <SelectItem value="bozza">Bozza</SelectItem>
               <SelectItem value="in_approvazione">In approvazione</SelectItem>
+              <SelectItem value="in_attesa_liv1">In attesa Liv. 1</SelectItem>
+              <SelectItem value="in_attesa_liv2">In attesa Liv. 2</SelectItem>
+              <SelectItem value="in_attesa_liv3">In attesa Liv. 3</SelectItem>
+              <SelectItem value="integrazioni_richieste">Integrazioni richieste</SelectItem>
               <SelectItem value="approvata">Approvata</SelectItem>
               <SelectItem value="rifiutata">Rifiutata</SelectItem>
               <SelectItem value="annullata">Annullata</SelectItem>
