@@ -110,10 +110,6 @@ async function sendInngestEvents(events: object[]): Promise<void> {
   }
 }
 
-
-
-
-
 /* ============================================================================
  * A — ANAGRAFICA
  * ============================================================================ */
@@ -434,9 +430,7 @@ function xlsxLeanOpts() {
 }
 
 async function downloadWorkbookLean(filePath: string, sheetName: string) {
-  const { data: file, error } = await supabaseAdmin.storage
-    .from("import-files")
-    .download(filePath);
+  const { data: file, error } = await supabaseAdmin.storage.from("import-files").download(filePath);
   if (error || !file) throw new Error(`Download fallito: ${error?.message ?? "no data"}`);
   const buf = await file.arrayBuffer();
   // sheets: limita parsing al solo foglio richiesto
@@ -457,9 +451,8 @@ export const processScadenziarioImport = inngest.createFunction(
         const manifest = await step.run("load-staged-manifest", async () => {
           return downloadJsonFromStorage<StagedScadenziarioManifest>(filePath);
         });
-        const timestampInizio = await step.run(
-          "init-timestamp",
-          async () => new Date().toISOString(),
+        const timestampInizio = await step.run("init-timestamp", async () =>
+          new Date().toISOString(),
         );
         const chunkCount = Math.max(1, manifest.chunkCount);
 
@@ -523,9 +516,8 @@ export const processScadenziarioImport = inngest.createFunction(
 
       const totRows = Math.max(0, meta.lastRow - meta.firstDataRow + 1);
       const chunkCount = Math.max(1, Math.ceil(totRows / SCAD_CHUNK_SIZE));
-      const timestampInizio = await step.run(
-        "init-timestamp",
-        async () => new Date().toISOString(),
+      const timestampInizio = await step.run("init-timestamp", async () =>
+        new Date().toISOString(),
       );
 
       logger.info(
@@ -806,8 +798,7 @@ export const processScadenziarioChunk = inngest.createFunction(
           .select("log_errori")
           .eq("id", importazioneId)
           .single();
-        const existing =
-          ((cur?.log_errori as Array<{ riga: number; errore: string }> | null) ?? []);
+        const existing = (cur?.log_errori as Array<{ riga: number; errore: string }> | null) ?? [];
         const next = [...existing, ...result.batchErrs, ...result.rowErrs].slice(0, 500);
         await supabaseAdmin
           .from("importazioni")
@@ -900,8 +891,7 @@ export const finalizeScadenziarioImport = inngest.createFunction(
           .eq("id", importazioneId)
           .single();
         const errs = (cur?.righe_errore as number | null) ?? 0;
-        const existing =
-          ((cur?.log_errori as Array<{ riga: number; errore: string }> | null) ?? []);
+        const existing = (cur?.log_errori as Array<{ riga: number; errore: string }> | null) ?? [];
         const summary = [
           {
             riga: 0,
@@ -928,8 +918,6 @@ export const finalizeScadenziarioImport = inngest.createFunction(
     }
   },
 );
-
-
 
 /* ============================================================================
  * D — SCADENZIARIO + ASSICURAZIONI (file unico, due fogli)

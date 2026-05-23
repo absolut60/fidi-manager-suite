@@ -1117,18 +1117,28 @@ function ScadenziarioProgressBlock({
       ) : null}
       {(phase === "done" || phase === "done-warn") && result ? (
         <div className="text-xs text-muted-foreground">
-          Create: <span className="font-medium text-foreground">{result.create.toLocaleString("it-IT")}</span>
+          Create:{" "}
+          <span className="font-medium text-foreground">
+            {result.create.toLocaleString("it-IT")}
+          </span>
           {" · "}Aggiornate:{" "}
-          <span className="font-medium text-foreground">{result.aggiornate.toLocaleString("it-IT")}</span>
+          <span className="font-medium text-foreground">
+            {result.aggiornate.toLocaleString("it-IT")}
+          </span>
           {" · "}Saltate:{" "}
-          <span className="font-medium text-foreground">{result.errori.toLocaleString("it-IT")}</span>
+          <span className="font-medium text-foreground">
+            {result.errori.toLocaleString("it-IT")}
+          </span>
           {result.chiuse > 0 ? (
             <>
               {" · "}Chiuse automaticamente:{" "}
-              <span className="font-medium text-foreground">{result.chiuse.toLocaleString("it-IT")}</span>
+              <span className="font-medium text-foreground">
+                {result.chiuse.toLocaleString("it-IT")}
+              </span>
             </>
           ) : null}
-          {" · "}Tempo totale: <span className="font-medium text-foreground">{formatDuration(elapsedMs)}</span>
+          {" · "}Tempo totale:{" "}
+          <span className="font-medium text-foreground">{formatDuration(elapsedMs)}</span>
         </div>
       ) : null}
       {phase === "error" && onRetry ? (
@@ -1139,7 +1149,6 @@ function ScadenziarioProgressBlock({
     </div>
   );
 }
-
 
 function ScadenziarioImportCard() {
   const fileRef = useRef<HTMLInputElement>(null);
@@ -1167,8 +1176,7 @@ function ScadenziarioImportCard() {
   });
 
   // tick every second while active for elapsed/remaining time
-  const isActive =
-    parsing || bg.isPending || bg.inProgress || (!!bg.done && !!bg.progress);
+  const isActive = parsing || bg.isPending || bg.inProgress || (!!bg.done && !!bg.progress);
   useEffect(() => {
     if (!isActive) return;
     const id = setInterval(() => setNow(Date.now()), 1000);
@@ -1261,10 +1269,7 @@ function ScadenziarioImportCard() {
   } else if (bg.inProgress && uploadDone) {
     // Fase 2: elaborazione in background (20% → 100%)
     phase = "processing";
-    pct =
-      righeTotali > 0
-        ? 20 + Math.min(80, (righeElaborate / righeTotali) * 80)
-        : 20;
+    pct = righeTotali > 0 ? 20 + Math.min(80, (righeElaborate / righeTotali) * 80) : 20;
   } else if (bg.isPending || (bg.inProgress && !uploadDone)) {
     // Fase 1: upload file (0% → 20%)
     phase = "uploading";
@@ -1286,10 +1291,7 @@ function ScadenziarioImportCard() {
     remainingMs = Math.max(0, totalEstimate - elapsed);
   }
 
-  const showProgress =
-    parsing || bg.isPending || bg.inProgress || bg.done || !!errorMsg;
-
-
+  const showProgress = parsing || bg.isPending || bg.inProgress || bg.done || !!errorMsg;
 
   function downloadTemplate() {
     const head = [

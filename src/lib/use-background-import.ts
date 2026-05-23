@@ -104,7 +104,9 @@ export function useBackgroundImport(opts: {
         for (let i = 0; i < orderedIndexes.length; i += chunkSize) {
           const chunkIndex = Math.floor(i / chunkSize);
           const indexes = orderedIndexes.slice(i, i + chunkSize);
-          const chunkRows = indexes.map((idx) => byRow.get(idx)).filter(Boolean) as Array<Record<string, unknown>>;
+          const chunkRows = indexes.map((idx) => byRow.get(idx)).filter(Boolean) as Array<
+            Record<string, unknown>
+          >;
           const validIndexes = new Set(chunkRows.map((row) => Number(row.idx)));
           const chunkMissing = indexes.filter((idx) => !validIndexes.has(idx));
           const chunkPath = `_staging/${imp.id}/chunk-${chunkIndex}.json`;
@@ -116,7 +118,12 @@ export function useBackgroundImport(opts: {
               upsert: true,
             });
           if (error) throw error;
-          chunks.push({ chunkIndex, chunkPath, rowsCount: chunkRows.length, missingCount: chunkMissing.length });
+          chunks.push({
+            chunkIndex,
+            chunkPath,
+            rowsCount: chunkRows.length,
+            missingCount: chunkMissing.length,
+          });
         }
 
         const manifestPath = `_staging/${imp.id}/manifest.json`;
@@ -141,7 +148,9 @@ export function useBackgroundImport(opts: {
       await supabase.from("importazioni").update({ file_path: triggerFilePath }).eq("id", imp.id);
       opts.onUploadComplete?.();
 
-      await triggerImport({ data: { fonte: opts.fonte, importazioneId: imp.id, filePath: triggerFilePath } });
+      await triggerImport({
+        data: { fonte: opts.fonte, importazioneId: imp.id, filePath: triggerFilePath },
+      });
       return imp.id;
     },
     onSuccess: (id) => {
