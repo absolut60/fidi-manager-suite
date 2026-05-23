@@ -669,8 +669,8 @@ export function parseScadenziarioRangeLean(
     const mapped: Record<string, unknown> = {};
     let ragSoc = "";
     let codiceRaw: unknown = null;
-    for (let c = range.s.c; c <= range.e.c; c++) {
-      const h = headers[c - range.s.c];
+    for (let c = 0; c <= range.e.c; c++) {
+      const h = headers[c];
       const field = SCAD_OFFICIAL_MAP[h];
       if (!field) continue;
       const addr = XLSX.utils.encode_cell({ r, c });
