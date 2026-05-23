@@ -733,6 +733,21 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
         ) : null}
       </div>
 
+      {/* Banner assicurazione */}
+      {assicurato && (
+        <div className={`rounded-lg border px-4 py-3 flex items-center gap-3 ${polizzaScaduta ? "border-destructive/40 bg-destructive/10" : "border-success/30 bg-success/10"}`}>
+          <Shield className={`size-5 shrink-0 ${polizzaScaduta ? "text-destructive" : "text-success"}`} />
+          <p className={`text-sm font-semibold ${polizzaScaduta ? "text-destructive" : "text-success"}`}>
+            Assicurato {polizzaAttiva?.assicuratore || "POUEY"}
+            {polizzaAttiva?.importo_massimale != null ? ` — Massimale: ${formatEuro(polizzaAttiva.importo_massimale)}` : ""}
+            {polizzaAttiva?.data_scadenza ? ` — Scade: ${fmtDateIt(polizzaAttiva.data_scadenza)}` : ""}
+          </p>
+          {polizzaScaduta && (
+            <Badge className="bg-destructive text-destructive-foreground hover:bg-destructive ml-auto">Polizza scaduta</Badge>
+          )}
+        </div>
+      )}
+
       {/* Sezione 2 — Dati rischio */}
       <section className="space-y-3">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Dati rischio</h3>
@@ -750,8 +765,28 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
           <MiniStat label="Scaduto" value={formatEuro(cliente.scaduto)} tone={scaduto > 0 ? "destructive" : "default"} />
           <MiniStat label="A scadere" value={formatEuro(cliente.a_scadere)} />
           <MiniStat label="Cond. pagamento" value={condPag || "—"} />
+          <Card className="p-4">
+            <p className="text-xs font-medium text-muted-foreground uppercase">Assicurazione</p>
+            <div className="mt-2 flex items-center gap-2 flex-wrap">
+              {assicurato ? (
+                <>
+                  <Badge className="bg-success/15 text-success border-success/30 hover:bg-success/15 gap-1">
+                    <Shield className="size-3" /> POUEY Attiva
+                  </Badge>
+                  {polizzaAttiva?.importo_massimale != null && (
+                    <span className="text-sm font-semibold tabular-nums">{formatEuro(polizzaAttiva.importo_massimale)}</span>
+                  )}
+                </>
+              ) : (
+                <Badge variant="secondary" className="gap-1">
+                  <ShieldOff className="size-3" /> Non assicurato
+                </Badge>
+              )}
+            </div>
+          </Card>
         </div>
       </section>
+
 
       {/* Sezione 3 — Riepilogo insoluti */}
       <section className="space-y-3">
