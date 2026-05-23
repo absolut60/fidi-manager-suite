@@ -1,0 +1,1 @@
+DELETE FROM public.scadenze WHERE numero_documento IN ('TEST/AA','TEST/RA','TEST/RF');
