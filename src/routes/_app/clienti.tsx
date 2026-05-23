@@ -888,9 +888,242 @@ function ClientiPage() {
           </div>
         )}
       </Card>
+
+      {/* Barra azione selezione */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 bg-background border shadow-lg rounded-lg px-4 py-3 flex flex-wrap items-center gap-3">
+          <span className="text-sm font-medium">{selectedIds.size} clienti selezionati</span>
+          <Button size="sm" variant="outline" onClick={selezionaTuttiFiltrati}>
+            Seleziona tutti i filtrati
+          </Button>
+          <Button size="sm" onClick={() => setMassivoOpen(true)}>
+            Proponi fido massivo
+          </Button>
+          <Button size="sm" variant="ghost" onClick={clearSelection}>
+            Deseleziona tutto
+          </Button>
+        </div>
+      )}
+
+      <ProposteFidoMassivoDialog
+        open={massivoOpen}
+        onOpenChange={setMassivoOpen}
+        selectedRows={Array.from(selectedRows.values())}
+        userId={user?.id ?? null}
+        onSuccess={() => {
+          clearSelection();
+          setMassivoOpen(false);
+        }}
+        onRemove={(id) => {
+          setSelectedIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
+          setSelectedRows((prev) => { const n = new Map(prev); n.delete(id); return n; });
+        }}
+      />
     </div>
   );
 }
+
+// ============================================================================
+// Dialog "Proposta fido massiva"
+// ============================================================================
+
+type RigaProposta = {
+  cliente_id: string;
+  ragione_sociale: string;
+  fido_attuale: number;
+  esposizione: number;
+  fido_proposto: number;
+  tipo: "nuovo_fido" | "aumento" | "diminuzione" | "rinnovo";
+};
+
+function ProposteFidoMassivoDialog({
+  open, onOpenChange, selectedRows, userId, onSuccess, onRemove,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  selectedRows: any[];
+  userId: string | null;
+  onSuccess: () => void;
+  onRemove: (id: string) => void;
+}) {
+  const [modalitaInvio, setModalitaInvio] = useState<"bozza" | "invia">("bozza");
+  const [tipoForzato, setTipoForzato] = useState<"auto" | "nuovo_fido" | "aumento" | "diminuzione" | "rinnovo">("auto");
+  const [righe, setRighe] = useState<RigaProposta[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Inizializza/aggiorna righe quando cambia la selezione o si apre
+  useEffect(() => {
+    if (!open) return;
+    setRighe((prev) => {
+      const prevMap = new Map(prev.map((r) => [r.cliente_id, r]));
+      return selectedRows.map((c) => {
+        const existing = prevMap.get(c.id);
+        if (existing) return existing;
+        const proposto = calcolaFidoProposto(c);
+        const attuale = Number(c.fido ?? 0);
+        return {
+          cliente_id: c.id,
+          ragione_sociale: c.ragione_sociale,
+          fido_attuale: attuale,
+          esposizione: Number(c.totale_rischio ?? 0),
+          fido_proposto: proposto,
+          tipo: determinaTipoRichiesta(attuale, proposto),
+        };
+      });
+    });
+  }, [open, selectedRows]);
+
+  function aggiornaImporto(id: string, valore: number) {
+    setRighe((prev) => prev.map((r) => r.cliente_id === id ? {
+      ...r,
+      fido_proposto: valore,
+      tipo: tipoForzato === "auto" ? determinaTipoRichiesta(r.fido_attuale, valore) : r.tipo,
+    } : r));
+  }
+  function aggiornaTipo(id: string, tipo: RigaProposta["tipo"]) {
+    setRighe((prev) => prev.map((r) => r.cliente_id === id ? { ...r, tipo } : r));
+  }
+  function rimuoviRiga(id: string) {
+    setRighe((prev) => prev.filter((r) => r.cliente_id !== id));
+    onRemove(id);
+  }
+
+  // Quando cambia tipoForzato, ricalcola
+  useEffect(() => {
+    if (tipoForzato === "auto") {
+      setRighe((prev) => prev.map((r) => ({ ...r, tipo: determinaTipoRichiesta(r.fido_attuale, r.fido_proposto) })));
+    } else {
+      setRighe((prev) => prev.map((r) => ({ ...r, tipo: tipoForzato })));
+    }
+  }, [tipoForzato]);
+
+  const totale = righe.reduce((acc, r) => acc + (Number(r.fido_proposto) || 0), 0);
+
+  async function creaRichieste() {
+    if (righe.length === 0) { toast.error("Nessuna riga da creare"); return; }
+    if (!userId) { toast.error("Utente non autenticato"); return; }
+    setSubmitting(true);
+    try {
+      const stato = modalitaInvio === "bozza" ? "bozza" : "in_attesa_liv1";
+      const payload = righe.map((r) => ({
+        cliente_id: r.cliente_id,
+        tipo: r.tipo,
+        importo_richiesto: r.fido_proposto,
+        stato,
+        created_by: userId,
+        motivazione: "Proposta fido massiva",
+      }));
+      const { error } = await supabase.from("richieste_fido").insert(payload as any);
+      if (error) throw error;
+      toast.success(`${righe.length} richieste create`);
+      onSuccess();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Errore nella creazione");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Proposta fido massiva — {righe.length} clienti</DialogTitle>
+          <DialogDescription>
+            Crea una richiesta fido per ogni cliente selezionato.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label className="text-xs">Modalità invio</Label>
+            <RadioGroup value={modalitaInvio} onValueChange={(v) => setModalitaInvio(v as any)} className="mt-2">
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <RadioGroupItem value="bozza" /> Salva come bozza
+              </label>
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <RadioGroupItem value="invia" /> Invia subito all'approvazione
+              </label>
+            </RadioGroup>
+          </div>
+          <div>
+            <Label className="text-xs">Tipo richiesta applicato a tutti</Label>
+            <Select value={tipoForzato} onValueChange={(v) => setTipoForzato(v as any)}>
+              <SelectTrigger className="mt-2"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="auto">Automatico (in base al fido attuale)</SelectItem>
+                <SelectItem value="nuovo_fido">Nuovo fido</SelectItem>
+                <SelectItem value="aumento">Aumento fido</SelectItem>
+                <SelectItem value="diminuzione">Diminuzione fido</SelectItem>
+                <SelectItem value="rinnovo">Rinnovo fido</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto border rounded-md">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Cliente</TableHead>
+                <TableHead className="text-right">Fido attuale</TableHead>
+                <TableHead className="text-right">Esposizione</TableHead>
+                <TableHead className="text-right">Fido proposto</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead className="w-10"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {righe.map((r) => (
+                <TableRow key={r.cliente_id}>
+                  <TableCell className="font-medium text-sm">{r.ragione_sociale}</TableCell>
+                  <TableCell className="text-right text-sm">{fmtEuro(r.fido_attuale)}</TableCell>
+                  <TableCell className="text-right text-sm">{fmtEuro(r.esposizione)}</TableCell>
+                  <TableCell className="text-right">
+                    <Input
+                      type="number"
+                      className="h-8 text-right w-32 ml-auto"
+                      value={r.fido_proposto}
+                      onChange={(e) => aggiornaImporto(r.cliente_id, Number(e.target.value) || 0)}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Select value={r.tipo} onValueChange={(v) => aggiornaTipo(r.cliente_id, v as RigaProposta["tipo"])}>
+                      <SelectTrigger className="h-8 w-36"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="nuovo_fido">Nuovo fido</SelectItem>
+                        <SelectItem value="aumento">Aumento</SelectItem>
+                        <SelectItem value="diminuzione">Diminuzione</SelectItem>
+                        <SelectItem value="rinnovo">Rinnovo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell>
+                    <Button variant="ghost" size="icon" onClick={() => rimuoviRiga(r.cliente_id)} title="Rimuovi">
+                      <X className="size-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+
+        <div className="text-sm font-medium">
+          Totale fido proposto: <strong>{fmtEuro(totale)}</strong> · {righe.length} richieste da creare
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>Annulla</Button>
+          <Button onClick={creaRichieste} disabled={submitting || righe.length === 0}>
+            {submitting ? "Creazione…" : "Crea richieste"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 
 // ============================================================================
 // WIZARD SCHEDA CLIENTE — Modalità "Crea con firma" / "Crea senza firma"
