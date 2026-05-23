@@ -40,8 +40,16 @@ async function setImportazioneError(importazioneId: string, message: string) {
 async function sendInngestEvents(events: object[]): Promise<void> {
   const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
   const INNGEST_API_KEY = process.env.INNGEST_API_KEY;
+  console.log("SEND INNGEST EVENTS:", {
+    count: events.length,
+    hasLovableKey: !!LOVABLE_API_KEY,
+    hasInngestKey: !!INNGEST_API_KEY,
+    firstEvent: events[0],
+  });
   if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY non configurata");
   if (!INNGEST_API_KEY) throw new Error("INNGEST_API_KEY non configurata");
+
+  // Prima prova con array (più efficiente)
   const res = await fetch("https://connector-gateway.lovable.dev/inngest/e/", {
     method: "POST",
     headers: {
@@ -51,10 +59,37 @@ async function sendInngestEvents(events: object[]): Promise<void> {
     },
     body: JSON.stringify(events),
   });
-  if (!res.ok) {
-    throw new Error(`Inngest gateway error ${res.status}: ${await res.text()}`);
+  const responseText = await res.text();
+  console.log("GATEWAY ARRAY RESPONSE:", {
+    status: res.status,
+    statusText: res.statusText,
+    body: responseText.slice(0, 500),
+  });
+  if (res.ok) return;
+
+  // Fallback: invio singolo evento per evento
+  console.log("Array fallito, provo invio singolo...");
+  for (const event of events) {
+    const resSingle = await fetch("https://connector-gateway.lovable.dev/inngest/e/", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "X-Connection-Api-Key": INNGEST_API_KEY,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(event),
+    });
+    const singleText = await resSingle.text();
+    console.log("GATEWAY SINGLE RESPONSE:", {
+      status: resSingle.status,
+      body: singleText.slice(0, 200),
+    });
+    if (!resSingle.ok) {
+      throw new Error(`Inngest gateway single error ${resSingle.status}: ${singleText}`);
+    }
   }
 }
+
 
 
 
