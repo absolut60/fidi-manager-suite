@@ -545,9 +545,9 @@ function ClientiPage() {
     <Select value={statoAttivita} onValueChange={(v) => setStatoAttivita(v as typeof statoAttivita)}>
       <SelectTrigger className="w-full"><SelectValue placeholder="Stato attività" /></SelectTrigger>
       <SelectContent>
-        <SelectItem value="tutti">Attività: tutti</SelectItem>
         <SelectItem value="attivi">Solo attivi</SelectItem>
         <SelectItem value="non_attivi">Solo non attivi</SelectItem>
+        <SelectItem value="tutti">Tutti</SelectItem>
       </SelectContent>
     </Select>
   );
