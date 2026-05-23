@@ -640,7 +640,7 @@ export function scanScadenziarioMeta(sheet: XLSX.WorkSheet): {
   for (let c = range.s.c; c <= range.e.c; c++) {
     const addr = XLSX.utils.encode_cell({ r: 1, c });
     const cell = sheet[addr] as XLSX.CellObject | undefined;
-    headers.push(normalize(String(cell?.v ?? "")));
+    headers.push(normalizeOfficialHeader(cell?.v));
   }
   return {
     headers,
