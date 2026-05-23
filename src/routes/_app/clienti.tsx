@@ -659,6 +659,20 @@ function ClientiPage() {
     </Select>
   );
 
+  const FatturatoSelect = (
+    <Select value={fatturatoFiltro} onValueChange={setFatturatoFiltro}>
+      <SelectTrigger className="w-full"><SelectValue placeholder="Fatturato anno corrente" /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="tutti">Fatturato {annoCorrenteClienti}: tutti</SelectItem>
+        <SelectItem value="nessuno">Nessun fatturato (0 €)</SelectItem>
+        <SelectItem value="0_10k">Fino a 10.000 €</SelectItem>
+        <SelectItem value="10k_50k">10.001 – 50.000 €</SelectItem>
+        <SelectItem value="50k_100k">50.001 – 100.000 €</SelectItem>
+        <SelectItem value="oltre_100k">Oltre 100.000 €</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+
   const FidoRangeSlider = (
     <div className="space-y-2 px-1 py-2 border rounded-md">
       <div className="flex items-center justify-between text-xs font-medium">
@@ -739,9 +753,11 @@ function ClientiPage() {
           {FidoFasciaSelect}
           {TotaleRischioSelect}
           {AScadereSelect}
+          {FatturatoSelect}
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {StatoAttivitaSelect}
+          {FatturatoSelect}
         </div>
         <div className="flex flex-col lg:flex-row gap-3 lg:items-center">
           <div className="flex-1">{FidoRangeSlider}</div>
