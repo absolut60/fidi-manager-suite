@@ -305,11 +305,11 @@ function ClienteDetail() {
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{cliente.ragione_sociale}</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              {(cliente as any).codice_gestionale
-                ? `Cod. ${(cliente as any).codice_gestionale} — P.IVA ${cliente.partita_iva ?? "—"}`
-                : cliente.partita_iva
-                  ? `P.IVA ${cliente.partita_iva}`
-                  : "Partita IVA non inserita"}
+              {[
+                (cliente as any).codice_gestionale ? `Cod. ${(cliente as any).codice_gestionale}` : null,
+                cliente.partita_iva ? `P.IVA ${cliente.partita_iva}` : null,
+                (cliente as any).stores?.nome ? String((cliente as any).stores.nome).toUpperCase() : null,
+              ].filter(Boolean).join(" — ") || "Partita IVA non inserita"}
             </p>
           </div>
           <div className="flex gap-2 items-center">
@@ -567,10 +567,10 @@ function DatiRischioCard({ cliente }: { cliente: any }) {
             {(cliente as any).ultima_data_fatturazione
               ? new Date((cliente as any).ultima_data_fatturazione).toLocaleDateString("it-IT")
               : <span className="text-muted-foreground">—</span>}
-            {(cliente as any).cliente_attivo === false ? (
-              <span className="text-xs rounded px-1.5 py-0.5 bg-muted text-muted-foreground border">Non attivo</span>
-            ) : (
+            {(cliente as any).cliente_attivo !== false && (cliente as any).ultima_data_fatturazione ? (
               <span className="text-xs rounded px-1.5 py-0.5 bg-success/15 text-success border border-success/30">Attivo</span>
+            ) : (
+              <span className="text-xs rounded px-1.5 py-0.5 bg-muted text-muted-foreground border">Non attivo</span>
             )}
           </dd>
         </div>
@@ -613,8 +613,8 @@ function fmtDateIt(v: unknown): string {
 function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string }) {
   const bloccato = !!cliente.bloccato;
   const indBlocco = Number(cliente.ind_blocco ?? 0);
-  const clienteAttivo = cliente.cliente_attivo !== false;
   const ultimaFatt = cliente.ultima_data_fatturazione;
+  const clienteAttivo = cliente.cliente_attivo !== false && !!ultimaFatt;
 
   const { data: ins } = useQuery({
     queryKey: ["riepilogo-tab-insoluti", clienteId],
