@@ -36,11 +36,6 @@ async function setImportazioneError(importazioneId: string, message: string) {
     .eq("id", importazioneId);
 }
 
-async function downloadJsonFromImportFiles<T>(path: string): Promise<T> {
-  const { data: file, error } = await supabaseAdmin.storage.from("import-files").download(path);
-  if (error || !file) throw new Error(`Download ${path}: ${error?.message ?? "no data"}`);
-  return JSON.parse(await file.text()) as T;
-}
 
 /* ============================================================================
  * A — ANAGRAFICA
@@ -349,52 +344,20 @@ export const processScadenziarioImport = inngest.createFunction(
   },
   async ({ event, step, logger }) => {
     const { importazioneId, filePath, userId } = event.data as EventData;
-    const CHUNK_SIZE = 500;
+    const CHUNK_SIZE = 1000;
     try {
-      // STEP 1 — parse + stage su storage (output dello step: solo metadata leggero)
-      const stage = await step.run("parse-and-stage", async () => {
-        if (filePath.endsWith("/manifest.json")) {
-          const manifest = await downloadJsonFromImportFiles<{
-            rowsTotali?: number;
-            validRows?: number;
-            chunkCount?: number;
-            missingRows?: number[];
-          }>(filePath);
-          return {
-            totRead: Number(manifest.rowsTotali ?? 0),
-            totRows: Number(manifest.validRows ?? manifest.rowsTotali ?? 0),
-            missing: manifest.missingRows ?? [],
-            chunkCount: Number(manifest.chunkCount ?? 0),
-            codici: [] as string[],
-            stagedByClient: true,
-          };
-        }
+      // STEP 1 — Download & parse Excel completo lato server (single shot)
+      const parsed = await step.run("parse", async () => {
         const wb = await downloadWorkbook(filePath);
         const sheet = findSheetByName(wb, "SCADENZIARIO");
         if (!sheet) throw new Error("Foglio SCADENZIARIO non trovato nel file");
         const { rows, missing, totRead } = parseScadenziarioOfficialSheet(sheet);
-        const codiciAll = Array.from(new Set(rows.map((r) => r.codice_gestionale)));
-        const chunkCount = Math.ceil(rows.length / CHUNK_SIZE);
-        for (let i = 0; i < chunkCount; i++) {
-          const slice = rows.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
-          const path = `_staging/${importazioneId}/chunk-${i}.json`;
-          const body = new Blob([JSON.stringify(slice)], { type: "application/json" });
-          const { error } = await supabaseAdmin.storage
-            .from("import-files")
-            .upload(path, body, { upsert: true, contentType: "application/json" });
-          if (error) throw new Error(`Staging chunk ${i}: ${error.message}`);
-        }
-        return {
-          totRead,
-          totRows: rows.length,
-          missing,
-          chunkCount,
-          codici: codiciAll,
-          stagedByClient: false,
-        };
+        const codici = Array.from(new Set(rows.map((r) => r.codice_gestionale)));
+        return { rows, missing, totRead, codici };
       });
-      const { totRead, totRows, missing, chunkCount, codici, stagedByClient } = stage;
-      logger.info(`Scadenziario stage: ${totRows}/${totRead} righe in ${chunkCount} chunk`);
+      const { rows: allRows, missing, totRead, codici } = parsed;
+      const chunkCount = Math.ceil(allRows.length / CHUNK_SIZE);
+      logger.info(`Scadenziario: ${allRows.length}/${totRead} righe in ${chunkCount} chunk`);
 
       const errorLog: Array<{ riga: number; errore: string }> = missing.map((idx: number) => ({
         riga: idx,
@@ -405,15 +368,10 @@ export const processScadenziarioImport = inngest.createFunction(
       let chiuseAutomaticamente = 0;
       let clientiRiconciliati = 0;
 
-      // Timestamp di inizio import — usato per:
-      //  1) scrivere ultima_sincronizzazione su ogni riga upsertata
-      //  2) chiudere automaticamente le scadenze "fantasma" (presenti nel DB ma assenti nel file)
       const timestampInizioImport = await step.run(
         "init-timestamp",
         async () => new Date().toISOString(),
       );
-
-
 
       await supabaseAdmin
         .from("importazioni")
@@ -424,26 +382,13 @@ export const processScadenziarioImport = inngest.createFunction(
         })
         .eq("id", importazioneId);
 
-      // STEP 2 — lookup clienti (output piccolo)
+      // STEP 2 — lookup clienti
       const clientMap = await step.run("lookup-clienti", async () => {
         const out: Record<string, string> = {};
-        let lookupCodici = codici;
-        if (!lookupCodici.length && stagedByClient) {
-          const discovered = new Set<string>();
-          for (let ci = 0; ci < chunkCount; ci++) {
-            const slice = await downloadJsonFromImportFiles<Array<{ codice_gestionale: string }>>(
-              `_staging/${importazioneId}/chunk-${ci}.json`,
-            );
-            slice.forEach((r) => {
-              if (r.codice_gestionale) discovered.add(r.codice_gestionale);
-            });
-          }
-          lookupCodici = Array.from(discovered);
-        }
-        if (!lookupCodici.length) return out;
+        if (!codici.length) return out;
         const BATCH_LOOKUP = 500;
-        for (let i = 0; i < lookupCodici.length; i += BATCH_LOOKUP) {
-          const slice = lookupCodici.slice(i, i + BATCH_LOOKUP);
+        for (let i = 0; i < codici.length; i += BATCH_LOOKUP) {
+          const slice = codici.slice(i, i + BATCH_LOOKUP);
           const { data } = await supabaseAdmin
             .from("clienti")
             .select("id, codice_gestionale")
@@ -455,46 +400,13 @@ export const processScadenziarioImport = inngest.createFunction(
         return out;
       });
 
-      // STEP 3 — processa ogni chunk con UPSERT in BATCH
-      // ⚡ HOT PATH PERFORMANCE — NON MODIFICARE SENZA BENCHMARK
-      // ============================================================
-      // Questa è una delle funzioni critiche per la performance dell'app
-      // (insieme a calcolaFidoProposto in src/routes/_app/clienti.tsx).
-      // Strategia: 1 sola query upsert per chunk (500 righe) invece di 500 query separate.
-      // Richiede l'indice UNIQUE: scadenze_cliente_doc_sez_uniq su
-      //   (cliente_id, numero_documento, sezionale) NULLS NOT DISTINCT
-      // Per distinguere insert vs update si fa un pre-fetch leggero (solo id+chiave) per chunk.
-      // ============================================================
-      // STEP 3 — processa ogni chunk con UPSERT in BATCH
-      // ⚡ HOT PATH PERFORMANCE — NON MODIFICARE SENZA BENCHMARK
-      // ============================================================
-      // Questa è una delle funzioni critiche per la performance dell'app
-      // (insieme a calcolaFidoProposto in src/routes/_app/clienti.tsx).
-      // Strategia: 1 sola query upsert per chunk (500 righe) invece di 500 query separate.
-      // Richiede l'indice UNIQUE: scadenze_cliente_doc_sez_anno_uniq su
-      //   (cliente_id, numero_documento, sezionale, anno_partita) NULLS NOT DISTINCT
-      // Per distinguere insert vs update si fa un pre-fetch leggero (solo chiave) per chunk.
-      // Ogni riga upsertata riceve ultima_sincronizzazione = timestampInizioImport,
-      // così la reconciliation finale può individuare le scadenze "fantasma".
-      // ============================================================
+      // STEP 3 — processa ogni chunk in memoria con UPSERT batch
       const matchedClientIds = new Set<string>();
       const batchErrors: Array<{ riga: number; errore: string }> = [];
       let elaborate = 0;
       for (let ci = 0; ci < chunkCount; ci++) {
+        const slice = allRows.slice(ci * CHUNK_SIZE, (ci + 1) * CHUNK_SIZE);
         const res = await step.run(`process-chunk-${ci}`, async () => {
-          const path = `_staging/${importazioneId}/chunk-${ci}.json`;
-          const { data: file, error } = await supabaseAdmin.storage
-            .from("import-files")
-            .download(path);
-          if (error || !file) throw new Error(`Download chunk ${ci}: ${error?.message}`);
-          const slice = JSON.parse(await file.text()) as Array<{
-            idx: number;
-            codice_gestionale: string;
-            ragione_sociale: string;
-            payload: Record<string, unknown>;
-          }>;
-
-          // Costruisci le righe valide e separa quelle senza cliente abbinato
           const rowErrs: Array<{ riga: number; errore: string }> = [];
           const batchErrs: Array<{ riga: number; errore: string }> = [];
           const matched: string[] = [];
@@ -509,17 +421,15 @@ export const processScadenziarioImport = inngest.createFunction(
               continue;
             }
             matched.push(cid);
-            const p = r.payload;
             rawValidRows.push({
-              ...p,
+              ...r.payload,
               cliente_id: cid,
               importato_da: userId ?? null,
               ultima_sincronizzazione: timestampInizioImport,
             });
           }
 
-          // CORREZIONE 1 — Deduplica per chiave (cliente_id, numero_documento, sezionale, anno_partita)
-          // mantenendo l'ULTIMA occorrenza. Evita "ON CONFLICT cannot affect row a second time".
+          // Deduplica per chiave (cliente_id, numero_documento, sezionale, anno_partita)
           const deduped = new Map<string, Record<string, unknown>>();
           for (const row of rawValidRows) {
             const cid = row.cliente_id as string;
@@ -535,7 +445,7 @@ export const processScadenziarioImport = inngest.createFunction(
           const dedupSkipped = rawValidRows.length - validRows.length;
           const validKeys = new Set(deduped.keys());
 
-          // Pre-fetch righe esistenti per distinguere create vs update nei contatori
+          // Pre-fetch righe esistenti per distinguere create vs update
           const cids = Array.from(new Set(matched));
           const existingKeys = new Set<string>();
           if (cids.length) {
@@ -560,7 +470,6 @@ export const processScadenziarioImport = inngest.createFunction(
           let c = 0;
           let u = 0;
           if (validRows.length) {
-            // 🚀 UPSERT BATCH con diagnostica: ritorna count effettivo PostgREST
             const {
               error: upErr,
               count,
@@ -593,12 +502,10 @@ export const processScadenziarioImport = inngest.createFunction(
                 errore: `Upsert batch chunk ${ci}: ${upErr.message} [status=${status} ${statusText ?? ""}]`,
               });
             } else {
-              // Conta create vs update sulla base del pre-fetch
               for (const key of validKeys) {
                 if (existingKeys.has(key)) u++;
                 else c++;
               }
-              // Avviso diagnostico: se PostgREST non ha scritto nulla nonostante righe valide
               if ((count ?? 0) === 0 && validRows.length > 0) {
                 batchErrs.push({
                   riga: ci,
@@ -633,14 +540,7 @@ export const processScadenziarioImport = inngest.createFunction(
           .eq("id", importazioneId);
       }
 
-
-      // STEP 3-bis — RECONCILIATION SCADENZE FANTASMA
-      // ============================================================
-      // Per ogni cliente presente nel file, chiude le scadenze ancora "Aperta"
-      // nel DB che non hanno ricevuto un aggiornamento in questo import
-      // (ultima_sincronizzazione < timestampInizioImport).
-      // I clienti NON presenti nel file non vengono toccati: l'export può essere parziale.
-      // ============================================================
+      // STEP 3-bis — Reconciliation scadenze fantasma
       if (matchedClientIds.size) {
         const reconc = await step.run("reconciliation-scadenze-fantasma", async () => {
           const cids = Array.from(matchedClientIds);
@@ -651,7 +551,6 @@ export const processScadenziarioImport = inngest.createFunction(
           const dataPagamento = new Date().toISOString();
           for (let i = 0; i < cids.length; i += BATCH_RECONC) {
             const slice = cids.slice(i, i + BATCH_RECONC);
-            // Pre-conta per sapere quante righe verranno effettivamente chiuse
             const { data: toClose } = await supabaseAdmin
               .from("scadenze" as never)
               .select("id, cliente_id")
@@ -680,22 +579,10 @@ export const processScadenziarioImport = inngest.createFunction(
         clientiRiconciliati = reconc.totClienti;
       }
 
-      // STEP 4 — cleanup staging (best-effort, non fa fallire l'import)
-      await step.run("cleanup-staging", async () => {
-        const paths = Array.from(
-          { length: chunkCount },
-          (_, i) => `_staging/${importazioneId}/chunk-${i}.json`,
-        );
-        if (paths.length) await supabaseAdmin.storage.from("import-files").remove(paths);
-        return { removed: paths.length };
-      });
-
       logger.info(
         `Scadenziario completato: lette=${totRead}, clienti abbinati=${matchedClientIds.size}, create=${created}, aggiornate=${updated}, chiuse auto=${chiuseAutomaticamente} (su ${clientiRiconciliati} clienti), saltate=${errorLog.length}`,
       );
 
-
-      // Costruisci log finale strutturato
       const skippedCodes = Array.from(
         new Set(
           errorLog
@@ -717,7 +604,6 @@ export const processScadenziarioImport = inngest.createFunction(
         `Errori upsert batch: ${batchErrors.length}`,
         `Errori riga: ${errorLog.length}`,
       ];
-      // CORREZIONE 2 — batchErrors PRIMA degli errori di riga così non vengono troncati
       const logFinale: Array<{ riga: number; errore: string }> = [
         ...summaryLines.map((m) => ({ riga: 0, errore: m })),
         ...batchErrors,
@@ -739,7 +625,6 @@ export const processScadenziarioImport = inngest.createFunction(
           log_errori: logFinale.slice(0, 500),
         })
         .eq("id", importazioneId);
-
 
       return { created, updated, errors: errorLog.length };
     } catch (err) {

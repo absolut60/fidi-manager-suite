@@ -21,15 +21,12 @@ type StartImportArgs = {
   file: File;
   rowsTotali: number;
   rigeErroreClient?: number;
-  stagedChunks?: Array<{ rows: unknown[] }>;
-  stagedMissingRows?: number[];
 };
 
 export function useBackgroundImport(opts: {
   fonte: Fonte;
   invalidateKeys?: string[][];
   onDone?: (p: BackgroundImportProgress) => void;
-  onChunkUploaded?: (uploaded: number, total: number) => void;
   onUploadComplete?: () => void;
   onError?: (message: string) => void;
 }) {
@@ -39,7 +36,7 @@ export function useBackgroundImport(opts: {
 
   const startMut = useMutation({
     mutationFn: async (args: StartImportArgs) => {
-      const { file, rowsTotali, rigeErroreClient = 0, stagedChunks, stagedMissingRows = [] } = args;
+      const { file, rowsTotali, rigeErroreClient = 0 } = args;
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -57,52 +54,15 @@ export function useBackgroundImport(opts: {
         .single();
       if (impErr) throw impErr;
 
-      let filePath = `${imp.id}/${file.name}`;
+      // Single-shot upload del file Excel intero su Supabase Storage.
+      const filePath = `${imp.id}/${file.name}`;
       try {
-        if (stagedChunks?.length) {
-          const basePath = `_staging/${imp.id}`;
-          for (const [index, chunk] of stagedChunks.entries()) {
-            const body = new Blob([JSON.stringify(chunk.rows)], { type: "application/json" });
-            const { error } = await supabase.storage
-              .from("import-files")
-              .upload(`${basePath}/chunk-${index}.json`, body, {
-                contentType: "application/json",
-                upsert: true,
-              });
-            if (error)
-              throw new Error(
-                `Upload chunk ${index + 1}/${stagedChunks.length} fallito: ${error.message}`,
-              );
-            opts.onChunkUploaded?.(index + 1, stagedChunks.length);
-          }
-          const manifest = new Blob(
-            [
-              JSON.stringify({
-                mode: "client-staged",
-                sourceFileName: file.name,
-                rowsTotali,
-                validRows: stagedChunks.reduce((sum, chunk) => sum + chunk.rows.length, 0),
-                missingRows: stagedMissingRows,
-                chunkCount: stagedChunks.length,
-                createdAt: new Date().toISOString(),
-              }),
-            ],
-            { type: "application/json" },
-          );
-          filePath = `${basePath}/manifest.json`;
-          const { error } = await supabase.storage.from("import-files").upload(filePath, manifest, {
-            contentType: "application/json",
-            upsert: true,
-          });
-          if (error) throw new Error(`Upload manifest fallito: ${error.message}`);
-        } else {
-          const { error } = await supabase.storage.from("import-files").upload(filePath, file, {
-            contentType:
-              file.type || "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            upsert: true,
-          });
-          if (error) throw error;
-        }
+        const { error } = await supabase.storage.from("import-files").upload(filePath, file, {
+          contentType:
+            file.type || "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          upsert: true,
+        });
+        if (error) throw error;
       } catch (upErr) {
         const message = upErr instanceof Error ? upErr.message : String(upErr);
         await supabase
