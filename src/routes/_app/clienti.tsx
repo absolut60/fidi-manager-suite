@@ -81,7 +81,12 @@ function ClientiPage() {
   const navigate = useNavigate();
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
   const isListRoute = currentPath === "/clienti";
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setSearch(searchInput), 400);
+    return () => clearTimeout(t);
+  }, [searchInput]);
   const [statoCliente, setStatoCliente] = useState<"attivi" | "disattivati" | "tutti">("attivi");
   const [storeFiltro, setStoreFiltro] = useState<string>("tutti");
   const [statoFido, setStatoFido] = useState<Set<string>>(new Set());
@@ -227,7 +232,7 @@ function ClientiPage() {
     (scadenziarioFiltro !== "tutti" ? 1 : 0);
 
   function resetFiltri() {
-    setSearch("");
+    setSearchInput(""); setSearch("");
     setStatoCliente("attivi");
     setStoreFiltro("tutti");
     setStatoFido(new Set());
@@ -262,8 +267,8 @@ function ClientiPage() {
           <div className="relative flex-1 min-w-[220px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Cerca ragione sociale, P.IVA, cod. gest., città..."
               className="pl-9"
             />
@@ -403,7 +408,7 @@ function ClientiPage() {
               Nuova scheda cliente
             </Button>
           </DialogTrigger>
-          <SchedaClienteDialog onClose={() => { setOpen(false); setSearch(""); }} />
+          <SchedaClienteDialog onClose={() => { setOpen(false); setSearchInput(""); setSearch(""); }} />
         </Dialog>
       </div>
 
@@ -418,8 +423,8 @@ function ClientiPage() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Cerca cliente..."
               className="pl-9"
             />
