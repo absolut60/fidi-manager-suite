@@ -104,14 +104,14 @@ function RiepilogoSection({ clienteId }: { clienteId: string }) {
     queryFn: async () => {
       const { data: scad, error } = await supabase
         .from("scadenze")
-        .select("importo_scadenza, giorni_ritardo, stato_contabile")
+        .select("importo_scadenza, giorni_ritardo, stato_contabile, tempi_scadenza")
         .eq("cliente_id", clienteId);
       if (error) throw error;
-      const rows = (scad ?? []) as Array<{ importo_scadenza: number | null; giorni_ritardo: number | null; stato_contabile: string | null }>;
-      const aperte = rows.filter((s) => s.stato_contabile === "Aperta");
-      const scadute = aperte.filter((s) => Number(s.giorni_ritardo ?? 0) > 0);
+      const rows = (scad ?? []) as Array<{ importo_scadenza: number | null; giorni_ritardo: number | null; stato_contabile: string | null; tempi_scadenza: string | null }>;
+      const scadute = rows.filter((s) => classificaScadenza(s) === "scaduto");
+      const aScadere = rows.filter((s) => classificaScadenza(s) === "a_scadere");
       const sumImp = (arr: typeof rows) => arr.reduce((acc, r) => acc + Number(r.importo_scadenza ?? 0), 0);
-      const maxGg = aperte.reduce((m, r) => Math.max(m, Number(r.giorni_ritardo ?? 0)), 0);
+      const maxGg = [...scadute, ...aScadere].reduce((m, r) => Math.max(m, Number(r.giorni_ritardo ?? 0)), 0);
       const fascia = (min: number, max: number | null) =>
         sumImp(scadute.filter((s) => {
           const g = Number(s.giorni_ritardo ?? 0);
@@ -125,8 +125,9 @@ function RiepilogoSection({ clienteId }: { clienteId: string }) {
         .limit(1)
         .maybeSingle();
       return {
-        num_scadenze_aperte: aperte.length,
+        num_scadenze_aperte: scadute.length + aScadere.length,
         totale_scaduto: sumImp(scadute),
+        totale_a_scadere: sumImp(aScadere),
         max_giorni_ritardo: maxGg,
         scaduto_0_30: fascia(1, 30),
         scaduto_30_60: fascia(31, 60),
