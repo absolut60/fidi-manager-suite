@@ -37,6 +37,25 @@ async function setImportazioneError(importazioneId: string, message: string) {
     .eq("id", importazioneId);
 }
 
+async function downloadJsonFromStorage<T>(filePath: string): Promise<T> {
+  const { data: file, error } = await supabaseAdmin.storage.from("import-files").download(filePath);
+  if (error || !file) throw new Error(`Download JSON fallito: ${error?.message ?? "no data"}`);
+  return JSON.parse(await file.text()) as T;
+}
+
+type StagedScadenziarioManifest = {
+  kind: "scadenziario-staging-v1";
+  originalFilePath: string;
+  totRead: number;
+  chunkCount: number;
+  chunks: Array<{ chunkIndex: number; chunkPath: string; rowsCount: number; missingCount: number }>;
+};
+
+type StagedScadenziarioChunk = {
+  rows: ScadRow[];
+  missing: number[];
+};
+
 async function sendInngestEvents(events: object[]): Promise<void> {
   const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
   const INNGEST_API_KEY = process.env.INNGEST_API_KEY;
