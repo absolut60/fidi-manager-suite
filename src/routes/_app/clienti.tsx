@@ -674,6 +674,9 @@ function ClientiPage() {
           {TotaleRischioSelect}
           {AScadereSelect}
         </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {StatoAttivitaSelect}
+        </div>
         <div className="flex flex-col lg:flex-row gap-3 lg:items-center">
           <div className="flex-1">{FidoRangeSlider}</div>
           <div className="flex items-center gap-3">
