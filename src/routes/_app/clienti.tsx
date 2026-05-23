@@ -393,6 +393,7 @@ function ClientiPage() {
   const attiviCount =
     (search ? 1 : 0) +
     (statoCliente !== "attivi" ? 1 : 0) +
+    (statoAttivita !== "attivi" ? 1 : 0) +
     (storeFiltro !== "tutti" ? 1 : 0) +
     (statoFido.size > 0 ? 1 : 0) +
     (semaforoFiltro !== "tutti" ? 1 : 0) +
