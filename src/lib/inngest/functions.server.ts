@@ -774,7 +774,7 @@ export const processScadenziarioChunk = inngest.createFunction(
       };
     });
 
-    // STEP D: incremento atomico contatori + raccogli cid abbinati
+    // STEP D: incremento atomico contatori + aggrega codici mancanti
     const progress = await step.run("increment-counters", async () => {
       const totalErrs = result.rowErrs.length + result.batchErrs.length;
       const { data: rpc, error: rpcErr } = await (
@@ -791,21 +791,34 @@ export const processScadenziarioChunk = inngest.createFunction(
         _create: result.created,
         _update: result.updated,
         _error: totalErrs,
+        _skipped: result.skipped,
       });
       if (rpcErr) throw new Error(`increment_importazione_counters: ${rpcErr.message}`);
 
-      // Append errori al log (best-effort)
-      if (result.rowErrs.length || result.batchErrs.length) {
+      // Append errori al log (best-effort) e aggrega codici mancanti unici (max 200)
+      if (result.rowErrs.length || result.batchErrs.length || result.skippedCodes.length) {
         const { data: cur } = await supabaseAdmin
           .from("importazioni")
-          .select("log_errori")
+          .select("log_errori, codici_mancanti")
           .eq("id", importazioneId)
           .single();
-        const existing = (cur?.log_errori as Array<{ riga: number; errore: string }> | null) ?? [];
-        const next = [...existing, ...result.batchErrs, ...result.rowErrs].slice(0, 500);
+        const updates: Record<string, unknown> = {};
+        if (result.rowErrs.length || result.batchErrs.length) {
+          const existing =
+            (cur?.log_errori as Array<{ riga: number; errore: string }> | null) ?? [];
+          updates.log_errori = [...existing, ...result.batchErrs, ...result.rowErrs].slice(0, 500);
+        }
+        if (result.skippedCodes.length) {
+          const existingCodes = (cur?.codici_mancanti as string[] | null) ?? [];
+          const merged = Array.from(new Set([...existingCodes, ...result.skippedCodes])).slice(
+            0,
+            200,
+          );
+          updates.codici_mancanti = merged;
+        }
         await supabaseAdmin
           .from("importazioni")
-          .update({ log_errori: next } as never)
+          .update(updates as never)
           .eq("id", importazioneId);
       }
 
