@@ -129,7 +129,7 @@ export function ClienteStoricoFidoTab({ clienteId }: { clienteId: string }) {
                     </p>
                     {r.motivazione && <p className="text-sm text-muted-foreground">{r.motivazione}</p>}
                   </div>
-                  {r.stato === "bozza" && (
+                  {STATI_MODIFICABILI.includes(r.stato as StatoRichiesta) && (
                     <div className="flex gap-1.5 shrink-0">
                       <Button size="sm" variant="outline" className="gap-1" onClick={() => setEditing(r)}>
                         <Pencil className="size-3.5" /> Modifica
