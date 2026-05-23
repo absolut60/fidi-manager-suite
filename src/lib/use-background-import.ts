@@ -72,6 +72,7 @@ export function useBackgroundImport(opts: {
               throw new Error(
                 `Upload chunk ${index + 1}/${stagedChunks.length} fallito: ${error.message}`,
               );
+            opts.onChunkUploaded?.(index + 1, stagedChunks.length);
           }
           const manifest = new Blob(
             [
