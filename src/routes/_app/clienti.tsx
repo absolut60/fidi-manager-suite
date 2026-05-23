@@ -142,6 +142,7 @@ function ClientiPage() {
   const [soloAssicurati, setSoloAssicurati] = useState(false);
   const [scadenziarioFiltro, setScadenziarioFiltro] = useState<string>("tutti");
   const [totaleRischioFiltro, setTotaleRischioFiltro] = useState<string>("tutti");
+  const [fatturatoFiltro, setFatturatoFiltro] = useState<string>("tutti");
   const [aScadereFiltro, setAScadereFiltro] = useState<string>("tutti");
   const [open, setOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -275,7 +276,55 @@ function ClientiPage() {
     staleTime: 60_000,
   });
 
-  // ID set per filtro semaforo (server-side via .in)
+  // ID set per filtro fatturato anno corrente
+  const annoCorrenteClienti = useMemo(() => new Date().getFullYear(), []);
+  const { data: fatturatoIds } = useQuery({
+    queryKey: ["clienti-fatturato-ids", fatturatoFiltro, annoCorrenteClienti],
+    queryFn: async () => {
+      if (fatturatoFiltro === "tutti") return null;
+      // Carica tutto il fatturato dell'anno corrente
+      const { data, error } = await supabase
+        .from("fatturato_clienti")
+        .select("cliente_id, fatturato")
+        .eq("anno", annoCorrenteClienti);
+      if (error) throw error;
+      const rows = (data ?? []) as Array<{ cliente_id: string | null; fatturato: number | null }>;
+      const map = new Map<string, number>();
+      for (const r of rows) {
+        if (r.cliente_id) map.set(r.cliente_id, Number(r.fatturato) || 0);
+      }
+      // Per "nessuno" servono TUTTI gli id clienti escludendo quelli che hanno fatturato
+      if (fatturatoFiltro === "nessuno") {
+        const all: string[] = [];
+        let off = 0;
+        const size = 1000;
+        while (true) {
+          const { data: cli, error: e2 } = await supabase
+            .from("clienti")
+            .select("id")
+            .range(off, off + size - 1);
+          if (e2) throw e2;
+          const batch = (cli ?? []) as Array<{ id: string }>;
+          for (const c of batch) if (!map.has(c.id)) all.push(c.id);
+          if (batch.length < size) break;
+          off += size;
+        }
+        return all;
+      }
+      const inRange = (v: number) => {
+        if (fatturatoFiltro === "0_10k") return v > 0 && v <= 10000;
+        if (fatturatoFiltro === "10k_50k") return v > 10000 && v <= 50000;
+        if (fatturatoFiltro === "50k_100k") return v > 50000 && v <= 100000;
+        if (fatturatoFiltro === "oltre_100k") return v > 100000;
+        return false;
+      };
+      const ids: string[] = [];
+      for (const [id, v] of map) if (inRange(v)) ids.push(id);
+      return ids;
+    },
+    enabled: fatturatoFiltro !== "tutti",
+    staleTime: 60_000,
+  });
   const semaforoIds = useMemo<string[] | null>(() => {
     if (semaforoFiltro === "tutti" || !classifList) return null;
     return classifList.filter((c: any) => calcSemaforo(c) === semaforoFiltro).map((c: any) => c.id);
