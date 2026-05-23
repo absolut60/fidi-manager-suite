@@ -870,11 +870,11 @@ function ClientiPage() {
                   const residuoNum = residuo == null ? null : Number(residuo);
                   const sc = scadenziarioMap?.get(c.id);
                   return (
-                  <TableRow
-                    key={c.id}
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => navigate({ to: "/clienti/$clienteId", params: { clienteId: c.id } })}
-                  >
+                   <TableRow
+                     key={c.id}
+                     className={`cursor-pointer hover:bg-muted/50 ${c.cliente_attivo === false ? "bg-muted/40 text-muted-foreground" : ""}`}
+                     onClick={() => navigate({ to: "/clienti/$clienteId", params: { clienteId: c.id } })}
+                   >
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <Checkbox
                         checked={selectedIds.has(c.id)}
