@@ -540,6 +540,17 @@ function ClientiPage() {
     </Select>
   );
 
+  const StatoAttivitaSelect = (
+    <Select value={statoAttivita} onValueChange={(v) => setStatoAttivita(v as typeof statoAttivita)}>
+      <SelectTrigger className="w-full"><SelectValue placeholder="Stato attività" /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="tutti">Attività: tutti</SelectItem>
+        <SelectItem value="attivi">Solo attivi</SelectItem>
+        <SelectItem value="non_attivi">Solo non attivi</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+
   const ScadenziarioSelect = (
     <Select value={scadenziarioFiltro} onValueChange={setScadenziarioFiltro}>
       <SelectTrigger className="w-full"><SelectValue placeholder="Scadenziario" /></SelectTrigger>
