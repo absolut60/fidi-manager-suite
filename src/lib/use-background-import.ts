@@ -94,8 +94,11 @@ export function useBackgroundImport(opts: {
         for (let i = 0; i < args.scadenziarioStaging.rows.length; i += chunkSize) {
           const chunkIndex = Math.floor(i / chunkSize);
           const chunkRows = args.scadenziarioStaging.rows.slice(i, i + chunkSize);
-          const chunkStart = i + 1;
-          const chunkEnd = i + chunkRows.length;
+          const chunkIndexes = chunkRows
+            .map((row) => Number(row.idx))
+            .filter((idx) => Number.isFinite(idx));
+          const chunkStart = Math.min(...chunkIndexes);
+          const chunkEnd = Math.max(...chunkIndexes);
           const chunkMissing = args.scadenziarioStaging.missing.filter(
             (row) => row >= chunkStart && row <= chunkEnd,
           );
