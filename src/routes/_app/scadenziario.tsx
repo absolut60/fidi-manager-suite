@@ -132,6 +132,30 @@ function ScadenziarioPage() {
     },
   });
 
+  const annoCorrente = useMemo(() => new Date().getFullYear(), []);
+  const annoPrec = annoCorrente - 1;
+
+  const { data: fatturatoMap } = useQuery({
+    queryKey: ["scadenziario-fatturato-clienti", annoCorrente, annoPrec],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("fatturato_clienti")
+        .select("cliente_id, anno, fatturato")
+        .in("anno", [annoCorrente, annoPrec]);
+      if (error) throw error;
+      const m = new Map<string, { cur: number; prev: number }>();
+      for (const r of (data ?? []) as Array<{ cliente_id: string | null; anno: number | null; fatturato: number | null }>) {
+        if (!r.cliente_id) continue;
+        const entry = m.get(r.cliente_id) ?? { cur: 0, prev: 0 };
+        if (Number(r.anno) === annoCorrente) entry.cur = Number(r.fatturato) || 0;
+        else if (Number(r.anno) === annoPrec) entry.prev = Number(r.fatturato) || 0;
+        m.set(r.cliente_id, entry);
+      }
+      return m;
+    },
+    staleTime: 60_000,
+  });
+
   const clientiMap = useMemo(() => {
     const m = new Map<string, Cliente>();
     (clienti ?? []).forEach((c) => m.set(c.id, c));
@@ -314,6 +338,8 @@ function ScadenziarioPage() {
                   <TableHead>Cod. Gestionale</TableHead>
                   <TableHead>Store</TableHead>
                   <TableHead>Stato blocco</TableHead>
+                  <TableHead className="text-right">Fatt. {annoCorrente}</TableHead>
+                  <TableHead className="text-right">Fatt. {annoPrec}</TableHead>
                   <TableHead className="text-right">N. Fatt. scadute</TableHead>
                   <TableHead className="text-right">Totale scaduto</TableHead>
                   <TableHead className="text-right">N. Fatt. a scadere</TableHead>
@@ -325,12 +351,15 @@ function ScadenziarioPage() {
               <TableBody>
                 {rows.map((r) => {
                   const storeName = stores?.find((s) => s.id === r.cliente.store_id)?.nome ?? "—";
+                  const fatt = fatturatoMap?.get(r.cliente.id);
                   return (
                     <TableRow key={r.cliente.id} className="cursor-pointer" onClick={() => apriCliente(r.cliente.id)}>
                       <TableCell className="font-medium">{r.cliente.ragione_sociale}</TableCell>
                       <TableCell className="font-mono text-xs">{r.cliente.codice_gestionale ?? "—"}</TableCell>
                       <TableCell className="text-xs">{storeName}</TableCell>
                       <TableCell>{blockBadge(r.cliente)}</TableCell>
+                      <TableCell className="text-right tabular-nums">{fatt && fatt.cur > 0 ? fmtEuro(fatt.cur) : "—"}</TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground">{fatt && fatt.prev > 0 ? fmtEuro(fatt.prev) : "—"}</TableCell>
                       <TableCell className="text-right tabular-nums">{r.nScadute || "—"}</TableCell>
                       <TableCell className="text-right tabular-nums font-semibold text-destructive">
                         {r.totScad > 0 ? fmtEuro(r.totScad) : "—"}

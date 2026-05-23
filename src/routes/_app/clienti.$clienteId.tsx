@@ -25,6 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ClienteCantieriTab } from "@/components/cliente-cantieri-tab";
 import { ClienteStoricoFidoTab } from "@/components/cliente-storico-fido-tab";
 import { ClienteInsolutiTab } from "@/components/cliente-insoluti-tab";
+import { ClienteFatturato } from "@/components/cliente-fatturato";
 import { formatEuro } from "@/lib/fidi";
 import { classificaScadenza } from "@/lib/scadenze";
 import { Ban, Calendar, Clock, Bell, CheckCircle2, Shield, ShieldOff } from "lucide-react";
@@ -787,6 +788,8 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
         </div>
       </section>
 
+      {/* Sezione Fatturato */}
+      <ClienteFatturato clienteId={clienteId} />
 
       {/* Sezione 3 — Riepilogo insoluti */}
       <section className="space-y-3">

@@ -142,6 +142,7 @@ function ClientiPage() {
   const [soloAssicurati, setSoloAssicurati] = useState(false);
   const [scadenziarioFiltro, setScadenziarioFiltro] = useState<string>("tutti");
   const [totaleRischioFiltro, setTotaleRischioFiltro] = useState<string>("tutti");
+  const [fatturatoFiltro, setFatturatoFiltro] = useState<string>("tutti");
   const [aScadereFiltro, setAScadereFiltro] = useState<string>("tutti");
   const [open, setOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -275,7 +276,55 @@ function ClientiPage() {
     staleTime: 60_000,
   });
 
-  // ID set per filtro semaforo (server-side via .in)
+  // ID set per filtro fatturato anno corrente
+  const annoCorrenteClienti = useMemo(() => new Date().getFullYear(), []);
+  const { data: fatturatoIds } = useQuery({
+    queryKey: ["clienti-fatturato-ids", fatturatoFiltro, annoCorrenteClienti],
+    queryFn: async () => {
+      if (fatturatoFiltro === "tutti") return null;
+      // Carica tutto il fatturato dell'anno corrente
+      const { data, error } = await supabase
+        .from("fatturato_clienti")
+        .select("cliente_id, fatturato")
+        .eq("anno", annoCorrenteClienti);
+      if (error) throw error;
+      const rows = (data ?? []) as Array<{ cliente_id: string | null; fatturato: number | null }>;
+      const map = new Map<string, number>();
+      for (const r of rows) {
+        if (r.cliente_id) map.set(r.cliente_id, Number(r.fatturato) || 0);
+      }
+      // Per "nessuno" servono TUTTI gli id clienti escludendo quelli che hanno fatturato
+      if (fatturatoFiltro === "nessuno") {
+        const all: string[] = [];
+        let off = 0;
+        const size = 1000;
+        while (true) {
+          const { data: cli, error: e2 } = await supabase
+            .from("clienti")
+            .select("id")
+            .range(off, off + size - 1);
+          if (e2) throw e2;
+          const batch = (cli ?? []) as Array<{ id: string }>;
+          for (const c of batch) if (!map.has(c.id)) all.push(c.id);
+          if (batch.length < size) break;
+          off += size;
+        }
+        return all;
+      }
+      const inRange = (v: number) => {
+        if (fatturatoFiltro === "0_10k") return v > 0 && v <= 10000;
+        if (fatturatoFiltro === "10k_50k") return v > 10000 && v <= 50000;
+        if (fatturatoFiltro === "50k_100k") return v > 50000 && v <= 100000;
+        if (fatturatoFiltro === "oltre_100k") return v > 100000;
+        return false;
+      };
+      const ids: string[] = [];
+      for (const [id, v] of map) if (inRange(v)) ids.push(id);
+      return ids;
+    },
+    enabled: fatturatoFiltro !== "tutti",
+    staleTime: 60_000,
+  });
   const semaforoIds = useMemo<string[] | null>(() => {
     if (semaforoFiltro === "tutti" || !classifList) return null;
     return classifList.filter((c: any) => calcSemaforo(c) === semaforoFiltro).map((c: any) => c.id);
@@ -303,15 +352,16 @@ function ClientiPage() {
     if (statoFidoIds) sources.push(statoFidoIds);
     if (scadenziarioIdsFilter?.mode === "include") sources.push(scadenziarioIdsFilter.ids);
     if (aScadereIds) sources.push(aScadereIds);
+    if (fatturatoIds) sources.push(fatturatoIds);
     if (sources.length === 0) return null;
     const sets = sources.map((s) => new Set(s));
     return sources[0].filter((id) => sets.every((s) => s.has(id)));
-  }, [semaforoIds, statoFidoIds, scadenziarioIdsFilter, aScadereIds]);
+  }, [semaforoIds, statoFidoIds, scadenziarioIdsFilter, aScadereIds, fatturatoIds]);
 
   // Reset pagina ogni volta che cambia un filtro
   useEffect(() => {
     setPage(1);
-  }, [search, statoCliente, statoAttivita, storeFiltro, statoFido, semaforoFiltro, soloBloccati, privacyFiltro, soloAssicurati, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fidoFascia, sliderCommitted, pageSize]);
+  }, [search, statoCliente, statoAttivita, storeFiltro, statoFido, semaforoFiltro, soloBloccati, privacyFiltro, soloAssicurati, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, pageSize]);
 
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -372,7 +422,7 @@ function ClientiPage() {
   const scadReady = scadenziarioFiltro === "tutti" || !!scadenziarioMap;
 
   const { data: clientiResp, isLoading } = useQuery({
-    queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, soloBloccati, privacyFiltro, soloAssicurati, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fidoFascia, sliderCommitted, page, pageSize }],
+    queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, soloBloccati, privacyFiltro, soloAssicurati, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize }],
     queryFn: async () => {
       const built = buildBaseQuery("*, stores(nome, codice)", "exact");
       if ("empty" in built) return { rows: [], count: 0 };
@@ -422,6 +472,7 @@ function ClientiPage() {
     (scadenziarioFiltro !== "tutti" ? 1 : 0) +
     (totaleRischioFiltro !== "tutti" ? 1 : 0) +
     (aScadereFiltro !== "tutti" ? 1 : 0) +
+    (fatturatoFiltro !== "tutti" ? 1 : 0) +
     (fidoFascia !== "tutti" ? 1 : 0) +
     ((sliderCommitted[0] !== FIDO_RANGE_MIN || sliderCommitted[1] !== FIDO_RANGE_MAX) ? 1 : 0);
 
@@ -438,6 +489,7 @@ function ClientiPage() {
     setScadenziarioFiltro("tutti");
     setTotaleRischioFiltro("tutti");
     setAScadereFiltro("tutti");
+    setFatturatoFiltro("tutti");
     setFidoFascia("tutti");
     setSliderDisplay([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
     setSliderCommitted([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
@@ -607,6 +659,20 @@ function ClientiPage() {
     </Select>
   );
 
+  const FatturatoSelect = (
+    <Select value={fatturatoFiltro} onValueChange={setFatturatoFiltro}>
+      <SelectTrigger className="w-full"><SelectValue placeholder="Fatturato anno corrente" /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="tutti">Fatturato {annoCorrenteClienti}: tutti</SelectItem>
+        <SelectItem value="nessuno">Nessun fatturato (0 €)</SelectItem>
+        <SelectItem value="0_10k">Fino a 10.000 €</SelectItem>
+        <SelectItem value="10k_50k">10.001 – 50.000 €</SelectItem>
+        <SelectItem value="50k_100k">50.001 – 100.000 €</SelectItem>
+        <SelectItem value="oltre_100k">Oltre 100.000 €</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+
   const FidoRangeSlider = (
     <div className="space-y-2 px-1 py-2 border rounded-md">
       <div className="flex items-center justify-between text-xs font-medium">
@@ -687,9 +753,11 @@ function ClientiPage() {
           {FidoFasciaSelect}
           {TotaleRischioSelect}
           {AScadereSelect}
+          {FatturatoSelect}
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {StatoAttivitaSelect}
+          {FatturatoSelect}
         </div>
         <div className="flex flex-col lg:flex-row gap-3 lg:items-center">
           <div className="flex-1">{FidoRangeSlider}</div>

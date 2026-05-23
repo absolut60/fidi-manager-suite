@@ -1781,6 +1781,46 @@ export type Database = {
           },
         ]
       }
+      fatturato_annuale_globale: {
+        Row: {
+          anno: number | null
+          fatturato_totale: number | null
+          num_clienti: number | null
+          num_fatture_totali: number | null
+        }
+        Relationships: []
+      }
+      fatturato_clienti: {
+        Row: {
+          anno: number | null
+          cliente_id: string | null
+          fatturato: number | null
+          num_fatture: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scadenze_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scadenze_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti_con_rischio"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scadenze_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+        ]
+      }
       riepilogo_insoluti: {
         Row: {
           assicurazione_attiva: boolean | null

@@ -14,6 +14,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { DashboardReminders } from "@/components/dashboard-reminders";
+import { DashboardFatturato } from "@/components/dashboard-fatturato";
 
 export const Route = createFileRoute("/_app/dashboard")({
   component: DashboardPage,
@@ -78,6 +79,8 @@ function DashboardPage() {
           <MetricCard key={m.label} metric={m} loading={loading} />
         ))}
       </div>
+
+      <DashboardFatturato />
 
       <DashboardReminders />
 
