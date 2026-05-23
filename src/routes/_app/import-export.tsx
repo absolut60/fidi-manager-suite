@@ -83,6 +83,37 @@ function BgProgressBlock({
           </>
         ) : null}
       </div>
+      {progress.codici_mancanti?.length ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-7 text-xs"
+          onClick={() => {
+            const codes = progress.codici_mancanti ?? [];
+            const csv =
+              "codice_gestionale\n" +
+              codes
+                .map((c) => `"${String(c).replace(/"/g, '""')}"`)
+                .join("\n");
+            const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `codici-mancanti-${new Date()
+              .toISOString()
+              .slice(0, 10)}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          }}
+        >
+          <Download className="size-3 mr-1" />
+          Scarica codici mancanti ({progress.codici_mancanti.length}
+          {progress.codici_mancanti.length >= 200 ? "+" : ""})
+        </Button>
+      ) : null}
     </div>
   );
 }
