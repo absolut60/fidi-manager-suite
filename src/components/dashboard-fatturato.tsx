@@ -50,18 +50,18 @@ export function DashboardFatturato() {
   return (
     <section className="space-y-3">
       <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-2">
-        <Receipt className="size-4" /> Fatturato
+        <Receipt className="size-4" /> Fatturato (IVA escl.)
       </h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="p-5">
-          <p className="text-xs font-medium text-muted-foreground uppercase">Fatturato {annoCorrente}</p>
+          <p className="text-xs font-medium text-muted-foreground uppercase">Fatturato {annoCorrente} (IVA escl.)</p>
           {isLoading ? <Skeleton className="h-8 w-32 mt-1" /> : (
             <p className="text-2xl font-bold mt-1 tabular-nums">{fmtEuro(fatturatoCur)}</p>
           )}
           <p className="text-xs text-muted-foreground mt-1">{cur?.fatture ?? 0} fatture</p>
         </Card>
         <Card className="p-5">
-          <p className="text-xs font-medium text-muted-foreground uppercase">Fatturato {annoPrec}</p>
+          <p className="text-xs font-medium text-muted-foreground uppercase">Fatturato {annoPrec} (IVA escl.)</p>
           {isLoading ? <Skeleton className="h-8 w-32 mt-1" /> : (
             <p className="text-2xl font-bold mt-1 tabular-nums">{fmtEuro(fatturatoPrev)}</p>
           )}
