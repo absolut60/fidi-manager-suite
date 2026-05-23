@@ -359,7 +359,21 @@ const SCAD_OFFICIAL_MAP: Record<string, string> = {
   "data pagamento": "data_pagamento",
   "importo originario effetto": "importo_originario",
   "importo scadenza netto prev": "importo_netto_prev",
+  "tempi scadenza": "tempi_scadenza",
+  // Chiave sintetica (vedi normalizeOfficialHeader) per la colonna "_Tempi Scadenza"
+  "__tempi scadenza": "tempi_scadenza_key",
 };
+
+// Normalizza l'header del foglio SCADENZIARIO ufficiale.
+// Le colonne "Tempi Scadenza" e "_Tempi Scadenza" collidono dopo normalize()
+// (gli underscore diventano spazi). Distinguiamo guardando il valore raw:
+// se inizia con "_" usiamo la chiave sintetica "__tempi scadenza".
+export function normalizeOfficialHeader(raw: unknown): string {
+  const s = String(raw ?? "");
+  const n = normalize(s);
+  if (n === "tempi scadenza" && s.trim().startsWith("_")) return "__tempi scadenza";
+  return n;
+}
 
 export function findSheetByName(wb: XLSX.WorkBook, name: string): XLSX.WorkSheet | null {
   const target = name.toLowerCase().trim();
