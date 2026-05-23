@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as XLSX from "xlsx";
 import { z } from "zod";
@@ -1017,6 +1017,133 @@ function parseOfficialScadenziarioSheet(sheet: XLSX.WorkSheet): {
   return { rows, missing, totRead };
 }
 
+type ScadPhase = "reading" | "ready" | "uploading" | "processing" | "done" | "done-warn" | "error";
+
+function formatDuration(ms: number): string {
+  if (ms < 0 || !Number.isFinite(ms)) return "—";
+  const totSec = Math.floor(ms / 1000);
+  const m = Math.floor(totSec / 60);
+  const s = totSec % 60;
+  if (m === 0) return `${s}s`;
+  return `${m}m ${String(s).padStart(2, "0")}s`;
+}
+
+function ScadenziarioProgressBlock({
+  phase,
+  pct,
+  righeElaborate,
+  righeTotali,
+  chunkCurrent,
+  chunkTotal,
+  elapsedMs,
+  remainingMs,
+  errorMsg,
+  result,
+  onRetry,
+}: {
+  phase: ScadPhase;
+  pct: number;
+  righeElaborate: number;
+  righeTotali: number;
+  chunkCurrent: number;
+  chunkTotal: number;
+  elapsedMs: number;
+  remainingMs: number | null;
+  errorMsg?: string | null;
+  result?: {
+    create: number;
+    aggiornate: number;
+    errori: number;
+    chiuse: number;
+  } | null;
+  onRetry?: () => void;
+}) {
+  const barColor =
+    phase === "error"
+      ? "bg-destructive"
+      : phase === "done-warn"
+        ? "bg-yellow-500"
+        : phase === "done"
+          ? "bg-green-500"
+          : "bg-primary";
+
+  const phaseText: Record<ScadPhase, string> = {
+    reading: "Lettura file Excel in corso…",
+    ready:
+      righeTotali > 0
+        ? `Trovate ${righeTotali.toLocaleString("it-IT")} righe da elaborare`
+        : "File pronto",
+    uploading:
+      chunkTotal > 0
+        ? `Preparazione dati… chunk ${chunkCurrent} di ${chunkTotal}`
+        : "Preparazione dati…",
+    processing: "Importazione in corso…",
+    done: "Importazione completata!",
+    "done-warn": "Completata con errori — vedi dettagli",
+    error: errorMsg ?? "Errore durante l'importazione",
+  };
+
+  return (
+    <div className="space-y-3 mb-4 p-4 rounded-lg border bg-muted/30">
+      <div className="flex items-baseline justify-between">
+        <div className="text-3xl font-bold tabular-nums">{Math.round(pct)}%</div>
+        <div className="text-xs text-muted-foreground tabular-nums">
+          Tempo: {formatDuration(elapsedMs)}
+          {remainingMs != null && phase === "processing" ? (
+            <> · Rimanente: ~{formatDuration(remainingMs)}</>
+          ) : null}
+        </div>
+      </div>
+      <div className="h-3 w-full bg-muted rounded-full overflow-hidden">
+        <div
+          className={`h-full ${barColor} transition-all duration-500 ease-out`}
+          style={{ width: `${Math.max(0, Math.min(100, pct))}%` }}
+        />
+      </div>
+      <div className="flex items-center gap-2 text-sm font-medium">
+        {phase === "done" ? (
+          <CheckCircle2 className="size-4 text-green-600" />
+        ) : phase === "error" ? (
+          <AlertCircle className="size-4 text-destructive" />
+        ) : phase === "done-warn" ? (
+          <AlertCircle className="size-4 text-yellow-600" />
+        ) : (
+          <Loader2 className="size-4 animate-spin text-muted-foreground" />
+        )}
+        <span>{phaseText[phase]}</span>
+      </div>
+      {phase === "processing" && righeTotali > 0 ? (
+        <div className="text-xs text-muted-foreground tabular-nums">
+          {righeElaborate.toLocaleString("it-IT")} / {righeTotali.toLocaleString("it-IT")} righe
+          elaborate
+        </div>
+      ) : null}
+      {(phase === "done" || phase === "done-warn") && result ? (
+        <div className="text-xs text-muted-foreground">
+          Create: <span className="font-medium text-foreground">{result.create.toLocaleString("it-IT")}</span>
+          {" · "}Aggiornate:{" "}
+          <span className="font-medium text-foreground">{result.aggiornate.toLocaleString("it-IT")}</span>
+          {" · "}Saltate:{" "}
+          <span className="font-medium text-foreground">{result.errori.toLocaleString("it-IT")}</span>
+          {result.chiuse > 0 ? (
+            <>
+              {" · "}Chiuse automaticamente:{" "}
+              <span className="font-medium text-foreground">{result.chiuse.toLocaleString("it-IT")}</span>
+            </>
+          ) : null}
+          {" · "}Tempo totale: <span className="font-medium text-foreground">{formatDuration(elapsedMs)}</span>
+        </div>
+      ) : null}
+      {phase === "error" && onRetry ? (
+        <Button size="sm" variant="outline" onClick={onRetry} className="gap-1.5">
+          <Loader2 className="size-3.5" /> Riprova
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
+
 function ScadenziarioImportCard() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -1028,15 +1155,44 @@ function ScadenziarioImportCard() {
   } | null>(null);
   const [parsing, setParsing] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+
+  // Progress tracking (3 phases)
+  const [chunkCurrent, setChunkCurrent] = useState(0);
+  const [chunkTotal, setChunkTotal] = useState(0);
+  const [startedAt, setStartedAt] = useState<number | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [uploadDone, setUploadDone] = useState(false);
+
   const bg = useBackgroundImport({
     fonte: "scadenziario",
     invalidateKeys: [["scadenze"], ["clienti"]],
+    onChunkUploaded: (uploaded, total) => {
+      setChunkCurrent(uploaded);
+      setChunkTotal(total);
+    },
+    onUploadComplete: () => setUploadDone(true),
+    onError: (msg) => setErrorMsg(msg),
   });
+
+  // tick every second while active for elapsed/remaining time
+  const isActive =
+    parsing || bg.isPending || bg.inProgress || (!!bg.done && !!bg.progress);
+  useEffect(() => {
+    if (!isActive) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [isActive]);
 
   function reset() {
     setFileName(null);
     setFile(null);
     setParsed(null);
+    setChunkCurrent(0);
+    setChunkTotal(0);
+    setStartedAt(null);
+    setErrorMsg(null);
+    setUploadDone(false);
     bg.reset();
     if (fileRef.current) fileRef.current.value = "";
   }
@@ -1044,6 +1200,9 @@ function ScadenziarioImportCard() {
   async function handleFile(f: File) {
     setParsing(true);
     setParsed(null);
+    setErrorMsg(null);
+    setUploadDone(false);
+    setStartedAt(Date.now());
     bg.reset();
     try {
       const buf = await f.arrayBuffer();
@@ -1064,6 +1223,7 @@ function ScadenziarioImportCard() {
       setFileName(null);
       setFile(null);
       setParsed(null);
+      setStartedAt(null);
       if (fileRef.current) fileRef.current.value = "";
       toast.error(e instanceof Error ? e.message : "Errore lettura file");
     } finally {
@@ -1077,6 +1237,11 @@ function ScadenziarioImportCard() {
     const stagedChunks = [] as Array<{ rows: ScadRow[] }>;
     for (let i = 0; i < parsed.rows.length; i += chunkSize)
       stagedChunks.push({ rows: parsed.rows.slice(i, i + chunkSize) });
+    setChunkCurrent(0);
+    setChunkTotal(stagedChunks.length);
+    setUploadDone(false);
+    setErrorMsg(null);
+    setStartedAt(Date.now());
     bg.start({
       file,
       rowsTotali: parsed.totRead,
@@ -1085,6 +1250,59 @@ function ScadenziarioImportCard() {
       stagedMissingRows: parsed.missing,
     });
   }
+
+  // Phase + pct derivation
+  const totRead = parsed?.totRead ?? bg.progress?.righe_totali ?? 0;
+  const righeElaborate = bg.progress?.righe_elaborate ?? 0;
+  const righeTotali = bg.progress?.righe_totali ?? totRead;
+
+  let phase: ScadPhase;
+  let pct = 0;
+  if (errorMsg) {
+    phase = "error";
+    pct = 0;
+  } else if (parsing) {
+    phase = "reading";
+    pct = 10;
+  } else if (bg.done && bg.progress) {
+    const stato = bg.progress.stato;
+    if (stato === "completata_con_errori" || (bg.progress.righe_errore ?? 0) > 0) {
+      phase = "done-warn";
+    } else {
+      phase = "done";
+    }
+    pct = 100;
+  } else if (bg.inProgress && uploadDone) {
+    phase = "processing";
+    pct =
+      righeTotali > 0
+        ? 30 + Math.min(70, (righeElaborate / righeTotali) * 70)
+        : 30;
+  } else if (bg.isPending || (bg.inProgress && !uploadDone)) {
+    phase = "uploading";
+    pct =
+      chunkTotal > 0 ? 15 + Math.min(15, (chunkCurrent / chunkTotal) * 15) : 15;
+  } else if (parsed) {
+    phase = "ready";
+    pct = 15;
+  } else {
+    phase = "reading";
+    pct = 0;
+  }
+
+  const elapsedMs = startedAt ? now - startedAt : 0;
+  let remainingMs: number | null = null;
+  if (phase === "processing" && righeElaborate > 0 && righeTotali > 0 && startedAt) {
+    const procStart = startedAt; // approximation
+    const elapsed = now - procStart;
+    const totalEstimate = (elapsed / righeElaborate) * righeTotali;
+    remainingMs = Math.max(0, totalEstimate - elapsed);
+  }
+
+  const showProgress =
+    parsing || bg.isPending || bg.inProgress || bg.done || !!errorMsg;
+
+
 
   function downloadTemplate() {
     const head = [
@@ -1207,8 +1425,36 @@ function ScadenziarioImportCard() {
         riga 2, dati da riga 3). Match cliente su <code>COD_CLI</code>. Chiave univoca: COD_CLI +
         Numero Documento + Sezionale.
       </p>
-      {bg.inProgress && bg.progress ? (
-        <BgProgressBlock progress={bg.progress} fallbackTotal={0} />
+      {showProgress ? (
+        <ScadenziarioProgressBlock
+          phase={phase}
+          pct={pct}
+          righeElaborate={righeElaborate}
+          righeTotali={righeTotali}
+          chunkCurrent={chunkCurrent}
+          chunkTotal={chunkTotal}
+          elapsedMs={elapsedMs}
+          remainingMs={remainingMs}
+          errorMsg={errorMsg}
+          result={
+            bg.done && bg.progress
+              ? {
+                  create: bg.progress.righe_create ?? 0,
+                  aggiornate: bg.progress.righe_aggiornate ?? 0,
+                  errori: bg.progress.righe_errore ?? 0,
+                  chiuse: 0,
+                }
+              : null
+          }
+          onRetry={
+            errorMsg
+              ? () => {
+                  setErrorMsg(null);
+                  startImport();
+                }
+              : undefined
+          }
+        />
       ) : null}
       <ImportZone
         fileName={fileName}

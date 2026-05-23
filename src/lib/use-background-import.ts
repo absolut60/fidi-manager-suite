@@ -29,6 +29,9 @@ export function useBackgroundImport(opts: {
   fonte: Fonte;
   invalidateKeys?: string[][];
   onDone?: (p: BackgroundImportProgress) => void;
+  onChunkUploaded?: (uploaded: number, total: number) => void;
+  onUploadComplete?: () => void;
+  onError?: (message: string) => void;
 }) {
   const qc = useQueryClient();
   const [importazioneId, setImportazioneId] = useState<string | null>(null);
@@ -70,6 +73,7 @@ export function useBackgroundImport(opts: {
               throw new Error(
                 `Upload chunk ${index + 1}/${stagedChunks.length} fallito: ${error.message}`,
               );
+            opts.onChunkUploaded?.(index + 1, stagedChunks.length);
           }
           const manifest = new Blob(
             [
@@ -112,6 +116,7 @@ export function useBackgroundImport(opts: {
         throw new Error(message);
       }
       await supabase.from("importazioni").update({ file_path: filePath }).eq("id", imp.id);
+      opts.onUploadComplete?.();
 
       await triggerImport({ data: { fonte: opts.fonte, importazioneId: imp.id, filePath } });
       return imp.id;
@@ -122,7 +127,10 @@ export function useBackgroundImport(opts: {
       toast.success("Import avviato in background. Puoi chiudere la pagina, prosegue lato server.");
       qc.invalidateQueries({ queryKey: ["storico-import-export"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      toast.error(e.message);
+      opts.onError?.(e.message);
+    },
   });
 
   const { data: progress } = useQuery({
