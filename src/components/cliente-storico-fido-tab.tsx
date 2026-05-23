@@ -330,7 +330,7 @@ function RichiestaDialog({
       </div>
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onClose}>Annulla</Button>
-        {(!isEdit || richiesta?.stato === "bozza") && (
+        {(!isEdit || STATI_MODIFICABILI.includes(richiesta?.stato as StatoRichiesta)) && (
           <>
             <Button type="button" variant="secondary" disabled={save.isPending}
               onClick={() => handleSubmit(false)}>
