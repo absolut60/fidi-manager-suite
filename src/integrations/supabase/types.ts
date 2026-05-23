@@ -1220,6 +1220,8 @@ export type Database = {
           sezionale: string | null
           sollecitato: boolean | null
           stato_contabile: string | null
+          tempi_scadenza: string | null
+          tempi_scadenza_key: string | null
           tipologia_scadenza: string | null
           ultima_sincronizzazione: string | null
           updated_at: string
@@ -1252,6 +1254,8 @@ export type Database = {
           sezionale?: string | null
           sollecitato?: boolean | null
           stato_contabile?: string | null
+          tempi_scadenza?: string | null
+          tempi_scadenza_key?: string | null
           tipologia_scadenza?: string | null
           ultima_sincronizzazione?: string | null
           updated_at?: string
@@ -1284,6 +1288,8 @@ export type Database = {
           sezionale?: string | null
           sollecitato?: boolean | null
           stato_contabile?: string | null
+          tempi_scadenza?: string | null
+          tempi_scadenza_key?: string | null
           tipologia_scadenza?: string | null
           ultima_sincronizzazione?: string | null
           updated_at?: string
