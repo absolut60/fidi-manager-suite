@@ -130,10 +130,7 @@ function ClientiPage() {
   const [fidoFascia, setFidoFascia] = useState<string>("tutti");
   const [fidoRange, setFidoRange] = useState<[number, number]>([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
   const [fidoRangeDeb, setFidoRangeDeb] = useState<[number, number]>([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
-  useEffect(() => {
-    const t = setTimeout(() => setFidoRangeDeb(fidoRange), 500);
-    return () => clearTimeout(t);
-  }, [fidoRange]);
+
 
 
   // Selezione multipla
@@ -476,19 +473,18 @@ function ClientiPage() {
   }
 
   // Componenti riusabili per i singoli filtri (così funzionano sia in desktop grid che mobile stack)
-  function SearchField({ className = "" }: { className?: string }) {
-    return (
-      <div className={`relative ${className}`}>
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-        <Input
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          placeholder="Cerca ragione sociale, P.IVA, cod. gest., città..."
-          className="pl-9"
-        />
-      </div>
-    );
-  }
+  const SearchField = (
+    <div className="relative">
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+      <Input
+        value={searchInput}
+        onChange={(e) => setSearchInput(e.target.value)}
+        placeholder="Cerca ragione sociale, P.IVA, cod. gest., città..."
+        className="pl-9"
+      />
+    </div>
+  );
+
 
   const StoreSelect = (
     <Select value={storeFiltro} onValueChange={setStoreFiltro}>
@@ -615,7 +611,9 @@ function ClientiPage() {
         step={1000}
         value={fidoRange}
         onValueChange={(v) => setFidoRange([v[0], v[1]] as [number, number])}
+        onValueCommit={(v) => setFidoRangeDeb([v[0], v[1]] as [number, number])}
       />
+
       <div className="flex items-center justify-between text-[10px] text-muted-foreground">
         <span>{fmtEuro(FIDO_RANGE_MIN)}</span>
         <span>{fmtEuro(FIDO_RANGE_MAX)}</span>
@@ -641,7 +639,7 @@ function ClientiPage() {
     if (stack) {
       return (
         <div className="grid grid-cols-1 gap-3">
-          <SearchField />
+          {SearchField}
           {StoreSelect}
           {StatoFidoPopover}
           {SemaforoSelect}
@@ -664,7 +662,7 @@ function ClientiPage() {
     return (
       <div className="space-y-3">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <SearchField />
+          {SearchField}
           {StoreSelect}
           {StatoFidoPopover}
           {SemaforoSelect}
