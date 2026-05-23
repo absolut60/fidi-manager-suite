@@ -8,6 +8,7 @@ import {
   processScadenziarioChunk,
   finalizeScadenziarioImport,
   processScadAssicImport,
+  processBloccoFidoImport,
 } from "@/lib/inngest/functions.server";
 
 const handler = serve({
@@ -19,6 +20,7 @@ const handler = serve({
     processScadenziarioChunk,
     finalizeScadenziarioImport,
     processScadAssicImport,
+    processBloccoFidoImport,
   ],
 });
 

@@ -2079,269 +2079,29 @@ function ScadenziarioAssicurazioniImportCard() {
  * D — BLOCCO FIDO E ASSICURAZIONE
  * ============================================================================ */
 
-const BFA_HEADERS: Record<string, "codice_gestionale" | "ind_blocco" | "ultima_data_fatturazione" | "fido" | "assicurazione"> = {
-  "cod cli": "codice_gestionale",
-  cod_cli: "codice_gestionale",
-  "codice cliente": "codice_gestionale",
-  codice: "codice_gestionale",
-  "cod gestionale": "codice_gestionale",
-  "codice gestionale": "codice_gestionale",
-  "ind blocco": "ind_blocco",
-  ind_blocco: "ind_blocco",
-  blocco: "ind_blocco",
-  "ultima data fatturazione": "ultima_data_fatturazione",
-  "ultima fatturazione": "ultima_data_fatturazione",
-  "data ultima fatturazione": "ultima_data_fatturazione",
-  fido: "fido",
-  assicurazione: "assicurazione",
-};
-
-type BFARow = {
-  __row: number;
-  codice_gestionale: string;
-  ind_blocco: number | null;
-  ultima_data_fatturazione: string | null; // ISO date YYYY-MM-DD
-  fido: number | null;
-  assicurazione: number | null;
-};
-
-
 function BloccoFidoAssicurazioneImportCard() {
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
-  const [fileName, setFileName] = useState<string | null>(null);
-  const [rows, setRows] = useState<BFARow[]>([]);
+  const [file, setFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
-  const [parsing, setParsing] = useState(false);
-  const [result, setResult] = useState<null | {
-    aggiornati: number;
-    bloccati: number;
-    sbloccati: number;
-    nonAttivi: number;
-    nonTrovati: string[];
-    polizzeUpsert: number;
-    errori: Array<{ riga: number; errore: string }>;
-  }>(null);
+
+  const bg = useBackgroundImport({
+    fonte: "blocco_fido_assicurazione",
+    invalidateKeys: [["clienti"], ["assicurazioni"]],
+    onDone: () => {
+      qc.invalidateQueries({ queryKey: ["clienti"] });
+    },
+  });
 
   function reset() {
-    setFileName(null);
-    setRows([]);
-    setResult(null);
+    setFile(null);
+    bg.reset();
     if (fileRef.current) fileRef.current.value = "";
   }
 
-  async function handleFile(f: File) {
-    setParsing(true);
-    setResult(null);
-    try {
-      const buf = await f.arrayBuffer();
-      const wb = XLSX.read(buf, { type: "array", cellDates: false });
-      const targetName = wb.SheetNames.find(
-        (n) => normalize(n).replace(/\s+/g, "_") === "blocco_fido_assicurazione",
-      );
-      if (!targetName) {
-        toast.error('Foglio "BLOCCO_FIDO_ASSICURAZIONE" non trovato nel file');
-        return;
-      }
-      const sheet = wb.Sheets[targetName];
-      const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
-        header: 1,
-        defval: "",
-        blankrows: false,
-      });
-      if (!matrix.length) {
-        toast.error("Foglio vuoto");
-        return;
-      }
-      const headers = (matrix[0] ?? []).map((c) => String(c ?? "").trim());
-      const colMap: Record<string, number> = {};
-      headers.forEach((h, j) => {
-        const key = BFA_HEADERS[normalize(h)];
-        if (key) colMap[key] = j;
-      });
-      if (colMap.codice_gestionale == null) {
-        toast.error('Colonna COD_CLI non trovata in riga 1');
-        return;
-      }
-      const parsed: BFARow[] = [];
-      for (let i = 1; i < matrix.length; i++) {
-        const r = matrix[i] ?? [];
-        if (!r.some((c) => String(c ?? "").trim() !== "")) continue;
-        const codStr = String(r[colMap.codice_gestionale] ?? "").trim();
-        if (!codStr) continue;
-        parsed.push({
-          __row: i + 1,
-          codice_gestionale: codStr,
-          ind_blocco: colMap.ind_blocco != null ? toInt(r[colMap.ind_blocco]) : null,
-          ultima_data_fatturazione:
-            colMap.ultima_data_fatturazione != null
-              ? excelDateToISO(r[colMap.ultima_data_fatturazione])
-              : null,
-          fido: colMap.fido != null ? toNum(r[colMap.fido]) : null,
-          assicurazione: colMap.assicurazione != null ? toNum(r[colMap.assicurazione]) : null,
-        });
-      }
-      setFileName(f.name);
-      setRows(parsed);
-      toast.success(`${parsed.length} righe lette dal foglio BLOCCO_FIDO_ASSICURAZIONE`);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Errore lettura file");
-    } finally {
-      setParsing(false);
-    }
+  function handleFile(f: File) {
+    setFile(f);
   }
-
-  const importMut = useMutation({
-    mutationFn: async () => {
-      if (rows.length === 0) throw new Error("Nessuna riga da importare");
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      const cutoff2025 = "2025-01-01";
-      const errors: Array<{ riga: number; errore: string }> = [];
-      const nonTrovati: string[] = [];
-      let aggiornati = 0;
-      let bloccati = 0;
-      let sbloccati = 0;
-      let nonAttivi = 0;
-      let polizzeUpsert = 0;
-
-      // 1) Risolvi cliente_id in blocchi di 200 codici
-      const codici = Array.from(new Set(rows.map((r) => r.codice_gestionale)));
-      const codToId = new Map<string, string>();
-      for (let i = 0; i < codici.length; i += 200) {
-        const chunk = codici.slice(i, i + 200);
-        const { data, error } = await supabase
-          .from("clienti")
-          .select("id, codice_gestionale")
-          .in("codice_gestionale", chunk);
-        if (error) throw error;
-        (data ?? []).forEach((c: { id: string; codice_gestionale: string | null }) => {
-          if (c.codice_gestionale) codToId.set(c.codice_gestionale, c.id);
-        });
-      }
-
-      const nowIso = new Date().toISOString();
-
-      // 2) Per ogni riga, applica update
-      for (const r of rows) {
-        const clienteId = codToId.get(r.codice_gestionale);
-        if (!clienteId) {
-          nonTrovati.push(r.codice_gestionale);
-          continue;
-        }
-        const payload: Record<string, unknown> = {};
-
-        // Blocco
-        if (r.ind_blocco != null) {
-          const ib = r.ind_blocco;
-          if (ib === 0) {
-            payload.bloccato = false;
-            payload.ind_blocco = 0;
-            payload.motivo_blocco = null;
-            payload.data_blocco = null;
-            sbloccati++;
-          } else if (ib === 1) {
-            payload.bloccato = true;
-            payload.ind_blocco = 1;
-            payload.motivo_blocco = "Bloccato con possibilità di sblocco";
-            payload.data_blocco = nowIso;
-            bloccati++;
-          } else if (ib === 2) {
-            payload.bloccato = true;
-            payload.ind_blocco = 2;
-            payload.motivo_blocco = "Bloccato";
-            payload.data_blocco = nowIso;
-            bloccati++;
-          }
-        }
-
-        // Ultima data fatturazione + cliente_attivo
-        if (r.ultima_data_fatturazione !== null || (r.ind_blocco == null && r.fido == null && r.assicurazione == null)) {
-          payload.ultima_data_fatturazione = r.ultima_data_fatturazione;
-          const attivo = r.ultima_data_fatturazione != null && r.ultima_data_fatturazione >= cutoff2025;
-          payload.cliente_attivo = attivo;
-          if (!attivo) nonAttivi++;
-        }
-
-        // Fido
-        if (r.fido != null && r.fido > 0) {
-          payload.fido_gestionale = r.fido;
-        }
-
-        // Assicurazione
-        if (r.assicurazione != null && r.assicurazione > 0) {
-          payload.assicurazione_attiva = true;
-          // upsert polizza POUEY
-          const { data: existing, error: selErr } = await supabase
-            .from("assicurazioni_credito")
-            .select("id")
-            .eq("cliente_id", clienteId)
-            .eq("assicuratore", "POUEY")
-            .maybeSingle();
-          if (selErr && selErr.code !== "PGRST116") {
-            errors.push({ riga: r.__row, errore: `polizza select: ${selErr.message}` });
-          } else if (existing?.id) {
-            const { error: upErr } = await supabase
-              .from("assicurazioni_credito")
-              .update({ importo_massimale: r.assicurazione, stato: "attiva" })
-              .eq("id", existing.id);
-            if (upErr) errors.push({ riga: r.__row, errore: `polizza update: ${upErr.message}` });
-            else polizzeUpsert++;
-          } else {
-            const { error: insErr } = await supabase.from("assicurazioni_credito").insert({
-              cliente_id: clienteId,
-              assicuratore: "POUEY",
-              importo_massimale: r.assicurazione,
-              stato: "attiva",
-            } as never);
-            if (insErr) errors.push({ riga: r.__row, errore: `polizza insert: ${insErr.message}` });
-            else polizzeUpsert++;
-          }
-        } else if (r.assicurazione != null && r.assicurazione === 0) {
-          payload.assicurazione_attiva = false;
-        }
-
-        if (Object.keys(payload).length > 0) {
-          const { error: updErr } = await supabase
-            .from("clienti")
-            .update(payload as never)
-            .eq("id", clienteId);
-          if (updErr) errors.push({ riga: r.__row, errore: updErr.message });
-          else aggiornati++;
-        }
-      }
-
-      // 3) Registra importazione
-      await supabase.from("importazioni").insert({
-        nome_file: fileName ?? "blocco_fido_assicurazione.xlsx",
-        righe_totali: rows.length,
-        righe_elaborate: rows.length,
-        righe_aggiornate: aggiornati,
-        righe_create: 0,
-        righe_errore: errors.length,
-        righe_saltate: nonTrovati.length,
-        codici_mancanti: nonTrovati.slice(0, 500),
-        stato: errors.length > 0 ? "completata_con_errori" : "completata",
-        fonte: "blocco_fido_assicurazione",
-        eseguita_da: user?.id ?? null,
-        completata_at: new Date().toISOString(),
-        log_errori: errors.slice(0, 200),
-      } as never);
-
-      return { aggiornati, bloccati, sbloccati, nonAttivi, nonTrovati, polizzeUpsert, errori: errors };
-    },
-    onSuccess: (res) => {
-      setResult(res);
-      qc.invalidateQueries({ queryKey: ["clienti"] });
-      qc.invalidateQueries({ queryKey: ["storico-import-export"] });
-      toast.success(
-        `Import completato: ${res.aggiornati} aggiornati, ${res.bloccati} bloccati, ${res.sbloccati} sbloccati`,
-      );
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
 
   return (
     <Card className="p-5">
@@ -2349,13 +2109,16 @@ function BloccoFidoAssicurazioneImportCard() {
         <ShieldCheck className="size-4" /> D · Importa Blocco Fido e Assicurazione
       </h2>
       <p className="text-xs text-muted-foreground mb-4">
-        Carica lo stesso file Excel dello scadenziario. Verrà letto il foglio{" "}
-        <code>BLOCCO_FIDO_ASSICURAZIONE</code> (intestazioni in riga 1: COD_CLI, IND_BLOCCO, ULTIMA
-        DATA FATTURAZIONE, FIDO, ASSICURAZIONE). Aggiorna stato di blocco, fido gestionale, polizza
-        POUEY e flag <code>cliente_attivo</code> (fatturazione &ge; 01/01/2025).
+        Carica lo stesso file Excel dello scadenziario. L'elaborazione avviene in background sul
+        server (foglio <code>BLOCCO_FIDO_ASSICURAZIONE</code>): aggiorna stato di blocco, fido
+        gestionale, polizza POUEY e flag <code>cliente_attivo</code> (fatturazione &ge; 01/01/2025).
       </p>
 
-      {!fileName ? (
+      {bg.inProgress && bg.progress && (
+        <BgProgressBlock progress={bg.progress} fallbackTotal={0} />
+      )}
+
+      {!file && !bg.inProgress ? (
         <div
           className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
             dragOver ? "border-primary bg-primary/5" : "border-muted-foreground/30"
@@ -2376,18 +2139,8 @@ function BloccoFidoAssicurazioneImportCard() {
           <p className="text-sm text-muted-foreground mb-3">
             Trascina qui il file Excel oppure
           </p>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={parsing}
-            onClick={() => fileRef.current?.click()}
-          >
-            {parsing ? (
-              <Loader2 className="size-4 animate-spin mr-1" />
-            ) : (
-              <Upload className="size-4 mr-1" />
-            )}
-            Seleziona file
+          <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
+            <Upload className="size-4 mr-1" /> Seleziona file
           </Button>
           <input
             ref={fileRef}
@@ -2400,83 +2153,74 @@ function BloccoFidoAssicurazioneImportCard() {
             }}
           />
         </div>
-      ) : (
+      ) : null}
+
+      {file && !bg.inProgress && !bg.done && (
         <div className="space-y-3">
           <div className="flex items-center justify-between p-3 rounded-md border bg-muted/30">
             <span className="text-sm font-medium flex items-center gap-2">
-              <FileSpreadsheet className="size-4" /> {fileName}
-              <Badge variant="secondary">{rows.length} righe</Badge>
+              <FileSpreadsheet className="size-4" /> {file.name}
+              <Badge variant="secondary">{(file.size / 1024 / 1024).toFixed(2)} MB</Badge>
             </span>
-            <Button variant="ghost" size="sm" onClick={reset}>
+            <Button variant="ghost" size="sm" onClick={reset} disabled={bg.isPending}>
               <X className="size-4" />
             </Button>
           </div>
+          <Button
+            className="w-full gap-1.5"
+            disabled={bg.isPending}
+            onClick={() => bg.start({ file, rowsTotali: 0 })}
+          >
+            {bg.isPending && <Loader2 className="size-4 animate-spin" />}
+            {bg.isPending ? "Avvio import..." : "Avvia import in background"}
+          </Button>
+        </div>
+      )}
 
-          {!result && (
-            <Button
-              className="w-full gap-1.5"
-              disabled={!rows.length || importMut.isPending}
-              onClick={() => importMut.mutate()}
-            >
-              {importMut.isPending && <Loader2 className="size-4 animate-spin" />}
-              {importMut.isPending ? "Elaborazione..." : `Avvia import (${rows.length} righe)`}
-            </Button>
-          )}
-
-          {result && (
-            <div className="space-y-2 p-3 rounded-md border bg-muted/30 text-sm">
-              <div className="flex items-center gap-2 font-medium">
-                <CheckCircle2 className="size-4 text-success" /> Import completato
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
-                <Badge variant="default">{result.aggiornati} aggiornati</Badge>
-                <Badge className="bg-destructive/15 text-destructive hover:bg-destructive/20">
-                  {result.bloccati} bloccati
-                </Badge>
-                <Badge className="bg-success/15 text-success hover:bg-success/20">
-                  {result.sbloccati} sbloccati
-                </Badge>
-                <Badge variant="secondary">{result.nonAttivi} non attivi</Badge>
-                <Badge variant="outline">{result.polizzeUpsert} polizze POUEY</Badge>
-                <Badge variant="outline" className="text-amber-600">
-                  {result.nonTrovati.length} non trovati
-                </Badge>
-              </div>
-              {result.nonTrovati.length > 0 && (
-                <details className="text-xs">
-                  <summary className="cursor-pointer text-muted-foreground">
-                    Codici non trovati in anagrafica
-                  </summary>
-                  <div className="mt-1 max-h-32 overflow-y-auto font-mono">
-                    {result.nonTrovati.slice(0, 100).join(", ")}
-                    {result.nonTrovati.length > 100 && ` … (+${result.nonTrovati.length - 100})`}
-                  </div>
-                </details>
-              )}
-              {result.errori.length > 0 && (
-                <details className="text-xs">
-                  <summary className="cursor-pointer text-destructive">
-                    {result.errori.length} errori
-                  </summary>
-                  <ul className="mt-1 max-h-32 overflow-y-auto space-y-0.5">
-                    {result.errori.slice(0, 50).map((e, i) => (
-                      <li key={i}>
-                        Riga {e.riga}: {e.errore}
-                      </li>
-                    ))}
-                  </ul>
-                </details>
-              )}
-              <Button variant="outline" size="sm" className="w-full mt-2" onClick={reset}>
-                Nuovo import
-              </Button>
-            </div>
-          )}
+      {bg.done && bg.progress && (
+        <div className="space-y-2 p-3 rounded-md border bg-muted/30 text-sm">
+          <div className="flex items-center gap-2 font-medium">
+            <CheckCircle2 className="size-4 text-success" /> Import completato
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+            <Badge variant="default">{bg.progress.righe_elaborate ?? 0} elaborate</Badge>
+            <Badge className="bg-success/15 text-success hover:bg-success/20">
+              {bg.progress.righe_aggiornate ?? 0} aggiornate
+            </Badge>
+            <Badge className="bg-destructive/15 text-destructive hover:bg-destructive/20">
+              {bg.progress.righe_errore ?? 0} errori
+            </Badge>
+            <Badge variant="secondary">{bg.progress.righe_saltate ?? 0} non trovati</Badge>
+          </div>
+          {(() => {
+            const logs = Array.isArray(bg.progress.log_errori)
+              ? (bg.progress.log_errori as Array<{ riga: number; errore: string }>)
+              : [];
+            if (!logs.length) return null;
+            return (
+              <details className="text-xs">
+                <summary className="cursor-pointer text-muted-foreground">
+                  Log dettagli ({logs.length})
+                </summary>
+                <ul className="mt-1 max-h-32 overflow-y-auto space-y-0.5">
+                  {logs.slice(0, 50).map((e, i) => (
+                    <li key={i}>
+                      Riga {e.riga}: {e.errore}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            );
+          })()}
+          <Button variant="outline" size="sm" className="w-full mt-2" onClick={reset}>
+            Nuovo import
+          </Button>
         </div>
       )}
     </Card>
   );
 }
+
 
 
 /* ============================================================================
