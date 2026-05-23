@@ -14,11 +14,14 @@ export type Profilo = {
   attivo: boolean;
 };
 
+const ORDINE_RUOLI: AppRole[] = ["amministratore", "approvatore_liv3", "approvatore_liv2", "approvatore_liv1", "store_manager"];
+
 export function useAuth() {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [profilo, setProfilo] = useState<Profilo | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
+  const [roles, setRoles] = useState<AppRole[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -31,6 +34,7 @@ export function useAuth() {
       if (!newSession?.user) {
         setProfilo(null);
         setRole(null);
+        setRoles([]);
         setLoading(false);
       } else {
         // Defer per evitare deadlock
@@ -53,6 +57,7 @@ export function useAuth() {
       setUser(null);
       setProfilo(null);
       setRole(null);
+      setRoles([]);
       setLoading(false);
     });
 
@@ -68,13 +73,16 @@ export function useAuth() {
       supabase.from("user_roles").select("role").eq("user_id", userId),
     ]);
     setProfilo(p as Profilo | null);
-    // Prendi il ruolo più alto
-    const ordine: AppRole[] = ["amministratore", "approvatore_liv3", "approvatore_liv2", "approvatore_liv1", "store_manager"];
-    const ruoli = (r ?? []).map((x) => x.role as AppRole);
-    setRole(ordine.find((o) => ruoli.includes(o)) ?? null);
+    const ruoliUtente = (r ?? []).map((x) => x.role as AppRole);
+    setRoles(ruoliUtente);
+    // Ruolo principale = più alto in priorità
+    setRole(ORDINE_RUOLI.find((o) => ruoliUtente.includes(o)) ?? null);
   }
 
-  return { session, user, profilo, role, loading };
+  const hasRole = (r: AppRole) => roles.includes(r);
+  const hasAnyRole = (...rs: AppRole[]) => rs.some((r) => roles.includes(r));
+
+  return { session, user, profilo, role, roles, hasRole, hasAnyRole, loading };
 }
 
 export const RUOLI_LABEL: Record<AppRole, string> = {
