@@ -130,10 +130,7 @@ function ClientiPage() {
   const [fidoFascia, setFidoFascia] = useState<string>("tutti");
   const [fidoRange, setFidoRange] = useState<[number, number]>([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
   const [fidoRangeDeb, setFidoRangeDeb] = useState<[number, number]>([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
-  useEffect(() => {
-    const t = setTimeout(() => setFidoRangeDeb(fidoRange), 500);
-    return () => clearTimeout(t);
-  }, [fidoRange]);
+
 
 
   // Selezione multipla
