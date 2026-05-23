@@ -305,7 +305,11 @@ function ClienteDetail() {
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{cliente.ragione_sociale}</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              {cliente.partita_iva ? `P.IVA ${cliente.partita_iva}` : "Partita IVA non inserita"}
+              {(cliente as any).codice_gestionale
+                ? `Cod. ${(cliente as any).codice_gestionale} — P.IVA ${cliente.partita_iva ?? "—"}`
+                : cliente.partita_iva
+                  ? `P.IVA ${cliente.partita_iva}`
+                  : "Partita IVA non inserita"}
             </p>
           </div>
           <div className="flex gap-2 items-center">
