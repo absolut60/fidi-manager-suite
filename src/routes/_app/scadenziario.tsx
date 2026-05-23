@@ -338,6 +338,8 @@ function ScadenziarioPage() {
                   <TableHead>Cod. Gestionale</TableHead>
                   <TableHead>Store</TableHead>
                   <TableHead>Stato blocco</TableHead>
+                  <TableHead className="text-right">Fatt. {annoCorrente}</TableHead>
+                  <TableHead className="text-right">Fatt. {annoPrec}</TableHead>
                   <TableHead className="text-right">N. Fatt. scadute</TableHead>
                   <TableHead className="text-right">Totale scaduto</TableHead>
                   <TableHead className="text-right">N. Fatt. a scadere</TableHead>
@@ -349,12 +351,15 @@ function ScadenziarioPage() {
               <TableBody>
                 {rows.map((r) => {
                   const storeName = stores?.find((s) => s.id === r.cliente.store_id)?.nome ?? "—";
+                  const fatt = fatturatoMap?.get(r.cliente.id);
                   return (
                     <TableRow key={r.cliente.id} className="cursor-pointer" onClick={() => apriCliente(r.cliente.id)}>
                       <TableCell className="font-medium">{r.cliente.ragione_sociale}</TableCell>
                       <TableCell className="font-mono text-xs">{r.cliente.codice_gestionale ?? "—"}</TableCell>
                       <TableCell className="text-xs">{storeName}</TableCell>
                       <TableCell>{blockBadge(r.cliente)}</TableCell>
+                      <TableCell className="text-right tabular-nums">{fatt && fatt.cur > 0 ? fmtEuro(fatt.cur) : "—"}</TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground">{fatt && fatt.prev > 0 ? fmtEuro(fatt.prev) : "—"}</TableCell>
                       <TableCell className="text-right tabular-nums">{r.nScadute || "—"}</TableCell>
                       <TableCell className="text-right tabular-nums font-semibold text-destructive">
                         {r.totScad > 0 ? fmtEuro(r.totScad) : "—"}
