@@ -352,10 +352,11 @@ function ClientiPage() {
     if (statoFidoIds) sources.push(statoFidoIds);
     if (scadenziarioIdsFilter?.mode === "include") sources.push(scadenziarioIdsFilter.ids);
     if (aScadereIds) sources.push(aScadereIds);
+    if (fatturatoIds) sources.push(fatturatoIds);
     if (sources.length === 0) return null;
     const sets = sources.map((s) => new Set(s));
     return sources[0].filter((id) => sets.every((s) => s.has(id)));
-  }, [semaforoIds, statoFidoIds, scadenziarioIdsFilter, aScadereIds]);
+  }, [semaforoIds, statoFidoIds, scadenziarioIdsFilter, aScadereIds, fatturatoIds]);
 
   // Reset pagina ogni volta che cambia un filtro
   useEffect(() => {
