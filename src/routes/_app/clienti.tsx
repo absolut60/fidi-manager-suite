@@ -483,6 +483,68 @@ function ClientiPage() {
           </SelectContent>
         </Select>
 
+        {/* Fido residuo: fasce + range */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className={stack ? "w-full justify-between" : "w-52 justify-between"}>
+              <span className="truncate">
+                {fidoModalita === "fasce" && fidoFascia === "tutti" && "Fido residuo"}
+                {fidoModalita === "fasce" && fidoFascia !== "tutti" && `Fido: ${fidoFascia}`}
+                {fidoModalita === "range" && `${fmtEuro(fidoRange[0])} → ${fmtEuro(fidoRange[1])}`}
+              </span>
+              <SlidersHorizontal className="size-4 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-80 p-3 space-y-3" align="start">
+            <div className="flex gap-1">
+              <Button
+                variant={fidoModalita === "fasce" ? "default" : "outline"}
+                size="sm"
+                className="flex-1"
+                onClick={() => setFidoModalita("fasce")}
+              >Fasce</Button>
+              <Button
+                variant={fidoModalita === "range" ? "default" : "outline"}
+                size="sm"
+                className="flex-1"
+                onClick={() => setFidoModalita("range")}
+              >Range</Button>
+            </div>
+            {fidoModalita === "fasce" ? (
+              <Select value={fidoFascia} onValueChange={setFidoFascia}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="tutti">Tutti</SelectItem>
+                  <SelectItem value="negativo">Negativo / Sforato (&lt; 0)</SelectItem>
+                  <SelectItem value="basso">Basso (0 – 5.000 €)</SelectItem>
+                  <SelectItem value="medio">Medio (5.000 – 20.000 €)</SelectItem>
+                  <SelectItem value="alto">Alto (oltre 20.000 €)</SelectItem>
+                </SelectContent>
+              </Select>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs font-medium">
+                  <span>{fmtEuro(fidoRange[0])}</span>
+                  <span className="text-muted-foreground">→</span>
+                  <span>{fmtEuro(fidoRange[1])}</span>
+                </div>
+                <Slider
+                  min={FIDO_RANGE_MIN}
+                  max={FIDO_RANGE_MAX}
+                  step={1000}
+                  value={fidoRange}
+                  onValueChange={(v) => setFidoRange([v[0], v[1]] as [number, number])}
+                />
+                <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                  <span>{fmtEuro(FIDO_RANGE_MIN)}</span>
+                  <span>{fmtEuro(FIDO_RANGE_MAX)}</span>
+                </div>
+              </div>
+            )}
+          </PopoverContent>
+        </Popover>
+
+
         <Select value={statoCliente} onValueChange={(v) => setStatoCliente(v as typeof statoCliente)}>
           <SelectTrigger className={stack ? "w-full" : "w-40"}><SelectValue /></SelectTrigger>
           <SelectContent>
