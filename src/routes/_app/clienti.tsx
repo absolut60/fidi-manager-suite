@@ -111,7 +111,7 @@ function ClientiPage() {
     return () => clearTimeout(t);
   }, [searchInput]);
   const [statoCliente, setStatoCliente] = useState<"attivi" | "disattivati" | "tutti">("attivi");
-  const [statoAttivita, setStatoAttivita] = useState<"tutti" | "attivi" | "non_attivi">("tutti");
+  const [statoAttivita, setStatoAttivita] = useState<"tutti" | "attivi" | "non_attivi">("attivi");
   const [storeFiltro, setStoreFiltro] = useState<string>("tutti");
   const [statoFido, setStatoFido] = useState<Set<string>>(new Set());
   const [semaforoFiltro, setSemaforoFiltro] = useState<string>("tutti");
@@ -393,6 +393,7 @@ function ClientiPage() {
   const attiviCount =
     (search ? 1 : 0) +
     (statoCliente !== "attivi" ? 1 : 0) +
+    (statoAttivita !== "attivi" ? 1 : 0) +
     (storeFiltro !== "tutti" ? 1 : 0) +
     (statoFido.size > 0 ? 1 : 0) +
     (semaforoFiltro !== "tutti" ? 1 : 0) +
@@ -408,7 +409,7 @@ function ClientiPage() {
   function resetFiltri() {
     setSearchInput(""); setSearch("");
     setStatoCliente("attivi");
-    setStatoAttivita("tutti");
+    setStatoAttivita("attivi");
     setStoreFiltro("tutti");
     setStatoFido(new Set());
     setSemaforoFiltro("tutti");
@@ -544,9 +545,9 @@ function ClientiPage() {
     <Select value={statoAttivita} onValueChange={(v) => setStatoAttivita(v as typeof statoAttivita)}>
       <SelectTrigger className="w-full"><SelectValue placeholder="Stato attività" /></SelectTrigger>
       <SelectContent>
-        <SelectItem value="tutti">Attività: tutti</SelectItem>
         <SelectItem value="attivi">Solo attivi</SelectItem>
         <SelectItem value="non_attivi">Solo non attivi</SelectItem>
+        <SelectItem value="tutti">Tutti</SelectItem>
       </SelectContent>
     </Select>
   );
