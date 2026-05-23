@@ -714,10 +714,13 @@ export const processScadenziarioImport = inngest.createFunction(
         `Scadenze chiuse automaticamente (non presenti nel file): ${chiuseAutomaticamente}`,
         `Clienti riconciliati: ${clientiRiconciliati}`,
         `Righe saltate (cliente non trovato): ${errorLog.length}${skippedCodes.length ? ` — codici: ${skippedCodes.slice(0, 50).join(", ")}${skippedCodes.length > 50 ? "…" : ""}` : ""}`,
-        `Errori: ${errorLog.length}`,
+        `Errori upsert batch: ${batchErrors.length}`,
+        `Errori riga: ${errorLog.length}`,
       ];
+      // CORREZIONE 2 — batchErrors PRIMA degli errori di riga così non vengono troncati
       const logFinale: Array<{ riga: number; errore: string }> = [
         ...summaryLines.map((m) => ({ riga: 0, errore: m })),
+        ...batchErrors,
         ...errorLog,
       ];
 
