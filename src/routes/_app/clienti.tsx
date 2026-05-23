@@ -122,6 +122,22 @@ function ClientiPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
 
+  // Filtro Fido residuo
+  const [fidoModalita, setFidoModalita] = useState<"fasce" | "range">("fasce");
+  const [fidoFascia, setFidoFascia] = useState<string>("tutti");
+  const [fidoRange, setFidoRange] = useState<[number, number]>([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
+  const [fidoRangeDeb, setFidoRangeDeb] = useState<[number, number]>([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
+  useEffect(() => {
+    const t = setTimeout(() => setFidoRangeDeb(fidoRange), 500);
+    return () => clearTimeout(t);
+  }, [fidoRange]);
+
+  // Selezione multipla
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedRows, setSelectedRows] = useState<Map<string, any>>(new Map());
+  const [massivoOpen, setMassivoOpen] = useState(false);
+  const { user } = useAuth();
+
   const { data: stores } = useQuery({
     queryKey: ["stores", "all"],
     queryFn: async () => {
@@ -150,7 +166,32 @@ function ClientiPage() {
     staleTime: 60_000,
   });
 
-  // ID set per filtro scadenziario (server-side via .in)
+  // Mappa classificazione (id + colonne necessarie per semaforo e stato fido)
+  // Carica tutti i clienti in chunk da 1000 per superare il limite Supabase.
+  const { data: classifList } = useQuery({
+    queryKey: ["clienti-classificazione"],
+    queryFn: async () => {
+      const all: any[] = [];
+      let offset = 0;
+      const size = 1000;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await supabase
+          .from("clienti")
+          .select("id, bloccato, fido, fido_residuo, fido_gestionale, scaduto")
+          .range(offset, offset + size - 1);
+        if (error) throw error;
+        const batch = data ?? [];
+        all.push(...batch);
+        if (batch.length < size) break;
+        offset += size;
+      }
+      return all;
+    },
+    staleTime: 60_000,
+  });
+
+  // ID set per filtro scadenziario
   const scadenziarioIdsFilter = useMemo(() => {
     if (!scadenziarioMap || scadenziarioFiltro === "tutti") return null;
     const ids: string[] = [];
@@ -159,88 +200,138 @@ function ClientiPage() {
     } else if (scadenziarioFiltro === "a_scadere") {
       for (const [id, s] of scadenziarioMap) if (s.ha_a_scadere && !s.ha_scaduto) ids.push(id);
     } else if (scadenziarioFiltro === "in_regola") {
-      // gestito come exclude più sotto: nessun filtro include
       return { mode: "exclude" as const, ids: Array.from(scadenziarioMap.keys()) };
     }
     return { mode: "include" as const, ids };
   }, [scadenziarioMap, scadenziarioFiltro]);
 
+  // ID set per filtro semaforo (server-side via .in)
+  const semaforoIds = useMemo<string[] | null>(() => {
+    if (semaforoFiltro === "tutti" || !classifList) return null;
+    return classifList.filter((c: any) => calcSemaforo(c) === semaforoFiltro).map((c: any) => c.id);
+  }, [classifList, semaforoFiltro]);
+
+  // ID set per filtro stato fido (server-side via .in)
+  const statoFidoIds = useMemo<string[] | null>(() => {
+    if (statoFido.size === 0 || !classifList) return null;
+    return classifList.filter((c: any) => {
+      const fido = Number(c.fido ?? 0);
+      const scaduto = Number(c.scaduto ?? 0);
+      const matches = new Set<string>();
+      if (c.bloccato) matches.add("sospeso");
+      if (scaduto > 0) matches.add("scaduto");
+      if (!fido) matches.add("non_assegnato");
+      else if (!c.bloccato && scaduto === 0) matches.add("attivo");
+      return Array.from(statoFido).some((s) => matches.has(s));
+    }).map((c: any) => c.id);
+  }, [classifList, statoFido]);
+
+  // Intersezione id set "include"
+  const includeIdsFilter = useMemo<string[] | null>(() => {
+    const sources: string[][] = [];
+    if (semaforoIds) sources.push(semaforoIds);
+    if (statoFidoIds) sources.push(statoFidoIds);
+    if (scadenziarioIdsFilter?.mode === "include") sources.push(scadenziarioIdsFilter.ids);
+    if (sources.length === 0) return null;
+    const sets = sources.map((s) => new Set(s));
+    return sources[0].filter((id) => sets.every((s) => s.has(id)));
+  }, [semaforoIds, statoFidoIds, scadenziarioIdsFilter]);
+
   // Reset pagina ogni volta che cambia un filtro
   useEffect(() => {
     setPage(1);
-  }, [search, statoCliente, storeFiltro, statoFido, semaforoFiltro, soloBloccati, privacyFiltro, soloAssicurati, scadenziarioFiltro, pageSize]);
+  }, [search, statoCliente, storeFiltro, statoFido, semaforoFiltro, soloBloccati, privacyFiltro, soloAssicurati, scadenziarioFiltro, fidoModalita, fidoFascia, fidoRangeDeb, pageSize]);
 
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
+  // Costruisce la query con TUTTI i filtri server-side (senza range)
+  function buildBaseQuery(selectCols: string, count: "exact" | undefined) {
+    let q = supabase
+      .from("clienti")
+      .select(selectCols, count ? { count } : undefined)
+      .order("ragione_sociale", { ascending: true });
+
+    if (statoCliente === "attivi") q = q.eq("attivo", true);
+    else if (statoCliente === "disattivati") q = q.eq("attivo", false);
+    if (storeFiltro !== "tutti") q = q.eq("store_id", storeFiltro);
+    if (soloBloccati) q = q.eq("bloccato", true);
+    if (privacyFiltro === "firmata") q = q.eq("privacy_firmata", true);
+    else if (privacyFiltro === "da_firmare") q = q.eq("privacy_firmata", false);
+    if (soloAssicurati) q = q.eq("assicurazione_attiva", true);
+
+    // Fido residuo
+    if (fidoModalita === "fasce") {
+      if (fidoFascia === "negativo") q = q.lt("fido_residuo", 0);
+      else if (fidoFascia === "basso") q = q.gte("fido_residuo", 0).lte("fido_residuo", 5000);
+      else if (fidoFascia === "medio") q = q.gt("fido_residuo", 5000).lte("fido_residuo", 20000);
+      else if (fidoFascia === "alto") q = q.gt("fido_residuo", 20000);
+    } else {
+      q = q.gte("fido_residuo", fidoRangeDeb[0]).lte("fido_residuo", fidoRangeDeb[1]);
+    }
+
+    // Include intersect (semaforo / stato fido / scadenziario include)
+    if (includeIdsFilter) {
+      if (includeIdsFilter.length === 0) return { empty: true as const };
+      q = q.in("id", includeIdsFilter);
+    }
+    // Exclude scadenziario "in_regola"
+    if (scadenziarioIdsFilter?.mode === "exclude" && scadenziarioIdsFilter.ids.length > 0) {
+      q = q.not("id", "in", `(${scadenziarioIdsFilter.ids.join(",")})`);
+    }
+
+    const term = search.replace(/[(),]/g, " ").trim();
+    if (term) {
+      const like = `%${term}%`;
+      q = q.or(
+        `ragione_sociale.ilike.${like},partita_iva.ilike.${like},codice_gestionale.ilike.${like},citta.ilike.${like}`,
+      );
+    }
+    return { q };
+  }
+
+  const classifReady = (semaforoFiltro === "tutti" && statoFido.size === 0) || !!classifList;
+  const scadReady = scadenziarioFiltro === "tutti" || !!scadenziarioMap;
+
   const { data: clientiResp, isLoading } = useQuery({
-    queryKey: ["clienti", { search, statoCliente, storeFiltro, soloBloccati, privacyFiltro, soloAssicurati, scadenziarioFiltro, page, pageSize, scadenziarioReady: !!scadenziarioMap || scadenziarioFiltro === "tutti" }],
+    queryKey: ["clienti", { search, statoCliente, storeFiltro, soloBloccati, privacyFiltro, soloAssicurati, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), fidoModalita, fidoFascia, fidoRangeDeb, page, pageSize }],
     queryFn: async () => {
-      let q = supabase
-        .from("clienti")
-        .select("*, stores(nome, codice)", { count: "exact" })
-        .order("ragione_sociale", { ascending: true });
-
-      if (statoCliente === "attivi") q = q.eq("attivo", true);
-      else if (statoCliente === "disattivati") q = q.eq("attivo", false);
-      if (storeFiltro !== "tutti") q = q.eq("store_id", storeFiltro);
-      if (soloBloccati) q = q.eq("bloccato", true);
-      if (privacyFiltro === "firmata") q = q.eq("privacy_firmata", true);
-      else if (privacyFiltro === "da_firmare") q = q.eq("privacy_firmata", false);
-      if (soloAssicurati) q = q.eq("assicurazione_attiva", true);
-
-      if (scadenziarioIdsFilter) {
-        if (scadenziarioIdsFilter.mode === "include") {
-          if (scadenziarioIdsFilter.ids.length === 0) {
-            return { rows: [], count: 0 };
-          }
-          q = q.in("id", scadenziarioIdsFilter.ids);
-        } else {
-          if (scadenziarioIdsFilter.ids.length > 0) {
-            q = q.not("id", "in", `(${scadenziarioIdsFilter.ids.join(",")})`);
-          }
-        }
-      }
-
-      const term = search.replace(/[(),]/g, " ").trim();
-      if (term) {
-        const like = `%${term}%`;
-        q = q.or(
-          `ragione_sociale.ilike.${like},partita_iva.ilike.${like},codice_gestionale.ilike.${like},citta.ilike.${like}`,
-        );
-      }
-
-      q = q.range(from, to);
-
-      const { data, error, count } = await q;
+      const built = buildBaseQuery("*, stores(nome, codice)", "exact");
+      if ("empty" in built) return { rows: [], count: 0 };
+      const { data, error, count } = await built.q.range(from, to);
       if (error) throw error;
       return { rows: data ?? [], count: count ?? (data?.length ?? 0) };
     },
-    enabled: isListRoute && (scadenziarioFiltro === "tutti" || !!scadenziarioMap),
+    enabled: isListRoute && scadReady && classifReady,
   });
-  const clienti = clientiResp?.rows;
+  const clienti = (clientiResp?.rows ?? []) as any[];
   const totaleClienti = clientiResp?.count ?? 0;
   const totalPages = Math.max(1, Math.ceil(totaleClienti / pageSize));
 
-  // Filtri derivati lato client (semaforo + stato fido non sono campi DB diretti)
-  // NB: agiscono solo sulla pagina corrente
-  const filtered = useMemo(() => {
-    return (clienti ?? []).filter((c: any) => {
-      if (semaforoFiltro !== "tutti" && calcSemaforo(c) !== semaforoFiltro) return false;
-      if (statoFido.size > 0) {
-        const fido = Number(c.fido ?? 0);
-        const scaduto = Number(c.scaduto ?? 0);
-        const matches = new Set<string>();
-        if (c.bloccato) matches.add("sospeso");
-        if (scaduto > 0) matches.add("scaduto");
-        if (!fido) matches.add("non_assegnato");
-        else if (!c.bloccato && scaduto === 0) matches.add("attivo");
-        const intersect = Array.from(statoFido).some((s) => matches.has(s));
-        if (!intersect) return false;
-      }
-      return true;
-    });
-  }, [clienti, semaforoFiltro, statoFido]);
+  // Fetch di tutti gli id filtrati (per "Seleziona tutti i filtrati")
+  async function fetchAllFilteredRows(): Promise<any[]> {
+    const built = buildBaseQuery("id, ragione_sociale, fido, totale_rischio", undefined);
+    if ("empty" in built) return [];
+    const all: any[] = [];
+    let off = 0;
+    const size = 1000;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const { data, error } = await built.q.range(off, off + size - 1);
+      if (error) throw error;
+      const batch = (data ?? []) as any[];
+      all.push(...batch);
+      if (batch.length < size) break;
+      off += size;
+      // Safety cap
+      if (off > 20000) break;
+      // Riapplica la query a partire da una nuova istanza: PostgREST richiede una nuova query per ogni range.
+      const rebuilt = buildBaseQuery("id, ragione_sociale, fido, totale_rischio", undefined);
+      if ("empty" in rebuilt) break;
+      (built as any).q = rebuilt.q;
+    }
+    return all;
+  }
 
   const attiviCount =
     (search ? 1 : 0) +
@@ -251,7 +342,9 @@ function ClientiPage() {
     (soloBloccati ? 1 : 0) +
     (privacyFiltro !== "tutti" ? 1 : 0) +
     (soloAssicurati ? 1 : 0) +
-    (scadenziarioFiltro !== "tutti" ? 1 : 0);
+    (scadenziarioFiltro !== "tutti" ? 1 : 0) +
+    (fidoModalita === "fasce" && fidoFascia !== "tutti" ? 1 : 0) +
+    (fidoModalita === "range" && (fidoRangeDeb[0] !== FIDO_RANGE_MIN || fidoRangeDeb[1] !== FIDO_RANGE_MAX) ? 1 : 0);
 
   function resetFiltri() {
     setSearchInput(""); setSearch("");
@@ -263,7 +356,45 @@ function ClientiPage() {
     setPrivacyFiltro("tutti");
     setSoloAssicurati(false);
     setScadenziarioFiltro("tutti");
+    setFidoModalita("fasce");
+    setFidoFascia("tutti");
+    setFidoRange([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
+    setFidoRangeDeb([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
   }
+
+  // Selezione
+  function toggleSelect(c: any) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(c.id)) next.delete(c.id);
+      else next.add(c.id);
+      return next;
+    });
+    setSelectedRows((prev) => {
+      const next = new Map(prev);
+      if (next.has(c.id)) next.delete(c.id);
+      else next.set(c.id, c);
+      return next;
+    });
+  }
+  function clearSelection() {
+    setSelectedIds(new Set());
+    setSelectedRows(new Map());
+  }
+  async function selezionaTuttiFiltrati() {
+    try {
+      const all = await fetchAllFilteredRows();
+      const ids = new Set(all.map((r) => r.id));
+      const map = new Map<string, any>();
+      for (const r of all) map.set(r.id, r);
+      setSelectedIds(ids);
+      setSelectedRows(map);
+      toast.success(`${all.length} clienti selezionati`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Errore nella selezione");
+    }
+  }
+
 
   const STATO_FIDO_OPTS: Array<{ value: string; label: string }> = [
     { value: "attivo", label: "Attivo" },
