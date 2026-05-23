@@ -36,11 +36,6 @@ async function setImportazioneError(importazioneId: string, message: string) {
     .eq("id", importazioneId);
 }
 
-async function downloadJsonFromImportFiles<T>(path: string): Promise<T> {
-  const { data: file, error } = await supabaseAdmin.storage.from("import-files").download(path);
-  if (error || !file) throw new Error(`Download ${path}: ${error?.message ?? "no data"}`);
-  return JSON.parse(await file.text()) as T;
-}
 
 /* ============================================================================
  * A — ANAGRAFICA
