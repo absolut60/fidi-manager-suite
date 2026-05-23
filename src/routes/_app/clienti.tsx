@@ -651,6 +651,7 @@ function ClientiPage() {
           {FidoRangeSlider}
           {BloccatiChk}
           {AssicuratiChk}
+          {StatoAttivitaSelect}
           {attiviCount > 0 && (
             <Button variant="ghost" size="sm" onClick={resetFiltri} className="gap-1 justify-start">
               <X className="size-4" /> Azzera tutti
