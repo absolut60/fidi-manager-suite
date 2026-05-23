@@ -615,6 +615,25 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
   const indBlocco = Number(cliente.ind_blocco ?? 0);
   const ultimaFatt = cliente.ultima_data_fatturazione;
   const clienteAttivo = cliente.cliente_attivo !== false && !!ultimaFatt;
+  const assicurato = !!cliente.assicurazione_attiva;
+
+  const { data: polizzaAttiva } = useQuery({
+    queryKey: ["polizza-attiva", clienteId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("assicurazioni_credito" as never)
+        .select("assicuratore, importo_massimale, data_scadenza, stato")
+        .eq("cliente_id", clienteId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data as { assicuratore: string; importo_massimale: number | null; data_scadenza: string | null; stato: string } | null;
+    },
+    enabled: assicurato,
+  });
+  const polizzaScaduta = !!(polizzaAttiva?.data_scadenza && new Date(polizzaAttiva.data_scadenza) < new Date());
+
 
   const { data: ins } = useQuery({
     queryKey: ["riepilogo-tab-insoluti", clienteId],
