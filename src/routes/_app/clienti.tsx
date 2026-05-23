@@ -611,7 +611,9 @@ function ClientiPage() {
         step={1000}
         value={fidoRange}
         onValueChange={(v) => setFidoRange([v[0], v[1]] as [number, number])}
+        onValueCommit={(v) => setFidoRangeDeb([v[0], v[1]] as [number, number])}
       />
+
       <div className="flex items-center justify-between text-[10px] text-muted-foreground">
         <span>{fmtEuro(FIDO_RANGE_MIN)}</span>
         <span>{fmtEuro(FIDO_RANGE_MAX)}</span>
