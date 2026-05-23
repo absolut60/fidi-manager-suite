@@ -306,6 +306,8 @@ function ClientiPage() {
 
     if (statoCliente === "attivi") q = q.eq("attivo", true);
     else if (statoCliente === "disattivati") q = q.eq("attivo", false);
+    if (statoAttivita === "attivi") q = q.eq("cliente_attivo", true);
+    else if (statoAttivita === "non_attivi") q = q.eq("cliente_attivo", false);
     if (storeFiltro !== "tutti") q = q.eq("store_id", storeFiltro);
     if (soloBloccati) q = q.eq("bloccato", true);
     if (privacyFiltro === "firmata") q = q.eq("privacy_firmata", true);
