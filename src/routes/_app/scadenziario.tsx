@@ -69,8 +69,9 @@ function blockBadge(c: Cliente) {
 
 function isBonifico(codice: string | null | undefined): boolean {
   if (!codice) return false;
-  return codice.trim().toUpperCase().startsWith("BO");
+  return codice.trim().toUpperCase() === "BOS";
 }
+
 
 function ScadenziarioPage() {
   const navigate = useNavigate();
