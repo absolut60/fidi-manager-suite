@@ -613,8 +613,8 @@ function fmtDateIt(v: unknown): string {
 function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string }) {
   const bloccato = !!cliente.bloccato;
   const indBlocco = Number(cliente.ind_blocco ?? 0);
-  const clienteAttivo = cliente.cliente_attivo !== false;
   const ultimaFatt = cliente.ultima_data_fatturazione;
+  const clienteAttivo = cliente.cliente_attivo !== false && !!ultimaFatt;
 
   const { data: ins } = useQuery({
     queryKey: ["riepilogo-tab-insoluti", clienteId],
