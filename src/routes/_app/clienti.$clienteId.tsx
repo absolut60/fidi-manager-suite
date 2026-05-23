@@ -27,7 +27,7 @@ import { ClienteStoricoFidoTab } from "@/components/cliente-storico-fido-tab";
 import { ClienteInsolutiTab } from "@/components/cliente-insoluti-tab";
 import { formatEuro } from "@/lib/fidi";
 import { classificaScadenza } from "@/lib/scadenze";
-import { Ban, Calendar, Clock, Bell, CheckCircle2 } from "lucide-react";
+import { Ban, Calendar, Clock, Bell, CheckCircle2, Shield, ShieldOff } from "lucide-react";
 
 
 
