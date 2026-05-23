@@ -115,6 +115,7 @@ export function useBackgroundImport(opts: {
         throw new Error(message);
       }
       await supabase.from("importazioni").update({ file_path: filePath }).eq("id", imp.id);
+      opts.onUploadComplete?.();
 
       await triggerImport({ data: { fonte: opts.fonte, importazioneId: imp.id, filePath } });
       return imp.id;
