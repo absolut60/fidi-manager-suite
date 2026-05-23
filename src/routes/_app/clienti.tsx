@@ -948,6 +948,14 @@ function ClientiPage() {
                         </Badge>
                       )}
                     </TableCell>
+                    <TableCell>
+                      {c.assicurazione_attiva ? (
+                        <Badge className="bg-success/15 text-success hover:bg-success/20">POUEY</Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      )}
+                    </TableCell>
+
                      <TableCell>
                        <div className="flex flex-col gap-1 items-start">
                          <Badge variant={c.cliente_attivo === false ? "secondary" : "default"}>
