@@ -41,7 +41,7 @@ const schema = z.object({
 });
 type Form = z.infer<typeof schema>;
 
-const STATI_MODIFICABILI = ["bozza"]; // enum DB non ha "integrazioni_richieste"
+const STATI_MODIFICABILI = ["bozza", "integrazioni_richieste"];
 
 function RichiestePage() {
   const navigate = useNavigate();
