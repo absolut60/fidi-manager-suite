@@ -78,6 +78,27 @@ type ScadenziarioState = {
   ha_a_scadere: boolean;
 };
 
+// Calcolo "Fido proposto" per la proposta massiva.
+// NOTA: implementazione provvisoria — verrà sostituita con un algoritmo più
+// sofisticato. Mantieni questa funzione isolata per facilitare l'aggiornamento.
+function calcolaFidoProposto(cliente: any): number {
+  const esposizione = Number(cliente?.totale_rischio ?? 0);
+  return Number.isFinite(esposizione) && esposizione > 0 ? Math.round(esposizione) : 0;
+}
+
+function determinaTipoRichiesta(
+  fidoAttuale: number,
+  fidoProposto: number,
+): "nuovo_fido" | "aumento" | "diminuzione" | "rinnovo" {
+  if (!fidoAttuale || fidoAttuale === 0) return "nuovo_fido";
+  if (fidoProposto > fidoAttuale) return "aumento";
+  if (fidoProposto < fidoAttuale) return "diminuzione";
+  return "rinnovo";
+}
+
+const FIDO_RANGE_MIN = -100000;
+const FIDO_RANGE_MAX = 500000;
+
 function ClientiPage() {
   const navigate = useNavigate();
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
