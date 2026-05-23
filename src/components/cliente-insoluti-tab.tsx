@@ -26,6 +26,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { classificaScadenza } from "@/lib/scadenze";
 
 function fmtEuro(v: unknown): string {
   if (v == null || v === "") return "—";
