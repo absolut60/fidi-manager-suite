@@ -680,7 +680,7 @@ export const processScadenziarioChunk = inngest.createFunction(
         rawValidRows.push({
           ...r.payload,
           cliente_id: cid,
-          importato_da: userId ?? null,
+          importato_da: importazioneId,
           ultima_sincronizzazione: timestampInizio,
         });
       }
@@ -1082,7 +1082,7 @@ export const processScadAssicImport = inngest.createFunction(
               fido_euro: r.fido_euro,
               assicurazione: r.assicurazione,
               cod_blocco: r.cod_blocco,
-              importato_da: userId ?? null,
+              importato_da: importazioneId,
               ultima_sincronizzazione: now,
             };
             if (existId) {
