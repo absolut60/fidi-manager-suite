@@ -636,11 +636,11 @@ export function scanScadenziarioMeta(sheet: XLSX.WorkSheet): {
   const ref = sheet["!ref"];
   if (!ref) return { headers: [], firstDataRow: 2, lastRow: 1, totRowsApprox: 0 };
   const range = XLSX.utils.decode_range(ref);
-  const headers: string[] = [];
-  for (let c = range.s.c; c <= range.e.c; c++) {
+  const headers: string[] = new Array(range.e.c + 1).fill("");
+  for (let c = 0; c <= range.e.c; c++) {
     const addr = XLSX.utils.encode_cell({ r: 1, c });
     const cell = sheet[addr] as XLSX.CellObject | undefined;
-    headers.push(normalizeOfficialHeader(cell?.v));
+    headers[c] = normalizeOfficialHeader(cell?.v);
   }
   return {
     headers,
@@ -669,8 +669,8 @@ export function parseScadenziarioRangeLean(
     const mapped: Record<string, unknown> = {};
     let ragSoc = "";
     let codiceRaw: unknown = null;
-    for (let c = range.s.c; c <= range.e.c; c++) {
-      const h = headers[c - range.s.c];
+    for (let c = 0; c <= range.e.c; c++) {
+      const h = headers[c];
       const field = SCAD_OFFICIAL_MAP[h];
       if (!field) continue;
       const addr = XLSX.utils.encode_cell({ r, c });
