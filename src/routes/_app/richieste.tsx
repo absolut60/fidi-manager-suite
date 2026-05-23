@@ -1,93 +1,146 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import { Plus, Search, FileText, Pencil, Trash2 } from "lucide-react";
+import {
+  Plus, Search, FileText, Pencil, Trash2, Send, Check, X, AlertCircle,
+  Clock, CheckCircle2, Wallet, RotateCcw, MessageSquareWarning, Ban,
+} from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
-  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { STATO_LABEL, STATO_TONE, TIPO_LABEL, TIPO_TONE, calcolaLivello, LIVELLO_LABEL, formatEuro, formatDate, type TipoRichiesta } from "@/lib/fidi";
+import {
+  STATO_LABEL, STATO_TONE, TIPO_LABEL, TIPO_TONE, calcolaLivello,
+  formatEuro, formatDate, type TipoRichiesta,
+} from "@/lib/fidi";
 
 export const Route = createFileRoute("/_app/richieste")({
   component: RichiestePage,
 });
 
-const schema = z.object({
-  cliente_id: z.string().uuid("Seleziona un cliente"),
-  tipo: z.enum(["nuovo", "nuovo_fido", "aumento", "diminuzione", "rinnovo"]),
-  importo_richiesto: z.coerce.number().positive("Importo deve essere maggiore di 0").max(99999999),
-  durata_mesi: z.coerce.number().int().min(1).max(120),
-  motivazione: z.string().trim().max(1000).optional().or(z.literal("")),
-  note: z.string().trim().max(1000).optional().or(z.literal("")),
-});
-type Form = z.infer<typeof schema>;
+const STATI_IN_APPROVAZIONE = ["in_approvazione", "in_attesa_liv1", "in_attesa_liv2", "in_attesa_liv3", "integrazioni_richieste"];
 
-const STATI_MODIFICABILI = ["bozza", "integrazioni_richieste"];
+function giorniDa(d: string | null | undefined): number {
+  if (!d) return 0;
+  return Math.floor((Date.now() - new Date(d).getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function attesaTone(g: number): string {
+  if (g < 7) return "bg-success/15 text-success";
+  if (g <= 14) return "bg-warning/15 text-warning";
+  return "bg-destructive/15 text-destructive";
+}
+
+function semaforoCliente(c: any): { tone: string; label: string } {
+  if (!c) return { tone: "bg-muted text-muted-foreground", label: "—" };
+  if (c.bloccato || c.in_gestione_legale) return { tone: "bg-destructive/15 text-destructive", label: "Rosso" };
+  if (Number(c.scaduto ?? 0) > 0) return { tone: "bg-warning/15 text-warning", label: "Giallo" };
+  return { tone: "bg-success/15 text-success", label: "Verde" };
+}
 
 function RichiestePage() {
-  const navigate = useNavigate();
-  const qc = useQueryClient();
-  const [search, setSearch] = useState("");
-  const [stato, setStato] = useState<string>("tutti");
-  const [tipoFilter, setTipoFilter] = useState<string>("tutti");
-  const [open, setOpen] = useState(false);
+  const { user, role, profilo } = useAuth();
+  const isAdmin = role === "amministratore";
+  const livello =
+    role === "approvatore_liv3" ? 3 :
+    role === "approvatore_liv2" ? 2 :
+    role === "approvatore_liv1" ? 1 : 0;
+  const isApprovatore = livello > 0;
+  const isStoreManager = !isAdmin && !isApprovatore;
+
+  const defaultTab = isApprovatore && !isAdmin ? "in_approvazione" : "bozze";
+  const [tab, setTab] = useState<string>(defaultTab);
+  const [openNew, setOpenNew] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
   const [deleting, setDeleting] = useState<any | null>(null);
 
   const { data: richieste, isLoading } = useQuery({
-    queryKey: ["richieste"],
+    queryKey: ["richieste", role, profilo?.store_id, user?.id],
+    enabled: !!user,
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from("richieste_fido")
-        .select("*, clienti(ragione_sociale), stores(nome, codice)")
+        .select("*, clienti(ragione_sociale, fido_aziendale_concesso, fido_gestionale, bloccato, in_gestione_legale, scaduto, totale_rischio), stores(nome, codice)")
         .order("created_at", { ascending: false });
+      if (isStoreManager) {
+        q = q.eq("created_by", user!.id);
+      }
+      const { data, error } = await q;
       if (error) throw error;
-      return data;
+      return data ?? [];
     },
   });
 
+  const all = richieste ?? [];
+
+  // KPI calcoli
+  const oraMese = new Date();
+  const inizioMese = new Date(oraMese.getFullYear(), oraMese.getMonth(), 1).toISOString();
+  const kpi = useMemo(() => {
+    const mie = isStoreManager ? all : all;
+    const bozze = mie.filter((r) => r.stato === "bozza" && (isStoreManager ? r.created_by === user?.id : true)).length;
+    const inAttesa = all.filter((r) => STATI_IN_APPROVAZIONE.includes(r.stato));
+    const inAttesaCount = isApprovatore && !isAdmin
+      ? inAttesa.filter((r) => r.livello_corrente === livello).length
+      : inAttesa.length;
+    const approvateMese = all.filter((r) => r.stato === "approvata" && r.data_chiusura && r.data_chiusura >= inizioMese).length;
+    const valoreInAttesa = (isApprovatore && !isAdmin
+      ? inAttesa.filter((r) => r.livello_corrente === livello)
+      : inAttesa
+    ).reduce((s, r) => s + Number(r.importo_richiesto ?? 0), 0);
+    return { bozze, inAttesaCount, approvateMese, valoreInAttesa };
+  }, [all, user?.id, isStoreManager, isApprovatore, isAdmin, livello, inizioMese]);
+
+  const bozze = all.filter((r) => r.stato === "bozza");
+  const inApprovazione = all.filter((r) => {
+    if (!STATI_IN_APPROVAZIONE.includes(r.stato)) return false;
+    if (isApprovatore && !isAdmin) return r.livello_corrente === livello;
+    return true;
+  });
+  const approvate = all.filter((r) => r.stato === "approvata");
+  const rifiutate = all.filter((r) => r.stato === "rifiutata" || r.stato === "annullata");
+
   const deleteMut = useMutation({
     mutationFn: async (r: any) => {
-      if (r.stato !== "bozza") {
-        throw new Error("Non puoi eliminare una richiesta già inviata");
-      }
       const { error } = await supabase.from("richieste_fido").delete().eq("id", r.id);
       if (error) throw error;
     },
     onSuccess: () => {
       toast.success("Richiesta eliminata");
-      qc.invalidateQueries({ queryKey: ["richieste"] });
+      qcInvalidate();
       setDeleting(null);
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const filtered = (richieste ?? []).filter((r) => {
-    if (stato !== "tutti" && r.stato !== stato) return false;
-    if (tipoFilter !== "tutti" && r.tipo !== tipoFilter) return false;
-    const q = search.toLowerCase().trim();
-    if (!q) return true;
-    return (r as any).clienti?.ragione_sociale?.toLowerCase().includes(q);
-  });
+  const qc = useQueryClient();
+  function qcInvalidate() {
+    qc.invalidateQueries({ queryKey: ["richieste"] });
+    qc.invalidateQueries({ queryKey: ["approvazioni-queue"] });
+    qc.invalidateQueries({ queryKey: ["richieste-cliente"] });
+  }
 
   return (
     <div className="space-y-6">
@@ -95,162 +148,90 @@ function RichiestePage() {
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Richieste fido</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Gestisci le richieste di fido commerciale
+            {isStoreManager ? "Le tue richieste" : isApprovatore && !isAdmin ? `Coda approvazioni Liv. ${livello}` : "Tutte le richieste del sistema"}
           </p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-1.5">
-              <Plus className="size-4" />
-              Nuova richiesta
-            </Button>
-          </DialogTrigger>
-          <NewRichiestaDialog onClose={() => setOpen(false)} />
-        </Dialog>
+        {(isStoreManager || isAdmin) && (
+          <Button className="gap-1.5" onClick={() => setOpenNew(true)}>
+            <Plus className="size-4" /> Nuova richiesta
+          </Button>
+        )}
       </div>
 
-      <Card className="p-4 sm:p-5">
-        <div className="flex flex-col sm:flex-row gap-3 mb-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cerca per cliente..."
-              className="pl-9"
-            />
-          </div>
-          <Select value={tipoFilter} onValueChange={setTipoFilter}>
-            <SelectTrigger className="w-full sm:w-44"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="tutti">Tutti i tipi</SelectItem>
-              <SelectItem value="nuovo">Nuovo fido</SelectItem>
-              <SelectItem value="aumento">Aumento</SelectItem>
-              <SelectItem value="diminuzione">Diminuzione</SelectItem>
-              <SelectItem value="rinnovo">Rinnovo</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={stato} onValueChange={setStato}>
-            <SelectTrigger className="w-full sm:w-44"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="tutti">Tutti gli stati</SelectItem>
-              <SelectItem value="bozza">Bozza</SelectItem>
-              <SelectItem value="in_approvazione">In approvazione</SelectItem>
-              <SelectItem value="in_attesa_liv1">In attesa Liv. 1</SelectItem>
-              <SelectItem value="in_attesa_liv2">In attesa Liv. 2</SelectItem>
-              <SelectItem value="in_attesa_liv3">In attesa Liv. 3</SelectItem>
-              <SelectItem value="integrazioni_richieste">Integrazioni richieste</SelectItem>
-              <SelectItem value="approvata">Approvata</SelectItem>
-              <SelectItem value="rifiutata">Rifiutata</SelectItem>
-              <SelectItem value="annullata">Annullata</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      {/* KPI */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KpiCard icon={FileText} tone="text-muted-foreground" label="Bozze da inviare" value={String(kpi.bozze)} />
+        <KpiCard icon={Clock} tone="text-info" label="In attesa approvazione" value={String(kpi.inAttesaCount)} />
+        <KpiCard icon={CheckCircle2} tone="text-success" label="Approvate questo mese" value={String(kpi.approvateMese)} />
+        <KpiCard icon={Wallet} tone="text-primary" label="Valore in approvazione" value={formatEuro(kpi.valoreInAttesa)} />
+      </div>
 
-        {isLoading ? (
-          <div className="space-y-2">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full" />
-            ))}
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="size-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
-              <FileText className="size-5 text-muted-foreground" />
-            </div>
-            <p className="font-medium text-sm">Nessuna richiesta trovata</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {search || stato !== "tutti" ? "Modifica i filtri" : "Crea la prima richiesta di fido"}
-            </p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead className="text-right">Importo</TableHead>
-                  <TableHead>Durata</TableHead>
-                  <TableHead>Livello</TableHead>
-                  <TableHead>Stato</TableHead>
-                  <TableHead>Data</TableHead>
-                  <TableHead className="text-right">Azioni</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((r) => {
-                  const editable = STATI_MODIFICABILI.includes(r.stato);
-                  return (
-                    <TableRow
-                      key={r.id}
-                      className="cursor-pointer hover:bg-muted/40"
-                      onClick={() => navigate({ to: "/clienti/$clienteId", params: { clienteId: r.cliente_id } })}
-                    >
-                      <TableCell className="font-medium">
-                        {(r as any).clienti?.ragione_sociale ?? "—"}
-                      </TableCell>
-                      <TableCell>
-                        <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>
-                          {TIPO_LABEL[r.tipo as TipoRichiesta]}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {formatEuro(Number(r.importo_richiesto))}
-                      </TableCell>
-                      <TableCell className="text-sm">{r.durata_mesi} mesi</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">Liv. {r.livello_corrente}/{r.livello_richiesto}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${STATO_TONE[r.stato]}`}>
-                          {STATO_LABEL[r.stato]}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {formatDate(r.data_invio ?? r.created_at)}
-                      </TableCell>
-                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                        <div className="inline-flex gap-1">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="size-8"
-                            disabled={!editable}
-                            title={editable ? "Modifica" : "Modificabile solo se in bozza"}
-                            onClick={() => editable && setEditing(r)}
-                          >
-                            <Pencil className="size-4" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="size-8 text-destructive hover:text-destructive"
-                            title="Elimina"
-                            onClick={() => {
-                              if (r.stato !== "bozza") {
-                                toast.error("Non puoi eliminare una richiesta già inviata");
-                                return;
-                              }
-                              setDeleting(r);
-                            }}
-                          >
-                            <Trash2 className="size-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList>
+          {!isApprovatore || isAdmin ? (
+            <TabsTrigger value="bozze">Bozze {bozze.length > 0 && <Badge variant="secondary" className="ml-2">{bozze.length}</Badge>}</TabsTrigger>
+          ) : null}
+          <TabsTrigger value="in_approvazione">
+            In Approvazione {inApprovazione.length > 0 && <Badge variant="secondary" className="ml-2">{inApprovazione.length}</Badge>}
+          </TabsTrigger>
+          <TabsTrigger value="approvate">Approvate</TabsTrigger>
+          <TabsTrigger value="rifiutate">Rifiutate</TabsTrigger>
+          {isAdmin && <TabsTrigger value="tutto">Tutto</TabsTrigger>}
+        </TabsList>
+
+        <TabsContent value="bozze" className="mt-4">
+          <BozzeTab
+            rows={bozze}
+            loading={isLoading}
+            onEdit={setEditing}
+            onDelete={setDeleting}
+            onChanged={qcInvalidate}
+          />
+        </TabsContent>
+
+        <TabsContent value="in_approvazione" className="mt-4">
+          <InApprovazioneTab
+            rows={inApprovazione}
+            loading={isLoading}
+            canApprove={isAdmin || isApprovatore}
+            livelloUtente={livello}
+            isAdmin={isAdmin}
+            onChanged={qcInvalidate}
+          />
+        </TabsContent>
+
+        <TabsContent value="approvate" className="mt-4">
+          <StoricoTab rows={approvate} loading={isLoading} kind="approvata" onRiinvia={null} />
+        </TabsContent>
+
+        <TabsContent value="rifiutate" className="mt-4">
+          <StoricoTab
+            rows={rifiutate}
+            loading={isLoading}
+            kind="rifiutata"
+            onRiinvia={(r) => setEditing({ ...r, _riinvia: true })}
+          />
+        </TabsContent>
+
+        {isAdmin && (
+          <TabsContent value="tutto" className="mt-4">
+            <TuttoTab rows={all} loading={isLoading} />
+          </TabsContent>
         )}
-      </Card>
+      </Tabs>
+
+      <Dialog open={openNew} onOpenChange={setOpenNew}>
+        {openNew && <RichiestaFormDialog onClose={() => setOpenNew(false)} onSaved={qcInvalidate} />}
+      </Dialog>
 
       <Dialog open={!!editing} onOpenChange={(v) => !v && setEditing(null)}>
         {editing && (
-          <EditRichiestaDialog richiesta={editing} onClose={() => setEditing(null)} />
+          <RichiestaFormDialog
+            richiesta={editing._riinvia ? undefined : editing}
+            cloneFrom={editing._riinvia ? editing : undefined}
+            onClose={() => setEditing(null)}
+            onSaved={qcInvalidate}
+          />
         )}
       </Dialog>
 
@@ -258,9 +239,7 @@ function RichiestePage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Eliminare la richiesta?</AlertDialogTitle>
-            <AlertDialogDescription>
-              L'operazione è irreversibile. La richiesta in bozza verrà rimossa.
-            </AlertDialogDescription>
+            <AlertDialogDescription>L'operazione è irreversibile.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annulla</AlertDialogCancel>
@@ -268,9 +247,7 @@ function RichiestePage() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={(e) => { e.preventDefault(); if (deleting) deleteMut.mutate(deleting); }}
               disabled={deleteMut.isPending}
-            >
-              Elimina
-            </AlertDialogAction>
+            >Elimina</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -278,162 +255,634 @@ function RichiestePage() {
   );
 }
 
-function EditRichiestaDialog({ richiesta, onClose }: { richiesta: any; onClose: () => void }) {
-  const qc = useQueryClient();
-  const [form, setForm] = useState<Form>({
-    cliente_id: richiesta.cliente_id,
-    tipo: richiesta.tipo,
-    importo_richiesto: Number(richiesta.importo_richiesto),
-    durata_mesi: richiesta.durata_mesi,
-    motivazione: richiesta.motivazione ?? "",
-    note: richiesta.note ?? "",
-  });
-  const [errors, setErrors] = useState<Record<string, string>>({});
+function KpiCard({ icon: Icon, tone, label, value }: { icon: any; tone: string; label: string; value: string }) {
+  return (
+    <Card className="p-4">
+      <div className="flex items-center gap-2">
+        <Icon className={`size-4 ${tone}`} />
+        <p className="text-xs text-muted-foreground">{label}</p>
+      </div>
+      <p className="text-2xl font-bold mt-2 tabular-nums">{value}</p>
+    </Card>
+  );
+}
 
-  const mut = useMutation({
-    mutationFn: async (input: Form) => {
-      const parsed = schema.parse(input);
-      const { error } = await supabase.from("richieste_fido").update({
-        tipo: parsed.tipo,
-        importo_richiesto: parsed.importo_richiesto,
-        durata_mesi: parsed.durata_mesi,
-        motivazione: parsed.motivazione || null,
-        note: parsed.note || null,
-      }).eq("id", richiesta.id);
+/* ============================ BOZZE TAB ============================ */
+function BozzeTab({
+  rows, loading, onEdit, onDelete, onChanged,
+}: { rows: any[]; loading: boolean; onEdit: (r: any) => void; onDelete: (r: any) => void; onChanged: () => void }) {
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  const invioMut = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase
+        .from("richieste_fido")
+        .update({ stato: "in_approvazione", data_invio: new Date().toISOString() })
+        .in("id", ids);
       if (error) throw error;
     },
-    onSuccess: () => {
-      toast.success("Richiesta aggiornata");
-      qc.invalidateQueries({ queryKey: ["richieste"] });
-      onClose();
+    onSuccess: (_d, ids) => {
+      toast.success(`${ids.length} richieste inviate in approvazione`);
+      setSelected(new Set());
+      onChanged();
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  function submit(e: React.FormEvent) {
-    e.preventDefault();
-    const res = schema.safeParse(form);
-    if (!res.success) {
-      const errs: Record<string, string> = {};
-      res.error.issues.forEach((i) => { errs[i.path[0] as string] = i.message; });
-      setErrors(errs);
-      return;
-    }
-    setErrors({});
-    mut.mutate(form);
+  function toggle(id: string) {
+    const next = new Set(selected);
+    next.has(id) ? next.delete(id) : next.add(id);
+    setSelected(next);
   }
+  const allSel = rows.length > 0 && selected.size === rows.length;
+
+  if (loading) return <SkeletonTable />;
+  if (rows.length === 0) return <Empty label="Nessuna bozza" hint="Crea una nuova richiesta" />;
 
   return (
-    <DialogContent className="max-w-xl">
-      <DialogHeader>
-        <DialogTitle>Modifica richiesta fido</DialogTitle>
-        <DialogDescription>Aggiorna i dati della richiesta in bozza.</DialogDescription>
-      </DialogHeader>
-      <form onSubmit={submit} className="space-y-4">
-        <div className="space-y-1.5">
-          <Label>Tipo richiesta *</Label>
-          <Select value={form.tipo} onValueChange={(v) => setForm({ ...form, tipo: v as TipoRichiesta })}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="nuovo">Nuovo fido</SelectItem>
-              <SelectItem value="aumento">Aumento fido</SelectItem>
-              <SelectItem value="diminuzione">Diminuzione fido</SelectItem>
-              <SelectItem value="rinnovo">Rinnovo fido</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label>Importo (€) *</Label>
-            <Input type="number" step="0.01" min="0"
-              value={form.importo_richiesto || ""}
-              onChange={(e) => setForm({ ...form, importo_richiesto: Number(e.target.value) })} />
-            {errors.importo_richiesto && <p className="text-xs text-destructive">{errors.importo_richiesto}</p>}
-          </div>
-          <div className="space-y-1.5">
-            <Label>Durata (mesi) *</Label>
-            <Input type="number" min="1" max="120"
-              value={form.durata_mesi}
-              onChange={(e) => setForm({ ...form, durata_mesi: Number(e.target.value) })} />
-          </div>
-        </div>
-        <div className="space-y-1.5">
-          <Label>Motivazione</Label>
-          <Textarea rows={3} value={form.motivazione}
-            onChange={(e) => setForm({ ...form, motivazione: e.target.value })} />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Note</Label>
-          <Textarea rows={2} value={form.note}
-            onChange={(e) => setForm({ ...form, note: e.target.value })} />
-        </div>
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose}>Annulla</Button>
-          <Button type="submit" disabled={mut.isPending}>
-            {mut.isPending ? "Salvataggio..." : "Salva modifiche"}
+    <Card className="p-2 sm:p-3">
+      {selected.size > 0 && (
+        <div className="flex items-center justify-between gap-3 p-3 mb-2 bg-primary/5 rounded-md">
+          <p className="text-sm font-medium">{selected.size} selezionate</p>
+          <Button size="sm" onClick={() => invioMut.mutate(Array.from(selected))} disabled={invioMut.isPending}>
+            <Send className="size-4" /> Invia tutte
           </Button>
-        </DialogFooter>
-      </form>
-    </DialogContent>
+        </div>
+      )}
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-8"><Checkbox checked={allSel} onCheckedChange={() => setSelected(allSel ? new Set() : new Set(rows.map((r) => r.id)))} /></TableHead>
+            <TableHead>Cliente</TableHead>
+            <TableHead>Tipo</TableHead>
+            <TableHead className="text-right">Importo richiesto</TableHead>
+            <TableHead className="text-right">Fido attuale</TableHead>
+            <TableHead>Data creazione</TableHead>
+            <TableHead className="text-right">Azioni</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((r) => (
+            <TableRow key={r.id}>
+              <TableCell><Checkbox checked={selected.has(r.id)} onCheckedChange={() => toggle(r.id)} /></TableCell>
+              <TableCell className="font-medium">{r.clienti?.ragione_sociale ?? "—"}</TableCell>
+              <TableCell>
+                <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>
+                  {TIPO_LABEL[r.tipo as TipoRichiesta]}
+                </span>
+              </TableCell>
+              <TableCell className="text-right tabular-nums">{formatEuro(Number(r.importo_richiesto))}</TableCell>
+              <TableCell className="text-right tabular-nums text-muted-foreground">
+                {formatEuro(Number(r.clienti?.fido_aziendale_concesso ?? r.clienti?.fido_gestionale ?? 0))}
+              </TableCell>
+              <TableCell className="text-sm text-muted-foreground">{formatDate(r.created_at)}</TableCell>
+              <TableCell className="text-right">
+                <div className="inline-flex gap-1">
+                  <Button size="icon" variant="ghost" className="size-8" onClick={() => onEdit(r)} title="Modifica"><Pencil className="size-4" /></Button>
+                  <Button size="icon" variant="ghost" className="size-8 text-success" onClick={() => invioMut.mutate([r.id])} title="Invia"><Send className="size-4" /></Button>
+                  <Button size="icon" variant="ghost" className="size-8 text-destructive" onClick={() => onDelete(r)} title="Elimina"><Trash2 className="size-4" /></Button>
+                </div>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </Card>
   );
 }
 
-function NewRichiestaDialog({ onClose }: { onClose: () => void }) {
+/* ====================== IN APPROVAZIONE TAB ====================== */
+function InApprovazioneTab({
+  rows, loading, canApprove, livelloUtente, isAdmin, onChanged,
+}: {
+  rows: any[]; loading: boolean; canApprove: boolean; livelloUtente: number; isAdmin: boolean; onChanged: () => void;
+}) {
+  const { user } = useAuth();
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [storeFilter, setStoreFilter] = useState("tutti");
+  const [tipoFilter, setTipoFilter] = useState("tutti");
+  const [importoMin, setImportoMin] = useState("");
+  const [importoMax, setImportoMax] = useState("");
+  const [giorniMin, setGiorniMin] = useState("");
+  const [action, setAction] = useState<{ kind: "approva" | "rifiuta" | "integrazioni"; rows: any[] } | null>(null);
+  const [importoApprovato, setImportoApprovato] = useState<string>("");
+  const [note, setNote] = useState("");
+
+  const stores = useMemo(() => {
+    const map = new Map<string, string>();
+    rows.forEach((r) => { if (r.stores?.nome) map.set(r.store_id, r.stores.nome); });
+    return Array.from(map.entries());
+  }, [rows]);
+
+  const filtered = rows
+    .filter((r) => storeFilter === "tutti" || r.store_id === storeFilter)
+    .filter((r) => tipoFilter === "tutti" || r.tipo === tipoFilter)
+    .filter((r) => !importoMin || Number(r.importo_richiesto) >= Number(importoMin))
+    .filter((r) => !importoMax || Number(r.importo_richiesto) <= Number(importoMax))
+    .filter((r) => !giorniMin || giorniDa(r.data_invio) >= Number(giorniMin))
+    .sort((a, b) => Number(b.importo_richiesto) - Number(a.importo_richiesto));
+
+  function toggle(id: string) {
+    const next = new Set(selected);
+    next.has(id) ? next.delete(id) : next.add(id);
+    setSelected(next);
+  }
+  const allSel = filtered.length > 0 && filtered.every((r) => selected.has(r.id));
+
+  const annullaMut = useMutation({
+    mutationFn: async (r: any) => {
+      const { error } = await supabase.from("richieste_fido").update({ stato: "annullata" }).eq("id", r.id);
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("Richiesta annullata"); onChanged(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const decisionMut = useMutation({
+    mutationFn: async (input: { kind: "approva" | "rifiuta" | "integrazioni"; rows: any[]; note: string; importoApprovato?: number }) => {
+      if (!user) throw new Error("Non autenticato");
+      const { kind, rows: targets, note, importoApprovato } = input;
+      for (const r of targets) {
+        const livDecisione = r.livello_corrente;
+        if (kind === "integrazioni") {
+          const { error } = await supabase.from("richieste_fido")
+            .update({ stato: "integrazioni_richieste" })
+            .eq("id", r.id);
+          if (error) throw error;
+          // log come approvazione "rifiutata" con nota? meglio audit_log via insert
+          await supabase.from("approvazioni").insert({
+            richiesta_id: r.id, approvatore_id: user.id, livello: livDecisione,
+            esito: "rifiutata", note: `[Integrazioni richieste] ${note}`,
+          });
+          continue;
+        }
+        const esito = kind === "approva" ? "approvata" : "rifiutata";
+        const imp = importoApprovato ?? Number(r.importo_richiesto);
+        const { error: e1 } = await supabase.from("approvazioni").insert({
+          richiesta_id: r.id, approvatore_id: user.id, livello: livDecisione,
+          esito, importo_approvato: kind === "approva" ? imp : null, note: note || null,
+        });
+        if (e1) throw e1;
+
+        if (kind === "rifiuta") {
+          const { error } = await supabase.from("richieste_fido")
+            .update({ stato: "rifiutata" }).eq("id", r.id);
+          if (error) throw error;
+        } else {
+          const nextLiv = livDecisione + 1;
+          if (nextLiv > r.livello_richiesto) {
+            // approvazione finale
+            const fidoPrec = Number(r.clienti?.fido_aziendale_concesso ?? 0);
+            const { error } = await supabase.from("richieste_fido")
+              .update({ stato: "approvata", importo_approvato: imp }).eq("id", r.id);
+            if (error) throw error;
+            // aggiorna fido cliente
+            await supabase.from("clienti")
+              .update({ fido_aziendale_concesso: imp, data_affidamento_aziendale: new Date().toISOString().slice(0, 10) })
+              .eq("id", r.cliente_id);
+            // storico fido
+            await supabase.from("storico_fido").insert({
+              cliente_id: r.cliente_id,
+              richiesta_id: r.id,
+              importo_precedente: fidoPrec,
+              importo_nuovo: imp,
+              tipo_variazione: r.tipo === "diminuzione" ? "diminuzione" : (fidoPrec > 0 ? "aumento" : "nuovo"),
+              eseguito_da: user.id,
+              note: note || null,
+            } as any);
+          } else {
+            const { error } = await supabase.from("richieste_fido")
+              .update({ livello_corrente: nextLiv }).eq("id", r.id);
+            if (error) throw error;
+          }
+        }
+      }
+    },
+    onSuccess: (_d, v) => {
+      toast.success(`${v.rows.length} richieste · ${v.kind === "approva" ? "approvate" : v.kind === "rifiuta" ? "rifiutate" : "integrazioni richieste"}`);
+      setAction(null); setNote(""); setImportoApprovato(""); setSelected(new Set());
+      onChanged();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  if (loading) return <SkeletonTable />;
+
+  return (
+    <div className="space-y-3">
+      {/* Filtri */}
+      <Card className="p-3 flex flex-wrap gap-2 items-center">
+        {stores.length > 1 && (
+          <Select value={storeFilter} onValueChange={setStoreFilter}>
+            <SelectTrigger className="w-44"><SelectValue placeholder="Store" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="tutti">Tutti gli store</SelectItem>
+              {stores.map(([id, nome]) => <SelectItem key={id} value={id}>{nome}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        )}
+        <Select value={tipoFilter} onValueChange={setTipoFilter}>
+          <SelectTrigger className="w-40"><SelectValue placeholder="Tipo" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="tutti">Tutti i tipi</SelectItem>
+            <SelectItem value="nuovo">Nuovo fido</SelectItem>
+            <SelectItem value="aumento">Aumento</SelectItem>
+            <SelectItem value="diminuzione">Diminuzione</SelectItem>
+            <SelectItem value="rinnovo">Rinnovo</SelectItem>
+          </SelectContent>
+        </Select>
+        <Input className="w-28" type="number" placeholder="Importo min" value={importoMin} onChange={(e) => setImportoMin(e.target.value)} />
+        <Input className="w-28" type="number" placeholder="Importo max" value={importoMax} onChange={(e) => setImportoMax(e.target.value)} />
+        <Input className="w-32" type="number" placeholder="Giorni attesa ≥" value={giorniMin} onChange={(e) => setGiorniMin(e.target.value)} />
+      </Card>
+
+      {filtered.length === 0 ? (
+        <Empty label="Nessuna richiesta in approvazione" hint="" />
+      ) : (
+        <Card className="p-2 sm:p-3">
+          {canApprove && selected.size > 0 && (
+            <div className="flex items-center justify-between gap-3 p-3 mb-2 bg-primary/5 rounded-md sticky top-2 z-10">
+              <p className="text-sm font-medium">
+                {selected.size} selezionate · {formatEuro(filtered.filter((r) => selected.has(r.id)).reduce((s, r) => s + Number(r.importo_richiesto), 0))}
+              </p>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" className="text-destructive border-destructive/30"
+                  onClick={() => setAction({ kind: "rifiuta", rows: filtered.filter((r) => selected.has(r.id)) })}>
+                  <X className="size-4" /> Rifiuta
+                </Button>
+                <Button size="sm" className="bg-success text-success-foreground hover:bg-success/90"
+                  onClick={() => setAction({ kind: "approva", rows: filtered.filter((r) => selected.has(r.id)) })}>
+                  <Check className="size-4" /> Approva selezionate
+                </Button>
+              </div>
+            </div>
+          )}
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {canApprove && <TableHead className="w-8"><Checkbox checked={allSel} onCheckedChange={() => setSelected(allSel ? new Set() : new Set(filtered.map((r) => r.id)))} /></TableHead>}
+                <TableHead>Cliente</TableHead>
+                {!isStoreManagerView(canApprove) && <TableHead>Store</TableHead>}
+                <TableHead>Tipo</TableHead>
+                <TableHead className="text-right">Importo</TableHead>
+                <TableHead className="text-right">Fido attuale</TableHead>
+                <TableHead className="text-right">Tot. rischio</TableHead>
+                <TableHead className="text-right">Scaduto</TableHead>
+                <TableHead>Liv.</TableHead>
+                <TableHead>Data invio</TableHead>
+                <TableHead>Giorni</TableHead>
+                {(canApprove || true) && <TableHead className="text-right">Azioni</TableHead>}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((r) => {
+                const g = giorniDa(r.data_invio);
+                const livMio = canApprove && (isAdmin || r.livello_corrente === livelloUtente);
+                return (
+                  <TableRow key={r.id}>
+                    {canApprove && <TableCell><Checkbox checked={selected.has(r.id)} onCheckedChange={() => toggle(r.id)} disabled={!livMio} /></TableCell>}
+                    <TableCell className="font-medium">{r.clienti?.ragione_sociale ?? "—"}</TableCell>
+                    {!isStoreManagerView(canApprove) && <TableCell className="text-sm text-muted-foreground">{r.stores?.nome ?? "—"}</TableCell>}
+                    <TableCell><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{TIPO_LABEL[r.tipo as TipoRichiesta]}</span></TableCell>
+                    <TableCell className="text-right tabular-nums font-medium">{formatEuro(Number(r.importo_richiesto))}</TableCell>
+                    <TableCell className="text-right tabular-nums text-muted-foreground">{formatEuro(Number(r.clienti?.fido_aziendale_concesso ?? 0))}</TableCell>
+                    <TableCell className="text-right tabular-nums text-muted-foreground">{formatEuro(Number(r.clienti?.totale_rischio ?? 0))}</TableCell>
+                    <TableCell className="text-right tabular-nums">{Number(r.clienti?.scaduto ?? 0) > 0 ? <span className="text-destructive">{formatEuro(Number(r.clienti?.scaduto))}</span> : "—"}</TableCell>
+                    <TableCell><Badge variant="outline">L{r.livello_corrente}/{r.livello_richiesto}</Badge></TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{formatDate(r.data_invio)}</TableCell>
+                    <TableCell><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${attesaTone(g)}`}>{g}gg</span></TableCell>
+                    <TableCell className="text-right">
+                      {canApprove && livMio ? (
+                        <div className="inline-flex gap-1">
+                          <Button size="sm" variant="ghost" className="text-success h-8" onClick={() => { setImportoApprovato(String(r.importo_richiesto)); setAction({ kind: "approva", rows: [r] }); }}>
+                            <Check className="size-4" /> Approva
+                          </Button>
+                          <Button size="sm" variant="ghost" className="text-warning h-8" onClick={() => setAction({ kind: "integrazioni", rows: [r] })} title="Richiedi integrazioni">
+                            <MessageSquareWarning className="size-4" />
+                          </Button>
+                          <Button size="sm" variant="ghost" className="text-destructive h-8" onClick={() => setAction({ kind: "rifiuta", rows: [r] })}>
+                            <X className="size-4" /> Rifiuta
+                          </Button>
+                        </div>
+                      ) : (r.stato === "integrazioni_richieste" || r.stato === "bozza") ? (
+                        <Button size="sm" variant="ghost" className="text-destructive h-8" onClick={() => annullaMut.mutate(r)}>
+                          <Ban className="size-4" /> Annulla
+                        </Button>
+                      ) : <span className="text-xs text-muted-foreground">—</span>}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
+
+      {/* Dialog azione */}
+      <Dialog open={!!action} onOpenChange={(o) => !o && setAction(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {action?.kind === "approva" ? "Conferma approvazione"
+                : action?.kind === "rifiuta" ? "Conferma rifiuto"
+                : "Richiedi integrazioni"}
+            </DialogTitle>
+            <DialogDescription>
+              {action?.rows.length === 1
+                ? <>Cliente: <strong>{action.rows[0].clienti?.ragione_sociale}</strong></>
+                : <>{action?.rows.length} richieste · totale {formatEuro((action?.rows ?? []).reduce((s, r) => s + Number(r.importo_richiesto), 0))}</>}
+            </DialogDescription>
+          </DialogHeader>
+
+          {action?.rows.length === 1 && (
+            <div className="rounded-md border p-3 text-xs space-y-1 bg-muted/30">
+              <div className="flex justify-between"><span>Fido attuale</span><span className="tabular-nums">{formatEuro(Number(action.rows[0].clienti?.fido_aziendale_concesso ?? 0))}</span></div>
+              <div className="flex justify-between"><span>Scaduto</span><span className="tabular-nums">{formatEuro(Number(action.rows[0].clienti?.scaduto ?? 0))}</span></div>
+              <div className="flex justify-between"><span>Totale rischio</span><span className="tabular-nums">{formatEuro(Number(action.rows[0].clienti?.totale_rischio ?? 0))}</span></div>
+              <div className="flex justify-between"><span>Semaforo</span>
+                <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${semaforoCliente(action.rows[0].clienti).tone}`}>
+                  {semaforoCliente(action.rows[0].clienti).label}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {action?.kind === "approva" && action.rows.length === 1 && (
+            <div className="space-y-1.5">
+              <Label>Importo approvato (€)</Label>
+              <Input type="number" step="0.01" value={importoApprovato} onChange={(e) => setImportoApprovato(e.target.value)} />
+            </div>
+          )}
+
+          <div className="space-y-1.5">
+            <Label>
+              {action?.kind === "rifiuta" ? "Motivo rifiuto (min 20 caratteri) *"
+                : action?.kind === "integrazioni" ? "Cosa serve integrare *"
+                : "Note approvazione"}
+            </Label>
+            <Textarea rows={3} value={note} onChange={(e) => setNote(e.target.value)} />
+            {action?.kind === "rifiuta" && note.length > 0 && note.length < 20 && (
+              <p className="text-xs text-destructive">Minimo 20 caratteri</p>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAction(null)} disabled={decisionMut.isPending}>Annulla</Button>
+            <Button
+              disabled={
+                decisionMut.isPending ||
+                (action?.kind === "rifiuta" && note.length < 20) ||
+                (action?.kind === "integrazioni" && note.trim().length < 5)
+              }
+              className={action?.kind === "approva" ? "bg-success text-success-foreground hover:bg-success/90" : action?.kind === "rifiuta" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
+              onClick={() => action && decisionMut.mutate({
+                kind: action.kind,
+                rows: action.rows,
+                note,
+                importoApprovato: action.kind === "approva" && action.rows.length === 1 ? Number(importoApprovato) : undefined,
+              })}
+            >
+              {decisionMut.isPending ? "Elaborazione..." :
+                action?.kind === "approva" ? "Conferma approvazione" :
+                action?.kind === "rifiuta" ? "Conferma rifiuto" :
+                "Invia richiesta integrazioni"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function isStoreManagerView(canApprove: boolean): boolean { return !canApprove; }
+
+/* ============================ STORICO TAB ============================ */
+function StoricoTab({
+  rows, loading, kind, onRiinvia,
+}: { rows: any[]; loading: boolean; kind: "approvata" | "rifiutata"; onRiinvia: ((r: any) => void) | null }) {
+  const [meseFiltro, setMeseFiltro] = useState<string>("ultimi3");
+  const [mostraTutto, setMostraTutto] = useState(false);
+
+  const cutoff = useMemo(() => {
+    const d = new Date(); d.setMonth(d.getMonth() - 3); return d.toISOString();
+  }, []);
+
+  const filtered = useMemo(() => {
+    let r = rows;
+    if (!mostraTutto) r = r.filter((x) => (x.data_chiusura ?? x.created_at) >= cutoff);
+    if (meseFiltro !== "ultimi3" && meseFiltro !== "tutto") {
+      r = r.filter((x) => (x.data_chiusura ?? x.created_at)?.slice(0, 7) === meseFiltro);
+    }
+    return r;
+  }, [rows, mostraTutto, meseFiltro, cutoff]);
+
+  const mesi = useMemo(() => {
+    const s = new Set<string>();
+    rows.forEach((r) => { const k = (r.data_chiusura ?? r.created_at)?.slice(0, 7); if (k) s.add(k); });
+    return Array.from(s).sort().reverse();
+  }, [rows]);
+
+  if (loading) return <SkeletonTable />;
+
+  return (
+    <div className="space-y-3">
+      <Card className="p-3 flex flex-wrap items-center gap-2">
+        <Select value={meseFiltro} onValueChange={setMeseFiltro}>
+          <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ultimi3">Ultimi 3 mesi</SelectItem>
+            <SelectItem value="tutto">Tutti i mesi</SelectItem>
+            {mesi.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        {!mostraTutto && (
+          <Button variant="outline" size="sm" onClick={() => setMostraTutto(true)}>Carica tutto lo storico</Button>
+        )}
+      </Card>
+
+      {filtered.length === 0 ? (
+        <Empty label={kind === "approvata" ? "Nessuna richiesta approvata" : "Nessuna richiesta rifiutata"} hint="" />
+      ) : (
+        <Card className="p-2 sm:p-3">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Cliente</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead className="text-right">Importo richiesto</TableHead>
+                {kind === "approvata" && <TableHead className="text-right">Importo approvato</TableHead>}
+                {kind === "rifiutata" && <TableHead>Motivo</TableHead>}
+                <TableHead>Data</TableHead>
+                {onRiinvia && <TableHead className="text-right">Azioni</TableHead>}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((r) => (
+                <TableRow key={r.id}>
+                  <TableCell className="font-medium">{r.clienti?.ragione_sociale ?? "—"}</TableCell>
+                  <TableCell><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{TIPO_LABEL[r.tipo as TipoRichiesta]}</span></TableCell>
+                  <TableCell className="text-right tabular-nums">{formatEuro(Number(r.importo_richiesto))}</TableCell>
+                  {kind === "approvata" && <TableCell className="text-right tabular-nums text-success font-medium">{formatEuro(Number(r.importo_approvato ?? r.importo_richiesto))}</TableCell>}
+                  {kind === "rifiutata" && <TableCell className="text-xs text-muted-foreground max-w-xs truncate" title={r.note ?? r.motivazione ?? ""}>{r.note ?? r.motivazione ?? "—"}</TableCell>}
+                  <TableCell className="text-sm text-muted-foreground">{formatDate(r.data_chiusura ?? r.created_at)}</TableCell>
+                  {onRiinvia && (
+                    <TableCell className="text-right">
+                      <Button size="sm" variant="outline" onClick={() => onRiinvia(r)}><RotateCcw className="size-4" /> Ri-invia</Button>
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+/* ============================ TUTTO TAB (admin) ============================ */
+function TuttoTab({ rows, loading }: { rows: any[]; loading: boolean }) {
+  const [statoF, setStatoF] = useState<string>("tutti");
+  const [livF, setLivF] = useState<string>("tutti");
+  const filtered = rows
+    .filter((r) => statoF === "tutti" || r.stato === statoF)
+    .filter((r) => livF === "tutti" || String(r.livello_corrente) === livF);
+
+  if (loading) return <SkeletonTable />;
+  return (
+    <div className="space-y-3">
+      <Card className="p-3 flex flex-wrap gap-2 items-center">
+        <Select value={statoF} onValueChange={setStatoF}>
+          <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="tutti">Tutti gli stati</SelectItem>
+            {Object.entries(STATO_LABEL).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={livF} onValueChange={setLivF}>
+          <SelectTrigger className="w-40"><SelectValue placeholder="Livello" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="tutti">Tutti i livelli</SelectItem>
+            <SelectItem value="1">Liv. 1</SelectItem>
+            <SelectItem value="2">Liv. 2</SelectItem>
+            <SelectItem value="3">Liv. 3</SelectItem>
+          </SelectContent>
+        </Select>
+      </Card>
+      <Card className="p-2 sm:p-3">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Cliente</TableHead>
+              <TableHead>Store</TableHead>
+              <TableHead>Tipo</TableHead>
+              <TableHead className="text-right">Importo</TableHead>
+              <TableHead>Stato</TableHead>
+              <TableHead>Liv.</TableHead>
+              <TableHead>Data</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filtered.map((r) => (
+              <TableRow key={r.id}>
+                <TableCell className="font-medium">{r.clienti?.ragione_sociale ?? "—"}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">{r.stores?.nome ?? "—"}</TableCell>
+                <TableCell><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{TIPO_LABEL[r.tipo as TipoRichiesta]}</span></TableCell>
+                <TableCell className="text-right tabular-nums">{formatEuro(Number(r.importo_richiesto))}</TableCell>
+                <TableCell><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${STATO_TONE[r.stato]}`}>{STATO_LABEL[r.stato]}</span></TableCell>
+                <TableCell><Badge variant="outline">L{r.livello_corrente}/{r.livello_richiesto}</Badge></TableCell>
+                <TableCell className="text-sm text-muted-foreground">{formatDate(r.created_at)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Card>
+    </div>
+  );
+}
+
+/* ============================ FORM (new/edit/riinvia) ============================ */
+const formSchema = z.object({
+  cliente_id: z.string().uuid("Seleziona un cliente"),
+  tipo: z.enum(["nuovo", "nuovo_fido", "aumento", "diminuzione", "rinnovo"]),
+  importo_richiesto: z.coerce.number().positive("Importo > 0").max(99999999),
+  durata_mesi: z.coerce.number().int().min(1).max(120).default(12),
+  motivazione: z.string().trim().min(1, "Obbligatoria").max(2000),
+  note: z.string().trim().max(2000).optional().or(z.literal("")),
+});
+type FormVals = z.infer<typeof formSchema>;
+
+function RichiestaFormDialog({
+  richiesta, cloneFrom, onClose, onSaved,
+}: { richiesta?: any; cloneFrom?: any; onClose: () => void; onSaved: () => void }) {
   const qc = useQueryClient();
-  const [form, setForm] = useState<Form>({
-    cliente_id: "",
-    tipo: "nuovo",
-    importo_richiesto: 0,
-    durata_mesi: 12,
-    motivazione: "",
-    note: "",
+  const seed = richiesta ?? cloneFrom;
+  const [form, setForm] = useState<FormVals>({
+    cliente_id: seed?.cliente_id ?? "",
+    tipo: (seed?.tipo as any) ?? "nuovo",
+    importo_richiesto: seed ? Number(seed.importo_richiesto) : 0,
+    durata_mesi: seed?.durata_mesi ?? 12,
+    motivazione: seed?.motivazione ?? "",
+    note: seed?.note ?? "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [inviaSubito, setInviaSubito] = useState(true);
+  const [search, setSearch] = useState("");
 
   const { data: clienti } = useQuery({
-    queryKey: ["clienti", "select"],
+    queryKey: ["clienti", "form-richiesta"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clienti")
-        .select("id, ragione_sociale, store_id")
+        .select("id, ragione_sociale, store_id, fido_aziendale_concesso, fido_gestionale, bloccato, in_gestione_legale, scaduto, totale_rischio")
         .eq("attivo", true)
         .order("ragione_sociale");
       if (error) throw error;
-      return data;
+      return data ?? [];
     },
   });
 
-  const mutation = useMutation({
-    mutationFn: async (input: Form) => {
-      const parsed = schema.parse(input);
+  const clienteSel = clienti?.find((c) => c.id === form.cliente_id);
+  const fidoAttuale = Number(clienteSel?.fido_aziendale_concesso ?? 0);
+  const variazione = fidoAttuale > 0 && form.importo_richiesto > 0
+    ? ((form.importo_richiesto - fidoAttuale) / fidoAttuale) * 100
+    : null;
+  const livelloPreview = form.importo_richiesto > 0 ? calcolaLivello(Number(form.importo_richiesto)) : null;
+  const filteredClienti = clienti?.filter((c) => !search || c.ragione_sociale.toLowerCase().includes(search.toLowerCase())) ?? [];
+
+  const mut = useMutation({
+    mutationFn: async (input: { invia: boolean }) => {
+      const parsed = formSchema.parse(form);
       const { data: { user } } = await supabase.auth.getUser();
       const cliente = clienti?.find((c) => c.id === parsed.cliente_id);
-      const { error } = await supabase.from("richieste_fido").insert({
+      const payload = {
         cliente_id: parsed.cliente_id,
         tipo: parsed.tipo,
         store_id: cliente?.store_id ?? null,
         importo_richiesto: parsed.importo_richiesto,
         durata_mesi: parsed.durata_mesi,
-        motivazione: parsed.motivazione || null,
+        motivazione: parsed.motivazione,
         note: parsed.note || null,
-        created_by: user?.id,
-        stato: inviaSubito ? "in_approvazione" : "bozza",
-        data_invio: inviaSubito ? new Date().toISOString() : null,
-      });
-      if (error) throw error;
+        stato: input.invia ? "in_approvazione" : "bozza",
+        data_invio: input.invia ? new Date().toISOString() : null,
+      } as any;
+      if (richiesta?.id) {
+        const { error } = await supabase.from("richieste_fido").update(payload).eq("id", richiesta.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("richieste_fido").insert({ ...payload, created_by: user?.id });
+        if (error) throw error;
+      }
     },
-    onSuccess: () => {
-      toast.success(inviaSubito ? "Richiesta inviata in approvazione" : "Bozza salvata");
-      qc.invalidateQueries({ queryKey: ["richieste"] });
+    onSuccess: (_d, v) => {
+      toast.success(v.invia ? "Richiesta inviata" : "Bozza salvata");
+      onSaved();
       onClose();
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  function submit(e: React.FormEvent) {
-    e.preventDefault();
-    const res = schema.safeParse(form);
+  function submit(invia: boolean) {
+    const res = formSchema.safeParse(form);
     if (!res.success) {
       const errs: Record<string, string> = {};
       res.error.issues.forEach((i) => { errs[i.path[0] as string] = i.message; });
@@ -441,26 +890,26 @@ function NewRichiestaDialog({ onClose }: { onClose: () => void }) {
       return;
     }
     setErrors({});
-    mutation.mutate(form);
+    mut.mutate({ invia });
   }
 
-  const livelloPreview = form.importo_richiesto > 0 ? calcolaLivello(Number(form.importo_richiesto)) : null;
+  const sem = semaforoCliente(clienteSel);
 
   return (
     <DialogContent className="max-w-xl">
       <DialogHeader>
-        <DialogTitle>Nuova richiesta fido</DialogTitle>
+        <DialogTitle>{richiesta ? "Modifica richiesta" : cloneFrom ? "Ri-invia richiesta" : "Nuova richiesta fido"}</DialogTitle>
         <DialogDescription>Compila i dettagli della richiesta.</DialogDescription>
       </DialogHeader>
-      <form onSubmit={submit} className="space-y-4">
+
+      <div className="space-y-4">
         <div className="space-y-1.5">
-          <Label htmlFor="cliente_id">Cliente *</Label>
+          <Label>Cliente *</Label>
+          <Input placeholder="Cerca cliente..." value={search} onChange={(e) => setSearch(e.target.value)} />
           <Select value={form.cliente_id} onValueChange={(v) => setForm({ ...form, cliente_id: v })}>
-            <SelectTrigger id="cliente_id">
-              <SelectValue placeholder={clienti?.length ? "Seleziona cliente..." : "Nessun cliente disponibile"} />
-            </SelectTrigger>
+            <SelectTrigger><SelectValue placeholder="Seleziona cliente..." /></SelectTrigger>
             <SelectContent>
-              {clienti?.map((c) => (
+              {filteredClienti.slice(0, 100).map((c) => (
                 <SelectItem key={c.id} value={c.id}>{c.ragione_sociale}</SelectItem>
               ))}
             </SelectContent>
@@ -468,66 +917,106 @@ function NewRichiestaDialog({ onClose }: { onClose: () => void }) {
           {errors.cliente_id && <p className="text-xs text-destructive">{errors.cliente_id}</p>}
         </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="tipo">Tipo richiesta *</Label>
-          <Select value={form.tipo} onValueChange={(v) => setForm({ ...form, tipo: v as TipoRichiesta })}>
-            <SelectTrigger id="tipo"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="nuovo">Nuovo fido</SelectItem>
-              <SelectItem value="aumento">Aumento fido</SelectItem>
-              <SelectItem value="diminuzione">Diminuzione fido</SelectItem>
-              <SelectItem value="rinnovo">Rinnovo fido</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        {clienteSel && (
+          <div className="rounded-md border p-3 text-xs space-y-1 bg-muted/30">
+            <div className="flex justify-between"><span>Fido attuale</span><span className="tabular-nums font-medium">{formatEuro(fidoAttuale)}</span></div>
+            <div className="flex justify-between"><span>Totale rischio</span><span className="tabular-nums">{formatEuro(Number(clienteSel.totale_rischio ?? 0))}</span></div>
+            <div className="flex justify-between"><span>Scaduto</span><span className="tabular-nums">{formatEuro(Number(clienteSel.scaduto ?? 0))}</span></div>
+            <div className="flex justify-between items-center"><span>Semaforo rischio</span>
+              <span className={`inline-flex rounded-md px-2 py-0.5 font-medium ${sem.tone}`}>{sem.label}</span>
+            </div>
+          </div>
+        )}
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label htmlFor="importo">Importo (€) *</Label>
-            <Input id="importo" type="number" step="0.01" min="0"
-              value={form.importo_richiesto || ""}
-              onChange={(e) => setForm({ ...form, importo_richiesto: Number(e.target.value) })} />
-            {errors.importo_richiesto && <p className="text-xs text-destructive">{errors.importo_richiesto}</p>}
+            <Label>Tipo *</Label>
+            <Select value={form.tipo} onValueChange={(v) => setForm({ ...form, tipo: v as any })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="nuovo_fido">Nuovo fido</SelectItem>
+                <SelectItem value="aumento">Aumento fido</SelectItem>
+                <SelectItem value="diminuzione">Diminuzione fido</SelectItem>
+                <SelectItem value="rinnovo">Rinnovo fido</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="durata">Durata (mesi) *</Label>
-            <Input id="durata" type="number" min="1" max="120"
-              value={form.durata_mesi}
+            <Label>Durata (mesi)</Label>
+            <Input type="number" min="1" max="120" value={form.durata_mesi}
               onChange={(e) => setForm({ ...form, durata_mesi: Number(e.target.value) })} />
           </div>
         </div>
 
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label>Importo richiesto (€) *</Label>
+            <Input type="number" step="0.01" min="0" value={form.importo_richiesto || ""}
+              onChange={(e) => setForm({ ...form, importo_richiesto: Number(e.target.value) })} />
+            {errors.importo_richiesto && <p className="text-xs text-destructive">{errors.importo_richiesto}</p>}
+          </div>
+          <div className="space-y-1.5">
+            <Label>Fido attuale</Label>
+            <Input value={formatEuro(fidoAttuale)} disabled />
+          </div>
+        </div>
+
+        {variazione !== null && (
+          <div className="rounded-md bg-muted/50 px-3 py-2 text-xs flex justify-between">
+            <span>Variazione</span>
+            <span className={`font-medium tabular-nums ${variazione >= 0 ? "text-success" : "text-warning"}`}>
+              {variazione >= 0 ? "+" : ""}{variazione.toFixed(1)}%
+            </span>
+          </div>
+        )}
         {livelloPreview && (
-          <div className="rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
-            Livello di approvazione richiesto: <strong className="text-foreground">{LIVELLO_LABEL[livelloPreview]}</strong>
+          <div className="rounded-md bg-info/5 border border-info/20 px-3 py-2 text-xs">
+            Livello approvazione richiesto: <strong>Liv. {livelloPreview}</strong>
           </div>
         )}
 
         <div className="space-y-1.5">
-          <Label htmlFor="motivazione">Motivazione</Label>
-          <Textarea id="motivazione" rows={3} value={form.motivazione}
+          <Label>Motivazione *</Label>
+          <Textarea rows={3} value={form.motivazione}
             onChange={(e) => setForm({ ...form, motivazione: e.target.value })} />
+          {errors.motivazione && <p className="text-xs text-destructive">{errors.motivazione}</p>}
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="note">Note</Label>
-          <Textarea id="note" rows={2} value={form.note}
+          <Label>Note interne</Label>
+          <Textarea rows={2} value={form.note}
             onChange={(e) => setForm({ ...form, note: e.target.value })} />
         </div>
+      </div>
 
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={inviaSubito}
-            onChange={(e) => setInviaSubito(e.target.checked)} className="size-4 rounded" />
-          Invia subito in approvazione
-        </label>
-
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose}>Annulla</Button>
-          <Button type="submit" disabled={mutation.isPending}>
-            {mutation.isPending ? "Salvataggio..." : inviaSubito ? "Invia richiesta" : "Salva bozza"}
-          </Button>
-        </DialogFooter>
-      </form>
+      <DialogFooter>
+        <Button variant="outline" onClick={onClose}>Annulla</Button>
+        <Button variant="secondary" disabled={mut.isPending} onClick={() => submit(false)}>Salva bozza</Button>
+        <Button disabled={mut.isPending} onClick={() => submit(true)}>
+          {mut.isPending ? "..." : "Invia subito"}
+        </Button>
+      </DialogFooter>
     </DialogContent>
+  );
+}
+
+/* ============================ helpers ============================ */
+function SkeletonTable() {
+  return (
+    <div className="space-y-2">
+      {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
+    </div>
+  );
+}
+
+function Empty({ label, hint }: { label: string; hint: string }) {
+  return (
+    <Card className="p-10 text-center">
+      <div className="size-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+        <AlertCircle className="size-5 text-muted-foreground" />
+      </div>
+      <p className="font-medium text-sm">{label}</p>
+      {hint && <p className="text-xs text-muted-foreground mt-1">{hint}</p>}
+    </Card>
   );
 }
