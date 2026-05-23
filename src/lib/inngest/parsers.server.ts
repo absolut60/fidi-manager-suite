@@ -392,7 +392,7 @@ export function parseScadenziarioOfficialSheet(sheet: XLSX.WorkSheet): {
     blankrows: false,
   });
   if (matrix.length < 3) return { rows: [], missing: [], totRead: 0 };
-  const headers = (matrix[1] ?? []).map((c) => normalize(String(c ?? "")));
+  const headers = (matrix[1] ?? []).map((c) => normalizeOfficialHeader(c));
   const numFields = new Set([
     "importo_scadenza",
     "importo_documento",
