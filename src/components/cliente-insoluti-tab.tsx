@@ -206,6 +206,7 @@ type ScadenzaRow = {
   importo_scadenza: number | null;
   giorni_ritardo: number | null;
   stato_contabile: string | null;
+  tempi_scadenza: string | null;
 };
 
 function ScadenziarioSection({ clienteId }: { clienteId: string; canEdit?: boolean }) {
@@ -214,9 +215,8 @@ function ScadenziarioSection({ clienteId }: { clienteId: string; canEdit?: boole
     queryFn: async () => {
       const { data, error } = await supabase
         .from("scadenze")
-        .select("id, numero_documento, sezionale, data_documento, data_scadenza, descrizione_pagamento, importo_scadenza, giorni_ritardo, stato_contabile")
+        .select("id, numero_documento, sezionale, data_documento, data_scadenza, descrizione_pagamento, importo_scadenza, giorni_ritardo, stato_contabile, tempi_scadenza")
         .eq("cliente_id", clienteId)
-        .eq("stato_contabile", "Aperta")
         .order("data_scadenza", { ascending: true });
       if (error) throw error;
       return (data ?? []) as ScadenzaRow[];
@@ -225,8 +225,8 @@ function ScadenziarioSection({ clienteId }: { clienteId: string; canEdit?: boole
 
   if (isLoading) return <Skeleton className="h-40" />;
   const rows = scadenze ?? [];
-  const scadute = rows.filter((s) => Number(s.giorni_ritardo ?? 0) > 0);
-  const aScadere = rows.filter((s) => Number(s.giorni_ritardo ?? 0) <= 0);
+  const scadute = rows.filter((s) => classificaScadenza(s) === "scaduto");
+  const aScadere = rows.filter((s) => classificaScadenza(s) === "a_scadere");
 
   return (
     <div className="space-y-6">
