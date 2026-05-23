@@ -6,7 +6,7 @@ import { Plus, Search, Building, MapPin, FileCheck2, FileX2, ArrowLeft, ArrowRig
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Slider } from "@/components/ui/slider";
+import * as RadixSlider from "@radix-ui/react-slider";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -100,6 +100,28 @@ function determinaTipoRichiesta(
 const FIDO_RANGE_MIN = -100000;
 const FIDO_RANGE_MAX = 500000;
 
+function SearchInput({
+  value,
+  onChange,
+  placeholder = "Cerca ragione sociale, P.IVA, cod. gest., città...",
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <div className="relative">
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+      <Input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="pl-9"
+      />
+    </div>
+  );
+}
+
 function ClientiPage() {
   const navigate = useNavigate();
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
@@ -128,8 +150,8 @@ function ClientiPage() {
 
   // Filtro Fido residuo (fascia + range slider, cumulativi)
   const [fidoFascia, setFidoFascia] = useState<string>("tutti");
-  const [fidoRange, setFidoRange] = useState<[number, number]>([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
-  const [fidoRangeDeb, setFidoRangeDeb] = useState<[number, number]>([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
+  const [sliderDisplay, setSliderDisplay] = useState<[number, number]>([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
+  const [sliderCommitted, setSliderCommitted] = useState<[number, number]>([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
 
 
 
@@ -289,7 +311,7 @@ function ClientiPage() {
   // Reset pagina ogni volta che cambia un filtro
   useEffect(() => {
     setPage(1);
-  }, [search, statoCliente, statoAttivita, storeFiltro, statoFido, semaforoFiltro, soloBloccati, privacyFiltro, soloAssicurati, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fidoFascia, fidoRangeDeb, pageSize]);
+  }, [search, statoCliente, statoAttivita, storeFiltro, statoFido, semaforoFiltro, soloBloccati, privacyFiltro, soloAssicurati, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fidoFascia, sliderCommitted, pageSize]);
 
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -316,8 +338,8 @@ function ClientiPage() {
     else if (fidoFascia === "basso") q = q.gte("fido_residuo", 0).lte("fido_residuo", 5000);
     else if (fidoFascia === "medio") q = q.gt("fido_residuo", 5000).lte("fido_residuo", 20000);
     else if (fidoFascia === "alto") q = q.gt("fido_residuo", 20000);
-    if (fidoRangeDeb[0] !== FIDO_RANGE_MIN) q = q.gte("fido_residuo", fidoRangeDeb[0]);
-    if (fidoRangeDeb[1] !== FIDO_RANGE_MAX) q = q.lte("fido_residuo", fidoRangeDeb[1]);
+    if (sliderCommitted[0] !== FIDO_RANGE_MIN) q = q.gte("fido_residuo", sliderCommitted[0]);
+    if (sliderCommitted[1] !== FIDO_RANGE_MAX) q = q.lte("fido_residuo", sliderCommitted[1]);
 
     // Totale rischio (fasce)
     if (totaleRischioFiltro === "basso") q = q.gte("totale_rischio", 0).lte("totale_rischio", 10000);
@@ -350,7 +372,7 @@ function ClientiPage() {
   const scadReady = scadenziarioFiltro === "tutti" || !!scadenziarioMap;
 
   const { data: clientiResp, isLoading } = useQuery({
-    queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, soloBloccati, privacyFiltro, soloAssicurati, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fidoFascia, fidoRangeDeb, page, pageSize }],
+    queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, soloBloccati, privacyFiltro, soloAssicurati, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fidoFascia, sliderCommitted, page, pageSize }],
     queryFn: async () => {
       const built = buildBaseQuery("*, stores(nome, codice)", "exact");
       if ("empty" in built) return { rows: [], count: 0 };
@@ -401,7 +423,7 @@ function ClientiPage() {
     (totaleRischioFiltro !== "tutti" ? 1 : 0) +
     (aScadereFiltro !== "tutti" ? 1 : 0) +
     (fidoFascia !== "tutti" ? 1 : 0) +
-    ((fidoRangeDeb[0] !== FIDO_RANGE_MIN || fidoRangeDeb[1] !== FIDO_RANGE_MAX) ? 1 : 0);
+    ((sliderCommitted[0] !== FIDO_RANGE_MIN || sliderCommitted[1] !== FIDO_RANGE_MAX) ? 1 : 0);
 
   function resetFiltri() {
     setSearchInput(""); setSearch("");
@@ -417,8 +439,8 @@ function ClientiPage() {
     setTotaleRischioFiltro("tutti");
     setAScadereFiltro("tutti");
     setFidoFascia("tutti");
-    setFidoRange([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
-    setFidoRangeDeb([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
+    setSliderDisplay([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
+    setSliderCommitted([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
   }
 
 
@@ -471,20 +493,6 @@ function ClientiPage() {
       return next;
     });
   }
-
-  // Componenti riusabili per i singoli filtri (così funzionano sia in desktop grid che mobile stack)
-  const SearchField = (
-    <div className="relative">
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-      <Input
-        value={searchInput}
-        onChange={(e) => setSearchInput(e.target.value)}
-        placeholder="Cerca ragione sociale, P.IVA, cod. gest., città..."
-        className="pl-9"
-      />
-    </div>
-  );
-
 
   const StoreSelect = (
     <Select value={storeFiltro} onValueChange={setStoreFiltro}>
@@ -603,16 +611,23 @@ function ClientiPage() {
     <div className="space-y-2 px-1 py-2 border rounded-md">
       <div className="flex items-center justify-between text-xs font-medium">
         <span className="text-muted-foreground">Slider fido residuo:</span>
-        <span>{fmtEuro(fidoRange[0])} <span className="text-muted-foreground">→</span> {fmtEuro(fidoRange[1])}</span>
+        <span>{fmtEuro(sliderDisplay[0])} <span className="text-muted-foreground">→</span> {fmtEuro(sliderDisplay[1])}</span>
       </div>
-      <Slider
+      <RadixSlider.Root
+        className="relative flex h-5 w-full touch-none select-none items-center"
         min={FIDO_RANGE_MIN}
         max={FIDO_RANGE_MAX}
-        step={1000}
-        value={fidoRange}
-        onValueChange={(v) => setFidoRange([v[0], v[1]] as [number, number])}
-        onValueCommit={(v) => setFidoRangeDeb([v[0], v[1]] as [number, number])}
-      />
+        step={500}
+        value={sliderDisplay}
+        onValueChange={(v: number[]) => setSliderDisplay([v[0] ?? FIDO_RANGE_MIN, v[1] ?? FIDO_RANGE_MAX])}
+        onValueCommit={(v: number[]) => setSliderCommitted([v[0] ?? FIDO_RANGE_MIN, v[1] ?? FIDO_RANGE_MAX])}
+      >
+        <RadixSlider.Track className="relative h-2 w-full grow overflow-hidden rounded-full bg-muted">
+          <RadixSlider.Range className="absolute h-full bg-primary" />
+        </RadixSlider.Track>
+        <RadixSlider.Thumb aria-label="Fido residuo minimo" className="block size-5 rounded-full border-2 border-primary bg-background shadow-sm outline-none ring-offset-background transition-shadow focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" />
+        <RadixSlider.Thumb aria-label="Fido residuo massimo" className="block size-5 rounded-full border-2 border-primary bg-background shadow-sm outline-none ring-offset-background transition-shadow focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" />
+      </RadixSlider.Root>
 
       <div className="flex items-center justify-between text-[10px] text-muted-foreground">
         <span>{fmtEuro(FIDO_RANGE_MIN)}</span>
@@ -635,11 +650,11 @@ function ClientiPage() {
     </label>
   );
 
-  function FiltriContent({ stack = false }: { stack?: boolean }) {
+  function renderFiltriContent(stack = false) {
     if (stack) {
       return (
         <div className="grid grid-cols-1 gap-3">
-          {SearchField}
+          <SearchInput value={searchInput} onChange={setSearchInput} />
           {StoreSelect}
           {StatoFidoPopover}
           {SemaforoSelect}
@@ -662,7 +677,7 @@ function ClientiPage() {
     return (
       <div className="space-y-3">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {SearchField}
+          <SearchInput value={searchInput} onChange={setSearchInput} />
           {StoreSelect}
           {StatoFidoPopover}
           {SemaforoSelect}
@@ -749,20 +764,14 @@ function ClientiPage() {
               )}
             </div>
           </div>
-          <FiltriContent />
+          {renderFiltriContent()}
         </div>
 
 
         {/* Mobile: search inline + bottone "Filtri" con badge */}
         <div className="md:hidden flex gap-2 mb-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-            <Input
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Cerca cliente..."
-              className="pl-9"
-            />
+          <div className="flex-1">
+            <SearchInput value={searchInput} onChange={setSearchInput} placeholder="Cerca cliente..." />
           </div>
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
@@ -779,7 +788,7 @@ function ClientiPage() {
                 <SheetTitle>Filtri</SheetTitle>
               </SheetHeader>
               <div className="mt-4">
-                <FiltriContent stack />
+                {renderFiltriContent(true)}
               </div>
             </SheetContent>
           </Sheet>
