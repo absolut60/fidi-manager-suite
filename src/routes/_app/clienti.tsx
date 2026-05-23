@@ -938,11 +938,23 @@ function ClientiPage() {
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell>
-                      <Badge variant={c.attivo ? "default" : "secondary"}>
-                        {c.attivo ? "Attivo" : "Inattivo"}
-                      </Badge>
-                    </TableCell>
+                     <TableCell>
+                       <div className="flex flex-col gap-1 items-start">
+                         <Badge variant={c.cliente_attivo === false ? "secondary" : "default"}>
+                           {c.cliente_attivo === false ? "Non attivo" : "Attivo"}
+                         </Badge>
+                         {c.ind_blocco === 1 && (
+                           <Badge className="bg-yellow-500/15 text-yellow-700 dark:text-yellow-500 hover:bg-yellow-500/20" title="Blocco con possibilità di sblocco">
+                             Blocco revocabile
+                           </Badge>
+                         )}
+                         {c.ind_blocco === 2 && (
+                           <Badge className="bg-destructive/15 text-destructive hover:bg-destructive/20" title="Bloccato">
+                             Bloccato
+                           </Badge>
+                         )}
+                       </div>
+                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <Button
                         variant="ghost"
