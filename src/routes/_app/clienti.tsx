@@ -630,7 +630,7 @@ function ClientiPage() {
               <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
-        ) : filtered.length === 0 ? (
+        ) : clienti.length === 0 ? (
           <div className="text-center py-12">
             <div className="size-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
               <Building className="size-5 text-muted-foreground" />
@@ -645,6 +645,28 @@ function ClientiPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-8">
+                    <Checkbox
+                      checked={clienti.length > 0 && clienti.every((c: any) => selectedIds.has(c.id))}
+                      onCheckedChange={(v) => {
+                        if (v) {
+                          setSelectedIds((prev) => {
+                            const n = new Set(prev); clienti.forEach((c: any) => n.add(c.id)); return n;
+                          });
+                          setSelectedRows((prev) => {
+                            const n = new Map(prev); clienti.forEach((c: any) => n.set(c.id, c)); return n;
+                          });
+                        } else {
+                          setSelectedIds((prev) => {
+                            const n = new Set(prev); clienti.forEach((c: any) => n.delete(c.id)); return n;
+                          });
+                          setSelectedRows((prev) => {
+                            const n = new Map(prev); clienti.forEach((c: any) => n.delete(c.id)); return n;
+                          });
+                        }
+                      }}
+                    />
+                  </TableHead>
                   <TableHead className="w-8"></TableHead>
                   <TableHead>Ragione sociale</TableHead>
                   <TableHead>Cod. gest.</TableHead>
@@ -659,9 +681,9 @@ function ClientiPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((c) => {
-                  const sem = calcSemaforo(c as any);
-                  const residuo = (c as any).fido_residuo;
+                {clienti.map((c: any) => {
+                  const sem = calcSemaforo(c);
+                  const residuo = c.fido_residuo;
                   const residuoNum = residuo == null ? null : Number(residuo);
                   const sc = scadenziarioMap?.get(c.id);
                   return (
@@ -670,6 +692,12 @@ function ClientiPage() {
                     className="cursor-pointer hover:bg-muted/50"
                     onClick={() => navigate({ to: "/clienti/$clienteId", params: { clienteId: c.id } })}
                   >
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
+                        checked={selectedIds.has(c.id)}
+                        onCheckedChange={() => toggleSelect(c)}
+                      />
+                    </TableCell>
                     <TableCell>
                       <span
                         className={`inline-block size-2.5 rounded-full ${SEMAFORO_DOT[sem]}`}
@@ -680,7 +708,7 @@ function ClientiPage() {
                       {c.ragione_sociale}
                     </TableCell>
                     <TableCell className="text-sm font-mono">
-                      {(c as any).codice_gestionale || <span className="text-muted-foreground">—</span>}
+                      {c.codice_gestionale || <span className="text-muted-foreground">—</span>}
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">
                       {c.partita_iva || "—"}
@@ -694,7 +722,7 @@ function ClientiPage() {
                       ) : "—"}
                     </TableCell>
                     <TableCell className="text-sm">
-                      {(c as any).stores?.nome || <span className="text-muted-foreground">—</span>}
+                      {c.stores?.nome || <span className="text-muted-foreground">—</span>}
                     </TableCell>
                     <TableCell className={`text-right text-sm font-medium ${residuoNum != null && residuoNum < 0 ? "text-destructive" : ""}`}>
                       {fmtEuro(residuo)}
