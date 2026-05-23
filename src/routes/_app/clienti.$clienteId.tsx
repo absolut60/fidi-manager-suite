@@ -26,11 +26,13 @@ import { ClienteCantieriTab } from "@/components/cliente-cantieri-tab";
 import { ClienteStoricoFidoTab } from "@/components/cliente-storico-fido-tab";
 import { ClienteInsolutiTab } from "@/components/cliente-insoluti-tab";
 import { formatEuro } from "@/lib/fidi";
+import { classificaScadenza } from "@/lib/scadenze";
+import { Ban, Calendar, Clock, Bell, CheckCircle2 } from "lucide-react";
 
 
 
 
-const TAB_VALUES = ["anagrafica", "contatti", "cantieri", "storico", "insoluti", "privacy"] as const;
+const TAB_VALUES = ["riepilogo", "anagrafica", "contatti", "cantieri", "storico", "insoluti", "privacy"] as const;
 const INSOLUTI_SUB_VALUES = ["riepilogo", "scadenziario", "solleciti", "legali", "assicurazioni"] as const;
 
 export const Route = createFileRoute("/_app/clienti/$clienteId")({
