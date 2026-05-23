@@ -7,6 +7,8 @@ import {
   parseScadenziarioOfficialSheet,
   parseScadenziarioBlockSheet,
   parseAssicurazioneSheet,
+  scanScadenziarioMeta,
+  parseScadenziarioRangeLean,
   toStr,
   normalize,
   findSheetByName,
