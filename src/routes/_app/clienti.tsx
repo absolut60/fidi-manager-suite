@@ -6,6 +6,7 @@ import { Plus, Search, Building, MapPin, FileCheck2, FileX2, ArrowLeft, ArrowRig
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -77,6 +78,27 @@ type ScadenziarioState = {
   ha_a_scadere: boolean;
 };
 
+// Calcolo "Fido proposto" per la proposta massiva.
+// NOTA: implementazione provvisoria — verrà sostituita con un algoritmo più
+// sofisticato. Mantieni questa funzione isolata per facilitare l'aggiornamento.
+function calcolaFidoProposto(cliente: any): number {
+  const esposizione = Number(cliente?.totale_rischio ?? 0);
+  return Number.isFinite(esposizione) && esposizione > 0 ? Math.round(esposizione) : 0;
+}
+
+function determinaTipoRichiesta(
+  fidoAttuale: number,
+  fidoProposto: number,
+): "nuovo_fido" | "aumento" | "diminuzione" | "rinnovo" {
+  if (!fidoAttuale || fidoAttuale === 0) return "nuovo_fido";
+  if (fidoProposto > fidoAttuale) return "aumento";
+  if (fidoProposto < fidoAttuale) return "diminuzione";
+  return "rinnovo";
+}
+
+const FIDO_RANGE_MIN = -100000;
+const FIDO_RANGE_MAX = 500000;
+
 function ClientiPage() {
   const navigate = useNavigate();
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
@@ -99,6 +121,22 @@ function ClientiPage() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+
+  // Filtro Fido residuo
+  const [fidoModalita, setFidoModalita] = useState<"fasce" | "range">("fasce");
+  const [fidoFascia, setFidoFascia] = useState<string>("tutti");
+  const [fidoRange, setFidoRange] = useState<[number, number]>([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
+  const [fidoRangeDeb, setFidoRangeDeb] = useState<[number, number]>([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
+  useEffect(() => {
+    const t = setTimeout(() => setFidoRangeDeb(fidoRange), 500);
+    return () => clearTimeout(t);
+  }, [fidoRange]);
+
+  // Selezione multipla
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedRows, setSelectedRows] = useState<Map<string, any>>(new Map());
+  const [massivoOpen, setMassivoOpen] = useState(false);
+  const { user } = useAuth();
 
   const { data: stores } = useQuery({
     queryKey: ["stores", "all"],
@@ -128,7 +166,32 @@ function ClientiPage() {
     staleTime: 60_000,
   });
 
-  // ID set per filtro scadenziario (server-side via .in)
+  // Mappa classificazione (id + colonne necessarie per semaforo e stato fido)
+  // Carica tutti i clienti in chunk da 1000 per superare il limite Supabase.
+  const { data: classifList } = useQuery({
+    queryKey: ["clienti-classificazione"],
+    queryFn: async () => {
+      const all: any[] = [];
+      let offset = 0;
+      const size = 1000;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await supabase
+          .from("clienti")
+          .select("id, bloccato, fido, fido_residuo, fido_gestionale, scaduto")
+          .range(offset, offset + size - 1);
+        if (error) throw error;
+        const batch = data ?? [];
+        all.push(...batch);
+        if (batch.length < size) break;
+        offset += size;
+      }
+      return all;
+    },
+    staleTime: 60_000,
+  });
+
+  // ID set per filtro scadenziario
   const scadenziarioIdsFilter = useMemo(() => {
     if (!scadenziarioMap || scadenziarioFiltro === "tutti") return null;
     const ids: string[] = [];
@@ -137,88 +200,138 @@ function ClientiPage() {
     } else if (scadenziarioFiltro === "a_scadere") {
       for (const [id, s] of scadenziarioMap) if (s.ha_a_scadere && !s.ha_scaduto) ids.push(id);
     } else if (scadenziarioFiltro === "in_regola") {
-      // gestito come exclude più sotto: nessun filtro include
       return { mode: "exclude" as const, ids: Array.from(scadenziarioMap.keys()) };
     }
     return { mode: "include" as const, ids };
   }, [scadenziarioMap, scadenziarioFiltro]);
 
+  // ID set per filtro semaforo (server-side via .in)
+  const semaforoIds = useMemo<string[] | null>(() => {
+    if (semaforoFiltro === "tutti" || !classifList) return null;
+    return classifList.filter((c: any) => calcSemaforo(c) === semaforoFiltro).map((c: any) => c.id);
+  }, [classifList, semaforoFiltro]);
+
+  // ID set per filtro stato fido (server-side via .in)
+  const statoFidoIds = useMemo<string[] | null>(() => {
+    if (statoFido.size === 0 || !classifList) return null;
+    return classifList.filter((c: any) => {
+      const fido = Number(c.fido ?? 0);
+      const scaduto = Number(c.scaduto ?? 0);
+      const matches = new Set<string>();
+      if (c.bloccato) matches.add("sospeso");
+      if (scaduto > 0) matches.add("scaduto");
+      if (!fido) matches.add("non_assegnato");
+      else if (!c.bloccato && scaduto === 0) matches.add("attivo");
+      return Array.from(statoFido).some((s) => matches.has(s));
+    }).map((c: any) => c.id);
+  }, [classifList, statoFido]);
+
+  // Intersezione id set "include"
+  const includeIdsFilter = useMemo<string[] | null>(() => {
+    const sources: string[][] = [];
+    if (semaforoIds) sources.push(semaforoIds);
+    if (statoFidoIds) sources.push(statoFidoIds);
+    if (scadenziarioIdsFilter?.mode === "include") sources.push(scadenziarioIdsFilter.ids);
+    if (sources.length === 0) return null;
+    const sets = sources.map((s) => new Set(s));
+    return sources[0].filter((id) => sets.every((s) => s.has(id)));
+  }, [semaforoIds, statoFidoIds, scadenziarioIdsFilter]);
+
   // Reset pagina ogni volta che cambia un filtro
   useEffect(() => {
     setPage(1);
-  }, [search, statoCliente, storeFiltro, statoFido, semaforoFiltro, soloBloccati, privacyFiltro, soloAssicurati, scadenziarioFiltro, pageSize]);
+  }, [search, statoCliente, storeFiltro, statoFido, semaforoFiltro, soloBloccati, privacyFiltro, soloAssicurati, scadenziarioFiltro, fidoModalita, fidoFascia, fidoRangeDeb, pageSize]);
 
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
+  // Costruisce la query con TUTTI i filtri server-side (senza range)
+  function buildBaseQuery(selectCols: string, count: "exact" | undefined) {
+    let q = supabase
+      .from("clienti")
+      .select(selectCols, count ? { count } : undefined)
+      .order("ragione_sociale", { ascending: true });
+
+    if (statoCliente === "attivi") q = q.eq("attivo", true);
+    else if (statoCliente === "disattivati") q = q.eq("attivo", false);
+    if (storeFiltro !== "tutti") q = q.eq("store_id", storeFiltro);
+    if (soloBloccati) q = q.eq("bloccato", true);
+    if (privacyFiltro === "firmata") q = q.eq("privacy_firmata", true);
+    else if (privacyFiltro === "da_firmare") q = q.eq("privacy_firmata", false);
+    if (soloAssicurati) q = q.eq("assicurazione_attiva", true);
+
+    // Fido residuo
+    if (fidoModalita === "fasce") {
+      if (fidoFascia === "negativo") q = q.lt("fido_residuo", 0);
+      else if (fidoFascia === "basso") q = q.gte("fido_residuo", 0).lte("fido_residuo", 5000);
+      else if (fidoFascia === "medio") q = q.gt("fido_residuo", 5000).lte("fido_residuo", 20000);
+      else if (fidoFascia === "alto") q = q.gt("fido_residuo", 20000);
+    } else {
+      q = q.gte("fido_residuo", fidoRangeDeb[0]).lte("fido_residuo", fidoRangeDeb[1]);
+    }
+
+    // Include intersect (semaforo / stato fido / scadenziario include)
+    if (includeIdsFilter) {
+      if (includeIdsFilter.length === 0) return { empty: true as const };
+      q = q.in("id", includeIdsFilter);
+    }
+    // Exclude scadenziario "in_regola"
+    if (scadenziarioIdsFilter?.mode === "exclude" && scadenziarioIdsFilter.ids.length > 0) {
+      q = q.not("id", "in", `(${scadenziarioIdsFilter.ids.join(",")})`);
+    }
+
+    const term = search.replace(/[(),]/g, " ").trim();
+    if (term) {
+      const like = `%${term}%`;
+      q = q.or(
+        `ragione_sociale.ilike.${like},partita_iva.ilike.${like},codice_gestionale.ilike.${like},citta.ilike.${like}`,
+      );
+    }
+    return { q };
+  }
+
+  const classifReady = (semaforoFiltro === "tutti" && statoFido.size === 0) || !!classifList;
+  const scadReady = scadenziarioFiltro === "tutti" || !!scadenziarioMap;
+
   const { data: clientiResp, isLoading } = useQuery({
-    queryKey: ["clienti", { search, statoCliente, storeFiltro, soloBloccati, privacyFiltro, soloAssicurati, scadenziarioFiltro, page, pageSize, scadenziarioReady: !!scadenziarioMap || scadenziarioFiltro === "tutti" }],
+    queryKey: ["clienti", { search, statoCliente, storeFiltro, soloBloccati, privacyFiltro, soloAssicurati, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), fidoModalita, fidoFascia, fidoRangeDeb, page, pageSize }],
     queryFn: async () => {
-      let q = supabase
-        .from("clienti")
-        .select("*, stores(nome, codice)", { count: "exact" })
-        .order("ragione_sociale", { ascending: true });
-
-      if (statoCliente === "attivi") q = q.eq("attivo", true);
-      else if (statoCliente === "disattivati") q = q.eq("attivo", false);
-      if (storeFiltro !== "tutti") q = q.eq("store_id", storeFiltro);
-      if (soloBloccati) q = q.eq("bloccato", true);
-      if (privacyFiltro === "firmata") q = q.eq("privacy_firmata", true);
-      else if (privacyFiltro === "da_firmare") q = q.eq("privacy_firmata", false);
-      if (soloAssicurati) q = q.eq("assicurazione_attiva", true);
-
-      if (scadenziarioIdsFilter) {
-        if (scadenziarioIdsFilter.mode === "include") {
-          if (scadenziarioIdsFilter.ids.length === 0) {
-            return { rows: [], count: 0 };
-          }
-          q = q.in("id", scadenziarioIdsFilter.ids);
-        } else {
-          if (scadenziarioIdsFilter.ids.length > 0) {
-            q = q.not("id", "in", `(${scadenziarioIdsFilter.ids.join(",")})`);
-          }
-        }
-      }
-
-      const term = search.replace(/[(),]/g, " ").trim();
-      if (term) {
-        const like = `%${term}%`;
-        q = q.or(
-          `ragione_sociale.ilike.${like},partita_iva.ilike.${like},codice_gestionale.ilike.${like},citta.ilike.${like}`,
-        );
-      }
-
-      q = q.range(from, to);
-
-      const { data, error, count } = await q;
+      const built = buildBaseQuery("*, stores(nome, codice)", "exact");
+      if ("empty" in built) return { rows: [], count: 0 };
+      const { data, error, count } = await built.q.range(from, to);
       if (error) throw error;
       return { rows: data ?? [], count: count ?? (data?.length ?? 0) };
     },
-    enabled: isListRoute && (scadenziarioFiltro === "tutti" || !!scadenziarioMap),
+    enabled: isListRoute && scadReady && classifReady,
   });
-  const clienti = clientiResp?.rows;
+  const clienti = (clientiResp?.rows ?? []) as any[];
   const totaleClienti = clientiResp?.count ?? 0;
   const totalPages = Math.max(1, Math.ceil(totaleClienti / pageSize));
 
-  // Filtri derivati lato client (semaforo + stato fido non sono campi DB diretti)
-  // NB: agiscono solo sulla pagina corrente
-  const filtered = useMemo(() => {
-    return (clienti ?? []).filter((c: any) => {
-      if (semaforoFiltro !== "tutti" && calcSemaforo(c) !== semaforoFiltro) return false;
-      if (statoFido.size > 0) {
-        const fido = Number(c.fido ?? 0);
-        const scaduto = Number(c.scaduto ?? 0);
-        const matches = new Set<string>();
-        if (c.bloccato) matches.add("sospeso");
-        if (scaduto > 0) matches.add("scaduto");
-        if (!fido) matches.add("non_assegnato");
-        else if (!c.bloccato && scaduto === 0) matches.add("attivo");
-        const intersect = Array.from(statoFido).some((s) => matches.has(s));
-        if (!intersect) return false;
-      }
-      return true;
-    });
-  }, [clienti, semaforoFiltro, statoFido]);
+  // Fetch di tutti gli id filtrati (per "Seleziona tutti i filtrati")
+  async function fetchAllFilteredRows(): Promise<any[]> {
+    const built = buildBaseQuery("id, ragione_sociale, fido, totale_rischio", undefined);
+    if ("empty" in built) return [];
+    const all: any[] = [];
+    let off = 0;
+    const size = 1000;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const { data, error } = await built.q.range(off, off + size - 1);
+      if (error) throw error;
+      const batch = (data ?? []) as any[];
+      all.push(...batch);
+      if (batch.length < size) break;
+      off += size;
+      // Safety cap
+      if (off > 20000) break;
+      // Riapplica la query a partire da una nuova istanza: PostgREST richiede una nuova query per ogni range.
+      const rebuilt = buildBaseQuery("id, ragione_sociale, fido, totale_rischio", undefined);
+      if ("empty" in rebuilt) break;
+      (built as any).q = rebuilt.q;
+    }
+    return all;
+  }
 
   const attiviCount =
     (search ? 1 : 0) +
@@ -229,7 +342,9 @@ function ClientiPage() {
     (soloBloccati ? 1 : 0) +
     (privacyFiltro !== "tutti" ? 1 : 0) +
     (soloAssicurati ? 1 : 0) +
-    (scadenziarioFiltro !== "tutti" ? 1 : 0);
+    (scadenziarioFiltro !== "tutti" ? 1 : 0) +
+    (fidoModalita === "fasce" && fidoFascia !== "tutti" ? 1 : 0) +
+    (fidoModalita === "range" && (fidoRangeDeb[0] !== FIDO_RANGE_MIN || fidoRangeDeb[1] !== FIDO_RANGE_MAX) ? 1 : 0);
 
   function resetFiltri() {
     setSearchInput(""); setSearch("");
@@ -241,7 +356,45 @@ function ClientiPage() {
     setPrivacyFiltro("tutti");
     setSoloAssicurati(false);
     setScadenziarioFiltro("tutti");
+    setFidoModalita("fasce");
+    setFidoFascia("tutti");
+    setFidoRange([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
+    setFidoRangeDeb([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
   }
+
+  // Selezione
+  function toggleSelect(c: any) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(c.id)) next.delete(c.id);
+      else next.add(c.id);
+      return next;
+    });
+    setSelectedRows((prev) => {
+      const next = new Map(prev);
+      if (next.has(c.id)) next.delete(c.id);
+      else next.set(c.id, c);
+      return next;
+    });
+  }
+  function clearSelection() {
+    setSelectedIds(new Set());
+    setSelectedRows(new Map());
+  }
+  async function selezionaTuttiFiltrati() {
+    try {
+      const all = await fetchAllFilteredRows();
+      const ids = new Set(all.map((r) => r.id));
+      const map = new Map<string, any>();
+      for (const r of all) map.set(r.id, r);
+      setSelectedIds(ids);
+      setSelectedRows(map);
+      toast.success(`${all.length} clienti selezionati`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Errore nella selezione");
+    }
+  }
+
 
   const STATO_FIDO_OPTS: Array<{ value: string; label: string }> = [
     { value: "attivo", label: "Attivo" },
@@ -329,6 +482,68 @@ function ClientiPage() {
             <SelectItem value="in_regola">Tutto in regola</SelectItem>
           </SelectContent>
         </Select>
+
+        {/* Fido residuo: fasce + range */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className={stack ? "w-full justify-between" : "w-52 justify-between"}>
+              <span className="truncate">
+                {fidoModalita === "fasce" && fidoFascia === "tutti" && "Fido residuo"}
+                {fidoModalita === "fasce" && fidoFascia !== "tutti" && `Fido: ${fidoFascia}`}
+                {fidoModalita === "range" && `${fmtEuro(fidoRange[0])} → ${fmtEuro(fidoRange[1])}`}
+              </span>
+              <SlidersHorizontal className="size-4 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-80 p-3 space-y-3" align="start">
+            <div className="flex gap-1">
+              <Button
+                variant={fidoModalita === "fasce" ? "default" : "outline"}
+                size="sm"
+                className="flex-1"
+                onClick={() => setFidoModalita("fasce")}
+              >Fasce</Button>
+              <Button
+                variant={fidoModalita === "range" ? "default" : "outline"}
+                size="sm"
+                className="flex-1"
+                onClick={() => setFidoModalita("range")}
+              >Range</Button>
+            </div>
+            {fidoModalita === "fasce" ? (
+              <Select value={fidoFascia} onValueChange={setFidoFascia}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="tutti">Tutti</SelectItem>
+                  <SelectItem value="negativo">Negativo / Sforato (&lt; 0)</SelectItem>
+                  <SelectItem value="basso">Basso (0 – 5.000 €)</SelectItem>
+                  <SelectItem value="medio">Medio (5.000 – 20.000 €)</SelectItem>
+                  <SelectItem value="alto">Alto (oltre 20.000 €)</SelectItem>
+                </SelectContent>
+              </Select>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs font-medium">
+                  <span>{fmtEuro(fidoRange[0])}</span>
+                  <span className="text-muted-foreground">→</span>
+                  <span>{fmtEuro(fidoRange[1])}</span>
+                </div>
+                <Slider
+                  min={FIDO_RANGE_MIN}
+                  max={FIDO_RANGE_MAX}
+                  step={1000}
+                  value={fidoRange}
+                  onValueChange={(v) => setFidoRange([v[0], v[1]] as [number, number])}
+                />
+                <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                  <span>{fmtEuro(FIDO_RANGE_MIN)}</span>
+                  <span>{fmtEuro(FIDO_RANGE_MAX)}</span>
+                </div>
+              </div>
+            )}
+          </PopoverContent>
+        </Popover>
+
 
         <Select value={statoCliente} onValueChange={(v) => setStatoCliente(v as typeof statoCliente)}>
           <SelectTrigger className={stack ? "w-full" : "w-40"}><SelectValue /></SelectTrigger>
@@ -477,7 +692,7 @@ function ClientiPage() {
               <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
-        ) : filtered.length === 0 ? (
+        ) : clienti.length === 0 ? (
           <div className="text-center py-12">
             <div className="size-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
               <Building className="size-5 text-muted-foreground" />
@@ -492,6 +707,28 @@ function ClientiPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-8">
+                    <Checkbox
+                      checked={clienti.length > 0 && clienti.every((c: any) => selectedIds.has(c.id))}
+                      onCheckedChange={(v) => {
+                        if (v) {
+                          setSelectedIds((prev) => {
+                            const n = new Set(prev); clienti.forEach((c: any) => n.add(c.id)); return n;
+                          });
+                          setSelectedRows((prev) => {
+                            const n = new Map(prev); clienti.forEach((c: any) => n.set(c.id, c)); return n;
+                          });
+                        } else {
+                          setSelectedIds((prev) => {
+                            const n = new Set(prev); clienti.forEach((c: any) => n.delete(c.id)); return n;
+                          });
+                          setSelectedRows((prev) => {
+                            const n = new Map(prev); clienti.forEach((c: any) => n.delete(c.id)); return n;
+                          });
+                        }
+                      }}
+                    />
+                  </TableHead>
                   <TableHead className="w-8"></TableHead>
                   <TableHead>Ragione sociale</TableHead>
                   <TableHead>Cod. gest.</TableHead>
@@ -506,9 +743,9 @@ function ClientiPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((c) => {
-                  const sem = calcSemaforo(c as any);
-                  const residuo = (c as any).fido_residuo;
+                {clienti.map((c: any) => {
+                  const sem = calcSemaforo(c);
+                  const residuo = c.fido_residuo;
                   const residuoNum = residuo == null ? null : Number(residuo);
                   const sc = scadenziarioMap?.get(c.id);
                   return (
@@ -517,6 +754,12 @@ function ClientiPage() {
                     className="cursor-pointer hover:bg-muted/50"
                     onClick={() => navigate({ to: "/clienti/$clienteId", params: { clienteId: c.id } })}
                   >
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
+                        checked={selectedIds.has(c.id)}
+                        onCheckedChange={() => toggleSelect(c)}
+                      />
+                    </TableCell>
                     <TableCell>
                       <span
                         className={`inline-block size-2.5 rounded-full ${SEMAFORO_DOT[sem]}`}
@@ -527,7 +770,7 @@ function ClientiPage() {
                       {c.ragione_sociale}
                     </TableCell>
                     <TableCell className="text-sm font-mono">
-                      {(c as any).codice_gestionale || <span className="text-muted-foreground">—</span>}
+                      {c.codice_gestionale || <span className="text-muted-foreground">—</span>}
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">
                       {c.partita_iva || "—"}
@@ -541,7 +784,7 @@ function ClientiPage() {
                       ) : "—"}
                     </TableCell>
                     <TableCell className="text-sm">
-                      {(c as any).stores?.nome || <span className="text-muted-foreground">—</span>}
+                      {c.stores?.nome || <span className="text-muted-foreground">—</span>}
                     </TableCell>
                     <TableCell className={`text-right text-sm font-medium ${residuoNum != null && residuoNum < 0 ? "text-destructive" : ""}`}>
                       {fmtEuro(residuo)}
@@ -645,9 +888,242 @@ function ClientiPage() {
           </div>
         )}
       </Card>
+
+      {/* Barra azione selezione */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 bg-background border shadow-lg rounded-lg px-4 py-3 flex flex-wrap items-center gap-3">
+          <span className="text-sm font-medium">{selectedIds.size} clienti selezionati</span>
+          <Button size="sm" variant="outline" onClick={selezionaTuttiFiltrati}>
+            Seleziona tutti i filtrati
+          </Button>
+          <Button size="sm" onClick={() => setMassivoOpen(true)}>
+            Proponi fido massivo
+          </Button>
+          <Button size="sm" variant="ghost" onClick={clearSelection}>
+            Deseleziona tutto
+          </Button>
+        </div>
+      )}
+
+      <ProposteFidoMassivoDialog
+        open={massivoOpen}
+        onOpenChange={setMassivoOpen}
+        selectedRows={Array.from(selectedRows.values())}
+        userId={user?.id ?? null}
+        onSuccess={() => {
+          clearSelection();
+          setMassivoOpen(false);
+        }}
+        onRemove={(id) => {
+          setSelectedIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
+          setSelectedRows((prev) => { const n = new Map(prev); n.delete(id); return n; });
+        }}
+      />
     </div>
   );
 }
+
+// ============================================================================
+// Dialog "Proposta fido massiva"
+// ============================================================================
+
+type RigaProposta = {
+  cliente_id: string;
+  ragione_sociale: string;
+  fido_attuale: number;
+  esposizione: number;
+  fido_proposto: number;
+  tipo: "nuovo_fido" | "aumento" | "diminuzione" | "rinnovo";
+};
+
+function ProposteFidoMassivoDialog({
+  open, onOpenChange, selectedRows, userId, onSuccess, onRemove,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  selectedRows: any[];
+  userId: string | null;
+  onSuccess: () => void;
+  onRemove: (id: string) => void;
+}) {
+  const [modalitaInvio, setModalitaInvio] = useState<"bozza" | "invia">("bozza");
+  const [tipoForzato, setTipoForzato] = useState<"auto" | "nuovo_fido" | "aumento" | "diminuzione" | "rinnovo">("auto");
+  const [righe, setRighe] = useState<RigaProposta[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Inizializza/aggiorna righe quando cambia la selezione o si apre
+  useEffect(() => {
+    if (!open) return;
+    setRighe((prev) => {
+      const prevMap = new Map(prev.map((r) => [r.cliente_id, r]));
+      return selectedRows.map((c) => {
+        const existing = prevMap.get(c.id);
+        if (existing) return existing;
+        const proposto = calcolaFidoProposto(c);
+        const attuale = Number(c.fido ?? 0);
+        return {
+          cliente_id: c.id,
+          ragione_sociale: c.ragione_sociale,
+          fido_attuale: attuale,
+          esposizione: Number(c.totale_rischio ?? 0),
+          fido_proposto: proposto,
+          tipo: determinaTipoRichiesta(attuale, proposto),
+        };
+      });
+    });
+  }, [open, selectedRows]);
+
+  function aggiornaImporto(id: string, valore: number) {
+    setRighe((prev) => prev.map((r) => r.cliente_id === id ? {
+      ...r,
+      fido_proposto: valore,
+      tipo: tipoForzato === "auto" ? determinaTipoRichiesta(r.fido_attuale, valore) : r.tipo,
+    } : r));
+  }
+  function aggiornaTipo(id: string, tipo: RigaProposta["tipo"]) {
+    setRighe((prev) => prev.map((r) => r.cliente_id === id ? { ...r, tipo } : r));
+  }
+  function rimuoviRiga(id: string) {
+    setRighe((prev) => prev.filter((r) => r.cliente_id !== id));
+    onRemove(id);
+  }
+
+  // Quando cambia tipoForzato, ricalcola
+  useEffect(() => {
+    if (tipoForzato === "auto") {
+      setRighe((prev) => prev.map((r) => ({ ...r, tipo: determinaTipoRichiesta(r.fido_attuale, r.fido_proposto) })));
+    } else {
+      setRighe((prev) => prev.map((r) => ({ ...r, tipo: tipoForzato })));
+    }
+  }, [tipoForzato]);
+
+  const totale = righe.reduce((acc, r) => acc + (Number(r.fido_proposto) || 0), 0);
+
+  async function creaRichieste() {
+    if (righe.length === 0) { toast.error("Nessuna riga da creare"); return; }
+    if (!userId) { toast.error("Utente non autenticato"); return; }
+    setSubmitting(true);
+    try {
+      const stato = modalitaInvio === "bozza" ? "bozza" : "in_attesa_liv1";
+      const payload = righe.map((r) => ({
+        cliente_id: r.cliente_id,
+        tipo: r.tipo,
+        importo_richiesto: r.fido_proposto,
+        stato,
+        created_by: userId,
+        motivazione: "Proposta fido massiva",
+      }));
+      const { error } = await supabase.from("richieste_fido").insert(payload as any);
+      if (error) throw error;
+      toast.success(`${righe.length} richieste create`);
+      onSuccess();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Errore nella creazione");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Proposta fido massiva — {righe.length} clienti</DialogTitle>
+          <DialogDescription>
+            Crea una richiesta fido per ogni cliente selezionato.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label className="text-xs">Modalità invio</Label>
+            <RadioGroup value={modalitaInvio} onValueChange={(v) => setModalitaInvio(v as any)} className="mt-2">
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <RadioGroupItem value="bozza" /> Salva come bozza
+              </label>
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <RadioGroupItem value="invia" /> Invia subito all'approvazione
+              </label>
+            </RadioGroup>
+          </div>
+          <div>
+            <Label className="text-xs">Tipo richiesta applicato a tutti</Label>
+            <Select value={tipoForzato} onValueChange={(v) => setTipoForzato(v as any)}>
+              <SelectTrigger className="mt-2"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="auto">Automatico (in base al fido attuale)</SelectItem>
+                <SelectItem value="nuovo_fido">Nuovo fido</SelectItem>
+                <SelectItem value="aumento">Aumento fido</SelectItem>
+                <SelectItem value="diminuzione">Diminuzione fido</SelectItem>
+                <SelectItem value="rinnovo">Rinnovo fido</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto border rounded-md">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Cliente</TableHead>
+                <TableHead className="text-right">Fido attuale</TableHead>
+                <TableHead className="text-right">Esposizione</TableHead>
+                <TableHead className="text-right">Fido proposto</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead className="w-10"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {righe.map((r) => (
+                <TableRow key={r.cliente_id}>
+                  <TableCell className="font-medium text-sm">{r.ragione_sociale}</TableCell>
+                  <TableCell className="text-right text-sm">{fmtEuro(r.fido_attuale)}</TableCell>
+                  <TableCell className="text-right text-sm">{fmtEuro(r.esposizione)}</TableCell>
+                  <TableCell className="text-right">
+                    <Input
+                      type="number"
+                      className="h-8 text-right w-32 ml-auto"
+                      value={r.fido_proposto}
+                      onChange={(e) => aggiornaImporto(r.cliente_id, Number(e.target.value) || 0)}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Select value={r.tipo} onValueChange={(v) => aggiornaTipo(r.cliente_id, v as RigaProposta["tipo"])}>
+                      <SelectTrigger className="h-8 w-36"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="nuovo_fido">Nuovo fido</SelectItem>
+                        <SelectItem value="aumento">Aumento</SelectItem>
+                        <SelectItem value="diminuzione">Diminuzione</SelectItem>
+                        <SelectItem value="rinnovo">Rinnovo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell>
+                    <Button variant="ghost" size="icon" onClick={() => rimuoviRiga(r.cliente_id)} title="Rimuovi">
+                      <X className="size-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+
+        <div className="text-sm font-medium">
+          Totale fido proposto: <strong>{fmtEuro(totale)}</strong> · {righe.length} richieste da creare
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>Annulla</Button>
+          <Button onClick={creaRichieste} disabled={submitting || righe.length === 0}>
+            {submitting ? "Creazione…" : "Crea richieste"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 
 // ============================================================================
 // WIZARD SCHEDA CLIENTE — Modalità "Crea con firma" / "Crea senza firma"
