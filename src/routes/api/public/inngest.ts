@@ -5,6 +5,8 @@ import {
   processAnagraficaImport,
   processRischioImport,
   processScadenziarioImport,
+  processScadenziarioChunk,
+  finalizeScadenziarioImport,
   processScadAssicImport,
 } from "@/lib/inngest/functions.server";
 
@@ -14,6 +16,8 @@ const handler = serve({
     processAnagraficaImport,
     processRischioImport,
     processScadenziarioImport,
+    processScadenziarioChunk,
+    finalizeScadenziarioImport,
     processScadAssicImport,
   ],
 });
