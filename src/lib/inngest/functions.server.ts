@@ -37,6 +37,27 @@ async function setImportazioneError(importazioneId: string, message: string) {
     .eq("id", importazioneId);
 }
 
+async function sendInngestEvents(events: object[]): Promise<void> {
+  const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
+  const INNGEST_API_KEY = process.env.INNGEST_API_KEY;
+  if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY non configurata");
+  if (!INNGEST_API_KEY) throw new Error("INNGEST_API_KEY non configurata");
+  const res = await fetch("https://connector-gateway.lovable.dev/inngest/e/", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      "X-Connection-Api-Key": INNGEST_API_KEY,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(events),
+  });
+  if (!res.ok) {
+    throw new Error(`Inngest gateway error ${res.status}: ${await res.text()}`);
+  }
+}
+
+
+
 
 /* ============================================================================
  * A — ANAGRAFICA
@@ -443,7 +464,9 @@ export const processScadenziarioImport = inngest.createFunction(
       const SEND_BATCH = 50;
       for (let i = 0; i < events.length; i += SEND_BATCH) {
         const slice = events.slice(i, i + SEND_BATCH);
-        await step.sendEvent(`send-chunks-${i}`, slice);
+        await step.run(`send-chunks-${i}`, async () => {
+          await sendInngestEvents(slice);
+        });
       }
 
       return { totRows, chunkCount };
@@ -677,12 +700,14 @@ export const processScadenziarioChunk = inngest.createFunction(
 
     // STEP E: se è l'ultimo chunk, emetti evento finalize
     if (progress.chunks_completati >= progress.chunks_totali) {
-      await step.sendEvent("send-finalize", [
-        {
-          name: "import/scadenziario.finalize" as const,
-          data: { importazioneId, timestampInizio },
-        },
-      ]);
+      await step.run("send-finalize", async () => {
+        await sendInngestEvents([
+          {
+            name: "import/scadenziario.finalize",
+            data: { importazioneId, timestampInizio },
+          },
+        ]);
+      });
     }
 
     return { chunkIndex, ...result, progress };
