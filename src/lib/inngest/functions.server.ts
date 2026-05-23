@@ -11,8 +11,8 @@ import {
   toStr,
   normalize,
   findSheetByName,
+  type ScadRow,
 } from "./parsers.server";
-import type { ScadRow } from "./parsers.server";
 
 type EventData = { importazioneId: string; filePath: string; userId?: string };
 
