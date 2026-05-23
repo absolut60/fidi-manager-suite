@@ -13,6 +13,8 @@ export type BackgroundImportProgress = {
   righe_create: number | null;
   righe_aggiornate: number | null;
   righe_errore: number | null;
+  righe_saltate: number | null;
+  codici_mancanti: string[] | null;
   log_errori: unknown;
   completata_at: string | null;
 };
@@ -172,7 +174,7 @@ export function useBackgroundImport(opts: {
       const { data } = await supabase
         .from("importazioni")
         .select(
-          "stato, righe_totali, righe_elaborate, righe_create, righe_aggiornate, righe_errore, log_errori, completata_at",
+          "stato, righe_totali, righe_elaborate, righe_create, righe_aggiornate, righe_errore, righe_saltate, codici_mancanti, log_errori, completata_at",
         )
         .eq("id", importazioneId)
         .single();

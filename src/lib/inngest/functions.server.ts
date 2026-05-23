@@ -666,13 +666,14 @@ export const processScadenziarioChunk = inngest.createFunction(
       const batchErrs: Array<{ riga: number; errore: string }> = [];
       const matched: string[] = [];
       const rawValidRows: Array<Record<string, unknown>> = [];
+      let skipped = 0;
+      const skippedCodes = new Set<string>();
       for (const r of rows) {
         const cid = clientMap[r.codice_gestionale];
         if (!cid) {
-          rowErrs.push({
-            riga: r.idx,
-            errore: `Cliente ${r.codice_gestionale} non trovato${r.ragione_sociale ? ` (${r.ragione_sociale})` : ""}`,
-          });
+          // Cliente non in anagrafica: salta silenziosamente (non conta come errore)
+          skipped++;
+          if (r.codice_gestionale) skippedCodes.add(String(r.codice_gestionale));
           continue;
         }
         matched.push(cid);
@@ -765,13 +766,15 @@ export const processScadenziarioChunk = inngest.createFunction(
         created: c,
         updated: u,
         elaborate: rows.length + missing.length,
+        skipped,
+        skippedCodes: Array.from(skippedCodes),
         rowErrs,
         batchErrs,
         matchedCids: Array.from(new Set(matched)),
       };
     });
 
-    // STEP D: incremento atomico contatori + raccogli cid abbinati
+    // STEP D: incremento atomico contatori + aggrega codici mancanti
     const progress = await step.run("increment-counters", async () => {
       const totalErrs = result.rowErrs.length + result.batchErrs.length;
       const { data: rpc, error: rpcErr } = await (
@@ -788,21 +791,34 @@ export const processScadenziarioChunk = inngest.createFunction(
         _create: result.created,
         _update: result.updated,
         _error: totalErrs,
+        _skipped: result.skipped,
       });
       if (rpcErr) throw new Error(`increment_importazione_counters: ${rpcErr.message}`);
 
-      // Append errori al log (best-effort)
-      if (result.rowErrs.length || result.batchErrs.length) {
+      // Append errori al log (best-effort) e aggrega codici mancanti unici (max 200)
+      if (result.rowErrs.length || result.batchErrs.length || result.skippedCodes.length) {
         const { data: cur } = await supabaseAdmin
           .from("importazioni")
-          .select("log_errori")
+          .select("log_errori, codici_mancanti")
           .eq("id", importazioneId)
           .single();
-        const existing = (cur?.log_errori as Array<{ riga: number; errore: string }> | null) ?? [];
-        const next = [...existing, ...result.batchErrs, ...result.rowErrs].slice(0, 500);
+        const updates: Record<string, unknown> = {};
+        if (result.rowErrs.length || result.batchErrs.length) {
+          const existing =
+            (cur?.log_errori as Array<{ riga: number; errore: string }> | null) ?? [];
+          updates.log_errori = [...existing, ...result.batchErrs, ...result.rowErrs].slice(0, 500);
+        }
+        if (result.skippedCodes.length) {
+          const existingCodes = (cur?.codici_mancanti as string[] | null) ?? [];
+          const merged = Array.from(new Set([...existingCodes, ...result.skippedCodes])).slice(
+            0,
+            200,
+          );
+          updates.codici_mancanti = merged;
+        }
         await supabaseAdmin
           .from("importazioni")
-          .update({ log_errori: next } as never)
+          .update(updates as never)
           .eq("id", importazioneId);
       }
 
