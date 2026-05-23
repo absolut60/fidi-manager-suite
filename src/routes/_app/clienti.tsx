@@ -350,7 +350,7 @@ function ClientiPage() {
   const scadReady = scadenziarioFiltro === "tutti" || !!scadenziarioMap;
 
   const { data: clientiResp, isLoading } = useQuery({
-    queryKey: ["clienti", { search, statoCliente, storeFiltro, soloBloccati, privacyFiltro, soloAssicurati, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), fidoModalita, fidoFascia, fidoRangeDeb, page, pageSize }],
+    queryKey: ["clienti", { search, statoCliente, storeFiltro, soloBloccati, privacyFiltro, soloAssicurati, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fidoFascia, fidoRangeDeb, page, pageSize }],
     queryFn: async () => {
       const built = buildBaseQuery("*, stores(nome, codice)", "exact");
       if ("empty" in built) return { rows: [], count: 0 };
@@ -379,9 +379,7 @@ function ClientiPage() {
       all.push(...batch);
       if (batch.length < size) break;
       off += size;
-      // Safety cap
       if (off > 20000) break;
-      // Riapplica la query a partire da una nuova istanza: PostgREST richiede una nuova query per ogni range.
       const rebuilt = buildBaseQuery("id, ragione_sociale, fido, totale_rischio", undefined);
       if ("empty" in rebuilt) break;
       (built as any).q = rebuilt.q;
@@ -399,8 +397,10 @@ function ClientiPage() {
     (privacyFiltro !== "tutti" ? 1 : 0) +
     (soloAssicurati ? 1 : 0) +
     (scadenziarioFiltro !== "tutti" ? 1 : 0) +
-    (fidoModalita === "fasce" && fidoFascia !== "tutti" ? 1 : 0) +
-    (fidoModalita === "range" && (fidoRangeDeb[0] !== FIDO_RANGE_MIN || fidoRangeDeb[1] !== FIDO_RANGE_MAX) ? 1 : 0);
+    (totaleRischioFiltro !== "tutti" ? 1 : 0) +
+    (aScadereFiltro !== "tutti" ? 1 : 0) +
+    (fidoFascia !== "tutti" ? 1 : 0) +
+    ((fidoRangeDeb[0] !== FIDO_RANGE_MIN || fidoRangeDeb[1] !== FIDO_RANGE_MAX) ? 1 : 0);
 
   function resetFiltri() {
     setSearchInput(""); setSearch("");
@@ -412,11 +412,13 @@ function ClientiPage() {
     setPrivacyFiltro("tutti");
     setSoloAssicurati(false);
     setScadenziarioFiltro("tutti");
-    setFidoModalita("fasce");
+    setTotaleRischioFiltro("tutti");
+    setAScadereFiltro("tutti");
     setFidoFascia("tutti");
     setFidoRange([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
     setFidoRangeDeb([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
   }
+
 
   // Selezione
   function toggleSelect(c: any) {
