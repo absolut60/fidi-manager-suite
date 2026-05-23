@@ -31,6 +31,7 @@ export function useBackgroundImport(opts: {
   onDone?: (p: BackgroundImportProgress) => void;
   onChunkUploaded?: (uploaded: number, total: number) => void;
   onUploadComplete?: () => void;
+  onError?: (message: string) => void;
 }) {
   const qc = useQueryClient();
   const [importazioneId, setImportazioneId] = useState<string | null>(null);
