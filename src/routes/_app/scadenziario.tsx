@@ -132,6 +132,30 @@ function ScadenziarioPage() {
     },
   });
 
+  const annoCorrente = useMemo(() => new Date().getFullYear(), []);
+  const annoPrec = annoCorrente - 1;
+
+  const { data: fatturatoMap } = useQuery({
+    queryKey: ["scadenziario-fatturato-clienti", annoCorrente, annoPrec],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("fatturato_clienti")
+        .select("cliente_id, anno, fatturato")
+        .in("anno", [annoCorrente, annoPrec]);
+      if (error) throw error;
+      const m = new Map<string, { cur: number; prev: number }>();
+      for (const r of (data ?? []) as Array<{ cliente_id: string | null; anno: number | null; fatturato: number | null }>) {
+        if (!r.cliente_id) continue;
+        const entry = m.get(r.cliente_id) ?? { cur: 0, prev: 0 };
+        if (Number(r.anno) === annoCorrente) entry.cur = Number(r.fatturato) || 0;
+        else if (Number(r.anno) === annoPrec) entry.prev = Number(r.fatturato) || 0;
+        m.set(r.cliente_id, entry);
+      }
+      return m;
+    },
+    staleTime: 60_000,
+  });
+
   const clientiMap = useMemo(() => {
     const m = new Map<string, Cliente>();
     (clienti ?? []).forEach((c) => m.set(c.id, c));
