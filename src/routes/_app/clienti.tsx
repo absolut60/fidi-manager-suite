@@ -661,9 +661,9 @@ function ClientiPage() {
 
   const FatturatoSelect = (
     <Select value={fatturatoFiltro} onValueChange={setFatturatoFiltro}>
-      <SelectTrigger className="w-full"><SelectValue placeholder="Fatturato anno corrente" /></SelectTrigger>
+      <SelectTrigger className="w-full"><SelectValue placeholder="Fatturato anno corrente (IVA escl.)" /></SelectTrigger>
       <SelectContent>
-        <SelectItem value="tutti">Fatturato {annoCorrenteClienti}: tutti</SelectItem>
+        <SelectItem value="tutti">Fatturato {annoCorrenteClienti} (IVA escl.): tutti</SelectItem>
         <SelectItem value="nessuno">Nessun fatturato (0 €)</SelectItem>
         <SelectItem value="0_10k">Fino a 10.000 €</SelectItem>
         <SelectItem value="10k_50k">10.001 – 50.000 €</SelectItem>
