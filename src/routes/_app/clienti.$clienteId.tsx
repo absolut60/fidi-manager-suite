@@ -696,17 +696,22 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
               <AlertTriangle className="size-3" /> Blocco revocabile
             </Badge>
           )}
-          {!clienteAttivo ? (
-            <Badge variant="secondary" className="gap-1">
-              <Ban className="size-3" /> Non attivo
-              {ultimaFatt && <span className="ml-1 opacity-80">· ult. fatt. {fmtDateIt(ultimaFatt)}</span>}
-            </Badge>
-          ) : !bloccato && indBlocco === 0 ? (
-            <Badge className="bg-success/15 text-success border-success/30 hover:bg-success/15 gap-1">
-              <CheckCircle2 className="size-3" /> Attivo
-            </Badge>
-          ) : null}
         </div>
+        {!clienteAttivo ? (
+          <div className="rounded-lg border border-muted-foreground/20 bg-muted/60 px-4 py-3 flex items-center gap-3">
+            <Ban className="size-5 text-muted-foreground shrink-0" />
+            <p className="text-sm font-bold text-muted-foreground tracking-wide">
+              NON ATTIVO{ultimaFatt ? ` — Ultima fatturazione: ${fmtDateIt(ultimaFatt)}` : ""}
+            </p>
+          </div>
+        ) : !bloccato && indBlocco === 0 ? (
+          <div className="rounded-lg border border-success/30 bg-success/10 px-4 py-3 flex items-center gap-3">
+            <CheckCircle2 className="size-5 text-success shrink-0" />
+            <p className="text-sm font-bold text-success tracking-wide">
+              ATTIVO{ultimaFatt ? ` — Ultima fatturazione: ${fmtDateIt(ultimaFatt)}` : ""}
+            </p>
+          </div>
+        ) : null}
       </div>
 
       {/* Sezione 2 — Dati rischio */}
