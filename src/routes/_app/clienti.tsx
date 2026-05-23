@@ -232,7 +232,7 @@ function ClientiPage() {
     (scadenziarioFiltro !== "tutti" ? 1 : 0);
 
   function resetFiltri() {
-    setSearch("");
+    setSearchInput(""); setSearch("");
     setStatoCliente("attivi");
     setStoreFiltro("tutti");
     setStatoFido(new Set());
