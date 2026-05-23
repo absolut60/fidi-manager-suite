@@ -71,6 +71,17 @@ function BgProgressBlock({
         {progress.righe_elaborate ?? 0} / {progress.righe_totali ?? fallbackTotal} righe ·{" "}
         {progress.righe_create ?? 0} create · {progress.righe_aggiornate ?? 0} aggiornate ·{" "}
         {progress.righe_errore ?? 0} errori
+        {(progress.righe_saltate ?? 0) > 0 ? (
+          <>
+            {" · "}
+            <span className="text-amber-600">
+              {progress.righe_saltate} saltate
+              {progress.codici_mancanti?.length
+                ? ` (${progress.codici_mancanti.length} clienti non in anagrafica)`
+                : ""}
+            </span>
+          </>
+        ) : null}
       </div>
     </div>
   );
