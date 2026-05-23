@@ -118,13 +118,14 @@ function ClientiPage() {
   const [privacyFiltro, setPrivacyFiltro] = useState<string>("tutti");
   const [soloAssicurati, setSoloAssicurati] = useState(false);
   const [scadenziarioFiltro, setScadenziarioFiltro] = useState<string>("tutti");
+  const [totaleRischioFiltro, setTotaleRischioFiltro] = useState<string>("tutti");
+  const [aScadereFiltro, setAScadereFiltro] = useState<string>("tutti");
   const [open, setOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
 
-  // Filtro Fido residuo
-  const [fidoModalita, setFidoModalita] = useState<"fasce" | "range">("fasce");
+  // Filtro Fido residuo (fascia + range slider, cumulativi)
   const [fidoFascia, setFidoFascia] = useState<string>("tutti");
   const [fidoRange, setFidoRange] = useState<[number, number]>([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
   const [fidoRangeDeb, setFidoRangeDeb] = useState<[number, number]>([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
@@ -132,6 +133,7 @@ function ClientiPage() {
     const t = setTimeout(() => setFidoRangeDeb(fidoRange), 500);
     return () => clearTimeout(t);
   }, [fidoRange]);
+
 
   // Selezione multipla
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
