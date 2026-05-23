@@ -402,6 +402,18 @@ export const processScadenziarioImport = inngest.createFunction(
       }));
       let created = 0;
       let updated = 0;
+      let chiuseAutomaticamente = 0;
+      let clientiRiconciliati = 0;
+
+      // Timestamp di inizio import — usato per:
+      //  1) scrivere ultima_sincronizzazione su ogni riga upsertata
+      //  2) chiudere automaticamente le scadenze "fantasma" (presenti nel DB ma assenti nel file)
+      const timestampInizioImport = await step.run(
+        "init-timestamp",
+        async () => new Date().toISOString(),
+      );
+
+
 
       await supabaseAdmin
         .from("importazioni")
