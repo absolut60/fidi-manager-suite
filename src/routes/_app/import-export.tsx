@@ -1073,11 +1073,8 @@ function ScadenziarioProgressBlock({
       righeTotali > 0
         ? `Trovate ${righeTotali.toLocaleString("it-IT")} righe da elaborare`
         : "File pronto",
-    uploading:
-      chunkTotal > 0
-        ? `Preparazione dati… chunk ${chunkCurrent} di ${chunkTotal}`
-        : "Preparazione dati…",
-    processing: "Importazione in corso…",
+    uploading: "Caricamento file in corso…",
+    processing: "Elaborazione in background…",
     done: "Importazione completata!",
     "done-warn": "Completata con errori — vedi dettagli",
     error: errorMsg ?? "Errore durante l'importazione",
