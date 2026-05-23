@@ -1017,6 +1017,133 @@ function parseOfficialScadenziarioSheet(sheet: XLSX.WorkSheet): {
   return { rows, missing, totRead };
 }
 
+type ScadPhase = "reading" | "ready" | "uploading" | "processing" | "done" | "done-warn" | "error";
+
+function formatDuration(ms: number): string {
+  if (ms < 0 || !Number.isFinite(ms)) return "—";
+  const totSec = Math.floor(ms / 1000);
+  const m = Math.floor(totSec / 60);
+  const s = totSec % 60;
+  if (m === 0) return `${s}s`;
+  return `${m}m ${String(s).padStart(2, "0")}s`;
+}
+
+function ScadenziarioProgressBlock({
+  phase,
+  pct,
+  righeElaborate,
+  righeTotali,
+  chunkCurrent,
+  chunkTotal,
+  elapsedMs,
+  remainingMs,
+  errorMsg,
+  result,
+  onRetry,
+}: {
+  phase: ScadPhase;
+  pct: number;
+  righeElaborate: number;
+  righeTotali: number;
+  chunkCurrent: number;
+  chunkTotal: number;
+  elapsedMs: number;
+  remainingMs: number | null;
+  errorMsg?: string | null;
+  result?: {
+    create: number;
+    aggiornate: number;
+    errori: number;
+    chiuse: number;
+  } | null;
+  onRetry?: () => void;
+}) {
+  const barColor =
+    phase === "error"
+      ? "bg-destructive"
+      : phase === "done-warn"
+        ? "bg-yellow-500"
+        : phase === "done"
+          ? "bg-green-500"
+          : "bg-primary";
+
+  const phaseText: Record<ScadPhase, string> = {
+    reading: "Lettura file Excel in corso…",
+    ready:
+      righeTotali > 0
+        ? `Trovate ${righeTotali.toLocaleString("it-IT")} righe da elaborare`
+        : "File pronto",
+    uploading:
+      chunkTotal > 0
+        ? `Preparazione dati… chunk ${chunkCurrent} di ${chunkTotal}`
+        : "Preparazione dati…",
+    processing: "Importazione in corso…",
+    done: "Importazione completata!",
+    "done-warn": "Completata con errori — vedi dettagli",
+    error: errorMsg ?? "Errore durante l'importazione",
+  };
+
+  return (
+    <div className="space-y-3 mb-4 p-4 rounded-lg border bg-muted/30">
+      <div className="flex items-baseline justify-between">
+        <div className="text-3xl font-bold tabular-nums">{Math.round(pct)}%</div>
+        <div className="text-xs text-muted-foreground tabular-nums">
+          Tempo: {formatDuration(elapsedMs)}
+          {remainingMs != null && phase === "processing" ? (
+            <> · Rimanente: ~{formatDuration(remainingMs)}</>
+          ) : null}
+        </div>
+      </div>
+      <div className="h-3 w-full bg-muted rounded-full overflow-hidden">
+        <div
+          className={`h-full ${barColor} transition-all duration-500 ease-out`}
+          style={{ width: `${Math.max(0, Math.min(100, pct))}%` }}
+        />
+      </div>
+      <div className="flex items-center gap-2 text-sm font-medium">
+        {phase === "done" ? (
+          <CheckCircle2 className="size-4 text-green-600" />
+        ) : phase === "error" ? (
+          <AlertCircle className="size-4 text-destructive" />
+        ) : phase === "done-warn" ? (
+          <AlertCircle className="size-4 text-yellow-600" />
+        ) : (
+          <Loader2 className="size-4 animate-spin text-muted-foreground" />
+        )}
+        <span>{phaseText[phase]}</span>
+      </div>
+      {phase === "processing" && righeTotali > 0 ? (
+        <div className="text-xs text-muted-foreground tabular-nums">
+          {righeElaborate.toLocaleString("it-IT")} / {righeTotali.toLocaleString("it-IT")} righe
+          elaborate
+        </div>
+      ) : null}
+      {(phase === "done" || phase === "done-warn") && result ? (
+        <div className="text-xs text-muted-foreground">
+          Create: <span className="font-medium text-foreground">{result.create.toLocaleString("it-IT")}</span>
+          {" · "}Aggiornate:{" "}
+          <span className="font-medium text-foreground">{result.aggiornate.toLocaleString("it-IT")}</span>
+          {" · "}Saltate:{" "}
+          <span className="font-medium text-foreground">{result.errori.toLocaleString("it-IT")}</span>
+          {result.chiuse > 0 ? (
+            <>
+              {" · "}Chiuse automaticamente:{" "}
+              <span className="font-medium text-foreground">{result.chiuse.toLocaleString("it-IT")}</span>
+            </>
+          ) : null}
+          {" · "}Tempo totale: <span className="font-medium text-foreground">{formatDuration(elapsedMs)}</span>
+        </div>
+      ) : null}
+      {phase === "error" && onRetry ? (
+        <Button size="sm" variant="outline" onClick={onRetry} className="gap-1.5">
+          <Loader2 className="size-3.5" /> Riprova
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
+
 function ScadenziarioImportCard() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState<string | null>(null);
