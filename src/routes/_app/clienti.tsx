@@ -470,175 +470,205 @@ function ClientiPage() {
     });
   }
 
-  function FiltriContent({ stack = false }: { stack?: boolean }) {
-    const wrap = stack ? "grid grid-cols-1 gap-3" : "flex flex-wrap gap-3 items-center";
+  // Componenti riusabili per i singoli filtri (così funzionano sia in desktop grid che mobile stack)
+  function SearchField({ className = "" }: { className?: string }) {
     return (
-      <div className={wrap}>
-        {!stack && (
-          <div className="relative flex-1 min-w-[220px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-            <Input
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Cerca ragione sociale, P.IVA, cod. gest., città..."
-              className="pl-9"
-            />
-          </div>
-        )}
-
-        <Select value={storeFiltro} onValueChange={setStoreFiltro}>
-          <SelectTrigger className={stack ? "w-full" : "w-48"}><SelectValue placeholder="Punto vendita" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="tutti">Tutti i punti vendita</SelectItem>
-            {(stores ?? []).map((s) => (
-              <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" className={stack ? "w-full justify-between" : "w-48 justify-between"}>
-              <span className="truncate">
-                {statoFido.size === 0 ? "Stato fido" : `Stato fido (${statoFido.size})`}
-              </span>
-              <SlidersHorizontal className="size-4 opacity-50" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-56 p-2" align="start">
-            {STATO_FIDO_OPTS.map((o) => (
-              <label key={o.value} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm">
-                <Checkbox checked={statoFido.has(o.value)} onCheckedChange={() => toggleStatoFido(o.value)} />
-                {o.label}
-              </label>
-            ))}
-            {statoFido.size > 0 && (
-              <Button variant="ghost" size="sm" className="w-full mt-1" onClick={() => setStatoFido(new Set())}>
-                Pulisci
-              </Button>
-            )}
-          </PopoverContent>
-        </Popover>
-
-        <Select value={semaforoFiltro} onValueChange={setSemaforoFiltro}>
-          <SelectTrigger className={stack ? "w-full" : "w-40"}><SelectValue placeholder="Semaforo" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="tutti">Tutti i semafori</SelectItem>
-            <SelectItem value="verde">🟢 Verde</SelectItem>
-            <SelectItem value="giallo">🟡 Giallo</SelectItem>
-            <SelectItem value="arancione">🟠 Arancione</SelectItem>
-            <SelectItem value="rosso">🔴 Rosso</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select value={scadenziarioFiltro} onValueChange={setScadenziarioFiltro}>
-          <SelectTrigger className={stack ? "w-full" : "w-44"}><SelectValue placeholder="Scadenziario" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="tutti">Scadenziario: tutti</SelectItem>
-            <SelectItem value="scaduto">Con scaduto</SelectItem>
-            <SelectItem value="a_scadere">Solo a scadere</SelectItem>
-            <SelectItem value="in_regola">Tutto in regola</SelectItem>
-          </SelectContent>
-        </Select>
-
-        {/* Fido residuo: fasce + range */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" className={stack ? "w-full justify-between" : "w-52 justify-between"}>
-              <span className="truncate">
-                {fidoModalita === "fasce" && fidoFascia === "tutti" && "Fido residuo"}
-                {fidoModalita === "fasce" && fidoFascia !== "tutti" && `Fido: ${fidoFascia}`}
-                {fidoModalita === "range" && `${fmtEuro(fidoRange[0])} → ${fmtEuro(fidoRange[1])}`}
-              </span>
-              <SlidersHorizontal className="size-4 opacity-50" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-80 p-3 space-y-3" align="start">
-            <div className="flex gap-1">
-              <Button
-                variant={fidoModalita === "fasce" ? "default" : "outline"}
-                size="sm"
-                className="flex-1"
-                onClick={() => setFidoModalita("fasce")}
-              >Fasce</Button>
-              <Button
-                variant={fidoModalita === "range" ? "default" : "outline"}
-                size="sm"
-                className="flex-1"
-                onClick={() => setFidoModalita("range")}
-              >Range</Button>
-            </div>
-            {fidoModalita === "fasce" ? (
-              <Select value={fidoFascia} onValueChange={setFidoFascia}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="tutti">Tutti</SelectItem>
-                  <SelectItem value="negativo">Negativo / Sforato (&lt; 0)</SelectItem>
-                  <SelectItem value="basso">Basso (0 – 5.000 €)</SelectItem>
-                  <SelectItem value="medio">Medio (5.000 – 20.000 €)</SelectItem>
-                  <SelectItem value="alto">Alto (oltre 20.000 €)</SelectItem>
-                </SelectContent>
-              </Select>
-            ) : (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs font-medium">
-                  <span>{fmtEuro(fidoRange[0])}</span>
-                  <span className="text-muted-foreground">→</span>
-                  <span>{fmtEuro(fidoRange[1])}</span>
-                </div>
-                <Slider
-                  min={FIDO_RANGE_MIN}
-                  max={FIDO_RANGE_MAX}
-                  step={1000}
-                  value={fidoRange}
-                  onValueChange={(v) => setFidoRange([v[0], v[1]] as [number, number])}
-                />
-                <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                  <span>{fmtEuro(FIDO_RANGE_MIN)}</span>
-                  <span>{fmtEuro(FIDO_RANGE_MAX)}</span>
-                </div>
-              </div>
-            )}
-          </PopoverContent>
-        </Popover>
-
-
-        <Select value={statoCliente} onValueChange={(v) => setStatoCliente(v as typeof statoCliente)}>
-          <SelectTrigger className={stack ? "w-full" : "w-40"}><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="attivi">Solo attivi</SelectItem>
-            <SelectItem value="disattivati">Solo disattivati</SelectItem>
-            <SelectItem value="tutti">Tutti</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select value={privacyFiltro} onValueChange={setPrivacyFiltro}>
-          <SelectTrigger className={stack ? "w-full" : "w-44"}><SelectValue placeholder="Privacy" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="tutti">Privacy: tutti</SelectItem>
-            <SelectItem value="firmata">Privacy firmata</SelectItem>
-            <SelectItem value="da_firmare">Privacy da firmare</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <label className="flex items-center gap-2 text-sm px-2 py-1 cursor-pointer whitespace-nowrap">
-          <Checkbox checked={soloBloccati} onCheckedChange={(v) => setSoloBloccati(!!v)} />
-          Solo bloccati
-        </label>
-
-        <label className="flex items-center gap-2 text-sm px-2 py-1 cursor-pointer whitespace-nowrap">
-          <Checkbox checked={soloAssicurati} onCheckedChange={(v) => setSoloAssicurati(!!v)} />
-          Solo assicurati POUEY
-        </label>
-
-        {attiviCount > 0 && (
-          <Button variant="ghost" size="sm" onClick={resetFiltri} className="gap-1">
-            <X className="size-4" /> Azzera filtri
-          </Button>
-        )}
+      <div className={`relative ${className}`}>
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+        <Input
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          placeholder="Cerca ragione sociale, P.IVA, cod. gest., città..."
+          className="pl-9"
+        />
       </div>
     );
   }
+
+  const StoreSelect = (
+    <Select value={storeFiltro} onValueChange={setStoreFiltro}>
+      <SelectTrigger className="w-full"><SelectValue placeholder="Punto vendita" /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="tutti">Tutti i punti vendita</SelectItem>
+        {(stores ?? []).map((s) => (
+          <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+
+  const StatoFidoPopover = (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" className="w-full justify-between">
+          <span className="truncate">
+            {statoFido.size === 0 ? "Stato fido" : `Stato fido (${statoFido.size})`}
+          </span>
+          <SlidersHorizontal className="size-4 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-56 p-2" align="start">
+        {STATO_FIDO_OPTS.map((o) => (
+          <label key={o.value} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm">
+            <Checkbox checked={statoFido.has(o.value)} onCheckedChange={() => toggleStatoFido(o.value)} />
+            {o.label}
+          </label>
+        ))}
+        {statoFido.size > 0 && (
+          <Button variant="ghost" size="sm" className="w-full mt-1" onClick={() => setStatoFido(new Set())}>
+            Pulisci
+          </Button>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+
+  const SemaforoSelect = (
+    <Select value={semaforoFiltro} onValueChange={setSemaforoFiltro}>
+      <SelectTrigger className="w-full"><SelectValue placeholder="Semaforo" /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="tutti">Tutti i semafori</SelectItem>
+        <SelectItem value="verde">🟢 Verde</SelectItem>
+        <SelectItem value="giallo">🟡 Giallo</SelectItem>
+        <SelectItem value="arancione">🟠 Arancione</SelectItem>
+        <SelectItem value="rosso">🔴 Rosso</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+
+  const ScadenziarioSelect = (
+    <Select value={scadenziarioFiltro} onValueChange={setScadenziarioFiltro}>
+      <SelectTrigger className="w-full"><SelectValue placeholder="Scadenziario" /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="tutti">Scadenziario: tutti</SelectItem>
+        <SelectItem value="scaduto">Con scaduto</SelectItem>
+        <SelectItem value="a_scadere">Solo a scadere</SelectItem>
+        <SelectItem value="in_regola">Tutto in regola</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+
+  const FidoFasciaSelect = (
+    <Select value={fidoFascia} onValueChange={setFidoFascia}>
+      <SelectTrigger className="w-full"><SelectValue placeholder="Fido residuo" /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="tutti">Fido residuo: tutti</SelectItem>
+        <SelectItem value="negativo">Negativo / Sforato (&lt; 0)</SelectItem>
+        <SelectItem value="basso">Basso (0 – 5.000 €)</SelectItem>
+        <SelectItem value="medio">Medio (5.000 – 20.000 €)</SelectItem>
+        <SelectItem value="alto">Alto (oltre 20.000 €)</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+
+  const TotaleRischioSelect = (
+    <Select value={totaleRischioFiltro} onValueChange={setTotaleRischioFiltro}>
+      <SelectTrigger className="w-full"><SelectValue placeholder="Totale rischio" /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="tutti">Totale rischio: tutti</SelectItem>
+        <SelectItem value="basso">Basso (0 – 10.000 €)</SelectItem>
+        <SelectItem value="medio">Medio (10.001 – 50.000 €)</SelectItem>
+        <SelectItem value="alto">Alto (50.001 – 100.000 €)</SelectItem>
+        <SelectItem value="molto_alto">Molto alto (oltre 100.000 €)</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+
+  const AScadereSelect = (
+    <Select value={aScadereFiltro} onValueChange={setAScadereFiltro}>
+      <SelectTrigger className="w-full"><SelectValue placeholder="A scadere" /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="tutti">A scadere: tutti</SelectItem>
+        <SelectItem value="7">Entro 7 giorni</SelectItem>
+        <SelectItem value="30">Entro 30 giorni</SelectItem>
+        <SelectItem value="60">Entro 60 giorni</SelectItem>
+        <SelectItem value="oltre60">Oltre 60 giorni</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+
+  const FidoRangeSlider = (
+    <div className="space-y-2 px-1 py-2 border rounded-md">
+      <div className="flex items-center justify-between text-xs font-medium">
+        <span className="text-muted-foreground">Slider fido residuo:</span>
+        <span>{fmtEuro(fidoRange[0])} <span className="text-muted-foreground">→</span> {fmtEuro(fidoRange[1])}</span>
+      </div>
+      <Slider
+        min={FIDO_RANGE_MIN}
+        max={FIDO_RANGE_MAX}
+        step={1000}
+        value={fidoRange}
+        onValueChange={(v) => setFidoRange([v[0], v[1]] as [number, number])}
+      />
+      <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+        <span>{fmtEuro(FIDO_RANGE_MIN)}</span>
+        <span>{fmtEuro(FIDO_RANGE_MAX)}</span>
+      </div>
+    </div>
+  );
+
+  const BloccatiChk = (
+    <label className="flex items-center gap-2 text-sm px-2 py-1 cursor-pointer whitespace-nowrap">
+      <Checkbox checked={soloBloccati} onCheckedChange={(v) => setSoloBloccati(!!v)} />
+      Solo bloccati
+    </label>
+  );
+
+  const AssicuratiChk = (
+    <label className="flex items-center gap-2 text-sm px-2 py-1 cursor-pointer whitespace-nowrap">
+      <Checkbox checked={soloAssicurati} onCheckedChange={(v) => setSoloAssicurati(!!v)} />
+      Solo assicurati POUEY
+    </label>
+  );
+
+  function FiltriContent({ stack = false }: { stack?: boolean }) {
+    if (stack) {
+      return (
+        <div className="grid grid-cols-1 gap-3">
+          <SearchField />
+          {StoreSelect}
+          {StatoFidoPopover}
+          {SemaforoSelect}
+          {ScadenziarioSelect}
+          {FidoFasciaSelect}
+          {TotaleRischioSelect}
+          {AScadereSelect}
+          {FidoRangeSlider}
+          {BloccatiChk}
+          {AssicuratiChk}
+          {attiviCount > 0 && (
+            <Button variant="ghost" size="sm" onClick={resetFiltri} className="gap-1 justify-start">
+              <X className="size-4" /> Azzera tutti
+            </Button>
+          )}
+        </div>
+      );
+    }
+    return (
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <SearchField />
+          {StoreSelect}
+          {StatoFidoPopover}
+          {SemaforoSelect}
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {ScadenziarioSelect}
+          {FidoFasciaSelect}
+          {TotaleRischioSelect}
+          {AScadereSelect}
+        </div>
+        <div className="flex flex-col lg:flex-row gap-3 lg:items-center">
+          <div className="flex-1">{FidoRangeSlider}</div>
+          <div className="flex items-center gap-3">
+            {BloccatiChk}
+            {AssicuratiChk}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
 
   // Calcolo numeri pagina (max 5 visibili + ellipsis) — hook prima dell'early return
   const pageNumbers = useMemo(() => {
