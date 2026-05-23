@@ -94,8 +94,7 @@ function ScadenziarioPage() {
       while (true) {
         const { data, error } = await supabase
           .from("scadenze")
-          .select("cliente_id, importo_scadenza, giorni_ritardo, data_scadenza, stato_contabile")
-          .eq("stato_contabile", "Aperta")
+          .select("cliente_id, importo_scadenza, giorni_ritardo, data_scadenza, stato_contabile, tempi_scadenza")
           .range(from, from + pageSize - 1);
         if (error) throw error;
         const batch = (data ?? []) as ScadRow[];
