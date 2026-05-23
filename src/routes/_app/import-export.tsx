@@ -2105,32 +2105,6 @@ type BFARow = {
   assicurazione: number | null;
 };
 
-function excelDateToISO(v: unknown): string | null {
-  if (v == null || v === "") return null;
-  if (typeof v === "number" && Number.isFinite(v)) {
-    const d = XLSX.SSF?.parse_date_code?.(v);
-    if (d && d.y && d.m && d.d) {
-      const mm = String(d.m).padStart(2, "0");
-      const dd = String(d.d).padStart(2, "0");
-      return `${d.y}-${mm}-${dd}`;
-    }
-  }
-  const s = String(v).trim();
-  if (!s) return null;
-  // dd/mm/yyyy
-  const m1 = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})$/);
-  if (m1) {
-    const dd = m1[1].padStart(2, "0");
-    const mm = m1[2].padStart(2, "0");
-    let yyyy = m1[3];
-    if (yyyy.length === 2) yyyy = (Number(yyyy) > 50 ? "19" : "20") + yyyy;
-    return `${yyyy}-${mm}-${dd}`;
-  }
-  // yyyy-mm-dd
-  const m2 = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-  if (m2) return `${m2[1]}-${m2[2].padStart(2, "0")}-${m2[3].padStart(2, "0")}`;
-  return null;
-}
 
 function BloccoFidoAssicurazioneImportCard() {
   const qc = useQueryClient();
