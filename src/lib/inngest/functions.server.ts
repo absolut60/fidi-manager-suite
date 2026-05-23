@@ -725,48 +725,29 @@ export const processScadenziarioChunk = inngest.createFunction(
       let c = 0;
       let u = 0;
       if (validRows.length) {
-        // DIAGNOSTIC — rimuovere dopo il fix tempi_scadenza
-        if (chunkIndex === 0) {
-          console.log("DIAGNOSTIC headers ricevuti:", JSON.stringify(headers));
-          console.log(
-            "DIAGNOSTIC primo validRow keys:",
-            JSON.stringify(Object.keys(validRows[0])),
-          );
-          console.log("DIAGNOSTIC primo validRow:", JSON.stringify(validRows[0]));
-        }
-        const { error: upErr, count } = await (
+        const { error: upErr } = await (
           supabaseAdmin.from("scadenze" as never) as never as {
             upsert: (
               rows: unknown,
               opts: { onConflict: string; ignoreDuplicates: boolean },
-            ) => {
-              select: (
-                cols: string,
-                opts: { count: "exact" },
-              ) => Promise<{ error: { message: string } | null; count: number | null }>;
-            };
+            ) => Promise<{ error: { message: string } | null }>;
           }
-        )
-          .upsert(validRows, {
-            onConflict: "cliente_id,numero_documento,sezionale,anno_partita",
-            ignoreDuplicates: false,
-          })
-          .select("id", { count: "exact" });
+        ).upsert(validRows, {
+          onConflict: "cliente_id,numero_documento,sezionale,anno_partita",
+          ignoreDuplicates: false,
+        });
         if (upErr) {
           batchErrs.push({
             riga: chunkIndex,
             errore: `Upsert chunk ${chunkIndex}: ${upErr.message}`,
           });
         } else {
+          // Conta create vs update in base alle chiavi pre-esistenti.
+          // Non usiamo il count di Supabase: con upsert+onConflict ritorna
+          // sempre 0 anche quando le righe vengono effettivamente scritte.
           for (const key of validKeys) {
             if (existingKeys.has(key)) u++;
             else c++;
-          }
-          if ((count ?? 0) === 0 && validRows.length > 0) {
-            batchErrs.push({
-              riga: chunkIndex,
-              errore: `Chunk ${chunkIndex}: 0 righe scritte su ${validRows.length}`,
-            });
           }
         }
       }
