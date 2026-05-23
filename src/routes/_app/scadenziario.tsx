@@ -32,6 +32,7 @@ type ScadRow = {
   giorni_ritardo: number | null;
   data_scadenza: string | null;
   stato_contabile: string | null;
+  tempi_scadenza: string | null;
 };
 type Cliente = {
   id: string;
