@@ -408,6 +408,7 @@ function ClientiPage() {
   function resetFiltri() {
     setSearchInput(""); setSearch("");
     setStatoCliente("attivi");
+    setStatoAttivita("tutti");
     setStoreFiltro("tutti");
     setStatoFido(new Set());
     setSemaforoFiltro("tutti");
