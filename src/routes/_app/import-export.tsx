@@ -1155,15 +1155,44 @@ function ScadenziarioImportCard() {
   } | null>(null);
   const [parsing, setParsing] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+
+  // Progress tracking (3 phases)
+  const [chunkCurrent, setChunkCurrent] = useState(0);
+  const [chunkTotal, setChunkTotal] = useState(0);
+  const [startedAt, setStartedAt] = useState<number | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [uploadDone, setUploadDone] = useState(false);
+
   const bg = useBackgroundImport({
     fonte: "scadenziario",
     invalidateKeys: [["scadenze"], ["clienti"]],
+    onChunkUploaded: (uploaded, total) => {
+      setChunkCurrent(uploaded);
+      setChunkTotal(total);
+    },
+    onUploadComplete: () => setUploadDone(true),
+    onError: (msg) => setErrorMsg(msg),
   });
+
+  // tick every second while active for elapsed/remaining time
+  const isActive =
+    parsing || bg.isPending || bg.inProgress || (!!bg.done && !!bg.progress);
+  useEffect(() => {
+    if (!isActive) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [isActive]);
 
   function reset() {
     setFileName(null);
     setFile(null);
     setParsed(null);
+    setChunkCurrent(0);
+    setChunkTotal(0);
+    setStartedAt(null);
+    setErrorMsg(null);
+    setUploadDone(false);
     bg.reset();
     if (fileRef.current) fileRef.current.value = "";
   }
@@ -1171,6 +1200,9 @@ function ScadenziarioImportCard() {
   async function handleFile(f: File) {
     setParsing(true);
     setParsed(null);
+    setErrorMsg(null);
+    setUploadDone(false);
+    setStartedAt(Date.now());
     bg.reset();
     try {
       const buf = await f.arrayBuffer();
@@ -1191,6 +1223,7 @@ function ScadenziarioImportCard() {
       setFileName(null);
       setFile(null);
       setParsed(null);
+      setStartedAt(null);
       if (fileRef.current) fileRef.current.value = "";
       toast.error(e instanceof Error ? e.message : "Errore lettura file");
     } finally {
@@ -1204,6 +1237,11 @@ function ScadenziarioImportCard() {
     const stagedChunks = [] as Array<{ rows: ScadRow[] }>;
     for (let i = 0; i < parsed.rows.length; i += chunkSize)
       stagedChunks.push({ rows: parsed.rows.slice(i, i + chunkSize) });
+    setChunkCurrent(0);
+    setChunkTotal(stagedChunks.length);
+    setUploadDone(false);
+    setErrorMsg(null);
+    setStartedAt(Date.now());
     bg.start({
       file,
       rowsTotali: parsed.totRead,
@@ -1212,6 +1250,59 @@ function ScadenziarioImportCard() {
       stagedMissingRows: parsed.missing,
     });
   }
+
+  // Phase + pct derivation
+  const totRead = parsed?.totRead ?? bg.progress?.righe_totali ?? 0;
+  const righeElaborate = bg.progress?.righe_elaborate ?? 0;
+  const righeTotali = bg.progress?.righe_totali ?? totRead;
+
+  let phase: ScadPhase;
+  let pct = 0;
+  if (errorMsg) {
+    phase = "error";
+    pct = 0;
+  } else if (parsing) {
+    phase = "reading";
+    pct = 10;
+  } else if (bg.done && bg.progress) {
+    const stato = bg.progress.stato;
+    if (stato === "completata_con_errori" || (bg.progress.righe_errore ?? 0) > 0) {
+      phase = "done-warn";
+    } else {
+      phase = "done";
+    }
+    pct = 100;
+  } else if (bg.inProgress && uploadDone) {
+    phase = "processing";
+    pct =
+      righeTotali > 0
+        ? 30 + Math.min(70, (righeElaborate / righeTotali) * 70)
+        : 30;
+  } else if (bg.isPending || (bg.inProgress && !uploadDone)) {
+    phase = "uploading";
+    pct =
+      chunkTotal > 0 ? 15 + Math.min(15, (chunkCurrent / chunkTotal) * 15) : 15;
+  } else if (parsed) {
+    phase = "ready";
+    pct = 15;
+  } else {
+    phase = "reading";
+    pct = 0;
+  }
+
+  const elapsedMs = startedAt ? now - startedAt : 0;
+  let remainingMs: number | null = null;
+  if (phase === "processing" && righeElaborate > 0 && righeTotali > 0 && startedAt) {
+    const procStart = startedAt; // approximation
+    const elapsed = now - procStart;
+    const totalEstimate = (elapsed / righeElaborate) * righeTotali;
+    remainingMs = Math.max(0, totalEstimate - elapsed);
+  }
+
+  const showProgress =
+    parsing || bg.isPending || bg.inProgress || bg.done || !!errorMsg;
+
+
 
   function downloadTemplate() {
     const head = [
