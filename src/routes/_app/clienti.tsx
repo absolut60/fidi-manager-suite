@@ -150,8 +150,8 @@ function ClientiPage() {
 
   // Filtro Fido residuo (fascia + range slider, cumulativi)
   const [fidoFascia, setFidoFascia] = useState<string>("tutti");
-  const [fidoRange, setFidoRange] = useState<[number, number]>([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
-  const [fidoRangeDeb, setFidoRangeDeb] = useState<[number, number]>([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
+  const [sliderDisplay, setSliderDisplay] = useState<[number, number]>([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
+  const [sliderCommitted, setSliderCommitted] = useState<[number, number]>([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
 
 
 
@@ -311,7 +311,7 @@ function ClientiPage() {
   // Reset pagina ogni volta che cambia un filtro
   useEffect(() => {
     setPage(1);
-  }, [search, statoCliente, statoAttivita, storeFiltro, statoFido, semaforoFiltro, soloBloccati, privacyFiltro, soloAssicurati, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fidoFascia, fidoRangeDeb, pageSize]);
+  }, [search, statoCliente, statoAttivita, storeFiltro, statoFido, semaforoFiltro, soloBloccati, privacyFiltro, soloAssicurati, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fidoFascia, sliderCommitted, pageSize]);
 
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -338,8 +338,8 @@ function ClientiPage() {
     else if (fidoFascia === "basso") q = q.gte("fido_residuo", 0).lte("fido_residuo", 5000);
     else if (fidoFascia === "medio") q = q.gt("fido_residuo", 5000).lte("fido_residuo", 20000);
     else if (fidoFascia === "alto") q = q.gt("fido_residuo", 20000);
-    if (fidoRangeDeb[0] !== FIDO_RANGE_MIN) q = q.gte("fido_residuo", fidoRangeDeb[0]);
-    if (fidoRangeDeb[1] !== FIDO_RANGE_MAX) q = q.lte("fido_residuo", fidoRangeDeb[1]);
+    if (sliderCommitted[0] !== FIDO_RANGE_MIN) q = q.gte("fido_residuo", sliderCommitted[0]);
+    if (sliderCommitted[1] !== FIDO_RANGE_MAX) q = q.lte("fido_residuo", sliderCommitted[1]);
 
     // Totale rischio (fasce)
     if (totaleRischioFiltro === "basso") q = q.gte("totale_rischio", 0).lte("totale_rischio", 10000);
@@ -372,7 +372,7 @@ function ClientiPage() {
   const scadReady = scadenziarioFiltro === "tutti" || !!scadenziarioMap;
 
   const { data: clientiResp, isLoading } = useQuery({
-    queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, soloBloccati, privacyFiltro, soloAssicurati, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fidoFascia, fidoRangeDeb, page, pageSize }],
+    queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, soloBloccati, privacyFiltro, soloAssicurati, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fidoFascia, sliderCommitted, page, pageSize }],
     queryFn: async () => {
       const built = buildBaseQuery("*, stores(nome, codice)", "exact");
       if ("empty" in built) return { rows: [], count: 0 };
@@ -423,7 +423,7 @@ function ClientiPage() {
     (totaleRischioFiltro !== "tutti" ? 1 : 0) +
     (aScadereFiltro !== "tutti" ? 1 : 0) +
     (fidoFascia !== "tutti" ? 1 : 0) +
-    ((fidoRangeDeb[0] !== FIDO_RANGE_MIN || fidoRangeDeb[1] !== FIDO_RANGE_MAX) ? 1 : 0);
+    ((sliderCommitted[0] !== FIDO_RANGE_MIN || sliderCommitted[1] !== FIDO_RANGE_MAX) ? 1 : 0);
 
   function resetFiltri() {
     setSearchInput(""); setSearch("");
@@ -439,8 +439,8 @@ function ClientiPage() {
     setTotaleRischioFiltro("tutti");
     setAScadereFiltro("tutti");
     setFidoFascia("tutti");
-    setFidoRange([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
-    setFidoRangeDeb([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
+    setSliderDisplay([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
+    setSliderCommitted([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
   }
 
 
