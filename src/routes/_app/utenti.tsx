@@ -1,13 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { UsersRound, Pencil } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { UsersRound, Pencil, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, RUOLI_LABEL } from "@/hooks/use-auth";
+import { inviteUtente, updateUtenteRuoli } from "@/lib/utenti.functions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -27,6 +31,22 @@ export const Route = createFileRoute("/_app/utenti")({
   component: UtentiPage,
 });
 
+const ORDINE_RUOLI: AppRole[] = [
+  "amministratore",
+  "approvatore_liv3",
+  "approvatore_liv2",
+  "approvatore_liv1",
+  "store_manager",
+];
+
+const TUTTI_RUOLI: AppRole[] = [
+  "store_manager",
+  "approvatore_liv1",
+  "approvatore_liv2",
+  "approvatore_liv3",
+  "amministratore",
+];
+
 type UserRow = {
   id: string;
   nome: string | null;
@@ -34,13 +54,14 @@ type UserRow = {
   email: string | null;
   store_id: string | null;
   attivo: boolean;
-  role: AppRole | null;
+  ruoli: AppRole[];
   store_nome: string | null;
 };
 
 function UtentiPage() {
   const { role, loading } = useAuth();
   const [editing, setEditing] = useState<UserRow | null>(null);
+  const [creating, setCreating] = useState(false);
 
   const { data: utenti, isLoading } = useQuery({
     queryKey: ["utenti"],
@@ -51,12 +72,17 @@ function UtentiPage() {
         supabase.from("stores").select("id, nome, codice"),
       ]);
       if (e1) throw e1; if (e2) throw e2; if (e3) throw e3;
-      const ordine: AppRole[] = ["amministratore", "approvatore_liv3", "approvatore_liv2", "approvatore_liv1", "store_manager"];
       return (profili ?? []).map((p) => {
-        const userRoles = (roles ?? []).filter((r) => r.user_id === p.id).map((r) => r.role as AppRole);
-        const topRole = ordine.find((o) => userRoles.includes(o)) ?? null;
+        const userRoles = (roles ?? [])
+          .filter((r) => r.user_id === p.id)
+          .map((r) => r.role as AppRole)
+          .sort((a, b) => ORDINE_RUOLI.indexOf(a) - ORDINE_RUOLI.indexOf(b));
         const store = stores?.find((s) => s.id === p.store_id);
-        return { ...p, role: topRole, store_nome: store ? `${store.codice} — ${store.nome}` : null } as UserRow;
+        return {
+          ...p,
+          ruoli: userRoles,
+          store_nome: store ? `${store.codice} — ${store.nome}` : null,
+        } as UserRow;
       });
     },
   });
@@ -67,18 +93,20 @@ function UtentiPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Utenti</h1>
-        <p className="text-sm text-muted-foreground mt-1">Gestisci ruoli e assegnazione ai punti vendita</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Utenti</h1>
+          <p className="text-sm text-muted-foreground mt-1">Gestisci ruoli e assegnazione ai punti vendita</p>
+        </div>
+        <Button onClick={() => setCreating(true)} className="gap-2">
+          <UserPlus className="size-4" /> Nuovo utente
+        </Button>
       </div>
 
       <Card className="p-4 sm:p-5">
         <h2 className="font-semibold mb-3 flex items-center gap-2">
           <UsersRound className="size-4" /> Tutti gli utenti ({utenti?.length ?? 0})
         </h2>
-        <p className="text-xs text-muted-foreground mb-4">
-          Per aggiungere nuovi utenti devono registrarsi dalla pagina di login. Dopo la registrazione potrai modificarne ruolo e punto vendita.
-        </p>
         {isLoading ? (
           <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
         ) : !utenti?.length ? (
@@ -90,7 +118,7 @@ function UtentiPage() {
                 <TableRow>
                   <TableHead>Nome</TableHead>
                   <TableHead>Email</TableHead>
-                  <TableHead>Ruolo</TableHead>
+                  <TableHead>Ruoli</TableHead>
                   <TableHead>Punto vendita</TableHead>
                   <TableHead>Stato</TableHead>
                   <TableHead className="text-right">Azioni</TableHead>
@@ -101,7 +129,17 @@ function UtentiPage() {
                   <TableRow key={u.id}>
                     <TableCell className="font-medium">{[u.nome, u.cognome].filter(Boolean).join(" ") || "—"}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{u.email}</TableCell>
-                    <TableCell><Badge variant="outline">{u.role ? RUOLI_LABEL[u.role] : "—"}</Badge></TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {u.ruoli.length === 0 ? (
+                          <span className="text-muted-foreground text-sm">—</span>
+                        ) : (
+                          u.ruoli.map((r) => (
+                            <Badge key={r} variant="outline">{RUOLI_LABEL[r]}</Badge>
+                          ))
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell className="text-sm">{u.store_nome || <span className="text-muted-foreground">—</span>}</TableCell>
                     <TableCell><Badge variant={u.attivo ? "default" : "secondary"}>{u.attivo ? "Attivo" : "Inattivo"}</Badge></TableCell>
                     <TableCell className="text-right">
@@ -118,17 +156,36 @@ function UtentiPage() {
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
         {editing && <EditUtenteDialog utente={editing} onClose={() => setEditing(null)} />}
       </Dialog>
+
+      <Dialog open={creating} onOpenChange={setCreating}>
+        {creating && <NewUtenteDialog onClose={() => setCreating(false)} />}
+      </Dialog>
     </div>
   );
 }
 
-function EditUtenteDialog({ utente, onClose }: { utente: UserRow; onClose: () => void }) {
-  const qc = useQueryClient();
-  const [ruolo, setRuolo] = useState<AppRole>(utente.role ?? "store_manager");
-  const [storeId, setStoreId] = useState<string>(utente.store_id ?? "_none");
-  const [attivo, setAttivo] = useState(utente.attivo);
+function RoleCheckboxes({ value, onChange }: { value: AppRole[]; onChange: (v: AppRole[]) => void }) {
+  const toggle = (r: AppRole, checked: boolean) => {
+    if (checked) onChange(Array.from(new Set([...value, r])));
+    else onChange(value.filter((x) => x !== r));
+  };
+  return (
+    <div className="space-y-2 rounded-md border p-3">
+      {TUTTI_RUOLI.map((r) => (
+        <label key={r} className="flex items-center gap-2 text-sm cursor-pointer">
+          <Checkbox
+            checked={value.includes(r)}
+            onCheckedChange={(c) => toggle(r, c === true)}
+          />
+          {RUOLI_LABEL[r]}
+        </label>
+      ))}
+    </div>
+  );
+}
 
-  const { data: stores } = useQuery({
+function useStores() {
+  return useQuery({
     queryKey: ["stores", "active"],
     queryFn: async () => {
       const { data, error } = await supabase.from("stores").select("id, nome, codice").eq("attivo", true).order("codice");
@@ -136,22 +193,28 @@ function EditUtenteDialog({ utente, onClose }: { utente: UserRow; onClose: () =>
       return data;
     },
   });
+}
+
+function EditUtenteDialog({ utente, onClose }: { utente: UserRow; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [ruoli, setRuoli] = useState<AppRole[]>(utente.ruoli.length ? utente.ruoli : ["store_manager"]);
+  const [storeId, setStoreId] = useState<string>(utente.store_id ?? "_none");
+  const [attivo, setAttivo] = useState(utente.attivo);
+  const { data: stores } = useStores();
+  const fn = useServerFn(updateUtenteRuoli);
+
+  const richiedeStore = ruoli.includes("store_manager");
 
   const mutation = useMutation({
     mutationFn: async () => {
-      // Aggiorna profilo
-      const { error: e1 } = await supabase.from("profili")
-        .update({ store_id: storeId === "_none" ? null : storeId, attivo })
-        .eq("id", utente.id);
-      if (e1) throw e1;
-
-      // Aggiorna ruolo: cancella tutti e reinserisce
-      if (ruolo !== utente.role) {
-        const { error: eDel } = await supabase.from("user_roles").delete().eq("user_id", utente.id);
-        if (eDel) throw eDel;
-        const { error: eIns } = await supabase.from("user_roles").insert({ user_id: utente.id, role: ruolo });
-        if (eIns) throw eIns;
-      }
+      if (ruoli.length === 0) throw new Error("Seleziona almeno un ruolo");
+      if (richiedeStore && storeId === "_none") throw new Error("Il ruolo Store Manager richiede un punto vendita");
+      await fn({ data: {
+        userId: utente.id,
+        ruoli,
+        storeId: storeId === "_none" ? null : storeId,
+        attivo,
+      }});
     },
     onSuccess: () => {
       toast.success("Utente aggiornato");
@@ -162,25 +225,18 @@ function EditUtenteDialog({ utente, onClose }: { utente: UserRow; onClose: () =>
   });
 
   return (
-    <DialogContent>
+    <DialogContent className="max-h-[90vh] overflow-y-auto">
       <DialogHeader>
         <DialogTitle>Modifica utente</DialogTitle>
         <DialogDescription>{utente.email}</DialogDescription>
       </DialogHeader>
       <div className="space-y-4">
         <div className="space-y-1.5">
-          <Label>Ruolo</Label>
-          <Select value={ruolo} onValueChange={(v) => setRuolo(v as AppRole)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {(Object.keys(RUOLI_LABEL) as AppRole[]).map((r) => (
-                <SelectItem key={r} value={r}>{RUOLI_LABEL[r]}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Label>Ruoli (selezione multipla)</Label>
+          <RoleCheckboxes value={ruoli} onChange={setRuoli} />
         </div>
         <div className="space-y-1.5">
-          <Label>Punto vendita</Label>
+          <Label>Punto vendita {richiedeStore && <span className="text-destructive">*</span>}</Label>
           <Select value={storeId} onValueChange={setStoreId}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -192,7 +248,7 @@ function EditUtenteDialog({ utente, onClose }: { utente: UserRow; onClose: () =>
           </Select>
         </div>
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={attivo} onChange={(e) => setAttivo(e.target.checked)} className="size-4 rounded" />
+          <Checkbox checked={attivo} onCheckedChange={(c) => setAttivo(c === true)} />
           Utente attivo
         </label>
       </div>
@@ -200,6 +256,93 @@ function EditUtenteDialog({ utente, onClose }: { utente: UserRow; onClose: () =>
         <Button variant="outline" onClick={onClose}>Annulla</Button>
         <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>
           {mutation.isPending ? "Salvataggio..." : "Salva"}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  );
+}
+
+function NewUtenteDialog({ onClose }: { onClose: () => void }) {
+  const qc = useQueryClient();
+  const [email, setEmail] = useState("");
+  const [nome, setNome] = useState("");
+  const [cognome, setCognome] = useState("");
+  const [ruoli, setRuoli] = useState<AppRole[]>(["store_manager"]);
+  const [storeId, setStoreId] = useState<string>("_none");
+  const [attivo, setAttivo] = useState(true);
+  const { data: stores } = useStores();
+  const fn = useServerFn(inviteUtente);
+
+  const richiedeStore = ruoli.includes("store_manager");
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      if (!email.trim()) throw new Error("Email obbligatoria");
+      if (ruoli.length === 0) throw new Error("Seleziona almeno un ruolo");
+      if (richiedeStore && storeId === "_none") throw new Error("Il ruolo Store Manager richiede un punto vendita");
+      await fn({ data: {
+        email: email.trim(),
+        nome: nome.trim() || undefined,
+        cognome: cognome.trim() || undefined,
+        ruoli,
+        storeId: storeId === "_none" ? null : storeId,
+        attivo,
+      }});
+    },
+    onSuccess: () => {
+      toast.success("Invito inviato all'utente");
+      qc.invalidateQueries({ queryKey: ["utenti"] });
+      onClose();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <DialogContent className="max-h-[90vh] overflow-y-auto">
+      <DialogHeader>
+        <DialogTitle>Nuovo utente</DialogTitle>
+        <DialogDescription>L'utente riceverà un'email per impostare la password.</DialogDescription>
+      </DialogHeader>
+      <div className="space-y-4">
+        <div className="space-y-1.5">
+          <Label>Email <span className="text-destructive">*</span></Label>
+          <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="utente@esempio.it" />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label>Nome</Label>
+            <Input value={nome} onChange={(e) => setNome(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Cognome</Label>
+            <Input value={cognome} onChange={(e) => setCognome(e.target.value)} />
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <Label>Ruoli (selezione multipla)</Label>
+          <RoleCheckboxes value={ruoli} onChange={setRuoli} />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Punto vendita {richiedeStore && <span className="text-destructive">*</span>}</Label>
+          <Select value={storeId} onValueChange={setStoreId}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_none">— Nessuno —</SelectItem>
+              {stores?.map((s) => (
+                <SelectItem key={s.id} value={s.id}>{s.codice} — {s.nome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <label className="flex items-center gap-2 text-sm">
+          <Checkbox checked={attivo} onCheckedChange={(c) => setAttivo(c === true)} />
+          Utente attivo
+        </label>
+      </div>
+      <DialogFooter>
+        <Button variant="outline" onClick={onClose}>Annulla</Button>
+        <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>
+          {mutation.isPending ? "Creazione..." : "Crea utente"}
         </Button>
       </DialogFooter>
     </DialogContent>
