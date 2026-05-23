@@ -26,6 +26,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { classificaScadenza } from "@/lib/scadenze";
 
 function fmtEuro(v: unknown): string {
   if (v == null || v === "") return "—";
@@ -103,14 +104,14 @@ function RiepilogoSection({ clienteId }: { clienteId: string }) {
     queryFn: async () => {
       const { data: scad, error } = await supabase
         .from("scadenze")
-        .select("importo_scadenza, giorni_ritardo, stato_contabile")
+        .select("importo_scadenza, giorni_ritardo, stato_contabile, tempi_scadenza")
         .eq("cliente_id", clienteId);
       if (error) throw error;
-      const rows = (scad ?? []) as Array<{ importo_scadenza: number | null; giorni_ritardo: number | null; stato_contabile: string | null }>;
-      const aperte = rows.filter((s) => s.stato_contabile === "Aperta");
-      const scadute = aperte.filter((s) => Number(s.giorni_ritardo ?? 0) > 0);
+      const rows = (scad ?? []) as Array<{ importo_scadenza: number | null; giorni_ritardo: number | null; stato_contabile: string | null; tempi_scadenza: string | null }>;
+      const scadute = rows.filter((s) => classificaScadenza(s) === "scaduto");
+      const aScadere = rows.filter((s) => classificaScadenza(s) === "a_scadere");
       const sumImp = (arr: typeof rows) => arr.reduce((acc, r) => acc + Number(r.importo_scadenza ?? 0), 0);
-      const maxGg = aperte.reduce((m, r) => Math.max(m, Number(r.giorni_ritardo ?? 0)), 0);
+      const maxGg = [...scadute, ...aScadere].reduce((m, r) => Math.max(m, Number(r.giorni_ritardo ?? 0)), 0);
       const fascia = (min: number, max: number | null) =>
         sumImp(scadute.filter((s) => {
           const g = Number(s.giorni_ritardo ?? 0);
@@ -124,8 +125,9 @@ function RiepilogoSection({ clienteId }: { clienteId: string }) {
         .limit(1)
         .maybeSingle();
       return {
-        num_scadenze_aperte: aperte.length,
+        num_scadenze_aperte: scadute.length + aScadere.length,
         totale_scaduto: sumImp(scadute),
+        totale_a_scadere: sumImp(aScadere),
         max_giorni_ritardo: maxGg,
         scaduto_0_30: fascia(1, 30),
         scaduto_30_60: fascia(31, 60),
@@ -136,7 +138,7 @@ function RiepilogoSection({ clienteId }: { clienteId: string }) {
   });
 
   if (isLoading) return <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">{Array.from({length:4}).map((_,i)=><Skeleton key={i} className="h-24" />)}</div>;
-  const d = data ?? { num_scadenze_aperte: 0, totale_scaduto: 0, max_giorni_ritardo: 0, scaduto_0_30: 0, scaduto_30_60: 0, scaduto_oltre_60: 0, ultimo_sollecito: null };
+  const d = data ?? { num_scadenze_aperte: 0, totale_scaduto: 0, totale_a_scadere: 0, max_giorni_ritardo: 0, scaduto_0_30: 0, scaduto_30_60: 0, scaduto_oltre_60: 0, ultimo_sollecito: null };
   const totFasce = Number(d.scaduto_0_30) + Number(d.scaduto_30_60) + Number(d.scaduto_oltre_60);
   const pct = (v: number) => totFasce > 0 ? (v / totFasce) * 100 : 0;
 
@@ -144,7 +146,7 @@ function RiepilogoSection({ clienteId }: { clienteId: string }) {
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard label="Totale scaduto" value={fmtEuro(d.totale_scaduto)} tone="destructive" icon={AlertTriangle} />
-        <KpiCard label="Scadenze aperte" value={String(d.num_scadenze_aperte)} tone="info" icon={FileText} />
+        <KpiCard label="A scadere" value={fmtEuro(d.totale_a_scadere)} tone="info" icon={Calendar} />
         <KpiCard label="Max giorni ritardo" value={`${d.max_giorni_ritardo} gg`} tone="warning" icon={Clock} />
         <KpiCard label="Ultimo sollecito" value={fmtDate(d.ultimo_sollecito)} tone="default" icon={Bell} />
       </div>
@@ -204,6 +206,7 @@ type ScadenzaRow = {
   importo_scadenza: number | null;
   giorni_ritardo: number | null;
   stato_contabile: string | null;
+  tempi_scadenza: string | null;
 };
 
 function ScadenziarioSection({ clienteId }: { clienteId: string; canEdit?: boolean }) {
@@ -212,9 +215,8 @@ function ScadenziarioSection({ clienteId }: { clienteId: string; canEdit?: boole
     queryFn: async () => {
       const { data, error } = await supabase
         .from("scadenze")
-        .select("id, numero_documento, sezionale, data_documento, data_scadenza, descrizione_pagamento, importo_scadenza, giorni_ritardo, stato_contabile")
+        .select("id, numero_documento, sezionale, data_documento, data_scadenza, descrizione_pagamento, importo_scadenza, giorni_ritardo, stato_contabile, tempi_scadenza")
         .eq("cliente_id", clienteId)
-        .eq("stato_contabile", "Aperta")
         .order("data_scadenza", { ascending: true });
       if (error) throw error;
       return (data ?? []) as ScadenzaRow[];
@@ -223,8 +225,8 @@ function ScadenziarioSection({ clienteId }: { clienteId: string; canEdit?: boole
 
   if (isLoading) return <Skeleton className="h-40" />;
   const rows = scadenze ?? [];
-  const scadute = rows.filter((s) => Number(s.giorni_ritardo ?? 0) > 0);
-  const aScadere = rows.filter((s) => Number(s.giorni_ritardo ?? 0) <= 0);
+  const scadute = rows.filter((s) => classificaScadenza(s) === "scaduto");
+  const aScadere = rows.filter((s) => classificaScadenza(s) === "a_scadere");
 
   return (
     <div className="space-y-6">

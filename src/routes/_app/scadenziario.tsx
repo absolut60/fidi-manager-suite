@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { classificaScadenza } from "@/lib/scadenze";
 
 export const Route = createFileRoute("/_app/scadenziario")({
   component: ScadenziarioPage,
@@ -31,6 +32,7 @@ type ScadRow = {
   giorni_ritardo: number | null;
   data_scadenza: string | null;
   stato_contabile: string | null;
+  tempi_scadenza: string | null;
 };
 type Cliente = {
   id: string;
@@ -92,8 +94,7 @@ function ScadenziarioPage() {
       while (true) {
         const { data, error } = await supabase
           .from("scadenze")
-          .select("cliente_id, importo_scadenza, giorni_ritardo, data_scadenza, stato_contabile")
-          .eq("stato_contabile", "Aperta")
+          .select("cliente_id, importo_scadenza, giorni_ritardo, data_scadenza, stato_contabile, tempi_scadenza")
           .range(from, from + pageSize - 1);
         if (error) throw error;
         const batch = (data ?? []) as ScadRow[];
@@ -121,9 +122,10 @@ function ScadenziarioPage() {
       const cli = clientiMap.get(s.cliente_id);
       if (!cli) return;
       if (storeId !== "all" && cli.store_id !== storeId) return;
+      const cat = classificaScadenza(s);
+      if (cat === "pagato") return;
       const entry = map.get(s.cliente_id) ?? { cliente: cli, scadute: [], aScadere: [] };
-      const gg = Number(s.giorni_ritardo ?? 0);
-      if (gg > 0) entry.scadute.push(s);
+      if (cat === "scaduto") entry.scadute.push(s);
       else entry.aScadere.push(s);
       map.set(s.cliente_id, entry);
     });
@@ -184,10 +186,10 @@ function ScadenziarioPage() {
     let totScad = 0, totAScadere = 0;
     const clientiScaduti = new Set<string>();
     rows.forEach((r) => {
-      const gg = Number(r.giorni_ritardo ?? 0);
+      const cat = classificaScadenza(r);
       const imp = Number(r.importo_scadenza ?? 0);
-      if (gg > 0) { totScad += imp; clientiScaduti.add(r.cliente_id); }
-      else totAScadere += imp;
+      if (cat === "scaduto") { totScad += imp; clientiScaduti.add(r.cliente_id); }
+      else if (cat === "a_scadere") totAScadere += imp;
     });
     const bloccati = (clienti ?? []).filter((c) => c.bloccato).length;
     return { totScad, totAScadere, clientiScaduti: clientiScaduti.size, bloccati };
