@@ -464,7 +464,9 @@ export const processScadenziarioImport = inngest.createFunction(
       const SEND_BATCH = 50;
       for (let i = 0; i < events.length; i += SEND_BATCH) {
         const slice = events.slice(i, i + SEND_BATCH);
-        await step.sendEvent(`send-chunks-${i}`, slice);
+        await step.run(`send-chunks-${i}`, async () => {
+          await sendInngestEvents(slice);
+        });
       }
 
       return { totRows, chunkCount };
