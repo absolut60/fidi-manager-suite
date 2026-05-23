@@ -2192,24 +2192,26 @@ function BloccoFidoAssicurazioneImportCard() {
             </Badge>
             <Badge variant="secondary">{bg.progress.righe_saltate ?? 0} non trovati</Badge>
           </div>
-          {bg.progress.log_errori &&
-            Array.isArray(bg.progress.log_errori) &&
-            bg.progress.log_errori.length > 0 && (
+          {(() => {
+            const logs = Array.isArray(bg.progress.log_errori)
+              ? (bg.progress.log_errori as Array<{ riga: number; errore: string }>)
+              : [];
+            if (!logs.length) return null;
+            return (
               <details className="text-xs">
                 <summary className="cursor-pointer text-muted-foreground">
-                  Log dettagli ({(bg.progress.log_errori as unknown[]).length})
+                  Log dettagli ({logs.length})
                 </summary>
                 <ul className="mt-1 max-h-32 overflow-y-auto space-y-0.5">
-                  {(bg.progress.log_errori as Array<{ riga: number; errore: string }>)
-                    .slice(0, 50)
-                    .map((e, i) => (
-                      <li key={i}>
-                        Riga {e.riga}: {e.errore}
-                      </li>
-                    ))}
+                  {logs.slice(0, 50).map((e, i) => (
+                    <li key={i}>
+                      Riga {e.riga}: {e.errore}
+                    </li>
+                  ))}
                 </ul>
               </details>
-            )}
+            );
+          })()}
           <Button variant="outline" size="sm" className="w-full mt-2" onClick={reset}>
             Nuovo import
           </Button>
