@@ -37,6 +37,27 @@ async function setImportazioneError(importazioneId: string, message: string) {
     .eq("id", importazioneId);
 }
 
+async function sendInngestEvents(events: object[]): Promise<void> {
+  const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
+  const INNGEST_API_KEY = process.env.INNGEST_API_KEY;
+  if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY non configurata");
+  if (!INNGEST_API_KEY) throw new Error("INNGEST_API_KEY non configurata");
+  const res = await fetch("https://connector-gateway.lovable.dev/inngest/e/", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      "X-Connection-Api-Key": INNGEST_API_KEY,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(events),
+  });
+  if (!res.ok) {
+    throw new Error(`Inngest gateway error ${res.status}: ${await res.text()}`);
+  }
+}
+
+
+
 
 /* ============================================================================
  * A — ANAGRAFICA
