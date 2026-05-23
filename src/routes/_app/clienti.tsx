@@ -473,19 +473,18 @@ function ClientiPage() {
   }
 
   // Componenti riusabili per i singoli filtri (così funzionano sia in desktop grid che mobile stack)
-  function SearchField({ className = "" }: { className?: string }) {
-    return (
-      <div className={`relative ${className}`}>
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-        <Input
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          placeholder="Cerca ragione sociale, P.IVA, cod. gest., città..."
-          className="pl-9"
-        />
-      </div>
-    );
-  }
+  const SearchField = (
+    <div className="relative">
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+      <Input
+        value={searchInput}
+        onChange={(e) => setSearchInput(e.target.value)}
+        placeholder="Cerca ragione sociale, P.IVA, cod. gest., città..."
+        className="pl-9"
+      />
+    </div>
+  );
+
 
   const StoreSelect = (
     <Select value={storeFiltro} onValueChange={setStoreFiltro}>
