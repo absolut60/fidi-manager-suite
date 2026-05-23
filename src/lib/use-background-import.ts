@@ -21,6 +21,11 @@ type StartImportArgs = {
   file: File;
   rowsTotali: number;
   rigeErroreClient?: number;
+  scadenziarioStaging?: {
+    rows: Array<Record<string, unknown>>;
+    missing: number[];
+    chunkSize?: number;
+  };
 };
 
 export function useBackgroundImport(opts: {
@@ -75,10 +80,77 @@ export function useBackgroundImport(opts: {
           .eq("id", imp.id);
         throw new Error(message);
       }
-      await supabase.from("importazioni").update({ file_path: filePath }).eq("id", imp.id);
+      let triggerFilePath = filePath;
+
+      if (opts.fonte === "scadenziario" && args.scadenziarioStaging) {
+        const chunkSize = args.scadenziarioStaging.chunkSize ?? 1000;
+        const chunks: Array<{
+          chunkIndex: number;
+          chunkPath: string;
+          rowsCount: number;
+          missingCount: number;
+        }> = [];
+        const byRow = new Map<number, Record<string, unknown>>();
+        args.scadenziarioStaging.rows.forEach((row) => byRow.set(Number(row.idx), row));
+        const orderedIndexes = Array.from(
+          new Set([
+            ...args.scadenziarioStaging.rows.map((row) => Number(row.idx)),
+            ...args.scadenziarioStaging.missing,
+          ]),
+        )
+          .filter((idx) => Number.isFinite(idx))
+          .sort((a, b) => a - b);
+
+        for (let i = 0; i < orderedIndexes.length; i += chunkSize) {
+          const chunkIndex = Math.floor(i / chunkSize);
+          const indexes = orderedIndexes.slice(i, i + chunkSize);
+          const chunkRows = indexes.map((idx) => byRow.get(idx)).filter(Boolean) as Array<
+            Record<string, unknown>
+          >;
+          const validIndexes = new Set(chunkRows.map((row) => Number(row.idx)));
+          const chunkMissing = indexes.filter((idx) => !validIndexes.has(idx));
+          const chunkPath = `_staging/${imp.id}/chunk-${chunkIndex}.json`;
+          const payload = JSON.stringify({ rows: chunkRows, missing: chunkMissing });
+          const { error } = await supabase.storage
+            .from("import-files")
+            .upload(chunkPath, new Blob([payload], { type: "application/json" }), {
+              contentType: "application/json",
+              upsert: true,
+            });
+          if (error) throw error;
+          chunks.push({
+            chunkIndex,
+            chunkPath,
+            rowsCount: chunkRows.length,
+            missingCount: chunkMissing.length,
+          });
+        }
+
+        const manifestPath = `_staging/${imp.id}/manifest.json`;
+        const manifest = JSON.stringify({
+          kind: "scadenziario-staging-v1",
+          originalFilePath: filePath,
+          totRead: args.rowsTotali,
+          chunkCount: chunks.length,
+          chunks,
+          createdAt: new Date().toISOString(),
+        });
+        const { error } = await supabase.storage
+          .from("import-files")
+          .upload(manifestPath, new Blob([manifest], { type: "application/json" }), {
+            contentType: "application/json",
+            upsert: true,
+          });
+        if (error) throw error;
+        triggerFilePath = manifestPath;
+      }
+
+      await supabase.from("importazioni").update({ file_path: triggerFilePath }).eq("id", imp.id);
       opts.onUploadComplete?.();
 
-      await triggerImport({ data: { fonte: opts.fonte, importazioneId: imp.id, filePath } });
+      await triggerImport({
+        data: { fonte: opts.fonte, importazioneId: imp.id, filePath: triggerFilePath },
+      });
       return imp.id;
     },
     onSuccess: (id) => {

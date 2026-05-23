@@ -11,6 +11,7 @@ import {
   toStr,
   normalize,
   findSheetByName,
+  type ScadRow,
 } from "./parsers.server";
 
 type EventData = { importazioneId: string; filePath: string; userId?: string };
@@ -36,6 +37,25 @@ async function setImportazioneError(importazioneId: string, message: string) {
     })
     .eq("id", importazioneId);
 }
+
+async function downloadJsonFromStorage<T>(filePath: string): Promise<T> {
+  const { data: file, error } = await supabaseAdmin.storage.from("import-files").download(filePath);
+  if (error || !file) throw new Error(`Download JSON fallito: ${error?.message ?? "no data"}`);
+  return JSON.parse(await file.text()) as T;
+}
+
+type StagedScadenziarioManifest = {
+  kind: "scadenziario-staging-v1";
+  originalFilePath: string;
+  totRead: number;
+  chunkCount: number;
+  chunks: Array<{ chunkIndex: number; chunkPath: string; rowsCount: number; missingCount: number }>;
+};
+
+type StagedScadenziarioChunk = {
+  rows: ScadRow[];
+  missing: number[];
+};
 
 async function sendInngestEvents(events: object[]): Promise<void> {
   const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
@@ -89,10 +109,6 @@ async function sendInngestEvents(events: object[]): Promise<void> {
     }
   }
 }
-
-
-
-
 
 /* ============================================================================
  * A — ANAGRAFICA
@@ -414,9 +430,7 @@ function xlsxLeanOpts() {
 }
 
 async function downloadWorkbookLean(filePath: string, sheetName: string) {
-  const { data: file, error } = await supabaseAdmin.storage
-    .from("import-files")
-    .download(filePath);
+  const { data: file, error } = await supabaseAdmin.storage.from("import-files").download(filePath);
   if (error || !file) throw new Error(`Download fallito: ${error?.message ?? "no data"}`);
   const buf = await file.arrayBuffer();
   // sheets: limita parsing al solo foglio richiesto
@@ -433,6 +447,64 @@ export const processScadenziarioImport = inngest.createFunction(
   async ({ event, step, logger }) => {
     const { importazioneId, filePath, userId } = event.data as EventData;
     try {
+      if (filePath.startsWith("_staging/") && filePath.endsWith("/manifest.json")) {
+        const manifest = await step.run("load-staged-manifest", async () => {
+          return downloadJsonFromStorage<StagedScadenziarioManifest>(filePath);
+        });
+        const timestampInizio = await step.run("init-timestamp", async () =>
+          new Date().toISOString(),
+        );
+        const chunkCount = Math.max(1, manifest.chunkCount);
+
+        await step.run("init-importazione", async () => {
+          await supabaseAdmin
+            .from("importazioni")
+            .update({
+              righe_totali: manifest.totRead,
+              righe_elaborate: 0,
+              righe_create: 0,
+              righe_aggiornate: 0,
+              righe_errore: 0,
+              chunks_totali: chunkCount,
+              chunks_completati: 0,
+              stato: "in_elaborazione",
+              log_errori: [
+                {
+                  riga: 0,
+                  errore: `Init staging: ${manifest.totRead} righe totali, ${chunkCount} chunk da storage`,
+                },
+              ],
+            } as never)
+            .eq("id", importazioneId);
+        });
+
+        const events = manifest.chunks.map((chunk) => ({
+          name: "import/scadenziario.chunk" as const,
+          data: {
+            importazioneId,
+            filePath: manifest.originalFilePath,
+            chunkPath: chunk.chunkPath,
+            userId,
+            chunkIndex: chunk.chunkIndex,
+            totalChunks: chunkCount,
+            startRow0: 0,
+            endRow0: 0,
+            headers: [],
+            timestampInizio,
+          },
+        }));
+        const SEND_BATCH = 50;
+        for (let i = 0; i < events.length; i += SEND_BATCH) {
+          const slice = events.slice(i, i + SEND_BATCH);
+          await step.run(`send-staged-chunks-${i}`, async () => {
+            await sendInngestEvents(slice);
+          });
+        }
+
+        logger.info(`Scadenziario staging init: rows=${manifest.totRead}, chunks=${chunkCount}`);
+        return { totRows: manifest.totRead, chunkCount, staged: true };
+      }
+
       // STEP 1: download leggero + scan metadati (no parse completo)
       const meta = await step.run("scan-meta", async () => {
         const wb = await downloadWorkbookLean(filePath, "SCADENZIARIO");
@@ -444,9 +516,8 @@ export const processScadenziarioImport = inngest.createFunction(
 
       const totRows = Math.max(0, meta.lastRow - meta.firstDataRow + 1);
       const chunkCount = Math.max(1, Math.ceil(totRows / SCAD_CHUNK_SIZE));
-      const timestampInizio = await step.run(
-        "init-timestamp",
-        async () => new Date().toISOString(),
+      const timestampInizio = await step.run("init-timestamp", async () =>
+        new Date().toISOString(),
       );
 
       logger.info(
@@ -515,6 +586,7 @@ export const processScadenziarioImport = inngest.createFunction(
 type ChunkEventData = {
   importazioneId: string;
   filePath: string;
+  chunkPath?: string;
   userId?: string;
   chunkIndex: number;
   totalChunks: number;
@@ -537,6 +609,7 @@ export const processScadenziarioChunk = inngest.createFunction(
     const {
       importazioneId,
       filePath,
+      chunkPath,
       userId,
       chunkIndex,
       totalChunks,
@@ -546,8 +619,13 @@ export const processScadenziarioChunk = inngest.createFunction(
       timestampInizio,
     } = data;
 
-    // STEP A: download + parse SOLO il range
+    // STEP A: download + parse SOLO il range, oppure carica chunk JSON pre-staged
     const parsed = await step.run("download-parse-range", async () => {
+      if (chunkPath) {
+        const staged = await downloadJsonFromStorage<StagedScadenziarioChunk>(chunkPath);
+        const codici = Array.from(new Set(staged.rows.map((r) => r.codice_gestionale)));
+        return { rows: staged.rows, missing: staged.missing, codici };
+      }
       const wb = await downloadWorkbookLean(filePath, "SCADENZIARIO");
       const sheet = findSheetByName(wb, "SCADENZIARIO");
       if (!sheet) throw new Error("Foglio SCADENZIARIO non trovato");
@@ -720,8 +798,7 @@ export const processScadenziarioChunk = inngest.createFunction(
           .select("log_errori")
           .eq("id", importazioneId)
           .single();
-        const existing =
-          ((cur?.log_errori as Array<{ riga: number; errore: string }> | null) ?? []);
+        const existing = (cur?.log_errori as Array<{ riga: number; errore: string }> | null) ?? [];
         const next = [...existing, ...result.batchErrs, ...result.rowErrs].slice(0, 500);
         await supabaseAdmin
           .from("importazioni")
@@ -814,8 +891,7 @@ export const finalizeScadenziarioImport = inngest.createFunction(
           .eq("id", importazioneId)
           .single();
         const errs = (cur?.righe_errore as number | null) ?? 0;
-        const existing =
-          ((cur?.log_errori as Array<{ riga: number; errore: string }> | null) ?? []);
+        const existing = (cur?.log_errori as Array<{ riga: number; errore: string }> | null) ?? [];
         const summary = [
           {
             riga: 0,
@@ -842,8 +918,6 @@ export const finalizeScadenziarioImport = inngest.createFunction(
     }
   },
 );
-
-
 
 /* ============================================================================
  * D — SCADENZIARIO + ASSICURAZIONI (file unico, due fogli)
