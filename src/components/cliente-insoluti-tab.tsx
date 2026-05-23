@@ -138,7 +138,7 @@ function RiepilogoSection({ clienteId }: { clienteId: string }) {
   });
 
   if (isLoading) return <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">{Array.from({length:4}).map((_,i)=><Skeleton key={i} className="h-24" />)}</div>;
-  const d = data ?? { num_scadenze_aperte: 0, totale_scaduto: 0, max_giorni_ritardo: 0, scaduto_0_30: 0, scaduto_30_60: 0, scaduto_oltre_60: 0, ultimo_sollecito: null };
+  const d = data ?? { num_scadenze_aperte: 0, totale_scaduto: 0, totale_a_scadere: 0, max_giorni_ritardo: 0, scaduto_0_30: 0, scaduto_30_60: 0, scaduto_oltre_60: 0, ultimo_sollecito: null };
   const totFasce = Number(d.scaduto_0_30) + Number(d.scaduto_30_60) + Number(d.scaduto_oltre_60);
   const pct = (v: number) => totFasce > 0 ? (v / totFasce) * 100 : 0;
 
@@ -146,7 +146,7 @@ function RiepilogoSection({ clienteId }: { clienteId: string }) {
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard label="Totale scaduto" value={fmtEuro(d.totale_scaduto)} tone="destructive" icon={AlertTriangle} />
-        <KpiCard label="Scadenze aperte" value={String(d.num_scadenze_aperte)} tone="info" icon={FileText} />
+        <KpiCard label="A scadere" value={fmtEuro(d.totale_a_scadere)} tone="info" icon={Calendar} />
         <KpiCard label="Max giorni ritardo" value={`${d.max_giorni_ritardo} gg`} tone="warning" icon={Clock} />
         <KpiCard label="Ultimo sollecito" value={fmtDate(d.ultimo_sollecito)} tone="default" icon={Bell} />
       </div>
