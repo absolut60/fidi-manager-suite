@@ -716,10 +716,24 @@ function ClientiPage() {
       </div>
 
       <Card className="p-4 sm:p-5">
-        {/* Desktop: barra filtri inline */}
+        {/* Desktop: barra filtri (2 righe) con badge + reset in alto a destra */}
         <div className="hidden md:block mb-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-sm font-medium text-muted-foreground">Filtri</div>
+            <div className="flex items-center gap-2">
+              {attiviCount > 0 && (
+                <Badge variant="secondary" className="h-6">{attiviCount} {attiviCount === 1 ? "filtro attivo" : "filtri attivi"}</Badge>
+              )}
+              {attiviCount > 0 && (
+                <Button variant="ghost" size="sm" onClick={resetFiltri} className="gap-1 h-7">
+                  <X className="size-3.5" /> Azzera tutti
+                </Button>
+              )}
+            </div>
+          </div>
           <FiltriContent />
         </div>
+
 
         {/* Mobile: search inline + bottone "Filtri" con badge */}
         <div className="md:hidden flex gap-2 mb-4">
