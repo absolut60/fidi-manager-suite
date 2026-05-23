@@ -1675,7 +1675,12 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
             const { error: e2 } = await supabase.storage.from("firme")
               .upload(firmaPath, pngBlob, { upsert: true, contentType: "image/png" });
             if (e2) throw new Error(`Upload firma: ${e2.message}`);
-            const firmaUrl = supabase.storage.from("firme").getPublicUrl(firmaPath).data.publicUrl;
+            // Bucket "firme" privato: genera URL firmato a lunga scadenza (10 anni)
+            const { data: signed, error: eSigned } = await supabase.storage
+              .from("firme")
+              .createSignedUrl(firmaPath, 60 * 60 * 24 * 365 * 10);
+            if (eSigned || !signed?.signedUrl) throw new Error(`Signed URL firma: ${eSigned?.message ?? "vuoto"}`);
+            const firmaUrl = signed.signedUrl;
 
             // Genera PDF scheda cliente
             const storeNome =
