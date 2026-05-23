@@ -931,7 +931,11 @@ function FirmaContattoDialog({
       const firmaPath = `contatti/${contatto.id}/firma-${now.getTime()}.png`;
       const { error: e1 } = await supabase.storage.from("firme").upload(firmaPath, pngBlob, { upsert: true, contentType: "image/png" });
       if (e1) throw new Error(`Upload firma: ${e1.message}`);
-      const { data: firmaUrl } = supabase.storage.from("firme").getPublicUrl(firmaPath);
+      // Bucket "firme" privato: genera URL firmato a lunga scadenza (10 anni)
+      const { data: firmaSigned, error: eFirmaSigned } = await supabase.storage
+        .from("firme")
+        .createSignedUrl(firmaPath, 60 * 60 * 24 * 365 * 10);
+      if (eFirmaSigned || !firmaSigned?.signedUrl) throw new Error(`Signed URL firma: ${eFirmaSigned?.message ?? "vuoto"}`);
 
       const pdfBytes = await generaPdfPrivacy({
         ragioneSociale: cliente.ragione_sociale,
@@ -946,7 +950,11 @@ function FirmaContattoDialog({
       const pdfPath = `contatti/${contatto.id}/privacy-${now.getTime()}.pdf`;
       const { error: e2 } = await supabase.storage.from("documenti-privacy").upload(pdfPath, pdfBytes, { contentType: "application/pdf", upsert: true });
       if (e2) throw new Error(`Upload PDF: ${e2.message}`);
-      const { data: pdfUrl } = supabase.storage.from("documenti-privacy").getPublicUrl(pdfPath);
+      // Bucket "documenti-privacy" privato: signed URL a lunga scadenza
+      const { data: pdfSigned, error: ePdfSigned } = await supabase.storage
+        .from("documenti-privacy")
+        .createSignedUrl(pdfPath, 60 * 60 * 24 * 365 * 10);
+      if (ePdfSigned || !pdfSigned?.signedUrl) throw new Error(`Signed URL PDF: ${ePdfSigned?.message ?? "vuoto"}`);
 
       // 2. UPDATE sul contatto esistente, mai INSERT
       const { data: updated, error: e3 } = await supabase
@@ -954,8 +962,8 @@ function FirmaContattoDialog({
         .update({
           privacy_firmata: true,
           data_firma: now.toISOString(),
-          firma_url: firmaUrl.publicUrl,
-          pdf_privacy_url: pdfUrl.publicUrl,
+          firma_url: firmaSigned.signedUrl,
+          pdf_privacy_url: pdfSigned.signedUrl,
           pdf_privacy_path: pdfPath,
         })
         .eq("id", contatto.id)
