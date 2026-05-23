@@ -289,10 +289,11 @@ function ScadenziarioPage() {
         <div className="flex items-center justify-between gap-3 pt-2 border-t">
           <div className="flex items-center gap-2">
             <Switch id="escl-bonif" checked={escludiBonifici} onCheckedChange={setEscludiBonifici} />
-            <Label htmlFor="escl-bonif" className="text-sm cursor-pointer">Escludi bonifici (cod. pagamento BO*)</Label>
+            <Label htmlFor="escl-bonif" className="text-sm cursor-pointer">Escludi BOS (cod. pagamento = BOS)</Label>
           </div>
           {escludiBonifici && (
-            <span className="text-xs text-muted-foreground">Esclusi {bonificiCount} bonifici</span>
+            <span className="text-xs text-muted-foreground">Esclusi {bonificiCount} BOS</span>
+
           )}
         </div>
       </Card>
