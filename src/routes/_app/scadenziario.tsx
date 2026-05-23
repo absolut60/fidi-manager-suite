@@ -69,8 +69,9 @@ function blockBadge(c: Cliente) {
 
 function isBonifico(codice: string | null | undefined): boolean {
   if (!codice) return false;
-  return codice.trim().toUpperCase().startsWith("BO");
+  return codice.trim().toUpperCase() === "BOS";
 }
+
 
 function ScadenziarioPage() {
   const navigate = useNavigate();
@@ -199,7 +200,7 @@ function ScadenziarioPage() {
         maxGg,
         fascia: fasciaOf(maxGg),
       };
-    }).filter((r) => r.nScadute > 0 || r.nAScadere > 0);
+    }).filter((r) => r.nScadute > 0);
     return out
       .filter((r) => r.totScad >= minImp)
       .filter((r) => {
@@ -288,10 +289,11 @@ function ScadenziarioPage() {
         <div className="flex items-center justify-between gap-3 pt-2 border-t">
           <div className="flex items-center gap-2">
             <Switch id="escl-bonif" checked={escludiBonifici} onCheckedChange={setEscludiBonifici} />
-            <Label htmlFor="escl-bonif" className="text-sm cursor-pointer">Escludi bonifici (cod. pagamento BO*)</Label>
+            <Label htmlFor="escl-bonif" className="text-sm cursor-pointer">Escludi BOS (cod. pagamento = BOS)</Label>
           </div>
           {escludiBonifici && (
-            <span className="text-xs text-muted-foreground">Esclusi {bonificiCount} bonifici</span>
+            <span className="text-xs text-muted-foreground">Esclusi {bonificiCount} BOS</span>
+
           )}
         </div>
       </Card>
