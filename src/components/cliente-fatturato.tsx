@@ -68,18 +68,18 @@ export function ClienteFatturato({ clienteId }: { clienteId: string }) {
   return (
     <section className="space-y-3">
       <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-2">
-        <Receipt className="size-4" /> Fatturato
+        <Receipt className="size-4" /> Fatturato (IVA escl.)
       </h3>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Card className="p-4">
-          <p className="text-xs font-medium text-muted-foreground uppercase">Anno {annoCorrente}</p>
+          <p className="text-xs font-medium text-muted-foreground uppercase">Anno {annoCorrente} (IVA escl.)</p>
           <p className="text-2xl font-bold mt-1 tabular-nums">{fmtEuro(fatturatoCur)}</p>
           <p className="text-xs text-muted-foreground mt-1">
             {cur?.num_fatture ?? 0} {cur?.num_fatture === 1 ? "fattura" : "fatture"}
           </p>
         </Card>
         <Card className="p-4">
-          <p className="text-xs font-medium text-muted-foreground uppercase">Anno {annoPrec}</p>
+          <p className="text-xs font-medium text-muted-foreground uppercase">Anno {annoPrec} (IVA escl.)</p>
           <p className="text-2xl font-bold mt-1 tabular-nums">{fmtEuro(fatturatoPrev)}</p>
           <p className="text-xs text-muted-foreground mt-1">
             {prev?.num_fatture ?? 0} {prev?.num_fatture === 1 ? "fattura" : "fatture"}

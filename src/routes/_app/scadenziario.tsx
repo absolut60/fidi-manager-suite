@@ -338,8 +338,8 @@ function ScadenziarioPage() {
                   <TableHead>Cod. Gestionale</TableHead>
                   <TableHead>Store</TableHead>
                   <TableHead>Stato blocco</TableHead>
-                  <TableHead className="text-right">Fatt. {annoCorrente}</TableHead>
-                  <TableHead className="text-right">Fatt. {annoPrec}</TableHead>
+                  <TableHead className="text-right">Fatt. {annoCorrente} (IVA escl.)</TableHead>
+                  <TableHead className="text-right">Fatt. {annoPrec} (IVA escl.)</TableHead>
                   <TableHead className="text-right">N. Fatt. scadute</TableHead>
                   <TableHead className="text-right">Totale scaduto</TableHead>
                   <TableHead className="text-right">N. Fatt. a scadere</TableHead>
