@@ -594,3 +594,103 @@ export function parseAssicurazioneSheet(sheet: XLSX.WorkSheet): AssicRow[] {
   }
   return out;
 }
+
+/* ============================================================================
+ * LEAN cell-by-cell parser per SCADENZIARIO (per fan-out a chunk)
+ * - scanScadenziarioMeta: legge headers + conta righe non vuote
+ * - parseScadenziarioRangeLean: parsa SOLO un range di righe Excel (1-indexed)
+ * Entrambi usano accesso diretto a sheet[encode_cell] per evitare di
+ * materializzare la matrice completa con sheet_to_json.
+ * ============================================================================ */
+
+const SCAD_OFFICIAL_NUM = new Set([
+  "importo_scadenza",
+  "importo_documento",
+  "importo_originario",
+  "importo_netto_prev",
+  "importo_ritardo",
+]);
+const SCAD_OFFICIAL_INT = new Set(["giorni_ritardo", "dilazione_effettiva", "anno_partita"]);
+const SCAD_OFFICIAL_DATE = new Set(["data_documento", "data_scadenza", "data_pagamento"]);
+
+export function scanScadenziarioMeta(sheet: XLSX.WorkSheet): {
+  headers: string[];
+  firstDataRow: number; // 0-indexed (row 2 = third row)
+  lastRow: number; // 0-indexed last row with content
+  totRowsApprox: number;
+} {
+  const ref = sheet["!ref"];
+  if (!ref) return { headers: [], firstDataRow: 2, lastRow: 1, totRowsApprox: 0 };
+  const range = XLSX.utils.decode_range(ref);
+  const headers: string[] = [];
+  for (let c = range.s.c; c <= range.e.c; c++) {
+    const addr = XLSX.utils.encode_cell({ r: 1, c });
+    const cell = sheet[addr] as XLSX.CellObject | undefined;
+    headers.push(normalize(String(cell?.v ?? "")));
+  }
+  return {
+    headers,
+    firstDataRow: 2,
+    lastRow: range.e.r,
+    totRowsApprox: Math.max(0, range.e.r - 1),
+  };
+}
+
+export function parseScadenziarioRangeLean(
+  sheet: XLSX.WorkSheet,
+  headers: string[],
+  startRow0: number,
+  endRow0Inclusive: number,
+): { rows: ScadRow[]; missing: number[]; totRead: number } {
+  const ref = sheet["!ref"];
+  if (!ref) return { rows: [], missing: [], totRead: 0 };
+  const range = XLSX.utils.decode_range(ref);
+  const startR = Math.max(2, startRow0);
+  const endR = Math.min(range.e.r, endRow0Inclusive);
+  const rows: ScadRow[] = [];
+  const missing: number[] = [];
+  let totRead = 0;
+  for (let r = startR; r <= endR; r++) {
+    let hasContent = false;
+    const mapped: Record<string, unknown> = {};
+    let ragSoc = "";
+    let codiceRaw: unknown = null;
+    for (let c = range.s.c; c <= range.e.c; c++) {
+      const h = headers[c - range.s.c];
+      const field = SCAD_OFFICIAL_MAP[h];
+      if (!field) continue;
+      const addr = XLSX.utils.encode_cell({ r, c });
+      const cell = sheet[addr] as XLSX.CellObject | undefined;
+      const v = cell?.v;
+      if (v != null && String(v).trim() !== "") hasContent = true;
+      if (field === "__ragsoc") {
+        ragSoc = String(v ?? "").trim();
+      } else if (field === "codice_gestionale") {
+        codiceRaw = v;
+      } else {
+        mapped[field] = v;
+      }
+    }
+    if (!hasContent) continue;
+    totRead++;
+    const codice = toStr(codiceRaw);
+    if (!codice) {
+      missing.push(r + 1);
+      continue;
+    }
+    const payload: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(mapped)) {
+      if (SCAD_OFFICIAL_NUM.has(k)) payload[k] = toNum(v);
+      else if (SCAD_OFFICIAL_INT.has(k)) payload[k] = toInt(v);
+      else if (SCAD_OFFICIAL_DATE.has(k)) payload[k] = excelDateToISO(v);
+      else payload[k] = toStr(v);
+    }
+    rows.push({
+      idx: r + 1,
+      codice_gestionale: String(codice).replace(/\.0$/, ""),
+      ragione_sociale: ragSoc,
+      payload,
+    });
+  }
+  return { rows, missing, totRead };
+}
