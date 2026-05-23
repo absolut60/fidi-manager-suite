@@ -494,20 +494,6 @@ function ClientiPage() {
     });
   }
 
-  // Componenti riusabili per i singoli filtri (così funzionano sia in desktop grid che mobile stack)
-  const SearchField = (
-    <div className="relative">
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-      <Input
-        value={searchInput}
-        onChange={(e) => setSearchInput(e.target.value)}
-        placeholder="Cerca ragione sociale, P.IVA, cod. gest., città..."
-        className="pl-9"
-      />
-    </div>
-  );
-
-
   const StoreSelect = (
     <Select value={storeFiltro} onValueChange={setStoreFiltro}>
       <SelectTrigger className="w-full"><SelectValue placeholder="Punto vendita" /></SelectTrigger>
@@ -625,16 +611,23 @@ function ClientiPage() {
     <div className="space-y-2 px-1 py-2 border rounded-md">
       <div className="flex items-center justify-between text-xs font-medium">
         <span className="text-muted-foreground">Slider fido residuo:</span>
-        <span>{fmtEuro(fidoRange[0])} <span className="text-muted-foreground">→</span> {fmtEuro(fidoRange[1])}</span>
+        <span>{fmtEuro(sliderDisplay[0])} <span className="text-muted-foreground">→</span> {fmtEuro(sliderDisplay[1])}</span>
       </div>
-      <Slider
+      <RadixSlider.Root
+        className="relative flex h-5 w-full touch-none select-none items-center"
         min={FIDO_RANGE_MIN}
         max={FIDO_RANGE_MAX}
-        step={1000}
-        value={fidoRange}
-        onValueChange={(v) => setFidoRange([v[0], v[1]] as [number, number])}
-        onValueCommit={(v) => setFidoRangeDeb([v[0], v[1]] as [number, number])}
-      />
+        step={500}
+        value={sliderDisplay}
+        onValueChange={(v: number[]) => setSliderDisplay([v[0] ?? FIDO_RANGE_MIN, v[1] ?? FIDO_RANGE_MAX])}
+        onValueCommit={(v: number[]) => setSliderCommitted([v[0] ?? FIDO_RANGE_MIN, v[1] ?? FIDO_RANGE_MAX])}
+      >
+        <RadixSlider.Track className="relative h-2 w-full grow overflow-hidden rounded-full bg-muted">
+          <RadixSlider.Range className="absolute h-full bg-primary" />
+        </RadixSlider.Track>
+        <RadixSlider.Thumb aria-label="Fido residuo minimo" className="block size-5 rounded-full border-2 border-primary bg-background shadow-sm outline-none ring-offset-background transition-shadow focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" />
+        <RadixSlider.Thumb aria-label="Fido residuo massimo" className="block size-5 rounded-full border-2 border-primary bg-background shadow-sm outline-none ring-offset-background transition-shadow focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" />
+      </RadixSlider.Root>
 
       <div className="flex items-center justify-between text-[10px] text-muted-foreground">
         <span>{fmtEuro(FIDO_RANGE_MIN)}</span>
