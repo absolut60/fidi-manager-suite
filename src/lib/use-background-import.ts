@@ -13,6 +13,8 @@ export type BackgroundImportProgress = {
   righe_create: number | null;
   righe_aggiornate: number | null;
   righe_errore: number | null;
+  righe_saltate: number | null;
+  codici_mancanti: string[] | null;
   log_errori: unknown;
   completata_at: string | null;
 };
