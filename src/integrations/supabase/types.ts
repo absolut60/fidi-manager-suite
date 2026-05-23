@@ -1809,6 +1809,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      storage_path_cliente_id: { Args: { _name: string }; Returns: string }
+      user_can_access_cliente: {
+        Args: { _cliente_id: string }
+        Returns: boolean
+      }
+      user_can_write_cliente: {
+        Args: { _cliente_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role:
