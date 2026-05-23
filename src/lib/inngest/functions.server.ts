@@ -700,12 +700,14 @@ export const processScadenziarioChunk = inngest.createFunction(
 
     // STEP E: se è l'ultimo chunk, emetti evento finalize
     if (progress.chunks_completati >= progress.chunks_totali) {
-      await step.sendEvent("send-finalize", [
-        {
-          name: "import/scadenziario.finalize" as const,
-          data: { importazioneId, timestampInizio },
-        },
-      ]);
+      await step.run("send-finalize", async () => {
+        await sendInngestEvents([
+          {
+            name: "import/scadenziario.finalize",
+            data: { importazioneId, timestampInizio },
+          },
+        ]);
+      });
     }
 
     return { chunkIndex, ...result, progress };
