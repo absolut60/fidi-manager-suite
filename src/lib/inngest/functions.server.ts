@@ -566,9 +566,23 @@ export const processScadenziarioImport = inngest.createFunction(
               count,
               status,
               statusText,
-            } = await supabaseAdmin
-              .from("scadenze" as never)
-              .upsert(validRows as never, {
+            } = await (supabaseAdmin.from("scadenze" as never) as never as {
+              upsert: (
+                rows: unknown,
+                opts: { onConflict: string; ignoreDuplicates: boolean },
+              ) => {
+                select: (
+                  cols: string,
+                  opts: { count: "exact" | "planned" | "estimated" },
+                ) => Promise<{
+                  error: { message: string } | null;
+                  count: number | null;
+                  status: number;
+                  statusText: string;
+                }>;
+              };
+            })
+              .upsert(validRows, {
                 onConflict: "cliente_id,numero_documento,sezionale,anno_partita",
                 ignoreDuplicates: false,
               })
