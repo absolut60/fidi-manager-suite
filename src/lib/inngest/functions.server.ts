@@ -453,6 +453,65 @@ export const processScadenziarioImport = inngest.createFunction(
   async ({ event, step, logger }) => {
     const { importazioneId, filePath, userId } = event.data as EventData;
     try {
+      if (filePath.startsWith("_staging/") && filePath.endsWith("/manifest.json")) {
+        const manifest = await step.run("load-staged-manifest", async () => {
+          return downloadJsonFromStorage<StagedScadenziarioManifest>(filePath);
+        });
+        const timestampInizio = await step.run(
+          "init-timestamp",
+          async () => new Date().toISOString(),
+        );
+        const chunkCount = Math.max(1, manifest.chunkCount);
+
+        await step.run("init-importazione", async () => {
+          await supabaseAdmin
+            .from("importazioni")
+            .update({
+              righe_totali: manifest.totRead,
+              righe_elaborate: 0,
+              righe_create: 0,
+              righe_aggiornate: 0,
+              righe_errore: 0,
+              chunks_totali: chunkCount,
+              chunks_completati: 0,
+              stato: "in_elaborazione",
+              log_errori: [
+                {
+                  riga: 0,
+                  errore: `Init staging: ${manifest.totRead} righe totali, ${chunkCount} chunk da storage`,
+                },
+              ],
+            } as never)
+            .eq("id", importazioneId);
+        });
+
+        const events = manifest.chunks.map((chunk) => ({
+          name: "import/scadenziario.chunk" as const,
+          data: {
+            importazioneId,
+            filePath: manifest.originalFilePath,
+            chunkPath: chunk.chunkPath,
+            userId,
+            chunkIndex: chunk.chunkIndex,
+            totalChunks: chunkCount,
+            startRow0: 0,
+            endRow0: 0,
+            headers: [],
+            timestampInizio,
+          },
+        }));
+        const SEND_BATCH = 50;
+        for (let i = 0; i < events.length; i += SEND_BATCH) {
+          const slice = events.slice(i, i + SEND_BATCH);
+          await step.run(`send-staged-chunks-${i}`, async () => {
+            await sendInngestEvents(slice);
+          });
+        }
+
+        logger.info(`Scadenziario staging init: rows=${manifest.totRead}, chunks=${chunkCount}`);
+        return { totRows: manifest.totRead, chunkCount, staged: true };
+      }
+
       // STEP 1: download leggero + scan metadati (no parse completo)
       const meta = await step.run("scan-meta", async () => {
         const wb = await downloadWorkbookLean(filePath, "SCADENZIARIO");
