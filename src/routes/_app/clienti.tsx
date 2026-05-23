@@ -81,7 +81,12 @@ function ClientiPage() {
   const navigate = useNavigate();
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
   const isListRoute = currentPath === "/clienti";
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setSearch(searchInput), 400);
+    return () => clearTimeout(t);
+  }, [searchInput]);
   const [statoCliente, setStatoCliente] = useState<"attivi" | "disattivati" | "tutti">("attivi");
   const [storeFiltro, setStoreFiltro] = useState<string>("tutti");
   const [statoFido, setStatoFido] = useState<Set<string>>(new Set());
