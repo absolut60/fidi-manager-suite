@@ -867,7 +867,9 @@ function ClientiPage() {
                   <TableHead className="text-right">Fido residuo</TableHead>
                   <TableHead>Scadenziario</TableHead>
                   <TableHead>Privacy</TableHead>
+                  <TableHead>Assic.</TableHead>
                   <TableHead>Stato</TableHead>
+
                   <TableHead className="w-12"></TableHead>
                 </TableRow>
               </TableHeader>
