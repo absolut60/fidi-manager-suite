@@ -83,7 +83,8 @@ type ScadenziarioState = {
 // sofisticato. Mantieni questa funzione isolata per facilitare l'aggiornamento.
 function calcolaFidoProposto(cliente: any): number {
   const esposizione = Number(cliente?.totale_rischio ?? 0);
-  return Number.isFinite(esposizione) && esposizione > 0 ? Math.round(esposizione) : 0;
+  if (!Number.isFinite(esposizione) || esposizione <= 0) return 0;
+  return Math.round(esposizione / 500) * 500;
 }
 
 function determinaTipoRichiesta(
