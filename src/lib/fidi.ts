@@ -22,6 +22,10 @@ export const TIPO_TONE: Record<TipoRichiesta, string> = {
 export const STATO_LABEL: Record<StatoRichiesta, string> = {
   bozza: "Bozza",
   in_approvazione: "In approvazione",
+  in_attesa_liv1: "In attesa Liv. 1",
+  in_attesa_liv2: "In attesa Liv. 2",
+  in_attesa_liv3: "In attesa Liv. 3",
+  integrazioni_richieste: "Integrazioni richieste",
   approvata: "Approvata",
   rifiutata: "Rifiutata",
   annullata: "Annullata",
@@ -30,6 +34,10 @@ export const STATO_LABEL: Record<StatoRichiesta, string> = {
 export const STATO_TONE: Record<StatoRichiesta, string> = {
   bozza: "bg-muted text-muted-foreground",
   in_approvazione: "bg-info/15 text-info",
+  in_attesa_liv1: "bg-info/15 text-info",
+  in_attesa_liv2: "bg-info/15 text-info",
+  in_attesa_liv3: "bg-info/15 text-info",
+  integrazioni_richieste: "bg-warning/15 text-warning",
   approvata: "bg-success/15 text-success",
   rifiutata: "bg-destructive/15 text-destructive",
   annullata: "bg-muted text-muted-foreground",
