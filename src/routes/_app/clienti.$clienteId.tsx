@@ -26,11 +26,13 @@ import { ClienteCantieriTab } from "@/components/cliente-cantieri-tab";
 import { ClienteStoricoFidoTab } from "@/components/cliente-storico-fido-tab";
 import { ClienteInsolutiTab } from "@/components/cliente-insoluti-tab";
 import { formatEuro } from "@/lib/fidi";
+import { classificaScadenza } from "@/lib/scadenze";
+import { Ban, Calendar, Clock, Bell, CheckCircle2 } from "lucide-react";
 
 
 
 
-const TAB_VALUES = ["anagrafica", "contatti", "cantieri", "storico", "insoluti", "privacy"] as const;
+const TAB_VALUES = ["riepilogo", "anagrafica", "contatti", "cantieri", "storico", "insoluti", "privacy"] as const;
 const INSOLUTI_SUB_VALUES = ["riepilogo", "scadenziario", "solleciti", "legali", "assicurazioni"] as const;
 
 export const Route = createFileRoute("/_app/clienti/$clienteId")({
@@ -375,15 +377,20 @@ function ClienteDetail() {
         </div>
       </div>
 
-      <Tabs defaultValue={tab ?? "anagrafica"}>
+      <Tabs defaultValue={tab ?? "riepilogo"}>
         <TabsList className="flex-wrap h-auto">
+          <TabsTrigger value="riepilogo">Riepilogo</TabsTrigger>
           <TabsTrigger value="anagrafica">Anagrafica</TabsTrigger>
           <TabsTrigger value="contatti">Contatti ({contatti?.length ?? 0})</TabsTrigger>
           <TabsTrigger value="cantieri">Cantieri</TabsTrigger>
           <TabsTrigger value="storico">Fido</TabsTrigger>
-          <TabsTrigger value="insoluti">Insoluti</TabsTrigger>
+          <TabsTrigger value="insoluti">Dati Rischio</TabsTrigger>
           <TabsTrigger value="privacy">Privacy</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="riepilogo" className="space-y-4">
+          <RiepilogoTab cliente={cliente} clienteId={clienteId} />
+        </TabsContent>
 
         <TabsContent value="anagrafica" className="space-y-4">
           <Card className="p-6">
@@ -590,6 +597,216 @@ function Field({ label, value }: { label: string; value?: string | null }) {
     <div>
       <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</dt>
       <dd className="mt-0.5">{value || <span className="text-muted-foreground">—</span>}</dd>
+    </div>
+  );
+}
+
+function fmtDateIt(v: unknown): string {
+  if (!v) return "—";
+  try { return new Date(String(v)).toLocaleDateString("it-IT"); } catch { return String(v); }
+}
+
+function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string }) {
+  const bloccato = !!cliente.bloccato;
+  const indBlocco = Number(cliente.ind_blocco ?? 0);
+  const clienteAttivo = cliente.cliente_attivo !== false;
+  const ultimaFatt = cliente.ultima_data_fatturazione;
+
+  const { data: ins } = useQuery({
+    queryKey: ["riepilogo-tab-insoluti", clienteId],
+    queryFn: async () => {
+      const { data: scad, error } = await supabase
+        .from("scadenze")
+        .select("importo_scadenza, giorni_ritardo, stato_contabile, tempi_scadenza")
+        .eq("cliente_id", clienteId);
+      if (error) throw error;
+      const rows = (scad ?? []) as Array<{ importo_scadenza: number | null; giorni_ritardo: number | null; stato_contabile: string | null; tempi_scadenza: string | null }>;
+      const scadute = rows.filter((s) => classificaScadenza(s) === "scaduto");
+      const aScadere = rows.filter((s) => classificaScadenza(s) === "a_scadere");
+      const sum = (arr: typeof rows) => arr.reduce((a, r) => a + Number(r.importo_scadenza ?? 0), 0);
+      const maxGg = [...scadute, ...aScadere].reduce((m, r) => Math.max(m, Number(r.giorni_ritardo ?? 0)), 0);
+      const fascia = (min: number, max: number | null) =>
+        sum(scadute.filter((s) => {
+          const g = Number(s.giorni_ritardo ?? 0);
+          return g >= min && (max == null || g <= max);
+        }));
+      const { data: ultSoll } = await supabase
+        .from("solleciti")
+        .select("data_sollecito")
+        .eq("cliente_id", clienteId)
+        .order("data_sollecito", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return {
+        totale_scaduto: sum(scadute),
+        totale_a_scadere: sum(aScadere),
+        max_giorni_ritardo: maxGg,
+        scaduto_0_30: fascia(1, 30),
+        scaduto_30_60: fascia(31, 60),
+        scaduto_oltre_60: fascia(61, null),
+        ultimo_sollecito: (ultSoll as { data_sollecito: string | null } | null)?.data_sollecito ?? null,
+      };
+    },
+  });
+
+  const totScaduto = Number(ins?.totale_scaduto ?? 0);
+  const totFasce = Number(ins?.scaduto_0_30 ?? 0) + Number(ins?.scaduto_30_60 ?? 0) + Number(ins?.scaduto_oltre_60 ?? 0);
+  const pct = (v: number) => totFasce > 0 ? (v / totFasce) * 100 : 0;
+  const maxGg = Number(ins?.max_giorni_ritardo ?? 0);
+  const fasciaTone = maxGg > 60 ? "destructive" : maxGg > 30 ? "warning" : maxGg > 0 ? "yellow" : "default";
+
+  // Dati rischio
+  const fidoGest = Number(cliente.fido_gestionale ?? cliente.fido ?? 0);
+  const totRischio = Number(cliente.totale_rischio ?? 0);
+  const fidoResiduo = cliente.fido_residuo == null ? null : Number(cliente.fido_residuo);
+  const scaduto = Number(cliente.scaduto ?? 0);
+  let semaforo = { label: "Verde", dot: "bg-success", text: "text-success", bg: "bg-success/15 border-success/30" };
+  if (fidoResiduo !== null && fidoResiduo < 0) {
+    semaforo = { label: "Rosso", dot: "bg-destructive", text: "text-destructive", bg: "bg-destructive/15 border-destructive/30" };
+  } else if (fidoResiduo !== null && fidoGest > 0 && fidoResiduo < fidoGest * 0.1) {
+    semaforo = { label: "Arancione", dot: "bg-warning", text: "text-warning", bg: "bg-warning/15 border-warning/30" };
+  } else if (scaduto > 0) {
+    semaforo = { label: "Giallo", dot: "bg-yellow-500", text: "text-yellow-700 dark:text-yellow-400", bg: "bg-yellow-500/15 border-yellow-500/30" };
+  }
+  const condPag = cliente.condizione_pagamento_desc || cliente.condizioni_pagamento;
+
+  return (
+    <div className="space-y-6">
+      {/* Sezione 1 — Stato cliente */}
+      <div className="space-y-2">
+        {bloccato && (
+          <div className="rounded-lg border-2 border-destructive bg-destructive/10 p-4 flex items-start gap-3">
+            <AlertTriangle className="size-7 text-destructive shrink-0" />
+            <div className="flex-1">
+              <p className="text-lg font-bold text-destructive tracking-wide">CLIENTE BLOCCATO</p>
+              {cliente.data_blocco && (
+                <p className="text-xs text-muted-foreground mt-0.5">Dal {fmtDateIt(cliente.data_blocco)}</p>
+              )}
+              {cliente.motivo_blocco && <p className="text-sm mt-1">{cliente.motivo_blocco}</p>}
+            </div>
+          </div>
+        )}
+        <div className="flex flex-wrap gap-2">
+          {indBlocco === 1 && (
+            <Badge className="bg-orange-500 text-white hover:bg-orange-500 gap-1">
+              <AlertTriangle className="size-3" /> Blocco revocabile
+            </Badge>
+          )}
+          {!clienteAttivo ? (
+            <Badge variant="secondary" className="gap-1">
+              <Ban className="size-3" /> Non attivo
+              {ultimaFatt && <span className="ml-1 opacity-80">· ult. fatt. {fmtDateIt(ultimaFatt)}</span>}
+            </Badge>
+          ) : !bloccato && indBlocco === 0 ? (
+            <Badge className="bg-success/15 text-success border-success/30 hover:bg-success/15 gap-1">
+              <CheckCircle2 className="size-3" /> Attivo
+            </Badge>
+          ) : null}
+        </div>
+      </div>
+
+      {/* Sezione 2 — Dati rischio */}
+      <section className="space-y-3">
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Dati rischio</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <Card className={`p-4 border ${semaforo.bg}`}>
+            <p className="text-xs font-medium text-muted-foreground uppercase">Semaforo rischio</p>
+            <div className="mt-2 flex items-center gap-2">
+              <span className={`inline-block size-4 rounded-full ${semaforo.dot}`} />
+              <span className={`text-lg font-bold ${semaforo.text}`}>{semaforo.label}</span>
+            </div>
+          </Card>
+          <MiniStat label="Fido gestionale" value={formatEuro(fidoGest)} />
+          <MiniStat label="Totale rischio" value={formatEuro(totRischio)} />
+          <MiniStat label="Fido residuo" value={formatEuro(fidoResiduo)} tone={fidoResiduo != null && fidoResiduo < 0 ? "destructive" : "default"} />
+          <MiniStat label="Scaduto" value={formatEuro(cliente.scaduto)} tone={scaduto > 0 ? "destructive" : "default"} />
+          <MiniStat label="A scadere" value={formatEuro(cliente.a_scadere)} />
+          <MiniStat label="Cond. pagamento" value={condPag || "—"} />
+        </div>
+      </section>
+
+      {/* Sezione 3 — Riepilogo insoluti */}
+      <section className="space-y-3">
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Riepilogo insoluti</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <MiniStat label="Totale scaduto" value={formatEuro(totScaduto)} tone={fasciaTone === "destructive" ? "destructive" : fasciaTone === "warning" ? "warning" : "default"} icon={AlertTriangle} />
+          <MiniStat label="A scadere" value={formatEuro(ins?.totale_a_scadere ?? 0)} icon={Calendar} />
+          <MiniStat label="Max gg ritardo" value={`${maxGg} gg`} icon={Clock} />
+          <MiniStat label="Ultimo sollecito" value={fmtDateIt(ins?.ultimo_sollecito)} icon={Bell} />
+        </div>
+        <Card className="p-5">
+          <p className="text-xs font-semibold uppercase text-muted-foreground mb-3">Fasce di scaduto</p>
+          <div className="space-y-3">
+            <FasciaRow label="0–30 giorni" value={Number(ins?.scaduto_0_30 ?? 0)} pct={pct(Number(ins?.scaduto_0_30 ?? 0))} color="bg-yellow-500" />
+            <FasciaRow label="31–60 giorni" value={Number(ins?.scaduto_30_60 ?? 0)} pct={pct(Number(ins?.scaduto_30_60 ?? 0))} color="bg-orange-500" />
+            <FasciaRow label="oltre 60 giorni" value={Number(ins?.scaduto_oltre_60 ?? 0)} pct={pct(Number(ins?.scaduto_oltre_60 ?? 0))} color="bg-destructive" />
+          </div>
+        </Card>
+      </section>
+
+      {/* Sezione 4 — Info cliente sintetica */}
+      <section className="space-y-3">
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Info cliente</h3>
+        <Card className="p-6">
+          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+            <Field label="Ragione sociale" value={cliente.ragione_sociale} />
+            <Field label="Partita IVA" value={cliente.partita_iva} />
+            <Field label="Punto vendita" value={cliente.stores?.nome} />
+            <div>
+              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Ultima data fatturazione</dt>
+              <dd className="mt-0.5 flex items-center gap-2">
+                <span>{ultimaFatt ? fmtDateIt(ultimaFatt) : <span className="text-muted-foreground">—</span>}</span>
+                {clienteAttivo ? (
+                  <Badge className="bg-success/15 text-success border-success/30 hover:bg-success/15">Attivo</Badge>
+                ) : (
+                  <Badge variant="secondary">Non attivo</Badge>
+                )}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Stato blocco</dt>
+              <dd className="mt-0.5">
+                {indBlocco === 2 || bloccato ? (
+                  <span className="text-destructive font-medium">Bloccato</span>
+                ) : indBlocco === 1 ? (
+                  <span className="text-yellow-700 dark:text-yellow-500 font-medium">Bloccato con possibilità di sblocco</span>
+                ) : (
+                  <span className="text-muted-foreground">Non bloccato</span>
+                )}
+              </dd>
+            </div>
+          </dl>
+        </Card>
+      </section>
+    </div>
+  );
+}
+
+function MiniStat({ label, value, tone = "default", icon: Icon }: { label: string; value: string; tone?: "default" | "destructive" | "warning"; icon?: typeof Calendar }) {
+  const valCls = tone === "destructive" ? "text-destructive" : tone === "warning" ? "text-orange-600" : "";
+  return (
+    <Card className="p-4">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-muted-foreground uppercase truncate">{label}</p>
+          <p className={`text-lg font-bold mt-1 tabular-nums ${valCls}`}>{value}</p>
+        </div>
+        {Icon && <Icon className="size-4 text-muted-foreground shrink-0" />}
+      </div>
+    </Card>
+  );
+}
+
+function FasciaRow({ label, value, pct, color }: { label: string; value: number; pct: number; color: string }) {
+  return (
+    <div>
+      <div className="flex justify-between text-xs mb-1">
+        <span>{label}</span>
+        <span className="font-medium tabular-nums">{formatEuro(value)}</span>
+      </div>
+      <div className="h-2 bg-muted rounded-full overflow-hidden">
+        <div className={`h-full ${color}`} style={{ width: `${pct}%` }} />
+      </div>
     </div>
   );
 }
