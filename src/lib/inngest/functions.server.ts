@@ -478,6 +478,7 @@ export const processScadenziarioImport = inngest.createFunction(
       // così la reconciliation finale può individuare le scadenze "fantasma".
       // ============================================================
       const matchedClientIds = new Set<string>();
+      const batchErrors: Array<{ riga: number; errore: string }> = [];
       let elaborate = 0;
       for (let ci = 0; ci < chunkCount; ci++) {
         const res = await step.run(`process-chunk-${ci}`, async () => {
@@ -494,14 +495,14 @@ export const processScadenziarioImport = inngest.createFunction(
           }>;
 
           // Costruisci le righe valide e separa quelle senza cliente abbinato
-          const errs: Array<{ riga: number; errore: string }> = [];
+          const rowErrs: Array<{ riga: number; errore: string }> = [];
+          const batchErrs: Array<{ riga: number; errore: string }> = [];
           const matched: string[] = [];
-          const validRows: Array<Record<string, unknown>> = [];
-          const validKeys = new Set<string>();
+          const rawValidRows: Array<Record<string, unknown>> = [];
           for (const r of slice) {
             const cid = clientMap[r.codice_gestionale];
             if (!cid) {
-              errs.push({
+              rowErrs.push({
                 riga: r.idx,
                 errore: `Cliente ${r.codice_gestionale} non trovato${r.ragione_sociale ? ` (${r.ragione_sociale})` : ""}`,
               });
@@ -509,17 +510,30 @@ export const processScadenziarioImport = inngest.createFunction(
             }
             matched.push(cid);
             const p = r.payload;
-            const numDoc = (p.numero_documento as string | null | undefined) ?? null;
-            const sez = (p.sezionale as string | null | undefined) ?? null;
-            const anno = (p.anno_partita as number | null | undefined) ?? null;
-            validRows.push({
+            rawValidRows.push({
               ...p,
               cliente_id: cid,
               importato_da: userId ?? null,
               ultima_sincronizzazione: timestampInizioImport,
             });
-            validKeys.add(`${cid}|${numDoc ?? ""}|${sez ?? ""}|${anno ?? ""}`);
           }
+
+          // CORREZIONE 1 — Deduplica per chiave (cliente_id, numero_documento, sezionale, anno_partita)
+          // mantenendo l'ULTIMA occorrenza. Evita "ON CONFLICT cannot affect row a second time".
+          const deduped = new Map<string, Record<string, unknown>>();
+          for (const row of rawValidRows) {
+            const cid = row.cliente_id as string;
+            const numDoc = (row.numero_documento as string | null | undefined) ?? "NULL";
+            const sez = (row.sezionale as string | null | undefined) ?? "NULL";
+            const anno =
+              (row.anno_partita as number | null | undefined) != null
+                ? String(row.anno_partita)
+                : "NULL";
+            deduped.set(`${cid}|${numDoc}|${sez}|${anno}`, row);
+          }
+          const validRows = Array.from(deduped.values());
+          const dedupSkipped = rawValidRows.length - validRows.length;
+          const validKeys = new Set(deduped.keys());
 
           // Pre-fetch righe esistenti per distinguere create vs update nei contatori
           const cids = Array.from(new Set(matched));
@@ -538,7 +552,7 @@ export const processScadenziarioImport = inngest.createFunction(
               }>
             ).forEach((s) => {
               existingKeys.add(
-                `${s.cliente_id}|${s.numero_documento ?? ""}|${s.sezionale ?? ""}|${s.anno_partita ?? ""}`,
+                `${s.cliente_id}|${s.numero_documento ?? "NULL"}|${s.sezionale ?? "NULL"}|${s.anno_partita != null ? String(s.anno_partita) : "NULL"}`,
               );
             });
           }
@@ -546,29 +560,65 @@ export const processScadenziarioImport = inngest.createFunction(
           let c = 0;
           let u = 0;
           if (validRows.length) {
-            // 🚀 UPSERT BATCH: 1 query per ~500 righe (era 1 query PER riga)
-            const { error: upErr } = await supabaseAdmin
-              .from("scadenze" as never)
-              .upsert(validRows as never, {
+            // 🚀 UPSERT BATCH con diagnostica: ritorna count effettivo PostgREST
+            const {
+              error: upErr,
+              count,
+              status,
+              statusText,
+            } = await (supabaseAdmin.from("scadenze" as never) as never as {
+              upsert: (
+                rows: unknown,
+                opts: { onConflict: string; ignoreDuplicates: boolean },
+              ) => {
+                select: (
+                  cols: string,
+                  opts: { count: "exact" | "planned" | "estimated" },
+                ) => Promise<{
+                  error: { message: string } | null;
+                  count: number | null;
+                  status: number;
+                  statusText: string;
+                }>;
+              };
+            })
+              .upsert(validRows, {
                 onConflict: "cliente_id,numero_documento,sezionale,anno_partita",
                 ignoreDuplicates: false,
-              });
+              })
+              .select("id", { count: "exact" });
             if (upErr) {
-              // Errore di batch: registralo per tutte le righe del chunk
-              errs.push({ riga: ci, errore: `Upsert batch: ${upErr.message}` });
+              batchErrs.push({
+                riga: ci,
+                errore: `Upsert batch chunk ${ci}: ${upErr.message} [status=${status} ${statusText ?? ""}]`,
+              });
             } else {
               // Conta create vs update sulla base del pre-fetch
               for (const key of validKeys) {
                 if (existingKeys.has(key)) u++;
                 else c++;
               }
+              // Avviso diagnostico: se PostgREST non ha scritto nulla nonostante righe valide
+              if ((count ?? 0) === 0 && validRows.length > 0) {
+                batchErrs.push({
+                  riga: ci,
+                  errore: `Upsert batch chunk ${ci}: 0 righe scritte su ${validRows.length} valide [status=${status} ${statusText ?? ""}]`,
+                });
+              }
             }
           }
-          return { c, u, errs, matched, count: slice.length };
+          if (dedupSkipped > 0) {
+            batchErrs.push({
+              riga: ci,
+              errore: `Chunk ${ci}: dedotte ${dedupSkipped} righe duplicate per chiave (cliente+doc+sez+anno)`,
+            });
+          }
+          return { c, u, rowErrs, batchErrs, matched, count: slice.length };
         });
         created += res.c;
         updated += res.u;
-        errorLog.push(...res.errs);
+        errorLog.push(...res.rowErrs);
+        batchErrors.push(...res.batchErrs);
         res.matched.forEach((id) => matchedClientIds.add(id));
         elaborate += res.count;
         await supabaseAdmin
@@ -577,11 +627,12 @@ export const processScadenziarioImport = inngest.createFunction(
             righe_elaborate: elaborate,
             righe_create: created,
             righe_aggiornate: updated,
-            righe_errore: errorLog.length,
+            righe_errore: errorLog.length + batchErrors.length,
             stato: "in_elaborazione",
           })
           .eq("id", importazioneId);
       }
+
 
       // STEP 3-bis — RECONCILIATION SCADENZE FANTASMA
       // ============================================================
@@ -663,10 +714,13 @@ export const processScadenziarioImport = inngest.createFunction(
         `Scadenze chiuse automaticamente (non presenti nel file): ${chiuseAutomaticamente}`,
         `Clienti riconciliati: ${clientiRiconciliati}`,
         `Righe saltate (cliente non trovato): ${errorLog.length}${skippedCodes.length ? ` — codici: ${skippedCodes.slice(0, 50).join(", ")}${skippedCodes.length > 50 ? "…" : ""}` : ""}`,
-        `Errori: ${errorLog.length}`,
+        `Errori upsert batch: ${batchErrors.length}`,
+        `Errori riga: ${errorLog.length}`,
       ];
+      // CORREZIONE 2 — batchErrors PRIMA degli errori di riga così non vengono troncati
       const logFinale: Array<{ riga: number; errore: string }> = [
         ...summaryLines.map((m) => ({ riga: 0, errore: m })),
+        ...batchErrors,
         ...errorLog,
       ];
 
@@ -676,8 +730,11 @@ export const processScadenziarioImport = inngest.createFunction(
           righe_elaborate: totRead,
           righe_create: created,
           righe_aggiornate: updated,
-          righe_errore: errorLog.length,
-          stato: errorLog.length ? "completata_con_errori" : "completata",
+          righe_errore: errorLog.length + batchErrors.length,
+          stato:
+            errorLog.length + batchErrors.length > 0
+              ? "completata_con_errori"
+              : "completata",
           completata_at: new Date().toISOString(),
           log_errori: logFinale.slice(0, 500),
         })
