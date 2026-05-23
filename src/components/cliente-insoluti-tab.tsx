@@ -158,9 +158,58 @@ function RiepilogoSection({ clienteId }: { clienteId: string }) {
           <FasciaBar label="oltre 60 giorni" value={Number(d.scaduto_oltre_60)} pct={pct(Number(d.scaduto_oltre_60))} color="bg-destructive" />
         </div>
       </Card>
+      <AssicurazioneRiepilogoCard clienteId={clienteId} />
     </div>
   );
 }
+
+function AssicurazioneRiepilogoCard({ clienteId }: { clienteId: string }) {
+  const { role } = useAuth();
+  const isAdmin = role === "amministratore";
+  const { data } = useQuery({
+    queryKey: ["assic-riepilogo", clienteId],
+    queryFn: async () => {
+      const [{ data: cli }, { data: pol }] = await Promise.all([
+        supabase.from("clienti").select("assicurazione_attiva").eq("id", clienteId).maybeSingle(),
+        supabase.from("assicurazioni_credito" as never).select("assicuratore, importo_massimale, data_scadenza, stato").eq("cliente_id", clienteId).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      ]);
+      return {
+        attiva: !!(cli as { assicurazione_attiva?: boolean } | null)?.assicurazione_attiva,
+        polizza: pol as { assicuratore: string; importo_massimale: number | null; data_scadenza: string | null; stato: string } | null,
+      };
+    },
+  });
+  const attiva = !!data?.attiva;
+  const p = data?.polizza ?? null;
+  const scaduta = !!(p?.data_scadenza && new Date(p.data_scadenza) < new Date());
+
+  return (
+    <Card className="p-5">
+      <h3 className="font-semibold mb-3 text-sm uppercase tracking-wide flex items-center gap-2">
+        <ShieldCheck className="size-4 text-primary" /> Assicurazione crediti
+      </h3>
+      {attiva && p ? (
+        <div className="space-y-2 text-sm">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge className="bg-success/15 text-success border-success/30">{p.assicuratore || "POUEY"}</Badge>
+            <Badge variant="outline" className="capitalize">{p.stato.replace(/_/g, " ")}</Badge>
+            {scaduta && <Badge className="bg-destructive text-destructive-foreground hover:bg-destructive">Polizza scaduta</Badge>}
+          </div>
+          <p>Massimale: <strong className="tabular-nums">{fmtEuro(p.importo_massimale)}</strong></p>
+          {p.data_scadenza && <p className="text-muted-foreground">Scadenza polizza: {fmtDate(p.data_scadenza)}</p>}
+        </div>
+      ) : (
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <p className="text-sm text-muted-foreground">Nessuna polizza attiva</p>
+          {isAdmin && (
+            <p className="text-xs text-muted-foreground">Vai al sotto-tab "Assicurazione" per aggiungere una polizza.</p>
+          )}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 
 function KpiCard({ label, value, tone, icon: Icon }: { label: string; value: string; tone: "destructive" | "info" | "warning" | "default"; icon: typeof FileText }) {
   const cls = tone === "destructive" ? "bg-destructive/10 text-destructive"
