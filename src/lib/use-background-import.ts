@@ -90,18 +90,23 @@ export function useBackgroundImport(opts: {
           rowsCount: number;
           missingCount: number;
         }> = [];
+        const byRow = new Map<number, Record<string, unknown>>();
+        args.scadenziarioStaging.rows.forEach((row) => byRow.set(Number(row.idx), row));
+        const orderedIndexes = Array.from(
+          new Set([
+            ...args.scadenziarioStaging.rows.map((row) => Number(row.idx)),
+            ...args.scadenziarioStaging.missing,
+          ]),
+        )
+          .filter((idx) => Number.isFinite(idx))
+          .sort((a, b) => a - b);
 
-        for (let i = 0; i < args.scadenziarioStaging.rows.length; i += chunkSize) {
+        for (let i = 0; i < orderedIndexes.length; i += chunkSize) {
           const chunkIndex = Math.floor(i / chunkSize);
-          const chunkRows = args.scadenziarioStaging.rows.slice(i, i + chunkSize);
-          const chunkIndexes = chunkRows
-            .map((row) => Number(row.idx))
-            .filter((idx) => Number.isFinite(idx));
-          const chunkStart = Math.min(...chunkIndexes);
-          const chunkEnd = Math.max(...chunkIndexes);
-          const chunkMissing = args.scadenziarioStaging.missing.filter(
-            (row) => row >= chunkStart && row <= chunkEnd,
-          );
+          const indexes = orderedIndexes.slice(i, i + chunkSize);
+          const chunkRows = indexes.map((idx) => byRow.get(idx)).filter(Boolean) as Array<Record<string, unknown>>;
+          const validIndexes = new Set(chunkRows.map((row) => Number(row.idx)));
+          const chunkMissing = indexes.filter((idx) => !validIndexes.has(idx));
           const chunkPath = `_staging/${imp.id}/chunk-${chunkIndex}.json`;
           const payload = JSON.stringify({ rows: chunkRows, missing: chunkMissing });
           const { error } = await supabase.storage
