@@ -789,7 +789,7 @@ function TuttoTab({ rows, loading }: { rows: any[]; loading: boolean }) {
                 <TableCell className="text-sm text-muted-foreground">{r.stores?.nome ?? "—"}</TableCell>
                 <TableCell><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{TIPO_LABEL[r.tipo as TipoRichiesta]}</span></TableCell>
                 <TableCell className="text-right tabular-nums">{formatEuro(Number(r.importo_richiesto))}</TableCell>
-                <TableCell><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${STATO_TONE[r.stato]}`}>{STATO_LABEL[r.stato]}</span></TableCell>
+                <TableCell><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${STATO_TONE[r.stato as keyof typeof STATO_TONE]}`}>{STATO_LABEL[r.stato as keyof typeof STATO_LABEL]}</span></TableCell>
                 <TableCell><Badge variant="outline">L{r.livello_corrente}/{r.livello_richiesto}</Badge></TableCell>
                 <TableCell className="text-sm text-muted-foreground">{formatDate(r.created_at)}</TableCell>
               </TableRow>
