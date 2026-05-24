@@ -1365,7 +1365,17 @@ export const processBloccoFidoImport = inngest.createFunction(
     try {
       // STEP 1: download + parse ENTRAMBI i fogli (match esatto sui nomi)
       const parseResult = await step.run("parse", async () => {
-        const wb = await downloadWorkbook(filePath);
+        const wb = await downloadWorkbook(filePath, [
+          "BLOCCO_FIDO_ASSICURAZIONE",
+          "Blocco_Fido_Assicurazione",
+          "blocco_fido_assicurazione",
+          "Note Legale",
+          "Note Legali",
+          "NOTE LEGALE",
+          "NOTE LEGALI",
+          "note legale",
+          "note legali",
+        ]);
 
         // Foglio 1 — match esatto case-insensitive: "BLOCCO_FIDO_ASSICURAZIONE"
         const foglioBlocco = wb.SheetNames.find(
