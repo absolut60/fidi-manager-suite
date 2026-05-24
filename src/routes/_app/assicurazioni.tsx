@@ -265,3 +265,46 @@ export default function AssicurazioniPage() {
     </div>
   );
 }
+
+type Accent = "success" | "orange" | "amber" | "navy" | "destructive" | "slate";
+function KpiCard({
+  label, value, icon: Icon, accent, subtitle, tooltip, onClick, active,
+}: {
+  label: string; value: string; icon: typeof ShieldCheck; accent: Accent;
+  subtitle?: string; tooltip?: string; onClick?: () => void; active?: boolean;
+}) {
+  const cls: Record<Accent, string> = {
+    success: "bg-success/15 text-success",
+    orange: "bg-orange-500/15 text-orange-600",
+    amber: "bg-amber-400/20 text-amber-600",
+    navy: "bg-primary/10 text-primary",
+    destructive: "bg-destructive/15 text-destructive",
+    slate: "bg-slate-200 text-slate-600",
+  };
+  const card = (
+    <Card
+      className={`p-4 ${onClick ? "cursor-pointer hover:bg-muted/40 transition-colors" : ""} ${active ? "ring-2 ring-primary" : ""}`}
+      onClick={onClick}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</p>
+          <p className="text-xl font-bold mt-1 truncate">{value}</p>
+          {subtitle && <p className="text-xs text-muted-foreground mt-0.5 truncate">{subtitle}</p>}
+        </div>
+        <div className={`size-9 rounded-lg flex items-center justify-center shrink-0 ${cls[accent]}`}>
+          <Icon className="size-4" />
+        </div>
+      </div>
+    </Card>
+  );
+  if (tooltip) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild><div>{card}</div></TooltipTrigger>
+        <TooltipContent>{tooltip}</TooltipContent>
+      </Tooltip>
+    );
+  }
+  return card;
+}
