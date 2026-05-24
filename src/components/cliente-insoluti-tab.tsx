@@ -89,7 +89,12 @@ export function ClienteInsolutiTab({ cliente, defaultSubTab }: { cliente: { id: 
         <TabsContent value="riepilogo"><RiepilogoSection clienteId={cliente.id} /></TabsContent>
         <TabsContent value="scadenziario"><ScadenziarioSection clienteId={cliente.id} canEdit={isAdminOrApprov} /></TabsContent>
         <TabsContent value="solleciti"><SollecitiSection clienteId={cliente.id} canEdit={isAdminOrApprov} /></TabsContent>
-        {!isStoreManager && <TabsContent value="legali"><PraticheLegaliSection clienteId={cliente.id} isAdmin={role === "amministratore"} /></TabsContent>}
+        {!isStoreManager && <TabsContent value="legali">
+          <div className="space-y-4">
+            <NoteLegaliGestionaliCard clienteId={cliente.id} />
+            <PraticheLegaliSection clienteId={cliente.id} isAdmin={role === "amministratore"} />
+          </div>
+        </TabsContent>}
         {!isStoreManager && <TabsContent value="assicurazioni"><AssicurazioniSection clienteId={cliente.id} isAdmin={role === "amministratore"} /></TabsContent>}
       </Tabs>
     </div>
