@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -89,7 +89,12 @@ export function ClienteInsolutiTab({ cliente, defaultSubTab }: { cliente: { id: 
         <TabsContent value="riepilogo"><RiepilogoSection clienteId={cliente.id} /></TabsContent>
         <TabsContent value="scadenziario"><ScadenziarioSection clienteId={cliente.id} canEdit={isAdminOrApprov} /></TabsContent>
         <TabsContent value="solleciti"><SollecitiSection clienteId={cliente.id} canEdit={isAdminOrApprov} /></TabsContent>
-        {!isStoreManager && <TabsContent value="legali"><PraticheLegaliSection clienteId={cliente.id} isAdmin={role === "amministratore"} /></TabsContent>}
+        {!isStoreManager && <TabsContent value="legali">
+          <div className="space-y-4">
+            <NoteLegaliGestionaliCard clienteId={cliente.id} />
+            <PraticheLegaliSection clienteId={cliente.id} isAdmin={role === "amministratore"} />
+          </div>
+        </TabsContent>}
         {!isStoreManager && <TabsContent value="assicurazioni"><AssicurazioniSection clienteId={cliente.id} isAdmin={role === "amministratore"} /></TabsContent>}
       </Tabs>
     </div>
@@ -634,12 +639,64 @@ function NuovoSollecitoDialog({ clienteId, onClose, onSaved }: { clienteId: stri
   );
 }
 
+/* ============================== NOTE LEGALI GESTIONALI (sola lettura) ============================== */
+
+const CATEGORIA_COLORS: Record<string, string> = {
+  "Decreto Ingiuntivo": "bg-destructive/15 text-destructive border-destructive/30",
+  "Sollecito Legale": "bg-orange-500/15 text-orange-700 border-orange-500/30",
+  "Pignoramento": "bg-red-700/15 text-red-800 border-red-700/30",
+  "POUEY / Assicurazione": "bg-blue-500/15 text-blue-700 border-blue-500/30",
+  "Piano di Rientro": "bg-yellow-500/15 text-yellow-700 border-yellow-500/30",
+  "Messa a Perdita": "bg-muted text-muted-foreground border-muted-foreground/30",
+  "Altro": "bg-secondary text-secondary-foreground border-border",
+};
+
+function NoteLegaliGestionaliCard({ clienteId }: { clienteId: string }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["note-legali-gest", clienteId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("note_legali_gestionali" as never)
+        .select("id, testo, categoria, ultima_sincronizzazione")
+        .eq("cliente_id", clienteId)
+        .maybeSingle();
+      if (error && error.code !== "PGRST116") throw error;
+      return data as { id: string; testo: string; categoria: string | null; ultima_sincronizzazione: string } | null;
+    },
+  });
+  return (
+    <Card className="p-4 space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="font-semibold flex items-center gap-2"><Gavel className="size-4" /> Note Legali Gestionali</h3>
+        {data?.categoria && (
+          <Badge variant="outline" className={CATEGORIA_COLORS[data.categoria] ?? CATEGORIA_COLORS.Altro}>
+            {data.categoria}
+          </Badge>
+        )}
+      </div>
+      {isLoading ? (
+        <Skeleton className="h-16" />
+      ) : !data ? (
+        <p className="text-sm text-muted-foreground">Nessuna nota legale dal gestionale</p>
+      ) : (
+        <>
+          <div className="rounded-md border bg-muted/30 p-3 text-sm whitespace-pre-wrap">{data.testo}</div>
+          <p className="text-xs text-muted-foreground">
+            Ultima sincronizzazione: {new Date(data.ultima_sincronizzazione).toLocaleString("it-IT")}
+          </p>
+        </>
+      )}
+    </Card>
+  );
+}
+
 /* ============================== PRATICHE LEGALI ============================== */
+
+type PraticaRow = { id: string; tipo: string; stato: string; importo_contestato: number | null; importo_recuperato: number | null; riferimento_avvocato: string | null; studio_legale: string | null; note: string | null; data_apertura: string; data_chiusura: string | null; updated_at?: string | null };
 
 function PraticheLegaliSection({ clienteId, isAdmin }: { clienteId: string; isAdmin: boolean }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [openChange, setOpenChange] = useState<string | null>(null);
 
   const { data: pratiche, isLoading } = useQuery({
     queryKey: ["pratiche-legali", clienteId],
@@ -650,67 +707,231 @@ function PraticheLegaliSection({ clienteId, isAdmin }: { clienteId: string; isAd
         .eq("cliente_id", clienteId)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data as Array<{ id: string; tipo: string; stato: string; importo_contestato: number | null; importo_recuperato: number | null; riferimento_avvocato: string | null; studio_legale: string | null; note: string | null; data_apertura: string; data_chiusura: string | null }>;
+      return data as PraticaRow[];
     },
   });
 
   return (
     <div className="space-y-3">
-      {isAdmin && (
-        <div className="flex justify-end">
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold">Pratiche Legali</h3>
+        {isAdmin && (
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button size="sm" className="gap-1.5"><Plus className="size-4" /> Nuova pratica</Button>
             </DialogTrigger>
             <NuovaPraticaDialog clienteId={clienteId} onClose={() => setOpen(false)} onSaved={() => qc.invalidateQueries({ queryKey: ["pratiche-legali", clienteId] })} />
           </Dialog>
-        </div>
-      )}
+        )}
+      </div>
       {isLoading ? <Skeleton className="h-32" /> : !pratiche || pratiche.length === 0 ? (
         <Card className="p-8 text-center text-sm text-muted-foreground">Nessuna pratica legale aperta</Card>
       ) : (
         <div className="space-y-2">
           {pratiche.map((p) => (
-            <Card key={p.id} className="p-4">
-              <div className="flex items-start justify-between gap-3 flex-wrap">
-                <div className="space-y-1 min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Badge variant="outline" className="capitalize">{p.tipo.replace(/_/g, " ")}</Badge>
-                    <Badge className={`capitalize ${p.stato.startsWith("chiusa") ? "bg-muted text-foreground" : "bg-orange-500/15 text-orange-700"}`}>
-                      {p.stato.replace(/_/g, " ")}
-                    </Badge>
-                  </div>
-                  <div className="text-sm">
-                    <span className="text-muted-foreground">Aperta il {fmtDate(p.data_apertura)}</span>
-                    {p.studio_legale && <> · <span>{p.studio_legale}</span></>}
-                    {p.riferimento_avvocato && <> · <span>{p.riferimento_avvocato}</span></>}
-                  </div>
-                  <div className="text-sm">
-                    <span>Contestato: <strong>{fmtEuro(p.importo_contestato)}</strong></span>
-                    {Number(p.importo_recuperato ?? 0) > 0 && <> · <span>Recuperato: <strong className="text-success">{fmtEuro(p.importo_recuperato)}</strong></span></>}
-                  </div>
-                  {p.note && <p className="text-xs text-muted-foreground mt-1">{p.note}</p>}
-                </div>
-                {isAdmin && (
-                  <Dialog open={openChange === p.id} onOpenChange={(v) => setOpenChange(v ? p.id : null)}>
-                    <DialogTrigger asChild>
-                      <Button size="sm" variant="outline">Cambia stato</Button>
-                    </DialogTrigger>
-                    <CambiaStatoPraticaDialog
-                      pratica={p}
-                      onClose={() => setOpenChange(null)}
-                      onSaved={() => qc.invalidateQueries({ queryKey: ["pratiche-legali", clienteId] })}
-                    />
-                  </Dialog>
-                )}
-              </div>
-            </Card>
+            <PraticaCard key={p.id} pratica={p} clienteId={clienteId} isAdmin={isAdmin} />
           ))}
         </div>
       )}
     </div>
   );
 }
+
+function PraticaCard({ pratica: p, clienteId, isAdmin }: { pratica: PraticaRow; clienteId: string; isAdmin: boolean }) {
+  const qc = useQueryClient();
+  const [openChange, setOpenChange] = useState(false);
+  const [openAggior, setOpenAggior] = useState(false);
+  const [showTimeline, setShowTimeline] = useState(false);
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["pratiche-legali", clienteId] });
+    qc.invalidateQueries({ queryKey: ["pratica-timeline", p.id] });
+    qc.invalidateQueries({ queryKey: ["pratica-allegati", p.id] });
+  };
+  return (
+    <Card className="p-4">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div className="space-y-1 min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge variant="outline" className="capitalize">{p.tipo.replace(/_/g, " ")}</Badge>
+            <Badge className={`capitalize ${p.stato.startsWith("chiusa") ? "bg-muted text-foreground" : "bg-orange-500/15 text-orange-700"}`}>
+              {p.stato.replace(/_/g, " ")}
+            </Badge>
+          </div>
+          <div className="text-sm">
+            <span className="text-muted-foreground">Aperta il {fmtDate(p.data_apertura)}</span>
+            {p.studio_legale && <> · <span>{p.studio_legale}</span></>}
+            {p.riferimento_avvocato && <> · <span>{p.riferimento_avvocato}</span></>}
+          </div>
+          <div className="text-sm">
+            <span>Contestato: <strong>{fmtEuro(p.importo_contestato)}</strong></span>
+            {Number(p.importo_recuperato ?? 0) > 0 && <> · <span>Recuperato: <strong className="text-success">{fmtEuro(p.importo_recuperato)}</strong></span></>}
+          </div>
+          {p.note && <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap">{p.note}</p>}
+        </div>
+        {isAdmin && (
+          <div className="flex flex-col gap-1.5">
+            <Dialog open={openAggior} onOpenChange={setOpenAggior}>
+              <DialogTrigger asChild>
+                <Button size="sm" variant="outline">Aggiungi aggiornamento</Button>
+              </DialogTrigger>
+              <AggiornamentoPraticaDialog pratica={p} onClose={() => setOpenAggior(false)} onSaved={invalidate} />
+            </Dialog>
+            <Dialog open={openChange} onOpenChange={setOpenChange}>
+              <DialogTrigger asChild>
+                <Button size="sm" variant="outline">Cambia stato</Button>
+              </DialogTrigger>
+              <CambiaStatoPraticaDialog pratica={p} onClose={() => setOpenChange(false)} onSaved={invalidate} />
+            </Dialog>
+          </div>
+        )}
+      </div>
+      <div className="mt-3 flex items-center gap-3 text-xs">
+        <button type="button" onClick={() => setShowTimeline((v) => !v)} className="text-primary hover:underline">
+          {showTimeline ? "Nascondi" : "Mostra"} timeline aggiornamenti
+        </button>
+      </div>
+      {showTimeline && <PraticaTimeline praticaId={p.id} />}
+      <PraticaAllegati praticaId={p.id} canEdit={isAdmin} />
+    </Card>
+  );
+}
+
+function PraticaTimeline({ praticaId }: { praticaId: string }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["pratica-timeline", praticaId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("storico_pratiche_legali" as never)
+        .select("id, stato_precedente, stato_nuovo, nota, created_at")
+        .eq("pratica_id", praticaId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as Array<{ id: string; stato_precedente: string | null; stato_nuovo: string; nota: string | null; created_at: string }>;
+    },
+  });
+  if (isLoading) return <Skeleton className="h-16 mt-2" />;
+  if (!data?.length) return <p className="text-xs text-muted-foreground mt-2">Nessun aggiornamento registrato</p>;
+  return (
+    <ol className="mt-3 relative border-s pl-4 space-y-3">
+      {data.map((e) => (
+        <li key={e.id} className="relative">
+          <span className="absolute -left-[21px] top-1 size-3 rounded-full bg-primary border-2 border-background" />
+          <div className="text-xs text-muted-foreground">{new Date(e.created_at).toLocaleString("it-IT")}</div>
+          {e.stato_precedente && e.stato_precedente !== e.stato_nuovo && (
+            <div className="text-xs">
+              <Badge variant="outline" className="capitalize">{e.stato_precedente.replace(/_/g, " ")}</Badge>
+              <span className="mx-1">→</span>
+              <Badge variant="outline" className="capitalize">{e.stato_nuovo.replace(/_/g, " ")}</Badge>
+            </div>
+          )}
+          {e.nota && <p className="text-sm whitespace-pre-wrap mt-1">{e.nota}</p>}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function AggiornamentoPraticaDialog({ pratica, onClose, onSaved }: { pratica: PraticaRow; onClose: () => void; onSaved: () => void }) {
+  const [nota, setNota] = useState("");
+  const save = useMutation({
+    mutationFn: async () => {
+      if (!nota.trim()) throw new Error("Nota obbligatoria");
+      const { data: { user } } = await supabase.auth.getUser();
+      const { error } = await supabase.from("storico_pratiche_legali" as never).insert({
+        pratica_id: pratica.id,
+        stato_precedente: pratica.stato,
+        stato_nuovo: pratica.stato,
+        nota: nota.trim(),
+        modificato_da: user?.id ?? null,
+      } as never);
+      if (error) throw error;
+      await supabase.from("pratiche_legali" as never).update({ updated_at: new Date().toISOString() } as never).eq("id", pratica.id);
+    },
+    onSuccess: () => { toast.success("Aggiornamento registrato"); onSaved(); onClose(); setNota(""); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  return (
+    <DialogContent>
+      <DialogHeader><DialogTitle>Aggiungi aggiornamento</DialogTitle></DialogHeader>
+      <div className="space-y-2">
+        <Label>Nota cronologica *</Label>
+        <Textarea rows={4} value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Es. Telefonata con avvocato..." />
+      </div>
+      <DialogFooter>
+        <Button variant="outline" onClick={onClose}>Annulla</Button>
+        <Button onClick={() => save.mutate()} disabled={save.isPending || !nota.trim()}>Salva</Button>
+      </DialogFooter>
+    </DialogContent>
+  );
+}
+
+function PraticaAllegati({ praticaId, canEdit }: { praticaId: string; canEdit: boolean }) {
+  const qc = useQueryClient();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const { data } = useQuery({
+    queryKey: ["pratica-allegati", praticaId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pratiche_legali_allegati" as never)
+        .select("id, nome_file, storage_path, size_bytes, created_at")
+        .eq("pratica_id", praticaId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as Array<{ id: string; nome_file: string; storage_path: string; size_bytes: number | null; created_at: string }>;
+    },
+  });
+  const upload = useMutation({
+    mutationFn: async (file: File) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      const path = `pratiche/${praticaId}/${Date.now()}_${file.name.replace(/[^\w.\-]/g, "_")}`;
+      const { error: eUp } = await supabase.storage.from("pratiche-legali").upload(path, file);
+      if (eUp) throw eUp;
+      const { error } = await supabase.from("pratiche_legali_allegati" as never).insert({
+        pratica_id: praticaId,
+        nome_file: file.name,
+        storage_path: path,
+        mime_type: file.type || null,
+        size_bytes: file.size,
+        caricato_da: user?.id ?? null,
+      } as never);
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("Allegato caricato"); qc.invalidateQueries({ queryKey: ["pratica-allegati", praticaId] }); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  async function downloadFile(path: string, name: string) {
+    const { data, error } = await supabase.storage.from("pratiche-legali").createSignedUrl(path, 60);
+    if (error || !data) { toast.error("Errore download"); return; }
+    const a = document.createElement("a");
+    a.href = data.signedUrl; a.download = name; a.target = "_blank"; a.click();
+  }
+  return (
+    <div className="mt-3 border-t pt-3">
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <span className="text-xs font-medium flex items-center gap-1"><FileText className="size-3.5" /> Allegati ({data?.length ?? 0})</span>
+        {canEdit && (
+          <>
+            <input ref={inputRef} type="file" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) upload.mutate(f); if (inputRef.current) inputRef.current.value = ""; }} />
+            <Button size="sm" variant="outline" onClick={() => inputRef.current?.click()} disabled={upload.isPending}>
+              {upload.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />} Allega
+            </Button>
+          </>
+        )}
+      </div>
+      {data?.length ? (
+        <ul className="space-y-1">
+          {data.map((a) => (
+            <li key={a.id} className="flex items-center justify-between gap-2 text-xs">
+              <button onClick={() => downloadFile(a.storage_path, a.nome_file)} className="text-primary hover:underline truncate text-left">{a.nome_file}</button>
+              <span className="text-muted-foreground shrink-0">{a.size_bytes ? `${(a.size_bytes / 1024).toFixed(1)} KB` : ""}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
 
 function NuovaPraticaDialog({ clienteId, onClose, onSaved }: { clienteId: string; onClose: () => void; onSaved: () => void }) {
   const [form, setForm] = useState({

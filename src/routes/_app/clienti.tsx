@@ -966,7 +966,12 @@ function ClientiPage() {
                       />
                     </TableCell>
                     <TableCell className="font-medium">
-                      {c.ragione_sociale}
+                      <span className="inline-flex items-center gap-1.5">
+                        {(c as { in_gestione_legale?: boolean }).in_gestione_legale && (
+                          <span title="In gestione legale" className="text-orange-600">⚖</span>
+                        )}
+                        {c.ragione_sociale}
+                      </span>
                     </TableCell>
                     <TableCell className="text-sm font-mono">
                       {c.codice_gestionale || <span className="text-muted-foreground">—</span>}

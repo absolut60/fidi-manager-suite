@@ -844,6 +844,65 @@ export type Database = {
           },
         ]
       }
+      note_legali_gestionali: {
+        Row: {
+          categoria: string | null
+          cliente_id: string
+          created_at: string
+          id: string
+          importato_da: string | null
+          testo: string
+          ultima_sincronizzazione: string
+        }
+        Insert: {
+          categoria?: string | null
+          cliente_id: string
+          created_at?: string
+          id?: string
+          importato_da?: string | null
+          testo: string
+          ultima_sincronizzazione?: string
+        }
+        Update: {
+          categoria?: string | null
+          cliente_id?: string
+          created_at?: string
+          id?: string
+          importato_da?: string | null
+          testo?: string
+          ultima_sincronizzazione?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "note_legali_gestionali_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "note_legali_gestionali_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti_con_rischio"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "note_legali_gestionali_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "note_legali_gestionali_importato_da_fkey"
+            columns: ["importato_da"]
+            isOneToOne: false
+            referencedRelation: "importazioni"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifiche: {
         Row: {
           created_at: string
@@ -962,6 +1021,47 @@ export type Database = {
             columns: ["gestita_da"]
             isOneToOne: false
             referencedRelation: "profili"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pratiche_legali_allegati: {
+        Row: {
+          caricato_da: string | null
+          created_at: string
+          id: string
+          mime_type: string | null
+          nome_file: string
+          pratica_id: string
+          size_bytes: number | null
+          storage_path: string
+        }
+        Insert: {
+          caricato_da?: string | null
+          created_at?: string
+          id?: string
+          mime_type?: string | null
+          nome_file: string
+          pratica_id: string
+          size_bytes?: number | null
+          storage_path: string
+        }
+        Update: {
+          caricato_da?: string | null
+          created_at?: string
+          id?: string
+          mime_type?: string | null
+          nome_file?: string
+          pratica_id?: string
+          size_bytes?: number | null
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pratiche_legali_allegati_pratica_id_fkey"
+            columns: ["pratica_id"]
+            isOneToOne: false
+            referencedRelation: "pratiche_legali"
             referencedColumns: ["id"]
           },
         ]

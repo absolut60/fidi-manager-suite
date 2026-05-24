@@ -1610,12 +1610,138 @@ export const processBloccoFidoImport = inngest.createFunction(
         nonTrovati.push(...chunkRes.cMiss);
       }
 
+      // STEP 4b: foglio "Note Legale" — upsert note_legali_gestionali + flag in_gestione_legale
+      let noteImportate = 0;
+      let noteNonTrovate = 0;
+      await step.run("note-legali", async () => {
+        try {
+          const wb = await downloadWorkbook(filePath);
+          const targetName = wb.SheetNames.find(
+            (n) => bfaNormalize(n).replace(/\s+/g, "_").includes("note_legale"),
+          );
+          if (!targetName) {
+            logger.info('Foglio "Note Legale" non trovato — skip');
+            return;
+          }
+          const sheet = wb.Sheets[targetName];
+          const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
+            header: 1,
+            defval: "",
+            blankrows: false,
+          });
+          if (matrix.length < 2) return;
+          const headers = (matrix[0] ?? []) as unknown[];
+          let codIdx = -1;
+          let noteIdx = -1;
+          headers.forEach((h, j) => {
+            const n = bfaNormalize(h);
+            if (codIdx < 0 && (n === "cod cli" || n === "codice" || n === "codice cliente"))
+              codIdx = j;
+            if (noteIdx < 0 && n.includes("note legale")) noteIdx = j;
+          });
+          if (codIdx < 0 || noteIdx < 0) {
+            logger.info("Note Legale: colonne COD_CLI o Note Legale non trovate");
+            return;
+          }
+
+          // Raccogli righe (una per cliente, ultima vince)
+          const map = new Map<string, string>();
+          for (let i = 1; i < matrix.length; i++) {
+            const r = (matrix[i] ?? []) as unknown[];
+            const cod = String(r[codIdx] ?? "").trim().replace(/\.0$/, "");
+            const note = String(r[noteIdx] ?? "").trim();
+            if (!cod || !note) continue;
+            map.set(cod, note);
+          }
+          if (!map.size) return;
+
+          // Lookup cliente_id (riusa clientMap già popolato)
+          const missCodes = Array.from(map.keys()).filter((c) => !clientMap[c]);
+          if (missCodes.length) {
+            const BATCH = 500;
+            for (let i = 0; i < missCodes.length; i += BATCH) {
+              const slice = missCodes.slice(i, i + BATCH);
+              const { data } = await supabaseAdmin
+                .from("clienti")
+                .select("id, codice_gestionale")
+                .in("codice_gestionale", slice);
+              (data ?? []).forEach((c) => {
+                if (c.codice_gestionale) clientMap[c.codice_gestionale] = c.id;
+              });
+            }
+          }
+
+          const classificaCategoria = (testo: string): string => {
+            const t = testo.toLowerCase();
+            if (/\bd\.?\s*i\.?\b|decreto ingiuntivo|ricorso/.test(t)) return "Decreto Ingiuntivo";
+            if (/pignoramento/.test(t)) return "Pignoramento";
+            if (/sollecito/.test(t)) return "Sollecito Legale";
+            if (/pouey|sinistro/.test(t)) return "POUEY / Assicurazione";
+            if (/piano di rientro/.test(t)) return "Piano di Rientro";
+            if (/fallito|messa a perdita/.test(t)) return "Messa a Perdita";
+            return "Altro";
+          };
+
+          const clientiInGestione: string[] = [];
+          for (const [cod, testo] of map.entries()) {
+            const cid = clientMap[cod];
+            if (!cid) {
+              noteNonTrovate++;
+              continue;
+            }
+            const categoria = classificaCategoria(testo);
+            // Upsert (chiave: cliente_id univoco)
+            const { data: ex } = await supabaseAdmin
+              .from("note_legali_gestionali" as never)
+              .select("id")
+              .eq("cliente_id", cid)
+              .maybeSingle();
+            const payload = {
+              cliente_id: cid,
+              testo,
+              categoria,
+              importato_da: importazioneId,
+              ultima_sincronizzazione: new Date().toISOString(),
+            };
+            const exId = (ex as unknown as { id?: string } | null)?.id;
+            if (exId) {
+              await supabaseAdmin
+                .from("note_legali_gestionali" as never)
+                .update(payload as never)
+                .eq("id", exId);
+            } else {
+              await supabaseAdmin
+                .from("note_legali_gestionali" as never)
+                .insert(payload as never);
+            }
+
+            clientiInGestione.push(cid);
+            noteImportate++;
+          }
+
+          if (clientiInGestione.length) {
+            const BATCH = 500;
+            for (let i = 0; i < clientiInGestione.length; i += BATCH) {
+              await supabaseAdmin
+                .from("clienti")
+                .update({ in_gestione_legale: true } as never)
+                .in("id", clientiInGestione.slice(i, i + BATCH));
+            }
+          }
+          logger.info(
+            `Note Legale: ${noteImportate} importate, ${noteNonTrovate} non trovate`,
+          );
+        } catch (e) {
+          logger.error(`Note Legale errore: ${e instanceof Error ? e.message : String(e)}`);
+        }
+      });
+
       // STEP 5: stato finale
       await step.run("finalize", async () => {
         const summary = [
           {
             riga: 0,
-            errore: `Riepilogo: ${aggiornati} aggiornati, ${bloccati} bloccati, ${sbloccati} sbloccati, ${nonAttivi} non attivi, ${polizze} polizze POUEY, ${nonTrovati.length} non trovati`,
+            errore: `Riepilogo: ${aggiornati} aggiornati, ${bloccati} bloccati, ${sbloccati} sbloccati, ${nonAttivi} non attivi, ${polizze} polizze POUEY, ${noteImportate} note legali, ${nonTrovati.length + noteNonTrovate} non trovati`,
           },
         ];
         const { data: cur } = await supabaseAdmin
@@ -1635,12 +1761,13 @@ export const processBloccoFidoImport = inngest.createFunction(
       });
 
       logger.info(
-        `Blocco fido done: agg=${aggiornati}, blk=${bloccati}, sblk=${sbloccati}, nonAtt=${nonAttivi}, pol=${polizze}, miss=${nonTrovati.length}, err=${errors.length}`,
+        `Blocco fido done: agg=${aggiornati}, blk=${bloccati}, sblk=${sbloccati}, nonAtt=${nonAttivi}, pol=${polizze}, noteLeg=${noteImportate}, miss=${nonTrovati.length}, err=${errors.length}`,
       );
-      return { aggiornati, bloccati, sbloccati, nonAttivi, polizze, nonTrovati: nonTrovati.length, errori: errors.length };
+      return { aggiornati, bloccati, sbloccati, nonAttivi, polizze, noteImportate, noteNonTrovate, nonTrovati: nonTrovati.length, errori: errors.length };
     } catch (err) {
       await setImportazioneError(importazioneId, err instanceof Error ? err.message : String(err));
       throw err;
     }
   },
 );
+

@@ -2106,13 +2106,15 @@ function BloccoFidoAssicurazioneImportCard() {
   return (
     <Card className="p-5">
       <h2 className="font-semibold flex items-center gap-2 mb-1">
-        <ShieldCheck className="size-4" /> D · Importa Blocco Fido e Assicurazione
+        <ShieldCheck className="size-4" /> D · Importa Blocco Fido, Assicurazione e Note Legali
       </h2>
       <p className="text-xs text-muted-foreground mb-4">
         Carica lo stesso file Excel dello scadenziario. L'elaborazione avviene in background sul
-        server (foglio <code>BLOCCO_FIDO_ASSICURAZIONE</code>): aggiorna stato di blocco, fido
-        gestionale, polizza POUEY e flag <code>cliente_attivo</code> (fatturazione &ge; 01/01/2025).
+        server (fogli <code>BLOCCO_FIDO_ASSICURAZIONE</code> e <code>Note Legale</code>):
+        aggiorna stato di blocco, fido gestionale, polizza POUEY, flag{" "}
+        <code>cliente_attivo</code> (fatturazione &ge; 01/01/2025) e note legali dal gestionale.
       </p>
+
 
       {bg.inProgress && bg.progress && (
         <BgProgressBlock progress={bg.progress} fallbackTotal={0} />
