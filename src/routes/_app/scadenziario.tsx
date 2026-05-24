@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useState, Fragment } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, Calendar, FileText, Ban, CalendarClock, Scale } from "lucide-react";
+import { AlertTriangle, Calendar, FileText, Ban, CalendarClock, Scale, ChevronDown, ChevronUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -88,6 +88,25 @@ function ScadenziarioPage() {
   const [statoLegale, setStatoLegale] = useState<"tutti" | "in_legale" | "non_in_legale">("tutti");
   const [escludiBonifici, setEscludiBonifici] = useState(true);
   const [escludiLegale, setEscludiLegale] = useState(true);
+  const [expandedClienteId, setExpandedClienteId] = useState<string | null>(null);
+
+  const { data: rischioExpanded, isLoading: loadingRischio } = useQuery({
+    queryKey: ["rischio-expanded", expandedClienteId],
+    enabled: !!expandedClienteId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("clienti")
+        .select("fido_gestionale, fido_residuo, totale_rischio, doc_da_fatturare, doc_da_evadere, effetti_a_rischio, num_insoluti, dilazione_concordata, dilazione_effettiva")
+        .eq("id", expandedClienteId!)
+        .maybeSingle();
+      if (error) throw error;
+      return data as {
+        fido_gestionale: number | null; fido_residuo: number | null; totale_rischio: number | null;
+        doc_da_fatturare: number | null; doc_da_evadere: number | null; effetti_a_rischio: number | null;
+        num_insoluti: number | null; dilazione_concordata: number | null; dilazione_effettiva: number | null;
+      } | null;
+    },
+  });
 
   const { data: stores } = useQuery({
     queryKey: ["stores-list"],
@@ -406,32 +425,54 @@ function ScadenziarioPage() {
                   <TableHead className="text-right">Totale a scadere</TableHead>
                   <TableHead>Prossima scad.</TableHead>
                   <TableHead>Fascia</TableHead>
+                  <TableHead className="w-8"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {rows.map((r) => {
                   const storeName = stores?.find((s) => s.id === r.cliente.store_id)?.nome ?? "—";
                   const fatt = fatturatoMap?.get(r.cliente.id);
+                  const isExpanded = expandedClienteId === r.cliente.id;
                   return (
-                    <TableRow key={r.cliente.id} className="cursor-pointer" onClick={() => apriCliente(r.cliente.id)}>
-                      <TableCell className="font-medium">{r.cliente.ragione_sociale}</TableCell>
-                      <TableCell className="font-mono text-xs">{r.cliente.codice_gestionale ?? "—"}</TableCell>
-                      <TableCell className="text-xs">{storeName}</TableCell>
-                      <TableCell>{blockBadge(r.cliente)}</TableCell>
-                      <TableCell>{legaleBadge(r.cliente)}</TableCell>
-                      <TableCell className="text-right tabular-nums">{fatt && fatt.cur > 0 ? fmtEuro(fatt.cur) : "—"}</TableCell>
-                      <TableCell className="text-right tabular-nums text-muted-foreground">{fatt && fatt.prev > 0 ? fmtEuro(fatt.prev) : "—"}</TableCell>
-                      <TableCell className="text-right tabular-nums">{r.nScadute || "—"}</TableCell>
-                      <TableCell className="text-right tabular-nums font-semibold text-destructive">
-                        {r.totScad > 0 ? fmtEuro(r.totScad) : "—"}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">{r.nAScadere || "—"}</TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {r.totAScad > 0 ? fmtEuro(r.totAScad) : "—"}
-                      </TableCell>
-                      <TableCell className="text-sm">{fmtDate(r.prossima)}</TableCell>
-                      <TableCell>{fasciaBadge(r.fascia)}</TableCell>
-                    </TableRow>
+                    <Fragment key={r.cliente.id}>
+                      <TableRow
+                        key={r.cliente.id}
+                        className="cursor-pointer"
+                        onClick={() => setExpandedClienteId(isExpanded ? null : r.cliente.id)}
+                      >
+                        <TableCell className="font-medium">{r.cliente.ragione_sociale}</TableCell>
+                        <TableCell className="font-mono text-xs">{r.cliente.codice_gestionale ?? "—"}</TableCell>
+                        <TableCell className="text-xs">{storeName}</TableCell>
+                        <TableCell>{blockBadge(r.cliente)}</TableCell>
+                        <TableCell>{legaleBadge(r.cliente)}</TableCell>
+                        <TableCell className="text-right tabular-nums">{fatt && fatt.cur > 0 ? fmtEuro(fatt.cur) : "—"}</TableCell>
+                        <TableCell className="text-right tabular-nums text-muted-foreground">{fatt && fatt.prev > 0 ? fmtEuro(fatt.prev) : "—"}</TableCell>
+                        <TableCell className="text-right tabular-nums">{r.nScadute || "—"}</TableCell>
+                        <TableCell className="text-right tabular-nums font-semibold text-destructive">
+                          {r.totScad > 0 ? fmtEuro(r.totScad) : "—"}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">{r.nAScadere || "—"}</TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {r.totAScad > 0 ? fmtEuro(r.totAScad) : "—"}
+                        </TableCell>
+                        <TableCell className="text-sm">{fmtDate(r.prossima)}</TableCell>
+                        <TableCell>{fasciaBadge(r.fascia)}</TableCell>
+                        <TableCell className="w-8 text-muted-foreground">
+                          {isExpanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+                        </TableCell>
+                      </TableRow>
+                      {isExpanded && (
+                        <TableRow key={`${r.cliente.id}-exp`} className="bg-muted/40 hover:bg-muted/40">
+                          <TableCell colSpan={14} className="px-4 py-3">
+                            <ExpandedRischioPanel
+                              loading={loadingRischio}
+                              data={rischioExpanded}
+                              onApri={(e: React.MouseEvent) => { e.stopPropagation(); apriCliente(r.cliente.id); }}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </Fragment>
                   );
                 })}
               </TableBody>
@@ -458,5 +499,67 @@ function KpiCard({ label, value, icon: Icon, tone }: { label: string; value: str
         <div className={`size-9 rounded-lg flex items-center justify-center ${cls}`}><Icon className="size-4" /></div>
       </div>
     </Card>
+  );
+}
+
+function ritardoText(dc: number | null, de: number | null): { text: string; cls: string } {
+  if (dc == null || de == null) return { text: "—", cls: "text-muted-foreground" };
+  const diff = Number(de) - Number(dc);
+  if (diff > 0) return { text: `+${diff} gg`, cls: "text-destructive font-medium" };
+  return { text: "In orario", cls: "text-success font-medium" };
+}
+
+type RischioData = {
+  fido_gestionale: number | null; fido_residuo: number | null; totale_rischio: number | null;
+  doc_da_fatturare: number | null; doc_da_evadere: number | null; effetti_a_rischio: number | null;
+  num_insoluti: number | null; dilazione_concordata: number | null; dilazione_effettiva: number | null;
+} | null | undefined;
+
+function ExpandedRischioPanel({ loading, data, onApri }: { loading: boolean; data: RischioData; onApri: (e: React.MouseEvent) => void }) {
+  if (loading) {
+    return (
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="h-14 rounded bg-muted animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+  const d = data ?? ({} as NonNullable<RischioData>);
+  const fr = d.fido_residuo;
+  const ddt = Number(d.doc_da_fatturare ?? 0);
+  const ord = Number(d.doc_da_evadere ?? 0);
+  const ni = d.num_insoluti;
+  const eff = Number(d.effetti_a_rischio ?? 0);
+  const r = ritardoText(d.dilazione_concordata ?? null, d.dilazione_effettiva ?? null);
+  return (
+    <div className="space-y-3" onClick={(e) => e.stopPropagation()}>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+        <CellInfo label="Fido gestionale" value={fmtEuro(d.fido_gestionale)} />
+        <CellInfo label="Fido residuo" value={fmtEuro(fr)} cls={fr != null && Number(fr) < 0 ? "text-destructive font-medium" : ""} />
+        <CellInfo label="DDT da fatturare" value={fmtEuro(ddt)} cls={ddt > 0 ? "text-primary font-medium" : ""} />
+        <CellInfo label="Ordini aperti" value={fmtEuro(ord)} hint="(non concorre)" />
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+        <CellInfo label="Insoluti storici" value={ni == null ? "—" : String(ni)} cls={ni != null && Number(ni) > 0 ? "text-destructive font-medium" : ""} />
+        <CellInfo label="Effetti a rischio" value={fmtEuro(eff)} cls={eff > 0 ? "text-orange-600 font-medium" : ""} />
+        <CellInfo label="Dilaz. concordata" value={d.dilazione_concordata != null ? `${d.dilazione_concordata} gg` : "—"} />
+        <CellInfo label="Ritardo medio" value={r.text} cls={r.cls} />
+      </div>
+      <div className="pt-1">
+        <button type="button" onClick={onApri} className="text-xs text-primary hover:underline font-medium">
+          Apri scheda cliente →
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CellInfo({ label, value, cls, hint }: { label: string; value: string; cls?: string; hint?: string }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[10px] font-medium text-muted-foreground uppercase truncate">{label}</p>
+      <p className={`tabular-nums truncate ${cls ?? ""}`}>{value}{hint && <span className="text-[10px] text-muted-foreground ml-1">{hint}</span>}</p>
+    </div>
   );
 }

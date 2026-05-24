@@ -28,7 +28,7 @@ import { ClienteInsolutiTab } from "@/components/cliente-insoluti-tab";
 import { ClienteFatturato } from "@/components/cliente-fatturato";
 import { formatEuro } from "@/lib/fidi";
 import { classificaScadenza } from "@/lib/scadenze";
-import { Ban, Calendar, Clock, Bell, CheckCircle2, Shield, ShieldOff, Scale } from "lucide-react";
+import { Ban, Calendar, Clock, Bell, CheckCircle2, Shield, ShieldOff, Scale, FileText, Activity } from "lucide-react";
 
 
 
@@ -752,6 +752,12 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
           <MiniStat label="Fido gestionale" value={formatEuro(fidoGest)} />
           <MiniStat label="Totale rischio" value={formatEuro(totRischio)} />
           <MiniStat label="Fido residuo" value={formatEuro(fidoResiduo)} tone={fidoResiduo != null && fidoResiduo < 0 ? "destructive" : "default"} />
+          {(() => {
+            const pctUtil = fidoGest > 0 ? Math.round((totRischio / fidoGest) * 100) : null;
+            const tone: "success" | "warning" | "destructive" | "muted" =
+              pctUtil == null ? "muted" : pctUtil >= 100 ? "destructive" : pctUtil >= 70 ? "warning" : "success";
+            return <MiniStat label="% fido utilizzato" value={pctUtil == null ? "—" : `${pctUtil}%`} tone={tone} />;
+          })()}
           <MiniStat label="Scaduto" value={formatEuro(cliente.scaduto)} tone={scaduto > 0 ? "destructive" : "default"} />
           <MiniStat label="A scadere" value={formatEuro(cliente.a_scadere)} />
           <MiniStat label="Cond. pagamento" value={condPag || "—"} />
@@ -776,6 +782,77 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
           </Card>
         </div>
       </section>
+
+      {/* Sezione 1b — Composizione esposizione */}
+      {(() => {
+        const ddt = Number(cliente.doc_da_fatturare ?? 0);
+        const eff = Number(cliente.effetti_a_rischio ?? 0);
+        const ord = Number(cliente.doc_da_evadere ?? 0);
+        if (!ddt && !eff && !ord) return null;
+        return (
+          <section className="space-y-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+              <FileText className="size-3.5" /> Composizione esposizione
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <MiniStat
+                label="DDT da fatturare"
+                value={formatEuro(ddt)}
+                tone={ddt > 0 ? "info" : "muted"}
+                title="Materiale consegnato non ancora fatturato — concorre al rischio"
+              />
+              <MiniStat
+                label="Effetti a rischio (RB)"
+                value={formatEuro(eff)}
+                tone={eff > 0 ? "warning" : "muted"}
+                title="Effetti presentati non ancora incassati"
+              />
+              <MiniStat
+                label="Ordini da evadere"
+                value={formatEuro(ord)}
+                tone={ord > 0 ? "info" : "muted"}
+                hint="non concorre al fido"
+              />
+            </div>
+          </section>
+        );
+      })()}
+
+      {/* Sezione 1c — Comportamento pagamento */}
+      {(() => {
+        const ni = cliente.num_insoluti;
+        const dc = cliente.dilazione_concordata;
+        const de = cliente.dilazione_effettiva;
+        if (ni == null && dc == null && de == null) return null;
+        const r = ritardoHelper(dc, de);
+        return (
+          <section className="space-y-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+              <Clock className="size-3.5" /> Comportamento pagamento
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <MiniStat
+                label="Insoluti storici"
+                value={ni == null ? "—" : String(ni)}
+                tone={ni != null && Number(ni) > 0 ? "destructive" : "muted"}
+              />
+              <MiniStat
+                label="Dilazione concordata"
+                value={dc != null ? `${dc} gg` : "—"}
+                tone="muted"
+              />
+              <MiniStat
+                label="Ritardo medio reale"
+                value={r.text}
+                tone={r.tone}
+                title="Differenza tra dilazione effettiva e concordata"
+              />
+            </div>
+          </section>
+        );
+      })()}
+
+
 
       {/* Sezione 2 — Riepilogo insoluti (spostata sopra al fatturato) */}
       <section className="space-y-2">
@@ -855,19 +932,33 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
 }
 
 
-function MiniStat({ label, value, tone = "default", icon: Icon }: { label: string; value: string; tone?: "default" | "destructive" | "warning"; icon?: typeof Calendar }) {
-  const valCls = tone === "destructive" ? "text-destructive" : tone === "warning" ? "text-orange-600" : "";
+function MiniStat({ label, value, tone = "default", icon: Icon, hint, title }: { label: string; value: string; tone?: "default" | "destructive" | "warning" | "info" | "success" | "muted"; icon?: typeof Calendar; hint?: string; title?: string }) {
+  const valCls =
+    tone === "destructive" ? "text-destructive"
+    : tone === "warning" ? "text-orange-600"
+    : tone === "info" ? "text-primary"
+    : tone === "success" ? "text-success"
+    : tone === "muted" ? "text-muted-foreground"
+    : "";
   return (
-    <Card className="px-3 py-2">
+    <Card className="px-3 py-2" title={title}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-[10px] font-medium text-muted-foreground uppercase truncate">{label}</p>
           <p className={`text-base font-bold mt-0.5 tabular-nums truncate ${valCls}`}>{value}</p>
+          {hint && <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{hint}</p>}
         </div>
         {Icon && <Icon className="size-3.5 text-muted-foreground shrink-0" />}
       </div>
     </Card>
   );
+}
+
+function ritardoHelper(dilConc: number | null | undefined, dilEff: number | null | undefined): { text: string; tone: "destructive" | "success" | "muted" } {
+  if (dilConc == null || dilEff == null) return { text: "—", tone: "muted" };
+  const diff = Number(dilEff) - Number(dilConc);
+  if (diff > 0) return { text: `+${diff} gg`, tone: "destructive" };
+  return { text: "In orario", tone: "success" };
 }
 
 

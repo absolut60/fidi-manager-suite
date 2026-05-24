@@ -41,7 +41,14 @@ function semaforoCliente(c: any): { dot: string; tone: string; label: "Verde" | 
 }
 
 const CLIENTE_COLS =
-  "ragione_sociale, partita_iva, fido_gestionale, totale_rischio, fido_residuo, scaduto, a_scadere, num_insoluti, condizioni_pagamento, condizione_pagamento_desc, dilazione_concordata, dilazione_effettiva, bloccato, in_gestione_legale, cliente_attivo, ultima_data_fatturazione, ultima_sincronizzazione";
+  "ragione_sociale, partita_iva, fido_gestionale, totale_rischio, fido_residuo, scaduto, a_scadere, num_insoluti, doc_da_fatturare, doc_da_evadere, effetti_a_rischio, condizioni_pagamento, condizione_pagamento_desc, dilazione_concordata, dilazione_effettiva, bloccato, in_gestione_legale, cliente_attivo, ultima_data_fatturazione, ultima_sincronizzazione";
+
+function ritardoHelper(dilConc: number | null | undefined, dilEff: number | null | undefined): { text: string; cls: string } {
+  if (dilConc == null || dilEff == null) return { text: "—", cls: "text-muted-foreground" };
+  const diff = Number(dilEff) - Number(dilConc);
+  if (diff > 0) return { text: `+${diff} gg`, cls: "text-destructive font-medium" };
+  return { text: "In orario", cls: "text-success font-medium" };
+}
 
 function ApprovazioniPage() {
   const qc = useQueryClient();
@@ -516,10 +523,36 @@ function ApprovazioniPage() {
                       <Field label="Fido residuo"><span className={residuo < 0 ? "text-destructive font-medium" : ""}>{formatEuro(residuo)}</span></Field>
                       <Field label="Scaduto"><span className={scaduto > 0 ? "text-destructive font-medium" : ""}>{formatEuro(scaduto)}</span></Field>
                       <Field label="A scadere">{formatEuro(Number(c.a_scadere ?? 0))}</Field>
-                      <Field label="Insoluti">{c.num_insoluti ?? 0}</Field>
+                      <Field label="DDT da fatturare">
+                        <span className={Number(c.doc_da_fatturare ?? 0) > 0 ? "text-primary font-medium" : ""}>
+                          {formatEuro(Number(c.doc_da_fatturare ?? 0))}
+                        </span>
+                      </Field>
+                      <Field label="Effetti a rischio (RB)">
+                        <span className={Number(c.effetti_a_rischio ?? 0) > 0 ? "text-warning font-medium" : ""}>
+                          {formatEuro(Number(c.effetti_a_rischio ?? 0))}
+                        </span>
+                      </Field>
+                      <Field label="Ordini da evadere">
+                        <span>{formatEuro(Number(c.doc_da_evadere ?? 0))}</span>
+                        <span className="text-xs text-muted-foreground ml-1">(non concorre al fido)</span>
+                      </Field>
+                      <Field label="Insoluti">
+                        <span className={Number(c.num_insoluti ?? 0) > 0 ? "text-destructive font-medium" : ""}>
+                          {c.num_insoluti ?? 0}
+                        </span>
+                      </Field>
                       <Field label="Condizione pagamento">{c.condizione_pagamento_desc ?? c.condizioni_pagamento ?? "—"}</Field>
                       <Field label="Dilazione concordata">{c.dilazione_concordata ?? "—"} gg</Field>
                       <Field label="Dilazione effettiva">{c.dilazione_effettiva ?? "—"} gg</Field>
+                      {(() => {
+                        const r = ritardoHelper(c.dilazione_concordata, c.dilazione_effettiva);
+                        return (
+                          <Field label="Ritardo medio reale">
+                            <span className={r.cls} title="Differenza tra dilazione effettiva e concordata">{r.text}</span>
+                          </Field>
+                        );
+                      })()}
                       <Field label="Stato">
                         {c.bloccato ? <Badge className="bg-destructive/15 text-destructive">Bloccato</Badge>
                           : c.in_gestione_legale ? <Badge className="bg-destructive/15 text-destructive">Legale</Badge>
