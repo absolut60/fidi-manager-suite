@@ -41,6 +41,7 @@ export default function AssicurazioniPage() {
   const [stato, setStato] = useState<StatoFilter>("tutti");
   const [storeId, setStoreId] = useState<string>("all");
   const [q, setQ] = useState("");
+  const [scadenza30, setScadenza30] = useState(false);
 
   const { data: stores } = useQuery({
     queryKey: ["stores-list"],
