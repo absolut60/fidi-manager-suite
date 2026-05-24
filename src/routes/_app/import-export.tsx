@@ -2280,19 +2280,30 @@ function BloccoFidoAssicurazioneImportCard() {
   const [done, setDone] = useState(false);
   const [phase, setPhase] = useState<"idle" | "parsing" | "uploading" | "triggering">("idle");
 
+  const [logs, setLogs] = useState<string[]>([]);
+  const pushLog = (m: string) => {
+    const ts = new Date().toLocaleTimeString("it-IT");
+    setLogs((prev) => [...prev, `[${ts}] ${m}`]);
+  };
+
   function reset() {
     setFile(null);
     setImportazioneId(null);
     setDone(false);
     setPhase("idle");
+    setLogs([]);
     if (fileRef.current) fileRef.current.value = "";
   }
 
   const startMut = useMutation({
     mutationFn: async (f: File) => {
+      setLogs([]);
       setPhase("parsing");
-      const parsed = await parseBloccoFidoFile(f);
+      const parsed = await parseBloccoFidoFile(f, pushLog);
       if (!parsed.rowsBlocco.length) throw new Error("Nessuna riga utile nel foglio BLOCCO_FIDO_ASSICURAZIONE");
+      pushLog(
+        `Riepilogo parsing: ${parsed.rowsBlocco.length} righe blocco, ${parsed.rowsNote.length} note legali`,
+      );
 
       setPhase("uploading");
       const { data: { user } } = await supabase.auth.getUser();
@@ -2308,6 +2319,7 @@ function BloccoFidoAssicurazioneImportCard() {
         .select("id")
         .single();
       if (impErr) throw impErr;
+      pushLog(`Importazione creata id=${imp.id}`);
 
       const baseDir = `blocco-fido/${imp.id}`;
       const chunkSize = 500;
@@ -2336,11 +2348,35 @@ function BloccoFidoAssicurazioneImportCard() {
       };
 
       await uploadJson(`${baseDir}/manifest.json`, manifest);
+      pushLog(`Manifest caricato (${totalChunks} chunk previsti)`);
+
       await uploadJson(`${baseDir}/note-legali.json`, parsed.rowsNote);
-      for (let i = 0; i < totalChunks; i++) {
+      pushLog(`note-legali.json caricato (${parsed.rowsNote.length} note)`);
+
+      let doneChunks = 0;
+      const concurrency = 4;
+      const indexes = Array.from({ length: totalChunks }, (_, i) => i);
+      const runOne = async (i: number) => {
         const slice = parsed.rowsBlocco.slice(i * chunkSize, (i + 1) * chunkSize);
         await uploadJson(`${baseDir}/blocco-chunk-${i}.json`, slice);
+        doneChunks++;
+        pushLog(`Chunk ${doneChunks}/${totalChunks} caricato su Storage`);
+      };
+      // semplice pool
+      const workers: Promise<void>[] = [];
+      let cursor = 0;
+      for (let w = 0; w < Math.min(concurrency, totalChunks); w++) {
+        workers.push(
+          (async () => {
+            while (cursor < indexes.length) {
+              const i = indexes[cursor++];
+              await runOne(i);
+            }
+          })(),
+        );
       }
+      await Promise.all(workers);
+      pushLog(`Tutti i ${totalChunks} chunk caricati su Storage`);
 
       await supabase
         .from("importazioni")
@@ -2348,6 +2384,7 @@ function BloccoFidoAssicurazioneImportCard() {
         .eq("id", imp.id);
 
       setPhase("triggering");
+      pushLog("Tutti i JSON caricati, invio evento Inngest…");
       await triggerImport({
         data: {
           fonte: "blocco_fido_assicurazione",
@@ -2355,6 +2392,7 @@ function BloccoFidoAssicurazioneImportCard() {
           filePath: `${baseDir}/manifest.json`,
         },
       });
+      pushLog("Evento Inngest inviato. Elaborazione server in corso.");
 
       return imp.id;
     },
@@ -2367,6 +2405,7 @@ function BloccoFidoAssicurazioneImportCard() {
     },
     onError: (e: Error) => {
       setPhase("idle");
+      pushLog(`ERRORE: ${e.message}`);
       toast.error(e.message);
     },
   });
