@@ -2142,12 +2142,16 @@ function bfaClientDateISO(v: unknown): string | null {
   return null;
 }
 
-async function parseBloccoFidoFile(file: File): Promise<{
+async function parseBloccoFidoFile(
+  file: File,
+  log: (msg: string) => void = () => {},
+): Promise<{
   rowsBlocco: BfaParsedRow[];
   rowsNote: BfaNoteRow[];
   foglioNotePresente: boolean;
   warnings: string[];
 }> {
+  log(`Lettura file ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)…`);
   const buffer = await file.arrayBuffer();
   const wb = XLSX.read(buffer, {
     type: "array",
@@ -2162,10 +2166,11 @@ async function parseBloccoFidoFile(file: File): Promise<{
     bookProps: false,
     bookVBA: false,
   });
+  log(`Fogli trovati: ${wb.SheetNames.join(", ")}`);
 
-  const foglioBlocco = wb.SheetNames.find(
-    (n) => n.trim().toUpperCase() === "BLOCCO_FIDO_ASSICURAZIONE",
-  );
+  const foglioBlocco =
+    (wb.Sheets["BLOCCO_FIDO_ASSICURAZIONE"] ? "BLOCCO_FIDO_ASSICURAZIONE" : null) ??
+    wb.SheetNames.find((n) => n.trim().toUpperCase() === "BLOCCO_FIDO_ASSICURAZIONE");
   if (!foglioBlocco) throw new Error("Foglio BLOCCO_FIDO_ASSICURAZIONE non trovato nel file");
 
   const matrix = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[foglioBlocco], {
@@ -2173,15 +2178,26 @@ async function parseBloccoFidoFile(file: File): Promise<{
     defval: "",
     blankrows: false,
   });
+  log(`Foglio "${foglioBlocco}": ${Math.max(0, matrix.length - 1)} righe dati trovate`);
   if (!matrix.length) throw new Error("Foglio BLOCCO_FIDO_ASSICURAZIONE vuoto");
 
-  const headers = (matrix[0] as unknown[]).map((h) => String(h ?? "").trim().toLowerCase());
-  const iCod = headers.indexOf("cod_cli");
-  const iInd = headers.indexOf("ind_blocco");
-  const iData = headers.indexOf("ultima data fatturazione");
-  const iFido = headers.indexOf("fido");
-  const iAss = headers.indexOf("assicurazione");
+  const headers = (matrix[0] as unknown[]).map((h) => normalize(String(h ?? "")));
+  const findH = (...cands: string[]) => {
+    for (const c of cands) {
+      const i = headers.indexOf(normalize(c));
+      if (i !== -1) return i;
+    }
+    return -1;
+  };
+  const iCod = findH("cod_cli", "cod cli", "codcli");
+  const iInd = findH("ind_blocco", "ind blocco");
+  const iData = findH("ultima data fatturazione", "ultima_data_fatturazione");
+  const iFido = findH("fido");
+  const iAss = findH("assicurazione");
   if (iCod === -1) throw new Error("Colonna COD_CLI non trovata in BLOCCO_FIDO_ASSICURAZIONE");
+  log(
+    `Indici colonne: cod=${iCod} ind=${iInd} data=${iData} fido=${iFido} ass=${iAss}`,
+  );
 
   const rowsBlocco: BfaParsedRow[] = [];
   for (let i = 1; i < matrix.length; i++) {
@@ -2190,34 +2206,53 @@ async function parseBloccoFidoFile(file: File): Promise<{
     if (!cod) continue;
     rowsBlocco.push({
       cod_cli: cod,
-      ind_blocco: iInd >= 0 ? (bfaClientToNum(r[iInd]) != null ? Math.trunc(bfaClientToNum(r[iInd]) as number) : null) : null,
+      ind_blocco:
+        iInd >= 0
+          ? bfaClientToNum(r[iInd]) != null
+            ? Math.trunc(bfaClientToNum(r[iInd]) as number)
+            : null
+          : null,
       ultima_data_fatturazione: iData >= 0 ? bfaClientDateISO(r[iData]) : null,
       fido: iFido >= 0 ? bfaClientToNum(r[iFido]) : null,
       assicurazione: iAss >= 0 ? bfaClientToNum(r[iAss]) : null,
     });
   }
+  log(`Righe valide BLOCCO_FIDO_ASSICURAZIONE: ${rowsBlocco.length}`);
 
   const warnings: string[] = [];
-  const foglioNote = wb.SheetNames.find((n) => n.trim().toLowerCase() === "note legale");
+  const foglioNote =
+    (wb.Sheets["Note Legale"] ? "Note Legale" : null) ??
+    wb.SheetNames.find((n) => {
+      const k = n.trim().toLowerCase().replace(/\s+/g, "").replace(/_/g, "");
+      return k === "notelegale" || k === "notelegali";
+    });
   const rowsNote: BfaNoteRow[] = [];
   if (!foglioNote) {
     warnings.push("Foglio 'Note Legale' non trovato — nessuna nota importata");
+    log("Foglio 'Note Legale' NON trovato");
   } else {
     const nMatrix = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[foglioNote], {
       header: 1,
       defval: "",
       blankrows: false,
     });
+    log(`Foglio "${foglioNote}": ${Math.max(0, nMatrix.length - 1)} righe dati`);
     if (nMatrix.length < 2) {
       warnings.push("Foglio 'Note Legale' vuoto — nessuna nota importata");
     } else {
-      const nHeaders = (nMatrix[0] as unknown[]).map((h) =>
-        String(h ?? "").trim().toLowerCase(),
-      );
-      const iCodN = nHeaders.indexOf("cod_cli");
-      const iNota = nHeaders.indexOf("note legale");
+      const nHeaders = (nMatrix[0] as unknown[]).map((h) => normalize(String(h ?? "")));
+      const findNH = (...cands: string[]) => {
+        for (const c of cands) {
+          const i = nHeaders.indexOf(normalize(c));
+          if (i !== -1) return i;
+        }
+        return -1;
+      };
+      const iCodN = findNH("cod_cli", "cod cli", "codcli");
+      const iNota = findNH("note legale", "note legali", "nota legale", "nota");
       if (iCodN === -1 || iNota === -1) {
         warnings.push("Foglio 'Note Legale': colonne mancanti — nessuna nota importata");
+        log(`Note Legale colonne mancanti (cod=${iCodN}, nota=${iNota})`);
       } else {
         const seen = new Map<string, string>();
         for (let i = 1; i < nMatrix.length; i++) {
@@ -2228,6 +2263,7 @@ async function parseBloccoFidoFile(file: File): Promise<{
           seen.set(cod, nota);
         }
         for (const [cod_cli, nota] of seen) rowsNote.push({ cod_cli, nota });
+        log(`Note legali uniche parsate: ${rowsNote.length}`);
       }
     }
   }
