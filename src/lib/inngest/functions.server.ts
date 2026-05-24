@@ -1363,135 +1363,81 @@ export const processBloccoFidoImport = inngest.createFunction(
   async ({ event, step, logger }) => {
     const { importazioneId, filePath } = event.data as EventData;
     try {
-      // STEP 1: download + parse ENTRAMBI i fogli (match esatto sui nomi)
-      const parseResult = await step.run("parse", async () => {
-        const wb = await downloadWorkbook(filePath, [
-          "BLOCCO_FIDO_ASSICURAZIONE",
-          "Blocco_Fido_Assicurazione",
-          "blocco_fido_assicurazione",
-          "Note Legale",
-          "Note Legali",
-          "NOTE LEGALE",
-          "NOTE LEGALI",
-          "note legale",
-          "note legali",
-        ]);
-
-        // Foglio 1 — match esatto case-insensitive: "BLOCCO_FIDO_ASSICURAZIONE"
-        const foglioBlocco = wb.SheetNames.find(
-          (n) => n.trim().toUpperCase() === "BLOCCO_FIDO_ASSICURAZIONE",
-        );
-        if (!foglioBlocco) {
-          await supabaseAdmin
-            .from("importazioni")
-            .update({
-              log_errori: [
-                { riga: 0, errore: "ERRORE: Foglio BLOCCO_FIDO_ASSICURAZIONE non trovato nel file" },
-              ],
-              stato: "completata_con_errori",
-              completata_at: new Date().toISOString(),
-            } as never)
-            .eq("id", importazioneId);
-          throw new Error("Foglio BLOCCO_FIDO_ASSICURAZIONE non trovato");
+      // STEP 1: carica staging JSON (parsing fatto client-side, niente XLSX nel Worker)
+      const parseResult = await step.run("load-staging", async () => {
+        // filePath ora punta a "blocco-fido/{importazioneId}/manifest.json"
+        const manifestPath = filePath;
+        if (!manifestPath.endsWith("manifest.json")) {
+          throw new Error(
+            "Import legacy: il file Excel deve essere ri-caricato dalla UI per generare lo staging JSON",
+          );
         }
+        const baseDir = manifestPath.replace(/\/manifest\.json$/, "");
 
-        const sheet = wb.Sheets[foglioBlocco];
-        const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
-          header: 1,
-          defval: "",
-          blankrows: false,
-        });
-        if (!matrix.length) throw new Error("Foglio BLOCCO_FIDO_ASSICURAZIONE vuoto");
+        const { data: manFile, error: manErr } = await supabaseAdmin.storage
+          .from("import-files")
+          .download(manifestPath);
+        if (manErr || !manFile) throw new Error(`Download manifest fallito: ${manErr?.message ?? "no data"}`);
+        const manifest = JSON.parse(await manFile.text()) as {
+          kind: string;
+          totaleBlocco: number;
+          totaleNote: number;
+          foglioNotePresente: boolean;
+          chunkSize: number;
+          totalChunks: number;
+          warnings?: string[];
+        };
 
-        const headers = (matrix[0] ?? []) as unknown[];
-        const colMap: Partial<Record<"cod_cli" | "ind_blocco" | "ultima_data_fatturazione" | "fido" | "assicurazione", number>> = {};
-        headers.forEach((h, j) => {
-          const k = String(h ?? "").trim().toLowerCase();
-          const mapped = COL_MAP_BLOCCO[k];
-          if (mapped) colMap[mapped] = j;
-        });
-        if (colMap.cod_cli == null) {
-          throw new Error("Colonna COD_CLI non trovata nel foglio BLOCCO_FIDO_ASSICURAZIONE");
-        }
-
+        // Scarica tutti i chunk BLOCCO (sono JSON leggeri, max 500 righe ognuno)
         const rows: BFARow[] = [];
-        for (let i = 1; i < matrix.length; i++) {
-          const r = (matrix[i] ?? []) as unknown[];
-          if (!r.some((c) => String(c ?? "").trim() !== "")) continue;
-          const codStr = String(r[colMap.cod_cli] ?? "").trim().replace(/\.0$/, "");
-          if (!codStr) continue;
-          rows.push({
-            riga: i + 1,
-            codice_gestionale: codStr,
-            ind_blocco: colMap.ind_blocco != null ? bfaToInt(r[colMap.ind_blocco]) : null,
-            ultima_data_fatturazione:
-              colMap.ultima_data_fatturazione != null
-                ? bfaDateISO(r[colMap.ultima_data_fatturazione])
-                : null,
-            fido: colMap.fido != null ? bfaToNum(r[colMap.fido]) : null,
-            assicurazione: colMap.assicurazione != null ? bfaToNum(r[colMap.assicurazione]) : null,
+        for (let ci = 0; ci < manifest.totalChunks; ci++) {
+          const path = `${baseDir}/blocco-chunk-${ci}.json`;
+          const { data: chunkFile, error: chunkErr } = await supabaseAdmin.storage
+            .from("import-files")
+            .download(path);
+          if (chunkErr || !chunkFile) throw new Error(`Download chunk ${ci} fallito: ${chunkErr?.message ?? "no data"}`);
+          const chunk = JSON.parse(await chunkFile.text()) as Array<{
+            cod_cli: string;
+            ind_blocco: number | null;
+            ultima_data_fatturazione: string | null;
+            fido: number | null;
+            assicurazione: number | null;
+          }>;
+          chunk.forEach((r, idx) => {
+            rows.push({
+              riga: ci * manifest.chunkSize + idx + 2,
+              codice_gestionale: String(r.cod_cli),
+              ind_blocco: r.ind_blocco,
+              ultima_data_fatturazione: r.ultima_data_fatturazione,
+              fido: r.fido,
+              assicurazione: r.assicurazione,
+            });
           });
         }
 
-        // Foglio 2 — match esatto case-insensitive: "note legale" (warning, non bloccante)
-        const warnings: Array<{ riga: number; errore: string }> = [];
-        const foglioNote = wb.SheetNames.find(
-          (n) => n.trim().toLowerCase() === "note legale",
-        );
+        // Scarica note legali
         const noteLegali: Array<{ cod_cli: string; nota: string }> = [];
-        let noteSheetFound = false;
-        let noteHeaderOk = false;
-
-        if (!foglioNote) {
-          warnings.push({
-            riga: 0,
-            errore: "ATTENZIONE: Foglio Note Legale non trovato — nessuna nota importata",
-          });
-        } else {
-          noteSheetFound = true;
-          const nSheet = wb.Sheets[foglioNote];
-          const nMatrix = XLSX.utils.sheet_to_json<unknown[]>(nSheet, {
-            header: 1,
-            defval: "",
-            blankrows: false,
-          });
-          if (nMatrix.length >= 2) {
-            const nHeaders = (nMatrix[0] ?? []) as unknown[];
-            const nCol: Partial<Record<"cod_cli" | "nota", number>> = {};
-            nHeaders.forEach((h, j) => {
-              const k = String(h ?? "").trim().toLowerCase();
-              const mapped = COL_MAP_NOTE[k];
-              if (mapped) nCol[mapped] = j;
-            });
-            if (nCol.cod_cli == null) {
-              throw new Error("Colonna COD_CLI non trovata nel foglio Note Legale");
-            }
-            if (nCol.nota == null) {
-              warnings.push({
-                riga: 0,
-                errore: "Foglio Note Legale: colonna 'Note Legale' non trovata — nessuna nota importata",
-              });
-            } else {
-              noteHeaderOk = true;
-              const seen = new Map<string, string>();
-              for (let i = 1; i < nMatrix.length; i++) {
-                const r = (nMatrix[i] ?? []) as unknown[];
-                const cod = String(r[nCol.cod_cli] ?? "").trim().replace(/\.0$/, "");
-                const nota = String(r[nCol.nota!] ?? "").trim();
-                if (!cod || !nota) continue;
-                seen.set(cod, nota);
-              }
-              for (const [cod_cli, nota] of seen) noteLegali.push({ cod_cli, nota });
-            }
-          } else {
-            warnings.push({
-              riga: 0,
-              errore: "Foglio Note Legale trovato ma vuoto — nessuna nota importata",
-            });
+        if (manifest.foglioNotePresente && manifest.totaleNote > 0) {
+          const { data: noteFile, error: noteErr } = await supabaseAdmin.storage
+            .from("import-files")
+            .download(`${baseDir}/note-legali.json`);
+          if (noteErr || !noteFile) throw new Error(`Download note-legali fallito: ${noteErr?.message ?? "no data"}`);
+          const noteRaw = JSON.parse(await noteFile.text()) as Array<{ cod_cli: string; nota: string }>;
+          for (const n of noteRaw) {
+            if (n.cod_cli && n.nota) noteLegali.push({ cod_cli: String(n.cod_cli), nota: String(n.nota) });
           }
         }
 
-        return { rows, noteLegali, noteSheetFound, noteHeaderOk, warnings };
+        const warnings: Array<{ riga: number; errore: string }> = (manifest.warnings ?? []).map(
+          (w) => ({ riga: 0, errore: w }),
+        );
+        return {
+          rows,
+          noteLegali,
+          noteSheetFound: manifest.foglioNotePresente,
+          noteHeaderOk: manifest.foglioNotePresente && manifest.totaleNote > 0,
+          warnings,
+        };
       });
 
       const parsed = parseResult.rows;
@@ -1500,7 +1446,7 @@ export const processBloccoFidoImport = inngest.createFunction(
       const timestampInizio = new Date().toISOString();
 
       logger.info(
-        `Blocco fido: ${parsed.length} righe, ${noteLegaliFromSheet.length} note legali`,
+        `Blocco fido (staging): ${parsed.length} righe, ${noteLegaliFromSheet.length} note legali`,
       );
       await supabaseAdmin
         .from("importazioni")
@@ -1533,6 +1479,7 @@ export const processBloccoFidoImport = inngest.createFunction(
           .eq("id", importazioneId);
         return { rows: 0 };
       }
+
 
       // STEP 2: lookup cliente + STATO ATTUALE (per anomalie)
       const codici = Array.from(new Set(parsed.map((r) => r.codice_gestionale)));
