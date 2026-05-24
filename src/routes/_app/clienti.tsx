@@ -545,6 +545,7 @@ function ClientiPage() {
     setFidoFascia("tutti");
     setSliderDisplay([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
     setSliderCommitted([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
+    setAdvApplied(ADV_EMPTY);
   }
 
 
