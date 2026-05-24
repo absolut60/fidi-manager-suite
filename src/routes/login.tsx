@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Building2 } from "lucide-react";
+import { LOGO_MADE_BASE64 } from "@/lib/logo-made-base64";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -48,10 +48,11 @@ function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary to-primary/80 px-4">
       <Card className="w-full max-w-md p-8">
         <div className="flex flex-col items-center mb-6">
-          <div className="size-14 rounded-xl bg-primary flex items-center justify-center mb-3">
-            <Building2 className="size-7 text-primary-foreground" />
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight">MADE</h1>
+          <img
+            src={`data:image/png;base64,${LOGO_MADE_BASE64}`}
+            alt="MADE"
+            className="h-12 w-auto mb-3"
+          />
           <p className="text-sm text-muted-foreground">FidiManager · Gruppo MADE</p>
         </div>
 
