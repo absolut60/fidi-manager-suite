@@ -1923,18 +1923,8 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
               dataFirma: now,
             };
 
-            // [DEBUG] Parametri passati a generaSchedaCliente
-            console.log("[scheda-pdf] input payload:", schedaPayload);
-
             const pdfBytes = await generaSchedaCliente(schedaPayload);
 
-            // [DEBUG] Dimensione PDF generato
-            console.log(
-              `[scheda-pdf] pdfBytes size: ${pdfBytes?.byteLength ?? 0} bytes`,
-              (pdfBytes?.byteLength ?? 0) < 5000
-                ? "⚠️ PDF sospettosamente piccolo (<5000 bytes)"
-                : "✓ dimensione OK"
-            );
 
             const pdfSchedaPath = `clienti/${clienteId}/scheda-${now.getTime()}.pdf`;
             const { error: e3 } = await supabase.storage.from("documenti-privacy")
