@@ -2236,7 +2236,7 @@ async function parseBloccoFidoFile(
       defval: "",
       blankrows: false,
     });
-    log(`Foglio "${foglioNote}": ${Math.max(0, nMatrix.length - 1)} righe dati`);
+    log(`Foglio Note Legale: ${Math.max(0, nMatrix.length - 1)} righe trovate`);
     if (nMatrix.length < 2) {
       warnings.push("Foglio 'Note Legale' vuoto — nessuna nota importata");
     } else {
