@@ -29,6 +29,7 @@ import { ClienteFatturato } from "@/components/cliente-fatturato";
 import { formatEuro } from "@/lib/fidi";
 import { classificaScadenza } from "@/lib/scadenze";
 import { Ban, Calendar, Clock, Bell, CheckCircle2, Shield, ShieldOff, Scale, FileText, Activity } from "lucide-react";
+import { NuovoContattoWizard } from "@/components/nuovo-contatto-wizard";
 
 
 
@@ -475,7 +476,19 @@ function ClienteDetail() {
                   <Plus className="size-4" /> Nuovo contatto
                 </Button>
               </DialogTrigger>
-              <NewContattoDialog clienteId={clienteId} onClose={() => setOpenNew(false)} />
+              {openNew && (
+                <NuovoContattoWizard
+                  cliente={{
+                    id: clienteId,
+                    ragione_sociale: cliente?.ragione_sociale ?? "",
+                    partita_iva: (cliente as any)?.partita_iva,
+                    codice_fiscale: (cliente as any)?.codice_fiscale,
+                    indirizzo: (cliente as any)?.indirizzo,
+                    citta: (cliente as any)?.citta,
+                  }}
+                  onClose={() => setOpenNew(false)}
+                />
+              )}
             </Dialog>
           </div>
 
