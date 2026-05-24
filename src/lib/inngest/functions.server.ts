@@ -1281,7 +1281,6 @@ export const processScadAssicImport = inngest.createFunction(
 
 // (BFA_HEADER_MAP e bfaNormalize rimossi: ora si usa match esatto via COL_MAP_BLOCCO / COL_MAP_NOTE)
 
-
 function bfaToNum(v: unknown): number | null {
   if (v === "" || v == null) return null;
   if (typeof v === "number") return Number.isFinite(v) ? v : null;
@@ -1328,16 +1327,25 @@ type BFARow = {
   assicurazione: number | null;
 };
 
+function normalizeBfaCodice(value: unknown): string {
+  return String(value ?? "")
+    .trim()
+    .replace(/\.0$/, "");
+}
+
 // Mappe colonne ESATTE (case-insensitive, trim) richieste dalla spec
-const COL_MAP_BLOCCO: Record<string, "cod_cli" | "ind_blocco" | "ultima_data_fatturazione" | "fido" | "assicurazione"> = {
-  "cod_cli": "cod_cli",
-  "ind_blocco": "ind_blocco",
+const COL_MAP_BLOCCO: Record<
+  string,
+  "cod_cli" | "ind_blocco" | "ultima_data_fatturazione" | "fido" | "assicurazione"
+> = {
+  cod_cli: "cod_cli",
+  ind_blocco: "ind_blocco",
   "ultima data fatturazione": "ultima_data_fatturazione",
-  "fido": "fido",
-  "assicurazione": "assicurazione",
+  fido: "fido",
+  assicurazione: "assicurazione",
 };
 const COL_MAP_NOTE: Record<string, "cod_cli" | "nota"> = {
-  "cod_cli": "cod_cli",
+  cod_cli: "cod_cli",
   "note legale": "nota",
 };
 
@@ -1377,7 +1385,8 @@ export const processBloccoFidoImport = inngest.createFunction(
         const { data: manFile, error: manErr } = await supabaseAdmin.storage
           .from("import-files")
           .download(manifestPath);
-        if (manErr || !manFile) throw new Error(`Download manifest fallito: ${manErr?.message ?? "no data"}`);
+        if (manErr || !manFile)
+          throw new Error(`Download manifest fallito: ${manErr?.message ?? "no data"}`);
         const manifest = JSON.parse(await manFile.text()) as {
           kind: string;
           totaleBlocco: number;
@@ -1385,32 +1394,45 @@ export const processBloccoFidoImport = inngest.createFunction(
           foglioNotePresente: boolean;
           chunkSize: number;
           totalChunks: number;
+          chunks?: Array<{ chunkIndex: number; chunkPath: string; rowsCount?: number }>;
           warnings?: string[];
         };
 
         // Scarica tutti i chunk BLOCCO (sono JSON leggeri, max 500 righe ognuno)
         const rows: BFARow[] = [];
         for (let ci = 0; ci < manifest.totalChunks; ci++) {
-          const path = `${baseDir}/blocco-chunk-${ci}.json`;
-          const { data: chunkFile, error: chunkErr } = await supabaseAdmin.storage
-            .from("import-files")
-            .download(path);
-          if (chunkErr || !chunkFile) throw new Error(`Download chunk ${ci} fallito: ${chunkErr?.message ?? "no data"}`);
-          const chunk = JSON.parse(await chunkFile.text()) as Array<{
-            cod_cli: string;
-            ind_blocco: number | null;
-            ultima_data_fatturazione: string | null;
-            fido: number | null;
-            assicurazione: number | null;
-          }>;
+          const manifestChunkPath = manifest.chunks?.find((c) => c.chunkIndex === ci)?.chunkPath;
+          const candidatePaths = [
+            manifestChunkPath,
+            `${baseDir}/blocco-chunk-${ci}.json`,
+            `${baseDir}/blocco_${importazioneId}_chunk_${ci}.json`,
+          ].filter(Boolean) as string[];
+          let chunkFile: Blob | null = null;
+          let chunkPath = candidatePaths[0];
+          let lastChunkError = "no data";
+          for (const path of candidatePaths) {
+            const { data, error } = await supabaseAdmin.storage.from("import-files").download(path);
+            if (data && !error) {
+              chunkFile = data;
+              chunkPath = path;
+              break;
+            }
+            lastChunkError = `${path}: ${error?.message ?? "no data"}`;
+          }
+          if (!chunkFile) throw new Error(`Download chunk ${ci} fallito: ${lastChunkError}`);
+          logger.info(`Import D chunk ${ci + 1}/${manifest.totalChunks}: letto ${chunkPath}`);
+          const chunk = JSON.parse(await chunkFile.text()) as Array<Record<string, unknown>>;
           chunk.forEach((r, idx) => {
+            const codCli = normalizeBfaCodice(r.cod_cli ?? r.COD_CLI ?? r.codice_gestionale);
+            if (!codCli) return;
             rows.push({
               riga: ci * manifest.chunkSize + idx + 2,
-              codice_gestionale: String(r.cod_cli),
-              ind_blocco: r.ind_blocco,
-              ultima_data_fatturazione: r.ultima_data_fatturazione,
-              fido: r.fido,
-              assicurazione: r.assicurazione,
+              codice_gestionale: codCli,
+              ind_blocco: (r.ind_blocco ?? r.IND_BLOCCO) as number | null,
+              ultima_data_fatturazione: (r.ultima_data_fatturazione ??
+                r["ULTIMA DATA FATTURAZIONE"]) as string | null,
+              fido: (r.fido ?? r.FIDO) as number | null,
+              assicurazione: (r.assicurazione ?? r.ASSICURAZIONE) as number | null,
             });
           });
         }
@@ -1421,10 +1443,13 @@ export const processBloccoFidoImport = inngest.createFunction(
           const { data: noteFile, error: noteErr } = await supabaseAdmin.storage
             .from("import-files")
             .download(`${baseDir}/note-legali.json`);
-          if (noteErr || !noteFile) throw new Error(`Download note-legali fallito: ${noteErr?.message ?? "no data"}`);
-          const noteRaw = JSON.parse(await noteFile.text()) as Array<{ cod_cli: string; nota: string }>;
+          if (noteErr || !noteFile)
+            throw new Error(`Download note-legali fallito: ${noteErr?.message ?? "no data"}`);
+          const noteRaw = JSON.parse(await noteFile.text()) as Array<Record<string, unknown>>;
           for (const n of noteRaw) {
-            if (n.cod_cli && n.nota) noteLegali.push({ cod_cli: String(n.cod_cli), nota: String(n.nota) });
+            const codCli = normalizeBfaCodice(n.cod_cli ?? n.COD_CLI ?? n.codice_gestionale);
+            const nota = String(n.nota ?? n["Note Legale"] ?? "").trim();
+            if (codCli && nota) noteLegali.push({ cod_cli: codCli, nota });
           }
         }
 
@@ -1480,9 +1505,10 @@ export const processBloccoFidoImport = inngest.createFunction(
         return { rows: 0 };
       }
 
-
       // STEP 2: lookup cliente + STATO ATTUALE (per anomalie)
-      const codici = Array.from(new Set(parsed.map((r) => r.codice_gestionale)));
+      const codici = Array.from(
+        new Set(parsed.map((r) => normalizeBfaCodice(r.codice_gestionale)).filter(Boolean)),
+      );
       type ClienteSnap = {
         id: string;
         ragione_sociale: string | null;
@@ -1495,18 +1521,27 @@ export const processBloccoFidoImport = inngest.createFunction(
         const BATCH = 500;
         for (let i = 0; i < codici.length; i += BATCH) {
           const slice = codici.slice(i, i + BATCH);
-          const { data } = await supabaseAdmin
+          const { data, error } = await supabaseAdmin
             .from("clienti")
-            .select("id, codice_gestionale, ragione_sociale, ind_blocco, assicurazione_attiva, in_gestione_legale")
+            .select(
+              "id, codice_gestionale, ragione_sociale, ind_blocco, assicurazione_attiva, in_gestione_legale",
+            )
             .in("codice_gestionale", slice);
+          if (error)
+            throw new Error(`lookup clienti chunk ${Math.floor(i / BATCH) + 1}: ${error.message}`);
+          logger.info(
+            `Import D lookup clienti ${Math.floor(i / BATCH) + 1}: ${data?.length ?? 0}/${slice.length} trovati`,
+          );
           (data ?? []).forEach((c) => {
             if (c.codice_gestionale) {
-              map[c.codice_gestionale] = {
+              map[normalizeBfaCodice(c.codice_gestionale)] = {
                 id: c.id,
                 ragione_sociale: c.ragione_sociale ?? null,
                 ind_blocco: (c as { ind_blocco?: number | null }).ind_blocco ?? null,
-                assicurazione_attiva: (c as { assicurazione_attiva?: boolean | null }).assicurazione_attiva ?? null,
-                in_gestione_legale: (c as { in_gestione_legale?: boolean | null }).in_gestione_legale ?? null,
+                assicurazione_attiva:
+                  (c as { assicurazione_attiva?: boolean | null }).assicurazione_attiva ?? null,
+                in_gestione_legale:
+                  (c as { in_gestione_legale?: boolean | null }).in_gestione_legale ?? null,
               };
             }
           });
@@ -1552,146 +1587,181 @@ export const processBloccoFidoImport = inngest.createFunction(
       for (let ci = 0; ci < totalChunks; ci++) {
         const slice = parsed.slice(ci * CHUNK, (ci + 1) * CHUNK);
         const chunkRes = await step.run(`chunk-${ci}`, async () => {
-          let cAgg = 0, cBlk = 0, cSblk = 0, cNonAtt = 0, cPol = 0, cAnom = 0;
+          let cAgg = 0,
+            cBlk = 0,
+            cSblk = 0,
+            cNonAtt = 0,
+            cPol = 0,
+            cAnom = 0;
+          let cUpdateTentati = 0,
+            cUpdateZero = 0,
+            cUpdateMulti = 0;
           const cErr: Array<{ riga: number; errore: string }> = [];
           const cMiss: string[] = [];
           const anomalieBatch: AnomaliaImport[] = [];
+          const updateDiagnostics: Array<{ riga: number; errore: string }> = [];
 
           await Promise.all(
             slice.map(async (r) => {
-              const snap = clientMap[r.codice_gestionale];
-              if (!snap) {
-                cMiss.push(r.codice_gestionale);
-                return;
-              }
-              const clienteId = snap.id;
-              const payload: Record<string, unknown> = {};
-              const rowAnomalie: AnomaliaImport[] = [];
-
-              // --- Anomalia: cambio blocco ---
-              const indNuovo = r.ind_blocco;
-              const indAttuale = snap.ind_blocco ?? 0;
-              let bloccoAnomalo = false;
-              if (indNuovo != null && indNuovo !== indAttuale) {
-                rowAnomalie.push({
-                  importazione_id: importazioneId,
-                  cliente_id: clienteId,
-                  codice_gestionale: r.codice_gestionale,
-                  ragione_sociale: snap.ragione_sociale,
-                  tipo_anomalia: "cambio_blocco",
-                  campo: "ind_blocco",
-                  valore_attuale: String(indAttuale),
-                  valore_nuovo: String(indNuovo),
-                  stato: "in_attesa",
-                });
-                bloccoAnomalo = true;
-              }
-              if (!bloccoAnomalo && indNuovo != null) {
-                if (indNuovo === 0) {
-                  payload.bloccato = false;
-                  payload.ind_blocco = 0;
-                  payload.motivo_blocco = null;
-                  payload.data_blocco = null;
-                  cSblk++;
-                } else if (indNuovo === 1) {
-                  payload.bloccato = true;
-                  payload.ind_blocco = 1;
-                  payload.motivo_blocco = "Bloccato con possibilità di sblocco";
-                  payload.data_blocco = nowIso;
-                  cBlk++;
-                } else if (indNuovo === 2) {
-                  payload.bloccato = true;
-                  payload.ind_blocco = 2;
-                  payload.motivo_blocco = "Bloccato";
-                  payload.data_blocco = nowIso;
-                  cBlk++;
+              try {
+                const codiceGestionale = normalizeBfaCodice(r.codice_gestionale);
+                const snap = clientMap[codiceGestionale];
+                if (!snap) {
+                  cMiss.push(codiceGestionale || r.codice_gestionale);
+                  return;
                 }
-              }
+                const clienteId = snap.id;
+                const payload: Record<string, unknown> = {};
+                const rowAnomalie: AnomaliaImport[] = [];
 
-              // --- Sempre aggiornati ---
-              payload.ultima_data_fatturazione = r.ultima_data_fatturazione;
-              const attivo =
-                r.ultima_data_fatturazione != null &&
-                r.ultima_data_fatturazione >= cutoff2025;
-              payload.cliente_attivo = attivo;
-              if (!attivo) cNonAtt++;
+                // --- Anomalia: cambio blocco ---
+                const indNuovo = r.ind_blocco;
+                const indAttuale = snap.ind_blocco ?? 0;
+                let bloccoAnomalo = false;
+                if (indNuovo != null && indNuovo !== indAttuale) {
+                  rowAnomalie.push({
+                    importazione_id: importazioneId,
+                    cliente_id: clienteId,
+                    codice_gestionale: codiceGestionale,
+                    ragione_sociale: snap.ragione_sociale,
+                    tipo_anomalia: "cambio_blocco",
+                    campo: "ind_blocco",
+                    valore_attuale: String(indAttuale),
+                    valore_nuovo: String(indNuovo),
+                    stato: "in_attesa",
+                  });
+                  bloccoAnomalo = true;
+                }
+                if (!bloccoAnomalo && indNuovo != null) {
+                  if (indNuovo === 0) {
+                    payload.bloccato = false;
+                    payload.ind_blocco = 0;
+                    payload.motivo_blocco = null;
+                    payload.data_blocco = null;
+                    cSblk++;
+                  } else if (indNuovo === 1) {
+                    payload.bloccato = true;
+                    payload.ind_blocco = 1;
+                    payload.motivo_blocco = "Bloccato con possibilità di sblocco";
+                    payload.data_blocco = nowIso;
+                    cBlk++;
+                  } else if (indNuovo === 2) {
+                    payload.bloccato = true;
+                    payload.ind_blocco = 2;
+                    payload.motivo_blocco = "Bloccato";
+                    payload.data_blocco = nowIso;
+                    cBlk++;
+                  }
+                }
 
-              // Fido: azzera anche se 0
-              if (r.fido !== null && r.fido !== undefined) {
-                payload.fido_gestionale = r.fido ?? 0;
-              }
+                // --- Sempre aggiornati ---
+                payload.ultima_data_fatturazione = r.ultima_data_fatturazione;
+                const attivo =
+                  r.ultima_data_fatturazione != null && r.ultima_data_fatturazione >= cutoff2025;
+                payload.cliente_attivo = attivo;
+                if (!attivo) cNonAtt++;
 
-              // --- Anomalia: perde_assicurazione ---
-              const nuovaAssic =
-                r.assicurazione !== null && r.assicurazione !== undefined && r.assicurazione > 0;
-              let assicAnomalo = false;
-              if (snap.assicurazione_attiva === true && !nuovaAssic) {
-                rowAnomalie.push({
-                  importazione_id: importazioneId,
-                  cliente_id: clienteId,
-                  codice_gestionale: r.codice_gestionale,
-                  ragione_sociale: snap.ragione_sociale,
-                  tipo_anomalia: "perde_assicurazione",
-                  campo: "assicurazione_attiva",
-                  valore_attuale: "true",
-                  valore_nuovo: "false",
-                  stato: "in_attesa",
-                });
-                assicAnomalo = true;
-              }
+                // Fido: azzera anche se 0
+                if (r.fido !== null && r.fido !== undefined) {
+                  payload.fido_gestionale = r.fido ?? 0;
+                }
 
-              if (!assicAnomalo) {
-                if (nuovaAssic) {
-                  payload.assicurazione_attiva = true;
-                  const existingId = poueyMap[clienteId];
-                  if (existingId) {
-                    const { error } = await supabaseAdmin
-                      .from("assicurazioni_credito")
-                      .update({
-                        importo_massimale: r.assicurazione,
-                        stato: "attiva",
-                      } as never)
-                      .eq("id", existingId);
-                    if (error) cErr.push({ riga: r.riga, errore: `polizza update: ${error.message}` });
-                    else cPol++;
+                // --- Anomalia: perde_assicurazione ---
+                const nuovaAssic =
+                  r.assicurazione !== null && r.assicurazione !== undefined && r.assicurazione > 0;
+                let assicAnomalo = false;
+                if (snap.assicurazione_attiva === true && !nuovaAssic) {
+                  rowAnomalie.push({
+                    importazione_id: importazioneId,
+                    cliente_id: clienteId,
+                    codice_gestionale: codiceGestionale,
+                    ragione_sociale: snap.ragione_sociale,
+                    tipo_anomalia: "perde_assicurazione",
+                    campo: "assicurazione_attiva",
+                    valore_attuale: "true",
+                    valore_nuovo: "false",
+                    stato: "in_attesa",
+                  });
+                  assicAnomalo = true;
+                }
+
+                if (!assicAnomalo) {
+                  if (nuovaAssic) {
+                    payload.assicurazione_attiva = true;
+                    const existingId = poueyMap[clienteId];
+                    if (existingId) {
+                      const { error } = await supabaseAdmin
+                        .from("assicurazioni_credito")
+                        .update({
+                          importo_massimale: r.assicurazione,
+                          stato: "attiva",
+                        } as never)
+                        .eq("id", existingId);
+                      if (error)
+                        cErr.push({ riga: r.riga, errore: `polizza update: ${error.message}` });
+                      else cPol++;
+                    } else {
+                      const { data: ins, error } = await supabaseAdmin
+                        .from("assicurazioni_credito")
+                        .insert({
+                          cliente_id: clienteId,
+                          assicuratore: "POUEY",
+                          importo_massimale: r.assicurazione,
+                          stato: "attiva",
+                        } as never)
+                        .select("id")
+                        .single();
+                      if (error)
+                        cErr.push({ riga: r.riga, errore: `polizza insert: ${error.message}` });
+                      else {
+                        cPol++;
+                        if (ins?.id) poueyMap[clienteId] = ins.id;
+                      }
+                    }
                   } else {
-                    const { data: ins, error } = await supabaseAdmin
-                      .from("assicurazioni_credito")
-                      .insert({
-                        cliente_id: clienteId,
-                        assicuratore: "POUEY",
-                        importo_massimale: r.assicurazione,
-                        stato: "attiva",
-                      } as never)
-                      .select("id")
-                      .single();
-                    if (error) cErr.push({ riga: r.riga, errore: `polizza insert: ${error.message}` });
-                    else {
-                      cPol++;
-                      if (ins?.id) poueyMap[clienteId] = ins.id;
+                    // assicurazione attualmente false e file dice no → coerente
+                    payload.assicurazione_attiva = false;
+                  }
+                }
+
+                // Marca ultima_importazione_d
+                payload.ultima_importazione_d = timestampInizio;
+
+                if (Object.keys(payload).length > 0) {
+                  cUpdateTentati++;
+                  const { error, count } = await supabaseAdmin
+                    .from("clienti")
+                    .update(payload as never, { count: "exact" })
+                    .eq("codice_gestionale", codiceGestionale);
+                  if (error) cErr.push({ riga: r.riga, errore: error.message });
+                  else {
+                    const affected = count ?? 0;
+                    cAgg += affected;
+                    if (affected === 0) {
+                      cUpdateZero++;
+                      cErr.push({
+                        riga: r.riga,
+                        errore: `UPDATE clienti COD_CLI=${codiceGestionale}: count=0`,
+                      });
+                    } else if (affected > 1) {
+                      cUpdateMulti++;
+                      updateDiagnostics.push({
+                        riga: r.riga,
+                        errore: `UPDATE clienti COD_CLI=${codiceGestionale}: count=${affected}`,
+                      });
                     }
                   }
-                } else {
-                  // assicurazione attualmente false e file dice no → coerente
-                  payload.assicurazione_attiva = false;
                 }
-              }
 
-              // Marca ultima_importazione_d
-              payload.ultima_importazione_d = timestampInizio;
-
-              if (Object.keys(payload).length > 0) {
-                const { error } = await supabaseAdmin
-                  .from("clienti")
-                  .update(payload as never)
-                  .eq("id", clienteId);
-                if (error) cErr.push({ riga: r.riga, errore: error.message });
-                else cAgg++;
-              }
-
-              if (rowAnomalie.length) {
-                anomalieBatch.push(...rowAnomalie);
-                cAnom += rowAnomalie.length;
+                if (rowAnomalie.length) {
+                  anomalieBatch.push(...rowAnomalie);
+                  cAnom += rowAnomalie.length;
+                }
+              } catch (e) {
+                cErr.push({
+                  riga: r.riga,
+                  errore: `Errore riga COD_CLI=${normalizeBfaCodice(r.codice_gestionale)}: ${e instanceof Error ? e.message : String(e)}`,
+                });
               }
             }),
           );
@@ -1703,7 +1773,7 @@ export const processBloccoFidoImport = inngest.createFunction(
             if (error) cErr.push({ riga: 0, errore: `anomalie insert: ${error.message}` });
           }
 
-          await supabaseAdmin.rpc("increment_importazione_counters", {
+          const { error: rpcError } = await supabaseAdmin.rpc("increment_importazione_counters", {
             _id: importazioneId,
             _elaborate: slice.length,
             _create: 0,
@@ -1711,17 +1781,25 @@ export const processBloccoFidoImport = inngest.createFunction(
             _error: cErr.length,
             _skipped: cMiss.length,
           });
+          if (rpcError) cErr.push({ riga: 0, errore: `increment counters: ${rpcError.message}` });
 
-          if (cErr.length || cMiss.length) {
+          const chunkLog = {
+            riga: 0,
+            errore: `Chunk ${ci + 1}/${totalChunks}: UPDATE clienti tentati=${cUpdateTentati}, count aggiornate=${cAgg}, count=0=${cUpdateZero}, count>1=${cUpdateMulti}, non trovati=${cMiss.length}, errori=${cErr.length}`,
+          };
+          logger.info(chunkLog.errore);
+
+          if (cErr.length || cMiss.length || updateDiagnostics.length || cUpdateTentati > 0) {
             const { data: cur } = await supabaseAdmin
               .from("importazioni")
               .select("log_errori, codici_mancanti")
               .eq("id", importazioneId)
               .single();
             const updates: Record<string, unknown> = {};
-            if (cErr.length) {
-              const exist = (cur?.log_errori as Array<{ riga: number; errore: string }> | null) ?? [];
-              updates.log_errori = [...exist, ...cErr].slice(0, 500);
+            if (cErr.length || updateDiagnostics.length || cUpdateTentati > 0) {
+              const exist =
+                (cur?.log_errori as Array<{ riga: number; errore: string }> | null) ?? [];
+              updates.log_errori = [...exist, chunkLog, ...updateDiagnostics, ...cErr].slice(-500);
             }
             if (cMiss.length) {
               const exist = (cur?.codici_mancanti as string[] | null) ?? [];
@@ -1753,9 +1831,7 @@ export const processBloccoFidoImport = inngest.createFunction(
       await step.run("note-legali", async () => {
         try {
           // Lookup arricchimento clientMap per note con codici nuovi
-          const missCodes = noteLegaliFromSheet
-            .map((n) => n.cod_cli)
-            .filter((c) => !clientMap[c]);
+          const missCodes = noteLegaliFromSheet.map((n) => n.cod_cli).filter((c) => !clientMap[c]);
           if (missCodes.length) {
             const uniqMiss = Array.from(new Set(missCodes));
             const BATCH = 500;
@@ -1763,7 +1839,9 @@ export const processBloccoFidoImport = inngest.createFunction(
               const slice = uniqMiss.slice(i, i + BATCH);
               const { data } = await supabaseAdmin
                 .from("clienti")
-                .select("id, codice_gestionale, ragione_sociale, ind_blocco, assicurazione_attiva, in_gestione_legale")
+                .select(
+                  "id, codice_gestionale, ragione_sociale, ind_blocco, assicurazione_attiva, in_gestione_legale",
+                )
                 .in("codice_gestionale", slice);
               (data ?? []).forEach((c) => {
                 if (c.codice_gestionale) {
@@ -1771,8 +1849,10 @@ export const processBloccoFidoImport = inngest.createFunction(
                     id: c.id,
                     ragione_sociale: c.ragione_sociale ?? null,
                     ind_blocco: (c as { ind_blocco?: number | null }).ind_blocco ?? null,
-                    assicurazione_attiva: (c as { assicurazione_attiva?: boolean | null }).assicurazione_attiva ?? null,
-                    in_gestione_legale: (c as { in_gestione_legale?: boolean | null }).in_gestione_legale ?? null,
+                    assicurazione_attiva:
+                      (c as { assicurazione_attiva?: boolean | null }).assicurazione_attiva ?? null,
+                    in_gestione_legale:
+                      (c as { in_gestione_legale?: boolean | null }).in_gestione_legale ?? null,
                   };
                 }
               });
@@ -1857,7 +1937,8 @@ export const processBloccoFidoImport = inngest.createFunction(
             const { error } = await supabaseAdmin
               .from("anomalie_import" as never)
               .insert(anomaliePerdita as never);
-            if (error) errors.push({ riga: 0, errore: `anomalie perde_gestione: ${error.message}` });
+            if (error)
+              errors.push({ riga: 0, errore: `anomalie perde_gestione: ${error.message}` });
             else {
               perdeGestioneLegale = anomaliePerdita.length;
               anomalieTotali += anomaliePerdita.length;
@@ -1964,4 +2045,3 @@ export const processBloccoFidoImport = inngest.createFunction(
     }
   },
 );
-
