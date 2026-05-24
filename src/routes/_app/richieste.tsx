@@ -889,7 +889,7 @@ function RichiestaFormDialog({
     mutationFn: async (input: { invia: boolean }) => {
       const parsed = formSchema.parse(form);
       const { data: { user } } = await supabase.auth.getUser();
-      const cliente = clienti?.find((c) => c.id === parsed.cliente_id);
+      const cliente = clienteSel ?? clienti?.find((c) => c.id === parsed.cliente_id);
       const payload = {
         cliente_id: parsed.cliente_id,
         tipo: parsed.tipo,
