@@ -28,7 +28,7 @@ import { ClienteInsolutiTab } from "@/components/cliente-insoluti-tab";
 import { ClienteFatturato } from "@/components/cliente-fatturato";
 import { formatEuro } from "@/lib/fidi";
 import { classificaScadenza } from "@/lib/scadenze";
-import { Ban, Calendar, Clock, Bell, CheckCircle2, Shield, ShieldOff, Scale } from "lucide-react";
+import { Ban, Calendar, Clock, Bell, CheckCircle2, Shield, ShieldOff, Scale, FileText, Activity } from "lucide-react";
 
 
 
@@ -752,6 +752,12 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
           <MiniStat label="Fido gestionale" value={formatEuro(fidoGest)} />
           <MiniStat label="Totale rischio" value={formatEuro(totRischio)} />
           <MiniStat label="Fido residuo" value={formatEuro(fidoResiduo)} tone={fidoResiduo != null && fidoResiduo < 0 ? "destructive" : "default"} />
+          {(() => {
+            const pctUtil = fidoGest > 0 ? Math.round((totRischio / fidoGest) * 100) : null;
+            const tone: "success" | "warning" | "destructive" | "muted" =
+              pctUtil == null ? "muted" : pctUtil >= 100 ? "destructive" : pctUtil >= 70 ? "warning" : "success";
+            return <MiniStat label="% fido utilizzato" value={pctUtil == null ? "—" : `${pctUtil}%`} tone={tone} />;
+          })()}
           <MiniStat label="Scaduto" value={formatEuro(cliente.scaduto)} tone={scaduto > 0 ? "destructive" : "default"} />
           <MiniStat label="A scadere" value={formatEuro(cliente.a_scadere)} />
           <MiniStat label="Cond. pagamento" value={condPag || "—"} />
