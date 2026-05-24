@@ -64,17 +64,64 @@ export default function AssicurazioniPage() {
     },
   });
 
+  const { data: clientiScoperti } = useQuery({
+    queryKey: ["clienti-scoperti-insoluto", storeId],
+    queryFn: async () => {
+      let q = supabase
+        .from("clienti")
+        .select("id, store_id, assicurazione_attiva, scaduto", { count: "exact", head: false })
+        .eq("assicurazione_attiva", false)
+        .gt("scaduto", 0);
+      if (storeId !== "all") q = q.eq("store_id", storeId);
+      const { data, error } = await q;
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const today = new Date().toISOString().slice(0, 10);
-  const rows = useMemo(() => {
+  const in30 = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+
+  const baseFiltered = useMemo(() => {
     return (data ?? []).filter((r: any) => {
       const cli = r.clienti;
       if (!cli) return false;
       if (storeId !== "all" && cli.store_id !== storeId) return false;
+      return true;
+    });
+  }, [data, storeId]);
+
+  const kpi = useMemo(() => {
+    const attive = baseFiltered.filter((r: any) => r.stato === "attiva" && (!r.data_scadenza || r.data_scadenza >= today));
+    const scadute = baseFiltered.filter((r: any) => r.data_scadenza && r.data_scadenza < today);
+    const inScad30 = attive.filter((r: any) => r.data_scadenza && r.data_scadenza >= today && r.data_scadenza <= in30);
+    const massimale = attive.reduce((acc: number, r: any) => acc + Number(r.importo_massimale ?? r.importo_assicurato ?? 0), 0);
+    const future = attive.filter((r: any) => r.data_scadenza && r.data_scadenza >= today)
+      .sort((a: any, b: any) => String(a.data_scadenza).localeCompare(String(b.data_scadenza)));
+    const prossima = future[0];
+    return {
+      attive: attive.length,
+      scadute: scadute.length,
+      inScad30: inScad30.length,
+      massimale,
+      scoperti: clientiScoperti?.length ?? 0,
+      prossimaData: prossima?.data_scadenza ?? null,
+      prossimaCliente: prossima?.clienti?.ragione_sociale ?? null,
+    };
+  }, [baseFiltered, today, in30, clientiScoperti]);
+
+  const rows = useMemo(() => {
+    return baseFiltered.filter((r: any) => {
+      const cli = r.clienti;
       if (q) {
         const ql = q.toLowerCase();
         if (!String(cli.ragione_sociale ?? "").toLowerCase().includes(ql) &&
             !String(r.assicuratore ?? "").toLowerCase().includes(ql) &&
             !String(r.numero_polizza ?? "").toLowerCase().includes(ql)) return false;
+      }
+      if (scadenza30) {
+        if (r.stato !== "attiva") return false;
+        if (!r.data_scadenza || r.data_scadenza < today || r.data_scadenza > in30) return false;
       }
       if (stato === "sinistro" && !r.sinistro_aperto) return false;
       if (stato === "attiva") {
@@ -86,7 +133,7 @@ export default function AssicurazioniPage() {
       }
       return true;
     });
-  }, [data, stato, storeId, q, today]);
+  }, [baseFiltered, stato, q, scadenza30, today, in30]);
 
   return (
     <div className="space-y-6">
