@@ -14,11 +14,8 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [nome, setNome] = useState("");
-  const [cognome, setCognome] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -31,36 +28,21 @@ function LoginPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      if (mode === "login") {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        toast.success("Accesso effettuato");
-        navigate({ to: "/dashboard" });
-      } else {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/dashboard`,
-            data: { nome, cognome },
-          },
-        });
-        if (error) throw error;
-        toast.success("Registrazione completata. Controlla la mail per confermare.");
-        setMode("login");
-      }
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      toast.success("Accesso effettuato");
+      navigate({ to: "/dashboard" });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Errore sconosciuto";
       const tradotto = msg.includes("Invalid login credentials")
         ? "Credenziali non valide"
-        : msg.includes("already registered")
-          ? "Email già registrata"
-          : msg;
+        : msg;
       toast.error(tradotto);
     } finally {
       setLoading(false);
     }
   }
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary to-primary/80 px-4">
