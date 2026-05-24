@@ -434,7 +434,7 @@ function ScadenziarioPage() {
                   const fatt = fatturatoMap?.get(r.cliente.id);
                   const isExpanded = expandedClienteId === r.cliente.id;
                   return (
-                    <>
+                    <Fragment key={r.cliente.id}>
                       <TableRow
                         key={r.cliente.id}
                         className="cursor-pointer"
@@ -472,7 +472,7 @@ function ScadenziarioPage() {
                           </TableCell>
                         </TableRow>
                       )}
-                    </>
+                    </Fragment>
                   );
                 })}
               </TableBody>
