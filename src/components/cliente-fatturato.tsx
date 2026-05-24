@@ -53,67 +53,43 @@ export function ClienteFatturato({ clienteId }: { clienteId: string }) {
     ? ((fatturatoCur - fatturatoPrev) / fatturatoPrev) * 100
     : fatturatoCur > 0 ? 100 : null;
 
-  // Ultimi 3 anni per il mini grafico
-  const ultimi3 = [annoCorrente - 2, annoCorrente - 1, annoCorrente].map((a) => ({
-    anno: a,
-    fatturato: byAnno.get(a)?.fatturato ?? 0,
-  }));
-  const maxBar = Math.max(...ultimi3.map((r) => r.fatturato), 1);
-
   const TrendIcon = variazione == null ? Minus : variazione > 0 ? TrendingUp : variazione < 0 ? TrendingDown : Minus;
   const trendColor = variazione == null
     ? "text-muted-foreground"
     : variazione > 0 ? "text-success" : variazione < 0 ? "text-destructive" : "text-muted-foreground";
 
   return (
-    <section className="space-y-3">
-      <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-2">
-        <Receipt className="size-4" /> Fatturato (IVA escl.)
+    <section className="space-y-2">
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-2">
+        <Receipt className="size-3.5" /> Fatturato (IVA escl.)
       </h3>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <Card className="p-4">
-          <p className="text-xs font-medium text-muted-foreground uppercase">Anno {annoCorrente} (IVA escl.)</p>
-          <p className="text-2xl font-bold mt-1 tabular-nums">{fmtEuro(fatturatoCur)}</p>
-          <p className="text-xs text-muted-foreground mt-1">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <Card className="px-3 py-2">
+          <p className="text-[10px] font-medium text-muted-foreground uppercase">Anno {annoCorrente}</p>
+          <p className="text-lg font-bold mt-0.5 tabular-nums">{fmtEuro(fatturatoCur)}</p>
+          <p className="text-[10px] text-muted-foreground">
             {cur?.num_fatture ?? 0} {cur?.num_fatture === 1 ? "fattura" : "fatture"}
           </p>
         </Card>
-        <Card className="p-4">
-          <p className="text-xs font-medium text-muted-foreground uppercase">Anno {annoPrec} (IVA escl.)</p>
-          <p className="text-2xl font-bold mt-1 tabular-nums">{fmtEuro(fatturatoPrev)}</p>
-          <p className="text-xs text-muted-foreground mt-1">
+        <Card className="px-3 py-2">
+          <p className="text-[10px] font-medium text-muted-foreground uppercase">Anno {annoPrec}</p>
+          <p className="text-lg font-bold mt-0.5 tabular-nums">{fmtEuro(fatturatoPrev)}</p>
+          <p className="text-[10px] text-muted-foreground">
             {prev?.num_fatture ?? 0} {prev?.num_fatture === 1 ? "fattura" : "fatture"}
           </p>
         </Card>
-        <Card className="p-4">
-          <p className="text-xs font-medium text-muted-foreground uppercase">Variazione</p>
-          <div className={`mt-1 flex items-center gap-2 ${trendColor}`}>
-            <TrendIcon className="size-5" />
-            <span className="text-2xl font-bold tabular-nums">
+        <Card className="px-3 py-2">
+          <p className="text-[10px] font-medium text-muted-foreground uppercase">Variazione</p>
+          <div className={`mt-0.5 flex items-center gap-1.5 ${trendColor}`}>
+            <TrendIcon className="size-4" />
+            <span className="text-lg font-bold tabular-nums">
               {variazione == null ? "—" : `${variazione > 0 ? "+" : ""}${variazione.toFixed(1)}%`}
             </span>
           </div>
-          <p className="text-xs text-muted-foreground mt-1">{annoCorrente} vs {annoPrec}</p>
+          <p className="text-[10px] text-muted-foreground">{annoCorrente} vs {annoPrec}</p>
         </Card>
       </div>
-
-      <Card className="p-5">
-        <p className="text-xs font-semibold uppercase text-muted-foreground mb-3">Ultimi 3 anni</p>
-        <div className="space-y-2">
-          {ultimi3.map((r) => (
-            <div key={r.anno} className="flex items-center gap-3 text-sm">
-              <span className="w-12 font-medium tabular-nums">{r.anno}</span>
-              <div className="flex-1 h-5 bg-muted rounded overflow-hidden">
-                <div
-                  className="h-full bg-primary transition-all"
-                  style={{ width: `${(r.fatturato / maxBar) * 100}%` }}
-                />
-              </div>
-              <span className="w-28 text-right tabular-nums font-medium">{fmtEuro(r.fatturato)}</span>
-            </div>
-          ))}
-        </div>
-      </Card>
     </section>
   );
 }
+
