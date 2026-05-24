@@ -43,6 +43,7 @@ const NAV: NavItem[] = [
   { to: "/clienti", label: "Clienti", icon: Building, group: "main" },
   { to: "/contatti", label: "Contatti", icon: Users, group: "main" },
   { to: "/approvazioni", label: "Approvazioni", icon: CheckCheck, roles: ["admin", "approvatore"], group: "approvazioni" },
+  { to: "/fidi-processare", label: "Fidi da processare", icon: ClipboardCheck, roles: ["admin", "approvatore"], group: "approvazioni" },
   { to: "/assicurazioni", label: "Assicurazioni", icon: ShieldCheck, roles: ["admin", "approvatore"], group: "approvazioni" },
   { to: "/legali", label: "Pratiche Legali", icon: Gavel, roles: ["admin", "approvatore"], group: "approvazioni" },
   { to: "/scadenziario", label: "Scadenziario", icon: CalendarClock, roles: ["admin", "approvatore"], group: "approvazioni" },
