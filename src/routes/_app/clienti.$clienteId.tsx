@@ -855,19 +855,33 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
 }
 
 
-function MiniStat({ label, value, tone = "default", icon: Icon }: { label: string; value: string; tone?: "default" | "destructive" | "warning"; icon?: typeof Calendar }) {
-  const valCls = tone === "destructive" ? "text-destructive" : tone === "warning" ? "text-orange-600" : "";
+function MiniStat({ label, value, tone = "default", icon: Icon, hint, title }: { label: string; value: string; tone?: "default" | "destructive" | "warning" | "info" | "success" | "muted"; icon?: typeof Calendar; hint?: string; title?: string }) {
+  const valCls =
+    tone === "destructive" ? "text-destructive"
+    : tone === "warning" ? "text-orange-600"
+    : tone === "info" ? "text-primary"
+    : tone === "success" ? "text-success"
+    : tone === "muted" ? "text-muted-foreground"
+    : "";
   return (
-    <Card className="px-3 py-2">
+    <Card className="px-3 py-2" title={title}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-[10px] font-medium text-muted-foreground uppercase truncate">{label}</p>
           <p className={`text-base font-bold mt-0.5 tabular-nums truncate ${valCls}`}>{value}</p>
+          {hint && <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{hint}</p>}
         </div>
         {Icon && <Icon className="size-3.5 text-muted-foreground shrink-0" />}
       </div>
     </Card>
   );
+}
+
+function ritardoHelper(dilConc: number | null | undefined, dilEff: number | null | undefined): { text: string; tone: "destructive" | "success" | "muted" } {
+  if (dilConc == null || dilEff == null) return { text: "—", tone: "muted" };
+  const diff = Number(dilEff) - Number(dilConc);
+  if (diff > 0) return { text: `+${diff} gg`, tone: "destructive" };
+  return { text: "In orario", tone: "success" };
 }
 
 
