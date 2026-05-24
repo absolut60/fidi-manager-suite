@@ -29,6 +29,7 @@ import { ClienteFatturato } from "@/components/cliente-fatturato";
 import { formatEuro } from "@/lib/fidi";
 import { classificaScadenza } from "@/lib/scadenze";
 import { Ban, Calendar, Clock, Bell, CheckCircle2, Shield, ShieldOff, Scale, FileText, Activity } from "lucide-react";
+import { NuovoContattoWizard } from "@/components/nuovo-contatto-wizard";
 
 
 
