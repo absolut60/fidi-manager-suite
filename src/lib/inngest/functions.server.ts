@@ -1265,33 +1265,9 @@ export const processScadAssicImport = inngest.createFunction(
  * E — BLOCCO FIDO + ASSICURAZIONE (foglio BLOCCO_FIDO_ASSICURAZIONE)
  * ============================================================================ */
 
-const BFA_HEADER_MAP: Record<
-  string,
-  "codice_gestionale" | "ind_blocco" | "ultima_data_fatturazione" | "fido" | "assicurazione"
-> = {
-  "cod cli": "codice_gestionale",
-  cod_cli: "codice_gestionale",
-  "codice cliente": "codice_gestionale",
-  codice: "codice_gestionale",
-  "cod gestionale": "codice_gestionale",
-  "codice gestionale": "codice_gestionale",
-  "ind blocco": "ind_blocco",
-  ind_blocco: "ind_blocco",
-  blocco: "ind_blocco",
-  "ultima data fatturazione": "ultima_data_fatturazione",
-  "ultima fatturazione": "ultima_data_fatturazione",
-  "data ultima fatturazione": "ultima_data_fatturazione",
-  fido: "fido",
-  assicurazione: "assicurazione",
-};
+// (BFA_HEADER_MAP e bfaNormalize rimossi: ora si usa match esatto via COL_MAP_BLOCCO / COL_MAP_NOTE)
 
-function bfaNormalize(h: unknown): string {
-  return String(h ?? "")
-    .toLowerCase()
-    .replace(/[._\-/]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
+
 function bfaToNum(v: unknown): number | null {
   if (v === "" || v == null) return null;
   if (typeof v === "number") return Number.isFinite(v) ? v : null;
