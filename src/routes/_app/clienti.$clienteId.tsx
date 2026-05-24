@@ -301,7 +301,9 @@ function ClienteDetail() {
     <div className="space-y-6">
       <div>
         <Button asChild variant="ghost" size="sm" className="mb-2 -ml-2">
-          <Link to="/clienti"><ArrowLeft className="size-4" /> Clienti</Link>
+          {from === "approvazioni"
+            ? <Link to="/approvazioni"><ArrowLeft className="size-4" /> Torna alle Approvazioni</Link>
+            : <Link to="/clienti"><ArrowLeft className="size-4" /> Clienti</Link>}
         </Button>
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div>
