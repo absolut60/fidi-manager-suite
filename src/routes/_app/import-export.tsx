@@ -2348,35 +2348,24 @@ function BloccoFidoAssicurazioneImportCard() {
       };
 
       await uploadJson(`${baseDir}/manifest.json`, manifest);
-      pushLog(`Manifest caricato (${totalChunks} chunk previsti)`);
+      pushLog(`Manifest caricato (${totalChunks} chunk previsti, chunkSize=${chunkSize})`);
 
-      await uploadJson(`${baseDir}/note-legali.json`, parsed.rowsNote);
-      pushLog(`note-legali.json caricato (${parsed.rowsNote.length} note)`);
-
-      let doneChunks = 0;
-      const concurrency = 4;
-      const indexes = Array.from({ length: totalChunks }, (_, i) => i);
-      const runOne = async (i: number) => {
+      // Upload SEQUENZIALE dei chunk BLOCCO_FIDO_ASSICURAZIONE con feedback per ciascuno
+      pushLog(
+        `BLOCCO_FIDO_ASSICURAZIONE: ${parsed.rowsBlocco.length} righe → ${totalChunks} chunk da ${chunkSize}`,
+      );
+      for (let i = 0; i < totalChunks; i++) {
         const slice = parsed.rowsBlocco.slice(i * chunkSize, (i + 1) * chunkSize);
+        pushLog(`Chunk BLOCCO ${i + 1}/${totalChunks} in upload (${slice.length} righe)…`);
         await uploadJson(`${baseDir}/blocco-chunk-${i}.json`, slice);
-        doneChunks++;
-        pushLog(`Chunk ${doneChunks}/${totalChunks} caricato su Storage`);
-      };
-      // semplice pool
-      const workers: Promise<void>[] = [];
-      let cursor = 0;
-      for (let w = 0; w < Math.min(concurrency, totalChunks); w++) {
-        workers.push(
-          (async () => {
-            while (cursor < indexes.length) {
-              const i = indexes[cursor++];
-              await runOne(i);
-            }
-          })(),
-        );
+        pushLog(`Chunk BLOCCO ${i + 1}/${totalChunks} ✓`);
       }
-      await Promise.all(workers);
-      pushLog(`Tutti i ${totalChunks} chunk caricati su Storage`);
+      pushLog(`Tutti i ${totalChunks} chunk BLOCCO caricati su Storage`);
+
+      // Upload Note Legale (unico file)
+      pushLog(`Note Legale: ${parsed.rowsNote.length} righe, upload in corso…`);
+      await uploadJson(`${baseDir}/note-legali.json`, parsed.rowsNote);
+      pushLog(`note-legali.json ✓ (${parsed.rowsNote.length} note)`);
 
       await supabase
         .from("importazioni")
@@ -2384,7 +2373,7 @@ function BloccoFidoAssicurazioneImportCard() {
         .eq("id", imp.id);
 
       setPhase("triggering");
-      pushLog("Tutti i JSON caricati, invio evento Inngest…");
+      pushLog("Tutti i JSON caricati. Invio evento Inngest…");
       await triggerImport({
         data: {
           fonte: "blocco_fido_assicurazione",
