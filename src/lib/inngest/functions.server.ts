@@ -1500,7 +1500,7 @@ export const processBloccoFidoImport = inngest.createFunction(
 
 
       // STEP 2: lookup cliente + STATO ATTUALE (per anomalie)
-      const codici = Array.from(new Set(parsed.map((r) => r.codice_gestionale)));
+      const codici = Array.from(new Set(parsed.map((r) => normalizeBfaCodice(r.codice_gestionale)).filter(Boolean)));
       type ClienteSnap = {
         id: string;
         ragione_sociale: string | null;
@@ -1513,13 +1513,15 @@ export const processBloccoFidoImport = inngest.createFunction(
         const BATCH = 500;
         for (let i = 0; i < codici.length; i += BATCH) {
           const slice = codici.slice(i, i + BATCH);
-          const { data } = await supabaseAdmin
+          const { data, error } = await supabaseAdmin
             .from("clienti")
             .select("id, codice_gestionale, ragione_sociale, ind_blocco, assicurazione_attiva, in_gestione_legale")
             .in("codice_gestionale", slice);
+          if (error) throw new Error(`lookup clienti chunk ${Math.floor(i / BATCH) + 1}: ${error.message}`);
+          logger.info(`Import D lookup clienti ${Math.floor(i / BATCH) + 1}: ${data?.length ?? 0}/${slice.length} trovati`);
           (data ?? []).forEach((c) => {
             if (c.codice_gestionale) {
-              map[c.codice_gestionale] = {
+              map[normalizeBfaCodice(c.codice_gestionale)] = {
                 id: c.id,
                 ragione_sociale: c.ragione_sociale ?? null,
                 ind_blocco: (c as { ind_blocco?: number | null }).ind_blocco ?? null,
