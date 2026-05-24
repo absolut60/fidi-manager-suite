@@ -2178,7 +2178,7 @@ async function parseBloccoFidoFile(
     defval: "",
     blankrows: false,
   });
-  log(`Foglio "${foglioBlocco}": ${Math.max(0, matrix.length - 1)} righe dati trovate`);
+  log(`Foglio BLOCCO_FIDO_ASSICURAZIONE: ${Math.max(0, matrix.length - 1)} righe trovate`);
   if (!matrix.length) throw new Error("Foglio BLOCCO_FIDO_ASSICURAZIONE vuoto");
 
   const headers = (matrix[0] as unknown[]).map((h) => normalize(String(h ?? "")));
