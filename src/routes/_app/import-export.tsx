@@ -254,13 +254,25 @@ function anagraficaSheetToObjects(
 }
 
 function ImportExportPage() {
+  const anomalieCount = useAnomalieCount();
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Import / Export</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Importa anagrafiche o dati di rischio da Excel ed esporta i dati per analisi.
-        </p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Import / Export</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Importa anagrafiche o dati di rischio da Excel ed esporta i dati per analisi.
+          </p>
+        </div>
+        {(anomalieCount.data ?? 0) > 0 && (
+          <a
+            href="#anomalie-import"
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-destructive text-destructive-foreground text-sm font-medium"
+          >
+            Anomalie in attesa
+            <Badge variant="secondary">{anomalieCount.data}</Badge>
+          </a>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -281,12 +293,19 @@ function ImportExportPage() {
         <BloccoFidoAssicurazioneImportCard />
       </div>
 
+      {(anomalieCount.data ?? 0) > 0 && (
+        <div id="anomalie-import" className="grid grid-cols-1 gap-6">
+          <AnomalieImportCard />
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-6">
         <HistoryCard kind="importazioni" />
       </div>
     </div>
   );
 }
+
 
 /* ============================================================================
  * A — ANAGRAFICA
