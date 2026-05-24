@@ -93,7 +93,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <img
             src={`data:image/png;base64,${LOGO_MADE_SIDEBAR_BASE64}`}
             alt="MADE"
-            className="w-44 h-auto"
+            className="w-44 h-auto block"
+            style={{ aspectRatio: "490 / 69" }}
           />
           <div className="text-[11px] text-sidebar-foreground/60">FidiManager</div>
         </div>
@@ -145,7 +146,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <img
             src={`data:image/png;base64,${LOGO_MADE_SIDEBAR_BASE64}`}
             alt="MADE"
-            className="w-32 h-auto"
+            className="w-32 h-auto block"
+            style={{ aspectRatio: "490 / 69" }}
           />
         </div>
         <Button
