@@ -783,6 +783,77 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
         </div>
       </section>
 
+      {/* Sezione 1b — Composizione esposizione */}
+      {(() => {
+        const ddt = Number(cliente.doc_da_fatturare ?? 0);
+        const eff = Number(cliente.effetti_a_rischio ?? 0);
+        const ord = Number(cliente.doc_da_evadere ?? 0);
+        if (!ddt && !eff && !ord) return null;
+        return (
+          <section className="space-y-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+              <FileText className="size-3.5" /> Composizione esposizione
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <MiniStat
+                label="DDT da fatturare"
+                value={formatEuro(ddt)}
+                tone={ddt > 0 ? "info" : "muted"}
+                title="Materiale consegnato non ancora fatturato — concorre al rischio"
+              />
+              <MiniStat
+                label="Effetti a rischio (RB)"
+                value={formatEuro(eff)}
+                tone={eff > 0 ? "warning" : "muted"}
+                title="Effetti presentati non ancora incassati"
+              />
+              <MiniStat
+                label="Ordini da evadere"
+                value={formatEuro(ord)}
+                tone={ord > 0 ? "info" : "muted"}
+                hint="non concorre al fido"
+              />
+            </div>
+          </section>
+        );
+      })()}
+
+      {/* Sezione 1c — Comportamento pagamento */}
+      {(() => {
+        const ni = cliente.num_insoluti;
+        const dc = cliente.dilazione_concordata;
+        const de = cliente.dilazione_effettiva;
+        if (ni == null && dc == null && de == null) return null;
+        const r = ritardoHelper(dc, de);
+        return (
+          <section className="space-y-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+              <Clock className="size-3.5" /> Comportamento pagamento
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <MiniStat
+                label="Insoluti storici"
+                value={ni == null ? "—" : String(ni)}
+                tone={ni != null && Number(ni) > 0 ? "destructive" : "muted"}
+              />
+              <MiniStat
+                label="Dilazione concordata"
+                value={dc != null ? `${dc} gg` : "—"}
+                tone="muted"
+              />
+              <MiniStat
+                label="Ritardo medio reale"
+                value={r.text}
+                tone={r.tone}
+                title="Differenza tra dilazione effettiva e concordata"
+              />
+            </div>
+          </section>
+        );
+      })()}
+
+
+
       {/* Sezione 2 — Riepilogo insoluti (spostata sopra al fatturato) */}
       <section className="space-y-2">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Riepilogo insoluti</h3>
