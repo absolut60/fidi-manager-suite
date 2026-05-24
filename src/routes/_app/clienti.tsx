@@ -1954,7 +1954,12 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
             const { error: e3 } = await supabase.storage.from("documenti-privacy")
               .upload(pdfSchedaPath, pdfBytes, { contentType: "application/pdf", upsert: true });
             if (e3) throw new Error(`Upload scheda PDF: ${e3.message}`);
-            const pdfSchedaUrl = supabase.storage.from("documenti-privacy").getPublicUrl(pdfSchedaPath).data.publicUrl;
+            // Bucket privato: signed URL a lunga scadenza (10 anni). Il path è la fonte di verità.
+            const { data: pdfSchedaSigned, error: eSchedaSigned } = await supabase.storage
+              .from("documenti-privacy")
+              .createSignedUrl(pdfSchedaPath, 60 * 60 * 24 * 365 * 10);
+            if (eSchedaSigned) throw new Error(`Signed URL scheda: ${eSchedaSigned.message}`);
+            const pdfSchedaUrl = pdfSchedaSigned.signedUrl;
 
             // Aggiorna cliente con riepilogo firma
             await supabase.from("clienti").update({
