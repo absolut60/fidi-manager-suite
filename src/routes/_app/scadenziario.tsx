@@ -425,32 +425,54 @@ function ScadenziarioPage() {
                   <TableHead className="text-right">Totale a scadere</TableHead>
                   <TableHead>Prossima scad.</TableHead>
                   <TableHead>Fascia</TableHead>
+                  <TableHead className="w-8"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {rows.map((r) => {
                   const storeName = stores?.find((s) => s.id === r.cliente.store_id)?.nome ?? "—";
                   const fatt = fatturatoMap?.get(r.cliente.id);
+                  const isExpanded = expandedClienteId === r.cliente.id;
                   return (
-                    <TableRow key={r.cliente.id} className="cursor-pointer" onClick={() => apriCliente(r.cliente.id)}>
-                      <TableCell className="font-medium">{r.cliente.ragione_sociale}</TableCell>
-                      <TableCell className="font-mono text-xs">{r.cliente.codice_gestionale ?? "—"}</TableCell>
-                      <TableCell className="text-xs">{storeName}</TableCell>
-                      <TableCell>{blockBadge(r.cliente)}</TableCell>
-                      <TableCell>{legaleBadge(r.cliente)}</TableCell>
-                      <TableCell className="text-right tabular-nums">{fatt && fatt.cur > 0 ? fmtEuro(fatt.cur) : "—"}</TableCell>
-                      <TableCell className="text-right tabular-nums text-muted-foreground">{fatt && fatt.prev > 0 ? fmtEuro(fatt.prev) : "—"}</TableCell>
-                      <TableCell className="text-right tabular-nums">{r.nScadute || "—"}</TableCell>
-                      <TableCell className="text-right tabular-nums font-semibold text-destructive">
-                        {r.totScad > 0 ? fmtEuro(r.totScad) : "—"}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">{r.nAScadere || "—"}</TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {r.totAScad > 0 ? fmtEuro(r.totAScad) : "—"}
-                      </TableCell>
-                      <TableCell className="text-sm">{fmtDate(r.prossima)}</TableCell>
-                      <TableCell>{fasciaBadge(r.fascia)}</TableCell>
-                    </TableRow>
+                    <>
+                      <TableRow
+                        key={r.cliente.id}
+                        className="cursor-pointer"
+                        onClick={() => setExpandedClienteId(isExpanded ? null : r.cliente.id)}
+                      >
+                        <TableCell className="font-medium">{r.cliente.ragione_sociale}</TableCell>
+                        <TableCell className="font-mono text-xs">{r.cliente.codice_gestionale ?? "—"}</TableCell>
+                        <TableCell className="text-xs">{storeName}</TableCell>
+                        <TableCell>{blockBadge(r.cliente)}</TableCell>
+                        <TableCell>{legaleBadge(r.cliente)}</TableCell>
+                        <TableCell className="text-right tabular-nums">{fatt && fatt.cur > 0 ? fmtEuro(fatt.cur) : "—"}</TableCell>
+                        <TableCell className="text-right tabular-nums text-muted-foreground">{fatt && fatt.prev > 0 ? fmtEuro(fatt.prev) : "—"}</TableCell>
+                        <TableCell className="text-right tabular-nums">{r.nScadute || "—"}</TableCell>
+                        <TableCell className="text-right tabular-nums font-semibold text-destructive">
+                          {r.totScad > 0 ? fmtEuro(r.totScad) : "—"}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">{r.nAScadere || "—"}</TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {r.totAScad > 0 ? fmtEuro(r.totAScad) : "—"}
+                        </TableCell>
+                        <TableCell className="text-sm">{fmtDate(r.prossima)}</TableCell>
+                        <TableCell>{fasciaBadge(r.fascia)}</TableCell>
+                        <TableCell className="w-8 text-muted-foreground">
+                          {isExpanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+                        </TableCell>
+                      </TableRow>
+                      {isExpanded && (
+                        <TableRow key={`${r.cliente.id}-exp`} className="bg-muted/40 hover:bg-muted/40">
+                          <TableCell colSpan={14} className="px-4 py-3">
+                            <ExpandedRischioPanel
+                              loading={loadingRischio}
+                              data={rischioExpanded}
+                              onApri={(e) => { e.stopPropagation(); apriCliente(r.cliente.id); }}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </>
                   );
                 })}
               </TableBody>
