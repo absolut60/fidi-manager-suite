@@ -846,12 +846,15 @@ function RichiestaFormDialog({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [search, setSearch] = useState("");
 
+  const isEdit = !!richiesta;
+
   const { data: clienti } = useQuery({
     queryKey: ["clienti", "form-richiesta"],
+    enabled: !isEdit,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clienti")
-        .select("id, ragione_sociale, store_id, fido_aziendale_concesso, fido_gestionale, bloccato, in_gestione_legale, scaduto, totale_rischio")
+        .select("id, ragione_sociale, store_id, fido_aziendale_concesso, fido_gestionale, bloccato, in_gestione_legale, scaduto, totale_rischio, fido_residuo, a_scadere, condizioni_pagamento, dilazione_concordata, dilazione_effettiva, num_insoluti, motivo_blocco, cliente_attivo, ultima_data_fatturazione, ultima_sincronizzazione")
         .eq("attivo", true)
         .order("ragione_sociale");
       if (error) throw error;
@@ -859,7 +862,21 @@ function RichiestaFormDialog({
     },
   });
 
-  const clienteSel = clienti?.find((c) => c.id === form.cliente_id);
+  const { data: clienteEdit } = useQuery({
+    queryKey: ["cliente", "form-richiesta", form.cliente_id],
+    enabled: isEdit && !!form.cliente_id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("clienti")
+        .select("id, ragione_sociale, store_id, fido_aziendale_concesso, fido_gestionale, bloccato, in_gestione_legale, scaduto, totale_rischio, fido_residuo, a_scadere, condizioni_pagamento, dilazione_concordata, dilazione_effettiva, num_insoluti, motivo_blocco, cliente_attivo, ultima_data_fatturazione, ultima_sincronizzazione")
+        .eq("id", form.cliente_id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const clienteSel: any = isEdit ? clienteEdit : clienti?.find((c) => c.id === form.cliente_id);
   const fidoAttuale = Number(clienteSel?.fido_aziendale_concesso ?? 0);
   const variazione = fidoAttuale > 0 && form.importo_richiesto > 0
     ? ((form.importo_richiesto - fidoAttuale) / fidoAttuale) * 100
@@ -867,11 +884,12 @@ function RichiestaFormDialog({
   const livelloPreview = form.importo_richiesto > 0 ? calcolaLivello(Number(form.importo_richiesto)) : null;
   const filteredClienti = clienti?.filter((c) => !search || c.ragione_sociale.toLowerCase().includes(search.toLowerCase())) ?? [];
 
+
   const mut = useMutation({
     mutationFn: async (input: { invia: boolean }) => {
       const parsed = formSchema.parse(form);
       const { data: { user } } = await supabase.auth.getUser();
-      const cliente = clienti?.find((c) => c.id === parsed.cliente_id);
+      const cliente = clienteSel ?? clienti?.find((c) => c.id === parsed.cliente_id);
       const payload = {
         cliente_id: parsed.cliente_id,
         tipo: parsed.tipo,
@@ -923,28 +941,65 @@ function RichiestaFormDialog({
       <div className="space-y-4">
         <div className="space-y-1.5">
           <Label>Cliente *</Label>
-          <Input placeholder="Cerca cliente..." value={search} onChange={(e) => setSearch(e.target.value)} />
-          <Select value={form.cliente_id} onValueChange={(v) => setForm({ ...form, cliente_id: v })}>
-            <SelectTrigger><SelectValue placeholder="Seleziona cliente..." /></SelectTrigger>
-            <SelectContent>
-              {filteredClienti.slice(0, 100).map((c) => (
-                <SelectItem key={c.id} value={c.id}>{c.ragione_sociale}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {errors.cliente_id && <p className="text-xs text-destructive">{errors.cliente_id}</p>}
+          {isEdit ? (
+            <Input value={clienteSel?.ragione_sociale ?? richiesta?.clienti?.ragione_sociale ?? "Caricamento…"} readOnly disabled />
+          ) : (
+            <>
+              <Input placeholder="Cerca cliente..." value={search} onChange={(e) => setSearch(e.target.value)} />
+              <Select value={form.cliente_id} onValueChange={(v) => setForm({ ...form, cliente_id: v })}>
+                <SelectTrigger><SelectValue placeholder="Seleziona cliente..." /></SelectTrigger>
+                <SelectContent>
+                  {filteredClienti.slice(0, 100).map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.ragione_sociale}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.cliente_id && <p className="text-xs text-destructive">{errors.cliente_id}</p>}
+            </>
+          )}
         </div>
 
         {clienteSel && (
-          <div className="rounded-md border p-3 text-xs space-y-1 bg-muted/30">
-            <div className="flex justify-between"><span>Fido attuale</span><span className="tabular-nums font-medium">{formatEuro(fidoAttuale)}</span></div>
-            <div className="flex justify-between"><span>Totale rischio</span><span className="tabular-nums">{formatEuro(Number(clienteSel.totale_rischio ?? 0))}</span></div>
-            <div className="flex justify-between"><span>Scaduto</span><span className="tabular-nums">{formatEuro(Number(clienteSel.scaduto ?? 0))}</span></div>
-            <div className="flex justify-between items-center"><span>Semaforo rischio</span>
-              <span className={`inline-flex rounded-md px-2 py-0.5 font-medium ${sem.tone}`}>{sem.label}</span>
+          <div className="rounded-md border p-3 text-xs space-y-1.5 bg-muted/30">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+              <div className="flex justify-between"><span className="text-muted-foreground">Fido gestionale</span><span className="tabular-nums font-medium">{formatEuro(Number(clienteSel.fido_gestionale ?? 0))}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Totale rischio</span><span className="tabular-nums">{formatEuro(Number(clienteSel.totale_rischio ?? 0))}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Fido residuo</span><span className={`tabular-nums ${Number(clienteSel.fido_residuo ?? 0) < 0 ? "text-destructive font-medium" : ""}`}>{formatEuro(Number(clienteSel.fido_residuo ?? 0))}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Scaduto</span><span className={`tabular-nums ${Number(clienteSel.scaduto ?? 0) > 0 ? "text-destructive font-medium" : ""}`}>{formatEuro(Number(clienteSel.scaduto ?? 0))}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">A scadere</span><span className="tabular-nums">{formatEuro(Number(clienteSel.a_scadere ?? 0))}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Insoluti</span><span className="tabular-nums">{Number(clienteSel.num_insoluti ?? 0)}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Cond. pagamento</span><span className="truncate ml-2">{clienteSel.condizioni_pagamento ?? "—"}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Dilaz. concordata</span><span className="tabular-nums">{clienteSel.dilazione_concordata ?? "—"}{clienteSel.dilazione_concordata != null ? " gg" : ""}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Dilaz. effettiva</span><span className="tabular-nums">{clienteSel.dilazione_effettiva ?? "—"}{clienteSel.dilazione_effettiva != null ? " gg" : ""}</span></div>
+              <div className="flex justify-between items-center"><span className="text-muted-foreground">Semaforo rischio</span>
+                <span className={`inline-flex rounded-md px-2 py-0.5 font-medium ${sem.tone}`}>{sem.label}</span>
+              </div>
+            </div>
+            <div className="border-t pt-1.5 flex flex-wrap items-center gap-2">
+              <span className="text-muted-foreground">Stato:</span>
+              {clienteSel.bloccato ? (
+                <span className="inline-flex rounded-md px-2 py-0.5 font-medium bg-destructive/15 text-destructive">Bloccato{clienteSel.motivo_blocco ? ` — ${clienteSel.motivo_blocco}` : ""}</span>
+              ) : (
+                <span className="inline-flex rounded-md px-2 py-0.5 font-medium bg-success/15 text-success">Non bloccato</span>
+              )}
+              {clienteSel.in_gestione_legale && (
+                <span className="inline-flex rounded-md px-2 py-0.5 font-medium bg-warning/15 text-warning">In legale</span>
+              )}
+              <span className={`inline-flex rounded-md px-2 py-0.5 font-medium ${clienteSel.cliente_attivo ? "bg-success/15 text-success" : "bg-muted text-muted-foreground"}`}>
+                {clienteSel.cliente_attivo ? "Attivo" : "Non attivo"}
+              </span>
+              {clienteSel.ultima_data_fatturazione && (
+                <span className="text-muted-foreground">· Ultima fatt. {formatDate(clienteSel.ultima_data_fatturazione)}</span>
+              )}
+            </div>
+            <div className="border-t pt-1.5 text-muted-foreground">
+              Ultima sincronizzazione: {clienteSel.ultima_sincronizzazione
+                ? new Date(clienteSel.ultima_sincronizzazione).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
+                : "—"}
             </div>
           </div>
         )}
+
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
