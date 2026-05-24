@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Plus, FileText, Pencil, Ban, Send, History } from "lucide-react";
+import { Plus, FileText, Pencil, Ban, Send, History, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
