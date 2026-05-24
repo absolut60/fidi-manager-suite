@@ -793,32 +793,47 @@ function ClientiPage() {
         </div>
       );
     }
+    const AdvFilterBtn = (
+      <Button
+        type="button"
+        variant={advCount > 0 ? "default" : "outline"}
+        size="sm"
+        className="gap-1.5 h-9 text-[13px] w-full"
+        onClick={() => setAdvOpen(true)}
+      >
+        <SlidersHorizontal className="size-4" />
+        Filtri avanzati
+        {advCount > 0 && (
+          <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5 text-xs">{advCount}</Badge>
+        )}
+      </Button>
+    );
     return (
-      <div className="space-y-3">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="space-y-2 text-[13px]">
+        {/* Riga 1: search + store + stato fido + semaforo */}
+        <div className="grid grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr] gap-2">
           <SearchInput value={searchInput} onChange={setSearchInput} />
           {StoreSelect}
           {StatoFidoPopover}
           {SemaforoSelect}
         </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* Riga 2: scadenziario / fido residuo / totale rischio / a scadere / fatturato / filtri avanzati */}
+        <div className="grid grid-cols-2 lg:grid-cols-6 gap-2">
           {ScadenziarioSelect}
           {FidoFasciaSelect}
           {TotaleRischioSelect}
           {AScadereSelect}
           {FatturatoSelect}
+          {AdvFilterBtn}
         </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {StatoAttivitaSelect}
-          {FatturatoSelect}
+        {/* Riga 3: stato attività + checkbox inline */}
+        <div className="flex flex-wrap items-center gap-3 pt-1">
+          <div className="w-44">{StatoAttivitaSelect}</div>
+          {BloccatiChk}
+          {AssicuratiChk}
         </div>
-        <div className="flex flex-col lg:flex-row gap-3 lg:items-center">
-          <div className="flex-1">{FidoRangeSlider}</div>
-          <div className="flex items-center gap-3">
-            {BloccatiChk}
-            {AssicuratiChk}
-          </div>
-        </div>
+        {/* Slider fido residuo: larghezza piena */}
+        <div>{FidoRangeSlider}</div>
       </div>
     );
   }
