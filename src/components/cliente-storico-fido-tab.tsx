@@ -53,6 +53,20 @@ export function ClienteStoricoFidoTab({ clienteId }: { clienteId: string }) {
     },
   });
 
+  const { data: cliente } = useQuery({
+    queryKey: ["cliente-gestionale", clienteId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("clienti")
+        .select("fido_gestionale, ind_blocco, assicurazione_attiva, ultima_data_fatturazione, cliente_attivo")
+        .eq("id", clienteId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+
   const invalidate = () => qc.invalidateQueries({ queryKey: ["richieste-cliente", clienteId] });
 
   const annullaMut = useMutation({
