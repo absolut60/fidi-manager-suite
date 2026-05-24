@@ -88,6 +88,25 @@ function ScadenziarioPage() {
   const [statoLegale, setStatoLegale] = useState<"tutti" | "in_legale" | "non_in_legale">("tutti");
   const [escludiBonifici, setEscludiBonifici] = useState(true);
   const [escludiLegale, setEscludiLegale] = useState(true);
+  const [expandedClienteId, setExpandedClienteId] = useState<string | null>(null);
+
+  const { data: rischioExpanded, isLoading: loadingRischio } = useQuery({
+    queryKey: ["rischio-expanded", expandedClienteId],
+    enabled: !!expandedClienteId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("clienti")
+        .select("fido_gestionale, fido_residuo, totale_rischio, doc_da_fatturare, doc_da_evadere, effetti_a_rischio, num_insoluti, dilazione_concordata, dilazione_effettiva")
+        .eq("id", expandedClienteId!)
+        .maybeSingle();
+      if (error) throw error;
+      return data as {
+        fido_gestionale: number | null; fido_residuo: number | null; totale_rischio: number | null;
+        doc_da_fatturare: number | null; doc_da_evadere: number | null; effetti_a_rischio: number | null;
+        num_insoluti: number | null; dilazione_concordata: number | null; dilazione_effettiva: number | null;
+      } | null;
+    },
+  });
 
   const { data: stores } = useQuery({
     queryKey: ["stores-list"],
