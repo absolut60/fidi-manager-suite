@@ -20,11 +20,25 @@ type EventData = { importazioneId: string; filePath: string; userId?: string };
  * Utility comuni
  * ============================================================================ */
 
-async function downloadWorkbook(filePath: string) {
+async function downloadWorkbook(filePath: string, sheets?: string[]) {
   const { data: file, error } = await supabaseAdmin.storage.from("import-files").download(filePath);
   if (error || !file) throw new Error(`Download fallito: ${error?.message ?? "no data"}`);
   const buf = await file.arrayBuffer();
-  return XLSX.read(buf, { type: "array", cellDates: false });
+  return XLSX.read(buf, {
+    type: "array",
+    cellDates: false,
+    cellFormula: false,
+    cellHTML: false,
+    cellNF: false,
+    cellStyles: false,
+    cellText: false,
+    sheetStubs: false,
+    bookDeps: false,
+    bookFiles: false,
+    bookProps: false,
+    bookVBA: false,
+    ...(sheets && sheets.length ? { sheets } : {}),
+  });
 }
 
 async function setImportazioneError(importazioneId: string, message: string) {
@@ -1351,7 +1365,17 @@ export const processBloccoFidoImport = inngest.createFunction(
     try {
       // STEP 1: download + parse ENTRAMBI i fogli (match esatto sui nomi)
       const parseResult = await step.run("parse", async () => {
-        const wb = await downloadWorkbook(filePath);
+        const wb = await downloadWorkbook(filePath, [
+          "BLOCCO_FIDO_ASSICURAZIONE",
+          "Blocco_Fido_Assicurazione",
+          "blocco_fido_assicurazione",
+          "Note Legale",
+          "Note Legali",
+          "NOTE LEGALE",
+          "NOTE LEGALI",
+          "note legale",
+          "note legali",
+        ]);
 
         // Foglio 1 — match esatto case-insensitive: "BLOCCO_FIDO_ASSICURAZIONE"
         const foglioBlocco = wb.SheetNames.find(
