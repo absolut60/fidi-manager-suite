@@ -146,6 +146,22 @@ export default function AssicurazioniPage() {
         </p>
       </div>
 
+      <TooltipProvider>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <KpiCard label="Polizze attive" value={String(kpi.attive)} icon={ShieldCheck} accent="success" />
+          <KpiCard label="Polizze scadute" value={String(kpi.scadute)} icon={ShieldAlert} accent="orange"
+            onClick={() => { setStato("scaduta"); setScadenza30(false); }} />
+          <KpiCard label="In scadenza entro 30gg" value={String(kpi.inScad30)} icon={Clock} accent="amber"
+            onClick={() => { setScadenza30(true); setStato("tutti"); }} active={scadenza30} />
+          <KpiCard label="Massimale totale coperto" value={fmtEuro(kpi.massimale)} icon={Wallet} accent="navy" />
+          <KpiCard label="Clienti scoperti con insoluto" value={String(kpi.scoperti)} icon={AlertCircle} accent="destructive"
+            tooltip="Clienti senza polizza attiva che hanno fatture scadute"
+            onClick={() => navigate({ to: "/scadenziario" })} />
+          <KpiCard label="Prossima scadenza" value={kpi.prossimaData ? fmtDate(kpi.prossimaData) : "—"} icon={CalendarDays} accent="slate"
+            subtitle={kpi.prossimaCliente ?? undefined} />
+        </div>
+      </TooltipProvider>
+
       <Card className="p-4">
         <div className="flex flex-wrap gap-3 items-end">
           <div className="flex-1 min-w-[200px]">
