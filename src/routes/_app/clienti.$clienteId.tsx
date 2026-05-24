@@ -41,6 +41,7 @@ export const Route = createFileRoute("/_app/clienti/$clienteId")({
     edit: s.edit === 1 || s.edit === "1" ? 1 : undefined,
     tab: typeof s.tab === "string" && (TAB_VALUES as readonly string[]).includes(s.tab) ? s.tab as typeof TAB_VALUES[number] : undefined,
     insolutiTab: typeof s.insolutiTab === "string" && (INSOLUTI_SUB_VALUES as readonly string[]).includes(s.insolutiTab) ? s.insolutiTab as typeof INSOLUTI_SUB_VALUES[number] : undefined,
+    from: s.from === "approvazioni" ? ("approvazioni" as const) : undefined,
   }),
   component: ClienteDetail,
 });
@@ -178,7 +179,7 @@ function ConsensoBadge({ ok, label }: { ok: boolean; label: string }) {
 
 function ClienteDetail() {
   const { clienteId } = Route.useParams();
-  const { edit, tab, insolutiTab } = Route.useSearch();
+  const { edit, tab, insolutiTab, from } = Route.useSearch();
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { role } = useAuth();
@@ -300,7 +301,9 @@ function ClienteDetail() {
     <div className="space-y-6">
       <div>
         <Button asChild variant="ghost" size="sm" className="mb-2 -ml-2">
-          <Link to="/clienti"><ArrowLeft className="size-4" /> Clienti</Link>
+          {from === "approvazioni"
+            ? <Link to="/approvazioni"><ArrowLeft className="size-4" /> Torna alle Approvazioni</Link>
+            : <Link to="/clienti"><ArrowLeft className="size-4" /> Clienti</Link>}
         </Button>
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div>
