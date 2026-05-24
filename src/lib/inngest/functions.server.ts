@@ -1573,15 +1573,19 @@ export const processBloccoFidoImport = inngest.createFunction(
         const slice = parsed.slice(ci * CHUNK, (ci + 1) * CHUNK);
         const chunkRes = await step.run(`chunk-${ci}`, async () => {
           let cAgg = 0, cBlk = 0, cSblk = 0, cNonAtt = 0, cPol = 0, cAnom = 0;
+          let cUpdateTentati = 0, cUpdateZero = 0, cUpdateMulti = 0;
           const cErr: Array<{ riga: number; errore: string }> = [];
           const cMiss: string[] = [];
           const anomalieBatch: AnomaliaImport[] = [];
+          const updateDiagnostics: Array<{ riga: number; errore: string }> = [];
 
           await Promise.all(
             slice.map(async (r) => {
-              const snap = clientMap[r.codice_gestionale];
+              try {
+              const codiceGestionale = normalizeBfaCodice(r.codice_gestionale);
+              const snap = clientMap[codiceGestionale];
               if (!snap) {
-                cMiss.push(r.codice_gestionale);
+                cMiss.push(codiceGestionale || r.codice_gestionale);
                 return;
               }
               const clienteId = snap.id;
@@ -1596,7 +1600,7 @@ export const processBloccoFidoImport = inngest.createFunction(
                 rowAnomalie.push({
                   importazione_id: importazioneId,
                   cliente_id: clienteId,
-                  codice_gestionale: r.codice_gestionale,
+                  codice_gestionale: codiceGestionale,
                   ragione_sociale: snap.ragione_sociale,
                   tipo_anomalia: "cambio_blocco",
                   campo: "ind_blocco",
@@ -1649,7 +1653,7 @@ export const processBloccoFidoImport = inngest.createFunction(
                 rowAnomalie.push({
                   importazione_id: importazioneId,
                   cliente_id: clienteId,
-                  codice_gestionale: r.codice_gestionale,
+                  codice_gestionale: codiceGestionale,
                   ragione_sociale: snap.ragione_sociale,
                   tipo_anomalia: "perde_assicurazione",
                   campo: "assicurazione_attiva",
@@ -1701,17 +1705,31 @@ export const processBloccoFidoImport = inngest.createFunction(
               payload.ultima_importazione_d = timestampInizio;
 
               if (Object.keys(payload).length > 0) {
-                const { error } = await supabaseAdmin
+                cUpdateTentati++;
+                const { error, count } = await supabaseAdmin
                   .from("clienti")
-                  .update(payload as never)
-                  .eq("id", clienteId);
+                  .update(payload as never, { count: "exact" })
+                  .eq("codice_gestionale", codiceGestionale);
                 if (error) cErr.push({ riga: r.riga, errore: error.message });
-                else cAgg++;
+                else {
+                  const affected = count ?? 0;
+                  cAgg += affected;
+                  if (affected === 0) {
+                    cUpdateZero++;
+                    cErr.push({ riga: r.riga, errore: `UPDATE clienti COD_CLI=${codiceGestionale}: count=0` });
+                  } else if (affected > 1) {
+                    cUpdateMulti++;
+                    updateDiagnostics.push({ riga: r.riga, errore: `UPDATE clienti COD_CLI=${codiceGestionale}: count=${affected}` });
+                  }
+                }
               }
 
               if (rowAnomalie.length) {
                 anomalieBatch.push(...rowAnomalie);
                 cAnom += rowAnomalie.length;
+              }
+              } catch (e) {
+                cErr.push({ riga: r.riga, errore: `Errore riga COD_CLI=${normalizeBfaCodice(r.codice_gestionale)}: ${e instanceof Error ? e.message : String(e)}` });
               }
             }),
           );
@@ -1723,7 +1741,7 @@ export const processBloccoFidoImport = inngest.createFunction(
             if (error) cErr.push({ riga: 0, errore: `anomalie insert: ${error.message}` });
           }
 
-          await supabaseAdmin.rpc("increment_importazione_counters", {
+          const { error: rpcError } = await supabaseAdmin.rpc("increment_importazione_counters", {
             _id: importazioneId,
             _elaborate: slice.length,
             _create: 0,
@@ -1731,17 +1749,24 @@ export const processBloccoFidoImport = inngest.createFunction(
             _error: cErr.length,
             _skipped: cMiss.length,
           });
+          if (rpcError) cErr.push({ riga: 0, errore: `increment counters: ${rpcError.message}` });
 
-          if (cErr.length || cMiss.length) {
+          const chunkLog = {
+            riga: 0,
+            errore: `Chunk ${ci + 1}/${totalChunks}: UPDATE clienti tentati=${cUpdateTentati}, count aggiornate=${cAgg}, count=0=${cUpdateZero}, count>1=${cUpdateMulti}, non trovati=${cMiss.length}, errori=${cErr.length}`,
+          };
+          logger.info(chunkLog.errore);
+
+          if (cErr.length || cMiss.length || updateDiagnostics.length || cUpdateTentati > 0) {
             const { data: cur } = await supabaseAdmin
               .from("importazioni")
               .select("log_errori, codici_mancanti")
               .eq("id", importazioneId)
               .single();
             const updates: Record<string, unknown> = {};
-            if (cErr.length) {
+            if (cErr.length || updateDiagnostics.length || cUpdateTentati > 0) {
               const exist = (cur?.log_errori as Array<{ riga: number; errore: string }> | null) ?? [];
-              updates.log_errori = [...exist, ...cErr].slice(0, 500);
+              updates.log_errori = [...exist, chunkLog, ...updateDiagnostics, ...cErr].slice(-500);
             }
             if (cMiss.length) {
               const exist = (cur?.codici_mancanti as string[] | null) ?? [];
