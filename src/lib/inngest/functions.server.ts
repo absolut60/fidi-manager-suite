@@ -1389,17 +1389,33 @@ export const processBloccoFidoImport = inngest.createFunction(
           foglioNotePresente: boolean;
           chunkSize: number;
           totalChunks: number;
+          chunks?: Array<{ chunkIndex: number; chunkPath: string; rowsCount?: number }>;
           warnings?: string[];
         };
 
         // Scarica tutti i chunk BLOCCO (sono JSON leggeri, max 500 righe ognuno)
         const rows: BFARow[] = [];
         for (let ci = 0; ci < manifest.totalChunks; ci++) {
-          const path = `${baseDir}/blocco-chunk-${ci}.json`;
-          const { data: chunkFile, error: chunkErr } = await supabaseAdmin.storage
-            .from("import-files")
-            .download(path);
-          if (chunkErr || !chunkFile) throw new Error(`Download chunk ${ci} fallito: ${chunkErr?.message ?? "no data"}`);
+          const manifestChunkPath = manifest.chunks?.find((c) => c.chunkIndex === ci)?.chunkPath;
+          const candidatePaths = [
+            manifestChunkPath,
+            `${baseDir}/blocco-chunk-${ci}.json`,
+            `${baseDir}/blocco_${importazioneId}_chunk_${ci}.json`,
+          ].filter(Boolean) as string[];
+          let chunkFile: Blob | null = null;
+          let chunkPath = candidatePaths[0];
+          let lastChunkError = "no data";
+          for (const path of candidatePaths) {
+            const { data, error } = await supabaseAdmin.storage.from("import-files").download(path);
+            if (data && !error) {
+              chunkFile = data;
+              chunkPath = path;
+              break;
+            }
+            lastChunkError = `${path}: ${error?.message ?? "no data"}`;
+          }
+          if (!chunkFile) throw new Error(`Download chunk ${ci} fallito: ${lastChunkError}`);
+          logger.info(`Import D chunk ${ci + 1}/${manifest.totalChunks}: letto ${chunkPath}`);
           const chunk = JSON.parse(await chunkFile.text()) as Array<Record<string, unknown>>;
           chunk.forEach((r, idx) => {
             const codCli = normalizeBfaCodice(r.cod_cli ?? r.COD_CLI ?? r.codice_gestionale);
