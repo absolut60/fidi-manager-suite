@@ -1818,14 +1818,6 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
 
         // 2.bis Se è stato indicato un Importo Affidamento Richiesto, crea
         //       una richiesta_fido in bozza che segue il normale iter di approvazione.
-        console.log("[richiesta-fido] check creazione:", {
-          canSeeAdminStep,
-          importo_raw: parsed.importo_affidamento_richiesto,
-          importo_parsed: num(parsed.importo_affidamento_richiesto),
-          clienteId,
-          store_id: parsed.store_id,
-          user_id: user?.id,
-        });
         if (canSeeAdminStep) {
           const importoRichiesto = num(parsed.importo_affidamento_richiesto);
           if (importoRichiesto != null && importoRichiesto > 0) {
@@ -1843,13 +1835,11 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
                 motivazione: parsed.note_amministrazione || null,
                 created_by: user?.id ?? null,
               };
-              console.log("[richiesta-fido] insert payload:", payload);
-              const { data: rfData, error: eRf } = await supabase
+              const { error: eRf } = await supabase
                 .from("richieste_fido")
                 .insert(payload as never)
                 .select()
                 .single();
-              console.log("[richiesta-fido] insert result:", { rfData, eRf });
               if (eRf) {
                 toast.warning(`Cliente creato, ma richiesta fido non generata: ${eRf.message}`);
               } else {
@@ -1861,14 +1851,10 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
               toast.warning(`Cliente creato, ma richiesta fido non generata: ${m}`);
             }
           } else {
-            console.warn("[richiesta-fido] saltata: importo non valido o <= 0", {
-              importo_raw: parsed.importo_affidamento_richiesto,
-            });
             toast.info("Richiesta fido non creata: importo affidamento mancante o = 0");
           }
-        } else {
-          console.warn("[richiesta-fido] saltata: canSeeAdminStep = false (utente non admin/approvatore)");
         }
+
 
 
         // 3. Solo ORA, se richiesto, generiamo firma + PDF. Eventuali errori
