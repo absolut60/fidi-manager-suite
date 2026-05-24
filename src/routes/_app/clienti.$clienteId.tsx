@@ -28,7 +28,7 @@ import { ClienteInsolutiTab } from "@/components/cliente-insoluti-tab";
 import { ClienteFatturato } from "@/components/cliente-fatturato";
 import { formatEuro } from "@/lib/fidi";
 import { classificaScadenza } from "@/lib/scadenze";
-import { Ban, Calendar, Clock, Bell, CheckCircle2, Shield, ShieldOff } from "lucide-react";
+import { Ban, Calendar, Clock, Bell, CheckCircle2, Shield, ShieldOff, Scale } from "lucide-react";
 
 
 
@@ -315,7 +315,31 @@ function ClienteDetail() {
                 (cliente as any).stores?.nome ? String((cliente as any).stores.nome).toUpperCase() : null,
               ].filter(Boolean).join(" — ") || "Partita IVA non inserita"}
             </p>
+            {((cliente as any).bloccato || (cliente as any).in_gestione_legale) && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {(cliente as any).bloccato && (
+                  <Link
+                    to="/clienti/$clienteId"
+                    params={{ clienteId }}
+                    search={{ tab: "storico" }}
+                    className="inline-flex items-center gap-1 rounded-md bg-destructive/15 text-destructive border border-destructive/30 px-2 py-0.5 text-xs font-medium hover:bg-destructive/25 transition-colors cursor-pointer"
+                  >
+                    <AlertTriangle className="size-3" /> Cliente bloccato
+                  </Link>
+                )}
+                {(cliente as any).in_gestione_legale && (
+                  <Link
+                    to="/legali"
+                    search={{ cliente: clienteId } as never}
+                    className="inline-flex items-center gap-1 rounded-md bg-orange-500/15 text-orange-700 dark:text-orange-400 border border-orange-500/30 px-2 py-0.5 text-xs font-medium hover:bg-orange-500/25 transition-colors cursor-pointer"
+                  >
+                    <Scale className="size-3" /> In gestione legale
+                  </Link>
+                )}
+              </div>
+            )}
           </div>
+
           <div className="flex gap-2 items-center">
             {cliente.privacy_firmata ? (
               <Badge className="bg-success/15 text-success gap-1">
@@ -385,7 +409,7 @@ function ClienteDetail() {
         </div>
       </div>
 
-      <Tabs defaultValue={tab ?? "riepilogo"}>
+      <Tabs key={tab ?? "riepilogo"} defaultValue={tab ?? "riepilogo"}>
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="riepilogo">Riepilogo</TabsTrigger>
           <TabsTrigger value="anagrafica">Anagrafica</TabsTrigger>
@@ -698,69 +722,31 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
   const condPag = cliente.condizione_pagamento_desc || cliente.condizioni_pagamento;
 
   return (
-    <div className="space-y-6">
-      {/* Sezione 1 — Stato cliente */}
-      <div className="space-y-2">
-        {bloccato && (
-          <div className="rounded-lg border-2 border-destructive bg-destructive/10 p-4 flex items-start gap-3">
-            <AlertTriangle className="size-7 text-destructive shrink-0" />
-            <div className="flex-1">
-              <p className="text-lg font-bold text-destructive tracking-wide">CLIENTE BLOCCATO</p>
-              {cliente.data_blocco && (
-                <p className="text-xs text-muted-foreground mt-0.5">Dal {fmtDateIt(cliente.data_blocco)}</p>
-              )}
-              {cliente.motivo_blocco && <p className="text-sm mt-1">{cliente.motivo_blocco}</p>}
-            </div>
-          </div>
-        )}
-        <div className="flex flex-wrap gap-2">
-          {indBlocco === 1 && (
-            <Badge className="bg-orange-500 text-white hover:bg-orange-500 gap-1">
-              <AlertTriangle className="size-3" /> Blocco revocabile
-            </Badge>
-          )}
-        </div>
-        {!clienteAttivo ? (
-          <div className="rounded-lg border border-muted-foreground/20 bg-muted/60 px-4 py-3 flex items-center gap-3">
-            <Ban className="size-5 text-muted-foreground shrink-0" />
-            <p className="text-sm font-bold text-muted-foreground tracking-wide">
-              NON ATTIVO{ultimaFatt ? ` — Ultima fatturazione: ${fmtDateIt(ultimaFatt)}` : ""}
-            </p>
-          </div>
-        ) : !bloccato && indBlocco === 0 ? (
-          <div className="rounded-lg border border-success/30 bg-success/10 px-4 py-3 flex items-center gap-3">
-            <CheckCircle2 className="size-5 text-success shrink-0" />
-            <p className="text-sm font-bold text-success tracking-wide">
-              ATTIVO{ultimaFatt ? ` — Ultima fatturazione: ${fmtDateIt(ultimaFatt)}` : ""}
-            </p>
-          </div>
-        ) : null}
-      </div>
-
-      {/* Banner assicurazione */}
+    <div className="space-y-5">
+      {/* Banner assicurazione (compatto) */}
       {assicurato && (
-        <div className={`rounded-lg border px-4 py-3 flex items-center gap-3 ${polizzaScaduta ? "border-destructive/40 bg-destructive/10" : "border-success/30 bg-success/10"}`}>
-          <Shield className={`size-5 shrink-0 ${polizzaScaduta ? "text-destructive" : "text-success"}`} />
-          <p className={`text-sm font-semibold ${polizzaScaduta ? "text-destructive" : "text-success"}`}>
+        <div className={`rounded-lg border px-3 py-2 flex items-center gap-2 text-xs ${polizzaScaduta ? "border-destructive/40 bg-destructive/10" : "border-success/30 bg-success/10"}`}>
+          <Shield className={`size-4 shrink-0 ${polizzaScaduta ? "text-destructive" : "text-success"}`} />
+          <p className={`font-medium ${polizzaScaduta ? "text-destructive" : "text-success"}`}>
             Assicurato {polizzaAttiva?.assicuratore || "POUEY"}
             {polizzaAttiva?.importo_massimale != null ? ` — Massimale: ${formatEuro(polizzaAttiva.importo_massimale)}` : ""}
             {polizzaAttiva?.data_scadenza ? ` — Scade: ${fmtDateIt(polizzaAttiva.data_scadenza)}` : ""}
           </p>
           {polizzaScaduta && (
-            <Badge className="bg-destructive text-destructive-foreground hover:bg-destructive ml-auto">Polizza scaduta</Badge>
+            <Badge className="bg-destructive text-destructive-foreground hover:bg-destructive ml-auto text-[10px] py-0">Polizza scaduta</Badge>
           )}
         </div>
       )}
 
-      {/* Sezione 2 — Dati rischio */}
-      <section className="space-y-3">
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Dati rischio</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <Card className={`p-4 border ${semaforo.bg}`}>
-            <p className="text-xs font-medium text-muted-foreground uppercase">Semaforo rischio</p>
-            <div className="mt-2 flex items-center gap-2">
-              <span className={`inline-block size-4 rounded-full ${semaforo.dot}`} />
-              <span className={`text-lg font-bold ${semaforo.text}`}>{semaforo.label}</span>
+      {/* Sezione 1 — Dati rischio (card compatte) */}
+      <section className="space-y-2">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Dati rischio</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+          <Card className={`px-3 py-2 border ${semaforo.bg}`}>
+            <p className="text-[10px] font-medium text-muted-foreground uppercase truncate">Semaforo rischio</p>
+            <div className="mt-1 flex items-center gap-1.5">
+              <span className={`inline-block size-3 rounded-full ${semaforo.dot}`} />
+              <span className={`text-base font-bold ${semaforo.text}`}>{semaforo.label}</span>
             </div>
           </Card>
           <MiniStat label="Fido gestionale" value={formatEuro(fidoGest)} />
@@ -769,20 +755,20 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
           <MiniStat label="Scaduto" value={formatEuro(cliente.scaduto)} tone={scaduto > 0 ? "destructive" : "default"} />
           <MiniStat label="A scadere" value={formatEuro(cliente.a_scadere)} />
           <MiniStat label="Cond. pagamento" value={condPag || "—"} />
-          <Card className="p-4">
-            <p className="text-xs font-medium text-muted-foreground uppercase">Assicurazione</p>
-            <div className="mt-2 flex items-center gap-2 flex-wrap">
+          <Card className="px-3 py-2">
+            <p className="text-[10px] font-medium text-muted-foreground uppercase truncate">Assicurazione</p>
+            <div className="mt-1 flex items-center gap-1.5 flex-wrap">
               {assicurato ? (
                 <>
-                  <Badge className="bg-success/15 text-success border-success/30 hover:bg-success/15 gap-1">
-                    <Shield className="size-3" /> POUEY Attiva
+                  <Badge className="bg-success/15 text-success border-success/30 hover:bg-success/15 gap-1 text-[10px] py-0">
+                    <Shield className="size-3" /> POUEY
                   </Badge>
                   {polizzaAttiva?.importo_massimale != null && (
-                    <span className="text-sm font-semibold tabular-nums">{formatEuro(polizzaAttiva.importo_massimale)}</span>
+                    <span className="text-xs font-semibold tabular-nums">{formatEuro(polizzaAttiva.importo_massimale)}</span>
                   )}
                 </>
               ) : (
-                <Badge variant="secondary" className="gap-1">
+                <Badge variant="secondary" className="gap-1 text-[10px] py-0">
                   <ShieldOff className="size-3" /> Non assicurato
                 </Badge>
               )}
@@ -791,21 +777,18 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
         </div>
       </section>
 
-      {/* Sezione Fatturato */}
-      <ClienteFatturato clienteId={clienteId} />
-
-      {/* Sezione 3 — Riepilogo insoluti */}
-      <section className="space-y-3">
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Riepilogo insoluti</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      {/* Sezione 2 — Riepilogo insoluti (spostata sopra al fatturato) */}
+      <section className="space-y-2">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Riepilogo insoluti</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
           <MiniStat label="Totale scaduto" value={formatEuro(totScaduto)} tone={fasciaTone === "destructive" ? "destructive" : fasciaTone === "warning" ? "warning" : "default"} icon={AlertTriangle} />
           <MiniStat label="A scadere" value={formatEuro(ins?.totale_a_scadere ?? 0)} icon={Calendar} />
           <MiniStat label="Max gg ritardo" value={`${maxGg} gg`} icon={Clock} />
           <MiniStat label="Ultimo sollecito" value={fmtDateIt(ins?.ultimo_sollecito)} icon={Bell} />
         </div>
-        <Card className="p-5">
-          <p className="text-xs font-semibold uppercase text-muted-foreground mb-3">Fasce di scaduto</p>
-          <div className="space-y-3">
+        <Card className="px-3 py-2.5">
+          <p className="text-[10px] font-semibold uppercase text-muted-foreground mb-2">Fasce di scaduto</p>
+          <div className="space-y-2">
             <FasciaRow label="0–30 giorni" value={Number(ins?.scaduto_0_30 ?? 0)} pct={pct(Number(ins?.scaduto_0_30 ?? 0))} color="bg-yellow-500" />
             <FasciaRow label="31–60 giorni" value={Number(ins?.scaduto_30_60 ?? 0)} pct={pct(Number(ins?.scaduto_30_60 ?? 0))} color="bg-orange-500" />
             <FasciaRow label="oltre 60 giorni" value={Number(ins?.scaduto_oltre_60 ?? 0)} pct={pct(Number(ins?.scaduto_oltre_60 ?? 0))} color="bg-destructive" />
@@ -813,27 +796,30 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
         </Card>
       </section>
 
+      {/* Sezione 3 — Fatturato */}
+      <ClienteFatturato clienteId={clienteId} />
+
       {/* Sezione 4 — Info cliente sintetica */}
-      <section className="space-y-3">
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Info cliente</h3>
-        <Card className="p-6">
-          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+      <section className="space-y-2">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Info cliente</h3>
+        <Card className="px-4 py-3">
+          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
             <Field label="Ragione sociale" value={cliente.ragione_sociale} />
             <Field label="Partita IVA" value={cliente.partita_iva} />
             <Field label="Punto vendita" value={cliente.stores?.nome} />
             <div>
-              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Ultima data fatturazione</dt>
+              <dt className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Ultima data fatturazione</dt>
               <dd className="mt-0.5 flex items-center gap-2">
                 <span>{ultimaFatt ? fmtDateIt(ultimaFatt) : <span className="text-muted-foreground">—</span>}</span>
                 {clienteAttivo ? (
-                  <Badge className="bg-success/15 text-success border-success/30 hover:bg-success/15">Attivo</Badge>
+                  <Badge className="bg-success/15 text-success border-success/30 hover:bg-success/15 text-[10px] py-0">Attivo</Badge>
                 ) : (
-                  <Badge variant="secondary">Non attivo</Badge>
+                  <Badge variant="secondary" className="text-[10px] py-0">Non attivo</Badge>
                 )}
               </dd>
             </div>
             <div>
-              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Stato blocco</dt>
+              <dt className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Stato blocco</dt>
               <dd className="mt-0.5">
                 {indBlocco === 2 || bloccato ? (
                   <span className="text-destructive font-medium">Bloccato</span>
@@ -845,11 +831,11 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
               </dd>
             </div>
             <div>
-              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Assicurazione crediti</dt>
+              <dt className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Assicurazione crediti</dt>
               <dd className="mt-0.5 flex items-center gap-2 flex-wrap">
                 {assicurato ? (
                   <>
-                    <Badge className="bg-success/15 text-success border-success/30 hover:bg-success/15 gap-1">
+                    <Badge className="bg-success/15 text-success border-success/30 hover:bg-success/15 gap-1 text-[10px] py-0">
                       <Shield className="size-3" /> {polizzaAttiva?.assicuratore || "POUEY"} attiva
                     </Badge>
                     {polizzaAttiva?.importo_massimale != null && (
@@ -861,7 +847,6 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
                 )}
               </dd>
             </div>
-
           </dl>
         </Card>
       </section>
@@ -869,20 +854,22 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
   );
 }
 
+
 function MiniStat({ label, value, tone = "default", icon: Icon }: { label: string; value: string; tone?: "default" | "destructive" | "warning"; icon?: typeof Calendar }) {
   const valCls = tone === "destructive" ? "text-destructive" : tone === "warning" ? "text-orange-600" : "";
   return (
-    <Card className="p-4">
+    <Card className="px-3 py-2">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-xs font-medium text-muted-foreground uppercase truncate">{label}</p>
-          <p className={`text-lg font-bold mt-1 tabular-nums ${valCls}`}>{value}</p>
+          <p className="text-[10px] font-medium text-muted-foreground uppercase truncate">{label}</p>
+          <p className={`text-base font-bold mt-0.5 tabular-nums truncate ${valCls}`}>{value}</p>
         </div>
-        {Icon && <Icon className="size-4 text-muted-foreground shrink-0" />}
+        {Icon && <Icon className="size-3.5 text-muted-foreground shrink-0" />}
       </div>
     </Card>
   );
 }
+
 
 function FasciaRow({ label, value, pct, color }: { label: string; value: number; pct: number; color: string }) {
   return (
