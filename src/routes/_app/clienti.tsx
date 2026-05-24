@@ -429,6 +429,18 @@ function ClientiPage() {
     else if (totaleRischioFiltro === "alto") q = q.gt("totale_rischio", 50000).lte("totale_rischio", 100000);
     else if (totaleRischioFiltro === "molto_alto") q = q.gt("totale_rischio", 100000);
 
+    // === Filtri avanzati ===
+    if (advApplied.fidoOp === "lt" && advApplied.fidoVal != null) q = q.lt("fido_residuo", advApplied.fidoVal);
+    else if (advApplied.fidoOp === "lte" && advApplied.fidoVal != null) q = q.lte("fido_residuo", advApplied.fidoVal);
+    else if (advApplied.fidoOp === "gt" && advApplied.fidoVal != null) q = q.gt("fido_residuo", advApplied.fidoVal);
+    else if (advApplied.fidoOp === "eq" && advApplied.fidoVal != null) q = q.eq("fido_residuo", advApplied.fidoVal);
+    else if (advApplied.fidoOp === "between" && advApplied.fidoFrom != null && advApplied.fidoTo != null) {
+      q = q.gte("fido_residuo", advApplied.fidoFrom).lte("fido_residuo", advApplied.fidoTo);
+    }
+    if (advApplied.dataFattPrima) q = q.lt("ultima_data_fatturazione", advApplied.dataFattPrima);
+    if (advApplied.dataFattDopo) q = q.gt("ultima_data_fatturazione", advApplied.dataFattDopo);
+    if (advApplied.presetScopertoInsoluto) q = q.eq("assicurazione_attiva", false).gt("scaduto", 0);
+
     // Include intersect (semaforo / stato fido / scadenziario include / a_scadere)
     if (includeIdsFilter) {
       if (includeIdsFilter.length === 0) return { empty: true as const };
