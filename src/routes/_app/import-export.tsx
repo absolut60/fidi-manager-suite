@@ -2142,12 +2142,16 @@ function bfaClientDateISO(v: unknown): string | null {
   return null;
 }
 
-async function parseBloccoFidoFile(file: File): Promise<{
+async function parseBloccoFidoFile(
+  file: File,
+  log: (msg: string) => void = () => {},
+): Promise<{
   rowsBlocco: BfaParsedRow[];
   rowsNote: BfaNoteRow[];
   foglioNotePresente: boolean;
   warnings: string[];
 }> {
+  log(`Lettura file ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)…`);
   const buffer = await file.arrayBuffer();
   const wb = XLSX.read(buffer, {
     type: "array",
@@ -2162,10 +2166,11 @@ async function parseBloccoFidoFile(file: File): Promise<{
     bookProps: false,
     bookVBA: false,
   });
+  log(`Fogli trovati: ${wb.SheetNames.join(", ")}`);
 
-  const foglioBlocco = wb.SheetNames.find(
-    (n) => n.trim().toUpperCase() === "BLOCCO_FIDO_ASSICURAZIONE",
-  );
+  const foglioBlocco =
+    (wb.Sheets["BLOCCO_FIDO_ASSICURAZIONE"] ? "BLOCCO_FIDO_ASSICURAZIONE" : null) ??
+    wb.SheetNames.find((n) => n.trim().toUpperCase() === "BLOCCO_FIDO_ASSICURAZIONE");
   if (!foglioBlocco) throw new Error("Foglio BLOCCO_FIDO_ASSICURAZIONE non trovato nel file");
 
   const matrix = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[foglioBlocco], {
@@ -2173,15 +2178,26 @@ async function parseBloccoFidoFile(file: File): Promise<{
     defval: "",
     blankrows: false,
   });
+  log(`Foglio "${foglioBlocco}": ${Math.max(0, matrix.length - 1)} righe dati trovate`);
   if (!matrix.length) throw new Error("Foglio BLOCCO_FIDO_ASSICURAZIONE vuoto");
 
-  const headers = (matrix[0] as unknown[]).map((h) => String(h ?? "").trim().toLowerCase());
-  const iCod = headers.indexOf("cod_cli");
-  const iInd = headers.indexOf("ind_blocco");
-  const iData = headers.indexOf("ultima data fatturazione");
-  const iFido = headers.indexOf("fido");
-  const iAss = headers.indexOf("assicurazione");
+  const headers = (matrix[0] as unknown[]).map((h) => normalize(String(h ?? "")));
+  const findH = (...cands: string[]) => {
+    for (const c of cands) {
+      const i = headers.indexOf(normalize(c));
+      if (i !== -1) return i;
+    }
+    return -1;
+  };
+  const iCod = findH("cod_cli", "cod cli", "codcli");
+  const iInd = findH("ind_blocco", "ind blocco");
+  const iData = findH("ultima data fatturazione", "ultima_data_fatturazione");
+  const iFido = findH("fido");
+  const iAss = findH("assicurazione");
   if (iCod === -1) throw new Error("Colonna COD_CLI non trovata in BLOCCO_FIDO_ASSICURAZIONE");
+  log(
+    `Indici colonne: cod=${iCod} ind=${iInd} data=${iData} fido=${iFido} ass=${iAss}`,
+  );
 
   const rowsBlocco: BfaParsedRow[] = [];
   for (let i = 1; i < matrix.length; i++) {
@@ -2190,34 +2206,53 @@ async function parseBloccoFidoFile(file: File): Promise<{
     if (!cod) continue;
     rowsBlocco.push({
       cod_cli: cod,
-      ind_blocco: iInd >= 0 ? (bfaClientToNum(r[iInd]) != null ? Math.trunc(bfaClientToNum(r[iInd]) as number) : null) : null,
+      ind_blocco:
+        iInd >= 0
+          ? bfaClientToNum(r[iInd]) != null
+            ? Math.trunc(bfaClientToNum(r[iInd]) as number)
+            : null
+          : null,
       ultima_data_fatturazione: iData >= 0 ? bfaClientDateISO(r[iData]) : null,
       fido: iFido >= 0 ? bfaClientToNum(r[iFido]) : null,
       assicurazione: iAss >= 0 ? bfaClientToNum(r[iAss]) : null,
     });
   }
+  log(`Righe valide BLOCCO_FIDO_ASSICURAZIONE: ${rowsBlocco.length}`);
 
   const warnings: string[] = [];
-  const foglioNote = wb.SheetNames.find((n) => n.trim().toLowerCase() === "note legale");
+  const foglioNote =
+    (wb.Sheets["Note Legale"] ? "Note Legale" : null) ??
+    wb.SheetNames.find((n) => {
+      const k = n.trim().toLowerCase().replace(/\s+/g, "").replace(/_/g, "");
+      return k === "notelegale" || k === "notelegali";
+    });
   const rowsNote: BfaNoteRow[] = [];
   if (!foglioNote) {
     warnings.push("Foglio 'Note Legale' non trovato — nessuna nota importata");
+    log("Foglio 'Note Legale' NON trovato");
   } else {
     const nMatrix = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[foglioNote], {
       header: 1,
       defval: "",
       blankrows: false,
     });
+    log(`Foglio "${foglioNote}": ${Math.max(0, nMatrix.length - 1)} righe dati`);
     if (nMatrix.length < 2) {
       warnings.push("Foglio 'Note Legale' vuoto — nessuna nota importata");
     } else {
-      const nHeaders = (nMatrix[0] as unknown[]).map((h) =>
-        String(h ?? "").trim().toLowerCase(),
-      );
-      const iCodN = nHeaders.indexOf("cod_cli");
-      const iNota = nHeaders.indexOf("note legale");
+      const nHeaders = (nMatrix[0] as unknown[]).map((h) => normalize(String(h ?? "")));
+      const findNH = (...cands: string[]) => {
+        for (const c of cands) {
+          const i = nHeaders.indexOf(normalize(c));
+          if (i !== -1) return i;
+        }
+        return -1;
+      };
+      const iCodN = findNH("cod_cli", "cod cli", "codcli");
+      const iNota = findNH("note legale", "note legali", "nota legale", "nota");
       if (iCodN === -1 || iNota === -1) {
         warnings.push("Foglio 'Note Legale': colonne mancanti — nessuna nota importata");
+        log(`Note Legale colonne mancanti (cod=${iCodN}, nota=${iNota})`);
       } else {
         const seen = new Map<string, string>();
         for (let i = 1; i < nMatrix.length; i++) {
@@ -2228,6 +2263,7 @@ async function parseBloccoFidoFile(file: File): Promise<{
           seen.set(cod, nota);
         }
         for (const [cod_cli, nota] of seen) rowsNote.push({ cod_cli, nota });
+        log(`Note legali uniche parsate: ${rowsNote.length}`);
       }
     }
   }
@@ -2244,19 +2280,30 @@ function BloccoFidoAssicurazioneImportCard() {
   const [done, setDone] = useState(false);
   const [phase, setPhase] = useState<"idle" | "parsing" | "uploading" | "triggering">("idle");
 
+  const [logs, setLogs] = useState<string[]>([]);
+  const pushLog = (m: string) => {
+    const ts = new Date().toLocaleTimeString("it-IT");
+    setLogs((prev) => [...prev, `[${ts}] ${m}`]);
+  };
+
   function reset() {
     setFile(null);
     setImportazioneId(null);
     setDone(false);
     setPhase("idle");
+    setLogs([]);
     if (fileRef.current) fileRef.current.value = "";
   }
 
   const startMut = useMutation({
     mutationFn: async (f: File) => {
+      setLogs([]);
       setPhase("parsing");
-      const parsed = await parseBloccoFidoFile(f);
+      const parsed = await parseBloccoFidoFile(f, pushLog);
       if (!parsed.rowsBlocco.length) throw new Error("Nessuna riga utile nel foglio BLOCCO_FIDO_ASSICURAZIONE");
+      pushLog(
+        `Riepilogo parsing: ${parsed.rowsBlocco.length} righe blocco, ${parsed.rowsNote.length} note legali`,
+      );
 
       setPhase("uploading");
       const { data: { user } } = await supabase.auth.getUser();
@@ -2272,6 +2319,7 @@ function BloccoFidoAssicurazioneImportCard() {
         .select("id")
         .single();
       if (impErr) throw impErr;
+      pushLog(`Importazione creata id=${imp.id}`);
 
       const baseDir = `blocco-fido/${imp.id}`;
       const chunkSize = 500;
@@ -2300,11 +2348,35 @@ function BloccoFidoAssicurazioneImportCard() {
       };
 
       await uploadJson(`${baseDir}/manifest.json`, manifest);
+      pushLog(`Manifest caricato (${totalChunks} chunk previsti)`);
+
       await uploadJson(`${baseDir}/note-legali.json`, parsed.rowsNote);
-      for (let i = 0; i < totalChunks; i++) {
+      pushLog(`note-legali.json caricato (${parsed.rowsNote.length} note)`);
+
+      let doneChunks = 0;
+      const concurrency = 4;
+      const indexes = Array.from({ length: totalChunks }, (_, i) => i);
+      const runOne = async (i: number) => {
         const slice = parsed.rowsBlocco.slice(i * chunkSize, (i + 1) * chunkSize);
         await uploadJson(`${baseDir}/blocco-chunk-${i}.json`, slice);
+        doneChunks++;
+        pushLog(`Chunk ${doneChunks}/${totalChunks} caricato su Storage`);
+      };
+      // semplice pool
+      const workers: Promise<void>[] = [];
+      let cursor = 0;
+      for (let w = 0; w < Math.min(concurrency, totalChunks); w++) {
+        workers.push(
+          (async () => {
+            while (cursor < indexes.length) {
+              const i = indexes[cursor++];
+              await runOne(i);
+            }
+          })(),
+        );
       }
+      await Promise.all(workers);
+      pushLog(`Tutti i ${totalChunks} chunk caricati su Storage`);
 
       await supabase
         .from("importazioni")
@@ -2312,6 +2384,7 @@ function BloccoFidoAssicurazioneImportCard() {
         .eq("id", imp.id);
 
       setPhase("triggering");
+      pushLog("Tutti i JSON caricati, invio evento Inngest…");
       await triggerImport({
         data: {
           fonte: "blocco_fido_assicurazione",
@@ -2319,6 +2392,7 @@ function BloccoFidoAssicurazioneImportCard() {
           filePath: `${baseDir}/manifest.json`,
         },
       });
+      pushLog("Evento Inngest inviato. Elaborazione server in corso.");
 
       return imp.id;
     },
@@ -2331,6 +2405,7 @@ function BloccoFidoAssicurazioneImportCard() {
     },
     onError: (e: Error) => {
       setPhase("idle");
+      pushLog(`ERRORE: ${e.message}`);
       toast.error(e.message);
     },
   });
@@ -2386,6 +2461,14 @@ function BloccoFidoAssicurazioneImportCard() {
           {phase === "parsing" && "Lettura file Excel nel browser…"}
           {phase === "uploading" && "Caricamento dati su Storage…"}
           {phase === "triggering" && "Avvio elaborazione server…"}
+        </div>
+      )}
+
+      {(isPending || inProgress) && logs.length > 0 && (
+        <div className="mb-4 p-3 rounded-md border bg-muted/20 text-xs font-mono max-h-48 overflow-y-auto space-y-0.5">
+          {logs.map((l, i) => (
+            <div key={i} className="whitespace-pre-wrap">{l}</div>
+          ))}
         </div>
       )}
 
@@ -2451,46 +2534,73 @@ function BloccoFidoAssicurazioneImportCard() {
         </div>
       )}
 
-      {done && progress && (
-        <div className="space-y-2 p-3 rounded-md border bg-muted/30 text-sm">
-          <div className="flex items-center gap-2 font-medium">
-            <CheckCircle2 className="size-4 text-success" /> Import completato
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
-            <Badge variant="default">{progress.righe_elaborate ?? 0} elaborate</Badge>
-            <Badge className="bg-success/15 text-success hover:bg-success/20">
-              {progress.righe_aggiornate ?? 0} aggiornate
-            </Badge>
-            <Badge className="bg-destructive/15 text-destructive hover:bg-destructive/20">
-              {progress.righe_errore ?? 0} errori
-            </Badge>
-            <Badge variant="secondary">{progress.righe_saltate ?? 0} non trovati</Badge>
-          </div>
-          {(() => {
-            const logs = Array.isArray(progress.log_errori)
-              ? (progress.log_errori as Array<{ riga: number; errore: string }>)
-              : [];
-            if (!logs.length) return null;
-            return (
+      {done && progress && (() => {
+        const logArr = Array.isArray(progress.log_errori)
+          ? (progress.log_errori as Array<{ riga: number; errore: string }>)
+          : [];
+        const riepilogo = logArr.find((l) =>
+          typeof l?.errore === "string" && l.errore.startsWith("Riepilogo:"),
+        );
+        const parseNum = (re: RegExp) => {
+          const m = riepilogo?.errore.match(re);
+          return m ? Number(m[1]) : null;
+        };
+        const aggiornati = parseNum(/(\d+)\s+aggiornati/);
+        const azzerati = parseNum(/(\d+)\s+azzerati/);
+        const anomalie = parseNum(/(\d+)\s+anomalie/);
+        const nonTrovati = parseNum(/(\d+)\s+non\s+trovati/);
+        const errori = parseNum(/(\d+)\s+errori/);
+        const altri = logArr.filter((l) => l !== riepilogo);
+        return (
+          <div className="space-y-2 p-3 rounded-md border bg-muted/30 text-sm">
+            <div className="flex items-center gap-2 font-medium">
+              <CheckCircle2 className="size-4 text-success" /> Import completato
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+              <Badge className="bg-success/15 text-success hover:bg-success/20">
+                {aggiornati ?? progress.righe_aggiornate ?? 0} aggiornati
+              </Badge>
+              <Badge className="bg-amber-500/15 text-amber-700 hover:bg-amber-500/20">
+                {azzerati ?? 0} azzerati
+              </Badge>
+              <Badge className="bg-orange-500/15 text-orange-700 hover:bg-orange-500/20">
+                {anomalie ?? 0} anomalie in attesa
+              </Badge>
+              <Badge variant="secondary">
+                {nonTrovati ?? progress.righe_saltate ?? 0} non trovati
+              </Badge>
+              <Badge className="bg-destructive/15 text-destructive hover:bg-destructive/20">
+                {errori ?? progress.righe_errore ?? 0} errori
+              </Badge>
+            </div>
+            {(anomalie ?? 0) > 0 && (
+              <a
+                href="/import-export#anomalie"
+                className="inline-block text-xs text-primary underline"
+              >
+                Vai al tab Anomalie →
+              </a>
+            )}
+            {altri.length > 0 && (
               <details className="text-xs">
                 <summary className="cursor-pointer text-muted-foreground">
-                  Log dettagli ({logs.length})
+                  Log dettagli ({altri.length})
                 </summary>
                 <ul className="mt-1 max-h-32 overflow-y-auto space-y-0.5">
-                  {logs.slice(0, 50).map((e, i) => (
+                  {altri.slice(0, 50).map((e, i) => (
                     <li key={i}>
-                      Riga {e.riga}: {e.errore}
+                      {e.riga ? `Riga ${e.riga}: ` : ""}{e.errore}
                     </li>
                   ))}
                 </ul>
               </details>
-            );
-          })()}
-          <Button variant="outline" size="sm" className="w-full mt-2" onClick={reset}>
-            Nuovo import
-          </Button>
-        </div>
-      )}
+            )}
+            <Button variant="outline" size="sm" className="w-full mt-2" onClick={reset}>
+              Nuovo import
+            </Button>
+          </div>
+        );
+      })()}
     </Card>
   );
 }
