@@ -1328,6 +1328,10 @@ type BFARow = {
   assicurazione: number | null;
 };
 
+function normalizeBfaCodice(value: unknown): string {
+  return String(value ?? "").trim().replace(/\.0$/, "");
+}
+
 // Mappe colonne ESATTE (case-insensitive, trim) richieste dalla spec
 const COL_MAP_BLOCCO: Record<string, "cod_cli" | "ind_blocco" | "ultima_data_fatturazione" | "fido" | "assicurazione"> = {
   "cod_cli": "cod_cli",
@@ -1396,21 +1400,17 @@ export const processBloccoFidoImport = inngest.createFunction(
             .from("import-files")
             .download(path);
           if (chunkErr || !chunkFile) throw new Error(`Download chunk ${ci} fallito: ${chunkErr?.message ?? "no data"}`);
-          const chunk = JSON.parse(await chunkFile.text()) as Array<{
-            cod_cli: string;
-            ind_blocco: number | null;
-            ultima_data_fatturazione: string | null;
-            fido: number | null;
-            assicurazione: number | null;
-          }>;
+          const chunk = JSON.parse(await chunkFile.text()) as Array<Record<string, unknown>>;
           chunk.forEach((r, idx) => {
+            const codCli = normalizeBfaCodice(r.cod_cli ?? r.COD_CLI ?? r.codice_gestionale);
+            if (!codCli) return;
             rows.push({
               riga: ci * manifest.chunkSize + idx + 2,
-              codice_gestionale: String(r.cod_cli),
-              ind_blocco: r.ind_blocco,
-              ultima_data_fatturazione: r.ultima_data_fatturazione,
-              fido: r.fido,
-              assicurazione: r.assicurazione,
+              codice_gestionale: codCli,
+              ind_blocco: (r.ind_blocco ?? r.IND_BLOCCO) as number | null,
+              ultima_data_fatturazione: (r.ultima_data_fatturazione ?? r["ULTIMA DATA FATTURAZIONE"]) as string | null,
+              fido: (r.fido ?? r.FIDO) as number | null,
+              assicurazione: (r.assicurazione ?? r.ASSICURAZIONE) as number | null,
             });
           });
         }
@@ -1422,9 +1422,11 @@ export const processBloccoFidoImport = inngest.createFunction(
             .from("import-files")
             .download(`${baseDir}/note-legali.json`);
           if (noteErr || !noteFile) throw new Error(`Download note-legali fallito: ${noteErr?.message ?? "no data"}`);
-          const noteRaw = JSON.parse(await noteFile.text()) as Array<{ cod_cli: string; nota: string }>;
+          const noteRaw = JSON.parse(await noteFile.text()) as Array<Record<string, unknown>>;
           for (const n of noteRaw) {
-            if (n.cod_cli && n.nota) noteLegali.push({ cod_cli: String(n.cod_cli), nota: String(n.nota) });
+            const codCli = normalizeBfaCodice(n.cod_cli ?? n.COD_CLI ?? n.codice_gestionale);
+            const nota = String(n.nota ?? n["Note Legale"] ?? "").trim();
+            if (codCli && nota) noteLegali.push({ cod_cli: codCli, nota });
           }
         }
 
