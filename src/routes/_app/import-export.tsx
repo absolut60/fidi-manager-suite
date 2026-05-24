@@ -2534,46 +2534,73 @@ function BloccoFidoAssicurazioneImportCard() {
         </div>
       )}
 
-      {done && progress && (
-        <div className="space-y-2 p-3 rounded-md border bg-muted/30 text-sm">
-          <div className="flex items-center gap-2 font-medium">
-            <CheckCircle2 className="size-4 text-success" /> Import completato
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
-            <Badge variant="default">{progress.righe_elaborate ?? 0} elaborate</Badge>
-            <Badge className="bg-success/15 text-success hover:bg-success/20">
-              {progress.righe_aggiornate ?? 0} aggiornate
-            </Badge>
-            <Badge className="bg-destructive/15 text-destructive hover:bg-destructive/20">
-              {progress.righe_errore ?? 0} errori
-            </Badge>
-            <Badge variant="secondary">{progress.righe_saltate ?? 0} non trovati</Badge>
-          </div>
-          {(() => {
-            const logs = Array.isArray(progress.log_errori)
-              ? (progress.log_errori as Array<{ riga: number; errore: string }>)
-              : [];
-            if (!logs.length) return null;
-            return (
+      {done && progress && (() => {
+        const logArr = Array.isArray(progress.log_errori)
+          ? (progress.log_errori as Array<{ riga: number; errore: string }>)
+          : [];
+        const riepilogo = logArr.find((l) =>
+          typeof l?.errore === "string" && l.errore.startsWith("Riepilogo:"),
+        );
+        const parseNum = (re: RegExp) => {
+          const m = riepilogo?.errore.match(re);
+          return m ? Number(m[1]) : null;
+        };
+        const aggiornati = parseNum(/(\d+)\s+aggiornati/);
+        const azzerati = parseNum(/(\d+)\s+azzerati/);
+        const anomalie = parseNum(/(\d+)\s+anomalie/);
+        const nonTrovati = parseNum(/(\d+)\s+non\s+trovati/);
+        const errori = parseNum(/(\d+)\s+errori/);
+        const altri = logArr.filter((l) => l !== riepilogo);
+        return (
+          <div className="space-y-2 p-3 rounded-md border bg-muted/30 text-sm">
+            <div className="flex items-center gap-2 font-medium">
+              <CheckCircle2 className="size-4 text-success" /> Import completato
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+              <Badge className="bg-success/15 text-success hover:bg-success/20">
+                {aggiornati ?? progress.righe_aggiornate ?? 0} aggiornati
+              </Badge>
+              <Badge className="bg-amber-500/15 text-amber-700 hover:bg-amber-500/20">
+                {azzerati ?? 0} azzerati
+              </Badge>
+              <Badge className="bg-orange-500/15 text-orange-700 hover:bg-orange-500/20">
+                {anomalie ?? 0} anomalie in attesa
+              </Badge>
+              <Badge variant="secondary">
+                {nonTrovati ?? progress.righe_saltate ?? 0} non trovati
+              </Badge>
+              <Badge className="bg-destructive/15 text-destructive hover:bg-destructive/20">
+                {errori ?? progress.righe_errore ?? 0} errori
+              </Badge>
+            </div>
+            {(anomalie ?? 0) > 0 && (
+              <a
+                href="/import-export#anomalie"
+                className="inline-block text-xs text-primary underline"
+              >
+                Vai al tab Anomalie →
+              </a>
+            )}
+            {altri.length > 0 && (
               <details className="text-xs">
                 <summary className="cursor-pointer text-muted-foreground">
-                  Log dettagli ({logs.length})
+                  Log dettagli ({altri.length})
                 </summary>
                 <ul className="mt-1 max-h-32 overflow-y-auto space-y-0.5">
-                  {logs.slice(0, 50).map((e, i) => (
+                  {altri.slice(0, 50).map((e, i) => (
                     <li key={i}>
-                      Riga {e.riga}: {e.errore}
+                      {e.riga ? `Riga ${e.riga}: ` : ""}{e.errore}
                     </li>
                   ))}
                 </ul>
               </details>
-            );
-          })()}
-          <Button variant="outline" size="sm" className="w-full mt-2" onClick={reset}>
-            Nuovo import
-          </Button>
-        </div>
-      )}
+            )}
+            <Button variant="outline" size="sm" className="w-full mt-2" onClick={reset}>
+              Nuovo import
+            </Button>
+          </div>
+        );
+      })()}
     </Card>
   );
 }
