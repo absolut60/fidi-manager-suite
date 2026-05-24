@@ -20,11 +20,25 @@ type EventData = { importazioneId: string; filePath: string; userId?: string };
  * Utility comuni
  * ============================================================================ */
 
-async function downloadWorkbook(filePath: string) {
+async function downloadWorkbook(filePath: string, sheets?: string[]) {
   const { data: file, error } = await supabaseAdmin.storage.from("import-files").download(filePath);
   if (error || !file) throw new Error(`Download fallito: ${error?.message ?? "no data"}`);
   const buf = await file.arrayBuffer();
-  return XLSX.read(buf, { type: "array", cellDates: false });
+  return XLSX.read(buf, {
+    type: "array",
+    cellDates: false,
+    cellFormula: false,
+    cellHTML: false,
+    cellNF: false,
+    cellStyles: false,
+    cellText: false,
+    sheetStubs: false,
+    bookDeps: false,
+    bookFiles: false,
+    bookProps: false,
+    bookVBA: false,
+    ...(sheets && sheets.length ? { sheets } : {}),
+  });
 }
 
 async function setImportazioneError(importazioneId: string, message: string) {
