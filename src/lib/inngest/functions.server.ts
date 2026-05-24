@@ -1265,33 +1265,9 @@ export const processScadAssicImport = inngest.createFunction(
  * E — BLOCCO FIDO + ASSICURAZIONE (foglio BLOCCO_FIDO_ASSICURAZIONE)
  * ============================================================================ */
 
-const BFA_HEADER_MAP: Record<
-  string,
-  "codice_gestionale" | "ind_blocco" | "ultima_data_fatturazione" | "fido" | "assicurazione"
-> = {
-  "cod cli": "codice_gestionale",
-  cod_cli: "codice_gestionale",
-  "codice cliente": "codice_gestionale",
-  codice: "codice_gestionale",
-  "cod gestionale": "codice_gestionale",
-  "codice gestionale": "codice_gestionale",
-  "ind blocco": "ind_blocco",
-  ind_blocco: "ind_blocco",
-  blocco: "ind_blocco",
-  "ultima data fatturazione": "ultima_data_fatturazione",
-  "ultima fatturazione": "ultima_data_fatturazione",
-  "data ultima fatturazione": "ultima_data_fatturazione",
-  fido: "fido",
-  assicurazione: "assicurazione",
-};
+// (BFA_HEADER_MAP e bfaNormalize rimossi: ora si usa match esatto via COL_MAP_BLOCCO / COL_MAP_NOTE)
 
-function bfaNormalize(h: unknown): string {
-  return String(h ?? "")
-    .toLowerCase()
-    .replace(/[._\-/]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
+
 function bfaToNum(v: unknown): number | null {
   if (v === "" || v == null) return null;
   if (typeof v === "number") return Number.isFinite(v) ? v : null;
@@ -1338,6 +1314,31 @@ type BFARow = {
   assicurazione: number | null;
 };
 
+// Mappe colonne ESATTE (case-insensitive, trim) richieste dalla spec
+const COL_MAP_BLOCCO: Record<string, "cod_cli" | "ind_blocco" | "ultima_data_fatturazione" | "fido" | "assicurazione"> = {
+  "cod_cli": "cod_cli",
+  "ind_blocco": "ind_blocco",
+  "ultima data fatturazione": "ultima_data_fatturazione",
+  "fido": "fido",
+  "assicurazione": "assicurazione",
+};
+const COL_MAP_NOTE: Record<string, "cod_cli" | "nota"> = {
+  "cod_cli": "cod_cli",
+  "note legale": "nota",
+};
+
+type AnomaliaImport = {
+  importazione_id: string;
+  cliente_id: string;
+  codice_gestionale: string;
+  ragione_sociale: string | null;
+  tipo_anomalia: "perde_assicurazione" | "perde_gestione_legale" | "cambio_blocco";
+  campo: string;
+  valore_attuale: string | null;
+  valore_nuovo: string | null;
+  stato: "in_attesa";
+};
+
 export const processBloccoFidoImport = inngest.createFunction(
   {
     id: "process-blocco-fido-import",
@@ -1348,32 +1349,52 @@ export const processBloccoFidoImport = inngest.createFunction(
   async ({ event, step, logger }) => {
     const { importazioneId, filePath } = event.data as EventData;
     try {
-      // STEP 1: download + parse foglio BLOCCO_FIDO_ASSICURAZIONE + Note Legale (stesso workbook)
+      // STEP 1: download + parse ENTRAMBI i fogli (match esatto sui nomi)
       const parseResult = await step.run("parse", async () => {
         const wb = await downloadWorkbook(filePath);
-        const targetName = wb.SheetNames.find(
-          (n) => bfaNormalize(n).replace(/\s+/g, "_") === "blocco_fido_assicurazione",
+
+        // Foglio 1 — match esatto case-insensitive: "BLOCCO_FIDO_ASSICURAZIONE"
+        const foglioBlocco = wb.SheetNames.find(
+          (n) => n.trim().toUpperCase() === "BLOCCO_FIDO_ASSICURAZIONE",
         );
-        if (!targetName) throw new Error('Foglio "BLOCCO_FIDO_ASSICURAZIONE" non trovato');
-        const sheet = wb.Sheets[targetName];
+        if (!foglioBlocco) {
+          await supabaseAdmin
+            .from("importazioni")
+            .update({
+              log_errori: [
+                { riga: 0, errore: "ERRORE: Foglio BLOCCO_FIDO_ASSICURAZIONE non trovato nel file" },
+              ],
+              stato: "completata_con_errori",
+              completata_at: new Date().toISOString(),
+            } as never)
+            .eq("id", importazioneId);
+          throw new Error("Foglio BLOCCO_FIDO_ASSICURAZIONE non trovato");
+        }
+
+        const sheet = wb.Sheets[foglioBlocco];
         const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
           header: 1,
           defval: "",
           blankrows: false,
         });
-        if (!matrix.length) throw new Error("Foglio vuoto");
+        if (!matrix.length) throw new Error("Foglio BLOCCO_FIDO_ASSICURAZIONE vuoto");
+
         const headers = (matrix[0] ?? []) as unknown[];
-        const colMap: Record<string, number> = {};
+        const colMap: Partial<Record<"cod_cli" | "ind_blocco" | "ultima_data_fatturazione" | "fido" | "assicurazione", number>> = {};
         headers.forEach((h, j) => {
-          const key = BFA_HEADER_MAP[bfaNormalize(h)];
-          if (key) colMap[key] = j;
+          const k = String(h ?? "").trim().toLowerCase();
+          const mapped = COL_MAP_BLOCCO[k];
+          if (mapped) colMap[mapped] = j;
         });
-        if (colMap.codice_gestionale == null) throw new Error("Colonna COD_CLI non trovata");
+        if (colMap.cod_cli == null) {
+          throw new Error("Colonna COD_CLI non trovata nel foglio BLOCCO_FIDO_ASSICURAZIONE");
+        }
+
         const rows: BFARow[] = [];
         for (let i = 1; i < matrix.length; i++) {
           const r = (matrix[i] ?? []) as unknown[];
           if (!r.some((c) => String(c ?? "").trim() !== "")) continue;
-          const codStr = String(r[colMap.codice_gestionale] ?? "").trim();
+          const codStr = String(r[colMap.cod_cli] ?? "").trim().replace(/\.0$/, "");
           if (!codStr) continue;
           rows.push({
             riga: i + 1,
@@ -1388,19 +1409,23 @@ export const processBloccoFidoImport = inngest.createFunction(
           });
         }
 
-        // Parsing foglio "Note Legale" / "Note Legali" dallo STESSO workbook (no re-download)
-        const normSheet = (s: string) =>
-          s.toLowerCase().replace(/\s+/g, "").replace(/_/g, "");
-        const noteSheetName = wb.SheetNames.find((n) => {
-          const x = normSheet(n);
-          return x.includes("notelegale") || x.includes("notelegali");
-        });
+        // Foglio 2 — match esatto case-insensitive: "note legale" (warning, non bloccante)
+        const warnings: Array<{ riga: number; errore: string }> = [];
+        const foglioNote = wb.SheetNames.find(
+          (n) => n.trim().toLowerCase() === "note legale",
+        );
         const noteLegali: Array<{ cod_cli: string; nota: string }> = [];
         let noteSheetFound = false;
         let noteHeaderOk = false;
-        if (noteSheetName) {
+
+        if (!foglioNote) {
+          warnings.push({
+            riga: 0,
+            errore: "ATTENZIONE: Foglio Note Legale non trovato — nessuna nota importata",
+          });
+        } else {
           noteSheetFound = true;
-          const nSheet = wb.Sheets[noteSheetName];
+          const nSheet = wb.Sheets[foglioNote];
           const nMatrix = XLSX.utils.sheet_to_json<unknown[]>(nSheet, {
             header: 1,
             defval: "",
@@ -1408,43 +1433,50 @@ export const processBloccoFidoImport = inngest.createFunction(
           });
           if (nMatrix.length >= 2) {
             const nHeaders = (nMatrix[0] ?? []) as unknown[];
-            let codIdx = -1;
-            let noteIdx = -1;
+            const nCol: Partial<Record<"cod_cli" | "nota", number>> = {};
             nHeaders.forEach((h, j) => {
-              const raw = String(h ?? "");
-              const x = normSheet(raw);
-              if (codIdx < 0 && (x === "codcli" || x === "codice" || x === "codicecliente"))
-                codIdx = j;
-              if (noteIdx < 0 && (x.includes("notelegale") || x.includes("notelegali")))
-                noteIdx = j;
+              const k = String(h ?? "").trim().toLowerCase();
+              const mapped = COL_MAP_NOTE[k];
+              if (mapped) nCol[mapped] = j;
             });
-            if (codIdx >= 0 && noteIdx >= 0) {
+            if (nCol.cod_cli == null) {
+              throw new Error("Colonna COD_CLI non trovata nel foglio Note Legale");
+            }
+            if (nCol.nota == null) {
+              warnings.push({
+                riga: 0,
+                errore: "Foglio Note Legale: colonna 'Note Legale' non trovata — nessuna nota importata",
+              });
+            } else {
               noteHeaderOk = true;
               const seen = new Map<string, string>();
               for (let i = 1; i < nMatrix.length; i++) {
                 const r = (nMatrix[i] ?? []) as unknown[];
-                const cod = String(r[codIdx] ?? "")
-                  .trim()
-                  .replace(/\.0$/, "");
-                const nota = String(r[noteIdx] ?? "").trim();
+                const cod = String(r[nCol.cod_cli] ?? "").trim().replace(/\.0$/, "");
+                const nota = String(r[nCol.nota!] ?? "").trim();
                 if (!cod || !nota) continue;
                 seen.set(cod, nota);
               }
               for (const [cod_cli, nota] of seen) noteLegali.push({ cod_cli, nota });
             }
+          } else {
+            warnings.push({
+              riga: 0,
+              errore: "Foglio Note Legale trovato ma vuoto — nessuna nota importata",
+            });
           }
         }
 
-        return { rows, noteLegali, noteSheetFound, noteHeaderOk };
+        return { rows, noteLegali, noteSheetFound, noteHeaderOk, warnings };
       });
 
       const parsed = parseResult.rows;
       const noteLegaliFromSheet = parseResult.noteLegali;
-      const noteSheetFound = parseResult.noteSheetFound;
-      const noteHeaderOk = parseResult.noteHeaderOk;
+      const initialWarnings = parseResult.warnings;
+      const timestampInizio = new Date().toISOString();
 
       logger.info(
-        `Blocco fido: ${parsed.length} righe, ${noteLegaliFromSheet.length} note legali (foglio: ${noteSheetFound}, header ok: ${noteHeaderOk})`,
+        `Blocco fido: ${parsed.length} righe, ${noteLegaliFromSheet.length} note legali`,
       );
       await supabaseAdmin
         .from("importazioni")
@@ -1459,6 +1491,13 @@ export const processBloccoFidoImport = inngest.createFunction(
         })
         .eq("id", importazioneId);
 
+      if (initialWarnings.length) {
+        await supabaseAdmin
+          .from("importazioni")
+          .update({ log_errori: initialWarnings as never } as never)
+          .eq("id", importazioneId);
+      }
+
       if (!parsed.length) {
         await supabaseAdmin
           .from("importazioni")
@@ -1471,27 +1510,42 @@ export const processBloccoFidoImport = inngest.createFunction(
         return { rows: 0 };
       }
 
-      // STEP 2: lookup cliente_id per tutti i codici (batch 500)
+      // STEP 2: lookup cliente + STATO ATTUALE (per anomalie)
       const codici = Array.from(new Set(parsed.map((r) => r.codice_gestionale)));
+      type ClienteSnap = {
+        id: string;
+        ragione_sociale: string | null;
+        ind_blocco: number | null;
+        assicurazione_attiva: boolean | null;
+        in_gestione_legale: boolean | null;
+      };
       const clientMap = await step.run("lookup-clienti", async () => {
-        const map: Record<string, string> = {};
+        const map: Record<string, ClienteSnap> = {};
         const BATCH = 500;
         for (let i = 0; i < codici.length; i += BATCH) {
           const slice = codici.slice(i, i + BATCH);
           const { data } = await supabaseAdmin
             .from("clienti")
-            .select("id, codice_gestionale")
+            .select("id, codice_gestionale, ragione_sociale, ind_blocco, assicurazione_attiva, in_gestione_legale")
             .in("codice_gestionale", slice);
           (data ?? []).forEach((c) => {
-            if (c.codice_gestionale) map[c.codice_gestionale] = c.id;
+            if (c.codice_gestionale) {
+              map[c.codice_gestionale] = {
+                id: c.id,
+                ragione_sociale: c.ragione_sociale ?? null,
+                ind_blocco: (c as { ind_blocco?: number | null }).ind_blocco ?? null,
+                assicurazione_attiva: (c as { assicurazione_attiva?: boolean | null }).assicurazione_attiva ?? null,
+                in_gestione_legale: (c as { in_gestione_legale?: boolean | null }).in_gestione_legale ?? null,
+              };
+            }
           });
         }
         return map;
       });
 
-      // STEP 3: pre-fetch polizze POUEY esistenti per i clienti coinvolti
+      // STEP 3: pre-fetch polizze POUEY esistenti
       const allClienteIds = Array.from(
-        new Set(parsed.map((r) => clientMap[r.codice_gestionale]).filter(Boolean) as string[]),
+        new Set(parsed.map((r) => clientMap[r.codice_gestionale]?.id).filter(Boolean) as string[]),
       );
       const poueyMap = await step.run("lookup-polizze", async () => {
         const map: Record<string, string> = {};
@@ -1510,7 +1564,7 @@ export const processBloccoFidoImport = inngest.createFunction(
         return map;
       });
 
-      // STEP 4: processa in chunk da 500 con update paralleli
+      // STEP 4: chunk processing con anomalie
       const CHUNK = 500;
       const cutoff2025 = "2025-01-01";
       const nowIso = new Date().toISOString();
@@ -1521,43 +1575,60 @@ export const processBloccoFidoImport = inngest.createFunction(
       let sbloccati = 0;
       let nonAttivi = 0;
       let polizze = 0;
+      let anomalieTotali = 0;
 
       const totalChunks = Math.ceil(parsed.length / CHUNK);
       for (let ci = 0; ci < totalChunks; ci++) {
         const slice = parsed.slice(ci * CHUNK, (ci + 1) * CHUNK);
         const chunkRes = await step.run(`chunk-${ci}`, async () => {
-          let cAgg = 0,
-            cBlk = 0,
-            cSblk = 0,
-            cNonAtt = 0,
-            cPol = 0;
+          let cAgg = 0, cBlk = 0, cSblk = 0, cNonAtt = 0, cPol = 0, cAnom = 0;
           const cErr: Array<{ riga: number; errore: string }> = [];
           const cMiss: string[] = [];
+          const anomalieBatch: AnomaliaImport[] = [];
 
-          // Update clienti in parallelo
           await Promise.all(
             slice.map(async (r) => {
-              const clienteId = clientMap[r.codice_gestionale];
-              if (!clienteId) {
+              const snap = clientMap[r.codice_gestionale];
+              if (!snap) {
                 cMiss.push(r.codice_gestionale);
                 return;
               }
+              const clienteId = snap.id;
               const payload: Record<string, unknown> = {};
+              const rowAnomalie: AnomaliaImport[] = [];
 
-              if (r.ind_blocco != null) {
-                if (r.ind_blocco === 0) {
+              // --- Anomalia: cambio blocco ---
+              const indNuovo = r.ind_blocco;
+              const indAttuale = snap.ind_blocco ?? 0;
+              let bloccoAnomalo = false;
+              if (indNuovo != null && indNuovo !== indAttuale) {
+                rowAnomalie.push({
+                  importazione_id: importazioneId,
+                  cliente_id: clienteId,
+                  codice_gestionale: r.codice_gestionale,
+                  ragione_sociale: snap.ragione_sociale,
+                  tipo_anomalia: "cambio_blocco",
+                  campo: "ind_blocco",
+                  valore_attuale: String(indAttuale),
+                  valore_nuovo: String(indNuovo),
+                  stato: "in_attesa",
+                });
+                bloccoAnomalo = true;
+              }
+              if (!bloccoAnomalo && indNuovo != null) {
+                if (indNuovo === 0) {
                   payload.bloccato = false;
                   payload.ind_blocco = 0;
                   payload.motivo_blocco = null;
                   payload.data_blocco = null;
                   cSblk++;
-                } else if (r.ind_blocco === 1) {
+                } else if (indNuovo === 1) {
                   payload.bloccato = true;
                   payload.ind_blocco = 1;
                   payload.motivo_blocco = "Bloccato con possibilità di sblocco";
                   payload.data_blocco = nowIso;
                   cBlk++;
-                } else if (r.ind_blocco === 2) {
+                } else if (indNuovo === 2) {
                   payload.bloccato = true;
                   payload.ind_blocco = 2;
                   payload.motivo_blocco = "Bloccato";
@@ -1566,6 +1637,7 @@ export const processBloccoFidoImport = inngest.createFunction(
                 }
               }
 
+              // --- Sempre aggiornati ---
               payload.ultima_data_fatturazione = r.ultima_data_fatturazione;
               const attivo =
                 r.ultima_data_fatturazione != null &&
@@ -1573,43 +1645,69 @@ export const processBloccoFidoImport = inngest.createFunction(
               payload.cliente_attivo = attivo;
               if (!attivo) cNonAtt++;
 
-              if (r.fido != null && r.fido > 0) {
-                payload.fido_gestionale = r.fido;
+              // Fido: azzera anche se 0
+              if (r.fido !== null && r.fido !== undefined) {
+                payload.fido_gestionale = r.fido ?? 0;
               }
 
-              if (r.assicurazione != null && r.assicurazione > 0) {
-                payload.assicurazione_attiva = true;
-                const existingId = poueyMap[clienteId];
-                if (existingId) {
-                  const { error } = await supabaseAdmin
-                    .from("assicurazioni_credito")
-                    .update({
-                      importo_massimale: r.assicurazione,
-                      stato: "attiva",
-                    } as never)
-                    .eq("id", existingId);
-                  if (error) cErr.push({ riga: r.riga, errore: `polizza update: ${error.message}` });
-                  else cPol++;
-                } else {
-                  const { data: ins, error } = await supabaseAdmin
-                    .from("assicurazioni_credito")
-                    .insert({
-                      cliente_id: clienteId,
-                      assicuratore: "POUEY",
-                      importo_massimale: r.assicurazione,
-                      stato: "attiva",
-                    } as never)
-                    .select("id")
-                    .single();
-                  if (error) cErr.push({ riga: r.riga, errore: `polizza insert: ${error.message}` });
-                  else {
-                    cPol++;
-                    if (ins?.id) poueyMap[clienteId] = ins.id;
-                  }
-                }
-              } else if (r.assicurazione != null && r.assicurazione === 0) {
-                payload.assicurazione_attiva = false;
+              // --- Anomalia: perde_assicurazione ---
+              const nuovaAssic =
+                r.assicurazione !== null && r.assicurazione !== undefined && r.assicurazione > 0;
+              let assicAnomalo = false;
+              if (snap.assicurazione_attiva === true && !nuovaAssic) {
+                rowAnomalie.push({
+                  importazione_id: importazioneId,
+                  cliente_id: clienteId,
+                  codice_gestionale: r.codice_gestionale,
+                  ragione_sociale: snap.ragione_sociale,
+                  tipo_anomalia: "perde_assicurazione",
+                  campo: "assicurazione_attiva",
+                  valore_attuale: "true",
+                  valore_nuovo: "false",
+                  stato: "in_attesa",
+                });
+                assicAnomalo = true;
               }
+
+              if (!assicAnomalo) {
+                if (nuovaAssic) {
+                  payload.assicurazione_attiva = true;
+                  const existingId = poueyMap[clienteId];
+                  if (existingId) {
+                    const { error } = await supabaseAdmin
+                      .from("assicurazioni_credito")
+                      .update({
+                        importo_massimale: r.assicurazione,
+                        stato: "attiva",
+                      } as never)
+                      .eq("id", existingId);
+                    if (error) cErr.push({ riga: r.riga, errore: `polizza update: ${error.message}` });
+                    else cPol++;
+                  } else {
+                    const { data: ins, error } = await supabaseAdmin
+                      .from("assicurazioni_credito")
+                      .insert({
+                        cliente_id: clienteId,
+                        assicuratore: "POUEY",
+                        importo_massimale: r.assicurazione,
+                        stato: "attiva",
+                      } as never)
+                      .select("id")
+                      .single();
+                    if (error) cErr.push({ riga: r.riga, errore: `polizza insert: ${error.message}` });
+                    else {
+                      cPol++;
+                      if (ins?.id) poueyMap[clienteId] = ins.id;
+                    }
+                  }
+                } else {
+                  // assicurazione attualmente false e file dice no → coerente
+                  payload.assicurazione_attiva = false;
+                }
+              }
+
+              // Marca ultima_importazione_d
+              payload.ultima_importazione_d = timestampInizio;
 
               if (Object.keys(payload).length > 0) {
                 const { error } = await supabaseAdmin
@@ -1619,10 +1717,21 @@ export const processBloccoFidoImport = inngest.createFunction(
                 if (error) cErr.push({ riga: r.riga, errore: error.message });
                 else cAgg++;
               }
+
+              if (rowAnomalie.length) {
+                anomalieBatch.push(...rowAnomalie);
+                cAnom += rowAnomalie.length;
+              }
             }),
           );
 
-          // Aggiorna contatori importazione (incrementale)
+          if (anomalieBatch.length) {
+            const { error } = await supabaseAdmin
+              .from("anomalie_import" as never)
+              .insert(anomalieBatch as never);
+            if (error) cErr.push({ riga: 0, errore: `anomalie insert: ${error.message}` });
+          }
+
           await supabaseAdmin.rpc("increment_importazione_counters", {
             _id: importazioneId,
             _elaborate: slice.length,
@@ -1632,7 +1741,6 @@ export const processBloccoFidoImport = inngest.createFunction(
             _skipped: cMiss.length,
           });
 
-          // Append errori + codici mancanti (best effort)
           if (cErr.length || cMiss.length) {
             const { data: cur } = await supabaseAdmin
               .from("importazioni")
@@ -1654,152 +1762,196 @@ export const processBloccoFidoImport = inngest.createFunction(
               .eq("id", importazioneId);
           }
 
-          return { cAgg, cBlk, cSblk, cNonAtt, cPol, cErr, cMiss };
+          return { cAgg, cBlk, cSblk, cNonAtt, cPol, cAnom, cErr, cMiss };
         });
         aggiornati += chunkRes.cAgg;
         bloccati += chunkRes.cBlk;
         sbloccati += chunkRes.cSblk;
         nonAttivi += chunkRes.cNonAtt;
         polizze += chunkRes.cPol;
+        anomalieTotali += chunkRes.cAnom;
         errors.push(...chunkRes.cErr);
         nonTrovati.push(...chunkRes.cMiss);
       }
 
-      // STEP 4b: Note Legale — usa array già parsato dallo step "parse" (no re-download)
+      // STEP 4b: Note Legale + anomalie perde_gestione_legale
       let noteImportate = 0;
       let noteNonTrovate = 0;
-      const noteWarnings: Array<{ riga: number; errore: string }> = [];
+      let perdeGestioneLegale = 0;
 
-      if (!noteSheetFound) {
-        noteWarnings.push({
-          riga: 0,
-          errore: "Foglio Note Legale non trovato nel file — nessuna nota importata",
-        });
-      } else if (!noteHeaderOk) {
-        noteWarnings.push({
-          riga: 0,
-          errore:
-            "Foglio Note Legale trovato ma colonne COD_CLI o Note Legale non riconosciute — nessuna nota importata",
-        });
-      } else if (noteLegaliFromSheet.length === 0) {
-        noteWarnings.push({
-          riga: 0,
-          errore: "Foglio Note Legale trovato ma vuoto — nessuna nota importata",
-        });
-      } else {
-        await step.run("note-legali", async () => {
-          try {
-            // Lookup cliente_id (riusa clientMap; arricchisci se mancano codici)
-            const missCodes = noteLegaliFromSheet
-              .map((n) => n.cod_cli)
-              .filter((c) => !clientMap[c]);
-            if (missCodes.length) {
-              const uniqMiss = Array.from(new Set(missCodes));
-              const BATCH = 500;
-              for (let i = 0; i < uniqMiss.length; i += BATCH) {
-                const slice = uniqMiss.slice(i, i + BATCH);
-                const { data } = await supabaseAdmin
-                  .from("clienti")
-                  .select("id, codice_gestionale")
-                  .in("codice_gestionale", slice);
-                (data ?? []).forEach((c) => {
-                  if (c.codice_gestionale) clientMap[c.codice_gestionale] = c.id;
-                });
-              }
+      await step.run("note-legali", async () => {
+        try {
+          // Lookup arricchimento clientMap per note con codici nuovi
+          const missCodes = noteLegaliFromSheet
+            .map((n) => n.cod_cli)
+            .filter((c) => !clientMap[c]);
+          if (missCodes.length) {
+            const uniqMiss = Array.from(new Set(missCodes));
+            const BATCH = 500;
+            for (let i = 0; i < uniqMiss.length; i += BATCH) {
+              const slice = uniqMiss.slice(i, i + BATCH);
+              const { data } = await supabaseAdmin
+                .from("clienti")
+                .select("id, codice_gestionale, ragione_sociale, ind_blocco, assicurazione_attiva, in_gestione_legale")
+                .in("codice_gestionale", slice);
+              (data ?? []).forEach((c) => {
+                if (c.codice_gestionale) {
+                  clientMap[c.codice_gestionale] = {
+                    id: c.id,
+                    ragione_sociale: c.ragione_sociale ?? null,
+                    ind_blocco: (c as { ind_blocco?: number | null }).ind_blocco ?? null,
+                    assicurazione_attiva: (c as { assicurazione_attiva?: boolean | null }).assicurazione_attiva ?? null,
+                    in_gestione_legale: (c as { in_gestione_legale?: boolean | null }).in_gestione_legale ?? null,
+                  };
+                }
+              });
             }
-
-            const classificaCategoria = (testo: string): string => {
-              const t = testo.toLowerCase();
-              if (/\bd\.?\s*i\.?\b|decreto ingiuntivo|ricorso/.test(t))
-                return "Decreto Ingiuntivo";
-              if (/pignoramento/.test(t)) return "Pignoramento";
-              if (/sollecito/.test(t)) return "Sollecito Legale";
-              if (/pouey|sinistro/.test(t)) return "POUEY / Assicurazione";
-              if (/piano di rientro/.test(t)) return "Piano di Rientro";
-              if (/fallito|messa a perdita/.test(t)) return "Messa a Perdita";
-              return "Altro";
-            };
-
-            const clientiInGestione: string[] = [];
-            for (const { cod_cli, nota } of noteLegaliFromSheet) {
-              const cid = clientMap[cod_cli];
-              if (!cid) {
-                noteNonTrovate++;
-                continue;
-              }
-              const categoria = classificaCategoria(nota);
-              const { data: ex } = await supabaseAdmin
-                .from("note_legali_gestionali" as never)
-                .select("id")
-                .eq("cliente_id", cid)
-                .maybeSingle();
-              const payload = {
-                cliente_id: cid,
-                testo: nota,
-                categoria,
-                importato_da: importazioneId,
-                ultima_sincronizzazione: new Date().toISOString(),
-              };
-              const exId = (ex as unknown as { id?: string } | null)?.id;
-              if (exId) {
-                await supabaseAdmin
-                  .from("note_legali_gestionali" as never)
-                  .update(payload as never)
-                  .eq("id", exId);
-              } else {
-                await supabaseAdmin
-                  .from("note_legali_gestionali" as never)
-                  .insert(payload as never);
-              }
-              clientiInGestione.push(cid);
-              noteImportate++;
-            }
-
-            if (clientiInGestione.length) {
-              const BATCH = 500;
-              for (let i = 0; i < clientiInGestione.length; i += BATCH) {
-                await supabaseAdmin
-                  .from("clienti")
-                  .update({ in_gestione_legale: true } as never)
-                  .in("id", clientiInGestione.slice(i, i + BATCH));
-              }
-            }
-            logger.info(
-              `Note Legale: ${noteImportate} importate, ${noteNonTrovate} non trovate`,
-            );
-          } catch (e) {
-            const msg = e instanceof Error ? e.message : String(e);
-            logger.error(`Note Legale errore: ${msg}`);
-            noteWarnings.push({
-              riga: 0,
-              errore: `Errore upsert note legali: ${msg}`,
-            });
           }
-        });
-      }
 
-      // Appendi i warning sulle note legali al log_errori dell'importazione
-      if (noteWarnings.length) {
-        const { data: cur } = await supabaseAdmin
-          .from("importazioni")
-          .select("log_errori")
-          .eq("id", importazioneId)
-          .single();
-        const exist =
-          (cur?.log_errori as Array<{ riga: number; errore: string }> | null) ?? [];
-        await supabaseAdmin
-          .from("importazioni")
-          .update({ log_errori: [...exist, ...noteWarnings].slice(0, 500) } as never)
-          .eq("id", importazioneId);
-      }
+          const classificaCategoria = (testo: string): string => {
+            const t = testo.toLowerCase();
+            if (/\bd\.?\s*i\.?\b|decreto ingiuntivo|ricorso/.test(t)) return "Decreto Ingiuntivo";
+            if (/pignoramento/.test(t)) return "Pignoramento";
+            if (/sollecito/.test(t)) return "Sollecito Legale";
+            if (/pouey|sinistro/.test(t)) return "POUEY / Assicurazione";
+            if (/piano di rientro/.test(t)) return "Piano di Rientro";
+            if (/fallito|messa a perdita/.test(t)) return "Messa a Perdita";
+            return "Altro";
+          };
 
+          const clientiInGestioneNuovi = new Set<string>();
+          const upserts: Array<Record<string, unknown>> = [];
+          for (const { cod_cli, nota } of noteLegaliFromSheet) {
+            const snap = clientMap[cod_cli];
+            if (!snap) {
+              noteNonTrovate++;
+              continue;
+            }
+            upserts.push({
+              cliente_id: snap.id,
+              testo: nota,
+              categoria: classificaCategoria(nota),
+              importato_da: importazioneId,
+              ultima_sincronizzazione: new Date().toISOString(),
+            });
+            clientiInGestioneNuovi.add(snap.id);
+            noteImportate++;
+          }
 
-      // STEP 5: stato finale
+          // Upsert su UNIQUE(cliente_id)
+          if (upserts.length) {
+            const BATCH = 500;
+            for (let i = 0; i < upserts.length; i += BATCH) {
+              const batch = upserts.slice(i, i + BATCH);
+              const { error } = await supabaseAdmin
+                .from("note_legali_gestionali" as never)
+                .upsert(batch as never, { onConflict: "cliente_id" });
+              if (error) errors.push({ riga: 0, errore: `note upsert: ${error.message}` });
+            }
+          }
+
+          // Imposta in_gestione_legale = true sui nuovi
+          if (clientiInGestioneNuovi.size) {
+            const ids = Array.from(clientiInGestioneNuovi);
+            const BATCH = 500;
+            for (let i = 0; i < ids.length; i += BATCH) {
+              await supabaseAdmin
+                .from("clienti")
+                .update({ in_gestione_legale: true } as never)
+                .in("id", ids.slice(i, i + BATCH));
+            }
+          }
+
+          // Anomalie perde_gestione_legale: clienti nel file con in_gestione_legale=true
+          // ma NON presenti nel foglio Note Legale
+          const anomaliePerdita: AnomaliaImport[] = [];
+          for (const codCli of codici) {
+            const snap = clientMap[codCli];
+            if (!snap) continue;
+            if (snap.in_gestione_legale === true && !clientiInGestioneNuovi.has(snap.id)) {
+              anomaliePerdita.push({
+                importazione_id: importazioneId,
+                cliente_id: snap.id,
+                codice_gestionale: codCli,
+                ragione_sociale: snap.ragione_sociale,
+                tipo_anomalia: "perde_gestione_legale",
+                campo: "in_gestione_legale",
+                valore_attuale: "true",
+                valore_nuovo: "false",
+                stato: "in_attesa",
+              });
+            }
+          }
+          if (anomaliePerdita.length) {
+            const { error } = await supabaseAdmin
+              .from("anomalie_import" as never)
+              .insert(anomaliePerdita as never);
+            if (error) errors.push({ riga: 0, errore: `anomalie perde_gestione: ${error.message}` });
+            else {
+              perdeGestioneLegale = anomaliePerdita.length;
+              anomalieTotali += anomaliePerdita.length;
+            }
+          }
+
+          logger.info(
+            `Note Legale: ${noteImportate} importate, ${noteNonTrovate} non trovate, ${perdeGestioneLegale} anomalie perde_gestione`,
+          );
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          logger.error(`Note Legale errore: ${msg}`);
+          errors.push({ riga: 0, errore: `Errore note legali: ${msg}` });
+        }
+      });
+
+      // STEP 5: azzeramento clienti assenti dal file
+      let azzerati = 0;
+      await step.run("azzera-assenti", async () => {
+        const { data: assenti } = await supabaseAdmin
+          .from("clienti")
+          .select("id")
+          .not("ultima_importazione_d", "is", null)
+          .lt("ultima_importazione_d", timestampInizio);
+
+        const ids = ((assenti ?? []) as Array<{ id: string }>).map((c) => c.id);
+        if (!ids.length) return;
+
+        const BATCH = 200;
+        for (let i = 0; i < ids.length; i += BATCH) {
+          const slice = ids.slice(i, i + BATCH);
+          const { error } = await supabaseAdmin
+            .from("clienti")
+            .update({
+              ind_blocco: 0,
+              bloccato: false,
+              motivo_blocco: null,
+              data_blocco: null,
+              assicurazione_attiva: false,
+              in_gestione_legale: false,
+              ultima_importazione_d: null,
+            } as never)
+            .in("id", slice);
+          if (error) {
+            errors.push({ riga: 0, errore: `azzera-assenti: ${error.message}` });
+            continue;
+          }
+          await supabaseAdmin
+            .from("note_legali_gestionali" as never)
+            .delete()
+            .in("cliente_id", slice);
+          azzerati += slice.length;
+        }
+      });
+
+      // STEP 6: stato finale + log riepilogo
       await step.run("finalize", async () => {
         const summary = [
           {
             riga: 0,
-            errore: `Riepilogo: ${aggiornati} aggiornati, ${bloccati} bloccati, ${sbloccati} sbloccati, ${nonAttivi} non attivi, ${polizze} polizze POUEY, ${noteImportate} note legali, ${nonTrovati.length + noteNonTrovate} non trovati`,
+            errore: `Riepilogo: ${aggiornati} aggiornati, ${azzerati} azzerati (assenti), ${anomalieTotali} anomalie in attesa, ${nonTrovati.length + noteNonTrovate} non trovati, ${errors.length} errori`,
+          },
+          {
+            riga: 0,
+            errore: `Dettaglio: ${bloccati} bloccati, ${sbloccati} sbloccati, ${nonAttivi} non attivi, ${polizze} polizze POUEY, ${noteImportate} note legali`,
           },
         ];
         const { data: cur } = await supabaseAdmin
@@ -1819,9 +1971,22 @@ export const processBloccoFidoImport = inngest.createFunction(
       });
 
       logger.info(
-        `Blocco fido done: agg=${aggiornati}, blk=${bloccati}, sblk=${sbloccati}, nonAtt=${nonAttivi}, pol=${polizze}, noteLeg=${noteImportate}, miss=${nonTrovati.length}, err=${errors.length}`,
+        `Blocco fido done: agg=${aggiornati}, azzerati=${azzerati}, anom=${anomalieTotali}, blk=${bloccati}, sblk=${sbloccati}, nonAtt=${nonAttivi}, pol=${polizze}, noteLeg=${noteImportate}, miss=${nonTrovati.length}, err=${errors.length}`,
       );
-      return { aggiornati, bloccati, sbloccati, nonAttivi, polizze, noteImportate, noteNonTrovate, nonTrovati: nonTrovati.length, errori: errors.length };
+      return {
+        aggiornati,
+        azzerati,
+        anomalie: anomalieTotali,
+        bloccati,
+        sbloccati,
+        nonAttivi,
+        polizze,
+        noteImportate,
+        noteNonTrovate,
+        perdeGestioneLegale,
+        nonTrovati: nonTrovati.length,
+        errori: errors.length,
+      };
     } catch (err) {
       await setImportazioneError(importazioneId, err instanceof Error ? err.message : String(err));
       throw err;
