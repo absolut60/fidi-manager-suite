@@ -200,7 +200,14 @@ function RichiestePage() {
           />
         </TabsContent>
 
-        <TabsContent value="approvate" className="mt-4">
+        <TabsContent value="approvate" className="mt-4 space-y-3">
+          {(isAdmin || isApprovatore) && (
+            <div className="flex justify-end">
+              <Button asChild variant="outline" size="sm">
+                <a href="/fidi-processare"><FileText className="size-4" /> Vai a Fidi da processare</a>
+              </Button>
+            </div>
+          )}
           <StoricoTab rows={approvate} loading={isLoading} kind="approvata" onRiinvia={null} />
         </TabsContent>
 
