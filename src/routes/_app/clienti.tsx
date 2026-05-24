@@ -2639,3 +2639,165 @@ function StepFirma({
     </>
   );
 }
+
+// ============ Filtri avanzati dialog ============
+type AdvOp = "none" | "lt" | "lte" | "gt" | "eq" | "between";
+type AdvAppliedT = {
+  fidoOp: AdvOp; fidoVal: number | null; fidoFrom: number | null; fidoTo: number | null;
+  percConsumato: number | null;
+  dataFattPrima: string; dataFattDopo: string;
+  presetScopertoInsoluto: boolean;
+};
+
+function FiltriAvanzatiDialog({
+  open, onOpenChange, applied, onApply, onReset, onSetMainFiltro, currentMain,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  applied: AdvAppliedT;
+  onApply: (a: AdvAppliedT) => void;
+  onReset: () => void;
+  onSetMainFiltro: (p: { soloBloccati?: boolean; soloAssicurati?: boolean; scadenziarioFiltro?: string }) => void;
+  currentMain: { soloBloccati: boolean; soloAssicurati: boolean; scadenziarioFiltro: string };
+}) {
+  const [draft, setDraft] = useState<AdvAppliedT>(applied);
+  useEffect(() => { if (open) setDraft(applied); }, [open, applied]);
+
+  const PRESETS = [
+    { id: "fido80", label: "Fido 80% consumato", apply: (d: AdvAppliedT) => ({ ...d, percConsumato: 80 }) },
+    { id: "esaurito", label: "Fido esaurito", apply: (d: AdvAppliedT) => ({ ...d, fidoOp: "lte" as AdvOp, fidoVal: 0 }) },
+    { id: "lt500", label: "Fido residuo < 500 €", apply: (d: AdvAppliedT) => ({ ...d, fidoOp: "lt" as AdvOp, fidoVal: 500 }) },
+    { id: "lt1000", label: "Fido residuo < 1.000 €", apply: (d: AdvAppliedT) => ({ ...d, fidoOp: "lt" as AdvOp, fidoVal: 1000 }) },
+    { id: "scoperto", label: "Scoperti con insoluto", apply: (d: AdvAppliedT) => ({ ...d, presetScopertoInsoluto: true }), main: { soloAssicurati: false } },
+    { id: "blocFat", label: "Bloccati con fatturato 2025", apply: (d: AdvAppliedT) => d, main: { soloBloccati: true } },
+  ];
+
+  const isPresetActive = (id: string): boolean => {
+    switch (id) {
+      case "fido80": return draft.percConsumato === 80;
+      case "esaurito": return draft.fidoOp === "lte" && draft.fidoVal === 0;
+      case "lt500": return draft.fidoOp === "lt" && draft.fidoVal === 500;
+      case "lt1000": return draft.fidoOp === "lt" && draft.fidoVal === 1000;
+      case "scoperto": return draft.presetScopertoInsoluto;
+      case "blocFat": return currentMain.soloBloccati;
+      default: return false;
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Filtri avanzati</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-5 py-2">
+          {/* Sezione A — Preset */}
+          <section>
+            <h3 className="text-sm font-semibold mb-2">Ricerca rapida</h3>
+            <div className="flex flex-wrap gap-2">
+              {PRESETS.map((p) => {
+                const active = isPresetActive(p.id);
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => {
+                      setDraft((d) => p.apply(d));
+                      if (p.main) onSetMainFiltro(p.main);
+                    }}
+                    className={`px-3 py-1.5 rounded-full border text-xs transition-colors ${active ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted"}`}
+                  >
+                    {p.label}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* Sezione B — Fido residuo personalizzato */}
+          <section>
+            <h3 className="text-sm font-semibold mb-2">Filtro fido residuo</h3>
+            <div className="flex flex-wrap items-center gap-2">
+              <Select value={draft.fidoOp} onValueChange={(v) => setDraft((d) => ({ ...d, fidoOp: v as AdvOp }))}>
+                <SelectTrigger className="w-44 h-9 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">— nessuno —</SelectItem>
+                  <SelectItem value="lt">minore di</SelectItem>
+                  <SelectItem value="lte">minore o uguale a</SelectItem>
+                  <SelectItem value="gt">maggiore di</SelectItem>
+                  <SelectItem value="eq">uguale a</SelectItem>
+                  <SelectItem value="between">tra</SelectItem>
+                </SelectContent>
+              </Select>
+              {draft.fidoOp === "between" ? (
+                <>
+                  <Input type="number" placeholder="da €" className="w-28 h-9"
+                    value={draft.fidoFrom ?? ""} onChange={(e) => setDraft((d) => ({ ...d, fidoFrom: e.target.value === "" ? null : Number(e.target.value) }))} />
+                  <span className="text-muted-foreground">—</span>
+                  <Input type="number" placeholder="a €" className="w-28 h-9"
+                    value={draft.fidoTo ?? ""} onChange={(e) => setDraft((d) => ({ ...d, fidoTo: e.target.value === "" ? null : Number(e.target.value) }))} />
+                </>
+              ) : draft.fidoOp !== "none" ? (
+                <Input type="number" placeholder="€" className="w-32 h-9"
+                  value={draft.fidoVal ?? ""} onChange={(e) => setDraft((d) => ({ ...d, fidoVal: e.target.value === "" ? null : Number(e.target.value) }))} />
+              ) : null}
+            </div>
+          </section>
+
+          {/* Sezione C — Percentuale fido consumato */}
+          <section>
+            <h3 className="text-sm font-semibold mb-2">Percentuale fido consumato</h3>
+            <p className="text-xs text-muted-foreground mb-2">
+              Clienti che hanno consumato almeno <strong>{draft.percConsumato ?? 0}%</strong> del fido gestionale
+            </p>
+            <div className="flex items-center gap-3">
+              <RadixSlider.Root
+                className="relative flex h-5 flex-1 touch-none select-none items-center"
+                min={0} max={100} step={5}
+                value={[draft.percConsumato ?? 0]}
+                onValueChange={(v) => setDraft((d) => ({ ...d, percConsumato: v[0] ?? 0 }))}
+              >
+                <RadixSlider.Track className="relative h-2 w-full grow overflow-hidden rounded-full bg-muted">
+                  <RadixSlider.Range className="absolute h-full bg-primary" />
+                </RadixSlider.Track>
+                <RadixSlider.Thumb className="block size-5 rounded-full border-2 border-primary bg-background shadow-sm outline-none" />
+              </RadixSlider.Root>
+              <Button type="button" variant="ghost" size="sm"
+                onClick={() => setDraft((d) => ({ ...d, percConsumato: null }))}>
+                Azzera
+              </Button>
+            </div>
+          </section>
+
+          {/* Sezione D — Ultima fatturazione */}
+          <section>
+            <h3 className="text-sm font-semibold mb-2">Ultima fatturazione</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Prima del</Label>
+                <Input type="date" className="h-9"
+                  value={draft.dataFattPrima}
+                  onChange={(e) => setDraft((d) => ({ ...d, dataFattPrima: e.target.value }))} />
+              </div>
+              <div>
+                <Label className="text-xs">Dopo il</Label>
+                <Input type="date" className="h-9"
+                  value={draft.dataFattDopo}
+                  onChange={(e) => setDraft((d) => ({ ...d, dataFattDopo: e.target.value }))} />
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <DialogFooter className="gap-2">
+          <Button variant="ghost" onClick={() => { setDraft({ fidoOp: "none", fidoVal: null, fidoFrom: null, fidoTo: null, percConsumato: null, dataFattPrima: "", dataFattDopo: "", presetScopertoInsoluto: false }); onReset(); }}>
+            Reset
+          </Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Annulla</Button>
+          <Button onClick={() => onApply(draft)}>Applica filtri</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
