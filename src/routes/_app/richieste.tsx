@@ -941,28 +941,65 @@ function RichiestaFormDialog({
       <div className="space-y-4">
         <div className="space-y-1.5">
           <Label>Cliente *</Label>
-          <Input placeholder="Cerca cliente..." value={search} onChange={(e) => setSearch(e.target.value)} />
-          <Select value={form.cliente_id} onValueChange={(v) => setForm({ ...form, cliente_id: v })}>
-            <SelectTrigger><SelectValue placeholder="Seleziona cliente..." /></SelectTrigger>
-            <SelectContent>
-              {filteredClienti.slice(0, 100).map((c) => (
-                <SelectItem key={c.id} value={c.id}>{c.ragione_sociale}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {errors.cliente_id && <p className="text-xs text-destructive">{errors.cliente_id}</p>}
+          {isEdit ? (
+            <Input value={clienteSel?.ragione_sociale ?? richiesta?.clienti?.ragione_sociale ?? "Caricamento…"} readOnly disabled />
+          ) : (
+            <>
+              <Input placeholder="Cerca cliente..." value={search} onChange={(e) => setSearch(e.target.value)} />
+              <Select value={form.cliente_id} onValueChange={(v) => setForm({ ...form, cliente_id: v })}>
+                <SelectTrigger><SelectValue placeholder="Seleziona cliente..." /></SelectTrigger>
+                <SelectContent>
+                  {filteredClienti.slice(0, 100).map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.ragione_sociale}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.cliente_id && <p className="text-xs text-destructive">{errors.cliente_id}</p>}
+            </>
+          )}
         </div>
 
         {clienteSel && (
-          <div className="rounded-md border p-3 text-xs space-y-1 bg-muted/30">
-            <div className="flex justify-between"><span>Fido attuale</span><span className="tabular-nums font-medium">{formatEuro(fidoAttuale)}</span></div>
-            <div className="flex justify-between"><span>Totale rischio</span><span className="tabular-nums">{formatEuro(Number(clienteSel.totale_rischio ?? 0))}</span></div>
-            <div className="flex justify-between"><span>Scaduto</span><span className="tabular-nums">{formatEuro(Number(clienteSel.scaduto ?? 0))}</span></div>
-            <div className="flex justify-between items-center"><span>Semaforo rischio</span>
-              <span className={`inline-flex rounded-md px-2 py-0.5 font-medium ${sem.tone}`}>{sem.label}</span>
+          <div className="rounded-md border p-3 text-xs space-y-1.5 bg-muted/30">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+              <div className="flex justify-between"><span className="text-muted-foreground">Fido gestionale</span><span className="tabular-nums font-medium">{formatEuro(Number(clienteSel.fido_gestionale ?? 0))}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Totale rischio</span><span className="tabular-nums">{formatEuro(Number(clienteSel.totale_rischio ?? 0))}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Fido residuo</span><span className={`tabular-nums ${Number(clienteSel.fido_residuo ?? 0) < 0 ? "text-destructive font-medium" : ""}`}>{formatEuro(Number(clienteSel.fido_residuo ?? 0))}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Scaduto</span><span className={`tabular-nums ${Number(clienteSel.scaduto ?? 0) > 0 ? "text-destructive font-medium" : ""}`}>{formatEuro(Number(clienteSel.scaduto ?? 0))}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">A scadere</span><span className="tabular-nums">{formatEuro(Number(clienteSel.a_scadere ?? 0))}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Insoluti</span><span className="tabular-nums">{Number(clienteSel.num_insoluti ?? 0)}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Cond. pagamento</span><span className="truncate ml-2">{clienteSel.condizioni_pagamento ?? "—"}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Dilaz. concordata</span><span className="tabular-nums">{clienteSel.dilazione_concordata ?? "—"}{clienteSel.dilazione_concordata != null ? " gg" : ""}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Dilaz. effettiva</span><span className="tabular-nums">{clienteSel.dilazione_effettiva ?? "—"}{clienteSel.dilazione_effettiva != null ? " gg" : ""}</span></div>
+              <div className="flex justify-between items-center"><span className="text-muted-foreground">Semaforo rischio</span>
+                <span className={`inline-flex rounded-md px-2 py-0.5 font-medium ${sem.tone}`}>{sem.label}</span>
+              </div>
+            </div>
+            <div className="border-t pt-1.5 flex flex-wrap items-center gap-2">
+              <span className="text-muted-foreground">Stato:</span>
+              {clienteSel.bloccato ? (
+                <span className="inline-flex rounded-md px-2 py-0.5 font-medium bg-destructive/15 text-destructive">Bloccato{clienteSel.motivo_blocco ? ` — ${clienteSel.motivo_blocco}` : ""}</span>
+              ) : (
+                <span className="inline-flex rounded-md px-2 py-0.5 font-medium bg-success/15 text-success">Non bloccato</span>
+              )}
+              {clienteSel.in_gestione_legale && (
+                <span className="inline-flex rounded-md px-2 py-0.5 font-medium bg-warning/15 text-warning">In legale</span>
+              )}
+              <span className={`inline-flex rounded-md px-2 py-0.5 font-medium ${clienteSel.cliente_attivo ? "bg-success/15 text-success" : "bg-muted text-muted-foreground"}`}>
+                {clienteSel.cliente_attivo ? "Attivo" : "Non attivo"}
+              </span>
+              {clienteSel.ultima_data_fatturazione && (
+                <span className="text-muted-foreground">· Ultima fatt. {formatDate(clienteSel.ultima_data_fatturazione)}</span>
+              )}
+            </div>
+            <div className="border-t pt-1.5 text-muted-foreground">
+              Ultima sincronizzazione: {clienteSel.ultima_sincronizzazione
+                ? new Date(clienteSel.ultima_sincronizzazione).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
+                : "—"}
             </div>
           </div>
         )}
+
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
