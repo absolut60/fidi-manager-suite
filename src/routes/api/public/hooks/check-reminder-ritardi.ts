@@ -4,8 +4,13 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 export const Route = createFileRoute("/api/public/hooks/check-reminder-ritardi")({
   server: {
     handlers: {
-      POST: async () => {
+      POST: async ({ request }) => {
         try {
+          // Auth: richiede apikey header == SUPABASE_PUBLISHABLE_KEY (pattern pg_cron)
+          const apikey = request.headers.get("apikey");
+          if (!apikey || apikey !== process.env.SUPABASE_PUBLISHABLE_KEY) {
+            return new Response("Unauthorized", { status: 401 });
+          }
           const now = new Date();
           const today = now.toISOString().slice(0, 10);
           const since = new Date(now.getTime() - 7 * 86400000).toISOString();

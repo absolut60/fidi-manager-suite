@@ -4,8 +4,13 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 export const Route = createFileRoute("/api/public/hooks/check-scadenze")({
   server: {
     handlers: {
-      POST: async () => {
+      POST: async ({ request }) => {
         try {
+          // Auth: richiede apikey header == SUPABASE_PUBLISHABLE_KEY (pattern pg_cron)
+          const apikey = request.headers.get("apikey");
+          if (!apikey || apikey !== process.env.SUPABASE_PUBLISHABLE_KEY) {
+            return new Response("Unauthorized", { status: 401 });
+          }
           // Leggi configurazioni
           const { data: cfgRows } = await supabaseAdmin
             .from("configurazioni")

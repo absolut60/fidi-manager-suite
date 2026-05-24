@@ -138,7 +138,12 @@ export const firmaPrivacyConToken = createServerFn({ method: "POST" })
     const { error: ePdf } = await supabaseAdmin.storage.from("documenti-privacy")
       .upload(pdfPath, pdfBytes, { upsert: true, contentType: "application/pdf" });
     if (ePdf) throw new Error(ePdf.message);
-    const { data: pdfUrl } = supabaseAdmin.storage.from("documenti-privacy").getPublicUrl(pdfPath);
+    // Bucket privato: signed URL a lunga scadenza (10 anni). Il path è la fonte di verità.
+    const { data: pdfSigned, error: ePdfSigned } = await supabaseAdmin.storage
+      .from("documenti-privacy")
+      .createSignedUrl(pdfPath, 60 * 60 * 24 * 365 * 10);
+    if (ePdfSigned) throw new Error(ePdfSigned.message);
+    const pdfUrl = { publicUrl: pdfSigned.signedUrl };
 
     // 3) Aggiorna contatto e invalida il token
     const { error: eUpd } = await supabaseAdmin.from("contatti").update({
