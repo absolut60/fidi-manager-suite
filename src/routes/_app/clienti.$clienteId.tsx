@@ -858,17 +858,18 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
 function MiniStat({ label, value, tone = "default", icon: Icon }: { label: string; value: string; tone?: "default" | "destructive" | "warning"; icon?: typeof Calendar }) {
   const valCls = tone === "destructive" ? "text-destructive" : tone === "warning" ? "text-orange-600" : "";
   return (
-    <Card className="p-4">
+    <Card className="px-3 py-2">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-xs font-medium text-muted-foreground uppercase truncate">{label}</p>
-          <p className={`text-lg font-bold mt-1 tabular-nums ${valCls}`}>{value}</p>
+          <p className="text-[10px] font-medium text-muted-foreground uppercase truncate">{label}</p>
+          <p className={`text-base font-bold mt-0.5 tabular-nums truncate ${valCls}`}>{value}</p>
         </div>
-        {Icon && <Icon className="size-4 text-muted-foreground shrink-0" />}
+        {Icon && <Icon className="size-3.5 text-muted-foreground shrink-0" />}
       </div>
     </Card>
   );
 }
+
 
 function FasciaRow({ label, value, pct, color }: { label: string; value: number; pct: number; color: string }) {
   return (
