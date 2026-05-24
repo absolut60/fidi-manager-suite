@@ -385,7 +385,7 @@ function ClienteDetail() {
         </div>
       </div>
 
-      <Tabs defaultValue={tab ?? "riepilogo"}>
+      <Tabs key={tab ?? "riepilogo"} defaultValue={tab ?? "riepilogo"}>
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="riepilogo">Riepilogo</TabsTrigger>
           <TabsTrigger value="anagrafica">Anagrafica</TabsTrigger>
