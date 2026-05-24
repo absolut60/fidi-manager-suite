@@ -39,17 +39,11 @@ function FidiProcessarePage() {
   const { user, role } = useAuth();
   const isAdmin = role === "amministratore";
   const isApprovatore = role?.startsWith("approvatore_liv") ?? false;
+  const hasAccess = isAdmin || isApprovatore;
   const qc = useQueryClient();
 
-  if (!isAdmin && !isApprovatore) {
-    return (
-      <Card className="p-8 text-center text-muted-foreground">
-        Non hai accesso a questa sezione.
-      </Card>
-    );
-  }
-
   const [tab, setTab] = useState("gestire");
+
 
   const { data: richieste, isLoading } = useQuery({
     queryKey: ["fidi-processare", user?.id],
@@ -156,7 +150,16 @@ function FidiProcessarePage() {
     }
   }
 
+  if (!hasAccess) {
+    return (
+      <Card className="p-8 text-center text-muted-foreground">
+        Non hai accesso a questa sezione.
+      </Card>
+    );
+  }
+
   return (
+
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Fidi da processare</h1>
