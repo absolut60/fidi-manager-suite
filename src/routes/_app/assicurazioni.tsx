@@ -1,13 +1,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ShieldCheck, Search } from "lucide-react";
+import { ShieldCheck, Search, ShieldAlert, Clock, Wallet, AlertCircle, CalendarDays } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -40,6 +41,7 @@ export default function AssicurazioniPage() {
   const [stato, setStato] = useState<StatoFilter>("tutti");
   const [storeId, setStoreId] = useState<string>("all");
   const [q, setQ] = useState("");
+  const [scadenza30, setScadenza30] = useState(false);
 
   const { data: stores } = useQuery({
     queryKey: ["stores-list"],
@@ -62,17 +64,64 @@ export default function AssicurazioniPage() {
     },
   });
 
+  const { data: clientiScoperti } = useQuery({
+    queryKey: ["clienti-scoperti-insoluto", storeId],
+    queryFn: async () => {
+      let q = supabase
+        .from("clienti")
+        .select("id, store_id, assicurazione_attiva, scaduto", { count: "exact", head: false })
+        .eq("assicurazione_attiva", false)
+        .gt("scaduto", 0);
+      if (storeId !== "all") q = q.eq("store_id", storeId);
+      const { data, error } = await q;
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const today = new Date().toISOString().slice(0, 10);
-  const rows = useMemo(() => {
+  const in30 = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+
+  const baseFiltered = useMemo(() => {
     return (data ?? []).filter((r: any) => {
       const cli = r.clienti;
       if (!cli) return false;
       if (storeId !== "all" && cli.store_id !== storeId) return false;
+      return true;
+    });
+  }, [data, storeId]);
+
+  const kpi = useMemo(() => {
+    const attive = baseFiltered.filter((r: any) => r.stato === "attiva" && (!r.data_scadenza || r.data_scadenza >= today));
+    const scadute = baseFiltered.filter((r: any) => r.data_scadenza && r.data_scadenza < today);
+    const inScad30 = attive.filter((r: any) => r.data_scadenza && r.data_scadenza >= today && r.data_scadenza <= in30);
+    const massimale = attive.reduce((acc: number, r: any) => acc + Number(r.importo_massimale ?? r.importo_assicurato ?? 0), 0);
+    const future = attive.filter((r: any) => r.data_scadenza && r.data_scadenza >= today)
+      .sort((a: any, b: any) => String(a.data_scadenza).localeCompare(String(b.data_scadenza)));
+    const prossima = future[0];
+    return {
+      attive: attive.length,
+      scadute: scadute.length,
+      inScad30: inScad30.length,
+      massimale,
+      scoperti: clientiScoperti?.length ?? 0,
+      prossimaData: prossima?.data_scadenza ?? null,
+      prossimaCliente: prossima?.clienti?.ragione_sociale ?? null,
+    };
+  }, [baseFiltered, today, in30, clientiScoperti]);
+
+  const rows = useMemo(() => {
+    return baseFiltered.filter((r: any) => {
+      const cli = r.clienti;
       if (q) {
         const ql = q.toLowerCase();
         if (!String(cli.ragione_sociale ?? "").toLowerCase().includes(ql) &&
             !String(r.assicuratore ?? "").toLowerCase().includes(ql) &&
             !String(r.numero_polizza ?? "").toLowerCase().includes(ql)) return false;
+      }
+      if (scadenza30) {
+        if (r.stato !== "attiva") return false;
+        if (!r.data_scadenza || r.data_scadenza < today || r.data_scadenza > in30) return false;
       }
       if (stato === "sinistro" && !r.sinistro_aperto) return false;
       if (stato === "attiva") {
@@ -84,7 +133,7 @@ export default function AssicurazioniPage() {
       }
       return true;
     });
-  }, [data, stato, storeId, q, today]);
+  }, [baseFiltered, stato, q, scadenza30, today, in30]);
 
   return (
     <div className="space-y-6">
@@ -96,6 +145,22 @@ export default function AssicurazioniPage() {
           Tutte le polizze {isStoreManager ? "del tuo store" : "dei clienti"}
         </p>
       </div>
+
+      <TooltipProvider>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <KpiCard label="Polizze attive" value={String(kpi.attive)} icon={ShieldCheck} accent="success" />
+          <KpiCard label="Polizze scadute" value={String(kpi.scadute)} icon={ShieldAlert} accent="orange"
+            onClick={() => { setStato("scaduta"); setScadenza30(false); }} />
+          <KpiCard label="In scadenza entro 30gg" value={String(kpi.inScad30)} icon={Clock} accent="amber"
+            onClick={() => { setScadenza30(true); setStato("tutti"); }} active={scadenza30} />
+          <KpiCard label="Massimale totale coperto" value={fmtEuro(kpi.massimale)} icon={Wallet} accent="navy" />
+          <KpiCard label="Clienti scoperti con insoluto" value={String(kpi.scoperti)} icon={AlertCircle} accent="destructive"
+            tooltip="Clienti senza polizza attiva che hanno fatture scadute"
+            onClick={() => navigate({ to: "/scadenziario" })} />
+          <KpiCard label="Prossima scadenza" value={kpi.prossimaData ? fmtDate(kpi.prossimaData) : "—"} icon={CalendarDays} accent="slate"
+            subtitle={kpi.prossimaCliente ?? undefined} />
+        </div>
+      </TooltipProvider>
 
       <Card className="p-4">
         <div className="flex flex-wrap gap-3 items-end">
@@ -199,4 +264,47 @@ export default function AssicurazioniPage() {
       </Card>
     </div>
   );
+}
+
+type Accent = "success" | "orange" | "amber" | "navy" | "destructive" | "slate";
+function KpiCard({
+  label, value, icon: Icon, accent, subtitle, tooltip, onClick, active,
+}: {
+  label: string; value: string; icon: typeof ShieldCheck; accent: Accent;
+  subtitle?: string; tooltip?: string; onClick?: () => void; active?: boolean;
+}) {
+  const cls: Record<Accent, string> = {
+    success: "bg-success/15 text-success",
+    orange: "bg-orange-500/15 text-orange-600",
+    amber: "bg-amber-400/20 text-amber-600",
+    navy: "bg-primary/10 text-primary",
+    destructive: "bg-destructive/15 text-destructive",
+    slate: "bg-slate-200 text-slate-600",
+  };
+  const card = (
+    <Card
+      className={`p-4 ${onClick ? "cursor-pointer hover:bg-muted/40 transition-colors" : ""} ${active ? "ring-2 ring-primary" : ""}`}
+      onClick={onClick}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</p>
+          <p className="text-xl font-bold mt-1 truncate">{value}</p>
+          {subtitle && <p className="text-xs text-muted-foreground mt-0.5 truncate">{subtitle}</p>}
+        </div>
+        <div className={`size-9 rounded-lg flex items-center justify-center shrink-0 ${cls[accent]}`}>
+          <Icon className="size-4" />
+        </div>
+      </div>
+    </Card>
+  );
+  if (tooltip) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild><div>{card}</div></TooltipTrigger>
+        <TooltipContent>{tooltip}</TooltipContent>
+      </Tooltip>
+    );
+  }
+  return card;
 }
