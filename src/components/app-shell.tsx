@@ -19,6 +19,8 @@ import {
   Gavel,
   FileSignature,
   CalendarClock,
+  FileSpreadsheet as FileSpreadsheetIcon2,
+  ClipboardCheck,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, RUOLI_LABEL } from "@/hooks/use-auth";
