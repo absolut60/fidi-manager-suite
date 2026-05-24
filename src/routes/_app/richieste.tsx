@@ -846,12 +846,15 @@ function RichiestaFormDialog({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [search, setSearch] = useState("");
 
+  const isEdit = !!richiesta;
+
   const { data: clienti } = useQuery({
     queryKey: ["clienti", "form-richiesta"],
+    enabled: !isEdit,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clienti")
-        .select("id, ragione_sociale, store_id, fido_aziendale_concesso, fido_gestionale, bloccato, in_gestione_legale, scaduto, totale_rischio")
+        .select("id, ragione_sociale, store_id, fido_aziendale_concesso, fido_gestionale, bloccato, in_gestione_legale, scaduto, totale_rischio, fido_residuo, a_scadere, condizioni_pagamento, dilazione_concordata, dilazione_effettiva, num_insoluti, motivo_blocco, cliente_attivo, ultima_data_fatturazione, ultima_sincronizzazione")
         .eq("attivo", true)
         .order("ragione_sociale");
       if (error) throw error;
@@ -859,13 +862,28 @@ function RichiestaFormDialog({
     },
   });
 
-  const clienteSel = clienti?.find((c) => c.id === form.cliente_id);
+  const { data: clienteEdit } = useQuery({
+    queryKey: ["cliente", "form-richiesta", form.cliente_id],
+    enabled: isEdit && !!form.cliente_id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("clienti")
+        .select("id, ragione_sociale, store_id, fido_aziendale_concesso, fido_gestionale, bloccato, in_gestione_legale, scaduto, totale_rischio, fido_residuo, a_scadere, condizioni_pagamento, dilazione_concordata, dilazione_effettiva, num_insoluti, motivo_blocco, cliente_attivo, ultima_data_fatturazione, ultima_sincronizzazione")
+        .eq("id", form.cliente_id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const clienteSel: any = isEdit ? clienteEdit : clienti?.find((c) => c.id === form.cliente_id);
   const fidoAttuale = Number(clienteSel?.fido_aziendale_concesso ?? 0);
   const variazione = fidoAttuale > 0 && form.importo_richiesto > 0
     ? ((form.importo_richiesto - fidoAttuale) / fidoAttuale) * 100
     : null;
   const livelloPreview = form.importo_richiesto > 0 ? calcolaLivello(Number(form.importo_richiesto)) : null;
   const filteredClienti = clienti?.filter((c) => !search || c.ragione_sociale.toLowerCase().includes(search.toLowerCase())) ?? [];
+
 
   const mut = useMutation({
     mutationFn: async (input: { invia: boolean }) => {
