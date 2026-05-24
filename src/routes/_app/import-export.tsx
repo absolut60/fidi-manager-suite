@@ -2464,6 +2464,14 @@ function BloccoFidoAssicurazioneImportCard() {
         </div>
       )}
 
+      {(isPending || inProgress) && logs.length > 0 && (
+        <div className="mb-4 p-3 rounded-md border bg-muted/20 text-xs font-mono max-h-48 overflow-y-auto space-y-0.5">
+          {logs.map((l, i) => (
+            <div key={i} className="whitespace-pre-wrap">{l}</div>
+          ))}
+        </div>
+      )}
+
       {inProgress && progress && (
         <BgProgressBlock progress={progress} fallbackTotal={0} />
       )}
