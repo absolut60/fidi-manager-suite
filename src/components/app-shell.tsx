@@ -19,7 +19,6 @@ import {
   Gavel,
   FileSignature,
   CalendarClock,
-  FileSpreadsheet as FileSpreadsheetIcon2,
   ClipboardCheck,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
