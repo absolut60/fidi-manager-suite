@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Gavel, Search } from "lucide-react";
+import { Gavel, Search, FileText, Hammer, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
@@ -31,6 +31,7 @@ function fmtDate(v: unknown): string {
 }
 
 const STATI_CHIUSI = new Set(["chiusa_pagamento", "chiusa_perdita"]);
+const STATI_APERTI = new Set(["aperta", "in_corso", "decreto_ottenuto", "pignoramento_eseguito"]);
 
 function statoTone(stato: string): { label: string; cls: string } {
   if (stato === "aperta") return { label: "Aperta", cls: "bg-destructive text-destructive-foreground" };
@@ -39,13 +40,41 @@ function statoTone(stato: string): { label: string; cls: string } {
   return { label: stato.replace(/_/g, " "), cls: "bg-orange-500 text-white" };
 }
 
-export default function PraticheLegaliPage() {
+function categoriaTone(cat?: string | null): string {
+  const c = (cat ?? "").toLowerCase();
+  if (c.includes("pignoramento")) return "bg-destructive text-destructive-foreground";
+  if (c.includes("decreto")) return "bg-orange-500 text-white";
+  if (c.includes("pouey")) return "bg-purple-600 text-white";
+  if (c.includes("fallimento") || c.includes("concordato")) return "bg-red-700 text-white";
+  return "bg-muted text-muted-foreground";
+}
+
+type Row = {
+  id: string;
+  origine: "manuale" | "gestionale";
+  cliente_id: string;
+  ragione_sociale: string;
+  store_id: string | null;
+  store_nome: string | null;
+  tipo: string;
+  categoria: string | null;
+  stato: string;
+  importo: number | null;
+  data_apertura: string | null;
+  avvocato: string | null;
+  numero_fascicolo: string | null;
+  ultimo_aggiornamento: string | null;
+};
+
+function PraticheLegaliPage() {
   const navigate = useNavigate();
   const { role } = useAuth();
   const isStoreManager = role === "store_manager";
 
   const [stato, setStato] = useState<string>("tutti");
   const [storeId, setStoreId] = useState<string>("all");
+  const [tipoFilter, setTipoFilter] = useState<string>("tutti");
+  const [origine, setOrigine] = useState<string>("tutte");
   const [q, setQ] = useState("");
 
   const { data: stores } = useQuery({
@@ -57,7 +86,7 @@ export default function PraticheLegaliPage() {
     },
   });
 
-  const { data, isLoading } = useQuery({
+  const { data: manuali, isLoading: loadingManuali } = useQuery({
     queryKey: ["pratiche-legali-all"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -69,21 +98,112 @@ export default function PraticheLegaliPage() {
     },
   });
 
+  const { data: gestionali, isLoading: loadingGest } = useQuery({
+    queryKey: ["note-legali-gestionali-all"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("note_legali_gestionali")
+        .select("*, clienti!inner(id, ragione_sociale, store_id, stores(nome))")
+        .order("ultima_sincronizzazione", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: clientiLegale } = useQuery({
+    queryKey: ["clienti-in-gestione-legale-count"],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("clienti")
+        .select("id", { count: "exact", head: true })
+        .eq("in_gestione_legale", true);
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+
+  const allRows: Row[] = useMemo(() => {
+    const m: Row[] = (manuali ?? []).map((r: any) => ({
+      id: `m_${r.id}`,
+      origine: "manuale",
+      cliente_id: r.clienti.id,
+      ragione_sociale: r.clienti?.ragione_sociale ?? "—",
+      store_id: r.clienti?.store_id ?? null,
+      store_nome: r.clienti?.stores?.nome ?? null,
+      tipo: String(r.tipo ?? ""),
+      categoria: String(r.tipo ?? "").replace(/_/g, " "),
+      stato: r.stato,
+      importo: r.importo_contestato,
+      data_apertura: r.data_apertura,
+      avvocato: r.riferimento_avvocato ?? r.studio_legale ?? null,
+      numero_fascicolo: r.numero_fascicolo,
+      ultimo_aggiornamento: r.updated_at,
+    }));
+    const g: Row[] = (gestionali ?? []).map((r: any) => ({
+      id: `g_${r.id}`,
+      origine: "gestionale",
+      cliente_id: r.clienti.id,
+      ragione_sociale: r.clienti?.ragione_sociale ?? "—",
+      store_id: r.clienti?.store_id ?? null,
+      store_nome: r.clienti?.stores?.nome ?? null,
+      tipo: "nota_gestionale",
+      categoria: r.categoria,
+      stato: "gestionale",
+      importo: null,
+      data_apertura: r.ultima_sincronizzazione,
+      avvocato: null,
+      numero_fascicolo: null,
+      ultimo_aggiornamento: r.ultima_sincronizzazione,
+    }));
+    return [...m, ...g];
+  }, [manuali, gestionali]);
+
   const rows = useMemo(() => {
-    return (data ?? []).filter((r: any) => {
-      if (storeId !== "all" && r.clienti?.store_id !== storeId) return false;
-      if (stato === "aperte" && (r.stato !== "aperta" && !["in_corso", "decreto_ottenuto", "pignoramento_eseguito"].includes(r.stato))) return false;
-      if (stato === "chiuse" && !STATI_CHIUSI.has(r.stato)) return false;
-      if (stato !== "tutti" && stato !== "aperte" && stato !== "chiuse" && r.stato !== stato) return false;
+    return allRows.filter((r) => {
+      if (origine === "manuali" && r.origine !== "manuale") return false;
+      if (origine === "gestionali" && r.origine !== "gestionale") return false;
+      if (storeId !== "all" && r.store_id !== storeId) return false;
+      if (tipoFilter !== "tutti") {
+        const c = (r.categoria ?? "").toLowerCase();
+        if (tipoFilter === "decreto" && !c.includes("decreto")) return false;
+        if (tipoFilter === "pignoramento" && !c.includes("pignoramento")) return false;
+        if (tipoFilter === "pouey" && !c.includes("pouey")) return false;
+        if (tipoFilter === "fallimento" && !(c.includes("fallimento") || c.includes("concordato"))) return false;
+      }
+      if (stato !== "tutti" && r.origine === "manuale") {
+        if (stato === "aperte" && !STATI_APERTI.has(r.stato)) return false;
+        if (stato === "chiuse" && !STATI_CHIUSI.has(r.stato)) return false;
+        if (!["tutti", "aperte", "chiuse"].includes(stato) && r.stato !== stato) return false;
+      } else if (stato !== "tutti" && r.origine === "gestionale") {
+        return false;
+      }
       if (q) {
         const ql = q.toLowerCase();
-        if (!String(r.clienti?.ragione_sociale ?? "").toLowerCase().includes(ql) &&
-            !String(r.studio_legale ?? "").toLowerCase().includes(ql) &&
-            !String(r.numero_fascicolo ?? "").toLowerCase().includes(ql)) return false;
+        if (!r.ragione_sociale.toLowerCase().includes(ql) &&
+            !String(r.avvocato ?? "").toLowerCase().includes(ql) &&
+            !String(r.numero_fascicolo ?? "").toLowerCase().includes(ql) &&
+            !String(r.categoria ?? "").toLowerCase().includes(ql)) return false;
       }
       return true;
     });
-  }, [data, stato, storeId, q]);
+  }, [allRows, stato, storeId, tipoFilter, origine, q]);
+
+  const kpi = useMemo(() => {
+    const aperte = (manuali ?? []).filter((r: any) => STATI_APERTI.has(r.stato)).length;
+    const decreti = (manuali ?? []).filter((r: any) =>
+      STATI_APERTI.has(r.stato) && (String(r.tipo).toLowerCase().includes("decreto"))
+    ).length + (gestionali ?? []).filter((r: any) =>
+      String(r.categoria ?? "").toLowerCase().includes("decreto")
+    ).length;
+    const pignoramenti = (manuali ?? []).filter((r: any) =>
+      STATI_APERTI.has(r.stato) && String(r.tipo).toLowerCase().includes("pignoramento")
+    ).length + (gestionali ?? []).filter((r: any) =>
+      String(r.categoria ?? "").toLowerCase().includes("pignoramento")
+    ).length;
+    return { aperte, decreti, pignoramenti };
+  }, [manuali, gestionali]);
+
+  const isLoading = loadingManuali || loadingGest;
 
   return (
     <div className="space-y-6">
@@ -92,8 +212,47 @@ export default function PraticheLegaliPage() {
           <Gavel className="size-7 text-primary" /> Pratiche Legali
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Tutte le pratiche legali {isStoreManager ? "del tuo store" : "aperte sui clienti"}
+          Pratiche manuali e note gestionali importate {isStoreManager ? "del tuo store" : ""}
         </p>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <Card className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-md bg-destructive/10 text-destructive"><Gavel className="size-5" /></div>
+            <div>
+              <div className="text-xs text-muted-foreground">Pratiche aperte</div>
+              <div className="text-2xl font-bold tabular-nums">{kpi.aperte}</div>
+            </div>
+          </div>
+        </Card>
+        <Card className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-md bg-orange-500/10 text-orange-600"><FileText className="size-5" /></div>
+            <div>
+              <div className="text-xs text-muted-foreground">Decreti Ingiuntivi</div>
+              <div className="text-2xl font-bold tabular-nums">{kpi.decreti}</div>
+            </div>
+          </div>
+        </Card>
+        <Card className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-md bg-red-500/10 text-red-600"><Hammer className="size-5" /></div>
+            <div>
+              <div className="text-xs text-muted-foreground">Pignoramenti attivi</div>
+              <div className="text-2xl font-bold tabular-nums">{kpi.pignoramenti}</div>
+            </div>
+          </div>
+        </Card>
+        <Card className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-md bg-purple-500/10 text-purple-600"><Users className="size-5" /></div>
+            <div>
+              <div className="text-xs text-muted-foreground">Clienti in gestione</div>
+              <div className="text-2xl font-bold tabular-nums">{clientiLegale ?? 0}</div>
+            </div>
+          </div>
+        </Card>
       </div>
 
       <Card className="p-4">
@@ -102,14 +261,36 @@ export default function PraticheLegaliPage() {
             <div className="relative">
               <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Cerca cliente, studio, fascicolo..."
+                placeholder="Cerca cliente, studio, fascicolo, categoria..."
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 className="pl-9"
               />
             </div>
           </div>
-          <div className="w-48">
+          <div className="w-44">
+            <Select value={origine} onValueChange={setOrigine}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="tutte">Tutte le origini</SelectItem>
+                <SelectItem value="manuali">Solo manuali</SelectItem>
+                <SelectItem value="gestionali">Solo gestionali</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="w-44">
+            <Select value={tipoFilter} onValueChange={setTipoFilter}>
+              <SelectTrigger><SelectValue placeholder="Tipo pratica" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="tutti">Tutti i tipi</SelectItem>
+                <SelectItem value="decreto">Decreto Ingiuntivo</SelectItem>
+                <SelectItem value="pignoramento">Pignoramento</SelectItem>
+                <SelectItem value="pouey">POUEY</SelectItem>
+                <SelectItem value="fallimento">Fallimento/Concordato</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="w-44">
             <Select value={stato} onValueChange={setStato}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -152,38 +333,51 @@ export default function PraticheLegaliPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Cliente</TableHead>
-                <TableHead>Tipo</TableHead>
+                <TableHead>Store</TableHead>
+                <TableHead>Origine</TableHead>
+                <TableHead>Categoria / Tipo</TableHead>
                 <TableHead>Stato</TableHead>
-                <TableHead className="text-right">Importo contestato</TableHead>
+                <TableHead className="text-right">Importo</TableHead>
                 <TableHead>Apertura</TableHead>
-                <TableHead>Avvocato / Studio</TableHead>
+                <TableHead>Avvocato</TableHead>
+                <TableHead>Ultimo agg.</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map((r: any) => {
-                const tone = statoTone(r.stato);
+              {rows.map((r) => {
+                const tone = r.origine === "gestionale"
+                  ? { label: "Gestionale", cls: "bg-blue-600 text-white" }
+                  : statoTone(r.stato);
                 return (
                   <TableRow
                     key={r.id}
                     className="cursor-pointer hover:bg-muted/40"
                     onClick={() => navigate({
                       to: "/clienti/$clienteId",
-                      params: { clienteId: r.clienti.id },
+                      params: { clienteId: r.cliente_id },
                       search: { tab: "insoluti", insolutiTab: "legali" },
                     })}
                   >
-                    <TableCell className="font-medium">
-                      {r.clienti?.ragione_sociale}
-                      <div className="text-xs text-muted-foreground">{r.clienti?.stores?.nome ?? "—"}</div>
+                    <TableCell className="font-medium">{r.ragione_sociale}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{r.store_nome ?? "—"}</TableCell>
+                    <TableCell>
+                      <Badge variant={r.origine === "gestionale" ? "secondary" : "outline"} className="capitalize">
+                        {r.origine}
+                      </Badge>
                     </TableCell>
-                    <TableCell className="capitalize">{String(r.tipo).replace(/_/g, " ")}</TableCell>
+                    <TableCell>
+                      {r.categoria ? (
+                        <Badge className={categoriaTone(r.categoria)}>{r.categoria}</Badge>
+                      ) : "—"}
+                    </TableCell>
                     <TableCell><Badge className={tone.cls}>{tone.label}</Badge></TableCell>
-                    <TableCell className="text-right tabular-nums">{fmtEuro(r.importo_contestato)}</TableCell>
+                    <TableCell className="text-right tabular-nums">{fmtEuro(r.importo)}</TableCell>
                     <TableCell>{fmtDate(r.data_apertura)}</TableCell>
                     <TableCell>
-                      {r.riferimento_avvocato ?? r.studio_legale ?? "—"}
+                      {r.avvocato ?? "—"}
                       {r.numero_fascicolo && <div className="text-xs text-muted-foreground">Fasc. {r.numero_fascicolo}</div>}
                     </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{fmtDate(r.ultimo_aggiornamento)}</TableCell>
                   </TableRow>
                 );
               })}
