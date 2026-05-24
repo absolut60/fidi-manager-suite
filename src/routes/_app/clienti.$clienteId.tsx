@@ -179,7 +179,7 @@ function ConsensoBadge({ ok, label }: { ok: boolean; label: string }) {
 
 function ClienteDetail() {
   const { clienteId } = Route.useParams();
-  const { edit, tab, insolutiTab } = Route.useSearch();
+  const { edit, tab, insolutiTab, from } = Route.useSearch();
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { role } = useAuth();
