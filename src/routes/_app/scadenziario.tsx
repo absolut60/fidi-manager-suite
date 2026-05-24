@@ -467,7 +467,7 @@ function ScadenziarioPage() {
                             <ExpandedRischioPanel
                               loading={loadingRischio}
                               data={rischioExpanded}
-                              onApri={(e) => { e.stopPropagation(); apriCliente(r.cliente.id); }}
+                              onApri={(e: React.MouseEvent) => { e.stopPropagation(); apriCliente(r.cliente.id); }}
                             />
                           </TableCell>
                         </TableRow>
