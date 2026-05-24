@@ -89,11 +89,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const SidebarContent = () => (
     <>
       <div className="px-5 py-5 border-b border-sidebar-border">
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-col gap-1.5">
           <img
             src={`data:image/png;base64,${LOGO_MADE_SIDEBAR_BASE64}`}
             alt="MADE"
-            className="h-8 w-auto"
+            className="w-32 h-auto"
           />
           <div className="text-[11px] text-sidebar-foreground/60">FidiManager</div>
         </div>
@@ -145,7 +145,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <img
             src={`data:image/png;base64,${LOGO_MADE_SIDEBAR_BASE64}`}
             alt="MADE"
-            className="h-6 w-auto"
+            className="w-24 h-auto"
           />
         </div>
         <Button
