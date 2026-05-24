@@ -501,3 +501,65 @@ function KpiCard({ label, value, icon: Icon, tone }: { label: string; value: str
     </Card>
   );
 }
+
+function ritardoText(dc: number | null, de: number | null): { text: string; cls: string } {
+  if (dc == null || de == null) return { text: "—", cls: "text-muted-foreground" };
+  const diff = Number(de) - Number(dc);
+  if (diff > 0) return { text: `+${diff} gg`, cls: "text-destructive font-medium" };
+  return { text: "In orario", cls: "text-success font-medium" };
+}
+
+type RischioData = {
+  fido_gestionale: number | null; fido_residuo: number | null; totale_rischio: number | null;
+  doc_da_fatturare: number | null; doc_da_evadere: number | null; effetti_a_rischio: number | null;
+  num_insoluti: number | null; dilazione_concordata: number | null; dilazione_effettiva: number | null;
+} | null | undefined;
+
+function ExpandedRischioPanel({ loading, data, onApri }: { loading: boolean; data: RischioData; onApri: (e: React.MouseEvent) => void }) {
+  if (loading) {
+    return (
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="h-14 rounded bg-muted animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+  const d = data ?? ({} as NonNullable<RischioData>);
+  const fr = d.fido_residuo;
+  const ddt = Number(d.doc_da_fatturare ?? 0);
+  const ord = Number(d.doc_da_evadere ?? 0);
+  const ni = d.num_insoluti;
+  const eff = Number(d.effetti_a_rischio ?? 0);
+  const r = ritardoText(d.dilazione_concordata ?? null, d.dilazione_effettiva ?? null);
+  return (
+    <div className="space-y-3" onClick={(e) => e.stopPropagation()}>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+        <CellInfo label="Fido gestionale" value={fmtEuro(d.fido_gestionale)} />
+        <CellInfo label="Fido residuo" value={fmtEuro(fr)} cls={fr != null && Number(fr) < 0 ? "text-destructive font-medium" : ""} />
+        <CellInfo label="DDT da fatturare" value={fmtEuro(ddt)} cls={ddt > 0 ? "text-primary font-medium" : ""} />
+        <CellInfo label="Ordini aperti" value={fmtEuro(ord)} hint="(non concorre)" />
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+        <CellInfo label="Insoluti storici" value={ni == null ? "—" : String(ni)} cls={ni != null && Number(ni) > 0 ? "text-destructive font-medium" : ""} />
+        <CellInfo label="Effetti a rischio" value={fmtEuro(eff)} cls={eff > 0 ? "text-orange-600 font-medium" : ""} />
+        <CellInfo label="Dilaz. concordata" value={d.dilazione_concordata != null ? `${d.dilazione_concordata} gg` : "—"} />
+        <CellInfo label="Ritardo medio" value={r.text} cls={r.cls} />
+      </div>
+      <div className="pt-1">
+        <button type="button" onClick={onApri} className="text-xs text-primary hover:underline font-medium">
+          Apri scheda cliente →
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CellInfo({ label, value, cls, hint }: { label: string; value: string; cls?: string; hint?: string }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[10px] font-medium text-muted-foreground uppercase truncate">{label}</p>
+      <p className={`tabular-nums truncate ${cls ?? ""}`}>{value}{hint && <span className="text-[10px] text-muted-foreground ml-1">{hint}</span>}</p>
+    </div>
+  );
+}
