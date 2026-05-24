@@ -362,7 +362,20 @@ function ClientiPage() {
     }).map((c: any) => c.id);
   }, [classifList, statoFido]);
 
-  // Intersezione id set "include" (semaforo ∩ stato_fido ∩ scadenziario ∩ a_scadere)
+  // Filtro avanzato: percentuale fido consumato (>= X%) — client-side da classifList
+  const percConsumatoIds = useMemo<string[] | null>(() => {
+    if (advApplied.percConsumato == null || !classifList) return null;
+    const threshold = advApplied.percConsumato / 100;
+    return (classifList as any[]).filter((c) => {
+      const fg = Number(c.fido_gestionale ?? 0);
+      if (!fg || fg <= 0) return false;
+      const fr = Number(c.fido_residuo ?? 0);
+      const consumed = (fg - fr) / fg;
+      return consumed >= threshold;
+    }).map((c) => c.id);
+  }, [classifList, advApplied.percConsumato]);
+
+  // Intersezione id set "include" (semaforo ∩ stato_fido ∩ scadenziario ∩ a_scadere ∩ perc consumato)
   const includeIdsFilter = useMemo<string[] | null>(() => {
     const sources: string[][] = [];
     if (semaforoIds) sources.push(semaforoIds);
@@ -370,10 +383,12 @@ function ClientiPage() {
     if (scadenziarioIdsFilter?.mode === "include") sources.push(scadenziarioIdsFilter.ids);
     if (aScadereIds) sources.push(aScadereIds);
     if (fatturatoIds) sources.push(fatturatoIds);
+    if (percConsumatoIds) sources.push(percConsumatoIds);
     if (sources.length === 0) return null;
     const sets = sources.map((s) => new Set(s));
     return sources[0].filter((id) => sets.every((s) => s.has(id)));
-  }, [semaforoIds, statoFidoIds, scadenziarioIdsFilter, aScadereIds, fatturatoIds]);
+  }, [semaforoIds, statoFidoIds, scadenziarioIdsFilter, aScadereIds, fatturatoIds, percConsumatoIds]);
+
 
   // Reset pagina ogni volta che cambia un filtro
   useEffect(() => {
