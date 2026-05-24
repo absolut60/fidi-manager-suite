@@ -55,52 +55,24 @@ function LoginPage() {
           <p className="text-sm text-muted-foreground">FidiManager · Gruppo MADE</p>
         </div>
 
-        <div className="flex gap-2 mb-6 p-1 bg-muted rounded-lg">
-          <button
-            type="button"
-            onClick={() => setMode("login")}
-            className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${
-              mode === "login" ? "bg-background shadow-sm" : "text-muted-foreground"
-            }`}
-          >
-            Accedi
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode("signup")}
-            className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${
-              mode === "signup" ? "bg-background shadow-sm" : "text-muted-foreground"
-            }`}
-          >
-            Registrati
-          </button>
-        </div>
-
         <form onSubmit={handleSubmit} className="space-y-4">
-          {mode === "signup" && (
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="nome">Nome</Label>
-                <Input id="nome" value={nome} onChange={(e) => setNome(e.target.value)} required />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="cognome">Cognome</Label>
-                <Input id="cognome" value={cognome} onChange={(e) => setCognome(e.target.value)} required />
-              </div>
-            </div>
-          )}
           <div className="space-y-1.5">
             <Label htmlFor="email">Email</Label>
             <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} autoComplete={mode === "login" ? "current-password" : "new-password"} />
+            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} autoComplete="current-password" />
           </div>
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Attendere..." : mode === "login" ? "Accedi" : "Crea account"}
+            {loading ? "Attendere..." : "Accedi"}
           </Button>
         </form>
+
+        <p className="text-xs text-muted-foreground text-center mt-4">
+          L'accesso è riservato agli utenti invitati da un amministratore.
+        </p>
+
 
         <p className="text-xs text-muted-foreground text-center mt-6">
           Gestione fidi commerciali per i punti vendita del Gruppo MADE
