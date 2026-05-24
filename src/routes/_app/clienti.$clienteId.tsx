@@ -315,7 +315,31 @@ function ClienteDetail() {
                 (cliente as any).stores?.nome ? String((cliente as any).stores.nome).toUpperCase() : null,
               ].filter(Boolean).join(" — ") || "Partita IVA non inserita"}
             </p>
+            {((cliente as any).bloccato || (cliente as any).in_gestione_legale) && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {(cliente as any).bloccato && (
+                  <Link
+                    to="/clienti/$clienteId"
+                    params={{ clienteId }}
+                    search={{ tab: "storico" }}
+                    className="inline-flex items-center gap-1 rounded-md bg-destructive/15 text-destructive border border-destructive/30 px-2 py-0.5 text-xs font-medium hover:bg-destructive/25 transition-colors cursor-pointer"
+                  >
+                    <AlertTriangle className="size-3" /> Cliente bloccato
+                  </Link>
+                )}
+                {(cliente as any).in_gestione_legale && (
+                  <Link
+                    to="/legali"
+                    search={{ cliente: clienteId } as never}
+                    className="inline-flex items-center gap-1 rounded-md bg-orange-500/15 text-orange-700 dark:text-orange-400 border border-orange-500/30 px-2 py-0.5 text-xs font-medium hover:bg-orange-500/25 transition-colors cursor-pointer"
+                  >
+                    <Scale className="size-3" /> In gestione legale
+                  </Link>
+                )}
+              </div>
+            )}
           </div>
+
           <div className="flex gap-2 items-center">
             {cliente.privacy_firmata ? (
               <Badge className="bg-success/15 text-success gap-1">
