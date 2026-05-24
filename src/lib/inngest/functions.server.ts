@@ -1348,8 +1348,8 @@ export const processBloccoFidoImport = inngest.createFunction(
   async ({ event, step, logger }) => {
     const { importazioneId, filePath } = event.data as EventData;
     try {
-      // STEP 1: download + parse foglio BLOCCO_FIDO_ASSICURAZIONE
-      const parsed = await step.run("parse", async () => {
+      // STEP 1: download + parse foglio BLOCCO_FIDO_ASSICURAZIONE + Note Legale (stesso workbook)
+      const parseResult = await step.run("parse", async () => {
         const wb = await downloadWorkbook(filePath);
         const targetName = wb.SheetNames.find(
           (n) => bfaNormalize(n).replace(/\s+/g, "_") === "blocco_fido_assicurazione",
@@ -1387,10 +1387,65 @@ export const processBloccoFidoImport = inngest.createFunction(
             assicurazione: colMap.assicurazione != null ? bfaToNum(r[colMap.assicurazione]) : null,
           });
         }
-        return rows;
+
+        // Parsing foglio "Note Legale" / "Note Legali" dallo STESSO workbook (no re-download)
+        const normSheet = (s: string) =>
+          s.toLowerCase().replace(/\s+/g, "").replace(/_/g, "");
+        const noteSheetName = wb.SheetNames.find((n) => {
+          const x = normSheet(n);
+          return x.includes("notelegale") || x.includes("notelegali");
+        });
+        const noteLegali: Array<{ cod_cli: string; nota: string }> = [];
+        let noteSheetFound = false;
+        let noteHeaderOk = false;
+        if (noteSheetName) {
+          noteSheetFound = true;
+          const nSheet = wb.Sheets[noteSheetName];
+          const nMatrix = XLSX.utils.sheet_to_json<unknown[]>(nSheet, {
+            header: 1,
+            defval: "",
+            blankrows: false,
+          });
+          if (nMatrix.length >= 2) {
+            const nHeaders = (nMatrix[0] ?? []) as unknown[];
+            let codIdx = -1;
+            let noteIdx = -1;
+            nHeaders.forEach((h, j) => {
+              const raw = String(h ?? "");
+              const x = normSheet(raw);
+              if (codIdx < 0 && (x === "codcli" || x === "codice" || x === "codicecliente"))
+                codIdx = j;
+              if (noteIdx < 0 && (x.includes("notelegale") || x.includes("notelegali")))
+                noteIdx = j;
+            });
+            if (codIdx >= 0 && noteIdx >= 0) {
+              noteHeaderOk = true;
+              const seen = new Map<string, string>();
+              for (let i = 1; i < nMatrix.length; i++) {
+                const r = (nMatrix[i] ?? []) as unknown[];
+                const cod = String(r[codIdx] ?? "")
+                  .trim()
+                  .replace(/\.0$/, "");
+                const nota = String(r[noteIdx] ?? "").trim();
+                if (!cod || !nota) continue;
+                seen.set(cod, nota);
+              }
+              for (const [cod_cli, nota] of seen) noteLegali.push({ cod_cli, nota });
+            }
+          }
+        }
+
+        return { rows, noteLegali, noteSheetFound, noteHeaderOk };
       });
 
-      logger.info(`Blocco fido: ${parsed.length} righe lette`);
+      const parsed = parseResult.rows;
+      const noteLegaliFromSheet = parseResult.noteLegali;
+      const noteSheetFound = parseResult.noteSheetFound;
+      const noteHeaderOk = parseResult.noteHeaderOk;
+
+      logger.info(
+        `Blocco fido: ${parsed.length} righe, ${noteLegaliFromSheet.length} note legali (foglio: ${noteSheetFound}, header ok: ${noteHeaderOk})`,
+      );
       await supabaseAdmin
         .from("importazioni")
         .update({
