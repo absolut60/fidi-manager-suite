@@ -154,6 +154,23 @@ function ClientiPage() {
   const [sliderDisplay, setSliderDisplay] = useState<[number, number]>([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
   const [sliderCommitted, setSliderCommitted] = useState<[number, number]>([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
 
+  // === Filtri avanzati (modal) — APPLIED state (commit dopo "Applica") ===
+  type AdvOp = "none" | "lt" | "lte" | "gt" | "eq" | "between";
+  type AdvApplied = {
+    fidoOp: AdvOp; fidoVal: number | null; fidoFrom: number | null; fidoTo: number | null;
+    percConsumato: number | null;
+    dataFattPrima: string; dataFattDopo: string;
+    presetScopertoInsoluto: boolean;
+  };
+  const ADV_EMPTY: AdvApplied = {
+    fidoOp: "none", fidoVal: null, fidoFrom: null, fidoTo: null,
+    percConsumato: null, dataFattPrima: "", dataFattDopo: "",
+    presetScopertoInsoluto: false,
+  };
+  const [advApplied, setAdvApplied] = useState<AdvApplied>(ADV_EMPTY);
+  const [advOpen, setAdvOpen] = useState(false);
+
+
 
 
   // Selezione multipla
