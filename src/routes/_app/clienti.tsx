@@ -1015,10 +1015,11 @@ function ClientiPage() {
                   const residuo = c.fido_residuo;
                   const residuoNum = residuo == null ? null : Number(residuo);
                   const sc = scadenziarioMap?.get(c.id);
+                  const isBlocked = !!c.bloccato || Number(c.ind_blocco ?? 0) > 0;
                   return (
                    <TableRow
                      key={c.id}
-                     className={`cursor-pointer hover:bg-muted/50 ${c.cliente_attivo === false ? "bg-muted/40 text-muted-foreground" : ""}`}
+                     className={`cursor-pointer hover:bg-muted/50 ${c.cliente_attivo === false ? "bg-muted/40 text-muted-foreground" : ""} ${isBlocked ? "bg-[#FEF2F2] dark:bg-destructive/10 border-l-[3px] border-l-[#EF4444] hover:bg-[#FEE2E2] dark:hover:bg-destructive/15" : ""}`}
                      onClick={() => navigate({ to: "/clienti/$clienteId", params: { clienteId: c.id } })}
                    >
                     <TableCell onClick={(e) => e.stopPropagation()}>
