@@ -14,6 +14,90 @@ export type Database = {
   }
   public: {
     Tables: {
+      anomalie_import: {
+        Row: {
+          campo: string
+          cliente_id: string | null
+          codice_gestionale: string
+          created_at: string
+          gestita_at: string | null
+          gestita_da: string | null
+          id: string
+          importazione_id: string | null
+          ragione_sociale: string | null
+          stato: string
+          tipo_anomalia: string
+          valore_attuale: string | null
+          valore_nuovo: string | null
+        }
+        Insert: {
+          campo: string
+          cliente_id?: string | null
+          codice_gestionale: string
+          created_at?: string
+          gestita_at?: string | null
+          gestita_da?: string | null
+          id?: string
+          importazione_id?: string | null
+          ragione_sociale?: string | null
+          stato?: string
+          tipo_anomalia: string
+          valore_attuale?: string | null
+          valore_nuovo?: string | null
+        }
+        Update: {
+          campo?: string
+          cliente_id?: string | null
+          codice_gestionale?: string
+          created_at?: string
+          gestita_at?: string | null
+          gestita_da?: string | null
+          id?: string
+          importazione_id?: string | null
+          ragione_sociale?: string | null
+          stato?: string
+          tipo_anomalia?: string
+          valore_attuale?: string | null
+          valore_nuovo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "anomalie_import_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "anomalie_import_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti_con_rischio"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "anomalie_import_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "anomalie_import_gestita_da_fkey"
+            columns: ["gestita_da"]
+            isOneToOne: false
+            referencedRelation: "profili"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "anomalie_import_importazione_id_fkey"
+            columns: ["importazione_id"]
+            isOneToOne: false
+            referencedRelation: "importazioni"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       approvazioni: {
         Row: {
           approvatore_id: string
@@ -374,6 +458,7 @@ export type Database = {
           tipo_soggetto: string | null
           totale_rischio: number | null
           ultima_data_fatturazione: string | null
+          ultima_importazione_d: string | null
           ultima_sincronizzazione: string | null
           updated_at: string
         }
@@ -446,6 +531,7 @@ export type Database = {
           tipo_soggetto?: string | null
           totale_rischio?: number | null
           ultima_data_fatturazione?: string | null
+          ultima_importazione_d?: string | null
           ultima_sincronizzazione?: string | null
           updated_at?: string
         }
@@ -518,6 +604,7 @@ export type Database = {
           tipo_soggetto?: string | null
           totale_rischio?: number | null
           ultima_data_fatturazione?: string | null
+          ultima_importazione_d?: string | null
           ultima_sincronizzazione?: string | null
           updated_at?: string
         }
@@ -876,21 +963,21 @@ export type Database = {
           {
             foreignKeyName: "note_legali_gestionali_cliente_id_fkey"
             columns: ["cliente_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "clienti"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "note_legali_gestionali_cliente_id_fkey"
             columns: ["cliente_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "clienti_con_rischio"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "note_legali_gestionali_cliente_id_fkey"
             columns: ["cliente_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "riepilogo_insoluti"
             referencedColumns: ["cliente_id"]
           },
