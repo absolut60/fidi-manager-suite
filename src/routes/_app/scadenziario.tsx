@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, Calendar, FileText, Ban, CalendarClock } from "lucide-react";
+import { AlertTriangle, Calendar, FileText, Ban, CalendarClock, Scale } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +44,7 @@ type Cliente = {
   store_id: string | null;
   bloccato: boolean;
   ind_blocco: number | null;
+  in_gestione_legale: boolean;
 };
 type StoreRow = { id: string; nome: string };
 
@@ -67,6 +68,11 @@ function blockBadge(c: Cliente) {
   return <span className="text-muted-foreground text-xs">—</span>;
 }
 
+function legaleBadge(c: Cliente) {
+  if (c.in_gestione_legale) return <Badge className="bg-amber-500 text-white hover:bg-amber-500">⚖️ Legale</Badge>;
+  return <span className="text-muted-foreground text-xs">—</span>;
+}
+
 function isBonifico(codice: string | null | undefined): boolean {
   if (!codice) return false;
   return codice.trim().toUpperCase() === "BOS";
@@ -79,7 +85,9 @@ function ScadenziarioPage() {
   const [fascia, setFascia] = useState<string>("tutte");
   const [importoMin, setImportoMin] = useState("");
   const [statoBlocco, setStatoBlocco] = useState<"tutti" | "bloccati" | "non_bloccati">("tutti");
+  const [statoLegale, setStatoLegale] = useState<"tutti" | "in_legale" | "non_in_legale">("tutti");
   const [escludiBonifici, setEscludiBonifici] = useState(true);
+  const [escludiLegale, setEscludiLegale] = useState(true);
 
   const { data: stores } = useQuery({
     queryKey: ["stores-list"],
@@ -99,7 +107,7 @@ function ScadenziarioPage() {
       while (true) {
         const { data, error } = await supabase
           .from("clienti")
-          .select("id, ragione_sociale, codice_gestionale, store_id, bloccato, ind_blocco")
+          .select("id, ragione_sociale, codice_gestionale, store_id, bloccato, ind_blocco, in_gestione_legale")
           .range(off, off + size - 1);
         if (error) throw error;
         const batch = (data ?? []) as Cliente[];
@@ -186,6 +194,9 @@ function ScadenziarioPage() {
       if (storeId !== "all" && cli.store_id !== storeId) return;
       if (statoBlocco === "bloccati" && !cli.bloccato) return;
       if (statoBlocco === "non_bloccati" && cli.bloccato) return;
+      if (statoLegale === "in_legale" && !cli.in_gestione_legale) return;
+      if (statoLegale === "non_in_legale" && cli.in_gestione_legale) return;
+      if (escludiLegale && cli.in_gestione_legale) return;
       if (escludiBonifici && isBonifico(s.codice_pagamento)) return;
       const cat = classificaScadenza(s);
       if (cat === "pagato") return;
@@ -195,7 +206,7 @@ function ScadenziarioPage() {
       map.set(s.cliente_id, entry);
     });
     return map;
-  }, [scad, clientiMap, storeId, statoBlocco, escludiBonifici]);
+  }, [scad, clientiMap, storeId, statoBlocco, statoLegale, escludiBonifici, escludiLegale]);
 
   const minImp = Number(importoMin) || 0;
 
@@ -235,7 +246,26 @@ function ScadenziarioPage() {
       .sort((a, b) => b.totScad - a.totScad);
   }, [aggregato, minImp, fascia, today, limit60]);
 
-  // KPI calcolati sulla lista filtrata (rows)
+  // Conteggio clienti in legale esclusi dalla lista (per badge accanto al toggle).
+  // Conta i clienti con scadenze aperte (non pagate, non bonifici) che verrebbero
+  // mostrati se non fosse per il toggle.
+  const legaleEsclusiCount = useMemo(() => {
+    if (!escludiLegale) return 0;
+    const ids = new Set<string>();
+    (scad ?? []).forEach((s) => {
+      const cli = clientiMap.get(s.cliente_id);
+      if (!cli || !cli.in_gestione_legale) return;
+      if (storeId !== "all" && cli.store_id !== storeId) return;
+      if (escludiBonifici && isBonifico(s.codice_pagamento)) return;
+      const cat = classificaScadenza(s);
+      if (cat === "pagato") return;
+      ids.add(cli.id);
+    });
+    return ids.size;
+  }, [scad, clientiMap, escludiLegale, storeId, escludiBonifici]);
+
+  // KPI calcolati sulla lista filtrata (rows) + clienti in legale (sull'intero dataset
+  // prima del toggle "escludi legale", così rimane visibile anche quando li nasconde).
   const kpi = useMemo(() => {
     let totScad = 0, totAScad = 0, clientiScad = 0, bloccati = 0;
     rows.forEach((r) => {
@@ -244,8 +274,19 @@ function ScadenziarioPage() {
       if (r.nScadute > 0) clientiScad += 1;
       if (r.cliente.bloccato) bloccati += 1;
     });
-    return { totScad, totAScad, clientiScad, bloccati };
-  }, [rows]);
+    // Clienti in legale con scadenze aperte (ignora toggle escludiLegale)
+    const legaleIds = new Set<string>();
+    (scad ?? []).forEach((s) => {
+      const cli = clientiMap.get(s.cliente_id);
+      if (!cli || !cli.in_gestione_legale) return;
+      if (storeId !== "all" && cli.store_id !== storeId) return;
+      if (escludiBonifici && isBonifico(s.codice_pagamento)) return;
+      const cat = classificaScadenza(s);
+      if (cat === "pagato") return;
+      legaleIds.add(cli.id);
+    });
+    return { totScad, totAScad, clientiScad, bloccati, inLegale: legaleIds.size };
+  }, [rows, scad, clientiMap, storeId, escludiBonifici]);
 
   function apriCliente(id: string) {
     navigate({ to: "/clienti/$clienteId", params: { clienteId: id }, search: { tab: "insoluti", insolutiTab: "scadenziario" } as never });
@@ -262,16 +303,17 @@ function ScadenziarioPage() {
       </header>
 
       {/* KPI */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
         <KpiCard label="Totale scaduto" value={fmtEuro(kpi.totScad)} icon={AlertTriangle} tone="destructive" />
         <KpiCard label="Clienti con scaduto" value={String(kpi.clientiScad)} icon={FileText} tone="warning" />
         <KpiCard label="Totale a scadere" value={fmtEuro(kpi.totAScad)} icon={Calendar} tone="info" />
         <KpiCard label="Clienti bloccati" value={String(kpi.bloccati)} icon={Ban} tone="destructive" />
+        <KpiCard label="Clienti in legale" value={String(kpi.inLegale)} icon={Scale} tone="warning" />
       </div>
 
       {/* Filtri */}
       <Card className="p-4 space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           <div>
             <label className="text-xs font-medium text-muted-foreground">Store</label>
             <Select value={storeId} onValueChange={setStoreId}>
@@ -306,19 +348,36 @@ function ScadenziarioPage() {
             </Select>
           </div>
           <div>
+            <label className="text-xs font-medium text-muted-foreground">Stato legale</label>
+            <Select value={statoLegale} onValueChange={(v) => setStatoLegale(v as typeof statoLegale)}>
+              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="tutti">Tutti</SelectItem>
+                <SelectItem value="in_legale">In gestione legale</SelectItem>
+                <SelectItem value="non_in_legale">Non in gestione legale</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
             <label className="text-xs font-medium text-muted-foreground">Importo minimo €</label>
             <Input className="mt-1" type="number" inputMode="numeric" value={importoMin} onChange={(e) => setImportoMin(e.target.value)} placeholder="0" />
           </div>
         </div>
-        <div className="flex items-center justify-between gap-3 pt-2 border-t">
-          <div className="flex items-center gap-2">
-            <Switch id="escl-bonif" checked={escludiBonifici} onCheckedChange={setEscludiBonifici} />
-            <Label htmlFor="escl-bonif" className="text-sm cursor-pointer">Escludi BOS (cod. pagamento = BOS)</Label>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Switch id="escl-bonif" checked={escludiBonifici} onCheckedChange={setEscludiBonifici} />
+              <Label htmlFor="escl-bonif" className="text-sm cursor-pointer">Escludi BOS (cod. pagamento = BOS)</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch id="escl-legale" checked={escludiLegale} onCheckedChange={setEscludiLegale} />
+              <Label htmlFor="escl-legale" className="text-sm cursor-pointer">Escludi gestione legale</Label>
+            </div>
           </div>
-          {escludiBonifici && (
-            <span className="text-xs text-muted-foreground">Esclusi {bonificiCount} BOS</span>
-
-          )}
+          <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+            {escludiBonifici && <span>Esclusi {bonificiCount} BOS</span>}
+            {escludiLegale && <span>Esclusi {legaleEsclusiCount} legale</span>}
+          </div>
         </div>
       </Card>
 
@@ -338,6 +397,7 @@ function ScadenziarioPage() {
                   <TableHead>Cod. Gestionale</TableHead>
                   <TableHead>Store</TableHead>
                   <TableHead>Stato blocco</TableHead>
+                  <TableHead>Legale</TableHead>
                   <TableHead className="text-right">Fatt. {annoCorrente} (IVA escl.)</TableHead>
                   <TableHead className="text-right">Fatt. {annoPrec} (IVA escl.)</TableHead>
                   <TableHead className="text-right">N. Fatt. scadute</TableHead>
@@ -358,6 +418,7 @@ function ScadenziarioPage() {
                       <TableCell className="font-mono text-xs">{r.cliente.codice_gestionale ?? "—"}</TableCell>
                       <TableCell className="text-xs">{storeName}</TableCell>
                       <TableCell>{blockBadge(r.cliente)}</TableCell>
+                      <TableCell>{legaleBadge(r.cliente)}</TableCell>
                       <TableCell className="text-right tabular-nums">{fatt && fatt.cur > 0 ? fmtEuro(fatt.cur) : "—"}</TableCell>
                       <TableCell className="text-right tabular-nums text-muted-foreground">{fatt && fatt.prev > 0 ? fmtEuro(fatt.prev) : "—"}</TableCell>
                       <TableCell className="text-right tabular-nums">{r.nScadute || "—"}</TableCell>
