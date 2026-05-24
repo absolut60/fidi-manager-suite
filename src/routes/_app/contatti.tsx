@@ -1,23 +1,128 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Search, Users, Star, Check, X } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Search, Users, Star, Check, X, Plus, ChevronsUpDown } from "lucide-react";
+import { z } from "zod";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem,
+} from "@/components/ui/command";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/contatti")({
   component: ContattiPage,
 });
+
+// ===== Schema & helpers (replicato da clienti.$clienteId.tsx) =====
+const contattoSchema = z.object({
+  nome: z.string().trim().min(1, "Obbligatorio").max(100),
+  cognome: z.string().trim().max(100).optional().or(z.literal("")),
+  ruolo: z.string().trim().max(100).optional().or(z.literal("")),
+  email: z.string().trim().email("Email non valida").max(255).optional().or(z.literal("")),
+  telefono: z.string().trim().max(30).optional().or(z.literal("")),
+  cellulare: z.string().trim().max(30).optional().or(z.literal("")),
+  whatsapp: z.string().trim().max(30).optional().or(z.literal("")),
+  principale: z.boolean().default(false),
+});
+type ContattoForm = z.infer<typeof contattoSchema>;
+
+function emptyContattoForm(): ContattoForm {
+  return {
+    nome: "", cognome: "", ruolo: "",
+    email: "", telefono: "", cellulare: "", whatsapp: "",
+    principale: false,
+  };
+}
+
+function contattoFormToPayload(parsed: ContattoForm) {
+  return {
+    nome: parsed.nome,
+    cognome: parsed.cognome || null,
+    ruolo: parsed.ruolo || null,
+    email: parsed.email || null,
+    telefono: parsed.telefono || null,
+    cellulare: parsed.cellulare || null,
+    whatsapp: parsed.whatsapp || null,
+    principale: parsed.principale,
+  };
+}
+
+function ContattoFormFields({
+  form, errors, set,
+}: {
+  form: ContattoForm;
+  errors: Record<string, string>;
+  set: <K extends keyof ContattoForm>(k: K, v: ContattoForm[K]) => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="space-y-3">
+        <h4 className="text-sm font-semibold">Dati anagrafici</h4>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label>Nome *</Label>
+            <Input value={form.nome} onChange={(e) => set("nome", e.target.value)} />
+            {errors.nome && <p className="text-xs text-destructive">{errors.nome}</p>}
+          </div>
+          <div className="space-y-1.5">
+            <Label>Cognome</Label>
+            <Input value={form.cognome} onChange={(e) => set("cognome", e.target.value)} />
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <Label>Ruolo</Label>
+          <Input placeholder="es. Responsabile acquisti" value={form.ruolo} onChange={(e) => set("ruolo", e.target.value)} />
+        </div>
+        <div className="flex items-center gap-2">
+          <Checkbox id="principale" checked={form.principale} onCheckedChange={(v) => set("principale", v === true)} />
+          <Label htmlFor="principale" className="cursor-pointer text-sm font-normal">Contatto principale</Label>
+        </div>
+      </div>
+
+      <div className="space-y-3 border-t pt-3">
+        <h4 className="text-sm font-semibold">Recapiti</h4>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label>Email</Label>
+            <Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} />
+            {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
+          </div>
+          <div className="space-y-1.5">
+            <Label>Telefono</Label>
+            <Input value={form.telefono} onChange={(e) => set("telefono", e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Cellulare</Label>
+            <Input value={form.cellulare} onChange={(e) => set("cellulare", e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>WhatsApp</Label>
+            <Input placeholder="+39 333 1234567" value={form.whatsapp} onChange={(e) => set("whatsapp", e.target.value)} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function CB({ ok }: { ok: boolean }) {
   return ok
@@ -38,6 +143,7 @@ function ContattiPage() {
   const [storeId, setStoreId] = useState("all");
   const [clienteId, setClienteId] = useState("all");
   const [statoConsenso, setStatoConsenso] = useState("tutti");
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const { data: stores } = useQuery({
     queryKey: ["stores-list"],
@@ -89,13 +195,18 @@ function ContattiPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
-          <Users className="size-7 text-primary" /> Contatti
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Referenti collegati ai clienti con stato consensi privacy
-        </p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
+            <Users className="size-7 text-primary" /> Contatti
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Referenti collegati ai clienti con stato consensi privacy
+          </p>
+        </div>
+        <Button onClick={() => setDialogOpen(true)} className="gap-2">
+          <Plus className="size-4" /> Nuovo contatto
+        </Button>
       </div>
 
       <Card className="p-4">
@@ -204,6 +315,158 @@ function ContattiPage() {
           </Table>
         )}
       </Card>
+
+      {dialogOpen && (
+        <NuovoContattoDialog onClose={() => setDialogOpen(false)} />
+      )}
     </div>
+  );
+}
+
+function NuovoContattoDialog({ onClose }: { onClose: () => void }) {
+  const qc = useQueryClient();
+  const [form, setForm] = useState<ContattoForm>(emptyContattoForm());
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [selectedClienteId, setSelectedClienteId] = useState<string | null>(null);
+  const [clienteError, setClienteError] = useState<string | null>(null);
+  const [popoverOpen, setPopoverOpen] = useState(false);
+
+  const set = <K extends keyof ContattoForm>(k: K, v: ContattoForm[K]) => {
+    setForm((f) => ({ ...f, [k]: v }));
+  };
+
+  const { data: clientiList } = useQuery({
+    queryKey: ["clienti-select"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("clienti")
+        .select("id, ragione_sociale, codice_gestionale")
+        .eq("attivo", true)
+        .order("ragione_sociale");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const selectedCliente = useMemo(
+    () => clientiList?.find((c) => c.id === selectedClienteId) ?? null,
+    [clientiList, selectedClienteId],
+  );
+
+  const mutation = useMutation({
+    mutationFn: async (input: ContattoForm) => {
+      const parsed = contattoSchema.parse(input);
+      const payload = { cliente_id: selectedClienteId!, ...contattoFormToPayload(parsed) };
+      const { error } = await supabase.from("contatti").insert(payload);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Contatto creato con successo");
+      qc.invalidateQueries({ queryKey: ["contatti-all"] });
+      onClose();
+    },
+    onError: (e: any) => {
+      toast.error(e?.message ?? "Errore nella creazione del contatto");
+    },
+  });
+
+  const onSubmit = () => {
+    setErrors({});
+    setClienteError(null);
+    if (!selectedClienteId) {
+      setClienteError("Seleziona un cliente");
+      return;
+    }
+    const r = contattoSchema.safeParse(form);
+    if (!r.success) {
+      const errs: Record<string, string> = {};
+      r.error.issues.forEach((i) => { if (i.path[0]) errs[String(i.path[0])] = i.message; });
+      setErrors(errs);
+      return;
+    }
+    mutation.mutate(r.data);
+  };
+
+  return (
+    <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Nuovo contatto</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label>Cliente collegato *</Label>
+            <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  role="combobox"
+                  className={cn("w-full justify-between font-normal", !selectedCliente && "text-muted-foreground")}
+                >
+                  {selectedCliente ? (
+                    <span className="truncate">
+                      {selectedCliente.ragione_sociale}
+                      {selectedCliente.codice_gestionale && (
+                        <span className="text-muted-foreground ml-2">{selectedCliente.codice_gestionale}</span>
+                      )}
+                    </span>
+                  ) : (
+                    "Cerca cliente per nome o codice..."
+                  )}
+                  <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                <Command
+                  filter={(value, search) => {
+                    if (!search) return 1;
+                    return value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0;
+                  }}
+                >
+                  <CommandInput placeholder="Cerca cliente per nome o codice..." />
+                  <CommandList>
+                    <CommandEmpty>Nessun cliente trovato</CommandEmpty>
+                    <CommandGroup>
+                      {(clientiList ?? []).map((c) => (
+                        <CommandItem
+                          key={c.id}
+                          value={`${c.ragione_sociale} ${c.codice_gestionale ?? ""}`}
+                          onSelect={() => {
+                            setSelectedClienteId(c.id);
+                            setClienteError(null);
+                            setPopoverOpen(false);
+                          }}
+                        >
+                          <div className="flex flex-col">
+                            <span>{c.ragione_sociale}</span>
+                            {c.codice_gestionale && (
+                              <span className="text-xs text-muted-foreground">{c.codice_gestionale}</span>
+                            )}
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            {clienteError && <p className="text-xs text-destructive">{clienteError}</p>}
+          </div>
+
+          <div className="border-t pt-4">
+            <ContattoFormFields form={form} errors={errors} set={set} />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={mutation.isPending}>Annulla</Button>
+          <Button onClick={onSubmit} disabled={mutation.isPending}>
+            {mutation.isPending ? "Salvataggio..." : "Crea contatto"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
