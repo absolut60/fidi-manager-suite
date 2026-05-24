@@ -41,7 +41,14 @@ function semaforoCliente(c: any): { dot: string; tone: string; label: "Verde" | 
 }
 
 const CLIENTE_COLS =
-  "ragione_sociale, partita_iva, fido_gestionale, totale_rischio, fido_residuo, scaduto, a_scadere, num_insoluti, condizioni_pagamento, condizione_pagamento_desc, dilazione_concordata, dilazione_effettiva, bloccato, in_gestione_legale, cliente_attivo, ultima_data_fatturazione, ultima_sincronizzazione";
+  "ragione_sociale, partita_iva, fido_gestionale, totale_rischio, fido_residuo, scaduto, a_scadere, num_insoluti, doc_da_fatturare, doc_da_evadere, effetti_a_rischio, condizioni_pagamento, condizione_pagamento_desc, dilazione_concordata, dilazione_effettiva, bloccato, in_gestione_legale, cliente_attivo, ultima_data_fatturazione, ultima_sincronizzazione";
+
+function ritardoHelper(dilConc: number | null | undefined, dilEff: number | null | undefined): { text: string; cls: string } {
+  if (dilConc == null || dilEff == null) return { text: "—", cls: "text-muted-foreground" };
+  const diff = Number(dilEff) - Number(dilConc);
+  if (diff > 0) return { text: `+${diff} gg`, cls: "text-destructive font-medium" };
+  return { text: "In orario", cls: "text-success font-medium" };
+}
 
 function ApprovazioniPage() {
   const qc = useQueryClient();
