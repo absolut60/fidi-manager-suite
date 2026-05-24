@@ -660,7 +660,7 @@ function Riga({ label, v, danger }: { label: string; v: string; danger?: boolean
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
       <p className="text-xs text-muted-foreground">{label}</p>
