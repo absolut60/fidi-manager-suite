@@ -154,6 +154,23 @@ function ClientiPage() {
   const [sliderDisplay, setSliderDisplay] = useState<[number, number]>([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
   const [sliderCommitted, setSliderCommitted] = useState<[number, number]>([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
 
+  // === Filtri avanzati (modal) — APPLIED state (commit dopo "Applica") ===
+  type AdvOp = "none" | "lt" | "lte" | "gt" | "eq" | "between";
+  type AdvApplied = {
+    fidoOp: AdvOp; fidoVal: number | null; fidoFrom: number | null; fidoTo: number | null;
+    percConsumato: number | null;
+    dataFattPrima: string; dataFattDopo: string;
+    presetScopertoInsoluto: boolean;
+  };
+  const ADV_EMPTY: AdvApplied = {
+    fidoOp: "none", fidoVal: null, fidoFrom: null, fidoTo: null,
+    percConsumato: null, dataFattPrima: "", dataFattDopo: "",
+    presetScopertoInsoluto: false,
+  };
+  const [advApplied, setAdvApplied] = useState<AdvApplied>(ADV_EMPTY);
+  const [advOpen, setAdvOpen] = useState(false);
+
+
 
 
   // Selezione multipla
@@ -345,7 +362,20 @@ function ClientiPage() {
     }).map((c: any) => c.id);
   }, [classifList, statoFido]);
 
-  // Intersezione id set "include" (semaforo ∩ stato_fido ∩ scadenziario ∩ a_scadere)
+  // Filtro avanzato: percentuale fido consumato (>= X%) — client-side da classifList
+  const percConsumatoIds = useMemo<string[] | null>(() => {
+    if (advApplied.percConsumato == null || !classifList) return null;
+    const threshold = advApplied.percConsumato / 100;
+    return (classifList as any[]).filter((c) => {
+      const fg = Number(c.fido_gestionale ?? 0);
+      if (!fg || fg <= 0) return false;
+      const fr = Number(c.fido_residuo ?? 0);
+      const consumed = (fg - fr) / fg;
+      return consumed >= threshold;
+    }).map((c) => c.id);
+  }, [classifList, advApplied.percConsumato]);
+
+  // Intersezione id set "include" (semaforo ∩ stato_fido ∩ scadenziario ∩ a_scadere ∩ perc consumato)
   const includeIdsFilter = useMemo<string[] | null>(() => {
     const sources: string[][] = [];
     if (semaforoIds) sources.push(semaforoIds);
@@ -353,15 +383,17 @@ function ClientiPage() {
     if (scadenziarioIdsFilter?.mode === "include") sources.push(scadenziarioIdsFilter.ids);
     if (aScadereIds) sources.push(aScadereIds);
     if (fatturatoIds) sources.push(fatturatoIds);
+    if (percConsumatoIds) sources.push(percConsumatoIds);
     if (sources.length === 0) return null;
     const sets = sources.map((s) => new Set(s));
     return sources[0].filter((id) => sets.every((s) => s.has(id)));
-  }, [semaforoIds, statoFidoIds, scadenziarioIdsFilter, aScadereIds, fatturatoIds]);
+  }, [semaforoIds, statoFidoIds, scadenziarioIdsFilter, aScadereIds, fatturatoIds, percConsumatoIds]);
+
 
   // Reset pagina ogni volta che cambia un filtro
   useEffect(() => {
     setPage(1);
-  }, [search, statoCliente, statoAttivita, storeFiltro, statoFido, semaforoFiltro, soloBloccati, privacyFiltro, soloAssicurati, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, pageSize]);
+  }, [search, statoCliente, statoAttivita, storeFiltro, statoFido, semaforoFiltro, soloBloccati, privacyFiltro, soloAssicurati, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, pageSize, advApplied]);
 
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -397,6 +429,18 @@ function ClientiPage() {
     else if (totaleRischioFiltro === "alto") q = q.gt("totale_rischio", 50000).lte("totale_rischio", 100000);
     else if (totaleRischioFiltro === "molto_alto") q = q.gt("totale_rischio", 100000);
 
+    // === Filtri avanzati ===
+    if (advApplied.fidoOp === "lt" && advApplied.fidoVal != null) q = q.lt("fido_residuo", advApplied.fidoVal);
+    else if (advApplied.fidoOp === "lte" && advApplied.fidoVal != null) q = q.lte("fido_residuo", advApplied.fidoVal);
+    else if (advApplied.fidoOp === "gt" && advApplied.fidoVal != null) q = q.gt("fido_residuo", advApplied.fidoVal);
+    else if (advApplied.fidoOp === "eq" && advApplied.fidoVal != null) q = q.eq("fido_residuo", advApplied.fidoVal);
+    else if (advApplied.fidoOp === "between" && advApplied.fidoFrom != null && advApplied.fidoTo != null) {
+      q = q.gte("fido_residuo", advApplied.fidoFrom).lte("fido_residuo", advApplied.fidoTo);
+    }
+    if (advApplied.dataFattPrima) q = q.lt("ultima_data_fatturazione", advApplied.dataFattPrima);
+    if (advApplied.dataFattDopo) q = q.gt("ultima_data_fatturazione", advApplied.dataFattDopo);
+    if (advApplied.presetScopertoInsoluto) q = q.eq("assicurazione_attiva", false).gt("scaduto", 0);
+
     // Include intersect (semaforo / stato fido / scadenziario include / a_scadere)
     if (includeIdsFilter) {
       if (includeIdsFilter.length === 0) return { empty: true as const };
@@ -422,7 +466,7 @@ function ClientiPage() {
   const scadReady = scadenziarioFiltro === "tutti" || !!scadenziarioMap;
 
   const { data: clientiResp, isLoading } = useQuery({
-    queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, soloBloccati, privacyFiltro, soloAssicurati, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize }],
+    queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, soloBloccati, privacyFiltro, soloAssicurati, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize, advApplied }],
     queryFn: async () => {
       const built = buildBaseQuery("*, stores(nome, codice)", "exact");
       if ("empty" in built) return { rows: [], count: 0 };
@@ -476,6 +520,14 @@ function ClientiPage() {
     (fidoFascia !== "tutti" ? 1 : 0) +
     ((sliderCommitted[0] !== FIDO_RANGE_MIN || sliderCommitted[1] !== FIDO_RANGE_MAX) ? 1 : 0);
 
+  // Conteggio filtri avanzati attivi
+  const advCount =
+    (advApplied.fidoOp !== "none" ? 1 : 0) +
+    (advApplied.percConsumato != null ? 1 : 0) +
+    (advApplied.dataFattPrima ? 1 : 0) +
+    (advApplied.dataFattDopo ? 1 : 0) +
+    (advApplied.presetScopertoInsoluto ? 1 : 0);
+
   function resetFiltri() {
     setSearchInput(""); setSearch("");
     setStatoCliente("attivi");
@@ -493,6 +545,7 @@ function ClientiPage() {
     setFidoFascia("tutti");
     setSliderDisplay([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
     setSliderCommitted([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
+    setAdvApplied(ADV_EMPTY);
   }
 
 
@@ -740,32 +793,47 @@ function ClientiPage() {
         </div>
       );
     }
+    const AdvFilterBtn = (
+      <Button
+        type="button"
+        variant={advCount > 0 ? "default" : "outline"}
+        size="sm"
+        className="gap-1.5 h-9 text-[13px] w-full"
+        onClick={() => setAdvOpen(true)}
+      >
+        <SlidersHorizontal className="size-4" />
+        Filtri avanzati
+        {advCount > 0 && (
+          <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5 text-xs">{advCount}</Badge>
+        )}
+      </Button>
+    );
     return (
-      <div className="space-y-3">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="space-y-2 text-[13px]">
+        {/* Riga 1: search + store + stato fido + semaforo */}
+        <div className="grid grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr] gap-2">
           <SearchInput value={searchInput} onChange={setSearchInput} />
           {StoreSelect}
           {StatoFidoPopover}
           {SemaforoSelect}
         </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* Riga 2: scadenziario / fido residuo / totale rischio / a scadere / fatturato / filtri avanzati */}
+        <div className="grid grid-cols-2 lg:grid-cols-6 gap-2">
           {ScadenziarioSelect}
           {FidoFasciaSelect}
           {TotaleRischioSelect}
           {AScadereSelect}
           {FatturatoSelect}
+          {AdvFilterBtn}
         </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {StatoAttivitaSelect}
-          {FatturatoSelect}
+        {/* Riga 3: stato attività + checkbox inline */}
+        <div className="flex flex-wrap items-center gap-3 pt-1">
+          <div className="w-44">{StatoAttivitaSelect}</div>
+          {BloccatiChk}
+          {AssicuratiChk}
         </div>
-        <div className="flex flex-col lg:flex-row gap-3 lg:items-center">
-          <div className="flex-1">{FidoRangeSlider}</div>
-          <div className="flex items-center gap-3">
-            {BloccatiChk}
-            {AssicuratiChk}
-          </div>
-        </div>
+        {/* Slider fido residuo: larghezza piena */}
+        <div>{FidoRangeSlider}</div>
       </div>
     );
   }
@@ -815,6 +883,21 @@ function ClientiPage() {
           <SchedaClienteDialog onClose={() => { setOpen(false); setSearchInput(""); setSearch(""); }} />
         </Dialog>
       </div>
+
+      <FiltriAvanzatiDialog
+        open={advOpen}
+        onOpenChange={setAdvOpen}
+        applied={advApplied}
+        onApply={(a) => { setAdvApplied(a); setAdvOpen(false); }}
+        onReset={() => setAdvApplied(ADV_EMPTY)}
+        onSetMainFiltro={(patch) => {
+          if (patch.soloBloccati !== undefined) setSoloBloccati(patch.soloBloccati);
+          if (patch.soloAssicurati !== undefined) setSoloAssicurati(patch.soloAssicurati);
+          if (patch.scadenziarioFiltro !== undefined) setScadenziarioFiltro(patch.scadenziarioFiltro);
+        }}
+        currentMain={{ soloBloccati, soloAssicurati, scadenziarioFiltro }}
+      />
+
 
       <Card className="p-4 sm:p-5">
         {/* Desktop: barra filtri (2 righe) con badge + reset in alto a destra */}
@@ -947,10 +1030,11 @@ function ClientiPage() {
                   const residuo = c.fido_residuo;
                   const residuoNum = residuo == null ? null : Number(residuo);
                   const sc = scadenziarioMap?.get(c.id);
+                  const isBlocked = !!c.bloccato || Number(c.ind_blocco ?? 0) > 0;
                   return (
                    <TableRow
                      key={c.id}
-                     className={`cursor-pointer hover:bg-muted/50 ${c.cliente_attivo === false ? "bg-muted/40 text-muted-foreground" : ""}`}
+                     className={`cursor-pointer hover:bg-muted/50 ${c.cliente_attivo === false ? "bg-muted/40 text-muted-foreground" : ""} ${isBlocked ? "bg-[#FEF2F2] dark:bg-destructive/10 border-l-[3px] border-l-[#EF4444] hover:bg-[#FEE2E2] dark:hover:bg-destructive/15" : ""}`}
                      onClick={() => navigate({ to: "/clienti/$clienteId", params: { clienteId: c.id } })}
                    >
                     <TableCell onClick={(e) => e.stopPropagation()}>
@@ -2553,5 +2637,167 @@ function StepFirma({
         {errors.firma && <p className="text-xs text-destructive">{errors.firma}</p>}
       </div>
     </>
+  );
+}
+
+// ============ Filtri avanzati dialog ============
+type AdvOp = "none" | "lt" | "lte" | "gt" | "eq" | "between";
+type AdvAppliedT = {
+  fidoOp: AdvOp; fidoVal: number | null; fidoFrom: number | null; fidoTo: number | null;
+  percConsumato: number | null;
+  dataFattPrima: string; dataFattDopo: string;
+  presetScopertoInsoluto: boolean;
+};
+
+function FiltriAvanzatiDialog({
+  open, onOpenChange, applied, onApply, onReset, onSetMainFiltro, currentMain,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  applied: AdvAppliedT;
+  onApply: (a: AdvAppliedT) => void;
+  onReset: () => void;
+  onSetMainFiltro: (p: { soloBloccati?: boolean; soloAssicurati?: boolean; scadenziarioFiltro?: string }) => void;
+  currentMain: { soloBloccati: boolean; soloAssicurati: boolean; scadenziarioFiltro: string };
+}) {
+  const [draft, setDraft] = useState<AdvAppliedT>(applied);
+  useEffect(() => { if (open) setDraft(applied); }, [open, applied]);
+
+  const PRESETS = [
+    { id: "fido80", label: "Fido 80% consumato", apply: (d: AdvAppliedT) => ({ ...d, percConsumato: 80 }) },
+    { id: "esaurito", label: "Fido esaurito", apply: (d: AdvAppliedT) => ({ ...d, fidoOp: "lte" as AdvOp, fidoVal: 0 }) },
+    { id: "lt500", label: "Fido residuo < 500 €", apply: (d: AdvAppliedT) => ({ ...d, fidoOp: "lt" as AdvOp, fidoVal: 500 }) },
+    { id: "lt1000", label: "Fido residuo < 1.000 €", apply: (d: AdvAppliedT) => ({ ...d, fidoOp: "lt" as AdvOp, fidoVal: 1000 }) },
+    { id: "scoperto", label: "Scoperti con insoluto", apply: (d: AdvAppliedT) => ({ ...d, presetScopertoInsoluto: true }), main: { soloAssicurati: false } },
+    { id: "blocFat", label: "Bloccati con fatturato 2025", apply: (d: AdvAppliedT) => d, main: { soloBloccati: true } },
+  ];
+
+  const isPresetActive = (id: string): boolean => {
+    switch (id) {
+      case "fido80": return draft.percConsumato === 80;
+      case "esaurito": return draft.fidoOp === "lte" && draft.fidoVal === 0;
+      case "lt500": return draft.fidoOp === "lt" && draft.fidoVal === 500;
+      case "lt1000": return draft.fidoOp === "lt" && draft.fidoVal === 1000;
+      case "scoperto": return draft.presetScopertoInsoluto;
+      case "blocFat": return currentMain.soloBloccati;
+      default: return false;
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Filtri avanzati</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-5 py-2">
+          {/* Sezione A — Preset */}
+          <section>
+            <h3 className="text-sm font-semibold mb-2">Ricerca rapida</h3>
+            <div className="flex flex-wrap gap-2">
+              {PRESETS.map((p) => {
+                const active = isPresetActive(p.id);
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => {
+                      setDraft((d) => p.apply(d));
+                      if (p.main) onSetMainFiltro(p.main);
+                    }}
+                    className={`px-3 py-1.5 rounded-full border text-xs transition-colors ${active ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted"}`}
+                  >
+                    {p.label}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* Sezione B — Fido residuo personalizzato */}
+          <section>
+            <h3 className="text-sm font-semibold mb-2">Filtro fido residuo</h3>
+            <div className="flex flex-wrap items-center gap-2">
+              <Select value={draft.fidoOp} onValueChange={(v) => setDraft((d) => ({ ...d, fidoOp: v as AdvOp }))}>
+                <SelectTrigger className="w-44 h-9 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">— nessuno —</SelectItem>
+                  <SelectItem value="lt">minore di</SelectItem>
+                  <SelectItem value="lte">minore o uguale a</SelectItem>
+                  <SelectItem value="gt">maggiore di</SelectItem>
+                  <SelectItem value="eq">uguale a</SelectItem>
+                  <SelectItem value="between">tra</SelectItem>
+                </SelectContent>
+              </Select>
+              {draft.fidoOp === "between" ? (
+                <>
+                  <Input type="number" placeholder="da €" className="w-28 h-9"
+                    value={draft.fidoFrom ?? ""} onChange={(e) => setDraft((d) => ({ ...d, fidoFrom: e.target.value === "" ? null : Number(e.target.value) }))} />
+                  <span className="text-muted-foreground">—</span>
+                  <Input type="number" placeholder="a €" className="w-28 h-9"
+                    value={draft.fidoTo ?? ""} onChange={(e) => setDraft((d) => ({ ...d, fidoTo: e.target.value === "" ? null : Number(e.target.value) }))} />
+                </>
+              ) : draft.fidoOp !== "none" ? (
+                <Input type="number" placeholder="€" className="w-32 h-9"
+                  value={draft.fidoVal ?? ""} onChange={(e) => setDraft((d) => ({ ...d, fidoVal: e.target.value === "" ? null : Number(e.target.value) }))} />
+              ) : null}
+            </div>
+          </section>
+
+          {/* Sezione C — Percentuale fido consumato */}
+          <section>
+            <h3 className="text-sm font-semibold mb-2">Percentuale fido consumato</h3>
+            <p className="text-xs text-muted-foreground mb-2">
+              Clienti che hanno consumato almeno <strong>{draft.percConsumato ?? 0}%</strong> del fido gestionale
+            </p>
+            <div className="flex items-center gap-3">
+              <RadixSlider.Root
+                className="relative flex h-5 flex-1 touch-none select-none items-center"
+                min={0} max={100} step={5}
+                value={[draft.percConsumato ?? 0]}
+                onValueChange={(v) => setDraft((d) => ({ ...d, percConsumato: v[0] ?? 0 }))}
+              >
+                <RadixSlider.Track className="relative h-2 w-full grow overflow-hidden rounded-full bg-muted">
+                  <RadixSlider.Range className="absolute h-full bg-primary" />
+                </RadixSlider.Track>
+                <RadixSlider.Thumb className="block size-5 rounded-full border-2 border-primary bg-background shadow-sm outline-none" />
+              </RadixSlider.Root>
+              <Button type="button" variant="ghost" size="sm"
+                onClick={() => setDraft((d) => ({ ...d, percConsumato: null }))}>
+                Azzera
+              </Button>
+            </div>
+          </section>
+
+          {/* Sezione D — Ultima fatturazione */}
+          <section>
+            <h3 className="text-sm font-semibold mb-2">Ultima fatturazione</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Prima del</Label>
+                <Input type="date" className="h-9"
+                  value={draft.dataFattPrima}
+                  onChange={(e) => setDraft((d) => ({ ...d, dataFattPrima: e.target.value }))} />
+              </div>
+              <div>
+                <Label className="text-xs">Dopo il</Label>
+                <Input type="date" className="h-9"
+                  value={draft.dataFattDopo}
+                  onChange={(e) => setDraft((d) => ({ ...d, dataFattDopo: e.target.value }))} />
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <DialogFooter className="gap-2">
+          <Button variant="ghost" onClick={() => { setDraft({ fidoOp: "none", fidoVal: null, fidoFrom: null, fidoTo: null, percConsumato: null, dataFattPrima: "", dataFattDopo: "", presetScopertoInsoluto: false }); onReset(); }}>
+            Reset
+          </Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Annulla</Button>
+          <Button onClick={() => onApply(draft)}>Applica filtri</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
