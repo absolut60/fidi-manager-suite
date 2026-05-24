@@ -152,7 +152,7 @@ export function AnomalieImportCard() {
           patch.motivo_blocco = "Bloccato";
           patch.data_blocco = new Date().toISOString();
         }
-        await supabase.from("clienti").update(patch).eq("id", a.cliente_id);
+        await supabase.from("clienti").update(patch as never).eq("id", a.cliente_id);
       }
     }
 
