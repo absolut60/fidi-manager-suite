@@ -884,6 +884,21 @@ function ClientiPage() {
         </Dialog>
       </div>
 
+      <FiltriAvanzatiDialog
+        open={advOpen}
+        onOpenChange={setAdvOpen}
+        applied={advApplied}
+        onApply={(a) => { setAdvApplied(a); setAdvOpen(false); }}
+        onReset={() => setAdvApplied(ADV_EMPTY)}
+        onSetMainFiltro={(patch) => {
+          if (patch.soloBloccati !== undefined) setSoloBloccati(patch.soloBloccati);
+          if (patch.soloAssicurati !== undefined) setSoloAssicurati(patch.soloAssicurati);
+          if (patch.scadenziarioFiltro !== undefined) setScadenziarioFiltro(patch.scadenziarioFiltro);
+        }}
+        currentMain={{ soloBloccati, soloAssicurati, scadenziarioFiltro }}
+      />
+
+
       <Card className="p-4 sm:p-5">
         {/* Desktop: barra filtri (2 righe) con badge + reset in alto a destra */}
         <div className="hidden md:block mb-4">
