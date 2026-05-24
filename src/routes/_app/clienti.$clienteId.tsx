@@ -41,6 +41,7 @@ export const Route = createFileRoute("/_app/clienti/$clienteId")({
     edit: s.edit === 1 || s.edit === "1" ? 1 : undefined,
     tab: typeof s.tab === "string" && (TAB_VALUES as readonly string[]).includes(s.tab) ? s.tab as typeof TAB_VALUES[number] : undefined,
     insolutiTab: typeof s.insolutiTab === "string" && (INSOLUTI_SUB_VALUES as readonly string[]).includes(s.insolutiTab) ? s.insolutiTab as typeof INSOLUTI_SUB_VALUES[number] : undefined,
+    from: s.from === "approvazioni" ? ("approvazioni" as const) : undefined,
   }),
   component: ClienteDetail,
 });
