@@ -2099,29 +2099,273 @@ function ScadenziarioAssicurazioniImportCard() {
  * D — BLOCCO FIDO E ASSICURAZIONE
  * ============================================================================ */
 
+type BfaParsedRow = {
+  cod_cli: string;
+  ind_blocco: number | null;
+  ultima_data_fatturazione: string | null;
+  fido: number | null;
+  assicurazione: number | null;
+};
+type BfaNoteRow = { cod_cli: string; nota: string };
+
+function bfaClientToNum(v: unknown): number | null {
+  if (v === "" || v == null) return null;
+  if (typeof v === "number") return Number.isFinite(v) ? v : null;
+  const s = String(v).trim().replace(/\./g, "").replace(",", ".");
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+function bfaClientDateISO(v: unknown): string | null {
+  if (v == null || v === "") return null;
+  if (typeof v === "number") {
+    const d = XLSX.SSF?.parse_date_code?.(v);
+    if (d) {
+      const m = String(d.m).padStart(2, "0");
+      const day = String(d.d).padStart(2, "0");
+      return `${d.y}-${m}-${day}`;
+    }
+  }
+  const s = String(v).trim();
+  if (!s) return null;
+  const m1 = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/);
+  if (m1) {
+    const dd = m1[1].padStart(2, "0");
+    const mm = m1[2].padStart(2, "0");
+    let yy = m1[3];
+    if (yy.length === 2) yy = (Number(yy) > 50 ? "19" : "20") + yy;
+    return `${yy}-${mm}-${dd}`;
+  }
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+  return null;
+}
+
+async function parseBloccoFidoFile(file: File): Promise<{
+  rowsBlocco: BfaParsedRow[];
+  rowsNote: BfaNoteRow[];
+  foglioNotePresente: boolean;
+  warnings: string[];
+}> {
+  const buffer = await file.arrayBuffer();
+  const wb = XLSX.read(buffer, {
+    type: "array",
+    cellFormula: false,
+    cellStyles: false,
+    cellHTML: false,
+    cellNF: false,
+    cellText: false,
+    sheetStubs: false,
+    bookDeps: false,
+    bookFiles: false,
+    bookProps: false,
+    bookVBA: false,
+  });
+
+  const foglioBlocco = wb.SheetNames.find(
+    (n) => n.trim().toUpperCase() === "BLOCCO_FIDO_ASSICURAZIONE",
+  );
+  if (!foglioBlocco) throw new Error("Foglio BLOCCO_FIDO_ASSICURAZIONE non trovato nel file");
+
+  const matrix = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[foglioBlocco], {
+    header: 1,
+    defval: "",
+    blankrows: false,
+  });
+  if (!matrix.length) throw new Error("Foglio BLOCCO_FIDO_ASSICURAZIONE vuoto");
+
+  const headers = (matrix[0] as unknown[]).map((h) => String(h ?? "").trim().toLowerCase());
+  const iCod = headers.indexOf("cod_cli");
+  const iInd = headers.indexOf("ind_blocco");
+  const iData = headers.indexOf("ultima data fatturazione");
+  const iFido = headers.indexOf("fido");
+  const iAss = headers.indexOf("assicurazione");
+  if (iCod === -1) throw new Error("Colonna COD_CLI non trovata in BLOCCO_FIDO_ASSICURAZIONE");
+
+  const rowsBlocco: BfaParsedRow[] = [];
+  for (let i = 1; i < matrix.length; i++) {
+    const r = (matrix[i] ?? []) as unknown[];
+    const cod = String(r[iCod] ?? "").trim().replace(/\.0$/, "");
+    if (!cod) continue;
+    rowsBlocco.push({
+      cod_cli: cod,
+      ind_blocco: iInd >= 0 ? (bfaClientToNum(r[iInd]) != null ? Math.trunc(bfaClientToNum(r[iInd]) as number) : null) : null,
+      ultima_data_fatturazione: iData >= 0 ? bfaClientDateISO(r[iData]) : null,
+      fido: iFido >= 0 ? bfaClientToNum(r[iFido]) : null,
+      assicurazione: iAss >= 0 ? bfaClientToNum(r[iAss]) : null,
+    });
+  }
+
+  const warnings: string[] = [];
+  const foglioNote = wb.SheetNames.find((n) => n.trim().toLowerCase() === "note legale");
+  const rowsNote: BfaNoteRow[] = [];
+  if (!foglioNote) {
+    warnings.push("Foglio 'Note Legale' non trovato — nessuna nota importata");
+  } else {
+    const nMatrix = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[foglioNote], {
+      header: 1,
+      defval: "",
+      blankrows: false,
+    });
+    if (nMatrix.length < 2) {
+      warnings.push("Foglio 'Note Legale' vuoto — nessuna nota importata");
+    } else {
+      const nHeaders = (nMatrix[0] as unknown[]).map((h) =>
+        String(h ?? "").trim().toLowerCase(),
+      );
+      const iCodN = nHeaders.indexOf("cod_cli");
+      const iNota = nHeaders.indexOf("note legale");
+      if (iCodN === -1 || iNota === -1) {
+        warnings.push("Foglio 'Note Legale': colonne mancanti — nessuna nota importata");
+      } else {
+        const seen = new Map<string, string>();
+        for (let i = 1; i < nMatrix.length; i++) {
+          const r = (nMatrix[i] ?? []) as unknown[];
+          const cod = String(r[iCodN] ?? "").trim().replace(/\.0$/, "");
+          const nota = String(r[iNota] ?? "").trim();
+          if (!cod || !nota) continue;
+          seen.set(cod, nota);
+        }
+        for (const [cod_cli, nota] of seen) rowsNote.push({ cod_cli, nota });
+      }
+    }
+  }
+
+  return { rowsBlocco, rowsNote, foglioNotePresente: !!foglioNote, warnings };
+}
+
 function BloccoFidoAssicurazioneImportCard() {
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
-
-  const bg = useBackgroundImport({
-    fonte: "blocco_fido_assicurazione",
-    invalidateKeys: [["clienti"], ["assicurazioni"]],
-    onDone: () => {
-      qc.invalidateQueries({ queryKey: ["clienti"] });
-    },
-  });
+  const [importazioneId, setImportazioneId] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+  const [phase, setPhase] = useState<"idle" | "parsing" | "uploading" | "triggering">("idle");
 
   function reset() {
     setFile(null);
-    bg.reset();
+    setImportazioneId(null);
+    setDone(false);
+    setPhase("idle");
     if (fileRef.current) fileRef.current.value = "";
   }
 
-  function handleFile(f: File) {
-    setFile(f);
+  const startMut = useMutation({
+    mutationFn: async (f: File) => {
+      setPhase("parsing");
+      const parsed = await parseBloccoFidoFile(f);
+      if (!parsed.rowsBlocco.length) throw new Error("Nessuna riga utile nel foglio BLOCCO_FIDO_ASSICURAZIONE");
+
+      setPhase("uploading");
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: imp, error: impErr } = await supabase
+        .from("importazioni")
+        .insert({
+          nome_file: f.name,
+          fonte: "blocco_fido_assicurazione",
+          stato: "in_elaborazione",
+          righe_totali: parsed.rowsBlocco.length,
+          eseguita_da: user?.id ?? null,
+        })
+        .select("id")
+        .single();
+      if (impErr) throw impErr;
+
+      const baseDir = `blocco-fido/${imp.id}`;
+      const chunkSize = 500;
+      const totalChunks = Math.ceil(parsed.rowsBlocco.length / chunkSize);
+
+      const manifest = {
+        kind: "blocco-fido-staging-v1",
+        importazioneId: imp.id,
+        nomeFile: f.name,
+        totaleBlocco: parsed.rowsBlocco.length,
+        totaleNote: parsed.rowsNote.length,
+        foglioNotePresente: parsed.foglioNotePresente,
+        chunkSize,
+        totalChunks,
+        warnings: parsed.warnings,
+        createdAt: new Date().toISOString(),
+      };
+
+      const uploadJson = async (path: string, body: unknown) => {
+        const { error } = await supabase.storage.from("import-files").upload(
+          path,
+          new Blob([JSON.stringify(body)], { type: "application/json" }),
+          { contentType: "application/json", upsert: true },
+        );
+        if (error) throw error;
+      };
+
+      await uploadJson(`${baseDir}/manifest.json`, manifest);
+      await uploadJson(`${baseDir}/note-legali.json`, parsed.rowsNote);
+      for (let i = 0; i < totalChunks; i++) {
+        const slice = parsed.rowsBlocco.slice(i * chunkSize, (i + 1) * chunkSize);
+        await uploadJson(`${baseDir}/blocco-chunk-${i}.json`, slice);
+      }
+
+      await supabase
+        .from("importazioni")
+        .update({ file_path: `${baseDir}/manifest.json` })
+        .eq("id", imp.id);
+
+      setPhase("triggering");
+      await triggerImport({
+        data: {
+          fonte: "blocco_fido_assicurazione",
+          importazioneId: imp.id,
+          filePath: `${baseDir}/manifest.json`,
+        },
+      });
+
+      return imp.id;
+    },
+    onSuccess: (id) => {
+      setImportazioneId(id);
+      setDone(false);
+      setPhase("idle");
+      toast.success("Import avviato in background. Puoi chiudere la pagina, prosegue lato server.");
+      qc.invalidateQueries({ queryKey: ["storico-import-export"] });
+    },
+    onError: (e: Error) => {
+      setPhase("idle");
+      toast.error(e.message);
+    },
+  });
+
+  const { data: progress } = useQuery({
+    queryKey: ["importazione-stato", importazioneId],
+    queryFn: async () => {
+      if (!importazioneId) return null;
+      const { data } = await supabase
+        .from("importazioni")
+        .select(
+          "stato, righe_totali, righe_elaborate, righe_create, righe_aggiornate, righe_errore, righe_saltate, codici_mancanti, log_errori, completata_at",
+        )
+        .eq("id", importazioneId)
+        .single();
+      return data as BackgroundImportProgress | null;
+    },
+    enabled: !!importazioneId && !done,
+    refetchInterval: 2000,
+  });
+
+  if (
+    progress &&
+    !done &&
+    (progress.stato === "completata" || progress.stato === "completata_con_errori")
+  ) {
+    setDone(true);
+    qc.invalidateQueries({ queryKey: ["clienti"] });
+    qc.invalidateQueries({ queryKey: ["assicurazioni"] });
+    qc.invalidateQueries({ queryKey: ["anomalie-import"] });
+    qc.invalidateQueries({ queryKey: ["storico-import-export"] });
+    toast.success("Import completato");
   }
+
+  const inProgress = !!importazioneId && !done;
+  const isPending = startMut.isPending;
 
   return (
     <Card className="p-5">
@@ -2129,18 +2373,26 @@ function BloccoFidoAssicurazioneImportCard() {
         <ShieldCheck className="size-4" /> D · Importa Blocco Fido, Assicurazione e Note Legali
       </h2>
       <p className="text-xs text-muted-foreground mb-4">
-        Carica lo stesso file Excel dello scadenziario. L'elaborazione avviene in background sul
-        server (fogli <code>BLOCCO_FIDO_ASSICURAZIONE</code> e <code>Note Legale</code>):
-        aggiorna stato di blocco, fido gestionale, polizza POUEY, flag{" "}
-        <code>cliente_attivo</code> (fatturazione &ge; 01/01/2025) e note legali dal gestionale.
+        Il file Excel viene letto nel browser (solo i fogli{" "}
+        <code>BLOCCO_FIDO_ASSICURAZIONE</code> e <code>Note Legale</code>) e caricato come JSON.
+        Il server aggiorna blocchi, fido, polizza POUEY, flag <code>cliente_attivo</code>{" "}
+        (fatturazione &ge; 01/01/2025) e note legali, registrando le anomalie da approvare.
       </p>
 
-
-      {bg.inProgress && bg.progress && (
-        <BgProgressBlock progress={bg.progress} fallbackTotal={0} />
+      {isPending && (
+        <div className="mb-4 p-3 rounded-md border bg-muted/30 text-sm flex items-center gap-2">
+          <Loader2 className="size-4 animate-spin" />
+          {phase === "parsing" && "Lettura file Excel nel browser…"}
+          {phase === "uploading" && "Caricamento dati su Storage…"}
+          {phase === "triggering" && "Avvio elaborazione server…"}
+        </div>
       )}
 
-      {!file && !bg.inProgress ? (
+      {inProgress && progress && (
+        <BgProgressBlock progress={progress} fallbackTotal={0} />
+      )}
+
+      {!file && !inProgress && !isPending ? (
         <div
           className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
             dragOver ? "border-primary bg-primary/5" : "border-muted-foreground/30"
@@ -2154,7 +2406,7 @@ function BloccoFidoAssicurazioneImportCard() {
             e.preventDefault();
             setDragOver(false);
             const f = e.dataTransfer.files?.[0];
-            if (f) handleFile(f);
+            if (f) setFile(f);
           }}
         >
           <FileSpreadsheet className="size-8 mx-auto text-muted-foreground mb-2" />
@@ -2171,52 +2423,51 @@ function BloccoFidoAssicurazioneImportCard() {
             accept=".xlsx,.xls"
             onChange={(e) => {
               const f = e.target.files?.[0];
-              if (f) handleFile(f);
+              if (f) setFile(f);
             }}
           />
         </div>
       ) : null}
 
-      {file && !bg.inProgress && !bg.done && (
+      {file && !inProgress && !isPending && !done && (
         <div className="space-y-3">
           <div className="flex items-center justify-between p-3 rounded-md border bg-muted/30">
             <span className="text-sm font-medium flex items-center gap-2">
               <FileSpreadsheet className="size-4" /> {file.name}
               <Badge variant="secondary">{(file.size / 1024 / 1024).toFixed(2)} MB</Badge>
             </span>
-            <Button variant="ghost" size="sm" onClick={reset} disabled={bg.isPending}>
+            <Button variant="ghost" size="sm" onClick={reset}>
               <X className="size-4" />
             </Button>
           </div>
           <Button
             className="w-full gap-1.5"
-            disabled={bg.isPending}
-            onClick={() => bg.start({ file, rowsTotali: 0 })}
+            disabled={isPending}
+            onClick={() => startMut.mutate(file)}
           >
-            {bg.isPending && <Loader2 className="size-4 animate-spin" />}
-            {bg.isPending ? "Avvio import..." : "Avvia import in background"}
+            Avvia import (parse + upload + background)
           </Button>
         </div>
       )}
 
-      {bg.done && bg.progress && (
+      {done && progress && (
         <div className="space-y-2 p-3 rounded-md border bg-muted/30 text-sm">
           <div className="flex items-center gap-2 font-medium">
             <CheckCircle2 className="size-4 text-success" /> Import completato
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
-            <Badge variant="default">{bg.progress.righe_elaborate ?? 0} elaborate</Badge>
+            <Badge variant="default">{progress.righe_elaborate ?? 0} elaborate</Badge>
             <Badge className="bg-success/15 text-success hover:bg-success/20">
-              {bg.progress.righe_aggiornate ?? 0} aggiornate
+              {progress.righe_aggiornate ?? 0} aggiornate
             </Badge>
             <Badge className="bg-destructive/15 text-destructive hover:bg-destructive/20">
-              {bg.progress.righe_errore ?? 0} errori
+              {progress.righe_errore ?? 0} errori
             </Badge>
-            <Badge variant="secondary">{bg.progress.righe_saltate ?? 0} non trovati</Badge>
+            <Badge variant="secondary">{progress.righe_saltate ?? 0} non trovati</Badge>
           </div>
           {(() => {
-            const logs = Array.isArray(bg.progress.log_errori)
-              ? (bg.progress.log_errori as Array<{ riga: number; errore: string }>)
+            const logs = Array.isArray(progress.log_errori)
+              ? (progress.log_errori as Array<{ riga: number; errore: string }>)
               : [];
             if (!logs.length) return null;
             return (
