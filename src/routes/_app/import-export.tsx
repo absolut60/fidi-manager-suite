@@ -37,6 +37,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useBackgroundImport, type BackgroundImportProgress } from "@/lib/use-background-import";
+import { AnomalieImportCard, useAnomalieCount } from "@/components/anomalie-import-card";
 
 export const Route = createFileRoute("/_app/import-export")({
   component: ImportExportPage,
