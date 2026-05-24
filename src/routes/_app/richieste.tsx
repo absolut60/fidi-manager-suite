@@ -200,7 +200,14 @@ function RichiestePage() {
           />
         </TabsContent>
 
-        <TabsContent value="approvate" className="mt-4">
+        <TabsContent value="approvate" className="mt-4 space-y-3">
+          {(isAdmin || isApprovatore) && (
+            <div className="flex justify-end">
+              <Button asChild variant="outline" size="sm">
+                <a href="/fidi-processare"><FileText className="size-4" /> Vai a Fidi da processare</a>
+              </Button>
+            </div>
+          )}
           <StoricoTab rows={approvate} loading={isLoading} kind="approvata" onRiinvia={null} />
         </TabsContent>
 
@@ -711,18 +718,28 @@ function StoricoTab({
                 <TableHead>Tipo</TableHead>
                 <TableHead className="text-right">Importo richiesto</TableHead>
                 {kind === "approvata" && <TableHead className="text-right">Importo approvato</TableHead>}
+                {kind === "approvata" && <TableHead>Export</TableHead>}
                 {kind === "rifiutata" && <TableHead>Motivo</TableHead>}
                 <TableHead>Data</TableHead>
                 {onRiinvia && <TableHead className="text-right">Azioni</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((r) => (
+              {filtered.map((r) => {
+                const se = r.stato_export as ("da_esportare"|"esportata"|"processata"|"errore_export"|null);
+                const exportLabel: Record<string,string> = { da_esportare:"Da esportare", esportata:"Esportata", processata:"Processata", errore_export:"Errore" };
+                const exportTone: Record<string,string> = { da_esportare:"bg-info/15 text-info", esportata:"bg-warning/15 text-warning", processata:"bg-success/15 text-success", errore_export:"bg-destructive/15 text-destructive" };
+                return (
                 <TableRow key={r.id}>
                   <TableCell className="font-medium">{r.clienti?.ragione_sociale ?? "—"}</TableCell>
                   <TableCell><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{TIPO_LABEL[r.tipo as TipoRichiesta]}</span></TableCell>
                   <TableCell className="text-right tabular-nums">{formatEuro(Number(r.importo_richiesto))}</TableCell>
                   {kind === "approvata" && <TableCell className="text-right tabular-nums text-success font-medium">{formatEuro(Number(r.importo_approvato ?? r.importo_richiesto))}</TableCell>}
+                  {kind === "approvata" && (
+                    <TableCell>
+                      {se ? <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${exportTone[se]}`}>{exportLabel[se]}</span> : <span className="text-xs text-muted-foreground">—</span>}
+                    </TableCell>
+                  )}
                   {kind === "rifiutata" && <TableCell className="text-xs text-muted-foreground max-w-xs truncate" title={r.note ?? r.motivazione ?? ""}>{r.note ?? r.motivazione ?? "—"}</TableCell>}
                   <TableCell className="text-sm text-muted-foreground">{formatDate(r.data_chiusura ?? r.created_at)}</TableCell>
                   {onRiinvia && (
@@ -731,7 +748,8 @@ function StoricoTab({
                     </TableCell>
                   )}
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
         </Card>

@@ -1114,9 +1114,12 @@ export type Database = {
           created_at: string
           created_by: string | null
           data_chiusura: string | null
+          data_export: string | null
           data_invio: string | null
+          data_processata: string | null
           data_scadenza: string | null
           durata_mesi: number
+          esportata_da: string | null
           id: string
           importo_approvato: number | null
           importo_richiesto: number
@@ -1124,7 +1127,10 @@ export type Database = {
           livello_richiesto: number
           motivazione: string | null
           note: string | null
+          note_export: string | null
+          processata_da: string | null
           stato: Database["public"]["Enums"]["stato_richiesta"]
+          stato_export: string | null
           store_id: string | null
           tipo: Database["public"]["Enums"]["tipo_richiesta"]
           updated_at: string
@@ -1134,9 +1140,12 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           data_chiusura?: string | null
+          data_export?: string | null
           data_invio?: string | null
+          data_processata?: string | null
           data_scadenza?: string | null
           durata_mesi?: number
+          esportata_da?: string | null
           id?: string
           importo_approvato?: number | null
           importo_richiesto: number
@@ -1144,7 +1153,10 @@ export type Database = {
           livello_richiesto?: number
           motivazione?: string | null
           note?: string | null
+          note_export?: string | null
+          processata_da?: string | null
           stato?: Database["public"]["Enums"]["stato_richiesta"]
+          stato_export?: string | null
           store_id?: string | null
           tipo?: Database["public"]["Enums"]["tipo_richiesta"]
           updated_at?: string
@@ -1154,9 +1166,12 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           data_chiusura?: string | null
+          data_export?: string | null
           data_invio?: string | null
+          data_processata?: string | null
           data_scadenza?: string | null
           durata_mesi?: number
+          esportata_da?: string | null
           id?: string
           importo_approvato?: number | null
           importo_richiesto?: number
@@ -1164,7 +1179,10 @@ export type Database = {
           livello_richiesto?: number
           motivazione?: string | null
           note?: string | null
+          note_export?: string | null
+          processata_da?: string | null
           stato?: Database["public"]["Enums"]["stato_richiesta"]
+          stato_export?: string | null
           store_id?: string | null
           tipo?: Database["public"]["Enums"]["tipo_richiesta"]
           updated_at?: string

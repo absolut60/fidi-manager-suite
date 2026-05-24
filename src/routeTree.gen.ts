@@ -21,6 +21,7 @@ import { Route as AppPrivacyRouteImport } from './routes/_app/privacy'
 import { Route as AppLegaliRouteImport } from './routes/_app/legali'
 import { Route as AppImpostazioniRouteImport } from './routes/_app/impostazioni'
 import { Route as AppImportExportRouteImport } from './routes/_app/import-export'
+import { Route as AppFidiProcessareRouteImport } from './routes/_app/fidi-processare'
 import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as AppContattiRouteImport } from './routes/_app/contatti'
 import { Route as AppClientiRouteImport } from './routes/_app/clienti'
@@ -92,6 +93,11 @@ const AppImportExportRoute = AppImportExportRouteImport.update({
   path: '/import-export',
   getParentRoute: () => AppRoute,
 } as any)
+const AppFidiProcessareRoute = AppFidiProcessareRouteImport.update({
+  id: '/fidi-processare',
+  path: '/fidi-processare',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppDashboardRoute = AppDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -159,6 +165,7 @@ export interface FileRoutesByFullPath {
   '/clienti': typeof AppClientiRouteWithChildren
   '/contatti': typeof AppContattiRoute
   '/dashboard': typeof AppDashboardRoute
+  '/fidi-processare': typeof AppFidiProcessareRoute
   '/import-export': typeof AppImportExportRoute
   '/impostazioni': typeof AppImpostazioniRoute
   '/legali': typeof AppLegaliRoute
@@ -183,6 +190,7 @@ export interface FileRoutesByTo {
   '/clienti': typeof AppClientiRouteWithChildren
   '/contatti': typeof AppContattiRoute
   '/dashboard': typeof AppDashboardRoute
+  '/fidi-processare': typeof AppFidiProcessareRoute
   '/import-export': typeof AppImportExportRoute
   '/impostazioni': typeof AppImpostazioniRoute
   '/legali': typeof AppLegaliRoute
@@ -209,6 +217,7 @@ export interface FileRoutesById {
   '/_app/clienti': typeof AppClientiRouteWithChildren
   '/_app/contatti': typeof AppContattiRoute
   '/_app/dashboard': typeof AppDashboardRoute
+  '/_app/fidi-processare': typeof AppFidiProcessareRoute
   '/_app/import-export': typeof AppImportExportRoute
   '/_app/impostazioni': typeof AppImpostazioniRoute
   '/_app/legali': typeof AppLegaliRoute
@@ -235,6 +244,7 @@ export interface FileRouteTypes {
     | '/clienti'
     | '/contatti'
     | '/dashboard'
+    | '/fidi-processare'
     | '/import-export'
     | '/impostazioni'
     | '/legali'
@@ -259,6 +269,7 @@ export interface FileRouteTypes {
     | '/clienti'
     | '/contatti'
     | '/dashboard'
+    | '/fidi-processare'
     | '/import-export'
     | '/impostazioni'
     | '/legali'
@@ -284,6 +295,7 @@ export interface FileRouteTypes {
     | '/_app/clienti'
     | '/_app/contatti'
     | '/_app/dashboard'
+    | '/_app/fidi-processare'
     | '/_app/import-export'
     | '/_app/impostazioni'
     | '/_app/legali'
@@ -394,6 +406,13 @@ declare module '@tanstack/react-router' {
       path: '/import-export'
       fullPath: '/import-export'
       preLoaderRoute: typeof AppImportExportRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/fidi-processare': {
+      id: '/_app/fidi-processare'
+      path: '/fidi-processare'
+      fullPath: '/fidi-processare'
+      preLoaderRoute: typeof AppFidiProcessareRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/dashboard': {
@@ -507,6 +526,7 @@ interface AppRouteChildren {
   AppClientiRoute: typeof AppClientiRouteWithChildren
   AppContattiRoute: typeof AppContattiRoute
   AppDashboardRoute: typeof AppDashboardRoute
+  AppFidiProcessareRoute: typeof AppFidiProcessareRoute
   AppImportExportRoute: typeof AppImportExportRoute
   AppImpostazioniRoute: typeof AppImpostazioniRoute
   AppLegaliRoute: typeof AppLegaliRoute
@@ -524,6 +544,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppClientiRoute: AppClientiRouteWithChildren,
   AppContattiRoute: AppContattiRoute,
   AppDashboardRoute: AppDashboardRoute,
+  AppFidiProcessareRoute: AppFidiProcessareRoute,
   AppImportExportRoute: AppImportExportRoute,
   AppImpostazioniRoute: AppImpostazioniRoute,
   AppLegaliRoute: AppLegaliRoute,
