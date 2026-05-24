@@ -22,6 +22,7 @@ import {
   ClipboardCheck,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { LOGO_MADE_BASE64 } from "@/lib/logo-made-base64";
 import { useAuth, RUOLI_LABEL } from "@/hooks/use-auth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -88,13 +89,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <>
       <div className="px-5 py-5 border-b border-sidebar-border">
         <div className="flex items-center gap-2.5">
-          <div className="size-9 rounded-lg bg-accent flex items-center justify-center">
-            <Building2 className="size-5 text-accent-foreground" />
-          </div>
-          <div>
-            <div className="font-bold text-sidebar-foreground tracking-tight">MADE</div>
-            <div className="text-[11px] text-sidebar-foreground/60 -mt-0.5">FidiManager</div>
-          </div>
+          <img
+            src={`data:image/png;base64,${LOGO_MADE_BASE64}`}
+            alt="MADE"
+            className="h-8 w-auto"
+            style={{ filter: "brightness(0) invert(1)" }}
+          />
+          <div className="text-[11px] text-sidebar-foreground/60">FidiManager</div>
         </div>
       </div>
 
@@ -141,8 +142,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Mobile header */}
       <header className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-primary text-primary-foreground flex items-center justify-between px-4 z-40 border-b border-sidebar-border">
         <div className="flex items-center gap-2">
-          <Building2 className="size-5 text-accent" />
-          <span className="font-bold">MADE</span>
+          <img
+            src={`data:image/png;base64,${LOGO_MADE_BASE64}`}
+            alt="MADE"
+            className="h-6 w-auto"
+            style={{ filter: "brightness(0) invert(1)" }}
+          />
         </div>
         <Button
           variant="ghost"
