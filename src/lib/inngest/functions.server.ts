@@ -1703,16 +1703,18 @@ export const processBloccoFidoImport = inngest.createFunction(
               importato_da: importazioneId,
               ultima_sincronizzazione: new Date().toISOString(),
             };
-            if ((ex as { id?: string } | null)?.id) {
+            const exId = (ex as unknown as { id?: string } | null)?.id;
+            if (exId) {
               await supabaseAdmin
                 .from("note_legali_gestionali" as never)
                 .update(payload as never)
-                .eq("id", (ex as { id: string }).id);
+                .eq("id", exId);
             } else {
               await supabaseAdmin
                 .from("note_legali_gestionali" as never)
                 .insert(payload as never);
             }
+
             clientiInGestione.push(cid);
             noteImportate++;
           }
