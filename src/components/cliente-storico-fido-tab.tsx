@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Plus, FileText, Pencil, Ban, Send, History } from "lucide-react";
+import { Plus, FileText, Pencil, Ban, Send, History, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -53,6 +53,20 @@ export function ClienteStoricoFidoTab({ clienteId }: { clienteId: string }) {
     },
   });
 
+  const { data: cliente } = useQuery({
+    queryKey: ["cliente-gestionale", clienteId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("clienti")
+        .select("fido_gestionale, ind_blocco, assicurazione_attiva, ultima_data_fatturazione, cliente_attivo")
+        .eq("id", clienteId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+
   const invalidate = () => qc.invalidateQueries({ queryKey: ["richieste-cliente", clienteId] });
 
   const annullaMut = useMutation({
@@ -88,6 +102,8 @@ export function ClienteStoricoFidoTab({ clienteId }: { clienteId: string }) {
 
   return (
     <div className="space-y-6">
+      <FidoGestionaleCard cliente={cliente ?? null} />
+
       {/* SEZIONE 1: Richieste in corso */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
@@ -344,5 +360,100 @@ function RichiestaDialog({
         )}
       </DialogFooter>
     </DialogContent>
+  );
+}
+
+type ClienteGestionale = {
+  fido_gestionale: number | null;
+  ind_blocco: number | null;
+  assicurazione_attiva: boolean | null;
+  ultima_data_fatturazione: string | null;
+  cliente_attivo: boolean | null;
+} | null;
+
+function FidoGestionaleCard({ cliente }: { cliente: ClienteGestionale }) {
+  const fmtEuro = (n: number) =>
+    new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
+  const fmtDate = (d: string) => {
+    const [y, m, day] = d.slice(0, 10).split("-");
+    return `${day}/${m}/${y}`;
+  };
+
+  const allNull =
+    !cliente ||
+    (cliente.fido_gestionale == null &&
+      cliente.ind_blocco == null &&
+      cliente.assicurazione_attiva == null &&
+      cliente.ultima_data_fatturazione == null &&
+      cliente.cliente_attivo == null);
+
+  const fidoLabel =
+    cliente?.fido_gestionale && Number(cliente.fido_gestionale) > 0
+      ? fmtEuro(Number(cliente.fido_gestionale))
+      : "Non assegnato";
+
+  const ind = Number(cliente?.ind_blocco ?? 0);
+  const bloccoBadge =
+    ind === 2 ? (
+      <Badge className="bg-red-500 text-white hover:bg-red-500">Bloccato</Badge>
+    ) : ind === 1 ? (
+      <Badge className="bg-orange-500 text-white hover:bg-orange-500">Bloccato revocabile</Badge>
+    ) : (
+      <Badge className="bg-green-600 text-white hover:bg-green-600">Non bloccato</Badge>
+    );
+
+  const assBadge = cliente?.assicurazione_attiva ? (
+    <Badge className="bg-green-600 text-white hover:bg-green-600">POUEY attiva</Badge>
+  ) : (
+    <Badge variant="secondary">Non assicurato</Badge>
+  );
+
+  const attivoBadge = cliente?.cliente_attivo ? (
+    <Badge className="bg-green-600 text-white hover:bg-green-600">Cliente attivo</Badge>
+  ) : (
+    <Badge variant="secondary">Non attivo</Badge>
+  );
+
+  return (
+    <Card className="p-5 bg-blue-50/40 border-blue-100">
+      <div className="flex items-center gap-2 mb-4">
+        <Wallet className="size-4 text-blue-700" />
+        <h3 className="font-semibold text-base">Fido Gestionale</h3>
+      </div>
+
+      {allNull ? (
+        <p className="text-sm text-muted-foreground">Dati gestionali non disponibili</p>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-1">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Fido concesso</p>
+              <p className="text-lg font-bold tabular-nums">{fidoLabel}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Blocco fido</p>
+              <div>{bloccoBadge}</div>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Assicurazione</p>
+              <div>{assBadge}</div>
+            </div>
+          </div>
+
+          <div className="mt-4 pt-3 border-t border-blue-100 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted-foreground">
+            <span>
+              Ultima fatturazione:{" "}
+              <strong className="text-foreground">
+                {cliente?.ultima_data_fatturazione
+                  ? fmtDate(cliente.ultima_data_fatturazione)
+                  : "Nessuna fatturazione registrata"}
+              </strong>
+            </span>
+            <span className="hidden sm:inline">•</span>
+            {attivoBadge}
+          </div>
+        </>
+      )}
+    </Card>
   );
 }
