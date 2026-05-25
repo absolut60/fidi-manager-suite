@@ -19,6 +19,7 @@ import {
   Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem,
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
+import { RuoloSelect } from "@/components/ruolo-select";
 
 export type ClienteInfoWizard = {
   id: string;
