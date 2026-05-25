@@ -19,6 +19,7 @@ import {
   Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem,
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
+import { RuoloSelect } from "@/components/ruolo-select";
 
 export type ClienteInfoWizard = {
   id: string;
@@ -458,11 +459,7 @@ export function NuovoContattoWizard({
                 {errors.cognome && <p className="text-xs text-destructive">{errors.cognome}</p>}
               </div>
             </div>
-            <div className="space-y-1.5">
-              <Label>Ruolo</Label>
-              <Input placeholder="es. Titolare / Legale Rappresentante"
-                value={contatto.ruolo} onChange={(e) => setC("ruolo", e.target.value)} />
-            </div>
+            <RuoloSelect value={contatto.ruolo} onChange={(v) => setC("ruolo", v)} />
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Email</Label>

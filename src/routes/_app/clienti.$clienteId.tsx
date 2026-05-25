@@ -30,6 +30,7 @@ import { formatEuro } from "@/lib/fidi";
 import { classificaScadenza } from "@/lib/scadenze";
 import { Ban, Calendar, Clock, Bell, CheckCircle2, Shield, ShieldOff, Scale, FileText, Activity } from "lucide-react";
 import { NuovoContattoWizard } from "@/components/nuovo-contatto-wizard";
+import { RuoloSelect } from "@/components/ruolo-select";
 
 
 
@@ -95,10 +96,7 @@ function ContattoFormFields({
             <Input value={form.cognome} onChange={(e) => set("cognome", e.target.value)} />
           </div>
         </div>
-        <div className="space-y-1.5">
-          <Label>Ruolo</Label>
-          <Input placeholder="es. Responsabile acquisti" value={form.ruolo} onChange={(e) => set("ruolo", e.target.value)} />
-        </div>
+        <RuoloSelect value={form.ruolo ?? ""} onChange={(v) => set("ruolo", v)} />
         <div className="flex items-center gap-2">
           <Checkbox id="principale" checked={form.principale} onCheckedChange={(v) => set("principale", v === true)} />
           <Label htmlFor="principale" className="cursor-pointer text-sm font-normal">Contatto principale</Label>
