@@ -564,11 +564,13 @@ function ClientiPage() {
       return next;
     });
   }
+  const [loadingSelection, setLoadingSelection] = useState(false);
   function clearSelection() {
     setSelectedIds(new Set());
     setSelectedRows(new Map());
   }
   async function selezionaTuttiFiltrati() {
+    setLoadingSelection(true);
     try {
       const all = await fetchAllFilteredRows();
       const ids = new Set(all.map((r) => r.id));
@@ -578,7 +580,9 @@ function ClientiPage() {
       setSelectedRows(map);
       toast.success(`${all.length} clienti selezionati`);
     } catch (e: any) {
-      toast.error(e?.message ?? "Errore nella selezione");
+      toast.error(e?.message ?? "Errore nel recupero dei clienti filtrati");
+    } finally {
+      setLoadingSelection(false);
     }
   }
 
@@ -990,21 +994,11 @@ function ClientiPage() {
                   <TableHead className="w-8">
                     <Checkbox
                       checked={clienti.length > 0 && clienti.every((c: any) => selectedIds.has(c.id))}
-                      onCheckedChange={(v) => {
+                      onCheckedChange={async (v) => {
                         if (v) {
-                          setSelectedIds((prev) => {
-                            const n = new Set(prev); clienti.forEach((c: any) => n.add(c.id)); return n;
-                          });
-                          setSelectedRows((prev) => {
-                            const n = new Map(prev); clienti.forEach((c: any) => n.set(c.id, c)); return n;
-                          });
+                          await selezionaTuttiFiltrati();
                         } else {
-                          setSelectedIds((prev) => {
-                            const n = new Set(prev); clienti.forEach((c: any) => n.delete(c.id)); return n;
-                          });
-                          setSelectedRows((prev) => {
-                            const n = new Map(prev); clienti.forEach((c: any) => n.delete(c.id)); return n;
-                          });
+                          clearSelection();
                         }
                       }}
                     />
@@ -1200,10 +1194,20 @@ function ClientiPage() {
       {/* Barra azione selezione */}
       {selectedIds.size > 0 && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 bg-background border shadow-lg rounded-lg px-4 py-3 flex flex-wrap items-center gap-3">
-          <span className="text-sm font-medium">{selectedIds.size} clienti selezionati</span>
-          <Button size="sm" variant="outline" onClick={selezionaTuttiFiltrati}>
-            Seleziona tutti i filtrati
-          </Button>
+          <div className="flex flex-col">
+            <span className="text-sm font-medium">{selectedIds.size} clienti selezionati</span>
+            {typeof totaleClienti === "number" && selectedIds.size < totaleClienti && (
+              <button
+                type="button"
+                className="text-xs text-primary hover:underline text-left"
+                onClick={selezionaTuttiFiltrati}
+                disabled={loadingSelection}
+              >
+                Seleziona tutti i {totaleClienti} filtrati
+              </button>
+            )}
+          </div>
+          {loadingSelection && <span className="text-xs text-muted-foreground">Caricamento...</span>}
           <Button size="sm" onClick={() => setMassivoOpen(true)}>
             Proponi fido massivo
           </Button>
