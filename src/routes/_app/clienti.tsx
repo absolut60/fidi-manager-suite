@@ -1194,10 +1194,20 @@ function ClientiPage() {
       {/* Barra azione selezione */}
       {selectedIds.size > 0 && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 bg-background border shadow-lg rounded-lg px-4 py-3 flex flex-wrap items-center gap-3">
-          <span className="text-sm font-medium">{selectedIds.size} clienti selezionati</span>
-          <Button size="sm" variant="outline" onClick={selezionaTuttiFiltrati}>
-            Seleziona tutti i filtrati
-          </Button>
+          <div className="flex flex-col">
+            <span className="text-sm font-medium">{selectedIds.size} clienti selezionati</span>
+            {typeof totaleClienti === "number" && selectedIds.size < totaleClienti && (
+              <button
+                type="button"
+                className="text-xs text-primary hover:underline text-left"
+                onClick={selezionaTuttiFiltrati}
+                disabled={loadingSelection}
+              >
+                Seleziona tutti i {totaleClienti} filtrati
+              </button>
+            )}
+          </div>
+          {loadingSelection && <span className="text-xs text-muted-foreground">Caricamento...</span>}
           <Button size="sm" onClick={() => setMassivoOpen(true)}>
             Proponi fido massivo
           </Button>
