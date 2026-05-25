@@ -564,6 +564,7 @@ function ClientiPage() {
       return next;
     });
   }
+  const [loadingSelection, setLoadingSelection] = useState(false);
   function clearSelection() {
     setSelectedIds(new Set());
     setSelectedRows(new Map());
