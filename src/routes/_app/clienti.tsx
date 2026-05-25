@@ -994,21 +994,11 @@ function ClientiPage() {
                   <TableHead className="w-8">
                     <Checkbox
                       checked={clienti.length > 0 && clienti.every((c: any) => selectedIds.has(c.id))}
-                      onCheckedChange={(v) => {
+                      onCheckedChange={async (v) => {
                         if (v) {
-                          setSelectedIds((prev) => {
-                            const n = new Set(prev); clienti.forEach((c: any) => n.add(c.id)); return n;
-                          });
-                          setSelectedRows((prev) => {
-                            const n = new Map(prev); clienti.forEach((c: any) => n.set(c.id, c)); return n;
-                          });
+                          await selezionaTuttiFiltrati();
                         } else {
-                          setSelectedIds((prev) => {
-                            const n = new Set(prev); clienti.forEach((c: any) => n.delete(c.id)); return n;
-                          });
-                          setSelectedRows((prev) => {
-                            const n = new Map(prev); clienti.forEach((c: any) => n.delete(c.id)); return n;
-                          });
+                          clearSelection();
                         }
                       }}
                     />
