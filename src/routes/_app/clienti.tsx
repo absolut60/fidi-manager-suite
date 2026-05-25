@@ -569,6 +569,7 @@ function ClientiPage() {
     setSelectedRows(new Map());
   }
   async function selezionaTuttiFiltrati() {
+    setLoadingSelection(true);
     try {
       const all = await fetchAllFilteredRows();
       const ids = new Set(all.map((r) => r.id));
@@ -578,7 +579,9 @@ function ClientiPage() {
       setSelectedRows(map);
       toast.success(`${all.length} clienti selezionati`);
     } catch (e: any) {
-      toast.error(e?.message ?? "Errore nella selezione");
+      toast.error(e?.message ?? "Errore nel recupero dei clienti filtrati");
+    } finally {
+      setLoadingSelection(false);
     }
   }
 
