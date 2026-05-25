@@ -96,7 +96,7 @@ function ContattoFormFields({
             <Input value={form.cognome} onChange={(e) => set("cognome", e.target.value)} />
           </div>
         </div>
-        <RuoloSelect value={form.ruolo} onChange={(v) => set("ruolo", v)} />
+        <RuoloSelect value={form.ruolo ?? ""} onChange={(v) => set("ruolo", v)} />
         <div className="flex items-center gap-2">
           <Checkbox id="principale" checked={form.principale} onCheckedChange={(v) => set("principale", v === true)} />
           <Label htmlFor="principale" className="cursor-pointer text-sm font-normal">Contatto principale</Label>
