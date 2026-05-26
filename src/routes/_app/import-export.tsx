@@ -348,6 +348,8 @@ const anagraficaSchema = z.object({
   codice_categoria: optStr(10),
   categoria: optStr(100),
   store_codice: optStr(50),
+  condizione_pagamento_cod: optStr(20),
+  condizione_pagamento_desc: optStr(255),
   note: optStr(1000),
 });
 
