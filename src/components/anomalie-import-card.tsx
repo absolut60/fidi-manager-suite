@@ -262,7 +262,7 @@ export function AnomalieImportCard() {
               </TableHeader>
               <TableBody>
                 {rows.map((a) => {
-                  const t = TIPO_LABEL[a.tipo_anomalia];
+                  const t = TIPO_LABEL[a.tipo_anomalia] ?? { label: a.tipo_anomalia, cls: "bg-gray-500/15 text-gray-700" };
                   const checked = selected.has(a.id);
                   return (
                     <TableRow key={a.id}>
