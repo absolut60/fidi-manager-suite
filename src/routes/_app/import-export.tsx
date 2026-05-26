@@ -524,8 +524,12 @@ function AnagraficaImportCard() {
     }
   }
 
-  const valid = rows.filter((r) => r.errors.length === 0 && r.data.ragione_sociale);
-  const invalid = rows.filter((r) => r.errors.length > 0);
+  // Una riga è valida se ha ragione_sociale — anche se ha warning sui singoli campi
+  const valid = rows.filter((r) => r.data.ragione_sociale);
+  // Invalid solo se manca ragione_sociale
+  const invalid = rows.filter((r) => !r.data.ragione_sociale);
+  // Righe con warning (campi azzerati ma riga importata comunque)
+  const withWarnings = rows.filter((r) => r.data.ragione_sociale && r.errors.length > 0);
 
   // Avvio import: upload + inserimento importazione + trigger Inngest.
   // Il processing prosegue lato server anche se l'utente chiude la pagina.
