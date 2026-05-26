@@ -962,28 +962,64 @@ function ImportZone(props: {
         </Badge>
         {invalid.length > 0 && (
           <Badge variant="destructive" className="gap-1">
-            <AlertCircle className="size-3" /> {invalid.length} errori
+            <AlertCircle className="size-3" /> {invalid.length} scartate
+          </Badge>
+        )}
+        {withWarnings.length > 0 && (
+          <Badge variant="secondary" className="gap-1">
+            <AlertCircle className="size-3" /> {withWarnings.length} con warning (campi non validi
+            azzerati)
           </Badge>
         )}
       </div>
       {invalid.length > 0 && (
-        <div className="max-h-40 overflow-auto rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-16">Riga</TableHead>
-                <TableHead>Errori</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {invalid.slice(0, 50).map((r) => (
-                <TableRow key={r.idx}>
-                  <TableCell className="font-mono text-xs">{r.idx}</TableCell>
-                  <TableCell className="text-xs text-destructive">{r.errors.join("; ")}</TableCell>
+        <div className="space-y-1">
+          <p className="text-xs font-medium">Righe scartate (senza ragione sociale)</p>
+          <div className="max-h-40 overflow-auto rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-16">Riga</TableHead>
+                  <TableHead>Errori</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {invalid.slice(0, 50).map((r) => (
+                  <TableRow key={r.idx}>
+                    <TableCell className="font-mono text-xs">{r.idx}</TableCell>
+                    <TableCell className="text-xs text-destructive">
+                      {r.errors.join("; ")}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      )}
+      {withWarnings.length > 0 && (
+        <div className="space-y-1">
+          <p className="text-xs font-medium">Righe con warning (importate, campi azzerati)</p>
+          <div className="max-h-40 overflow-auto rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-16">Riga</TableHead>
+                  <TableHead>Motivo</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {withWarnings.slice(0, 50).map((r) => (
+                  <TableRow key={r.idx}>
+                    <TableCell className="font-mono text-xs">{r.idx}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {r.errors.join("; ")}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       )}
       {result && (
