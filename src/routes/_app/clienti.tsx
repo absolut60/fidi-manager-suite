@@ -30,6 +30,8 @@ import { SignaturePad, getCanvasDataURL } from "@/components/signature-pad";
 import { generaSchedaCliente } from "@/lib/scheda-pdf";
 import { useAuth } from "@/hooks/use-auth";
 import { CondizionePagamentoSelect } from "@/components/condizione-pagamento-select";
+import { CategoriaSelect } from "@/components/categoria-select";
+import { MACROCATEGORIE, CATEGORIE } from "@/lib/macrocategorie";
 
 export const Route = createFileRoute("/_app/clienti")({
   component: ClientiPage,
@@ -1453,6 +1455,12 @@ const schedaSchema = z.object({
   citta: z.string().trim().max(100).optional().or(z.literal("")),
   provincia: z.string().trim().max(2).optional().or(z.literal("")),
   telefono: z.string().trim().max(30).optional().or(z.literal("")),
+  telefono_2: z.string().trim().max(30).optional().or(z.literal("")),
+  forma_giuridica: z.string().trim().max(100).optional().or(z.literal("")),
+  codice_macrocategoria: z.string().trim().max(10).optional().or(z.literal("")),
+  macrocategoria: z.string().trim().max(100).optional().or(z.literal("")),
+  codice_categoria: z.string().trim().max(10).optional().or(z.literal("")),
+  categoria: z.string().trim().max(100).optional().or(z.literal("")),
   email: z.string().trim().email("Email non valida").max(255).optional().or(z.literal("")),
   partita_iva: z.string().trim().max(20).optional().or(z.literal("")),
   codice_fiscale: z.string().trim().max(20).optional().or(z.literal("")),
@@ -1506,7 +1514,10 @@ const emptyForm: SchedaForm = {
   ragione_sociale: "",
   codice_gestionale: "",
   indirizzo: "", cap: "", citta: "", provincia: "",
-  telefono: "", email: "",
+  telefono: "", telefono_2: "", email: "",
+  forma_giuridica: "",
+  codice_macrocategoria: "", macrocategoria: "",
+  codice_categoria: "", categoria: "",
   partita_iva: "", codice_fiscale: "",
   banca: "", agenzia: "", abi: "", cab: "",
   codice_sdi: "", pec: "",
