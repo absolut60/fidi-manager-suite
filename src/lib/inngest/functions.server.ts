@@ -1596,7 +1596,7 @@ export const processBloccoFidoImport = inngest.createFunction(
 
       // STEP 3: pre-fetch polizze POUEY esistenti
       const allClienteIds = Array.from(
-        new Set(parsed.map((r) => clientMap[r.codice_gestionale]?.id).filter(Boolean) as string[]),
+        new Set(parsed.map((r) => clientMap[normalizeBfaCodice(r.codice_gestionale)]?.id).filter(Boolean) as string[]),
       );
       const poueyMap = await step.run("lookup-polizze", async () => {
         const map: Record<string, string> = {};
@@ -1775,7 +1775,7 @@ export const processBloccoFidoImport = inngest.createFunction(
                   const { error, count } = await supabaseAdmin
                     .from("clienti")
                     .update(payload as never, { count: "exact" })
-                    .eq("codice_gestionale", codiceGestionale);
+                    .eq("id", clienteId);
                   if (error) cErr.push({ riga: r.riga, errore: error.message });
                   else {
                     const affected = count ?? 0;
