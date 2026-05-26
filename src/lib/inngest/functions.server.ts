@@ -225,20 +225,37 @@ export const processAnagraficaImport = inngest.createFunction(
               errore: `Store '${r.store_codice}' non trovato (warning)`,
             });
         }
+        const MACRO_LOOKUP: Record<string, string> = {
+          "01": "IMPRESE EDILI", "02": "PRIVATI", "03": "DIPENDENTI",
+          "04": "AZIENDA", "N/D": "Altre macrocategorie",
+        };
+        const CAT_LOOKUP: Record<string, string> = {
+          "01": "IMPRESE Categoria A", "02": "IMPRESE Categoria B",
+          "03": "IMPRESE Categoria C", "N/D": "Altre categorie",
+        };
+        const codMacro = toStr(r.codice_macrocategoria);
+        const macroLabel = toStr(r.macrocategoria) || (codMacro && MACRO_LOOKUP[codMacro]) || null;
+        const codCat = toStr(r.codice_categoria);
+        const catLabel = toStr(r.categoria) || (codCat && CAT_LOOKUP[codCat]) || null;
         const payload: Record<string, unknown> = {
           ragione_sociale: r.ragione_sociale,
           codice_gestionale: toStr(r.codice_gestionale),
           partita_iva: toStr(r.partita_iva),
           codice_fiscale: toStr(r.codice_fiscale),
-          tipo_soggetto: toStr(r.forma_giuridica),
+          forma_giuridica: toStr(r.forma_giuridica),
           indirizzo: toStr(r.indirizzo),
           citta: toStr(r.citta),
           cap: toStr(r.cap),
           provincia: toStr(r.provincia),
           telefono: toStr(r.telefono),
+          telefono_2: toStr(r.telefono_2),
           email: toStr(r.email),
           pec: toStr(r.pec),
           codice_sdi: toStr(r.codice_sdi),
+          codice_macrocategoria: codMacro || null,
+          macrocategoria: macroLabel,
+          codice_categoria: codCat || null,
+          categoria: catLabel,
           note: toStr(r.note),
         };
         if (storeId) payload.store_id = storeId;
