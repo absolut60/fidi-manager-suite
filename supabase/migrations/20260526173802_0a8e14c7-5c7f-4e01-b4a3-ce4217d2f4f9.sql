@@ -1,0 +1,1 @@
+DROP TRIGGER IF EXISTS trg_aggiorna_blocco_cliente ON public.scadenze;
