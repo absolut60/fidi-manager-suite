@@ -257,7 +257,16 @@ export const processAnagraficaImport = inngest.createFunction(
         addIfPresent(payload, "codice_gestionale", toStr(r.codice_gestionale));
         addIfPresent(payload, "partita_iva", toStr(r.partita_iva));
         addIfPresent(payload, "codice_fiscale", toStr(r.codice_fiscale));
-        addIfPresent(payload, "tipo_soggetto", toStr(r.forma_giuridica));
+        if (r.forma_giuridica) {
+          const ts = String(r.forma_giuridica).trim().toLowerCase();
+          const validValues = ["persona_fisica", "azienda"];
+          let normalized = ts.replace(/\s+/g, "_");
+          if (ts === "persona fisica") normalized = "persona_fisica";
+          if (ts === "ditta individuale") normalized = "persona_fisica";
+          if (ts === "privato" || ts === "privati") normalized = "persona_fisica";
+          if (!validValues.includes(normalized)) normalized = "azienda";
+          addIfPresent(payload, "tipo_soggetto", normalized);
+        }
         addIfPresent(payload, "indirizzo", toStr(r.indirizzo));
         addIfPresent(payload, "citta", toStr(r.citta));
         addIfPresent(payload, "cap", toStr(r.cap));

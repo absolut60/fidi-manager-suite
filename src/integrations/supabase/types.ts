@@ -416,6 +416,7 @@ export type Database = {
           cab: string | null
           cap: string | null
           categoria: string | null
+          cellulare: string | null
           citta: string | null
           cliente_attivo: boolean
           codice_assegnato: string | null
@@ -494,6 +495,7 @@ export type Database = {
           cab?: string | null
           cap?: string | null
           categoria?: string | null
+          cellulare?: string | null
           citta?: string | null
           cliente_attivo?: boolean
           codice_assegnato?: string | null
@@ -572,6 +574,7 @@ export type Database = {
           cab?: string | null
           cap?: string | null
           categoria?: string | null
+          cellulare?: string | null
           citta?: string | null
           cliente_attivo?: boolean
           codice_assegnato?: string | null
