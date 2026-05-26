@@ -700,6 +700,7 @@ function AnagraficaImportCard() {
         onReset={reset}
         valid={valid.length}
         invalid={invalid}
+        withWarnings={withWarnings}
         result={result}
         action={
           <Button
