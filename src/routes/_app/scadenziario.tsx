@@ -395,7 +395,7 @@ function ScadenziarioPage() {
               <Label htmlFor="escl-bonif" className="text-sm cursor-pointer">Escludi BOS (cod. pagamento = BOS)</Label>
             </div>
             <div className="flex items-center gap-2">
-              <Switch id="escl-legale" checked={escludiLegale} onCheckedChange={setEscludiLegale} />
+              <Switch id="escl-legale" checked={escludiLegale} onCheckedChange={(v) => { setEscludiLegale(v); if (v) setStatoLegale("tutti"); }} />
               <Label htmlFor="escl-legale" className="text-sm cursor-pointer">Escludi gestione legale</Label>
             </div>
           </div>
