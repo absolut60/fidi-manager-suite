@@ -237,27 +237,37 @@ export const processAnagraficaImport = inngest.createFunction(
         const macroLabel = toStr(r.macrocategoria) || (codMacro && MACRO_LOOKUP[codMacro]) || null;
         const codCat = toStr(r.codice_categoria);
         const catLabel = toStr(r.categoria) || (codCat && CAT_LOOKUP[codCat]) || null;
+        const addIfPresent = (p: Record<string, unknown>, key: string, value: unknown) => {
+          if (value !== null && value !== undefined && String(value).trim() !== "") {
+            p[key] = value;
+          }
+        };
         const payload: Record<string, unknown> = {
           ragione_sociale: r.ragione_sociale,
-          codice_gestionale: toStr(r.codice_gestionale),
-          partita_iva: toStr(r.partita_iva),
-          codice_fiscale: toStr(r.codice_fiscale),
-          forma_giuridica: toStr(r.forma_giuridica),
-          indirizzo: toStr(r.indirizzo),
-          citta: toStr(r.citta),
-          cap: toStr(r.cap),
-          provincia: toStr(r.provincia),
-          telefono: toStr(r.telefono),
-          telefono_2: toStr(r.telefono_2),
-          email: toStr(r.email),
-          pec: toStr(r.pec),
-          codice_sdi: toStr(r.codice_sdi),
-          codice_macrocategoria: codMacro || null,
-          macrocategoria: macroLabel,
-          codice_categoria: codCat || null,
-          categoria: catLabel,
-          note: toStr(r.note),
         };
+        addIfPresent(payload, "codice_gestionale", toStr(r.codice_gestionale));
+        addIfPresent(payload, "partita_iva", toStr(r.partita_iva));
+        addIfPresent(payload, "codice_fiscale", toStr(r.codice_fiscale));
+        addIfPresent(payload, "tipo_soggetto", toStr(r.forma_giuridica));
+        addIfPresent(payload, "forma_giuridica", toStr(r.forma_giuridica));
+        addIfPresent(payload, "indirizzo", toStr(r.indirizzo));
+        addIfPresent(payload, "citta", toStr(r.citta));
+        addIfPresent(payload, "cap", toStr(r.cap));
+        addIfPresent(payload, "provincia", toStr(r.provincia));
+        addIfPresent(payload, "telefono", toStr(r.telefono));
+        addIfPresent(payload, "telefono_2", toStr(r.telefono_2));
+        addIfPresent(payload, "email", toStr(r.email));
+        addIfPresent(payload, "pec", toStr(r.pec));
+        addIfPresent(payload, "codice_sdi", toStr(r.codice_sdi));
+        addIfPresent(payload, "note", toStr(r.note));
+        addIfPresent(payload, "codice_macrocategoria", codMacro);
+        addIfPresent(payload, "macrocategoria", macroLabel);
+        addIfPresent(payload, "codice_categoria", codCat);
+        addIfPresent(payload, "categoria", catLabel);
+        addIfPresent(payload, "condizione_pagamento_cod", toStr((r as Record<string, unknown>).condizione_pagamento_cod));
+        addIfPresent(payload, "condizione_pagamento_desc", toStr((r as Record<string, unknown>).condizione_pagamento_desc));
+        addIfPresent(payload, "condizioni_pagamento", toStr((r as Record<string, unknown>).condizione_pagamento_desc) || toStr((r as Record<string, unknown>).condizioni_pagamento));
+
         if (storeId) payload.store_id = storeId;
         const existId =
           (r.codice_gestionale && existing[`cg:${r.codice_gestionale}`]) ||
