@@ -237,11 +237,18 @@ function StoreDialog({ editing, onClose }: { editing: StoreRow | null; onClose: 
 
 type ConfigRow = { chiave: string; valore: string; descrizione: string | null };
 
-const CONFIG_FIELDS: { chiave: string; label: string; suffix?: string; hint?: string }[] = [
+const CONFIG_FIELDS: { chiave: string; label: string; suffix?: string; hint?: string; type?: string }[] = [
   { chiave: "soglia_livello_1", label: "Soglia Livello 1", suffix: "€", hint: "Importo massimo gestito dal liv. 1" },
   { chiave: "soglia_livello_2", label: "Soglia Livello 2", suffix: "€", hint: "Importo massimo gestito dal liv. 2 (oltre serve liv. 3)" },
   { chiave: "durata_default_mesi", label: "Durata di default", suffix: "mesi", hint: "Durata del fido proposta nelle nuove richieste" },
   { chiave: "reminder_giorni_scadenza", label: "Reminder scadenza", suffix: "giorni", hint: "Giorni di anticipo per segnalare i fidi in scadenza" },
+  {
+    chiave: "cutoff_cliente_attivo_anno",
+    label: "Anno attività cliente",
+    suffix: "",
+    hint: "Un cliente è considerato 'attivo' se ha fatture con data ≥ 01/01/[anno]. Aggiorna ogni anno (es. 2026).",
+    type: "year",
+  },
 ];
 
 function ConfigurazioniCard() {
@@ -271,6 +278,10 @@ function ConfigurazioniCard() {
       const s2 = Number(values.soglia_livello_2);
       if (!isFinite(s1) || !isFinite(s2) || s1 <= 0 || s2 <= s1) {
         throw new Error("Soglia liv.2 deve essere maggiore di soglia liv.1, entrambe > 0");
+      }
+      const anno = Number(values.cutoff_cliente_attivo_anno);
+      if (!isFinite(anno) || anno < 2020 || anno > 2100) {
+        throw new Error("Anno attività cliente non valido (es. 2025, 2026)");
       }
       const updates = CONFIG_FIELDS.map((f) =>
         supabase.from("configurazioni").update({ valore: values[f.chiave] ?? "" }).eq("chiave", f.chiave)
@@ -309,6 +320,7 @@ function ConfigurazioniCard() {
                     id={f.chiave}
                     type="number"
                     inputMode="numeric"
+                    placeholder={f.type === "year" ? "es. 2025" : undefined}
                     value={values[f.chiave] ?? ""}
                     onChange={(e) => setValues((v) => ({ ...v, [f.chiave]: e.target.value }))}
                     className={f.suffix ? "pr-14" : ""}
