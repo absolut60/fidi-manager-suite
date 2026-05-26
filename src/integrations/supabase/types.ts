@@ -625,6 +625,21 @@ export type Database = {
           },
         ]
       }
+      codici_pagamento: {
+        Row: {
+          cod: string
+          descrizione: string
+        }
+        Insert: {
+          cod: string
+          descrizione: string
+        }
+        Update: {
+          cod?: string
+          descrizione?: string
+        }
+        Relationships: []
+      }
       configurazioni: {
         Row: {
           chiave: string
