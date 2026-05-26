@@ -32,6 +32,7 @@ import { Ban, Calendar, Clock, Bell, CheckCircle2, Shield, ShieldOff, Scale, Fil
 import { NuovoContattoWizard } from "@/components/nuovo-contatto-wizard";
 import { RuoloSelect } from "@/components/ruolo-select";
 import { CondizionePagamentoSelect } from "@/components/condizione-pagamento-select";
+import { CategoriaSelect } from "@/components/categoria-select";
 
 
 
@@ -437,9 +438,27 @@ function ClienteDetail() {
               <Field label="Indirizzo" value={cliente.indirizzo} />
               <Field label="Città" value={cliente.citta && `${cliente.citta}${cliente.provincia ? ` (${cliente.provincia})` : ""}${cliente.cap ? ` — ${cliente.cap}` : ""}`} />
               <Field label="Telefono" value={cliente.telefono} />
+              <Field label="Telefono 2" value={(cliente as any).telefono_2} />
               <Field label="Email" value={cliente.email} />
               <Field label="PEC" value={(cliente as any).pec} />
               <Field label="Codice SDI" value={(cliente as any).codice_sdi} />
+              <Field
+                label="Macrocategoria"
+                value={
+                  (cliente as any).codice_macrocategoria || (cliente as any).macrocategoria
+                    ? `${(cliente as any).codice_macrocategoria ?? ""}${(cliente as any).codice_macrocategoria && (cliente as any).macrocategoria ? " — " : ""}${(cliente as any).macrocategoria ?? ""}`
+                    : null
+                }
+              />
+              <Field
+                label="Categoria"
+                value={
+                  (cliente as any).codice_categoria || (cliente as any).categoria
+                    ? `${(cliente as any).codice_categoria ?? ""}${(cliente as any).codice_categoria && (cliente as any).categoria ? " — " : ""}${(cliente as any).categoria ?? ""}`
+                    : null
+                }
+              />
+              <Field label="Forma giuridica" value={(cliente as any).forma_giuridica} />
               <Field label="Banca" value={(cliente as any).banca} />
               <Field label="Agenzia" value={(cliente as any).agenzia} />
               <Field label="ABI" value={(cliente as any).abi} />
@@ -1566,6 +1585,12 @@ const editSchema = z.object({
   condizioni_pagamento: z.string().trim().max(500).optional().or(z.literal("")),
   condizione_pagamento_cod: z.string().trim().max(20).optional().or(z.literal("")),
   condizione_pagamento_desc: z.string().trim().max(200).optional().or(z.literal("")),
+  telefono_2: z.string().trim().max(30).optional().or(z.literal("")),
+  forma_giuridica: z.string().trim().max(100).optional().or(z.literal("")),
+  codice_macrocategoria: z.string().trim().max(10).optional().or(z.literal("")),
+  macrocategoria: z.string().trim().max(100).optional().or(z.literal("")),
+  codice_categoria: z.string().trim().max(10).optional().or(z.literal("")),
+  categoria: z.string().trim().max(100).optional().or(z.literal("")),
   note: z.string().trim().max(2000).optional().or(z.literal("")),
 });
 
@@ -1594,6 +1619,12 @@ function EditClienteDialog({ cliente, onClose, onSaved }: { cliente: any; onClos
     condizioni_pagamento: cliente.condizioni_pagamento ?? "",
     condizione_pagamento_cod: cliente.condizione_pagamento_cod ?? "",
     condizione_pagamento_desc: cliente.condizione_pagamento_desc ?? "",
+    telefono_2: (cliente as any).telefono_2 ?? "",
+    forma_giuridica: (cliente as any).forma_giuridica ?? "",
+    codice_macrocategoria: (cliente as any).codice_macrocategoria ?? "",
+    macrocategoria: (cliente as any).macrocategoria ?? "",
+    codice_categoria: (cliente as any).codice_categoria ?? "",
+    categoria: (cliente as any).categoria ?? "",
     note: cliente.note ?? "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -1741,6 +1772,10 @@ function EditClienteDialog({ cliente, onClose, onSaved }: { cliente: any; onClos
               <Input value={form.telefono} onChange={(e) => set("telefono", e.target.value)} />
             </div>
             <div className="space-y-1.5">
+              <Label>Telefono 2</Label>
+              <Input value={form.telefono_2} onChange={(e) => set("telefono_2", e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
               <Label>Email</Label>
               <Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} />
               {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
@@ -1785,6 +1820,38 @@ function EditClienteDialog({ cliente, onClose, onSaved }: { cliente: any; onClos
                   set("condizione_pagamento_desc", desc);
                   set("condizioni_pagamento", desc);
                 }}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="border-t pt-3 space-y-3">
+          <h4 className="text-sm font-semibold">Classificazione</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <CategoriaSelect
+              type="macrocategoria"
+              codice={form.codice_macrocategoria ?? ""}
+              label_value={form.macrocategoria ?? ""}
+              onChange={(cod, lbl) => {
+                set("codice_macrocategoria", cod);
+                set("macrocategoria", lbl);
+              }}
+            />
+            <CategoriaSelect
+              type="categoria"
+              codice={form.codice_categoria ?? ""}
+              label_value={form.categoria ?? ""}
+              onChange={(cod, lbl) => {
+                set("codice_categoria", cod);
+                set("categoria", lbl);
+              }}
+            />
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label>Forma giuridica</Label>
+              <Input
+                value={form.forma_giuridica}
+                onChange={(e) => set("forma_giuridica", e.target.value)}
+                placeholder="Es. S.r.l., S.p.A., Ditta individuale..."
               />
             </div>
           </div>

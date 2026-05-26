@@ -388,6 +388,21 @@ export type Database = {
           },
         ]
       }
+      categorie_cliente: {
+        Row: {
+          codice: string
+          label: string
+        }
+        Insert: {
+          codice: string
+          label: string
+        }
+        Update: {
+          codice?: string
+          label?: string
+        }
+        Relationships: []
+      }
       clienti: {
         Row: {
           a_scadere: number | null
@@ -400,11 +415,14 @@ export type Database = {
           bloccato_da: string | null
           cab: string | null
           cap: string | null
+          categoria: string | null
           citta: string | null
           cliente_attivo: boolean
           codice_assegnato: string | null
+          codice_categoria: string | null
           codice_fiscale: string | null
           codice_gestionale: string | null
+          codice_macrocategoria: string | null
           codice_sdi: string | null
           condizione_pagamento_cod: string | null
           condizione_pagamento_desc: string | null
@@ -437,6 +455,7 @@ export type Database = {
           in_gestione_legale: boolean
           ind_blocco: number
           indirizzo: string | null
+          macrocategoria: string | null
           motivo_blocco: string | null
           note: string | null
           note_amministrazione: string | null
@@ -455,6 +474,7 @@ export type Database = {
           sede_operatore: string | null
           store_id: string | null
           telefono: string | null
+          telefono_2: string | null
           tipo_soggetto: string | null
           totale_rischio: number | null
           ultima_data_fatturazione: string | null
@@ -473,11 +493,14 @@ export type Database = {
           bloccato_da?: string | null
           cab?: string | null
           cap?: string | null
+          categoria?: string | null
           citta?: string | null
           cliente_attivo?: boolean
           codice_assegnato?: string | null
+          codice_categoria?: string | null
           codice_fiscale?: string | null
           codice_gestionale?: string | null
+          codice_macrocategoria?: string | null
           codice_sdi?: string | null
           condizione_pagamento_cod?: string | null
           condizione_pagamento_desc?: string | null
@@ -510,6 +533,7 @@ export type Database = {
           in_gestione_legale?: boolean
           ind_blocco?: number
           indirizzo?: string | null
+          macrocategoria?: string | null
           motivo_blocco?: string | null
           note?: string | null
           note_amministrazione?: string | null
@@ -528,6 +552,7 @@ export type Database = {
           sede_operatore?: string | null
           store_id?: string | null
           telefono?: string | null
+          telefono_2?: string | null
           tipo_soggetto?: string | null
           totale_rischio?: number | null
           ultima_data_fatturazione?: string | null
@@ -546,11 +571,14 @@ export type Database = {
           bloccato_da?: string | null
           cab?: string | null
           cap?: string | null
+          categoria?: string | null
           citta?: string | null
           cliente_attivo?: boolean
           codice_assegnato?: string | null
+          codice_categoria?: string | null
           codice_fiscale?: string | null
           codice_gestionale?: string | null
+          codice_macrocategoria?: string | null
           codice_sdi?: string | null
           condizione_pagamento_cod?: string | null
           condizione_pagamento_desc?: string | null
@@ -583,6 +611,7 @@ export type Database = {
           in_gestione_legale?: boolean
           ind_blocco?: number
           indirizzo?: string | null
+          macrocategoria?: string | null
           motivo_blocco?: string | null
           note?: string | null
           note_amministrazione?: string | null
@@ -601,6 +630,7 @@ export type Database = {
           sede_operatore?: string | null
           store_id?: string | null
           telefono?: string | null
+          telefono_2?: string | null
           tipo_soggetto?: string | null
           totale_rischio?: number | null
           ultima_data_fatturazione?: string | null
@@ -883,6 +913,21 @@ export type Database = {
           righe_saltate?: number
           righe_totali?: number | null
           stato?: Database["public"]["Enums"]["stato_importazione"]
+        }
+        Relationships: []
+      }
+      macrocategorie: {
+        Row: {
+          codice: string
+          label: string
+        }
+        Insert: {
+          codice: string
+          label: string
+        }
+        Update: {
+          codice?: string
+          label?: string
         }
         Relationships: []
       }

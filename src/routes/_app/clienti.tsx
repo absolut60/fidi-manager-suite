@@ -30,6 +30,7 @@ import { SignaturePad, getCanvasDataURL } from "@/components/signature-pad";
 import { generaSchedaCliente } from "@/lib/scheda-pdf";
 import { useAuth } from "@/hooks/use-auth";
 import { CondizionePagamentoSelect } from "@/components/condizione-pagamento-select";
+import { CategoriaSelect } from "@/components/categoria-select";
 
 export const Route = createFileRoute("/_app/clienti")({
   component: ClientiPage,
@@ -1453,6 +1454,12 @@ const schedaSchema = z.object({
   citta: z.string().trim().max(100).optional().or(z.literal("")),
   provincia: z.string().trim().max(2).optional().or(z.literal("")),
   telefono: z.string().trim().max(30).optional().or(z.literal("")),
+  telefono_2: z.string().trim().max(30).optional().or(z.literal("")),
+  forma_giuridica: z.string().trim().max(100).optional().or(z.literal("")),
+  codice_macrocategoria: z.string().trim().max(10).optional().or(z.literal("")),
+  macrocategoria: z.string().trim().max(100).optional().or(z.literal("")),
+  codice_categoria: z.string().trim().max(10).optional().or(z.literal("")),
+  categoria: z.string().trim().max(100).optional().or(z.literal("")),
   email: z.string().trim().email("Email non valida").max(255).optional().or(z.literal("")),
   partita_iva: z.string().trim().max(20).optional().or(z.literal("")),
   codice_fiscale: z.string().trim().max(20).optional().or(z.literal("")),
@@ -1506,7 +1513,10 @@ const emptyForm: SchedaForm = {
   ragione_sociale: "",
   codice_gestionale: "",
   indirizzo: "", cap: "", citta: "", provincia: "",
-  telefono: "", email: "",
+  telefono: "", telefono_2: "", email: "",
+  forma_giuridica: "",
+  codice_macrocategoria: "", macrocategoria: "",
+  codice_categoria: "", categoria: "",
   partita_iva: "", codice_fiscale: "",
   banca: "", agenzia: "", abi: "", cab: "",
   codice_sdi: "", pec: "",
@@ -1730,6 +1740,12 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
           citta: parsed.citta || null,
           provincia: parsed.provincia || null,
           telefono: parsed.telefono || null,
+          telefono_2: parsed.telefono_2 || null,
+          forma_giuridica: parsed.forma_giuridica || null,
+          codice_macrocategoria: parsed.codice_macrocategoria || null,
+          macrocategoria: parsed.macrocategoria || null,
+          codice_categoria: parsed.codice_categoria || null,
+          categoria: parsed.categoria || null,
           email: parsed.email || null,
           banca: parsed.banca || null,
           agenzia: parsed.agenzia || null,
@@ -2327,6 +2343,10 @@ function StepImpresa({
           <Input value={form.telefono} onChange={(e) => set("telefono", e.target.value)} />
         </div>
         <div className="space-y-1.5">
+          <Label>Telefono 2</Label>
+          <Input value={form.telefono_2} onChange={(e) => set("telefono_2", e.target.value)} />
+        </div>
+        <div className="space-y-1.5">
           <Label>E-mail</Label>
           <Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} />
           {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
@@ -2388,6 +2408,36 @@ function StepImpresa({
             ))}
           </SelectContent>
         </Select>
+      </div>
+
+      <h3 className="font-semibold text-sm pt-2">Classificazione</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <CategoriaSelect
+          type="macrocategoria"
+          codice={form.codice_macrocategoria ?? ""}
+          label_value={form.macrocategoria ?? ""}
+          onChange={(cod, lbl) => {
+            set("codice_macrocategoria", cod);
+            set("macrocategoria", lbl);
+          }}
+        />
+        <CategoriaSelect
+          type="categoria"
+          codice={form.codice_categoria ?? ""}
+          label_value={form.categoria ?? ""}
+          onChange={(cod, lbl) => {
+            set("codice_categoria", cod);
+            set("categoria", lbl);
+          }}
+        />
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label>Forma giuridica</Label>
+          <Input
+            value={form.forma_giuridica}
+            onChange={(e) => set("forma_giuridica", e.target.value)}
+            placeholder="Es. S.r.l., S.p.A., Ditta individuale..."
+          />
+        </div>
       </div>
     </>
   );

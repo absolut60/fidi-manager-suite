@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/table";
 import { useBackgroundImport, type BackgroundImportProgress } from "@/lib/use-background-import";
 import { triggerImport } from "@/lib/import.functions";
+import { MACROCATEGORIE, CATEGORIE } from "@/lib/macrocategorie";
 import { AnomalieImportCard, useAnomalieCount } from "@/components/anomalie-import-card";
 
 export const Route = createFileRoute("/_app/import-export")({
@@ -336,9 +337,15 @@ const anagraficaSchema = z.object({
   cap: optStr(10),
   provincia: optStr(5),
   telefono: optStr(30),
+  telefono_2: optStr(30),
+  cellulare: optStr(30),
   email: optEmail,
   pec: optStr(255),
   codice_sdi: optStr(20),
+  codice_macrocategoria: optStr(10),
+  macrocategoria: optStr(100),
+  codice_categoria: optStr(10),
+  categoria: optStr(100),
   store_codice: optStr(50),
   note: optStr(1000),
 });
@@ -353,11 +360,16 @@ const ANAG_HEADERS: Record<string, keyof AnagraficaRow> = {
   codice: "codice_gestionale",
   "cod gestionale": "codice_gestionale",
   "partita iva": "partita_iva",
+  partita_iva: "partita_iva",
+  "partira iva": "partita_iva",
+  partira_iva: "partita_iva",
   "p iva": "partita_iva",
   piva: "partita_iva",
   "codice fiscale": "codice_fiscale",
+  codice_fiscale: "codice_fiscale",
   cf: "codice_fiscale",
   "forma giuridica": "forma_giuridica",
+  forma_giuridica: "forma_giuridica",
   indirizzo: "indirizzo",
   via: "indirizzo",
   citta: "citta",
@@ -367,12 +379,25 @@ const ANAG_HEADERS: Record<string, keyof AnagraficaRow> = {
   prov: "provincia",
   telefono: "telefono",
   tel: "telefono",
+  "telefono 2": "telefono_2",
+  telefono2: "telefono_2",
+  telefono_2: "telefono_2",
+  "tel 2": "telefono_2",
+  cellulare: "cellulare",
+  cell: "cellulare",
   email: "email",
   "e mail": "email",
   mail: "email",
   pec: "pec",
   "codice sdi": "codice_sdi",
+  codice_sdi: "codice_sdi",
   sdi: "codice_sdi",
+  "codice macrocategoria": "codice_macrocategoria",
+  codice_macrocategoria: "codice_macrocategoria",
+  macrocategoria: "macrocategoria",
+  "codice categoria": "codice_categoria",
+  codice_categoria: "codice_categoria",
+  categoria: "categoria",
   "store codice": "store_codice",
   store: "store_codice",
   "punto vendita": "store_codice",
@@ -428,6 +453,15 @@ function AnagraficaImportCard() {
           if (k === "__row") continue;
           const fkey = ANAG_HEADERS[normalize(k)];
           if (fkey) mapped[fkey] = String(r[k] ?? "").trim();
+        }
+        // Auto-completamento label da codice
+        if (mapped.codice_macrocategoria && !mapped.macrocategoria) {
+          const found = MACROCATEGORIE.find((m) => m.codice === mapped.codice_macrocategoria);
+          if (found) mapped.macrocategoria = found.label;
+        }
+        if (mapped.codice_categoria && !mapped.categoria) {
+          const found = CATEGORIE.find((c) => c.codice === mapped.codice_categoria);
+          if (found) mapped.categoria = found.label;
         }
         const res = anagraficaSchema.safeParse(mapped);
         return {
@@ -556,19 +590,24 @@ function AnagraficaImportCard() {
       {
         codice_gestionale: "13908",
         ragione_sociale: "Esempio S.r.l.",
-        partita_iva: "12345678901",
-        codice_fiscale: "12345678901",
-        forma_giuridica: "azienda",
+        store_codice: "",
         indirizzo: "Via Roma 1",
-        citta: "Milano",
         cap: "20100",
+        citta: "Milano",
         provincia: "MI",
+        partita_iva: "12345678901",
+        forma_giuridica: "S.r.l.",
+        codice_fiscale: "12345678901",
         telefono: "+39 02 1234567",
+        telefono_2: "",
+        cellulare: "",
         email: "info@esempio.it",
         pec: "esempio@pec.it",
+        codice_macrocategoria: "01",
+        macrocategoria: "IMPRESE EDILI",
+        codice_categoria: "01",
+        categoria: "IMPRESE Categoria A",
         codice_sdi: "0000000",
-        store_codice: "",
-        note: "",
       },
     ]);
     const wb = XLSX.utils.book_new();
