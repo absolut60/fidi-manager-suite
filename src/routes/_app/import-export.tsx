@@ -404,6 +404,10 @@ const ANAG_HEADERS: Record<string, keyof AnagraficaRow> = {
   "store codice": "store_codice",
   store: "store_codice",
   "punto vendita": "store_codice",
+  "cod pagamento": "condizione_pagamento_cod",
+  "desc pagamento": "condizione_pagamento_desc",
+  "condizione pagamento cod": "condizione_pagamento_cod",
+  "condizione pagamento desc": "condizione_pagamento_desc",
   note: "note",
 };
 
