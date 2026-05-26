@@ -1772,6 +1772,10 @@ function EditClienteDialog({ cliente, onClose, onSaved }: { cliente: any; onClos
               <Input value={form.telefono} onChange={(e) => set("telefono", e.target.value)} />
             </div>
             <div className="space-y-1.5">
+              <Label>Telefono 2</Label>
+              <Input value={form.telefono_2} onChange={(e) => set("telefono_2", e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
               <Label>Email</Label>
               <Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} />
               {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
@@ -1816,6 +1820,38 @@ function EditClienteDialog({ cliente, onClose, onSaved }: { cliente: any; onClos
                   set("condizione_pagamento_desc", desc);
                   set("condizioni_pagamento", desc);
                 }}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="border-t pt-3 space-y-3">
+          <h4 className="text-sm font-semibold">Classificazione</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <CategoriaSelect
+              type="macrocategoria"
+              codice={form.codice_macrocategoria ?? ""}
+              label_value={form.macrocategoria ?? ""}
+              onChange={(cod, lbl) => {
+                set("codice_macrocategoria", cod);
+                set("macrocategoria", lbl);
+              }}
+            />
+            <CategoriaSelect
+              type="categoria"
+              codice={form.codice_categoria ?? ""}
+              label_value={form.categoria ?? ""}
+              onChange={(cod, lbl) => {
+                set("codice_categoria", cod);
+                set("categoria", lbl);
+              }}
+            />
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label>Forma giuridica</Label>
+              <Input
+                value={form.forma_giuridica}
+                onChange={(e) => set("forma_giuridica", e.target.value)}
+                placeholder="Es. S.r.l., S.p.A., Ditta individuale..."
               />
             </div>
           </div>
