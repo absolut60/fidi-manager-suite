@@ -461,6 +461,20 @@ function AnagraficaImportCard() {
           const fkey = ANAG_HEADERS[normalize(k)];
           if (fkey) mapped[fkey] = String(r[k] ?? "").trim();
         }
+        // Padding codici numerici a 2 cifre (es. "1" → "01")
+        if (mapped.codice_macrocategoria) {
+          const c = String(mapped.codice_macrocategoria).trim();
+          mapped.codice_macrocategoria = /^\d$/.test(c) ? c.padStart(2, "0") : c;
+        }
+        if (mapped.codice_categoria) {
+          const c = String(mapped.codice_categoria).trim();
+          mapped.codice_categoria = /^\d$/.test(c) ? c.padStart(2, "0") : c;
+        }
+        // Trim spazi su campi critici
+        if (mapped.codice_sdi) mapped.codice_sdi = String(mapped.codice_sdi).trim();
+        if (mapped.partita_iva) mapped.partita_iva = String(mapped.partita_iva).trim();
+        if (mapped.codice_gestionale)
+          mapped.codice_gestionale = String(mapped.codice_gestionale).trim();
         // Auto-completamento label da codice
         if (mapped.codice_macrocategoria && !mapped.macrocategoria) {
           const found = MACROCATEGORIE.find((m) => m.codice === mapped.codice_macrocategoria);
@@ -469,6 +483,10 @@ function AnagraficaImportCard() {
         if (mapped.codice_categoria && !mapped.categoria) {
           const found = CATEGORIE.find((c) => c.codice === mapped.codice_categoria);
           if (found) mapped.categoria = found.label;
+        }
+        if (mapped.condizione_pagamento_cod && !mapped.condizione_pagamento_desc) {
+          const found = CODICI_PAGAMENTO.find((c) => c.cod === mapped.condizione_pagamento_cod);
+          if (found) mapped.condizione_pagamento_desc = found.desc;
         }
         const res = anagraficaSchema.safeParse(mapped);
         return {
