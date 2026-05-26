@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState, Fragment } from "react";
+import { useMemo, useState, Fragment, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, Calendar, FileText, Ban, CalendarClock, Scale, ChevronDown, ChevronUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -89,6 +89,12 @@ function ScadenziarioPage() {
   const [escludiBonifici, setEscludiBonifici] = useState(true);
   const [escludiLegale, setEscludiLegale] = useState(true);
   const [expandedClienteId, setExpandedClienteId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (statoLegale === "in_legale") {
+      setEscludiLegale(false);
+    }
+  }, [statoLegale]);
 
   const { data: rischioExpanded, isLoading: loadingRischio } = useQuery({
     queryKey: ["rischio-expanded", expandedClienteId],
@@ -389,7 +395,7 @@ function ScadenziarioPage() {
               <Label htmlFor="escl-bonif" className="text-sm cursor-pointer">Escludi BOS (cod. pagamento = BOS)</Label>
             </div>
             <div className="flex items-center gap-2">
-              <Switch id="escl-legale" checked={escludiLegale} onCheckedChange={setEscludiLegale} />
+              <Switch id="escl-legale" checked={escludiLegale} onCheckedChange={(v) => { setEscludiLegale(v); if (v) setStatoLegale("tutti"); }} />
               <Label htmlFor="escl-legale" className="text-sm cursor-pointer">Escludi gestione legale</Label>
             </div>
           </div>
@@ -437,7 +443,7 @@ function ScadenziarioPage() {
                     <Fragment key={r.cliente.id}>
                       <TableRow
                         key={r.cliente.id}
-                        className="cursor-pointer"
+                        className={`cursor-pointer ${r.cliente.bloccato ? "bg-destructive/10 hover:bg-destructive/15" : r.cliente.in_gestione_legale ? "bg-amber-500/10 hover:bg-amber-500/15" : ""}`}
                         onClick={() => setExpandedClienteId(isExpanded ? null : r.cliente.id)}
                       >
                         <TableCell className="font-medium">{r.cliente.ragione_sociale}</TableCell>

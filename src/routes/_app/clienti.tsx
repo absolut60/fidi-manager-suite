@@ -1119,11 +1119,16 @@ function ClientiPage() {
                              Blocco revocabile
                            </Badge>
                          )}
-                         {c.ind_blocco === 2 && (
-                           <Badge className="bg-destructive/15 text-destructive hover:bg-destructive/20" title="Bloccato">
-                             Bloccato
-                           </Badge>
-                         )}
+                          {c.ind_blocco === 2 && (
+                            <Badge className="bg-destructive/15 text-destructive hover:bg-destructive/20" title="Bloccato">
+                              Bloccato
+                            </Badge>
+                          )}
+                          {(c as { in_gestione_legale?: boolean }).in_gestione_legale && (
+                            <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-500 hover:bg-amber-500/20" title="In gestione legale">
+                              ⚖️ Legale
+                            </Badge>
+                          )}
                        </div>
                      </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
