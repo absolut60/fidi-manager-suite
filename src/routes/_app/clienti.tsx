@@ -1741,6 +1741,12 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
           citta: parsed.citta || null,
           provincia: parsed.provincia || null,
           telefono: parsed.telefono || null,
+          telefono_2: parsed.telefono_2 || null,
+          forma_giuridica: parsed.forma_giuridica || null,
+          codice_macrocategoria: parsed.codice_macrocategoria || null,
+          macrocategoria: parsed.macrocategoria || null,
+          codice_categoria: parsed.codice_categoria || null,
+          categoria: parsed.categoria || null,
           email: parsed.email || null,
           banca: parsed.banca || null,
           agenzia: parsed.agenzia || null,
@@ -2336,6 +2342,10 @@ function StepImpresa({
         <div className="space-y-1.5">
           <Label>Telefono</Label>
           <Input value={form.telefono} onChange={(e) => set("telefono", e.target.value)} />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Telefono 2</Label>
+          <Input value={form.telefono_2} onChange={(e) => set("telefono_2", e.target.value)} />
         </div>
         <div className="space-y-1.5">
           <Label>E-mail</Label>
