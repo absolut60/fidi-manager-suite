@@ -279,6 +279,10 @@ function ConfigurazioniCard() {
       if (!isFinite(s1) || !isFinite(s2) || s1 <= 0 || s2 <= s1) {
         throw new Error("Soglia liv.2 deve essere maggiore di soglia liv.1, entrambe > 0");
       }
+      const anno = Number(values.cutoff_cliente_attivo_anno);
+      if (!isFinite(anno) || anno < 2020 || anno > 2100) {
+        throw new Error("Anno attività cliente non valido (es. 2025, 2026)");
+      }
       const updates = CONFIG_FIELDS.map((f) =>
         supabase.from("configurazioni").update({ valore: values[f.chiave] ?? "" }).eq("chiave", f.chiave)
       );
