@@ -2005,7 +2005,7 @@ export const processBloccoFidoImport = inngest.createFunction(
           .from("clienti")
           .select("id")
           .not("ultima_importazione_d", "is", null)
-          .lt("ultima_importazione_d", timestampInizio);
+          .neq("ultima_importazione_d", importazioneId);
 
         const ids = ((assenti ?? []) as Array<{ id: string }>).map((c) => c.id);
         if (!ids.length) return;
