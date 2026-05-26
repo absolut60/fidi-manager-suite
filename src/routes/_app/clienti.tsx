@@ -31,7 +31,6 @@ import { generaSchedaCliente } from "@/lib/scheda-pdf";
 import { useAuth } from "@/hooks/use-auth";
 import { CondizionePagamentoSelect } from "@/components/condizione-pagamento-select";
 import { CategoriaSelect } from "@/components/categoria-select";
-import { MACROCATEGORIE, CATEGORIE } from "@/lib/macrocategorie";
 
 export const Route = createFileRoute("/_app/clienti")({
   component: ClientiPage,
