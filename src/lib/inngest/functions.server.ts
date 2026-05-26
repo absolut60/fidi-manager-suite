@@ -1659,43 +1659,40 @@ export const processBloccoFidoImport = inngest.createFunction(
                 const payload: Record<string, unknown> = {};
                 const rowAnomalie: AnomaliaImport[] = [];
 
-                // --- Anomalia: cambio blocco ---
+                // --- Cambio blocco: applicato automaticamente ---
                 const indNuovo = r.ind_blocco;
                 const indAttuale = snap.ind_blocco ?? 0;
-                let bloccoAnomalo = false;
-                if (indNuovo != null && indNuovo !== indAttuale) {
-                  rowAnomalie.push({
-                    importazione_id: importazioneId,
-                    cliente_id: clienteId,
-                    codice_gestionale: codiceGestionale,
-                    ragione_sociale: snap.ragione_sociale,
-                    tipo_anomalia: "cambio_blocco",
-                    campo: "ind_blocco",
-                    valore_attuale: String(indAttuale),
-                    valore_nuovo: String(indNuovo),
-                    stato: "in_attesa",
-                  });
-                  bloccoAnomalo = true;
-                }
-                if (!bloccoAnomalo && indNuovo != null) {
-                  if (indNuovo === 0) {
+                const indNuovoNorm = indNuovo ?? 0;
+                if (indNuovoNorm !== indAttuale) {
+                  if (indNuovoNorm === 0) {
                     payload.bloccato = false;
                     payload.ind_blocco = 0;
                     payload.motivo_blocco = null;
                     payload.data_blocco = null;
                     cSblk++;
-                  } else if (indNuovo === 1) {
+                  } else if (indNuovoNorm === 1) {
                     payload.bloccato = true;
                     payload.ind_blocco = 1;
                     payload.motivo_blocco = "Bloccato con possibilità di sblocco";
                     payload.data_blocco = nowIso;
                     cBlk++;
-                  } else if (indNuovo === 2) {
+                  } else if (indNuovoNorm === 2) {
                     payload.bloccato = true;
                     payload.ind_blocco = 2;
                     payload.motivo_blocco = "Bloccato";
                     payload.data_blocco = nowIso;
                     cBlk++;
+                  }
+                } else if (indNuovo != null) {
+                  if (indNuovoNorm === 0) {
+                    payload.bloccato = false;
+                    payload.ind_blocco = 0;
+                  } else if (indNuovoNorm === 1) {
+                    payload.bloccato = true;
+                    payload.ind_blocco = 1;
+                  } else if (indNuovoNorm === 2) {
+                    payload.bloccato = true;
+                    payload.ind_blocco = 2;
                   }
                 }
 
