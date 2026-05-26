@@ -113,55 +113,82 @@ export function sheetToObjects(
  * ============================================================================ */
 
 export const ANAG_HEADERS: Record<string, string> = {
+  // ragione sociale
   "ragione sociale": "ragione_sociale",
+  ragione_sociale: "ragione_sociale",
   ragionesociale: "ragione_sociale",
   denominazione: "ragione_sociale",
+  // codice gestionale
   "codice gestionale": "codice_gestionale",
+  codice_gestionale: "codice_gestionale",
   codice: "codice_gestionale",
   "cod gestionale": "codice_gestionale",
+  // partita iva
   "partita iva": "partita_iva",
   partita_iva: "partita_iva",
-  "partira iva": "partita_iva",
   partira_iva: "partita_iva",
+  "partira iva": "partita_iva",
   "p iva": "partita_iva",
   piva: "partita_iva",
+  // codice fiscale
   "codice fiscale": "codice_fiscale",
   codice_fiscale: "codice_fiscale",
   cf: "codice_fiscale",
+  // forma giuridica
   "forma giuridica": "forma_giuridica",
   forma_giuridica: "forma_giuridica",
+  // indirizzo
   indirizzo: "indirizzo",
   via: "indirizzo",
+  // citta
   citta: "citta",
   città: "citta",
+  // cap
   cap: "cap",
+  // provincia
   provincia: "provincia",
   prov: "provincia",
+  // telefono
   telefono: "telefono",
   tel: "telefono",
+  // telefono 2
   "telefono 2": "telefono_2",
-  telefono2: "telefono_2",
   telefono_2: "telefono_2",
+  telefono2: "telefono_2",
   "tel 2": "telefono_2",
+  // cellulare
   cellulare: "cellulare",
   cell: "cellulare",
+  // email
   email: "email",
   "e mail": "email",
   mail: "email",
+  // pec
   pec: "pec",
+  // codice sdi
   "codice sdi": "codice_sdi",
   codice_sdi: "codice_sdi",
   sdi: "codice_sdi",
+  // store
+  "store codice": "store_codice",
+  store_codice: "store_codice",
+  store: "store_codice",
+  "punto vendita": "store_codice",
+  // note
+  note: "note",
+  // macrocategoria
   "codice macrocategoria": "codice_macrocategoria",
   codice_macrocategoria: "codice_macrocategoria",
   macrocategoria: "macrocategoria",
+  // categoria
   "codice categoria": "codice_categoria",
   codice_categoria: "codice_categoria",
   categoria: "categoria",
-  "store codice": "store_codice",
-  store: "store_codice",
-  "punto vendita": "store_codice",
-  note: "note",
+  // condizione pagamento
+  "cod. pagamento": "condizione_pagamento_cod",
+  condizione_pagamento_cod: "condizione_pagamento_cod",
+  "desc. pagamento": "condizione_pagamento_desc",
+  condizione_pagamento_desc: "condizione_pagamento_desc",
 };
 
 export function anagraficaSheetToObjects(sheet: XLSX.WorkSheet) {
