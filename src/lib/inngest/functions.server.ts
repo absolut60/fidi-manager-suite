@@ -1767,8 +1767,8 @@ export const processBloccoFidoImport = inngest.createFunction(
                   }
                 }
 
-                // Marca ultima_importazione_d
-                payload.ultima_importazione_d = timestampInizio;
+                // Marca ultima_importazione_d con l'ID univoco dell'importazione (non il timestamp)
+                payload.ultima_importazione_d = importazioneId;
 
                 if (Object.keys(payload).length > 0) {
                   cUpdateTentati++;
