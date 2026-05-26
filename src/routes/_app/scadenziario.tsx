@@ -437,7 +437,7 @@ function ScadenziarioPage() {
                     <Fragment key={r.cliente.id}>
                       <TableRow
                         key={r.cliente.id}
-                        className="cursor-pointer"
+                        className={`cursor-pointer ${r.cliente.bloccato ? "bg-destructive/10 hover:bg-destructive/15" : r.cliente.in_gestione_legale ? "bg-amber-500/10 hover:bg-amber-500/15" : ""}`}
                         onClick={() => setExpandedClienteId(isExpanded ? null : r.cliente.id)}
                       >
                         <TableCell className="font-medium">{r.cliente.ragione_sociale}</TableCell>
