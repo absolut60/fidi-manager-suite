@@ -886,6 +886,7 @@ function ImportZone(props: {
   onReset: () => void;
   valid: number;
   invalid: Array<{ idx: number; errors: string[] }>;
+  withWarnings?: Array<{ idx: number; errors: string[] }>;
   result: null | {
     created: number;
     updated: number;
@@ -904,6 +905,7 @@ function ImportZone(props: {
     onReset,
     valid,
     invalid,
+    withWarnings = [],
     result,
     action,
   } = props;
