@@ -1563,6 +1563,8 @@ const editSchema = z.object({
   abi: z.string().trim().max(10).optional().or(z.literal("")),
   cab: z.string().trim().max(10).optional().or(z.literal("")),
   condizioni_pagamento: z.string().trim().max(500).optional().or(z.literal("")),
+  condizione_pagamento_cod: z.string().trim().max(20).optional().or(z.literal("")),
+  condizione_pagamento_desc: z.string().trim().max(200).optional().or(z.literal("")),
   note: z.string().trim().max(2000).optional().or(z.literal("")),
 });
 
@@ -1589,6 +1591,8 @@ function EditClienteDialog({ cliente, onClose, onSaved }: { cliente: any; onClos
     abi: cliente.abi ?? "",
     cab: cliente.cab ?? "",
     condizioni_pagamento: cliente.condizioni_pagamento ?? "",
+    condizione_pagamento_cod: cliente.condizione_pagamento_cod ?? "",
+    condizione_pagamento_desc: cliente.condizione_pagamento_desc ?? "",
     note: cliente.note ?? "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -1772,8 +1776,15 @@ function EditClienteDialog({ cliente, onClose, onSaved }: { cliente: any; onClos
               <Input value={form.cab} onChange={(e) => set("cab", e.target.value)} />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
-              <Label>Condizioni di pagamento</Label>
-              <Input value={form.condizioni_pagamento} onChange={(e) => set("condizioni_pagamento", e.target.value)} />
+              <CondizionePagamentoSelect
+                cod={form.condizione_pagamento_cod ?? ""}
+                desc={form.condizione_pagamento_desc ?? ""}
+                onChange={(cod, desc) => {
+                  set("condizione_pagamento_cod", cod);
+                  set("condizione_pagamento_desc", desc);
+                  set("condizioni_pagamento", desc);
+                }}
+              />
             </div>
           </div>
         </div>
