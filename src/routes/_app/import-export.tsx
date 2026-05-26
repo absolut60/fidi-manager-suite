@@ -314,18 +314,36 @@ function ImportExportPage() {
  * A — ANAGRAFICA
  * ============================================================================ */
 
-const optStr = (max: number, msg?: string) =>
+const optStr = (max: number, _msg?: string) =>
   z.preprocess((v) => {
     if (v == null) return undefined;
     const s = String(v).trim();
-    return s === "" ? undefined : s;
-  }, z.string().max(max, msg).optional());
+    if (s === "") return undefined;
+    return s.length > max ? s.slice(0, max) : s;
+  }, z.string().optional());
 
-const optEmail = z.preprocess((v) => {
+function extractFirstValidEmail(v: unknown): string | undefined {
   if (v == null) return undefined;
   const s = String(v).trim();
-  return s === "" ? undefined : s;
-}, z.string().email("Email non valida").max(255).optional());
+  if (!s) return undefined;
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s) && s.length <= 255) return s;
+  const parts = s.split(/[;\s]+/);
+  for (const part of parts) {
+    const p = part.trim();
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p) && p.length <= 255) return p;
+  }
+  return undefined;
+}
+
+const optEmail = z.preprocess((v) => extractFirstValidEmail(v), z.string().optional());
+
+const optPec = z.preprocess((v) => {
+  if (v == null) return undefined;
+  const s = String(v).trim();
+  if (!s) return undefined;
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s) && s.length <= 255) return s;
+  return undefined;
+}, z.string().optional());
 
 const anagraficaSchema = z.object({
   ragione_sociale: z.string().trim().min(1, "Ragione sociale obbligatoria").max(200),
@@ -341,7 +359,7 @@ const anagraficaSchema = z.object({
   telefono_2: optStr(30),
   cellulare: optStr(30),
   email: optEmail,
-  pec: optStr(255),
+  pec: optPec,
   codice_sdi: optStr(20),
   codice_macrocategoria: optStr(10),
   macrocategoria: optStr(100),
@@ -506,8 +524,12 @@ function AnagraficaImportCard() {
     }
   }
 
-  const valid = rows.filter((r) => r.errors.length === 0 && r.data.ragione_sociale);
-  const invalid = rows.filter((r) => r.errors.length > 0);
+  // Una riga è valida se ha ragione_sociale — anche se ha warning sui singoli campi
+  const valid = rows.filter((r) => r.data.ragione_sociale);
+  // Invalid solo se manca ragione_sociale
+  const invalid = rows.filter((r) => !r.data.ragione_sociale);
+  // Righe con warning (campi azzerati ma riga importata comunque)
+  const withWarnings = rows.filter((r) => r.data.ragione_sociale && r.errors.length > 0);
 
   // Avvio import: upload + inserimento importazione + trigger Inngest.
   // Il processing prosegue lato server anche se l'utente chiude la pagina.
@@ -678,6 +700,7 @@ function AnagraficaImportCard() {
         onReset={reset}
         valid={valid.length}
         invalid={invalid}
+        withWarnings={withWarnings}
         result={result}
         action={
           <Button
@@ -863,6 +886,7 @@ function ImportZone(props: {
   onReset: () => void;
   valid: number;
   invalid: Array<{ idx: number; errors: string[] }>;
+  withWarnings?: Array<{ idx: number; errors: string[] }>;
   result: null | {
     created: number;
     updated: number;
@@ -881,6 +905,7 @@ function ImportZone(props: {
     onReset,
     valid,
     invalid,
+    withWarnings = [],
     result,
     action,
   } = props;
@@ -937,28 +962,64 @@ function ImportZone(props: {
         </Badge>
         {invalid.length > 0 && (
           <Badge variant="destructive" className="gap-1">
-            <AlertCircle className="size-3" /> {invalid.length} errori
+            <AlertCircle className="size-3" /> {invalid.length} scartate
+          </Badge>
+        )}
+        {withWarnings.length > 0 && (
+          <Badge variant="secondary" className="gap-1">
+            <AlertCircle className="size-3" /> {withWarnings.length} con warning (campi non validi
+            azzerati)
           </Badge>
         )}
       </div>
       {invalid.length > 0 && (
-        <div className="max-h-40 overflow-auto rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-16">Riga</TableHead>
-                <TableHead>Errori</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {invalid.slice(0, 50).map((r) => (
-                <TableRow key={r.idx}>
-                  <TableCell className="font-mono text-xs">{r.idx}</TableCell>
-                  <TableCell className="text-xs text-destructive">{r.errors.join("; ")}</TableCell>
+        <div className="space-y-1">
+          <p className="text-xs font-medium">Righe scartate (senza ragione sociale)</p>
+          <div className="max-h-40 overflow-auto rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-16">Riga</TableHead>
+                  <TableHead>Errori</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {invalid.slice(0, 50).map((r) => (
+                  <TableRow key={r.idx}>
+                    <TableCell className="font-mono text-xs">{r.idx}</TableCell>
+                    <TableCell className="text-xs text-destructive">
+                      {r.errors.join("; ")}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      )}
+      {withWarnings.length > 0 && (
+        <div className="space-y-1">
+          <p className="text-xs font-medium">Righe con warning (importate, campi azzerati)</p>
+          <div className="max-h-40 overflow-auto rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-16">Riga</TableHead>
+                  <TableHead>Motivo</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {withWarnings.slice(0, 50).map((r) => (
+                  <TableRow key={r.idx}>
+                    <TableCell className="font-mono text-xs">{r.idx}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {r.errors.join("; ")}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       )}
       {result && (
