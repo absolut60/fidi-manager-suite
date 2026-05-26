@@ -453,6 +453,15 @@ function AnagraficaImportCard() {
           const fkey = ANAG_HEADERS[normalize(k)];
           if (fkey) mapped[fkey] = String(r[k] ?? "").trim();
         }
+        // Auto-completamento label da codice
+        if (mapped.codice_macrocategoria && !mapped.macrocategoria) {
+          const found = MACROCATEGORIE.find((m) => m.codice === mapped.codice_macrocategoria);
+          if (found) mapped.macrocategoria = found.label;
+        }
+        if (mapped.codice_categoria && !mapped.categoria) {
+          const found = CATEGORIE.find((c) => c.codice === mapped.codice_categoria);
+          if (found) mapped.categoria = found.label;
+        }
         const res = anagraficaSchema.safeParse(mapped);
         return {
           idx: r.__row,
@@ -580,19 +589,24 @@ function AnagraficaImportCard() {
       {
         codice_gestionale: "13908",
         ragione_sociale: "Esempio S.r.l.",
-        partita_iva: "12345678901",
-        codice_fiscale: "12345678901",
-        forma_giuridica: "azienda",
+        store_codice: "",
         indirizzo: "Via Roma 1",
-        citta: "Milano",
         cap: "20100",
+        citta: "Milano",
         provincia: "MI",
+        partita_iva: "12345678901",
+        forma_giuridica: "S.r.l.",
+        codice_fiscale: "12345678901",
         telefono: "+39 02 1234567",
+        telefono_2: "",
+        cellulare: "",
         email: "info@esempio.it",
         pec: "esempio@pec.it",
+        codice_macrocategoria: "01",
+        macrocategoria: "IMPRESE EDILI",
+        codice_categoria: "01",
+        categoria: "IMPRESE Categoria A",
         codice_sdi: "0000000",
-        store_codice: "",
-        note: "",
       },
     ]);
     const wb = XLSX.utils.book_new();
