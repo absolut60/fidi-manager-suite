@@ -320,6 +320,7 @@ function ConfigurazioniCard() {
                     id={f.chiave}
                     type="number"
                     inputMode="numeric"
+                    placeholder={f.type === "year" ? "es. 2025" : undefined}
                     value={values[f.chiave] ?? ""}
                     onChange={(e) => setValues((v) => ({ ...v, [f.chiave]: e.target.value }))}
                     className={f.suffix ? "pr-14" : ""}
