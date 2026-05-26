@@ -1659,40 +1659,30 @@ export const processBloccoFidoImport = inngest.createFunction(
                 const payload: Record<string, unknown> = {};
                 const rowAnomalie: AnomaliaImport[] = [];
 
-                // --- Cambio blocco: applicato automaticamente ---
-                const indNuovo = r.ind_blocco;
+                // --- Blocco: applicato automaticamente senza anomalia ---
+                const indNuovoRaw = r.ind_blocco;
+                // Forza conversione a number (il JSON potrebbe contenere string o number)
+                const indNuovo = indNuovoRaw != null ? Number(indNuovoRaw) : null;
                 const indAttuale = snap.ind_blocco ?? 0;
-                const indNuovoNorm = indNuovo ?? 0;
-                if (indNuovoNorm !== indAttuale) {
-                  if (indNuovoNorm === 0) {
+                if (indNuovo != null) {
+                  if (indNuovo === 0) {
                     payload.bloccato = false;
                     payload.ind_blocco = 0;
                     payload.motivo_blocco = null;
                     payload.data_blocco = null;
-                    cSblk++;
-                  } else if (indNuovoNorm === 1) {
+                    if (indAttuale !== 0) cSblk++;
+                  } else if (indNuovo === 1) {
                     payload.bloccato = true;
                     payload.ind_blocco = 1;
                     payload.motivo_blocco = "Bloccato con possibilità di sblocco";
                     payload.data_blocco = nowIso;
-                    cBlk++;
-                  } else if (indNuovoNorm === 2) {
+                    if (indAttuale !== 1) cBlk++;
+                  } else if (indNuovo === 2) {
                     payload.bloccato = true;
                     payload.ind_blocco = 2;
                     payload.motivo_blocco = "Bloccato";
                     payload.data_blocco = nowIso;
-                    cBlk++;
-                  }
-                } else if (indNuovo != null) {
-                  if (indNuovoNorm === 0) {
-                    payload.bloccato = false;
-                    payload.ind_blocco = 0;
-                  } else if (indNuovoNorm === 1) {
-                    payload.bloccato = true;
-                    payload.ind_blocco = 1;
-                  } else if (indNuovoNorm === 2) {
-                    payload.bloccato = true;
-                    payload.ind_blocco = 2;
+                    if (indAttuale !== 2) cBlk++;
                   }
                 }
 
