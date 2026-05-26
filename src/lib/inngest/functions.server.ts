@@ -1617,7 +1617,18 @@ export const processBloccoFidoImport = inngest.createFunction(
 
       // STEP 4: chunk processing con anomalie
       const CHUNK = 500;
-      const cutoff2025 = "2025-01-01";
+      // Leggi cutoff anno dal DB configurazioni (default 2025 se non trovato)
+      const cutoffAnno = await step.run("read-cutoff-config", async () => {
+        const { data } = await supabaseAdmin
+          .from("configurazioni")
+          .select("valore")
+          .eq("chiave", "cutoff_cliente_attivo_anno")
+          .maybeSingle();
+        const anno = parseInt(data?.valore ?? "2025", 10);
+        const annoValido = isFinite(anno) && anno >= 2020 && anno <= 2100 ? anno : 2025;
+        return `${annoValido}-01-01`;
+      });
+      const cutoff2025 = cutoffAnno; // mantieni il nome per non rompere i riferimenti
       const nowIso = new Date().toISOString();
       const errors: Array<{ riga: number; errore: string }> = [];
       const nonTrovati: string[] = [];
