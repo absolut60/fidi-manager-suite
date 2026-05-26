@@ -188,23 +188,32 @@ export const processAnagraficaImport = inngest.createFunction(
       const pive = Array.from(new Set(rows.map((r) => r.partita_iva).filter(Boolean)));
       const existing = await step.run("lookup-existing", async () => {
         const map: Record<string, string> = {};
+        const CHUNK = 200;
         if (codici.length) {
-          const { data } = await supabaseAdmin
-            .from("clienti")
-            .select("id, codice_gestionale")
-            .in("codice_gestionale", codici);
-          (data ?? []).forEach((c) => {
-            if (c.codice_gestionale) map[`cg:${c.codice_gestionale}`] = c.id;
-          });
+          for (let i = 0; i < codici.length; i += CHUNK) {
+            const slice = codici.slice(i, i + CHUNK);
+            const { data } = await supabaseAdmin
+              .from("clienti")
+              .select("id, codice_gestionale")
+              .in("codice_gestionale", slice)
+              .limit(CHUNK + 10);
+            (data ?? []).forEach((c) => {
+              if (c.codice_gestionale) map[`cg:${c.codice_gestionale}`] = c.id;
+            });
+          }
         }
         if (pive.length) {
-          const { data } = await supabaseAdmin
-            .from("clienti")
-            .select("id, partita_iva")
-            .in("partita_iva", pive);
-          (data ?? []).forEach((c) => {
-            if (c.partita_iva) map[`pi:${c.partita_iva}`] = c.id;
-          });
+          for (let i = 0; i < pive.length; i += CHUNK) {
+            const slice = pive.slice(i, i + CHUNK);
+            const { data } = await supabaseAdmin
+              .from("clienti")
+              .select("id, partita_iva")
+              .in("partita_iva", slice)
+              .limit(CHUNK + 10);
+            (data ?? []).forEach((c) => {
+              if (c.partita_iva) map[`pi:${c.partita_iva}`] = c.id;
+            });
+          }
         }
         return map;
       });
