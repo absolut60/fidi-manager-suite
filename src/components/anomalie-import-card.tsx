@@ -219,7 +219,6 @@ export function AnomalieImportCard() {
             <SelectItem value="all">Tutte</SelectItem>
             <SelectItem value="perde_assicurazione">Perde assicurazione</SelectItem>
             <SelectItem value="perde_gestione_legale">Perde gestione legale</SelectItem>
-            <SelectItem value="cambio_blocco">Cambio blocco</SelectItem>
           </SelectContent>
         </Select>
 
@@ -236,6 +235,36 @@ export function AnomalieImportCard() {
             ))}
           </SelectContent>
         </Select>
+
+        {tipo !== "all" && rows.length > 0 && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setSelected(new Set(rows.map((r) => r.id)))}
+          >
+            Seleziona tutti ({rows.length})
+          </Button>
+        )}
+
+        {tipo !== "all" && rows.length > 0 && (
+          <Button
+            size="sm"
+            onClick={() => {
+              setSelected(new Set(rows.map((r) => r.id)));
+              setTimeout(() => bulk.mutate(true), 50);
+            }}
+            disabled={bulk.isPending}
+          >
+            <Check className="h-4 w-4 mr-1" />
+            Approva tutti{" "}
+            {tipo === "perde_assicurazione"
+              ? "perde assicurazione"
+              : tipo === "perde_gestione_legale"
+                ? "perde gestione legale"
+                : ""}{" "}
+            ({rows.length})
+          </Button>
+        )}
       </div>
 
       {listQ.isLoading ? (
