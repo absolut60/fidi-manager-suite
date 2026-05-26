@@ -2622,11 +2622,11 @@ function ExportCard() {
       const { data, error } = await supabase
         .from("clienti")
         .select(
-          "ragione_sociale, partita_iva, codice_fiscale, indirizzo, citta, cap, provincia, telefono, email, attivo, privacy_firmata, stores(codice, nome)",
+          "ragione_sociale, partita_iva, codice_fiscale, indirizzo, citta, cap, provincia, telefono, email, attivo, privacy_firmata, condizione_pagamento_cod, condizione_pagamento_desc, condizioni_pagamento, stores(codice, nome)",
         )
         .order("ragione_sociale");
       if (error) throw error;
-      const flat = (data ?? []).map((c) => ({
+      const flat = (data ?? []).map((c: any) => ({
         ragione_sociale: c.ragione_sociale,
         partita_iva: c.partita_iva,
         codice_fiscale: c.codice_fiscale,
@@ -2636,6 +2636,8 @@ function ExportCard() {
         provincia: c.provincia,
         telefono: c.telefono,
         email: c.email,
+        "Cod. pagamento": c.condizione_pagamento_cod ?? "",
+        "Desc. pagamento": c.condizione_pagamento_desc ?? c.condizioni_pagamento ?? "",
         store_codice: (c.stores as { codice: string } | null)?.codice ?? "",
         store_nome: (c.stores as { nome: string } | null)?.nome ?? "",
         attivo: c.attivo ? "Sì" : "No",
