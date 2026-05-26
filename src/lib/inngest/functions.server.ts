@@ -249,7 +249,6 @@ export const processAnagraficaImport = inngest.createFunction(
         addIfPresent(payload, "partita_iva", toStr(r.partita_iva));
         addIfPresent(payload, "codice_fiscale", toStr(r.codice_fiscale));
         addIfPresent(payload, "tipo_soggetto", toStr(r.forma_giuridica));
-        addIfPresent(payload, "forma_giuridica", toStr(r.forma_giuridica));
         addIfPresent(payload, "indirizzo", toStr(r.indirizzo));
         addIfPresent(payload, "citta", toStr(r.citta));
         addIfPresent(payload, "cap", toStr(r.cap));
