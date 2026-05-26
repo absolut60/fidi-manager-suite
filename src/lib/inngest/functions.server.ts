@@ -1767,8 +1767,8 @@ export const processBloccoFidoImport = inngest.createFunction(
                   }
                 }
 
-                // Marca ultima_importazione_d con l'ID univoco dell'importazione (non il timestamp)
-                payload.ultima_importazione_d = importazioneId;
+                // Marca ultima_importazione_d con timestampInizio + 1s (timestamp valido, strettamente > timestampInizio)
+                payload.ultima_importazione_d = new Date(new Date(timestampInizio).getTime() + 1000).toISOString();
 
                 if (Object.keys(payload).length > 0) {
                   cUpdateTentati++;
@@ -2005,7 +2005,7 @@ export const processBloccoFidoImport = inngest.createFunction(
           .from("clienti")
           .select("id")
           .not("ultima_importazione_d", "is", null)
-          .neq("ultima_importazione_d", importazioneId);
+          .lt("ultima_importazione_d", timestampInizio);
 
         const ids = ((assenti ?? []) as Array<{ id: string }>).map((c) => c.id);
         if (!ids.length) return;
