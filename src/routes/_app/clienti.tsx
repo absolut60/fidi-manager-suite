@@ -29,6 +29,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SignaturePad, getCanvasDataURL } from "@/components/signature-pad";
 import { generaSchedaCliente } from "@/lib/scheda-pdf";
 import { useAuth } from "@/hooks/use-auth";
+import { CondizionePagamentoSelect } from "@/components/condizione-pagamento-select";
 
 export const Route = createFileRoute("/_app/clienti")({
   component: ClientiPage,
@@ -1475,6 +1476,8 @@ const schedaSchema = z.object({
   codice_assegnato: z.string().trim().max(50).optional().or(z.literal("")),
   sede_operatore: z.string().trim().max(100).optional().or(z.literal("")),
   condizioni_pagamento_concordate: z.string().trim().max(200).optional().or(z.literal("")),
+  condizione_pagamento_cod: z.string().trim().max(20).optional().or(z.literal("")),
+  condizione_pagamento_desc: z.string().trim().max(200).optional().or(z.literal("")),
   data_richiesta_affidamento: z.string().optional().or(z.literal("")),
   importo_affidamento_richiesto: z.string().optional().or(z.literal("")),
   note_amministrazione: z.string().trim().max(2000).optional().or(z.literal("")),
@@ -1510,7 +1513,7 @@ const emptyForm: SchedaForm = {
   store_id: "",
   titolare_nome: "", titolare_cognome: "", titolare_email: "", titolare_cell: "",
   amministrativo_nome: "", amministrativo_cognome: "", amministrativo_email: "", amministrativo_cell: "",
-  codice_assegnato: "", sede_operatore: "", condizioni_pagamento_concordate: "",
+  codice_assegnato: "", sede_operatore: "", condizioni_pagamento_concordate: "", condizione_pagamento_cod: "", condizione_pagamento_desc: "",
   data_richiesta_affidamento: "", importo_affidamento_richiesto: "",
   note_amministrazione: "",
   dichiarante_nome: "", dichiarante_cognome: "",
@@ -1594,6 +1597,8 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
       codice_assegnato: c.codice_assegnato ?? "",
       sede_operatore: c.sede_operatore ?? "",
       condizioni_pagamento_concordate: c.condizioni_pagamento_concordate ?? "",
+      condizione_pagamento_cod: (c as any).condizione_pagamento_cod ?? "",
+      condizione_pagamento_desc: (c as any).condizione_pagamento_desc ?? "",
       data_richiesta_affidamento: c.data_richiesta_affidamento ?? "",
       importo_affidamento_richiesto: c.importo_affidamento_richiesto != null ? String(c.importo_affidamento_richiesto) : "",
       note_amministrazione: c.note_amministrazione ?? "",
@@ -1742,7 +1747,9 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
         if (canSeeAdminStep) {
           Object.assign(clientePayload, {
             codice_assegnato: parsed.codice_assegnato || null,
-            condizioni_pagamento_concordate: parsed.condizioni_pagamento_concordate || null,
+            condizioni_pagamento_concordate: parsed.condizione_pagamento_desc || parsed.condizioni_pagamento_concordate || null,
+            condizione_pagamento_cod: parsed.condizione_pagamento_cod || null,
+            condizione_pagamento_desc: parsed.condizione_pagamento_desc || null,
             data_richiesta_affidamento: date(parsed.data_richiesta_affidamento),
             importo_affidamento_richiesto: num(parsed.importo_affidamento_richiesto),
             note_amministrazione: parsed.note_amministrazione || null,
@@ -2462,8 +2469,15 @@ function StepAmministrazione({ form, set }: { form: SchedaForm; set: SetFn }) {
         </div>
       </div>
       <div className="space-y-1.5">
-        <Label>Condizioni di pagamento concordate</Label>
-        <Input value={form.condizioni_pagamento_concordate} onChange={(e) => set("condizioni_pagamento_concordate", e.target.value)} />
+        <CondizionePagamentoSelect
+          cod={form.condizione_pagamento_cod ?? ""}
+          desc={form.condizione_pagamento_desc ?? ""}
+          onChange={(cod, desc) => {
+            set("condizione_pagamento_cod", cod);
+            set("condizione_pagamento_desc", desc);
+            set("condizioni_pagamento_concordate", desc);
+          }}
+        />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
