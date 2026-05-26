@@ -39,6 +39,7 @@ import {
 import { useBackgroundImport, type BackgroundImportProgress } from "@/lib/use-background-import";
 import { triggerImport } from "@/lib/import.functions";
 import { MACROCATEGORIE, CATEGORIE } from "@/lib/macrocategorie";
+import { CODICI_PAGAMENTO } from "@/lib/codici-pagamento";
 import { AnomalieImportCard, useAnomalieCount } from "@/components/anomalie-import-card";
 
 export const Route = createFileRoute("/_app/import-export")({
@@ -347,6 +348,8 @@ const anagraficaSchema = z.object({
   codice_categoria: optStr(10),
   categoria: optStr(100),
   store_codice: optStr(50),
+  condizione_pagamento_cod: optStr(20),
+  condizione_pagamento_desc: optStr(255),
   note: optStr(1000),
 });
 
@@ -401,6 +404,10 @@ const ANAG_HEADERS: Record<string, keyof AnagraficaRow> = {
   "store codice": "store_codice",
   store: "store_codice",
   "punto vendita": "store_codice",
+  "cod pagamento": "condizione_pagamento_cod",
+  "desc pagamento": "condizione_pagamento_desc",
+  "condizione pagamento cod": "condizione_pagamento_cod",
+  "condizione pagamento desc": "condizione_pagamento_desc",
   note: "note",
 };
 
@@ -454,6 +461,20 @@ function AnagraficaImportCard() {
           const fkey = ANAG_HEADERS[normalize(k)];
           if (fkey) mapped[fkey] = String(r[k] ?? "").trim();
         }
+        // Padding codici numerici a 2 cifre (es. "1" → "01")
+        if (mapped.codice_macrocategoria) {
+          const c = String(mapped.codice_macrocategoria).trim();
+          mapped.codice_macrocategoria = /^\d$/.test(c) ? c.padStart(2, "0") : c;
+        }
+        if (mapped.codice_categoria) {
+          const c = String(mapped.codice_categoria).trim();
+          mapped.codice_categoria = /^\d$/.test(c) ? c.padStart(2, "0") : c;
+        }
+        // Trim spazi su campi critici
+        if (mapped.codice_sdi) mapped.codice_sdi = String(mapped.codice_sdi).trim();
+        if (mapped.partita_iva) mapped.partita_iva = String(mapped.partita_iva).trim();
+        if (mapped.codice_gestionale)
+          mapped.codice_gestionale = String(mapped.codice_gestionale).trim();
         // Auto-completamento label da codice
         if (mapped.codice_macrocategoria && !mapped.macrocategoria) {
           const found = MACROCATEGORIE.find((m) => m.codice === mapped.codice_macrocategoria);
@@ -462,6 +483,10 @@ function AnagraficaImportCard() {
         if (mapped.codice_categoria && !mapped.categoria) {
           const found = CATEGORIE.find((c) => c.codice === mapped.codice_categoria);
           if (found) mapped.categoria = found.label;
+        }
+        if (mapped.condizione_pagamento_cod && !mapped.condizione_pagamento_desc) {
+          const found = CODICI_PAGAMENTO.find((c) => c.cod === mapped.condizione_pagamento_cod);
+          if (found) mapped.condizione_pagamento_desc = found.desc;
         }
         const res = anagraficaSchema.safeParse(mapped);
         return {
@@ -588,26 +613,26 @@ function AnagraficaImportCard() {
   function downloadTemplate() {
     const ws = XLSX.utils.json_to_sheet([
       {
-        codice_gestionale: "13908",
-        ragione_sociale: "Esempio S.r.l.",
-        store_codice: "",
-        indirizzo: "Via Roma 1",
-        cap: "20100",
-        citta: "Milano",
+        codice_gestionale: "260",
+        ragione_sociale: "ESEMPIO S.R.L.",
+        store_codice: "1",
+        indirizzo: "VIA ESEMPIO N.1",
+        cap: "20010",
+        citta: "CASOREZZO",
         provincia: "MI",
-        partita_iva: "12345678901",
-        forma_giuridica: "S.r.l.",
-        codice_fiscale: "12345678901",
-        telefono: "+39 02 1234567",
+        partita_iva: "01234567890",
+        forma_giuridica: "azienda",
+        codice_fiscale: "01234567890",
+        telefono: "02/1234567",
         telefono_2: "",
-        cellulare: "",
+        cellulare: "335/1234567",
         email: "info@esempio.it",
         pec: "esempio@pec.it",
         codice_macrocategoria: "01",
         macrocategoria: "IMPRESE EDILI",
         codice_categoria: "01",
         categoria: "IMPRESE Categoria A",
-        codice_sdi: "0000000",
+        codice_sdi: "XXXXXXX",
       },
     ]);
     const wb = XLSX.utils.book_new();
