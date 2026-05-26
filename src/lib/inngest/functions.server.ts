@@ -256,6 +256,7 @@ export const processAnagraficaImport = inngest.createFunction(
         addIfPresent(payload, "provincia", toStr(r.provincia));
         addIfPresent(payload, "telefono", toStr(r.telefono));
         addIfPresent(payload, "telefono_2", toStr(r.telefono_2));
+        addIfPresent(payload, "cellulare", toStr((r as Record<string, unknown>).cellulare));
         addIfPresent(payload, "email", toStr(r.email));
         addIfPresent(payload, "pec", toStr(r.pec));
         addIfPresent(payload, "codice_sdi", toStr(r.codice_sdi));
