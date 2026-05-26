@@ -90,6 +90,12 @@ function ScadenziarioPage() {
   const [escludiLegale, setEscludiLegale] = useState(true);
   const [expandedClienteId, setExpandedClienteId] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (statoLegale === "in_legale") {
+      setEscludiLegale(false);
+    }
+  }, [statoLegale]);
+
   const { data: rischioExpanded, isLoading: loadingRischio } = useQuery({
     queryKey: ["rischio-expanded", expandedClienteId],
     enabled: !!expandedClienteId,
