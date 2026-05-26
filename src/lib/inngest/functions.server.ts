@@ -1775,7 +1775,7 @@ export const processBloccoFidoImport = inngest.createFunction(
                   const { error, count } = await supabaseAdmin
                     .from("clienti")
                     .update(payload as never, { count: "exact" })
-                    .eq("codice_gestionale", codiceGestionale);
+                    .eq("id", clienteId);
                   if (error) cErr.push({ riga: r.riga, errore: error.message });
                   else {
                     const affected = count ?? 0;
