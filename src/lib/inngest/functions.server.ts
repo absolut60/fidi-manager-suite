@@ -1596,7 +1596,7 @@ export const processBloccoFidoImport = inngest.createFunction(
 
       // STEP 3: pre-fetch polizze POUEY esistenti
       const allClienteIds = Array.from(
-        new Set(parsed.map((r) => clientMap[r.codice_gestionale]?.id).filter(Boolean) as string[]),
+        new Set(parsed.map((r) => clientMap[normalizeBfaCodice(r.codice_gestionale)]?.id).filter(Boolean) as string[]),
       );
       const poueyMap = await step.run("lookup-polizze", async () => {
         const map: Record<string, string> = {};
