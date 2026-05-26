@@ -237,11 +237,18 @@ function StoreDialog({ editing, onClose }: { editing: StoreRow | null; onClose: 
 
 type ConfigRow = { chiave: string; valore: string; descrizione: string | null };
 
-const CONFIG_FIELDS: { chiave: string; label: string; suffix?: string; hint?: string }[] = [
+const CONFIG_FIELDS: { chiave: string; label: string; suffix?: string; hint?: string; type?: string }[] = [
   { chiave: "soglia_livello_1", label: "Soglia Livello 1", suffix: "€", hint: "Importo massimo gestito dal liv. 1" },
   { chiave: "soglia_livello_2", label: "Soglia Livello 2", suffix: "€", hint: "Importo massimo gestito dal liv. 2 (oltre serve liv. 3)" },
   { chiave: "durata_default_mesi", label: "Durata di default", suffix: "mesi", hint: "Durata del fido proposta nelle nuove richieste" },
   { chiave: "reminder_giorni_scadenza", label: "Reminder scadenza", suffix: "giorni", hint: "Giorni di anticipo per segnalare i fidi in scadenza" },
+  {
+    chiave: "cutoff_cliente_attivo_anno",
+    label: "Anno attività cliente",
+    suffix: "",
+    hint: "Un cliente è considerato 'attivo' se ha fatture con data ≥ 01/01/[anno]. Aggiorna ogni anno (es. 2026).",
+    type: "year",
+  },
 ];
 
 function ConfigurazioniCard() {
