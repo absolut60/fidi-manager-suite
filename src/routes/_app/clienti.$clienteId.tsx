@@ -31,6 +31,7 @@ import { classificaScadenza } from "@/lib/scadenze";
 import { Ban, Calendar, Clock, Bell, CheckCircle2, Shield, ShieldOff, Scale, FileText, Activity } from "lucide-react";
 import { NuovoContattoWizard } from "@/components/nuovo-contatto-wizard";
 import { RuoloSelect } from "@/components/ruolo-select";
+import { CondizionePagamentoSelect } from "@/components/condizione-pagamento-select";
 
 
 
