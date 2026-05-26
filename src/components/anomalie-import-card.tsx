@@ -38,7 +38,8 @@ type Anomalia = {
   clienti?: { ragione_sociale: string | null; store_id: string | null } | null;
 };
 
-const TIPO_LABEL: Record<Anomalia["tipo_anomalia"], { label: string; cls: string }> = {
+type TipoLabel = { label: string; cls: string };
+const TIPO_LABEL: Partial<Record<Anomalia["tipo_anomalia"], TipoLabel>> = {
   perde_assicurazione: {
     label: "Perde assicurazione",
     cls: "bg-orange-500/15 text-orange-700 border-orange-500/30",
@@ -46,10 +47,6 @@ const TIPO_LABEL: Record<Anomalia["tipo_anomalia"], { label: string; cls: string
   perde_gestione_legale: {
     label: "Perde gestione legale",
     cls: "bg-red-500/15 text-red-700 border-red-500/30",
-  },
-  cambio_blocco: {
-    label: "Cambio blocco",
-    cls: "bg-yellow-500/15 text-yellow-700 border-yellow-500/30",
   },
 };
 
