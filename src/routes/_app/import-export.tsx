@@ -314,18 +314,36 @@ function ImportExportPage() {
  * A — ANAGRAFICA
  * ============================================================================ */
 
-const optStr = (max: number, msg?: string) =>
+const optStr = (max: number, _msg?: string) =>
   z.preprocess((v) => {
     if (v == null) return undefined;
     const s = String(v).trim();
-    return s === "" ? undefined : s;
-  }, z.string().max(max, msg).optional());
+    if (s === "") return undefined;
+    return s.length > max ? s.slice(0, max) : s;
+  }, z.string().optional());
 
-const optEmail = z.preprocess((v) => {
+function extractFirstValidEmail(v: unknown): string | undefined {
   if (v == null) return undefined;
   const s = String(v).trim();
-  return s === "" ? undefined : s;
-}, z.string().email("Email non valida").max(255).optional());
+  if (!s) return undefined;
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s) && s.length <= 255) return s;
+  const parts = s.split(/[;\s]+/);
+  for (const part of parts) {
+    const p = part.trim();
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p) && p.length <= 255) return p;
+  }
+  return undefined;
+}
+
+const optEmail = z.preprocess((v) => extractFirstValidEmail(v), z.string().optional());
+
+const optPec = z.preprocess((v) => {
+  if (v == null) return undefined;
+  const s = String(v).trim();
+  if (!s) return undefined;
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s) && s.length <= 255) return s;
+  return undefined;
+}, z.string().optional());
 
 const anagraficaSchema = z.object({
   ragione_sociale: z.string().trim().min(1, "Ragione sociale obbligatoria").max(200),
@@ -341,7 +359,7 @@ const anagraficaSchema = z.object({
   telefono_2: optStr(30),
   cellulare: optStr(30),
   email: optEmail,
-  pec: optStr(255),
+  pec: optPec,
   codice_sdi: optStr(20),
   codice_macrocategoria: optStr(10),
   macrocategoria: optStr(100),
