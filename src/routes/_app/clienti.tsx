@@ -2410,6 +2410,36 @@ function StepImpresa({
           </SelectContent>
         </Select>
       </div>
+
+      <h3 className="font-semibold text-sm pt-2">Classificazione</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <CategoriaSelect
+          type="macrocategoria"
+          codice={form.codice_macrocategoria ?? ""}
+          label_value={form.macrocategoria ?? ""}
+          onChange={(cod, lbl) => {
+            set("codice_macrocategoria", cod);
+            set("macrocategoria", lbl);
+          }}
+        />
+        <CategoriaSelect
+          type="categoria"
+          codice={form.codice_categoria ?? ""}
+          label_value={form.categoria ?? ""}
+          onChange={(cod, lbl) => {
+            set("codice_categoria", cod);
+            set("categoria", lbl);
+          }}
+        />
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label>Forma giuridica</Label>
+          <Input
+            value={form.forma_giuridica}
+            onChange={(e) => set("forma_giuridica", e.target.value)}
+            placeholder="Es. S.r.l., S.p.A., Ditta individuale..."
+          />
+        </div>
+      </div>
     </>
   );
 }
