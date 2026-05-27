@@ -108,7 +108,7 @@ function ApprovazioniPage() {
           .select(`*, clienti(${CLIENTE_COLS}), stores(nome, codice)`)
           .eq("stato", "in_approvazione")
           .order("data_invio", { ascending: true });
-        if (!isAdmin) q2 = q2.eq("livello_corrente", livello);
+        if (soloMioLivello) q2 = q2.eq("livello_corrente", livello);
         const { data: d2, error: e2 } = await q2;
         if (e2) throw e2;
         return d2;
