@@ -58,7 +58,7 @@ export function ClienteStoricoFidoTab({ clienteId }: { clienteId: string }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clienti")
-        .select("fido_gestionale, ind_blocco, assicurazione_attiva, ultima_data_fatturazione, cliente_attivo")
+        .select("fido_gestionale, ind_blocco, assicurazione_attiva, ultima_data_fatturazione, cliente_attivo, totale_rischio, scaduto, fido_residuo")
         .eq("id", clienteId)
         .maybeSingle();
       if (error) throw error;
@@ -209,6 +209,7 @@ export function ClienteStoricoFidoTab({ clienteId }: { clienteId: string }) {
       <Dialog open={openNew} onOpenChange={setOpenNew}>
         <RichiestaDialog
           clienteId={clienteId}
+          clienteData={cliente}
           onClose={() => setOpenNew(false)}
           onSaved={invalidate}
         />
@@ -218,6 +219,7 @@ export function ClienteStoricoFidoTab({ clienteId }: { clienteId: string }) {
         {editing && (
           <RichiestaDialog
             clienteId={clienteId}
+            clienteData={cliente}
             richiesta={editing}
             onClose={() => setEditing(null)}
             onSaved={invalidate}
@@ -229,21 +231,45 @@ export function ClienteStoricoFidoTab({ clienteId }: { clienteId: string }) {
 }
 
 function RichiestaDialog({
-  clienteId, richiesta, onClose, onSaved,
+  clienteId, richiesta, onClose, onSaved, clienteData,
 }: {
   clienteId: string;
   richiesta?: any;
   onClose: () => void;
   onSaved: () => void;
+  clienteData?: any;
 }) {
+  const fidoAttuale = Number(clienteData?.fido_gestionale ?? 0);
+  const totaleRischio = Number(clienteData?.totale_rischio ?? 0);
+  const scaduto = Number(clienteData?.scaduto ?? 0);
+  const fidoResiduo = clienteData?.fido_residuo != null
+    ? Number(clienteData.fido_residuo) : null;
+
+  const fidoProposto = totaleRischio > 0
+    ? Math.ceil(totaleRischio / 500) * 500
+    : fidoAttuale > 0 ? fidoAttuale : 0;
+
+  function determinaTipo(attuale: number, proposto: number): RichiestaForm["tipo"] {
+    if (!attuale || attuale === 0) return "nuovo_fido";
+    if (proposto > attuale) return "aumento";
+    if (proposto < attuale) return "diminuzione";
+    return "rinnovo";
+  }
+
   const isEdit = !!richiesta;
   const [form, setForm] = useState<RichiestaForm>({
-    tipo: (richiesta?.tipo === "nuovo" ? "nuovo_fido" : richiesta?.tipo) ?? "nuovo_fido",
-    importo_richiesto: richiesta?.importo_richiesto ?? 0,
+    tipo: (richiesta?.tipo === "nuovo" ? "nuovo_fido" : richiesta?.tipo)
+      ?? determinaTipo(fidoAttuale, fidoProposto),
+    importo_richiesto: richiesta?.importo_richiesto ?? fidoProposto,
     durata_mesi: richiesta?.durata_mesi ?? 12,
     motivazione: richiesta?.motivazione ?? "",
     note: richiesta?.note ?? "",
   });
+
+  function handleImportoChange(v: number) {
+    const tipoAuto = determinaTipo(fidoAttuale, v);
+    setForm(f => ({ ...f, importo_richiesto: v, tipo: tipoAuto }));
+  }
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const save = useMutation({
@@ -306,6 +332,43 @@ function RichiestaDialog({
         <DialogDescription>Compila i dati della richiesta.</DialogDescription>
       </DialogHeader>
       <div className="space-y-4">
+        {clienteData && (
+          <div className="rounded-md border bg-muted/30 p-3 space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Situazione attuale
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+              <div>
+                <p className="text-xs text-muted-foreground">Fido attuale</p>
+                <p className="font-semibold tabular-nums">{formatEuro(fidoAttuale)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Totale rischio</p>
+                <p className={`font-semibold tabular-nums ${totaleRischio > fidoAttuale ? "text-destructive" : ""}`}>
+                  {formatEuro(totaleRischio)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Fido residuo</p>
+                <p className="font-semibold tabular-nums">
+                  {fidoResiduo != null ? formatEuro(fidoResiduo) : "—"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Scaduto</p>
+                <p className={`font-semibold tabular-nums ${scaduto > 0 ? "text-destructive" : ""}`}>
+                  {formatEuro(scaduto)}
+                </p>
+              </div>
+            </div>
+            {!isEdit && fidoProposto > 0 && (
+              <p className="text-xs text-primary pt-1 border-t">
+                💡 Importo proposto: <strong>{formatEuro(fidoProposto)}</strong>{" "}
+                (copre il totale rischio attuale)
+              </p>
+            )}
+          </div>
+        )}
         <div className="space-y-1.5">
           <Label>Tipo richiesta *</Label>
           <Select value={form.tipo} onValueChange={(v) => setForm({ ...form, tipo: v as any })}>
@@ -317,13 +380,27 @@ function RichiestaDialog({
               <SelectItem value="rinnovo">Rinnovo fido</SelectItem>
             </SelectContent>
           </Select>
+          <p className="text-xs text-muted-foreground">
+            Determinato automaticamente in base al fido attuale e all'importo richiesto.
+          </p>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label>Importo richiesto (€) *</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label>Importo richiesto (€) *</Label>
+              {!isEdit && fidoProposto > 0 && fidoProposto !== form.importo_richiesto && (
+                <button
+                  type="button"
+                  className="text-xs text-primary hover:underline"
+                  onClick={() => handleImportoChange(fidoProposto)}
+                >
+                  Usa proposta ({formatEuro(fidoProposto)})
+                </button>
+              )}
+            </div>
             <Input type="number" step="0.01" min="0"
               value={form.importo_richiesto || ""}
-              onChange={(e) => setForm({ ...form, importo_richiesto: Number(e.target.value) })} />
+              onChange={(e) => handleImportoChange(Number(e.target.value))} />
             {errors.importo_richiesto && <p className="text-xs text-destructive">{errors.importo_richiesto}</p>}
           </div>
           <div className="space-y-1.5">
