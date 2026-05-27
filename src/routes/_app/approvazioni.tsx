@@ -52,6 +52,7 @@ function ritardoHelper(dilConc: number | null | undefined, dilEff: number | null
 
 function ApprovazioniPage() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const { user, role } = useAuth();
   const isAdmin = role === "amministratore";
   const livello =
