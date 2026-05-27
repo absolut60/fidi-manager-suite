@@ -240,6 +240,7 @@ function RichiestaDialog({
   onSaved: () => void;
   clienteData?: any;
 }) {
+  const config = useConfig();
   const fidoAttuale = Number(clienteData?.fido_gestionale ?? 0);
   const totaleRischio = Number(clienteData?.totale_rischio ?? 0);
   const scaduto = Number(clienteData?.scaduto ?? 0);
