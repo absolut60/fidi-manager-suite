@@ -94,7 +94,12 @@ function ApprovazioniPage() {
         .select(`*, clienti(${CLIENTE_COLS}), stores(nome, codice), profilo:profili!richieste_fido_created_by_fkey(nome, cognome, email)`)
         .eq("stato", "in_approvazione")
         .order("data_invio", { ascending: true });
-      if (!isAdmin) q = q.eq("livello_corrente", livello);
+      // Solo gli approvatori puri vedono solo il loro livello
+      // Admin, resp_generale e amministrativo vedono tutto
+      const roleStr = role as string | null;
+      const soloMioLivello = !isAdmin && livello > 0 &&
+        roleStr !== "resp_generale" && roleStr !== "amministrativo";
+      if (soloMioLivello) q = q.eq("livello_corrente", livello);
       const { data, error } = await q;
       if (error) {
         // fallback senza relazione profilo (FK potrebbe non essere nominata così)
@@ -103,7 +108,7 @@ function ApprovazioniPage() {
           .select(`*, clienti(${CLIENTE_COLS}), stores(nome, codice)`)
           .eq("stato", "in_approvazione")
           .order("data_invio", { ascending: true });
-        if (!isAdmin) q2 = q2.eq("livello_corrente", livello);
+        if (soloMioLivello) q2 = q2.eq("livello_corrente", livello);
         const { data: d2, error: e2 } = await q2;
         if (e2) throw e2;
         return d2;
@@ -246,7 +251,9 @@ function ApprovazioniPage() {
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Approvazioni</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          {isAdmin ? "Tutte le richieste in approvazione" : `Richieste in attesa al tuo livello (${livello})`}
+          {(isAdmin || (role as string) === "resp_generale" || (role as string) === "amministrativo")
+            ? "Tutte le richieste in approvazione"
+            : `Richieste in attesa al tuo livello (${livello})`}
         </p>
       </div>
 
