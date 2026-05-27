@@ -58,7 +58,7 @@ export function ClienteStoricoFidoTab({ clienteId }: { clienteId: string }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clienti")
-        .select("fido_gestionale, ind_blocco, assicurazione_attiva, ultima_data_fatturazione, cliente_attivo")
+        .select("fido_gestionale, ind_blocco, assicurazione_attiva, ultima_data_fatturazione, cliente_attivo, totale_rischio, scaduto, fido_residuo")
         .eq("id", clienteId)
         .maybeSingle();
       if (error) throw error;
