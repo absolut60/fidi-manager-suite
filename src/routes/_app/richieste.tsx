@@ -209,6 +209,7 @@ function RichiestePage() {
             onEdit={setEditing}
             onDelete={setDeleting}
             onChanged={qcInvalidate}
+            msgCounts={msgCounts}
           />
         </TabsContent>
 
