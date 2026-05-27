@@ -610,7 +610,7 @@ function ClientiPage() {
     });
   }
 
-  const StoreSelect = (
+  const StoreSelect = isStoreManager ? null : (
     <Select value={storeFiltro} onValueChange={setStoreFiltro}>
       <SelectTrigger className="w-full"><SelectValue placeholder="Punto vendita" /></SelectTrigger>
       <SelectContent>
