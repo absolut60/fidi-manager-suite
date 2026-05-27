@@ -232,7 +232,7 @@ function RichiestePage() {
               </Button>
             </div>
           )}
-          <StoricoTab rows={approvate} loading={isLoading} kind="approvata" onRiinvia={null} />
+          <StoricoTab rows={approvate} loading={isLoading} kind="approvata" onRiinvia={null} msgCounts={msgCounts} />
         </TabsContent>
 
         <TabsContent value="rifiutate" className="mt-4">
@@ -241,12 +241,13 @@ function RichiestePage() {
             loading={isLoading}
             kind="rifiutata"
             onRiinvia={(r) => setEditing({ ...r, _riinvia: true })}
+            msgCounts={msgCounts}
           />
         </TabsContent>
 
         {isAdmin && (
           <TabsContent value="tutto" className="mt-4">
-            <TuttoTab rows={all} loading={isLoading} />
+            <TuttoTab rows={all} loading={isLoading} msgCounts={msgCounts} />
           </TabsContent>
         )}
       </Tabs>
