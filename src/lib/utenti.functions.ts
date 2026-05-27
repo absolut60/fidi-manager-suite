@@ -12,6 +12,8 @@ const RUOLI_VALIDI = [
   "approvatore_liv2",
   "approvatore_liv3",
   "amministratore",
+  "amministrazione",
+  "direzione",
 ] as const;
 
 async function assertAdmin(userId: string) {
