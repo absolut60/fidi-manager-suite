@@ -994,7 +994,9 @@ function RichiestaFormDialog({
   const variazione = fidoAttuale > 0 && form.importo_richiesto > 0
     ? ((form.importo_richiesto - fidoAttuale) / fidoAttuale) * 100
     : null;
-  const livelloPreview = form.importo_richiesto > 0 ? calcolaLivello(Number(form.importo_richiesto)) : null;
+  const config = useConfig();
+  const soglie = { liv1: config.soglia_livello_1, liv2: config.soglia_livello_2 };
+  const livelloPreview = form.importo_richiesto > 0 ? calcolaLivello(Number(form.importo_richiesto), soglie) : null;
   const filteredClienti = clienti?.filter((c) => !search || c.ragione_sociale.toLowerCase().includes(search.toLowerCase())) ?? [];
 
 
