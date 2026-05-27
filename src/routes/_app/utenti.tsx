@@ -2,11 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { UsersRound, Pencil, UserPlus } from "lucide-react";
+import { UsersRound, Pencil, UserPlus, Eye, EyeOff, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, RUOLI_LABEL } from "@/hooks/use-auth";
-import { inviteUtente, updateUtenteRuoli } from "@/lib/utenti.functions";
+import { creaUtente, updateUtenteRuoli, aggiornaPassword, inviaCredenziali } from "@/lib/utenti.functions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -231,13 +231,38 @@ function EditUtenteDialog({ utente, onClose }: { utente: UserRow; onClose: () =>
     onError: (e: Error) => toast.error(e.message),
   });
 
-  async function handleResetPassword() {
-    if (!utente.email) return;
-    const { error } = await supabase.auth.resetPasswordForEmail(utente.email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    if (error) toast.error("Errore: " + error.message);
-    else toast.success("Email di reset password inviata a " + utente.email);
+  const [nuovaPassword, setNuovaPassword] = useState("");
+  const [mostraPasswordEdit, setMostraPasswordEdit] = useState(false);
+  const fnAggiornaPwd = useServerFn(aggiornaPassword);
+  const fnInviaCred = useServerFn(inviaCredenziali);
+
+  async function handleAggiornaPwd() {
+    if (nuovaPassword.length < 8) {
+      toast.error("La password deve essere di almeno 8 caratteri");
+      return;
+    }
+    try {
+      await fnAggiornaPwd({ data: { userId: utente.id, password: nuovaPassword } });
+      toast.success("Password aggiornata");
+      setNuovaPassword("");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Errore aggiornamento password");
+    }
+  }
+
+  async function handleInviaCredenziali() {
+    if (nuovaPassword.length < 8) {
+      toast.error("Inserisci la nuova password (min 8 caratteri) da inviare");
+      return;
+    }
+    try {
+      await fnAggiornaPwd({ data: { userId: utente.id, password: nuovaPassword } });
+      await fnInviaCred({ data: { userId: utente.id, password: nuovaPassword } });
+      toast.success("Credenziali inviate a " + utente.email);
+      setNuovaPassword("");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Errore invio credenziali");
+    }
   }
 
   return (
@@ -278,10 +303,38 @@ function EditUtenteDialog({ utente, onClose }: { utente: UserRow; onClose: () =>
           Utente attivo
         </label>
         {role === "amministratore" && utente.email && (
-          <div className="pt-2 border-t">
-            <Button type="button" variant="outline" size="sm" onClick={handleResetPassword}>
-              Invia reset password
+          <div className="pt-4 border-t space-y-3">
+            <Label className="text-sm font-semibold">Gestione password</Label>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Input
+                  type={mostraPasswordEdit ? "text" : "password"}
+                  value={nuovaPassword}
+                  onChange={(e) => setNuovaPassword(e.target.value)}
+                  placeholder="Nuova password (min 8 caratteri)"
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setMostraPasswordEdit(!mostraPasswordEdit)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  tabIndex={-1}
+                >
+                  {mostraPasswordEdit ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </button>
+              </div>
+              <Button type="button" variant="outline" onClick={handleAggiornaPwd}>
+                Aggiorna
+              </Button>
+            </div>
+            <Button type="button" variant="outline" className="w-full gap-2" onClick={handleInviaCredenziali}>
+              <Mail className="size-4" />
+              Invia credenziali per email
             </Button>
+            <p className="text-xs text-muted-foreground">
+              Inserisci la nuova password, poi clicca "Aggiorna" per cambiarla
+              oppure "Invia credenziali" per aggiornarla e inviarla via email.
+            </p>
           </div>
         )}
       </div>
@@ -298,48 +351,121 @@ function EditUtenteDialog({ utente, onClose }: { utente: UserRow; onClose: () =>
 function NewUtenteDialog({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient();
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [mostraPassword, setMostraPassword] = useState(false);
   const [nome, setNome] = useState("");
   const [cognome, setCognome] = useState("");
   const [ruoli, setRuoli] = useState<AppRole[]>(["store_manager"]);
   const [storeId, setStoreId] = useState<string>("_none");
   const [attivo, setAttivo] = useState(true);
+  const [createdUserId, setCreatedUserId] = useState<string | null>(null);
+  const [inviato, setInviato] = useState(false);
+  const [inviando, setInviando] = useState(false);
   const { data: stores } = useStores();
-  const fn = useServerFn(inviteUtente);
+  const fn = useServerFn(creaUtente);
+  const fnInviaCred = useServerFn(inviaCredenziali);
 
   const richiedeStore = ruoli.includes("store_manager");
 
   const mutation = useMutation({
     mutationFn: async () => {
       if (!email.trim()) throw new Error("Email obbligatoria");
+      if (password.length < 8) throw new Error("Password minimo 8 caratteri");
       if (ruoli.length === 0) throw new Error("Seleziona almeno un ruolo");
       if (richiedeStore && storeId === "_none") throw new Error("Il ruolo Store Manager richiede un punto vendita");
-      await fn({ data: {
+      const res = await fn({ data: {
         email: email.trim(),
+        password,
         nome: nome.trim() || undefined,
         cognome: cognome.trim() || undefined,
         ruoli,
         storeId: storeId === "_none" ? null : storeId,
         attivo,
       }});
+      return res;
     },
-    onSuccess: () => {
-      toast.success("Invito inviato all'utente");
+    onSuccess: (res) => {
+      toast.success("Utente creato");
       qc.invalidateQueries({ queryKey: ["utenti"] });
-      onClose();
+      setCreatedUserId(res.userId);
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  async function handleInviaCredenziali() {
+    if (!createdUserId) return;
+    setInviando(true);
+    try {
+      await fnInviaCred({ data: { userId: createdUserId, password } });
+      toast.success("Credenziali inviate a " + email);
+      setInviato(true);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Errore invio credenziali");
+    } finally {
+      setInviando(false);
+    }
+  }
+
+  if (createdUserId) {
+    return (
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Utente creato</DialogTitle>
+          <DialogDescription>
+            L'utente <strong>{email}</strong> è stato creato con successo.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3 py-2">
+          <p className="text-sm text-muted-foreground">
+            Vuoi inviare via email le credenziali di accesso all'utente?
+          </p>
+          {inviato && (
+            <p className="text-sm text-primary font-medium">✓ Credenziali inviate</p>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Chiudi</Button>
+          {!inviato && (
+            <Button onClick={handleInviaCredenziali} disabled={inviando} className="gap-2">
+              <Mail className="size-4" />
+              {inviando ? "Invio..." : "Invia credenziali per email"}
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    );
+  }
 
   return (
     <DialogContent className="max-h-[90vh] overflow-y-auto">
       <DialogHeader>
         <DialogTitle>Nuovo utente</DialogTitle>
-        <DialogDescription>L'utente riceverà un'email per impostare la password.</DialogDescription>
+        <DialogDescription>Imposta email e password. Potrai inviare le credenziali via email subito dopo.</DialogDescription>
       </DialogHeader>
       <div className="space-y-4">
         <div className="space-y-1.5">
           <Label>Email <span className="text-destructive">*</span></Label>
           <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="utente@esempio.it" />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Password <span className="text-destructive">*</span></Label>
+          <div className="relative">
+            <Input
+              type={mostraPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Minimo 8 caratteri"
+              className="pr-10"
+            />
+            <button
+              type="button"
+              onClick={() => setMostraPassword(!mostraPassword)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              tabIndex={-1}
+            >
+              {mostraPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+            </button>
+          </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">

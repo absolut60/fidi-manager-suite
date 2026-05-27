@@ -27,11 +27,12 @@ async function assertAdmin(userId: string) {
   if (!data) throw new Error("Accesso riservato agli amministratori");
 }
 
-/** Invita un nuovo utente via email e imposta profilo + ruoli. */
-export const inviteUtente = createServerFn({ method: "POST" })
+/** Crea un nuovo utente con password e imposta profilo + ruoli. */
+export const creaUtente = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: {
     email: string;
+    password: string;
     nome?: string;
     cognome?: string;
     ruoli: string[];
@@ -40,9 +41,10 @@ export const inviteUtente = createServerFn({ method: "POST" })
   }) =>
     z.object({
       email: z.string().email().max(255),
+      password: z.string().min(8, "Password minimo 8 caratteri").max(100),
       nome: z.string().max(100).optional(),
       cognome: z.string().max(100).optional(),
-      ruoli: z.array(z.enum(RUOLI_VALIDI)).min(1).max(5),
+      ruoli: z.array(z.enum(RUOLI_VALIDI)).min(1).max(7),
       storeId: z.string().uuid().nullable().optional(),
       attivo: z.boolean().optional().default(true),
     }).parse(d)
@@ -54,19 +56,19 @@ export const inviteUtente = createServerFn({ method: "POST" })
       throw new Error("Il ruolo Store Manager richiede un punto vendita");
     }
 
-    // Invita utente — il trigger handle_new_user crea profilo + ruolo default
-    const { data: invited, error: eInv } = await supabaseAdmin.auth.admin.inviteUserByEmail(
-      data.email,
-      {
-        data: {
-          nome: data.nome ?? "",
-          cognome: data.cognome ?? "",
-        },
-      }
-    );
-    if (eInv) throw new Error(eInv.message);
-    const userId = invited.user?.id;
-    if (!userId) throw new Error("Invito fallito: nessun utente creato");
+    // Crea utente con password — nessuna conferma email richiesta
+    const { data: created, error: eCreate } = await supabaseAdmin.auth.admin.createUser({
+      email: data.email,
+      password: data.password,
+      email_confirm: true,
+      user_metadata: {
+        nome: data.nome ?? "",
+        cognome: data.cognome ?? "",
+      },
+    });
+    if (eCreate) throw new Error(eCreate.message);
+    const userId = created.user?.id;
+    if (!userId) throw new Error("Creazione fallita: nessun utente creato");
 
     // Aggiorna profilo
     const { error: eProf } = await supabaseAdmin
@@ -89,6 +91,86 @@ export const inviteUtente = createServerFn({ method: "POST" })
     if (eIns) throw new Error(eIns.message);
 
     return { ok: true, userId };
+  });
+
+/** Aggiorna la password di un utente esistente. Solo admin. */
+export const aggiornaPassword = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { userId: string; password: string }) =>
+    z.object({
+      userId: z.string().uuid(),
+      password: z.string().min(8, "Password minimo 8 caratteri").max(100),
+    }).parse(d)
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(data.userId, {
+      password: data.password,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/** Invia all'utente un'email con le sue credenziali di accesso. */
+export const inviaCredenziali = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { userId: string; password: string }) =>
+    z.object({
+      userId: z.string().uuid(),
+      password: z.string().min(1).max(200),
+    }).parse(d)
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+
+    const { data: userData, error: eUser } = await supabaseAdmin.auth.admin.getUserById(data.userId);
+    if (eUser) throw new Error(eUser.message);
+    const email = userData.user?.email;
+    if (!email) throw new Error("Email utente non trovata");
+
+    const { data: profilo } = await supabaseAdmin
+      .from("profili")
+      .select("nome, cognome")
+      .eq("id", data.userId)
+      .maybeSingle();
+
+    const nome = [profilo?.nome, profilo?.cognome].filter(Boolean).join(" ") || email;
+    const appUrl = process.env.VITE_APP_URL ?? "https://fidi-manager-suite.lovable.app";
+
+    const html = `<!doctype html>
+<html><body style="margin:0;padding:0;background:#f4f5f7;font-family:Arial,sans-serif;color:#1a1a2e;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f5f7;padding:24px 0;">
+    <tr><td align="center">
+      <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width:600px;background:#ffffff;border-radius:8px;overflow:hidden;">
+        <tr><td style="background:#0f1b3d;padding:24px;text-align:center;color:#ffffff;font-weight:700;font-size:18px;">MADE — FidiManager</td></tr>
+        <tr><td style="padding:32px 28px;">
+          <h1 style="margin:0 0 16px;font-size:20px;color:#0f1b3d;">Benvenuto in FidiManager</h1>
+          <p style="margin:0 0 16px;font-size:14px;line-height:1.5;">Gentile ${nome},<br/>di seguito le tue credenziali di accesso:</p>
+          <table role="presentation" cellspacing="0" cellpadding="8" style="width:100%;border:1px solid #e5e7eb;border-radius:6px;font-size:14px;margin:16px 0;">
+            <tr><td style="font-weight:600;width:120px;background:#f9fafb;">Email</td><td>${email}</td></tr>
+            <tr><td style="font-weight:600;background:#f9fafb;">Password</td><td style="font-family:monospace;">${data.password}</td></tr>
+          </table>
+          <p style="margin:0 0 24px;font-size:13px;color:#6b7280;">Ti consigliamo di cambiare la password al primo accesso.</p>
+          <p style="text-align:center;margin:24px 0;">
+            <a href="${appUrl}" style="display:inline-block;background:#0f1b3d;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-weight:600;">Accedi a FidiManager →</a>
+          </p>
+        </td></tr>
+        <tr><td style="padding:16px 28px;background:#f9fafb;font-size:12px;color:#6b7280;text-align:center;">Email generata automaticamente da FidiManager — Gruppo MADE.</td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+
+    const { error: eSend } = await supabaseAdmin.functions.invoke("send-email", {
+      body: {
+        to: email,
+        subject: "Le tue credenziali di accesso — FidiManager MADE",
+        html,
+      },
+    });
+    if (eSend) throw new Error(eSend.message);
+
+    return { ok: true };
   });
 
 /** Aggiorna profilo + ruoli multipli di un utente esistente. */
