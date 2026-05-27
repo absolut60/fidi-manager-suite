@@ -673,6 +673,44 @@ export type Database = {
         }
         Relationships: []
       }
+      comunicazioni_richiesta: {
+        Row: {
+          autore_id: string
+          created_at: string
+          destinatario: string
+          id: string
+          letto: boolean
+          richiesta_id: string
+          testo: string
+        }
+        Insert: {
+          autore_id: string
+          created_at?: string
+          destinatario: string
+          id?: string
+          letto?: boolean
+          richiesta_id: string
+          testo: string
+        }
+        Update: {
+          autore_id?: string
+          created_at?: string
+          destinatario?: string
+          id?: string
+          letto?: boolean
+          richiesta_id?: string
+          testo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comunicazioni_richiesta_richiesta_id_fkey"
+            columns: ["richiesta_id"]
+            isOneToOne: false
+            referencedRelation: "richieste_fido"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       configurazioni: {
         Row: {
           chiave: string
