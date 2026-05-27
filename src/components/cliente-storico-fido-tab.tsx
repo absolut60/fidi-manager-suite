@@ -209,6 +209,7 @@ export function ClienteStoricoFidoTab({ clienteId }: { clienteId: string }) {
       <Dialog open={openNew} onOpenChange={setOpenNew}>
         <RichiestaDialog
           clienteId={clienteId}
+          clienteData={cliente}
           onClose={() => setOpenNew(false)}
           onSaved={invalidate}
         />
@@ -218,6 +219,7 @@ export function ClienteStoricoFidoTab({ clienteId }: { clienteId: string }) {
         {editing && (
           <RichiestaDialog
             clienteId={clienteId}
+            clienteData={cliente}
             richiesta={editing}
             onClose={() => setEditing(null)}
             onSaved={invalidate}
