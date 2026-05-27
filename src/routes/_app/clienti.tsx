@@ -29,6 +29,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SignaturePad, getCanvasDataURL } from "@/components/signature-pad";
 import { generaSchedaCliente } from "@/lib/scheda-pdf";
 import { useAuth } from "@/hooks/use-auth";
+import { useConfig, isClienteAttivo } from "@/hooks/use-config";
 import { CondizionePagamentoSelect } from "@/components/condizione-pagamento-select";
 import { CategoriaSelect } from "@/components/categoria-select";
 
@@ -138,6 +139,7 @@ function ClientiPage() {
   const [statoAttivita, setStatoAttivita] = useState<"tutti" | "attivi" | "non_attivi">("attivi");
   const { role: _roleEarly, profilo: _profiloEarly } = useAuth();
   const isStoreManager = _roleEarly === "store_manager";
+  const config = useConfig();
   const myStoreId = _profiloEarly?.store_id ?? null;
   const [storeFiltro, setStoreFiltro] = useState<string>(
     isStoreManager && myStoreId ? myStoreId : "tutti"
@@ -1035,7 +1037,7 @@ function ClientiPage() {
                   return (
                    <TableRow
                      key={c.id}
-                     className={`cursor-pointer hover:bg-muted/50 ${c.cliente_attivo === false ? "bg-muted/40 text-muted-foreground" : ""} ${isBlocked ? "bg-[#FEF2F2] dark:bg-destructive/10 border-l-[3px] border-l-[#EF4444] hover:bg-[#FEE2E2] dark:hover:bg-destructive/15" : ""}`}
+                     className={`cursor-pointer hover:bg-muted/50 ${!isClienteAttivo((c as any).ultima_data_fatturazione, config) ? "bg-muted/40 text-muted-foreground" : ""} ${isBlocked ? "bg-[#FEF2F2] dark:bg-destructive/10 border-l-[3px] border-l-[#EF4444] hover:bg-[#FEE2E2] dark:hover:bg-destructive/15" : ""}`}
                      onClick={() => navigate({ to: "/clienti/$clienteId", params: { clienteId: c.id } })}
                    >
                     <TableCell onClick={(e) => e.stopPropagation()}>
@@ -1116,8 +1118,8 @@ function ClientiPage() {
 
                      <TableCell>
                        <div className="flex flex-col gap-1 items-start">
-                         <Badge variant={c.cliente_attivo === false ? "secondary" : "default"}>
-                           {c.cliente_attivo === false ? "Non attivo" : "Attivo"}
+                         <Badge variant={!isClienteAttivo((c as any).ultima_data_fatturazione, config) ? "secondary" : "default"}>
+                           {!isClienteAttivo((c as any).ultima_data_fatturazione, config) ? "Non attivo" : "Attivo"}
                          </Badge>
                          {c.ind_blocco === 1 && (
                            <Badge className="bg-yellow-500/15 text-yellow-700 dark:text-yellow-500 hover:bg-yellow-500/20" title="Blocco con possibilità di sblocco">

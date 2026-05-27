@@ -10,6 +10,7 @@ import { useRef } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useConfig, isClienteAttivo } from "@/hooks/use-config";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -556,6 +557,8 @@ function ClienteDetail() {
 }
 
 function DatiRischioCard({ cliente }: { cliente: any }) {
+  const config = useConfig();
+  const clienteAttivo = isClienteAttivo((cliente as any).ultima_data_fatturazione, config);
   const fidoGest = Number(cliente.fido_gestionale ?? 0);
   const totRischio = Number(cliente.totale_rischio ?? 0);
   const fidoResiduo = cliente.fido_residuo == null ? null : Number(cliente.fido_residuo);
@@ -626,7 +629,7 @@ function DatiRischioCard({ cliente }: { cliente: any }) {
             {(cliente as any).ultima_data_fatturazione
               ? new Date((cliente as any).ultima_data_fatturazione).toLocaleDateString("it-IT")
               : <span className="text-muted-foreground">—</span>}
-            {(cliente as any).cliente_attivo !== false ? (
+            {clienteAttivo ? (
               <span className="text-xs rounded px-1.5 py-0.5 bg-success/15 text-success border border-success/30">Attivo</span>
             ) : (
               <span className="text-xs rounded px-1.5 py-0.5 bg-muted text-muted-foreground border">Non attivo</span>
@@ -670,10 +673,11 @@ function fmtDateIt(v: unknown): string {
 }
 
 function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string }) {
+  const config = useConfig();
   const bloccato = !!cliente.bloccato;
   const indBlocco = Number(cliente.ind_blocco ?? 0);
   const ultimaFatt = cliente.ultima_data_fatturazione;
-  const clienteAttivo = cliente.cliente_attivo !== false;
+  const clienteAttivo = isClienteAttivo(cliente.ultima_data_fatturazione, config);
   const assicurato = !!cliente.assicurazione_attiva;
 
   const { data: polizzaAttiva } = useQuery({
