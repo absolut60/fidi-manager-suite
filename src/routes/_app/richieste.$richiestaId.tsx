@@ -210,6 +210,10 @@ function RichiestaDetail() {
           </div>
         </Card>
       )}
+
+      {r.stato !== "bozza" && (
+        <ComunicazioniRichiestaPanel richiestaId={r.id} richiestaCreatedBy={r.created_by} />
+      )}
     </div>
   );
 }
