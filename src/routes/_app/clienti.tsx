@@ -29,6 +29,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SignaturePad, getCanvasDataURL } from "@/components/signature-pad";
 import { generaSchedaCliente } from "@/lib/scheda-pdf";
 import { useAuth } from "@/hooks/use-auth";
+import { useConfig, isClienteAttivo } from "@/hooks/use-config";
 import { CondizionePagamentoSelect } from "@/components/condizione-pagamento-select";
 import { CategoriaSelect } from "@/components/categoria-select";
 
