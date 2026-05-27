@@ -41,3 +41,15 @@ export function useConfig(): AppConfig {
   });
   return cfg;
 }
+
+// Calcola se un cliente è attivo in base all'ultima data fatturazione
+// e al cutoff configurato — usa questo invece del campo cliente_attivo dal DB
+export function isClienteAttivo(
+  ultimaDataFatturazione: string | null | undefined,
+  config: AppConfig
+): boolean {
+  if (!ultimaDataFatturazione) return false;
+  const cutoffDate = new Date(`${config.cutoff_cliente_attivo_anno}-01-01`);
+  const dataFatt = new Date(ultimaDataFatturazione);
+  return dataFatt >= cutoffDate;
+}
