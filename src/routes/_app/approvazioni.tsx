@@ -94,7 +94,11 @@ function ApprovazioniPage() {
         .select(`*, clienti(${CLIENTE_COLS}), stores(nome, codice), profilo:profili!richieste_fido_created_by_fkey(nome, cognome, email)`)
         .eq("stato", "in_approvazione")
         .order("data_invio", { ascending: true });
-      if (!isAdmin) q = q.eq("livello_corrente", livello);
+      // Solo gli approvatori puri vedono solo il loro livello
+      // Admin, resp_generale e amministrativo vedono tutto
+      const soloMioLivello = !isAdmin && livello > 0 &&
+        role !== "resp_generale" && role !== "amministrativo";
+      if (soloMioLivello) q = q.eq("livello_corrente", livello);
       const { data, error } = await q;
       if (error) {
         // fallback senza relazione profilo (FK potrebbe non essere nominata così)
