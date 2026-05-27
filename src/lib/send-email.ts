@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { LOGO_MADE_BASE64 } from "@/lib/logo-made-base64";
 
 export interface SendEmailOptions {
   to: string | string[];
@@ -55,7 +56,7 @@ export function buildEmailTemplate(options: {
           <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;max-width:600px;width:100%;">
             <tr>
               <td style="background:#0f1e3d;padding:20px 24px;color:#ffffff;">
-                <div style="font-size:20px;font-weight:700;letter-spacing:1px;">MADE</div>
+                <img src="data:image/png;base64,${LOGO_MADE_BASE64}" alt="MADE" width="140" style="display:block;height:auto;filter:brightness(0) invert(1);margin-bottom:6px;" />
                 <div style="font-size:12px;opacity:.8;">FidiManager · Gruppo MADE</div>
               </td>
             </tr>
