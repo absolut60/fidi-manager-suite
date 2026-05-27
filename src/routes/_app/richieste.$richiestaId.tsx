@@ -51,6 +51,20 @@ function RichiestaDetail() {
     },
   });
 
+  useEffect(() => {
+    if (!richiestaId || !user?.id) return;
+    supabase
+      .from("comunicazioni_richiesta")
+      .update({ letto: true })
+      .eq("richiesta_id", richiestaId)
+      .neq("autore_id", user.id)
+      .eq("letto", false)
+      .then(() => {
+        qc.invalidateQueries({ queryKey: ["msg-non-letti-richieste"] });
+        qc.invalidateQueries({ queryKey: ["comunicazioni-non-lette"] });
+      });
+  }, [richiestaId, user?.id, qc]);
+
   const isAdmin = role === "amministratore";
   const livelloUtente =
     role === "approvatore_liv3" ? 3 :
