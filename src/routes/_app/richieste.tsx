@@ -356,9 +356,26 @@ function BozzeTab({
         </TableHeader>
         <TableBody>
           {rows.map((r) => (
-            <TableRow key={r.id}>
-              <TableCell><Checkbox checked={selected.has(r.id)} onCheckedChange={() => toggle(r.id)} /></TableCell>
-              <TableCell className="font-medium">{r.clienti?.ragione_sociale ?? "—"}</TableCell>
+            <TableRow
+              key={r.id}
+              className="cursor-pointer hover:bg-muted/40"
+              onClick={(e) => {
+                if ((e.target as HTMLElement).closest("button") || (e.target as HTMLElement).closest('[role="checkbox"]')) return;
+                navigate({ to: "/richieste/$richiestaId", params: { richiestaId: r.id } });
+              }}
+            >
+              <TableCell onClick={(e) => e.stopPropagation()}><Checkbox checked={selected.has(r.id)} onCheckedChange={() => toggle(r.id)} /></TableCell>
+              <TableCell className="font-medium">
+                <div className="inline-flex items-center gap-2">
+                  {r.clienti?.ragione_sociale ?? "—"}
+                  {(msgCounts?.[r.id] ?? 0) > 0 && (
+                    <span className="inline-flex items-center gap-1 rounded-md bg-info/15 text-info px-2 py-0.5 text-xs font-medium">
+                      <MessageSquare className="size-3" />
+                      {msgCounts![r.id]}
+                    </span>
+                  )}
+                </div>
+              </TableCell>
               <TableCell>
                 <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>
                   {TIPO_LABEL[r.tipo as TipoRichiesta]}
