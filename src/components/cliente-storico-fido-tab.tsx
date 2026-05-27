@@ -332,6 +332,43 @@ function RichiestaDialog({
         <DialogDescription>Compila i dati della richiesta.</DialogDescription>
       </DialogHeader>
       <div className="space-y-4">
+        {clienteData && (
+          <div className="rounded-md border bg-muted/30 p-3 space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Situazione attuale
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+              <div>
+                <p className="text-xs text-muted-foreground">Fido attuale</p>
+                <p className="font-semibold tabular-nums">{formatEuro(fidoAttuale)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Totale rischio</p>
+                <p className={`font-semibold tabular-nums ${totaleRischio > fidoAttuale ? "text-destructive" : ""}`}>
+                  {formatEuro(totaleRischio)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Fido residuo</p>
+                <p className="font-semibold tabular-nums">
+                  {fidoResiduo != null ? formatEuro(fidoResiduo) : "—"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Scaduto</p>
+                <p className={`font-semibold tabular-nums ${scaduto > 0 ? "text-destructive" : ""}`}>
+                  {formatEuro(scaduto)}
+                </p>
+              </div>
+            </div>
+            {!isEdit && fidoProposto > 0 && (
+              <p className="text-xs text-primary pt-1 border-t">
+                💡 Importo proposto: <strong>{formatEuro(fidoProposto)}</strong>{" "}
+                (copre il totale rischio attuale)
+              </p>
+            )}
+          </div>
+        )}
         <div className="space-y-1.5">
           <Label>Tipo richiesta *</Label>
           <Select value={form.tipo} onValueChange={(v) => setForm({ ...form, tipo: v as any })}>
@@ -343,13 +380,27 @@ function RichiestaDialog({
               <SelectItem value="rinnovo">Rinnovo fido</SelectItem>
             </SelectContent>
           </Select>
+          <p className="text-xs text-muted-foreground">
+            Determinato automaticamente in base al fido attuale e all'importo richiesto.
+          </p>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label>Importo richiesto (€) *</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label>Importo richiesto (€) *</Label>
+              {!isEdit && fidoProposto > 0 && fidoProposto !== form.importo_richiesto && (
+                <button
+                  type="button"
+                  className="text-xs text-primary hover:underline"
+                  onClick={() => handleImportoChange(fidoProposto)}
+                >
+                  Usa proposta ({formatEuro(fidoProposto)})
+                </button>
+              )}
+            </div>
             <Input type="number" step="0.01" min="0"
               value={form.importo_richiesto || ""}
-              onChange={(e) => setForm({ ...form, importo_richiesto: Number(e.target.value) })} />
+              onChange={(e) => handleImportoChange(Number(e.target.value))} />
             {errors.importo_richiesto && <p className="text-xs text-destructive">{errors.importo_richiesto}</p>}
           </div>
           <div className="space-y-1.5">
