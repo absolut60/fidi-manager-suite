@@ -124,6 +124,50 @@ function ImpostazioniPage() {
           </div>
         )}
       </Card>
+
+      {/* ── TEST EMAIL TEMPORANEO — da rimuovere ── */}
+      <Card className="p-4 sm:p-5 border-dashed">
+        <h2 className="font-semibold mb-3 flex items-center gap-2">
+          <Mail className="size-4" /> Test invio email — sezione temporanea
+        </h2>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Input
+            type="email"
+            value={testEmailTo}
+            onChange={(e) => setTestEmailTo(e.target.value)}
+            placeholder="Email destinatario test"
+            className="flex-1"
+          />
+          <Button
+            disabled={testEmailSending || !testEmailTo}
+            onClick={async () => {
+              setTestEmailSending(true);
+              setTestEmailResult(null);
+              const ok = await sendEmail({
+                to: testEmailTo,
+                subject: "✅ Test FidiManager — Email funzionante",
+                html: buildEmailTemplate({
+                  title: "Test email FidiManager",
+                  body: `<p>Questa è un'email di test inviata da FidiManager — Gruppo MADE.</p>
+                         <p>Se stai leggendo questo messaggio, la configurazione SMTP è corretta.</p>`,
+                  ctaText: "Apri FidiManager",
+                  ctaUrl: window.location.origin,
+                }),
+              });
+              setTestEmailResult(ok ? "ok" : "error");
+              setTestEmailSending(false);
+            }}
+          >
+            {testEmailSending ? "Invio..." : "Invia test"}
+          </Button>
+        </div>
+        {testEmailResult === "ok" && (
+          <p className="text-sm text-green-600 mt-3">✅ Email inviata con successo!</p>
+        )}
+        {testEmailResult === "error" && (
+          <p className="text-sm text-destructive mt-3">❌ Errore invio — controlla i secrets SMTP su Supabase</p>
+        )}
+      </Card>
     </div>
   );
 }
