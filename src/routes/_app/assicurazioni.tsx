@@ -35,11 +35,14 @@ type StatoFilter = "tutti" | "attiva" | "scaduta" | "sinistro";
 
 export default function AssicurazioniPage() {
   const navigate = useNavigate();
-  const { role } = useAuth();
+  const { role, profilo } = useAuth();
   const isStoreManager = role === "store_manager";
+  const myStoreId = profilo?.store_id ?? null;
 
   const [stato, setStato] = useState<StatoFilter>("tutti");
-  const [storeId, setStoreId] = useState<string>("all");
+  const [storeId, setStoreId] = useState<string>(
+    isStoreManager && myStoreId ? myStoreId : "all"
+  );
   const [q, setQ] = useState("");
   const [scadenza30, setScadenza30] = useState(false);
 

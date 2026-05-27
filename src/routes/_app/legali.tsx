@@ -68,11 +68,14 @@ type Row = {
 
 function PraticheLegaliPage() {
   const navigate = useNavigate();
-  const { role } = useAuth();
+  const { role, profilo } = useAuth();
   const isStoreManager = role === "store_manager";
+  const myStoreId = profilo?.store_id ?? null;
 
   const [stato, setStato] = useState<string>("tutti");
-  const [storeId, setStoreId] = useState<string>("all");
+  const [storeId, setStoreId] = useState<string>(
+    isStoreManager && myStoreId ? myStoreId : "all"
+  );
   const [tipoFilter, setTipoFilter] = useState<string>("tutti");
   const [origine, setOrigine] = useState<string>("tutte");
   const [q, setQ] = useState("");
