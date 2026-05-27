@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { classificaScadenza } from "@/lib/scadenze";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/_app/scadenziario")({
   component: ScadenziarioPage,
@@ -81,7 +82,10 @@ function isBonifico(codice: string | null | undefined): boolean {
 
 function ScadenziarioPage() {
   const navigate = useNavigate();
-  const [storeId, setStoreId] = useState("all");
+  const { role, profilo } = useAuth();
+  const isStoreManager = role === "store_manager";
+  const myStoreId = profilo?.store_id ?? null;
+  const [storeId, setStoreId] = useState(isStoreManager && myStoreId ? myStoreId : "all");
   const [fascia, setFascia] = useState<string>("tutte");
   const [importoMin, setImportoMin] = useState("");
   const [statoBlocco, setStatoBlocco] = useState<"tutti" | "bloccati" | "non_bloccati">("tutti");
@@ -339,16 +343,18 @@ function ScadenziarioPage() {
       {/* Filtri */}
       <Card className="p-4 space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-          <div>
-            <label className="text-xs font-medium text-muted-foreground">Store</label>
-            <Select value={storeId} onValueChange={setStoreId}>
-              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tutti gli store</SelectItem>
-                {(stores ?? []).map((s) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
+          {!isStoreManager && (
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Store</label>
+              <Select value={storeId} onValueChange={setStoreId}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tutti gli store</SelectItem>
+                  {(stores ?? []).map((s) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div>
             <label className="text-xs font-medium text-muted-foreground">Fascia scaduto</label>
             <Select value={fascia} onValueChange={setFascia}>
