@@ -38,6 +38,9 @@ function ImpostazioniPage() {
   const { role, loading } = useAuth();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<StoreRow | null>(null);
+  const [testEmailTo, setTestEmailTo] = useState("a.giani@gruppomade.com");
+  const [testEmailSending, setTestEmailSending] = useState(false);
+  const [testEmailResult, setTestEmailResult] = useState<"ok" | "error" | null>(null);
 
   const { data: stores, isLoading } = useQuery({
     queryKey: ["stores", "all"],
