@@ -40,11 +40,13 @@ const ORDINE_RUOLI: AppRole[] = [
 ];
 
 const TUTTI_RUOLI: AppRole[] = [
+  "amministratore",
+  "direzione",
+  "amministrazione",
   "store_manager",
   "approvatore_liv1",
   "approvatore_liv2",
   "approvatore_liv3",
-  "amministratore",
 ];
 
 type UserRow = {
