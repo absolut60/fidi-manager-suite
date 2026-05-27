@@ -93,6 +93,27 @@ function RichiestePage() {
     },
   });
 
+  const matchRoute = useMatchRoute();
+  const isDetailOpen = matchRoute({ to: "/richieste/$richiestaId", fuzzy: true });
+
+  const { data: msgCounts } = useQuery({
+    queryKey: ["msg-non-letti-richieste", user?.id],
+    enabled: !!user,
+    refetchInterval: 30000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("comunicazioni_richiesta")
+        .select("richiesta_id")
+        .eq("letto", false)
+        .neq("autore_id", user?.id ?? "");
+      const counts: Record<string, number> = {};
+      (data ?? []).forEach((m: any) => {
+        counts[m.richiesta_id] = (counts[m.richiesta_id] ?? 0) + 1;
+      });
+      return counts;
+    },
+  });
+
   const all = richieste ?? [];
 
   // KPI calcoli
