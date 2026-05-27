@@ -810,8 +810,25 @@ function StoricoTab({
                 const exportLabel: Record<string,string> = { da_esportare:"Da esportare", esportata:"Esportata", processata:"Processata", errore_export:"Errore" };
                 const exportTone: Record<string,string> = { da_esportare:"bg-info/15 text-info", esportata:"bg-warning/15 text-warning", processata:"bg-success/15 text-success", errore_export:"bg-destructive/15 text-destructive" };
                 return (
-                <TableRow key={r.id}>
-                  <TableCell className="font-medium">{r.clienti?.ragione_sociale ?? "—"}</TableCell>
+                <TableRow
+                  key={r.id}
+                  className="cursor-pointer hover:bg-muted/40"
+                  onClick={(e) => {
+                    if ((e.target as HTMLElement).closest("button")) return;
+                    navigate({ to: "/richieste/$richiestaId", params: { richiestaId: r.id } });
+                  }}
+                >
+                  <TableCell className="font-medium">
+                    <div className="inline-flex items-center gap-2">
+                      {r.clienti?.ragione_sociale ?? "—"}
+                      {(msgCounts?.[r.id] ?? 0) > 0 && (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-info/15 text-info px-2 py-0.5 text-xs font-medium">
+                          <MessageSquare className="size-3" />
+                          {msgCounts![r.id]}
+                        </span>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{TIPO_LABEL[r.tipo as TipoRichiesta]}</span></TableCell>
                   <TableCell className="text-right tabular-nums">{formatEuro(Number(r.importo_richiesto))}</TableCell>
                   {kind === "approvata" && <TableCell className="text-right tabular-nums text-success font-medium">{formatEuro(Number(r.importo_approvato ?? r.importo_richiesto))}</TableCell>}
