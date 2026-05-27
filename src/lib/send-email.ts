@@ -139,3 +139,37 @@ export async function sendPrivacyPdf(options: {
       : {}),
   });
 }
+
+export async function sendNotificaComunicazione(options: {
+  toEmail: string;
+  toName: string;
+  autoreNome: string;
+  richiestaId: string;
+  testo: string;
+  appUrl: string;
+}): Promise<boolean> {
+  const { toEmail, toName, autoreNome, richiestaId, testo, appUrl } = options;
+  const safeTesto = testo
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\n/g, "<br/>");
+
+  return sendEmail({
+    to: toEmail,
+    subject: `💬 Nuovo messaggio sulla richiesta fido`,
+    html: buildEmailTemplate({
+      title: "Nuovo messaggio sulla tua richiesta fido",
+      body: `
+        <p>Gentile ${toName},</p>
+        <p><strong>${autoreNome}</strong> ha inviato un messaggio sulla richiesta fido:</p>
+        <blockquote style="margin:16px 0;padding:12px 16px;background:#f3f4f6;border-left:3px solid #1e3a8a;border-radius:4px;color:#374151;font-style:italic;">
+          ${safeTesto}
+        </blockquote>
+        <p>Accedi a FidiManager per rispondere.</p>
+      `,
+      ctaText: "Vai alla richiesta",
+      ctaUrl: `${appUrl}/richieste/${richiestaId}`,
+    }),
+  });
+}

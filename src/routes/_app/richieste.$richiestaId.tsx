@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { STATO_LABEL, STATO_TONE, TIPO_LABEL, TIPO_TONE, LIVELLO_LABEL, formatEuro, formatDate, type TipoRichiesta } from "@/lib/fidi";
 
+import { ComunicazioniRichiestaPanel } from "@/components/comunicazioni-richiesta-panel";
 export const Route = createFileRoute("/_app/richieste/$richiestaId")({
   component: RichiestaDetail,
 });
@@ -209,6 +210,10 @@ function RichiestaDetail() {
             ))}
           </div>
         </Card>
+      )}
+
+      {r.stato !== "bozza" && r.created_by && (
+        <ComunicazioniRichiestaPanel richiestaId={r.id} richiestaCreatedBy={r.created_by} />
       )}
     </div>
   );
