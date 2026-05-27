@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Outlet, useMatchRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
@@ -93,6 +93,27 @@ function RichiestePage() {
     },
   });
 
+  const matchRoute = useMatchRoute();
+  const isDetailOpen = matchRoute({ to: "/richieste/$richiestaId", fuzzy: true });
+
+  const { data: msgCounts } = useQuery({
+    queryKey: ["msg-non-letti-richieste", user?.id],
+    enabled: !!user,
+    refetchInterval: 30000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("comunicazioni_richiesta")
+        .select("richiesta_id")
+        .eq("letto", false)
+        .neq("autore_id", user?.id ?? "");
+      const counts: Record<string, number> = {};
+      (data ?? []).forEach((m: any) => {
+        counts[m.richiesta_id] = (counts[m.richiesta_id] ?? 0) + 1;
+      });
+      return counts;
+    },
+  });
+
   const all = richieste ?? [];
 
   // KPI calcoli
@@ -142,6 +163,8 @@ function RichiestePage() {
     qc.invalidateQueries({ queryKey: ["richieste-cliente"] });
   }
 
+  if (isDetailOpen) return <Outlet />;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -186,6 +209,7 @@ function RichiestePage() {
             onEdit={setEditing}
             onDelete={setDeleting}
             onChanged={qcInvalidate}
+            msgCounts={msgCounts}
           />
         </TabsContent>
 
@@ -208,7 +232,7 @@ function RichiestePage() {
               </Button>
             </div>
           )}
-          <StoricoTab rows={approvate} loading={isLoading} kind="approvata" onRiinvia={null} />
+          <StoricoTab rows={approvate} loading={isLoading} kind="approvata" onRiinvia={null} msgCounts={msgCounts} />
         </TabsContent>
 
         <TabsContent value="rifiutate" className="mt-4">
@@ -217,12 +241,13 @@ function RichiestePage() {
             loading={isLoading}
             kind="rifiutata"
             onRiinvia={(r) => setEditing({ ...r, _riinvia: true })}
+            msgCounts={msgCounts}
           />
         </TabsContent>
 
         {isAdmin && (
           <TabsContent value="tutto" className="mt-4">
-            <TuttoTab rows={all} loading={isLoading} />
+            <TuttoTab rows={all} loading={isLoading} msgCounts={msgCounts} />
           </TabsContent>
         )}
       </Tabs>
@@ -276,8 +301,9 @@ function KpiCard({ icon: Icon, tone, label, value }: { icon: any; tone: string; 
 
 /* ============================ BOZZE TAB ============================ */
 function BozzeTab({
-  rows, loading, onEdit, onDelete, onChanged,
-}: { rows: any[]; loading: boolean; onEdit: (r: any) => void; onDelete: (r: any) => void; onChanged: () => void }) {
+  rows, loading, onEdit, onDelete, onChanged, msgCounts,
+}: { rows: any[]; loading: boolean; onEdit: (r: any) => void; onDelete: (r: any) => void; onChanged: () => void; msgCounts?: Record<string, number> }) {
+  const navigate = useNavigate();
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const invioMut = useMutation({
@@ -330,9 +356,26 @@ function BozzeTab({
         </TableHeader>
         <TableBody>
           {rows.map((r) => (
-            <TableRow key={r.id}>
-              <TableCell><Checkbox checked={selected.has(r.id)} onCheckedChange={() => toggle(r.id)} /></TableCell>
-              <TableCell className="font-medium">{r.clienti?.ragione_sociale ?? "—"}</TableCell>
+            <TableRow
+              key={r.id}
+              className="cursor-pointer hover:bg-muted/40"
+              onClick={(e) => {
+                if ((e.target as HTMLElement).closest("button") || (e.target as HTMLElement).closest('[role="checkbox"]')) return;
+                navigate({ to: "/richieste/$richiestaId", params: { richiestaId: r.id } });
+              }}
+            >
+              <TableCell onClick={(e) => e.stopPropagation()}><Checkbox checked={selected.has(r.id)} onCheckedChange={() => toggle(r.id)} /></TableCell>
+              <TableCell className="font-medium">
+                <div className="inline-flex items-center gap-2">
+                  {r.clienti?.ragione_sociale ?? "—"}
+                  {(msgCounts?.[r.id] ?? 0) > 0 && (
+                    <span className="inline-flex items-center gap-1 rounded-md bg-info/15 text-info px-2 py-0.5 text-xs font-medium">
+                      <MessageSquare className="size-3" />
+                      {msgCounts![r.id]}
+                    </span>
+                  )}
+                </div>
+              </TableCell>
               <TableCell>
                 <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>
                   {TIPO_LABEL[r.tipo as TipoRichiesta]}
@@ -701,8 +744,9 @@ function isStoreManagerView(canApprove: boolean): boolean { return !canApprove; 
 
 /* ============================ STORICO TAB ============================ */
 function StoricoTab({
-  rows, loading, kind, onRiinvia,
-}: { rows: any[]; loading: boolean; kind: "approvata" | "rifiutata"; onRiinvia: ((r: any) => void) | null }) {
+  rows, loading, kind, onRiinvia, msgCounts,
+}: { rows: any[]; loading: boolean; kind: "approvata" | "rifiutata"; onRiinvia: ((r: any) => void) | null; msgCounts?: Record<string, number> }) {
+  const navigate = useNavigate();
   const [meseFiltro, setMeseFiltro] = useState<string>("ultimi3");
   const [mostraTutto, setMostraTutto] = useState(false);
 
@@ -766,8 +810,25 @@ function StoricoTab({
                 const exportLabel: Record<string,string> = { da_esportare:"Da esportare", esportata:"Esportata", processata:"Processata", errore_export:"Errore" };
                 const exportTone: Record<string,string> = { da_esportare:"bg-info/15 text-info", esportata:"bg-warning/15 text-warning", processata:"bg-success/15 text-success", errore_export:"bg-destructive/15 text-destructive" };
                 return (
-                <TableRow key={r.id}>
-                  <TableCell className="font-medium">{r.clienti?.ragione_sociale ?? "—"}</TableCell>
+                <TableRow
+                  key={r.id}
+                  className="cursor-pointer hover:bg-muted/40"
+                  onClick={(e) => {
+                    if ((e.target as HTMLElement).closest("button")) return;
+                    navigate({ to: "/richieste/$richiestaId", params: { richiestaId: r.id } });
+                  }}
+                >
+                  <TableCell className="font-medium">
+                    <div className="inline-flex items-center gap-2">
+                      {r.clienti?.ragione_sociale ?? "—"}
+                      {(msgCounts?.[r.id] ?? 0) > 0 && (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-info/15 text-info px-2 py-0.5 text-xs font-medium">
+                          <MessageSquare className="size-3" />
+                          {msgCounts![r.id]}
+                        </span>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{TIPO_LABEL[r.tipo as TipoRichiesta]}</span></TableCell>
                   <TableCell className="text-right tabular-nums">{formatEuro(Number(r.importo_richiesto))}</TableCell>
                   {kind === "approvata" && <TableCell className="text-right tabular-nums text-success font-medium">{formatEuro(Number(r.importo_approvato ?? r.importo_richiesto))}</TableCell>}
@@ -795,7 +856,7 @@ function StoricoTab({
 }
 
 /* ============================ TUTTO TAB (admin) ============================ */
-function TuttoTab({ rows, loading }: { rows: any[]; loading: boolean }) {
+function TuttoTab({ rows, loading, msgCounts }: { rows: any[]; loading: boolean; msgCounts?: Record<string, number> }) {
   const navigate = useNavigate();
   const [statoF, setStatoF] = useState<string>("tutti");
   const [livF, setLivF] = useState<string>("tutti");
@@ -844,7 +905,17 @@ function TuttoTab({ rows, loading }: { rows: any[]; loading: boolean }) {
                 className="cursor-pointer hover:bg-muted/50"
                 onClick={() => navigate({ to: "/richieste/$richiestaId", params: { richiestaId: r.id } })}
               >
-                <TableCell className="font-medium">{r.clienti?.ragione_sociale ?? "—"}</TableCell>
+                <TableCell className="font-medium">
+                  <div className="inline-flex items-center gap-2">
+                    {r.clienti?.ragione_sociale ?? "—"}
+                    {(msgCounts?.[r.id] ?? 0) > 0 && (
+                      <span className="inline-flex items-center gap-1 rounded-md bg-info/15 text-info px-2 py-0.5 text-xs font-medium">
+                        <MessageSquare className="size-3" />
+                        {msgCounts![r.id]}
+                      </span>
+                    )}
+                  </div>
+                </TableCell>
                 <TableCell className="text-sm text-muted-foreground">{r.stores?.nome ?? "—"}</TableCell>
                 <TableCell><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{TIPO_LABEL[r.tipo as TipoRichiesta]}</span></TableCell>
                 <TableCell className="text-right tabular-nums">{formatEuro(Number(r.importo_richiesto))}</TableCell>
