@@ -301,8 +301,9 @@ function KpiCard({ icon: Icon, tone, label, value }: { icon: any; tone: string; 
 
 /* ============================ BOZZE TAB ============================ */
 function BozzeTab({
-  rows, loading, onEdit, onDelete, onChanged,
-}: { rows: any[]; loading: boolean; onEdit: (r: any) => void; onDelete: (r: any) => void; onChanged: () => void }) {
+  rows, loading, onEdit, onDelete, onChanged, msgCounts,
+}: { rows: any[]; loading: boolean; onEdit: (r: any) => void; onDelete: (r: any) => void; onChanged: () => void; msgCounts?: Record<string, number> }) {
+  const navigate = useNavigate();
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const invioMut = useMutation({
