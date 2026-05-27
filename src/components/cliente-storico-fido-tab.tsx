@@ -21,6 +21,7 @@ import {
   STATO_LABEL, STATO_TONE, TIPO_LABEL, TIPO_TONE, formatEuro, formatDate,
   type TipoRichiesta, type StatoRichiesta,
 } from "@/lib/fidi";
+import { useConfig } from "@/hooks/use-config";
 
 const STATI_IN_CORSO: StatoRichiesta[] = ["bozza", "in_approvazione", "in_attesa_liv1", "in_attesa_liv2", "in_attesa_liv3", "integrazioni_richieste"];
 const STATI_MODIFICABILI: StatoRichiesta[] = ["bozza", "integrazioni_richieste"];
@@ -239,6 +240,7 @@ function RichiestaDialog({
   onSaved: () => void;
   clienteData?: any;
 }) {
+  const config = useConfig();
   const fidoAttuale = Number(clienteData?.fido_gestionale ?? 0);
   const totaleRischio = Number(clienteData?.totale_rischio ?? 0);
   const scaduto = Number(clienteData?.scaduto ?? 0);
@@ -261,7 +263,7 @@ function RichiestaDialog({
     tipo: (richiesta?.tipo === "nuovo" ? "nuovo_fido" : richiesta?.tipo)
       ?? determinaTipo(fidoAttuale, fidoProposto),
     importo_richiesto: richiesta?.importo_richiesto ?? fidoProposto,
-    durata_mesi: richiesta?.durata_mesi ?? 12,
+    durata_mesi: richiesta?.durata_mesi ?? config.durata_default_mesi,
     motivazione: richiesta?.motivazione ?? "",
     note: richiesta?.note ?? "",
   });
