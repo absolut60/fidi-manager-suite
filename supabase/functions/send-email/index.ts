@@ -1,5 +1,5 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { SmtpClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -38,12 +38,16 @@ serve(async (req) => {
 
     const recipients = Array.isArray(to) ? to : [to];
 
-    const client = new SmtpClient();
-    await client.connectTLS({
-      hostname: host,
-      port,
-      username: user,
-      password: pass,
+    const client = new SMTPClient({
+      connection: {
+        hostname: host,
+        port,
+        tls: true,
+        auth: {
+          username: user,
+          password: pass,
+        },
+      },
     });
 
     const results: { email: string; ok: boolean; err?: string }[] = [];
