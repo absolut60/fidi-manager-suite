@@ -64,11 +64,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const isAdmin = role === "amministratore";
   const isApprovatore = role?.startsWith("approvatore_liv") ?? false;
+  const isStoreManager = role === "store_manager";
 
   const visibleNav = NAV.filter((item) => {
     if (!item.roles) return true;
     if (item.roles.includes("admin") && isAdmin) return true;
     if (item.roles.includes("approvatore") && (isAdmin || isApprovatore)) return true;
+    if (item.roles.includes("store_manager") && (isAdmin || isApprovatore || isStoreManager)) return true;
     return false;
   });
 
