@@ -6,12 +6,19 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+interface EmailAttachment {
+  filename: string;
+  content: string; // base64
+  contentType: string;
+}
+
 interface EmailPayload {
   to: string | string[];
   subject: string;
   html: string;
   text?: string;
   replyTo?: string;
+  attachments?: EmailAttachment[];
 }
 
 serve(async (req) => {
@@ -61,6 +68,16 @@ serve(async (req) => {
           content: text ?? "Apri l'email in un client che supporta HTML.",
           html,
           replyTo: replyTo ?? user,
+          ...(payload.attachments?.length
+            ? {
+                attachments: payload.attachments.map((a) => ({
+                  filename: a.filename,
+                  content: a.content,
+                  encoding: "base64",
+                  contentType: a.contentType,
+                })),
+              }
+            : {}),
         });
         results.push({ email: recipient, ok: true });
         console.log(`Email inviata a ${recipient}: ${subject}`);

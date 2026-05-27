@@ -7,6 +7,11 @@ export interface SendEmailOptions {
   html: string;
   text?: string;
   replyTo?: string;
+  attachments?: Array<{
+    filename: string;
+    content: string; // base64
+    contentType: string;
+  }>;
 }
 
 export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
