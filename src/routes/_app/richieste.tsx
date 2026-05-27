@@ -1,10 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import {
   Plus, Search, FileText, Pencil, Trash2, Send, Check, X, AlertCircle,
-  Clock, CheckCircle2, Wallet, RotateCcw, MessageSquareWarning, Ban,
+  Clock, CheckCircle2, Wallet, RotateCcw, MessageSquareWarning, Ban, MessageSquare,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -365,6 +365,7 @@ function InApprovazioneTab({
   rows: any[]; loading: boolean; canApprove: boolean; livelloUtente: number; isAdmin: boolean; onChanged: () => void;
 }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [storeFilter, setStoreFilter] = useState("tutti");
   const [tipoFilter, setTipoFilter] = useState("tutti");
@@ -374,6 +375,24 @@ function InApprovazioneTab({
   const [action, setAction] = useState<{ kind: "approva" | "rifiuta" | "integrazioni"; rows: any[] } | null>(null);
   const [importoApprovato, setImportoApprovato] = useState<string>("");
   const [note, setNote] = useState("");
+
+  const { data: msgNonLetti } = useQuery({
+    queryKey: ["comunicazioni-non-lette", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("comunicazioni_richiesta")
+        .select("richiesta_id")
+        .eq("letto", false)
+        .neq("autore_id", user?.id ?? "");
+      const counts: Record<string, number> = {};
+      (data ?? []).forEach((m: any) => {
+        counts[m.richiesta_id] = (counts[m.richiesta_id] ?? 0) + 1;
+      });
+      return counts;
+    },
+    refetchInterval: 30000,
+  });
 
   const stores = useMemo(() => {
     const map = new Map<string, string>();
@@ -545,9 +564,18 @@ function InApprovazioneTab({
               {filtered.map((r) => {
                 const g = giorniDa(r.data_invio);
                 const livMio = canApprove && (isAdmin || r.livello_corrente === livelloUtente);
+                const unread = msgNonLetti?.[r.id] ?? 0;
                 return (
-                  <TableRow key={r.id}>
-                    {canApprove && <TableCell><Checkbox checked={selected.has(r.id)} onCheckedChange={() => toggle(r.id)} disabled={!livMio} /></TableCell>}
+                  <TableRow
+                    key={r.id}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => navigate({ to: "/richieste/$richiestaId", params: { richiestaId: r.id } })}
+                  >
+                    {canApprove && (
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <Checkbox checked={selected.has(r.id)} onCheckedChange={() => toggle(r.id)} disabled={!livMio} />
+                      </TableCell>
+                    )}
                     <TableCell className="font-medium">{r.clienti?.ragione_sociale ?? "—"}</TableCell>
                     {!isStoreManagerView(canApprove) && <TableCell className="text-sm text-muted-foreground">{r.stores?.nome ?? "—"}</TableCell>}
                     <TableCell><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{TIPO_LABEL[r.tipo as TipoRichiesta]}</span></TableCell>
@@ -558,24 +586,32 @@ function InApprovazioneTab({
                     <TableCell><Badge variant="outline">L{r.livello_corrente}/{r.livello_richiesto}</Badge></TableCell>
                     <TableCell className="text-sm text-muted-foreground">{formatDate(r.data_invio)}</TableCell>
                     <TableCell><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${attesaTone(g)}`}>{g}gg</span></TableCell>
-                    <TableCell className="text-right">
-                      {canApprove && livMio ? (
-                        <div className="inline-flex gap-1">
-                          <Button size="sm" variant="ghost" className="text-success h-8" onClick={() => { setImportoApprovato(String(r.importo_richiesto)); setAction({ kind: "approva", rows: [r] }); }}>
-                            <Check className="size-4" /> Approva
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                      <div className="inline-flex items-center gap-1">
+                        {unread > 0 && (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-info/15 text-info px-2 py-0.5 text-xs font-medium">
+                            <MessageSquare className="size-3" />
+                            {unread}
+                          </span>
+                        )}
+                        {canApprove && livMio ? (
+                          <>
+                            <Button size="sm" variant="ghost" className="text-success h-8" onClick={() => { setImportoApprovato(String(r.importo_richiesto)); setAction({ kind: "approva", rows: [r] }); }}>
+                              <Check className="size-4" /> Approva
+                            </Button>
+                            <Button size="sm" variant="ghost" className="text-warning h-8" onClick={() => setAction({ kind: "integrazioni", rows: [r] })} title="Richiedi integrazioni">
+                              <MessageSquareWarning className="size-4" />
+                            </Button>
+                            <Button size="sm" variant="ghost" className="text-destructive h-8" onClick={() => setAction({ kind: "rifiuta", rows: [r] })}>
+                              <X className="size-4" /> Rifiuta
+                            </Button>
+                          </>
+                        ) : (r.stato === "integrazioni_richieste" || r.stato === "bozza") ? (
+                          <Button size="sm" variant="ghost" className="text-destructive h-8" onClick={() => annullaMut.mutate(r)}>
+                            <Ban className="size-4" /> Annulla
                           </Button>
-                          <Button size="sm" variant="ghost" className="text-warning h-8" onClick={() => setAction({ kind: "integrazioni", rows: [r] })} title="Richiedi integrazioni">
-                            <MessageSquareWarning className="size-4" />
-                          </Button>
-                          <Button size="sm" variant="ghost" className="text-destructive h-8" onClick={() => setAction({ kind: "rifiuta", rows: [r] })}>
-                            <X className="size-4" /> Rifiuta
-                          </Button>
-                        </div>
-                      ) : (r.stato === "integrazioni_richieste" || r.stato === "bozza") ? (
-                        <Button size="sm" variant="ghost" className="text-destructive h-8" onClick={() => annullaMut.mutate(r)}>
-                          <Ban className="size-4" /> Annulla
-                        </Button>
-                      ) : <span className="text-xs text-muted-foreground">—</span>}
+                        ) : unread === 0 ? <span className="text-xs text-muted-foreground">—</span> : null}
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
@@ -760,6 +796,7 @@ function StoricoTab({
 
 /* ============================ TUTTO TAB (admin) ============================ */
 function TuttoTab({ rows, loading }: { rows: any[]; loading: boolean }) {
+  const navigate = useNavigate();
   const [statoF, setStatoF] = useState<string>("tutti");
   const [livF, setLivF] = useState<string>("tutti");
   const filtered = rows
@@ -802,7 +839,11 @@ function TuttoTab({ rows, loading }: { rows: any[]; loading: boolean }) {
           </TableHeader>
           <TableBody>
             {filtered.map((r) => (
-              <TableRow key={r.id}>
+              <TableRow
+                key={r.id}
+                className="cursor-pointer hover:bg-muted/50"
+                onClick={() => navigate({ to: "/richieste/$richiestaId", params: { richiestaId: r.id } })}
+              >
                 <TableCell className="font-medium">{r.clienti?.ragione_sociale ?? "—"}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{r.stores?.nome ?? "—"}</TableCell>
                 <TableCell><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{TIPO_LABEL[r.tipo as TipoRichiesta]}</span></TableCell>

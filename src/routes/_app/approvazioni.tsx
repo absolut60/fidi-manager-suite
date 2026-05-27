@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, type ReactNode } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { CheckCheck, Check, X, ExternalLink, MessageSquare, Filter as FilterIcon } from "lucide-react";
@@ -52,6 +52,7 @@ function ritardoHelper(dilConc: number | null | undefined, dilEff: number | null
 
 function ApprovazioniPage() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const { user, role } = useAuth();
   const isAdmin = role === "amministratore";
   const livello =
@@ -117,6 +118,25 @@ function ApprovazioniPage() {
     },
     enabled: isAdmin || livello > 0,
   });
+
+  const { data: msgNonLetti } = useQuery({
+    queryKey: ["comunicazioni-non-lette", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("comunicazioni_richiesta")
+        .select("richiesta_id")
+        .eq("letto", false)
+        .neq("autore_id", user?.id ?? "");
+      const counts: Record<string, number> = {};
+      (data ?? []).forEach((m: any) => {
+        counts[m.richiesta_id] = (counts[m.richiesta_id] ?? 0) + 1;
+      });
+      return counts;
+    },
+    refetchInterval: 30000,
+  });
+
 
   const richieste = useMemo(() => {
     const list = (data ?? []) as any[];
@@ -405,11 +425,15 @@ function ApprovazioniPage() {
             const g = giorniDa(r.data_invio);
             const residuo = Number(c.fido_residuo ?? 0);
             const scaduto = Number(c.scaduto ?? 0);
+            const unread = msgNonLetti?.[r.id] ?? 0;
             return (
               <Card key={r.id} className={`p-4 transition-shadow ${isSel ? "border-primary bg-primary/5" : "hover:shadow-md hover:border-primary/30"}`}>
                 <div className="flex items-start gap-3">
                   <Checkbox checked={isSel} onCheckedChange={() => toggle(r.id)} className="mt-1" />
-                  <div className="flex-1 min-w-0 cursor-pointer" onClick={() => { setDetail(r); setSingleNote(""); setSingleAction(null); }}>
+                  <div
+                    className="flex-1 min-w-0 cursor-pointer"
+                    onClick={() => navigate({ to: "/richieste/$richiestaId", params: { richiestaId: r.id } })}
+                  >
                     <div className="flex items-start justify-between gap-3 flex-wrap">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -432,6 +456,12 @@ function ApprovazioniPage() {
                           <Badge variant="outline">Liv. {r.livello_corrente}/{r.livello_richiesto}</Badge>
                           {(r as any).stores?.nome && (
                             <Badge variant="secondary" className="text-xs">{(r as any).stores.nome}</Badge>
+                          )}
+                          {unread > 0 && (
+                            <span className="inline-flex items-center gap-1 rounded-md bg-info/15 text-info px-2 py-0.5 text-xs font-medium">
+                              <MessageSquare className="size-3" />
+                              {unread} non letti
+                            </span>
                           )}
                         </div>
                         <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1 text-xs">
