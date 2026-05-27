@@ -308,6 +308,21 @@ export function NuovoContattoWizard({
       if (e3) throw new Error(`Salvataggio: ${e3.message}`);
 
       toast.success("Privacy firmata e PDF generato");
+
+      if (dich.email && pdfSigned?.signedUrl) {
+        import("@/lib/send-email").then(({ sendPrivacyPdf }) => {
+          sendPrivacyPdf({
+            toEmail: dich.email!,
+            toName: [dich.nome, dich.cognome].filter(Boolean).join(" "),
+            ragioneSociale: selectedCliente.ragione_sociale,
+            dataFirma: now.toISOString(),
+            pdfUrl: pdfSigned.signedUrl,
+          }).then((ok) => {
+            if (ok) toast.success("PDF privacy inviato per email");
+          });
+        });
+      }
+
       invalidateAll(selectedCliente.id);
       onSuccess?.(selectedCliente.id);
       onClose();
