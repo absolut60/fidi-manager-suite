@@ -263,7 +263,7 @@ function RichiestaDialog({
     tipo: (richiesta?.tipo === "nuovo" ? "nuovo_fido" : richiesta?.tipo)
       ?? determinaTipo(fidoAttuale, fidoProposto),
     importo_richiesto: richiesta?.importo_richiesto ?? fidoProposto,
-    durata_mesi: richiesta?.durata_mesi ?? 12,
+    durata_mesi: richiesta?.durata_mesi ?? config.durata_default_mesi,
     motivazione: richiesta?.motivazione ?? "",
     note: richiesta?.note ?? "",
   });
