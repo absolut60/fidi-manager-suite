@@ -1,10 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import {
   Plus, Search, FileText, Pencil, Trash2, Send, Check, X, AlertCircle,
-  Clock, CheckCircle2, Wallet, RotateCcw, MessageSquareWarning, Ban,
+  Clock, CheckCircle2, Wallet, RotateCcw, MessageSquareWarning, Ban, MessageSquare,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
