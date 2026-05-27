@@ -856,7 +856,7 @@ function StoricoTab({
 }
 
 /* ============================ TUTTO TAB (admin) ============================ */
-function TuttoTab({ rows, loading }: { rows: any[]; loading: boolean }) {
+function TuttoTab({ rows, loading, msgCounts }: { rows: any[]; loading: boolean; msgCounts?: Record<string, number> }) {
   const navigate = useNavigate();
   const [statoF, setStatoF] = useState<string>("tutti");
   const [livF, setLivF] = useState<string>("tutti");
