@@ -673,10 +673,11 @@ function fmtDateIt(v: unknown): string {
 }
 
 function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string }) {
+  const config = useConfig();
   const bloccato = !!cliente.bloccato;
   const indBlocco = Number(cliente.ind_blocco ?? 0);
   const ultimaFatt = cliente.ultima_data_fatturazione;
-  const clienteAttivo = cliente.cliente_attivo !== false;
+  const clienteAttivo = isClienteAttivo(cliente.ultima_data_fatturazione, config);
   const assicurato = !!cliente.assicurazione_attiva;
 
   const { data: polizzaAttiva } = useQuery({
