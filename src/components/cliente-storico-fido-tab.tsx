@@ -231,21 +231,45 @@ export function ClienteStoricoFidoTab({ clienteId }: { clienteId: string }) {
 }
 
 function RichiestaDialog({
-  clienteId, richiesta, onClose, onSaved,
+  clienteId, richiesta, onClose, onSaved, clienteData,
 }: {
   clienteId: string;
   richiesta?: any;
   onClose: () => void;
   onSaved: () => void;
+  clienteData?: any;
 }) {
+  const fidoAttuale = Number(clienteData?.fido_gestionale ?? 0);
+  const totaleRischio = Number(clienteData?.totale_rischio ?? 0);
+  const scaduto = Number(clienteData?.scaduto ?? 0);
+  const fidoResiduo = clienteData?.fido_residuo != null
+    ? Number(clienteData.fido_residuo) : null;
+
+  const fidoProposto = totaleRischio > 0
+    ? Math.ceil(totaleRischio / 500) * 500
+    : fidoAttuale > 0 ? fidoAttuale : 0;
+
+  function determinaTipo(attuale: number, proposto: number): RichiestaForm["tipo"] {
+    if (!attuale || attuale === 0) return "nuovo_fido";
+    if (proposto > attuale) return "aumento";
+    if (proposto < attuale) return "diminuzione";
+    return "rinnovo";
+  }
+
   const isEdit = !!richiesta;
   const [form, setForm] = useState<RichiestaForm>({
-    tipo: (richiesta?.tipo === "nuovo" ? "nuovo_fido" : richiesta?.tipo) ?? "nuovo_fido",
-    importo_richiesto: richiesta?.importo_richiesto ?? 0,
+    tipo: (richiesta?.tipo === "nuovo" ? "nuovo_fido" : richiesta?.tipo)
+      ?? determinaTipo(fidoAttuale, fidoProposto),
+    importo_richiesto: richiesta?.importo_richiesto ?? fidoProposto,
     durata_mesi: richiesta?.durata_mesi ?? 12,
     motivazione: richiesta?.motivazione ?? "",
     note: richiesta?.note ?? "",
   });
+
+  function handleImportoChange(v: number) {
+    const tipoAuto = determinaTipo(fidoAttuale, v);
+    setForm(f => ({ ...f, importo_richiesto: v, tipo: tipoAuto }));
+  }
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const save = useMutation({
