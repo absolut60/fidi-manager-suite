@@ -136,7 +136,12 @@ function ClientiPage() {
   }, [searchInput]);
   const [statoCliente, setStatoCliente] = useState<"attivi" | "disattivati" | "tutti">("attivi");
   const [statoAttivita, setStatoAttivita] = useState<"tutti" | "attivi" | "non_attivi">("attivi");
-  const [storeFiltro, setStoreFiltro] = useState<string>("tutti");
+  const { role: _roleEarly, profilo: _profiloEarly } = useAuth();
+  const isStoreManager = _roleEarly === "store_manager";
+  const myStoreId = _profiloEarly?.store_id ?? null;
+  const [storeFiltro, setStoreFiltro] = useState<string>(
+    isStoreManager && myStoreId ? myStoreId : "tutti"
+  );
   const [statoFido, setStatoFido] = useState<Set<string>>(new Set());
   const [semaforoFiltro, setSemaforoFiltro] = useState<string>("tutti");
   const [soloBloccati, setSoloBloccati] = useState(false);
