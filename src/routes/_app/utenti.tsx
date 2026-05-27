@@ -231,13 +231,38 @@ function EditUtenteDialog({ utente, onClose }: { utente: UserRow; onClose: () =>
     onError: (e: Error) => toast.error(e.message),
   });
 
-  async function handleResetPassword() {
-    if (!utente.email) return;
-    const { error } = await supabase.auth.resetPasswordForEmail(utente.email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    if (error) toast.error("Errore: " + error.message);
-    else toast.success("Email di reset password inviata a " + utente.email);
+  const [nuovaPassword, setNuovaPassword] = useState("");
+  const [mostraPasswordEdit, setMostraPasswordEdit] = useState(false);
+  const fnAggiornaPwd = useServerFn(aggiornaPassword);
+  const fnInviaCred = useServerFn(inviaCredenziali);
+
+  async function handleAggiornaPwd() {
+    if (nuovaPassword.length < 8) {
+      toast.error("La password deve essere di almeno 8 caratteri");
+      return;
+    }
+    try {
+      await fnAggiornaPwd({ data: { userId: utente.id, password: nuovaPassword } });
+      toast.success("Password aggiornata");
+      setNuovaPassword("");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Errore aggiornamento password");
+    }
+  }
+
+  async function handleInviaCredenziali() {
+    if (nuovaPassword.length < 8) {
+      toast.error("Inserisci la nuova password (min 8 caratteri) da inviare");
+      return;
+    }
+    try {
+      await fnAggiornaPwd({ data: { userId: utente.id, password: nuovaPassword } });
+      await fnInviaCred({ data: { userId: utente.id, password: nuovaPassword } });
+      toast.success("Credenziali inviate a " + utente.email);
+      setNuovaPassword("");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Errore invio credenziali");
+    }
   }
 
   return (
@@ -278,10 +303,38 @@ function EditUtenteDialog({ utente, onClose }: { utente: UserRow; onClose: () =>
           Utente attivo
         </label>
         {role === "amministratore" && utente.email && (
-          <div className="pt-2 border-t">
-            <Button type="button" variant="outline" size="sm" onClick={handleResetPassword}>
-              Invia reset password
+          <div className="pt-4 border-t space-y-3">
+            <Label className="text-sm font-semibold">Gestione password</Label>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Input
+                  type={mostraPasswordEdit ? "text" : "password"}
+                  value={nuovaPassword}
+                  onChange={(e) => setNuovaPassword(e.target.value)}
+                  placeholder="Nuova password (min 8 caratteri)"
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setMostraPasswordEdit(!mostraPasswordEdit)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  tabIndex={-1}
+                >
+                  {mostraPasswordEdit ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </button>
+              </div>
+              <Button type="button" variant="outline" onClick={handleAggiornaPwd}>
+                Aggiorna
+              </Button>
+            </div>
+            <Button type="button" variant="outline" className="w-full gap-2" onClick={handleInviaCredenziali}>
+              <Mail className="size-4" />
+              Invia credenziali per email
             </Button>
+            <p className="text-xs text-muted-foreground">
+              Inserisci la nuova password, poi clicca "Aggiorna" per cambiarla
+              oppure "Invia credenziali" per aggiornarla e inviarla via email.
+            </p>
           </div>
         )}
       </div>
