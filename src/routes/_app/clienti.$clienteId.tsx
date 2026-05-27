@@ -1410,6 +1410,21 @@ function FirmaContattoDialog({
       if (!updated) throw new Error("Aggiornamento non riuscito: nessuna riga modificata (verifica i permessi).");
 
       toast.success("Privacy firmata e PDF generato");
+
+      if (contatto.email && pdfSigned?.signedUrl) {
+        import("@/lib/send-email").then(({ sendPrivacyPdf }) => {
+          sendPrivacyPdf({
+            toEmail: contatto.email!,
+            toName: [contatto.nome, contatto.cognome].filter(Boolean).join(" "),
+            ragioneSociale: cliente.ragione_sociale,
+            dataFirma: new Date().toISOString(),
+            pdfUrl: pdfSigned.signedUrl,
+          }).then((ok) => {
+            if (ok) toast.success("PDF privacy inviato per email");
+          });
+        });
+      }
+
       onSaved();
       setOpen(false);
     } catch (err) {

@@ -85,3 +85,57 @@ export function buildEmailTemplate(options: {
   </body>
 </html>`;
 }
+
+export async function sendPrivacyPdf(options: {
+  toEmail: string;
+  toName: string;
+  ragioneSociale: string;
+  dataFirma: string;
+  pdfUrl: string;
+}): Promise<boolean> {
+  const { toEmail, toName, ragioneSociale, dataFirma, pdfUrl } = options;
+
+  let pdfBase64: string | null = null;
+  try {
+    const res = await fetch(pdfUrl);
+    const buf = await res.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    let binary = "";
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    pdfBase64 = btoa(binary);
+  } catch (e) {
+    console.error("Errore download PDF privacy:", e);
+  }
+
+  const dataFirmaFormatted = new Date(dataFirma).toLocaleDateString("it-IT", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+
+  return sendEmail({
+    to: toEmail,
+    subject: `Informativa Privacy GDPR — ${ragioneSociale}`,
+    html: buildEmailTemplate({
+      title: "Informativa Privacy GDPR firmata",
+      body: `
+        <p>Gentile ${toName},</p>
+        <p>in allegato trova copia dell'informativa sulla privacy (GDPR Rev.06) firmata in data <strong>${dataFirmaFormatted}</strong> per conto di <strong>${ragioneSociale}</strong>.</p>
+        <p>Il documento è conservato nei nostri archivi. Per qualsiasi informazione o per esercitare i suoi diritti ai sensi del GDPR, può contattarci all'indirizzo <a href="mailto:gdpr-md@madepoint.it">gdpr-md@madepoint.it</a>.</p>
+      `,
+    }),
+    ...(pdfBase64
+      ? {
+          attachments: [
+            {
+              filename: `Privacy_GDPR_${ragioneSociale.replace(/[^a-zA-Z0-9]/g, "_")}_${dataFirmaFormatted.replace(/\s/g, "_")}.pdf`,
+              content: pdfBase64,
+              contentType: "application/pdf",
+            },
+          ],
+        }
+      : {}),
+  });
+}
