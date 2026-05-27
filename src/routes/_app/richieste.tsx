@@ -564,9 +564,18 @@ function InApprovazioneTab({
               {filtered.map((r) => {
                 const g = giorniDa(r.data_invio);
                 const livMio = canApprove && (isAdmin || r.livello_corrente === livelloUtente);
+                const unread = msgNonLetti?.[r.id] ?? 0;
                 return (
-                  <TableRow key={r.id}>
-                    {canApprove && <TableCell><Checkbox checked={selected.has(r.id)} onCheckedChange={() => toggle(r.id)} disabled={!livMio} /></TableCell>}
+                  <TableRow
+                    key={r.id}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => navigate({ to: "/richieste/$richiestaId", params: { richiestaId: r.id } })}
+                  >
+                    {canApprove && (
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <Checkbox checked={selected.has(r.id)} onCheckedChange={() => toggle(r.id)} disabled={!livMio} />
+                      </TableCell>
+                    )}
                     <TableCell className="font-medium">{r.clienti?.ragione_sociale ?? "—"}</TableCell>
                     {!isStoreManagerView(canApprove) && <TableCell className="text-sm text-muted-foreground">{r.stores?.nome ?? "—"}</TableCell>}
                     <TableCell><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{TIPO_LABEL[r.tipo as TipoRichiesta]}</span></TableCell>
@@ -577,24 +586,32 @@ function InApprovazioneTab({
                     <TableCell><Badge variant="outline">L{r.livello_corrente}/{r.livello_richiesto}</Badge></TableCell>
                     <TableCell className="text-sm text-muted-foreground">{formatDate(r.data_invio)}</TableCell>
                     <TableCell><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${attesaTone(g)}`}>{g}gg</span></TableCell>
-                    <TableCell className="text-right">
-                      {canApprove && livMio ? (
-                        <div className="inline-flex gap-1">
-                          <Button size="sm" variant="ghost" className="text-success h-8" onClick={() => { setImportoApprovato(String(r.importo_richiesto)); setAction({ kind: "approva", rows: [r] }); }}>
-                            <Check className="size-4" /> Approva
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                      <div className="inline-flex items-center gap-1">
+                        {unread > 0 && (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-info/15 text-info px-2 py-0.5 text-xs font-medium">
+                            <MessageSquare className="size-3" />
+                            {unread}
+                          </span>
+                        )}
+                        {canApprove && livMio ? (
+                          <>
+                            <Button size="sm" variant="ghost" className="text-success h-8" onClick={() => { setImportoApprovato(String(r.importo_richiesto)); setAction({ kind: "approva", rows: [r] }); }}>
+                              <Check className="size-4" /> Approva
+                            </Button>
+                            <Button size="sm" variant="ghost" className="text-warning h-8" onClick={() => setAction({ kind: "integrazioni", rows: [r] })} title="Richiedi integrazioni">
+                              <MessageSquareWarning className="size-4" />
+                            </Button>
+                            <Button size="sm" variant="ghost" className="text-destructive h-8" onClick={() => setAction({ kind: "rifiuta", rows: [r] })}>
+                              <X className="size-4" /> Rifiuta
+                            </Button>
+                          </>
+                        ) : (r.stato === "integrazioni_richieste" || r.stato === "bozza") ? (
+                          <Button size="sm" variant="ghost" className="text-destructive h-8" onClick={() => annullaMut.mutate(r)}>
+                            <Ban className="size-4" /> Annulla
                           </Button>
-                          <Button size="sm" variant="ghost" className="text-warning h-8" onClick={() => setAction({ kind: "integrazioni", rows: [r] })} title="Richiedi integrazioni">
-                            <MessageSquareWarning className="size-4" />
-                          </Button>
-                          <Button size="sm" variant="ghost" className="text-destructive h-8" onClick={() => setAction({ kind: "rifiuta", rows: [r] })}>
-                            <X className="size-4" /> Rifiuta
-                          </Button>
-                        </div>
-                      ) : (r.stato === "integrazioni_richieste" || r.stato === "bozza") ? (
-                        <Button size="sm" variant="ghost" className="text-destructive h-8" onClick={() => annullaMut.mutate(r)}>
-                          <Ban className="size-4" /> Annulla
-                        </Button>
-                      ) : <span className="text-xs text-muted-foreground">—</span>}
+                        ) : unread === 0 ? <span className="text-xs text-muted-foreground">—</span> : null}
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
