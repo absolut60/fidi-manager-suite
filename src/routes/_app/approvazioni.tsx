@@ -96,8 +96,9 @@ function ApprovazioniPage() {
         .order("data_invio", { ascending: true });
       // Solo gli approvatori puri vedono solo il loro livello
       // Admin, resp_generale e amministrativo vedono tutto
+      const roleStr = role as string | null;
       const soloMioLivello = !isAdmin && livello > 0 &&
-        role !== "resp_generale" && role !== "amministrativo";
+        roleStr !== "resp_generale" && roleStr !== "amministrativo";
       if (soloMioLivello) q = q.eq("livello_corrente", livello);
       const { data, error } = await q;
       if (error) {
