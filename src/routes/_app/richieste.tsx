@@ -839,7 +839,11 @@ function TuttoTab({ rows, loading }: { rows: any[]; loading: boolean }) {
           </TableHeader>
           <TableBody>
             {filtered.map((r) => (
-              <TableRow key={r.id}>
+              <TableRow
+                key={r.id}
+                className="cursor-pointer hover:bg-muted/50"
+                onClick={() => navigate({ to: "/richieste/$richiestaId", params: { richiestaId: r.id } })}
+              >
                 <TableCell className="font-medium">{r.clienti?.ragione_sociale ?? "—"}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{r.stores?.nome ?? "—"}</TableCell>
                 <TableCell><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{TIPO_LABEL[r.tipo as TipoRichiesta]}</span></TableCell>
