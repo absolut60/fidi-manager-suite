@@ -119,6 +119,25 @@ function ApprovazioniPage() {
     enabled: isAdmin || livello > 0,
   });
 
+  const { data: msgNonLetti } = useQuery({
+    queryKey: ["comunicazioni-non-lette", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("comunicazioni_richiesta")
+        .select("richiesta_id")
+        .eq("letto", false)
+        .neq("autore_id", user?.id ?? "");
+      const counts: Record<string, number> = {};
+      (data ?? []).forEach((m: any) => {
+        counts[m.richiesta_id] = (counts[m.richiesta_id] ?? 0) + 1;
+      });
+      return counts;
+    },
+    refetchInterval: 30000,
+  });
+
+
   const richieste = useMemo(() => {
     const list = (data ?? []) as any[];
     const min = fMin ? Number(fMin) : null;
