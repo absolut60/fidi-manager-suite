@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { classificaScadenza } from "@/lib/scadenze";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/_app/scadenziario")({
   component: ScadenziarioPage,
