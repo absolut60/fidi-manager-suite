@@ -251,7 +251,9 @@ function ApprovazioniPage() {
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Approvazioni</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          {isAdmin ? "Tutte le richieste in approvazione" : `Richieste in attesa al tuo livello (${livello})`}
+          {(isAdmin || (role as string) === "resp_generale" || (role as string) === "amministrativo")
+            ? "Tutte le richieste in approvazione"
+            : `Richieste in attesa al tuo livello (${livello})`}
         </p>
       </div>
 
