@@ -70,6 +70,14 @@ export const creaUtente = createServerFn({ method: "POST" })
     const userId = created.user?.id;
     if (!userId) throw new Error("Creazione fallita: nessun utente creato");
 
+    // Forza conferma email — non richiesta per utenti creati dall'admin
+    if (userId) {
+      await supabaseAdmin.auth.admin.updateUserById(userId, {
+        email_confirm: true,
+      });
+    }
+
+
     // Aggiorna profilo
     const { error: eProf } = await supabaseAdmin
       .from("profili")
