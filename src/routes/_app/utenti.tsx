@@ -199,6 +199,9 @@ function useStores() {
 
 function EditUtenteDialog({ utente, onClose }: { utente: UserRow; onClose: () => void }) {
   const qc = useQueryClient();
+  const { role } = useAuth();
+  const [nome, setNome] = useState(utente.nome ?? "");
+  const [cognome, setCognome] = useState(utente.cognome ?? "");
   const [ruoli, setRuoli] = useState<AppRole[]>(utente.ruoli.length ? utente.ruoli : ["store_manager"]);
   const [storeId, setStoreId] = useState<string>(utente.store_id ?? "_none");
   const [attivo, setAttivo] = useState(utente.attivo);
@@ -216,6 +219,8 @@ function EditUtenteDialog({ utente, onClose }: { utente: UserRow; onClose: () =>
         ruoli,
         storeId: storeId === "_none" ? null : storeId,
         attivo,
+        nome: nome.trim(),
+        cognome: cognome.trim(),
       }});
     },
     onSuccess: () => {
@@ -226,6 +231,15 @@ function EditUtenteDialog({ utente, onClose }: { utente: UserRow; onClose: () =>
     onError: (e: Error) => toast.error(e.message),
   });
 
+  async function handleResetPassword() {
+    if (!utente.email) return;
+    const { error } = await supabase.auth.resetPasswordForEmail(utente.email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    if (error) toast.error("Errore: " + error.message);
+    else toast.success("Email di reset password inviata a " + utente.email);
+  }
+
   return (
     <DialogContent className="max-h-[90vh] overflow-y-auto">
       <DialogHeader>
@@ -233,6 +247,16 @@ function EditUtenteDialog({ utente, onClose }: { utente: UserRow; onClose: () =>
         <DialogDescription>{utente.email}</DialogDescription>
       </DialogHeader>
       <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label>Nome</Label>
+            <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Cognome</Label>
+            <Input value={cognome} onChange={(e) => setCognome(e.target.value)} placeholder="Cognome" />
+          </div>
+        </div>
         <div className="space-y-1.5">
           <Label>Ruoli (selezione multipla)</Label>
           <RoleCheckboxes value={ruoli} onChange={setRuoli} />
@@ -253,6 +277,13 @@ function EditUtenteDialog({ utente, onClose }: { utente: UserRow; onClose: () =>
           <Checkbox checked={attivo} onCheckedChange={(c) => setAttivo(c === true)} />
           Utente attivo
         </label>
+        {role === "amministratore" && utente.email && (
+          <div className="pt-2 border-t">
+            <Button type="button" variant="outline" size="sm" onClick={handleResetPassword}>
+              Invia reset password
+            </Button>
+          </div>
+        )}
       </div>
       <DialogFooter>
         <Button variant="outline" onClick={onClose}>Annulla</Button>
