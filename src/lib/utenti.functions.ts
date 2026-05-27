@@ -118,7 +118,12 @@ export const updateUtenteRuoli = createServerFn({ method: "POST" })
       throw new Error("Il ruolo Store Manager richiede un punto vendita");
     }
 
-    const profileUpdate: Record<string, unknown> = {
+    const profileUpdate: {
+      store_id: string | null;
+      attivo: boolean;
+      nome?: string;
+      cognome?: string;
+    } = {
       store_id: data.storeId ?? null,
       attivo: data.attivo,
     };
