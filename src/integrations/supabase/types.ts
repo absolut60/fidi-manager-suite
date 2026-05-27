@@ -2227,6 +2227,8 @@ export type Database = {
         | "approvatore_liv2"
         | "approvatore_liv3"
         | "amministratore"
+        | "amministrazione"
+        | "direzione"
       esito_approvazione: "approvata" | "rifiutata"
       stato_importazione:
         | "in_elaborazione"
@@ -2439,6 +2441,8 @@ export const Constants = {
         "approvatore_liv2",
         "approvatore_liv3",
         "amministratore",
+        "amministrazione",
+        "direzione",
       ],
       esito_approvazione: ["approvata", "rifiutata"],
       stato_importazione: [

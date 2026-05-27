@@ -12,6 +12,8 @@ const RUOLI_VALIDI = [
   "approvatore_liv2",
   "approvatore_liv3",
   "amministratore",
+  "amministrazione",
+  "direzione",
 ] as const;
 
 async function assertAdmin(userId: string) {
@@ -97,12 +99,16 @@ export const updateUtenteRuoli = createServerFn({ method: "POST" })
     ruoli: string[];
     storeId?: string | null;
     attivo: boolean;
+    nome?: string;
+    cognome?: string;
   }) =>
     z.object({
       userId: z.string().uuid(),
-      ruoli: z.array(z.enum(RUOLI_VALIDI)).min(1).max(5),
+      ruoli: z.array(z.enum(RUOLI_VALIDI)).min(1).max(7),
       storeId: z.string().uuid().nullable().optional(),
       attivo: z.boolean(),
+      nome: z.string().max(100).optional(),
+      cognome: z.string().max(100).optional(),
     }).parse(d)
   )
   .handler(async ({ data, context }) => {
@@ -112,9 +118,21 @@ export const updateUtenteRuoli = createServerFn({ method: "POST" })
       throw new Error("Il ruolo Store Manager richiede un punto vendita");
     }
 
+    const profileUpdate: {
+      store_id: string | null;
+      attivo: boolean;
+      nome?: string;
+      cognome?: string;
+    } = {
+      store_id: data.storeId ?? null,
+      attivo: data.attivo,
+    };
+    if (data.nome !== undefined) profileUpdate.nome = data.nome;
+    if (data.cognome !== undefined) profileUpdate.cognome = data.cognome;
+
     const { error: eProf } = await supabaseAdmin
       .from("profili")
-      .update({ store_id: data.storeId ?? null, attivo: data.attivo })
+      .update(profileUpdate)
       .eq("id", data.userId);
     if (eProf) throw new Error(eProf.message);
 

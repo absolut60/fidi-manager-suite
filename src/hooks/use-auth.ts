@@ -90,5 +90,7 @@ export const RUOLI_LABEL: Record<AppRole, string> = {
   approvatore_liv1: "Approvatore Liv. 1",
   approvatore_liv2: "Approvatore Liv. 2",
   approvatore_liv3: "Approvatore Liv. 3",
-  amministratore: "Amministratore",
+  amministratore: "Admin",
+  amministrazione: "Amministrazione",
+  direzione: "Direzione",
 };
