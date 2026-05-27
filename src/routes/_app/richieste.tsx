@@ -365,6 +365,7 @@ function InApprovazioneTab({
   rows: any[]; loading: boolean; canApprove: boolean; livelloUtente: number; isAdmin: boolean; onChanged: () => void;
 }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [storeFilter, setStoreFilter] = useState("tutti");
   const [tipoFilter, setTipoFilter] = useState("tutti");
@@ -374,6 +375,24 @@ function InApprovazioneTab({
   const [action, setAction] = useState<{ kind: "approva" | "rifiuta" | "integrazioni"; rows: any[] } | null>(null);
   const [importoApprovato, setImportoApprovato] = useState<string>("");
   const [note, setNote] = useState("");
+
+  const { data: msgNonLetti } = useQuery({
+    queryKey: ["comunicazioni-non-lette", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("comunicazioni_richiesta")
+        .select("richiesta_id")
+        .eq("letto", false)
+        .neq("autore_id", user?.id ?? "");
+      const counts: Record<string, number> = {};
+      (data ?? []).forEach((m: any) => {
+        counts[m.richiesta_id] = (counts[m.richiesta_id] ?? 0) + 1;
+      });
+      return counts;
+    },
+    refetchInterval: 30000,
+  });
 
   const stores = useMemo(() => {
     const map = new Map<string, string>();
