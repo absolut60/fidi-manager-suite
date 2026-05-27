@@ -796,6 +796,7 @@ function StoricoTab({
 
 /* ============================ TUTTO TAB (admin) ============================ */
 function TuttoTab({ rows, loading }: { rows: any[]; loading: boolean }) {
+  const navigate = useNavigate();
   const [statoF, setStatoF] = useState<string>("tutti");
   const [livF, setLivF] = useState<string>("tutti");
   const filtered = rows
