@@ -2,7 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import { Plus, Building2, Pencil, Trash2, Sliders, Save } from "lucide-react";
+import { Plus, Building2, Pencil, Trash2, Sliders, Save, Mail } from "lucide-react";
+import { sendEmail, buildEmailTemplate } from "@/lib/send-email";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -37,6 +38,9 @@ function ImpostazioniPage() {
   const { role, loading } = useAuth();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<StoreRow | null>(null);
+  const [testEmailTo, setTestEmailTo] = useState("a.giani@gruppomade.com");
+  const [testEmailSending, setTestEmailSending] = useState(false);
+  const [testEmailResult, setTestEmailResult] = useState<"ok" | "error" | null>(null);
 
   const { data: stores, isLoading } = useQuery({
     queryKey: ["stores", "all"],
@@ -118,6 +122,50 @@ function ImpostazioniPage() {
               </TableBody>
             </Table>
           </div>
+        )}
+      </Card>
+
+      {/* ── TEST EMAIL TEMPORANEO — da rimuovere ── */}
+      <Card className="p-4 sm:p-5 border-dashed">
+        <h2 className="font-semibold mb-3 flex items-center gap-2">
+          <Mail className="size-4" /> Test invio email — sezione temporanea
+        </h2>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Input
+            type="email"
+            value={testEmailTo}
+            onChange={(e) => setTestEmailTo(e.target.value)}
+            placeholder="Email destinatario test"
+            className="flex-1"
+          />
+          <Button
+            disabled={testEmailSending || !testEmailTo}
+            onClick={async () => {
+              setTestEmailSending(true);
+              setTestEmailResult(null);
+              const ok = await sendEmail({
+                to: testEmailTo,
+                subject: "✅ Test FidiManager — Email funzionante",
+                html: buildEmailTemplate({
+                  title: "Test email FidiManager",
+                  body: `<p>Questa è un'email di test inviata da FidiManager — Gruppo MADE.</p>
+                         <p>Se stai leggendo questo messaggio, la configurazione SMTP è corretta.</p>`,
+                  ctaText: "Apri FidiManager",
+                  ctaUrl: window.location.origin,
+                }),
+              });
+              setTestEmailResult(ok ? "ok" : "error");
+              setTestEmailSending(false);
+            }}
+          >
+            {testEmailSending ? "Invio..." : "Invia test"}
+          </Button>
+        </div>
+        {testEmailResult === "ok" && (
+          <p className="text-sm text-green-600 mt-3">✅ Email inviata con successo!</p>
+        )}
+        {testEmailResult === "error" && (
+          <p className="text-sm text-destructive mt-3">❌ Errore invio — controlla i secrets SMTP su Supabase</p>
         )}
       </Card>
     </div>
