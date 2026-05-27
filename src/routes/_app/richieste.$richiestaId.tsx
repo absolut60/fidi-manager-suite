@@ -212,7 +212,7 @@ function RichiestaDetail() {
         </Card>
       )}
 
-      {r.stato !== "bozza" && (
+      {r.stato !== "bozza" && r.created_by && (
         <ComunicazioniRichiestaPanel richiestaId={r.id} richiestaCreatedBy={r.created_by} />
       )}
     </div>
