@@ -343,16 +343,18 @@ function ScadenziarioPage() {
       {/* Filtri */}
       <Card className="p-4 space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-          <div>
-            <label className="text-xs font-medium text-muted-foreground">Store</label>
-            <Select value={storeId} onValueChange={setStoreId}>
-              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tutti gli store</SelectItem>
-                {(stores ?? []).map((s) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
+          {!isStoreManager && (
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Store</label>
+              <Select value={storeId} onValueChange={setStoreId}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tutti gli store</SelectItem>
+                  {(stores ?? []).map((s) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div>
             <label className="text-xs font-medium text-muted-foreground">Fascia scaduto</label>
             <Select value={fascia} onValueChange={setFascia}>
