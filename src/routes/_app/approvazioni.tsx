@@ -54,7 +54,10 @@ function ApprovazioniPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { user, role } = useAuth();
-  const isAdmin = role === "amministratore";
+  const isAdmin =
+    role === "amministratore" ||
+    role === "amministrazione" ||
+    role === "direzione";
   const livello =
     role === "approvatore_liv3" ? 3 :
     role === "approvatore_liv2" ? 2 :
@@ -116,7 +119,7 @@ function ApprovazioniPage() {
       }
       return data;
     },
-    enabled: isAdmin || livello > 0,
+    enabled: true,
   });
 
   const { data: msgNonLetti } = useQuery({
