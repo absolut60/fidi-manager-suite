@@ -119,7 +119,7 @@ function ApprovazioniPage() {
       }
       return data;
     },
-    enabled: isAdmin || livello > 0,
+    enabled: true,
   });
 
   const { data: msgNonLetti } = useQuery({
