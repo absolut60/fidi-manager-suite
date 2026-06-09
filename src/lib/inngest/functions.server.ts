@@ -2160,7 +2160,7 @@ export const processBloccoFidoImport = inngest.createFunction(
         const summary = [
           {
             riga: 0,
-            errore: `Riepilogo: ${aggiornati} aggiornati, ${azzerati} azzerati (assenti), ${anomalieTotali} anomalie in attesa, ${nonTrovati.length + noteNonTrovate} non trovati, ${errors.length} errori`,
+            errore: `Riepilogo: ${aggiornati} aggiornati, ${azzerati} azzerati (assenti), ${anomalieTotali} anomalie in attesa, ${nonTrovatiCount + noteNonTrovate} non trovati, ${errorsCount + errors.length} errori`,
           },
           {
             riga: 0,
