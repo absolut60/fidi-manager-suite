@@ -1056,31 +1056,28 @@ export const processScadAssicImport = inngest.createFunction(
   async ({ event, step, logger }) => {
     const { importazioneId, filePath, userId } = event.data as EventData;
     try {
-      const parsed = await step.run("parse", async () => {
-        const wb = await downloadWorkbook(filePath);
-        const findSheet = (kw: string) => {
-          const name =
-            wb.SheetNames.find((n) => normalize(n) === normalize(kw)) ??
-            wb.SheetNames.find((n) => normalize(n).includes(normalize(kw)));
-          return name ? wb.Sheets[name] : null;
-        };
-        const sScad = findSheet("scadenziario");
-        const sAssic = findSheet("assicurazione");
-        const warnings: string[] = [];
-        let scadRows: Awaited<ReturnType<typeof parseScadenziarioBlockSheet>>["rows"] = [];
-        let scadTot = 0;
-        if (!sScad) warnings.push("Foglio 'SCADENZIARIO' non trovato.");
-        else {
-          const r = parseScadenziarioBlockSheet(sScad);
-          scadRows = r.rows;
-          scadTot = r.totRead;
-        }
-        const assicRows = sAssic ? parseAssicurazioneSheet(sAssic) : [];
-        if (!sAssic) warnings.push("Foglio 'ASSICURAZIONE' non trovato.");
-        return { scadRows, assicRows, scadTot, warnings };
-      });
+      // Parse fuori da step.run: workbook può eccedere il limite ~4MB
+      const wb = await downloadWorkbook(filePath);
+      const findSheet = (kw: string) => {
+        const name =
+          wb.SheetNames.find((n) => normalize(n) === normalize(kw)) ??
+          wb.SheetNames.find((n) => normalize(n).includes(normalize(kw)));
+        return name ? wb.Sheets[name] : null;
+      };
+      const sScad = findSheet("scadenziario");
+      const sAssic = findSheet("assicurazione");
+      const warnings: string[] = [];
+      let scadRows: Awaited<ReturnType<typeof parseScadenziarioBlockSheet>>["rows"] = [];
+      let scadTot = 0;
+      if (!sScad) warnings.push("Foglio 'SCADENZIARIO' non trovato.");
+      else {
+        const r = parseScadenziarioBlockSheet(sScad);
+        scadRows = r.rows;
+        scadTot = r.totRead;
+      }
+      const assicRows = sAssic ? parseAssicurazioneSheet(sAssic) : [];
+      if (!sAssic) warnings.push("Foglio 'ASSICURAZIONE' non trovato.");
 
-      const { scadRows, assicRows, scadTot, warnings } = parsed;
       logger.info(`Scad+Assic: ${scadRows.length} scadenze, ${assicRows.length} polizze`);
 
       const log: string[] = [...warnings];
