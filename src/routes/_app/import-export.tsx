@@ -264,6 +264,24 @@ function anagraficaSheetToObjects(
 
 function ImportExportPage() {
   const anomalieCount = useAnomalieCount();
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    // Marca automaticamente come falliti gli import bloccati da più di 2 ore
+    const cutoff = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+    supabase
+      .from("importazioni")
+      .update({
+        stato: "completata_con_errori",
+        completata_at: new Date().toISOString(),
+        log_errori: "Import interrotto automaticamente (timeout 2 ore).",
+      })
+      .eq("stato", "in_elaborazione")
+      .lt("updated_at", cutoff)
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: ["storico-import-export", "importazioni"] });
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
