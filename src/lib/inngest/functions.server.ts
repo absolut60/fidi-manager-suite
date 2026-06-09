@@ -297,40 +297,41 @@ export const processAnagraficaImport = inngest.createFunction(
 
       const toInsert = prepared.filter((p) => !p.existId);
       const toUpdate = prepared.filter((p) => p.existId);
-      const BATCH = 500;
 
-      for (let i = 0; i < toInsert.length; i += BATCH) {
-        const chunk = toInsert.slice(i, i + BATCH);
-        const res = await step.run(`insert-batch-${i}`, async () => {
+      // UN SOLO step.run per tutti gli insert
+      const insertRes = await step.run("process-all-inserts", async () => {
+        const BATCH = 500;
+        let ok = 0;
+        const errs: Array<{ riga: number; errore: string }> = [];
+        for (let i = 0; i < toInsert.length; i += BATCH) {
+          const chunk = toInsert.slice(i, i + BATCH);
           const { data, error } = await supabaseAdmin
             .from("clienti")
             .insert(chunk.map((c) => c.payload) as never)
             .select("id");
           if (error) {
-            let ok = 0;
-            const errs: Array<{ riga: number; errore: string }> = [];
             for (const c of chunk) {
               const { error: e2 } = await supabaseAdmin.from("clienti").insert(c.payload as never);
               if (e2) errs.push({ riga: c.idx, errore: `Insert: ${e2.message}` });
               else ok++;
             }
-            return { ok, errs };
+          } else {
+            ok += data?.length ?? chunk.length;
           }
-          return {
-            ok: data?.length ?? chunk.length,
-            errs: [] as Array<{ riga: number; errore: string }>,
-          };
-        });
-        created += res.ok;
-        errorLog.push(...res.errs);
-        await update("in_elaborazione");
-      }
+          await update("in_elaborazione");
+        }
+        return { ok, errs };
+      });
+      created += insertRes.ok;
+      errorLog.push(...insertRes.errs);
 
-      for (let i = 0; i < toUpdate.length; i += BATCH) {
-        const chunk = toUpdate.slice(i, i + BATCH);
-        const res = await step.run(`update-batch-${i}`, async () => {
-          let ok = 0;
-          const errs: Array<{ riga: number; errore: string }> = [];
+      // UN SOLO step.run per tutti gli update
+      const updateRes = await step.run("process-all-updates", async () => {
+        const BATCH = 500;
+        let ok = 0;
+        const errs: Array<{ riga: number; errore: string }> = [];
+        for (let i = 0; i < toUpdate.length; i += BATCH) {
+          const chunk = toUpdate.slice(i, i + BATCH);
           await Promise.all(
             chunk.map(async (c) => {
               const { error } = await supabaseAdmin
@@ -341,12 +342,12 @@ export const processAnagraficaImport = inngest.createFunction(
               else ok++;
             }),
           );
-          return { ok, errs };
-        });
-        updated += res.ok;
-        errorLog.push(...res.errs);
-        await update("in_elaborazione");
-      }
+          await update("in_elaborazione");
+        }
+        return { ok, errs };
+      });
+      updated += updateRes.ok;
+      errorLog.push(...updateRes.errs);
 
       await update(errorLog.length ? "completata_con_errori" : "completata", true);
       return { ok: true, creati: created, aggiornati: updated, saltati: skipped, errori: errorLog.length };
