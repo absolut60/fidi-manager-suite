@@ -1278,6 +1278,9 @@ export const processScadAssicImport = inngest.createFunction(
         scadCreated += res.c;
         scadUpdated += res.u;
         scadSkipped += res.s;
+        matchedClientsCount += res.matchedCount;
+        clientsToBlockCount += res.blocked;
+        clientsLegaleCount += res.legaleCreated;
 
         await supabaseAdmin
           .from("importazioni")
@@ -1291,16 +1294,8 @@ export const processScadAssicImport = inngest.createFunction(
           .eq("id", importazioneId);
       }
 
-      if (clientsToBlock.size) {
-        await supabaseAdmin
-          .from("clienti")
-          .update({
-            bloccato: true,
-            data_blocco: now,
-            motivo_blocco: "Import scadenziario: T_BLOCCO=BLOCCATO",
-          } as never)
-          .in("id", Array.from(clientsToBlock));
-      }
+      // Blocco clienti già applicato batch-per-batch nello step
+
 
       // ASSICURAZIONI
       let assicCreated = 0,
