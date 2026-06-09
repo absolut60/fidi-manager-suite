@@ -1320,7 +1320,7 @@ export const processScadAssicImport = inngest.createFunction(
             u = 0,
             s = 0;
           const logs: string[] = [];
-          const clients: string[] = [];
+          const clients = new Set<string>();
           for (const a of chunk) {
             const cid = clientMap.get(a.cod_cli);
             if (!cid) {
@@ -1328,7 +1328,7 @@ export const processScadAssicImport = inngest.createFunction(
               logs.push(`Assic riga ${a.excelRow}: cliente ${a.cod_cli} non trovato`);
               continue;
             }
-            clients.push(cid);
+            clients.add(cid);
             const payload: Record<string, unknown> = {
               cliente_id: cid,
               assicuratore: "POUEY",
@@ -1361,21 +1361,38 @@ export const processScadAssicImport = inngest.createFunction(
               }
             }
           }
-          return { c, u, s, logs, clients };
+          // Applica subito assicurazione_attiva per i clients del batch
+          if (clients.size) {
+            await supabaseAdmin
+              .from("clienti")
+              .update({ assicurazione_attiva: true } as never)
+              .in("id", Array.from(clients));
+          }
+          // Persisti log inline
+          if (logs.length) {
+            const { data: cur } = await supabaseAdmin
+              .from("importazioni")
+              .select("log_errori")
+              .eq("id", importazioneId)
+              .single();
+            const existing =
+              (cur?.log_errori as Array<{ messaggio: string }> | null) ?? [];
+            await supabaseAdmin
+              .from("importazioni")
+              .update({
+                log_errori: [...existing, ...logs.map((m) => ({ messaggio: m }))].slice(0, 500),
+              } as never)
+              .eq("id", importazioneId);
+          }
+          // SOLO contatori
+          return { c, u, s, assicClients: clients.size };
         });
         assicCreated += res.c;
         assicUpdated += res.u;
         assicSkipped += res.s;
-        log.push(...res.logs);
-        res.clients.forEach((id) => assicClients.add(id));
       }
 
-      if (assicClients.size) {
-        await supabaseAdmin
-          .from("clienti")
-          .update({ assicurazione_attiva: true } as never)
-          .in("id", Array.from(assicClients));
-      }
+
 
       const summary = [
         `SCADENZIARIO: lette ${scadTot}, abbinati ${matchedClientsCount} clienti, ${scadCreated} create, ${scadUpdated} aggiornate, ${scadSkipped} saltate`,
