@@ -187,8 +187,9 @@ export const processAnagraficaImport = inngest.createFunction(
 
       const codici = Array.from(new Set(rows.map((r) => r.codice_gestionale).filter(Boolean)));
       const pive = Array.from(new Set(rows.map((r) => r.partita_iva).filter(Boolean)));
-      const existing = await step.run("lookup-existing", async () => {
-        const map: Record<string, string> = {};
+      // Lookup inline — senza step.run per evitare serializzazione della map grande
+      const existing: Record<string, string> = {};
+      {
         const CHUNK = 200;
         if (codici.length) {
           for (let i = 0; i < codici.length; i += CHUNK) {
@@ -199,7 +200,7 @@ export const processAnagraficaImport = inngest.createFunction(
               .in("codice_gestionale", slice)
               .limit(CHUNK + 10);
             (data ?? []).forEach((c) => {
-              if (c.codice_gestionale) map[`cg:${c.codice_gestionale}`] = c.id;
+              if (c.codice_gestionale) existing[`cg:${c.codice_gestionale}`] = c.id;
             });
           }
         }
@@ -212,12 +213,11 @@ export const processAnagraficaImport = inngest.createFunction(
               .in("partita_iva", slice)
               .limit(CHUNK + 10);
             (data ?? []).forEach((c) => {
-              if (c.partita_iva) map[`pi:${c.partita_iva}`] = c.id;
+              if (c.partita_iva) existing[`pi:${c.partita_iva}`] = c.id;
             });
           }
         }
-        return map;
-      });
+      }
 
       type Prepared = { idx: number; payload: Record<string, unknown>; existId: string | null };
       const prepared: Prepared[] = [];
@@ -398,22 +398,23 @@ export const processRischioImport = inngest.createFunction(
 
       // Lookup: SOLO Record<codice, UUID>
       const codici = Array.from(new Set(rows.map((r) => r.codice_gestionale)));
-      const lookup = await step.run("lookup-existing", async () => {
-        const map: Record<string, string> = {};
-        const CHUNK = 500;
+      // Lookup inline — senza step.run per evitare serializzazione della map grande
+      const lookup: Record<string, string> = {};
+      {
+        const CHUNK = 200;
         for (let i = 0; i < codici.length; i += CHUNK) {
           const slice = codici.slice(i, i + CHUNK);
           if (!slice.length) continue;
           const { data } = await supabaseAdmin
             .from("clienti")
             .select("id, codice_gestionale")
-            .in("codice_gestionale", slice);
+            .in("codice_gestionale", slice)
+            .limit(CHUNK + 10);
           (data ?? []).forEach((c) => {
-            if (c.codice_gestionale) map[c.codice_gestionale] = c.id;
+            if (c.codice_gestionale) lookup[c.codice_gestionale] = c.id;
           });
         }
-        return map;
-      });
+      }
 
       const now = new Date().toISOString();
       const BATCH = 50;
@@ -755,22 +756,22 @@ export const processScadenziarioChunk = inngest.createFunction(
     );
 
     // STEP B: lookup clienti per codici di questo chunk
-    const clientMap = await step.run("lookup-clienti", async () => {
-      const out: Record<string, string> = {};
-      if (!codici.length) return out;
+    // Lookup inline — senza step.run per evitare serializzazione della map grande
+    const clientMap: Record<string, string> = {};
+    {
       const BATCH = 500;
       for (let i = 0; i < codici.length; i += BATCH) {
         const slice = codici.slice(i, i + BATCH);
+        if (!slice.length) continue;
         const { data: cdata } = await supabaseAdmin
           .from("clienti")
           .select("id, codice_gestionale")
           .in("codice_gestionale", slice as string[]);
         (cdata ?? []).forEach((c) => {
-          if (c.codice_gestionale) out[c.codice_gestionale] = c.id;
+          if (c.codice_gestionale) clientMap[c.codice_gestionale] = c.id;
         });
       }
-      return out;
-    });
+    }
 
     // STEP C: prepara, deduplica, upsert + persisti errori/codici inline
     const result = await step.run("upsert-batch", async () => {
@@ -1664,8 +1665,9 @@ export const processBloccoFidoImport = inngest.createFunction(
         assicurazione_attiva: boolean | null;
         in_gestione_legale: boolean | null;
       };
-      const clientMap = await step.run("lookup-clienti", async () => {
-        const map: Record<string, ClienteSnap> = {};
+      // Lookup inline — senza step.run per evitare serializzazione della map grande
+      const clientMap: Record<string, ClienteSnap> = {};
+      {
         const BATCH = 500;
         for (let i = 0; i < codici.length; i += BATCH) {
           const slice = codici.slice(i, i + BATCH);
@@ -1682,7 +1684,7 @@ export const processBloccoFidoImport = inngest.createFunction(
           );
           (data ?? []).forEach((c) => {
             if (c.codice_gestionale) {
-              map[normalizeBfaCodice(c.codice_gestionale)] = {
+              clientMap[normalizeBfaCodice(c.codice_gestionale)] = {
                 id: c.id,
                 ragione_sociale: c.ragione_sociale ?? null,
                 ind_blocco: (c as { ind_blocco?: number | null }).ind_blocco ?? null,
@@ -1694,29 +1696,29 @@ export const processBloccoFidoImport = inngest.createFunction(
             }
           });
         }
-        return map;
-      });
+      }
 
       // STEP 3: pre-fetch polizze POUEY esistenti
       const allClienteIds = Array.from(
         new Set(parsed.map((r) => clientMap[normalizeBfaCodice(r.codice_gestionale)]?.id).filter(Boolean) as string[]),
       );
-      const poueyMap = await step.run("lookup-polizze", async () => {
-        const map: Record<string, string> = {};
+      // Lookup inline — senza step.run per evitare serializzazione della map grande
+      const poueyMap: Record<string, string> = {};
+      {
         const BATCH = 500;
         for (let i = 0; i < allClienteIds.length; i += BATCH) {
           const slice = allClienteIds.slice(i, i + BATCH);
+          if (!slice.length) continue;
           const { data } = await supabaseAdmin
             .from("assicurazioni_credito")
             .select("id, cliente_id")
             .eq("assicuratore", "POUEY")
             .in("cliente_id", slice);
           ((data ?? []) as Array<{ id: string; cliente_id: string }>).forEach((p) => {
-            map[p.cliente_id] = p.id;
+            poueyMap[p.cliente_id] = p.id;
           });
         }
-        return map;
-      });
+      }
 
       // STEP 4: chunk processing con anomalie
       const CHUNK = 500;
