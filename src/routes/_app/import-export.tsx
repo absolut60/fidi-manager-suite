@@ -2961,14 +2961,17 @@ function HistoryCard({ kind }: { kind: "importazioni" | "esportazioni" }) {
                   ? 0
                   : 100;
             const inCorso = r.stato === "in_elaborazione";
+            const bloccato = kind === "importazioni" && isBloccato(r);
             const variant =
-              r.stato === "completata"
-                ? "default"
-                : r.stato === "fallita"
-                  ? "destructive"
-                  : r.stato === "completata_con_errori"
-                    ? "secondary"
-                    : "outline";
+              bloccato
+                ? "destructive"
+                : r.stato === "completata"
+                  ? "default"
+                  : r.stato === "fallita"
+                    ? "destructive"
+                    : r.stato === "completata_con_errori"
+                      ? "secondary"
+                      : "outline";
             return (
               <div key={r.id} className="border-b last:border-0 pb-3 last:pb-0 space-y-1.5">
                 <div className="flex items-start justify-between gap-2 text-sm">
@@ -2984,14 +2987,39 @@ function HistoryCard({ kind }: { kind: "importazioni" | "esportazioni" }) {
                       variant={variant as "default" | "destructive" | "secondary" | "outline"}
                       className="gap-1"
                     >
-                      {inCorso ? <Loader2 className="size-3 animate-spin" /> : null}
-                      {r.stato}
+                      {inCorso && !bloccato ? <Loader2 className="size-3 animate-spin" /> : null}
+                      {bloccato ? "Bloccato" : r.stato}
                     </Badge>
                     <p className="text-xs text-muted-foreground mt-1">
                       {kind === "importazioni"
                         ? `${r.righe_create ?? 0} nuovi · ${r.righe_aggiornate ?? 0} agg. / ${r.righe_totali ?? 0}`
                         : `${r.righe_esportate ?? 0} righe`}
                     </p>
+                    {bloccato ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-6 mt-1 text-[11px] px-2"
+                        onClick={async () => {
+                          await supabase
+                            .from("importazioni")
+                            .update({
+                              stato: "completata_con_errori",
+                              completata_at: new Date().toISOString(),
+                              log_errori:
+                                "Import interrotto: nessun aggiornamento da oltre 30 minuti.",
+                            })
+                            .eq("id", r.id);
+                          queryClient.invalidateQueries({
+                            queryKey: ["storico-import-export", "importazioni"],
+                          });
+                          toast.info("Import marcato come fallito");
+                        }}
+                      >
+                        Segna come fallito
+                      </Button>
+                    ) : null}
                   </div>
                 </div>
                 {kind === "importazioni" && (inCorso || (totali > 0 && elaborate < totali)) ? (
