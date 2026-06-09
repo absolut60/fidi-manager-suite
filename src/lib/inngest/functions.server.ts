@@ -161,10 +161,11 @@ export const processAnagraficaImport = inngest.createFunction(
     };
 
     try {
-      const rows = await step.run("parse", async () => {
-        const wb = await downloadWorkbook(filePath);
-        return anagraficaSheetToObjects(wb.Sheets[wb.SheetNames[0]]);
-      });
+      // Parse fuori da step.run: l'output di step.run è limitato a ~4MB
+      // e un workbook parsato eccede facilmente quel limite.
+      // In caso di retry il file viene ri-scaricato e ri-parsato (accettabile).
+      const wb = await downloadWorkbook(filePath);
+      const rows = anagraficaSheetToObjects(wb.Sheets[wb.SheetNames[0]]);
       logger.info(`Anagrafica: ${rows.length} righe`);
       await supabaseAdmin
         .from("importazioni")
