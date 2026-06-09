@@ -1069,50 +1069,12 @@ export const finalizeScadenziarioImport = inngest.createFunction(
       timestampInizio: string;
     };
     try {
-      // Reconciliation: chiude scadenze "fantasma" (Aperta + ultima_sincronizzazione < timestampInizio)
-      const reconc = await step.run("reconciliation", async () => {
-        // Trova clienti coinvolti: quelli con scadenze importato_da = questa importazione
-        const { data: cidsData } = await supabaseAdmin
-          .from("scadenze" as never)
-          .select("cliente_id")
-          .eq("importato_da", importazioneId)
-          .limit(50000);
-        const cids = Array.from(
-          new Set(((cidsData ?? []) as Array<{ cliente_id: string }>).map((r) => r.cliente_id)),
-        );
-        if (!cids.length) return { totChiuse: 0, totClienti: 0 };
-
-        const BATCH = 200;
-        let totChiuse = 0;
-        const clientiCoinvolti = new Set<string>();
-        const nota = `Chiusa automaticamente: assente nel file di sincronizzazione del ${timestampInizio}`;
-        const dataPagamento = new Date().toISOString();
-        for (let i = 0; i < cids.length; i += BATCH) {
-          const slice = cids.slice(i, i + BATCH);
-          const { data: toClose } = await supabaseAdmin
-            .from("scadenze" as never)
-            .select("id, cliente_id")
-            .in("cliente_id", slice)
-            .eq("stato_contabile", "Aperta")
-            .lt("ultima_sincronizzazione", timestampInizio)
-            .ilike("tempi_scadenza", "%pagat%");
-          const closeRows = (toClose ?? []) as Array<{ id: string; cliente_id: string }>;
-          if (!closeRows.length) continue;
-          const ids = closeRows.map((r) => r.id);
-          closeRows.forEach((r) => clientiCoinvolti.add(r.cliente_id));
-          const { error } = await supabaseAdmin
-            .from("scadenze" as never)
-            .update({
-              stato_contabile: "Chiusa",
-              data_pagamento: dataPagamento,
-              note: nota,
-            } as never)
-            .in("id", ids);
-          if (error) throw new Error(`Reconciliation: ${error.message}`);
-          totChiuse += closeRows.length;
-        }
-        return { totChiuse, totClienti: clientiCoinvolti.size };
-      });
+      // Reconciliation DISABILITATA: con la nuova logica le righe pagate vengono
+      // eliminate esplicitamente in fase di upsert (vedi processScadenziarioChunk).
+      // Non chiudiamo più automaticamente le righe assenti dal file: potrebbero
+      // essere ancora valide (es. a scadere) ma non presenti in questo file.
+      const reconc = { totChiuse: 0, totClienti: 0 };
+      void timestampInizio;
 
       // Aggiornamento finale dello stato
       await step.run("set-final-state", async () => {
