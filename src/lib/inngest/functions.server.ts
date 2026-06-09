@@ -2176,7 +2176,7 @@ export const processBloccoFidoImport = inngest.createFunction(
         await supabaseAdmin
           .from("importazioni")
           .update({
-            stato: errors.length > 0 ? "completata_con_errori" : "completata",
+            stato: errorsCount + errors.length > 0 ? "completata_con_errori" : "completata",
             completata_at: new Date().toISOString(),
             log_errori: [...summary, ...existing].slice(0, 500),
           } as never)
