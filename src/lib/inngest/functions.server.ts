@@ -417,19 +417,23 @@ export const processRischioImport = inngest.createFunction(
       }
 
       const now = new Date().toISOString();
-      const BATCH = 500;
-      for (let i = 0; i < rows.length; i += BATCH) {
-        const chunk = rows.slice(i, i + BATCH);
-        const res = await step.run(`update-batch-${i}`, async () => {
-          let ok = 0;
-          let saltati = 0;
-          let errori = 0;
+      // UN SOLO step.run per tutti i batch — Inngest memoizza solo l'output finale
+      const allRes = await step.run("process-all-batches", async () => {
+        let aggiornati = 0;
+        let saltati = 0;
+        let errori = 0;
+        const BATCH = 500;
+        for (let i = 0; i < rows.length; i += BATCH) {
+          const chunk = rows.slice(i, i + BATCH);
           const errs: Array<{ riga: number; errore: string }> = [];
+          let bOk = 0;
+          let bSaltati = 0;
+          let bErrori = 0;
           await Promise.all(
             chunk.map(async (r) => {
               const id = lookup[r.codice_gestionale];
               if (!id) {
-                saltati++;
+                bSaltati++;
                 errs.push({
                   riga: r.idx,
                   errore: `Codice ${r.codice_gestionale} non trovato${r.ragione_sociale ? ` (${r.ragione_sociale})` : ""}`,
@@ -441,12 +445,14 @@ export const processRischioImport = inngest.createFunction(
                 .update({ ...r.payload, ultima_sincronizzazione: now } as never)
                 .eq("id", id);
               if (error) {
-                errori++;
+                bErrori++;
                 errs.push({ riga: r.idx, errore: `Update: ${error.message}` });
-              } else ok++;
+              } else bOk++;
             }),
           );
-          // Persisti errori inline (non li restituiamo come array)
+          aggiornati += bOk;
+          saltati += bSaltati;
+          errori += bErrori;
           if (errs.length) {
             const { data: cur } = await supabaseAdmin
               .from("importazioni")
@@ -460,22 +466,21 @@ export const processRischioImport = inngest.createFunction(
               .update({ log_errori: [...existing, ...errs].slice(0, 500) } as never)
               .eq("id", importazioneId);
           }
-          // SOLO contatori
-          return { aggiornati: ok, saltati, errori };
-        });
-        cAggiornati += res.aggiornati;
-        cSaltati += res.saltati;
-        cErrori += res.errori + res.saltati;
-        await supabaseAdmin
-          .from("importazioni")
-          .update({
-            righe_elaborate: Math.min(i + BATCH, rows.length),
-            righe_aggiornate: cAggiornati,
-            righe_errore: cErrori,
-            stato: "in_elaborazione",
-          })
-          .eq("id", importazioneId);
-      }
+          await supabaseAdmin
+            .from("importazioni")
+            .update({
+              righe_elaborate: Math.min(i + BATCH, rows.length),
+              righe_aggiornate: aggiornati,
+              righe_errore: errori + saltati,
+              stato: "in_elaborazione",
+            })
+            .eq("id", importazioneId);
+        }
+        return { aggiornati, saltati, errori };
+      });
+      cAggiornati = allRes.aggiornati;
+      cSaltati = allRes.saltati;
+      cErrori += allRes.errori + allRes.saltati;
 
       const riepilogoLog: Array<{ riga: number; errore: string }> = [
         {
