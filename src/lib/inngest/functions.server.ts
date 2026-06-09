@@ -349,7 +349,7 @@ export const processAnagraficaImport = inngest.createFunction(
       }
 
       await update(errorLog.length ? "completata_con_errori" : "completata", true);
-      return { created, updated, skipped, errors: errorLog.length };
+      return { ok: true, creati: created, aggiornati: updated, saltati: skipped, errori: errorLog.length };
     } catch (err) {
       await setImportazioneError(importazioneId, err instanceof Error ? err.message : String(err));
       throw err;
