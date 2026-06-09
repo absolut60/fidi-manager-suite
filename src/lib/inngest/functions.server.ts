@@ -1166,10 +1166,17 @@ export const processScadAssicImport = inngest.createFunction(
       const now = new Date().toISOString();
 
 
-      const BATCH = 500;
-      for (let i = 0; i < scadRows.length; i += BATCH) {
-        const chunk = scadRows.slice(i, i + BATCH);
-        const res = await step.run(`scad-batch-${i}`, async () => {
+      // UN SOLO step.run per tutti i batch scadenziario
+      const scadAllRes = await step.run("process-all-scad-batches", async () => {
+        const BATCH = 500;
+        let totC = 0,
+          totU = 0,
+          totS = 0;
+        let totBlocked = 0,
+          totLegale = 0,
+          totMatched = 0;
+        for (let i = 0; i < scadRows.length; i += BATCH) {
+          const chunk = scadRows.slice(i, i + BATCH);
           let c = 0,
             u = 0,
             s = 0;
@@ -1243,9 +1250,7 @@ export const processScadAssicImport = inngest.createFunction(
                 legale.add(cid);
               } else logs.push(`Riga ${r.excelRow}: pratica legale ${error.message}`);
             }
-
           }
-          // Applica subito blocco clienti del batch (così non serve restituire array di id grandi)
           if (block.size) {
             await supabaseAdmin
               .from("clienti")
@@ -1256,7 +1261,6 @@ export const processScadAssicImport = inngest.createFunction(
               } as never)
               .in("id", Array.from(block));
           }
-          // Persisti log inline
           if (logs.length) {
             const { data: cur } = await supabaseAdmin
               .from("importazioni")
@@ -1272,34 +1276,31 @@ export const processScadAssicImport = inngest.createFunction(
               } as never)
               .eq("id", importazioneId);
           }
-          // SOLO contatori
-          return {
-            c,
-            u,
-            s,
-            blocked: block.size,
-            legaleCreated: legale.size,
-            matchedCount: matched.size,
-          };
-        });
-        scadCreated += res.c;
-        scadUpdated += res.u;
-        scadSkipped += res.s;
-        matchedClientsCount += res.matchedCount;
-        clientsToBlockCount += res.blocked;
-        clientsLegaleCount += res.legaleCreated;
-
-        await supabaseAdmin
-          .from("importazioni")
-          .update({
-            righe_elaborate: Math.min(i + BATCH, scadRows.length),
-            righe_create: scadCreated,
-            righe_aggiornate: scadUpdated,
-            righe_errore: scadSkipped,
-            stato: "in_elaborazione",
-          })
-          .eq("id", importazioneId);
-      }
+          totC += c;
+          totU += u;
+          totS += s;
+          totBlocked += block.size;
+          totLegale += legale.size;
+          totMatched += matched.size;
+          await supabaseAdmin
+            .from("importazioni")
+            .update({
+              righe_elaborate: Math.min(i + BATCH, scadRows.length),
+              righe_create: totC,
+              righe_aggiornate: totU,
+              righe_errore: totS,
+              stato: "in_elaborazione",
+            })
+            .eq("id", importazioneId);
+        }
+        return { c: totC, u: totU, s: totS, blocked: totBlocked, legaleCreated: totLegale, matchedCount: totMatched };
+      });
+      scadCreated += scadAllRes.c;
+      scadUpdated += scadAllRes.u;
+      scadSkipped += scadAllRes.s;
+      matchedClientsCount += scadAllRes.matchedCount;
+      clientsToBlockCount += scadAllRes.blocked;
+      clientsLegaleCount += scadAllRes.legaleCreated;
 
       // Blocco clienti già applicato batch-per-batch nello step
 
