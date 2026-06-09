@@ -1051,7 +1051,8 @@ export const finalizeScadenziarioImport = inngest.createFunction(
             .select("id, cliente_id")
             .in("cliente_id", slice)
             .eq("stato_contabile", "Aperta")
-            .lt("ultima_sincronizzazione", timestampInizio);
+            .lt("ultima_sincronizzazione", timestampInizio)
+            .ilike("tempi_scadenza", "%pagat%");
           const closeRows = (toClose ?? []) as Array<{ id: string; cliente_id: string }>;
           if (!closeRows.length) continue;
           const ids = closeRows.map((r) => r.id);
