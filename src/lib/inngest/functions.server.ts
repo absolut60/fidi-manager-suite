@@ -2197,8 +2197,9 @@ export const processBloccoFidoImport = inngest.createFunction(
         noteImportate,
         noteNonTrovate,
         perdeGestioneLegale,
-        nonTrovati: nonTrovati.length,
-        errori: errors.length,
+        nonTrovati: nonTrovatiCount,
+        errori: errorsCount + errors.length,
+
       };
     } catch (err) {
       await setImportazioneError(importazioneId, err instanceof Error ? err.message : String(err));
