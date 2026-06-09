@@ -1153,10 +1153,11 @@ export const processScadAssicImport = inngest.createFunction(
       let scadCreated = 0,
         scadUpdated = 0,
         scadSkipped = 0;
-      const matchedClients = new Set<string>();
-      const clientsToBlock = new Set<string>();
-      const clientsLegale = new Set<string>();
+      let matchedClientsCount = 0;
+      let clientsToBlockCount = 0;
+      let clientsLegaleCount = 0;
       const now = new Date().toISOString();
+
 
       const BATCH = 40;
       for (let i = 0; i < scadRows.length; i += BATCH) {
