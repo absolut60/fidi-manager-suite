@@ -756,22 +756,22 @@ export const processScadenziarioChunk = inngest.createFunction(
     );
 
     // STEP B: lookup clienti per codici di questo chunk
-    const clientMap = await step.run("lookup-clienti", async () => {
-      const out: Record<string, string> = {};
-      if (!codici.length) return out;
+    // Lookup inline — senza step.run per evitare serializzazione della map grande
+    const clientMap: Record<string, string> = {};
+    {
       const BATCH = 500;
       for (let i = 0; i < codici.length; i += BATCH) {
         const slice = codici.slice(i, i + BATCH);
+        if (!slice.length) continue;
         const { data: cdata } = await supabaseAdmin
           .from("clienti")
           .select("id, codice_gestionale")
           .in("codice_gestionale", slice as string[]);
         (cdata ?? []).forEach((c) => {
-          if (c.codice_gestionale) out[c.codice_gestionale] = c.id;
+          if (c.codice_gestionale) clientMap[c.codice_gestionale] = c.id;
         });
       }
-      return out;
-    });
+    }
 
     // STEP C: prepara, deduplica, upsert + persisti errori/codici inline
     const result = await step.run("upsert-batch", async () => {
