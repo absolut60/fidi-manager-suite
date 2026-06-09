@@ -276,7 +276,7 @@ function ImportExportPage() {
         log_errori: "Import interrotto automaticamente (timeout 2 ore).",
       })
       .eq("stato", "in_elaborazione")
-      .lt("updated_at", cutoff)
+      .lt("created_at", cutoff)
       .then(() => {
         queryClient.invalidateQueries({ queryKey: ["storico-import-export", "importazioni"] });
       });
