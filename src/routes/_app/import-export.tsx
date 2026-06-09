@@ -2906,6 +2906,7 @@ function HistoryCard({ kind }: { kind: "importazioni" | "esportazioni" }) {
     righe_errore?: number | null;
     righe_esportate?: number | null;
   };
+  const queryClient = useQueryClient();
   const { data, isLoading, isFetching, refetch } = useQuery({
     queryKey: ["storico-import-export", kind],
     queryFn: async () => {
@@ -2922,6 +2923,13 @@ function HistoryCard({ kind }: { kind: "importazioni" | "esportazioni" }) {
       return rows.some((r) => r.stato === "in_elaborazione") ? 3000 : false;
     },
   });
+
+  const isBloccato = (imp: HistoryRow): boolean => {
+    if (imp.stato !== "in_elaborazione") return false;
+    const updated = new Date((imp as { updated_at?: string }).updated_at ?? imp.created_at);
+    const diffMinuti = (Date.now() - updated.getTime()) / 1000 / 60;
+    return diffMinuti > 30;
+  };
 
   const title = kind === "importazioni" ? "Ultime importazioni" : "Ultime esportazioni";
   const Icon = kind === "importazioni" ? Upload : Download;
