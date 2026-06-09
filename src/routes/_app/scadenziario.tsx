@@ -149,18 +149,21 @@ function ScadenziarioPage() {
   });
 
   const { data: scad, isLoading } = useQuery({
-    queryKey: ["scadenze-globali-v3-aperte"],
+    queryKey: ["scadenze-globali-v4-aperte-o-tempi"],
     queryFn: async () => {
       const all: ScadRow[] = [];
       const pageSize = 1000;
       let from = 0;
       while (true) {
+        // Includiamo:
+        // - tutte le righe Aperta (qualunque tempi_scadenza)
+        // - le righe Chiuse con tempi_scadenza che indica "a scadere" o "scaduto"
+        //   (escluse quelle "pagat*"): il gestionale a volte importa righe
+        //   ancora aperte come "Chiusa" ma con tempi_scadenza valorizzato.
         const { data, error } = await supabase
           .from("scadenze")
           .select("cliente_id, importo_scadenza, giorni_ritardo, data_scadenza, stato_contabile, tempi_scadenza, codice_pagamento")
-          // Filtro prima per stato_contabile per sfruttare l'indice parziale idx_scadenze_aperte_data.
-          // Le righe non-Aperta verrebbero comunque categorizzate come "pagato" e ignorate dai KPI.
-          .eq("stato_contabile", "Aperta")
+          .or("stato_contabile.eq.Aperta,and(stato_contabile.neq.Aperta,tempi_scadenza.ilike.%scader%),and(stato_contabile.neq.Aperta,tempi_scadenza.ilike.%scadut%)")
           .order("cliente_id", { ascending: true })
           .range(from, from + pageSize - 1);
         if (error) throw error;
