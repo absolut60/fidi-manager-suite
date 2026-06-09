@@ -187,8 +187,9 @@ export const processAnagraficaImport = inngest.createFunction(
 
       const codici = Array.from(new Set(rows.map((r) => r.codice_gestionale).filter(Boolean)));
       const pive = Array.from(new Set(rows.map((r) => r.partita_iva).filter(Boolean)));
-      const existing = await step.run("lookup-existing", async () => {
-        const map: Record<string, string> = {};
+      // Lookup inline — senza step.run per evitare serializzazione della map grande
+      const existing: Record<string, string> = {};
+      {
         const CHUNK = 200;
         if (codici.length) {
           for (let i = 0; i < codici.length; i += CHUNK) {
@@ -199,7 +200,7 @@ export const processAnagraficaImport = inngest.createFunction(
               .in("codice_gestionale", slice)
               .limit(CHUNK + 10);
             (data ?? []).forEach((c) => {
-              if (c.codice_gestionale) map[`cg:${c.codice_gestionale}`] = c.id;
+              if (c.codice_gestionale) existing[`cg:${c.codice_gestionale}`] = c.id;
             });
           }
         }
@@ -212,12 +213,11 @@ export const processAnagraficaImport = inngest.createFunction(
               .in("partita_iva", slice)
               .limit(CHUNK + 10);
             (data ?? []).forEach((c) => {
-              if (c.partita_iva) map[`pi:${c.partita_iva}`] = c.id;
+              if (c.partita_iva) existing[`pi:${c.partita_iva}`] = c.id;
             });
           }
         }
-        return map;
-      });
+      }
 
       type Prepared = { idx: number; payload: Record<string, unknown>; existId: string | null };
       const prepared: Prepared[] = [];
