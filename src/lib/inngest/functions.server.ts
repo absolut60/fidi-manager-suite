@@ -483,25 +483,25 @@ export const processRischioImport = inngest.createFunction(
         },
       ];
 
+      // Calcola fuori dallo step — solo primitivi, nessun array grande catturato nella closure
+      const totaleElaborate = rows.length + missing.length;
+      const logFinale = riepilogoLog.slice(0, 50);
+      const statoFinale = cErrori > 0 ? "completata_con_errori" : "completata";
+
       await step.run("finalize", async () => {
-        const { data: cur } = await supabaseAdmin
-          .from("importazioni")
-          .select("log_errori")
-          .eq("id", importazioneId)
-          .single();
-        const existing = (cur?.log_errori as Array<{ riga: number; errore: string }> | null) ?? [];
         await supabaseAdmin
           .from("importazioni")
           .update({
-            righe_elaborate: rows.length + missing.length,
+            righe_elaborate: totaleElaborate,
             righe_create: 0,
             righe_aggiornate: cAggiornati,
             righe_errore: cErrori,
-            stato: cErrori ? "completata_con_errori" : "completata",
+            stato: statoFinale,
             completata_at: new Date().toISOString(),
-            log_errori: [...riepilogoLog, ...existing].slice(0, 500),
+            log_errori: logFinale,
           } as never)
           .eq("id", importazioneId);
+        return { ok: true };
       });
 
       // SOLO contatori e log troncato — nessun array di righe/clienti
