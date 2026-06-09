@@ -212,7 +212,6 @@ function ScadenziarioPage() {
   }, [scad, escludiBonifici]);
 
   const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
-  const limit60 = useMemo(() => { const d = new Date(today); d.setDate(d.getDate() + 60); return d; }, [today]);
 
   // Aggregazione per cliente, applicando filtri store / blocco / bonifici
   const aggregato = useMemo(() => {
@@ -251,7 +250,7 @@ function ScadenziarioPage() {
       const aScadFiltered = e.aScadere.filter((r) => {
         if (!r.data_scadenza) return false;
         const d = new Date(r.data_scadenza); d.setHours(0, 0, 0, 0);
-        return d >= today && d <= limit60;
+        return d >= today;
       });
       const totAScad = aScadFiltered.reduce((a, r) => a + Number(r.importo_scadenza ?? 0), 0);
       const prossima = aScadFiltered
@@ -277,7 +276,7 @@ function ScadenziarioPage() {
         return r.fascia === fascia;
       })
       .sort((a, b) => b.totScad - a.totScad);
-  }, [aggregato, minImp, fascia, today, limit60]);
+  }, [aggregato, minImp, fascia, today]);
 
   // Conteggio clienti in legale esclusi dalla lista (per badge accanto al toggle).
   // Conta i clienti con scadenze aperte (non pagate, non bonifici) che verrebbero
@@ -331,7 +330,7 @@ function ScadenziarioPage() {
         <CalendarClock className="size-6 text-primary" />
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Scadenziario</h1>
-          <p className="text-sm text-muted-foreground">Clienti con scadenze aperte — scaduto e a scadere a 60gg.</p>
+          <p className="text-sm text-muted-foreground">Clienti con scadenze aperte — scaduto e a scadere</p>
         </div>
       </header>
 
