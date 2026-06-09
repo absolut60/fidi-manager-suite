@@ -78,7 +78,7 @@ function BgProgressBlock({
         />
       </div>
       <div className="text-xs text-muted-foreground">
-        {progress.righe_elaborate ?? 0} / {progress.righe_totali ?? fallbackTotal} righe ·{" "}
+        {(progress.righe_elaborate ?? 0).toLocaleString("it-IT")} / {(Number(progress.righe_totali ?? fallbackTotal ?? 0)).toLocaleString("it-IT")} righe ({pct}%) ·{" "}
         {progress.righe_create ?? 0} create · {progress.righe_aggiornate ?? 0} aggiornate ·{" "}
         {progress.righe_errore ?? 0} errori
         {(progress.righe_saltate ?? 0) > 0 ? (
