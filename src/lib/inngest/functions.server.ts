@@ -1957,7 +1957,17 @@ export const processBloccoFidoImport = inngest.createFunction(
               .eq("id", importazioneId);
           }
 
-          return { cAgg, cBlk, cSblk, cNonAtt, cPol, cAnom, cErr, cMiss };
+          // SOLO contatori (errori/cMiss già persistiti inline)
+          return {
+            cAgg,
+            cBlk,
+            cSblk,
+            cNonAtt,
+            cPol,
+            cAnom,
+            cErr: cErr.length,
+            cMiss: cMiss.length,
+          };
         });
         aggiornati += chunkRes.cAgg;
         bloccati += chunkRes.cBlk;
@@ -1965,9 +1975,10 @@ export const processBloccoFidoImport = inngest.createFunction(
         nonAttivi += chunkRes.cNonAtt;
         polizze += chunkRes.cPol;
         anomalieTotali += chunkRes.cAnom;
-        errors.push(...chunkRes.cErr);
-        nonTrovati.push(...chunkRes.cMiss);
+        errorsCount += chunkRes.cErr;
+        nonTrovatiCount += chunkRes.cMiss;
       }
+
 
       // STEP 4b: Note Legale + anomalie perde_gestione_legale
       let noteImportate = 0;
