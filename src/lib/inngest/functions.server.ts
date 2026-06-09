@@ -1301,7 +1301,7 @@ export const processScadAssicImport = inngest.createFunction(
       let assicCreated = 0,
         assicUpdated = 0,
         assicSkipped = 0;
-      const assicClients = new Set<string>();
+      // assicurazione_attiva ora viene aggiornata inline nello step
       const existingPol = new Map<string, string>();
       if (clientIds.length) {
         const { data } = await supabaseAdmin
