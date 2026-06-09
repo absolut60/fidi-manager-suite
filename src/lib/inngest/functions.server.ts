@@ -370,76 +370,131 @@ export const processRischioImport = inngest.createFunction(
     retries: 2,
     timeouts: { finish: "15m" },
     triggers: [{ event: "import/analisi_rischio.requested" }],
-  },
-  async ({ event, step, logger }) => {
-    const { importazioneId, filePath } = event.data as EventData;
-    try {
-      // Parse fuori da step.run: output limitato a ~4MB
-      const wb = await downloadWorkbook(filePath);
-      const { rows, missing } = parseRischioSheet(wb.Sheets[wb.SheetNames[0]]);
-      logger.info(`Rischio: ${rows.length} righe, ${missing.length} senza codice`);
-
-      // Errori iniziali (codice mancante) persistiti direttamente
-      let cErrori = missing.length;
-      let cAggiornati = 0;
-      let cSaltati = 0;
-
+    onFailure: async ({ error, event: failedEvent }) => {
+      const importazioneId =
+        (failedEvent.data as any)?.importazioneId ?? null;
+      if (!importazioneId) return;
       await supabaseAdmin
         .from("importazioni")
         .update({
-          righe_totali: rows.length + missing.length,
-          righe_errore: cErrori,
-          stato: "in_elaborazione",
-          log_errori: missing.length
-            ? missing.slice(0, 500).map((idx) => ({
-                riga: idx,
-                errore: "Codice gestionale mancante",
-              }))
-            : null,
-        })
-        .eq("id", importazioneId);
+          stato: "completata_con_errori",
+          completata_at: new Date().toISOString(),
+          log_errori: [{
+            riga: 0,
+            errore: `Import fallito dopo tutti i retry: ${error?.message ?? "errore sconosciuto"}`,
+          }],
+        } as never)
+        .eq("id", importazioneId)
+        .eq("stato", "in_elaborazione");
+    },
+  },
+  async ({ event, step }) => {
+    const { importazioneId, filePath } = event.data as EventData;
+    const stagingBase = `_rischio_staging/${importazioneId}`;
+    try {
+      // STEP 1 — parse + staging su Storage (memoizzato)
+      const initResult = await step.run("parse-and-stage", async () => {
+        const wb = await downloadWorkbook(filePath);
+        const { rows, missing } = parseRischioSheet(wb.Sheets[wb.SheetNames[0]]);
 
-      // Lookup: SOLO Record<codice, UUID>
-      const codici = Array.from(new Set(rows.map((r) => r.codice_gestionale)));
-      // Lookup inline — senza step.run per evitare serializzazione della map grande
-      const lookup: Record<string, string> = {};
-      {
+        const rowsJson = JSON.stringify(rows);
+        await supabaseAdmin.storage
+          .from("import-staging")
+          .upload(`${stagingBase}/rows.json`, rowsJson, {
+            contentType: "application/json",
+            upsert: true,
+          });
+
+        await supabaseAdmin
+          .from("importazioni")
+          .update({
+            righe_totali: rows.length + missing.length,
+            righe_errore: missing.length,
+            stato: "in_elaborazione",
+            log_errori: missing.length
+              ? missing.slice(0, 500).map((idx: number) => ({
+                  riga: idx,
+                  errore: "Codice gestionale mancante",
+                }))
+              : null,
+          } as never)
+          .eq("id", importazioneId);
+
+        return {
+          total: rows.length,
+          missingCount: missing.length,
+          rowsPath: `${stagingBase}/rows.json`,
+        };
+      });
+
+      // STEP 2 — lookup clienti + staging su Storage (memoizzato)
+      const lookupResult = await step.run("build-lookup", async () => {
+        const { data: rowsData } = await supabaseAdmin.storage
+          .from("import-staging")
+          .download(`${stagingBase}/rows.json`);
+        const rows = JSON.parse(await rowsData!.text()) as Array<{
+          idx: number;
+          codice_gestionale: string;
+          ragione_sociale: string;
+          payload: Record<string, unknown>;
+        }>;
+
+        const codici = Array.from(new Set(rows.map((r) => r.codice_gestionale)));
+        const lookup: Record<string, string> = {};
         const CHUNK = 200;
         for (let i = 0; i < codici.length; i += CHUNK) {
           const slice = codici.slice(i, i + CHUNK);
-          if (!slice.length) continue;
           const { data } = await supabaseAdmin
             .from("clienti")
             .select("id, codice_gestionale")
             .in("codice_gestionale", slice)
             .limit(CHUNK + 10);
-          (data ?? []).forEach((c) => {
+          (data ?? []).forEach((c: { id: string; codice_gestionale: string | null }) => {
             if (c.codice_gestionale) lookup[c.codice_gestionale] = c.id;
           });
         }
-      }
 
-      const now = new Date().toISOString();
-      // UN SOLO step.run per tutti i batch — Inngest memoizza solo l'output finale
+        await supabaseAdmin.storage
+          .from("import-staging")
+          .upload(`${stagingBase}/lookup.json`, JSON.stringify(lookup), {
+            contentType: "application/json",
+            upsert: true,
+          });
+
+        return { lookupPath: `${stagingBase}/lookup.json`, found: Object.keys(lookup).length };
+      });
+
+      // STEP 3 — processa tutti i batch (memoizzato, un solo step)
       const allRes = await step.run("process-all-batches", async () => {
+        const [rowsBlob, lookupBlob] = await Promise.all([
+          supabaseAdmin.storage.from("import-staging").download(`${stagingBase}/rows.json`),
+          supabaseAdmin.storage.from("import-staging").download(`${stagingBase}/lookup.json`),
+        ]);
+        const rows = JSON.parse(await rowsBlob.data!.text()) as Array<{
+          idx: number;
+          codice_gestionale: string;
+          ragione_sociale: string;
+          payload: Record<string, unknown>;
+        }>;
+        const lookup: Record<string, string> = JSON.parse(await lookupBlob.data!.text());
+
+        const now = new Date().toISOString();
         let aggiornati = 0;
         let saltati = 0;
         let errori = 0;
         const BATCH = 500;
+
         for (let i = 0; i < rows.length; i += BATCH) {
           const chunk = rows.slice(i, i + BATCH);
           const errs: Array<{ riga: number; errore: string }> = [];
-          let bOk = 0;
-          let bSaltati = 0;
-          let bErrori = 0;
           await Promise.all(
             chunk.map(async (r) => {
               const id = lookup[r.codice_gestionale];
               if (!id) {
-                bSaltati++;
+                saltati++;
                 errs.push({
                   riga: r.idx,
-                  errore: `Codice ${r.codice_gestionale} non trovato${r.ragione_sociale ? ` (${r.ragione_sociale})` : ""}`,
+                  errore: `Codice ${r.codice_gestionale} non trovato`,
                 });
                 return;
               }
@@ -448,27 +503,27 @@ export const processRischioImport = inngest.createFunction(
                 .update({ ...r.payload, ultima_sincronizzazione: now } as never)
                 .eq("id", id);
               if (error) {
-                bErrori++;
+                errori++;
                 errs.push({ riga: r.idx, errore: `Update: ${error.message}` });
-              } else bOk++;
+              } else {
+                aggiornati++;
+              }
             }),
           );
-          aggiornati += bOk;
-          saltati += bSaltati;
-          errori += bErrori;
+
           if (errs.length) {
             const { data: cur } = await supabaseAdmin
               .from("importazioni")
               .select("log_errori")
               .eq("id", importazioneId)
               .single();
-            const existing =
-              (cur?.log_errori as Array<{ riga: number; errore: string }> | null) ?? [];
+            const existing = (cur?.log_errori as Array<{ riga: number; errore: string }> | null) ?? [];
             await supabaseAdmin
               .from("importazioni")
               .update({ log_errori: [...existing, ...errs].slice(0, 500) } as never)
               .eq("id", importazioneId);
           }
+
           await supabaseAdmin
             .from("importazioni")
             .update({
@@ -476,34 +531,34 @@ export const processRischioImport = inngest.createFunction(
               righe_aggiornate: aggiornati,
               righe_errore: errori + saltati,
               stato: "in_elaborazione",
-            })
+            } as never)
             .eq("id", importazioneId);
         }
+
         return { aggiornati, saltati, errori };
       });
-      cAggiornati = allRes.aggiornati;
-      cSaltati = allRes.saltati;
-      cErrori += allRes.errori + allRes.saltati;
 
-      const riepilogoLog: Array<{ riga: number; errore: string }> = [
-        {
-          riga: 0,
-          errore: `Riepilogo: ${cAggiornati} aggiornati, ${cSaltati} saltati, ${cErrori} errori`,
-        },
-      ];
-
-      // Calcola fuori dallo step — solo primitivi, nessun array grande catturato nella closure
-      const totaleElaborate = rows.length + missing.length;
-      const logFinale = riepilogoLog.slice(0, 50);
+      // STEP 4 — finalizza
+      const totaleElaborate = initResult.total + initResult.missingCount;
+      const cErrori = initResult.missingCount + allRes.errori + allRes.saltati;
       const statoFinale = cErrori > 0 ? "completata_con_errori" : "completata";
+      const logFinale = [{
+        riga: 0,
+        errore: `Riepilogo: ${allRes.aggiornati} aggiornati, ${allRes.saltati} saltati, ${cErrori} errori totali`,
+      }];
 
       await step.run("finalize", async () => {
+        await supabaseAdmin.storage.from("import-staging").remove([
+          `${stagingBase}/rows.json`,
+          `${stagingBase}/lookup.json`,
+        ]);
+
         await supabaseAdmin
           .from("importazioni")
           .update({
             righe_elaborate: totaleElaborate,
             righe_create: 0,
-            righe_aggiornate: cAggiornati,
+            righe_aggiornate: allRes.aggiornati,
             righe_errore: cErrori,
             stato: statoFinale,
             completata_at: new Date().toISOString(),
@@ -513,16 +568,16 @@ export const processRischioImport = inngest.createFunction(
         return { ok: true };
       });
 
-      // SOLO contatori e log troncato — nessun array di righe/clienti
-      return {
-        ok: true,
-        aggiornati: cAggiornati,
-        saltati: cSaltati,
-        errori: cErrori,
-        log: riepilogoLog.slice(0, 300),
-      };
+      return { ok: true, aggiornati: allRes.aggiornati, saltati: allRes.saltati, errori: cErrori };
     } catch (err) {
-      await setImportazioneError(importazioneId, err instanceof Error ? err.message : String(err));
+      await supabaseAdmin.storage.from("import-staging").remove([
+        `${stagingBase}/rows.json`,
+        `${stagingBase}/lookup.json`,
+      ]).catch(() => {});
+      await setImportazioneError(
+        importazioneId,
+        err instanceof Error ? err.message : String(err),
+      );
       throw err;
     }
   },
