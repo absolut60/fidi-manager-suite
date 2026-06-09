@@ -2184,7 +2184,7 @@ export const processBloccoFidoImport = inngest.createFunction(
       });
 
       logger.info(
-        `Blocco fido done: agg=${aggiornati}, azzerati=${azzerati}, anom=${anomalieTotali}, blk=${bloccati}, sblk=${sbloccati}, nonAtt=${nonAttivi}, pol=${polizze}, noteLeg=${noteImportate}, miss=${nonTrovati.length}, err=${errors.length}`,
+        `Blocco fido done: agg=${aggiornati}, azzerati=${azzerati}, anom=${anomalieTotali}, blk=${bloccati}, sblk=${sbloccati}, nonAtt=${nonAttivi}, pol=${polizze}, noteLeg=${noteImportate}, miss=${nonTrovatiCount}, err=${errorsCount + errors.length}`,
       );
       return {
         aggiornati,
