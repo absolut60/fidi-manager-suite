@@ -58,7 +58,13 @@ function BgProgressBlock({
 }) {
   const total = Number(progress.righe_totali ?? fallbackTotal ?? 0);
   const elaborate = Number(progress.righe_elaborate ?? 0);
-  const pct = total > 0 ? Math.min(100, Math.round((elaborate / total) * 100)) : 0;
+  const rawPct = total > 0 ? Math.min(100, Math.round((elaborate / total) * 100)) : 0;
+  // Mantieni il massimo raggiunto — la barra non torna mai indietro
+  const [maxPct, setMaxPct] = useState(0);
+  useEffect(() => {
+    setMaxPct((prev) => Math.max(prev, rawPct));
+  }, [rawPct]);
+  const pct = maxPct;
   return (
     <div className="space-y-2 mb-4 p-3 rounded-md border bg-muted/30 text-sm">
       <div className="flex items-center gap-2">
