@@ -1378,10 +1378,11 @@ export const processScadAssicImport = inngest.createFunction(
       }
 
       const summary = [
-        `SCADENZIARIO: lette ${scadTot}, abbinati ${matchedClients.size} clienti, ${scadCreated} create, ${scadUpdated} aggiornate, ${scadSkipped} saltate`,
+        `SCADENZIARIO: lette ${scadTot}, abbinati ${matchedClientsCount} clienti, ${scadCreated} create, ${scadUpdated} aggiornate, ${scadSkipped} saltate`,
         `ASSICURAZIONI: lette ${assicRows.length}, ${assicCreated} create, ${assicUpdated} aggiornate, ${assicSkipped} saltate`,
-        `Clienti bloccati: ${clientsToBlock.size}, pratiche legali create: ${clientsLegale.size}`,
+        `Clienti bloccati: ${clientsToBlockCount}, pratiche legali create: ${clientsLegaleCount}`,
       ];
+
       const fullLog = [...summary, ...log];
 
       await supabaseAdmin
