@@ -1734,7 +1734,10 @@ export const processBloccoFidoImport = inngest.createFunction(
       const cutoff2025 = cutoffAnno; // mantieni il nome per non rompere i riferimenti
       const nowIso = new Date().toISOString();
       const errors: Array<{ riga: number; errore: string }> = [];
+      let errorsCount = 0;
       const nonTrovati: string[] = [];
+      let nonTrovatiCount = 0;
+
       let aggiornati = 0;
       let bloccati = 0;
       let sbloccati = 0;
