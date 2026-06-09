@@ -1760,9 +1760,18 @@ export const processBloccoFidoImport = inngest.createFunction(
       let anomalieTotali = 0;
 
       const totalChunks = Math.ceil(parsed.length / CHUNK);
-      for (let ci = 0; ci < totalChunks; ci++) {
-        const slice = parsed.slice(ci * CHUNK, (ci + 1) * CHUNK);
-        const chunkRes = await step.run(`chunk-${ci}`, async () => {
+      // UN SOLO step.run per tutti i chunk
+      const chunkAllRes = await step.run("process-all-chunks", async () => {
+        let tAgg = 0,
+          tBlk = 0,
+          tSblk = 0,
+          tNonAtt = 0,
+          tPol = 0,
+          tAnom = 0,
+          tErr = 0,
+          tMiss = 0;
+        for (let ci = 0; ci < totalChunks; ci++) {
+          const slice = parsed.slice(ci * CHUNK, (ci + 1) * CHUNK);
           let cAgg = 0,
             cBlk = 0,
             cSblk = 0,
@@ -1792,7 +1801,6 @@ export const processBloccoFidoImport = inngest.createFunction(
 
                 // --- Blocco: applicato automaticamente senza anomalia ---
                 const indNuovoRaw = r.ind_blocco;
-                // Forza conversione a number (il JSON potrebbe contenere string o number)
                 const indNuovo = indNuovoRaw != null ? Number(indNuovoRaw) : null;
                 const indAttuale = snap.ind_blocco ?? 0;
                 if (indNuovo != null) {
@@ -1817,19 +1825,16 @@ export const processBloccoFidoImport = inngest.createFunction(
                   }
                 }
 
-                // --- Sempre aggiornati ---
                 payload.ultima_data_fatturazione = r.ultima_data_fatturazione;
                 const attivo =
                   r.ultima_data_fatturazione != null && r.ultima_data_fatturazione >= cutoff2025;
                 payload.cliente_attivo = attivo;
                 if (!attivo) cNonAtt++;
 
-                // Fido: azzera anche se 0
                 if (r.fido !== null && r.fido !== undefined) {
                   payload.fido_gestionale = r.fido ?? 0;
                 }
 
-                // --- Anomalia: perde_assicurazione ---
                 const nuovaAssic =
                   r.assicurazione !== null && r.assicurazione !== undefined && r.assicurazione > 0;
                 let assicAnomalo = false;
@@ -1882,12 +1887,10 @@ export const processBloccoFidoImport = inngest.createFunction(
                       }
                     }
                   } else {
-                    // assicurazione attualmente false e file dice no → coerente
                     payload.assicurazione_attiva = false;
                   }
                 }
 
-                // Marca ultima_importazione_d con timestampInizio + 1s (timestamp valido, strettamente > timestampInizio)
                 payload.ultima_importazione_d = new Date(new Date(timestampInizio).getTime() + 1000).toISOString();
 
                 if (Object.keys(payload).length > 0) {
@@ -1974,27 +1977,25 @@ export const processBloccoFidoImport = inngest.createFunction(
               .eq("id", importazioneId);
           }
 
-          // SOLO contatori (errori/cMiss già persistiti inline)
-          return {
-            cAgg,
-            cBlk,
-            cSblk,
-            cNonAtt,
-            cPol,
-            cAnom,
-            cErr: cErr.length,
-            cMiss: cMiss.length,
-          };
-        });
-        aggiornati += chunkRes.cAgg;
-        bloccati += chunkRes.cBlk;
-        sbloccati += chunkRes.cSblk;
-        nonAttivi += chunkRes.cNonAtt;
-        polizze += chunkRes.cPol;
-        anomalieTotali += chunkRes.cAnom;
-        errorsCount += chunkRes.cErr;
-        nonTrovatiCount += chunkRes.cMiss;
-      }
+          tAgg += cAgg;
+          tBlk += cBlk;
+          tSblk += cSblk;
+          tNonAtt += cNonAtt;
+          tPol += cPol;
+          tAnom += cAnom;
+          tErr += cErr.length;
+          tMiss += cMiss.length;
+        }
+        return { tAgg, tBlk, tSblk, tNonAtt, tPol, tAnom, tErr, tMiss };
+      });
+      aggiornati += chunkAllRes.tAgg;
+      bloccati += chunkAllRes.tBlk;
+      sbloccati += chunkAllRes.tSblk;
+      nonAttivi += chunkAllRes.tNonAtt;
+      polizze += chunkAllRes.tPol;
+      anomalieTotali += chunkAllRes.tAnom;
+      errorsCount += chunkAllRes.tErr;
+      nonTrovatiCount += chunkAllRes.tMiss;
 
 
       // STEP 4b: Note Legale + anomalie perde_gestione_legale
