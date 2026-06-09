@@ -847,10 +847,6 @@ export const processScadenziarioChunk = inngest.createFunction(
       const rawValidRows: Array<Record<string, unknown>> = [];
       let skipped = 0;
       const skippedCodes = new Set<string>();
-      const isPagata = (p: Record<string, unknown>) =>
-        String((p.tempi_scadenza as string | null | undefined) ?? "")
-          .toLowerCase()
-          .includes("pagat");
       for (const r of rows) {
         const cid = clientMap[r.codice_gestionale];
         if (!cid) {
@@ -858,12 +854,8 @@ export const processScadenziarioChunk = inngest.createFunction(
           if (r.codice_gestionale) skippedCodes.add(String(r.codice_gestionale));
           continue;
         }
-        // Le righe pagate vengono ignorate: il cleanup finale in finalize
-        // le rimuoverà dal DB con una sola query.
-        if (isPagata(r.payload)) {
-          skipped++;
-          continue;
-        }
+        // Upsert di TUTTE le righe (pagate incluse): le pagate verranno
+        // rimosse dal cleanup finale in finalize con una sola query.
         const enriched = {
           ...r.payload,
           cliente_id: cid,
@@ -873,6 +865,7 @@ export const processScadenziarioChunk = inngest.createFunction(
         matched.push(cid);
         rawValidRows.push(enriched);
       }
+
 
 
       // Dedup per chiave conflict (include data_scadenza)
