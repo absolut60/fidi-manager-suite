@@ -266,14 +266,14 @@ function ImportExportPage() {
   const anomalieCount = useAnomalieCount();
   const queryClient = useQueryClient();
   useEffect(() => {
-    // Marca automaticamente come falliti gli import bloccati da più di 2 ore
-    const cutoff = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+    // Marca automaticamente come falliti gli import bloccati da più di 4 ore
+    const cutoff = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
     supabase
       .from("importazioni")
       .update({
         stato: "completata_con_errori",
         completata_at: new Date().toISOString(),
-        log_errori: "Import interrotto automaticamente (timeout 2 ore).",
+        log_errori: "Import interrotto automaticamente (timeout 4 ore).",
       })
       .eq("stato", "in_elaborazione")
       .lt("created_at", cutoff)
@@ -2928,7 +2928,7 @@ function HistoryCard({ kind }: { kind: "importazioni" | "esportazioni" }) {
     if (imp.stato !== "in_elaborazione") return false;
     const updated = new Date((imp as { updated_at?: string }).updated_at ?? imp.created_at);
     const diffMinuti = (Date.now() - updated.getTime()) / 1000 / 60;
-    return diffMinuti > 30;
+    return diffMinuti > 60;
   };
 
   const title = kind === "importazioni" ? "Ultime importazioni" : "Ultime esportazioni";
@@ -3008,7 +3008,7 @@ function HistoryCard({ kind }: { kind: "importazioni" | "esportazioni" }) {
                               stato: "completata_con_errori",
                               completata_at: new Date().toISOString(),
                               log_errori:
-                                "Import interrotto: nessun aggiornamento da oltre 30 minuti.",
+                                "Import interrotto: nessun aggiornamento da oltre 60 minuti.",
                             })
                             .eq("id", r.id);
                           queryClient.invalidateQueries({
