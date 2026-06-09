@@ -133,6 +133,7 @@ export const processAnagraficaImport = inngest.createFunction(
     id: "process-anagrafica-import",
     name: "Process anagrafica import",
     retries: 2,
+    timeouts: { finish: "15m" },
     triggers: [{ event: "import/anagrafica.requested" }],
   },
   async ({ event, step, logger }) => {
@@ -297,40 +298,41 @@ export const processAnagraficaImport = inngest.createFunction(
 
       const toInsert = prepared.filter((p) => !p.existId);
       const toUpdate = prepared.filter((p) => p.existId);
-      const BATCH = 500;
 
-      for (let i = 0; i < toInsert.length; i += BATCH) {
-        const chunk = toInsert.slice(i, i + BATCH);
-        const res = await step.run(`insert-batch-${i}`, async () => {
+      // UN SOLO step.run per tutti gli insert
+      const insertRes = await step.run("process-all-inserts", async () => {
+        const BATCH = 500;
+        let ok = 0;
+        const errs: Array<{ riga: number; errore: string }> = [];
+        for (let i = 0; i < toInsert.length; i += BATCH) {
+          const chunk = toInsert.slice(i, i + BATCH);
           const { data, error } = await supabaseAdmin
             .from("clienti")
             .insert(chunk.map((c) => c.payload) as never)
             .select("id");
           if (error) {
-            let ok = 0;
-            const errs: Array<{ riga: number; errore: string }> = [];
             for (const c of chunk) {
               const { error: e2 } = await supabaseAdmin.from("clienti").insert(c.payload as never);
               if (e2) errs.push({ riga: c.idx, errore: `Insert: ${e2.message}` });
               else ok++;
             }
-            return { ok, errs };
+          } else {
+            ok += data?.length ?? chunk.length;
           }
-          return {
-            ok: data?.length ?? chunk.length,
-            errs: [] as Array<{ riga: number; errore: string }>,
-          };
-        });
-        created += res.ok;
-        errorLog.push(...res.errs);
-        await update("in_elaborazione");
-      }
+          await update("in_elaborazione");
+        }
+        return { ok, errs };
+      });
+      created += insertRes.ok;
+      errorLog.push(...insertRes.errs);
 
-      for (let i = 0; i < toUpdate.length; i += BATCH) {
-        const chunk = toUpdate.slice(i, i + BATCH);
-        const res = await step.run(`update-batch-${i}`, async () => {
-          let ok = 0;
-          const errs: Array<{ riga: number; errore: string }> = [];
+      // UN SOLO step.run per tutti gli update
+      const updateRes = await step.run("process-all-updates", async () => {
+        const BATCH = 500;
+        let ok = 0;
+        const errs: Array<{ riga: number; errore: string }> = [];
+        for (let i = 0; i < toUpdate.length; i += BATCH) {
+          const chunk = toUpdate.slice(i, i + BATCH);
           await Promise.all(
             chunk.map(async (c) => {
               const { error } = await supabaseAdmin
@@ -341,12 +343,12 @@ export const processAnagraficaImport = inngest.createFunction(
               else ok++;
             }),
           );
-          return { ok, errs };
-        });
-        updated += res.ok;
-        errorLog.push(...res.errs);
-        await update("in_elaborazione");
-      }
+          await update("in_elaborazione");
+        }
+        return { ok, errs };
+      });
+      updated += updateRes.ok;
+      errorLog.push(...updateRes.errs);
 
       await update(errorLog.length ? "completata_con_errori" : "completata", true);
       return { ok: true, creati: created, aggiornati: updated, saltati: skipped, errori: errorLog.length };
@@ -366,6 +368,7 @@ export const processRischioImport = inngest.createFunction(
     id: "process-rischio-import",
     name: "Process rischio import",
     retries: 2,
+    timeouts: { finish: "15m" },
     triggers: [{ event: "import/analisi_rischio.requested" }],
   },
   async ({ event, step, logger }) => {
@@ -417,19 +420,23 @@ export const processRischioImport = inngest.createFunction(
       }
 
       const now = new Date().toISOString();
-      const BATCH = 500;
-      for (let i = 0; i < rows.length; i += BATCH) {
-        const chunk = rows.slice(i, i + BATCH);
-        const res = await step.run(`update-batch-${i}`, async () => {
-          let ok = 0;
-          let saltati = 0;
-          let errori = 0;
+      // UN SOLO step.run per tutti i batch — Inngest memoizza solo l'output finale
+      const allRes = await step.run("process-all-batches", async () => {
+        let aggiornati = 0;
+        let saltati = 0;
+        let errori = 0;
+        const BATCH = 500;
+        for (let i = 0; i < rows.length; i += BATCH) {
+          const chunk = rows.slice(i, i + BATCH);
           const errs: Array<{ riga: number; errore: string }> = [];
+          let bOk = 0;
+          let bSaltati = 0;
+          let bErrori = 0;
           await Promise.all(
             chunk.map(async (r) => {
               const id = lookup[r.codice_gestionale];
               if (!id) {
-                saltati++;
+                bSaltati++;
                 errs.push({
                   riga: r.idx,
                   errore: `Codice ${r.codice_gestionale} non trovato${r.ragione_sociale ? ` (${r.ragione_sociale})` : ""}`,
@@ -441,12 +448,14 @@ export const processRischioImport = inngest.createFunction(
                 .update({ ...r.payload, ultima_sincronizzazione: now } as never)
                 .eq("id", id);
               if (error) {
-                errori++;
+                bErrori++;
                 errs.push({ riga: r.idx, errore: `Update: ${error.message}` });
-              } else ok++;
+              } else bOk++;
             }),
           );
-          // Persisti errori inline (non li restituiamo come array)
+          aggiornati += bOk;
+          saltati += bSaltati;
+          errori += bErrori;
           if (errs.length) {
             const { data: cur } = await supabaseAdmin
               .from("importazioni")
@@ -460,22 +469,21 @@ export const processRischioImport = inngest.createFunction(
               .update({ log_errori: [...existing, ...errs].slice(0, 500) } as never)
               .eq("id", importazioneId);
           }
-          // SOLO contatori
-          return { aggiornati: ok, saltati, errori };
-        });
-        cAggiornati += res.aggiornati;
-        cSaltati += res.saltati;
-        cErrori += res.errori + res.saltati;
-        await supabaseAdmin
-          .from("importazioni")
-          .update({
-            righe_elaborate: Math.min(i + BATCH, rows.length),
-            righe_aggiornate: cAggiornati,
-            righe_errore: cErrori,
-            stato: "in_elaborazione",
-          })
-          .eq("id", importazioneId);
-      }
+          await supabaseAdmin
+            .from("importazioni")
+            .update({
+              righe_elaborate: Math.min(i + BATCH, rows.length),
+              righe_aggiornate: aggiornati,
+              righe_errore: errori + saltati,
+              stato: "in_elaborazione",
+            })
+            .eq("id", importazioneId);
+        }
+        return { aggiornati, saltati, errori };
+      });
+      cAggiornati = allRes.aggiornati;
+      cSaltati = allRes.saltati;
+      cErrori += allRes.errori + allRes.saltati;
 
       const riepilogoLog: Array<{ riga: number; errore: string }> = [
         {
@@ -1052,6 +1060,7 @@ export const processScadAssicImport = inngest.createFunction(
     id: "process-scad-assic-import",
     name: "Process scadenziario+assicurazioni import",
     retries: 2,
+    timeouts: { finish: "15m" },
     triggers: [{ event: "import/scadenziario_assicurazioni.requested" }],
   },
   async ({ event, step, logger }) => {
@@ -1160,10 +1169,17 @@ export const processScadAssicImport = inngest.createFunction(
       const now = new Date().toISOString();
 
 
-      const BATCH = 500;
-      for (let i = 0; i < scadRows.length; i += BATCH) {
-        const chunk = scadRows.slice(i, i + BATCH);
-        const res = await step.run(`scad-batch-${i}`, async () => {
+      // UN SOLO step.run per tutti i batch scadenziario
+      const scadAllRes = await step.run("process-all-scad-batches", async () => {
+        const BATCH = 500;
+        let totC = 0,
+          totU = 0,
+          totS = 0;
+        let totBlocked = 0,
+          totLegale = 0,
+          totMatched = 0;
+        for (let i = 0; i < scadRows.length; i += BATCH) {
+          const chunk = scadRows.slice(i, i + BATCH);
           let c = 0,
             u = 0,
             s = 0;
@@ -1237,9 +1253,7 @@ export const processScadAssicImport = inngest.createFunction(
                 legale.add(cid);
               } else logs.push(`Riga ${r.excelRow}: pratica legale ${error.message}`);
             }
-
           }
-          // Applica subito blocco clienti del batch (così non serve restituire array di id grandi)
           if (block.size) {
             await supabaseAdmin
               .from("clienti")
@@ -1250,7 +1264,6 @@ export const processScadAssicImport = inngest.createFunction(
               } as never)
               .in("id", Array.from(block));
           }
-          // Persisti log inline
           if (logs.length) {
             const { data: cur } = await supabaseAdmin
               .from("importazioni")
@@ -1266,34 +1279,31 @@ export const processScadAssicImport = inngest.createFunction(
               } as never)
               .eq("id", importazioneId);
           }
-          // SOLO contatori
-          return {
-            c,
-            u,
-            s,
-            blocked: block.size,
-            legaleCreated: legale.size,
-            matchedCount: matched.size,
-          };
-        });
-        scadCreated += res.c;
-        scadUpdated += res.u;
-        scadSkipped += res.s;
-        matchedClientsCount += res.matchedCount;
-        clientsToBlockCount += res.blocked;
-        clientsLegaleCount += res.legaleCreated;
-
-        await supabaseAdmin
-          .from("importazioni")
-          .update({
-            righe_elaborate: Math.min(i + BATCH, scadRows.length),
-            righe_create: scadCreated,
-            righe_aggiornate: scadUpdated,
-            righe_errore: scadSkipped,
-            stato: "in_elaborazione",
-          })
-          .eq("id", importazioneId);
-      }
+          totC += c;
+          totU += u;
+          totS += s;
+          totBlocked += block.size;
+          totLegale += legale.size;
+          totMatched += matched.size;
+          await supabaseAdmin
+            .from("importazioni")
+            .update({
+              righe_elaborate: Math.min(i + BATCH, scadRows.length),
+              righe_create: totC,
+              righe_aggiornate: totU,
+              righe_errore: totS,
+              stato: "in_elaborazione",
+            })
+            .eq("id", importazioneId);
+        }
+        return { c: totC, u: totU, s: totS, blocked: totBlocked, legaleCreated: totLegale, matchedCount: totMatched };
+      });
+      scadCreated += scadAllRes.c;
+      scadUpdated += scadAllRes.u;
+      scadSkipped += scadAllRes.s;
+      matchedClientsCount += scadAllRes.matchedCount;
+      clientsToBlockCount += scadAllRes.blocked;
+      clientsLegaleCount += scadAllRes.legaleCreated;
 
       // Blocco clienti già applicato batch-per-batch nello step
 
@@ -1314,9 +1324,14 @@ export const processScadAssicImport = inngest.createFunction(
         });
       }
 
-      for (let i = 0; i < assicRows.length; i += BATCH) {
-        const chunk = assicRows.slice(i, i + BATCH);
-        const res = await step.run(`assic-batch-${i}`, async () => {
+      // UN SOLO step.run per tutti i batch assicurazioni
+      const assicAllRes = await step.run("process-all-assic-batches", async () => {
+        const BATCH = 500;
+        let totC = 0,
+          totU = 0,
+          totS = 0;
+        for (let i = 0; i < assicRows.length; i += BATCH) {
+          const chunk = assicRows.slice(i, i + BATCH);
           let c = 0,
             u = 0,
             s = 0;
@@ -1362,14 +1377,12 @@ export const processScadAssicImport = inngest.createFunction(
               }
             }
           }
-          // Applica subito assicurazione_attiva per i clients del batch
           if (clients.size) {
             await supabaseAdmin
               .from("clienti")
               .update({ assicurazione_attiva: true } as never)
               .in("id", Array.from(clients));
           }
-          // Persisti log inline
           if (logs.length) {
             const { data: cur } = await supabaseAdmin
               .from("importazioni")
@@ -1385,13 +1398,15 @@ export const processScadAssicImport = inngest.createFunction(
               } as never)
               .eq("id", importazioneId);
           }
-          // SOLO contatori
-          return { c, u, s, assicClients: clients.size };
-        });
-        assicCreated += res.c;
-        assicUpdated += res.u;
-        assicSkipped += res.s;
-      }
+          totC += c;
+          totU += u;
+          totS += s;
+        }
+        return { c: totC, u: totU, s: totS };
+      });
+      assicCreated += assicAllRes.c;
+      assicUpdated += assicAllRes.u;
+      assicSkipped += assicAllRes.s;
 
 
 
@@ -1515,6 +1530,7 @@ export const processBloccoFidoImport = inngest.createFunction(
     id: "process-blocco-fido-import",
     name: "Process blocco fido + assicurazione import",
     retries: 2,
+    timeouts: { finish: "15m" },
     triggers: [{ event: "import/blocco_fido_assicurazione.requested" }],
   },
   async ({ event, step, logger }) => {
@@ -1748,9 +1764,18 @@ export const processBloccoFidoImport = inngest.createFunction(
       let anomalieTotali = 0;
 
       const totalChunks = Math.ceil(parsed.length / CHUNK);
-      for (let ci = 0; ci < totalChunks; ci++) {
-        const slice = parsed.slice(ci * CHUNK, (ci + 1) * CHUNK);
-        const chunkRes = await step.run(`chunk-${ci}`, async () => {
+      // UN SOLO step.run per tutti i chunk
+      const chunkAllRes = await step.run("process-all-chunks", async () => {
+        let tAgg = 0,
+          tBlk = 0,
+          tSblk = 0,
+          tNonAtt = 0,
+          tPol = 0,
+          tAnom = 0,
+          tErr = 0,
+          tMiss = 0;
+        for (let ci = 0; ci < totalChunks; ci++) {
+          const slice = parsed.slice(ci * CHUNK, (ci + 1) * CHUNK);
           let cAgg = 0,
             cBlk = 0,
             cSblk = 0,
@@ -1780,7 +1805,6 @@ export const processBloccoFidoImport = inngest.createFunction(
 
                 // --- Blocco: applicato automaticamente senza anomalia ---
                 const indNuovoRaw = r.ind_blocco;
-                // Forza conversione a number (il JSON potrebbe contenere string o number)
                 const indNuovo = indNuovoRaw != null ? Number(indNuovoRaw) : null;
                 const indAttuale = snap.ind_blocco ?? 0;
                 if (indNuovo != null) {
@@ -1805,19 +1829,16 @@ export const processBloccoFidoImport = inngest.createFunction(
                   }
                 }
 
-                // --- Sempre aggiornati ---
                 payload.ultima_data_fatturazione = r.ultima_data_fatturazione;
                 const attivo =
                   r.ultima_data_fatturazione != null && r.ultima_data_fatturazione >= cutoff2025;
                 payload.cliente_attivo = attivo;
                 if (!attivo) cNonAtt++;
 
-                // Fido: azzera anche se 0
                 if (r.fido !== null && r.fido !== undefined) {
                   payload.fido_gestionale = r.fido ?? 0;
                 }
 
-                // --- Anomalia: perde_assicurazione ---
                 const nuovaAssic =
                   r.assicurazione !== null && r.assicurazione !== undefined && r.assicurazione > 0;
                 let assicAnomalo = false;
@@ -1870,12 +1891,10 @@ export const processBloccoFidoImport = inngest.createFunction(
                       }
                     }
                   } else {
-                    // assicurazione attualmente false e file dice no → coerente
                     payload.assicurazione_attiva = false;
                   }
                 }
 
-                // Marca ultima_importazione_d con timestampInizio + 1s (timestamp valido, strettamente > timestampInizio)
                 payload.ultima_importazione_d = new Date(new Date(timestampInizio).getTime() + 1000).toISOString();
 
                 if (Object.keys(payload).length > 0) {
@@ -1962,27 +1981,25 @@ export const processBloccoFidoImport = inngest.createFunction(
               .eq("id", importazioneId);
           }
 
-          // SOLO contatori (errori/cMiss già persistiti inline)
-          return {
-            cAgg,
-            cBlk,
-            cSblk,
-            cNonAtt,
-            cPol,
-            cAnom,
-            cErr: cErr.length,
-            cMiss: cMiss.length,
-          };
-        });
-        aggiornati += chunkRes.cAgg;
-        bloccati += chunkRes.cBlk;
-        sbloccati += chunkRes.cSblk;
-        nonAttivi += chunkRes.cNonAtt;
-        polizze += chunkRes.cPol;
-        anomalieTotali += chunkRes.cAnom;
-        errorsCount += chunkRes.cErr;
-        nonTrovatiCount += chunkRes.cMiss;
-      }
+          tAgg += cAgg;
+          tBlk += cBlk;
+          tSblk += cSblk;
+          tNonAtt += cNonAtt;
+          tPol += cPol;
+          tAnom += cAnom;
+          tErr += cErr.length;
+          tMiss += cMiss.length;
+        }
+        return { tAgg, tBlk, tSblk, tNonAtt, tPol, tAnom, tErr, tMiss };
+      });
+      aggiornati += chunkAllRes.tAgg;
+      bloccati += chunkAllRes.tBlk;
+      sbloccati += chunkAllRes.tSblk;
+      nonAttivi += chunkAllRes.tNonAtt;
+      polizze += chunkAllRes.tPol;
+      anomalieTotali += chunkAllRes.tAnom;
+      errorsCount += chunkAllRes.tErr;
+      nonTrovatiCount += chunkAllRes.tMiss;
 
 
       // STEP 4b: Note Legale + anomalie perde_gestione_legale
