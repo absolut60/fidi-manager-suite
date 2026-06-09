@@ -1321,9 +1321,14 @@ export const processScadAssicImport = inngest.createFunction(
         });
       }
 
-      for (let i = 0; i < assicRows.length; i += BATCH) {
-        const chunk = assicRows.slice(i, i + BATCH);
-        const res = await step.run(`assic-batch-${i}`, async () => {
+      // UN SOLO step.run per tutti i batch assicurazioni
+      const assicAllRes = await step.run("process-all-assic-batches", async () => {
+        const BATCH = 500;
+        let totC = 0,
+          totU = 0,
+          totS = 0;
+        for (let i = 0; i < assicRows.length; i += BATCH) {
+          const chunk = assicRows.slice(i, i + BATCH);
           let c = 0,
             u = 0,
             s = 0;
@@ -1369,14 +1374,12 @@ export const processScadAssicImport = inngest.createFunction(
               }
             }
           }
-          // Applica subito assicurazione_attiva per i clients del batch
           if (clients.size) {
             await supabaseAdmin
               .from("clienti")
               .update({ assicurazione_attiva: true } as never)
               .in("id", Array.from(clients));
           }
-          // Persisti log inline
           if (logs.length) {
             const { data: cur } = await supabaseAdmin
               .from("importazioni")
@@ -1392,13 +1395,15 @@ export const processScadAssicImport = inngest.createFunction(
               } as never)
               .eq("id", importazioneId);
           }
-          // SOLO contatori
-          return { c, u, s, assicClients: clients.size };
-        });
-        assicCreated += res.c;
-        assicUpdated += res.u;
-        assicSkipped += res.s;
-      }
+          totC += c;
+          totU += u;
+          totS += s;
+        }
+        return { c: totC, u: totU, s: totS };
+      });
+      assicCreated += assicAllRes.c;
+      assicUpdated += assicAllRes.u;
+      assicSkipped += assicAllRes.s;
 
 
 
