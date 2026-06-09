@@ -149,7 +149,7 @@ function ScadenziarioPage() {
   });
 
   const { data: scad, isLoading } = useQuery({
-    queryKey: ["scadenze-globali-v2"],
+    queryKey: ["scadenze-globali-v3-aperte"],
     queryFn: async () => {
       const all: ScadRow[] = [];
       const pageSize = 1000;
@@ -158,6 +158,10 @@ function ScadenziarioPage() {
         const { data, error } = await supabase
           .from("scadenze")
           .select("cliente_id, importo_scadenza, giorni_ritardo, data_scadenza, stato_contabile, tempi_scadenza, codice_pagamento")
+          // Filtro prima per stato_contabile per sfruttare l'indice parziale idx_scadenze_aperte_data.
+          // Le righe non-Aperta verrebbero comunque categorizzate come "pagato" e ignorate dai KPI.
+          .eq("stato_contabile", "Aperta")
+          .order("cliente_id", { ascending: true })
           .range(from, from + pageSize - 1);
         if (error) throw error;
         const batch = (data ?? []) as ScadRow[];
