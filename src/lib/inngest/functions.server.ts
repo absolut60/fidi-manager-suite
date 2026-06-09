@@ -398,22 +398,23 @@ export const processRischioImport = inngest.createFunction(
 
       // Lookup: SOLO Record<codice, UUID>
       const codici = Array.from(new Set(rows.map((r) => r.codice_gestionale)));
-      const lookup = await step.run("lookup-existing", async () => {
-        const map: Record<string, string> = {};
-        const CHUNK = 500;
+      // Lookup inline — senza step.run per evitare serializzazione della map grande
+      const lookup: Record<string, string> = {};
+      {
+        const CHUNK = 200;
         for (let i = 0; i < codici.length; i += CHUNK) {
           const slice = codici.slice(i, i + CHUNK);
           if (!slice.length) continue;
           const { data } = await supabaseAdmin
             .from("clienti")
             .select("id, codice_gestionale")
-            .in("codice_gestionale", slice);
+            .in("codice_gestionale", slice)
+            .limit(CHUNK + 10);
           (data ?? []).forEach((c) => {
-            if (c.codice_gestionale) map[c.codice_gestionale] = c.id;
+            if (c.codice_gestionale) lookup[c.codice_gestionale] = c.id;
           });
         }
-        return map;
-      });
+      }
 
       const now = new Date().toISOString();
       const BATCH = 50;
