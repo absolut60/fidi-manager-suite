@@ -297,7 +297,7 @@ export const processAnagraficaImport = inngest.createFunction(
 
       const toInsert = prepared.filter((p) => !p.existId);
       const toUpdate = prepared.filter((p) => p.existId);
-      const BATCH = 100;
+      const BATCH = 500;
 
       for (let i = 0; i < toInsert.length; i += BATCH) {
         const chunk = toInsert.slice(i, i + BATCH);
@@ -417,7 +417,7 @@ export const processRischioImport = inngest.createFunction(
       }
 
       const now = new Date().toISOString();
-      const BATCH = 50;
+      const BATCH = 500;
       for (let i = 0; i < rows.length; i += BATCH) {
         const chunk = rows.slice(i, i + BATCH);
         const res = await step.run(`update-batch-${i}`, async () => {
@@ -609,7 +609,7 @@ export const processScadenziarioImport = inngest.createFunction(
             timestampInizio,
           },
         }));
-        const SEND_BATCH = 50;
+        const SEND_BATCH = 500;
         for (let i = 0; i < events.length; i += SEND_BATCH) {
           const slice = events.slice(i, i + SEND_BATCH);
           await step.run(`send-staged-chunks-${i}`, async () => {
@@ -683,7 +683,7 @@ export const processScadenziarioImport = inngest.createFunction(
         });
       }
       // Invio in batch da 50 per non gonfiare il payload
-      const SEND_BATCH = 50;
+      const SEND_BATCH = 500;
       for (let i = 0; i < events.length; i += SEND_BATCH) {
         const slice = events.slice(i, i + SEND_BATCH);
         await step.run(`send-chunks-${i}`, async () => {
@@ -1160,7 +1160,7 @@ export const processScadAssicImport = inngest.createFunction(
       const now = new Date().toISOString();
 
 
-      const BATCH = 40;
+      const BATCH = 500;
       for (let i = 0; i < scadRows.length; i += BATCH) {
         const chunk = scadRows.slice(i, i + BATCH);
         const res = await step.run(`scad-batch-${i}`, async () => {
