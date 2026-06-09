@@ -845,8 +845,13 @@ export const processScadenziarioChunk = inngest.createFunction(
       const batchErrs: Array<{ riga: number; errore: string }> = [];
       const matched: string[] = [];
       const rawValidRows: Array<Record<string, unknown>> = [];
+      const rawPagateRows: Array<Record<string, unknown>> = [];
       let skipped = 0;
       const skippedCodes = new Set<string>();
+      const isPagata = (p: Record<string, unknown>) =>
+        String((p.tempi_scadenza as string | null | undefined) ?? "")
+          .toLowerCase()
+          .includes("pagat");
       for (const r of rows) {
         const cid = clientMap[r.codice_gestionale];
         if (!cid) {
@@ -854,16 +859,52 @@ export const processScadenziarioChunk = inngest.createFunction(
           if (r.codice_gestionale) skippedCodes.add(String(r.codice_gestionale));
           continue;
         }
-        matched.push(cid);
-        rawValidRows.push({
+        const enriched = {
           ...r.payload,
           cliente_id: cid,
           importato_da: importazioneId,
           ultima_sincronizzazione: timestampInizio,
-        });
+        };
+        if (isPagata(r.payload)) {
+          rawPagateRows.push(enriched);
+        } else {
+          matched.push(cid);
+          rawValidRows.push(enriched);
+        }
       }
 
-      // Dedup per chiave conflict
+      // DELETE righe pagate (stato Chiusa + tempi_scadenza contiene "pagat")
+      let deleted = 0;
+      for (const row of rawPagateRows) {
+        const cid = row.cliente_id as string;
+        const numDoc = row.numero_documento as string | null | undefined;
+        const sez = row.sezionale as string | null | undefined;
+        const annoVal = row.anno_partita as number | string | null | undefined;
+        const dataScad = row.data_scadenza as string | null | undefined;
+        if (!dataScad) continue;
+        let q = supabaseAdmin
+          .from("scadenze" as never)
+          .delete()
+          .eq("cliente_id", cid)
+          .eq("data_scadenza", dataScad);
+        q = numDoc == null ? q.is("numero_documento", null) : q.eq("numero_documento", numDoc);
+        q = sez == null ? q.is("sezionale", null) : q.eq("sezionale", sez);
+        q =
+          annoVal == null || annoVal === ""
+            ? q.is("anno_partita", null)
+            : q.eq("anno_partita", Number(annoVal));
+        const { error: delErr } = await q;
+        if (delErr) {
+          batchErrs.push({
+            riga: chunkIndex,
+            errore: `Delete pagata chunk ${chunkIndex}: ${delErr.message}`,
+          });
+        } else {
+          deleted++;
+        }
+      }
+
+      // Dedup per chiave conflict (include data_scadenza)
       const deduped = new Map<string, Record<string, unknown>>();
       for (const row of rawValidRows) {
         const cid = row.cliente_id as string;
@@ -873,7 +914,8 @@ export const processScadenziarioChunk = inngest.createFunction(
           (row.anno_partita as number | null | undefined) != null
             ? String(row.anno_partita)
             : "NULL";
-        deduped.set(`${cid}|${numDoc}|${sez}|${anno}`, row);
+        const ds = (row.data_scadenza as string | null | undefined) ?? "NULL";
+        deduped.set(`${cid}|${numDoc}|${sez}|${anno}|${ds}`, row);
       }
       const validRows = Array.from(deduped.values());
       const validKeys = new Set(deduped.keys());
@@ -884,7 +926,7 @@ export const processScadenziarioChunk = inngest.createFunction(
       if (cids.length) {
         const { data: edata } = await supabaseAdmin
           .from("scadenze" as never)
-          .select("cliente_id, numero_documento, sezionale, anno_partita")
+          .select("cliente_id, numero_documento, sezionale, anno_partita, data_scadenza")
           .in("cliente_id", cids);
         (
           (edata ?? []) as Array<{
@@ -892,10 +934,11 @@ export const processScadenziarioChunk = inngest.createFunction(
             numero_documento: string | null;
             sezionale: string | null;
             anno_partita: number | null;
+            data_scadenza: string | null;
           }>
         ).forEach((s) => {
           existingKeys.add(
-            `${s.cliente_id}|${s.numero_documento ?? "NULL"}|${s.sezionale ?? "NULL"}|${s.anno_partita != null ? String(s.anno_partita) : "NULL"}`,
+            `${s.cliente_id}|${s.numero_documento ?? "NULL"}|${s.sezionale ?? "NULL"}|${s.anno_partita != null ? String(s.anno_partita) : "NULL"}|${s.data_scadenza ?? "NULL"}`,
           );
         });
       }
@@ -911,7 +954,7 @@ export const processScadenziarioChunk = inngest.createFunction(
             ) => Promise<{ error: { message: string } | null }>;
           }
         ).upsert(validRows, {
-          onConflict: "cliente_id,numero_documento,sezionale,anno_partita",
+          onConflict: "cliente_id,numero_documento,sezionale,anno_partita,data_scadenza",
           ignoreDuplicates: false,
         });
         if (upErr) {
@@ -959,7 +1002,7 @@ export const processScadenziarioChunk = inngest.createFunction(
         created: c,
         updated: u,
         elaborate: rows.length + missing.length,
-        skipped,
+        skipped: skipped + deleted,
         errori: totalErrs,
       };
     });
