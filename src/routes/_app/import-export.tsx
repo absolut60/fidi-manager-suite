@@ -58,7 +58,13 @@ function BgProgressBlock({
 }) {
   const total = Number(progress.righe_totali ?? fallbackTotal ?? 0);
   const elaborate = Number(progress.righe_elaborate ?? 0);
-  const pct = total > 0 ? Math.min(100, Math.round((elaborate / total) * 100)) : 0;
+  const rawPct = total > 0 ? Math.min(100, Math.round((elaborate / total) * 100)) : 0;
+  // Mantieni il massimo raggiunto — la barra non torna mai indietro
+  const [maxPct, setMaxPct] = useState(0);
+  useEffect(() => {
+    setMaxPct((prev) => Math.max(prev, rawPct));
+  }, [rawPct]);
+  const pct = maxPct;
   return (
     <div className="space-y-2 mb-4 p-3 rounded-md border bg-muted/30 text-sm">
       <div className="flex items-center gap-2">
@@ -72,7 +78,7 @@ function BgProgressBlock({
         />
       </div>
       <div className="text-xs text-muted-foreground">
-        {progress.righe_elaborate ?? 0} / {progress.righe_totali ?? fallbackTotal} righe ·{" "}
+        {(progress.righe_elaborate ?? 0).toLocaleString("it-IT")} / {(Number(progress.righe_totali ?? fallbackTotal ?? 0)).toLocaleString("it-IT")} righe ({pct}%) ·{" "}
         {progress.righe_create ?? 0} create · {progress.righe_aggiornate ?? 0} aggiornate ·{" "}
         {progress.righe_errore ?? 0} errori
         {(progress.righe_saltate ?? 0) > 0 ? (
@@ -258,6 +264,24 @@ function anagraficaSheetToObjects(
 
 function ImportExportPage() {
   const anomalieCount = useAnomalieCount();
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    // Marca automaticamente come falliti gli import bloccati da più di 2 ore
+    const cutoff = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+    supabase
+      .from("importazioni")
+      .update({
+        stato: "completata_con_errori",
+        completata_at: new Date().toISOString(),
+        log_errori: "Import interrotto automaticamente (timeout 2 ore).",
+      })
+      .eq("stato", "in_elaborazione")
+      .lt("created_at", cutoff)
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: ["storico-import-export", "importazioni"] });
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -2882,6 +2906,7 @@ function HistoryCard({ kind }: { kind: "importazioni" | "esportazioni" }) {
     righe_errore?: number | null;
     righe_esportate?: number | null;
   };
+  const queryClient = useQueryClient();
   const { data, isLoading, isFetching, refetch } = useQuery({
     queryKey: ["storico-import-export", kind],
     queryFn: async () => {
@@ -2898,6 +2923,13 @@ function HistoryCard({ kind }: { kind: "importazioni" | "esportazioni" }) {
       return rows.some((r) => r.stato === "in_elaborazione") ? 3000 : false;
     },
   });
+
+  const isBloccato = (imp: HistoryRow): boolean => {
+    if (imp.stato !== "in_elaborazione") return false;
+    const updated = new Date((imp as { updated_at?: string }).updated_at ?? imp.created_at);
+    const diffMinuti = (Date.now() - updated.getTime()) / 1000 / 60;
+    return diffMinuti > 30;
+  };
 
   const title = kind === "importazioni" ? "Ultime importazioni" : "Ultime esportazioni";
   const Icon = kind === "importazioni" ? Upload : Download;
@@ -2929,14 +2961,17 @@ function HistoryCard({ kind }: { kind: "importazioni" | "esportazioni" }) {
                   ? 0
                   : 100;
             const inCorso = r.stato === "in_elaborazione";
+            const bloccato = kind === "importazioni" && isBloccato(r);
             const variant =
-              r.stato === "completata"
-                ? "default"
-                : r.stato === "fallita"
-                  ? "destructive"
-                  : r.stato === "completata_con_errori"
-                    ? "secondary"
-                    : "outline";
+              bloccato
+                ? "destructive"
+                : r.stato === "completata"
+                  ? "default"
+                  : r.stato === "fallita"
+                    ? "destructive"
+                    : r.stato === "completata_con_errori"
+                      ? "secondary"
+                      : "outline";
             return (
               <div key={r.id} className="border-b last:border-0 pb-3 last:pb-0 space-y-1.5">
                 <div className="flex items-start justify-between gap-2 text-sm">
@@ -2952,14 +2987,39 @@ function HistoryCard({ kind }: { kind: "importazioni" | "esportazioni" }) {
                       variant={variant as "default" | "destructive" | "secondary" | "outline"}
                       className="gap-1"
                     >
-                      {inCorso ? <Loader2 className="size-3 animate-spin" /> : null}
-                      {r.stato}
+                      {inCorso && !bloccato ? <Loader2 className="size-3 animate-spin" /> : null}
+                      {bloccato ? "Bloccato" : r.stato}
                     </Badge>
                     <p className="text-xs text-muted-foreground mt-1">
                       {kind === "importazioni"
                         ? `${r.righe_create ?? 0} nuovi · ${r.righe_aggiornate ?? 0} agg. / ${r.righe_totali ?? 0}`
                         : `${r.righe_esportate ?? 0} righe`}
                     </p>
+                    {bloccato ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-6 mt-1 text-[11px] px-2"
+                        onClick={async () => {
+                          await supabase
+                            .from("importazioni")
+                            .update({
+                              stato: "completata_con_errori",
+                              completata_at: new Date().toISOString(),
+                              log_errori:
+                                "Import interrotto: nessun aggiornamento da oltre 30 minuti.",
+                            })
+                            .eq("id", r.id);
+                          queryClient.invalidateQueries({
+                            queryKey: ["storico-import-export", "importazioni"],
+                          });
+                          toast.info("Import marcato come fallito");
+                        }}
+                      >
+                        Segna come fallito
+                      </Button>
+                    ) : null}
                   </div>
                 </div>
                 {kind === "importazioni" && (inCorso || (totali > 0 && elaborate < totali)) ? (
