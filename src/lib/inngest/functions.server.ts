@@ -449,7 +449,7 @@ export const processRischioImport = inngest.createFunction(
             .select("id, codice_gestionale")
             .in("codice_gestionale", slice)
             .limit(CHUNK + 10);
-          (data ?? []).forEach((c: { id: string; codice_gestionale: string }) => {
+          (data ?? []).forEach((c: { id: string; codice_gestionale: string | null }) => {
             if (c.codice_gestionale) lookup[c.codice_gestionale] = c.id;
           });
         }
