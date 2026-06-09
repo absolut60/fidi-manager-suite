@@ -371,37 +371,49 @@ export const processRischioImport = inngest.createFunction(
   async ({ event, step, logger }) => {
     const { importazioneId, filePath } = event.data as EventData;
     try {
-      const { rows, missing } = await step.run("parse", async () => {
-        const wb = await downloadWorkbook(filePath);
-        return parseRischioSheet(wb.Sheets[wb.SheetNames[0]]);
-      });
+      // Parse fuori da step.run: output limitato a ~4MB
+      const wb = await downloadWorkbook(filePath);
+      const { rows, missing } = parseRischioSheet(wb.Sheets[wb.SheetNames[0]]);
       logger.info(`Rischio: ${rows.length} righe, ${missing.length} senza codice`);
 
-      const errorLog: Array<{ riga: number; errore: string }> = missing.map((idx) => ({
-        riga: idx,
-        errore: "Codice gestionale mancante",
-      }));
-      let updated = 0;
+      // Errori iniziali (codice mancante) persistiti direttamente
+      let cErrori = missing.length;
+      let cAggiornati = 0;
+      let cSaltati = 0;
 
       await supabaseAdmin
         .from("importazioni")
         .update({
           righe_totali: rows.length + missing.length,
+          righe_errore: cErrori,
           stato: "in_elaborazione",
+          log_errori: missing.length
+            ? missing.slice(0, 500).map((idx) => ({
+                riga: idx,
+                errore: "Codice gestionale mancante",
+              }))
+            : null,
         })
         .eq("id", importazioneId);
 
+      // Lookup: SOLO Record<codice, UUID>
       const codici = Array.from(new Set(rows.map((r) => r.codice_gestionale)));
-      const map = new Map<string, string>();
-      if (codici.length) {
-        const { data } = await supabaseAdmin
-          .from("clienti")
-          .select("id, codice_gestionale")
-          .in("codice_gestionale", codici);
-        (data ?? []).forEach((c) => {
-          if (c.codice_gestionale) map.set(c.codice_gestionale, c.id);
-        });
-      }
+      const lookup = await step.run("lookup-existing", async () => {
+        const map: Record<string, string> = {};
+        const CHUNK = 500;
+        for (let i = 0; i < codici.length; i += CHUNK) {
+          const slice = codici.slice(i, i + CHUNK);
+          if (!slice.length) continue;
+          const { data } = await supabaseAdmin
+            .from("clienti")
+            .select("id, codice_gestionale")
+            .in("codice_gestionale", slice);
+          (data ?? []).forEach((c) => {
+            if (c.codice_gestionale) map[c.codice_gestionale] = c.id;
+          });
+        }
+        return map;
+      });
 
       const now = new Date().toISOString();
       const BATCH = 50;
@@ -409,11 +421,14 @@ export const processRischioImport = inngest.createFunction(
         const chunk = rows.slice(i, i + BATCH);
         const res = await step.run(`update-batch-${i}`, async () => {
           let ok = 0;
+          let saltati = 0;
+          let errori = 0;
           const errs: Array<{ riga: number; errore: string }> = [];
           await Promise.all(
             chunk.map(async (r) => {
-              const id = map.get(r.codice_gestionale);
+              const id = lookup[r.codice_gestionale];
               if (!id) {
+                saltati++;
                 errs.push({
                   riga: r.idx,
                   errore: `Codice ${r.codice_gestionale} non trovato${r.ragione_sociale ? ` (${r.ragione_sociale})` : ""}`,
@@ -424,39 +439,79 @@ export const processRischioImport = inngest.createFunction(
                 .from("clienti")
                 .update({ ...r.payload, ultima_sincronizzazione: now } as never)
                 .eq("id", id);
-              if (error) errs.push({ riga: r.idx, errore: `Update: ${error.message}` });
-              else ok++;
+              if (error) {
+                errori++;
+                errs.push({ riga: r.idx, errore: `Update: ${error.message}` });
+              } else ok++;
             }),
           );
-          return { ok, errs };
+          // Persisti errori inline (non li restituiamo come array)
+          if (errs.length) {
+            const { data: cur } = await supabaseAdmin
+              .from("importazioni")
+              .select("log_errori")
+              .eq("id", importazioneId)
+              .single();
+            const existing =
+              (cur?.log_errori as Array<{ riga: number; errore: string }> | null) ?? [];
+            await supabaseAdmin
+              .from("importazioni")
+              .update({ log_errori: [...existing, ...errs].slice(0, 500) } as never)
+              .eq("id", importazioneId);
+          }
+          // SOLO contatori
+          return { aggiornati: ok, saltati, errori };
         });
-        updated += res.ok;
-        errorLog.push(...res.errs);
+        cAggiornati += res.aggiornati;
+        cSaltati += res.saltati;
+        cErrori += res.errori + res.saltati;
         await supabaseAdmin
           .from("importazioni")
           .update({
             righe_elaborate: Math.min(i + BATCH, rows.length),
-            righe_aggiornate: updated,
-            righe_errore: errorLog.length,
+            righe_aggiornate: cAggiornati,
+            righe_errore: cErrori,
             stato: "in_elaborazione",
           })
           .eq("id", importazioneId);
       }
 
-      await supabaseAdmin
-        .from("importazioni")
-        .update({
-          righe_elaborate: rows.length,
-          righe_create: 0,
-          righe_aggiornate: updated,
-          righe_errore: errorLog.length,
-          stato: errorLog.length ? "completata_con_errori" : "completata",
-          completata_at: new Date().toISOString(),
-          log_errori: errorLog.length ? errorLog.slice(0, 500) : null,
-        })
-        .eq("id", importazioneId);
+      const riepilogoLog: Array<{ riga: number; errore: string }> = [
+        {
+          riga: 0,
+          errore: `Riepilogo: ${cAggiornati} aggiornati, ${cSaltati} saltati, ${cErrori} errori`,
+        },
+      ];
 
-      return { updated, errors: errorLog.length };
+      await step.run("finalize", async () => {
+        const { data: cur } = await supabaseAdmin
+          .from("importazioni")
+          .select("log_errori")
+          .eq("id", importazioneId)
+          .single();
+        const existing = (cur?.log_errori as Array<{ riga: number; errore: string }> | null) ?? [];
+        await supabaseAdmin
+          .from("importazioni")
+          .update({
+            righe_elaborate: rows.length + missing.length,
+            righe_create: 0,
+            righe_aggiornate: cAggiornati,
+            righe_errore: cErrori,
+            stato: cErrori ? "completata_con_errori" : "completata",
+            completata_at: new Date().toISOString(),
+            log_errori: [...riepilogoLog, ...existing].slice(0, 500),
+          } as never)
+          .eq("id", importazioneId);
+      });
+
+      // SOLO contatori e log troncato — nessun array di righe/clienti
+      return {
+        ok: true,
+        aggiornati: cAggiornati,
+        saltati: cSaltati,
+        errori: cErrori,
+        log: riepilogoLog.slice(0, 300),
+      };
     } catch (err) {
       await setImportazioneError(importazioneId, err instanceof Error ? err.message : String(err));
       throw err;
