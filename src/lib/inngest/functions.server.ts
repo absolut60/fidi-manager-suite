@@ -1665,8 +1665,9 @@ export const processBloccoFidoImport = inngest.createFunction(
         assicurazione_attiva: boolean | null;
         in_gestione_legale: boolean | null;
       };
-      const clientMap = await step.run("lookup-clienti", async () => {
-        const map: Record<string, ClienteSnap> = {};
+      // Lookup inline — senza step.run per evitare serializzazione della map grande
+      const clientMap: Record<string, ClienteSnap> = {};
+      {
         const BATCH = 500;
         for (let i = 0; i < codici.length; i += BATCH) {
           const slice = codici.slice(i, i + BATCH);
@@ -1683,7 +1684,7 @@ export const processBloccoFidoImport = inngest.createFunction(
           );
           (data ?? []).forEach((c) => {
             if (c.codice_gestionale) {
-              map[normalizeBfaCodice(c.codice_gestionale)] = {
+              clientMap[normalizeBfaCodice(c.codice_gestionale)] = {
                 id: c.id,
                 ragione_sociale: c.ragione_sociale ?? null,
                 ind_blocco: (c as { ind_blocco?: number | null }).ind_blocco ?? null,
@@ -1695,29 +1696,29 @@ export const processBloccoFidoImport = inngest.createFunction(
             }
           });
         }
-        return map;
-      });
+      }
 
       // STEP 3: pre-fetch polizze POUEY esistenti
       const allClienteIds = Array.from(
         new Set(parsed.map((r) => clientMap[normalizeBfaCodice(r.codice_gestionale)]?.id).filter(Boolean) as string[]),
       );
-      const poueyMap = await step.run("lookup-polizze", async () => {
-        const map: Record<string, string> = {};
+      // Lookup inline — senza step.run per evitare serializzazione della map grande
+      const poueyMap: Record<string, string> = {};
+      {
         const BATCH = 500;
         for (let i = 0; i < allClienteIds.length; i += BATCH) {
           const slice = allClienteIds.slice(i, i + BATCH);
+          if (!slice.length) continue;
           const { data } = await supabaseAdmin
             .from("assicurazioni_credito")
             .select("id, cliente_id")
             .eq("assicuratore", "POUEY")
             .in("cliente_id", slice);
           ((data ?? []) as Array<{ id: string; cliente_id: string }>).forEach((p) => {
-            map[p.cliente_id] = p.id;
+            poueyMap[p.cliente_id] = p.id;
           });
         }
-        return map;
-      });
+      }
 
       // STEP 4: chunk processing con anomalie
       const CHUNK = 500;
