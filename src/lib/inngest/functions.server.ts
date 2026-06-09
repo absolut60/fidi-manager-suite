@@ -845,7 +845,6 @@ export const processScadenziarioChunk = inngest.createFunction(
       const batchErrs: Array<{ riga: number; errore: string }> = [];
       const matched: string[] = [];
       const rawValidRows: Array<Record<string, unknown>> = [];
-      const rawPagateRows: Array<Record<string, unknown>> = [];
       let skipped = 0;
       const skippedCodes = new Set<string>();
       const isPagata = (p: Record<string, unknown>) =>
@@ -859,50 +858,22 @@ export const processScadenziarioChunk = inngest.createFunction(
           if (r.codice_gestionale) skippedCodes.add(String(r.codice_gestionale));
           continue;
         }
+        // Le righe pagate vengono ignorate: il cleanup finale in finalize
+        // le rimuoverà dal DB con una sola query.
+        if (isPagata(r.payload)) {
+          skipped++;
+          continue;
+        }
         const enriched = {
           ...r.payload,
           cliente_id: cid,
           importato_da: importazioneId,
           ultima_sincronizzazione: timestampInizio,
         };
-        if (isPagata(r.payload)) {
-          rawPagateRows.push(enriched);
-        } else {
-          matched.push(cid);
-          rawValidRows.push(enriched);
-        }
+        matched.push(cid);
+        rawValidRows.push(enriched);
       }
 
-      // DELETE righe pagate (stato Chiusa + tempi_scadenza contiene "pagat")
-      let deleted = 0;
-      for (const row of rawPagateRows) {
-        const cid = row.cliente_id as string;
-        const numDoc = row.numero_documento as string | null | undefined;
-        const sez = row.sezionale as string | null | undefined;
-        const annoVal = row.anno_partita as number | string | null | undefined;
-        const dataScad = row.data_scadenza as string | null | undefined;
-        if (!dataScad) continue;
-        let q = supabaseAdmin
-          .from("scadenze" as never)
-          .delete()
-          .eq("cliente_id", cid)
-          .eq("data_scadenza", dataScad);
-        q = numDoc == null ? q.is("numero_documento", null) : q.eq("numero_documento", numDoc);
-        q = sez == null ? q.is("sezionale", null) : q.eq("sezionale", sez);
-        q =
-          annoVal == null || annoVal === ""
-            ? q.is("anno_partita", null)
-            : q.eq("anno_partita", Number(annoVal));
-        const { error: delErr } = await q;
-        if (delErr) {
-          batchErrs.push({
-            riga: chunkIndex,
-            errore: `Delete pagata chunk ${chunkIndex}: ${delErr.message}`,
-          });
-        } else {
-          deleted++;
-        }
-      }
 
       // Dedup per chiave conflict (include data_scadenza)
       const deduped = new Map<string, Record<string, unknown>>();
