@@ -1223,7 +1223,7 @@ export const processScadAssicImport = inngest.createFunction(
                 else logs.push(`Riga ${r.excelRow}: sollecito ${error.message}`);
               }
             }
-            if (r.note_legale && !openLegale.has(cid) && !clientsLegale.has(cid)) {
+            if (r.note_legale && !openLegale.has(cid)) {
               const { error } = await supabaseAdmin.from("pratiche_legali" as never).insert({
                 cliente_id: cid,
                 tipo: "azione_legale_generica",
@@ -1233,10 +1233,10 @@ export const processScadAssicImport = inngest.createFunction(
               } as never);
               if (!error) {
                 openLegale.add(cid);
-                clientsLegale.add(cid);
                 legale.add(cid);
               } else logs.push(`Riga ${r.excelRow}: pratica legale ${error.message}`);
             }
+
           }
           // Applica subito blocco clienti del batch (così non serve restituire array di id grandi)
           if (block.size) {
