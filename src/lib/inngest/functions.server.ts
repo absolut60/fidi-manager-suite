@@ -1040,12 +1040,24 @@ export const finalizeScadenziarioImport = inngest.createFunction(
       timestampInizio: string;
     };
     try {
+      // Cleanup finale: rimuovi in UNA sola query tutte le scadenze marcate
+      // come pagate (tempi_scadenza contiene "pagat"). Sostituisce il DELETE
+      // per-riga che era nel chunk e che causava migliaia di query sequenziali.
+      await step.run("cleanup-pagate", async () => {
+        const { error: delErr } = await supabaseAdmin
+          .from("scadenze" as never)
+          .delete()
+          .ilike("tempi_scadenza", "%pagat%");
+        if (delErr) throw new Error(`Cleanup pagate: ${delErr.message}`);
+      });
+
       // Reconciliation DISABILITATA: con la nuova logica le righe pagate vengono
-      // eliminate esplicitamente in fase di upsert (vedi processScadenziarioChunk).
-      // Non chiudiamo più automaticamente le righe assenti dal file: potrebbero
-      // essere ancora valide (es. a scadere) ma non presenti in questo file.
+      // rimosse dal cleanup sopra. Non chiudiamo più automaticamente le righe
+      // assenti dal file: potrebbero essere ancora valide (es. a scadere) ma
+      // non presenti in questo file.
       const reconc = { totChiuse: 0, totClienti: 0 };
       void timestampInizio;
+
 
       // Aggiornamento finale dello stato
       await step.run("set-final-state", async () => {
