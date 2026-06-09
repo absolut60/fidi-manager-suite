@@ -772,7 +772,7 @@ export const processScadenziarioChunk = inngest.createFunction(
       return out;
     });
 
-    // STEP C: prepara, deduplica, upsert
+    // STEP C: prepara, deduplica, upsert + persisti errori/codici inline
     const result = await step.run("upsert-batch", async () => {
       const rowErrs: Array<{ riga: number; errore: string }> = missing.map((idx) => ({
         riga: idx,
@@ -786,7 +786,6 @@ export const processScadenziarioChunk = inngest.createFunction(
       for (const r of rows) {
         const cid = clientMap[r.codice_gestionale];
         if (!cid) {
-          // Cliente non in anagrafica: salta silenziosamente (non conta come errore)
           skipped++;
           if (r.codice_gestionale) skippedCodes.add(String(r.codice_gestionale));
           continue;
@@ -857,9 +856,6 @@ export const processScadenziarioChunk = inngest.createFunction(
             errore: `Upsert chunk ${chunkIndex}: ${upErr.message}`,
           });
         } else {
-          // Conta create vs update in base alle chiavi pre-esistenti.
-          // Non usiamo il count di Supabase: con upsert+onConflict ritorna
-          // sempre 0 anche quando le righe vengono effettivamente scritte.
           for (const key of validKeys) {
             if (existingKeys.has(key)) u++;
             else c++;
@@ -867,21 +863,45 @@ export const processScadenziarioChunk = inngest.createFunction(
         }
       }
 
+      // Persisti errori/codici mancanti inline (NON ritornati come array)
+      const totalErrs = rowErrs.length + batchErrs.length;
+      const skippedCodesArr = Array.from(skippedCodes);
+      if (rowErrs.length || batchErrs.length || skippedCodesArr.length) {
+        const { data: cur } = await supabaseAdmin
+          .from("importazioni")
+          .select("log_errori, codici_mancanti")
+          .eq("id", importazioneId)
+          .single();
+        const updates: Record<string, unknown> = {};
+        if (rowErrs.length || batchErrs.length) {
+          const existing =
+            (cur?.log_errori as Array<{ riga: number; errore: string }> | null) ?? [];
+          updates.log_errori = [...existing, ...batchErrs, ...rowErrs].slice(0, 500);
+        }
+        if (skippedCodesArr.length) {
+          const existingCodes = (cur?.codici_mancanti as string[] | null) ?? [];
+          updates.codici_mancanti = Array.from(
+            new Set([...existingCodes, ...skippedCodesArr]),
+          ).slice(0, 200);
+        }
+        await supabaseAdmin
+          .from("importazioni")
+          .update(updates as never)
+          .eq("id", importazioneId);
+      }
+
+      // SOLO contatori
       return {
         created: c,
         updated: u,
         elaborate: rows.length + missing.length,
         skipped,
-        skippedCodes: Array.from(skippedCodes),
-        rowErrs,
-        batchErrs,
-        matchedCids: Array.from(new Set(matched)),
+        errori: totalErrs,
       };
     });
 
-    // STEP D: incremento atomico contatori + aggrega codici mancanti
+    // STEP D: incremento atomico contatori (errori/codici già persistiti)
     const progress = await step.run("increment-counters", async () => {
-      const totalErrs = result.rowErrs.length + result.batchErrs.length;
       const { data: rpc, error: rpcErr } = await (
         supabaseAdmin.rpc as unknown as (
           fn: string,
@@ -895,38 +915,10 @@ export const processScadenziarioChunk = inngest.createFunction(
         _elaborate: result.elaborate,
         _create: result.created,
         _update: result.updated,
-        _error: totalErrs,
+        _error: result.errori,
         _skipped: result.skipped,
       });
       if (rpcErr) throw new Error(`increment_importazione_counters: ${rpcErr.message}`);
-
-      // Append errori al log (best-effort) e aggrega codici mancanti unici (max 200)
-      if (result.rowErrs.length || result.batchErrs.length || result.skippedCodes.length) {
-        const { data: cur } = await supabaseAdmin
-          .from("importazioni")
-          .select("log_errori, codici_mancanti")
-          .eq("id", importazioneId)
-          .single();
-        const updates: Record<string, unknown> = {};
-        if (result.rowErrs.length || result.batchErrs.length) {
-          const existing =
-            (cur?.log_errori as Array<{ riga: number; errore: string }> | null) ?? [];
-          updates.log_errori = [...existing, ...result.batchErrs, ...result.rowErrs].slice(0, 500);
-        }
-        if (result.skippedCodes.length) {
-          const existingCodes = (cur?.codici_mancanti as string[] | null) ?? [];
-          const merged = Array.from(new Set([...existingCodes, ...result.skippedCodes])).slice(
-            0,
-            200,
-          );
-          updates.codici_mancanti = merged;
-        }
-        await supabaseAdmin
-          .from("importazioni")
-          .update(updates as never)
-          .eq("id", importazioneId);
-      }
-
       const row = rpc?.[0] ?? { chunks_completati: 0, chunks_totali: totalChunks };
       return row;
     });
@@ -943,7 +935,17 @@ export const processScadenziarioChunk = inngest.createFunction(
       });
     }
 
-    return { chunkIndex, ...result, progress };
+    // SOLO contatori
+    return {
+      chunkIndex,
+      created: result.created,
+      updated: result.updated,
+      elaborate: result.elaborate,
+      skipped: result.skipped,
+      errori: result.errori,
+      chunks_completati: progress.chunks_completati,
+      chunks_totali: progress.chunks_totali,
+    };
   },
 );
 
