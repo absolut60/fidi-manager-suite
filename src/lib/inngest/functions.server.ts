@@ -1166,8 +1166,9 @@ export const processScadAssicImport = inngest.createFunction(
             u = 0,
             s = 0;
           const logs: string[] = [];
-          const block: string[] = [];
-          const legale: string[] = [];
+          const block = new Set<string>();
+          const legale = new Set<string>();
+          const matched = new Set<string>();
           for (const r of chunk) {
             const cid = clientMap.get(r.cod_cli);
             if (!cid) {
@@ -1175,7 +1176,7 @@ export const processScadAssicImport = inngest.createFunction(
               logs.push(`Riga ${r.excelRow}: cliente ${r.cod_cli} non trovato`);
               continue;
             }
-            matchedClients.add(cid);
+            matched.add(cid);
             const key = `${cid}|${r.data_scadenza ?? ""}|${r.descrizione_pagamento ?? ""}`;
             const existId = existingScad.get(key);
             const payload: Record<string, unknown> = {
@@ -1207,7 +1208,7 @@ export const processScadAssicImport = inngest.createFunction(
                 logs.push(`Riga ${r.excelRow}: ${error.message}`);
               } else c++;
             }
-            if (r.bloccato) block.push(cid);
+            if (r.bloccato) block.add(cid);
             if (r.note_solleciti) {
               const dkey = `${cid}|${r.note_solleciti.trim()}`;
               if (!existingSoll.has(dkey)) {
@@ -1232,18 +1233,51 @@ export const processScadAssicImport = inngest.createFunction(
               if (!error) {
                 openLegale.add(cid);
                 clientsLegale.add(cid);
-                legale.push(cid);
+                legale.add(cid);
               } else logs.push(`Riga ${r.excelRow}: pratica legale ${error.message}`);
             }
           }
-          return { c, u, s, logs, block, legale };
+          // Applica subito blocco clienti del batch (così non serve restituire array di id grandi)
+          if (block.size) {
+            await supabaseAdmin
+              .from("clienti")
+              .update({
+                bloccato: true,
+                data_blocco: now,
+                motivo_blocco: "Import scadenziario: T_BLOCCO=BLOCCATO",
+              } as never)
+              .in("id", Array.from(block));
+          }
+          // Persisti log inline
+          if (logs.length) {
+            const { data: cur } = await supabaseAdmin
+              .from("importazioni")
+              .select("log_errori")
+              .eq("id", importazioneId)
+              .single();
+            const existing =
+              (cur?.log_errori as Array<{ messaggio: string }> | null) ?? [];
+            await supabaseAdmin
+              .from("importazioni")
+              .update({
+                log_errori: [...existing, ...logs.map((m) => ({ messaggio: m }))].slice(0, 500),
+              } as never)
+              .eq("id", importazioneId);
+          }
+          // SOLO contatori
+          return {
+            c,
+            u,
+            s,
+            blocked: block.size,
+            legaleCreated: legale.size,
+            matchedCount: matched.size,
+          };
         });
         scadCreated += res.c;
         scadUpdated += res.u;
         scadSkipped += res.s;
-        log.push(...res.logs);
-        res.block.forEach((id) => clientsToBlock.add(id));
-        res.legale.forEach((id) => clientsLegale.add(id));
+
         await supabaseAdmin
           .from("importazioni")
           .update({
