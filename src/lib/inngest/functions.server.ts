@@ -973,7 +973,7 @@ export const processScadenziarioChunk = inngest.createFunction(
         created: c,
         updated: u,
         elaborate: rows.length + missing.length,
-        skipped: skipped + deleted,
+        skipped,
         errori: totalErrs,
       };
     });
