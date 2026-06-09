@@ -133,6 +133,7 @@ export const processAnagraficaImport = inngest.createFunction(
     id: "process-anagrafica-import",
     name: "Process anagrafica import",
     retries: 2,
+    timeouts: { finish: "15m" },
     triggers: [{ event: "import/anagrafica.requested" }],
   },
   async ({ event, step, logger }) => {
@@ -367,6 +368,7 @@ export const processRischioImport = inngest.createFunction(
     id: "process-rischio-import",
     name: "Process rischio import",
     retries: 2,
+    timeouts: { finish: "15m" },
     triggers: [{ event: "import/analisi_rischio.requested" }],
   },
   async ({ event, step, logger }) => {
@@ -1058,6 +1060,7 @@ export const processScadAssicImport = inngest.createFunction(
     id: "process-scad-assic-import",
     name: "Process scadenziario+assicurazioni import",
     retries: 2,
+    timeouts: { finish: "15m" },
     triggers: [{ event: "import/scadenziario_assicurazioni.requested" }],
   },
   async ({ event, step, logger }) => {
@@ -1527,6 +1530,7 @@ export const processBloccoFidoImport = inngest.createFunction(
     id: "process-blocco-fido-import",
     name: "Process blocco fido + assicurazione import",
     retries: 2,
+    timeouts: { finish: "15m" },
     triggers: [{ event: "import/blocco_fido_assicurazione.requested" }],
   },
   async ({ event, step, logger }) => {
