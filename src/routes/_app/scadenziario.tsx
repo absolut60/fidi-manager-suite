@@ -270,7 +270,7 @@ function ScadenziarioPage() {
         maxGg,
         fascia: fasciaOf(maxGg),
       };
-    }).filter((r) => r.nScadute > 0 || r.totAScad > 0);
+    }).filter((r) => r.nScadute > 0);
     return out
       .filter((r) => r.totScad >= minImp)
       .filter((r) => {
