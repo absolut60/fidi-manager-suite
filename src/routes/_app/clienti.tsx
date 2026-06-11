@@ -2757,8 +2757,8 @@ function FiltriAvanzatiDialog({
     { id: "esaurito", label: "Fido esaurito", apply: (d: AdvAppliedT) => ({ ...d, fidoOp: "lte" as AdvOp, fidoVal: 0 }) },
     { id: "lt500", label: "Fido residuo < 500 €", apply: (d: AdvAppliedT) => ({ ...d, fidoOp: "lt" as AdvOp, fidoVal: 500 }) },
     { id: "lt1000", label: "Fido residuo < 1.000 €", apply: (d: AdvAppliedT) => ({ ...d, fidoOp: "lt" as AdvOp, fidoVal: 1000 }) },
-    { id: "scoperto", label: "Scoperti con insoluto", apply: (d: AdvAppliedT) => ({ ...d, presetScopertoInsoluto: true }), main: { filtroAssic: "non_assicurati" } },
-    { id: "blocFat", label: "Bloccati con fatturato 2025", apply: (d: AdvAppliedT) => d, main: { filtroBlocco: "bloccati" } },
+    { id: "scoperto", label: "Scoperti con insoluto", apply: (d: AdvAppliedT) => ({ ...d, presetScopertoInsoluto: true }), main: { filtroAssic: "non_assicurati" } as const },
+    { id: "blocFat", label: "Bloccati con fatturato 2025", apply: (d: AdvAppliedT) => d, main: { filtroBlocco: "bloccati" } as const },
   ];
 
   const isPresetActive = (id: string): boolean => {
