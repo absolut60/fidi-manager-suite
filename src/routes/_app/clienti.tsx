@@ -414,8 +414,7 @@ function ClientiPage() {
   function buildBaseQuery(selectCols: string, count: "exact" | undefined) {
     let q = supabase
       .from("clienti")
-      .select(selectCols, count ? { count } : undefined)
-      .order("ragione_sociale", { ascending: true });
+      .select(selectCols, count ? { count } : undefined);
 
     if (statoCliente === "attivi") q = q.eq("attivo", true);
     else if (statoCliente === "disattivati") q = q.eq("attivo", false);
@@ -474,6 +473,8 @@ function ClientiPage() {
         `ragione_sociale.ilike.${like},partita_iva.ilike.${like},codice_gestionale.ilike.${like},citta.ilike.${like}`,
       );
     }
+
+    q = q.order(sortBy, { ascending: sortDir === "asc", nullsFirst: false });
     return { q };
   }
 
