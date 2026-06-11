@@ -158,6 +158,8 @@ function ClientiPage() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+  const [sortBy, setSortBy] = useState("ragione_sociale");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   // Filtro Fido residuo (fascia + range slider, cumulativi)
   const [fidoFascia, setFidoFascia] = useState<string>("tutti");
@@ -400,10 +402,10 @@ function ClientiPage() {
   }, [semaforoIds, statoFidoIds, scadenziarioIdsFilter, aScadereIds, fatturatoIds, percConsumatoIds]);
 
 
-  // Reset pagina ogni volta che cambia un filtro
+  // Reset pagina ogni volta che cambia un filtro o l'ordinamento
   useEffect(() => {
     setPage(1);
-  }, [search, statoCliente, statoAttivita, storeFiltro, statoFido, semaforoFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, pageSize, advApplied]);
+  }, [search, statoCliente, statoAttivita, storeFiltro, statoFido, semaforoFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, pageSize, advApplied, sortBy, sortDir]);
 
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
