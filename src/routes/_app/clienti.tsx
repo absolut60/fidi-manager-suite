@@ -821,8 +821,9 @@ function ClientiPage() {
           {TotaleRischioSelect}
           {AScadereSelect}
           {FidoRangeSlider}
-          {BloccatiChk}
-          {AssicuratiChk}
+          {BloccoSelect}
+          {AssicSelect}
+          {LegaleSelect}
           {StatoAttivitaSelect}
           {attiviCount > 0 && (
             <Button variant="ghost" size="sm" onClick={resetFiltri} className="gap-1 justify-start">
@@ -865,11 +866,12 @@ function ClientiPage() {
           {FatturatoSelect}
           {AdvFilterBtn}
         </div>
-        {/* Riga 3: stato attività + checkbox inline */}
+        {/* Riga 3: stato attività + filtri a 3 stati */}
         <div className="flex flex-wrap items-center gap-3 pt-1">
           <div className="w-44">{StatoAttivitaSelect}</div>
-          {BloccatiChk}
-          {AssicuratiChk}
+          <div className="w-44">{BloccoSelect}</div>
+          <div className="w-44">{AssicSelect}</div>
+          <div className="w-44">{LegaleSelect}</div>
         </div>
         {/* Slider fido residuo: larghezza piena */}
         <div>{FidoRangeSlider}</div>
@@ -930,11 +932,11 @@ function ClientiPage() {
         onApply={(a) => { setAdvApplied(a); setAdvOpen(false); }}
         onReset={() => setAdvApplied(ADV_EMPTY)}
         onSetMainFiltro={(patch) => {
-          if (patch.soloBloccati !== undefined) setSoloBloccati(patch.soloBloccati);
-          if (patch.soloAssicurati !== undefined) setSoloAssicurati(patch.soloAssicurati);
+          if (patch.filtroBlocco !== undefined) setFiltroBlocco(patch.filtroBlocco);
+          if (patch.filtroAssic !== undefined) setFiltroAssic(patch.filtroAssic);
           if (patch.scadenziarioFiltro !== undefined) setScadenziarioFiltro(patch.scadenziarioFiltro);
         }}
-        currentMain={{ soloBloccati, soloAssicurati, scadenziarioFiltro }}
+        currentMain={{ filtroBlocco, filtroAssic, scadenziarioFiltro }}
       />
 
 
