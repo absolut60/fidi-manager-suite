@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, useNavigate, useRouterState } from "@tanstack/
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import { Plus, Search, Building, MapPin, FileCheck2, FileX2, ArrowLeft, ArrowRight, Check, Pencil, PenTool, FileText, SlidersHorizontal, X, AlertCircle, Clock, CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Search, Building, MapPin, FileCheck2, FileX2, ArrowLeft, ArrowRight, Check, Pencil, PenTool, FileText, SlidersHorizontal, X, AlertCircle, Clock, CheckCircle2, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -158,6 +158,8 @@ function ClientiPage() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+  const [sortBy, setSortBy] = useState("ragione_sociale");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   // Filtro Fido residuo (fascia + range slider, cumulativi)
   const [fidoFascia, setFidoFascia] = useState<string>("tutti");
@@ -400,10 +402,10 @@ function ClientiPage() {
   }, [semaforoIds, statoFidoIds, scadenziarioIdsFilter, aScadereIds, fatturatoIds, percConsumatoIds]);
 
 
-  // Reset pagina ogni volta che cambia un filtro
+  // Reset pagina ogni volta che cambia un filtro o l'ordinamento
   useEffect(() => {
     setPage(1);
-  }, [search, statoCliente, statoAttivita, storeFiltro, statoFido, semaforoFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, pageSize, advApplied]);
+  }, [search, statoCliente, statoAttivita, storeFiltro, statoFido, semaforoFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, pageSize, advApplied, sortBy, sortDir]);
 
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -412,8 +414,7 @@ function ClientiPage() {
   function buildBaseQuery(selectCols: string, count: "exact" | undefined) {
     let q = supabase
       .from("clienti")
-      .select(selectCols, count ? { count } : undefined)
-      .order("ragione_sociale", { ascending: true });
+      .select(selectCols, count ? { count } : undefined);
 
     if (statoCliente === "attivi") q = q.eq("attivo", true);
     else if (statoCliente === "disattivati") q = q.eq("attivo", false);
@@ -472,6 +473,8 @@ function ClientiPage() {
         `ragione_sociale.ilike.${like},partita_iva.ilike.${like},codice_gestionale.ilike.${like},citta.ilike.${like}`,
       );
     }
+
+    q = q.order(sortBy, { ascending: sortDir === "asc", nullsFirst: false });
     return { q };
   }
 
@@ -480,7 +483,7 @@ function ClientiPage() {
   const scadReady = scadenziarioFiltro === "tutti" || !!scadenziarioMap;
 
   const { data: clientiResp, isLoading } = useQuery({
-    queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize, advApplied }],
+    queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize, advApplied, sortBy, sortDir }],
     queryFn: async () => {
       const built = buildBaseQuery("*, stores(nome, codice)", "exact");
       if ("empty" in built) return { rows: [], count: 0 };
@@ -562,6 +565,18 @@ function ClientiPage() {
     setSliderDisplay([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
     setSliderCommitted([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
     setAdvApplied(ADV_EMPTY);
+  }
+
+  function toggleSort(colonna: string) {
+    if (sortBy !== colonna) {
+      setSortBy(colonna);
+      setSortDir("asc");
+    } else if (sortDir === "asc") {
+      setSortDir("desc");
+    } else {
+      setSortBy("ragione_sociale");
+      setSortDir("asc");
+    }
   }
 
 
@@ -904,6 +919,23 @@ function ClientiPage() {
     return <Outlet />;
   }
 
+  function SortHeader({ col, label, align = "left" }: { col: string; label: string; align?: "left" | "right" }) {
+    const active = sortBy === col;
+    return (
+      <button
+        type="button"
+        onClick={() => toggleSort(col)}
+        className={`flex items-center gap-1 font-medium hover:text-primary transition-colors ${align === "right" ? "ml-auto" : ""}`}
+      >
+        {label}
+        {active ? (
+          sortDir === "asc" ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />
+        ) : (
+          <ChevronsUpDown className="size-4 text-muted-foreground/60" />
+        )}
+      </button>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -1041,12 +1073,12 @@ function ClientiPage() {
                     />
                   </TableHead>
                   <TableHead className="w-8"></TableHead>
-                  <TableHead>Ragione sociale</TableHead>
-                  <TableHead>Cod. gest.</TableHead>
-                  <TableHead>P. IVA</TableHead>
-                  <TableHead>Città</TableHead>
+                  <TableHead><SortHeader col="ragione_sociale" label="Ragione sociale" /></TableHead>
+                  <TableHead><SortHeader col="codice_gestionale" label="Cod. gest." /></TableHead>
+                  <TableHead><SortHeader col="partita_iva" label="P. IVA" /></TableHead>
+                  <TableHead><SortHeader col="citta" label="Città" /></TableHead>
                   <TableHead>Punto vendita</TableHead>
-                  <TableHead className="text-right">Fido residuo</TableHead>
+                  <TableHead className="text-right"><SortHeader col="fido_residuo" label="Fido residuo" align="right" /></TableHead>
                   <TableHead>Scadenziario</TableHead>
                   <TableHead>Privacy</TableHead>
                   <TableHead>Assic.</TableHead>
