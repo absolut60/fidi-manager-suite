@@ -775,18 +775,37 @@ function ClientiPage() {
     </div>
   );
 
-  const BloccatiChk = (
-    <label className="flex items-center gap-2 text-sm px-2 py-1 cursor-pointer whitespace-nowrap">
-      <Checkbox checked={soloBloccati} onCheckedChange={(v) => setSoloBloccati(!!v)} />
-      Solo bloccati
-    </label>
+  const BloccoSelect = (
+    <Select value={filtroBlocco} onValueChange={(v) => setFiltroBlocco(v as typeof filtroBlocco)}>
+      <SelectTrigger className="w-full"><SelectValue placeholder="Stato blocco" /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="tutti">Tutti</SelectItem>
+        <SelectItem value="bloccati">Bloccati</SelectItem>
+        <SelectItem value="non_bloccati">Non bloccati</SelectItem>
+      </SelectContent>
+    </Select>
   );
 
-  const AssicuratiChk = (
-    <label className="flex items-center gap-2 text-sm px-2 py-1 cursor-pointer whitespace-nowrap">
-      <Checkbox checked={soloAssicurati} onCheckedChange={(v) => setSoloAssicurati(!!v)} />
-      Solo assicurati POUEY
-    </label>
+  const AssicSelect = (
+    <Select value={filtroAssic} onValueChange={(v) => setFiltroAssic(v as typeof filtroAssic)}>
+      <SelectTrigger className="w-full"><SelectValue placeholder="Assicurazione" /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="tutti">Tutti</SelectItem>
+        <SelectItem value="assicurati">Assicurati</SelectItem>
+        <SelectItem value="non_assicurati">Non assicurati</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+
+  const LegaleSelect = (
+    <Select value={filtroLegale} onValueChange={(v) => setFiltroLegale(v as typeof filtroLegale)}>
+      <SelectTrigger className="w-full"><SelectValue placeholder="Gestione legale" /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="tutti">Tutti</SelectItem>
+        <SelectItem value="in_legale">In gestione legale</SelectItem>
+        <SelectItem value="non_in_legale">Non in gestione legale</SelectItem>
+      </SelectContent>
+    </Select>
   );
 
   function renderFiltriContent(stack = false) {
