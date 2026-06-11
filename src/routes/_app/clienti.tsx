@@ -1078,6 +1078,7 @@ function ClientiPage() {
                   <TableHead><SortHeader col="partita_iva" label="P. IVA" /></TableHead>
                   <TableHead><SortHeader col="citta" label="Città" /></TableHead>
                   <TableHead>Punto vendita</TableHead>
+                  <TableHead className="text-right"><SortHeader col="fido_gestionale" label="Fido attuale" align="right" /></TableHead>
                   <TableHead className="text-right"><SortHeader col="fido_residuo" label="Fido residuo" align="right" /></TableHead>
                   <TableHead>Scadenziario</TableHead>
                   <TableHead>Privacy</TableHead>
@@ -1136,6 +1137,9 @@ function ClientiPage() {
                     </TableCell>
                     <TableCell className="text-sm">
                       {c.stores?.nome || <span className="text-muted-foreground">—</span>}
+                    </TableCell>
+                    <TableCell className="text-right text-sm">
+                      {fmtEuro(c.fido_gestionale)}
                     </TableCell>
                     <TableCell className={`text-right text-sm font-medium ${residuoNum != null && residuoNum < 0 ? "text-destructive" : ""}`}>
                       {fmtEuro(residuo)}
