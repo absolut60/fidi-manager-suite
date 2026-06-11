@@ -2746,8 +2746,8 @@ function FiltriAvanzatiDialog({
   applied: AdvAppliedT;
   onApply: (a: AdvAppliedT) => void;
   onReset: () => void;
-  onSetMainFiltro: (p: { soloBloccati?: boolean; soloAssicurati?: boolean; scadenziarioFiltro?: string }) => void;
-  currentMain: { soloBloccati: boolean; soloAssicurati: boolean; scadenziarioFiltro: string };
+  onSetMainFiltro: (p: { filtroBlocco?: "tutti" | "bloccati" | "non_bloccati"; filtroAssic?: "tutti" | "assicurati" | "non_assicurati"; scadenziarioFiltro?: string }) => void;
+  currentMain: { filtroBlocco: "tutti" | "bloccati" | "non_bloccati"; filtroAssic: "tutti" | "assicurati" | "non_assicurati"; scadenziarioFiltro: string };
 }) {
   const [draft, setDraft] = useState<AdvAppliedT>(applied);
   useEffect(() => { if (open) setDraft(applied); }, [open, applied]);
@@ -2757,8 +2757,8 @@ function FiltriAvanzatiDialog({
     { id: "esaurito", label: "Fido esaurito", apply: (d: AdvAppliedT) => ({ ...d, fidoOp: "lte" as AdvOp, fidoVal: 0 }) },
     { id: "lt500", label: "Fido residuo < 500 €", apply: (d: AdvAppliedT) => ({ ...d, fidoOp: "lt" as AdvOp, fidoVal: 500 }) },
     { id: "lt1000", label: "Fido residuo < 1.000 €", apply: (d: AdvAppliedT) => ({ ...d, fidoOp: "lt" as AdvOp, fidoVal: 1000 }) },
-    { id: "scoperto", label: "Scoperti con insoluto", apply: (d: AdvAppliedT) => ({ ...d, presetScopertoInsoluto: true }), main: { soloAssicurati: false } },
-    { id: "blocFat", label: "Bloccati con fatturato 2025", apply: (d: AdvAppliedT) => d, main: { soloBloccati: true } },
+    { id: "scoperto", label: "Scoperti con insoluto", apply: (d: AdvAppliedT) => ({ ...d, presetScopertoInsoluto: true }), main: { filtroAssic: "non_assicurati" } },
+    { id: "blocFat", label: "Bloccati con fatturato 2025", apply: (d: AdvAppliedT) => d, main: { filtroBlocco: "bloccati" } },
   ];
 
   const isPresetActive = (id: string): boolean => {
