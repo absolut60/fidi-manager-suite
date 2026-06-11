@@ -1073,12 +1073,12 @@ function ClientiPage() {
                     />
                   </TableHead>
                   <TableHead className="w-8"></TableHead>
-                  <TableHead>Ragione sociale</TableHead>
-                  <TableHead>Cod. gest.</TableHead>
-                  <TableHead>P. IVA</TableHead>
-                  <TableHead>Città</TableHead>
+                  <TableHead><SortHeader col="ragione_sociale" label="Ragione sociale" /></TableHead>
+                  <TableHead><SortHeader col="codice_gestionale" label="Cod. gest." /></TableHead>
+                  <TableHead><SortHeader col="partita_iva" label="P. IVA" /></TableHead>
+                  <TableHead><SortHeader col="citta" label="Città" /></TableHead>
                   <TableHead>Punto vendita</TableHead>
-                  <TableHead className="text-right">Fido residuo</TableHead>
+                  <TableHead className="text-right"><SortHeader col="fido_residuo" label="Fido residuo" align="right" /></TableHead>
                   <TableHead>Scadenziario</TableHead>
                   <TableHead>Privacy</TableHead>
                   <TableHead>Assic.</TableHead>
