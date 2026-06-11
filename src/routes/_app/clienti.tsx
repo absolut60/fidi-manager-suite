@@ -420,10 +420,14 @@ function ClientiPage() {
     if (statoAttivita === "attivi") q = q.eq("cliente_attivo", true);
     else if (statoAttivita === "non_attivi") q = q.eq("cliente_attivo", false);
     if (storeFiltro !== "tutti") q = q.eq("store_id", storeFiltro);
-    if (soloBloccati) q = q.eq("bloccato", true);
+    if (filtroBlocco === "bloccati") q = q.eq("bloccato", true);
+    else if (filtroBlocco === "non_bloccati") q = q.eq("bloccato", false);
     if (privacyFiltro === "firmata") q = q.eq("privacy_firmata", true);
     else if (privacyFiltro === "da_firmare") q = q.eq("privacy_firmata", false);
-    if (soloAssicurati) q = q.eq("assicurazione_attiva", true);
+    if (filtroAssic === "assicurati") q = q.eq("assicurazione_attiva", true);
+    else if (filtroAssic === "non_assicurati") q = q.eq("assicurazione_attiva", false);
+    if (filtroLegale === "in_legale") q = q.eq("in_gestione_legale", true);
+    else if (filtroLegale === "non_in_legale") q = q.eq("in_gestione_legale", false);
 
     // Fido residuo: fascia E range slider applicati insieme
     if (fidoFascia === "negativo") q = q.lt("fido_residuo", 0);
@@ -476,7 +480,7 @@ function ClientiPage() {
   const scadReady = scadenziarioFiltro === "tutti" || !!scadenziarioMap;
 
   const { data: clientiResp, isLoading } = useQuery({
-    queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, soloBloccati, privacyFiltro, soloAssicurati, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize, advApplied }],
+    queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize, advApplied }],
     queryFn: async () => {
       const built = buildBaseQuery("*, stores(nome, codice)", "exact");
       if ("empty" in built) return { rows: [], count: 0 };
@@ -520,9 +524,10 @@ function ClientiPage() {
     (storeFiltro !== "tutti" ? 1 : 0) +
     (statoFido.size > 0 ? 1 : 0) +
     (semaforoFiltro !== "tutti" ? 1 : 0) +
-    (soloBloccati ? 1 : 0) +
+    (filtroBlocco !== "tutti" ? 1 : 0) +
     (privacyFiltro !== "tutti" ? 1 : 0) +
-    (soloAssicurati ? 1 : 0) +
+    (filtroAssic !== "tutti" ? 1 : 0) +
+    (filtroLegale !== "tutti" ? 1 : 0) +
     (scadenziarioFiltro !== "tutti" ? 1 : 0) +
     (totaleRischioFiltro !== "tutti" ? 1 : 0) +
     (aScadereFiltro !== "tutti" ? 1 : 0) +
@@ -545,9 +550,10 @@ function ClientiPage() {
     setStoreFiltro("tutti");
     setStatoFido(new Set());
     setSemaforoFiltro("tutti");
-    setSoloBloccati(false);
+    setFiltroBlocco("tutti");
     setPrivacyFiltro("tutti");
-    setSoloAssicurati(false);
+    setFiltroAssic("tutti");
+    setFiltroLegale("tutti");
     setScadenziarioFiltro("tutti");
     setTotaleRischioFiltro("tutti");
     setAScadereFiltro("tutti");
