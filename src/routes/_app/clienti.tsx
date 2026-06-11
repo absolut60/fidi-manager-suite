@@ -146,9 +146,10 @@ function ClientiPage() {
   );
   const [statoFido, setStatoFido] = useState<Set<string>>(new Set());
   const [semaforoFiltro, setSemaforoFiltro] = useState<string>("tutti");
-  const [soloBloccati, setSoloBloccati] = useState(false);
+  const [filtroBlocco, setFiltroBlocco] = useState<"tutti" | "bloccati" | "non_bloccati">("tutti");
   const [privacyFiltro, setPrivacyFiltro] = useState<string>("tutti");
-  const [soloAssicurati, setSoloAssicurati] = useState(false);
+  const [filtroAssic, setFiltroAssic] = useState<"tutti" | "assicurati" | "non_assicurati">("tutti");
+  const [filtroLegale, setFiltroLegale] = useState<"tutti" | "in_legale" | "non_in_legale">("tutti");
   const [scadenziarioFiltro, setScadenziarioFiltro] = useState<string>("tutti");
   const [totaleRischioFiltro, setTotaleRischioFiltro] = useState<string>("tutti");
   const [fatturatoFiltro, setFatturatoFiltro] = useState<string>("tutti");
@@ -402,7 +403,7 @@ function ClientiPage() {
   // Reset pagina ogni volta che cambia un filtro
   useEffect(() => {
     setPage(1);
-  }, [search, statoCliente, statoAttivita, storeFiltro, statoFido, semaforoFiltro, soloBloccati, privacyFiltro, soloAssicurati, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, pageSize, advApplied]);
+  }, [search, statoCliente, statoAttivita, storeFiltro, statoFido, semaforoFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, pageSize, advApplied]);
 
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -419,10 +420,14 @@ function ClientiPage() {
     if (statoAttivita === "attivi") q = q.eq("cliente_attivo", true);
     else if (statoAttivita === "non_attivi") q = q.eq("cliente_attivo", false);
     if (storeFiltro !== "tutti") q = q.eq("store_id", storeFiltro);
-    if (soloBloccati) q = q.eq("bloccato", true);
+    if (filtroBlocco === "bloccati") q = q.eq("bloccato", true);
+    else if (filtroBlocco === "non_bloccati") q = q.eq("bloccato", false);
     if (privacyFiltro === "firmata") q = q.eq("privacy_firmata", true);
     else if (privacyFiltro === "da_firmare") q = q.eq("privacy_firmata", false);
-    if (soloAssicurati) q = q.eq("assicurazione_attiva", true);
+    if (filtroAssic === "assicurati") q = q.eq("assicurazione_attiva", true);
+    else if (filtroAssic === "non_assicurati") q = q.eq("assicurazione_attiva", false);
+    if (filtroLegale === "in_legale") q = q.eq("in_gestione_legale", true);
+    else if (filtroLegale === "non_in_legale") q = q.eq("in_gestione_legale", false);
 
     // Fido residuo: fascia E range slider applicati insieme
     if (fidoFascia === "negativo") q = q.lt("fido_residuo", 0);
@@ -475,7 +480,7 @@ function ClientiPage() {
   const scadReady = scadenziarioFiltro === "tutti" || !!scadenziarioMap;
 
   const { data: clientiResp, isLoading } = useQuery({
-    queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, soloBloccati, privacyFiltro, soloAssicurati, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize, advApplied }],
+    queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize, advApplied }],
     queryFn: async () => {
       const built = buildBaseQuery("*, stores(nome, codice)", "exact");
       if ("empty" in built) return { rows: [], count: 0 };
@@ -519,9 +524,10 @@ function ClientiPage() {
     (storeFiltro !== "tutti" ? 1 : 0) +
     (statoFido.size > 0 ? 1 : 0) +
     (semaforoFiltro !== "tutti" ? 1 : 0) +
-    (soloBloccati ? 1 : 0) +
+    (filtroBlocco !== "tutti" ? 1 : 0) +
     (privacyFiltro !== "tutti" ? 1 : 0) +
-    (soloAssicurati ? 1 : 0) +
+    (filtroAssic !== "tutti" ? 1 : 0) +
+    (filtroLegale !== "tutti" ? 1 : 0) +
     (scadenziarioFiltro !== "tutti" ? 1 : 0) +
     (totaleRischioFiltro !== "tutti" ? 1 : 0) +
     (aScadereFiltro !== "tutti" ? 1 : 0) +
@@ -544,9 +550,10 @@ function ClientiPage() {
     setStoreFiltro("tutti");
     setStatoFido(new Set());
     setSemaforoFiltro("tutti");
-    setSoloBloccati(false);
+    setFiltroBlocco("tutti");
     setPrivacyFiltro("tutti");
-    setSoloAssicurati(false);
+    setFiltroAssic("tutti");
+    setFiltroLegale("tutti");
     setScadenziarioFiltro("tutti");
     setTotaleRischioFiltro("tutti");
     setAScadereFiltro("tutti");
@@ -768,18 +775,37 @@ function ClientiPage() {
     </div>
   );
 
-  const BloccatiChk = (
-    <label className="flex items-center gap-2 text-sm px-2 py-1 cursor-pointer whitespace-nowrap">
-      <Checkbox checked={soloBloccati} onCheckedChange={(v) => setSoloBloccati(!!v)} />
-      Solo bloccati
-    </label>
+  const BloccoSelect = (
+    <Select value={filtroBlocco} onValueChange={(v) => setFiltroBlocco(v as typeof filtroBlocco)}>
+      <SelectTrigger className="w-full"><SelectValue placeholder="Stato blocco" /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="tutti">Tutti</SelectItem>
+        <SelectItem value="bloccati">Bloccati</SelectItem>
+        <SelectItem value="non_bloccati">Non bloccati</SelectItem>
+      </SelectContent>
+    </Select>
   );
 
-  const AssicuratiChk = (
-    <label className="flex items-center gap-2 text-sm px-2 py-1 cursor-pointer whitespace-nowrap">
-      <Checkbox checked={soloAssicurati} onCheckedChange={(v) => setSoloAssicurati(!!v)} />
-      Solo assicurati POUEY
-    </label>
+  const AssicSelect = (
+    <Select value={filtroAssic} onValueChange={(v) => setFiltroAssic(v as typeof filtroAssic)}>
+      <SelectTrigger className="w-full"><SelectValue placeholder="Assicurazione" /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="tutti">Tutti</SelectItem>
+        <SelectItem value="assicurati">Assicurati</SelectItem>
+        <SelectItem value="non_assicurati">Non assicurati</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+
+  const LegaleSelect = (
+    <Select value={filtroLegale} onValueChange={(v) => setFiltroLegale(v as typeof filtroLegale)}>
+      <SelectTrigger className="w-full"><SelectValue placeholder="Gestione legale" /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="tutti">Tutti</SelectItem>
+        <SelectItem value="in_legale">In gestione legale</SelectItem>
+        <SelectItem value="non_in_legale">Non in gestione legale</SelectItem>
+      </SelectContent>
+    </Select>
   );
 
   function renderFiltriContent(stack = false) {
@@ -795,8 +821,9 @@ function ClientiPage() {
           {TotaleRischioSelect}
           {AScadereSelect}
           {FidoRangeSlider}
-          {BloccatiChk}
-          {AssicuratiChk}
+          {BloccoSelect}
+          {AssicSelect}
+          {LegaleSelect}
           {StatoAttivitaSelect}
           {attiviCount > 0 && (
             <Button variant="ghost" size="sm" onClick={resetFiltri} className="gap-1 justify-start">
@@ -839,11 +866,12 @@ function ClientiPage() {
           {FatturatoSelect}
           {AdvFilterBtn}
         </div>
-        {/* Riga 3: stato attività + checkbox inline */}
+        {/* Riga 3: stato attività + filtri a 3 stati */}
         <div className="flex flex-wrap items-center gap-3 pt-1">
           <div className="w-44">{StatoAttivitaSelect}</div>
-          {BloccatiChk}
-          {AssicuratiChk}
+          <div className="w-44">{BloccoSelect}</div>
+          <div className="w-44">{AssicSelect}</div>
+          <div className="w-44">{LegaleSelect}</div>
         </div>
         {/* Slider fido residuo: larghezza piena */}
         <div>{FidoRangeSlider}</div>
@@ -904,11 +932,11 @@ function ClientiPage() {
         onApply={(a) => { setAdvApplied(a); setAdvOpen(false); }}
         onReset={() => setAdvApplied(ADV_EMPTY)}
         onSetMainFiltro={(patch) => {
-          if (patch.soloBloccati !== undefined) setSoloBloccati(patch.soloBloccati);
-          if (patch.soloAssicurati !== undefined) setSoloAssicurati(patch.soloAssicurati);
+          if (patch.filtroBlocco !== undefined) setFiltroBlocco(patch.filtroBlocco);
+          if (patch.filtroAssic !== undefined) setFiltroAssic(patch.filtroAssic);
           if (patch.scadenziarioFiltro !== undefined) setScadenziarioFiltro(patch.scadenziarioFiltro);
         }}
-        currentMain={{ soloBloccati, soloAssicurati, scadenziarioFiltro }}
+        currentMain={{ filtroBlocco, filtroAssic, scadenziarioFiltro }}
       />
 
 
@@ -2718,8 +2746,8 @@ function FiltriAvanzatiDialog({
   applied: AdvAppliedT;
   onApply: (a: AdvAppliedT) => void;
   onReset: () => void;
-  onSetMainFiltro: (p: { soloBloccati?: boolean; soloAssicurati?: boolean; scadenziarioFiltro?: string }) => void;
-  currentMain: { soloBloccati: boolean; soloAssicurati: boolean; scadenziarioFiltro: string };
+  onSetMainFiltro: (p: { filtroBlocco?: "tutti" | "bloccati" | "non_bloccati"; filtroAssic?: "tutti" | "assicurati" | "non_assicurati"; scadenziarioFiltro?: string }) => void;
+  currentMain: { filtroBlocco: "tutti" | "bloccati" | "non_bloccati"; filtroAssic: "tutti" | "assicurati" | "non_assicurati"; scadenziarioFiltro: string };
 }) {
   const [draft, setDraft] = useState<AdvAppliedT>(applied);
   useEffect(() => { if (open) setDraft(applied); }, [open, applied]);
@@ -2729,8 +2757,8 @@ function FiltriAvanzatiDialog({
     { id: "esaurito", label: "Fido esaurito", apply: (d: AdvAppliedT) => ({ ...d, fidoOp: "lte" as AdvOp, fidoVal: 0 }) },
     { id: "lt500", label: "Fido residuo < 500 €", apply: (d: AdvAppliedT) => ({ ...d, fidoOp: "lt" as AdvOp, fidoVal: 500 }) },
     { id: "lt1000", label: "Fido residuo < 1.000 €", apply: (d: AdvAppliedT) => ({ ...d, fidoOp: "lt" as AdvOp, fidoVal: 1000 }) },
-    { id: "scoperto", label: "Scoperti con insoluto", apply: (d: AdvAppliedT) => ({ ...d, presetScopertoInsoluto: true }), main: { soloAssicurati: false } },
-    { id: "blocFat", label: "Bloccati con fatturato 2025", apply: (d: AdvAppliedT) => d, main: { soloBloccati: true } },
+    { id: "scoperto", label: "Scoperti con insoluto", apply: (d: AdvAppliedT) => ({ ...d, presetScopertoInsoluto: true }), main: { filtroAssic: "non_assicurati" } as const },
+    { id: "blocFat", label: "Bloccati con fatturato 2025", apply: (d: AdvAppliedT) => d, main: { filtroBlocco: "bloccati" } as const },
   ];
 
   const isPresetActive = (id: string): boolean => {
@@ -2740,7 +2768,7 @@ function FiltriAvanzatiDialog({
       case "lt500": return draft.fidoOp === "lt" && draft.fidoVal === 500;
       case "lt1000": return draft.fidoOp === "lt" && draft.fidoVal === 1000;
       case "scoperto": return draft.presetScopertoInsoluto;
-      case "blocFat": return currentMain.soloBloccati;
+      case "blocFat": return currentMain.filtroBlocco === "bloccati";
       default: return false;
     }
   };
