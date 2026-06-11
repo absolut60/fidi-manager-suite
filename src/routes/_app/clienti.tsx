@@ -567,6 +567,18 @@ function ClientiPage() {
     setAdvApplied(ADV_EMPTY);
   }
 
+  function toggleSort(colonna: string) {
+    if (sortBy !== colonna) {
+      setSortBy(colonna);
+      setSortDir("asc");
+    } else if (sortDir === "asc") {
+      setSortDir("desc");
+    } else {
+      setSortBy("ragione_sociale");
+      setSortDir("asc");
+    }
+  }
+
 
   // Selezione
   function toggleSelect(c: any) {
