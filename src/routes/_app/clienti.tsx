@@ -2768,7 +2768,7 @@ function FiltriAvanzatiDialog({
       case "lt500": return draft.fidoOp === "lt" && draft.fidoVal === 500;
       case "lt1000": return draft.fidoOp === "lt" && draft.fidoVal === 1000;
       case "scoperto": return draft.presetScopertoInsoluto;
-      case "blocFat": return currentMain.soloBloccati;
+      case "blocFat": return currentMain.filtroBlocco === "bloccati";
       default: return false;
     }
   };
