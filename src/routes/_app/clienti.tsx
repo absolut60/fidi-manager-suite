@@ -150,6 +150,7 @@ function ClientiPage() {
   const [privacyFiltro, setPrivacyFiltro] = useState<string>("tutti");
   const [filtroAssic, setFiltroAssic] = useState<"tutti" | "assicurati" | "non_assicurati">("tutti");
   const [filtroLegale, setFiltroLegale] = useState<"tutti" | "in_legale" | "non_in_legale">("tutti");
+  const [filtroTipoSoggetto, setFiltroTipoSoggetto] = useState<"tutti" | "fisica" | "giuridica">("tutti");
   const [scadenziarioFiltro, setScadenziarioFiltro] = useState<string>("tutti");
   const [totaleRischioFiltro, setTotaleRischioFiltro] = useState<string>("tutti");
   const [fatturatoFiltro, setFatturatoFiltro] = useState<string>("tutti");
@@ -405,7 +406,7 @@ function ClientiPage() {
   // Reset pagina ogni volta che cambia un filtro o l'ordinamento
   useEffect(() => {
     setPage(1);
-  }, [search, statoCliente, statoAttivita, storeFiltro, statoFido, semaforoFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, pageSize, advApplied, sortBy, sortDir]);
+  }, [search, statoCliente, statoAttivita, storeFiltro, statoFido, semaforoFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, pageSize, advApplied, sortBy, sortDir]);
 
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -429,6 +430,8 @@ function ClientiPage() {
     else if (filtroAssic === "non_assicurati") q = q.eq("assicurazione_attiva", false);
     if (filtroLegale === "in_legale") q = q.eq("in_gestione_legale", true);
     else if (filtroLegale === "non_in_legale") q = q.eq("in_gestione_legale", false);
+    if (filtroTipoSoggetto === "fisica") q = q.eq("tipo_soggetto", "persona_fisica");
+    else if (filtroTipoSoggetto === "giuridica") q = q.eq("tipo_soggetto", "azienda");
 
     // Fido residuo: fascia E range slider applicati insieme
     if (fidoFascia === "negativo") q = q.lt("fido_residuo", 0);
@@ -483,7 +486,7 @@ function ClientiPage() {
   const scadReady = scadenziarioFiltro === "tutti" || !!scadenziarioMap;
 
   const { data: clientiResp, isLoading } = useQuery({
-    queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize, advApplied, sortBy, sortDir }],
+    queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize, advApplied, sortBy, sortDir }],
     queryFn: async () => {
       const built = buildBaseQuery("*, stores(nome, codice)", "exact");
       if ("empty" in built) return { rows: [], count: 0 };
@@ -531,6 +534,7 @@ function ClientiPage() {
     (privacyFiltro !== "tutti" ? 1 : 0) +
     (filtroAssic !== "tutti" ? 1 : 0) +
     (filtroLegale !== "tutti" ? 1 : 0) +
+    (filtroTipoSoggetto !== "tutti" ? 1 : 0) +
     (scadenziarioFiltro !== "tutti" ? 1 : 0) +
     (totaleRischioFiltro !== "tutti" ? 1 : 0) +
     (aScadereFiltro !== "tutti" ? 1 : 0) +
@@ -557,6 +561,7 @@ function ClientiPage() {
     setPrivacyFiltro("tutti");
     setFiltroAssic("tutti");
     setFiltroLegale("tutti");
+    setFiltroTipoSoggetto("tutti");
     setScadenziarioFiltro("tutti");
     setTotaleRischioFiltro("tutti");
     setAScadereFiltro("tutti");
@@ -823,6 +828,17 @@ function ClientiPage() {
     </Select>
   );
 
+  const TipoSoggettoSelect = (
+    <Select value={filtroTipoSoggetto} onValueChange={(v) => setFiltroTipoSoggetto(v as typeof filtroTipoSoggetto)}>
+      <SelectTrigger className="w-full"><SelectValue placeholder="Tipo soggetto" /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="tutti">Tutti</SelectItem>
+        <SelectItem value="fisica">Persona fisica</SelectItem>
+        <SelectItem value="giuridica">Persona giuridica</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+
   function renderFiltriContent(stack = false) {
     if (stack) {
       return (
@@ -839,6 +855,7 @@ function ClientiPage() {
           {BloccoSelect}
           {AssicSelect}
           {LegaleSelect}
+          {TipoSoggettoSelect}
           {StatoAttivitaSelect}
           {attiviCount > 0 && (
             <Button variant="ghost" size="sm" onClick={resetFiltri} className="gap-1 justify-start">
@@ -887,6 +904,7 @@ function ClientiPage() {
           <div className="w-44">{BloccoSelect}</div>
           <div className="w-44">{AssicSelect}</div>
           <div className="w-44">{LegaleSelect}</div>
+          <div className="w-44">{TipoSoggettoSelect}</div>
         </div>
         {/* Slider fido residuo: larghezza piena */}
         <div>{FidoRangeSlider}</div>
