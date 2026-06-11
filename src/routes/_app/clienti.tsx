@@ -146,9 +146,10 @@ function ClientiPage() {
   );
   const [statoFido, setStatoFido] = useState<Set<string>>(new Set());
   const [semaforoFiltro, setSemaforoFiltro] = useState<string>("tutti");
-  const [soloBloccati, setSoloBloccati] = useState(false);
+  const [filtroBlocco, setFiltroBlocco] = useState<"tutti" | "bloccati" | "non_bloccati">("tutti");
   const [privacyFiltro, setPrivacyFiltro] = useState<string>("tutti");
-  const [soloAssicurati, setSoloAssicurati] = useState(false);
+  const [filtroAssic, setFiltroAssic] = useState<"tutti" | "assicurati" | "non_assicurati">("tutti");
+  const [filtroLegale, setFiltroLegale] = useState<"tutti" | "in_legale" | "non_in_legale">("tutti");
   const [scadenziarioFiltro, setScadenziarioFiltro] = useState<string>("tutti");
   const [totaleRischioFiltro, setTotaleRischioFiltro] = useState<string>("tutti");
   const [fatturatoFiltro, setFatturatoFiltro] = useState<string>("tutti");
