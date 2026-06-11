@@ -919,6 +919,23 @@ function ClientiPage() {
     return <Outlet />;
   }
 
+  function SortHeader({ col, label, align = "left" }: { col: string; label: string; align?: "left" | "right" }) {
+    const active = sortBy === col;
+    return (
+      <button
+        type="button"
+        onClick={() => toggleSort(col)}
+        className={`flex items-center gap-1 font-medium hover:text-primary transition-colors ${align === "right" ? "ml-auto" : ""}`}
+      >
+        {label}
+        {active ? (
+          sortDir === "asc" ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />
+        ) : (
+          <ChevronsUpDown className="size-4 text-muted-foreground/60" />
+        )}
+      </button>
+    );
+  }
 
   return (
     <div className="space-y-6">
