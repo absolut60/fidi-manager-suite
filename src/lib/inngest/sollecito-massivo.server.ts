@@ -283,12 +283,31 @@ export const invioMassivoSolleciti = inngest.createFunction(
               continue;
             }
 
-            // Cliente: ragione sociale
+            // Cliente: ragione sociale + store (per dati sede footer)
             const { data: cliente } = await supabaseAdmin
               .from("clienti")
-              .select("ragione_sociale")
+              .select("ragione_sociale, store_id")
               .eq("id", d.cliente_id)
               .maybeSingle();
+
+            let sede: DatiSede | null = null;
+            if (cliente?.store_id) {
+              const { data: store } = await supabaseAdmin
+                .from("stores")
+                .select("nome, indirizzo, cap, citta, provincia, telefono")
+                .eq("id", cliente.store_id)
+                .maybeSingle();
+              if (store) {
+                sede = {
+                  nome: store.nome ?? null,
+                  indirizzo: store.indirizzo ?? null,
+                  cap: store.cap ?? null,
+                  citta: store.citta ?? null,
+                  provincia: store.provincia ?? null,
+                  telefono: store.telefono ?? null,
+                };
+              }
+            }
 
             // Scadenze del cliente
             const { data: rawScad } = await supabaseAdmin
@@ -318,10 +337,17 @@ export const invioMassivoSolleciti = inngest.createFunction(
               },
             );
 
+            const htmlCompleto = wrapEmailHtml(rendered.corpo, sede, {
+              nome: cfg.nomeOperatore,
+              email: cfg.emailOperatore,
+            });
+
             const sendRes = await sendEmailViaEdge({
               to: d.indirizzo_usato,
               subject: rendered.oggetto,
-              html: rendered.corpo,
+              html: htmlCompleto,
+              fromName: cfg.nomeOperatore,
+              replyTo: cfg.emailOperatore ?? undefined,
             });
 
             if (!sendRes.ok) {
@@ -333,7 +359,7 @@ export const invioMassivoSolleciti = inngest.createFunction(
               continue;
             }
 
-            // Crea azione_recupero (come l'invio singolo)
+            // Crea azione_recupero (come l'invio singolo) — salva HTML COMPLETO con cornice
             const noteRiassunto = `Inviato template "${tpl.nome}" a ${d.indirizzo_usato} (campagna ${campagna_id})`;
             const { data: azione, error: azErr } = await supabaseAdmin
               .from("azioni_recupero")
@@ -346,7 +372,7 @@ export const invioMassivoSolleciti = inngest.createFunction(
                 importo_riferimento: totaleScaduto,
                 note: noteRiassunto,
                 email_oggetto: rendered.oggetto,
-                email_corpo_html: rendered.corpo,
+                email_corpo_html: htmlCompleto,
                 email_destinatario: d.indirizzo_usato,
               })
               .select("id")
