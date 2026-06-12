@@ -142,10 +142,11 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
       { oggetto: selectedTemplate.oggetto, corpo: selectedTemplate.corpo },
       datiTemplate,
     );
+    // Anteprima in-app: usa URL pubblico del logo (cid: non si risolve nel browser).
     const corpoCompleto = wrapEmailHtml(base.corpo, datiSede ?? null, {
       nome: nomeOperatore,
       email: user?.email ?? null,
-    }, { useCid: true });
+    });
     return { oggetto: base.oggetto, corpo: corpoCompleto };
   }, [selectedTemplate, datiTemplate, datiSede, nomeOperatore, user?.email]);
 
