@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { classificaScadenza } from "@/lib/scadenze";
+import type { DatiSede as DatiSedeRender } from "@/lib/template-email-render";
 
 // Re-export delle funzioni pure (rendering) dal modulo isomorfo.
 export {
@@ -8,12 +9,17 @@ export {
   formatDateIt,
   buildElencoScadenzeHtml,
   renderTemplate,
+  wrapEmailHtml,
+  SEDE_FALLBACK,
+  LOGO_EMAIL_URL,
 } from "@/lib/template-email-render";
 export type {
   PlaceholderKey,
   ScadenzaSollecito,
   DatiTemplate,
   RenderedTemplate,
+  DatiSede,
+  DatiMittente,
 } from "@/lib/template-email-render";
 
 export type TemplateEmail = {
