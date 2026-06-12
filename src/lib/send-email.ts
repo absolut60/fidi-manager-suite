@@ -3,6 +3,8 @@ import { LOGO_MADE_BASE64 } from "@/lib/logo-made-base64";
 
 export interface SendEmailOptions {
   to: string | string[];
+  cc?: string | string[];
+  bcc?: string | string[];
   subject: string;
   html: string;
   text?: string;
