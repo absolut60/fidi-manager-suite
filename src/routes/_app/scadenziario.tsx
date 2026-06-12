@@ -283,6 +283,7 @@ function ScadenziarioPage() {
         prossima,
         maxGg,
         fascia: fasciaOf(maxGg),
+        scaduteIds: e.scadute.map((r) => r.id),
       };
     }).filter((r) => r.nScadute > 0);
     return out
