@@ -169,7 +169,7 @@ function ScadenziarioPage() {
         //   ancora aperte come "Chiusa" ma con tempi_scadenza valorizzato.
         const { data, error } = await supabase
           .from("scadenze")
-          .select("cliente_id, importo_scadenza, giorni_ritardo, data_scadenza, stato_contabile, tempi_scadenza, codice_pagamento")
+          .select("id, cliente_id, importo_scadenza, giorni_ritardo, data_scadenza, stato_contabile, tempi_scadenza, codice_pagamento")
           .or("stato_contabile.eq.Aperta,and(stato_contabile.neq.Aperta,tempi_scadenza.ilike.%scader%),and(stato_contabile.neq.Aperta,tempi_scadenza.ilike.%scadut%)")
           .order("cliente_id", { ascending: true })
           .range(from, from + pageSize - 1);
