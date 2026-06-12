@@ -273,7 +273,10 @@ export type Database = {
           created_at: string
           data_azione: string
           data_promessa_pagamento: string | null
+          email_corpo_html: string | null
+          email_destinatario: string | null
           email_log_id: string | null
+          email_oggetto: string | null
           esito: string
           id: string
           importo_riferimento: number | null
@@ -287,7 +290,10 @@ export type Database = {
           created_at?: string
           data_azione?: string
           data_promessa_pagamento?: string | null
+          email_corpo_html?: string | null
+          email_destinatario?: string | null
           email_log_id?: string | null
+          email_oggetto?: string | null
           esito?: string
           id?: string
           importo_riferimento?: number | null
@@ -301,7 +307,10 @@ export type Database = {
           created_at?: string
           data_azione?: string
           data_promessa_pagamento?: string | null
+          email_corpo_html?: string | null
+          email_destinatario?: string | null
           email_log_id?: string | null
+          email_oggetto?: string | null
           esito?: string
           id?: string
           importo_riferimento?: number | null
