@@ -2,10 +2,14 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Megaphone, RefreshCw, ChevronRight, ExternalLink, AlertCircle, CheckCircle2, Clock, XCircle, MailWarning } from "lucide-react";
+import { Megaphone, RefreshCw, ChevronRight, ExternalLink, AlertCircle, CheckCircle2, Clock, XCircle, MailWarning, MoreHorizontal, Ban, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { riprovaCampagnaFalliti } from "@/lib/sollecito-massivo.functions";
+import {
+  riprovaCampagnaFalliti,
+  annullaCampagnaSollecito,
+  eliminaCampagnaSollecito,
+} from "@/lib/sollecito-massivo.functions";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,6 +21,14 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
 
 export const Route = createFileRoute("/_app/recupero-crediti-campagne")({
   component: CampagnePage,
