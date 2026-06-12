@@ -340,7 +340,7 @@ function RecuperoCreditiPage() {
       void now;
     };
     return [...filtered].sort(cmp);
-  }, [aggQuery.data, quick, sortKey, sortDir]);
+  }, [aggQuery.data, tab, soloRitardo, sortKey, sortDir]);
 
   const total = sorted.length;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
