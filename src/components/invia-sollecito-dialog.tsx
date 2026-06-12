@@ -114,6 +114,12 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
     enabled: open && !!clienteId,
   });
 
+  const { data: datiSede } = useQuery({
+    queryKey: ["sollecito-sede", clienteId],
+    queryFn: () => caricaSedeCliente(clienteId),
+    enabled: open && !!clienteId,
+  });
+
   // ID delle scadenze scadute da linkare
   const { data: scaduteIds } = useQuery({
     queryKey: ["sollecito-scadute-ids", clienteId],
