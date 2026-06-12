@@ -2,13 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Send, Users, ListChecks, AlertTriangle, Eye } from "lucide-react";
+import { Send, Users, ListChecks, AlertTriangle, Eye, ChevronLeft, ChevronRight, Pencil, AlertCircle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useConfig } from "@/hooks/use-config";
-import { caricaDatiCliente, renderTemplate, type TemplateEmail } from "@/lib/template-email";
+import { classificaScadenza } from "@/lib/scadenze";
+import { renderTemplate, type TemplateEmail, type DatiTemplate } from "@/lib/template-email";
 import { avviaCampagnaSollecito } from "@/lib/sollecito-massivo.functions";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,10 +21,16 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  /** Cliente_ids già selezionati a schermo (selezione multipla esistente). */
   clienteIdsSelezionati: string[];
-  /** Cliente_ids che corrispondono ai filtri correnti (anche oltre la pagina visibile). */
   clienteIdsFiltrati: string[];
+};
+
+type ClientePreviewData = {
+  id: string;
+  ragione_sociale: string;
+  email: string | null;
+  pec: string | null;
+  dati: DatiTemplate;
 };
 
 export function InvioMassivoDialog({
@@ -41,13 +49,22 @@ export function InvioMassivoDialog({
   const [preferenza, setPreferenza] = useState<"email" | "pec">("email");
   const [nota, setNota] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
+  const [indice, setIndice] = useState(0);
+  const [jumpInput, setJumpInput] = useState("");
+  // Override manuali: cliente_id -> indirizzo corretto (stringa, può essere "")
+  const [overrides, setOverrides] = useState<Record<string, string>>({});
+  // Indirizzi risolti scoperti durante la navigazione: cliente_id -> indirizzo default
+  const [risolti, setRisolti] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!open) {
       setSubmitting(false);
       setNota("");
+      setIndice(0);
+      setJumpInput("");
+      setOverrides({});
+      setRisolti({});
     } else {
-      // Se non ci sono righe selezionate, preimposta "filtrati"
       setModo(clienteIdsSelezionati.length > 0 ? "selezionati" : "filtrati");
     }
   }, [open, clienteIdsSelezionati.length]);
@@ -57,6 +74,12 @@ export function InvioMassivoDialog({
     [modo, clienteIdsSelezionati, clienteIdsFiltrati],
   );
   const totale = clienteIds.length;
+
+  // Reset indice quando cambia il gruppo
+  useEffect(() => {
+    setIndice(0);
+    setJumpInput("");
+  }, [modo, totale]);
 
   const { data: templates } = useQuery({
     queryKey: ["template-email-attivi"],
@@ -81,28 +104,133 @@ export function InvioMassivoDialog({
     [templates, templateId],
   );
 
-  // Anteprima su un cliente di esempio del gruppo (il primo)
-  const esempioId = clienteIds[0] ?? null;
-  const { data: datiEsempio } = useQuery({
-    queryKey: ["sollecito-massivo-preview", esempioId],
-    queryFn: () => caricaDatiCliente(esempioId!, "Operatore"),
-    enabled: open && !!esempioId,
+  const clienteCorrenteId = clienteIds[indice] ?? null;
+
+  // Carica on-demand i dati del cliente corrente (no precaricamento)
+  const { data: clientePreview, isFetching: loadingPreview } = useQuery<ClientePreviewData | null>({
+    queryKey: ["sollecito-massivo-cliente", clienteCorrenteId],
+    enabled: open && !!clienteCorrenteId,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const id = clienteCorrenteId!;
+      const { data: cliente, error: e1 } = await supabase
+        .from("clienti")
+        .select("ragione_sociale, email, pec")
+        .eq("id", id)
+        .maybeSingle();
+      if (e1) throw e1;
+      const { data: rawScad, error: e2 } = await supabase
+        .from("scadenze")
+        .select("numero_documento, data_scadenza, importo_scadenza, stato_contabile, giorni_ritardo, tempi_scadenza")
+        .eq("cliente_id", id)
+        .order("data_scadenza", { ascending: true });
+      if (e2) throw e2;
+      const scadute = (rawScad ?? []).filter((s) => classificaScadenza(s) === "scaduto");
+      return {
+        id,
+        ragione_sociale: cliente?.ragione_sociale ?? "",
+        email: cliente?.email ?? null,
+        pec: cliente?.pec ?? null,
+        dati: {
+          ragione_sociale: cliente?.ragione_sociale ?? "",
+          nome_operatore: "Operatore",
+          scadenze: scadute.map((s) => ({
+            numero_documento: s.numero_documento,
+            data_scadenza: s.data_scadenza,
+            importo_scadenza: s.importo_scadenza,
+          })),
+        },
+      };
+    },
   });
 
+  // Calcola indirizzo risolto (default) per il cliente corrente e cache-lo
+  const indirizzoRisolto = useMemo(() => {
+    if (!clientePreview) return "";
+    const primary = preferenza === "email" ? clientePreview.email : clientePreview.pec;
+    const secondary = preferenza === "email" ? clientePreview.pec : clientePreview.email;
+    return (primary?.trim() || secondary?.trim() || "");
+  }, [clientePreview, preferenza]);
+
+  useEffect(() => {
+    if (clientePreview && clienteCorrenteId) {
+      setRisolti((prev) =>
+        prev[clienteCorrenteId] === indirizzoRisolto ? prev : { ...prev, [clienteCorrenteId]: indirizzoRisolto },
+      );
+    }
+  }, [clientePreview, clienteCorrenteId, indirizzoRisolto]);
+
+  // Indirizzo "effettivo" per il cliente corrente (override se presente, altrimenti risolto)
+  const indirizzoCorrente = clienteCorrenteId
+    ? (overrides[clienteCorrenteId] !== undefined ? overrides[clienteCorrenteId] : indirizzoRisolto)
+    : "";
+
+  function setIndirizzoCorrente(v: string) {
+    if (!clienteCorrenteId) return;
+    setOverrides((prev) => ({ ...prev, [clienteCorrenteId]: v }));
+  }
+  function resetIndirizzoCorrente() {
+    if (!clienteCorrenteId) return;
+    setOverrides((prev) => {
+      const { [clienteCorrenteId]: _, ...rest } = prev;
+      return rest;
+    });
+  }
+
   const anteprima = useMemo(() => {
-    if (!selectedTemplate || !datiEsempio) return null;
+    if (!selectedTemplate || !clientePreview) return null;
     return renderTemplate(
       { oggetto: selectedTemplate.oggetto, corpo: selectedTemplate.corpo },
-      datiEsempio,
+      clientePreview.dati,
     );
-  }, [selectedTemplate, datiEsempio]);
+  }, [selectedTemplate, clientePreview]);
 
-  // Stima durata
+  // Conteggi rapidi: si basano solo su ciò che è stato esplorato/corretto
+  const numeroCorretti = useMemo(
+    () =>
+      Object.entries(overrides).filter(
+        ([cid, v]) => (v ?? "").trim() !== (risolti[cid] ?? "").trim(),
+      ).length,
+    [overrides, risolti],
+  );
+  const senzaIndirizzoVisti = useMemo(() => {
+    let n = 0;
+    for (const cid of clienteIds) {
+      const ov = overrides[cid];
+      const eff = ov !== undefined ? ov : risolti[cid];
+      if (eff === undefined) continue; // non ancora caricato → non lo contiamo qui
+      if (!eff || !eff.trim()) n += 1;
+    }
+    return n;
+  }, [clienteIds, overrides, risolti]);
+  const conIndirizzoVisti = useMemo(() => {
+    let n = 0;
+    for (const cid of clienteIds) {
+      const ov = overrides[cid];
+      const eff = ov !== undefined ? ov : risolti[cid];
+      if (eff === undefined) continue;
+      if (eff && eff.trim()) n += 1;
+    }
+    return n;
+  }, [clienteIds, overrides, risolti]);
+  const nonEsplorati = totale - conIndirizzoVisti - senzaIndirizzoVisti;
+
+  // Throttling stima
   const blocco = Math.max(1, cfg.sollecito_massivo_blocco);
   const pausa = Math.max(0, cfg.sollecito_massivo_pausa_sec);
   const numBlocchi = Math.max(1, Math.ceil(totale / blocco));
-  const secondiStimati = (numBlocchi - 1) * pausa + numBlocchi * blocco * 2; // ~2s per email
+  const secondiStimati = (numBlocchi - 1) * pausa + numBlocchi * blocco * 2;
   const minutiStimati = Math.ceil(secondiStimati / 60);
+
+  function vai(delta: number) {
+    if (!totale) return;
+    setIndice((i) => Math.min(totale - 1, Math.max(0, i + delta)));
+  }
+  function handleJump() {
+    const n = parseInt(jumpInput, 10);
+    if (!Number.isFinite(n)) return;
+    setIndice(Math.min(totale - 1, Math.max(0, n - 1)));
+  }
 
   async function handleAvvia() {
     if (!selectedTemplate) return;
@@ -112,12 +240,21 @@ export function InvioMassivoDialog({
     }
     setSubmitting(true);
     try {
+      // Costruisci la mappa indirizzi corretti (solo quelli realmente modificati
+      // rispetto al risolto, oppure quelli inseriti dove non esisteva default).
+      const indirizziCorretti: Record<string, string> = {};
+      for (const [cid, v] of Object.entries(overrides)) {
+        const def = risolti[cid] ?? "";
+        const cur = (v ?? "").trim();
+        if (cur && cur !== def.trim()) indirizziCorretti[cid] = cur;
+      }
       const res = await avvia({
         data: {
           templateId: selectedTemplate.id,
           preferenzaIndirizzo: preferenza,
           nota: nota.trim() || null,
           clienteIds,
+          indirizziCorretti,
         },
       });
       toast.success(`Campagna avviata: ${res.totale} destinatari`);
@@ -131,6 +268,8 @@ export function InvioMassivoDialog({
       setSubmitting(false);
     }
   }
+
+  const senzaIndirizzo = !indirizzoCorrente.trim();
 
   return (
     <Dialog open={open} onOpenChange={(v) => !submitting && onOpenChange(v)}>
@@ -192,8 +331,7 @@ export function InvioMassivoDialog({
               </label>
             </RadioGroup>
             <p className="text-[11px] text-muted-foreground">
-              Se l'indirizzo preferito è vuoto, viene usato automaticamente l'altro. Senza nessun indirizzo, il cliente
-              viene marcato come "saltato_no_indirizzo".
+              Se l'indirizzo preferito è vuoto, viene usato l'altro. Senza indirizzo il cliente viene marcato come "saltato_no_indirizzo" (salvo correzione qui).
             </p>
           </div>
 
@@ -207,33 +345,127 @@ export function InvioMassivoDialog({
           <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
             <AlertTriangle className="size-4 mt-0.5 shrink-0" />
             <div>
-              L'invio è graduale per rispettare i limiti del server di posta: ~<strong>{blocco}</strong> email ogni{" "}
-              <strong>{pausa}s</strong>. Per <strong>{totale}</strong> clienti durerà circa{" "}
-              <strong>{minutiStimati} min</strong>.
+              L'invio è graduale: ~<strong>{blocco}</strong> email ogni <strong>{pausa}s</strong>. Per{" "}
+              <strong>{totale}</strong> clienti durerà circa <strong>{minutiStimati} min</strong>.
             </div>
           </div>
 
-          {/* Anteprima */}
+          {/* Anteprima scorrevole */}
           <div className="space-y-2 pt-2 border-t border-border">
-            <Label className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-              <Eye className="size-3.5" /> Anteprima (cliente di esempio)
-            </Label>
-            {!anteprima ? (
-              <Skeleton className="h-32 w-full" />
+            <div className="flex items-center justify-between gap-2">
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                <Eye className="size-3.5" /> Anteprima destinatario
+              </Label>
+              <div className="flex items-center gap-1.5">
+                <Button type="button" variant="outline" size="sm" onClick={() => vai(-1)} disabled={indice === 0 || totale === 0}>
+                  <ChevronLeft className="size-4" />
+                </Button>
+                <span className="text-xs tabular-nums px-1">
+                  {totale === 0 ? "0 di 0" : `${indice + 1} di ${totale}`}
+                </span>
+                <Button type="button" variant="outline" size="sm" onClick={() => vai(1)} disabled={indice >= totale - 1}>
+                  <ChevronRight className="size-4" />
+                </Button>
+                <Input
+                  value={jumpInput}
+                  onChange={(e) => setJumpInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleJump(); } }}
+                  placeholder="Vai a..."
+                  className="h-8 w-20 text-xs"
+                  inputMode="numeric"
+                />
+              </div>
+            </div>
+
+            {totale === 0 ? (
+              <div className="text-sm text-muted-foreground">Nessun destinatario.</div>
+            ) : loadingPreview && !clientePreview ? (
+              <Skeleton className="h-48 w-full" />
+            ) : !clientePreview ? (
+              <Skeleton className="h-48 w-full" />
             ) : (
-              <>
+              <div className="space-y-2">
                 <div>
-                  <div className="text-[11px] uppercase text-muted-foreground mb-1">Oggetto</div>
-                  <div className="rounded border border-border bg-muted/30 px-3 py-2 text-sm">{anteprima.oggetto}</div>
+                  <div className="text-[11px] uppercase text-muted-foreground mb-1">Ragione sociale</div>
+                  <div className="rounded border border-border bg-muted/30 px-3 py-2 text-sm font-medium">
+                    {clientePreview.ragione_sociale || "—"}
+                  </div>
                 </div>
+
+                {/* Indirizzo editabile */}
                 <div>
-                  <div className="text-[11px] uppercase text-muted-foreground mb-1">Corpo</div>
-                  <div
-                    className="rounded border border-border bg-background px-4 py-3 text-sm max-h-72 overflow-y-auto"
-                    dangerouslySetInnerHTML={{ __html: anteprima.corpo }}
+                  <div className="text-[11px] uppercase text-muted-foreground mb-1 flex items-center gap-2">
+                    <Pencil className="size-3" /> Indirizzo di invio
+                    {overrides[clienteCorrenteId ?? ""] !== undefined && (
+                      <button
+                        type="button"
+                        onClick={resetIndirizzoCorrente}
+                        className="text-[10px] text-muted-foreground underline hover:text-foreground"
+                      >
+                        ripristina default
+                      </button>
+                    )}
+                  </div>
+                  <Input
+                    value={indirizzoCorrente}
+                    onChange={(e) => setIndirizzoCorrente(e.target.value)}
+                    placeholder={preferenza === "email" ? "esempio@dominio.it" : "esempio@pec.it"}
+                    className={senzaIndirizzo ? "border-destructive focus-visible:ring-destructive" : ""}
                   />
+                  {senzaIndirizzo ? (
+                    <p className="text-[11px] text-destructive mt-1 flex items-center gap-1">
+                      <AlertCircle className="size-3" />
+                      Nessun indirizzo — verrà saltato salvo correzione.
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Default ({preferenza}): {clientePreview.email && preferenza === "email" ? clientePreview.email
+                        : clientePreview.pec && preferenza === "pec" ? clientePreview.pec
+                        : clientePreview.email || clientePreview.pec || "—"}
+                    </p>
+                  )}
                 </div>
-              </>
+
+                {anteprima && (
+                  <>
+                    <div>
+                      <div className="text-[11px] uppercase text-muted-foreground mb-1">Oggetto</div>
+                      <div className="rounded border border-border bg-muted/30 px-3 py-2 text-sm">{anteprima.oggetto}</div>
+                    </div>
+                    <div>
+                      <div className="text-[11px] uppercase text-muted-foreground mb-1">Corpo</div>
+                      <div
+                        className="rounded border border-border bg-background px-4 py-3 text-sm max-h-72 overflow-y-auto"
+                        dangerouslySetInnerHTML={{ __html: anteprima.corpo }}
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Riepilogo pre-invio */}
+          <div className="rounded-md border border-border bg-muted/20 px-3 py-2 text-xs space-y-1">
+            <div className="flex items-center gap-2 font-medium">
+              <CheckCircle2 className="size-3.5" /> Riepilogo invio
+            </div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-muted-foreground">
+              <div>Totale destinatari:</div><div className="text-right text-foreground font-medium">{totale}</div>
+              <div>Con indirizzo (esplorati):</div><div className="text-right text-emerald-600 dark:text-emerald-400 font-medium">{conIndirizzoVisti}</div>
+              <div>Senza indirizzo (saltati):</div><div className="text-right text-destructive font-medium">{senzaIndirizzoVisti}</div>
+              <div>Indirizzi corretti manualmente:</div><div className="text-right text-foreground font-medium">{numeroCorretti}</div>
+              {nonEsplorati > 0 && (
+                <>
+                  <div>Non ancora esplorati in anteprima:</div>
+                  <div className="text-right text-foreground font-medium">{nonEsplorati}</div>
+                </>
+              )}
+            </div>
+            {nonEsplorati > 0 && (
+              <p className="text-[11px] text-muted-foreground pt-1">
+                Per i destinatari non esplorati l'indirizzo verrà risolto al momento dell'invio (preferenza {preferenza}, con fallback).
+              </p>
             )}
           </div>
         </div>
