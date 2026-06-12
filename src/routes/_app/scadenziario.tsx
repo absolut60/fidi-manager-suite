@@ -101,6 +101,7 @@ function ScadenziarioPage() {
   const [statoLegale, setStatoLegale] = useState<"tutti" | "in_legale" | "non_in_legale">("tutti");
   const [escludiBonifici, setEscludiBonifici] = useState(true);
   const [escludiLegale, setEscludiLegale] = useState(true);
+  const [avvisatoFilter, setAvvisatoFilter] = useState<"tutti" | "con_azioni" | "senza_azioni">("tutti");
   const [expandedClienteId, setExpandedClienteId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [dialogOpen, setDialogOpen] = useState(false);
