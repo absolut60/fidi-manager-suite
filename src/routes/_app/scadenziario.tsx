@@ -445,6 +445,17 @@ function ScadenziarioPage() {
             <label className="text-xs font-medium text-muted-foreground">Importo minimo €</label>
             <Input className="mt-1" type="number" inputMode="numeric" value={importoMin} onChange={(e) => setImportoMin(e.target.value)} placeholder="0" />
           </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Azioni di recupero</label>
+            <Select value={avvisatoFilter} onValueChange={(v) => setAvvisatoFilter(v as typeof avvisatoFilter)}>
+              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="tutti">Tutti</SelectItem>
+                <SelectItem value="con_azioni">Con azioni sullo scaduto attuale</SelectItem>
+                <SelectItem value="senza_azioni">Senza azioni (da contattare)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t">
           <div className="flex flex-wrap items-center gap-4">
