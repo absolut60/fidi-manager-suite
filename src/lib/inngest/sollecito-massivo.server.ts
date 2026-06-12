@@ -146,7 +146,6 @@ export const invioMassivoSolleciti = inngest.createFunction(
       }
 
       if (saltati > 0) {
-        await supabaseAdmin.rpc as never; // no-op typing
         await supabaseAdmin
           .from("campagne_sollecito")
           .update({ saltati })

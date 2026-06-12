@@ -10,6 +10,7 @@ import {
   processScadAssicImport,
   processBloccoFidoImport,
 } from "@/lib/inngest/functions.server";
+import { invioMassivoSolleciti } from "@/lib/inngest/sollecito-massivo.server";
 
 const handler = serve({
   client: inngest,
@@ -21,6 +22,7 @@ const handler = serve({
     finalizeScadenziarioImport,
     processScadAssicImport,
     processBloccoFidoImport,
+    invioMassivoSolleciti,
   ],
 });
 
