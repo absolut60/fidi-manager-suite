@@ -145,7 +145,8 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
   }
 
   const senzaIndirizzo = !!cliente && !cliente.email && !cliente.pec;
-  const ccEmail = user?.email ?? null;
+  const copiaEmail = profilo?.email ?? user?.email ?? null;
+  const copiaDisponibile = !!copiaEmail && isValidEmail(copiaEmail);
 
   async function handleInvia() {
     if (!cliente || !selectedTemplate || !rendered) return;
@@ -160,9 +161,14 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
         (a, s) => a + Number(s.importo_scadenza ?? 0), 0,
       );
 
+      const bccCopia = copiaSelezionata && copiaDisponibile ? copiaEmail : null;
+
+      // TODO: log temporaneo per verificare il BCC — rimuovere dopo la verifica
+      console.log("[sollecito] invio", { to: dest, bcc: bccCopia, subject: rendered.oggetto });
+
       const ok = await sendEmail({
         to: dest,
-        ...(ccOperatore && ccEmail ? { cc: ccEmail } : {}),
+        ...(bccCopia ? { bcc: bccCopia } : {}),
         subject: rendered.oggetto,
         html: rendered.corpo,
       });
@@ -173,7 +179,7 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
         return;
       }
 
-      const noteRiassunto = `Inviato template "${selectedTemplate.nome}" a ${dest}${ccOperatore && ccEmail ? ` (cc ${ccEmail})` : ""}`;
+      const noteRiassunto = `Inviato template "${selectedTemplate.nome}" a ${dest}${bccCopia ? ` (bcc ${bccCopia})` : ""}`;
 
       if (azioneEsistenteId) {
         const { error } = await supabase
