@@ -600,7 +600,7 @@ function ScadenziarioPage() {
                       </TableRow>
                       {isExpanded && (
                         <TableRow key={`${r.cliente.id}-exp`} className="bg-muted/40 hover:bg-muted/40">
-                          <TableCell colSpan={15} className="px-4 py-3">
+                          <TableCell colSpan={16} className="px-4 py-3">
                             <ExpandedRischioPanel
                               loading={loadingRischio}
                               data={rischioExpanded}
