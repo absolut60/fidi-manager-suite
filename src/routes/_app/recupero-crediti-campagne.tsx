@@ -65,13 +65,24 @@ function CampagnePage() {
         .select(`
           id, operatore_id, template_id, stato, totale_destinatari, inviati, saltati, falliti,
           preferenza_indirizzo, note, created_at, completata_at,
-          template:template_email(nome),
-          operatore:profili(nome, cognome)
+          template:template_email(nome)
         `)
         .order("created_at", { ascending: false })
         .limit(100);
       if (error) throw error;
-      return (data ?? []) as unknown as CampagnaRow[];
+      const rows = (data ?? []) as unknown as Omit<CampagnaRow, "operatore">[];
+
+      // Operatori separatamente (no FK tra campagne_sollecito e profili)
+      const opIds = Array.from(new Set(rows.map((r) => r.operatore_id).filter(Boolean) as string[]));
+      const opMap: Record<string, { nome: string | null; cognome: string | null }> = {};
+      if (opIds.length) {
+        const { data: profs } = await supabase.from("profili").select("id, nome, cognome").in("id", opIds);
+        (profs ?? []).forEach((p) => { opMap[p.id] = { nome: p.nome, cognome: p.cognome }; });
+      }
+      return rows.map((r) => ({
+        ...r,
+        operatore: r.operatore_id ? opMap[r.operatore_id] ?? null : null,
+      })) as CampagnaRow[];
     },
     refetchInterval: (q) => {
       const rows = q.state.data as CampagnaRow[] | undefined;
