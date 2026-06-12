@@ -100,6 +100,13 @@ function ScadenziarioPage() {
   const [escludiBonifici, setEscludiBonifici] = useState(true);
   const [escludiLegale, setEscludiLegale] = useState(true);
   const [expandedClienteId, setExpandedClienteId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  // Reset selection on filter changes
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [storeId, fascia, importoMin, statoBlocco, statoLegale, escludiBonifici, escludiLegale]);
 
   useEffect(() => {
     if (statoLegale === "in_legale") {
