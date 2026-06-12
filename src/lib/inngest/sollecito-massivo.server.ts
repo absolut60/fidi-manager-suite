@@ -95,10 +95,16 @@ export const invioMassivoSolleciti = inngest.createFunction(
         .maybeSingle();
       if (error || !camp) throw new Error(`Campagna non trovata: ${error?.message ?? campagna_id}`);
 
+      // Guard: se annullata prima ancora di partire, esci pulito
+      if (camp.stato === "annullata") {
+        return { templateId: null, operatoreId: null, annullata: true };
+      }
+
       await supabaseAdmin
         .from("campagne_sollecito")
         .update({ stato: "in_corso" })
         .eq("id", campagna_id);
+
 
       const { data: dests } = await supabaseAdmin
         .from("campagne_sollecito_destinatari")
@@ -155,8 +161,16 @@ export const invioMassivoSolleciti = inngest.createFunction(
       return {
         templateId: camp.template_id as string | null,
         operatoreId: camp.operatore_id as string | null,
+        annullata: false as boolean,
       };
     });
+
+    if (prep.annullata) {
+      logger.info(`[sollecito-massivo] campagna ${campagna_id} annullata prima dell'avvio, esco`);
+      return { ok: true, annullata: true };
+    }
+
+
 
     if (!prep.templateId) {
       await supabaseAdmin
@@ -218,10 +232,27 @@ export const invioMassivoSolleciti = inngest.createFunction(
 
     const numBlocchi = Math.ceil(total / cfg.blocco);
 
+    let annullataInCorso = false;
     for (let b = 0; b < numBlocchi; b++) {
+      // Guard: prima di ogni blocco rileggi lo stato campagna e fermati se annullata
+      const guard = await step.run(`guard-${b}`, async () => {
+        const { data: c } = await supabaseAdmin
+          .from("campagne_sollecito")
+          .select("stato")
+          .eq("id", campagna_id)
+          .maybeSingle();
+        return { annullata: c?.stato === "annullata" };
+      });
+      if (guard.annullata) {
+        logger.info(`[sollecito-massivo] campagna ${campagna_id} annullata al blocco ${b}, esco`);
+        annullataInCorso = true;
+        break;
+      }
+
       const slice = pendingIds.slice(b * cfg.blocco, (b + 1) * cfg.blocco);
 
       const blockResult = await step.run(`blocco-${b}`, async () => {
+
         let inviati = 0;
         let falliti = 0;
 
@@ -363,12 +394,19 @@ export const invioMassivoSolleciti = inngest.createFunction(
       }
     }
 
+    if (annullataInCorso) {
+      // Non sovrascrivere lo stato 'annullata' impostato dall'utente
+      return { ok: true, annullata: true };
+    }
+
     await step.run("finalize", async () => {
       const { data: camp } = await supabaseAdmin
         .from("campagne_sollecito")
-        .select("falliti")
+        .select("falliti, stato")
         .eq("id", campagna_id)
         .maybeSingle();
+      // Doppio guard: se nel frattempo è stata annullata, non toccare lo stato
+      if (camp?.stato === "annullata") return;
       const falliti = Number(camp?.falliti ?? 0);
       await supabaseAdmin
         .from("campagne_sollecito")
@@ -380,5 +418,6 @@ export const invioMassivoSolleciti = inngest.createFunction(
     });
 
     return { ok: true };
+
   },
 );
