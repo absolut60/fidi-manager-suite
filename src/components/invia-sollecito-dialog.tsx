@@ -50,6 +50,8 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
   useEffect(() => {
     if (!open) {
       setSending(false);
+    } else {
+      setReminder(defaultReminderFor("email"));
     }
   }, [open]);
 
