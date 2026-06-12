@@ -293,7 +293,9 @@ function statoLabel(s: string) {
   if (s === "da_inviare") return <Badge className="bg-slate-500 text-white hover:bg-slate-500">In coda</Badge>;
   if (s === "saltato_no_indirizzo") return <Badge className="bg-amber-500 text-white hover:bg-amber-500"><MailWarning className="size-3 mr-1" />Senza indirizzo</Badge>;
   if (s === "fallito") return <Badge className="bg-destructive text-destructive-foreground hover:bg-destructive"><XCircle className="size-3 mr-1" />Fallito</Badge>;
+  if (s === "annullato") return <Badge variant="outline"><Ban className="size-3 mr-1" />Annullato</Badge>;
   return <Badge variant="outline">{s}</Badge>;
+
 }
 
 function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; onClose: () => void }) {
