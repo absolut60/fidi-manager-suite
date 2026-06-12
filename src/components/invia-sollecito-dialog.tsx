@@ -290,21 +290,8 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
             )}
           </div>
 
-          {/* Copia operatore (BCC) */}
-          <label
-            className={`flex items-center gap-2 text-sm ${copiaDisponibile ? "cursor-pointer" : "cursor-not-allowed opacity-60"}`}
-            title={copiaDisponibile ? undefined : "Nessun indirizzo operatore disponibile"}
-          >
-            <Checkbox
-              checked={copiaSelezionata && copiaDisponibile}
-              onCheckedChange={(v) => setCopiaSelezionata(!!v)}
-              disabled={!copiaDisponibile}
-            />
-            <span>
-              Inviami una copia{" "}
-              {copiaEmail && <span className="text-muted-foreground">({copiaEmail})</span>}
-            </span>
-          </label>
+
+
 
           {/* Anteprima */}
           <div className="space-y-2 pt-2 border-t border-border">
