@@ -340,10 +340,21 @@ function PreviewDialog({
     enabled: !!selectedId,
   });
 
+  const { data: sede } = useQuery({
+    queryKey: ["template-preview-sede", selectedId],
+    queryFn: () => caricaSedeCliente(selectedId!),
+    enabled: !!selectedId,
+  });
+
   const rendered = useMemo(() => {
     if (!dati) return null;
-    return renderTemplate(template, dati);
-  }, [template, dati]);
+    const base = renderTemplate(template, dati);
+    const corpo = wrapEmailHtml(base.corpo, sede ?? null, {
+      nome: nomeOperatore,
+      email: profilo?.email ?? null,
+    });
+    return { oggetto: base.oggetto, corpo };
+  }, [template, dati, sede, nomeOperatore, profilo?.email]);
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
