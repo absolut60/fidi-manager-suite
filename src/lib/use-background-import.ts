@@ -11,6 +11,11 @@ type Fonte =
   | "scadenziario_assicurazioni"
   | "blocco_fido_assicurazione";
 
+export type ReportSaltati = {
+  cliente_non_trovato?: Record<string, { ragione_sociale: string; count: number }>;
+  errori_riga?: Array<{ riga: number; errore: string }>;
+};
+
 export type BackgroundImportProgress = {
   stato: string | null;
   righe_totali: number | null;
@@ -21,6 +26,7 @@ export type BackgroundImportProgress = {
   righe_saltate: number | null;
   codici_mancanti: string[] | null;
   log_errori: unknown;
+  report_saltati?: ReportSaltati | null;
   completata_at: string | null;
 };
 
