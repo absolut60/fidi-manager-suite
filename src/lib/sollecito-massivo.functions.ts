@@ -253,3 +253,89 @@ export const riprovaCampagnaFalliti = createServerFn({ method: "POST" })
 
     return { riprovati: toReset.length, campagna_id: data.campagnaId };
   });
+
+const IdSchema = z.object({ campagnaId: z.string().uuid() });
+
+/**
+ * Annulla una campagna in 'in_coda' o 'in_corso'.
+ * - campagna.stato => 'annullata'
+ * - destinatari 'da_inviare' => 'annullato' (gli 'inviato' restano intatti)
+ * Il job Inngest, prima di ogni blocco e nello step prepara, verifica lo stato e si ferma.
+ */
+export const annullaCampagnaSollecito = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => IdSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+
+    const { data: camp, error: ec } = await supabase
+      .from("campagne_sollecito")
+      .select("id, stato")
+      .eq("id", data.campagnaId)
+      .maybeSingle();
+    if (ec || !camp) throw new Error("Campagna non trovata");
+    if (camp.stato !== "in_coda" && camp.stato !== "in_corso") {
+      throw new Error(`Impossibile annullare una campagna in stato "${camp.stato}"`);
+    }
+
+    // Marca campagna annullata (il job leggerà questo stato al guard)
+    const { error: eu } = await supabase
+      .from("campagne_sollecito")
+      .update({ stato: "annullata", completata_at: new Date().toISOString() } as never)
+      .eq("id", data.campagnaId);
+    if (eu) throw new Error(`Annullamento fallito: ${eu.message}`);
+
+    // Le righe ancora da inviare diventano 'annullato'. 'inviato' resta intatto.
+    const { error: ed } = await supabase
+      .from("campagne_sollecito_destinatari")
+      .update({ stato: "annullato" } as never)
+      .eq("campagna_id", data.campagnaId)
+      .eq("stato", "da_inviare");
+    if (ed) throw new Error(`Aggiornamento destinatari fallito: ${ed.message}`);
+
+    return { ok: true, campagna_id: data.campagnaId };
+  });
+
+/**
+ * Elimina una campagna in stato terminale (completata / completata_con_errori / annullata).
+ * Cancella SOLO campagne_sollecito e campagne_sollecito_destinatari collegati.
+ * Le azioni_recupero create dagli invii reali NON vengono toccate
+ * (nessuna FK le collega: restano nella timeline del cliente).
+ */
+export const eliminaCampagnaSollecito = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => IdSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+
+    const { data: camp, error: ec } = await supabase
+      .from("campagne_sollecito")
+      .select("id, stato")
+      .eq("id", data.campagnaId)
+      .maybeSingle();
+    if (ec || !camp) throw new Error("Campagna non trovata");
+
+    const terminali = ["completata", "completata_con_errori", "annullata"];
+    if (!terminali.includes(camp.stato)) {
+      throw new Error(
+        `Impossibile eliminare: la campagna è in stato "${camp.stato}". Annullala prima.`,
+      );
+    }
+
+    // 1) destinatari (le azioni_recupero referenziate restano vive: nessuna FK)
+    const { error: e1 } = await supabase
+      .from("campagne_sollecito_destinatari")
+      .delete()
+      .eq("campagna_id", data.campagnaId);
+    if (e1) throw new Error(`Eliminazione destinatari fallita: ${e1.message}`);
+
+    // 2) campagna
+    const { error: e2 } = await supabase
+      .from("campagne_sollecito")
+      .delete()
+      .eq("id", data.campagnaId);
+    if (e2) throw new Error(`Eliminazione campagna fallita: ${e2.message}`);
+
+    return { ok: true, campagna_id: data.campagnaId };
+  });
+
