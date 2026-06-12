@@ -567,6 +567,16 @@ function ScadenziarioPage() {
                             }}
                           />
                         </TableCell>
+                        <TableCell className="w-10 text-center" onClick={(e) => e.stopPropagation()}>
+                          <AvvisatoIcon
+                            info={avvisatiMap?.get(r.cliente.id) ?? null}
+                            onClick={() => navigate({
+                              to: "/clienti/$clienteId",
+                              params: { clienteId: r.cliente.id },
+                              search: { tab: "attivita" } as never,
+                            })}
+                          />
+                        </TableCell>
                         <TableCell className="font-medium">{r.cliente.ragione_sociale}</TableCell>
                         <TableCell className="font-mono text-xs">{r.cliente.codice_gestionale ?? "—"}</TableCell>
                         <TableCell className="text-xs">{storeName}</TableCell>
