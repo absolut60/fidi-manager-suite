@@ -190,6 +190,7 @@ function ClienteDetail() {
   const [openNew, setOpenNew] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openDisattiva, setOpenDisattiva] = useState(false);
+  const [openSollecito, setOpenSollecito] = useState(false);
   const [openElimina, setOpenElimina] = useState(false);
 
   useEffect(() => {
