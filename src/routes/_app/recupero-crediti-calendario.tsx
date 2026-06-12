@@ -77,6 +77,9 @@ type AzioneRow = {
   data_azione: string;
   importo_riferimento: number | null;
   note: string | null;
+  email_oggetto: string | null;
+  email_corpo_html: string | null;
+  email_destinatario: string | null;
   cliente: { id: string; ragione_sociale: string; store_id: string | null } | null;
 };
 
@@ -148,7 +151,7 @@ function CalendarioPage() {
       let q = supabase
         .from("azioni_recupero")
         .select(
-          "id, cliente_id, tipo, esito, data_azione, importo_riferimento, note, cliente:clienti!inner(id, ragione_sociale, store_id)"
+          "id, cliente_id, tipo, esito, data_azione, importo_riferimento, note, email_oggetto, email_corpo_html, email_destinatario, cliente:clienti!inner(id, ragione_sociale, store_id)"
         )
         .eq("esito", "da_fare")
         .gte("data_azione", range!.start)
