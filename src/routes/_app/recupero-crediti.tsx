@@ -875,6 +875,14 @@ function DettaglioAzione({
         </div>
       </div>
 
+      {azione.tipo === "email" && azione.email_corpo_html && (
+        <EmailInviataView
+          destinatario={azione.email_destinatario}
+          oggetto={azione.email_oggetto}
+          corpoHtml={azione.email_corpo_html}
+        />
+      )}
+
       <div>
         <div className="text-xs uppercase text-muted-foreground tracking-wider mb-2">
           Scadenze collegate

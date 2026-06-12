@@ -449,6 +449,14 @@ function DettaglioDialog({
           <div className="text-sm whitespace-pre-wrap min-h-[2rem]">{azione.note ?? "—"}</div>
         </div>
 
+        {azione.tipo === "email" && azione.email_corpo_html && (
+          <EmailInviataView
+            destinatario={azione.email_destinatario}
+            oggetto={azione.email_oggetto}
+            corpoHtml={azione.email_corpo_html}
+          />
+        )}
+
         <div>
           <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Scadenze collegate</div>
           {scadenzeQuery.isLoading ? (
