@@ -143,8 +143,6 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
   }
 
   const senzaIndirizzo = !!cliente && !cliente.email && !cliente.pec;
-  const copiaEmail = profilo?.email ?? user?.email ?? null;
-  const copiaDisponibile = !!copiaEmail && isValidEmail(copiaEmail);
 
   async function handleInvia() {
     if (!cliente || !selectedTemplate || !rendered) return;
@@ -159,14 +157,8 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
         (a, s) => a + Number(s.importo_scadenza ?? 0), 0,
       );
 
-      const bccCopia = copiaSelezionata && copiaDisponibile ? copiaEmail : null;
-
-      // TODO: log temporaneo per verificare il BCC — rimuovere dopo la verifica
-      console.log("[sollecito] invio", { to: dest, bcc: bccCopia, subject: rendered.oggetto });
-
       const ok = await sendEmail({
         to: dest,
-        ...(bccCopia ? { bcc: bccCopia } : {}),
         subject: rendered.oggetto,
         html: rendered.corpo,
       });
@@ -177,7 +169,12 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
         return;
       }
 
-      const noteRiassunto = `Inviato template "${selectedTemplate.nome}" a ${dest}${bccCopia ? ` (bcc ${bccCopia})` : ""}`;
+      const noteRiassunto = `Inviato template "${selectedTemplate.nome}" a ${dest}`;
+      const emailFields = {
+        email_oggetto: rendered.oggetto,
+        email_corpo_html: rendered.corpo,
+        email_destinatario: dest,
+      };
 
       if (azioneEsistenteId) {
         const { error } = await supabase
@@ -187,6 +184,7 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
             data_azione: new Date().toISOString(),
             note: noteRiassunto,
             operatore_id: user?.id ?? null,
+            ...emailFields,
           })
           .eq("id", azioneEsistenteId);
         if (error) throw error;
@@ -201,6 +199,7 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
             data_azione: new Date().toISOString(),
             importo_riferimento: totaleScaduto,
             note: noteRiassunto,
+            ...emailFields,
           })
           .select("id")
           .single();
