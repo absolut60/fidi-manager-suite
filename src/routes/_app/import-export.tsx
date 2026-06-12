@@ -1261,8 +1261,25 @@ function parseOfficialScadenziarioSheet(sheet: XLSX.WorkSheet): {
     defval: "",
     blankrows: true,
   });
-  if (matrix.length < 3) return { rows: [], missing: [], totRead: 0 };
-  const headers = (matrix[1] ?? []).map((c) => normalizeOfficialHeader(c));
+  if (matrix.length < 2) return { rows: [], missing: [], totRead: 0 };
+  // Ricerca dinamica della riga header: scorri le prime ~15 righe e trova quella
+  // che contiene la colonna COD_CLI (normalizzata in "codice_gestionale").
+  const HEADER_SCAN_LIMIT = Math.min(15, matrix.length);
+  let headerRow = -1;
+  let headers: string[] = [];
+  for (let r = 0; r < HEADER_SCAN_LIMIT; r++) {
+    const candidate = (matrix[r] ?? []).map((c) => normalizeOfficialHeader(c));
+    if (candidate.some((h) => SCAD_OFFICIAL_MAP[h] === "codice_gestionale")) {
+      headerRow = r;
+      headers = candidate;
+      break;
+    }
+  }
+  if (headerRow < 0) {
+    throw new Error(
+      "Intestazione COD_CLI non trovata: verifica che il foglio SCADENZIARIO abbia le intestazioni",
+    );
+  }
   const numFields = new Set([
     "importo_scadenza",
     "importo_documento",
@@ -1275,7 +1292,7 @@ function parseOfficialScadenziarioSheet(sheet: XLSX.WorkSheet): {
   const rows: ScadRow[] = [];
   const missing: number[] = [];
   let totRead = 0;
-  for (let i = 2; i < matrix.length; i++) {
+  for (let i = headerRow + 1; i < matrix.length; i++) {
     const row = matrix[i] ?? [];
     if (!row.some((c) => String(c ?? "").trim() !== "")) continue;
     totRead++;
