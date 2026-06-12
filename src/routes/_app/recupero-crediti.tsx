@@ -289,8 +289,12 @@ function RecuperoCreditiPage() {
   const sorted = useMemo(() => {
     const rows = aggQuery.data ?? [];
     const filtered = rows.filter((r) => {
-      if (quick === "aperti") return r.azioni_aperte > 0;
-      if (quick === "ritardo") return r.in_ritardo;
+      if (tab === "aperti") {
+        if (!(r.azioni_aperte > 0)) return false;
+        if (soloRitardo && !r.in_ritardo) return false;
+        return true;
+      }
+      if (tab === "conclusi") return r.azioni_aperte === 0;
       return true;
     });
     const now = Date.now();
