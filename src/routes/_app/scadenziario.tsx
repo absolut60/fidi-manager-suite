@@ -218,6 +218,27 @@ function ScadenziarioPage() {
     staleTime: 60_000,
   });
 
+  type AvvisatoRow = {
+    cliente_id: string;
+    n_azioni: number;
+    ha_email: boolean;
+    ultima_tipo: string | null;
+    ultima_data: string | null;
+  };
+  const { data: avvisatiMap } = useQuery({
+    queryKey: ["clienti-avvisati"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_clienti_avvisati" as never);
+      if (error) throw error;
+      const m = new Map<string, AvvisatoRow>();
+      for (const r of (data ?? []) as unknown as AvvisatoRow[]) {
+        m.set(r.cliente_id, r);
+      }
+      return m;
+    },
+    staleTime: 60_000,
+  });
+
   const clientiMap = useMemo(() => {
     const m = new Map<string, Cliente>();
     (clienti ?? []).forEach((c) => m.set(c.id, c));
