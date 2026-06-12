@@ -43,6 +43,8 @@ export function InvioMassivoDialog({
   const qc = useQueryClient();
   const navigate = useNavigate();
   const cfg = useConfig();
+  const { user, profilo } = useAuth();
+  const nomeOperatore = `${profilo?.nome ?? ""} ${profilo?.cognome ?? ""}`.trim() || "Operatore";
   const avvia = useServerFn(avviaCampagnaSollecito);
 
   const [modo, setModo] = useState<"selezionati" | "filtrati">("selezionati");
