@@ -178,7 +178,7 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
         to: dest,
         subject: rendered.oggetto,
         html: rendered.corpo,
-        fromName: nomeOperatore,
+        fromName: "Recupero Crediti MADE",
         replyTo: user?.email ?? undefined,
       });
 
