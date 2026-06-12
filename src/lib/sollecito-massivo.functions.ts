@@ -65,13 +65,20 @@ export const avviaCampagnaSollecito = createServerFn({ method: "POST" })
       });
     }
 
-    // Inserisci destinatari a batch (RLS valida cliente per cliente)
-    const rows = clienteIds.map((cid) => ({
-      campagna_id: camp.id,
-      cliente_id: cid,
-      stato: "da_inviare" as const,
-      importo_riferimento: importi[cid] ?? null,
-    }));
+    // Inserisci destinatari a batch (RLS valida cliente per cliente).
+    // Se l'utente ha corretto/inserito un indirizzo in anteprima, lo persistiamo
+    // subito in indirizzo_usato così il job lo userà direttamente.
+    const overrides = data.indirizziCorretti ?? {};
+    const rows = clienteIds.map((cid) => {
+      const ov = (overrides[cid] ?? "").trim();
+      return {
+        campagna_id: camp.id,
+        cliente_id: cid,
+        stato: "da_inviare" as const,
+        importo_riferimento: importi[cid] ?? null,
+        indirizzo_usato: ov ? ov : null,
+      };
+    });
     const INSERT_BATCH = 500;
     for (let i = 0; i < rows.length; i += INSERT_BATCH) {
       const slice = rows.slice(i, i + INSERT_BATCH);
