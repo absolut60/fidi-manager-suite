@@ -1,6 +1,6 @@
 import { inngest } from "./client";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { renderTemplate, isScaduto } from "@/lib/template-email-render";
+import { renderTemplate, isScaduto, wrapEmailHtml, type DatiSede } from "@/lib/template-email-render";
 
 type EventData = { campagna_id: string };
 
@@ -21,6 +21,8 @@ async function sendEmailViaEdge(payload: {
   to: string;
   subject: string;
   html: string;
+  fromName?: string;
+  replyTo?: string;
 }): Promise<{ ok: boolean; err?: string }> {
   const SUPABASE_URL = process.env.SUPABASE_URL!;
   const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_ANON_KEY ?? "";
@@ -52,15 +54,15 @@ async function sendEmailViaEdge(payload: {
   }
 }
 
-async function getNomeOperatore(userId: string | null): Promise<string> {
-  if (!userId) return "Operatore";
+async function getOperatoreInfo(userId: string | null): Promise<{ nome: string; email: string | null }> {
+  if (!userId) return { nome: "Operatore", email: null };
   const { data } = await supabaseAdmin
     .from("profili")
-    .select("nome, cognome")
+    .select("nome, cognome, email")
     .eq("id", userId)
     .maybeSingle();
   const n = `${data?.nome ?? ""} ${data?.cognome ?? ""}`.trim();
-  return n || "Operatore";
+  return { nome: n || "Operatore", email: data?.email ?? null };
 }
 
 export const invioMassivoSolleciti = inngest.createFunction(
@@ -185,11 +187,20 @@ export const invioMassivoSolleciti = inngest.createFunction(
     }
 
     // Configurazione throttling (letta una sola volta — il job può durare a lungo)
-    const cfg = await step.run("config", async () => ({
-      blocco: await getConfigInt("sollecito_massivo_blocco", DEFAULT_BLOCCO),
-      pausa: await getConfigInt("sollecito_massivo_pausa_sec", DEFAULT_PAUSA),
-      nomeOperatore: await getNomeOperatore(prep.operatoreId),
-    }));
+    const cfg = await step.run("config", async (): Promise<{
+      blocco: number;
+      pausa: number;
+      nomeOperatore: string;
+      emailOperatore: string | null;
+    }> => {
+      const op = await getOperatoreInfo(prep.operatoreId);
+      return {
+        blocco: await getConfigInt("sollecito_massivo_blocco", DEFAULT_BLOCCO),
+        pausa: await getConfigInt("sollecito_massivo_pausa_sec", DEFAULT_PAUSA),
+        nomeOperatore: op.nome,
+        emailOperatore: op.email,
+      };
+    });
 
     // Carica template UNA volta
     const tpl = await step.run("load-template", async () => {
@@ -272,12 +283,31 @@ export const invioMassivoSolleciti = inngest.createFunction(
               continue;
             }
 
-            // Cliente: ragione sociale
+            // Cliente: ragione sociale + store (per dati sede footer)
             const { data: cliente } = await supabaseAdmin
               .from("clienti")
-              .select("ragione_sociale")
+              .select("ragione_sociale, store_id")
               .eq("id", d.cliente_id)
               .maybeSingle();
+
+            let sede: DatiSede | null = null;
+            if (cliente?.store_id) {
+              const { data: store } = await supabaseAdmin
+                .from("stores")
+                .select("nome, indirizzo, cap, citta, provincia, telefono")
+                .eq("id", cliente.store_id)
+                .maybeSingle();
+              if (store) {
+                sede = {
+                  nome: store.nome ?? null,
+                  indirizzo: store.indirizzo ?? null,
+                  cap: store.cap ?? null,
+                  citta: store.citta ?? null,
+                  provincia: store.provincia ?? null,
+                  telefono: store.telefono ?? null,
+                };
+              }
+            }
 
             // Scadenze del cliente
             const { data: rawScad } = await supabaseAdmin
@@ -307,10 +337,17 @@ export const invioMassivoSolleciti = inngest.createFunction(
               },
             );
 
+            const htmlCompleto = wrapEmailHtml(rendered.corpo, sede, {
+              nome: cfg.nomeOperatore,
+              email: cfg.emailOperatore,
+            });
+
             const sendRes = await sendEmailViaEdge({
               to: d.indirizzo_usato,
               subject: rendered.oggetto,
-              html: rendered.corpo,
+              html: htmlCompleto,
+              fromName: cfg.nomeOperatore,
+              replyTo: cfg.emailOperatore ?? undefined,
             });
 
             if (!sendRes.ok) {
@@ -322,7 +359,7 @@ export const invioMassivoSolleciti = inngest.createFunction(
               continue;
             }
 
-            // Crea azione_recupero (come l'invio singolo)
+            // Crea azione_recupero (come l'invio singolo) — salva HTML COMPLETO con cornice
             const noteRiassunto = `Inviato template "${tpl.nome}" a ${d.indirizzo_usato} (campagna ${campagna_id})`;
             const { data: azione, error: azErr } = await supabaseAdmin
               .from("azioni_recupero")
@@ -335,7 +372,7 @@ export const invioMassivoSolleciti = inngest.createFunction(
                 importo_riferimento: totaleScaduto,
                 note: noteRiassunto,
                 email_oggetto: rendered.oggetto,
-                email_corpo_html: rendered.corpo,
+                email_corpo_html: htmlCompleto,
                 email_destinatario: d.indirizzo_usato,
               })
               .select("id")

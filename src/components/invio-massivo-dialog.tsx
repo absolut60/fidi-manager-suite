@@ -7,7 +7,8 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useConfig } from "@/hooks/use-config";
 import { classificaScadenza } from "@/lib/scadenze";
-import { renderTemplate, type TemplateEmail, type DatiTemplate } from "@/lib/template-email";
+import { renderTemplate, wrapEmailHtml, caricaSedeCliente, type TemplateEmail, type DatiTemplate } from "@/lib/template-email";
+import { useAuth } from "@/hooks/use-auth";
 import { avviaCampagnaSollecito } from "@/lib/sollecito-massivo.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +43,8 @@ export function InvioMassivoDialog({
   const qc = useQueryClient();
   const navigate = useNavigate();
   const cfg = useConfig();
+  const { user, profilo } = useAuth();
+  const nomeOperatore = `${profilo?.nome ?? ""} ${profilo?.cognome ?? ""}`.trim() || "Operatore";
   const avvia = useServerFn(avviaCampagnaSollecito);
 
   const [modo, setModo] = useState<"selezionati" | "filtrati">("selezionati");
@@ -177,13 +180,30 @@ export function InvioMassivoDialog({
     });
   }
 
+  // Sede del cliente corrente per anteprima cornice
+  const { data: sedeCorrente } = useQuery({
+    queryKey: ["sollecito-massivo-sede", clienteCorrenteId],
+    queryFn: () => caricaSedeCliente(clienteCorrenteId!),
+    enabled: open && !!clienteCorrenteId,
+    staleTime: 60_000,
+  });
+
   const anteprima = useMemo(() => {
     if (!selectedTemplate || !clientePreview) return null;
-    return renderTemplate(
+    const dati: DatiTemplate = {
+      ...clientePreview.dati,
+      nome_operatore: nomeOperatore,
+    };
+    const base = renderTemplate(
       { oggetto: selectedTemplate.oggetto, corpo: selectedTemplate.corpo },
-      clientePreview.dati,
+      dati,
     );
-  }, [selectedTemplate, clientePreview]);
+    const corpo = wrapEmailHtml(base.corpo, sedeCorrente ?? null, {
+      nome: nomeOperatore,
+      email: user?.email ?? null,
+    });
+    return { oggetto: base.oggetto, corpo };
+  }, [selectedTemplate, clientePreview, sedeCorrente, nomeOperatore, user?.email]);
 
   // Conteggi rapidi: si basano solo su ciò che è stato esplorato/corretto
   const numeroCorretti = useMemo(

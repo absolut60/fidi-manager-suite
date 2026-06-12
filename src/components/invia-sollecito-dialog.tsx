@@ -7,7 +7,9 @@ import { useAuth } from "@/hooks/use-auth";
 import { sendEmail } from "@/lib/send-email";
 import {
   caricaDatiCliente,
+  caricaSedeCliente,
   renderTemplate,
+  wrapEmailHtml,
   type TemplateEmail,
 } from "@/lib/template-email";
 import { classificaScadenza } from "@/lib/scadenze";
@@ -112,6 +114,12 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
     enabled: open && !!clienteId,
   });
 
+  const { data: datiSede } = useQuery({
+    queryKey: ["sollecito-sede", clienteId],
+    queryFn: () => caricaSedeCliente(clienteId),
+    enabled: open && !!clienteId,
+  });
+
   // ID delle scadenze scadute da linkare
   const { data: scaduteIds } = useQuery({
     queryKey: ["sollecito-scadute-ids", clienteId],
@@ -130,11 +138,16 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
 
   const rendered = useMemo(() => {
     if (!selectedTemplate || !datiTemplate) return null;
-    return renderTemplate(
+    const base = renderTemplate(
       { oggetto: selectedTemplate.oggetto, corpo: selectedTemplate.corpo },
       datiTemplate,
     );
-  }, [selectedTemplate, datiTemplate]);
+    const corpoCompleto = wrapEmailHtml(base.corpo, datiSede ?? null, {
+      nome: nomeOperatore,
+      email: user?.email ?? null,
+    });
+    return { oggetto: base.oggetto, corpo: corpoCompleto };
+  }, [selectedTemplate, datiTemplate, datiSede, nomeOperatore, user?.email]);
 
   function onPickSource(src: "email" | "pec" | "custom") {
     setDestSource(src);
@@ -165,6 +178,8 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
         to: dest,
         subject: rendered.oggetto,
         html: rendered.corpo,
+        fromName: nomeOperatore,
+        replyTo: user?.email ?? undefined,
       });
 
       if (!ok) {

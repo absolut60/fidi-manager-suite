@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { classificaScadenza } from "@/lib/scadenze";
+import type { DatiSede as DatiSedeRender } from "@/lib/template-email-render";
 
 // Re-export delle funzioni pure (rendering) dal modulo isomorfo.
 export {
@@ -8,12 +9,17 @@ export {
   formatDateIt,
   buildElencoScadenzeHtml,
   renderTemplate,
+  wrapEmailHtml,
+  SEDE_FALLBACK,
+  LOGO_EMAIL_URL,
 } from "@/lib/template-email-render";
 export type {
   PlaceholderKey,
   ScadenzaSollecito,
   DatiTemplate,
   RenderedTemplate,
+  DatiSede,
+  DatiMittente,
 } from "@/lib/template-email-render";
 
 export type TemplateEmail = {
@@ -55,5 +61,28 @@ export async function caricaDatiCliente(
       data_scadenza: s.data_scadenza,
       importo_scadenza: s.importo_scadenza,
     })),
+  };
+}
+
+export async function caricaSedeCliente(clienteId: string): Promise<DatiSedeRender | null> {
+  const { data: cli } = await supabase
+    .from("clienti")
+    .select("store_id")
+    .eq("id", clienteId)
+    .maybeSingle();
+  if (!cli?.store_id) return null;
+  const { data: store } = await supabase
+    .from("stores")
+    .select("nome, indirizzo, cap, citta, provincia, telefono")
+    .eq("id", cli.store_id)
+    .maybeSingle();
+  if (!store) return null;
+  return {
+    nome: store.nome ?? null,
+    indirizzo: store.indirizzo ?? null,
+    cap: store.cap ?? null,
+    citta: store.citta ?? null,
+    provincia: store.provincia ?? null,
+    telefono: store.telefono ?? null,
   };
 }
