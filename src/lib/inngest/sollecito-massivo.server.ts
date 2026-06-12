@@ -394,12 +394,19 @@ export const invioMassivoSolleciti = inngest.createFunction(
       }
     }
 
+    if (annullataInCorso) {
+      // Non sovrascrivere lo stato 'annullata' impostato dall'utente
+      return { ok: true, annullata: true };
+    }
+
     await step.run("finalize", async () => {
       const { data: camp } = await supabaseAdmin
         .from("campagne_sollecito")
-        .select("falliti")
+        .select("falliti, stato")
         .eq("id", campagna_id)
         .maybeSingle();
+      // Doppio guard: se nel frattempo è stata annullata, non toccare lo stato
+      if (camp?.stato === "annullata") return;
       const falliti = Number(camp?.falliti ?? 0);
       await supabaseAdmin
         .from("campagne_sollecito")
@@ -411,5 +418,6 @@ export const invioMassivoSolleciti = inngest.createFunction(
     });
 
     return { ok: true };
+
   },
 );
