@@ -63,3 +63,26 @@ export async function caricaDatiCliente(
     })),
   };
 }
+
+export async function caricaSedeCliente(clienteId: string): Promise<DatiSedeRender | null> {
+  const { data: cli } = await supabase
+    .from("clienti")
+    .select("store_id")
+    .eq("id", clienteId)
+    .maybeSingle();
+  if (!cli?.store_id) return null;
+  const { data: store } = await supabase
+    .from("stores")
+    .select("nome, indirizzo, cap, citta, provincia, telefono")
+    .eq("id", cli.store_id)
+    .maybeSingle();
+  if (!store) return null;
+  return {
+    nome: store.nome ?? null,
+    indirizzo: store.indirizzo ?? null,
+    cap: store.cap ?? null,
+    citta: store.citta ?? null,
+    provincia: store.provincia ?? null,
+    telefono: store.telefono ?? null,
+  };
+}
