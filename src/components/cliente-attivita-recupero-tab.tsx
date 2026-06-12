@@ -5,7 +5,7 @@ import {
   Send, Plus, Bell, Phone, StickyNote, FileText, Mail, Activity, Eye,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/use-auth";
+
 import { classificaScadenza } from "@/lib/scadenze";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -91,7 +91,7 @@ type Azione = {
 
 export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string }) {
   const qc = useQueryClient();
-  const { user } = useAuth();
+  
   const [sollecitoOpen, setSollecitoOpen] = useState(false);
   const [creaOpen, setCreaOpen] = useState(false);
   const [creaTipo, setCreaTipo] = useState<TipoAzione>("promemoria");
