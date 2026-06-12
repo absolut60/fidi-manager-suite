@@ -55,6 +55,7 @@ const NAV: NavItem[] = [
   { to: "/privacy", label: "Privacy", icon: FileSignature, roles: ["admin", "approvatore", "store_manager"], group: "approvazioni" },
   { to: "/import-export", label: "Import / Export", icon: FileSpreadsheet, roles: ["admin"], group: "approvazioni" },
   { to: "/whatsapp", label: "WhatsApp", icon: MessageCircle, roles: ["admin"], group: "approvazioni" },
+  { to: "/template-email", label: "Template Email", icon: Mail, roles: ["admin"], group: "admin" },
   { to: "/impostazioni", label: "Impostazioni", icon: Settings, roles: ["admin"], group: "admin" },
   { to: "/utenti", label: "Utenti", icon: UsersRound, roles: ["admin"], group: "admin" },
   { to: "/audit", label: "Audit log", icon: ScrollText, roles: ["admin"], group: "admin" },
