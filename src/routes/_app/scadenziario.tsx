@@ -1,7 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, Fragment, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, Calendar, FileText, Ban, CalendarClock, Scale, ChevronDown, ChevronUp, Megaphone } from "lucide-react";
+import { AlertTriangle, Calendar, FileText, Ban, CalendarClock, Scale, ChevronDown, ChevronUp, Megaphone, Mail } from "lucide-react";
+import { InvioMassivoDialog } from "@/components/invio-massivo-dialog";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -102,6 +103,7 @@ function ScadenziarioPage() {
   const [expandedClienteId, setExpandedClienteId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [invioMassivoOpen, setInvioMassivoOpen] = useState(false);
 
   // Reset selection on filter changes
   useEffect(() => {
@@ -456,9 +458,14 @@ function ScadenziarioPage() {
 
       {/* TABELLA UNICA */}
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase text-foreground flex items-center gap-2">
-          <FileText className="size-4" /> Clienti con scadenze aperte ({rows.length})
-        </h2>
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <h2 className="text-sm font-semibold uppercase text-foreground flex items-center gap-2">
+            <FileText className="size-4" /> Clienti con scadenze aperte ({rows.length})
+          </h2>
+          <Button size="sm" variant="outline" onClick={() => setInvioMassivoOpen(true)} className="gap-1.5">
+            <Mail className="size-4" /> Invio massivo solleciti
+          </Button>
+        </div>
         {isLoading ? <Skeleton className="h-40" /> : rows.length === 0 ? (
           <Card className="p-8 text-center text-sm text-muted-foreground">Nessun cliente con scadenze aperte</Card>
         ) : (
@@ -566,6 +573,13 @@ function ScadenziarioPage() {
         selectedRows={rows.filter((r) => selectedIds.has(r.cliente.id))}
         userId={user?.id ?? null}
         onDone={() => { setSelectedIds(new Set()); setDialogOpen(false); }}
+      />
+
+      <InvioMassivoDialog
+        open={invioMassivoOpen}
+        onOpenChange={setInvioMassivoOpen}
+        clienteIdsSelezionati={rows.filter((r) => selectedIds.has(r.cliente.id)).map((r) => r.cliente.id)}
+        clienteIdsFiltrati={rows.map((r) => r.cliente.id)}
       />
     </div>
   );

@@ -1,0 +1,245 @@
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+
+const AvviaSchema = z.object({
+  templateId: z.string().uuid(),
+  preferenzaIndirizzo: z.enum(["email", "pec"]).default("email"),
+  nota: z.string().nullable().optional(),
+  clienteIds: z.array(z.string().uuid()).min(1),
+});
+
+/**
+ * Crea una campagna_sollecito + i destinatari + invia evento Inngest.
+ * - operatore_id = utente loggato (forzato server-side).
+ * - RLS: l'insert dei destinatari passa attraverso user_can_access_cliente,
+ *   quindi uno Store Manager può creare destinatari solo per i suoi clienti.
+ */
+export const avviaCampagnaSollecito = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => AvviaSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+
+    const clienteIds = Array.from(new Set(data.clienteIds));
+    if (clienteIds.length === 0) {
+      throw new Error("Nessun cliente selezionato");
+    }
+
+    // Crea campagna
+    const { data: camp, error: e1 } = await supabase
+      .from("campagne_sollecito")
+      .insert({
+        operatore_id: userId,
+        template_id: data.templateId,
+        stato: "in_coda",
+        preferenza_indirizzo: data.preferenzaIndirizzo,
+        totale_destinatari: clienteIds.length,
+        note: data.nota ?? null,
+      } as never)
+      .select("id")
+      .single();
+    if (e1 || !camp) throw new Error(`Creazione campagna fallita: ${e1?.message}`);
+
+    // Calcola importo_riferimento per ciascun cliente (totale scaduto)
+    // — opzionale, derivato dalle scadenze "scaduto" attive.
+    const importi: Record<string, number> = {};
+    const CHUNK = 200;
+    for (let i = 0; i < clienteIds.length; i += CHUNK) {
+      const slice = clienteIds.slice(i, i + CHUNK);
+      const { data: sc } = await supabase
+        .from("scadenze")
+        .select("cliente_id, importo_scadenza, stato_contabile, giorni_ritardo, tempi_scadenza")
+        .in("cliente_id", slice);
+      (sc ?? []).forEach((s) => {
+        const t = String(s.tempi_scadenza ?? "").toLowerCase();
+        const pagato = t.includes("pagat");
+        const aScadere = t.includes("a scadere");
+        const scaduto = t.includes("scadut") || (s.stato_contabile === "Aperta" && Number(s.giorni_ritardo ?? 0) > 0);
+        if (pagato || aScadere || !scaduto) return;
+        if (!s.cliente_id) return;
+        importi[s.cliente_id] = (importi[s.cliente_id] ?? 0) + Number(s.importo_scadenza ?? 0);
+      });
+    }
+
+    // Inserisci destinatari a batch (RLS valida cliente per cliente)
+    const rows = clienteIds.map((cid) => ({
+      campagna_id: camp.id,
+      cliente_id: cid,
+      stato: "da_inviare" as const,
+      importo_riferimento: importi[cid] ?? null,
+    }));
+    const INSERT_BATCH = 500;
+    for (let i = 0; i < rows.length; i += INSERT_BATCH) {
+      const slice = rows.slice(i, i + INSERT_BATCH);
+      const { error: e2 } = await supabase
+        .from("campagne_sollecito_destinatari")
+        .insert(slice as never);
+      if (e2) {
+        // Rollback parziale: aggiorna la campagna come errore e propaga
+        await supabase
+          .from("campagne_sollecito")
+          .update({ stato: "completata_con_errori", note: `Insert destinatari fallito: ${e2.message}` } as never)
+          .eq("id", camp.id);
+        throw new Error(`Insert destinatari fallito: ${e2.message}`);
+      }
+    }
+
+    // Invia evento Inngest dal server (chiavi disponibili in process.env)
+    const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
+    const INNGEST_API_KEY = process.env.INNGEST_API_KEY;
+    if (!LOVABLE_API_KEY || !INNGEST_API_KEY) {
+      await supabase
+        .from("campagne_sollecito")
+        .update({ stato: "completata_con_errori", note: "Inngest non configurato (chiavi mancanti)" } as never)
+        .eq("id", camp.id);
+      throw new Error("Inngest non configurato");
+    }
+
+    const res = await fetch("https://connector-gateway.lovable.dev/inngest/e/", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "X-Connection-Api-Key": INNGEST_API_KEY,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name: "sollecito/invio-massivo.requested",
+        data: { campagna_id: camp.id },
+      }),
+    });
+    if (!res.ok) {
+      const txt = await res.text();
+      await supabase
+        .from("campagne_sollecito")
+        .update({ stato: "completata_con_errori", note: `Invio evento fallito: ${txt.slice(0, 200)}` } as never)
+        .eq("id", camp.id);
+      throw new Error(`Trigger Inngest fallito [${res.status}]`);
+    }
+
+    return { campagna_id: camp.id as string, totale: clienteIds.length };
+  });
+
+const RiprovaSchema = z.object({
+  campagnaId: z.string().uuid(),
+});
+
+/**
+ * Riporta a 'da_inviare' tutte le righe 'fallito' (e 'saltato_no_indirizzo'
+ * che ora hanno un indirizzo valido per la preferenza configurata) e rilancia il job.
+ */
+export const riprovaCampagnaFalliti = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => RiprovaSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+
+    const { data: camp, error: ec } = await supabase
+      .from("campagne_sollecito")
+      .select("id, stato, preferenza_indirizzo")
+      .eq("id", data.campagnaId)
+      .maybeSingle();
+    if (ec || !camp) throw new Error("Campagna non trovata");
+
+    // Recupera righe da riprovare
+    const { data: rows } = await supabase
+      .from("campagne_sollecito_destinatari")
+      .select("id, cliente_id, stato")
+      .eq("campagna_id", data.campagnaId)
+      .in("stato", ["fallito", "saltato_no_indirizzo"]);
+
+    const toReset: string[] = [];
+    const candidateIds = (rows ?? []).map((r) => r.cliente_id);
+    if (candidateIds.length === 0) {
+      return { riprovati: 0, campagna_id: data.campagnaId };
+    }
+
+    // Per i 'saltato_no_indirizzo' includo solo se ora ha un indirizzo
+    const pref = camp.preferenza_indirizzo as "email" | "pec";
+    const { data: clienti } = await supabase
+      .from("clienti")
+      .select("id, email, pec")
+      .in("id", candidateIds);
+    const map = new Map<string, { email: string | null; pec: string | null }>();
+    (clienti ?? []).forEach((c) => map.set(c.id, { email: c.email, pec: c.pec }));
+
+    for (const r of rows ?? []) {
+      if (r.stato === "fallito") {
+        toReset.push(r.id);
+      } else {
+        const ci = map.get(r.cliente_id);
+        const primary = pref === "email" ? ci?.email : ci?.pec;
+        const secondary = pref === "email" ? ci?.pec : ci?.email;
+        if ((primary && primary.trim()) || (secondary && secondary.trim())) {
+          toReset.push(r.id);
+        }
+      }
+    }
+
+    if (toReset.length === 0) {
+      return { riprovati: 0, campagna_id: data.campagnaId };
+    }
+
+    // Reset stato → 'da_inviare' (e azzera errore/indirizzo cosi prepara() li ricalcola)
+    const CHUNK = 200;
+    for (let i = 0; i < toReset.length; i += CHUNK) {
+      const slice = toReset.slice(i, i + CHUNK);
+      await supabase
+        .from("campagne_sollecito_destinatari")
+        .update({ stato: "da_inviare", errore: null, indirizzo_usato: null } as never)
+        .in("id", slice);
+    }
+
+    // Riallinea contatori della campagna ai destinatari attuali e riapri stato
+    const { count: cInviati } = await supabase
+      .from("campagne_sollecito_destinatari")
+      .select("*", { count: "exact", head: true })
+      .eq("campagna_id", data.campagnaId)
+      .eq("stato", "inviato");
+    const { count: cSaltati } = await supabase
+      .from("campagne_sollecito_destinatari")
+      .select("*", { count: "exact", head: true })
+      .eq("campagna_id", data.campagnaId)
+      .eq("stato", "saltato_no_indirizzo");
+    const { count: cFalliti } = await supabase
+      .from("campagne_sollecito_destinatari")
+      .select("*", { count: "exact", head: true })
+      .eq("campagna_id", data.campagnaId)
+      .eq("stato", "fallito");
+
+    await supabase
+      .from("campagne_sollecito")
+      .update({
+        stato: "in_coda",
+        inviati: cInviati ?? 0,
+        saltati: cSaltati ?? 0,
+        falliti: cFalliti ?? 0,
+        completata_at: null,
+      } as never)
+      .eq("id", data.campagnaId);
+
+    // Trigger Inngest
+    const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
+    const INNGEST_API_KEY = process.env.INNGEST_API_KEY;
+    if (!LOVABLE_API_KEY || !INNGEST_API_KEY) {
+      throw new Error("Inngest non configurato");
+    }
+    const res = await fetch("https://connector-gateway.lovable.dev/inngest/e/", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "X-Connection-Api-Key": INNGEST_API_KEY,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name: "sollecito/invio-massivo.requested",
+        data: { campagna_id: data.campagnaId },
+      }),
+    });
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error(`Trigger Inngest fallito [${res.status}]: ${txt.slice(0, 200)}`);
+    }
+
+    return { riprovati: toReset.length, campagna_id: data.campagnaId };
+  });

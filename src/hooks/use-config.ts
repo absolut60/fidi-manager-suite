@@ -7,6 +7,8 @@ export interface AppConfig {
   durata_default_mesi: number;
   reminder_giorni_scadenza: number;
   cutoff_cliente_attivo_anno: number;
+  sollecito_massivo_blocco: number;
+  sollecito_massivo_pausa_sec: number;
 }
 
 const DEFAULTS: AppConfig = {
@@ -15,6 +17,8 @@ const DEFAULTS: AppConfig = {
   durata_default_mesi: 12,
   reminder_giorni_scadenza: 30,
   cutoff_cliente_attivo_anno: 2025,
+  sollecito_massivo_blocco: 12,
+  sollecito_massivo_pausa_sec: 60,
 };
 
 export function useConfig(): AppConfig {
