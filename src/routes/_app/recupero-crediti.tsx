@@ -162,12 +162,15 @@ function RecuperoCreditiPage() {
   const [searchDebounced, setSearchDebounced] = useState("");
   const [dataDa, setDataDa] = useState<Date | undefined>();
   const [dataA, setDataA] = useState<Date | undefined>();
-  const [quick, setQuick] = useState<QuickFilter>("tutti");
+  const [tab, setTab] = useState<TabKey>("aperti");
+  const [soloRitardo, setSoloRitardo] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("priorita");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(1);
   const [expandedClienteId, setExpandedClienteId] = useState<string | null>(null);
   const [invioMassivoOpen, setInvioMassivoOpen] = useState(false);
+  const [nuovaAzioneOpen, setNuovaAzioneOpen] = useState(false);
+  const qc = useQueryClient();
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounced(search.trim()), 300);
