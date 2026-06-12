@@ -384,6 +384,9 @@ function RecuperoCreditiPage() {
             Clienti con azioni di recupero — priorità agli aperti e in ritardo
           </p>
         </div>
+        <Button size="sm" onClick={() => setNuovaAzioneOpen(true)} className="gap-1.5">
+          <Plus className="size-4" /> Nuova azione
+        </Button>
         <Button variant="outline" size="sm" onClick={() => setInvioMassivoOpen(true)} className="gap-1.5">
           <Send className="size-4" /> Invio massivo solleciti
         </Button>
@@ -397,18 +400,37 @@ function RecuperoCreditiPage() {
         <MetricCard label="Importo riferimento" value={fmtEuro(m?.importo ?? 0)} loading={metricsQuery.isLoading} tone="primary" />
       </div>
 
-      {/* Quick filter */}
-      <div className="flex flex-wrap items-center gap-2">
-        <QuickChip active={quick === "tutti"} onClick={() => setQuick("tutti")} icon={<CheckCircle2 className="size-3.5" />}>
-          Tutti ({counts.tutti})
-        </QuickChip>
-        <QuickChip active={quick === "aperti"} onClick={() => setQuick("aperti")} icon={<Clock className="size-3.5" />}>
-          Solo con azioni aperte ({counts.aperti})
-        </QuickChip>
-        <QuickChip active={quick === "ritardo"} onClick={() => setQuick("ritardo")} icon={<AlertTriangle className="size-3.5" />} tone="danger">
-          Solo in ritardo ({counts.ritardo})
-        </QuickChip>
+      {/* Tabs cliente */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)}>
+          <TabsList>
+            <TabsTrigger value="aperti" className="gap-1.5">
+              <Clock className="size-3.5" /> Aperti ({counts.aperti})
+            </TabsTrigger>
+            <TabsTrigger value="tutti" className="gap-1.5">
+              <CheckCircle2 className="size-3.5" /> Tutti ({counts.tutti})
+            </TabsTrigger>
+            <TabsTrigger value="conclusi" className="gap-1.5">
+              <CheckCircle2 className="size-3.5" /> Conclusi ({counts.conclusi})
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+        {tab === "aperti" && (
+          <button
+            type="button"
+            onClick={() => setSoloRitardo((v) => !v)}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs border transition-colors",
+              soloRitardo
+                ? "bg-destructive text-destructive-foreground border-destructive"
+                : "bg-background hover:bg-muted text-foreground border-border"
+            )}
+          >
+            <AlertTriangle className="size-3.5" /> Solo in ritardo ({counts.ritardo})
+          </button>
+        )}
       </div>
+
 
       {/* Filters */}
       <Card className="p-4">
