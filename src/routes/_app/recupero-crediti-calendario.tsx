@@ -6,7 +6,8 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import itLocale from "@fullcalendar/core/locales/it";
-import type { DatesSetArg, EventClickArg, EventDropArg } from "@fullcalendar/core";
+import type { DatesSetArg, EventClickArg, EventDropArg, DateSelectArg } from "@fullcalendar/core";
+import type { DateClickArg } from "@fullcalendar/interaction";
 import { CalendarClock, ExternalLink, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmailInviataView } from "@/components/email-inviata-view";
+import { CreaAzioneDialog } from "@/components/crea-azione-dialog";
 import {
   Select,
   SelectContent,
@@ -129,6 +131,8 @@ function CalendarioPage() {
   );
   const [tipoFilter, setTipoFilter] = useState<Set<Tipo>>(new Set());
   const [openAzione, setOpenAzione] = useState<AzioneRow | null>(null);
+  const [creaOpen, setCreaOpen] = useState(false);
+  const [creaData, setCreaData] = useState<Date | null>(null);
 
   const { data: stores } = useQuery({
     queryKey: ["stores-list"],
