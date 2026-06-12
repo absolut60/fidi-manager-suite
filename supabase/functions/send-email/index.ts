@@ -1,5 +1,16 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
+import { LOGO_MADE_BASE64 } from "./logo-made.ts";
+
+// Content-ID fisso usato dal template (<img src="cid:logo-made">).
+const LOGO_CID = "logo-made";
+
+function base64ToBytes(b64: string): Uint8Array {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
