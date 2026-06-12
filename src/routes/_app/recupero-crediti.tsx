@@ -173,6 +173,7 @@ function RecuperoCreditiPage() {
   const [page, setPage] = useState(1);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [promessaOpenFor, setPromessaOpenFor] = useState<string | null>(null);
+  const [sollecitoFor, setSollecitoFor] = useState<{ clienteId: string; azioneId: string } | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounced(search.trim()), 300);
