@@ -1,8 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, Fragment, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, Calendar, FileText, Ban, CalendarClock, Scale, ChevronDown, ChevronUp, Megaphone, Mail } from "lucide-react";
+import { AlertTriangle, Calendar, FileText, Ban, CalendarClock, Scale, ChevronDown, ChevronUp, Megaphone, Mail, Bell, MailOpen } from "lucide-react";
 import { InvioMassivoDialog } from "@/components/invio-massivo-dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -100,6 +101,7 @@ function ScadenziarioPage() {
   const [statoLegale, setStatoLegale] = useState<"tutti" | "in_legale" | "non_in_legale">("tutti");
   const [escludiBonifici, setEscludiBonifici] = useState(true);
   const [escludiLegale, setEscludiLegale] = useState(true);
+  const [avvisatoFilter, setAvvisatoFilter] = useState<"tutti" | "con_azioni" | "senza_azioni">("tutti");
   const [expandedClienteId, setExpandedClienteId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -108,7 +110,7 @@ function ScadenziarioPage() {
   // Reset selection on filter changes
   useEffect(() => {
     setSelectedIds(new Set());
-  }, [storeId, fascia, importoMin, statoBlocco, statoLegale, escludiBonifici, escludiLegale]);
+  }, [storeId, fascia, importoMin, statoBlocco, statoLegale, escludiBonifici, escludiLegale, avvisatoFilter]);
 
   useEffect(() => {
     if (statoLegale === "in_legale") {
@@ -216,6 +218,27 @@ function ScadenziarioPage() {
     staleTime: 60_000,
   });
 
+  type AvvisatoRow = {
+    cliente_id: string;
+    n_azioni: number;
+    ha_email: boolean;
+    ultima_tipo: string | null;
+    ultima_data: string | null;
+  };
+  const { data: avvisatiMap } = useQuery({
+    queryKey: ["clienti-avvisati"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_clienti_avvisati" as never);
+      if (error) throw error;
+      const m = new Map<string, AvvisatoRow>();
+      for (const r of (data ?? []) as unknown as AvvisatoRow[]) {
+        m.set(r.cliente_id, r);
+      }
+      return m;
+    },
+    staleTime: 60_000,
+  });
+
   const clientiMap = useMemo(() => {
     const m = new Map<string, Cliente>();
     (clienti ?? []).forEach((c) => m.set(c.id, c));
@@ -295,8 +318,14 @@ function ScadenziarioPage() {
         if (r.nScadute === 0) return false;
         return r.fascia === fascia;
       })
+      .filter((r) => {
+        if (avvisatoFilter === "tutti") return true;
+        const a = avvisatiMap?.get(r.cliente.id);
+        const avvisato = !!a && a.n_azioni > 0;
+        return avvisatoFilter === "con_azioni" ? avvisato : !avvisato;
+      })
       .sort((a, b) => b.totScad - a.totScad);
-  }, [aggregato, minImp, fascia, today]);
+  }, [aggregato, minImp, fascia, today, avvisatoFilter, avvisatiMap]);
 
   // Conteggio clienti in legale esclusi dalla lista (per badge accanto al toggle).
   // Conta i clienti con scadenze aperte (non pagate, non bonifici) che verrebbero
@@ -416,6 +445,17 @@ function ScadenziarioPage() {
             <label className="text-xs font-medium text-muted-foreground">Importo minimo €</label>
             <Input className="mt-1" type="number" inputMode="numeric" value={importoMin} onChange={(e) => setImportoMin(e.target.value)} placeholder="0" />
           </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Azioni di recupero</label>
+            <Select value={avvisatoFilter} onValueChange={(v) => setAvvisatoFilter(v as typeof avvisatoFilter)}>
+              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="tutti">Tutti</SelectItem>
+                <SelectItem value="con_azioni">Con azioni sullo scaduto attuale</SelectItem>
+                <SelectItem value="senza_azioni">Senza azioni (da contattare)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t">
           <div className="flex flex-wrap items-center gap-4">
@@ -485,6 +525,7 @@ function ScadenziarioPage() {
                       }}
                     />
                   </TableHead>
+                  <TableHead className="w-10 text-center">Az.</TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead>Cod. Gestionale</TableHead>
                   <TableHead>Store</TableHead>
@@ -526,6 +567,16 @@ function ScadenziarioPage() {
                             }}
                           />
                         </TableCell>
+                        <TableCell className="w-10 text-center" onClick={(e) => e.stopPropagation()}>
+                          <AvvisatoIcon
+                            info={avvisatiMap?.get(r.cliente.id) ?? null}
+                            onClick={() => navigate({
+                              to: "/clienti/$clienteId",
+                              params: { clienteId: r.cliente.id },
+                              search: { tab: "attivita" } as never,
+                            })}
+                          />
+                        </TableCell>
                         <TableCell className="font-medium">{r.cliente.ragione_sociale}</TableCell>
                         <TableCell className="font-mono text-xs">{r.cliente.codice_gestionale ?? "—"}</TableCell>
                         <TableCell className="text-xs">{storeName}</TableCell>
@@ -549,7 +600,7 @@ function ScadenziarioPage() {
                       </TableRow>
                       {isExpanded && (
                         <TableRow key={`${r.cliente.id}-exp`} className="bg-muted/40 hover:bg-muted/40">
-                          <TableCell colSpan={15} className="px-4 py-3">
+                          <TableCell colSpan={16} className="px-4 py-3">
                             <ExpandedRischioPanel
                               loading={loadingRischio}
                               data={rischioExpanded}
@@ -653,6 +704,43 @@ function ExpandedRischioPanel({ loading, data, onApri }: { loading: boolean; dat
         </button>
       </div>
     </div>
+  );
+}
+
+type AvvisatoInfo = {
+  cliente_id: string;
+  n_azioni: number;
+  ha_email: boolean;
+  ultima_tipo: string | null;
+  ultima_data: string | null;
+} | null;
+
+function AvvisatoIcon({ info, onClick }: { info: AvvisatoInfo; onClick: () => void }) {
+  const attivo = !!info && info.n_azioni > 0;
+  const Icon = attivo ? (info!.ha_email ? Mail : Bell) : MailOpen;
+  const tooltip = attivo
+    ? `${info!.n_azioni} azion${info!.n_azioni === 1 ? "e" : "i"} sullo scaduto attuale${info!.ultima_tipo ? ` — ultima: ${info!.ultima_tipo}${info!.ultima_data ? " " + fmtDate(info!.ultima_data) : ""}` : ""}`
+    : "Nessuna azione sullo scaduto attuale — apri scheda recupero";
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={onClick}
+            aria-label={tooltip}
+            className={`inline-flex items-center justify-center rounded p-1 transition-colors ${
+              attivo
+                ? "text-primary hover:bg-primary/10"
+                : "text-muted-foreground/60 hover:bg-muted hover:text-foreground"
+            }`}
+          >
+            <Icon className="size-4" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top">{tooltip}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 

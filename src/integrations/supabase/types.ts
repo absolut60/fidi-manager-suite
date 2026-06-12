@@ -2434,6 +2434,16 @@ export type Database = {
     }
     Functions: {
       calcola_livello_fido: { Args: { _importo: number }; Returns: number }
+      get_clienti_avvisati: {
+        Args: never
+        Returns: {
+          cliente_id: string
+          ha_email: boolean
+          n_azioni: number
+          ultima_data: string
+          ultima_tipo: string
+        }[]
+      }
       get_clienti_scadenziario: {
         Args: never
         Returns: {
