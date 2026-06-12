@@ -96,14 +96,25 @@ serve(async (req) => {
           content: text ?? "Apri l'email in un client che supporta HTML.",
           html,
           replyTo: replyTo ?? user,
-          ...(payload.attachments?.length
+          ...((payload.attachments?.length || payload.inlineLogo)
             ? {
-                attachments: payload.attachments.map((a) => ({
-                  filename: a.filename,
-                  content: a.content,
-                  encoding: "base64",
-                  contentType: a.contentType,
-                })),
+                attachments: [
+                  ...(payload.inlineLogo
+                    ? [{
+                        filename: "logo-made.png",
+                        content: base64ToBytes(LOGO_MADE_BASE64),
+                        encoding: "binary" as const,
+                        contentType: "image/png",
+                        contentID: LOGO_CID,
+                      }]
+                    : []),
+                  ...((payload.attachments ?? []).map((a) => ({
+                    filename: a.filename,
+                    content: a.content,
+                    encoding: "base64" as const,
+                    contentType: a.contentType,
+                  }))),
+                ],
               }
             : {}),
         });
