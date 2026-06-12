@@ -49,6 +49,7 @@ const NAV: NavItem[] = [
   { to: "/assicurazioni", label: "Assicurazioni", icon: ShieldCheck, roles: ["admin", "approvatore", "store_manager"], group: "approvazioni" },
   { to: "/legali", label: "Pratiche Legali", icon: Gavel, roles: ["admin", "approvatore", "store_manager"], group: "approvazioni" },
   { to: "/scadenziario", label: "Scadenziario", icon: CalendarClock, roles: ["admin", "approvatore", "store_manager"], group: "approvazioni" },
+  { to: "/recupero-crediti", label: "Recupero Crediti", icon: HandCoins, roles: ["admin", "approvatore", "store_manager"], group: "approvazioni" },
   { to: "/privacy", label: "Privacy", icon: FileSignature, roles: ["admin", "approvatore", "store_manager"], group: "approvazioni" },
   { to: "/import-export", label: "Import / Export", icon: FileSpreadsheet, roles: ["admin"], group: "approvazioni" },
   { to: "/whatsapp", label: "WhatsApp", icon: MessageCircle, roles: ["admin"], group: "approvazioni" },
