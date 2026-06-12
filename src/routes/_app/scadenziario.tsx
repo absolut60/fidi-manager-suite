@@ -89,7 +89,7 @@ function isBonifico(codice: string | null | undefined): boolean {
 
 function ScadenziarioPage() {
   const navigate = useNavigate();
-  const { role, profilo } = useAuth();
+  const { role, profilo, user } = useAuth();
   const isStoreManager = role === "store_manager";
   const myStoreId = profilo?.store_id ?? null;
   const [storeId, setStoreId] = useState(isStoreManager && myStoreId ? myStoreId : "all");
