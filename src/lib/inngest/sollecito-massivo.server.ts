@@ -341,7 +341,7 @@ export const invioMassivoSolleciti = inngest.createFunction(
             const htmlCompleto = wrapEmailHtml(rendered.corpo, sede, {
               nome: cfg.nomeOperatore,
               email: cfg.emailOperatore,
-            });
+            }, { useCid: true });
 
             const sendRes = await sendEmailViaEdge({
               to: d.indirizzo_usato,
@@ -349,6 +349,7 @@ export const invioMassivoSolleciti = inngest.createFunction(
               html: htmlCompleto,
               fromName: "Recupero Crediti MADE",
               replyTo: cfg.emailOperatore ?? undefined,
+              inlineLogo: true,
             });
 
             if (!sendRes.ok) {
