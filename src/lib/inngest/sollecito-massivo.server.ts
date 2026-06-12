@@ -161,8 +161,16 @@ export const invioMassivoSolleciti = inngest.createFunction(
       return {
         templateId: camp.template_id as string | null,
         operatoreId: camp.operatore_id as string | null,
+        annullata: false as boolean,
       };
     });
+
+    if (prep.annullata) {
+      logger.info(`[sollecito-massivo] campagna ${campagna_id} annullata prima dell'avvio, esco`);
+      return { ok: true, annullata: true };
+    }
+
+
 
     if (!prep.templateId) {
       await supabaseAdmin
