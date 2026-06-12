@@ -175,12 +175,23 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
         (a, s) => a + Number(s.importo_scadenza ?? 0), 0,
       );
 
+      // Per l'invio reale rigeneriamo il corpo con cid:logo-made (allegato inline).
+      const baseRender = renderTemplate(
+        { oggetto: selectedTemplate.oggetto, corpo: selectedTemplate.corpo },
+        datiTemplate!,
+      );
+      const htmlPerEmail = wrapEmailHtml(baseRender.corpo, datiSede ?? null, {
+        nome: nomeOperatore,
+        email: user?.email ?? null,
+      }, { useCid: true });
+
       const ok = await sendEmail({
         to: dest,
         subject: rendered.oggetto,
-        html: rendered.corpo,
+        html: htmlPerEmail,
         fromName: "Recupero Crediti MADE",
         replyTo: user?.email ?? undefined,
+        inlineLogo: true,
       });
 
       if (!ok) {
