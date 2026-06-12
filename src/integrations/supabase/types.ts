@@ -267,6 +267,103 @@ export type Database = {
         }
         Relationships: []
       }
+      azioni_recupero: {
+        Row: {
+          cliente_id: string
+          created_at: string
+          data_azione: string
+          data_promessa_pagamento: string | null
+          email_log_id: string | null
+          esito: string
+          id: string
+          importo_riferimento: number | null
+          note: string | null
+          operatore_id: string | null
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string
+          data_azione?: string
+          data_promessa_pagamento?: string | null
+          email_log_id?: string | null
+          esito?: string
+          id?: string
+          importo_riferimento?: number | null
+          note?: string | null
+          operatore_id?: string | null
+          tipo: string
+          updated_at?: string
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string
+          data_azione?: string
+          data_promessa_pagamento?: string | null
+          email_log_id?: string | null
+          esito?: string
+          id?: string
+          importo_riferimento?: number | null
+          note?: string | null
+          operatore_id?: string | null
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "azioni_recupero_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "azioni_recupero_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti_con_rischio"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "azioni_recupero_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+        ]
+      }
+      azioni_recupero_scadenze: {
+        Row: {
+          azione_id: string
+          scadenza_id: string
+        }
+        Insert: {
+          azione_id: string
+          scadenza_id: string
+        }
+        Update: {
+          azione_id?: string
+          scadenza_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "azioni_recupero_scadenze_azione_id_fkey"
+            columns: ["azione_id"]
+            isOneToOne: false
+            referencedRelation: "azioni_recupero"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "azioni_recupero_scadenze_scadenza_id_fkey"
+            columns: ["scadenza_id"]
+            isOneToOne: false
+            referencedRelation: "scadenze"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campagne_whatsapp: {
         Row: {
           creata_da: string | null
@@ -1890,6 +1987,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      template_email: {
+        Row: {
+          attivo: boolean
+          corpo: string
+          created_at: string
+          id: string
+          nome: string
+          oggetto: string
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          attivo?: boolean
+          corpo: string
+          created_at?: string
+          id?: string
+          nome: string
+          oggetto: string
+          tipo?: string
+          updated_at?: string
+        }
+        Update: {
+          attivo?: boolean
+          corpo?: string
+          created_at?: string
+          id?: string
+          nome?: string
+          oggetto?: string
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
