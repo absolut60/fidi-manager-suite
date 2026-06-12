@@ -179,7 +179,7 @@ function RecuperoCreditiPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [storeId, esitoFilter, tipoFilter, operatoreId, searchDebounced, dataDa, dataA, quick, sortKey, sortDir]);
+  }, [storeId, esitoFilter, tipoFilter, operatoreId, searchDebounced, dataDa, dataA, tab, soloRitardo, sortKey, sortDir]);
 
   // Stores
   const { data: stores } = useQuery({
