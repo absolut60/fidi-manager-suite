@@ -15,6 +15,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as FirmaPrivacyTokenRouteImport } from './routes/firma-privacy.$token'
 import { Route as AppWhatsappRouteImport } from './routes/_app/whatsapp'
 import { Route as AppUtentiRouteImport } from './routes/_app/utenti'
+import { Route as AppTemplateEmailRouteImport } from './routes/_app/template-email'
 import { Route as AppScadenziarioRouteImport } from './routes/_app/scadenziario'
 import { Route as AppRichiesteRouteImport } from './routes/_app/richieste'
 import { Route as AppRecuperoCreditiCalendarioRouteImport } from './routes/_app/recupero-crediti-calendario'
@@ -63,6 +64,11 @@ const AppWhatsappRoute = AppWhatsappRouteImport.update({
 const AppUtentiRoute = AppUtentiRouteImport.update({
   id: '/utenti',
   path: '/utenti',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTemplateEmailRoute = AppTemplateEmailRouteImport.update({
+  id: '/template-email',
+  path: '/template-email',
   getParentRoute: () => AppRoute,
 } as any)
 const AppScadenziarioRoute = AppScadenziarioRouteImport.update({
@@ -187,6 +193,7 @@ export interface FileRoutesByFullPath {
   '/recupero-crediti-calendario': typeof AppRecuperoCreditiCalendarioRoute
   '/richieste': typeof AppRichiesteRouteWithChildren
   '/scadenziario': typeof AppScadenziarioRoute
+  '/template-email': typeof AppTemplateEmailRoute
   '/utenti': typeof AppUtentiRoute
   '/whatsapp': typeof AppWhatsappRoute
   '/firma-privacy/$token': typeof FirmaPrivacyTokenRoute
@@ -214,6 +221,7 @@ export interface FileRoutesByTo {
   '/recupero-crediti-calendario': typeof AppRecuperoCreditiCalendarioRoute
   '/richieste': typeof AppRichiesteRouteWithChildren
   '/scadenziario': typeof AppScadenziarioRoute
+  '/template-email': typeof AppTemplateEmailRoute
   '/utenti': typeof AppUtentiRoute
   '/whatsapp': typeof AppWhatsappRoute
   '/firma-privacy/$token': typeof FirmaPrivacyTokenRoute
@@ -243,6 +251,7 @@ export interface FileRoutesById {
   '/_app/recupero-crediti-calendario': typeof AppRecuperoCreditiCalendarioRoute
   '/_app/richieste': typeof AppRichiesteRouteWithChildren
   '/_app/scadenziario': typeof AppScadenziarioRoute
+  '/_app/template-email': typeof AppTemplateEmailRoute
   '/_app/utenti': typeof AppUtentiRoute
   '/_app/whatsapp': typeof AppWhatsappRoute
   '/firma-privacy/$token': typeof FirmaPrivacyTokenRoute
@@ -272,6 +281,7 @@ export interface FileRouteTypes {
     | '/recupero-crediti-calendario'
     | '/richieste'
     | '/scadenziario'
+    | '/template-email'
     | '/utenti'
     | '/whatsapp'
     | '/firma-privacy/$token'
@@ -299,6 +309,7 @@ export interface FileRouteTypes {
     | '/recupero-crediti-calendario'
     | '/richieste'
     | '/scadenziario'
+    | '/template-email'
     | '/utenti'
     | '/whatsapp'
     | '/firma-privacy/$token'
@@ -327,6 +338,7 @@ export interface FileRouteTypes {
     | '/_app/recupero-crediti-calendario'
     | '/_app/richieste'
     | '/_app/scadenziario'
+    | '/_app/template-email'
     | '/_app/utenti'
     | '/_app/whatsapp'
     | '/firma-privacy/$token'
@@ -389,6 +401,13 @@ declare module '@tanstack/react-router' {
       path: '/utenti'
       fullPath: '/utenti'
       preLoaderRoute: typeof AppUtentiRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/template-email': {
+      id: '/_app/template-email'
+      path: '/template-email'
+      fullPath: '/template-email'
+      preLoaderRoute: typeof AppTemplateEmailRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/scadenziario': {
@@ -574,6 +593,7 @@ interface AppRouteChildren {
   AppRecuperoCreditiCalendarioRoute: typeof AppRecuperoCreditiCalendarioRoute
   AppRichiesteRoute: typeof AppRichiesteRouteWithChildren
   AppScadenziarioRoute: typeof AppScadenziarioRoute
+  AppTemplateEmailRoute: typeof AppTemplateEmailRoute
   AppUtentiRoute: typeof AppUtentiRoute
   AppWhatsappRoute: typeof AppWhatsappRoute
 }
@@ -594,6 +614,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppRecuperoCreditiCalendarioRoute: AppRecuperoCreditiCalendarioRoute,
   AppRichiesteRoute: AppRichiesteRouteWithChildren,
   AppScadenziarioRoute: AppScadenziarioRoute,
+  AppTemplateEmailRoute: AppTemplateEmailRoute,
   AppUtentiRoute: AppUtentiRoute,
   AppWhatsappRoute: AppWhatsappRoute,
 }
