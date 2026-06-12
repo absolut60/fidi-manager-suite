@@ -81,7 +81,7 @@ const TIPI = [
 
 type Esito = (typeof ESITI)[number]["value"];
 type Tipo = (typeof TIPI)[number]["value"];
-type QuickFilter = "tutti" | "aperti" | "ritardo";
+type TabKey = "aperti" | "tutti" | "conclusi";
 type SortKey = "priorita" | "ragione_sociale" | "scaduto" | "azioni_aperte" | "prossima" | "ultima";
 
 function fmtEuro(v: unknown): string {
