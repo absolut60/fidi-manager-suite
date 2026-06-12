@@ -15,6 +15,7 @@ export interface SendEmailOptions {
     content: string; // base64
     contentType: string;
   }>;
+  inlineLogo?: boolean;
 }
 
 export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
