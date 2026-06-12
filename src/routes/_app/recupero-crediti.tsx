@@ -571,7 +571,21 @@ function RecuperoCreditiPage() {
                         {r.operatore_id ? operatoreMap[r.operatore_id] ?? "—" : "—"}
                       </TableCell>
                       <TableCell className="max-w-[260px] text-sm text-muted-foreground truncate">
-                        {r.note ?? "—"}
+                        {r.tipo === "email" && r.esito === "da_fare" ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1.5 h-7"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSollecitoFor({ clienteId: r.cliente_id, azioneId: r.id });
+                            }}
+                          >
+                            <Send className="size-3.5" /> Invia
+                          </Button>
+                        ) : (
+                          r.note ?? "—"
+                        )}
                       </TableCell>
                     </TableRow>
                     {expanded && (
