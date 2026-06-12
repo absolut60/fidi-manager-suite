@@ -373,6 +373,137 @@ export type Database = {
           },
         ]
       }
+      campagne_sollecito: {
+        Row: {
+          completata_at: string | null
+          created_at: string
+          falliti: number
+          id: string
+          inviati: number
+          note: string | null
+          operatore_id: string | null
+          preferenza_indirizzo: string
+          saltati: number
+          stato: string
+          template_id: string | null
+          totale_destinatari: number
+          updated_at: string
+        }
+        Insert: {
+          completata_at?: string | null
+          created_at?: string
+          falliti?: number
+          id?: string
+          inviati?: number
+          note?: string | null
+          operatore_id?: string | null
+          preferenza_indirizzo?: string
+          saltati?: number
+          stato?: string
+          template_id?: string | null
+          totale_destinatari?: number
+          updated_at?: string
+        }
+        Update: {
+          completata_at?: string | null
+          created_at?: string
+          falliti?: number
+          id?: string
+          inviati?: number
+          note?: string | null
+          operatore_id?: string | null
+          preferenza_indirizzo?: string
+          saltati?: number
+          stato?: string
+          template_id?: string | null
+          totale_destinatari?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campagne_sollecito_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "template_email"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campagne_sollecito_destinatari: {
+        Row: {
+          azione_id: string | null
+          campagna_id: string
+          cliente_id: string
+          created_at: string
+          errore: string | null
+          id: string
+          importo_riferimento: number | null
+          indirizzo_usato: string | null
+          inviato_at: string | null
+          stato: string
+        }
+        Insert: {
+          azione_id?: string | null
+          campagna_id: string
+          cliente_id: string
+          created_at?: string
+          errore?: string | null
+          id?: string
+          importo_riferimento?: number | null
+          indirizzo_usato?: string | null
+          inviato_at?: string | null
+          stato?: string
+        }
+        Update: {
+          azione_id?: string | null
+          campagna_id?: string
+          cliente_id?: string
+          created_at?: string
+          errore?: string | null
+          id?: string
+          importo_riferimento?: number | null
+          indirizzo_usato?: string | null
+          inviato_at?: string | null
+          stato?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campagne_sollecito_destinatari_azione_id_fkey"
+            columns: ["azione_id"]
+            isOneToOne: false
+            referencedRelation: "azioni_recupero"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campagne_sollecito_destinatari_campagna_id_fkey"
+            columns: ["campagna_id"]
+            isOneToOne: false
+            referencedRelation: "campagne_sollecito"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campagne_sollecito_destinatari_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campagne_sollecito_destinatari_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti_con_rischio"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campagne_sollecito_destinatari_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+        ]
+      }
       campagne_whatsapp: {
         Row: {
           creata_da: string | null
