@@ -23,6 +23,7 @@ async function sendEmailViaEdge(payload: {
   html: string;
   fromName?: string;
   replyTo?: string;
+  inlineLogo?: boolean;
 }): Promise<{ ok: boolean; err?: string }> {
   const SUPABASE_URL = process.env.SUPABASE_URL!;
   const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_ANON_KEY ?? "";
@@ -340,7 +341,7 @@ export const invioMassivoSolleciti = inngest.createFunction(
             const htmlCompleto = wrapEmailHtml(rendered.corpo, sede, {
               nome: cfg.nomeOperatore,
               email: cfg.emailOperatore,
-            });
+            }, { useCid: true });
 
             const sendRes = await sendEmailViaEdge({
               to: d.indirizzo_usato,
@@ -348,6 +349,7 @@ export const invioMassivoSolleciti = inngest.createFunction(
               html: htmlCompleto,
               fromName: "Recupero Crediti MADE",
               replyTo: cfg.emailOperatore ?? undefined,
+              inlineLogo: true,
             });
 
             if (!sendRes.ok) {

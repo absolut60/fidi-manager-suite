@@ -182,12 +182,18 @@ export function wrapEmailHtml(
   corpoRenderizzato: string,
   datiSede: DatiSede | null | undefined,
   datiMittente: DatiMittente,
+  opts?: { useCid?: boolean },
 ): string {
   const sedeLine = formatSedeLine(datiSede);
   const operatore = escapeHtml(datiMittente.nome || "Operatore");
   const operatoreEmail = datiMittente.email
     ? `<div style="font-size:11px;color:#64748b;margin-top:2px;">${escapeHtml(datiMittente.email)}</div>`
     : "";
+
+  // In email reale (useCid=true) puntiamo all'allegato inline cid:logo-made
+  // — bypassando proxy aziendali che bloccano immagini remote.
+  // In anteprima (default) usiamo l'URL pubblico, perche cid: non viene risolto nel browser.
+  const imgSrc = opts?.useCid ? "cid:logo-made" : LOGO_EMAIL_URL;
 
   return `<!DOCTYPE html>
 <html lang="it"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><title>Sollecito</title></head>
@@ -200,7 +206,7 @@ export function wrapEmailHtml(
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
             <td style="vertical-align:middle;">
               <a href="https://www.gruppomade.eu" style="text-decoration:none;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:22px;font-weight:700;letter-spacing:2px;">
-                <img src="${LOGO_EMAIL_URL}" alt="MADE" width="160" height="22" style="display:block;border:0;outline:none;text-decoration:none;background:transparent;max-width:160px;height:auto;" />
+                <img src="${imgSrc}" alt="MADE" width="160" height="22" style="display:block;border:0;outline:none;text-decoration:none;background:transparent;max-width:160px;height:auto;" />
               </a>
             </td>
             <td align="right" style="vertical-align:middle;color:#ffffff;font-size:11px;font-family:Arial,Helvetica,sans-serif;">

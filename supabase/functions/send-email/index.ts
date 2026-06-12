@@ -1,5 +1,16 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
+import { LOGO_MADE_BASE64 } from "./logo-made.ts";
+
+// Content-ID fisso usato dal template (<img src="cid:logo-made">).
+const LOGO_CID = "logo-made";
+
+function base64ToBytes(b64: string): Uint8Array {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -22,6 +33,7 @@ interface EmailPayload {
   replyTo?: string;
   fromName?: string;
   attachments?: EmailAttachment[];
+  inlineLogo?: boolean; // se true, allega il logo MADE come inline CID "logo-made"
 }
 
 function sanitizeDisplayName(s: string | undefined | null): string {
@@ -84,14 +96,25 @@ serve(async (req) => {
           content: text ?? "Apri l'email in un client che supporta HTML.",
           html,
           replyTo: replyTo ?? user,
-          ...(payload.attachments?.length
+          ...((payload.attachments?.length || payload.inlineLogo)
             ? {
-                attachments: payload.attachments.map((a) => ({
-                  filename: a.filename,
-                  content: a.content,
-                  encoding: "base64",
-                  contentType: a.contentType,
-                })),
+                attachments: [
+                  ...(payload.inlineLogo
+                    ? [{
+                        filename: "logo-made.png",
+                        content: base64ToBytes(LOGO_MADE_BASE64),
+                        encoding: "binary" as const,
+                        contentType: "image/png",
+                        contentID: LOGO_CID,
+                      }]
+                    : []),
+                  ...((payload.attachments ?? []).map((a) => ({
+                    filename: a.filename,
+                    content: a.content,
+                    encoding: "base64" as const,
+                    contentType: a.contentType,
+                  }))),
+                ],
               }
             : {}),
         });
