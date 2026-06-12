@@ -27,6 +27,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ClienteCantieriTab } from "@/components/cliente-cantieri-tab";
 import { ClienteStoricoFidoTab } from "@/components/cliente-storico-fido-tab";
 import { ClienteInsolutiTab } from "@/components/cliente-insoluti-tab";
+import { ClienteAttivitaRecuperoTab } from "@/components/cliente-attivita-recupero-tab";
 import { ClienteFatturato } from "@/components/cliente-fatturato";
 import { formatEuro } from "@/lib/fidi";
 import { classificaScadenza } from "@/lib/scadenze";
@@ -39,7 +40,7 @@ import { CategoriaSelect } from "@/components/categoria-select";
 
 
 
-const TAB_VALUES = ["riepilogo", "anagrafica", "contatti", "cantieri", "storico", "insoluti", "privacy"] as const;
+const TAB_VALUES = ["riepilogo", "anagrafica", "contatti", "cantieri", "storico", "insoluti", "attivita", "privacy"] as const;
 const INSOLUTI_SUB_VALUES = ["riepilogo", "scadenziario", "solleciti", "legali", "assicurazioni"] as const;
 
 export const Route = createFileRoute("/_app/clienti/$clienteId")({
@@ -429,6 +430,7 @@ function ClienteDetail() {
           <TabsTrigger value="cantieri">Cantieri</TabsTrigger>
           <TabsTrigger value="storico">Fido</TabsTrigger>
           <TabsTrigger value="insoluti">Dati Rischio</TabsTrigger>
+          <TabsTrigger value="attivita">Attività recupero</TabsTrigger>
           <TabsTrigger value="privacy">Privacy</TabsTrigger>
         </TabsList>
 
@@ -556,6 +558,10 @@ function ClienteDetail() {
 
         <TabsContent value="insoluti">
           <ClienteInsolutiTab cliente={{ id: clienteId, bloccato: (cliente as any).bloccato, in_gestione_legale: (cliente as any).in_gestione_legale, motivo_blocco: (cliente as any).motivo_blocco, data_blocco: (cliente as any).data_blocco }} defaultSubTab={insolutiTab} />
+        </TabsContent>
+
+        <TabsContent value="attivita">
+          <ClienteAttivitaRecuperoTab clienteId={clienteId} />
         </TabsContent>
 
         <TabsContent value="privacy">
