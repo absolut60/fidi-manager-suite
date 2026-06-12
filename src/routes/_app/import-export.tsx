@@ -1259,7 +1259,7 @@ function parseOfficialScadenziarioSheet(sheet: XLSX.WorkSheet): {
   const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
     header: 1,
     defval: "",
-    blankrows: false,
+    blankrows: true,
   });
   if (matrix.length < 3) return { rows: [], missing: [], totRead: 0 };
   const headers = (matrix[1] ?? []).map((c) => normalizeOfficialHeader(c));
