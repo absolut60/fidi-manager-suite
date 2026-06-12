@@ -1,7 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, Fragment, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, Calendar, FileText, Ban, CalendarClock, Scale, ChevronDown, ChevronUp } from "lucide-react";
+import { AlertTriangle, Calendar, FileText, Ban, CalendarClock, Scale, ChevronDown, ChevronUp, Megaphone } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +12,11 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Textarea } from "@/components/ui/textarea";
 import { classificaScadenza } from "@/lib/scadenze";
 import { useAuth } from "@/hooks/use-auth";
 
