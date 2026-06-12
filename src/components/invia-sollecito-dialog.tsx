@@ -7,7 +7,9 @@ import { useAuth } from "@/hooks/use-auth";
 import { sendEmail } from "@/lib/send-email";
 import {
   caricaDatiCliente,
+  caricaSedeCliente,
   renderTemplate,
+  wrapEmailHtml,
   type TemplateEmail,
 } from "@/lib/template-email";
 import { classificaScadenza } from "@/lib/scadenze";
