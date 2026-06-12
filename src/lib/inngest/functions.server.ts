@@ -69,6 +69,7 @@ type StagedScadenziarioManifest = {
 type StagedScadenziarioChunk = {
   rows: ScadRow[];
   missing: number[];
+  rowErrors?: Array<{ riga: number; errore: string }>;
 };
 
 async function sendInngestEvents(events: object[]): Promise<void> {
