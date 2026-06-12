@@ -161,39 +161,66 @@ function CampagnePage() {
               <TableHead className="text-right">Saltati</TableHead>
               <TableHead className="text-right">Falliti</TableHead>
               <TableHead className="min-w-[180px]">Avanzamento</TableHead>
-              <TableHead></TableHead>
+              <TableHead className="w-[60px]"></TableHead>
+              <TableHead className="w-[40px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               Array.from({ length: 3 }).map((_, i) => (
-                <TableRow key={i}><TableCell colSpan={10}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
+                <TableRow key={i}><TableCell colSpan={11}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
               ))
             ) : !campagne || campagne.length === 0 ? (
-              <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">
+              <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">
                 Nessuna campagna ancora avviata.
               </TableCell></TableRow>
             ) : (
               campagne.map((c) => {
                 const processati = c.inviati + c.saltati + c.falliti;
                 const pct = c.totale_destinatari > 0 ? Math.round((processati / c.totale_destinatari) * 100) : 0;
+                const isAttiva = c.stato === "in_coda" || c.stato === "in_corso";
+                const isTerminale = c.stato === "completata" || c.stato === "completata_con_errori" || c.stato === "annullata";
                 return (
-                  <TableRow key={c.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setOpenDettaglio(c.id)}>
-                    <TableCell className="whitespace-nowrap">{fmtDateTime(c.created_at)}</TableCell>
-                    <TableCell>{`${c.operatore?.nome ?? ""} ${c.operatore?.cognome ?? ""}`.trim() || "—"}</TableCell>
-                    <TableCell>{c.template?.nome ?? "—"}</TableCell>
-                    <TableCell><StatoBadge s={c.stato} /></TableCell>
-                    <TableCell className="text-right font-medium">{c.totale_destinatari}</TableCell>
-                    <TableCell className="text-right text-emerald-600">{c.inviati}</TableCell>
-                    <TableCell className="text-right text-amber-600">{c.saltati}</TableCell>
-                    <TableCell className="text-right text-destructive">{c.falliti}</TableCell>
-                    <TableCell>
+                  <TableRow key={c.id} className="hover:bg-muted/50">
+                    <TableCell className="whitespace-nowrap cursor-pointer" onClick={() => setOpenDettaglio(c.id)}>{fmtDateTime(c.created_at)}</TableCell>
+                    <TableCell className="cursor-pointer" onClick={() => setOpenDettaglio(c.id)}>{`${c.operatore?.nome ?? ""} ${c.operatore?.cognome ?? ""}`.trim() || "—"}</TableCell>
+                    <TableCell className="cursor-pointer" onClick={() => setOpenDettaglio(c.id)}>{c.template?.nome ?? "—"}</TableCell>
+                    <TableCell className="cursor-pointer" onClick={() => setOpenDettaglio(c.id)}><StatoBadge s={c.stato} /></TableCell>
+                    <TableCell className="text-right font-medium cursor-pointer" onClick={() => setOpenDettaglio(c.id)}>{c.totale_destinatari}</TableCell>
+                    <TableCell className="text-right text-emerald-600 cursor-pointer" onClick={() => setOpenDettaglio(c.id)}>{c.inviati}</TableCell>
+                    <TableCell className="text-right text-amber-600 cursor-pointer" onClick={() => setOpenDettaglio(c.id)}>{c.saltati}</TableCell>
+                    <TableCell className="text-right text-destructive cursor-pointer" onClick={() => setOpenDettaglio(c.id)}>{c.falliti}</TableCell>
+                    <TableCell className="cursor-pointer" onClick={() => setOpenDettaglio(c.id)}>
                       <div className="flex items-center gap-2">
                         <Progress value={pct} className="h-2" />
                         <span className="text-xs text-muted-foreground tabular-nums w-10">{pct}%</span>
                       </div>
                     </TableCell>
-                    <TableCell><ChevronRight className="size-4 text-muted-foreground" /></TableCell>
+                    <TableCell className="cursor-pointer" onClick={() => setOpenDettaglio(c.id)}><ChevronRight className="size-4 text-muted-foreground" /></TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="size-8" onClick={(e) => e.stopPropagation()}>
+                            <MoreHorizontal className="size-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {isAttiva && (
+                            <DropdownMenuItem onClick={() => setConfermaAnnulla(c.id)}>
+                              <Ban className="size-4 mr-2" /> Annulla campagna
+                            </DropdownMenuItem>
+                          )}
+                          {isTerminale && (
+                            <DropdownMenuItem onClick={() => setConfermaElimina(c.id)} className="text-destructive focus:text-destructive">
+                              <Trash2 className="size-4 mr-2" /> Elimina campagna
+                            </DropdownMenuItem>
+                          )}
+                          {!isAttiva && !isTerminale && (
+                            <DropdownMenuItem disabled>Nessuna azione disponibile</DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
                   </TableRow>
                 );
               })
@@ -208,9 +235,45 @@ function CampagnePage() {
           onClose={() => setOpenDettaglio(null)}
         />
       )}
+
+      <AlertDialog open={!!confermaAnnulla} onOpenChange={(v) => !v && setConfermaAnnulla(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Annullare la campagna?</AlertDialogTitle>
+            <AlertDialogDescription>
+              I destinatari ancora da inviare verranno marcati come annullati e il job si fermerà al prossimo blocco.
+              I solleciti già inviati restano nella scheda del cliente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={busy}>Indietro</AlertDialogCancel>
+            <AlertDialogAction disabled={busy} onClick={() => confermaAnnulla && doAnnulla(confermaAnnulla)}>
+              Annulla campagna
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!confermaElimina} onOpenChange={(v) => !v && setConfermaElimina(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminare la campagna?</AlertDialogTitle>
+            <AlertDialogDescription>
+              La campagna verrà rimossa insieme alla lista destinatari. <strong>I solleciti già inviati resteranno nella scheda cliente</strong> (timeline attività di recupero). Operazione non reversibile.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={busy}>Indietro</AlertDialogCancel>
+            <AlertDialogAction disabled={busy} onClick={() => confermaElimina && doElimina(confermaElimina)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Elimina
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
+
 
 type DestRow = {
   id: string;
