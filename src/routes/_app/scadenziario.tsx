@@ -318,8 +318,14 @@ function ScadenziarioPage() {
         if (r.nScadute === 0) return false;
         return r.fascia === fascia;
       })
+      .filter((r) => {
+        if (avvisatoFilter === "tutti") return true;
+        const a = avvisatiMap?.get(r.cliente.id);
+        const avvisato = !!a && a.n_azioni > 0;
+        return avvisatoFilter === "con_azioni" ? avvisato : !avvisato;
+      })
       .sort((a, b) => b.totScad - a.totScad);
-  }, [aggregato, minImp, fascia, today]);
+  }, [aggregato, minImp, fascia, today, avvisatoFilter, avvisatiMap]);
 
   // Conteggio clienti in legale esclusi dalla lista (per badge accanto al toggle).
   // Conta i clienti con scadenze aperte (non pagate, non bonifici) che verrebbero
