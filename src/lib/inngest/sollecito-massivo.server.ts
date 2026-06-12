@@ -346,7 +346,7 @@ export const invioMassivoSolleciti = inngest.createFunction(
               to: d.indirizzo_usato,
               subject: rendered.oggetto,
               html: htmlCompleto,
-              fromName: cfg.nomeOperatore,
+              fromName: "Recupero Crediti MADE",
               replyTo: cfg.emailOperatore ?? undefined,
             });
 
