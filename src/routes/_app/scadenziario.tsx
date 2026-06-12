@@ -36,6 +36,7 @@ function fmtDate(v: unknown): string {
 }
 
 type ScadRow = {
+  id: string;
   cliente_id: string;
   importo_scadenza: number | null;
   giorni_ritardo: number | null;
