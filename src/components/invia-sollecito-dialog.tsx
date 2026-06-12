@@ -42,7 +42,6 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
   const [templateId, setTemplateId] = useState<string>("");
   const [destSource, setDestSource] = useState<"email" | "pec" | "custom">("email");
   const [destEmail, setDestEmail] = useState<string>("");
-  const [copiaSelezionata, setCopiaSelezionata] = useState<boolean>(false);
   const [sending, setSending] = useState(false);
 
   // Reset on open/close
