@@ -1,0 +1,1 @@
+ALTER TABLE public.importazioni ADD COLUMN IF NOT EXISTS report_saltati jsonb;
