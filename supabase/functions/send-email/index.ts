@@ -33,6 +33,7 @@ interface EmailPayload {
   replyTo?: string;
   fromName?: string;
   attachments?: EmailAttachment[];
+  inlineLogo?: boolean; // se true, allega il logo MADE come inline CID "logo-made"
 }
 
 function sanitizeDisplayName(s: string | undefined | null): string {
