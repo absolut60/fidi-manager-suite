@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Plus } from "lucide-react";
+import { Plus, Search, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { classificaScadenza } from "@/lib/scadenze";
@@ -27,7 +27,8 @@ import {
 type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  clienteId: string;
+  /** Se fornito, il cliente è fissato. Se assente, il dialog mostra un selettore. */
+  clienteId?: string;
   /** Tipo iniziale (default 'promemoria') */
   tipoIniziale?: TipoAzione;
   /** Data iniziale (default = now) */
@@ -48,10 +49,11 @@ function toDatetimeLocal(d: Date): string {
 }
 
 export function CreaAzioneDialog({
-  open, onOpenChange, clienteId, tipoIniziale = "promemoria", dataIniziale, onCreated,
+  open, onOpenChange, clienteId: clienteIdProp, tipoIniziale = "promemoria", dataIniziale, onCreated,
 }: Props) {
   const qc = useQueryClient();
   const { user } = useAuth();
+  const clienteFissato = !!clienteIdProp;
 
   const [tipo, setTipo] = useState<TipoAzione>(tipoIniziale);
   const [dataAzione, setDataAzione] = useState<string>(toDatetimeLocal(dataIniziale ?? new Date()));
@@ -59,6 +61,10 @@ export function CreaAzioneDialog({
   const [scadenzeSel, setScadenzeSel] = useState<Set<string>>(new Set());
   const [reminder, setReminder] = useState<ReminderState>(defaultReminderFor(tipoIniziale));
   const [saving, setSaving] = useState(false);
+  // Cliente: se fissato dal prop, usa quello; altrimenti gestito tramite picker interno
+  const [pickedClienteId, setPickedClienteId] = useState<string | null>(null);
+
+  const effectiveClienteId = clienteFissato ? clienteIdProp! : pickedClienteId;
 
   // Reset on open
   useEffect(() => {
@@ -69,38 +75,44 @@ export function CreaAzioneDialog({
       setScadenzeSel(new Set());
       setReminder(defaultReminderFor(tipoIniziale));
       setSaving(false);
+      setPickedClienteId(null);
     }
   }, [open, tipoIniziale, dataIniziale]);
 
-  // Cliente (per nome)
+  // Cliente (per nome) — solo se abbiamo un id
   const { data: cliente } = useQuery({
-    queryKey: ["crea-azione-cliente", clienteId],
+    queryKey: ["crea-azione-cliente", effectiveClienteId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clienti")
         .select("id, ragione_sociale")
-        .eq("id", clienteId)
+        .eq("id", effectiveClienteId!)
         .maybeSingle();
       if (error) throw error;
       return data;
     },
-    enabled: open && !!clienteId,
+    enabled: open && !!effectiveClienteId,
   });
 
   // Scadenze del cliente
   const { data: scadenze } = useQuery({
-    queryKey: ["crea-azione-scadenze", clienteId],
+    queryKey: ["crea-azione-scadenze", effectiveClienteId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("scadenze")
         .select("id, numero_documento, data_scadenza, importo_scadenza, giorni_ritardo, stato_contabile, tempi_scadenza")
-        .eq("cliente_id", clienteId)
+        .eq("cliente_id", effectiveClienteId!)
         .order("data_scadenza", { ascending: true });
       if (error) throw error;
       return (data ?? []).filter((s: any) => classificaScadenza(s) === "scaduto");
     },
-    enabled: open && !!clienteId,
+    enabled: open && !!effectiveClienteId,
   });
+
+  // Reset scadenze sel quando cambia cliente
+  useEffect(() => {
+    setScadenzeSel(new Set());
+  }, [effectiveClienteId]);
 
   const totaleScaduto = useMemo(
     () => (scadenze ?? []).reduce((a: number, s: any) => a + Number(s.importo_scadenza ?? 0), 0),
@@ -118,22 +130,18 @@ export function CreaAzioneDialog({
 
   async function handleConferma() {
     if (saving) return;
+    if (!effectiveClienteId) {
+      toast.error("Seleziona un cliente");
+      return;
+    }
     const dt = new Date(dataAzione);
     if (isNaN(dt.getTime())) {
       toast.error("Data non valida");
       return;
     }
-    // Esito: 'nota' → 'fatto' se data <= ora, altrimenti 'da_fare'. Altri tipi: 'fatto' se passata, altrimenti 'da_fare'.
     const now = new Date();
     const futura = dt.getTime() > now.getTime() + 60 * 1000;
-    let esito: "da_fare" | "fatto";
-    if (tipo === "nota") {
-      esito = futura ? "da_fare" : "fatto";
-    } else if (tipo === "promemoria" || tipo === "telefonata") {
-      esito = futura ? "da_fare" : "fatto";
-    } else {
-      esito = futura ? "da_fare" : "fatto";
-    }
+    const esito: "da_fare" | "fatto" = futura ? "da_fare" : "fatto";
 
     setSaving(true);
     try {
@@ -141,7 +149,7 @@ export function CreaAzioneDialog({
       const { data: inserita, error } = await supabase
         .from("azioni_recupero")
         .insert({
-          cliente_id: clienteId,
+          cliente_id: effectiveClienteId,
           operatore_id: user?.id ?? null,
           tipo,
           esito,
@@ -162,7 +170,7 @@ export function CreaAzioneDialog({
       if (reminder.attivo && reminder.giorni > 0) {
         try {
           await creaFollowUp({
-            clienteId,
+            clienteId: effectiveClienteId,
             operatoreId: user?.id ?? null,
             dataPrincipale: dt,
             giorni: reminder.giorni,
@@ -181,8 +189,8 @@ export function CreaAzioneDialog({
       qc.invalidateQueries({ queryKey: ["azioni-recupero"] });
       qc.invalidateQueries({ queryKey: ["azioni-recupero-metrics"] });
       qc.invalidateQueries({ queryKey: ["azioni-recupero-counts"] });
-      qc.invalidateQueries({ queryKey: ["azioni-recupero-cliente", clienteId] });
-      qc.invalidateQueries({ queryKey: ["azioni-recupero-calendario"] });
+      qc.invalidateQueries({ queryKey: ["azioni-recupero-cliente", effectiveClienteId] });
+      qc.invalidateQueries({ queryKey: ["azioni-calendario"] });
       onCreated?.();
       onOpenChange(false);
     } catch (e: any) {
@@ -201,11 +209,22 @@ export function CreaAzioneDialog({
             <Plus className="size-5" /> Nuova azione di recupero
           </DialogTitle>
           <DialogDescription>
-            {cliente ? <>Cliente: <strong>{cliente.ragione_sociale}</strong></> : "Caricamento cliente..."}
+            {clienteFissato
+              ? (cliente ? <>Cliente: <strong>{cliente.ragione_sociale}</strong></> : "Caricamento cliente...")
+              : "Seleziona un cliente e compila i dettagli dell'azione."}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
+          {!clienteFissato && (
+            <ClientePicker
+              selected={pickedClienteId}
+              selectedName={cliente?.ragione_sociale ?? null}
+              onPick={setPickedClienteId}
+              onClear={() => setPickedClienteId(null)}
+            />
+          )}
+
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Tipo</Label>
@@ -271,11 +290,96 @@ export function CreaAzioneDialog({
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>Annulla</Button>
-          <Button onClick={handleConferma} disabled={saving} className="gap-1.5">
+          <Button onClick={handleConferma} disabled={saving || !effectiveClienteId} className="gap-1.5">
             <Plus className="size-4" /> {saving ? "Salvataggio…" : "Crea azione"}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function ClientePicker({
+  selected, selectedName, onPick, onClear,
+}: {
+  selected: string | null;
+  selectedName: string | null;
+  onPick: (id: string) => void;
+  onClear: () => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [debounced, setDebounced] = useState("");
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(search.trim()), 250);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const { data: risultati, isFetching } = useQuery({
+    queryKey: ["crea-azione-cliente-search", debounced],
+    enabled: !selected && debounced.length >= 2,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("clienti")
+        .select("id, ragione_sociale, partita_iva")
+        .ilike("ragione_sociale", `%${debounced}%`)
+        .order("ragione_sociale")
+        .limit(20);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  if (selected) {
+    return (
+      <div className="space-y-1.5">
+        <Label>Cliente</Label>
+        <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2">
+          <span className="text-sm font-medium truncate">{selectedName ?? "Caricamento…"}</span>
+          <Button variant="ghost" size="sm" className="h-7 gap-1" onClick={onClear}>
+            <X className="size-3.5" /> Cambia
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <Label>Cliente *</Label>
+      <div className="relative">
+        <Search className="absolute left-2 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+        <Input
+          autoFocus
+          placeholder="Cerca per ragione sociale (min. 2 caratteri)…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-8"
+        />
+      </div>
+      {debounced.length >= 2 && (
+        <div className="rounded-md border border-border max-h-48 overflow-y-auto divide-y divide-border">
+          {isFetching && (
+            <div className="px-3 py-2 text-xs text-muted-foreground">Ricerca in corso…</div>
+          )}
+          {!isFetching && (risultati?.length ?? 0) === 0 && (
+            <div className="px-3 py-2 text-xs text-muted-foreground">Nessun cliente trovato</div>
+          )}
+          {(risultati ?? []).map((c: any) => (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => onPick(c.id)}
+              className="w-full text-left px-3 py-2 text-sm hover:bg-muted/40 flex items-center justify-between gap-2"
+            >
+              <span className="font-medium truncate">{c.ragione_sociale}</span>
+              {c.partita_iva && (
+                <span className="text-xs text-muted-foreground shrink-0">{c.partita_iva}</span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
