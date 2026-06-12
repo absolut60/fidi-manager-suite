@@ -14,7 +14,9 @@ import {
   Bell,
   StickyNote,
   FileText,
+  Send,
 } from "lucide-react";
+import { InviaSollecitoDialog } from "@/components/invia-sollecito-dialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
