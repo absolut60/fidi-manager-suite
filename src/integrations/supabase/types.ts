@@ -1976,34 +1976,52 @@ export type Database = {
       stores: {
         Row: {
           attivo: boolean
+          cap: string | null
           citta: string | null
           codice: string
           created_at: string
+          email_sede: string | null
           id: string
           indirizzo: string | null
           nome: string
+          pec_sede: string | null
+          piva: string | null
+          provincia: string | null
+          ragione_sociale_sede: string | null
           telefono: string | null
           updated_at: string
         }
         Insert: {
           attivo?: boolean
+          cap?: string | null
           citta?: string | null
           codice: string
           created_at?: string
+          email_sede?: string | null
           id?: string
           indirizzo?: string | null
           nome: string
+          pec_sede?: string | null
+          piva?: string | null
+          provincia?: string | null
+          ragione_sociale_sede?: string | null
           telefono?: string | null
           updated_at?: string
         }
         Update: {
           attivo?: boolean
+          cap?: string | null
           citta?: string | null
           codice?: string
           created_at?: string
+          email_sede?: string | null
           id?: string
           indirizzo?: string | null
           nome?: string
+          pec_sede?: string | null
+          piva?: string | null
+          provincia?: string | null
+          ragione_sociale_sede?: string | null
           telefono?: string | null
           updated_at?: string
         }
