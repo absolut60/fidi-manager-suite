@@ -11,6 +11,11 @@ type Fonte =
   | "scadenziario_assicurazioni"
   | "blocco_fido_assicurazione";
 
+export type ReportSaltati = {
+  cliente_non_trovato?: Record<string, { ragione_sociale: string; count: number }>;
+  errori_riga?: Array<{ riga: number; errore: string }>;
+};
+
 export type BackgroundImportProgress = {
   stato: string | null;
   righe_totali: number | null;
@@ -21,6 +26,7 @@ export type BackgroundImportProgress = {
   righe_saltate: number | null;
   codici_mancanti: string[] | null;
   log_errori: unknown;
+  report_saltati?: ReportSaltati | null;
   completata_at: string | null;
 };
 
@@ -179,7 +185,7 @@ export function useBackgroundImport(opts: {
       const { data } = await supabase
         .from("importazioni")
         .select(
-          "stato, righe_totali, righe_elaborate, righe_create, righe_aggiornate, righe_errore, righe_saltate, codici_mancanti, log_errori, completata_at",
+          "stato, righe_totali, righe_elaborate, righe_create, righe_aggiornate, righe_errore, righe_saltate, codici_mancanti, log_errori, report_saltati, completata_at",
         )
         .eq("id", importazioneId)
         .single();

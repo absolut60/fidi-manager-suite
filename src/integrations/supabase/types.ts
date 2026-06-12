@@ -1142,6 +1142,7 @@ export type Database = {
           id: string
           log_errori: Json | null
           nome_file: string
+          report_saltati: Json | null
           righe_aggiornate: number | null
           righe_create: number | null
           righe_elaborate: number | null
@@ -1163,6 +1164,7 @@ export type Database = {
           id?: string
           log_errori?: Json | null
           nome_file: string
+          report_saltati?: Json | null
           righe_aggiornate?: number | null
           righe_create?: number | null
           righe_elaborate?: number | null
@@ -1184,6 +1186,7 @@ export type Database = {
           id?: string
           log_errori?: Json | null
           nome_file?: string
+          report_saltati?: Json | null
           righe_aggiornate?: number | null
           righe_create?: number | null
           righe_elaborate?: number | null

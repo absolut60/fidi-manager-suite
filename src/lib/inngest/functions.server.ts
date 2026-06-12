@@ -69,6 +69,7 @@ type StagedScadenziarioManifest = {
 type StagedScadenziarioChunk = {
   rows: ScadRow[];
   missing: number[];
+  rowErrors?: Array<{ riga: number; errore: string }>;
 };
 
 async function sendInngestEvents(events: object[]): Promise<void> {
@@ -803,19 +804,29 @@ export const processScadenziarioChunk = inngest.createFunction(
       if (chunkPath) {
         const staged = await downloadJsonFromStorage<StagedScadenziarioChunk>(chunkPath);
         const codici = Array.from(new Set(staged.rows.map((r) => r.codice_gestionale)));
-        return { rows: staged.rows, missing: staged.missing, codici };
+        return {
+          rows: staged.rows,
+          missing: staged.missing,
+          codici,
+          parseRowErrors: staged.rowErrors ?? [],
+        };
       }
       const wb = await downloadWorkbookLean(filePath, "SCADENZIARIO");
       const sheet = findSheetByName(wb, "SCADENZIARIO");
       if (!sheet) throw new Error("Foglio SCADENZIARIO non trovato");
-      const { rows, missing } = parseScadenziarioRangeLean(sheet, headers, startRow0, endRow0);
+      const { rows, missing, rowErrors } = parseScadenziarioRangeLean(
+        sheet,
+        headers,
+        startRow0,
+        endRow0,
+      );
       const codici = Array.from(new Set(rows.map((r) => r.codice_gestionale)));
-      return { rows, missing, codici };
+      return { rows, missing, codici, parseRowErrors: rowErrors };
     });
 
-    const { rows, missing, codici } = parsed;
+    const { rows, missing, codici, parseRowErrors } = parsed;
     logger.info(
-      `Chunk ${chunkIndex + 1}/${totalChunks}: rows=${rows.length}, missing=${missing.length}, codici=${codici.length}`,
+      `Chunk ${chunkIndex + 1}/${totalChunks}: rows=${rows.length}, missing=${missing.length}, codici=${codici.length}, parseErr=${parseRowErrors.length}`,
     );
 
     // STEP B: lookup clienti per codici di questo chunk
@@ -826,60 +837,91 @@ export const processScadenziarioChunk = inngest.createFunction(
       for (let i = 0; i < codici.length; i += BATCH) {
         const slice = codici.slice(i, i + BATCH);
         if (!slice.length) continue;
-        const { data: cdata } = await supabaseAdmin
-          .from("clienti")
-          .select("id, codice_gestionale")
-          .in("codice_gestionale", slice as string[]);
-        (cdata ?? []).forEach((c) => {
-          if (c.codice_gestionale) clientMap[c.codice_gestionale] = c.id;
-        });
+        try {
+          const { data: cdata } = await supabaseAdmin
+            .from("clienti")
+            .select("id, codice_gestionale")
+            .in("codice_gestionale", slice as string[]);
+          (cdata ?? []).forEach((c) => {
+            if (c.codice_gestionale) clientMap[c.codice_gestionale] = c.id;
+          });
+        } catch (err) {
+          logger.warn(
+            `Lookup clienti fallito (chunk ${chunkIndex}, batch ${i}): ${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
       }
     }
 
     // STEP C: prepara, deduplica, upsert + persisti errori/codici inline
     const result = await step.run("upsert-batch", async () => {
-      const rowErrs: Array<{ riga: number; errore: string }> = missing.map((idx) => ({
-        riga: idx,
-        errore: "COD_CLI mancante",
-      }));
+      const rowErrs: Array<{ riga: number; errore: string }> = [
+        ...parseRowErrors,
+        ...missing.map((idx) => ({ riga: idx, errore: "COD_CLI mancante" })),
+      ];
       const batchErrs: Array<{ riga: number; errore: string }> = [];
       const matched: string[] = [];
       const rawValidRows: Array<Record<string, unknown>> = [];
       let skipped = 0;
-      const skippedCodes = new Set<string>();
+      // Dettagli completi dei codici non trovati (senza cap): codice -> { ragione_sociale, count }
+      const skippedDetails: Record<string, { ragione_sociale: string; count: number }> = {};
       for (const r of rows) {
-        const cid = clientMap[r.codice_gestionale];
-        if (!cid) {
-          skipped++;
-          if (r.codice_gestionale) skippedCodes.add(String(r.codice_gestionale));
-          continue;
+        try {
+          const cid = clientMap[r.codice_gestionale];
+          if (!cid) {
+            skipped++;
+            const cg = String(r.codice_gestionale ?? "").trim();
+            if (cg) {
+              const cur = skippedDetails[cg];
+              if (cur) {
+                cur.count++;
+                if (!cur.ragione_sociale && r.ragione_sociale) cur.ragione_sociale = r.ragione_sociale;
+              } else {
+                skippedDetails[cg] = {
+                  ragione_sociale: r.ragione_sociale ?? "",
+                  count: 1,
+                };
+              }
+            }
+            continue;
+          }
+          const enriched = {
+            ...r.payload,
+            cliente_id: cid,
+            importato_da: importazioneId,
+            ultima_sincronizzazione: timestampInizio,
+          };
+          matched.push(cid);
+          rawValidRows.push(enriched);
+        } catch (err) {
+          // Skip isolato per la singola riga: l'errore NON ferma il batch
+          rowErrs.push({
+            riga: r.idx,
+            errore: `Row build: ${err instanceof Error ? err.message : String(err)}`.slice(0, 300),
+          });
         }
-        // Upsert di TUTTE le righe (pagate incluse): le pagate verranno
-        // rimosse dal cleanup finale in finalize con una sola query.
-        const enriched = {
-          ...r.payload,
-          cliente_id: cid,
-          importato_da: importazioneId,
-          ultima_sincronizzazione: timestampInizio,
-        };
-        matched.push(cid);
-        rawValidRows.push(enriched);
       }
-
-
 
       // Dedup per chiave conflict (include data_scadenza)
       const deduped = new Map<string, Record<string, unknown>>();
       for (const row of rawValidRows) {
-        const cid = row.cliente_id as string;
-        const numDoc = (row.numero_documento as string | null | undefined) ?? "NULL";
-        const sez = (row.sezionale as string | null | undefined) ?? "NULL";
-        const anno =
-          (row.anno_partita as number | null | undefined) != null
-            ? String(row.anno_partita)
-            : "NULL";
-        const ds = (row.data_scadenza as string | null | undefined) ?? "NULL";
-        deduped.set(`${cid}|${numDoc}|${sez}|${anno}|${ds}`, row);
+        try {
+          const cid = row.cliente_id as string;
+          if (!cid) continue; // safety: NOT NULL guard
+          const numDoc = (row.numero_documento as string | null | undefined) ?? "NULL";
+          const sez = (row.sezionale as string | null | undefined) ?? "NULL";
+          const anno =
+            (row.anno_partita as number | null | undefined) != null
+              ? String(row.anno_partita)
+              : "NULL";
+          const ds = (row.data_scadenza as string | null | undefined) ?? "NULL";
+          deduped.set(`${cid}|${numDoc}|${sez}|${anno}|${ds}`, row);
+        } catch (err) {
+          rowErrs.push({
+            riga: 0,
+            errore: `Dedup key: ${err instanceof Error ? err.message : String(err)}`.slice(0, 300),
+          });
+        }
       }
       const validRows = Array.from(deduped.values());
       const validKeys = new Set(deduped.keys());
@@ -934,26 +976,63 @@ export const processScadenziarioChunk = inngest.createFunction(
         }
       }
 
-      // Persisti errori/codici mancanti inline (NON ritornati come array)
+      // Persisti errori/codici mancanti + report_saltati ricco (no cap)
       const totalErrs = rowErrs.length + batchErrs.length;
-      const skippedCodesArr = Array.from(skippedCodes);
+      const skippedCodesArr = Object.keys(skippedDetails);
       if (rowErrs.length || batchErrs.length || skippedCodesArr.length) {
         const { data: cur } = await supabaseAdmin
           .from("importazioni")
-          .select("log_errori, codici_mancanti")
+          .select("log_errori, codici_mancanti, report_saltati")
           .eq("id", importazioneId)
           .single();
         const updates: Record<string, unknown> = {};
         if (rowErrs.length || batchErrs.length) {
           const existing =
             (cur?.log_errori as Array<{ riga: number; errore: string }> | null) ?? [];
+          // Cap a 500 per non gonfiare a dismisura il jsonb log_errori
           updates.log_errori = [...existing, ...batchErrs, ...rowErrs].slice(0, 500);
         }
         if (skippedCodesArr.length) {
+          // codici_mancanti: lista distinta SENZA cap (retrocompat con UI vecchia)
           const existingCodes = (cur?.codici_mancanti as string[] | null) ?? [];
           updates.codici_mancanti = Array.from(
             new Set([...existingCodes, ...skippedCodesArr]),
-          ).slice(0, 200);
+          );
+
+          // report_saltati: dettaglio completo con ragione sociale e count
+          type ReportSaltati = {
+            cliente_non_trovato?: Record<string, { ragione_sociale: string; count: number }>;
+            errori_riga?: Array<{ riga: number; errore: string }>;
+          };
+          const existingReport = (cur?.report_saltati as ReportSaltati | null) ?? {};
+          const existingCnt = existingReport.cliente_non_trovato ?? {};
+          for (const [cg, det] of Object.entries(skippedDetails)) {
+            const prev = existingCnt[cg];
+            if (prev) {
+              prev.count += det.count;
+              if (!prev.ragione_sociale && det.ragione_sociale)
+                prev.ragione_sociale = det.ragione_sociale;
+            } else {
+              existingCnt[cg] = { ...det };
+            }
+          }
+          const existingErr = existingReport.errori_riga ?? [];
+          const newErr = [...rowErrs, ...batchErrs];
+          updates.report_saltati = {
+            cliente_non_trovato: existingCnt,
+            errori_riga: [...existingErr, ...newErr].slice(0, 2000),
+          };
+        } else if (rowErrs.length || batchErrs.length) {
+          type ReportSaltati = {
+            cliente_non_trovato?: Record<string, { ragione_sociale: string; count: number }>;
+            errori_riga?: Array<{ riga: number; errore: string }>;
+          };
+          const existingReport = (cur?.report_saltati as ReportSaltati | null) ?? {};
+          const existingErr = existingReport.errori_riga ?? [];
+          updates.report_saltati = {
+            cliente_non_trovato: existingReport.cliente_non_trovato ?? {},
+            errori_riga: [...existingErr, ...rowErrs, ...batchErrs].slice(0, 2000),
+          };
         }
         await supabaseAdmin
           .from("importazioni")
@@ -965,7 +1044,7 @@ export const processScadenziarioChunk = inngest.createFunction(
       return {
         created: c,
         updated: u,
-        elaborate: rows.length + missing.length,
+        elaborate: rows.length + missing.length + parseRowErrors.length,
         skipped,
         errori: totalErrs,
       };
