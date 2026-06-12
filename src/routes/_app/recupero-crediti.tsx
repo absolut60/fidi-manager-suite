@@ -1,13 +1,12 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, Fragment } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import {
   HandCoins,
   Search,
   ChevronDown,
   ChevronUp,
-  ExternalLink,
   CalendarIcon,
   Mail,
   Phone,
@@ -15,11 +14,12 @@ import {
   StickyNote,
   FileText,
   Send,
+  AlertTriangle,
+  Clock,
+  CheckCircle2,
 } from "lucide-react";
-import { InviaSollecitoDialog } from "@/components/invia-sollecito-dialog";
-import { EmailInviataView } from "@/components/email-inviata-view";
 import { InvioMassivoDialog } from "@/components/invio-massivo-dialog";
-import { toast } from "sonner";
+import { ClienteAttivitaRecuperoTab } from "@/components/cliente-attivita-recupero-tab";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -78,6 +78,8 @@ const TIPI = [
 
 type Esito = (typeof ESITI)[number]["value"];
 type Tipo = (typeof TIPI)[number]["value"];
+type QuickFilter = "tutti" | "aperti" | "ritardo";
+type SortKey = "priorita" | "ragione_sociale" | "scaduto" | "azioni_aperte" | "prossima" | "ultima";
 
 function fmtEuro(v: unknown): string {
   if (v == null || v === "") return "—";
@@ -112,20 +114,8 @@ function fmtDate(v: unknown): string {
   }
 }
 
-function esitoBadge(e: Esito) {
-  const map: Record<Esito, string> = {
-    da_fare: "bg-yellow-500 text-white hover:bg-yellow-500",
-    fatto: "bg-blue-500 text-white hover:bg-blue-500",
-    nessuna_risposta: "bg-muted text-muted-foreground hover:bg-muted",
-    promessa_pagamento: "bg-orange-500 text-white hover:bg-orange-500",
-    contestazione: "bg-destructive text-destructive-foreground hover:bg-destructive",
-    pagato: "bg-emerald-600 text-white hover:bg-emerald-600",
-  };
-  const label = ESITI.find((x) => x.value === e)?.label ?? e;
-  return <Badge className={map[e]}>{label}</Badge>;
-}
-
-function tipoLabel(t: Tipo) {
+function tipoLabel(t: string | null) {
+  if (!t) return <span className="text-muted-foreground">—</span>;
   const T = TIPI.find((x) => x.value === t);
   if (!T) return <span>{t}</span>;
   const Icon = T.icon;
@@ -136,33 +126,27 @@ function tipoLabel(t: Tipo) {
   );
 }
 
-type AzioneRow = {
-  id: string;
+type ClienteAgg = {
   cliente_id: string;
-  operatore_id: string | null;
-  tipo: Tipo;
-  esito: Esito;
-  data_azione: string;
-  data_promessa_pagamento: string | null;
-  importo_riferimento: number | null;
-  note: string | null;
-  email_oggetto: string | null;
-  email_corpo_html: string | null;
-  email_destinatario: string | null;
-  created_at: string;
-  cliente: {
-    id: string;
-    ragione_sociale: string;
-    store_id: string | null;
-  } | null;
+  ragione_sociale: string;
+  store_id: string | null;
+  store_nome: string | null;
+  totale_scaduto: number;
+  azioni_totali: number;
+  azioni_aperte: number;
+  prossima_tipo: string | null;
+  prossima_data: string | null;
+  ultima_fatta_tipo: string | null;
+  ultima_fatta_data: string | null;
+  ha_promessa: boolean;
+  data_promessa: string | null;
+  in_ritardo: boolean;
 };
 
 function RecuperoCreditiPage() {
   const { role, profilo } = useAuth();
   const isStoreManager = role === "store_manager";
   const myStoreId = profilo?.store_id ?? null;
-  const navigate = useNavigate();
-  const qc = useQueryClient();
 
   // Filters
   const [storeId, setStoreId] = useState<string>(
@@ -175,10 +159,11 @@ function RecuperoCreditiPage() {
   const [searchDebounced, setSearchDebounced] = useState("");
   const [dataDa, setDataDa] = useState<Date | undefined>();
   const [dataA, setDataA] = useState<Date | undefined>();
+  const [quick, setQuick] = useState<QuickFilter>("tutti");
+  const [sortKey, setSortKey] = useState<SortKey>("priorita");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(1);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [promessaOpenFor, setPromessaOpenFor] = useState<string | null>(null);
-  const [sollecitoFor, setSollecitoFor] = useState<{ clienteId: string; azioneId: string } | null>(null);
+  const [expandedClienteId, setExpandedClienteId] = useState<string | null>(null);
   const [invioMassivoOpen, setInvioMassivoOpen] = useState(false);
 
   useEffect(() => {
@@ -188,7 +173,7 @@ function RecuperoCreditiPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [storeId, esitoFilter, tipoFilter, operatoreId, searchDebounced, dataDa, dataA]);
+  }, [storeId, esitoFilter, tipoFilter, operatoreId, searchDebounced, dataDa, dataA, quick, sortKey, sortDir]);
 
   // Stores
   const { data: stores } = useQuery({
@@ -203,7 +188,7 @@ function RecuperoCreditiPage() {
     },
   });
 
-  // Operatori (profili)
+  // Operatori
   const { data: operatori } = useQuery({
     queryKey: ["operatori-list"],
     enabled: !isStoreManager,
@@ -217,89 +202,64 @@ function RecuperoCreditiPage() {
     },
   });
 
-  // Build base query (reusable for list, count, aggregates)
-  function applyFilters(q: any): any {
-    if (esitoFilter.size > 0) q = q.in("esito", Array.from(esitoFilter));
-    if (tipoFilter.size > 0) q = q.in("tipo", Array.from(tipoFilter));
-    if (operatoreId !== "all" && !isStoreManager) q = q.eq("operatore_id", operatoreId);
-    if (dataDa) q = q.gte("data_azione", dataDa.toISOString());
-    if (dataA) {
-      const end = new Date(dataA);
-      end.setHours(23, 59, 59, 999);
-      q = q.lte("data_azione", end.toISOString());
-    }
-    return q;
-  }
+  const filtersKey = [
+    Array.from(esitoFilter).sort(),
+    Array.from(tipoFilter).sort(),
+    storeId,
+    operatoreId,
+    searchDebounced,
+    dataDa?.toISOString() ?? null,
+    dataA?.toISOString() ?? null,
+    isStoreManager,
+  ];
 
-  // Azioni page
-  const azioniQuery = useQuery({
-    queryKey: [
-      "azioni-recupero",
-      page,
-      Array.from(esitoFilter).sort(),
-      Array.from(tipoFilter).sort(),
-      storeId,
-      operatoreId,
-      searchDebounced,
-      dataDa?.toISOString() ?? null,
-      dataA?.toISOString() ?? null,
-      isStoreManager,
-    ],
+  // Aggregato per cliente
+  const aggQuery = useQuery({
+    queryKey: ["recupero-clienti-aggregato", ...filtersKey],
     queryFn: async () => {
-      const from = (page - 1) * PAGE_SIZE;
-      const to = from + PAGE_SIZE - 1;
-
-      let q = supabase
-        .from("azioni_recupero")
-        .select(
-          "id, cliente_id, operatore_id, tipo, esito, data_azione, data_promessa_pagamento, importo_riferimento, note, email_oggetto, email_corpo_html, email_destinatario, created_at, cliente:clienti!inner(id, ragione_sociale, store_id)",
-          { count: "exact" }
-        )
-        .order("data_azione", { ascending: false })
-        .range(from, to);
-
-      q = applyFilters(q);
-      if (storeId !== "all") q = q.eq("cliente.store_id", storeId);
-      if (searchDebounced) q = q.ilike("cliente.ragione_sociale", `%${searchDebounced}%`);
-
-      const { data, error, count } = await q;
+      const dataAEnd = dataA ? new Date(dataA) : null;
+      if (dataAEnd) dataAEnd.setHours(23, 59, 59, 999);
+      const { data, error } = await supabase.rpc(
+        "get_recupero_clienti_aggregato" as never,
+        {
+          _store_id: storeId !== "all" ? storeId : null,
+          _operatore_id: operatoreId !== "all" && !isStoreManager ? operatoreId : null,
+          _search: searchDebounced || null,
+          _data_da: dataDa ? dataDa.toISOString() : null,
+          _data_a: dataAEnd ? dataAEnd.toISOString() : null,
+          _esiti: esitoFilter.size > 0 ? Array.from(esitoFilter) : null,
+          _tipi: tipoFilter.size > 0 ? Array.from(tipoFilter) : null,
+        } as never
+      );
       if (error) throw error;
-      return {
-        rows: (data ?? []) as unknown as AzioneRow[],
-        total: count ?? 0,
-      };
+      return (data ?? []) as unknown as ClienteAgg[];
     },
   });
 
-  // Aggregates / metric cards (apply same filters, no pagination)
+  // Metric cards: conteggi sulle AZIONI (stessi filtri)
   const metricsQuery = useQuery({
-    queryKey: [
-      "azioni-recupero-metrics",
-      Array.from(esitoFilter).sort(),
-      Array.from(tipoFilter).sort(),
-      storeId,
-      operatoreId,
-      searchDebounced,
-      dataDa?.toISOString() ?? null,
-      dataA?.toISOString() ?? null,
-      isStoreManager,
-    ],
+    queryKey: ["azioni-recupero-metrics", ...filtersKey],
     queryFn: async () => {
       let q = supabase
         .from("azioni_recupero")
         .select(
-          "id, esito, importo_riferimento, cliente:clienti!inner(id, ragione_sociale, store_id)"
+          "id, esito, importo_riferimento, cliente:clienti!inner(id, store_id, ragione_sociale)"
         );
-      q = applyFilters(q);
+      if (esitoFilter.size > 0) q = q.in("esito", Array.from(esitoFilter));
+      if (tipoFilter.size > 0) q = q.in("tipo", Array.from(tipoFilter));
+      if (operatoreId !== "all" && !isStoreManager) q = q.eq("operatore_id", operatoreId);
+      if (dataDa) q = q.gte("data_azione", dataDa.toISOString());
+      if (dataA) {
+        const end = new Date(dataA);
+        end.setHours(23, 59, 59, 999);
+        q = q.lte("data_azione", end.toISOString());
+      }
       if (storeId !== "all") q = q.eq("cliente.store_id", storeId);
       if (searchDebounced) q = q.ilike("cliente.ragione_sociale", `%${searchDebounced}%`);
       const { data, error } = await q;
       if (error) throw error;
       const rows = data ?? [];
-      let totale = 0;
-      let daFare = 0;
-      let promesse = 0;
-      let importo = 0;
+      let totale = 0, daFare = 0, promesse = 0, importo = 0;
       for (const r of rows as any[]) {
         totale++;
         if (r.esito === "da_fare") daFare++;
@@ -307,25 +267,6 @@ function RecuperoCreditiPage() {
         importo += Number(r.importo_riferimento ?? 0);
       }
       return { totale, daFare, promesse, importo };
-    },
-  });
-
-  // Scadenze counts for the visible page
-  const pageIds = (azioniQuery.data?.rows ?? []).map((r) => r.id);
-  const countsQuery = useQuery({
-    queryKey: ["azioni-recupero-counts", pageIds.sort().join(",")],
-    enabled: pageIds.length > 0,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("azioni_recupero_scadenze")
-        .select("azione_id")
-        .in("azione_id", pageIds);
-      if (error) throw error;
-      const m: Record<string, number> = {};
-      for (const r of data ?? []) {
-        m[r.azione_id] = (m[r.azione_id] ?? 0) + 1;
-      }
-      return m;
     },
   });
 
@@ -338,43 +279,62 @@ function RecuperoCreditiPage() {
     return m;
   }, [operatori]);
 
-  const storeMap = useMemo(() => {
-    const m: Record<string, string> = {};
-    for (const s of stores ?? []) m[s.id] = s.nome;
-    return m;
-  }, [stores]);
+  // Filtro rapido + sort
+  const sorted = useMemo(() => {
+    const rows = aggQuery.data ?? [];
+    const filtered = rows.filter((r) => {
+      if (quick === "aperti") return r.azioni_aperte > 0;
+      if (quick === "ritardo") return r.in_ritardo;
+      return true;
+    });
+    const now = Date.now();
+    const dir = sortDir === "asc" ? 1 : -1;
+    const cmp = (a: ClienteAgg, b: ClienteAgg) => {
+      if (sortKey === "priorita") {
+        // 1. aperte in ritardo (più vecchie prima)
+        // 2. aperte future (prossima crescente)
+        // 3. solo storico (ultima fatta più recente prima)
+        const bucket = (x: ClienteAgg) => {
+          if (x.in_ritardo) return 0;
+          if (x.azioni_aperte > 0) return 1;
+          return 2;
+        };
+        const ba = bucket(a), bb = bucket(b);
+        if (ba !== bb) return ba - bb;
+        if (ba === 0 || ba === 1) {
+          const pa = a.prossima_data ? new Date(a.prossima_data).getTime() : Infinity;
+          const pb = b.prossima_data ? new Date(b.prossima_data).getTime() : Infinity;
+          return pa - pb;
+        }
+        const ua = a.ultima_fatta_data ? new Date(a.ultima_fatta_data).getTime() : 0;
+        const ub = b.ultima_fatta_data ? new Date(b.ultima_fatta_data).getTime() : 0;
+        return ub - ua;
+      }
+      if (sortKey === "ragione_sociale")
+        return a.ragione_sociale.localeCompare(b.ragione_sociale) * dir;
+      if (sortKey === "scaduto")
+        return (Number(a.totale_scaduto) - Number(b.totale_scaduto)) * dir;
+      if (sortKey === "azioni_aperte")
+        return (a.azioni_aperte - b.azioni_aperte) * dir;
+      if (sortKey === "prossima") {
+        const pa = a.prossima_data ? new Date(a.prossima_data).getTime() : (dir > 0 ? Infinity : -Infinity);
+        const pb = b.prossima_data ? new Date(b.prossima_data).getTime() : (dir > 0 ? Infinity : -Infinity);
+        return (pa - pb) * dir;
+      }
+      if (sortKey === "ultima") {
+        const ua = a.ultima_fatta_data ? new Date(a.ultima_fatta_data).getTime() : (dir > 0 ? Infinity : -Infinity);
+        const ub = b.ultima_fatta_data ? new Date(b.ultima_fatta_data).getTime() : (dir > 0 ? Infinity : -Infinity);
+        return (ua - ub) * dir;
+      }
+      return 0;
+      void now;
+    };
+    return [...filtered].sort(cmp);
+  }, [aggQuery.data, quick, sortKey, sortDir]);
 
-  async function updateEsito(id: string, nextEsito: Esito, dataPromessa?: Date | null) {
-    const patch: { esito: Esito; data_promessa_pagamento?: string | null } = { esito: nextEsito };
-    if (nextEsito === "promessa_pagamento" && dataPromessa) {
-      patch.data_promessa_pagamento = dataPromessa.toISOString();
-    } else if (nextEsito !== "promessa_pagamento") {
-      patch.data_promessa_pagamento = null;
-    }
-    const { error } = await supabase
-      .from("azioni_recupero")
-      .update(patch)
-      .eq("id", id);
-    if (error) {
-      toast.error("Errore aggiornamento esito: " + error.message);
-      return;
-    }
-    toast.success("Esito aggiornato");
-    qc.invalidateQueries({ queryKey: ["azioni-recupero"] });
-    qc.invalidateQueries({ queryKey: ["azioni-recupero-metrics"] });
-    qc.invalidateQueries({ queryKey: ["azione-scadenze", id] });
-  }
-
-  async function handleEsitoChange(id: string, next: Esito) {
-    if (next === "promessa_pagamento") {
-      setPromessaOpenFor(id);
-      return;
-    }
-    await updateEsito(id, next);
-  }
-
-  const total = azioniQuery.data?.total ?? 0;
+  const total = sorted.length;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const pageRows = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   function toggleSet<T>(set: Set<T>, value: T): Set<T> {
     const n = new Set(set);
@@ -382,8 +342,25 @@ function RecuperoCreditiPage() {
     else n.add(value);
     return n;
   }
+  function toggleSort(k: SortKey) {
+    if (sortKey === k) setSortDir(sortDir === "asc" ? "desc" : "asc");
+    else { setSortKey(k); setSortDir("asc"); }
+  }
 
   const m = metricsQuery.data;
+  const clienteIdsFiltrati = useMemo(
+    () => Array.from(new Set(sorted.map((r) => r.cliente_id))),
+    [sorted]
+  );
+
+  const counts = useMemo(() => {
+    const rows = aggQuery.data ?? [];
+    return {
+      tutti: rows.length,
+      aperti: rows.filter((r) => r.azioni_aperte > 0).length,
+      ritardo: rows.filter((r) => r.in_ritardo).length,
+    };
+  }, [aggQuery.data]);
 
   return (
     <div className="space-y-6">
@@ -392,7 +369,7 @@ function RecuperoCreditiPage() {
         <div className="flex-1">
           <h1 className="text-2xl font-semibold tracking-tight">Recupero Crediti</h1>
           <p className="text-sm text-muted-foreground">
-            Azioni di recupero su clienti con scaduto
+            Clienti con azioni di recupero — priorità agli aperti e in ritardo
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => setInvioMassivoOpen(true)} className="gap-1.5">
@@ -406,6 +383,19 @@ function RecuperoCreditiPage() {
         <MetricCard label="Da fare" value={m?.daFare ?? 0} loading={metricsQuery.isLoading} tone="warning" />
         <MetricCard label="Promesse di pagamento" value={m?.promesse ?? 0} loading={metricsQuery.isLoading} tone="info" />
         <MetricCard label="Importo riferimento" value={fmtEuro(m?.importo ?? 0)} loading={metricsQuery.isLoading} tone="primary" />
+      </div>
+
+      {/* Quick filter */}
+      <div className="flex flex-wrap items-center gap-2">
+        <QuickChip active={quick === "tutti"} onClick={() => setQuick("tutti")} icon={<CheckCircle2 className="size-3.5" />}>
+          Tutti ({counts.tutti})
+        </QuickChip>
+        <QuickChip active={quick === "aperti"} onClick={() => setQuick("aperti")} icon={<Clock className="size-3.5" />}>
+          Solo con azioni aperte ({counts.aperti})
+        </QuickChip>
+        <QuickChip active={quick === "ritardo"} onClick={() => setQuick("ritardo")} icon={<AlertTriangle className="size-3.5" />} tone="danger">
+          Solo in ritardo ({counts.ritardo})
+        </QuickChip>
       </div>
 
       {/* Filters */}
@@ -447,9 +437,7 @@ function RecuperoCreditiPage() {
               <SelectContent>
                 <SelectItem value="all">Tutti gli store</SelectItem>
                 {(stores ?? []).map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.nome}
-                  </SelectItem>
+                  <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -463,9 +451,7 @@ function RecuperoCreditiPage() {
               <SelectContent>
                 <SelectItem value="all">Tutti gli operatori</SelectItem>
                 {(operatori ?? []).map((o) => (
-                  <SelectItem key={o.id} value={o.id}>
-                    {operatoreMap[o.id] ?? "—"}
-                  </SelectItem>
+                  <SelectItem key={o.id} value={o.id}>{operatoreMap[o.id] ?? "—"}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -483,132 +469,123 @@ function RecuperoCreditiPage() {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-10" />
-                <TableHead>Cliente</TableHead>
+                <SortableHead label="Cliente" k="ragione_sociale" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
                 <TableHead>Store</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Esito</TableHead>
-                <TableHead>Data azione</TableHead>
-                <TableHead className="text-right">Importo rif.</TableHead>
-                <TableHead className="text-center">Scad.</TableHead>
-                <TableHead>Operatore</TableHead>
-                <TableHead>Note</TableHead>
+                <SortableHead label="Scaduto" k="scaduto" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} align="right" />
+                <SortableHead label="Aperte" k="azioni_aperte" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} align="center" />
+                <SortableHead label="Prossima" k="prossima" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
+                <SortableHead label="Ultima fatta" k="ultima" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
+                <TableHead>Stato</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {azioniQuery.isLoading && (
+              {aggQuery.isLoading && (
                 <TableRow>
-                  <TableCell colSpan={10}>
+                  <TableCell colSpan={8}>
                     <Skeleton className="h-24 w-full" />
                   </TableCell>
                 </TableRow>
               )}
-              {!azioniQuery.isLoading && (azioniQuery.data?.rows.length ?? 0) === 0 && (
+              {!aggQuery.isLoading && pageRows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={10} className="text-center text-muted-foreground py-10">
-                    Nessuna azione di recupero trovata
+                  <TableCell colSpan={8} className="text-center text-muted-foreground py-10">
+                    Nessun cliente con azioni di recupero
                   </TableCell>
                 </TableRow>
               )}
-              {(azioniQuery.data?.rows ?? []).map((r) => {
-                const expanded = expandedId === r.id;
+              {pageRows.map((r) => {
+                const expanded = expandedClienteId === r.cliente_id;
+                const hasAperte = r.azioni_aperte > 0;
+                const prossimaInRitardo = r.in_ritardo;
                 return (
-                  <Fragment key={r.id}>
+                  <Fragment key={r.cliente_id}>
                     <TableRow
-                      className="cursor-pointer hover:bg-muted/40"
-                      onClick={() => setExpandedId(expanded ? null : r.id)}
+                      className={cn(
+                        "cursor-pointer hover:bg-muted/40",
+                        prossimaInRitardo && "border-l-2 border-l-destructive",
+                        hasAperte && !prossimaInRitardo && "border-l-2 border-l-yellow-500",
+                        !hasAperte && "opacity-80"
+                      )}
+                      onClick={() => setExpandedClienteId(expanded ? null : r.cliente_id)}
                     >
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <Button
                           variant="ghost"
                           size="icon"
                           className="size-7"
-                          onClick={() => setExpandedId(expanded ? null : r.id)}
+                          onClick={() => setExpandedClienteId(expanded ? null : r.cliente_id)}
                         >
                           {expanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
                         </Button>
                       </TableCell>
                       <TableCell className="font-medium">
-                        {r.cliente?.ragione_sociale ?? "—"}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {r.cliente?.store_id ? storeMap[r.cliente.store_id] ?? "—" : "—"}
-                      </TableCell>
-                      <TableCell>{tipoLabel(r.tipo)}</TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center gap-2">
-                          <Select
-                            value={r.esito}
-                            onValueChange={(v) => handleEsitoChange(r.id, v as Esito)}
-                          >
-                            <SelectTrigger className="h-8 w-[170px]">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {ESITI.map((e) => (
-                                <SelectItem key={e.value} value={e.value}>
-                                  {e.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          {r.esito === "promessa_pagamento" && r.data_promessa_pagamento && (
-                            <Badge variant="outline" className="whitespace-nowrap">
-                              {fmtDate(r.data_promessa_pagamento)}
+                          <span>{r.ragione_sociale}</span>
+                          {r.ha_promessa && (
+                            <Badge className="bg-orange-500 text-white hover:bg-orange-500 whitespace-nowrap">
+                              Promessa {r.data_promessa ? fmtDate(r.data_promessa) : ""}
                             </Badge>
                           )}
                         </div>
-                        {promessaOpenFor === r.id && (
-                          <PromessaInline
-                            onCancel={() => setPromessaOpenFor(null)}
-                            onConfirm={async (d) => {
-                              setPromessaOpenFor(null);
-                              await updateEsito(r.id, "promessa_pagamento", d);
-                            }}
-                          />
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {r.store_nome ?? "—"}
+                      </TableCell>
+                      <TableCell className={cn(
+                        "text-right whitespace-nowrap font-medium",
+                        Number(r.totale_scaduto) > 0 && "text-destructive"
+                      )}>
+                        {fmtEuro(r.totale_scaduto)}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {hasAperte ? (
+                          <Badge className="bg-yellow-500 text-white hover:bg-yellow-500">
+                            {r.azioni_aperte}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">0</span>
                         )}
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-sm">
-                        {fmtDateTime(r.data_azione)}
-                      </TableCell>
-                      <TableCell className="text-right whitespace-nowrap">
-                        {fmtEuro(r.importo_riferimento)}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge variant="secondary">{countsQuery.data?.[r.id] ?? 0}</Badge>
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {r.operatore_id ? operatoreMap[r.operatore_id] ?? "—" : "—"}
-                      </TableCell>
-                      <TableCell className="max-w-[260px] text-sm text-muted-foreground truncate">
-                        {r.tipo === "email" && r.esito === "da_fare" ? (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="gap-1.5 h-7"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSollecitoFor({ clienteId: r.cliente_id, azioneId: r.id });
-                            }}
-                          >
-                            <Send className="size-3.5" /> Invia
-                          </Button>
+                        {r.prossima_data ? (
+                          <div className="flex items-center gap-2">
+                            {tipoLabel(r.prossima_tipo)}
+                            <span className={cn(prossimaInRitardo ? "text-destructive font-medium" : "text-muted-foreground")}>
+                              {fmtDateTime(r.prossima_data)}
+                            </span>
+                          </div>
                         ) : (
-                          r.note ?? "—"
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-sm">
+                        {r.ultima_fatta_data ? (
+                          <div className="flex items-center gap-2">
+                            {tipoLabel(r.ultima_fatta_tipo)}
+                            <span className="text-muted-foreground">{fmtDateTime(r.ultima_fatta_data)}</span>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {prossimaInRitardo ? (
+                          <Badge variant="destructive" className="gap-1">
+                            <AlertTriangle className="size-3" /> In ritardo
+                          </Badge>
+                        ) : hasAperte ? (
+                          <Badge className="bg-yellow-500 text-white hover:bg-yellow-500">Aperte</Badge>
+                        ) : (
+                          <Badge variant="secondary">Solo storico</Badge>
                         )}
                       </TableCell>
                     </TableRow>
                     {expanded && (
                       <TableRow className="bg-muted/30">
-                        <TableCell colSpan={10}>
-                          <DettaglioAzione
-                            azione={r}
-                            onApriCliente={() =>
-                              navigate({
-                                to: "/clienti/$clienteId",
-                                params: { clienteId: r.cliente_id },
-                              })
-                            }
-                          />
+                        <TableCell colSpan={8}>
+                          <div className="p-2">
+                            <ClienteAttivitaRecuperoTab clienteId={r.cliente_id} />
+                          </div>
                         </TableCell>
                       </TableRow>
                     )}
@@ -623,62 +600,35 @@ function RecuperoCreditiPage() {
         <div className="flex items-center justify-between p-3 border-t">
           <div className="text-sm text-muted-foreground">
             {total === 0
-              ? "0 risultati"
-              : `${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, total)} di ${total}`}
+              ? "0 clienti"
+              : `${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, total)} di ${total} clienti`}
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page <= 1}
-              onClick={() => setPage(page - 1)}
-            >
+            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
               Precedente
             </Button>
-            <span className="text-sm">
-              Pag. {page} / {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page >= totalPages}
-              onClick={() => setPage(page + 1)}
-            >
+            <span className="text-sm">Pag. {page} / {totalPages}</span>
+            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
               Successiva
             </Button>
           </div>
         </div>
       </Card>
 
-      {sollecitoFor && (
-        <InviaSollecitoDialog
-          open={!!sollecitoFor}
-          onOpenChange={(v) => !v && setSollecitoFor(null)}
-          clienteId={sollecitoFor.clienteId}
-          azioneEsistenteId={sollecitoFor.azioneId}
-          onSent={() => setSollecitoFor(null)}
-        />
-      )}
-
       <InvioMassivoDialog
         open={invioMassivoOpen}
         onOpenChange={setInvioMassivoOpen}
         clienteIdsSelezionati={[]}
-        clienteIdsFiltrati={Array.from(new Set((azioniQuery.data?.rows ?? []).map((r) => r.cliente_id)))}
+        clienteIdsFiltrati={clienteIdsFiltrati}
       />
     </div>
   );
 }
 
 function MetricCard({
-  label,
-  value,
-  loading,
-  tone = "default",
+  label, value, loading, tone = "default",
 }: {
-  label: string;
-  value: string | number;
-  loading?: boolean;
+  label: string; value: string | number; loading?: boolean;
   tone?: "default" | "warning" | "info" | "primary";
 }) {
   const toneClass = {
@@ -699,12 +649,54 @@ function MetricCard({
   );
 }
 
+function QuickChip({
+  active, onClick, icon, children, tone,
+}: {
+  active: boolean; onClick: () => void; icon: React.ReactNode; children: React.ReactNode;
+  tone?: "danger";
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm border transition-colors",
+        active
+          ? tone === "danger"
+            ? "bg-destructive text-destructive-foreground border-destructive"
+            : "bg-primary text-primary-foreground border-primary"
+          : "bg-background hover:bg-muted text-foreground border-border"
+      )}
+    >
+      {icon}
+      {children}
+    </button>
+  );
+}
+
+function SortableHead({
+  label, k, sortKey, sortDir, onClick, align,
+}: {
+  label: string; k: SortKey; sortKey: SortKey; sortDir: "asc" | "desc";
+  onClick: (k: SortKey) => void; align?: "right" | "center";
+}) {
+  const active = sortKey === k;
+  return (
+    <TableHead className={cn(align === "right" && "text-right", align === "center" && "text-center")}>
+      <button
+        type="button"
+        className={cn("inline-flex items-center gap-1 hover:text-foreground", active ? "text-foreground" : "text-muted-foreground")}
+        onClick={() => onClick(k)}
+      >
+        {label}
+        {active && (sortDir === "asc" ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />)}
+      </button>
+    </TableHead>
+  );
+}
+
 function MultiSelectFilter({
-  label,
-  options,
-  selected,
-  onChange,
-  onClear,
+  label, options, selected, onChange, onClear,
 }: {
   label: string;
   options: { value: string; label: string }[];
@@ -717,8 +709,7 @@ function MultiSelectFilter({
       <DropdownMenuTrigger asChild>
         <Button variant="outline" className="justify-between font-normal">
           <span className="truncate">
-            {label}
-            {selected.size > 0 ? ` (${selected.size})` : ""}
+            {label}{selected.size > 0 ? ` (${selected.size})` : ""}
           </span>
           <ChevronDown className="size-4 opacity-60" />
         </Button>
@@ -727,11 +718,7 @@ function MultiSelectFilter({
         <DropdownMenuLabel className="flex items-center justify-between">
           <span>{label}</span>
           {selected.size > 0 && (
-            <button
-              type="button"
-              onClick={onClear}
-              className="text-xs text-muted-foreground hover:text-foreground"
-            >
+            <button type="button" onClick={onClear} className="text-xs text-muted-foreground hover:text-foreground">
               Azzera
             </button>
           )}
@@ -752,180 +739,28 @@ function MultiSelectFilter({
 }
 
 function DateRangePicker({
-  label,
-  date,
-  onChange,
+  label, date, onChange,
 }: {
-  label: string;
-  date: Date | undefined;
-  onChange: (d: Date | undefined) => void;
+  label: string; date: Date | undefined; onChange: (d: Date | undefined) => void;
 }) {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          className={cn(
-            "justify-start text-left font-normal",
-            !date && "text-muted-foreground"
-          )}
-        >
+        <Button variant="outline" className={cn("justify-start text-left font-normal", !date && "text-muted-foreground")}>
           <CalendarIcon className="mr-2 size-4" />
           {date ? `${label}: ${format(date, "dd/MM/yyyy")}` : label}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
-        <Calendar
-          mode="single"
-          selected={date}
-          onSelect={onChange}
-          initialFocus
-          className={cn("p-3 pointer-events-auto")}
-        />
+        <Calendar mode="single" selected={date} onSelect={onChange} initialFocus className={cn("p-3 pointer-events-auto")} />
         {date && (
           <div className="p-2 border-t">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full"
-              onClick={() => onChange(undefined)}
-            >
+            <Button variant="ghost" size="sm" className="w-full" onClick={() => onChange(undefined)}>
               Rimuovi
             </Button>
           </div>
         )}
       </PopoverContent>
     </Popover>
-  );
-}
-
-function PromessaInline({
-  onCancel,
-  onConfirm,
-}: {
-  onCancel: () => void;
-  onConfirm: (d: Date) => void;
-}) {
-  const [d, setD] = useState<Date | undefined>();
-  return (
-    <div className="mt-2 flex items-center gap-2 p-2 rounded-md border bg-background">
-      <span className="text-xs text-muted-foreground">Data promessa:</span>
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button variant="outline" size="sm">
-            <CalendarIcon className="mr-2 size-3.5" />
-            {d ? format(d, "dd/MM/yyyy") : "Scegli data"}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
-          <Calendar
-            mode="single"
-            selected={d}
-            onSelect={setD}
-            initialFocus
-            className={cn("p-3 pointer-events-auto")}
-          />
-        </PopoverContent>
-      </Popover>
-      <Button size="sm" disabled={!d} onClick={() => d && onConfirm(d)}>
-        Salva
-      </Button>
-      <Button size="sm" variant="ghost" onClick={onCancel}>
-        Annulla
-      </Button>
-    </div>
-  );
-}
-
-function DettaglioAzione({
-  azione,
-  onApriCliente,
-}: {
-  azione: AzioneRow;
-  onApriCliente: () => void;
-}) {
-  const { data, isLoading } = useQuery({
-    queryKey: ["azione-scadenze", azione.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("azioni_recupero_scadenze")
-        .select(
-          "scadenza:scadenze!inner(id, numero_documento, data_scadenza, importo_scadenza)"
-        )
-        .eq("azione_id", azione.id);
-      if (error) throw error;
-      return (data ?? []).map((r: any) => r.scadenza);
-    },
-  });
-
-  return (
-    <div className="p-4 space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div>
-          <div className="text-xs uppercase text-muted-foreground tracking-wider mb-1">Note</div>
-          <div className="text-sm whitespace-pre-wrap">{azione.note ?? "—"}</div>
-        </div>
-        <div>
-          <div className="text-xs uppercase text-muted-foreground tracking-wider mb-1">
-            Data azione
-          </div>
-          <div className="text-sm">{fmtDateTime(azione.data_azione)}</div>
-          {azione.data_promessa_pagamento && (
-            <>
-              <div className="text-xs uppercase text-muted-foreground tracking-wider mt-2 mb-1">
-                Promessa pagamento
-              </div>
-              <div className="text-sm">{fmtDate(azione.data_promessa_pagamento)}</div>
-            </>
-          )}
-        </div>
-        <div className="flex md:justify-end items-start">
-          <Button variant="outline" size="sm" onClick={onApriCliente}>
-            <ExternalLink className="size-4 mr-2" />
-            Apri scheda cliente
-          </Button>
-        </div>
-      </div>
-
-      {azione.tipo === "email" && azione.email_corpo_html && (
-        <EmailInviataView
-          destinatario={azione.email_destinatario}
-          oggetto={azione.email_oggetto}
-          corpoHtml={azione.email_corpo_html}
-        />
-      )}
-
-      <div>
-        <div className="text-xs uppercase text-muted-foreground tracking-wider mb-2">
-          Scadenze collegate
-        </div>
-        {isLoading ? (
-          <Skeleton className="h-16 w-full" />
-        ) : (data?.length ?? 0) === 0 ? (
-          <div className="text-sm text-muted-foreground">Nessuna scadenza collegata</div>
-        ) : (
-          <div className="rounded-md border overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>N. documento</TableHead>
-                  <TableHead>Data scadenza</TableHead>
-                  <TableHead className="text-right">Importo</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(data ?? []).map((s: any) => (
-                  <TableRow key={s.id}>
-                    <TableCell className="font-mono text-sm">{s.numero_documento ?? "—"}</TableCell>
-                    <TableCell>{fmtDate(s.data_scadenza)}</TableCell>
-                    <TableCell className="text-right">{fmtEuro(s.importo_scadenza)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </div>
-    </div>
   );
 }

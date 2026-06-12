@@ -2441,6 +2441,33 @@ export type Database = {
           totale_scaduto: number
         }[]
       }
+      get_recupero_clienti_aggregato: {
+        Args: {
+          _data_a?: string
+          _data_da?: string
+          _esiti?: string[]
+          _operatore_id?: string
+          _search?: string
+          _store_id?: string
+          _tipi?: string[]
+        }
+        Returns: {
+          azioni_aperte: number
+          azioni_totali: number
+          cliente_id: string
+          data_promessa: string
+          ha_promessa: boolean
+          in_ritardo: boolean
+          prossima_data: string
+          prossima_tipo: string
+          ragione_sociale: string
+          store_id: string
+          store_nome: string
+          totale_scaduto: number
+          ultima_fatta_data: string
+          ultima_fatta_tipo: string
+        }[]
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
