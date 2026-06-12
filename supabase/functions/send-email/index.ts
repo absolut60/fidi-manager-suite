@@ -66,6 +66,8 @@ serve(async (req) => {
         await client.send({
           from,
           to: recipient,
+          ...(cc ? { cc: Array.isArray(cc) ? cc : [cc] } : {}),
+          ...(bcc ? { bcc: Array.isArray(bcc) ? bcc : [bcc] } : {}),
           subject,
           content: text ?? "Apri l'email in un client che supporta HTML.",
           html,
