@@ -37,7 +37,7 @@ serve(async (req) => {
 
   try {
     const payload: EmailPayload = await req.json();
-    const { to, cc, bcc, subject, html, text, replyTo } = payload;
+    const { to, cc, bcc, subject, html, text, replyTo, fromName } = payload;
 
     if (!to || !subject || !html) {
       return new Response(
@@ -50,7 +50,12 @@ serve(async (req) => {
     const port = parseInt(Deno.env.get("SMTP_PORT") ?? "465");
     const user = Deno.env.get("SMTP_USER")!;
     const pass = Deno.env.get("SMTP_PASS")!;
-    const from = Deno.env.get("SMTP_FROM") ?? `FidiManager MADE <${user}>`;
+    const defaultFrom = Deno.env.get("SMTP_FROM") ?? `FidiManager MADE <${user}>`;
+
+    // Mittente: l'indirizzo deve restare quello autenticato (SPF/deliverability).
+    // Il display name e' personalizzabile (es. "Andrea Giani <smtp@gruppomade.eu>").
+    const displayName = sanitizeDisplayName(fromName);
+    const from = displayName ? `${displayName} <${user}>` : defaultFrom;
 
     const recipients = Array.isArray(to) ? to : [to];
 
