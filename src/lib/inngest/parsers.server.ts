@@ -700,56 +700,70 @@ export function parseScadenziarioRangeLean(
   headers: string[],
   startRow0: number,
   endRow0Inclusive: number,
-): { rows: ScadRow[]; missing: number[]; totRead: number } {
+): {
+  rows: ScadRow[];
+  missing: number[];
+  totRead: number;
+  rowErrors: Array<{ riga: number; errore: string }>;
+} {
   const ref = sheet["!ref"];
-  if (!ref) return { rows: [], missing: [], totRead: 0 };
+  if (!ref) return { rows: [], missing: [], totRead: 0, rowErrors: [] };
   const range = XLSX.utils.decode_range(ref);
   const startR = Math.max(2, startRow0);
   const endR = Math.min(range.e.r, endRow0Inclusive);
   const rows: ScadRow[] = [];
   const missing: number[] = [];
+  const rowErrors: Array<{ riga: number; errore: string }> = [];
   let totRead = 0;
   for (let r = startR; r <= endR; r++) {
-    let hasContent = false;
-    const mapped: Record<string, unknown> = {};
-    let ragSoc = "";
-    let codiceRaw: unknown = null;
-    for (let c = 0; c <= range.e.c; c++) {
-      const h = headers[c];
-      const field = SCAD_OFFICIAL_MAP[h];
-      if (!field) continue;
-      const addr = XLSX.utils.encode_cell({ r, c });
-      const cell = sheet[addr] as XLSX.CellObject | undefined;
-      const v = cell?.v;
-      if (v != null && String(v).trim() !== "") hasContent = true;
-      if (field === "__ragsoc") {
-        ragSoc = String(v ?? "").trim();
-      } else if (field === "codice_gestionale") {
-        codiceRaw = v;
-      } else {
-        mapped[field] = v;
+    try {
+      let hasContent = false;
+      const mapped: Record<string, unknown> = {};
+      let ragSoc = "";
+      let codiceRaw: unknown = null;
+      for (let c = 0; c <= range.e.c; c++) {
+        const h = headers[c];
+        const field = SCAD_OFFICIAL_MAP[h];
+        if (!field) continue;
+        const addr = XLSX.utils.encode_cell({ r, c });
+        const cell = sheet[addr] as XLSX.CellObject | undefined;
+        const v = cell?.v;
+        if (v != null && String(v).trim() !== "") hasContent = true;
+        if (field === "__ragsoc") {
+          ragSoc = String(v ?? "").trim();
+        } else if (field === "codice_gestionale") {
+          codiceRaw = v;
+        } else {
+          mapped[field] = v;
+        }
       }
+      if (!hasContent) continue;
+      totRead++;
+      const codice = toStr(codiceRaw);
+      if (!codice) {
+        missing.push(r + 1);
+        continue;
+      }
+      const payload: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(mapped)) {
+        if (SCAD_OFFICIAL_NUM.has(k)) payload[k] = toNum(v);
+        else if (SCAD_OFFICIAL_INT.has(k)) payload[k] = toInt(v);
+        else if (SCAD_OFFICIAL_DATE.has(k)) payload[k] = excelDateToISO(v);
+        else payload[k] = toStr(v);
+      }
+      rows.push({
+        idx: r + 1,
+        codice_gestionale: String(codice).replace(/\.0$/, ""),
+        ragione_sociale: ragSoc,
+        payload,
+      });
+    } catch (err) {
+      // Riga malformata: skip isolato, non far cadere il chunk
+      rowErrors.push({
+        riga: r + 1,
+        errore: `Parse riga ${r + 1}: ${err instanceof Error ? err.message : String(err)}`.slice(0, 300),
+      });
     }
-    if (!hasContent) continue;
-    totRead++;
-    const codice = toStr(codiceRaw);
-    if (!codice) {
-      missing.push(r + 1);
-      continue;
-    }
-    const payload: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(mapped)) {
-      if (SCAD_OFFICIAL_NUM.has(k)) payload[k] = toNum(v);
-      else if (SCAD_OFFICIAL_INT.has(k)) payload[k] = toInt(v);
-      else if (SCAD_OFFICIAL_DATE.has(k)) payload[k] = excelDateToISO(v);
-      else payload[k] = toStr(v);
-    }
-    rows.push({
-      idx: r + 1,
-      codice_gestionale: String(codice).replace(/\.0$/, ""),
-      ragione_sociale: ragSoc,
-      payload,
-    });
   }
-  return { rows, missing, totRead };
+  return { rows, missing, totRead, rowErrors };
 }
