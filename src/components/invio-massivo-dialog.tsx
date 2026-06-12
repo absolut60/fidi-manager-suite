@@ -180,13 +180,30 @@ export function InvioMassivoDialog({
     });
   }
 
+  // Sede del cliente corrente per anteprima cornice
+  const { data: sedeCorrente } = useQuery({
+    queryKey: ["sollecito-massivo-sede", clienteCorrenteId],
+    queryFn: () => caricaSedeCliente(clienteCorrenteId!),
+    enabled: open && !!clienteCorrenteId,
+    staleTime: 60_000,
+  });
+
   const anteprima = useMemo(() => {
     if (!selectedTemplate || !clientePreview) return null;
-    return renderTemplate(
+    const dati: DatiTemplate = {
+      ...clientePreview.dati,
+      nome_operatore: nomeOperatore,
+    };
+    const base = renderTemplate(
       { oggetto: selectedTemplate.oggetto, corpo: selectedTemplate.corpo },
-      clientePreview.dati,
+      dati,
     );
-  }, [selectedTemplate, clientePreview]);
+    const corpo = wrapEmailHtml(base.corpo, sedeCorrente ?? null, {
+      nome: nomeOperatore,
+      email: user?.email ?? null,
+    });
+    return { oggetto: base.oggetto, corpo };
+  }, [selectedTemplate, clientePreview, sedeCorrente, nomeOperatore, user?.email]);
 
   // Conteggi rapidi: si basano solo su ciò che è stato esplorato/corretto
   const numeroCorretti = useMemo(
