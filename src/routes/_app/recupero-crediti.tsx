@@ -209,15 +209,15 @@ function RecuperoCreditiPage() {
   });
 
   // Build base query (reusable for list, count, aggregates)
-  function applyFilters<T extends ReturnType<typeof supabase.from> | any>(q: T): T {
-    if (esitoFilter.size > 0) q = q.in("esito", Array.from(esitoFilter)) as T;
-    if (tipoFilter.size > 0) q = q.in("tipo", Array.from(tipoFilter)) as T;
-    if (operatoreId !== "all" && !isStoreManager) q = q.eq("operatore_id", operatoreId) as T;
-    if (dataDa) q = q.gte("data_azione", dataDa.toISOString()) as T;
+  function applyFilters(q: any): any {
+    if (esitoFilter.size > 0) q = q.in("esito", Array.from(esitoFilter));
+    if (tipoFilter.size > 0) q = q.in("tipo", Array.from(tipoFilter));
+    if (operatoreId !== "all" && !isStoreManager) q = q.eq("operatore_id", operatoreId);
+    if (dataDa) q = q.gte("data_azione", dataDa.toISOString());
     if (dataA) {
       const end = new Date(dataA);
       end.setHours(23, 59, 59, 999);
-      q = q.lte("data_azione", end.toISOString()) as T;
+      q = q.lte("data_azione", end.toISOString());
     }
     return q;
   }
