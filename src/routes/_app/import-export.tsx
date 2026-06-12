@@ -93,37 +93,101 @@ function BgProgressBlock({
           </>
         ) : null}
       </div>
-      {progress.codici_mancanti?.length ? (
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-7 text-xs"
-          onClick={() => {
-            const codes = progress.codici_mancanti ?? [];
-            const csv =
-              "codice_gestionale\n" +
-              codes
-                .map((c) => `"${String(c).replace(/"/g, '""')}"`)
-                .join("\n");
-            const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = `codici-mancanti-${new Date()
-              .toISOString()
-              .slice(0, 10)}.csv`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-          }}
-        >
-          <Download className="size-3 mr-1" />
-          Scarica codici mancanti ({progress.codici_mancanti.length}
-          {progress.codici_mancanti.length >= 200 ? "+" : ""})
-        </Button>
-      ) : null}
+      {(() => {
+        const report = progress.report_saltati ?? null;
+        const cnt = report?.cliente_non_trovato ?? {};
+        const cntEntries = Object.entries(cnt);
+        const erroriRiga = report?.errori_riga ?? [];
+        const hasRichReport = cntEntries.length > 0 || erroriRiga.length > 0;
+        const codes = progress.codici_mancanti ?? [];
+        const hasLegacyCodes = codes.length > 0;
+
+        if (!hasRichReport && !hasLegacyCodes) return null;
+
+        return (
+          <div className="flex flex-wrap gap-2">
+            {hasRichReport ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => {
+                  const header = "codice_gestionale;ragione_sociale;righe_saltate";
+                  const lines = cntEntries
+                    .sort((a, b) => b[1].count - a[1].count)
+                    .map(([cg, det]) => {
+                      const rs = (det.ragione_sociale ?? "").replace(/"/g, '""');
+                      return `"${cg.replace(/"/g, '""')}";"${rs}";${det.count}`;
+                    });
+                  const errSection = erroriRiga.length
+                    ? "\n\nErrori riga:\nriga;errore\n" +
+                      erroriRiga
+                        .map(
+                          (e) =>
+                            `${e.riga};"${String(e.errore).replace(/"/g, '""')}"`,
+                        )
+                        .join("\n")
+                    : "";
+                  const csv = `${header}\n${lines.join("\n")}${errSection}`;
+                  const blob = new Blob(["\uFEFF" + csv], {
+                    type: "text/csv;charset=utf-8",
+                  });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `report-saltati-${new Date()
+                    .toISOString()
+                    .slice(0, 10)}.csv`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                }}
+              >
+                <Download className="size-3 mr-1" />
+                Report completo saltati
+                {cntEntries.length
+                  ? ` (${cntEntries.length} clienti${
+                      erroriRiga.length ? `, ${erroriRiga.length} errori riga` : ""
+                    })`
+                  : erroriRiga.length
+                    ? ` (${erroriRiga.length} errori riga)`
+                    : ""}
+              </Button>
+            ) : null}
+            {hasLegacyCodes && !hasRichReport ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => {
+                  const csv =
+                    "codice_gestionale\n" +
+                    codes
+                      .map((c) => `"${String(c).replace(/"/g, '""')}"`)
+                      .join("\n");
+                  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `codici-mancanti-${new Date()
+                    .toISOString()
+                    .slice(0, 10)}.csv`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                }}
+              >
+                <Download className="size-3 mr-1" />
+                Scarica codici mancanti ({codes.length})
+              </Button>
+            ) : null}
+          </div>
+        );
+      })()}
     </div>
   );
 }
