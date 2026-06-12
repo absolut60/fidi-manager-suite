@@ -1,0 +1,2 @@
+ALTER TABLE public.campagne_sollecito_destinatari DROP CONSTRAINT IF EXISTS campagne_sollecito_destinatari_stato_check;
+ALTER TABLE public.campagne_sollecito_destinatari ADD CONSTRAINT campagne_sollecito_destinatari_stato_check CHECK (stato = ANY (ARRAY['da_inviare'::text, 'inviato'::text, 'saltato_no_indirizzo'::text, 'fallito'::text, 'annullato'::text]));
