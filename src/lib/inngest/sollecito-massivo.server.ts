@@ -102,14 +102,15 @@ export const invioMassivoSolleciti = inngest.createFunction(
 
       const { data: dests } = await supabaseAdmin
         .from("campagne_sollecito_destinatari")
-        .select("id, cliente_id")
+        .select("id, cliente_id, indirizzo_usato")
         .eq("campagna_id", campagna_id)
         .eq("stato", "da_inviare");
 
       const destRows = dests ?? [];
-      const clienteIds = Array.from(new Set(destRows.map((d) => d.cliente_id)));
+      // Solo per le righe SENZA indirizzo_usato dobbiamo risolverlo da clienti.
+      const daRisolvere = destRows.filter((d) => !d.indirizzo_usato || !String(d.indirizzo_usato).trim());
+      const clienteIds = Array.from(new Set(daRisolvere.map((d) => d.cliente_id)));
 
-      // Carica email/pec dei clienti coinvolti
       const clientiInfo: Record<string, { email: string | null; pec: string | null }> = {};
       const CHUNK = 200;
       for (let i = 0; i < clienteIds.length; i += CHUNK) {
@@ -125,8 +126,7 @@ export const invioMassivoSolleciti = inngest.createFunction(
 
       const pref = camp.preferenza_indirizzo as "email" | "pec";
       let saltati = 0;
-      // Aggiorna ogni destinatario con l'indirizzo scelto, oppure marca saltato
-      for (const d of destRows) {
+      for (const d of daRisolvere) {
         const ci = clientiInfo[d.cliente_id] ?? { email: null, pec: null };
         const primary = pref === "email" ? ci.email : ci.pec;
         const secondary = pref === "email" ? ci.pec : ci.email;
