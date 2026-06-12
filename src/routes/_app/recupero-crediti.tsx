@@ -640,6 +640,16 @@ function RecuperoCreditiPage() {
           </div>
         </div>
       </Card>
+
+      {sollecitoFor && (
+        <InviaSollecitoDialog
+          open={!!sollecitoFor}
+          onOpenChange={(v) => !v && setSollecitoFor(null)}
+          clienteId={sollecitoFor.clienteId}
+          azioneEsistenteId={sollecitoFor.azioneId}
+          onSent={() => setSollecitoFor(null)}
+        />
+      )}
     </div>
   );
 }
