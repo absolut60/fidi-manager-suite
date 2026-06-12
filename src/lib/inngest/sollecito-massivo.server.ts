@@ -187,11 +187,20 @@ export const invioMassivoSolleciti = inngest.createFunction(
     }
 
     // Configurazione throttling (letta una sola volta — il job può durare a lungo)
-    const cfg = await step.run("config", async () => ({
-      blocco: await getConfigInt("sollecito_massivo_blocco", DEFAULT_BLOCCO),
-      pausa: await getConfigInt("sollecito_massivo_pausa_sec", DEFAULT_PAUSA),
-      nomeOperatore: await getNomeOperatore(prep.operatoreId),
-    }));
+    const cfg = await step.run("config", async (): Promise<{
+      blocco: number;
+      pausa: number;
+      nomeOperatore: string;
+      emailOperatore: string | null;
+    }> => {
+      const op = await getOperatoreInfo(prep.operatoreId);
+      return {
+        blocco: await getConfigInt("sollecito_massivo_blocco", DEFAULT_BLOCCO),
+        pausa: await getConfigInt("sollecito_massivo_pausa_sec", DEFAULT_PAUSA),
+        nomeOperatore: op.nome,
+        emailOperatore: op.email,
+      };
+    });
 
     // Carica template UNA volta
     const tpl = await step.run("load-template", async () => {
