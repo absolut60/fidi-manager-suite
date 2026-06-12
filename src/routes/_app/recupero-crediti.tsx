@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { InviaSollecitoDialog } from "@/components/invia-sollecito-dialog";
 import { EmailInviataView } from "@/components/email-inviata-view";
+import { InvioMassivoDialog } from "@/components/invio-massivo-dialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -178,6 +179,7 @@ function RecuperoCreditiPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [promessaOpenFor, setPromessaOpenFor] = useState<string | null>(null);
   const [sollecitoFor, setSollecitoFor] = useState<{ clienteId: string; azioneId: string } | null>(null);
+  const [invioMassivoOpen, setInvioMassivoOpen] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounced(search.trim()), 300);
@@ -387,12 +389,15 @@ function RecuperoCreditiPage() {
     <div className="space-y-6">
       <div className="flex items-center gap-3">
         <HandCoins className="size-7 text-primary" />
-        <div>
+        <div className="flex-1">
           <h1 className="text-2xl font-semibold tracking-tight">Recupero Crediti</h1>
           <p className="text-sm text-muted-foreground">
             Azioni di recupero su clienti con scaduto
           </p>
         </div>
+        <Button variant="outline" size="sm" onClick={() => setInvioMassivoOpen(true)} className="gap-1.5">
+          <Send className="size-4" /> Invio massivo solleciti
+        </Button>
       </div>
 
       {/* Metric cards */}
@@ -654,6 +659,13 @@ function RecuperoCreditiPage() {
           onSent={() => setSollecitoFor(null)}
         />
       )}
+
+      <InvioMassivoDialog
+        open={invioMassivoOpen}
+        onOpenChange={setInvioMassivoOpen}
+        clienteIdsSelezionati={[]}
+        clienteIdsFiltrati={Array.from(new Set((azioniQuery.data?.rows ?? []).map((r) => r.cliente_id)))}
+      />
     </div>
   );
 }
