@@ -17,6 +17,7 @@ import { Route as AppWhatsappRouteImport } from './routes/_app/whatsapp'
 import { Route as AppUtentiRouteImport } from './routes/_app/utenti'
 import { Route as AppScadenziarioRouteImport } from './routes/_app/scadenziario'
 import { Route as AppRichiesteRouteImport } from './routes/_app/richieste'
+import { Route as AppRecuperoCreditiCalendarioRouteImport } from './routes/_app/recupero-crediti-calendario'
 import { Route as AppRecuperoCreditiRouteImport } from './routes/_app/recupero-crediti'
 import { Route as AppPrivacyRouteImport } from './routes/_app/privacy'
 import { Route as AppLegaliRouteImport } from './routes/_app/legali'
@@ -74,6 +75,12 @@ const AppRichiesteRoute = AppRichiesteRouteImport.update({
   path: '/richieste',
   getParentRoute: () => AppRoute,
 } as any)
+const AppRecuperoCreditiCalendarioRoute =
+  AppRecuperoCreditiCalendarioRouteImport.update({
+    id: '/recupero-crediti-calendario',
+    path: '/recupero-crediti-calendario',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppRecuperoCreditiRoute = AppRecuperoCreditiRouteImport.update({
   id: '/recupero-crediti',
   path: '/recupero-crediti',
@@ -177,6 +184,7 @@ export interface FileRoutesByFullPath {
   '/legali': typeof AppLegaliRoute
   '/privacy': typeof AppPrivacyRoute
   '/recupero-crediti': typeof AppRecuperoCreditiRoute
+  '/recupero-crediti-calendario': typeof AppRecuperoCreditiCalendarioRoute
   '/richieste': typeof AppRichiesteRouteWithChildren
   '/scadenziario': typeof AppScadenziarioRoute
   '/utenti': typeof AppUtentiRoute
@@ -203,6 +211,7 @@ export interface FileRoutesByTo {
   '/legali': typeof AppLegaliRoute
   '/privacy': typeof AppPrivacyRoute
   '/recupero-crediti': typeof AppRecuperoCreditiRoute
+  '/recupero-crediti-calendario': typeof AppRecuperoCreditiCalendarioRoute
   '/richieste': typeof AppRichiesteRouteWithChildren
   '/scadenziario': typeof AppScadenziarioRoute
   '/utenti': typeof AppUtentiRoute
@@ -231,6 +240,7 @@ export interface FileRoutesById {
   '/_app/legali': typeof AppLegaliRoute
   '/_app/privacy': typeof AppPrivacyRoute
   '/_app/recupero-crediti': typeof AppRecuperoCreditiRoute
+  '/_app/recupero-crediti-calendario': typeof AppRecuperoCreditiCalendarioRoute
   '/_app/richieste': typeof AppRichiesteRouteWithChildren
   '/_app/scadenziario': typeof AppScadenziarioRoute
   '/_app/utenti': typeof AppUtentiRoute
@@ -259,6 +269,7 @@ export interface FileRouteTypes {
     | '/legali'
     | '/privacy'
     | '/recupero-crediti'
+    | '/recupero-crediti-calendario'
     | '/richieste'
     | '/scadenziario'
     | '/utenti'
@@ -285,6 +296,7 @@ export interface FileRouteTypes {
     | '/legali'
     | '/privacy'
     | '/recupero-crediti'
+    | '/recupero-crediti-calendario'
     | '/richieste'
     | '/scadenziario'
     | '/utenti'
@@ -312,6 +324,7 @@ export interface FileRouteTypes {
     | '/_app/legali'
     | '/_app/privacy'
     | '/_app/recupero-crediti'
+    | '/_app/recupero-crediti-calendario'
     | '/_app/richieste'
     | '/_app/scadenziario'
     | '/_app/utenti'
@@ -390,6 +403,13 @@ declare module '@tanstack/react-router' {
       path: '/richieste'
       fullPath: '/richieste'
       preLoaderRoute: typeof AppRichiesteRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/recupero-crediti-calendario': {
+      id: '/_app/recupero-crediti-calendario'
+      path: '/recupero-crediti-calendario'
+      fullPath: '/recupero-crediti-calendario'
+      preLoaderRoute: typeof AppRecuperoCreditiCalendarioRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/recupero-crediti': {
@@ -551,6 +571,7 @@ interface AppRouteChildren {
   AppLegaliRoute: typeof AppLegaliRoute
   AppPrivacyRoute: typeof AppPrivacyRoute
   AppRecuperoCreditiRoute: typeof AppRecuperoCreditiRoute
+  AppRecuperoCreditiCalendarioRoute: typeof AppRecuperoCreditiCalendarioRoute
   AppRichiesteRoute: typeof AppRichiesteRouteWithChildren
   AppScadenziarioRoute: typeof AppScadenziarioRoute
   AppUtentiRoute: typeof AppUtentiRoute
@@ -570,6 +591,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppLegaliRoute: AppLegaliRoute,
   AppPrivacyRoute: AppPrivacyRoute,
   AppRecuperoCreditiRoute: AppRecuperoCreditiRoute,
+  AppRecuperoCreditiCalendarioRoute: AppRecuperoCreditiCalendarioRoute,
   AppRichiesteRoute: AppRichiesteRouteWithChildren,
   AppScadenziarioRoute: AppScadenziarioRoute,
   AppUtentiRoute: AppUtentiRoute,
