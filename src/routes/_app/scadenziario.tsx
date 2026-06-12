@@ -525,7 +525,7 @@ function ScadenziarioPage() {
                       }}
                     />
                   </TableHead>
-                  <TableHead className="w-10 text-center">Az.</TableHead>
+                  <TableHead className="w-8 text-center px-1">Az.</TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead>Cod. Gestionale</TableHead>
                   <TableHead>Store</TableHead>
@@ -717,10 +717,13 @@ type AvvisatoInfo = {
 
 function AvvisatoIcon({ info, onClick }: { info: AvvisatoInfo; onClick: () => void }) {
   const attivo = !!info && info.n_azioni > 0;
-  const Icon = attivo ? (info!.ha_email ? Mail : Bell) : MailOpen;
-  const tooltip = attivo
-    ? `${info!.n_azioni} azion${info!.n_azioni === 1 ? "e" : "i"} sullo scaduto attuale${info!.ultima_tipo ? ` — ultima: ${info!.ultima_tipo}${info!.ultima_data ? " " + fmtDate(info!.ultima_data) : ""}` : ""}`
-    : "Nessuna azione sullo scaduto attuale — apri scheda recupero";
+  if (!attivo) return null;
+
+  const haEmail = info!.ha_email;
+  const Icon = haEmail ? Mail : Bell;
+  const colorClass = haEmail ? "text-teal-600" : "text-amber-500";
+  const tooltip = `${info!.n_azioni} azion${info!.n_azioni === 1 ? "e" : "i"} sullo scaduto attuale${info!.ultima_tipo ? ` — ultima: ${info!.ultima_tipo}${info!.ultima_data ? " " + fmtDate(info!.ultima_data) : ""}` : ""}`;
+
   return (
     <TooltipProvider delayDuration={200}>
       <Tooltip>
@@ -729,13 +732,9 @@ function AvvisatoIcon({ info, onClick }: { info: AvvisatoInfo; onClick: () => vo
             type="button"
             onClick={onClick}
             aria-label={tooltip}
-            className={`inline-flex items-center justify-center rounded p-1 transition-colors ${
-              attivo
-                ? "text-primary hover:bg-primary/10"
-                : "text-muted-foreground/60 hover:bg-muted hover:text-foreground"
-            }`}
+            className={`inline-flex items-center justify-center rounded p-1 hover:bg-muted transition-colors ${colorClass}`}
           >
-            <Icon className="size-4" />
+            <Icon className="size-5" strokeWidth={2.5} />
           </button>
         </TooltipTrigger>
         <TooltipContent side="top">{tooltip}</TooltipContent>
