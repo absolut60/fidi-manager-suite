@@ -138,11 +138,16 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
 
   const rendered = useMemo(() => {
     if (!selectedTemplate || !datiTemplate) return null;
-    return renderTemplate(
+    const base = renderTemplate(
       { oggetto: selectedTemplate.oggetto, corpo: selectedTemplate.corpo },
       datiTemplate,
     );
-  }, [selectedTemplate, datiTemplate]);
+    const corpoCompleto = wrapEmailHtml(base.corpo, datiSede ?? null, {
+      nome: nomeOperatore,
+      email: user?.email ?? null,
+    });
+    return { oggetto: base.oggetto, corpo: corpoCompleto };
+  }, [selectedTemplate, datiTemplate, datiSede, nomeOperatore, user?.email]);
 
   function onPickSource(src: "email" | "pec" | "custom") {
     setDestSource(src);
