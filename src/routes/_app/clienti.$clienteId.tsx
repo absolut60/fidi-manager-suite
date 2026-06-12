@@ -2,7 +2,8 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import { ArrowLeft, Plus, Mail, Phone, Smartphone, Star, Trash2, FileCheck2, FileX2, Download, Pencil, Link as LinkIcon, Copy, EyeOff, AlertTriangle, MessageCircle } from "lucide-react";
+import { ArrowLeft, Plus, Mail, Phone, Smartphone, Star, Trash2, FileCheck2, FileX2, Download, Pencil, Link as LinkIcon, Copy, EyeOff, AlertTriangle, MessageCircle, Send } from "lucide-react";
+import { InviaSollecitoDialog } from "@/components/invia-sollecito-dialog";
 import { SignaturePad, getCanvasDataURL } from "@/components/signature-pad";
 import { PdfPrivacyButton } from "@/components/pdf-privacy-button";
 import { generaPdfPrivacy } from "@/lib/privacy-pdf";
@@ -189,6 +190,7 @@ function ClienteDetail() {
   const [openNew, setOpenNew] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openDisattiva, setOpenDisattiva] = useState(false);
+  const [openSollecito, setOpenSollecito] = useState(false);
   const [openElimina, setOpenElimina] = useState(false);
 
   useEffect(() => {
@@ -352,6 +354,14 @@ function ClienteDetail() {
                 <FileX2 className="size-3" /> Privacy da firmare
               </Badge>
             )}
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setOpenSollecito(true)}>
+              <Send className="size-4" /> Invia sollecito
+            </Button>
+            <InviaSollecitoDialog
+              open={openSollecito}
+              onOpenChange={setOpenSollecito}
+              clienteId={clienteId}
+            />
             <Dialog open={openEdit} onOpenChange={setOpenEdit}>
               <DialogTrigger asChild>
                 <Button size="sm" variant="outline" className="gap-1.5">

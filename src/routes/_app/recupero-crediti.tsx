@@ -14,7 +14,9 @@ import {
   Bell,
   StickyNote,
   FileText,
+  Send,
 } from "lucide-react";
+import { InviaSollecitoDialog } from "@/components/invia-sollecito-dialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -171,6 +173,7 @@ function RecuperoCreditiPage() {
   const [page, setPage] = useState(1);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [promessaOpenFor, setPromessaOpenFor] = useState<string | null>(null);
+  const [sollecitoFor, setSollecitoFor] = useState<{ clienteId: string; azioneId: string } | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounced(search.trim()), 300);
@@ -568,7 +571,21 @@ function RecuperoCreditiPage() {
                         {r.operatore_id ? operatoreMap[r.operatore_id] ?? "—" : "—"}
                       </TableCell>
                       <TableCell className="max-w-[260px] text-sm text-muted-foreground truncate">
-                        {r.note ?? "—"}
+                        {r.tipo === "email" && r.esito === "da_fare" ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1.5 h-7"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSollecitoFor({ clienteId: r.cliente_id, azioneId: r.id });
+                            }}
+                          >
+                            <Send className="size-3.5" /> Invia
+                          </Button>
+                        ) : (
+                          r.note ?? "—"
+                        )}
                       </TableCell>
                     </TableRow>
                     {expanded && (
@@ -623,6 +640,16 @@ function RecuperoCreditiPage() {
           </div>
         </div>
       </Card>
+
+      {sollecitoFor && (
+        <InviaSollecitoDialog
+          open={!!sollecitoFor}
+          onOpenChange={(v) => !v && setSollecitoFor(null)}
+          clienteId={sollecitoFor.clienteId}
+          azioneEsistenteId={sollecitoFor.azioneId}
+          onSent={() => setSollecitoFor(null)}
+        />
+      )}
     </div>
   );
 }

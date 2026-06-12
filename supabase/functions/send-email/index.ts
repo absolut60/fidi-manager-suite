@@ -14,6 +14,8 @@ interface EmailAttachment {
 
 interface EmailPayload {
   to: string | string[];
+  cc?: string | string[];
+  bcc?: string | string[];
   subject: string;
   html: string;
   text?: string;
@@ -28,7 +30,7 @@ serve(async (req) => {
 
   try {
     const payload: EmailPayload = await req.json();
-    const { to, subject, html, text, replyTo } = payload;
+    const { to, cc, bcc, subject, html, text, replyTo } = payload;
 
     if (!to || !subject || !html) {
       return new Response(
@@ -64,6 +66,8 @@ serve(async (req) => {
         await client.send({
           from,
           to: recipient,
+          ...(cc ? { cc: Array.isArray(cc) ? cc : [cc] } : {}),
+          ...(bcc ? { bcc: Array.isArray(bcc) ? bcc : [bcc] } : {}),
           subject,
           content: text ?? "Apri l'email in un client che supporta HTML.",
           html,
