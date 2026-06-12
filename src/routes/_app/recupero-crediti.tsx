@@ -365,9 +365,11 @@ function RecuperoCreditiPage() {
 
   const counts = useMemo(() => {
     const rows = aggQuery.data ?? [];
+    const aperti = rows.filter((r) => r.azioni_aperte > 0).length;
     return {
       tutti: rows.length,
-      aperti: rows.filter((r) => r.azioni_aperte > 0).length,
+      aperti,
+      conclusi: rows.length - aperti,
       ritardo: rows.filter((r) => r.in_ritardo).length,
     };
   }, [aggQuery.data]);
