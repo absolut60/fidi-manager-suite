@@ -574,6 +574,13 @@ function ScadenziarioPage() {
         userId={user?.id ?? null}
         onDone={() => { setSelectedIds(new Set()); setDialogOpen(false); }}
       />
+
+      <InvioMassivoDialog
+        open={invioMassivoOpen}
+        onOpenChange={setInvioMassivoOpen}
+        clienteIdsSelezionati={rows.filter((r) => selectedIds.has(r.cliente.id)).map((r) => r.cliente.id)}
+        clienteIdsFiltrati={rows.map((r) => r.cliente.id)}
+      />
     </div>
   );
 }
