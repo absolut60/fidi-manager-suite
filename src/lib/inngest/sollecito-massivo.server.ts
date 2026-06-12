@@ -54,15 +54,15 @@ async function sendEmailViaEdge(payload: {
   }
 }
 
-async function getNomeOperatore(userId: string | null): Promise<string> {
-  if (!userId) return "Operatore";
+async function getOperatoreInfo(userId: string | null): Promise<{ nome: string; email: string | null }> {
+  if (!userId) return { nome: "Operatore", email: null };
   const { data } = await supabaseAdmin
     .from("profili")
-    .select("nome, cognome")
+    .select("nome, cognome, email")
     .eq("id", userId)
     .maybeSingle();
   const n = `${data?.nome ?? ""} ${data?.cognome ?? ""}`.trim();
-  return n || "Operatore";
+  return { nome: n || "Operatore", email: data?.email ?? null };
 }
 
 export const invioMassivoSolleciti = inngest.createFunction(
