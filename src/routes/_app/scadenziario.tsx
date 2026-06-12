@@ -650,3 +650,151 @@ function CellInfo({ label, value, cls, hint }: { label: string; value: string; c
     </div>
   );
 }
+
+type SelRow = { cliente: Cliente; totScad: number; scaduteIds: string[] };
+
+function toLocalInputValue(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function AzioneRecuperoDialog({
+  open, onOpenChange, selectedRows, userId, onDone,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  selectedRows: SelRow[];
+  userId: string | null;
+  onDone: () => void;
+}) {
+  const [tipo, setTipo] = useState<"email" | "telefonata" | "promemoria">("telefonata");
+  const [dataAzione, setDataAzione] = useState<string>(() => toLocalInputValue(new Date()));
+  const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setTipo("telefonata");
+      setDataAzione(toLocalInputValue(new Date()));
+      setNote("");
+    }
+  }, [open]);
+
+  const totaleScaduto = useMemo(
+    () => selectedRows.reduce((a, r) => a + Number(r.totScad ?? 0), 0),
+    [selectedRows],
+  );
+
+  async function handleConfirm() {
+    if (!userId) {
+      toast.error("Utente non autenticato");
+      return;
+    }
+    if (selectedRows.length === 0) return;
+    setSaving(true);
+    try {
+      const iso = new Date(dataAzione).toISOString();
+      const azioniPayload = selectedRows.map((r) => ({
+        cliente_id: r.cliente.id,
+        operatore_id: userId,
+        tipo,
+        esito: "da_fare" as const,
+        data_azione: iso,
+        note: note.trim() || null,
+        importo_riferimento: r.totScad || null,
+      }));
+      const { data: inserted, error: errAz } = await supabase
+        .from("azioni_recupero")
+        .insert(azioniPayload)
+        .select("id, cliente_id");
+      if (errAz) throw errAz;
+
+      const azById = new Map<string, string>();
+      (inserted ?? []).forEach((a) => azById.set(a.cliente_id as string, a.id as string));
+
+      const ponti: { azione_id: string; scadenza_id: string }[] = [];
+      for (const r of selectedRows) {
+        const azId = azById.get(r.cliente.id);
+        if (!azId) continue;
+        for (const sid of r.scaduteIds) {
+          ponti.push({ azione_id: azId, scadenza_id: sid });
+        }
+      }
+      if (ponti.length > 0) {
+        const { error: errPonti } = await supabase.from("azioni_recupero_scadenze").insert(ponti);
+        if (errPonti) throw errPonti;
+      }
+
+      toast.success(`Create ${inserted?.length ?? 0} azioni di recupero`);
+      onDone();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Errore durante la creazione delle azioni";
+      toast.error(msg);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Avvia azione di recupero</DialogTitle>
+          <DialogDescription>
+            {selectedRows.length} clienti selezionati · Totale scaduto {fmtEuro(totaleScaduto)}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>Tipo azione</Label>
+            <RadioGroup value={tipo} onValueChange={(v) => setTipo(v as typeof tipo)} className="grid grid-cols-3 gap-2">
+              {(["email", "telefonata", "promemoria"] as const).map((t) => (
+                <label
+                  key={t}
+                  className={`flex items-center gap-2 border rounded-md px-3 py-2 cursor-pointer text-sm capitalize ${tipo === t ? "border-primary bg-primary/5" : ""}`}
+                >
+                  <RadioGroupItem value={t} />
+                  {t}
+                </label>
+              ))}
+            </RadioGroup>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="data-azione">Data azione</Label>
+            <Input
+              id="data-azione"
+              type="datetime-local"
+              value={dataAzione}
+              onChange={(e) => setDataAzione(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="note-azione">Note (opzionale)</Label>
+            <Textarea
+              id="note-azione"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              rows={3}
+            />
+          </div>
+
+          {tipo === "email" && (
+            <div className="text-xs rounded-md border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 p-3">
+              L'invio email verrà collegato in un secondo momento; ora viene registrata solo l'azione.
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Annulla</Button>
+          <Button onClick={handleConfirm} disabled={saving || selectedRows.length === 0}>
+            {saving ? "Creazione…" : "Conferma"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
