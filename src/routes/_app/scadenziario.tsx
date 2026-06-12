@@ -707,6 +707,43 @@ function ExpandedRischioPanel({ loading, data, onApri }: { loading: boolean; dat
   );
 }
 
+type AvvisatoInfo = {
+  cliente_id: string;
+  n_azioni: number;
+  ha_email: boolean;
+  ultima_tipo: string | null;
+  ultima_data: string | null;
+} | null;
+
+function AvvisatoIcon({ info, onClick }: { info: AvvisatoInfo; onClick: () => void }) {
+  const attivo = !!info && info.n_azioni > 0;
+  const Icon = attivo ? (info!.ha_email ? Mail : Bell) : MailOpen;
+  const tooltip = attivo
+    ? `${info!.n_azioni} azion${info!.n_azioni === 1 ? "e" : "i"} sullo scaduto attuale${info!.ultima_tipo ? ` — ultima: ${info!.ultima_tipo}${info!.ultima_data ? " " + fmtDate(info!.ultima_data) : ""}` : ""}`
+    : "Nessuna azione sullo scaduto attuale — apri scheda recupero";
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={onClick}
+            aria-label={tooltip}
+            className={`inline-flex items-center justify-center rounded p-1 transition-colors ${
+              attivo
+                ? "text-primary hover:bg-primary/10"
+                : "text-muted-foreground/60 hover:bg-muted hover:text-foreground"
+            }`}
+          >
+            <Icon className="size-4" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top">{tooltip}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
 function CellInfo({ label, value, cls, hint }: { label: string; value: string; cls?: string; hint?: string }) {
   return (
     <div className="min-w-0">
