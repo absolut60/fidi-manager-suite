@@ -22,6 +22,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { ReminderControls, defaultReminderFor, creaFollowUp, type ReminderState } from "@/components/reminder-controls";
 
 type Props = {
   open: boolean;
@@ -43,6 +44,7 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
   const [destSource, setDestSource] = useState<"email" | "pec" | "custom">("email");
   const [destEmail, setDestEmail] = useState<string>("");
   const [sending, setSending] = useState(false);
+  const [reminder, setReminder] = useState<ReminderState>(defaultReminderFor("email"));
 
   // Reset on open/close
   useEffect(() => {
