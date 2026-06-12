@@ -190,10 +190,12 @@ export function wrapEmailHtml(
     ? `<div style="font-size:11px;color:#64748b;margin-top:2px;">${escapeHtml(datiMittente.email)}</div>`
     : "";
 
-  // In email reale (useCid=true) puntiamo all'allegato inline cid:logo-made
-  // — bypassando proxy aziendali che bloccano immagini remote.
+  // In email reale (useCid=true) puntiamo all'allegato inline cid:logoMade
+  // (id senza trattini: alcuni parser MIME legacy — Outlook desktop incluso —
+  // hanno problemi con i trattini nel Content-ID). Bypassa i proxy aziendali
+  // che bloccano immagini remote.
   // In anteprima (default) usiamo l'URL pubblico, perche cid: non viene risolto nel browser.
-  const imgSrc = opts?.useCid ? "cid:logo-made" : LOGO_EMAIL_URL;
+  const imgSrc = opts?.useCid ? "cid:logoMade" : LOGO_EMAIL_URL;
 
   return `<!DOCTYPE html>
 <html lang="it"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><title>Sollecito</title></head>
