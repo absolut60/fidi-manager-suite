@@ -20,7 +20,14 @@ interface EmailPayload {
   html: string;
   text?: string;
   replyTo?: string;
+  fromName?: string;
   attachments?: EmailAttachment[];
+}
+
+function sanitizeDisplayName(s: string | undefined | null): string {
+  if (!s) return "";
+  // strip CR/LF e doppi apici per evitare header injection
+  return String(s).replace(/[\r\n"]/g, "").trim().slice(0, 80);
 }
 
 serve(async (req) => {
