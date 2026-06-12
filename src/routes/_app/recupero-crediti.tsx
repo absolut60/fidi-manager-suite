@@ -655,6 +655,15 @@ function RecuperoCreditiPage() {
         clienteIdsSelezionati={[]}
         clienteIdsFiltrati={clienteIdsFiltrati}
       />
+
+      <CreaAzioneDialog
+        open={nuovaAzioneOpen}
+        onOpenChange={setNuovaAzioneOpen}
+        onCreated={() => {
+          qc.invalidateQueries({ queryKey: ["recupero-clienti-aggregato"] });
+          qc.invalidateQueries({ queryKey: ["azioni-recupero-metrics"] });
+        }}
+      />
     </div>
   );
 }
