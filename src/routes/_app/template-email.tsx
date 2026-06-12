@@ -26,7 +26,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { PLACEHOLDERS, renderTemplate, caricaDatiCliente, type TemplateEmail } from "@/lib/template-email";
+import { PLACEHOLDERS, renderTemplate, caricaDatiCliente, caricaSedeCliente, wrapEmailHtml, type TemplateEmail } from "@/lib/template-email";
 
 export const Route = createFileRoute("/_app/template-email")({
   component: TemplateEmailPage,
