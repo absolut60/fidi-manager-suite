@@ -17,6 +17,7 @@ import {
   Send,
 } from "lucide-react";
 import { InviaSollecitoDialog } from "@/components/invia-sollecito-dialog";
+import { EmailInviataView } from "@/components/email-inviata-view";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
