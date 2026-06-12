@@ -456,9 +456,14 @@ function ScadenziarioPage() {
 
       {/* TABELLA UNICA */}
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase text-foreground flex items-center gap-2">
-          <FileText className="size-4" /> Clienti con scadenze aperte ({rows.length})
-        </h2>
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <h2 className="text-sm font-semibold uppercase text-foreground flex items-center gap-2">
+            <FileText className="size-4" /> Clienti con scadenze aperte ({rows.length})
+          </h2>
+          <Button size="sm" variant="outline" onClick={() => setInvioMassivoOpen(true)} className="gap-1.5">
+            <Mail className="size-4" /> Invio massivo solleciti
+          </Button>
+        </div>
         {isLoading ? <Skeleton className="h-40" /> : rows.length === 0 ? (
           <Card className="p-8 text-center text-sm text-muted-foreground">Nessun cliente con scadenze aperte</Card>
         ) : (
