@@ -95,10 +95,16 @@ export const invioMassivoSolleciti = inngest.createFunction(
         .maybeSingle();
       if (error || !camp) throw new Error(`Campagna non trovata: ${error?.message ?? campagna_id}`);
 
+      // Guard: se annullata prima ancora di partire, esci pulito
+      if (camp.stato === "annullata") {
+        return { templateId: null, operatoreId: null, annullata: true };
+      }
+
       await supabaseAdmin
         .from("campagne_sollecito")
         .update({ stato: "in_corso" })
         .eq("id", campagna_id);
+
 
       const { data: dests } = await supabaseAdmin
         .from("campagne_sollecito_destinatari")
