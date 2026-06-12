@@ -9,6 +9,7 @@ export interface SendEmailOptions {
   html: string;
   text?: string;
   replyTo?: string;
+  fromName?: string;
   attachments?: Array<{
     filename: string;
     content: string; // base64
