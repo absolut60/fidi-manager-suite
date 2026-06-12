@@ -6,7 +6,8 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import itLocale from "@fullcalendar/core/locales/it";
-import type { DatesSetArg, EventClickArg, EventDropArg } from "@fullcalendar/core";
+import type { DatesSetArg, EventClickArg, EventDropArg, DateSelectArg } from "@fullcalendar/core";
+import type { DateClickArg } from "@fullcalendar/interaction";
 import { CalendarClock, ExternalLink, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmailInviataView } from "@/components/email-inviata-view";
+import { CreaAzioneDialog } from "@/components/crea-azione-dialog";
 import {
   Select,
   SelectContent,
@@ -129,6 +131,8 @@ function CalendarioPage() {
   );
   const [tipoFilter, setTipoFilter] = useState<Set<Tipo>>(new Set());
   const [openAzione, setOpenAzione] = useState<AzioneRow | null>(null);
+  const [creaOpen, setCreaOpen] = useState(false);
+  const [creaData, setCreaData] = useState<Date | null>(null);
 
   const { data: stores } = useQuery({
     queryKey: ["stores-list"],
@@ -217,6 +221,25 @@ function CalendarioPage() {
   function handleEventClick(info: EventClickArg) {
     const azione = info.event.extendedProps.azione as AzioneRow | undefined;
     if (azione) setOpenAzione(azione);
+  }
+
+  // Click su un GIORNO vuoto (vista mese): apre il dialog con quel giorno alle 09:00
+  function handleDateClick(info: DateClickArg) {
+    const d = new Date(info.date);
+    // dateClick scatta anche nelle viste timeGrid; in vista mese allDay=true → imposta 09:00
+    if (info.allDay) {
+      d.setHours(9, 0, 0, 0);
+    }
+    setCreaData(d);
+    setCreaOpen(true);
+  }
+
+  // Selezione SLOT (viste settimana/giorno): apre il dialog con data/ora dello slot
+  function handleSelect(info: DateSelectArg) {
+    setCreaData(new Date(info.start));
+    setCreaOpen(true);
+    // Smuovi la selezione visiva dopo l'apertura
+    info.view.calendar.unselect();
   }
 
   async function handleChangeEsito(id: string, nextEsito: Esito) {
@@ -365,6 +388,12 @@ function CalendarioPage() {
             datesSet={handleDatesSet}
             eventClick={handleEventClick}
             eventDrop={handleEventDrop}
+            selectable
+            selectMirror
+            unselectAuto
+            longPressDelay={250}
+            dateClick={handleDateClick}
+            select={handleSelect}
           />
         )}
       </Card>
@@ -384,6 +413,17 @@ function CalendarioPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <CreaAzioneDialog
+        open={creaOpen}
+        onOpenChange={(v) => { setCreaOpen(v); if (!v) setCreaData(null); }}
+        dataIniziale={creaData ?? undefined}
+        tipoIniziale="promemoria"
+        onCreated={() => {
+          qc.invalidateQueries({ queryKey: ["azioni-calendario"] });
+          qc.invalidateQueries({ queryKey: ["azioni-recupero"] });
+        }}
+      />
     </div>
   );
 }
