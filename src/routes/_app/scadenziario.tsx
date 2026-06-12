@@ -433,6 +433,27 @@ function ScadenziarioPage() {
         </div>
       </Card>
 
+      {/* Barra azioni selezione */}
+      {selectedIds.size > 0 && (
+        <Card className="p-3 flex flex-wrap items-center justify-between gap-3 border-primary/40 bg-primary/5">
+          <div className="text-sm">
+            <span className="font-semibold">{selectedIds.size}</span> clienti selezionati
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              className="text-xs text-muted-foreground hover:underline"
+              onClick={() => setSelectedIds(new Set())}
+            >
+              Deseleziona
+            </button>
+            <Button size="sm" onClick={() => setDialogOpen(true)}>
+              <Megaphone className="size-4" /> Avvia azione di recupero
+            </Button>
+          </div>
+        </Card>
+      )}
+
       {/* TABELLA UNICA */}
       <section className="space-y-3">
         <h2 className="text-sm font-semibold uppercase text-foreground flex items-center gap-2">
@@ -445,6 +466,18 @@ function ScadenziarioPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox
+                      aria-label="Seleziona pagina"
+                      checked={rows.length > 0 && rows.every((r) => selectedIds.has(r.cliente.id))}
+                      onCheckedChange={(v) => {
+                        const next = new Set(selectedIds);
+                        if (v) rows.forEach((r) => next.add(r.cliente.id));
+                        else rows.forEach((r) => next.delete(r.cliente.id));
+                        setSelectedIds(next);
+                      }}
+                    />
+                  </TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead>Cod. Gestionale</TableHead>
                   <TableHead>Store</TableHead>
@@ -466,6 +499,7 @@ function ScadenziarioPage() {
                   const storeName = stores?.find((s) => s.id === r.cliente.store_id)?.nome ?? "—";
                   const fatt = fatturatoMap?.get(r.cliente.id);
                   const isExpanded = expandedClienteId === r.cliente.id;
+                  const isSel = selectedIds.has(r.cliente.id);
                   return (
                     <Fragment key={r.cliente.id}>
                       <TableRow
@@ -473,6 +507,18 @@ function ScadenziarioPage() {
                         className={`cursor-pointer ${r.cliente.bloccato ? "bg-destructive/10 hover:bg-destructive/15" : r.cliente.in_gestione_legale ? "bg-amber-500/10 hover:bg-amber-500/15" : ""}`}
                         onClick={() => setExpandedClienteId(isExpanded ? null : r.cliente.id)}
                       >
+                        <TableCell className="w-10" onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            aria-label="Seleziona cliente"
+                            checked={isSel}
+                            onCheckedChange={(v) => {
+                              const next = new Set(selectedIds);
+                              if (v) next.add(r.cliente.id);
+                              else next.delete(r.cliente.id);
+                              setSelectedIds(next);
+                            }}
+                          />
+                        </TableCell>
                         <TableCell className="font-medium">{r.cliente.ragione_sociale}</TableCell>
                         <TableCell className="font-mono text-xs">{r.cliente.codice_gestionale ?? "—"}</TableCell>
                         <TableCell className="text-xs">{storeName}</TableCell>
@@ -496,7 +542,7 @@ function ScadenziarioPage() {
                       </TableRow>
                       {isExpanded && (
                         <TableRow key={`${r.cliente.id}-exp`} className="bg-muted/40 hover:bg-muted/40">
-                          <TableCell colSpan={14} className="px-4 py-3">
+                          <TableCell colSpan={15} className="px-4 py-3">
                             <ExpandedRischioPanel
                               loading={loadingRischio}
                               data={rischioExpanded}
@@ -513,6 +559,14 @@ function ScadenziarioPage() {
           </Card>
         )}
       </section>
+
+      <AzioneRecuperoDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        selectedRows={rows.filter((r) => selectedIds.has(r.cliente.id))}
+        userId={user?.id ?? null}
+        onDone={() => { setSelectedIds(new Set()); setDialogOpen(false); }}
+      />
     </div>
   );
 }
