@@ -21,6 +21,8 @@ async function sendEmailViaEdge(payload: {
   to: string;
   subject: string;
   html: string;
+  fromName?: string;
+  replyTo?: string;
 }): Promise<{ ok: boolean; err?: string }> {
   const SUPABASE_URL = process.env.SUPABASE_URL!;
   const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_ANON_KEY ?? "";
