@@ -15,6 +15,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EmailInviataView } from "@/components/email-inviata-view";
 import {
   Select,
   SelectContent,
@@ -77,6 +78,9 @@ type AzioneRow = {
   data_azione: string;
   importo_riferimento: number | null;
   note: string | null;
+  email_oggetto: string | null;
+  email_corpo_html: string | null;
+  email_destinatario: string | null;
   cliente: { id: string; ragione_sociale: string; store_id: string | null } | null;
 };
 
@@ -148,7 +152,7 @@ function CalendarioPage() {
       let q = supabase
         .from("azioni_recupero")
         .select(
-          "id, cliente_id, tipo, esito, data_azione, importo_riferimento, note, cliente:clienti!inner(id, ragione_sociale, store_id)"
+          "id, cliente_id, tipo, esito, data_azione, importo_riferimento, note, email_oggetto, email_corpo_html, email_destinatario, cliente:clienti!inner(id, ragione_sociale, store_id)"
         )
         .eq("esito", "da_fare")
         .gte("data_azione", range!.start)
@@ -444,6 +448,14 @@ function DettaglioDialog({
           <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Note</div>
           <div className="text-sm whitespace-pre-wrap min-h-[2rem]">{azione.note ?? "—"}</div>
         </div>
+
+        {azione.tipo === "email" && azione.email_corpo_html && (
+          <EmailInviataView
+            destinatario={azione.email_destinatario}
+            oggetto={azione.email_oggetto}
+            corpoHtml={azione.email_corpo_html}
+          />
+        )}
 
         <div>
           <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Scadenze collegate</div>
