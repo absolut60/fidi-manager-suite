@@ -1,16 +1,10 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
+import nodemailer from "npm:nodemailer@6.9.16";
 import { LOGO_MADE_BASE64 } from "./logo-made.ts";
 
-// Content-ID fisso usato dal template (<img src="cid:logo-made">).
-const LOGO_CID = "logo-made";
-
-function base64ToBytes(b64: string): Uint8Array {
-  const bin = atob(b64);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
-}
+// Content-ID fisso usato dal template (<img src="cid:logoMade">).
+// Senza trattini per evitare bug di parser legacy.
+const LOGO_CID = "logoMade";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -33,12 +27,11 @@ interface EmailPayload {
   replyTo?: string;
   fromName?: string;
   attachments?: EmailAttachment[];
-  inlineLogo?: boolean; // se true, allega il logo MADE come inline CID "logo-made"
+  inlineLogo?: boolean; // se true, allega il logo MADE come inline CID "logoMade"
 }
 
 function sanitizeDisplayName(s: string | undefined | null): string {
   if (!s) return "";
-  // strip CR/LF e doppi apici per evitare header injection
   return String(s).replace(/[\r\n"]/g, "").trim().slice(0, 80);
 }
 
@@ -54,7 +47,7 @@ serve(async (req) => {
     if (!to || !subject || !html) {
       return new Response(
         JSON.stringify({ error: "to, subject e html sono obbligatori" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
@@ -64,83 +57,77 @@ serve(async (req) => {
     const pass = Deno.env.get("SMTP_PASS")!;
     const defaultFrom = Deno.env.get("SMTP_FROM") ?? `FidiManager MADE <${user}>`;
 
-    // Mittente: l'indirizzo deve restare quello autenticato (SPF/deliverability).
-    // Il display name e' personalizzabile (es. "Andrea Giani <smtp@gruppomade.eu>").
     const displayName = sanitizeDisplayName(fromName);
     const from = displayName ? `${displayName} <${user}>` : defaultFrom;
 
     const recipients = Array.isArray(to) ? to : [to];
 
-    const client = new SMTPClient({
-      connection: {
-        hostname: host,
-        port,
-        tls: true,
-        auth: {
-          username: user,
-          password: pass,
-        },
-      },
+    // Nodemailer: gestisce automaticamente multipart/related quando un
+    // attachment ha `cid` impostato e `Content-Disposition: inline`.
+    // Outlook desktop richiede questa struttura per renderizzare il CID
+    // dentro l'header invece di mostrarlo come allegato separato.
+    const transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure: port === 465,
+      auth: { user, pass },
     });
 
-    const results: { email: string; ok: boolean; err?: string }[] = [];
+    const inlineAttachments = payload.inlineLogo
+      ? [{
+          filename: "logo-made.png",
+          content: LOGO_MADE_BASE64,
+          encoding: "base64" as const,
+          contentType: "image/png",
+          cid: LOGO_CID, // -> Content-ID: <logoMade>
+          contentDisposition: "inline" as const,
+        }]
+      : [];
+
+    const fileAttachments = (payload.attachments ?? []).map((a) => ({
+      filename: a.filename,
+      content: a.content,
+      encoding: "base64" as const,
+      contentType: a.contentType,
+    }));
+
+    const attachments = [...inlineAttachments, ...fileAttachments];
+
+    const results: { email: string; ok: boolean; err?: string; messageId?: string }[] = [];
 
     for (const recipient of recipients) {
       try {
-        await client.send({
+        const info = await transporter.sendMail({
           from,
           to: recipient,
           ...(cc ? { cc: Array.isArray(cc) ? cc : [cc] } : {}),
           ...(bcc ? { bcc: Array.isArray(bcc) ? bcc : [bcc] } : {}),
           subject,
-          content: text ?? "Apri l'email in un client che supporta HTML.",
+          text: text ?? "Apri l'email in un client che supporta HTML.",
           html,
           replyTo: replyTo ?? user,
-          ...((payload.attachments?.length || payload.inlineLogo)
-            ? {
-                attachments: [
-                  ...(payload.inlineLogo
-                    ? [{
-                        filename: "logo-made.png",
-                        content: base64ToBytes(LOGO_MADE_BASE64),
-                        encoding: "binary" as const,
-                        contentType: "image/png",
-                        contentID: LOGO_CID,
-                      }]
-                    : []),
-                  ...((payload.attachments ?? []).map((a) => ({
-                    filename: a.filename,
-                    content: a.content,
-                    encoding: "base64" as const,
-                    contentType: a.contentType,
-                  }))),
-                ],
-              }
-            : {}),
+          ...(attachments.length ? { attachments } : {}),
         });
-        results.push({ email: recipient, ok: true });
-        console.log(`Email inviata a ${recipient}: ${subject}`);
+        results.push({ email: recipient, ok: true, messageId: info.messageId });
+        console.log(`Email inviata a ${recipient}: ${subject} (id=${info.messageId})`);
       } catch (e) {
         results.push({ email: recipient, ok: false, err: String(e) });
         console.error(`Errore invio a ${recipient}:`, e);
       }
     }
 
-    await client.close();
+    transporter.close();
 
     const allOk = results.every((r) => r.ok);
-    return new Response(
-      JSON.stringify({ ok: allOk, results }),
-      {
-        status: allOk ? 200 : 207,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
+    return new Response(JSON.stringify({ ok: allOk, results }), {
+      status: allOk ? 200 : 207,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (err) {
     console.error("Errore Edge Function send-email:", err);
-    return new Response(
-      JSON.stringify({ error: String(err) }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: String(err) }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
