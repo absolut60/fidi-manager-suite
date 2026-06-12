@@ -232,10 +232,27 @@ export const invioMassivoSolleciti = inngest.createFunction(
 
     const numBlocchi = Math.ceil(total / cfg.blocco);
 
+    let annullataInCorso = false;
     for (let b = 0; b < numBlocchi; b++) {
+      // Guard: prima di ogni blocco rileggi lo stato campagna e fermati se annullata
+      const guard = await step.run(`guard-${b}`, async () => {
+        const { data: c } = await supabaseAdmin
+          .from("campagne_sollecito")
+          .select("stato")
+          .eq("id", campagna_id)
+          .maybeSingle();
+        return { annullata: c?.stato === "annullata" };
+      });
+      if (guard.annullata) {
+        logger.info(`[sollecito-massivo] campagna ${campagna_id} annullata al blocco ${b}, esco`);
+        annullataInCorso = true;
+        break;
+      }
+
       const slice = pendingIds.slice(b * cfg.blocco, (b + 1) * cfg.blocco);
 
       const blockResult = await step.run(`blocco-${b}`, async () => {
+
         let inviati = 0;
         let falliti = 0;
 
