@@ -223,6 +223,25 @@ function CalendarioPage() {
     if (azione) setOpenAzione(azione);
   }
 
+  // Click su un GIORNO vuoto (vista mese): apre il dialog con quel giorno alle 09:00
+  function handleDateClick(info: DateClickArg) {
+    const d = new Date(info.date);
+    // dateClick scatta anche nelle viste timeGrid; in vista mese allDay=true → imposta 09:00
+    if (info.allDay) {
+      d.setHours(9, 0, 0, 0);
+    }
+    setCreaData(d);
+    setCreaOpen(true);
+  }
+
+  // Selezione SLOT (viste settimana/giorno): apre il dialog con data/ora dello slot
+  function handleSelect(info: DateSelectArg) {
+    setCreaData(new Date(info.start));
+    setCreaOpen(true);
+    // Smuovi la selezione visiva dopo l'apertura
+    info.view.calendar.unselect();
+  }
+
   async function handleChangeEsito(id: string, nextEsito: Esito) {
     const { error } = await supabase
       .from("azioni_recupero")
