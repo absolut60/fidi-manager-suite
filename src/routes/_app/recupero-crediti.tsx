@@ -336,7 +336,7 @@ function RecuperoCreditiPage() {
   }, [stores]);
 
   async function updateEsito(id: string, nextEsito: Esito, dataPromessa?: Date | null) {
-    const patch: Record<string, unknown> = { esito: nextEsito };
+    const patch: { esito: Esito; data_promessa_pagamento?: string | null } = { esito: nextEsito };
     if (nextEsito === "promessa_pagamento" && dataPromessa) {
       patch.data_promessa_pagamento = dataPromessa.toISOString();
     } else if (nextEsito !== "promessa_pagamento") {
