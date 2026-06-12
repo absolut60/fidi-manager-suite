@@ -110,7 +110,7 @@ function ScadenziarioPage() {
   // Reset selection on filter changes
   useEffect(() => {
     setSelectedIds(new Set());
-  }, [storeId, fascia, importoMin, statoBlocco, statoLegale, escludiBonifici, escludiLegale]);
+  }, [storeId, fascia, importoMin, statoBlocco, statoLegale, escludiBonifici, escludiLegale, avvisatoFilter]);
 
   useEffect(() => {
     if (statoLegale === "in_legale") {
