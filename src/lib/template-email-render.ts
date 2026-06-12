@@ -126,8 +126,15 @@ export function isScaduto(s: {
 // CORNICE HTML EMAIL (header con logo, footer con dati sede)
 // =============================================================================
 
+// Logo MADE servito dal CDN Lovable (URL stabile, immutabile, pubblico).
+// Verificato 200 OK; usato nell'<img> dell'header email.
 export const LOGO_EMAIL_URL =
-  "https://fidi-manager-suite.lovable.app/email-assets/logo-made.png";
+  "https://fidi-manager-suite.lovable.app/__l5e/assets-v1/035e2dea-71e9-4ef5-a16d-94aee28def35/logo-made.png";
+
+// Display name fisso del mittente (richiesto da branding).
+// L'indirizzo email del from resta quello SMTP autenticato lato edge function;
+// il Reply-To dinamico (email operatore) viene impostato dal chiamante.
+export const FROM_NAME_ISTITUZIONALE = "Recupero Crediti MADE";
 
 export type DatiSede = {
   nome: string | null;        // es. "SEDE DI LISSONE"
@@ -192,7 +199,9 @@ export function wrapEmailHtml(
         <td style="background:#0d1f3c;padding:18px 24px;">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
             <td style="vertical-align:middle;">
-              <img src="${LOGO_EMAIL_URL}" alt="MADE" width="140" height="auto" style="display:block;border:0;outline:none;text-decoration:none;background:transparent;" />
+              <a href="https://www.gruppomade.eu" style="text-decoration:none;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:22px;font-weight:700;letter-spacing:2px;">
+                <img src="${LOGO_EMAIL_URL}" alt="MADE" width="160" height="22" style="display:block;border:0;outline:none;text-decoration:none;background:transparent;max-width:160px;height:auto;" />
+              </a>
             </td>
             <td align="right" style="vertical-align:middle;color:#ffffff;font-size:11px;font-family:Arial,Helvetica,sans-serif;">
               <div style="opacity:.85;">Gruppo MADE</div>
