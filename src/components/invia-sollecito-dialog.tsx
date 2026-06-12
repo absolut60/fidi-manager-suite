@@ -178,6 +178,8 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
         to: dest,
         subject: rendered.oggetto,
         html: rendered.corpo,
+        fromName: nomeOperatore,
+        replyTo: user?.email ?? undefined,
       });
 
       if (!ok) {
