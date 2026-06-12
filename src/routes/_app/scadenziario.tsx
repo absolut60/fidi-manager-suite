@@ -525,6 +525,7 @@ function ScadenziarioPage() {
                       }}
                     />
                   </TableHead>
+                  <TableHead className="w-10 text-center">Az.</TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead>Cod. Gestionale</TableHead>
                   <TableHead>Store</TableHead>
