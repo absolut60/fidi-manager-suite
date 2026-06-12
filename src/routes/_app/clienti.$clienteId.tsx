@@ -354,6 +354,14 @@ function ClienteDetail() {
                 <FileX2 className="size-3" /> Privacy da firmare
               </Badge>
             )}
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setOpenSollecito(true)}>
+              <Send className="size-4" /> Invia sollecito
+            </Button>
+            <InviaSollecitoDialog
+              open={openSollecito}
+              onOpenChange={setOpenSollecito}
+              clienteId={clienteId}
+            />
             <Dialog open={openEdit} onOpenChange={setOpenEdit}>
               <DialogTrigger asChild>
                 <Button size="sm" variant="outline" className="gap-1.5">
