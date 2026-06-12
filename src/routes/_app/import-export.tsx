@@ -2555,7 +2555,7 @@ function BloccoFidoAssicurazioneImportCard() {
       const { data } = await supabase
         .from("importazioni")
         .select(
-          "stato, righe_totali, righe_elaborate, righe_create, righe_aggiornate, righe_errore, righe_saltate, codici_mancanti, log_errori, completata_at",
+          "stato, righe_totali, righe_elaborate, righe_create, righe_aggiornate, righe_errore, righe_saltate, codici_mancanti, log_errori, report_saltati, completata_at",
         )
         .eq("id", importazioneId)
         .single();
