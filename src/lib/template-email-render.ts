@@ -126,8 +126,15 @@ export function isScaduto(s: {
 // CORNICE HTML EMAIL (header con logo, footer con dati sede)
 // =============================================================================
 
+// Logo MADE servito dal CDN Lovable (URL stabile, immutabile, pubblico).
+// Verificato 200 OK; usato nell'<img> dell'header email.
 export const LOGO_EMAIL_URL =
-  "https://fidi-manager-suite.lovable.app/email-assets/logo-made.png";
+  "https://fidi-manager-suite.lovable.app/__l5e/assets-v1/035e2dea-71e9-4ef5-a16d-94aee28def35/logo-made.png";
+
+// Display name fisso del mittente (richiesto da branding).
+// L'indirizzo email del from resta quello SMTP autenticato lato edge function;
+// il Reply-To dinamico (email operatore) viene impostato dal chiamante.
+export const FROM_NAME_ISTITUZIONALE = "Recupero Crediti MADE";
 
 export type DatiSede = {
   nome: string | null;        // es. "SEDE DI LISSONE"
