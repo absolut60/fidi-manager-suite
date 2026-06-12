@@ -66,7 +66,42 @@ function StatoBadge({ s }: { s: string }) {
 }
 
 function CampagnePage() {
+  const qc = useQueryClient();
+  const annulla = useServerFn(annullaCampagnaSollecito);
+  const elimina = useServerFn(eliminaCampagnaSollecito);
   const [openDettaglio, setOpenDettaglio] = useState<string | null>(null);
+  const [confermaAnnulla, setConfermaAnnulla] = useState<string | null>(null);
+  const [confermaElimina, setConfermaElimina] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function doAnnulla(id: string) {
+    setBusy(true);
+    try {
+      await annulla({ data: { campagnaId: id } });
+      toast.success("Campagna annullata. Il job si fermerà al prossimo blocco.");
+      qc.invalidateQueries({ queryKey: ["campagne-sollecito"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Errore");
+    } finally {
+      setBusy(false);
+      setConfermaAnnulla(null);
+    }
+  }
+
+  async function doElimina(id: string) {
+    setBusy(true);
+    try {
+      await elimina({ data: { campagnaId: id } });
+      toast.success("Campagna eliminata. I solleciti inviati restano in scheda cliente.");
+      qc.invalidateQueries({ queryKey: ["campagne-sollecito"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Errore");
+    } finally {
+      setBusy(false);
+      setConfermaElimina(null);
+    }
+  }
+
 
   // Polling più frequente se c'è una campagna attiva
   const { data: campagne, isLoading } = useQuery({
