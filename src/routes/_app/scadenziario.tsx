@@ -1,7 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, Fragment, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, Calendar, FileText, Ban, CalendarClock, Scale, ChevronDown, ChevronUp } from "lucide-react";
+import { AlertTriangle, Calendar, FileText, Ban, CalendarClock, Scale, ChevronDown, ChevronUp, Megaphone } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +12,11 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Textarea } from "@/components/ui/textarea";
 import { classificaScadenza } from "@/lib/scadenze";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -30,6 +36,7 @@ function fmtDate(v: unknown): string {
 }
 
 type ScadRow = {
+  id: string;
   cliente_id: string;
   importo_scadenza: number | null;
   giorni_ritardo: number | null;
@@ -82,7 +89,7 @@ function isBonifico(codice: string | null | undefined): boolean {
 
 function ScadenziarioPage() {
   const navigate = useNavigate();
-  const { role, profilo } = useAuth();
+  const { role, profilo, user } = useAuth();
   const isStoreManager = role === "store_manager";
   const myStoreId = profilo?.store_id ?? null;
   const [storeId, setStoreId] = useState(isStoreManager && myStoreId ? myStoreId : "all");
@@ -93,6 +100,13 @@ function ScadenziarioPage() {
   const [escludiBonifici, setEscludiBonifici] = useState(true);
   const [escludiLegale, setEscludiLegale] = useState(true);
   const [expandedClienteId, setExpandedClienteId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  // Reset selection on filter changes
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [storeId, fascia, importoMin, statoBlocco, statoLegale, escludiBonifici, escludiLegale]);
 
   useEffect(() => {
     if (statoLegale === "in_legale") {
@@ -162,7 +176,7 @@ function ScadenziarioPage() {
         //   ancora aperte come "Chiusa" ma con tempi_scadenza valorizzato.
         const { data, error } = await supabase
           .from("scadenze")
-          .select("cliente_id, importo_scadenza, giorni_ritardo, data_scadenza, stato_contabile, tempi_scadenza, codice_pagamento")
+          .select("id, cliente_id, importo_scadenza, giorni_ritardo, data_scadenza, stato_contabile, tempi_scadenza, codice_pagamento")
           .or("stato_contabile.eq.Aperta,and(stato_contabile.neq.Aperta,tempi_scadenza.ilike.%scader%),and(stato_contabile.neq.Aperta,tempi_scadenza.ilike.%scadut%)")
           .order("cliente_id", { ascending: true })
           .range(from, from + pageSize - 1);
@@ -269,6 +283,7 @@ function ScadenziarioPage() {
         prossima,
         maxGg,
         fascia: fasciaOf(maxGg),
+        scaduteIds: e.scadute.map((r) => r.id),
       };
     }).filter((r) => r.nScadute > 0);
     return out
@@ -418,6 +433,27 @@ function ScadenziarioPage() {
         </div>
       </Card>
 
+      {/* Barra azioni selezione */}
+      {selectedIds.size > 0 && (
+        <Card className="p-3 flex flex-wrap items-center justify-between gap-3 border-primary/40 bg-primary/5">
+          <div className="text-sm">
+            <span className="font-semibold">{selectedIds.size}</span> clienti selezionati
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              className="text-xs text-muted-foreground hover:underline"
+              onClick={() => setSelectedIds(new Set())}
+            >
+              Deseleziona
+            </button>
+            <Button size="sm" onClick={() => setDialogOpen(true)}>
+              <Megaphone className="size-4" /> Avvia azione di recupero
+            </Button>
+          </div>
+        </Card>
+      )}
+
       {/* TABELLA UNICA */}
       <section className="space-y-3">
         <h2 className="text-sm font-semibold uppercase text-foreground flex items-center gap-2">
@@ -430,6 +466,18 @@ function ScadenziarioPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox
+                      aria-label="Seleziona pagina"
+                      checked={rows.length > 0 && rows.every((r) => selectedIds.has(r.cliente.id))}
+                      onCheckedChange={(v) => {
+                        const next = new Set(selectedIds);
+                        if (v) rows.forEach((r) => next.add(r.cliente.id));
+                        else rows.forEach((r) => next.delete(r.cliente.id));
+                        setSelectedIds(next);
+                      }}
+                    />
+                  </TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead>Cod. Gestionale</TableHead>
                   <TableHead>Store</TableHead>
@@ -451,6 +499,7 @@ function ScadenziarioPage() {
                   const storeName = stores?.find((s) => s.id === r.cliente.store_id)?.nome ?? "—";
                   const fatt = fatturatoMap?.get(r.cliente.id);
                   const isExpanded = expandedClienteId === r.cliente.id;
+                  const isSel = selectedIds.has(r.cliente.id);
                   return (
                     <Fragment key={r.cliente.id}>
                       <TableRow
@@ -458,6 +507,18 @@ function ScadenziarioPage() {
                         className={`cursor-pointer ${r.cliente.bloccato ? "bg-destructive/10 hover:bg-destructive/15" : r.cliente.in_gestione_legale ? "bg-amber-500/10 hover:bg-amber-500/15" : ""}`}
                         onClick={() => setExpandedClienteId(isExpanded ? null : r.cliente.id)}
                       >
+                        <TableCell className="w-10" onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            aria-label="Seleziona cliente"
+                            checked={isSel}
+                            onCheckedChange={(v) => {
+                              const next = new Set(selectedIds);
+                              if (v) next.add(r.cliente.id);
+                              else next.delete(r.cliente.id);
+                              setSelectedIds(next);
+                            }}
+                          />
+                        </TableCell>
                         <TableCell className="font-medium">{r.cliente.ragione_sociale}</TableCell>
                         <TableCell className="font-mono text-xs">{r.cliente.codice_gestionale ?? "—"}</TableCell>
                         <TableCell className="text-xs">{storeName}</TableCell>
@@ -481,7 +542,7 @@ function ScadenziarioPage() {
                       </TableRow>
                       {isExpanded && (
                         <TableRow key={`${r.cliente.id}-exp`} className="bg-muted/40 hover:bg-muted/40">
-                          <TableCell colSpan={14} className="px-4 py-3">
+                          <TableCell colSpan={15} className="px-4 py-3">
                             <ExpandedRischioPanel
                               loading={loadingRischio}
                               data={rischioExpanded}
@@ -498,6 +559,14 @@ function ScadenziarioPage() {
           </Card>
         )}
       </section>
+
+      <AzioneRecuperoDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        selectedRows={rows.filter((r) => selectedIds.has(r.cliente.id))}
+        userId={user?.id ?? null}
+        onDone={() => { setSelectedIds(new Set()); setDialogOpen(false); }}
+      />
     </div>
   );
 }
@@ -579,5 +648,153 @@ function CellInfo({ label, value, cls, hint }: { label: string; value: string; c
       <p className="text-[10px] font-medium text-muted-foreground uppercase truncate">{label}</p>
       <p className={`tabular-nums truncate ${cls ?? ""}`}>{value}{hint && <span className="text-[10px] text-muted-foreground ml-1">{hint}</span>}</p>
     </div>
+  );
+}
+
+type SelRow = { cliente: Cliente; totScad: number; scaduteIds: string[] };
+
+function toLocalInputValue(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function AzioneRecuperoDialog({
+  open, onOpenChange, selectedRows, userId, onDone,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  selectedRows: SelRow[];
+  userId: string | null;
+  onDone: () => void;
+}) {
+  const [tipo, setTipo] = useState<"email" | "telefonata" | "promemoria">("telefonata");
+  const [dataAzione, setDataAzione] = useState<string>(() => toLocalInputValue(new Date()));
+  const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setTipo("telefonata");
+      setDataAzione(toLocalInputValue(new Date()));
+      setNote("");
+    }
+  }, [open]);
+
+  const totaleScaduto = useMemo(
+    () => selectedRows.reduce((a, r) => a + Number(r.totScad ?? 0), 0),
+    [selectedRows],
+  );
+
+  async function handleConfirm() {
+    if (!userId) {
+      toast.error("Utente non autenticato");
+      return;
+    }
+    if (selectedRows.length === 0) return;
+    setSaving(true);
+    try {
+      const iso = new Date(dataAzione).toISOString();
+      const azioniPayload = selectedRows.map((r) => ({
+        cliente_id: r.cliente.id,
+        operatore_id: userId,
+        tipo,
+        esito: "da_fare" as const,
+        data_azione: iso,
+        note: note.trim() || null,
+        importo_riferimento: r.totScad || null,
+      }));
+      const { data: inserted, error: errAz } = await supabase
+        .from("azioni_recupero")
+        .insert(azioniPayload)
+        .select("id, cliente_id");
+      if (errAz) throw errAz;
+
+      const azById = new Map<string, string>();
+      (inserted ?? []).forEach((a) => azById.set(a.cliente_id as string, a.id as string));
+
+      const ponti: { azione_id: string; scadenza_id: string }[] = [];
+      for (const r of selectedRows) {
+        const azId = azById.get(r.cliente.id);
+        if (!azId) continue;
+        for (const sid of r.scaduteIds) {
+          ponti.push({ azione_id: azId, scadenza_id: sid });
+        }
+      }
+      if (ponti.length > 0) {
+        const { error: errPonti } = await supabase.from("azioni_recupero_scadenze").insert(ponti);
+        if (errPonti) throw errPonti;
+      }
+
+      toast.success(`Create ${inserted?.length ?? 0} azioni di recupero`);
+      onDone();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Errore durante la creazione delle azioni";
+      toast.error(msg);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Avvia azione di recupero</DialogTitle>
+          <DialogDescription>
+            {selectedRows.length} clienti selezionati · Totale scaduto {fmtEuro(totaleScaduto)}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>Tipo azione</Label>
+            <RadioGroup value={tipo} onValueChange={(v) => setTipo(v as typeof tipo)} className="grid grid-cols-3 gap-2">
+              {(["email", "telefonata", "promemoria"] as const).map((t) => (
+                <label
+                  key={t}
+                  className={`flex items-center gap-2 border rounded-md px-3 py-2 cursor-pointer text-sm capitalize ${tipo === t ? "border-primary bg-primary/5" : ""}`}
+                >
+                  <RadioGroupItem value={t} />
+                  {t}
+                </label>
+              ))}
+            </RadioGroup>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="data-azione">Data azione</Label>
+            <Input
+              id="data-azione"
+              type="datetime-local"
+              value={dataAzione}
+              onChange={(e) => setDataAzione(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="note-azione">Note (opzionale)</Label>
+            <Textarea
+              id="note-azione"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              rows={3}
+            />
+          </div>
+
+          {tipo === "email" && (
+            <div className="text-xs rounded-md border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 p-3">
+              L'invio email verrà collegato in un secondo momento; ora viene registrata solo l'azione.
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Annulla</Button>
+          <Button onClick={handleConfirm} disabled={saving || selectedRows.length === 0}>
+            {saving ? "Creazione…" : "Conferma"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
