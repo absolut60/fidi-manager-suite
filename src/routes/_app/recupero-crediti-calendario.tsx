@@ -388,6 +388,12 @@ function CalendarioPage() {
             datesSet={handleDatesSet}
             eventClick={handleEventClick}
             eventDrop={handleEventDrop}
+            selectable
+            selectMirror
+            unselectAuto
+            longPressDelay={250}
+            dateClick={handleDateClick}
+            select={handleSelect}
           />
         )}
       </Card>
@@ -407,6 +413,17 @@ function CalendarioPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <CreaAzioneDialog
+        open={creaOpen}
+        onOpenChange={(v) => { setCreaOpen(v); if (!v) setCreaData(null); }}
+        dataIniziale={creaData ?? undefined}
+        tipoIniziale="promemoria"
+        onCreated={() => {
+          qc.invalidateQueries({ queryKey: ["azioni-calendario"] });
+          qc.invalidateQueries({ queryKey: ["azioni-recupero"] });
+        }}
+      />
     </div>
   );
 }
