@@ -1,6 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, Fragment } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Plus } from "lucide-react";
+import { CreaAzioneDialog } from "@/components/crea-azione-dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import {
   HandCoins,
@@ -78,7 +81,7 @@ const TIPI = [
 
 type Esito = (typeof ESITI)[number]["value"];
 type Tipo = (typeof TIPI)[number]["value"];
-type QuickFilter = "tutti" | "aperti" | "ritardo";
+type TabKey = "aperti" | "tutti" | "conclusi";
 type SortKey = "priorita" | "ragione_sociale" | "scaduto" | "azioni_aperte" | "prossima" | "ultima";
 
 function fmtEuro(v: unknown): string {
@@ -159,12 +162,15 @@ function RecuperoCreditiPage() {
   const [searchDebounced, setSearchDebounced] = useState("");
   const [dataDa, setDataDa] = useState<Date | undefined>();
   const [dataA, setDataA] = useState<Date | undefined>();
-  const [quick, setQuick] = useState<QuickFilter>("tutti");
+  const [tab, setTab] = useState<TabKey>("aperti");
+  const [soloRitardo, setSoloRitardo] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("priorita");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(1);
   const [expandedClienteId, setExpandedClienteId] = useState<string | null>(null);
   const [invioMassivoOpen, setInvioMassivoOpen] = useState(false);
+  const [nuovaAzioneOpen, setNuovaAzioneOpen] = useState(false);
+  const qc = useQueryClient();
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounced(search.trim()), 300);
@@ -173,7 +179,7 @@ function RecuperoCreditiPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [storeId, esitoFilter, tipoFilter, operatoreId, searchDebounced, dataDa, dataA, quick, sortKey, sortDir]);
+  }, [storeId, esitoFilter, tipoFilter, operatoreId, searchDebounced, dataDa, dataA, tab, soloRitardo, sortKey, sortDir]);
 
   // Stores
   const { data: stores } = useQuery({
@@ -283,8 +289,12 @@ function RecuperoCreditiPage() {
   const sorted = useMemo(() => {
     const rows = aggQuery.data ?? [];
     const filtered = rows.filter((r) => {
-      if (quick === "aperti") return r.azioni_aperte > 0;
-      if (quick === "ritardo") return r.in_ritardo;
+      if (tab === "aperti") {
+        if (!(r.azioni_aperte > 0)) return false;
+        if (soloRitardo && !r.in_ritardo) return false;
+        return true;
+      }
+      if (tab === "conclusi") return r.azioni_aperte === 0;
       return true;
     });
     const now = Date.now();
@@ -330,7 +340,7 @@ function RecuperoCreditiPage() {
       void now;
     };
     return [...filtered].sort(cmp);
-  }, [aggQuery.data, quick, sortKey, sortDir]);
+  }, [aggQuery.data, tab, soloRitardo, sortKey, sortDir]);
 
   const total = sorted.length;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -355,9 +365,11 @@ function RecuperoCreditiPage() {
 
   const counts = useMemo(() => {
     const rows = aggQuery.data ?? [];
+    const aperti = rows.filter((r) => r.azioni_aperte > 0).length;
     return {
       tutti: rows.length,
-      aperti: rows.filter((r) => r.azioni_aperte > 0).length,
+      aperti,
+      conclusi: rows.length - aperti,
       ritardo: rows.filter((r) => r.in_ritardo).length,
     };
   }, [aggQuery.data]);
@@ -372,6 +384,9 @@ function RecuperoCreditiPage() {
             Clienti con azioni di recupero — priorità agli aperti e in ritardo
           </p>
         </div>
+        <Button size="sm" onClick={() => setNuovaAzioneOpen(true)} className="gap-1.5">
+          <Plus className="size-4" /> Nuova azione
+        </Button>
         <Button variant="outline" size="sm" onClick={() => setInvioMassivoOpen(true)} className="gap-1.5">
           <Send className="size-4" /> Invio massivo solleciti
         </Button>
@@ -385,18 +400,37 @@ function RecuperoCreditiPage() {
         <MetricCard label="Importo riferimento" value={fmtEuro(m?.importo ?? 0)} loading={metricsQuery.isLoading} tone="primary" />
       </div>
 
-      {/* Quick filter */}
-      <div className="flex flex-wrap items-center gap-2">
-        <QuickChip active={quick === "tutti"} onClick={() => setQuick("tutti")} icon={<CheckCircle2 className="size-3.5" />}>
-          Tutti ({counts.tutti})
-        </QuickChip>
-        <QuickChip active={quick === "aperti"} onClick={() => setQuick("aperti")} icon={<Clock className="size-3.5" />}>
-          Solo con azioni aperte ({counts.aperti})
-        </QuickChip>
-        <QuickChip active={quick === "ritardo"} onClick={() => setQuick("ritardo")} icon={<AlertTriangle className="size-3.5" />} tone="danger">
-          Solo in ritardo ({counts.ritardo})
-        </QuickChip>
+      {/* Tabs cliente */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)}>
+          <TabsList>
+            <TabsTrigger value="aperti" className="gap-1.5">
+              <Clock className="size-3.5" /> Aperti ({counts.aperti})
+            </TabsTrigger>
+            <TabsTrigger value="tutti" className="gap-1.5">
+              <CheckCircle2 className="size-3.5" /> Tutti ({counts.tutti})
+            </TabsTrigger>
+            <TabsTrigger value="conclusi" className="gap-1.5">
+              <CheckCircle2 className="size-3.5" /> Conclusi ({counts.conclusi})
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+        {tab === "aperti" && (
+          <button
+            type="button"
+            onClick={() => setSoloRitardo((v) => !v)}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs border transition-colors",
+              soloRitardo
+                ? "bg-destructive text-destructive-foreground border-destructive"
+                : "bg-background hover:bg-muted text-foreground border-border"
+            )}
+          >
+            <AlertTriangle className="size-3.5" /> Solo in ritardo ({counts.ritardo})
+          </button>
+        )}
       </div>
+
 
       {/* Filters */}
       <Card className="p-4">
@@ -620,6 +654,15 @@ function RecuperoCreditiPage() {
         onOpenChange={setInvioMassivoOpen}
         clienteIdsSelezionati={[]}
         clienteIdsFiltrati={clienteIdsFiltrati}
+      />
+
+      <CreaAzioneDialog
+        open={nuovaAzioneOpen}
+        onOpenChange={setNuovaAzioneOpen}
+        onCreated={() => {
+          qc.invalidateQueries({ queryKey: ["recupero-clienti-aggregato"] });
+          qc.invalidateQueries({ queryKey: ["azioni-recupero-metrics"] });
+        }}
       />
     </div>
   );
