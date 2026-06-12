@@ -199,7 +199,9 @@ export function wrapEmailHtml(
         <td style="background:#0d1f3c;padding:18px 24px;">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
             <td style="vertical-align:middle;">
-              <img src="${LOGO_EMAIL_URL}" alt="MADE" width="140" height="auto" style="display:block;border:0;outline:none;text-decoration:none;background:transparent;" />
+              <a href="https://www.gruppomade.eu" style="text-decoration:none;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:22px;font-weight:700;letter-spacing:2px;">
+                <img src="${LOGO_EMAIL_URL}" alt="MADE" width="160" height="22" style="display:block;border:0;outline:none;text-decoration:none;background:transparent;max-width:160px;height:auto;" />
+              </a>
             </td>
             <td align="right" style="vertical-align:middle;color:#ffffff;font-size:11px;font-family:Arial,Helvetica,sans-serif;">
               <div style="opacity:.85;">Gruppo MADE</div>
