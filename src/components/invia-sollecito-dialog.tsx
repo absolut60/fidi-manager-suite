@@ -22,6 +22,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { ReminderControls, defaultReminderFor, creaFollowUp, type ReminderState } from "@/components/reminder-controls";
 
 type Props = {
   open: boolean;
@@ -43,11 +44,14 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
   const [destSource, setDestSource] = useState<"email" | "pec" | "custom">("email");
   const [destEmail, setDestEmail] = useState<string>("");
   const [sending, setSending] = useState(false);
+  const [reminder, setReminder] = useState<ReminderState>(defaultReminderFor("email"));
 
   // Reset on open/close
   useEffect(() => {
     if (!open) {
       setSending(false);
+    } else {
+      setReminder(defaultReminderFor("email"));
     }
   }, [open]);
 
@@ -213,11 +217,31 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
         }
       }
 
+      // Follow-up reminder
+      if (reminder.attivo && reminder.giorni > 0) {
+        try {
+          await creaFollowUp({
+            clienteId,
+            operatoreId: user?.id ?? null,
+            dataPrincipale: new Date(),
+            giorni: reminder.giorni,
+            tipoOriginale: "email",
+            importoRiferimento: totaleScaduto,
+            scadenzeIds: scaduteIds ?? [],
+            descrizioneOriginale: `sollecito "${selectedTemplate.nome}"`,
+          });
+        } catch (e: any) {
+          console.error("Follow-up error", e);
+          toast.warning("Sollecito inviato, ma follow-up non creato: " + (e?.message ?? "errore"));
+        }
+      }
+
       toast.success("Sollecito inviato");
       qc.invalidateQueries({ queryKey: ["azioni-recupero"] });
       qc.invalidateQueries({ queryKey: ["azioni-recupero-metrics"] });
       qc.invalidateQueries({ queryKey: ["azioni-recupero-counts"] });
       qc.invalidateQueries({ queryKey: ["azioni-recupero-calendario"] });
+      qc.invalidateQueries({ queryKey: ["azioni-recupero-cliente", clienteId] });
       onSent?.();
       onOpenChange(false);
     } catch (err: any) {
@@ -290,8 +314,8 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
             )}
           </div>
 
-
-
+          {/* Reminder follow-up */}
+          <ReminderControls tipo="email" state={reminder} onChange={setReminder} />
 
           {/* Anteprima */}
           <div className="space-y-2 pt-2 border-t border-border">
