@@ -185,7 +185,14 @@ function CampagnePage() {
                   <TableRow key={c.id} className="hover:bg-muted/50">
                     <TableCell className="whitespace-nowrap cursor-pointer" onClick={() => setOpenDettaglio(c.id)}>{fmtDateTime(c.created_at)}</TableCell>
                     <TableCell className="cursor-pointer" onClick={() => setOpenDettaglio(c.id)}>{`${c.operatore?.nome ?? ""} ${c.operatore?.cognome ?? ""}`.trim() || "—"}</TableCell>
-                    <TableCell className="cursor-pointer" onClick={() => setOpenDettaglio(c.id)}>{c.template?.nome ?? "—"}</TableCell>
+                    <TableCell className="cursor-pointer" onClick={() => setOpenDettaglio(c.id)}>
+                      <div className="flex items-center gap-2">
+                        <span>{c.template?.nome ?? "—"}</span>
+                        {c.tipo_campagna === "promemoria_scadenza" && (
+                          <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">Promemoria</Badge>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell className="cursor-pointer" onClick={() => setOpenDettaglio(c.id)}><StatoBadge s={c.stato} /></TableCell>
                     <TableCell className="text-right font-medium cursor-pointer" onClick={() => setOpenDettaglio(c.id)}>{c.totale_destinatari}</TableCell>
                     <TableCell className="text-right text-emerald-600 cursor-pointer" onClick={() => setOpenDettaglio(c.id)}>{c.inviati}</TableCell>
