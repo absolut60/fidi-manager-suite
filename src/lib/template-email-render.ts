@@ -382,10 +382,10 @@ export function wrapEmailHtml(
         </td>
       </tr>
       <tr>
-        <td style="padding:14px 24px;background:#f9fafb;border-top:1px solid #e5e7eb;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:1.5;color:#6b7280;">
-          <div style="color:#374151;font-weight:600;">${sedeLine}</div>
-          <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #e5e7eb;">
-            <strong style="color:#374151;">MADE DISTRIBUZIONE S.p.A.</strong><br/>
+        <td style="padding:14px 24px;background:#f9fafb;border-top:1px solid #e5e7eb;font-family:Arial,Helvetica,sans-serif;line-height:1.5;color:#6b7280;">
+          ${sedeBlock}
+          <div style="margin-top:10px;padding-top:8px;border-top:1px dashed #e5e7eb;font-size:10px;color:#9ca3af;line-height:1.45;">
+            <strong style="color:#6b7280;">MADE DISTRIBUZIONE S.p.A.</strong><br/>
             Sede Legale: Corso di Porta Nuova 11, 20121 Milano (MI) — C.F. e P.IVA 10126430965 — REA Milano MI 2507310<br/>
             PEC: madedistribuzionesrl@pecplus.it — Capitale Sociale 2.593.000,00 € i.v.<br/>
             Società sotto la Direzione e il Coordinamento di MADE Italia S.p.A.
