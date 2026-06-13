@@ -306,7 +306,7 @@ function TemplateDialog({
 
       {previewOpen && (
         <PreviewDialog
-          template={{ oggetto, corpo }}
+          template={{ oggetto, corpo, tipo }}
           onClose={() => setPreviewOpen(false)}
         />
       )}
@@ -316,7 +316,7 @@ function TemplateDialog({
 
 function PreviewDialog({
   template, onClose,
-}: { template: { oggetto: string; corpo: string }; onClose: () => void }) {
+}: { template: { oggetto: string; corpo: string; tipo: string }; onClose: () => void }) {
   const { profilo } = useAuth();
   const nomeOperatore = `${profilo?.nome ?? ""} ${profilo?.cognome ?? ""}`.trim() || "Operatore";
 
@@ -348,11 +348,11 @@ function PreviewDialog({
 
   const rendered = useMemo(() => {
     if (!dati) return null;
-    const base = renderTemplate(template, dati);
+    const base = renderTemplate({ oggetto: template.oggetto, corpo: template.corpo }, dati);
     const corpo = wrapEmailHtml(base.corpo, sede ?? null, {
       nome: nomeOperatore,
       email: profilo?.email ?? null,
-    });
+    }, { tipo: template.tipo });
     return { oggetto: base.oggetto, corpo };
   }, [template, dati, sede, nomeOperatore, profilo?.email]);
 
