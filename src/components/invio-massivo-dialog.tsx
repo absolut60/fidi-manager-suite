@@ -303,6 +303,8 @@ export function InvioMassivoDialog({
           nota: nota.trim() || null,
           clienteIds,
           indirizziCorretti,
+          tipoCampagna,
+          mesi,
         },
       });
       toast.success(`Campagna avviata: ${res.totale} destinatari`);
