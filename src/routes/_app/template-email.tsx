@@ -306,7 +306,7 @@ function TemplateDialog({
 
       {previewOpen && (
         <PreviewDialog
-          template={{ oggetto, corpo }}
+          template={{ oggetto, corpo, tipo }}
           onClose={() => setPreviewOpen(false)}
         />
       )}
