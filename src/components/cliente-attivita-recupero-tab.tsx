@@ -18,6 +18,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { InviaSollecitoDialog } from "@/components/invia-sollecito-dialog";
+import { EmailLiberaDialog } from "@/components/email-libera-dialog";
 import { CreaAzioneDialog } from "@/components/crea-azione-dialog";
 import { EmailInviataView } from "@/components/email-inviata-view";
 import type { TipoAzione } from "@/components/reminder-controls";
@@ -95,6 +96,7 @@ export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string })
   const qc = useQueryClient();
   
   const [sollecitoOpen, setSollecitoOpen] = useState(false);
+  const [emailLiberaOpen, setEmailLiberaOpen] = useState(false);
   const [creaOpen, setCreaOpen] = useState(false);
   const [creaTipo, setCreaTipo] = useState<TipoAzione>("promemoria");
   const [viewEmail, setViewEmail] = useState<Azione | null>(null);
@@ -221,6 +223,9 @@ export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string })
         <Button size="sm" onClick={() => setSollecitoOpen(true)} className="gap-1.5">
           <Send className="size-4" /> Invia sollecito
         </Button>
+        <Button size="sm" variant="outline" onClick={() => setEmailLiberaOpen(true)} className="gap-1.5">
+          <Mail className="size-4" /> Email libera
+        </Button>
         <Button size="sm" variant="outline" onClick={() => openNuova("promemoria")} className="gap-1.5">
           <Bell className="size-4" /> Nuovo promemoria
         </Button>
@@ -294,6 +299,11 @@ export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string })
       <InviaSollecitoDialog
         open={sollecitoOpen}
         onOpenChange={setSollecitoOpen}
+        clienteId={clienteId}
+      />
+      <EmailLiberaDialog
+        open={emailLiberaOpen}
+        onOpenChange={setEmailLiberaOpen}
         clienteId={clienteId}
       />
       <CreaAzioneDialog
