@@ -270,7 +270,7 @@ function StoreDialog({ editing, onClose }: { editing: StoreRow | null; onClose: 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="space-y-1.5">
             <Label htmlFor="codice">Codice *</Label>
-            <Input id="codice" value={form.codice} onChange={(e) => setForm({ ...form, codice: e.target.value.toUpperCase() })} placeholder="MADE01" />
+            <Input id="codice" value={form.codice} onChange={(e) => setForm({ ...form, codice: e.target.value.toUpperCase() })} placeholder="1" />
             {errors.codice && <p className="text-xs text-destructive">{errors.codice}</p>}
           </div>
           <div className="space-y-1.5 sm:col-span-2">
@@ -280,17 +280,47 @@ function StoreDialog({ editing, onClose }: { editing: StoreRow | null; onClose: 
           </div>
         </div>
         <div className="space-y-1.5">
+          <Label htmlFor="ragione_sociale_sede">Ragione sociale sede</Label>
+          <Input id="ragione_sociale_sede" value={form.ragione_sociale_sede} onChange={(e) => setForm({ ...form, ragione_sociale_sede: e.target.value })} />
+        </div>
+        <div className="space-y-1.5">
           <Label htmlFor="indirizzo">Indirizzo</Label>
           <Input id="indirizzo" value={form.indirizzo} onChange={(e) => setForm({ ...form, indirizzo: e.target.value })} />
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div className="space-y-1.5">
+            <Label htmlFor="cap">CAP</Label>
+            <Input id="cap" value={form.cap} onChange={(e) => setForm({ ...form, cap: e.target.value })} />
+          </div>
+          <div className="space-y-1.5 sm:col-span-2">
             <Label htmlFor="citta">Città</Label>
             <Input id="citta" value={form.citta} onChange={(e) => setForm({ ...form, citta: e.target.value })} />
           </div>
           <div className="space-y-1.5">
+            <Label htmlFor="provincia">Provincia</Label>
+            <Input id="provincia" maxLength={2} value={form.provincia} onChange={(e) => setForm({ ...form, provincia: e.target.value.toUpperCase() })} placeholder="MI" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
             <Label htmlFor="telefono">Telefono</Label>
             <Input id="telefono" value={form.telefono} onChange={(e) => setForm({ ...form, telefono: e.target.value })} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="piva">P.IVA</Label>
+            <Input id="piva" value={form.piva} onChange={(e) => setForm({ ...form, piva: e.target.value })} />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="email_sede">Email sede</Label>
+            <Input id="email_sede" type="email" value={form.email_sede} onChange={(e) => setForm({ ...form, email_sede: e.target.value })} />
+            {errors.email_sede && <p className="text-xs text-destructive">{errors.email_sede}</p>}
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="pec_sede">PEC sede</Label>
+            <Input id="pec_sede" type="email" value={form.pec_sede} onChange={(e) => setForm({ ...form, pec_sede: e.target.value })} />
+            {errors.pec_sede && <p className="text-xs text-destructive">{errors.pec_sede}</p>}
           </div>
         </div>
         <DialogFooter>
