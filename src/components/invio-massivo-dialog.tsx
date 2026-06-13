@@ -202,7 +202,7 @@ export function InvioMassivoDialog({
     const corpo = wrapEmailHtml(base.corpo, sedeCorrente ?? null, {
       nome: nomeOperatore,
       email: user?.email ?? null,
-    });
+    }, { tipo: selectedTemplate.tipo });
     return { oggetto: base.oggetto, corpo };
   }, [selectedTemplate, clientePreview, sedeCorrente, nomeOperatore, user?.email]);
 
