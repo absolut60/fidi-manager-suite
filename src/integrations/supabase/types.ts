@@ -1989,6 +1989,7 @@ export type Database = {
           email_sede: string | null
           id: string
           indirizzo: string | null
+          insegna: string | null
           nome: string
           pec_sede: string | null
           piva: string | null
@@ -2006,6 +2007,7 @@ export type Database = {
           email_sede?: string | null
           id?: string
           indirizzo?: string | null
+          insegna?: string | null
           nome: string
           pec_sede?: string | null
           piva?: string | null
@@ -2023,6 +2025,7 @@ export type Database = {
           email_sede?: string | null
           id?: string
           indirizzo?: string | null
+          insegna?: string | null
           nome?: string
           pec_sede?: string | null
           piva?: string | null
