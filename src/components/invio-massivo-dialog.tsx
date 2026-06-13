@@ -90,13 +90,18 @@ export function InvioMassivoDialog({
   }, [modo, totale]);
 
   const { data: templates } = useQuery({
-    queryKey: ["template-email-attivi"],
+    queryKey: ["template-email-attivi", tipoCampagna],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from("template_email")
         .select("id, nome, oggetto, corpo, tipo, attivo")
-        .eq("attivo", true)
-        .order("nome");
+        .eq("attivo", true);
+      if (tipoCampagna === "promemoria_scadenza") {
+        q = q.eq("tipo", "promemoria_scadenza");
+      } else {
+        q = q.neq("tipo", "promemoria_scadenza");
+      }
+      const { data, error } = await q.order("nome");
       if (error) throw error;
       return data as TemplateEmail[];
     },
