@@ -153,6 +153,7 @@ export const FROM_NAME_ISTITUZIONALE = "Recupero Crediti MADE";
 
 export type DatiSede = {
   nome: string | null;        // es. "SEDE DI LISSONE"
+  insegna: string | null;     // es. "CMV | MADE"
   indirizzo: string | null;
   cap: string | null;
   citta: string | null;
@@ -167,7 +168,8 @@ export type DatiMittente = {
 
 // Sede amministrativa di fallback (vedi memoria progetto)
 export const SEDE_FALLBACK: DatiSede = {
-  nome: "Sede Amministrativa",
+  nome: "SEDE AMMINISTRATIVA",
+  insegna: null,
   indirizzo: "Via G. Di Vittorio, 3",
   cap: "20003",
   citta: "Casorezzo",
@@ -175,22 +177,32 @@ export const SEDE_FALLBACK: DatiSede = {
   telefono: "02 90380000",
 };
 
-function formatSedeLine(s: DatiSede | null | undefined): string {
+// Costruisce le due righe del footer-sede (nome in grassetto + insegna/indirizzo).
+// Restituisce HTML pronto da inserire prima del blocco legale fisso.
+function formatSedeBlock(s: DatiSede | null | undefined): string {
   const sede = s && (s.indirizzo || s.citta || s.telefono) ? s : SEDE_FALLBACK;
-  // "Filiale di Lissone — Via Matteotti 146, 20851 Lissone (MB) — Tel. 039/2459392"
-  const nomeBreve = (sede.nome ?? "")
-    .replace(/^SEDE DI\s+/i, "")
-    .trim() || (sede.citta ?? "");
+  const nome = (sede.nome ?? "").trim() || "SEDE AMMINISTRATIVA";
   const indir = sede.indirizzo ? sede.indirizzo.trim() : "";
   const cap = sede.cap ? sede.cap.trim() : "";
   const city = sede.citta ? sede.citta.trim() : "";
   const prov = sede.provincia ? `(${sede.provincia.trim()})` : "";
-  const tel = sede.telefono ? `Tel. ${sede.telefono.trim()}` : "";
+  const tel = sede.telefono ? sede.telefono.trim() : "";
+  const insegna = sede.insegna ? sede.insegna.trim() : "";
+
   const indPart = [indir, [cap, city, prov].filter(Boolean).join(" ")]
     .filter(Boolean)
     .join(", ");
-  const label = nomeBreve ? `Filiale di ${escapeHtml(nomeBreve)}` : "Filiale di riferimento";
-  return [label, escapeHtml(indPart), escapeHtml(tel)].filter(Boolean).join(" — ");
+
+  // RIGA 2: "<INSEGNA> - <indirizzo>" + opzionale " - Tel. <tel>"
+  const r2Parts: string[] = [];
+  if (insegna) r2Parts.push(insegna);
+  if (indPart) r2Parts.push(indPart);
+  let riga2 = r2Parts.join(" - ");
+  if (tel) riga2 = riga2 ? `${riga2} - Tel. ${tel}` : `Tel. ${tel}`;
+
+  return `
+            <div style="color:#1f2937;font-weight:700;font-size:12px;letter-spacing:0.3px;">${escapeHtml(nome)}</div>
+            ${riga2 ? `<div style="color:#374151;font-size:12px;margin-top:2px;">${escapeHtml(riga2)}</div>` : ""}`;
 }
 
 // =============================================================================
