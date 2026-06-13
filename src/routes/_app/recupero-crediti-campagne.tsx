@@ -47,6 +47,7 @@ type CampagnaRow = {
   note: string | null;
   created_at: string;
   completata_at: string | null;
+  tipo_campagna: string | null;
   template: { nome: string | null } | null;
   operatore: { nome: string | null; cognome: string | null } | null;
 };
