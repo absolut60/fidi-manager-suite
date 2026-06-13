@@ -183,7 +183,7 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
       const htmlPerEmail = wrapEmailHtml(baseRender.corpo, datiSede ?? null, {
         nome: nomeOperatore,
         email: user?.email ?? null,
-      }, { useCid: true });
+      }, { useCid: true, tipo: selectedTemplate.tipo });
 
       const ok = await sendEmail({
         to: dest,
