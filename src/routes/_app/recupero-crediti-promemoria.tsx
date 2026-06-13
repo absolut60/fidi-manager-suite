@@ -432,6 +432,15 @@ function PromemoriaScadenzaPage() {
           </Table>
         </div>
       </Card>
+
+      <InvioMassivoDialog
+        open={invioOpen}
+        onOpenChange={setInvioOpen}
+        clienteIdsSelezionati={Array.from(selezionati)}
+        clienteIdsFiltrati={rows.map((r) => r.cliente_id)}
+        tipoCampagna="promemoria_scadenza"
+        mesi={mesiArr}
+      />
     </div>
   );
 }
