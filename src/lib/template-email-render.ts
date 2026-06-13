@@ -189,10 +189,11 @@ function formatSedeLine(s: DatiSede | null | undefined): string {
 // Livello 3 (rosso)       -> messa_in_mora
 // La banda colorata sta TRA l'header MADE e il corpo; il box conseguenze sta
 // SUBITO PRIMA della firma. Stili tutti inline (compatibilita Outlook).
-export type TipoTemplate = "sollecito_1" | "sollecito_2" | "messa_in_mora" | "libero" | string;
+export type TipoTemplate = "promemoria_scadenza" | "sollecito_1" | "sollecito_2" | "messa_in_mora" | "libero" | string;
 
 type LivelloConfig = {
-  livello: 1 | 2 | 3;
+  livello: 0 | 1 | 2 | 3;
+  livelloLabel: string; // es. "CORTESIA", "LIV. 1/3"
   bandBg: string;
   bandBorder: string;
   bandText: string;
@@ -208,14 +209,32 @@ type LivelloConfig = {
 
 export function getLivelloConfig(tipo: string | null | undefined): LivelloConfig {
   switch (tipo) {
+    case "promemoria_scadenza":
+      return {
+        livello: 0,
+        livelloLabel: "CORTESIA",
+        bandBg: "#ecfdf5",
+        bandBorder: "#059669",
+        bandText: "#065f46",
+        label: "Promemoria di scadenza",
+        icon: "&#128197;", // 📅
+        uppercase: false,
+        boxBg: "#ecfdf5",
+        boxBorder: "#059669",
+        boxTextColor: "#065f46",
+        boxTitle: "Avviso di cortesia",
+        boxBody:
+          "Questa comunicazione ha valore di semplice promemoria sulle scadenze in arrivo. Nessun importo risulta ancora scaduto. Se ha gia provveduto al pagamento, La preghiamo di non tenere conto della presente.",
+      };
     case "sollecito_2":
       return {
         livello: 2,
+        livelloLabel: "LIV. 2/3",
         bandBg: "#fff7ed",
         bandBorder: "#fb923c",
         bandText: "#9a3412",
         label: "Secondo sollecito di pagamento",
-        icon: "&#9888;", // ⚠
+        icon: "&#9888;",
         uppercase: false,
         boxBg: "#fff7ed",
         boxBorder: "#fb923c",
@@ -227,11 +246,12 @@ export function getLivelloConfig(tipo: string | null | undefined): LivelloConfig
     case "messa_in_mora":
       return {
         livello: 3,
+        livelloLabel: "LIV. 3/3",
         bandBg: "#dc2626",
         bandBorder: "#b91c1c",
         bandText: "#ffffff",
         label: "Messa in mora — Diffida ad adempiere",
-        icon: "&#9940;", // ⛔
+        icon: "&#9940;",
         uppercase: true,
         boxBg: "#fef2f2",
         boxBorder: "#dc2626",
@@ -243,11 +263,12 @@ export function getLivelloConfig(tipo: string | null | undefined): LivelloConfig
     default:
       return {
         livello: 1,
+        livelloLabel: "LIV. 1/3",
         bandBg: "#eff6ff",
         bandBorder: "#bfdbfe",
         bandText: "#1e3a8a",
         label: "Primo sollecito di pagamento",
-        icon: "&#9432;", // ⓘ
+        icon: "&#9432;",
         uppercase: false,
         boxBg: "#f8fafc",
         boxBorder: "#bfdbfe",
