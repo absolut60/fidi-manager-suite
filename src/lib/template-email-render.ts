@@ -47,11 +47,15 @@ export function escapeHtml(s: string): string {
     .replace(/'/g, "&#39;");
 }
 
-export function buildElencoScadenzeHtml(scadenze: ScadenzaSollecito[]): string {
+export function buildElencoScadenzeHtml(
+  scadenze: ScadenzaSollecito[],
+  opts?: { labelTotale?: string; labelEmpty?: string },
+): string {
   if (!scadenze.length) {
-    return '<p style="margin:8px 0;color:#475569;">Nessuna scadenza scaduta al momento.</p>';
+    return `<p style="margin:8px 0;color:#475569;">${escapeHtml(opts?.labelEmpty ?? "Nessuna scadenza scaduta al momento.")}</p>`;
   }
   const totale = scadenze.reduce((acc, s) => acc + Number(s.importo_scadenza ?? 0), 0);
+  const labelTot = opts?.labelTotale ?? "Totale";
   const rows = scadenze
     .map(
       (s) => `<tr>
@@ -71,7 +75,7 @@ export function buildElencoScadenzeHtml(scadenze: ScadenzaSollecito[]): string {
     </tr></thead>
     <tbody>${rows}</tbody>
     <tfoot><tr style="background:#f8fafc;font-weight:600;">
-      <td colspan="3" style="padding:6px 10px;border:1px solid #e2e8f0;text-align:right;">Totale</td>
+      <td colspan="3" style="padding:6px 10px;border:1px solid #e2e8f0;text-align:right;">${escapeHtml(labelTot)}</td>
       <td style="padding:6px 10px;border:1px solid #e2e8f0;text-align:right;">${escapeHtml(formatEuro(totale))}</td>
     </tr></tfoot>
   </table>`;
@@ -88,12 +92,20 @@ export type RenderedTemplate = { oggetto: string; corpo: string };
 export function renderTemplate(
   template: { oggetto: string; corpo: string },
   dati: DatiTemplate,
+  opts?: { tipo?: string | null },
 ): RenderedTemplate {
   const totale = dati.scadenze.reduce((a, s) => a + Number(s.importo_scadenza ?? 0), 0);
+  const isPromemoria = opts?.tipo === "promemoria_scadenza";
+  const elenco = buildElencoScadenzeHtml(dati.scadenze, {
+    labelTotale: isPromemoria ? "Totale in scadenza" : "Totale",
+    labelEmpty: isPromemoria
+      ? "Nessuna scadenza in arrivo nel periodo selezionato."
+      : "Nessuna scadenza scaduta al momento.",
+  });
   const values: Record<PlaceholderKey, string> = {
     ragione_sociale: dati.ragione_sociale ?? "",
     totale_scaduto: formatEuro(totale),
-    elenco_scadenze: buildElencoScadenzeHtml(dati.scadenze),
+    elenco_scadenze: elenco,
     data_oggi: formatDateIt(new Date()),
     nome_operatore: dati.nome_operatore ?? "",
   };
@@ -189,10 +201,11 @@ function formatSedeLine(s: DatiSede | null | undefined): string {
 // Livello 3 (rosso)       -> messa_in_mora
 // La banda colorata sta TRA l'header MADE e il corpo; il box conseguenze sta
 // SUBITO PRIMA della firma. Stili tutti inline (compatibilita Outlook).
-export type TipoTemplate = "sollecito_1" | "sollecito_2" | "messa_in_mora" | "libero" | string;
+export type TipoTemplate = "promemoria_scadenza" | "sollecito_1" | "sollecito_2" | "messa_in_mora" | "libero" | string;
 
 type LivelloConfig = {
-  livello: 1 | 2 | 3;
+  livello: 0 | 1 | 2 | 3;
+  livelloLabel: string; // es. "CORTESIA", "LIV. 1/3"
   bandBg: string;
   bandBorder: string;
   bandText: string;
@@ -208,14 +221,32 @@ type LivelloConfig = {
 
 export function getLivelloConfig(tipo: string | null | undefined): LivelloConfig {
   switch (tipo) {
+    case "promemoria_scadenza":
+      return {
+        livello: 0,
+        livelloLabel: "CORTESIA",
+        bandBg: "#ecfdf5",
+        bandBorder: "#059669",
+        bandText: "#065f46",
+        label: "Promemoria di scadenza",
+        icon: "&#128197;", // 📅
+        uppercase: false,
+        boxBg: "#ecfdf5",
+        boxBorder: "#059669",
+        boxTextColor: "#065f46",
+        boxTitle: "Avviso di cortesia",
+        boxBody:
+          "Questa comunicazione ha valore di semplice promemoria sulle scadenze in arrivo. Nessun importo risulta ancora scaduto. Se ha gia provveduto al pagamento, La preghiamo di non tenere conto della presente.",
+      };
     case "sollecito_2":
       return {
         livello: 2,
+        livelloLabel: "LIV. 2/3",
         bandBg: "#fff7ed",
         bandBorder: "#fb923c",
         bandText: "#9a3412",
         label: "Secondo sollecito di pagamento",
-        icon: "&#9888;", // ⚠
+        icon: "&#9888;",
         uppercase: false,
         boxBg: "#fff7ed",
         boxBorder: "#fb923c",
@@ -227,11 +258,12 @@ export function getLivelloConfig(tipo: string | null | undefined): LivelloConfig
     case "messa_in_mora":
       return {
         livello: 3,
+        livelloLabel: "LIV. 3/3",
         bandBg: "#dc2626",
         bandBorder: "#b91c1c",
         bandText: "#ffffff",
         label: "Messa in mora — Diffida ad adempiere",
-        icon: "&#9940;", // ⛔
+        icon: "&#9940;",
         uppercase: true,
         boxBg: "#fef2f2",
         boxBorder: "#dc2626",
@@ -243,11 +275,12 @@ export function getLivelloConfig(tipo: string | null | undefined): LivelloConfig
     default:
       return {
         livello: 1,
+        livelloLabel: "LIV. 1/3",
         bandBg: "#eff6ff",
         bandBorder: "#bfdbfe",
         bandText: "#1e3a8a",
         label: "Primo sollecito di pagamento",
-        icon: "&#9432;", // ⓘ
+        icon: "&#9432;",
         uppercase: false,
         boxBg: "#f8fafc",
         boxBorder: "#bfdbfe",
@@ -289,7 +322,7 @@ export function wrapEmailHtml(
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
             <td style="vertical-align:middle;width:24px;font-size:16px;line-height:1;">${cfg.icon}</td>
             <td style="vertical-align:middle;">${escapeHtml(cfg.label)}</td>
-            <td align="right" style="vertical-align:middle;font-size:11px;font-weight:600;letter-spacing:0.5px;opacity:.85;">LIV. ${cfg.livello}/3</td>
+            <td align="right" style="vertical-align:middle;font-size:11px;font-weight:600;letter-spacing:0.5px;opacity:.85;">${cfg.livelloLabel}</td>
           </tr></table>
         </td>
       </tr>`;

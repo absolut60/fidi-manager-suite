@@ -24,6 +24,9 @@ type Props = {
   onOpenChange: (v: boolean) => void;
   clienteIdsSelezionati: string[];
   clienteIdsFiltrati: string[];
+  tipoCampagna?: "sollecito" | "promemoria_scadenza";
+  // YYYY-MM[]; richiesto per i promemoria di scadenza (filtro scadenze future)
+  mesi?: string[];
 };
 
 type ClientePreviewData = {
@@ -39,6 +42,8 @@ export function InvioMassivoDialog({
   onOpenChange,
   clienteIdsSelezionati,
   clienteIdsFiltrati,
+  tipoCampagna = "sollecito",
+  mesi = [],
 }: Props) {
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -85,13 +90,18 @@ export function InvioMassivoDialog({
   }, [modo, totale]);
 
   const { data: templates } = useQuery({
-    queryKey: ["template-email-attivi"],
+    queryKey: ["template-email-attivi", tipoCampagna],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from("template_email")
         .select("id, nome, oggetto, corpo, tipo, attivo")
-        .eq("attivo", true)
-        .order("nome");
+        .eq("attivo", true);
+      if (tipoCampagna === "promemoria_scadenza") {
+        q = q.eq("tipo", "promemoria_scadenza");
+      } else {
+        q = q.neq("tipo", "promemoria_scadenza");
+      }
+      const { data, error } = await q.order("nome");
       if (error) throw error;
       return data as TemplateEmail[];
     },
@@ -110,8 +120,9 @@ export function InvioMassivoDialog({
   const clienteCorrenteId = clienteIds[indice] ?? null;
 
   // Carica on-demand i dati del cliente corrente (no precaricamento)
+  const mesiKey = useMemo(() => [...mesi].sort().join(","), [mesi]);
   const { data: clientePreview, isFetching: loadingPreview } = useQuery<ClientePreviewData | null>({
-    queryKey: ["sollecito-massivo-cliente", clienteCorrenteId],
+    queryKey: ["sollecito-massivo-cliente", clienteCorrenteId, tipoCampagna, mesiKey],
     enabled: open && !!clienteCorrenteId,
     staleTime: 60_000,
     queryFn: async () => {
@@ -124,11 +135,26 @@ export function InvioMassivoDialog({
       if (e1) throw e1;
       const { data: rawScad, error: e2 } = await supabase
         .from("scadenze")
-        .select("numero_documento, data_documento, data_scadenza, importo_scadenza, stato_contabile, giorni_ritardo, tempi_scadenza")
+        .select("numero_documento, data_documento, data_scadenza, importo_scadenza, stato_contabile, giorni_ritardo, tempi_scadenza, in_legale")
         .eq("cliente_id", id)
         .order("data_scadenza", { ascending: true });
       if (e2) throw e2;
-      const scadute = (rawScad ?? []).filter((s) => classificaScadenza(s) === "scaduto");
+      const oggiStr = new Date().toISOString().slice(0, 10);
+      const mesiSet = new Set(mesi);
+      const rilevanti = (rawScad ?? []).filter((s) => {
+        if (tipoCampagna === "promemoria_scadenza") {
+          const t = String(s.tempi_scadenza ?? "").toLowerCase();
+          if (!t.includes("scader")) return false;
+          if ((s as { in_legale?: boolean | null }).in_legale) return false;
+          if (!s.data_scadenza || String(s.data_scadenza) < oggiStr) return false;
+          if (mesiSet.size > 0) {
+            const k = String(s.data_scadenza).slice(0, 7);
+            if (!mesiSet.has(k)) return false;
+          }
+          return true;
+        }
+        return classificaScadenza(s) === "scaduto";
+      });
       return {
         id,
         ragione_sociale: cliente?.ragione_sociale ?? "",
@@ -137,7 +163,7 @@ export function InvioMassivoDialog({
         dati: {
           ragione_sociale: cliente?.ragione_sociale ?? "",
           nome_operatore: "Operatore",
-          scadenze: scadute.map((s) => ({
+          scadenze: rilevanti.map((s) => ({
             numero_documento: s.numero_documento,
             data_documento: s.data_documento,
             data_scadenza: s.data_scadenza,
@@ -198,6 +224,7 @@ export function InvioMassivoDialog({
     const base = renderTemplate(
       { oggetto: selectedTemplate.oggetto, corpo: selectedTemplate.corpo },
       dati,
+      { tipo: selectedTemplate.tipo },
     );
     const corpo = wrapEmailHtml(base.corpo, sedeCorrente ?? null, {
       nome: nomeOperatore,
@@ -276,6 +303,8 @@ export function InvioMassivoDialog({
           nota: nota.trim() || null,
           clienteIds,
           indirizziCorretti,
+          tipoCampagna,
+          mesi,
         },
       });
       toast.success(`Campagna avviata: ${res.totale} destinatari`);
@@ -297,10 +326,12 @@ export function InvioMassivoDialog({
       <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Send className="size-5" /> Invio massivo solleciti
+            <Send className="size-5" /> {tipoCampagna === "promemoria_scadenza" ? "Invio promemoria di scadenza" : "Invio massivo solleciti"}
           </DialogTitle>
           <DialogDescription>
-            Lancia una campagna email graduale verso più clienti, rispettando i limiti del server di posta.
+            {tipoCampagna === "promemoria_scadenza"
+              ? "Invia avvisi di cortesia sulle scadenze in arrivo. Tono amichevole, distinto dai solleciti sullo scaduto."
+              : "Lancia una campagna email graduale verso più clienti, rispettando i limiti del server di posta."}
           </DialogDescription>
         </DialogHeader>
 

@@ -33,6 +33,7 @@ export const Route = createFileRoute("/_app/template-email")({
 });
 
 const TIPI: { value: string; label: string }[] = [
+  { value: "promemoria_scadenza", label: "Promemoria di scadenza" },
   { value: "sollecito_1", label: "Sollecito 1" },
   { value: "sollecito_2", label: "Sollecito 2" },
   { value: "messa_in_mora", label: "Messa in mora" },

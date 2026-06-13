@@ -1,6 +1,6 @@
 import { inngest } from "./client";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { renderTemplate, isScaduto, wrapEmailHtml, type DatiSede } from "@/lib/template-email-render";
+import { renderTemplate, isScaduto, wrapEmailHtml, type DatiSede, type ScadenzaSollecito } from "@/lib/template-email-render";
 
 type EventData = { campagna_id: string };
 
@@ -93,14 +93,14 @@ export const invioMassivoSolleciti = inngest.createFunction(
     const prep = await step.run("prepara", async () => {
       const { data: camp, error } = await supabaseAdmin
         .from("campagne_sollecito")
-        .select("id, template_id, preferenza_indirizzo, operatore_id, stato")
+        .select("id, template_id, preferenza_indirizzo, operatore_id, stato, tipo_campagna, mesi")
         .eq("id", campagna_id)
         .maybeSingle();
       if (error || !camp) throw new Error(`Campagna non trovata: ${error?.message ?? campagna_id}`);
 
       // Guard: se annullata prima ancora di partire, esci pulito
       if (camp.stato === "annullata") {
-        return { templateId: null, operatoreId: null, annullata: true };
+        return { templateId: null, operatoreId: null, annullata: true, tipoCampagna: "sollecito" as string, mesi: [] as string[] };
       }
 
       await supabaseAdmin
@@ -165,6 +165,8 @@ export const invioMassivoSolleciti = inngest.createFunction(
         templateId: camp.template_id as string | null,
         operatoreId: camp.operatore_id as string | null,
         annullata: false as boolean,
+        tipoCampagna: ((camp as { tipo_campagna?: string | null }).tipo_campagna ?? "sollecito") as string,
+        mesi: (((camp as { mesi?: string[] | null }).mesi ?? []) as string[]),
       };
     });
 
@@ -314,29 +316,49 @@ export const invioMassivoSolleciti = inngest.createFunction(
             const { data: rawScad } = await supabaseAdmin
               .from("scadenze")
               .select(
-                "id, numero_documento, data_documento, data_scadenza, importo_scadenza, stato_contabile, giorni_ritardo, tempi_scadenza",
+                "id, numero_documento, data_documento, data_scadenza, importo_scadenza, stato_contabile, giorni_ritardo, tempi_scadenza, in_legale",
               )
               .eq("cliente_id", d.cliente_id)
               .order("data_scadenza", { ascending: true });
 
-            const scadute = (rawScad ?? []).filter((s) => isScaduto(s));
-            const totaleScaduto = scadute.reduce(
+            const isPromemoria = prep.tipoCampagna === "promemoria_scadenza";
+            const oggiStr = new Date().toISOString().slice(0, 10);
+            const mesiSet = new Set(prep.mesi ?? []);
+
+            const scadenzeRilevanti = (rawScad ?? []).filter((s) => {
+              if (isPromemoria) {
+                const t = String(s.tempi_scadenza ?? "").toLowerCase();
+                if (!t.includes("scader")) return false;
+                if ((s as { in_legale?: boolean | null }).in_legale) return false;
+                if (!s.data_scadenza || String(s.data_scadenza) < oggiStr) return false;
+                if (mesiSet.size > 0) {
+                  const k = String(s.data_scadenza).slice(0, 7);
+                  if (!mesiSet.has(k)) return false;
+                }
+                return true;
+              }
+              return isScaduto(s);
+            });
+            const totaleRif = scadenzeRilevanti.reduce(
               (a, s) => a + Number(s.importo_scadenza ?? 0),
               0,
             );
+
+            const scadenzeForTpl: ScadenzaSollecito[] = scadenzeRilevanti.map((s) => ({
+              numero_documento: s.numero_documento,
+              data_documento: s.data_documento,
+              data_scadenza: s.data_scadenza,
+              importo_scadenza: s.importo_scadenza,
+            }));
 
             const rendered = renderTemplate(
               { oggetto: tpl.oggetto, corpo: tpl.corpo },
               {
                 ragione_sociale: cliente?.ragione_sociale ?? "",
                 nome_operatore: cfg.nomeOperatore,
-                scadenze: scadute.map((s) => ({
-                  numero_documento: s.numero_documento,
-                  data_documento: s.data_documento,
-                  data_scadenza: s.data_scadenza,
-                  importo_scadenza: s.importo_scadenza,
-                })),
+                scadenze: scadenzeForTpl,
               },
+              { tipo: tpl.tipo },
             );
 
             const htmlCompleto = wrapEmailHtml(rendered.corpo, sede, {
@@ -362,17 +384,20 @@ export const invioMassivoSolleciti = inngest.createFunction(
               continue;
             }
 
-            // Crea azione_recupero (come l'invio singolo) — salva HTML COMPLETO con cornice
-            const noteRiassunto = `Inviato template "${tpl.nome}" a ${d.indirizzo_usato} (campagna ${campagna_id})`;
+            // Crea azione_recupero — tipo differenziato per promemoria
+            const tipoAzione = isPromemoria ? "promemoria_scadenza" : "email";
+            const noteRiassunto = isPromemoria
+              ? `Promemoria scadenza inviato "${tpl.nome}" a ${d.indirizzo_usato} (campagna ${campagna_id})`
+              : `Inviato template "${tpl.nome}" a ${d.indirizzo_usato} (campagna ${campagna_id})`;
             const { data: azione, error: azErr } = await supabaseAdmin
               .from("azioni_recupero")
               .insert({
                 cliente_id: d.cliente_id,
                 operatore_id: prep.operatoreId,
-                tipo: "email",
+                tipo: tipoAzione,
                 esito: "fatto",
                 data_azione: new Date().toISOString(),
-                importo_riferimento: totaleScaduto,
+                importo_riferimento: totaleRif,
                 note: noteRiassunto,
                 email_oggetto: rendered.oggetto,
                 email_corpo_html: htmlCompleto,
@@ -382,7 +407,7 @@ export const invioMassivoSolleciti = inngest.createFunction(
               .single();
             if (azErr) throw azErr;
 
-            const scadIds = scadute.map((s) => s.id as string).filter(Boolean);
+            const scadIds = scadenzeRilevanti.map((s) => s.id as string).filter(Boolean);
             if (scadIds.length && azione?.id) {
               const rows = scadIds.map((sid) => ({ azione_id: azione.id, scadenza_id: sid }));
               await supabaseAdmin.from("azioni_recupero_scadenze").insert(rows);
@@ -393,7 +418,7 @@ export const invioMassivoSolleciti = inngest.createFunction(
               .update({
                 stato: "inviato",
                 azione_id: azione?.id ?? null,
-                importo_riferimento: totaleScaduto,
+                importo_riferimento: totaleRif,
                 inviato_at: new Date().toISOString(),
               })
               .eq("id", d.id);

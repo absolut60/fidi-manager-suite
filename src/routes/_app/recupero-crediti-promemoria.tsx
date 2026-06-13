@@ -32,8 +32,10 @@ import {
   Mail,
   MailX,
   Search,
+  Send,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { InvioMassivoDialog } from "@/components/invio-massivo-dialog";
 
 export const Route = createFileRoute("/_app/recupero-crediti-promemoria")({
   component: PromemoriaScadenzaPage,
@@ -114,6 +116,7 @@ function PromemoriaScadenzaPage() {
   const [escludiBloccati, setEscludiBloccati] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [selezionati, setSelezionati] = useState<Set<string>>(new Set());
+  const [invioOpen, setInvioOpen] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDeb(search.trim()), 300);
@@ -296,17 +299,28 @@ function PromemoriaScadenzaPage() {
 
       {/* Tabella */}
       <Card>
-        <div className="flex items-center justify-between p-3 border-b">
+        <div className="flex items-center justify-between p-3 border-b gap-3 flex-wrap">
           <div className="text-sm text-muted-foreground">
             {selezionati.size > 0
               ? `${selezionati.size} cliente/i selezionato/i`
               : "Seleziona i clienti per il prossimo invio"}
           </div>
-          {selezionati.size > 0 && (
-            <Button variant="ghost" size="sm" onClick={() => setSelezionati(new Set())}>
-              Azzera selezione
+          <div className="flex items-center gap-2">
+            {selezionati.size > 0 && (
+              <Button variant="ghost" size="sm" onClick={() => setSelezionati(new Set())}>
+                Azzera selezione
+              </Button>
+            )}
+            <Button
+              size="sm"
+              onClick={() => setInvioOpen(true)}
+              disabled={rows.length === 0}
+              className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              <Send className="size-4" />
+              Invia promemoria di scadenza
             </Button>
-          )}
+          </div>
         </div>
         <div className="overflow-x-auto">
           <Table>
@@ -418,6 +432,15 @@ function PromemoriaScadenzaPage() {
           </Table>
         </div>
       </Card>
+
+      <InvioMassivoDialog
+        open={invioOpen}
+        onOpenChange={setInvioOpen}
+        clienteIdsSelezionati={Array.from(selezionati)}
+        clienteIdsFiltrati={rows.map((r) => r.cliente_id)}
+        tipoCampagna="promemoria_scadenza"
+        mesi={mesiArr}
+      />
     </div>
   );
 }

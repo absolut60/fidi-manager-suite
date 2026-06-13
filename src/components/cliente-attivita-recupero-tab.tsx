@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  Send, Plus, Bell, Phone, StickyNote, FileText, Mail, Activity, Eye,
+  Send, Plus, Bell, Phone, StickyNote, FileText, Mail, Activity, Eye, CalendarClock,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -33,20 +33,22 @@ const ESITI: { value: Esito; label: string }[] = [
   { value: "pagato", label: "Pagato" },
 ];
 
-const TIPO_ICON: Record<TipoAzione, typeof Mail> = {
+const TIPO_ICON: Record<string, typeof Mail> = {
   email: Mail,
   telefonata: Phone,
   promemoria: Bell,
   nota: StickyNote,
   lettera: FileText,
+  promemoria_scadenza: CalendarClock,
 };
 
-const TIPO_LABEL: Record<TipoAzione, string> = {
+const TIPO_LABEL: Record<string, string> = {
   email: "Email",
   telefonata: "Telefonata",
   promemoria: "Promemoria",
   nota: "Nota",
   lettera: "Lettera",
+  promemoria_scadenza: "Promemoria scadenza",
 };
 
 function esitoBadge(e: Esito) {
@@ -78,7 +80,7 @@ type Azione = {
   id: string;
   cliente_id: string;
   operatore_id: string | null;
-  tipo: TipoAzione;
+  tipo: TipoAzione | "promemoria_scadenza";
   esito: Esito;
   data_azione: string;
   importo_riferimento: number | null;
@@ -363,7 +365,7 @@ function TimelineItem({
         {azione.note && (
           <p className="text-sm text-foreground/80 whitespace-pre-wrap line-clamp-3">{azione.note}</p>
         )}
-        {azione.tipo === "email" && azione.email_corpo_html && (
+        {(azione.tipo === "email" || azione.tipo === "promemoria_scadenza") && azione.email_corpo_html && (
           <Button variant="link" size="sm" className="h-auto p-0 gap-1 text-xs" onClick={onViewEmail}>
             <Eye className="size-3" /> Vedi email inviata
           </Button>

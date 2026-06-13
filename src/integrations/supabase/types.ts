@@ -380,12 +380,14 @@ export type Database = {
           falliti: number
           id: string
           inviati: number
+          mesi: string[] | null
           note: string | null
           operatore_id: string | null
           preferenza_indirizzo: string
           saltati: number
           stato: string
           template_id: string | null
+          tipo_campagna: string
           totale_destinatari: number
           updated_at: string
         }
@@ -395,12 +397,14 @@ export type Database = {
           falliti?: number
           id?: string
           inviati?: number
+          mesi?: string[] | null
           note?: string | null
           operatore_id?: string | null
           preferenza_indirizzo?: string
           saltati?: number
           stato?: string
           template_id?: string | null
+          tipo_campagna?: string
           totale_destinatari?: number
           updated_at?: string
         }
@@ -410,12 +414,14 @@ export type Database = {
           falliti?: number
           id?: string
           inviati?: number
+          mesi?: string[] | null
           note?: string | null
           operatore_id?: string | null
           preferenza_indirizzo?: string
           saltati?: number
           stato?: string
           template_id?: string | null
+          tipo_campagna?: string
           totale_destinatari?: number
           updated_at?: string
         }

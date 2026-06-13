@@ -7,9 +7,10 @@ const AvviaSchema = z.object({
   preferenzaIndirizzo: z.enum(["email", "pec"]).default("email"),
   nota: z.string().nullable().optional(),
   clienteIds: z.array(z.string().uuid()).min(1),
-  // Mappa { cliente_id -> indirizzo_corretto } per override manuali dall'anteprima.
-  // Se valorizzato, viene scritto in indirizzo_usato e il job non ricalcolerà.
   indirizziCorretti: z.record(z.string().uuid(), z.string()).optional().default({}),
+  tipoCampagna: z.enum(["sollecito", "promemoria_scadenza"]).default("sollecito"),
+  // Mesi in formato YYYY-MM, usato per filtrare le scadenze future nei promemoria.
+  mesi: z.array(z.string().regex(/^\d{4}-\d{2}$/)).optional().default([]),
 });
 
 /**
@@ -39,28 +40,42 @@ export const avviaCampagnaSollecito = createServerFn({ method: "POST" })
         preferenza_indirizzo: data.preferenzaIndirizzo,
         totale_destinatari: clienteIds.length,
         note: data.nota ?? null,
+        tipo_campagna: data.tipoCampagna,
+        mesi: data.tipoCampagna === "promemoria_scadenza" ? data.mesi : null,
       } as never)
       .select("id")
       .single();
     if (e1 || !camp) throw new Error(`Creazione campagna fallita: ${e1?.message}`);
 
-    // Calcola importo_riferimento per ciascun cliente (totale scaduto)
-    // — opzionale, derivato dalle scadenze "scaduto" attive.
+    // Calcola importo_riferimento per ciascun cliente:
+    // - "sollecito" => totale SCADUTO
+    // - "promemoria_scadenza" => totale A SCADERE nei mesi selezionati
     const importi: Record<string, number> = {};
     const CHUNK = 200;
+    const isPromemoria = data.tipoCampagna === "promemoria_scadenza";
+    const oggi = new Date().toISOString().slice(0, 10);
+    const mesiSet = new Set(data.mesi);
     for (let i = 0; i < clienteIds.length; i += CHUNK) {
       const slice = clienteIds.slice(i, i + CHUNK);
       const { data: sc } = await supabase
         .from("scadenze")
-        .select("cliente_id, importo_scadenza, stato_contabile, giorni_ritardo, tempi_scadenza")
+        .select("cliente_id, importo_scadenza, data_scadenza, stato_contabile, giorni_ritardo, tempi_scadenza, in_legale")
         .in("cliente_id", slice);
       (sc ?? []).forEach((s) => {
-        const t = String(s.tempi_scadenza ?? "").toLowerCase();
-        const pagato = t.includes("pagat");
-        const aScadere = t.includes("a scadere");
-        const scaduto = t.includes("scadut") || (s.stato_contabile === "Aperta" && Number(s.giorni_ritardo ?? 0) > 0);
-        if (pagato || aScadere || !scaduto) return;
         if (!s.cliente_id) return;
+        const t = String(s.tempi_scadenza ?? "").toLowerCase();
+        if (isPromemoria) {
+          if (!t.includes("scader")) return;
+          if (s.in_legale) return;
+          if (!s.data_scadenza || String(s.data_scadenza) < oggi) return;
+          const k = String(s.data_scadenza).slice(0, 7);
+          if (mesiSet.size > 0 && !mesiSet.has(k)) return;
+        } else {
+          const pagato = t.includes("pagat");
+          const aScadere = t.includes("a scadere");
+          const scaduto = t.includes("scadut") || (s.stato_contabile === "Aperta" && Number(s.giorni_ritardo ?? 0) > 0);
+          if (pagato || aScadere || !scaduto) return;
+        }
         importi[s.cliente_id] = (importi[s.cliente_id] ?? 0) + Number(s.importo_scadenza ?? 0);
       });
     }
