@@ -383,11 +383,11 @@ export function wrapEmailHtml(
           </tr></table>
         </td>
       </tr>
-      ${bandHtml}
+      ${opts?.senzaBande ? "" : bandHtml}
       <tr>
         <td style="padding:24px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.55;color:#1f2937;">
           ${corpoRenderizzato}
-          ${boxHtml}
+          ${opts?.senzaBande ? "" : boxHtml}
           <div style="margin-top:24px;padding-top:12px;border-top:1px solid #e5e7eb;font-size:13px;color:#374151;">
             <div style="font-weight:600;color:#0d1f3c;">${operatore}</div>
             ${operatoreEmail}
