@@ -1,6 +1,6 @@
 import { inngest } from "./client";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { renderTemplate, isScaduto, wrapEmailHtml, type DatiSede } from "@/lib/template-email-render";
+import { renderTemplate, isScaduto, wrapEmailHtml, type DatiSede, type ScadenzaSollecito } from "@/lib/template-email-render";
 
 type EventData = { campagna_id: string };
 
