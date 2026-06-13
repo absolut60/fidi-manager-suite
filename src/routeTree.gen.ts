@@ -18,6 +18,7 @@ import { Route as AppUtentiRouteImport } from './routes/_app/utenti'
 import { Route as AppTemplateEmailRouteImport } from './routes/_app/template-email'
 import { Route as AppScadenziarioRouteImport } from './routes/_app/scadenziario'
 import { Route as AppRichiesteRouteImport } from './routes/_app/richieste'
+import { Route as AppRecuperoCreditiPromemoriaRouteImport } from './routes/_app/recupero-crediti-promemoria'
 import { Route as AppRecuperoCreditiCampagneRouteImport } from './routes/_app/recupero-crediti-campagne'
 import { Route as AppRecuperoCreditiCalendarioRouteImport } from './routes/_app/recupero-crediti-calendario'
 import { Route as AppRecuperoCreditiRouteImport } from './routes/_app/recupero-crediti'
@@ -82,6 +83,12 @@ const AppRichiesteRoute = AppRichiesteRouteImport.update({
   path: '/richieste',
   getParentRoute: () => AppRoute,
 } as any)
+const AppRecuperoCreditiPromemoriaRoute =
+  AppRecuperoCreditiPromemoriaRouteImport.update({
+    id: '/recupero-crediti-promemoria',
+    path: '/recupero-crediti-promemoria',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppRecuperoCreditiCampagneRoute =
   AppRecuperoCreditiCampagneRouteImport.update({
     id: '/recupero-crediti-campagne',
@@ -199,6 +206,7 @@ export interface FileRoutesByFullPath {
   '/recupero-crediti': typeof AppRecuperoCreditiRoute
   '/recupero-crediti-calendario': typeof AppRecuperoCreditiCalendarioRoute
   '/recupero-crediti-campagne': typeof AppRecuperoCreditiCampagneRoute
+  '/recupero-crediti-promemoria': typeof AppRecuperoCreditiPromemoriaRoute
   '/richieste': typeof AppRichiesteRouteWithChildren
   '/scadenziario': typeof AppScadenziarioRoute
   '/template-email': typeof AppTemplateEmailRoute
@@ -228,6 +236,7 @@ export interface FileRoutesByTo {
   '/recupero-crediti': typeof AppRecuperoCreditiRoute
   '/recupero-crediti-calendario': typeof AppRecuperoCreditiCalendarioRoute
   '/recupero-crediti-campagne': typeof AppRecuperoCreditiCampagneRoute
+  '/recupero-crediti-promemoria': typeof AppRecuperoCreditiPromemoriaRoute
   '/richieste': typeof AppRichiesteRouteWithChildren
   '/scadenziario': typeof AppScadenziarioRoute
   '/template-email': typeof AppTemplateEmailRoute
@@ -259,6 +268,7 @@ export interface FileRoutesById {
   '/_app/recupero-crediti': typeof AppRecuperoCreditiRoute
   '/_app/recupero-crediti-calendario': typeof AppRecuperoCreditiCalendarioRoute
   '/_app/recupero-crediti-campagne': typeof AppRecuperoCreditiCampagneRoute
+  '/_app/recupero-crediti-promemoria': typeof AppRecuperoCreditiPromemoriaRoute
   '/_app/richieste': typeof AppRichiesteRouteWithChildren
   '/_app/scadenziario': typeof AppScadenziarioRoute
   '/_app/template-email': typeof AppTemplateEmailRoute
@@ -290,6 +300,7 @@ export interface FileRouteTypes {
     | '/recupero-crediti'
     | '/recupero-crediti-calendario'
     | '/recupero-crediti-campagne'
+    | '/recupero-crediti-promemoria'
     | '/richieste'
     | '/scadenziario'
     | '/template-email'
@@ -319,6 +330,7 @@ export interface FileRouteTypes {
     | '/recupero-crediti'
     | '/recupero-crediti-calendario'
     | '/recupero-crediti-campagne'
+    | '/recupero-crediti-promemoria'
     | '/richieste'
     | '/scadenziario'
     | '/template-email'
@@ -349,6 +361,7 @@ export interface FileRouteTypes {
     | '/_app/recupero-crediti'
     | '/_app/recupero-crediti-calendario'
     | '/_app/recupero-crediti-campagne'
+    | '/_app/recupero-crediti-promemoria'
     | '/_app/richieste'
     | '/_app/scadenziario'
     | '/_app/template-email'
@@ -435,6 +448,13 @@ declare module '@tanstack/react-router' {
       path: '/richieste'
       fullPath: '/richieste'
       preLoaderRoute: typeof AppRichiesteRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/recupero-crediti-promemoria': {
+      id: '/_app/recupero-crediti-promemoria'
+      path: '/recupero-crediti-promemoria'
+      fullPath: '/recupero-crediti-promemoria'
+      preLoaderRoute: typeof AppRecuperoCreditiPromemoriaRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/recupero-crediti-campagne': {
@@ -612,6 +632,7 @@ interface AppRouteChildren {
   AppRecuperoCreditiRoute: typeof AppRecuperoCreditiRoute
   AppRecuperoCreditiCalendarioRoute: typeof AppRecuperoCreditiCalendarioRoute
   AppRecuperoCreditiCampagneRoute: typeof AppRecuperoCreditiCampagneRoute
+  AppRecuperoCreditiPromemoriaRoute: typeof AppRecuperoCreditiPromemoriaRoute
   AppRichiesteRoute: typeof AppRichiesteRouteWithChildren
   AppScadenziarioRoute: typeof AppScadenziarioRoute
   AppTemplateEmailRoute: typeof AppTemplateEmailRoute
@@ -634,6 +655,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppRecuperoCreditiRoute: AppRecuperoCreditiRoute,
   AppRecuperoCreditiCalendarioRoute: AppRecuperoCreditiCalendarioRoute,
   AppRecuperoCreditiCampagneRoute: AppRecuperoCreditiCampagneRoute,
+  AppRecuperoCreditiPromemoriaRoute: AppRecuperoCreditiPromemoriaRoute,
   AppRichiesteRoute: AppRichiesteRouteWithChildren,
   AppScadenziarioRoute: AppScadenziarioRoute,
   AppTemplateEmailRoute: AppTemplateEmailRoute,

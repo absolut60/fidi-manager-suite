@@ -1,7 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, Fragment } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
+import { Plus, CalendarClock as CalendarClockIcon } from "lucide-react";
 import { CreaAzioneDialog } from "@/components/crea-azione-dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
@@ -386,6 +386,11 @@ function RecuperoCreditiPage() {
         </div>
         <Button size="sm" onClick={() => setNuovaAzioneOpen(true)} className="gap-1.5">
           <Plus className="size-4" /> Nuova azione
+        </Button>
+        <Button asChild variant="outline" size="sm" className="gap-1.5">
+          <Link to="/recupero-crediti-promemoria">
+            <CalendarClockIcon className="size-4" /> Promemoria di scadenza
+          </Link>
         </Button>
         <Button variant="outline" size="sm" onClick={() => setInvioMassivoOpen(true)} className="gap-1.5">
           <Send className="size-4" /> Invio massivo solleciti
