@@ -301,6 +301,11 @@ export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string })
         onOpenChange={setSollecitoOpen}
         clienteId={clienteId}
       />
+      <EmailLiberaDialog
+        open={emailLiberaOpen}
+        onOpenChange={setEmailLiberaOpen}
+        clienteId={clienteId}
+      />
       <CreaAzioneDialog
         open={creaOpen}
         onOpenChange={setCreaOpen}
