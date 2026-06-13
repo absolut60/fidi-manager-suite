@@ -120,8 +120,9 @@ export function InvioMassivoDialog({
   const clienteCorrenteId = clienteIds[indice] ?? null;
 
   // Carica on-demand i dati del cliente corrente (no precaricamento)
+  const mesiKey = useMemo(() => [...mesi].sort().join(","), [mesi]);
   const { data: clientePreview, isFetching: loadingPreview } = useQuery<ClientePreviewData | null>({
-    queryKey: ["sollecito-massivo-cliente", clienteCorrenteId],
+    queryKey: ["sollecito-massivo-cliente", clienteCorrenteId, tipoCampagna, mesiKey],
     enabled: open && !!clienteCorrenteId,
     staleTime: 60_000,
     queryFn: async () => {
@@ -134,11 +135,26 @@ export function InvioMassivoDialog({
       if (e1) throw e1;
       const { data: rawScad, error: e2 } = await supabase
         .from("scadenze")
-        .select("numero_documento, data_documento, data_scadenza, importo_scadenza, stato_contabile, giorni_ritardo, tempi_scadenza")
+        .select("numero_documento, data_documento, data_scadenza, importo_scadenza, stato_contabile, giorni_ritardo, tempi_scadenza, in_legale")
         .eq("cliente_id", id)
         .order("data_scadenza", { ascending: true });
       if (e2) throw e2;
-      const scadute = (rawScad ?? []).filter((s) => classificaScadenza(s) === "scaduto");
+      const oggiStr = new Date().toISOString().slice(0, 10);
+      const mesiSet = new Set(mesi);
+      const rilevanti = (rawScad ?? []).filter((s) => {
+        if (tipoCampagna === "promemoria_scadenza") {
+          const t = String(s.tempi_scadenza ?? "").toLowerCase();
+          if (!t.includes("scader")) return false;
+          if ((s as { in_legale?: boolean | null }).in_legale) return false;
+          if (!s.data_scadenza || String(s.data_scadenza) < oggiStr) return false;
+          if (mesiSet.size > 0) {
+            const k = String(s.data_scadenza).slice(0, 7);
+            if (!mesiSet.has(k)) return false;
+          }
+          return true;
+        }
+        return classificaScadenza(s) === "scaduto";
+      });
       return {
         id,
         ragione_sociale: cliente?.ragione_sociale ?? "",
@@ -147,7 +163,7 @@ export function InvioMassivoDialog({
         dati: {
           ragione_sociale: cliente?.ragione_sociale ?? "",
           nome_operatore: "Operatore",
-          scadenze: scadute.map((s) => ({
+          scadenze: rilevanti.map((s) => ({
             numero_documento: s.numero_documento,
             data_documento: s.data_documento,
             data_scadenza: s.data_scadenza,
