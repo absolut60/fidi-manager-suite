@@ -165,6 +165,8 @@ export const invioMassivoSolleciti = inngest.createFunction(
         templateId: camp.template_id as string | null,
         operatoreId: camp.operatore_id as string | null,
         annullata: false as boolean,
+        tipoCampagna: ((camp as { tipo_campagna?: string | null }).tipo_campagna ?? "sollecito") as string,
+        mesi: (((camp as { mesi?: string[] | null }).mesi ?? []) as string[]),
       };
     });
 
