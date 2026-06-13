@@ -627,6 +627,24 @@ export function InvioMassivoDialog({
                 Per i destinatari non esplorati l'indirizzo verrà risolto al momento dell'invio (preferenza {preferenza}, con fallback).
               </p>
             )}
+            {coerenzaSummary && livelloPrecedente !== null && (
+              <div className="pt-1 mt-1 border-t border-border space-y-0.5">
+                <div className="font-medium text-foreground flex items-center gap-1.5">
+                  <AlertTriangle className="size-3.5 text-amber-600" />
+                  Coerenza con il {livelloPrecedente === 1 ? "1°" : "2°"} sollecito
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-muted-foreground">
+                  <div>Coerenti (scaduto invariato):</div>
+                  <div className="text-right text-emerald-600 dark:text-emerald-400 font-medium">{coerenzaSummary.coerenti}</div>
+                  <div>Scaduto cambiato — verifica:</div>
+                  <div className="text-right text-amber-600 dark:text-amber-400 font-medium">{coerenzaSummary.cambiati}</div>
+                  <div>Senza sollecito precedente:</div>
+                  <div className="text-right text-foreground font-medium">{coerenzaSummary.senzaPrec}</div>
+                  <div>Esclusi manualmente:</div>
+                  <div className="text-right text-foreground font-medium">{esclusi.size}</div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -634,9 +652,9 @@ export function InvioMassivoDialog({
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={submitting}>
             Annulla
           </Button>
-          <Button onClick={handleAvvia} disabled={submitting || !templateId || totale === 0} className="gap-1.5">
+          <Button onClick={handleAvvia} disabled={submitting || !templateId || totale - esclusi.size === 0} className="gap-1.5">
             <Send className="size-4" />
-            {submitting ? "Avvio..." : `Avvia campagna (${totale})`}
+            {submitting ? "Avvio..." : `Avvia campagna (${totale - esclusi.size})`}
           </Button>
         </DialogFooter>
       </DialogContent>
