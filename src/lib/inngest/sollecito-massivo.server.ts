@@ -207,11 +207,11 @@ export const invioMassivoSolleciti = inngest.createFunction(
     const tpl = await step.run("load-template", async () => {
       const { data, error } = await supabaseAdmin
         .from("template_email")
-        .select("id, nome, oggetto, corpo")
+        .select("id, nome, oggetto, corpo, tipo")
         .eq("id", prep.templateId!)
         .maybeSingle();
       if (error || !data) throw new Error(`Template non trovato: ${prep.templateId}`);
-      return data as { id: string; nome: string; oggetto: string; corpo: string };
+      return data as { id: string; nome: string; oggetto: string; corpo: string; tipo: string };
     });
 
     // Recupera gli ID dei destinatari ancora da inviare (solo id, ordinati)
