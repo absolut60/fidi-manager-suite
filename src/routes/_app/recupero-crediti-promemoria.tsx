@@ -116,6 +116,7 @@ function PromemoriaScadenzaPage() {
   const [escludiBloccati, setEscludiBloccati] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [selezionati, setSelezionati] = useState<Set<string>>(new Set());
+  const [invioOpen, setInvioOpen] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDeb(search.trim()), 300);
