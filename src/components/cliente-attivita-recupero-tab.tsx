@@ -80,7 +80,7 @@ type Azione = {
   id: string;
   cliente_id: string;
   operatore_id: string | null;
-  tipo: TipoAzione;
+  tipo: TipoAzione | "promemoria_scadenza";
   esito: Esito;
   data_azione: string;
   importo_riferimento: number | null;
