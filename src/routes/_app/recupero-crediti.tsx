@@ -252,6 +252,7 @@ function RecuperoCreditiPage() {
     dataDa?.toISOString() ?? null,
     dataA?.toISOString() ?? null,
     isStoreManager,
+    stadioFilter,
   ];
 
   // Aggregato per cliente
@@ -260,6 +261,8 @@ function RecuperoCreditiPage() {
     queryFn: async () => {
       const dataAEnd = dataA ? new Date(dataA) : null;
       if (dataAEnd) dataAEnd.setHours(23, 59, 59, 999);
+      const stadi =
+        stadioFilter === "all" ? null : [parseInt(stadioFilter, 10)];
       const { data, error } = await supabase.rpc(
         "get_recupero_clienti_aggregato" as never,
         {
@@ -270,6 +273,7 @@ function RecuperoCreditiPage() {
           _data_a: dataAEnd ? dataAEnd.toISOString() : null,
           _esiti: esitoFilter.size > 0 ? Array.from(esitoFilter) : null,
           _tipi: tipoFilter.size > 0 ? Array.from(tipoFilter) : null,
+          _stadi: stadi,
         } as never
       );
       if (error) throw error;
