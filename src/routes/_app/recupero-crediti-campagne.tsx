@@ -112,7 +112,7 @@ function CampagnePage() {
         .from("campagne_sollecito")
         .select(`
           id, operatore_id, template_id, stato, totale_destinatari, inviati, saltati, falliti,
-          preferenza_indirizzo, note, created_at, completata_at,
+          preferenza_indirizzo, note, created_at, completata_at, tipo_campagna,
           template:template_email(nome)
         `)
         .order("created_at", { ascending: false })
