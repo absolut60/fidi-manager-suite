@@ -18,6 +18,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { InviaSollecitoDialog } from "@/components/invia-sollecito-dialog";
+import { EmailLiberaDialog } from "@/components/email-libera-dialog";
 import { CreaAzioneDialog } from "@/components/crea-azione-dialog";
 import { EmailInviataView } from "@/components/email-inviata-view";
 import type { TipoAzione } from "@/components/reminder-controls";
