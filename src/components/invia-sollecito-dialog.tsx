@@ -12,6 +12,7 @@ import {
   wrapEmailHtml,
   type TemplateEmail,
 } from "@/lib/template-email";
+import { livelloSollecitoFromTipo } from "@/lib/template-email-render";
 import { classificaScadenza } from "@/lib/scadenze";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
