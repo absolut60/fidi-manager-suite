@@ -297,12 +297,13 @@ export const invioMassivoSolleciti = inngest.createFunction(
             if (cliente?.store_id) {
               const { data: store } = await supabaseAdmin
                 .from("stores")
-                .select("nome, indirizzo, cap, citta, provincia, telefono")
+                .select("nome, insegna, indirizzo, cap, citta, provincia, telefono")
                 .eq("id", cliente.store_id)
                 .maybeSingle();
               if (store) {
                 sede = {
                   nome: store.nome ?? null,
+                  insegna: (store as { insegna?: string | null }).insegna ?? null,
                   indirizzo: store.indirizzo ?? null,
                   cap: store.cap ?? null,
                   citta: store.citta ?? null,
