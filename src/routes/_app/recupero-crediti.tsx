@@ -144,7 +144,41 @@ type ClienteAgg = {
   ha_promessa: boolean;
   data_promessa: string | null;
   in_ritardo: boolean;
+  stadio_sollecito: number; // 0 mai, 1 sollecito_1, 2 sollecito_2, 3 messa_in_mora
+  stadio_data: string | null;
+  stadio_giorni: number | null;
 };
+
+type StadioFilter = "all" | "0" | "1" | "2" | "3";
+
+const STADIO_LABEL: Record<number, string> = {
+  0: "Mai sollecitato",
+  1: "1° sollecito",
+  2: "2° sollecito",
+  3: "Messa in mora",
+};
+
+function StadioBadge({ s }: { s: ClienteAgg }) {
+  const stadio = Number(s.stadio_sollecito ?? 0);
+  const gg = s.stadio_giorni;
+  const dataStr = s.stadio_data
+    ? new Date(s.stadio_data).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" })
+    : null;
+  const suffix = dataStr ? ` — ${dataStr}${gg != null ? ` (da ${gg} gg)` : ""}` : "";
+  const cls =
+    stadio === 0
+      ? "bg-muted text-muted-foreground hover:bg-muted"
+      : stadio === 1
+        ? "bg-blue-500 text-white hover:bg-blue-500"
+        : stadio === 2
+          ? "bg-orange-500 text-white hover:bg-orange-500"
+          : "bg-destructive text-destructive-foreground hover:bg-destructive";
+  return (
+    <Badge className={cn("whitespace-nowrap", cls)}>
+      {STADIO_LABEL[stadio]}{suffix}
+    </Badge>
+  );
+}
 
 function RecuperoCreditiPage() {
   const { role, profilo } = useAuth();
