@@ -24,6 +24,9 @@ type Props = {
   onOpenChange: (v: boolean) => void;
   clienteIdsSelezionati: string[];
   clienteIdsFiltrati: string[];
+  tipoCampagna?: "sollecito" | "promemoria_scadenza";
+  // YYYY-MM[]; richiesto per i promemoria di scadenza (filtro scadenze future)
+  mesi?: string[];
 };
 
 type ClientePreviewData = {
@@ -39,6 +42,8 @@ export function InvioMassivoDialog({
   onOpenChange,
   clienteIdsSelezionati,
   clienteIdsFiltrati,
+  tipoCampagna = "sollecito",
+  mesi = [],
 }: Props) {
   const qc = useQueryClient();
   const navigate = useNavigate();
