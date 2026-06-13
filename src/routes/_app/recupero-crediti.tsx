@@ -566,6 +566,7 @@ function RecuperoCreditiPage() {
                 <SortableHead label="Aperte" k="azioni_aperte" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} align="center" />
                 <SortableHead label="Prossima" k="prossima" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
                 <SortableHead label="Ultima fatta" k="ultima" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
+                <TableHead>Stadio</TableHead>
                 <TableHead>Stato</TableHead>
               </TableRow>
             </TableHeader>
