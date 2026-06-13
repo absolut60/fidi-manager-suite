@@ -181,11 +181,89 @@ function formatSedeLine(s: DatiSede | null | undefined): string {
   return [label, escapeHtml(indPart), escapeHtml(tel)].filter(Boolean).join(" — ");
 }
 
+// =============================================================================
+// ESCALATION VISIVA SOLLECITI — derivata dal `tipo` del template
+// =============================================================================
+// Livello 1 (blu/navy)    -> sollecito_1 / libero (default neutro)
+// Livello 2 (arancione)   -> sollecito_2
+// Livello 3 (rosso)       -> messa_in_mora
+// La banda colorata sta TRA l'header MADE e il corpo; il box conseguenze sta
+// SUBITO PRIMA della firma. Stili tutti inline (compatibilita Outlook).
+export type TipoTemplate = "sollecito_1" | "sollecito_2" | "messa_in_mora" | "libero" | string;
+
+type LivelloConfig = {
+  livello: 1 | 2 | 3;
+  bandBg: string;
+  bandBorder: string;
+  bandText: string;
+  label: string;
+  icon: string;
+  uppercase: boolean;
+  boxBg: string;
+  boxBorder: string;
+  boxTextColor: string;
+  boxTitle: string;
+  boxBody: string;
+};
+
+export function getLivelloConfig(tipo: string | null | undefined): LivelloConfig {
+  switch (tipo) {
+    case "sollecito_2":
+      return {
+        livello: 2,
+        bandBg: "#fff7ed",
+        bandBorder: "#fb923c",
+        bandText: "#9a3412",
+        label: "Secondo sollecito di pagamento",
+        icon: "&#9888;", // ⚠
+        uppercase: false,
+        boxBg: "#fff7ed",
+        boxBorder: "#fb923c",
+        boxTextColor: "#7c2d12",
+        boxTitle: "Posizione ancora aperta",
+        boxBody:
+          "Nonostante il precedente sollecito, la Sua posizione contabile risulta ancora aperta. La invitiamo a provvedere con urgenza al saldo degli importi indicati per evitare l'aggravamento della procedura di recupero.",
+      };
+    case "messa_in_mora":
+      return {
+        livello: 3,
+        bandBg: "#dc2626",
+        bandBorder: "#b91c1c",
+        bandText: "#ffffff",
+        label: "Messa in mora — Diffida ad adempiere",
+        icon: "&#9940;", // ⛔
+        uppercase: true,
+        boxBg: "#fef2f2",
+        boxBorder: "#dc2626",
+        boxTextColor: "#7f1d1d",
+        boxTitle: "Diffida formale ad adempiere",
+        boxBody:
+          "Con la presente La costituiamo formalmente in mora ai sensi e per gli effetti dell'art. 1219 c.c. In mancanza di pagamento entro 7 giorni dal ricevimento, la pratica sara trasmessa al nostro Ufficio Legale per il recupero coattivo del credito, con addebito di interessi di mora ex D.Lgs 231/2002, spese di recupero ed oneri accessori, senza ulteriore preavviso.",
+      };
+    default:
+      return {
+        livello: 1,
+        bandBg: "#eff6ff",
+        bandBorder: "#bfdbfe",
+        bandText: "#1e3a8a",
+        label: "Primo sollecito di pagamento",
+        icon: "&#9432;", // ⓘ
+        uppercase: false,
+        boxBg: "#f8fafc",
+        boxBorder: "#bfdbfe",
+        boxTextColor: "#1e3a8a",
+        boxTitle: "Invito al pagamento",
+        boxBody:
+          "La invitiamo cortesemente a regolarizzare la posizione provvedendo al pagamento degli importi indicati. Qualora avesse gia effettuato il pagamento, La preghiamo di considerare nulla la presente comunicazione.",
+      };
+  }
+}
+
 export function wrapEmailHtml(
   corpoRenderizzato: string,
   datiSede: DatiSede | null | undefined,
   datiMittente: DatiMittente,
-  opts?: { useCid?: boolean },
+  opts?: { useCid?: boolean; tipo?: TipoTemplate | null },
 ): string {
   const sedeLine = formatSedeLine(datiSede);
   const operatore = escapeHtml(datiMittente.nome || "Operatore");
@@ -199,6 +277,32 @@ export function wrapEmailHtml(
   // che bloccano immagini remote.
   // In anteprima (default) usiamo l'URL pubblico, perche cid: non viene risolto nel browser.
   const imgSrc = opts?.useCid ? "cid:logoMade" : LOGO_EMAIL_URL;
+
+  const cfg = getLivelloConfig(opts?.tipo ?? null);
+  const labelStyle = cfg.uppercase
+    ? "text-transform:uppercase;letter-spacing:1px;font-weight:700;"
+    : "font-weight:600;";
+
+  const bandHtml = `
+      <tr>
+        <td style="background:${cfg.bandBg};border-bottom:2px solid ${cfg.bandBorder};padding:10px 24px;font-family:Arial,Helvetica,sans-serif;color:${cfg.bandText};font-size:13px;${labelStyle}">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+            <td style="vertical-align:middle;width:24px;font-size:16px;line-height:1;">${cfg.icon}</td>
+            <td style="vertical-align:middle;">${escapeHtml(cfg.label)}</td>
+            <td align="right" style="vertical-align:middle;font-size:11px;font-weight:600;letter-spacing:0.5px;opacity:.85;">LIV. ${cfg.livello}/3</td>
+          </tr></table>
+        </td>
+      </tr>`;
+
+  const boxHtml = `
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:20px;border-collapse:separate;">
+            <tr>
+              <td style="background:${cfg.boxBg};border:1px solid ${cfg.boxBorder};border-left:4px solid ${cfg.boxBorder};border-radius:4px;padding:14px 16px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.55;color:${cfg.boxTextColor};">
+                <div style="font-weight:700;margin-bottom:6px;${cfg.uppercase ? "text-transform:uppercase;letter-spacing:0.5px;" : ""}">${escapeHtml(cfg.boxTitle)}</div>
+                <div>${escapeHtml(cfg.boxBody)}</div>
+              </td>
+            </tr>
+          </table>`;
 
   return `<!DOCTYPE html>
 <html lang="it"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><title>Sollecito</title></head>
@@ -221,9 +325,11 @@ export function wrapEmailHtml(
           </tr></table>
         </td>
       </tr>
+      ${bandHtml}
       <tr>
         <td style="padding:24px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.55;color:#1f2937;">
           ${corpoRenderizzato}
+          ${boxHtml}
           <div style="margin-top:24px;padding-top:12px;border-top:1px solid #e5e7eb;font-size:13px;color:#374151;">
             <div style="font-weight:600;color:#0d1f3c;">${operatore}</div>
             ${operatoreEmail}
