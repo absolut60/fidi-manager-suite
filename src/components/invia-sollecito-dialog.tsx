@@ -146,7 +146,7 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
     const corpoCompleto = wrapEmailHtml(base.corpo, datiSede ?? null, {
       nome: nomeOperatore,
       email: user?.email ?? null,
-    });
+    }, { tipo: selectedTemplate.tipo });
     return { oggetto: base.oggetto, corpo: corpoCompleto };
   }, [selectedTemplate, datiTemplate, datiSede, nomeOperatore, user?.email]);
 
