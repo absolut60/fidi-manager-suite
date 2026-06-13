@@ -310,7 +310,7 @@ export function wrapEmailHtml(
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
             <td style="vertical-align:middle;width:24px;font-size:16px;line-height:1;">${cfg.icon}</td>
             <td style="vertical-align:middle;">${escapeHtml(cfg.label)}</td>
-            <td align="right" style="vertical-align:middle;font-size:11px;font-weight:600;letter-spacing:0.5px;opacity:.85;">LIV. ${cfg.livello}/3</td>
+            <td align="right" style="vertical-align:middle;font-size:11px;font-weight:600;letter-spacing:0.5px;opacity:.85;">${cfg.livelloLabel}</td>
           </tr></table>
         </td>
       </tr>`;
