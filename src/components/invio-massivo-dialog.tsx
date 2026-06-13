@@ -326,10 +326,12 @@ export function InvioMassivoDialog({
       <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Send className="size-5" /> Invio massivo solleciti
+            <Send className="size-5" /> {tipoCampagna === "promemoria_scadenza" ? "Invio promemoria di scadenza" : "Invio massivo solleciti"}
           </DialogTitle>
           <DialogDescription>
-            Lancia una campagna email graduale verso più clienti, rispettando i limiti del server di posta.
+            {tipoCampagna === "promemoria_scadenza"
+              ? "Invia avvisi di cortesia sulle scadenze in arrivo. Tono amichevole, distinto dai solleciti sullo scaduto."
+              : "Lancia una campagna email graduale verso più clienti, rispettando i limiti del server di posta."}
           </DialogDescription>
         </DialogHeader>
 
