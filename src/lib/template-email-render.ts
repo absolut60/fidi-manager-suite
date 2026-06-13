@@ -33,6 +33,7 @@ export function formatDateIt(d: string | Date | null | undefined): string {
 
 export type ScadenzaSollecito = {
   numero_documento: string | null;
+  data_documento: string | null;
   data_scadenza: string | null;
   importo_scadenza: number | null;
 };
@@ -55,6 +56,7 @@ export function buildElencoScadenzeHtml(scadenze: ScadenzaSollecito[]): string {
     .map(
       (s) => `<tr>
         <td style="padding:6px 10px;border:1px solid #e2e8f0;">${escapeHtml(s.numero_documento ?? "—")}</td>
+        <td style="padding:6px 10px;border:1px solid #e2e8f0;">${escapeHtml(formatDateIt(s.data_documento))}</td>
         <td style="padding:6px 10px;border:1px solid #e2e8f0;">${escapeHtml(formatDateIt(s.data_scadenza))}</td>
         <td style="padding:6px 10px;border:1px solid #e2e8f0;text-align:right;">${escapeHtml(formatEuro(s.importo_scadenza))}</td>
       </tr>`,
@@ -63,12 +65,13 @@ export function buildElencoScadenzeHtml(scadenze: ScadenzaSollecito[]): string {
   return `<table style="border-collapse:collapse;border:1px solid #e2e8f0;font-family:Arial,sans-serif;font-size:13px;margin:8px 0;">
     <thead><tr style="background:#f1f5f9;">
       <th style="padding:6px 10px;border:1px solid #e2e8f0;text-align:left;">Documento</th>
+      <th style="padding:6px 10px;border:1px solid #e2e8f0;text-align:left;">Data doc.</th>
       <th style="padding:6px 10px;border:1px solid #e2e8f0;text-align:left;">Scadenza</th>
       <th style="padding:6px 10px;border:1px solid #e2e8f0;text-align:right;">Importo</th>
     </tr></thead>
     <tbody>${rows}</tbody>
     <tfoot><tr style="background:#f8fafc;font-weight:600;">
-      <td colspan="2" style="padding:6px 10px;border:1px solid #e2e8f0;text-align:right;">Totale</td>
+      <td colspan="3" style="padding:6px 10px;border:1px solid #e2e8f0;text-align:right;">Totale</td>
       <td style="padding:6px 10px;border:1px solid #e2e8f0;text-align:right;">${escapeHtml(formatEuro(totale))}</td>
     </tr></tfoot>
   </table>`;
