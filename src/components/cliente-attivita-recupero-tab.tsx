@@ -33,20 +33,22 @@ const ESITI: { value: Esito; label: string }[] = [
   { value: "pagato", label: "Pagato" },
 ];
 
-const TIPO_ICON: Record<TipoAzione, typeof Mail> = {
+const TIPO_ICON: Record<string, typeof Mail> = {
   email: Mail,
   telefonata: Phone,
   promemoria: Bell,
   nota: StickyNote,
   lettera: FileText,
+  promemoria_scadenza: CalendarClock,
 };
 
-const TIPO_LABEL: Record<TipoAzione, string> = {
+const TIPO_LABEL: Record<string, string> = {
   email: "Email",
   telefonata: "Telefonata",
   promemoria: "Promemoria",
   nota: "Nota",
   lettera: "Lettera",
+  promemoria_scadenza: "Promemoria scadenza",
 };
 
 function esitoBadge(e: Esito) {
