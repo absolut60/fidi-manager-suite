@@ -209,6 +209,7 @@ function StoreDialog({ editing, onClose }: { editing: StoreRow | null; onClose: 
       const payload = {
         codice: parsed.codice.toUpperCase(),
         nome: parsed.nome,
+        insegna: parsed.insegna || null,
         ragione_sociale_sede: parsed.ragione_sociale_sede || null,
         indirizzo: parsed.indirizzo || null,
         cap: parsed.cap || null,
