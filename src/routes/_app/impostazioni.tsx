@@ -27,6 +27,7 @@ export const Route = createFileRoute("/_app/impostazioni")({
 const storeSchema = z.object({
   codice: z.string().trim().min(1, "Obbligatorio").max(20).regex(/^[A-Z0-9_-]+$/i, "Solo lettere, numeri, - _"),
   nome: z.string().trim().min(1, "Obbligatorio").max(100),
+  insegna: z.string().trim().max(100).optional().or(z.literal("")),
   ragione_sociale_sede: z.string().trim().max(150).optional().or(z.literal("")),
   indirizzo: z.string().trim().max(200).optional().or(z.literal("")),
   cap: z.string().trim().max(10).optional().or(z.literal("")),
@@ -39,7 +40,7 @@ const storeSchema = z.object({
 });
 type StoreForm = z.infer<typeof storeSchema>;
 type StoreRow = {
-  id: string; codice: string; nome: string;
+  id: string; codice: string; nome: string; insegna: string | null;
   indirizzo: string | null; cap: string | null; citta: string | null; provincia: string | null;
   telefono: string | null; email_sede: string | null; pec_sede: string | null;
   piva: string | null; ragione_sociale_sede: string | null;
