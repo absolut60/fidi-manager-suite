@@ -661,6 +661,9 @@ function RecuperoCreditiPage() {
                         )}
                       </TableCell>
                       <TableCell>
+                        <StadioBadge s={r} />
+                      </TableCell>
+                      <TableCell>
                         {prossimaInRitardo ? (
                           <Badge variant="destructive" className="gap-1">
                             <AlertTriangle className="size-3" /> In ritardo
