@@ -92,12 +92,20 @@ export type RenderedTemplate = { oggetto: string; corpo: string };
 export function renderTemplate(
   template: { oggetto: string; corpo: string },
   dati: DatiTemplate,
+  opts?: { tipo?: string | null },
 ): RenderedTemplate {
   const totale = dati.scadenze.reduce((a, s) => a + Number(s.importo_scadenza ?? 0), 0);
+  const isPromemoria = opts?.tipo === "promemoria_scadenza";
+  const elenco = buildElencoScadenzeHtml(dati.scadenze, {
+    labelTotale: isPromemoria ? "Totale in scadenza" : "Totale",
+    labelEmpty: isPromemoria
+      ? "Nessuna scadenza in arrivo nel periodo selezionato."
+      : "Nessuna scadenza scaduta al momento.",
+  });
   const values: Record<PlaceholderKey, string> = {
     ragione_sociale: dati.ragione_sociale ?? "",
     totale_scaduto: formatEuro(totale),
-    elenco_scadenze: buildElencoScadenzeHtml(dati.scadenze),
+    elenco_scadenze: elenco,
     data_oggi: formatDateIt(new Date()),
     nome_operatore: dati.nome_operatore ?? "",
   };
