@@ -74,12 +74,13 @@ export async function caricaSedeCliente(clienteId: string): Promise<DatiSedeRend
   if (!cli?.store_id) return null;
   const { data: store } = await supabase
     .from("stores")
-    .select("nome, indirizzo, cap, citta, provincia, telefono")
+    .select("nome, insegna, indirizzo, cap, citta, provincia, telefono")
     .eq("id", cli.store_id)
     .maybeSingle();
   if (!store) return null;
   return {
     nome: store.nome ?? null,
+    insegna: (store as { insegna?: string | null }).insegna ?? null,
     indirizzo: store.indirizzo ?? null,
     cap: store.cap ?? null,
     citta: store.citta ?? null,
