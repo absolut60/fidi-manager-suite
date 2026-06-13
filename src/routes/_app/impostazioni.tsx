@@ -189,9 +189,15 @@ function StoreDialog({ editing, onClose }: { editing: StoreRow | null; onClose: 
   const [form, setForm] = useState<StoreForm>({
     codice: editing?.codice ?? "",
     nome: editing?.nome ?? "",
+    ragione_sociale_sede: editing?.ragione_sociale_sede ?? "",
     indirizzo: editing?.indirizzo ?? "",
+    cap: editing?.cap ?? "",
     citta: editing?.citta ?? "",
+    provincia: editing?.provincia ?? "",
     telefono: editing?.telefono ?? "",
+    email_sede: editing?.email_sede ?? "",
+    pec_sede: editing?.pec_sede ?? "",
+    piva: editing?.piva ?? "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -201,9 +207,15 @@ function StoreDialog({ editing, onClose }: { editing: StoreRow | null; onClose: 
       const payload = {
         codice: parsed.codice.toUpperCase(),
         nome: parsed.nome,
+        ragione_sociale_sede: parsed.ragione_sociale_sede || null,
         indirizzo: parsed.indirizzo || null,
+        cap: parsed.cap || null,
         citta: parsed.citta || null,
+        provincia: parsed.provincia ? parsed.provincia.toUpperCase() : null,
         telefono: parsed.telefono || null,
+        email_sede: parsed.email_sede || null,
+        pec_sede: parsed.pec_sede || null,
+        piva: parsed.piva || null,
       };
       if (editing) {
         const { error } = await supabase.from("stores").update(payload).eq("id", editing.id);
