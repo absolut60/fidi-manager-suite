@@ -314,7 +314,7 @@ export const invioMassivoSolleciti = inngest.createFunction(
             const { data: rawScad } = await supabaseAdmin
               .from("scadenze")
               .select(
-                "id, numero_documento, data_scadenza, importo_scadenza, stato_contabile, giorni_ritardo, tempi_scadenza",
+                "id, numero_documento, data_documento, data_scadenza, importo_scadenza, stato_contabile, giorni_ritardo, tempi_scadenza",
               )
               .eq("cliente_id", d.cliente_id)
               .order("data_scadenza", { ascending: true });
@@ -332,6 +332,7 @@ export const invioMassivoSolleciti = inngest.createFunction(
                 nome_operatore: cfg.nomeOperatore,
                 scadenze: scadute.map((s) => ({
                   numero_documento: s.numero_documento,
+                  data_documento: s.data_documento,
                   data_scadenza: s.data_scadenza,
                   importo_scadenza: s.importo_scadenza,
                 })),
