@@ -342,7 +342,7 @@ export const invioMassivoSolleciti = inngest.createFunction(
             const htmlCompleto = wrapEmailHtml(rendered.corpo, sede, {
               nome: cfg.nomeOperatore,
               email: cfg.emailOperatore,
-            }, { useCid: true });
+            }, { useCid: true, tipo: tpl.tipo });
 
             const sendRes = await sendEmailViaEdge({
               to: d.indirizzo_usato,
