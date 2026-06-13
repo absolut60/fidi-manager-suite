@@ -365,7 +365,7 @@ function TimelineItem({
         {azione.note && (
           <p className="text-sm text-foreground/80 whitespace-pre-wrap line-clamp-3">{azione.note}</p>
         )}
-        {azione.tipo === "email" && azione.email_corpo_html && (
+        {(azione.tipo === "email" || azione.tipo === "promemoria_scadenza") && azione.email_corpo_html && (
           <Button variant="link" size="sm" className="h-auto p-0 gap-1 text-xs" onClick={onViewEmail}>
             <Eye className="size-3" /> Vedi email inviata
           </Button>
