@@ -573,14 +573,14 @@ function RecuperoCreditiPage() {
             <TableBody>
               {aggQuery.isLoading && (
                 <TableRow>
-                  <TableCell colSpan={8}>
+                  <TableCell colSpan={9}>
                     <Skeleton className="h-24 w-full" />
                   </TableCell>
                 </TableRow>
               )}
               {!aggQuery.isLoading && pageRows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground py-10">
+                  <TableCell colSpan={9} className="text-center text-muted-foreground py-10">
                     Nessun cliente con azioni di recupero
                   </TableCell>
                 </TableRow>
@@ -677,7 +677,7 @@ function RecuperoCreditiPage() {
                     </TableRow>
                     {expanded && (
                       <TableRow className="bg-muted/30">
-                        <TableCell colSpan={8}>
+                        <TableCell colSpan={9}>
                           <div className="p-2">
                             <ClienteAttivitaRecuperoTab clienteId={r.cliente_id} />
                           </div>
