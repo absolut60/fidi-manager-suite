@@ -47,11 +47,15 @@ export function escapeHtml(s: string): string {
     .replace(/'/g, "&#39;");
 }
 
-export function buildElencoScadenzeHtml(scadenze: ScadenzaSollecito[]): string {
+export function buildElencoScadenzeHtml(
+  scadenze: ScadenzaSollecito[],
+  opts?: { labelTotale?: string; labelEmpty?: string },
+): string {
   if (!scadenze.length) {
-    return '<p style="margin:8px 0;color:#475569;">Nessuna scadenza scaduta al momento.</p>';
+    return `<p style="margin:8px 0;color:#475569;">${escapeHtml(opts?.labelEmpty ?? "Nessuna scadenza scaduta al momento.")}</p>`;
   }
   const totale = scadenze.reduce((acc, s) => acc + Number(s.importo_scadenza ?? 0), 0);
+  const labelTot = opts?.labelTotale ?? "Totale";
   const rows = scadenze
     .map(
       (s) => `<tr>
@@ -71,7 +75,7 @@ export function buildElencoScadenzeHtml(scadenze: ScadenzaSollecito[]): string {
     </tr></thead>
     <tbody>${rows}</tbody>
     <tfoot><tr style="background:#f8fafc;font-weight:600;">
-      <td colspan="3" style="padding:6px 10px;border:1px solid #e2e8f0;text-align:right;">Totale</td>
+      <td colspan="3" style="padding:6px 10px;border:1px solid #e2e8f0;text-align:right;">${escapeHtml(labelTot)}</td>
       <td style="padding:6px 10px;border:1px solid #e2e8f0;text-align:right;">${escapeHtml(formatEuro(totale))}</td>
     </tr></tfoot>
   </table>`;
