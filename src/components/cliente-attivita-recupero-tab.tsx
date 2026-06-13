@@ -223,6 +223,9 @@ export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string })
         <Button size="sm" onClick={() => setSollecitoOpen(true)} className="gap-1.5">
           <Send className="size-4" /> Invia sollecito
         </Button>
+        <Button size="sm" variant="outline" onClick={() => setEmailLiberaOpen(true)} className="gap-1.5">
+          <Mail className="size-4" /> Email libera
+        </Button>
         <Button size="sm" variant="outline" onClick={() => openNuova("promemoria")} className="gap-1.5">
           <Bell className="size-4" /> Nuovo promemoria
         </Button>
