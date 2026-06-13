@@ -224,6 +224,7 @@ export function InvioMassivoDialog({
     const base = renderTemplate(
       { oggetto: selectedTemplate.oggetto, corpo: selectedTemplate.corpo },
       dati,
+      { tipo: selectedTemplate.tipo },
     );
     const corpo = wrapEmailHtml(base.corpo, sedeCorrente ?? null, {
       nome: nomeOperatore,
