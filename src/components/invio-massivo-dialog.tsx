@@ -121,7 +121,61 @@ export function InvioMassivoDialog({
     [templates, templateId],
   );
 
+  // Determina il livello del template selezionato e quello precedente per il check coerenza
+  const livelloCorrente = selectedTemplate
+    ? livelloSollecitoFromTipo(selectedTemplate.tipo)
+    : null;
+  const livelloPrecedente = livelloCorrente && livelloCorrente >= 2 ? livelloCorrente - 1 : null;
+
+  const clienteIdsKey = useMemo(() => clienteIds.join(","), [clienteIds]);
+
+  type CoerenzaRow = {
+    cliente_id: string;
+    scaduto_cambiato: boolean;
+    ha_azione_precedente: boolean;
+    data_azione_precedente: string | null;
+  };
+
+  const { data: coerenza } = useQuery<Record<string, CoerenzaRow>>({
+    queryKey: ["sollecito-massivo-coerenza", livelloPrecedente, clienteIdsKey],
+    enabled: open && livelloPrecedente !== null && clienteIds.length > 0,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const out: Record<string, CoerenzaRow> = {};
+      // chunk per evitare URL troppo lunghi
+      const CHUNK = 200;
+      for (let i = 0; i < clienteIds.length; i += CHUNK) {
+        const slice = clienteIds.slice(i, i + CHUNK);
+        const { data, error } = await supabase.rpc(
+          "get_coerenza_escalation" as never,
+          { _cliente_ids: slice, _livello_precedente: livelloPrecedente } as never,
+        );
+        if (error) throw error;
+        for (const r of (data ?? []) as CoerenzaRow[]) {
+          out[r.cliente_id] = r;
+        }
+      }
+      return out;
+    },
+  });
+
+  const coerenzaSummary = useMemo(() => {
+    if (livelloPrecedente === null) return null;
+    let cambiati = 0;
+    let senzaPrec = 0;
+    let coerenti = 0;
+    for (const cid of clienteIds) {
+      const c = coerenza?.[cid];
+      if (!c) continue;
+      if (!c.ha_azione_precedente) senzaPrec += 1;
+      else if (c.scaduto_cambiato) cambiati += 1;
+      else coerenti += 1;
+    }
+    return { cambiati, senzaPrec, coerenti };
+  }, [clienteIds, coerenza, livelloPrecedente]);
+
   const clienteCorrenteId = clienteIds[indice] ?? null;
+  const coerenzaCorrente = clienteCorrenteId ? coerenza?.[clienteCorrenteId] : undefined;
 
   // Carica on-demand i dati del cliente corrente (no precaricamento)
   const mesiKey = useMemo(() => [...mesi].sort().join(","), [mesi]);
