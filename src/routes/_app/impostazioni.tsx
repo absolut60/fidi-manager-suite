@@ -190,6 +190,7 @@ function StoreDialog({ editing, onClose }: { editing: StoreRow | null; onClose: 
   const [form, setForm] = useState<StoreForm>({
     codice: editing?.codice ?? "",
     nome: editing?.nome ?? "",
+    insegna: editing?.insegna ?? "",
     ragione_sociale_sede: editing?.ragione_sociale_sede ?? "",
     indirizzo: editing?.indirizzo ?? "",
     cap: editing?.cap ?? "",
