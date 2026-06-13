@@ -93,7 +93,7 @@ export const invioMassivoSolleciti = inngest.createFunction(
     const prep = await step.run("prepara", async () => {
       const { data: camp, error } = await supabaseAdmin
         .from("campagne_sollecito")
-        .select("id, template_id, preferenza_indirizzo, operatore_id, stato")
+        .select("id, template_id, preferenza_indirizzo, operatore_id, stato, tipo_campagna, mesi")
         .eq("id", campagna_id)
         .maybeSingle();
       if (error || !camp) throw new Error(`Campagna non trovata: ${error?.message ?? campagna_id}`);
