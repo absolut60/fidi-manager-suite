@@ -354,12 +354,18 @@ export function InvioMassivoDialog({
         const cur = (v ?? "").trim();
         if (cur && cur !== def.trim()) indirizziCorretti[cid] = cur;
       }
+      const clienteIdsFinali = clienteIds.filter((cid) => !esclusi.has(cid));
+      if (clienteIdsFinali.length === 0) {
+        toast.error("Tutti i destinatari sono stati esclusi.");
+        setSubmitting(false);
+        return;
+      }
       const res = await avvia({
         data: {
           templateId: selectedTemplate.id,
           preferenzaIndirizzo: preferenza,
           nota: nota.trim() || null,
-          clienteIds,
+          clienteIds: clienteIdsFinali,
           indirizziCorretti,
           tipoCampagna,
           mesi,
