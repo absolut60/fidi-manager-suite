@@ -27,6 +27,7 @@ export const Route = createFileRoute("/_app/impostazioni")({
 const storeSchema = z.object({
   codice: z.string().trim().min(1, "Obbligatorio").max(20).regex(/^[A-Z0-9_-]+$/i, "Solo lettere, numeri, - _"),
   nome: z.string().trim().min(1, "Obbligatorio").max(100),
+  insegna: z.string().trim().max(100).optional().or(z.literal("")),
   ragione_sociale_sede: z.string().trim().max(150).optional().or(z.literal("")),
   indirizzo: z.string().trim().max(200).optional().or(z.literal("")),
   cap: z.string().trim().max(10).optional().or(z.literal("")),
@@ -39,7 +40,7 @@ const storeSchema = z.object({
 });
 type StoreForm = z.infer<typeof storeSchema>;
 type StoreRow = {
-  id: string; codice: string; nome: string;
+  id: string; codice: string; nome: string; insegna: string | null;
   indirizzo: string | null; cap: string | null; citta: string | null; provincia: string | null;
   telefono: string | null; email_sede: string | null; pec_sede: string | null;
   piva: string | null; ragione_sociale_sede: string | null;
@@ -189,6 +190,7 @@ function StoreDialog({ editing, onClose }: { editing: StoreRow | null; onClose: 
   const [form, setForm] = useState<StoreForm>({
     codice: editing?.codice ?? "",
     nome: editing?.nome ?? "",
+    insegna: editing?.insegna ?? "",
     ragione_sociale_sede: editing?.ragione_sociale_sede ?? "",
     indirizzo: editing?.indirizzo ?? "",
     cap: editing?.cap ?? "",
@@ -207,6 +209,7 @@ function StoreDialog({ editing, onClose }: { editing: StoreRow | null; onClose: 
       const payload = {
         codice: parsed.codice.toUpperCase(),
         nome: parsed.nome,
+        insegna: parsed.insegna || null,
         ragione_sociale_sede: parsed.ragione_sociale_sede || null,
         indirizzo: parsed.indirizzo || null,
         cap: parsed.cap || null,
@@ -279,9 +282,15 @@ function StoreDialog({ editing, onClose }: { editing: StoreRow | null; onClose: 
             {errors.nome && <p className="text-xs text-destructive">{errors.nome}</p>}
           </div>
         </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="ragione_sociale_sede">Ragione sociale sede</Label>
-          <Input id="ragione_sociale_sede" value={form.ragione_sociale_sede} onChange={(e) => setForm({ ...form, ragione_sociale_sede: e.target.value })} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="insegna">Insegna commerciale</Label>
+            <Input id="insegna" value={form.insegna} onChange={(e) => setForm({ ...form, insegna: e.target.value })} placeholder="es. CMV | MADE" />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="ragione_sociale_sede">Ragione sociale sede</Label>
+            <Input id="ragione_sociale_sede" value={form.ragione_sociale_sede} onChange={(e) => setForm({ ...form, ragione_sociale_sede: e.target.value })} />
+          </div>
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="indirizzo">Indirizzo</Label>
