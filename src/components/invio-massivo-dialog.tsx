@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useConfig } from "@/hooks/use-config";
 import { classificaScadenza } from "@/lib/scadenze";
 import { renderTemplate, wrapEmailHtml, caricaSedeCliente, type TemplateEmail, type DatiTemplate } from "@/lib/template-email";
+import { livelloSollecitoFromTipo } from "@/lib/template-email-render";
 import { useAuth } from "@/hooks/use-auth";
 import { avviaCampagnaSollecito } from "@/lib/sollecito-massivo.functions";
 import { Button } from "@/components/ui/button";
