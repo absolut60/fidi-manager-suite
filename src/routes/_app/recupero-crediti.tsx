@@ -387,6 +387,11 @@ function RecuperoCreditiPage() {
         <Button size="sm" onClick={() => setNuovaAzioneOpen(true)} className="gap-1.5">
           <Plus className="size-4" /> Nuova azione
         </Button>
+        <Button asChild variant="outline" size="sm" className="gap-1.5">
+          <Link to="/recupero-crediti-promemoria">
+            <CalendarClockIcon className="size-4" /> Promemoria di scadenza
+          </Link>
+        </Button>
         <Button variant="outline" size="sm" onClick={() => setInvioMassivoOpen(true)} className="gap-1.5">
           <Send className="size-4" /> Invio massivo solleciti
         </Button>
