@@ -7,9 +7,10 @@ const AvviaSchema = z.object({
   preferenzaIndirizzo: z.enum(["email", "pec"]).default("email"),
   nota: z.string().nullable().optional(),
   clienteIds: z.array(z.string().uuid()).min(1),
-  // Mappa { cliente_id -> indirizzo_corretto } per override manuali dall'anteprima.
-  // Se valorizzato, viene scritto in indirizzo_usato e il job non ricalcolerà.
   indirizziCorretti: z.record(z.string().uuid(), z.string()).optional().default({}),
+  tipoCampagna: z.enum(["sollecito", "promemoria_scadenza"]).default("sollecito"),
+  // Mesi in formato YYYY-MM, usato per filtrare le scadenze future nei promemoria.
+  mesi: z.array(z.string().regex(/^\d{4}-\d{2}$/)).optional().default([]),
 });
 
 /**
