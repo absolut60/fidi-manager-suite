@@ -280,6 +280,7 @@ export type Database = {
           esito: string
           id: string
           importo_riferimento: number | null
+          livello_sollecito: number | null
           note: string | null
           operatore_id: string | null
           tipo: string
@@ -297,6 +298,7 @@ export type Database = {
           esito?: string
           id?: string
           importo_riferimento?: number | null
+          livello_sollecito?: number | null
           note?: string | null
           operatore_id?: string | null
           tipo: string
@@ -314,6 +316,7 @@ export type Database = {
           esito?: string
           id?: string
           importo_riferimento?: number | null
+          livello_sollecito?: number | null
           note?: string | null
           operatore_id?: string | null
           tipo?: string
@@ -2481,6 +2484,17 @@ export type Database = {
           totale_scaduto: number
         }[]
       }
+      get_coerenza_escalation: {
+        Args: { _cliente_ids: string[]; _livello_precedente: number }
+        Returns: {
+          cliente_id: string
+          data_azione_precedente: string
+          ha_azione_precedente: boolean
+          scadenze_aperte_correnti: string[]
+          scadenze_precedente: string[]
+          scaduto_cambiato: boolean
+        }[]
+      }
       get_promemoria_clienti_aggregato: {
         Args: {
           _escludi_bloccati?: boolean
@@ -2510,6 +2524,7 @@ export type Database = {
           _esiti?: string[]
           _operatore_id?: string
           _search?: string
+          _stadi?: number[]
           _store_id?: string
           _tipi?: string[]
         }
@@ -2523,6 +2538,9 @@ export type Database = {
           prossima_data: string
           prossima_tipo: string
           ragione_sociale: string
+          stadio_data: string
+          stadio_giorni: number
+          stadio_sollecito: number
           store_id: string
           store_nome: string
           totale_scaduto: number

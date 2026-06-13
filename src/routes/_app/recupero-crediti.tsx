@@ -144,7 +144,41 @@ type ClienteAgg = {
   ha_promessa: boolean;
   data_promessa: string | null;
   in_ritardo: boolean;
+  stadio_sollecito: number; // 0 mai, 1 sollecito_1, 2 sollecito_2, 3 messa_in_mora
+  stadio_data: string | null;
+  stadio_giorni: number | null;
 };
+
+type StadioFilter = "all" | "0" | "1" | "2" | "3";
+
+const STADIO_LABEL: Record<number, string> = {
+  0: "Mai sollecitato",
+  1: "1° sollecito",
+  2: "2° sollecito",
+  3: "Messa in mora",
+};
+
+function StadioBadge({ s }: { s: ClienteAgg }) {
+  const stadio = Number(s.stadio_sollecito ?? 0);
+  const gg = s.stadio_giorni;
+  const dataStr = s.stadio_data
+    ? new Date(s.stadio_data).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" })
+    : null;
+  const suffix = dataStr ? ` — ${dataStr}${gg != null ? ` (da ${gg} gg)` : ""}` : "";
+  const cls =
+    stadio === 0
+      ? "bg-muted text-muted-foreground hover:bg-muted"
+      : stadio === 1
+        ? "bg-blue-500 text-white hover:bg-blue-500"
+        : stadio === 2
+          ? "bg-orange-500 text-white hover:bg-orange-500"
+          : "bg-destructive text-destructive-foreground hover:bg-destructive";
+  return (
+    <Badge className={cn("whitespace-nowrap", cls)}>
+      {STADIO_LABEL[stadio]}{suffix}
+    </Badge>
+  );
+}
 
 function RecuperoCreditiPage() {
   const { role, profilo } = useAuth();
@@ -164,6 +198,7 @@ function RecuperoCreditiPage() {
   const [dataA, setDataA] = useState<Date | undefined>();
   const [tab, setTab] = useState<TabKey>("aperti");
   const [soloRitardo, setSoloRitardo] = useState(false);
+  const [stadioFilter, setStadioFilter] = useState<StadioFilter>("all");
   const [sortKey, setSortKey] = useState<SortKey>("priorita");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(1);
@@ -179,7 +214,7 @@ function RecuperoCreditiPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [storeId, esitoFilter, tipoFilter, operatoreId, searchDebounced, dataDa, dataA, tab, soloRitardo, sortKey, sortDir]);
+  }, [storeId, esitoFilter, tipoFilter, operatoreId, searchDebounced, dataDa, dataA, tab, soloRitardo, stadioFilter, sortKey, sortDir]);
 
   // Stores
   const { data: stores } = useQuery({
@@ -217,6 +252,7 @@ function RecuperoCreditiPage() {
     dataDa?.toISOString() ?? null,
     dataA?.toISOString() ?? null,
     isStoreManager,
+    stadioFilter,
   ];
 
   // Aggregato per cliente
@@ -225,6 +261,8 @@ function RecuperoCreditiPage() {
     queryFn: async () => {
       const dataAEnd = dataA ? new Date(dataA) : null;
       if (dataAEnd) dataAEnd.setHours(23, 59, 59, 999);
+      const stadi =
+        stadioFilter === "all" ? null : [parseInt(stadioFilter, 10)];
       const { data, error } = await supabase.rpc(
         "get_recupero_clienti_aggregato" as never,
         {
@@ -235,6 +273,7 @@ function RecuperoCreditiPage() {
           _data_a: dataAEnd ? dataAEnd.toISOString() : null,
           _esiti: esitoFilter.size > 0 ? Array.from(esitoFilter) : null,
           _tipi: tipoFilter.size > 0 ? Array.from(tipoFilter) : null,
+          _stadi: stadi,
         } as never
       );
       if (error) throw error;
@@ -496,6 +535,19 @@ function RecuperoCreditiPage() {
             </Select>
           )}
 
+          <Select value={stadioFilter} onValueChange={(v) => setStadioFilter(v as StadioFilter)}>
+            <SelectTrigger>
+              <SelectValue placeholder="Stadio sollecito" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tutti gli stadi</SelectItem>
+              <SelectItem value="0">Mai sollecitato</SelectItem>
+              <SelectItem value="1">1° sollecito</SelectItem>
+              <SelectItem value="2">2° sollecito</SelectItem>
+              <SelectItem value="3">Messa in mora</SelectItem>
+            </SelectContent>
+          </Select>
+
           <DateRangePicker label="Da" date={dataDa} onChange={setDataDa} />
           <DateRangePicker label="A" date={dataA} onChange={setDataA} />
         </div>
@@ -514,20 +566,21 @@ function RecuperoCreditiPage() {
                 <SortableHead label="Aperte" k="azioni_aperte" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} align="center" />
                 <SortableHead label="Prossima" k="prossima" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
                 <SortableHead label="Ultima fatta" k="ultima" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
+                <TableHead>Stadio</TableHead>
                 <TableHead>Stato</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {aggQuery.isLoading && (
                 <TableRow>
-                  <TableCell colSpan={8}>
+                  <TableCell colSpan={9}>
                     <Skeleton className="h-24 w-full" />
                   </TableCell>
                 </TableRow>
               )}
               {!aggQuery.isLoading && pageRows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground py-10">
+                  <TableCell colSpan={9} className="text-center text-muted-foreground py-10">
                     Nessun cliente con azioni di recupero
                   </TableCell>
                 </TableRow>
@@ -608,6 +661,9 @@ function RecuperoCreditiPage() {
                         )}
                       </TableCell>
                       <TableCell>
+                        <StadioBadge s={r} />
+                      </TableCell>
+                      <TableCell>
                         {prossimaInRitardo ? (
                           <Badge variant="destructive" className="gap-1">
                             <AlertTriangle className="size-3" /> In ritardo
@@ -621,7 +677,7 @@ function RecuperoCreditiPage() {
                     </TableRow>
                     {expanded && (
                       <TableRow className="bg-muted/30">
-                        <TableCell colSpan={8}>
+                        <TableCell colSpan={9}>
                           <div className="p-2">
                             <ClienteAttivitaRecuperoTab clienteId={r.cliente_id} />
                           </div>

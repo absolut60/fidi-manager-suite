@@ -215,6 +215,18 @@ function formatSedeBlock(s: DatiSede | null | undefined): string {
 // SUBITO PRIMA della firma. Stili tutti inline (compatibilita Outlook).
 export type TipoTemplate = "promemoria_scadenza" | "sollecito_1" | "sollecito_2" | "messa_in_mora" | "libero" | string;
 
+/**
+ * Mappa il "tipo" del template_email al livello di escalation del sollecito.
+ * Restituisce null per i tipi che non partecipano all'escalation
+ * (promemoria_scadenza, libero o sconosciuti).
+ */
+export function livelloSollecitoFromTipo(tipo: string | null | undefined): 1 | 2 | 3 | null {
+  if (tipo === "sollecito_1") return 1;
+  if (tipo === "sollecito_2") return 2;
+  if (tipo === "messa_in_mora") return 3;
+  return null;
+}
+
 type LivelloConfig = {
   livello: 0 | 1 | 2 | 3;
   livelloLabel: string; // es. "CORTESIA", "LIV. 1/3"

@@ -12,6 +12,7 @@ import {
   wrapEmailHtml,
   type TemplateEmail,
 } from "@/lib/template-email";
+import { livelloSollecitoFromTipo } from "@/lib/template-email-render";
 import { classificaScadenza } from "@/lib/scadenze";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -201,6 +202,7 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
       }
 
       const noteRiassunto = `Inviato template "${selectedTemplate.nome}" a ${dest}`;
+      const livello = livelloSollecitoFromTipo(selectedTemplate.tipo);
       const emailFields = {
         email_oggetto: rendered.oggetto,
         email_corpo_html: rendered.corpo,
@@ -215,6 +217,7 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
             data_azione: new Date().toISOString(),
             note: noteRiassunto,
             operatore_id: user?.id ?? null,
+            livello_sollecito: livello,
             ...emailFields,
           })
           .eq("id", azioneEsistenteId);
@@ -230,6 +233,7 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
             data_azione: new Date().toISOString(),
             importo_riferimento: totaleScaduto,
             note: noteRiassunto,
+            livello_sollecito: livello,
             ...emailFields,
           })
           .select("id")

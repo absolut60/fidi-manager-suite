@@ -1,6 +1,6 @@
 import { inngest } from "./client";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { renderTemplate, isScaduto, wrapEmailHtml, type DatiSede, type ScadenzaSollecito } from "@/lib/template-email-render";
+import { renderTemplate, isScaduto, wrapEmailHtml, livelloSollecitoFromTipo, type DatiSede, type ScadenzaSollecito } from "@/lib/template-email-render";
 
 type EventData = { campagna_id: string };
 
@@ -403,6 +403,7 @@ export const invioMassivoSolleciti = inngest.createFunction(
                 email_oggetto: rendered.oggetto,
                 email_corpo_html: htmlCompleto,
                 email_destinatario: d.indirizzo_usato,
+                livello_sollecito: livelloSollecitoFromTipo(tpl.tipo),
               })
               .select("id")
               .single();

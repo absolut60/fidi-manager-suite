@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useConfig } from "@/hooks/use-config";
 import { classificaScadenza } from "@/lib/scadenze";
 import { renderTemplate, wrapEmailHtml, caricaSedeCliente, type TemplateEmail, type DatiTemplate } from "@/lib/template-email";
+import { livelloSollecitoFromTipo } from "@/lib/template-email-render";
 import { useAuth } from "@/hooks/use-auth";
 import { avviaCampagnaSollecito } from "@/lib/sollecito-massivo.functions";
 import { Button } from "@/components/ui/button";
@@ -63,6 +64,8 @@ export function InvioMassivoDialog({
   const [overrides, setOverrides] = useState<Record<string, string>>({});
   // Indirizzi risolti scoperti durante la navigazione: cliente_id -> indirizzo default
   const [risolti, setRisolti] = useState<Record<string, string>>({});
+  // Esclusioni manuali (check coerenza escalation)
+  const [esclusi, setEsclusi] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!open) {
@@ -72,6 +75,7 @@ export function InvioMassivoDialog({
       setJumpInput("");
       setOverrides({});
       setRisolti({});
+      setEsclusi(new Set());
     } else {
       setModo(clienteIdsSelezionati.length > 0 ? "selezionati" : "filtrati");
     }
@@ -117,7 +121,61 @@ export function InvioMassivoDialog({
     [templates, templateId],
   );
 
+  // Determina il livello del template selezionato e quello precedente per il check coerenza
+  const livelloCorrente = selectedTemplate
+    ? livelloSollecitoFromTipo(selectedTemplate.tipo)
+    : null;
+  const livelloPrecedente = livelloCorrente && livelloCorrente >= 2 ? livelloCorrente - 1 : null;
+
+  const clienteIdsKey = useMemo(() => clienteIds.join(","), [clienteIds]);
+
+  type CoerenzaRow = {
+    cliente_id: string;
+    scaduto_cambiato: boolean;
+    ha_azione_precedente: boolean;
+    data_azione_precedente: string | null;
+  };
+
+  const { data: coerenza } = useQuery<Record<string, CoerenzaRow>>({
+    queryKey: ["sollecito-massivo-coerenza", livelloPrecedente, clienteIdsKey],
+    enabled: open && livelloPrecedente !== null && clienteIds.length > 0,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const out: Record<string, CoerenzaRow> = {};
+      // chunk per evitare URL troppo lunghi
+      const CHUNK = 200;
+      for (let i = 0; i < clienteIds.length; i += CHUNK) {
+        const slice = clienteIds.slice(i, i + CHUNK);
+        const { data, error } = await supabase.rpc(
+          "get_coerenza_escalation" as never,
+          { _cliente_ids: slice, _livello_precedente: livelloPrecedente } as never,
+        );
+        if (error) throw error;
+        for (const r of (data ?? []) as CoerenzaRow[]) {
+          out[r.cliente_id] = r;
+        }
+      }
+      return out;
+    },
+  });
+
+  const coerenzaSummary = useMemo(() => {
+    if (livelloPrecedente === null) return null;
+    let cambiati = 0;
+    let senzaPrec = 0;
+    let coerenti = 0;
+    for (const cid of clienteIds) {
+      const c = coerenza?.[cid];
+      if (!c) continue;
+      if (!c.ha_azione_precedente) senzaPrec += 1;
+      else if (c.scaduto_cambiato) cambiati += 1;
+      else coerenti += 1;
+    }
+    return { cambiati, senzaPrec, coerenti };
+  }, [clienteIds, coerenza, livelloPrecedente]);
+
   const clienteCorrenteId = clienteIds[indice] ?? null;
+  const coerenzaCorrente = clienteCorrenteId ? coerenza?.[clienteCorrenteId] : undefined;
 
   // Carica on-demand i dati del cliente corrente (no precaricamento)
   const mesiKey = useMemo(() => [...mesi].sort().join(","), [mesi]);
@@ -296,12 +354,18 @@ export function InvioMassivoDialog({
         const cur = (v ?? "").trim();
         if (cur && cur !== def.trim()) indirizziCorretti[cid] = cur;
       }
+      const clienteIdsFinali = clienteIds.filter((cid) => !esclusi.has(cid));
+      if (clienteIdsFinali.length === 0) {
+        toast.error("Tutti i destinatari sono stati esclusi.");
+        setSubmitting(false);
+        return;
+      }
       const res = await avvia({
         data: {
           templateId: selectedTemplate.id,
           preferenzaIndirizzo: preferenza,
           nota: nota.trim() || null,
-          clienteIds,
+          clienteIds: clienteIdsFinali,
           indirizziCorretti,
           tipoCampagna,
           mesi,
@@ -444,6 +508,50 @@ export function InvioMassivoDialog({
                   </div>
                 </div>
 
+                {/* Check coerenza escalation */}
+                {livelloPrecedente !== null && coerenzaCorrente && (
+                  <div className="space-y-1.5">
+                    {coerenzaCorrente.scaduto_cambiato && (
+                      <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+                        <AlertTriangle className="size-4 mt-0.5 shrink-0" />
+                        <span>
+                          <strong>Scaduto cambiato dal sollecito precedente — verifica.</strong>{" "}
+                          Le scadenze ancora aperte non coincidono con quelle del{" "}
+                          {livelloPrecedente === 1 ? "1° sollecito" : "2° sollecito"} inviato il{" "}
+                          {coerenzaCorrente.data_azione_precedente
+                            ? new Date(coerenzaCorrente.data_azione_precedente).toLocaleDateString("it-IT")
+                            : "—"}.
+                        </span>
+                      </div>
+                    )}
+                    {!coerenzaCorrente.ha_azione_precedente && (
+                      <div className="flex items-start gap-2 rounded-md border border-sky-500/40 bg-sky-500/10 px-3 py-2 text-xs text-sky-700 dark:text-sky-400">
+                        <AlertCircle className="size-4 mt-0.5 shrink-0" />
+                        <span>
+                          Nessun {livelloPrecedente === 1 ? "1° sollecito" : "2° sollecito"} email
+                          collegato a scadenze aperte trovato per questo cliente.
+                        </span>
+                      </div>
+                    )}
+                    <label className="flex items-center gap-2 text-xs cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="size-3.5"
+                        checked={!esclusi.has(clienteCorrenteId!)}
+                        onChange={(e) => {
+                          setEsclusi((prev) => {
+                            const n = new Set(prev);
+                            if (e.target.checked) n.delete(clienteCorrenteId!);
+                            else n.add(clienteCorrenteId!);
+                            return n;
+                          });
+                        }}
+                      />
+                      <span>Includi questo cliente nell'invio</span>
+                    </label>
+                  </div>
+                )}
+
                 {/* Indirizzo editabile */}
                 <div>
                   <div className="text-[11px] uppercase text-muted-foreground mb-1 flex items-center gap-2">
@@ -519,6 +627,24 @@ export function InvioMassivoDialog({
                 Per i destinatari non esplorati l'indirizzo verrà risolto al momento dell'invio (preferenza {preferenza}, con fallback).
               </p>
             )}
+            {coerenzaSummary && livelloPrecedente !== null && (
+              <div className="pt-1 mt-1 border-t border-border space-y-0.5">
+                <div className="font-medium text-foreground flex items-center gap-1.5">
+                  <AlertTriangle className="size-3.5 text-amber-600" />
+                  Coerenza con il {livelloPrecedente === 1 ? "1°" : "2°"} sollecito
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-muted-foreground">
+                  <div>Coerenti (scaduto invariato):</div>
+                  <div className="text-right text-emerald-600 dark:text-emerald-400 font-medium">{coerenzaSummary.coerenti}</div>
+                  <div>Scaduto cambiato — verifica:</div>
+                  <div className="text-right text-amber-600 dark:text-amber-400 font-medium">{coerenzaSummary.cambiati}</div>
+                  <div>Senza sollecito precedente:</div>
+                  <div className="text-right text-foreground font-medium">{coerenzaSummary.senzaPrec}</div>
+                  <div>Esclusi manualmente:</div>
+                  <div className="text-right text-foreground font-medium">{esclusi.size}</div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -526,9 +652,9 @@ export function InvioMassivoDialog({
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={submitting}>
             Annulla
           </Button>
-          <Button onClick={handleAvvia} disabled={submitting || !templateId || totale === 0} className="gap-1.5">
+          <Button onClick={handleAvvia} disabled={submitting || !templateId || totale - esclusi.size === 0} className="gap-1.5">
             <Send className="size-4" />
-            {submitting ? "Avvio..." : `Avvia campagna (${totale})`}
+            {submitting ? "Avvio..." : `Avvia campagna (${totale - esclusi.size})`}
           </Button>
         </DialogFooter>
       </DialogContent>
