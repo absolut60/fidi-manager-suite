@@ -27,12 +27,24 @@ export const Route = createFileRoute("/_app/impostazioni")({
 const storeSchema = z.object({
   codice: z.string().trim().min(1, "Obbligatorio").max(20).regex(/^[A-Z0-9_-]+$/i, "Solo lettere, numeri, - _"),
   nome: z.string().trim().min(1, "Obbligatorio").max(100),
+  ragione_sociale_sede: z.string().trim().max(150).optional().or(z.literal("")),
   indirizzo: z.string().trim().max(200).optional().or(z.literal("")),
+  cap: z.string().trim().max(10).optional().or(z.literal("")),
   citta: z.string().trim().max(100).optional().or(z.literal("")),
+  provincia: z.string().trim().max(5).optional().or(z.literal("")),
   telefono: z.string().trim().max(30).optional().or(z.literal("")),
+  email_sede: z.string().trim().max(150).email("Email non valida").optional().or(z.literal("")),
+  pec_sede: z.string().trim().max(150).email("PEC non valida").optional().or(z.literal("")),
+  piva: z.string().trim().max(20).optional().or(z.literal("")),
 });
 type StoreForm = z.infer<typeof storeSchema>;
-type StoreRow = { id: string; codice: string; nome: string; indirizzo: string | null; citta: string | null; telefono: string | null; attivo: boolean };
+type StoreRow = {
+  id: string; codice: string; nome: string;
+  indirizzo: string | null; cap: string | null; citta: string | null; provincia: string | null;
+  telefono: string | null; email_sede: string | null; pec_sede: string | null;
+  piva: string | null; ragione_sociale_sede: string | null;
+  attivo: boolean;
+};
 
 function ImpostazioniPage() {
   const { role, loading } = useAuth();
@@ -177,9 +189,15 @@ function StoreDialog({ editing, onClose }: { editing: StoreRow | null; onClose: 
   const [form, setForm] = useState<StoreForm>({
     codice: editing?.codice ?? "",
     nome: editing?.nome ?? "",
+    ragione_sociale_sede: editing?.ragione_sociale_sede ?? "",
     indirizzo: editing?.indirizzo ?? "",
+    cap: editing?.cap ?? "",
     citta: editing?.citta ?? "",
+    provincia: editing?.provincia ?? "",
     telefono: editing?.telefono ?? "",
+    email_sede: editing?.email_sede ?? "",
+    pec_sede: editing?.pec_sede ?? "",
+    piva: editing?.piva ?? "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -189,9 +207,15 @@ function StoreDialog({ editing, onClose }: { editing: StoreRow | null; onClose: 
       const payload = {
         codice: parsed.codice.toUpperCase(),
         nome: parsed.nome,
+        ragione_sociale_sede: parsed.ragione_sociale_sede || null,
         indirizzo: parsed.indirizzo || null,
+        cap: parsed.cap || null,
         citta: parsed.citta || null,
+        provincia: parsed.provincia ? parsed.provincia.toUpperCase() : null,
         telefono: parsed.telefono || null,
+        email_sede: parsed.email_sede || null,
+        pec_sede: parsed.pec_sede || null,
+        piva: parsed.piva || null,
       };
       if (editing) {
         const { error } = await supabase.from("stores").update(payload).eq("id", editing.id);
@@ -246,7 +270,7 @@ function StoreDialog({ editing, onClose }: { editing: StoreRow | null; onClose: 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="space-y-1.5">
             <Label htmlFor="codice">Codice *</Label>
-            <Input id="codice" value={form.codice} onChange={(e) => setForm({ ...form, codice: e.target.value.toUpperCase() })} placeholder="MADE01" />
+            <Input id="codice" value={form.codice} onChange={(e) => setForm({ ...form, codice: e.target.value.toUpperCase() })} placeholder="1" />
             {errors.codice && <p className="text-xs text-destructive">{errors.codice}</p>}
           </div>
           <div className="space-y-1.5 sm:col-span-2">
@@ -256,17 +280,47 @@ function StoreDialog({ editing, onClose }: { editing: StoreRow | null; onClose: 
           </div>
         </div>
         <div className="space-y-1.5">
+          <Label htmlFor="ragione_sociale_sede">Ragione sociale sede</Label>
+          <Input id="ragione_sociale_sede" value={form.ragione_sociale_sede} onChange={(e) => setForm({ ...form, ragione_sociale_sede: e.target.value })} />
+        </div>
+        <div className="space-y-1.5">
           <Label htmlFor="indirizzo">Indirizzo</Label>
           <Input id="indirizzo" value={form.indirizzo} onChange={(e) => setForm({ ...form, indirizzo: e.target.value })} />
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div className="space-y-1.5">
+            <Label htmlFor="cap">CAP</Label>
+            <Input id="cap" value={form.cap} onChange={(e) => setForm({ ...form, cap: e.target.value })} />
+          </div>
+          <div className="space-y-1.5 sm:col-span-2">
             <Label htmlFor="citta">Città</Label>
             <Input id="citta" value={form.citta} onChange={(e) => setForm({ ...form, citta: e.target.value })} />
           </div>
           <div className="space-y-1.5">
+            <Label htmlFor="provincia">Provincia</Label>
+            <Input id="provincia" maxLength={2} value={form.provincia} onChange={(e) => setForm({ ...form, provincia: e.target.value.toUpperCase() })} placeholder="MI" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
             <Label htmlFor="telefono">Telefono</Label>
             <Input id="telefono" value={form.telefono} onChange={(e) => setForm({ ...form, telefono: e.target.value })} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="piva">P.IVA</Label>
+            <Input id="piva" value={form.piva} onChange={(e) => setForm({ ...form, piva: e.target.value })} />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="email_sede">Email sede</Label>
+            <Input id="email_sede" type="email" value={form.email_sede} onChange={(e) => setForm({ ...form, email_sede: e.target.value })} />
+            {errors.email_sede && <p className="text-xs text-destructive">{errors.email_sede}</p>}
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="pec_sede">PEC sede</Label>
+            <Input id="pec_sede" type="email" value={form.pec_sede} onChange={(e) => setForm({ ...form, pec_sede: e.target.value })} />
+            {errors.pec_sede && <p className="text-xs text-destructive">{errors.pec_sede}</p>}
           </div>
         </div>
         <DialogFooter>
