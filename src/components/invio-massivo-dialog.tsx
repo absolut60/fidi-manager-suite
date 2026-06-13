@@ -508,6 +508,50 @@ export function InvioMassivoDialog({
                   </div>
                 </div>
 
+                {/* Check coerenza escalation */}
+                {livelloPrecedente !== null && coerenzaCorrente && (
+                  <div className="space-y-1.5">
+                    {coerenzaCorrente.scaduto_cambiato && (
+                      <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+                        <AlertTriangle className="size-4 mt-0.5 shrink-0" />
+                        <span>
+                          <strong>Scaduto cambiato dal sollecito precedente — verifica.</strong>{" "}
+                          Le scadenze ancora aperte non coincidono con quelle del{" "}
+                          {livelloPrecedente === 1 ? "1° sollecito" : "2° sollecito"} inviato il{" "}
+                          {coerenzaCorrente.data_azione_precedente
+                            ? new Date(coerenzaCorrente.data_azione_precedente).toLocaleDateString("it-IT")
+                            : "—"}.
+                        </span>
+                      </div>
+                    )}
+                    {!coerenzaCorrente.ha_azione_precedente && (
+                      <div className="flex items-start gap-2 rounded-md border border-sky-500/40 bg-sky-500/10 px-3 py-2 text-xs text-sky-700 dark:text-sky-400">
+                        <AlertCircle className="size-4 mt-0.5 shrink-0" />
+                        <span>
+                          Nessun {livelloPrecedente === 1 ? "1° sollecito" : "2° sollecito"} email
+                          collegato a scadenze aperte trovato per questo cliente.
+                        </span>
+                      </div>
+                    )}
+                    <label className="flex items-center gap-2 text-xs cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="size-3.5"
+                        checked={!esclusi.has(clienteCorrenteId!)}
+                        onChange={(e) => {
+                          setEsclusi((prev) => {
+                            const n = new Set(prev);
+                            if (e.target.checked) n.delete(clienteCorrenteId!);
+                            else n.add(clienteCorrenteId!);
+                            return n;
+                          });
+                        }}
+                      />
+                      <span>Includi questo cliente nell'invio</span>
+                    </label>
+                  </div>
+                )}
+
                 {/* Indirizzo editabile */}
                 <div>
                   <div className="text-[11px] uppercase text-muted-foreground mb-1 flex items-center gap-2">
