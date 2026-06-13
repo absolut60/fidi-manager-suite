@@ -403,6 +403,7 @@ export const invioMassivoSolleciti = inngest.createFunction(
                 email_oggetto: rendered.oggetto,
                 email_corpo_html: htmlCompleto,
                 email_destinatario: d.indirizzo_usato,
+                livello_sollecito: livelloSollecitoFromTipo(tpl.tipo),
               })
               .select("id")
               .single();
