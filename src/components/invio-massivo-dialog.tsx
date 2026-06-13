@@ -64,6 +64,8 @@ export function InvioMassivoDialog({
   const [overrides, setOverrides] = useState<Record<string, string>>({});
   // Indirizzi risolti scoperti durante la navigazione: cliente_id -> indirizzo default
   const [risolti, setRisolti] = useState<Record<string, string>>({});
+  // Esclusioni manuali (check coerenza escalation)
+  const [esclusi, setEsclusi] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!open) {
@@ -73,6 +75,7 @@ export function InvioMassivoDialog({
       setJumpInput("");
       setOverrides({});
       setRisolti({});
+      setEsclusi(new Set());
     } else {
       setModo(clienteIdsSelezionati.length > 0 ? "selezionati" : "filtrati");
     }
