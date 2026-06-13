@@ -282,9 +282,15 @@ function StoreDialog({ editing, onClose }: { editing: StoreRow | null; onClose: 
             {errors.nome && <p className="text-xs text-destructive">{errors.nome}</p>}
           </div>
         </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="ragione_sociale_sede">Ragione sociale sede</Label>
-          <Input id="ragione_sociale_sede" value={form.ragione_sociale_sede} onChange={(e) => setForm({ ...form, ragione_sociale_sede: e.target.value })} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="insegna">Insegna commerciale</Label>
+            <Input id="insegna" value={form.insegna} onChange={(e) => setForm({ ...form, insegna: e.target.value })} placeholder="es. CMV | MADE" />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="ragione_sociale_sede">Ragione sociale sede</Label>
+            <Input id="ragione_sociale_sede" value={form.ragione_sociale_sede} onChange={(e) => setForm({ ...form, ragione_sociale_sede: e.target.value })} />
+          </div>
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="indirizzo">Indirizzo</Label>
