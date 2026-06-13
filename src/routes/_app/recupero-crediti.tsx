@@ -535,6 +535,19 @@ function RecuperoCreditiPage() {
             </Select>
           )}
 
+          <Select value={stadioFilter} onValueChange={(v) => setStadioFilter(v as StadioFilter)}>
+            <SelectTrigger>
+              <SelectValue placeholder="Stadio sollecito" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tutti gli stadi</SelectItem>
+              <SelectItem value="0">Mai sollecitato</SelectItem>
+              <SelectItem value="1">1° sollecito</SelectItem>
+              <SelectItem value="2">2° sollecito</SelectItem>
+              <SelectItem value="3">Messa in mora</SelectItem>
+            </SelectContent>
+          </Select>
+
           <DateRangePicker label="Da" date={dataDa} onChange={setDataDa} />
           <DateRangePicker label="A" date={dataA} onChange={setDataA} />
         </div>
