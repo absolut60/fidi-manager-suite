@@ -320,9 +320,10 @@ export function wrapEmailHtml(
   corpoRenderizzato: string,
   datiSede: DatiSede | null | undefined,
   datiMittente: DatiMittente,
-  opts?: { useCid?: boolean; tipo?: TipoTemplate | null },
+  opts?: { useCid?: boolean; tipo?: TipoTemplate | null; senzaBande?: boolean },
 ): string {
   const sedeBlock = formatSedeBlock(datiSede);
+
   const operatore = escapeHtml(datiMittente.nome || "Operatore");
   const operatoreEmail = datiMittente.email
     ? `<div style="font-size:11px;color:#64748b;margin-top:2px;">${escapeHtml(datiMittente.email)}</div>`
