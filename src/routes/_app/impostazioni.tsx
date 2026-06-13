@@ -88,7 +88,7 @@ function ImpostazioniPage() {
           <DialogTrigger asChild>
             <Button onClick={openNew} className="gap-1.5"><Plus className="size-4" /> Nuovo punto vendita</Button>
           </DialogTrigger>
-          <StoreDialog editing={editing} onClose={() => setOpen(false)} />
+          <StoreDialog key={editing?.id ?? "new"} editing={editing} onClose={() => setOpen(false)} />
         </Dialog>
       </div>
 
