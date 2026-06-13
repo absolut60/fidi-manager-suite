@@ -27,12 +27,24 @@ export const Route = createFileRoute("/_app/impostazioni")({
 const storeSchema = z.object({
   codice: z.string().trim().min(1, "Obbligatorio").max(20).regex(/^[A-Z0-9_-]+$/i, "Solo lettere, numeri, - _"),
   nome: z.string().trim().min(1, "Obbligatorio").max(100),
+  ragione_sociale_sede: z.string().trim().max(150).optional().or(z.literal("")),
   indirizzo: z.string().trim().max(200).optional().or(z.literal("")),
+  cap: z.string().trim().max(10).optional().or(z.literal("")),
   citta: z.string().trim().max(100).optional().or(z.literal("")),
+  provincia: z.string().trim().max(5).optional().or(z.literal("")),
   telefono: z.string().trim().max(30).optional().or(z.literal("")),
+  email_sede: z.string().trim().max(150).email("Email non valida").optional().or(z.literal("")),
+  pec_sede: z.string().trim().max(150).email("PEC non valida").optional().or(z.literal("")),
+  piva: z.string().trim().max(20).optional().or(z.literal("")),
 });
 type StoreForm = z.infer<typeof storeSchema>;
-type StoreRow = { id: string; codice: string; nome: string; indirizzo: string | null; citta: string | null; telefono: string | null; attivo: boolean };
+type StoreRow = {
+  id: string; codice: string; nome: string;
+  indirizzo: string | null; cap: string | null; citta: string | null; provincia: string | null;
+  telefono: string | null; email_sede: string | null; pec_sede: string | null;
+  piva: string | null; ragione_sociale_sede: string | null;
+  attivo: boolean;
+};
 
 function ImpostazioniPage() {
   const { role, loading } = useAuth();
