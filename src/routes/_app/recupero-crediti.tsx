@@ -198,6 +198,7 @@ function RecuperoCreditiPage() {
   const [dataA, setDataA] = useState<Date | undefined>();
   const [tab, setTab] = useState<TabKey>("aperti");
   const [soloRitardo, setSoloRitardo] = useState(false);
+  const [stadioFilter, setStadioFilter] = useState<StadioFilter>("all");
   const [sortKey, setSortKey] = useState<SortKey>("priorita");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(1);
