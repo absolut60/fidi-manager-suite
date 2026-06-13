@@ -100,7 +100,7 @@ export const invioMassivoSolleciti = inngest.createFunction(
 
       // Guard: se annullata prima ancora di partire, esci pulito
       if (camp.stato === "annullata") {
-        return { templateId: null, operatoreId: null, annullata: true };
+        return { templateId: null, operatoreId: null, annullata: true, tipoCampagna: "sollecito" as string, mesi: [] as string[] };
       }
 
       await supabaseAdmin
