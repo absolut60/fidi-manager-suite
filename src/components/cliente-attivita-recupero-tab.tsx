@@ -96,6 +96,7 @@ export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string })
   const qc = useQueryClient();
   
   const [sollecitoOpen, setSollecitoOpen] = useState(false);
+  const [emailLiberaOpen, setEmailLiberaOpen] = useState(false);
   const [creaOpen, setCreaOpen] = useState(false);
   const [creaTipo, setCreaTipo] = useState<TipoAzione>("promemoria");
   const [viewEmail, setViewEmail] = useState<Azione | null>(null);
