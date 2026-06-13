@@ -52,6 +52,7 @@ const NAV: NavItem[] = [
   { to: "/legali", label: "Pratiche Legali", icon: Gavel, roles: ["admin", "approvatore", "store_manager"], group: "approvazioni" },
   { to: "/scadenziario", label: "Scadenziario", icon: CalendarClock, roles: ["admin", "approvatore", "store_manager"], group: "approvazioni" },
   { to: "/recupero-crediti", label: "Recupero Crediti", icon: HandCoins, roles: ["admin", "approvatore", "store_manager"], group: "approvazioni" },
+  { to: "/recupero-crediti-promemoria", label: "Promemoria scadenza", icon: CalendarClock, roles: ["admin", "approvatore", "store_manager"], group: "approvazioni" },
   { to: "/recupero-crediti-calendario", label: "Calendario Recupero", icon: CalendarClock, roles: ["admin", "approvatore", "store_manager"], group: "approvazioni" },
   { to: "/recupero-crediti-campagne", label: "Invii massivi", icon: Megaphone, roles: ["admin", "approvatore", "store_manager"], group: "approvazioni" },
   { to: "/privacy", label: "Privacy", icon: FileSignature, roles: ["admin", "approvatore", "store_manager"], group: "approvazioni" },
