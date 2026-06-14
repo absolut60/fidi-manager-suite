@@ -1889,6 +1889,195 @@ export type Database = {
           },
         ]
       }
+      snapshot_scaduto: {
+        Row: {
+          created_at: string
+          data_snapshot: string
+          id: string
+          n_azioni_aperte: number
+          n_azioni_in_ritardo: number
+          n_clienti_con_scaduto: number
+          n_clienti_stadio_0: number
+          n_clienti_stadio_1: number
+          n_clienti_stadio_2: number
+          n_clienti_stadio_mora: number
+          n_fatture_scadute: number
+          n_promesse_pagamento: number
+          ritardo_mediano_mobile: number | null
+          ritardo_mediano_solare: number | null
+          ritardo_mediano_tot: number | null
+          ritardo_medio_mobile: number | null
+          ritardo_medio_solare: number | null
+          ritardo_medio_tot: number | null
+          ritardo_ponderato_mobile: number | null
+          ritardo_ponderato_solare: number | null
+          ritardo_ponderato_tot: number | null
+          scaduto_1_30: number
+          scaduto_31_60: number
+          scaduto_mobile: number
+          scaduto_oltre_60: number
+          scaduto_solare: number
+          totale_a_scadere: number
+          totale_scaduto: number
+        }
+        Insert: {
+          created_at?: string
+          data_snapshot: string
+          id?: string
+          n_azioni_aperte?: number
+          n_azioni_in_ritardo?: number
+          n_clienti_con_scaduto?: number
+          n_clienti_stadio_0?: number
+          n_clienti_stadio_1?: number
+          n_clienti_stadio_2?: number
+          n_clienti_stadio_mora?: number
+          n_fatture_scadute?: number
+          n_promesse_pagamento?: number
+          ritardo_mediano_mobile?: number | null
+          ritardo_mediano_solare?: number | null
+          ritardo_mediano_tot?: number | null
+          ritardo_medio_mobile?: number | null
+          ritardo_medio_solare?: number | null
+          ritardo_medio_tot?: number | null
+          ritardo_ponderato_mobile?: number | null
+          ritardo_ponderato_solare?: number | null
+          ritardo_ponderato_tot?: number | null
+          scaduto_1_30?: number
+          scaduto_31_60?: number
+          scaduto_mobile?: number
+          scaduto_oltre_60?: number
+          scaduto_solare?: number
+          totale_a_scadere?: number
+          totale_scaduto?: number
+        }
+        Update: {
+          created_at?: string
+          data_snapshot?: string
+          id?: string
+          n_azioni_aperte?: number
+          n_azioni_in_ritardo?: number
+          n_clienti_con_scaduto?: number
+          n_clienti_stadio_0?: number
+          n_clienti_stadio_1?: number
+          n_clienti_stadio_2?: number
+          n_clienti_stadio_mora?: number
+          n_fatture_scadute?: number
+          n_promesse_pagamento?: number
+          ritardo_mediano_mobile?: number | null
+          ritardo_mediano_solare?: number | null
+          ritardo_mediano_tot?: number | null
+          ritardo_medio_mobile?: number | null
+          ritardo_medio_solare?: number | null
+          ritardo_medio_tot?: number | null
+          ritardo_ponderato_mobile?: number | null
+          ritardo_ponderato_solare?: number | null
+          ritardo_ponderato_tot?: number | null
+          scaduto_1_30?: number
+          scaduto_31_60?: number
+          scaduto_mobile?: number
+          scaduto_oltre_60?: number
+          scaduto_solare?: number
+          totale_a_scadere?: number
+          totale_scaduto?: number
+        }
+        Relationships: []
+      }
+      snapshot_scaduto_cliente: {
+        Row: {
+          cliente_id: string
+          created_at: string
+          data_snapshot: string
+          id: string
+          n_fatture_scadute: number
+          ritardo_medio_tot: number | null
+          totale_a_scadere: number
+          totale_scaduto: number
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string
+          data_snapshot: string
+          id?: string
+          n_fatture_scadute?: number
+          ritardo_medio_tot?: number | null
+          totale_a_scadere?: number
+          totale_scaduto?: number
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string
+          data_snapshot?: string
+          id?: string
+          n_fatture_scadute?: number
+          ritardo_medio_tot?: number | null
+          totale_a_scadere?: number
+          totale_scaduto?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "snapshot_scaduto_cliente_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "snapshot_scaduto_cliente_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti_con_rischio"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "snapshot_scaduto_cliente_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+        ]
+      }
+      snapshot_scaduto_store: {
+        Row: {
+          created_at: string
+          data_snapshot: string
+          id: string
+          n_fatture_scadute: number
+          ritardo_medio_tot: number | null
+          store_id: string | null
+          totale_a_scadere: number
+          totale_scaduto: number
+        }
+        Insert: {
+          created_at?: string
+          data_snapshot: string
+          id?: string
+          n_fatture_scadute?: number
+          ritardo_medio_tot?: number | null
+          store_id?: string | null
+          totale_a_scadere?: number
+          totale_scaduto?: number
+        }
+        Update: {
+          created_at?: string
+          data_snapshot?: string
+          id?: string
+          n_fatture_scadute?: number
+          ritardo_medio_tot?: number | null
+          store_id?: string | null
+          totale_a_scadere?: number
+          totale_scaduto?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "snapshot_scaduto_store_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       solleciti: {
         Row: {
           cliente_id: string
@@ -2464,6 +2653,7 @@ export type Database = {
     }
     Functions: {
       calcola_livello_fido: { Args: { _importo: number }; Returns: number }
+      genera_snapshot: { Args: { _data: string }; Returns: string }
       get_clienti_avvisati: {
         Args: never
         Returns: {
