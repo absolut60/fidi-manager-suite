@@ -78,7 +78,7 @@ function sanitize(name: string) {
 }
 
 export function AllegatiSection({
-  entitaTipo, entitaId, clienteId, canEdit = true, title = "Allegati",
+  entitaTipo, entitaId, clienteId, canEdit = true, title = "Allegati", compact = false,
 }: Props) {
   const qc = useQueryClient();
   const { user, role } = useAuth();
