@@ -313,7 +313,13 @@ function ScadenziarioPage() {
       };
     }).filter((r) => r.nScadute > 0);
     return out
-      .filter((r) => r.totScad >= minImp)
+      .filter((r) => {
+        // Toggle "a credito" SPENTO: comportamento attuale (solo saldi positivi >= minImp)
+        // ACCESO: includi anche r.totScad < 0, applicando minImp in valore assoluto
+        if (r.totScad >= 0) return r.totScad >= minImp;
+        if (!mostraACredito) return false;
+        return Math.abs(r.totScad) >= minImp;
+      })
       .filter((r) => {
         if (fascia === "tutte") return true;
         if (r.nScadute === 0) return false;
@@ -325,8 +331,14 @@ function ScadenziarioPage() {
         const avvisato = !!a && a.n_azioni > 0;
         return avvisatoFilter === "con_azioni" ? avvisato : !avvisato;
       })
-      .sort((a, b) => b.totScad - a.totScad);
-  }, [aggregato, minImp, fascia, today, avvisatoFilter, avvisatiMap]);
+      .sort((a, b) => {
+        // Debitori prima (positivi desc), clienti a credito in fondo (più negativo prima)
+        if (a.totScad >= 0 && b.totScad < 0) return -1;
+        if (a.totScad < 0 && b.totScad >= 0) return 1;
+        if (a.totScad < 0 && b.totScad < 0) return a.totScad - b.totScad;
+        return b.totScad - a.totScad;
+      });
+  }, [aggregato, minImp, fascia, today, avvisatoFilter, avvisatiMap, mostraACredito]);
 
   // Conteggio clienti in legale esclusi dalla lista (per badge accanto al toggle).
   // Conta i clienti con scadenze aperte (non pagate, non bonifici) che verrebbero
