@@ -2716,6 +2716,10 @@ export type Database = {
       }
     }
     Functions: {
+      allegato_storage_path_cliente_id: {
+        Args: { _name: string }
+        Returns: string
+      }
       calcola_livello_fido: { Args: { _importo: number }; Returns: number }
       genera_snapshot: { Args: { _data: string }; Returns: string }
       get_clienti_avvisati: {
