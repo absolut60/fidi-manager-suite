@@ -38,7 +38,7 @@ type NavItem = {
   to: string;
   label: string;
   icon: typeof LayoutDashboard;
-  roles?: Array<"admin" | "approvatore" | "store_manager">;
+  roles?: Array<"admin" | "approvatore" | "store_manager" | "amministrazione">;
   group?: "main" | "approvazioni" | "admin";
 };
 
