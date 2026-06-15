@@ -183,7 +183,155 @@ function ImpostazioniPage() {
           <p className="text-sm text-destructive mt-3">❌ Errore invio — controlla i secrets SMTP su Supabase</p>
         )}
       </Card>
+
+      <ManutenzioneCard />
     </div>
+  );
+}
+
+const CONFIRM_PHRASE = "ELIMINA TUTTO";
+
+function ManutenzioneCard() {
+  const qc = useQueryClient();
+  const fetchCounts = useServerFn(getCleanupRecuperoCounts);
+  const runCleanup = useServerFn(eseguiCleanupRecupero);
+  const [open, setOpen] = useState(false);
+  const [counts, setCounts] = useState<{ azioni: number; campagne: number; destinatari: number; allegati: number; collegamenti_scadenze: number } | null>(null);
+  const [loadingCounts, setLoadingCounts] = useState(false);
+  const [conferma, setConferma] = useState("");
+  const [running, setRunning] = useState(false);
+  const [result, setResult] = useState<{ azioni_eliminate: number; campagne_eliminate: number; destinatari_eliminati: number; allegati_eliminati: number; file_rimossi: number } | null>(null);
+
+  async function openDialog() {
+    setResult(null);
+    setConferma("");
+    setOpen(true);
+    setLoadingCounts(true);
+    try {
+      const c = await fetchCounts();
+      setCounts(c);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Errore caricamento conteggi");
+      setOpen(false);
+    } finally {
+      setLoadingCounts(false);
+    }
+  }
+
+  async function esegui() {
+    if (conferma !== CONFIRM_PHRASE || running) return;
+    setRunning(true);
+    try {
+      const r = await runCleanup({ data: { conferma } });
+      setResult(r);
+      // Invalidazione completa stato derivato recupero
+      qc.invalidateQueries({ queryKey: ["azioni-recupero"] });
+      qc.invalidateQueries({ queryKey: ["azioni-recupero-cliente"] });
+      qc.invalidateQueries({ queryKey: ["azioni-recupero-metrics"] });
+      qc.invalidateQueries({ queryKey: ["azioni-recupero-counts"] });
+      qc.invalidateQueries({ queryKey: ["azioni-calendario"] });
+      qc.invalidateQueries({ queryKey: ["recupero-clienti"] });
+      qc.invalidateQueries({ queryKey: ["clienti-avvisati"] });
+      qc.invalidateQueries({ queryKey: ["campagne-sollecito"] });
+      qc.invalidateQueries({ queryKey: ["campagne"] });
+      toast.success("Pulizia completata");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Errore pulizia");
+    } finally {
+      setRunning(false);
+    }
+  }
+
+  return (
+    <Card className="p-4 sm:p-5 border-destructive/40">
+      <h2 className="font-semibold mb-1 flex items-center gap-2 text-destructive">
+        <AlertTriangle className="size-4" /> Area tecnica — manutenzione
+      </h2>
+      <p className="text-xs text-muted-foreground mb-4">
+        Operazioni distruttive riservate all'amministratore. Usare con estrema cautela.
+      </p>
+      <div className="border border-destructive/30 rounded-md p-3 sm:p-4 bg-destructive/5 space-y-2">
+        <div className="font-medium text-sm">Pulizia totale modulo recupero crediti</div>
+        <p className="text-xs text-muted-foreground">
+          Elimina <strong>tutte</strong> le azioni di recupero, le campagne di sollecito e gli allegati delle azioni (file inclusi).
+          Non tocca clienti, scadenze, template, assicurazioni o pratiche legali.
+          Pensata per azzerare le prove di test e ripartire puliti. Irreversibile.
+        </p>
+        <Dialog open={open} onOpenChange={(o) => { if (!running) setOpen(o); }}>
+          <DialogTrigger asChild>
+            <Button variant="destructive" size="sm" className="gap-1.5 mt-1" onClick={openDialog}>
+              <Trash2 className="size-4" /> Pulisci modulo recupero...
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-destructive">
+                <AlertTriangle className="size-5" /> Pulizia totale recupero crediti
+              </DialogTitle>
+              <DialogDescription>
+                Questa operazione è <strong>irreversibile</strong>. Verranno eliminati definitivamente
+                tutti i dati operativi del modulo recupero crediti.
+              </DialogDescription>
+            </DialogHeader>
+
+            {result ? (
+              <div className="space-y-2 text-sm">
+                <p className="font-medium text-green-700 dark:text-green-400">Pulizia completata ✓</p>
+                <ul className="list-disc pl-5 text-muted-foreground">
+                  <li>{result.azioni_eliminate} azioni eliminate</li>
+                  <li>{result.campagne_eliminate} campagne ({result.destinatari_eliminati} destinatari)</li>
+                  <li>{result.allegati_eliminati} allegati ({result.file_rimossi} file rimossi dal bucket)</li>
+                </ul>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {loadingCounts || !counts ? (
+                  <Skeleton className="h-24 w-full" />
+                ) : (
+                  <div className="rounded-md border p-3 text-sm space-y-1 bg-muted/30">
+                    <div className="font-medium mb-1">Stai per eliminare:</div>
+                    <ul className="list-disc pl-5 text-muted-foreground">
+                      <li><strong>{counts.azioni}</strong> azioni di recupero ({counts.collegamenti_scadenze} collegamenti a scadenze)</li>
+                      <li><strong>{counts.campagne}</strong> campagne di sollecito ({counts.destinatari} destinatari)</li>
+                      <li><strong>{counts.allegati}</strong> allegati di azioni (file + righe DB)</li>
+                    </ul>
+                  </div>
+                )}
+                <div className="space-y-1.5">
+                  <Label htmlFor="conferma-cleanup">
+                    Per confermare, digita <code className="px-1 py-0.5 bg-muted rounded text-xs">{CONFIRM_PHRASE}</code>
+                  </Label>
+                  <Input
+                    id="conferma-cleanup"
+                    value={conferma}
+                    onChange={(e) => setConferma(e.target.value)}
+                    placeholder={CONFIRM_PHRASE}
+                    autoComplete="off"
+                  />
+                </div>
+              </div>
+            )}
+
+            <DialogFooter>
+              {result ? (
+                <Button onClick={() => setOpen(false)}>Chiudi</Button>
+              ) : (
+                <>
+                  <Button variant="outline" onClick={() => setOpen(false)} disabled={running}>Annulla</Button>
+                  <Button
+                    variant="destructive"
+                    onClick={esegui}
+                    disabled={conferma !== CONFIRM_PHRASE || running || loadingCounts}
+                  >
+                    {running ? "Eliminazione..." : "Elimina definitivamente"}
+                  </Button>
+                </>
+              )}
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </Card>
   );
 }
 
