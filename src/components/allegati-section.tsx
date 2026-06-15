@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useCallback } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -6,13 +6,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import {
-  Paperclip, Upload, Download, Trash2, Loader2, FileText, Image as ImageIcon, File as FileIcon,
+  Paperclip, Upload, Download, Trash2, Loader2, FileText, Image as ImageIcon,
+  File as FileIcon, Plus, Eye, UploadCloud,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export type AllegatoEntitaTipo =
   | "cliente"
@@ -76,6 +81,10 @@ function iconFor(mime: string | null) {
 function sanitize(name: string) {
   return name.replace(/[^\w.\-]+/g, "_").slice(0, 120);
 }
+function isPreviewable(mime: string | null): boolean {
+  if (!mime) return false;
+  return mime === "application/pdf" || mime.startsWith("image/");
+}
 
 export function AllegatiSection({
   entitaTipo, entitaId, clienteId, canEdit = true, title = "Allegati", compact = false,
@@ -83,9 +92,7 @@ export function AllegatiSection({
   const qc = useQueryClient();
   const { user, role } = useAuth();
   const isAdmin = role === "amministratore";
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [descrizione, setDescrizione] = useState("");
-  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [toDelete, setToDelete] = useState<AllegatoRow | null>(null);
 
   const key = ["allegati", entitaTipo, entitaId];
@@ -104,48 +111,6 @@ export function AllegatiSection({
     },
   });
 
-  const upload = useMutation({
-    mutationFn: async ({ file, descr }: { file: File; descr: string }) => {
-      if (file.size > ALLEGATI_MAX_BYTES) {
-        throw new Error(`File troppo grande (max ${ALLEGATI_MAX_BYTES / 1024 / 1024} MB)`);
-      }
-      if (file.type && !ALLEGATI_ALLOWED_MIMES.has(file.type)) {
-        throw new Error(`Tipo file non consentito: ${file.type}`);
-      }
-      if (!user?.id) throw new Error("Utente non autenticato");
-      const uid = crypto.randomUUID();
-      const path = `${entitaTipo}/${entitaId}/${uid}-${sanitize(file.name)}`;
-      const { error: eUp } = await supabase.storage
-        .from(ALLEGATI_BUCKET)
-        .upload(path, file, { contentType: file.type || undefined, upsert: false });
-      if (eUp) throw eUp;
-      const { error: eIns } = await supabase.from("allegati").insert({
-        entita_tipo: entitaTipo,
-        entita_id: entitaId,
-        cliente_id: clienteId,
-        nome_file: file.name,
-        storage_path: path,
-        mime_type: file.type || null,
-        dimensione_bytes: file.size,
-        descrizione: descr.trim() || null,
-        caricato_da: user.id,
-      });
-      if (eIns) {
-        // Rollback file
-        await supabase.storage.from(ALLEGATI_BUCKET).remove([path]);
-        throw eIns;
-      }
-    },
-    onSuccess: () => {
-      toast.success("Allegato caricato");
-      setDescrizione("");
-      setPendingFile(null);
-      if (inputRef.current) inputRef.current.value = "";
-      qc.invalidateQueries({ queryKey: key });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
   const del = useMutation({
     mutationFn: async (a: AllegatoRow) => {
       const { error } = await supabase.from("allegati").delete().eq("id", a.id);
@@ -160,11 +125,15 @@ export function AllegatiSection({
     onError: (e: Error) => toast.error(e.message),
   });
 
-  async function download(a: AllegatoRow) {
+  async function openSigned(a: AllegatoRow, mode: "download" | "preview") {
     const { data, error } = await supabase.storage
       .from(ALLEGATI_BUCKET)
       .createSignedUrl(a.storage_path, 60);
-    if (error || !data) { toast.error("Errore download"); return; }
+    if (error || !data) { toast.error("Errore apertura file"); return; }
+    if (mode === "preview") {
+      window.open(data.signedUrl, "_blank", "noopener");
+      return;
+    }
     const link = document.createElement("a");
     link.href = data.signedUrl;
     link.download = a.nome_file;
@@ -173,59 +142,40 @@ export function AllegatiSection({
     link.click();
   }
 
+  const itemPad = compact ? "p-2" : "p-2.5";
+
   return (
     <div className={compact ? "space-y-2" : "space-y-3"}>
-      <div className="flex items-center gap-2">
-        <Paperclip className="size-4 text-muted-foreground" />
-        <h3 className="text-sm font-medium">{title} {data ? `(${data.length})` : ""}</h3>
-      </div>
-
-      {canEdit && (
-        <div className="rounded-md border bg-muted/30 p-3 space-y-2">
-          <Input
-            ref={inputRef}
-            type="file"
-            onChange={(e) => setPendingFile(e.target.files?.[0] ?? null)}
-            disabled={upload.isPending}
-          />
-          <Textarea
-            placeholder="Descrizione (opzionale)"
-            value={descrizione}
-            onChange={(e) => setDescrizione(e.target.value)}
-            rows={2}
-            maxLength={500}
-            disabled={upload.isPending}
-          />
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs text-muted-foreground">
-              Max 20 MB. PDF, immagini, Office, TXT/CSV.
-            </span>
-            <Button
-              size="sm"
-              onClick={() => pendingFile && upload.mutate({ file: pendingFile, descr: descrizione })}
-              disabled={!pendingFile || upload.isPending}
-            >
-              {upload.isPending ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
-              Carica
-            </Button>
-          </div>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Paperclip className="size-4 text-muted-foreground" />
+          <h3 className="text-sm font-medium">
+            {title} ({data?.length ?? 0})
+          </h3>
         </div>
-      )}
+        {canEdit && (
+          <Button size="sm" variant="outline" onClick={() => setDialogOpen(true)}>
+            <Plus className="size-4" />
+            Allega documento
+          </Button>
+        )}
+      </div>
 
       {isLoading ? (
         <div className="text-xs text-muted-foreground">Caricamento…</div>
       ) : !data?.length ? (
-        <div className="text-xs text-muted-foreground italic">Nessun allegato.</div>
+        <div className="text-xs text-muted-foreground italic px-1">Nessun allegato.</div>
       ) : (
         <ul className="divide-y border rounded-md">
           {data.map((a) => {
             const canDelete = canEdit && (isAdmin || a.caricato_da === user?.id);
+            const previewable = isPreviewable(a.mime_type);
             return (
-              <li key={a.id} className="flex items-center gap-3 p-2.5 text-sm">
+              <li key={a.id} className={cn("flex items-center gap-3 text-sm", itemPad)}>
                 <div className="text-muted-foreground">{iconFor(a.mime_type)}</div>
                 <div className="flex-1 min-w-0">
                   <button
-                    onClick={() => download(a)}
+                    onClick={() => openSigned(a, previewable ? "preview" : "download")}
                     className="text-primary hover:underline truncate block text-left w-full"
                     title={a.nome_file}
                   >
@@ -240,7 +190,12 @@ export function AllegatiSection({
                     <div className="text-xs text-muted-foreground mt-0.5">{a.descrizione}</div>
                   )}
                 </div>
-                <Button size="icon" variant="ghost" onClick={() => download(a)} title="Scarica">
+                {previewable && (
+                  <Button size="icon" variant="ghost" onClick={() => openSigned(a, "preview")} title="Anteprima">
+                    <Eye className="size-4" />
+                  </Button>
+                )}
+                <Button size="icon" variant="ghost" onClick={() => openSigned(a, "download")} title="Scarica">
                   <Download className="size-4" />
                 </Button>
                 {canDelete && (
@@ -258,6 +213,18 @@ export function AllegatiSection({
             );
           })}
         </ul>
+      )}
+
+      {canEdit && (
+        <UploadDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          entitaTipo={entitaTipo}
+          entitaId={entitaId}
+          clienteId={clienteId}
+          userId={user?.id}
+          onUploaded={() => qc.invalidateQueries({ queryKey: key })}
+        />
       )}
 
       <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
@@ -280,5 +247,175 @@ export function AllegatiSection({
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+function UploadDialog({
+  open, onOpenChange, entitaTipo, entitaId, clienteId, userId, onUploaded,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  entitaTipo: AllegatoEntitaTipo;
+  entitaId: string;
+  clienteId: string;
+  userId: string | undefined;
+  onUploaded: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [descrizione, setDescrizione] = useState("");
+  const [dragOver, setDragOver] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const reset = useCallback(() => {
+    setFile(null);
+    setDescrizione("");
+    setError(null);
+    setDragOver(false);
+    if (inputRef.current) inputRef.current.value = "";
+  }, []);
+
+  const validate = (f: File): string | null => {
+    if (f.size > ALLEGATI_MAX_BYTES) {
+      return `File troppo grande (max ${ALLEGATI_MAX_BYTES / 1024 / 1024} MB)`;
+    }
+    if (f.type && !ALLEGATI_ALLOWED_MIMES.has(f.type)) {
+      return `Tipo file non consentito: ${f.type}`;
+    }
+    return null;
+  };
+
+  const pickFile = (f: File | null) => {
+    setError(null);
+    if (!f) { setFile(null); return; }
+    const err = validate(f);
+    if (err) { setError(err); setFile(null); return; }
+    setFile(f);
+  };
+
+  const upload = useMutation({
+    mutationFn: async () => {
+      if (!file) throw new Error("Nessun file selezionato");
+      if (!userId) throw new Error("Utente non autenticato");
+      const uid = crypto.randomUUID();
+      const path = `${entitaTipo}/${entitaId}/${uid}-${sanitize(file.name)}`;
+      const { error: eUp } = await supabase.storage
+        .from(ALLEGATI_BUCKET)
+        .upload(path, file, { contentType: file.type || undefined, upsert: false });
+      if (eUp) throw eUp;
+      const { error: eIns } = await supabase.from("allegati").insert({
+        entita_tipo: entitaTipo,
+        entita_id: entitaId,
+        cliente_id: clienteId,
+        nome_file: file.name,
+        storage_path: path,
+        mime_type: file.type || null,
+        dimensione_bytes: file.size,
+        descrizione: descrizione.trim() || null,
+        caricato_da: userId,
+      });
+      if (eIns) {
+        await supabase.storage.from(ALLEGATI_BUCKET).remove([path]);
+        throw eIns;
+      }
+    },
+    onSuccess: () => {
+      toast.success("Allegato caricato");
+      onUploaded();
+      reset();
+      onOpenChange(false);
+    },
+    onError: (e: Error) => setError(e.message),
+  });
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o && upload.isPending) return;
+        if (!o) reset();
+        onOpenChange(o);
+      }}
+    >
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Allega documento</DialogTitle>
+          <DialogDescription>
+            Aggiungi un documento — PDF, Word, Excel, JPG, PNG — max 20MB.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-3">
+          <div
+            onClick={() => inputRef.current?.click()}
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragOver(false);
+              const f = e.dataTransfer.files?.[0];
+              if (f) pickFile(f);
+            }}
+            className={cn(
+              "border-2 border-dashed rounded-md p-6 text-center cursor-pointer transition-colors",
+              dragOver ? "border-primary bg-primary/5" : "border-input bg-muted/30 hover:bg-muted/50",
+            )}
+            role="button"
+            tabIndex={0}
+          >
+            <UploadCloud className="mx-auto size-8 text-muted-foreground mb-2" />
+            {file ? (
+              <div className="text-sm">
+                <div className="font-medium truncate">{file.name}</div>
+                <div className="text-xs text-muted-foreground mt-1">{fmtBytes(file.size)}</div>
+              </div>
+            ) : (
+              <div className="text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">Trascina un file</span> o clicca per sfogliare
+              </div>
+            )}
+            <Input
+              ref={inputRef}
+              type="file"
+              className="hidden"
+              onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
+              disabled={upload.isPending}
+            />
+          </div>
+
+          <Textarea
+            placeholder="Descrizione (opzionale)"
+            value={descrizione}
+            onChange={(e) => setDescrizione(e.target.value)}
+            rows={2}
+            maxLength={500}
+            disabled={upload.isPending}
+          />
+
+          {error && (
+            <div className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">
+              {error}
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={upload.isPending}
+          >
+            Annulla
+          </Button>
+          <Button
+            onClick={() => upload.mutate()}
+            disabled={!file || upload.isPending}
+          >
+            {upload.isPending ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+            Allega
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
