@@ -2834,7 +2834,63 @@ function BloccoFidoAssicurazioneImportCard() {
 
 function ExportCard() {
   const qc = useQueryClient();
-  const [busy, setBusy] = useState<null | "clienti" | "richieste">(null);
+  const [busy, setBusy] = useState<null | "clienti" | "richieste" | "senza_email">(null);
+
+  async function exportClientiSenzaEmail() {
+    setBusy("senza_email");
+    try {
+      const { data, error } = await (supabase as any).rpc("get_clienti_senza_email_con_scadenze");
+      if (error) throw error;
+      const rows = (data ?? []) as Array<{
+        cliente_id: string;
+        codice_gestionale: string | null;
+        ragione_sociale: string | null;
+        email: string | null;
+        pec: string | null;
+        store_nome: string | null;
+        totale_scaduto: number | string | null;
+        totale_a_scadere: number | string | null;
+        n_scadenze_aperte: number | null;
+      }>;
+      const totScaduto = rows.reduce((s, r) => s + Number(r.totale_scaduto ?? 0), 0);
+      const intestazione = [
+        [`Clienti con scadenze aperte e senza email`],
+        [`Totale clienti: ${rows.length}`, `Totale scaduto: € ${totScaduto.toFixed(2)}`],
+        [],
+      ];
+      const header = [
+        "Sede",
+        "Codice cliente",
+        "Ragione sociale",
+        "Email",
+        "Ha PEC",
+        "Totale scaduto (€)",
+        "Totale a scadere (€)",
+        "N. scadenze aperte",
+      ];
+      const body = rows.map((r) => [
+        r.store_nome ?? "",
+        r.codice_gestionale ?? "",
+        r.ragione_sociale ?? "",
+        r.email ?? "",
+        r.pec && r.pec.trim() !== "" ? "sì" : "no",
+        Number(r.totale_scaduto ?? 0),
+        Number(r.totale_a_scadere ?? 0),
+        r.n_scadenze_aperte ?? 0,
+      ]);
+      const ws = XLSX.utils.aoa_to_sheet([...intestazione, header, ...body]);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Clienti senza email");
+      const fname = `clienti_scadenze_senza_email_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      XLSX.writeFile(wb, fname);
+      await logEsportazione(fname, rows.length);
+      toast.success(`Esportati ${rows.length} clienti (€ ${totScaduto.toFixed(2)} scaduto)`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Errore export");
+    } finally {
+      setBusy(null);
+    }
+  }
 
   async function logEsportazione(nome_file: string, righe: number) {
     const {
@@ -2961,6 +3017,21 @@ function ExportCard() {
             <FileSpreadsheet className="size-4" /> Richieste fido
           </span>
           {busy === "richieste" ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <Download className="size-4" />
+          )}
+        </Button>
+        <Button
+          variant="outline"
+          className="w-full justify-between"
+          disabled={busy !== null}
+          onClick={exportClientiSenzaEmail}
+        >
+          <span className="flex items-center gap-2">
+            <FileSpreadsheet className="size-4" /> Clienti con scadenze senza email
+          </span>
+          {busy === "senza_email" ? (
             <Loader2 className="size-4 animate-spin" />
           ) : (
             <Download className="size-4" />
