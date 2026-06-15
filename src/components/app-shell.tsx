@@ -68,14 +68,18 @@ const NAV: NavItem[] = [
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { profilo, role } = useAuth();
+  const { profilo, role, roles } = useAuth();
   const navigate = useNavigate();
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
 
-  const isAdmin = role === "amministratore";
-  const isApprovatore = role?.startsWith("approvatore_liv") ?? false;
-  const isStoreManager = role === "store_manager";
-  const isAmministrazione = role === "amministrazione";
+  // I ruoli sono multi-riga in user_roles: il menu deve controllare l'appartenenza
+  // all'array completo, non solo il ruolo principale calcolato per priorità.
+  const userRoles = roles as string[];
+  const hasUserRole = (requiredRole: string) => userRoles.includes(requiredRole);
+  const isAdmin = hasUserRole("amministratore");
+  const isApprovatore = userRoles.some((r) => r.startsWith("approvatore_liv"));
+  const isStoreManager = hasUserRole("store_manager");
+  const isAmministrazione = hasUserRole("amministrazione");
 
   const visibleNav = NAV.filter((item) => {
     if (!item.roles) return true;
