@@ -487,10 +487,19 @@ function ScadenziarioPage() {
               <Switch id="escl-legale" checked={escludiLegale} onCheckedChange={(v) => { setEscludiLegale(v); if (v) setStatoLegale("tutti"); }} />
               <Label htmlFor="escl-legale" className="text-sm cursor-pointer">Escludi gestione legale</Label>
             </div>
+            <div className="flex items-center gap-2">
+              <Switch id="mostra-credito" checked={mostraACredito} onCheckedChange={setMostraACredito} />
+              <Label htmlFor="mostra-credito" className="text-sm cursor-pointer">Mostra anche clienti a credito (note di credito aperte)</Label>
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
             {escludiBonifici && <span>Esclusi {bonificiCount} BOS</span>}
             {escludiLegale && <span>Esclusi {legaleEsclusiCount} legale</span>}
+            {mostraACredito && kpi.nCrediti > 0 && (
+              <span className="text-emerald-700 dark:text-emerald-400 font-medium">
+                Note di credito aperte: {kpi.nCrediti} clienti, totale {fmtEuro(kpi.totCrediti)}
+              </span>
+            )}
           </div>
         </div>
       </Card>
