@@ -422,14 +422,20 @@ function TimelineItem({
   azione,
   operatoreName,
   highlight,
+  canEdit,
   onChangeEsito,
   onViewEmail,
+  onEdit,
+  onDelete,
 }: {
   azione: Azione;
   operatoreName: string | null;
   highlight?: boolean;
+  canEdit: boolean;
   onChangeEsito: (e: Esito) => void;
   onViewEmail: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
 }) {
   const Icon = TIPO_ICON[azione.tipo] ?? Activity;
   const [showAllegati, setShowAllegati] = useState(false);
@@ -448,6 +454,9 @@ function TimelineItem({
             )}
             {azione.importo_riferimento != null && Number(azione.importo_riferimento) > 0 && (
               <span className="text-xs text-muted-foreground">· rif. {fmtEuro(azione.importo_riferimento)}</span>
+            )}
+            {azione.tipo === "email" && azione.livello_sollecito != null && azione.livello_sollecito > 0 && (
+              <Badge variant="outline" className="text-[10px] h-5">Sollecito {azione.livello_sollecito}</Badge>
             )}
           </div>
           {azione.note && (
@@ -481,6 +490,22 @@ function TimelineItem({
               ))}
             </SelectContent>
           </Select>
+          {canEdit && (
+            <div className="flex gap-1">
+              <Button size="icon" variant="ghost" className="size-7" onClick={onEdit} title="Modifica">
+                <Pencil className="size-3.5" />
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="size-7 text-destructive hover:text-destructive"
+                onClick={onDelete}
+                title="Elimina"
+              >
+                <Trash2 className="size-3.5" />
+              </Button>
+            </div>
+          )}
         </div>
       </div>
       {showAllegati && (
