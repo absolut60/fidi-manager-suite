@@ -159,7 +159,7 @@ export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string })
     queryFn: async () => {
       const { data, error } = await supabase
         .from("azioni_recupero")
-        .select("id, cliente_id, operatore_id, tipo, esito, data_azione, importo_riferimento, note, email_oggetto, email_corpo_html, email_destinatario, created_at")
+        .select("id, cliente_id, operatore_id, tipo, esito, data_azione, data_promessa_pagamento, importo_riferimento, note, email_oggetto, email_corpo_html, email_destinatario, livello_sollecito, created_at")
         .eq("cliente_id", clienteId)
         .order("data_azione", { ascending: false });
       if (error) throw error;
