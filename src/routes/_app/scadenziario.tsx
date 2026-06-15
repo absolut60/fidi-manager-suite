@@ -692,19 +692,20 @@ function ScadenziarioPage() {
   );
 }
 
-function KpiCard({ label, value, icon: Icon, tone }: { label: string; value: string; icon: typeof FileText; tone: "destructive" | "info" | "warning" | "default" }) {
+function KpiCard({ label, value, icon: Icon, tone, sublabel, tooltip }: { label: string; value: string; icon: typeof FileText; tone: "destructive" | "info" | "warning" | "default"; sublabel?: string; tooltip?: string }) {
   const cls = tone === "destructive" ? "bg-destructive/10 text-destructive"
     : tone === "info" ? "bg-primary/10 text-primary"
     : tone === "warning" ? "bg-orange-500/10 text-orange-600"
     : "bg-muted text-foreground";
   return (
-    <Card className="p-4">
+    <Card className="p-4" title={tooltip}>
       <div className="flex items-center justify-between">
-        <div>
+        <div className="min-w-0">
           <p className="text-xs font-medium text-muted-foreground uppercase">{label}</p>
           <p className="text-xl font-bold mt-1">{value}</p>
+          {sublabel && <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{sublabel}</p>}
         </div>
-        <div className={`size-9 rounded-lg flex items-center justify-center ${cls}`}><Icon className="size-4" /></div>
+        <div className={`size-9 rounded-lg flex items-center justify-center ${cls} shrink-0 ml-2`}><Icon className="size-4" /></div>
       </div>
     </Card>
   );
