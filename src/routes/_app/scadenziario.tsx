@@ -102,6 +102,7 @@ function ScadenziarioPage() {
   const [escludiBonifici, setEscludiBonifici] = useState(true);
   const [escludiLegale, setEscludiLegale] = useState(true);
   const [avvisatoFilter, setAvvisatoFilter] = useState<"tutti" | "con_azioni" | "senza_azioni">("tutti");
+  const [mostraACredito, setMostraACredito] = useState(false);
   const [expandedClienteId, setExpandedClienteId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -110,7 +111,7 @@ function ScadenziarioPage() {
   // Reset selection on filter changes
   useEffect(() => {
     setSelectedIds(new Set());
-  }, [storeId, fascia, importoMin, statoBlocco, statoLegale, escludiBonifici, escludiLegale, avvisatoFilter]);
+  }, [storeId, fascia, importoMin, statoBlocco, statoLegale, escludiBonifici, escludiLegale, avvisatoFilter, mostraACredito]);
 
   useEffect(() => {
     if (statoLegale === "in_legale") {
