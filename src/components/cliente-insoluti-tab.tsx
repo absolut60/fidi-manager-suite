@@ -1003,7 +1003,7 @@ function CambiaStatoPraticaDialog({ pratica, onClose, onSaved }: { pratica: { id
 
 /* ============================== ASSICURAZIONI ============================== */
 
-function AssicurazioniSection({ clienteId, isAdmin }: { clienteId: string; isAdmin: boolean }) {
+function AssicurazioniSection({ clienteId, isAdmin, canEditAllegati }: { clienteId: string; isAdmin: boolean; canEditAllegati: boolean }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [openSinistro, setOpenSinistro] = useState<string | null>(null);
@@ -1071,7 +1071,7 @@ function AssicurazioniSection({ clienteId, isAdmin }: { clienteId: string; isAdm
                   entitaTipo="assicurazione"
                   entitaId={p.id}
                   clienteId={clienteId}
-                  canEdit={isAdmin}
+                  canEdit={canEditAllegati}
                   compact
                 />
               </div>
