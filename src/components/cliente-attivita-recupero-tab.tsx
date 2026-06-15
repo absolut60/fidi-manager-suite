@@ -3,9 +3,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Send, Plus, Bell, Phone, StickyNote, FileText, Mail, Activity, Eye, CalendarClock, Paperclip,
+  Pencil, Trash2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { AllegatiSection } from "@/components/allegati-section";
+import { useAuth } from "@/hooks/use-auth";
+import { AllegatiSection, ALLEGATI_BUCKET } from "@/components/allegati-section";
 
 import { classificaScadenza } from "@/lib/scadenze";
 import { Card } from "@/components/ui/card";
@@ -18,10 +20,15 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { InviaSollecitoDialog } from "@/components/invia-sollecito-dialog";
 import { EmailLiberaDialog } from "@/components/email-libera-dialog";
 import { CreaAzioneDialog } from "@/components/crea-azione-dialog";
 import { EmailInviataView } from "@/components/email-inviata-view";
+import { ModificaAzioneDialog, type AzioneModificabile } from "@/components/modifica-azione-dialog";
 import type { TipoAzione } from "@/components/reminder-controls";
 
 type Esito = "da_fare" | "fatto" | "nessuna_risposta" | "promessa_pagamento" | "contestazione" | "pagato";
@@ -85,22 +92,32 @@ type Azione = {
   tipo: TipoAzione | "promemoria_scadenza";
   esito: Esito;
   data_azione: string;
+  data_promessa_pagamento: string | null;
   importo_riferimento: number | null;
   note: string | null;
   email_oggetto: string | null;
   email_corpo_html: string | null;
   email_destinatario: string | null;
+  livello_sollecito: number | null;
   created_at: string;
 };
 
 export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string }) {
   const qc = useQueryClient();
-  
+  const { user, roles } = useAuth();
+  const canManageAll =
+    roles.includes("amministratore") ||
+    roles.includes("amministrazione") ||
+    roles.includes("direzione");
+
   const [sollecitoOpen, setSollecitoOpen] = useState(false);
   const [emailLiberaOpen, setEmailLiberaOpen] = useState(false);
   const [creaOpen, setCreaOpen] = useState(false);
   const [creaTipo, setCreaTipo] = useState<TipoAzione>("promemoria");
   const [viewEmail, setViewEmail] = useState<Azione | null>(null);
+  const [editAzione, setEditAzione] = useState<Azione | null>(null);
+  const [deleteAzione, setDeleteAzione] = useState<Azione | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Totale scaduto attuale
   const { data: totaleScaduto } = useQuery({
@@ -142,7 +159,7 @@ export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string })
     queryFn: async () => {
       const { data, error } = await supabase
         .from("azioni_recupero")
-        .select("id, cliente_id, operatore_id, tipo, esito, data_azione, importo_riferimento, note, email_oggetto, email_corpo_html, email_destinatario, created_at")
+        .select("id, cliente_id, operatore_id, tipo, esito, data_azione, data_promessa_pagamento, importo_riferimento, note, email_oggetto, email_corpo_html, email_destinatario, livello_sollecito, created_at")
         .eq("cliente_id", clienteId)
         .order("data_azione", { ascending: false });
       if (error) throw error;
@@ -179,6 +196,58 @@ export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string })
     qc.invalidateQueries({ queryKey: ["azioni-recupero-cliente", clienteId] });
     qc.invalidateQueries({ queryKey: ["azioni-recupero"] });
     qc.invalidateQueries({ queryKey: ["azioni-recupero-metrics"] });
+  }
+
+  function canEditAzione(a: Azione): boolean {
+    return canManageAll || a.operatore_id === (user?.id ?? "__none__");
+  }
+
+  function invalidateRecupero() {
+    qc.invalidateQueries({ queryKey: ["azioni-recupero-cliente", clienteId] });
+    qc.invalidateQueries({ queryKey: ["azioni-recupero"] });
+    qc.invalidateQueries({ queryKey: ["azioni-recupero-metrics"] });
+    qc.invalidateQueries({ queryKey: ["azioni-recupero-counts"] });
+    qc.invalidateQueries({ queryKey: ["azioni-calendario"] });
+    qc.invalidateQueries({ queryKey: ["recupero-clienti"] });
+    qc.invalidateQueries({ queryKey: ["clienti-avvisati"] });
+    qc.invalidateQueries({ queryKey: ["attivita-totale-scaduto", clienteId] });
+  }
+
+  async function handleDelete() {
+    if (!deleteAzione || deleting) return;
+    setDeleting(true);
+    try {
+      // Rimuovi allegati collegati (file + righe) per non lasciare orfani
+      const { data: alleg, error: eAll } = await supabase
+        .from("allegati")
+        .select("id, storage_path")
+        .eq("entita_tipo", "azione_recupero")
+        .eq("entita_id", deleteAzione.id);
+      if (eAll) throw eAll;
+      if (alleg && alleg.length > 0) {
+        const paths = alleg.map((a) => a.storage_path).filter(Boolean);
+        if (paths.length > 0) {
+          await supabase.storage.from(ALLEGATI_BUCKET).remove(paths);
+        }
+        const ids = alleg.map((a) => a.id);
+        const { error: eDelAll } = await supabase.from("allegati").delete().in("id", ids);
+        if (eDelAll) throw eDelAll;
+      }
+      // azioni_recupero_scadenze ha ON DELETE CASCADE
+      const { error } = await supabase
+        .from("azioni_recupero")
+        .delete()
+        .eq("id", deleteAzione.id);
+      if (error) throw error;
+      toast.success("Azione eliminata");
+      setDeleteAzione(null);
+      invalidateRecupero();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Errore eliminazione";
+      toast.error(msg);
+    } finally {
+      setDeleting(false);
+    }
   }
 
   function openNuova(tipo: TipoAzione) {
@@ -268,8 +337,11 @@ export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string })
                     azione={a}
                     operatoreName={a.operatore_id ? operatoreMap[a.operatore_id] : null}
                     highlight
+                    canEdit={canEditAzione(a)}
                     onChangeEsito={(e) => updateEsito(a.id, e)}
                     onViewEmail={() => setViewEmail(a)}
+                    onEdit={() => setEditAzione(a)}
+                    onDelete={() => setDeleteAzione(a)}
                   />
                 ))}
               </div>
@@ -287,8 +359,11 @@ export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string })
                     key={a.id}
                     azione={a}
                     operatoreName={a.operatore_id ? operatoreMap[a.operatore_id] : null}
+                    canEdit={canEditAzione(a)}
                     onChangeEsito={(e) => updateEsito(a.id, e)}
                     onViewEmail={() => setViewEmail(a)}
+                    onEdit={() => setEditAzione(a)}
+                    onDelete={() => setDeleteAzione(a)}
                   />
                 ))}
               </div>
@@ -328,6 +403,49 @@ export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string })
           )}
         </DialogContent>
       </Dialog>
+
+      {editAzione && (
+        <ModificaAzioneDialog
+          key={editAzione.id}
+          open={!!editAzione}
+          onOpenChange={(v) => !v && setEditAzione(null)}
+          azione={editAzione as AzioneModificabile}
+          onSaved={invalidateRecupero}
+        />
+      )}
+
+      <AlertDialog open={!!deleteAzione} onOpenChange={(v) => !v && !deleting && setDeleteAzione(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminare questa azione?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <div>
+                  {deleteAzione ? TIPO_LABEL[deleteAzione.tipo] : ""} del {deleteAzione ? fmtDateTime(deleteAzione.data_azione) : ""}.
+                  Verranno rimossi anche eventuali allegati collegati (file e righe). L'operazione è irreversibile.
+                </div>
+                {deleteAzione?.tipo === "email" && deleteAzione.livello_sollecito != null && deleteAzione.livello_sollecito > 0 && (
+                  <div className="rounded-md border border-destructive/40 bg-destructive/10 text-destructive p-3 text-sm font-medium">
+                    Questa è un'email di sollecito (livello {deleteAzione.livello_sollecito}).
+                    Eliminandola lo stadio di escalation del cliente verrà ricalcolato e potrebbe abbassarsi
+                    (incidendo anche sull'icona "avvisato"). Procedere?
+                  </div>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleDelete(); }}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "Eliminazione…" : "Elimina"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -347,14 +465,20 @@ function TimelineItem({
   azione,
   operatoreName,
   highlight,
+  canEdit,
   onChangeEsito,
   onViewEmail,
+  onEdit,
+  onDelete,
 }: {
   azione: Azione;
   operatoreName: string | null;
   highlight?: boolean;
+  canEdit: boolean;
   onChangeEsito: (e: Esito) => void;
   onViewEmail: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
 }) {
   const Icon = TIPO_ICON[azione.tipo] ?? Activity;
   const [showAllegati, setShowAllegati] = useState(false);
@@ -373,6 +497,9 @@ function TimelineItem({
             )}
             {azione.importo_riferimento != null && Number(azione.importo_riferimento) > 0 && (
               <span className="text-xs text-muted-foreground">· rif. {fmtEuro(azione.importo_riferimento)}</span>
+            )}
+            {azione.tipo === "email" && azione.livello_sollecito != null && azione.livello_sollecito > 0 && (
+              <Badge variant="outline" className="text-[10px] h-5">Sollecito {azione.livello_sollecito}</Badge>
             )}
           </div>
           {azione.note && (
@@ -406,6 +533,22 @@ function TimelineItem({
               ))}
             </SelectContent>
           </Select>
+          {canEdit && (
+            <div className="flex gap-1">
+              <Button size="icon" variant="ghost" className="size-7" onClick={onEdit} title="Modifica">
+                <Pencil className="size-3.5" />
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="size-7 text-destructive hover:text-destructive"
+                onClick={onDelete}
+                title="Elimina"
+              >
+                <Trash2 className="size-3.5" />
+              </Button>
+            </div>
+          )}
         </div>
       </div>
       {showAllegati && (
