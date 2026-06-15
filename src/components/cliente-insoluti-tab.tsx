@@ -74,6 +74,14 @@ export function ClienteInsolutiTab({ cliente, defaultSubTab }: { cliente: { id: 
   const isStoreManager = role === "store_manager";
   const isAdminOrApprov = role === "amministratore" || role === "approvatore_liv1" || role === "approvatore_liv2" || role === "approvatore_liv3";
   const canEditAssicurazioniAllegati = roles.includes("amministratore") || roles.includes("amministrazione");
+  // Stessa regola degli allegati estesa: chi puo gestire (creare/modificare/eliminare) polizze e pratiche
+  const canManageAssicPratiche =
+    roles.includes("amministratore") ||
+    roles.includes("amministrazione") ||
+    roles.includes("direzione") ||
+    roles.includes("approvatore_liv1") ||
+    roles.includes("approvatore_liv2") ||
+    roles.includes("approvatore_liv3");
 
   return (
     <div className="space-y-4">
