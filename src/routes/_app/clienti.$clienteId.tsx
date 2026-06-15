@@ -566,6 +566,18 @@ function ClienteDetail() {
           <ClienteAttivitaRecuperoTab clienteId={clienteId} />
         </TabsContent>
 
+        <TabsContent value="allegati">
+          <Card className="p-6">
+            <AllegatiSection
+              entitaTipo="cliente"
+              entitaId={clienteId}
+              clienteId={clienteId}
+              canEdit
+              title="Documenti del cliente"
+            />
+          </Card>
+        </TabsContent>
+
         <TabsContent value="privacy">
           <PrivacyTab cliente={cliente} onUpdated={() => qc.invalidateQueries({ queryKey: ["cliente", clienteId] })} />
         </TabsContent>
