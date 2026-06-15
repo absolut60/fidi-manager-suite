@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { classificaScadenza } from "@/lib/scadenze";
+import { AllegatiSection } from "@/components/allegati-section";
 
 function fmtEuro(v: unknown): string {
   if (v == null || v === "") return "—";
