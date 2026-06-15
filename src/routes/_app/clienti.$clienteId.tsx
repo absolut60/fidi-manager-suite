@@ -28,6 +28,7 @@ import { ClienteCantieriTab } from "@/components/cliente-cantieri-tab";
 import { ClienteStoricoFidoTab } from "@/components/cliente-storico-fido-tab";
 import { ClienteInsolutiTab } from "@/components/cliente-insoluti-tab";
 import { ClienteAttivitaRecuperoTab } from "@/components/cliente-attivita-recupero-tab";
+import { AllegatiSection } from "@/components/allegati-section";
 import { ClienteFatturato } from "@/components/cliente-fatturato";
 import { formatEuro } from "@/lib/fidi";
 import { classificaScadenza } from "@/lib/scadenze";
@@ -40,7 +41,7 @@ import { CategoriaSelect } from "@/components/categoria-select";
 
 
 
-const TAB_VALUES = ["riepilogo", "anagrafica", "contatti", "cantieri", "storico", "insoluti", "attivita", "privacy"] as const;
+const TAB_VALUES = ["riepilogo", "anagrafica", "contatti", "cantieri", "storico", "insoluti", "attivita", "allegati", "privacy"] as const;
 const INSOLUTI_SUB_VALUES = ["riepilogo", "scadenziario", "solleciti", "legali", "assicurazioni"] as const;
 
 export const Route = createFileRoute("/_app/clienti/$clienteId")({
@@ -431,6 +432,7 @@ function ClienteDetail() {
           <TabsTrigger value="storico">Fido</TabsTrigger>
           <TabsTrigger value="insoluti">Dati Rischio</TabsTrigger>
           <TabsTrigger value="attivita">Attività recupero</TabsTrigger>
+          <TabsTrigger value="allegati">Allegati</TabsTrigger>
           <TabsTrigger value="privacy">Privacy</TabsTrigger>
         </TabsList>
 
@@ -562,6 +564,18 @@ function ClienteDetail() {
 
         <TabsContent value="attivita">
           <ClienteAttivitaRecuperoTab clienteId={clienteId} />
+        </TabsContent>
+
+        <TabsContent value="allegati">
+          <Card className="p-6">
+            <AllegatiSection
+              entitaTipo="cliente"
+              entitaId={clienteId}
+              clienteId={clienteId}
+              canEdit
+              title="Documenti del cliente"
+            />
+          </Card>
         </TabsContent>
 
         <TabsContent value="privacy">

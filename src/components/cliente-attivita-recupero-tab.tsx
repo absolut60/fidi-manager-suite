@@ -2,9 +2,10 @@ import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  Send, Plus, Bell, Phone, StickyNote, FileText, Mail, Activity, Eye, CalendarClock,
+  Send, Plus, Bell, Phone, StickyNote, FileText, Mail, Activity, Eye, CalendarClock, Paperclip,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { AllegatiSection } from "@/components/allegati-section";
 
 import { classificaScadenza } from "@/lib/scadenze";
 import { Card } from "@/components/ui/card";
@@ -356,44 +357,68 @@ function TimelineItem({
   onViewEmail: () => void;
 }) {
   const Icon = TIPO_ICON[azione.tipo] ?? Activity;
+  const [showAllegati, setShowAllegati] = useState(false);
   return (
-    <div className={`rounded-md border p-3 flex gap-3 ${highlight ? "border-yellow-500/40 bg-yellow-500/5" : "border-border bg-background"}`}>
-      <div className={`size-9 rounded-md flex items-center justify-center shrink-0 ${highlight ? "bg-yellow-500/15 text-yellow-700 dark:text-yellow-400" : "bg-muted text-muted-foreground"}`}>
-        <Icon className="size-4" />
-      </div>
-      <div className="flex-1 min-w-0 space-y-1">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-medium text-sm">{TIPO_LABEL[azione.tipo]}</span>
-          <span className="text-xs text-muted-foreground">{fmtDateTime(azione.data_azione)}</span>
-          {operatoreName && (
-            <span className="text-xs text-muted-foreground">· {operatoreName}</span>
-          )}
-          {azione.importo_riferimento != null && Number(azione.importo_riferimento) > 0 && (
-            <span className="text-xs text-muted-foreground">· rif. {fmtEuro(azione.importo_riferimento)}</span>
-          )}
+    <div className={`rounded-md border p-3 ${highlight ? "border-yellow-500/40 bg-yellow-500/5" : "border-border bg-background"}`}>
+      <div className="flex gap-3">
+        <div className={`size-9 rounded-md flex items-center justify-center shrink-0 ${highlight ? "bg-yellow-500/15 text-yellow-700 dark:text-yellow-400" : "bg-muted text-muted-foreground"}`}>
+          <Icon className="size-4" />
         </div>
-        {azione.note && (
-          <p className="text-sm text-foreground/80 whitespace-pre-wrap line-clamp-3">{azione.note}</p>
-        )}
-        {(azione.tipo === "email" || azione.tipo === "promemoria_scadenza") && azione.email_corpo_html && (
-          <Button variant="link" size="sm" className="h-auto p-0 gap-1 text-xs" onClick={onViewEmail}>
-            <Eye className="size-3" /> Vedi email inviata
-          </Button>
-        )}
+        <div className="flex-1 min-w-0 space-y-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-medium text-sm">{TIPO_LABEL[azione.tipo]}</span>
+            <span className="text-xs text-muted-foreground">{fmtDateTime(azione.data_azione)}</span>
+            {operatoreName && (
+              <span className="text-xs text-muted-foreground">· {operatoreName}</span>
+            )}
+            {azione.importo_riferimento != null && Number(azione.importo_riferimento) > 0 && (
+              <span className="text-xs text-muted-foreground">· rif. {fmtEuro(azione.importo_riferimento)}</span>
+            )}
+          </div>
+          {azione.note && (
+            <p className="text-sm text-foreground/80 whitespace-pre-wrap line-clamp-3">{azione.note}</p>
+          )}
+          <div className="flex items-center gap-3 flex-wrap">
+            {(azione.tipo === "email" || azione.tipo === "promemoria_scadenza") && azione.email_corpo_html && (
+              <Button variant="link" size="sm" className="h-auto p-0 gap-1 text-xs" onClick={onViewEmail}>
+                <Eye className="size-3" /> Vedi email inviata
+              </Button>
+            )}
+            <Button
+              variant="link"
+              size="sm"
+              className="h-auto p-0 gap-1 text-xs"
+              onClick={() => setShowAllegati((v) => !v)}
+            >
+              <Paperclip className="size-3" /> {showAllegati ? "Nascondi allegati" : "Allegati"}
+            </Button>
+          </div>
+        </div>
+        <div className="shrink-0 flex flex-col items-end gap-1.5">
+          {esitoBadge(azione.esito)}
+          <Select value={azione.esito} onValueChange={(v) => onChangeEsito(v as Esito)}>
+            <SelectTrigger className="h-7 w-[150px] text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {ESITI.map((e) => (
+                <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
-      <div className="shrink-0 flex flex-col items-end gap-1.5">
-        {esitoBadge(azione.esito)}
-        <Select value={azione.esito} onValueChange={(v) => onChangeEsito(v as Esito)}>
-          <SelectTrigger className="h-7 w-[150px] text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {ESITI.map((e) => (
-              <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      {showAllegati && (
+        <div className="mt-3 ml-12 border-t pt-3">
+          <AllegatiSection
+            entitaTipo="azione_recupero"
+            entitaId={azione.id}
+            clienteId={azione.cliente_id}
+            canEdit
+            compact
+          />
+        </div>
+      )}
     </div>
   );
 }

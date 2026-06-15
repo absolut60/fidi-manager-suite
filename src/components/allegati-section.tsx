@@ -55,6 +55,7 @@ type Props = {
   clienteId: string;
   canEdit?: boolean;
   title?: string;
+  compact?: boolean;
 };
 
 function fmtBytes(n: number | null): string {
@@ -77,7 +78,7 @@ function sanitize(name: string) {
 }
 
 export function AllegatiSection({
-  entitaTipo, entitaId, clienteId, canEdit = true, title = "Allegati",
+  entitaTipo, entitaId, clienteId, canEdit = true, title = "Allegati", compact = false,
 }: Props) {
   const qc = useQueryClient();
   const { user, role } = useAuth();
@@ -173,7 +174,7 @@ export function AllegatiSection({
   }
 
   return (
-    <div className="space-y-3">
+    <div className={compact ? "space-y-2" : "space-y-3"}>
       <div className="flex items-center gap-2">
         <Paperclip className="size-4 text-muted-foreground" />
         <h3 className="text-sm font-medium">{title} {data ? `(${data.length})` : ""}</h3>

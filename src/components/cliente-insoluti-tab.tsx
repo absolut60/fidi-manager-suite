@@ -1065,6 +1065,15 @@ function AssicurazioniSection({ clienteId, isAdmin }: { clienteId: string; isAdm
                   )}
                 </div>
               </div>
+              <div className="mt-3 border-t pt-3">
+                <AllegatiSection
+                  entitaTipo="assicurazione"
+                  entitaId={p.id}
+                  clienteId={clienteId}
+                  canEdit={isAdmin}
+                  compact
+                />
+              </div>
             </Card>
           ))}
         </div>
