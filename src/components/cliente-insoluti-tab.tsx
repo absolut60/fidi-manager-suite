@@ -873,72 +873,8 @@ function AggiornamentoPraticaDialog({ pratica, onClose, onSaved }: { pratica: Pr
   );
 }
 
-function PraticaAllegati({ praticaId, canEdit }: { praticaId: string; canEdit: boolean }) {
-  const qc = useQueryClient();
-  const inputRef = useRef<HTMLInputElement>(null);
-  const { data } = useQuery({
-    queryKey: ["pratica-allegati", praticaId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("pratiche_legali_allegati" as never)
-        .select("id, nome_file, storage_path, size_bytes, created_at")
-        .eq("pratica_id", praticaId)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data as Array<{ id: string; nome_file: string; storage_path: string; size_bytes: number | null; created_at: string }>;
-    },
-  });
-  const upload = useMutation({
-    mutationFn: async (file: File) => {
-      const { data: { user } } = await supabase.auth.getUser();
-      const path = `pratiche/${praticaId}/${Date.now()}_${file.name.replace(/[^\w.\-]/g, "_")}`;
-      const { error: eUp } = await supabase.storage.from("pratiche-legali").upload(path, file);
-      if (eUp) throw eUp;
-      const { error } = await supabase.from("pratiche_legali_allegati" as never).insert({
-        pratica_id: praticaId,
-        nome_file: file.name,
-        storage_path: path,
-        mime_type: file.type || null,
-        size_bytes: file.size,
-        caricato_da: user?.id ?? null,
-      } as never);
-      if (error) throw error;
-    },
-    onSuccess: () => { toast.success("Allegato caricato"); qc.invalidateQueries({ queryKey: ["pratica-allegati", praticaId] }); },
-    onError: (e: Error) => toast.error(e.message),
-  });
-  async function downloadFile(path: string, name: string) {
-    const { data, error } = await supabase.storage.from("pratiche-legali").createSignedUrl(path, 60);
-    if (error || !data) { toast.error("Errore download"); return; }
-    const a = document.createElement("a");
-    a.href = data.signedUrl; a.download = name; a.target = "_blank"; a.click();
-  }
-  return (
-    <div className="mt-3 border-t pt-3">
-      <div className="flex items-center justify-between gap-2 mb-2">
-        <span className="text-xs font-medium flex items-center gap-1"><FileText className="size-3.5" /> Allegati ({data?.length ?? 0})</span>
-        {canEdit && (
-          <>
-            <input ref={inputRef} type="file" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) upload.mutate(f); if (inputRef.current) inputRef.current.value = ""; }} />
-            <Button size="sm" variant="outline" onClick={() => inputRef.current?.click()} disabled={upload.isPending}>
-              {upload.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />} Allega
-            </Button>
-          </>
-        )}
-      </div>
-      {data?.length ? (
-        <ul className="space-y-1">
-          {data.map((a) => (
-            <li key={a.id} className="flex items-center justify-between gap-2 text-xs">
-              <button onClick={() => downloadFile(a.storage_path, a.nome_file)} className="text-primary hover:underline truncate text-left">{a.nome_file}</button>
-              <span className="text-muted-foreground shrink-0">{a.size_bytes ? `${(a.size_bytes / 1024).toFixed(1)} KB` : ""}</span>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-    </div>
-  );
-}
+
+
 
 
 function NuovaPraticaDialog({ clienteId, onClose, onSaved }: { clienteId: string; onClose: () => void; onSaved: () => void }) {
