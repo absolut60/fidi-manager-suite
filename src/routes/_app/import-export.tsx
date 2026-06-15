@@ -376,9 +376,11 @@ function ImportExportPage() {
         <ExportCard />
       </div>
 
-      <div className="grid grid-cols-1 gap-6">
-        <ScadenziarioAssicurazioniImportCard />
-      </div>
+      {/* Sezione "C - Importa Scadenziario e Assicurazioni" (versione vecchia a doppio foglio)
+          rimossa dalla UI su richiesta. Il componente ScadenziarioAssicurazioniImportCard
+          e i parser parseScadenziarioSheet/parseAssicurazioneSheet restano nel codice (inattivi)
+          per non rompere eventuali helper condivisi. */}
+
 
       <div className="grid grid-cols-1 gap-6">
         <BloccoFidoAssicurazioneImportCard />
