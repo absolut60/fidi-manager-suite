@@ -405,12 +405,32 @@ function ScadenziarioPage() {
 
       {/* KPI */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-        <KpiCard label="Totale scaduto" value={fmtEuro(kpi.totScad)} icon={AlertTriangle} tone="destructive" />
-        <KpiCard label="Clienti con scaduto" value={String(kpi.clientiScad)} icon={FileText} tone="warning" />
+        <KpiCard
+          label="Totale scaduto"
+          value={fmtEuro(mostraACredito ? kpi.totScad + kpi.totCrediti : kpi.totScad)}
+          icon={AlertTriangle}
+          tone="destructive"
+          sublabel={mostraACredito ? (kpi.totCrediti < 0 ? `netto note di credito (${fmtEuro(kpi.totCrediti)})` : "netto note di credito") : undefined}
+          tooltip={mostraACredito ? `Scaduto debitori: ${fmtEuro(kpi.totScad)} − Note di credito: ${fmtEuro(Math.abs(kpi.totCrediti))} = Netto: ${fmtEuro(kpi.totScad + kpi.totCrediti)}` : undefined}
+        />
+        <KpiCard
+          label="Clienti con scaduto"
+          value={String(kpi.clientiScad)}
+          icon={FileText}
+          tone="warning"
+          sublabel={mostraACredito && kpi.nCrediti > 0 ? `di cui ${kpi.nCrediti} a credito` : undefined}
+        />
         <KpiCard label="Totale a scadere" value={fmtEuro(kpi.totAScad)} icon={Calendar} tone="info" />
         <KpiCard label="Clienti bloccati" value={String(kpi.bloccati)} icon={Ban} tone="destructive" />
         <KpiCard label="Clienti in legale" value={String(kpi.inLegale)} icon={Scale} tone="warning" />
       </div>
+      {mostraACredito && kpi.nCrediti > 0 && (
+        <p className="text-xs text-muted-foreground -mt-2">
+          Scomposizione totale scaduto: <span className="font-medium text-foreground">{fmtEuro(kpi.totScad)}</span> (debitori)
+          {" − "}<span className="font-medium text-emerald-700 dark:text-emerald-400">{fmtEuro(Math.abs(kpi.totCrediti))}</span> (note di credito)
+          {" = "}<span className="font-semibold text-foreground">{fmtEuro(kpi.totScad + kpi.totCrediti)}</span> netto
+        </p>
+      )}
 
       {/* Filtri */}
       <Card className="p-4 space-y-4">
