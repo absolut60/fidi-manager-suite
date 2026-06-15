@@ -169,7 +169,7 @@ export function AllegatiSection({
       ) : (
         <ul className="divide-y border rounded-md">
           {data.map((a) => {
-            const canDelete = canEdit && (isAdmin || a.caricato_da === user?.id);
+            const canDelete = canManageAll || a.caricato_da === user?.id;
             const previewable = isPreviewable(a.mime_type);
             return (
               <li key={a.id} className={cn("flex items-center gap-3 text-sm", itemPad)}>
