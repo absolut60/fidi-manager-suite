@@ -2,9 +2,10 @@ import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  Send, Plus, Bell, Phone, StickyNote, FileText, Mail, Activity, Eye, CalendarClock,
+  Send, Plus, Bell, Phone, StickyNote, FileText, Mail, Activity, Eye, CalendarClock, Paperclip,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { AllegatiSection } from "@/components/allegati-section";
 
 import { classificaScadenza } from "@/lib/scadenze";
 import { Card } from "@/components/ui/card";
