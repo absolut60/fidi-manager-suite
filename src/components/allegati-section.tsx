@@ -55,6 +55,7 @@ type Props = {
   clienteId: string;
   canEdit?: boolean;
   title?: string;
+  compact?: boolean;
 };
 
 function fmtBytes(n: number | null): string {
