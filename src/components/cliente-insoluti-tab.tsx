@@ -4,7 +4,7 @@ import { z } from "zod";
 import { toast } from "sonner";
 import {
   AlertTriangle, AlertCircle, Plus, Calendar, Mail, Phone, FileText, Scale,
-  Shield, Bell, CheckCircle2, Clock, Gavel, ShieldCheck, Loader2,
+  Shield, Bell, CheckCircle2, Clock, Gavel, ShieldCheck, Loader2, Pencil, Trash2, Info,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -15,6 +15,10 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,7 +31,27 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { classificaScadenza } from "@/lib/scadenze";
-import { AllegatiSection } from "@/components/allegati-section";
+import { AllegatiSection, ALLEGATI_BUCKET } from "@/components/allegati-section";
+
+// ============================================================================
+// Helper TRANSITORI per gestione import (POUEY assicurazioni, pratiche aperte).
+// Da rimuovere quando gli import di assicurazioni/pratiche saranno disattivati.
+// ============================================================================
+function isPolizzaGestitaDaImport(p: { assicuratore?: string | null }): boolean {
+  return (p.assicuratore ?? "").trim().toUpperCase() === "POUEY";
+}
+function isPraticaARischioRicreazione(p: { stato?: string | null }): boolean {
+  // L'import inserisce solo pratiche con stato='aperta'. Se è aperta, potrebbe essere ricreata.
+  return (p.stato ?? "") === "aperta";
+}
+const CAMPI_POLIZZA_SOVRASCRITTI = new Set([
+  "importo_massimale",
+  "importo_assicurato",
+  "data_inizio",
+  "data_scadenza",
+  "stato",
+]);
+
 
 function fmtEuro(v: unknown): string {
   if (v == null || v === "") return "—";
