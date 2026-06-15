@@ -97,7 +97,7 @@ export function ClienteInsolutiTab({ cliente, defaultSubTab }: { cliente: { id: 
             <PraticheLegaliSection clienteId={cliente.id} isAdmin={role === "amministratore"} />
           </div>
         </TabsContent>}
-        {!isStoreManager && <TabsContent value="assicurazioni"><AssicurazioniSection clienteId={cliente.id} isAdmin={role === "amministratore"} /></TabsContent>}
+        {!isStoreManager && <TabsContent value="assicurazioni"><AssicurazioniSection clienteId={cliente.id} isAdmin={role === "amministratore"} canEditAllegati={canEditAssicurazioniAllegati} /></TabsContent>}
       </Tabs>
     </div>
   );
