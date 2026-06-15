@@ -198,6 +198,58 @@ export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string })
     qc.invalidateQueries({ queryKey: ["azioni-recupero-metrics"] });
   }
 
+  function canEditAzione(a: Azione): boolean {
+    return canManageAll || a.operatore_id === (user?.id ?? "__none__");
+  }
+
+  function invalidateRecupero() {
+    qc.invalidateQueries({ queryKey: ["azioni-recupero-cliente", clienteId] });
+    qc.invalidateQueries({ queryKey: ["azioni-recupero"] });
+    qc.invalidateQueries({ queryKey: ["azioni-recupero-metrics"] });
+    qc.invalidateQueries({ queryKey: ["azioni-recupero-counts"] });
+    qc.invalidateQueries({ queryKey: ["azioni-calendario"] });
+    qc.invalidateQueries({ queryKey: ["recupero-clienti"] });
+    qc.invalidateQueries({ queryKey: ["clienti-avvisati"] });
+    qc.invalidateQueries({ queryKey: ["attivita-totale-scaduto", clienteId] });
+  }
+
+  async function handleDelete() {
+    if (!deleteAzione || deleting) return;
+    setDeleting(true);
+    try {
+      // Rimuovi allegati collegati (file + righe) per non lasciare orfani
+      const { data: alleg, error: eAll } = await supabase
+        .from("allegati")
+        .select("id, storage_path")
+        .eq("entita_tipo", "azione_recupero")
+        .eq("entita_id", deleteAzione.id);
+      if (eAll) throw eAll;
+      if (alleg && alleg.length > 0) {
+        const paths = alleg.map((a) => a.storage_path).filter(Boolean);
+        if (paths.length > 0) {
+          await supabase.storage.from(ALLEGATI_BUCKET).remove(paths);
+        }
+        const ids = alleg.map((a) => a.id);
+        const { error: eDelAll } = await supabase.from("allegati").delete().in("id", ids);
+        if (eDelAll) throw eDelAll;
+      }
+      // azioni_recupero_scadenze ha ON DELETE CASCADE
+      const { error } = await supabase
+        .from("azioni_recupero")
+        .delete()
+        .eq("id", deleteAzione.id);
+      if (error) throw error;
+      toast.success("Azione eliminata");
+      setDeleteAzione(null);
+      invalidateRecupero();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Errore eliminazione";
+      toast.error(msg);
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   function openNuova(tipo: TipoAzione) {
     setCreaTipo(tipo);
     setCreaOpen(true);
