@@ -432,6 +432,7 @@ function ClienteDetail() {
           <TabsTrigger value="storico">Fido</TabsTrigger>
           <TabsTrigger value="insoluti">Dati Rischio</TabsTrigger>
           <TabsTrigger value="attivita">Attività recupero</TabsTrigger>
+          <TabsTrigger value="allegati">Allegati</TabsTrigger>
           <TabsTrigger value="privacy">Privacy</TabsTrigger>
         </TabsList>
 
