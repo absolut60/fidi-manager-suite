@@ -14,6 +14,70 @@ export type Database = {
   }
   public: {
     Tables: {
+      allegati: {
+        Row: {
+          caricato_da: string | null
+          cliente_id: string | null
+          created_at: string
+          descrizione: string | null
+          dimensione_bytes: number | null
+          entita_id: string
+          entita_tipo: string
+          id: string
+          mime_type: string | null
+          nome_file: string
+          storage_path: string
+        }
+        Insert: {
+          caricato_da?: string | null
+          cliente_id?: string | null
+          created_at?: string
+          descrizione?: string | null
+          dimensione_bytes?: number | null
+          entita_id: string
+          entita_tipo: string
+          id?: string
+          mime_type?: string | null
+          nome_file: string
+          storage_path: string
+        }
+        Update: {
+          caricato_da?: string | null
+          cliente_id?: string | null
+          created_at?: string
+          descrizione?: string | null
+          dimensione_bytes?: number | null
+          entita_id?: string
+          entita_tipo?: string
+          id?: string
+          mime_type?: string | null
+          nome_file?: string
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "allegati_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "allegati_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti_con_rischio"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "allegati_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+        ]
+      }
       anomalie_import: {
         Row: {
           campo: string
