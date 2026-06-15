@@ -38,7 +38,7 @@ type NavItem = {
   to: string;
   label: string;
   icon: typeof LayoutDashboard;
-  roles?: Array<"admin" | "approvatore" | "store_manager">;
+  roles?: Array<"admin" | "approvatore" | "store_manager" | "amministrazione">;
   group?: "main" | "approvazioni" | "admin";
 };
 
@@ -58,7 +58,7 @@ const NAV: NavItem[] = [
   { to: "/recupero-crediti-campagne", label: "Invii massivi", icon: Megaphone, roles: ["admin", "approvatore", "store_manager"], group: "approvazioni" },
   { to: "/recupero-crediti-andamento", label: "Andamento / Storico", icon: TrendingUp, roles: ["admin", "approvatore", "store_manager"], group: "approvazioni" },
   { to: "/privacy", label: "Privacy", icon: FileSignature, roles: ["admin", "approvatore", "store_manager"], group: "approvazioni" },
-  { to: "/import-export", label: "Import / Export", icon: FileSpreadsheet, roles: ["admin"], group: "approvazioni" },
+  { to: "/import-export", label: "Import / Export", icon: FileSpreadsheet, roles: ["admin", "amministrazione"], group: "approvazioni" },
   { to: "/whatsapp", label: "WhatsApp", icon: MessageCircle, roles: ["admin"], group: "approvazioni" },
   { to: "/template-email", label: "Template Email", icon: Mail, roles: ["admin"], group: "admin" },
   { to: "/impostazioni", label: "Impostazioni", icon: Settings, roles: ["admin"], group: "admin" },
@@ -75,12 +75,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isAdmin = role === "amministratore";
   const isApprovatore = role?.startsWith("approvatore_liv") ?? false;
   const isStoreManager = role === "store_manager";
+  const isAmministrazione = role === "amministrazione";
 
   const visibleNav = NAV.filter((item) => {
     if (!item.roles) return true;
     if (item.roles.includes("admin") && isAdmin) return true;
     if (item.roles.includes("approvatore") && (isAdmin || isApprovatore)) return true;
     if (item.roles.includes("store_manager") && (isAdmin || isApprovatore || isStoreManager)) return true;
+    if (item.roles.includes("amministrazione") && isAmministrazione) return true;
     return false;
   });
 
