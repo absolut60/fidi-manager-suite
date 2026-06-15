@@ -2778,6 +2778,20 @@ export type Database = {
           totale_scaduto: number
         }[]
       }
+      get_clienti_senza_email_con_scadenze: {
+        Args: never
+        Returns: {
+          cliente_id: string
+          codice_gestionale: string
+          email: string
+          n_scadenze_aperte: number
+          pec: string
+          ragione_sociale: string
+          store_nome: string
+          totale_a_scadere: number
+          totale_scaduto: number
+        }[]
+      }
       get_coerenza_escalation: {
         Args: { _cliente_ids: string[]; _livello_precedente: number }
         Returns: {
