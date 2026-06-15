@@ -362,10 +362,17 @@ function ScadenziarioPage() {
   // prima del toggle "escludi legale", così rimane visibile anche quando li nasconde).
   const kpi = useMemo(() => {
     let totScad = 0, totAScad = 0, clientiScad = 0, bloccati = 0;
+    let nCrediti = 0, totCrediti = 0;
     rows.forEach((r) => {
-      totScad += r.totScad;
+      // Totali scaduto: SOLO saldi positivi, per non sottostimare l'esposizione reale
+      if (r.totScad > 0) {
+        totScad += r.totScad;
+        clientiScad += 1;
+      } else if (r.totScad < 0) {
+        nCrediti += 1;
+        totCrediti += r.totScad;
+      }
       totAScad += r.totAScad;
-      if (r.nScadute > 0) clientiScad += 1;
       if (r.cliente.bloccato) bloccati += 1;
     });
     // Clienti in legale con scadenze aperte (ignora toggle escludiLegale)
@@ -379,7 +386,7 @@ function ScadenziarioPage() {
       if (cat === "pagato") return;
       legaleIds.add(cli.id);
     });
-    return { totScad, totAScad, clientiScad, bloccati, inLegale: legaleIds.size };
+    return { totScad, totAScad, clientiScad, bloccati, inLegale: legaleIds.size, nCrediti, totCrediti };
   }, [rows, scad, clientiMap, storeId, escludiBonifici]);
 
   function apriCliente(id: string) {
