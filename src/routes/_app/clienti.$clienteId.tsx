@@ -28,6 +28,7 @@ import { ClienteCantieriTab } from "@/components/cliente-cantieri-tab";
 import { ClienteStoricoFidoTab } from "@/components/cliente-storico-fido-tab";
 import { ClienteInsolutiTab } from "@/components/cliente-insoluti-tab";
 import { ClienteAttivitaRecuperoTab } from "@/components/cliente-attivita-recupero-tab";
+import { AllegatiSection } from "@/components/allegati-section";
 import { ClienteFatturato } from "@/components/cliente-fatturato";
 import { formatEuro } from "@/lib/fidi";
 import { classificaScadenza } from "@/lib/scadenze";
