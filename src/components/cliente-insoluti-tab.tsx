@@ -46,9 +46,10 @@ const TIPO_PRATICA = ["decreto_ingiuntivo", "pignoramento", "precetto", "azione_
 const STATO_PRATICA = ["aperta", "in_corso", "decreto_ottenuto", "pignoramento_eseguito", "pignoramento_negativo", "chiusa_pagamento", "chiusa_perdita", "sospesa"] as const;
 
 export function ClienteInsolutiTab({ cliente, defaultSubTab }: { cliente: { id: string; bloccato?: boolean; in_gestione_legale?: boolean; data_blocco?: string | null; motivo_blocco?: string | null }; defaultSubTab?: string }) {
-  const { role } = useAuth();
+  const { role, roles } = useAuth();
   const isStoreManager = role === "store_manager";
   const isAdminOrApprov = role === "amministratore" || role === "approvatore_liv1" || role === "approvatore_liv2" || role === "approvatore_liv3";
+  const canEditAssicurazioniAllegati = roles.includes("amministratore") || roles.includes("amministrazione");
 
   return (
     <div className="space-y-4">
