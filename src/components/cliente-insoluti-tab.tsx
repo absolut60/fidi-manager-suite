@@ -728,7 +728,7 @@ function NoteLegaliGestionaliCard({ clienteId }: { clienteId: string }) {
 
 type PraticaRow = { id: string; tipo: string; stato: string; importo_contestato: number | null; importo_recuperato: number | null; riferimento_avvocato: string | null; studio_legale: string | null; note: string | null; data_apertura: string; data_chiusura: string | null; updated_at?: string | null };
 
-function PraticheLegaliSection({ clienteId, isAdmin }: { clienteId: string; isAdmin: boolean }) {
+function PraticheLegaliSection({ clienteId, canManage }: { clienteId: string; canManage: boolean }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
 
@@ -749,7 +749,7 @@ function PraticheLegaliSection({ clienteId, isAdmin }: { clienteId: string; isAd
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold">Pratiche Legali</h3>
-        {isAdmin && (
+        {canManage && (
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button size="sm" className="gap-1.5"><Plus className="size-4" /> Nuova pratica</Button>
@@ -763,7 +763,7 @@ function PraticheLegaliSection({ clienteId, isAdmin }: { clienteId: string; isAd
       ) : (
         <div className="space-y-2">
           {pratiche.map((p) => (
-            <PraticaCard key={p.id} pratica={p} clienteId={clienteId} isAdmin={isAdmin} />
+            <PraticaCard key={p.id} pratica={p} clienteId={clienteId} canManage={canManage} />
           ))}
         </div>
       )}
@@ -771,16 +771,53 @@ function PraticheLegaliSection({ clienteId, isAdmin }: { clienteId: string; isAd
   );
 }
 
-function PraticaCard({ pratica: p, clienteId, isAdmin }: { pratica: PraticaRow; clienteId: string; isAdmin: boolean }) {
+function PraticaCard({ pratica: p, clienteId, canManage }: { pratica: PraticaRow; clienteId: string; canManage: boolean }) {
   const qc = useQueryClient();
   const [openChange, setOpenChange] = useState(false);
   const [openAggior, setOpenAggior] = useState(false);
+  const [openEdit, setOpenEdit] = useState(false);
+  const [openDelete, setOpenDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [showTimeline, setShowTimeline] = useState(false);
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["pratiche-legali", clienteId] });
     qc.invalidateQueries({ queryKey: ["pratica-timeline", p.id] });
     qc.invalidateQueries({ queryKey: ["pratica-allegati", p.id] });
   };
+
+  async function handleDelete() {
+    if (deleting) return;
+    setDeleting(true);
+    try {
+      // Cascade applicativo: elimina allegati (entita_tipo='pratica_legale') + file dal bucket
+      const { data: alleg, error: eAll } = await supabase
+        .from("allegati")
+        .select("id, storage_path")
+        .eq("entita_tipo", "pratica_legale")
+        .eq("entita_id", p.id);
+      if (eAll) throw eAll;
+      if (alleg && alleg.length > 0) {
+        const paths = alleg.map((a) => a.storage_path).filter(Boolean);
+        if (paths.length > 0) await supabase.storage.from(ALLEGATI_BUCKET).remove(paths);
+        const ids = alleg.map((a) => a.id);
+        const { error: eDelAll } = await supabase.from("allegati").delete().in("id", ids);
+        if (eDelAll) throw eDelAll;
+      }
+      // pratiche_legali_allegati e storico_pratiche_legali: cascade DB. reminder.pratica_id -> NULL
+      const { error } = await supabase.from("pratiche_legali" as never).delete().eq("id", p.id);
+      if (error) throw error;
+      toast.success("Pratica eliminata");
+      setOpenDelete(false);
+      invalidate();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Errore eliminazione");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  const rischioRicreazione = isPraticaARischioRicreazione(p);
+
   return (
     <Card className="p-4">
       <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -802,7 +839,7 @@ function PraticaCard({ pratica: p, clienteId, isAdmin }: { pratica: PraticaRow; 
           </div>
           {p.note && <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap">{p.note}</p>}
         </div>
-        {isAdmin && (
+        {canManage && (
           <div className="flex flex-col gap-1.5">
             <Dialog open={openAggior} onOpenChange={setOpenAggior}>
               <DialogTrigger asChild>
@@ -816,6 +853,15 @@ function PraticaCard({ pratica: p, clienteId, isAdmin }: { pratica: PraticaRow; 
               </DialogTrigger>
               <CambiaStatoPraticaDialog pratica={p} onClose={() => setOpenChange(false)} onSaved={invalidate} />
             </Dialog>
+            <Dialog open={openEdit} onOpenChange={setOpenEdit} key={p.id}>
+              <DialogTrigger asChild>
+                <Button size="sm" variant="outline" className="gap-1.5"><Pencil className="size-3.5" /> Modifica</Button>
+              </DialogTrigger>
+              <ModificaPraticaDialog pratica={p} onClose={() => setOpenEdit(false)} onSaved={invalidate} />
+            </Dialog>
+            <Button size="sm" variant="outline" className="gap-1.5 text-destructive hover:text-destructive" onClick={() => setOpenDelete(true)}>
+              <Trash2 className="size-3.5" /> Elimina
+            </Button>
           </div>
         )}
       </div>
@@ -833,9 +879,122 @@ function PraticaCard({ pratica: p, clienteId, isAdmin }: { pratica: PraticaRow; 
           canEdit
         />
       </div>
+
+      <AlertDialog open={openDelete} onOpenChange={(v) => !v && !deleting && setOpenDelete(false)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminare la pratica?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">
+                Verra eliminata definitivamente la pratica <strong>{p.tipo.replace(/_/g, " ")}</strong>,
+                la sua timeline e tutti gli allegati collegati (file inclusi).
+              </span>
+              {rischioRicreazione && (
+                <span className="block rounded-md border border-orange-500/40 bg-orange-500/10 p-2 text-orange-800 dark:text-orange-200">
+                  ⚠ Questa pratica e <strong>aperta</strong> e potrebbe essere <strong>ricreata al prossimo import</strong> se la riga del cliente porta ancora una nota legale. Procedere?
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleDelete(); }}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "Eliminazione…" : "Elimina pratica"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
+
+function ModificaPraticaDialog({ pratica, onClose, onSaved }: { pratica: PraticaRow; onClose: () => void; onSaved: () => void }) {
+  const [form, setForm] = useState({
+    tipo: pratica.tipo as typeof TIPO_PRATICA[number],
+    stato: pratica.stato as typeof STATO_PRATICA[number],
+    data_apertura: pratica.data_apertura ?? "",
+    data_chiusura: pratica.data_chiusura ?? "",
+    importo_contestato: pratica.importo_contestato != null ? String(pratica.importo_contestato) : "",
+    importo_recuperato: pratica.importo_recuperato != null ? String(pratica.importo_recuperato) : "",
+    riferimento_avvocato: pratica.riferimento_avvocato ?? "",
+    studio_legale: pratica.studio_legale ?? "",
+    numero_fascicolo: (pratica as PraticaRow & { numero_fascicolo?: string | null }).numero_fascicolo ?? "",
+    note: pratica.note ?? "",
+    esito: (pratica as PraticaRow & { esito?: string | null }).esito ?? "",
+  });
+  const save = useMutation({
+    mutationFn: async () => {
+      const updates: Record<string, unknown> = {
+        tipo: form.tipo,
+        stato: form.stato,
+        data_apertura: form.data_apertura || null,
+        data_chiusura: form.data_chiusura || null,
+        importo_contestato: form.importo_contestato ? Number(form.importo_contestato) : null,
+        importo_recuperato: form.importo_recuperato ? Number(form.importo_recuperato) : null,
+        riferimento_avvocato: form.riferimento_avvocato || null,
+        studio_legale: form.studio_legale || null,
+        numero_fascicolo: form.numero_fascicolo || null,
+        note: form.note || null,
+        esito: form.esito || null,
+      };
+      const { error } = await supabase.from("pratiche_legali" as never).update(updates as never).eq("id", pratica.id);
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("Pratica aggiornata"); onSaved(); onClose(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  return (
+    <DialogContent className="max-w-lg">
+      <DialogHeader><DialogTitle>Modifica pratica legale</DialogTitle></DialogHeader>
+      <form onSubmit={(e) => { e.preventDefault(); save.mutate(); }} className="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label>Tipo *</Label>
+            <Select value={form.tipo} onValueChange={(v) => setForm({ ...form, tipo: v as typeof TIPO_PRATICA[number] })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {TIPO_PRATICA.map((t) => <SelectItem key={t} value={t} className="capitalize">{t.replace(/_/g, " ")}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Stato *</Label>
+            <Select value={form.stato} onValueChange={(v) => setForm({ ...form, stato: v as typeof STATO_PRATICA[number] })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {STATO_PRATICA.map((s) => <SelectItem key={s} value={s} className="capitalize">{s.replace(/_/g, " ")}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5"><Label>Data apertura</Label><Input type="date" value={form.data_apertura} onChange={(e) => setForm({ ...form, data_apertura: e.target.value })} /></div>
+          <div className="space-y-1.5"><Label>Data chiusura</Label><Input type="date" value={form.data_chiusura} onChange={(e) => setForm({ ...form, data_chiusura: e.target.value })} /></div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5"><Label>Importo contestato (€)</Label><Input type="number" step="0.01" value={form.importo_contestato} onChange={(e) => setForm({ ...form, importo_contestato: e.target.value })} /></div>
+          <div className="space-y-1.5"><Label>Importo recuperato (€)</Label><Input type="number" step="0.01" value={form.importo_recuperato} onChange={(e) => setForm({ ...form, importo_recuperato: e.target.value })} /></div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5"><Label>Studio legale</Label><Input value={form.studio_legale} onChange={(e) => setForm({ ...form, studio_legale: e.target.value })} /></div>
+          <div className="space-y-1.5"><Label>Avvocato</Label><Input value={form.riferimento_avvocato} onChange={(e) => setForm({ ...form, riferimento_avvocato: e.target.value })} /></div>
+        </div>
+        <div className="space-y-1.5"><Label>N. fascicolo</Label><Input value={form.numero_fascicolo} onChange={(e) => setForm({ ...form, numero_fascicolo: e.target.value })} /></div>
+        <div className="space-y-1.5"><Label>Esito</Label><Input value={form.esito} onChange={(e) => setForm({ ...form, esito: e.target.value })} /></div>
+        <div className="space-y-1.5"><Label>Note</Label><Textarea rows={3} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} /></div>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onClose}>Annulla</Button>
+          <Button type="submit" disabled={save.isPending}>Salva modifiche</Button>
+        </DialogFooter>
+      </form>
+    </DialogContent>
+  );
+}
+
 
 function PraticaTimeline({ praticaId }: { praticaId: string }) {
   const { data, isLoading } = useQuery({
