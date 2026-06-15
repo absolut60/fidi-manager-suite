@@ -102,6 +102,7 @@ function ScadenziarioPage() {
   const [escludiBonifici, setEscludiBonifici] = useState(true);
   const [escludiLegale, setEscludiLegale] = useState(true);
   const [avvisatoFilter, setAvvisatoFilter] = useState<"tutti" | "con_azioni" | "senza_azioni">("tutti");
+  const [mostraACredito, setMostraACredito] = useState(false);
   const [expandedClienteId, setExpandedClienteId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -110,7 +111,7 @@ function ScadenziarioPage() {
   // Reset selection on filter changes
   useEffect(() => {
     setSelectedIds(new Set());
-  }, [storeId, fascia, importoMin, statoBlocco, statoLegale, escludiBonifici, escludiLegale, avvisatoFilter]);
+  }, [storeId, fascia, importoMin, statoBlocco, statoLegale, escludiBonifici, escludiLegale, avvisatoFilter, mostraACredito]);
 
   useEffect(() => {
     if (statoLegale === "in_legale") {
@@ -312,7 +313,13 @@ function ScadenziarioPage() {
       };
     }).filter((r) => r.nScadute > 0);
     return out
-      .filter((r) => r.totScad >= minImp)
+      .filter((r) => {
+        // Toggle "a credito" SPENTO: comportamento attuale (solo saldi positivi >= minImp)
+        // ACCESO: includi anche r.totScad < 0, applicando minImp in valore assoluto
+        if (r.totScad >= 0) return r.totScad >= minImp;
+        if (!mostraACredito) return false;
+        return Math.abs(r.totScad) >= minImp;
+      })
       .filter((r) => {
         if (fascia === "tutte") return true;
         if (r.nScadute === 0) return false;
@@ -324,8 +331,14 @@ function ScadenziarioPage() {
         const avvisato = !!a && a.n_azioni > 0;
         return avvisatoFilter === "con_azioni" ? avvisato : !avvisato;
       })
-      .sort((a, b) => b.totScad - a.totScad);
-  }, [aggregato, minImp, fascia, today, avvisatoFilter, avvisatiMap]);
+      .sort((a, b) => {
+        // Debitori prima (positivi desc), clienti a credito in fondo (più negativo prima)
+        if (a.totScad >= 0 && b.totScad < 0) return -1;
+        if (a.totScad < 0 && b.totScad >= 0) return 1;
+        if (a.totScad < 0 && b.totScad < 0) return a.totScad - b.totScad;
+        return b.totScad - a.totScad;
+      });
+  }, [aggregato, minImp, fascia, today, avvisatoFilter, avvisatiMap, mostraACredito]);
 
   // Conteggio clienti in legale esclusi dalla lista (per badge accanto al toggle).
   // Conta i clienti con scadenze aperte (non pagate, non bonifici) che verrebbero
@@ -349,10 +362,17 @@ function ScadenziarioPage() {
   // prima del toggle "escludi legale", così rimane visibile anche quando li nasconde).
   const kpi = useMemo(() => {
     let totScad = 0, totAScad = 0, clientiScad = 0, bloccati = 0;
+    let nCrediti = 0, totCrediti = 0;
     rows.forEach((r) => {
-      totScad += r.totScad;
+      // Totali scaduto: SOLO saldi positivi, per non sottostimare l'esposizione reale
+      if (r.totScad > 0) {
+        totScad += r.totScad;
+        clientiScad += 1;
+      } else if (r.totScad < 0) {
+        nCrediti += 1;
+        totCrediti += r.totScad;
+      }
       totAScad += r.totAScad;
-      if (r.nScadute > 0) clientiScad += 1;
       if (r.cliente.bloccato) bloccati += 1;
     });
     // Clienti in legale con scadenze aperte (ignora toggle escludiLegale)
@@ -366,7 +386,7 @@ function ScadenziarioPage() {
       if (cat === "pagato") return;
       legaleIds.add(cli.id);
     });
-    return { totScad, totAScad, clientiScad, bloccati, inLegale: legaleIds.size };
+    return { totScad, totAScad, clientiScad, bloccati, inLegale: legaleIds.size, nCrediti, totCrediti };
   }, [rows, scad, clientiMap, storeId, escludiBonifici]);
 
   function apriCliente(id: string) {
@@ -467,10 +487,19 @@ function ScadenziarioPage() {
               <Switch id="escl-legale" checked={escludiLegale} onCheckedChange={(v) => { setEscludiLegale(v); if (v) setStatoLegale("tutti"); }} />
               <Label htmlFor="escl-legale" className="text-sm cursor-pointer">Escludi gestione legale</Label>
             </div>
+            <div className="flex items-center gap-2">
+              <Switch id="mostra-credito" checked={mostraACredito} onCheckedChange={setMostraACredito} />
+              <Label htmlFor="mostra-credito" className="text-sm cursor-pointer">Mostra anche clienti a credito (note di credito aperte)</Label>
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
             {escludiBonifici && <span>Esclusi {bonificiCount} BOS</span>}
             {escludiLegale && <span>Esclusi {legaleEsclusiCount} legale</span>}
+            {mostraACredito && kpi.nCrediti > 0 && (
+              <span className="text-emerald-700 dark:text-emerald-400 font-medium">
+                Note di credito aperte: {kpi.nCrediti} clienti, totale {fmtEuro(kpi.totCrediti)}
+              </span>
+            )}
           </div>
         </div>
       </Card>
@@ -577,7 +606,14 @@ function ScadenziarioPage() {
                             })}
                           />
                         </TableCell>
-                        <TableCell className="font-medium">{r.cliente.ragione_sociale}</TableCell>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            <span>{r.cliente.ragione_sociale}</span>
+                            {r.totScad < 0 && (
+                              <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">A credito</Badge>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell className="font-mono text-xs">{r.cliente.codice_gestionale ?? "—"}</TableCell>
                         <TableCell className="text-xs">{storeName}</TableCell>
                         <TableCell>{blockBadge(r.cliente)}</TableCell>
@@ -585,8 +621,8 @@ function ScadenziarioPage() {
                         <TableCell className="text-right tabular-nums">{fatt && fatt.cur > 0 ? fmtEuro(fatt.cur) : "—"}</TableCell>
                         <TableCell className="text-right tabular-nums text-muted-foreground">{fatt && fatt.prev > 0 ? fmtEuro(fatt.prev) : "—"}</TableCell>
                         <TableCell className="text-right tabular-nums">{r.nScadute || "—"}</TableCell>
-                        <TableCell className="text-right tabular-nums font-semibold text-destructive">
-                          {r.totScad > 0 ? fmtEuro(r.totScad) : "—"}
+                        <TableCell className={`text-right tabular-nums font-semibold ${r.totScad < 0 ? "text-emerald-700 dark:text-emerald-400" : "text-destructive"}`}>
+                          {r.totScad !== 0 ? fmtEuro(r.totScad) : "—"}
                         </TableCell>
                         <TableCell className="text-right tabular-nums">{r.nAScadere || "—"}</TableCell>
                         <TableCell className="text-right tabular-nums">
