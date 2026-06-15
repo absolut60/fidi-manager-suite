@@ -606,7 +606,14 @@ function ScadenziarioPage() {
                             })}
                           />
                         </TableCell>
-                        <TableCell className="font-medium">{r.cliente.ragione_sociale}</TableCell>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            <span>{r.cliente.ragione_sociale}</span>
+                            {r.totScad < 0 && (
+                              <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">A credito</Badge>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell className="font-mono text-xs">{r.cliente.codice_gestionale ?? "—"}</TableCell>
                         <TableCell className="text-xs">{storeName}</TableCell>
                         <TableCell>{blockBadge(r.cliente)}</TableCell>
@@ -614,8 +621,8 @@ function ScadenziarioPage() {
                         <TableCell className="text-right tabular-nums">{fatt && fatt.cur > 0 ? fmtEuro(fatt.cur) : "—"}</TableCell>
                         <TableCell className="text-right tabular-nums text-muted-foreground">{fatt && fatt.prev > 0 ? fmtEuro(fatt.prev) : "—"}</TableCell>
                         <TableCell className="text-right tabular-nums">{r.nScadute || "—"}</TableCell>
-                        <TableCell className="text-right tabular-nums font-semibold text-destructive">
-                          {r.totScad > 0 ? fmtEuro(r.totScad) : "—"}
+                        <TableCell className={`text-right tabular-nums font-semibold ${r.totScad < 0 ? "text-emerald-700 dark:text-emerald-400" : "text-destructive"}`}>
+                          {r.totScad !== 0 ? fmtEuro(r.totScad) : "—"}
                         </TableCell>
                         <TableCell className="text-right tabular-nums">{r.nAScadere || "—"}</TableCell>
                         <TableCell className="text-right tabular-nums">
