@@ -792,7 +792,14 @@ function PraticaCard({ pratica: p, clienteId, isAdmin }: { pratica: PraticaRow; 
         </button>
       </div>
       {showTimeline && <PraticaTimeline praticaId={p.id} />}
-      <PraticaAllegati praticaId={p.id} canEdit={isAdmin} />
+      <div className="mt-3 border-t pt-3">
+        <AllegatiSection
+          entitaTipo="pratica_legale"
+          entitaId={p.id}
+          clienteId={clienteId}
+          canEdit
+        />
+      </div>
     </Card>
   );
 }
