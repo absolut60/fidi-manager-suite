@@ -92,22 +92,32 @@ type Azione = {
   tipo: TipoAzione | "promemoria_scadenza";
   esito: Esito;
   data_azione: string;
+  data_promessa_pagamento: string | null;
   importo_riferimento: number | null;
   note: string | null;
   email_oggetto: string | null;
   email_corpo_html: string | null;
   email_destinatario: string | null;
+  livello_sollecito: number | null;
   created_at: string;
 };
 
 export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string }) {
   const qc = useQueryClient();
-  
+  const { user, roles } = useAuth();
+  const canManageAll =
+    roles.includes("amministratore") ||
+    roles.includes("amministrazione") ||
+    roles.includes("direzione");
+
   const [sollecitoOpen, setSollecitoOpen] = useState(false);
   const [emailLiberaOpen, setEmailLiberaOpen] = useState(false);
   const [creaOpen, setCreaOpen] = useState(false);
   const [creaTipo, setCreaTipo] = useState<TipoAzione>("promemoria");
   const [viewEmail, setViewEmail] = useState<Azione | null>(null);
+  const [editAzione, setEditAzione] = useState<Azione | null>(null);
+  const [deleteAzione, setDeleteAzione] = useState<Azione | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Totale scaduto attuale
   const { data: totaleScaduto } = useQuery({
