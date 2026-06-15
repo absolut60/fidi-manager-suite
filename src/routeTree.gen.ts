@@ -15,6 +15,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as FirmaPrivacyTokenRouteImport } from './routes/firma-privacy.$token'
 import { Route as AppWhatsappRouteImport } from './routes/_app/whatsapp'
 import { Route as AppUtentiRouteImport } from './routes/_app/utenti'
+import { Route as AppTemplateLetteraRouteImport } from './routes/_app/template-lettera'
 import { Route as AppTemplateEmailRouteImport } from './routes/_app/template-email'
 import { Route as AppScadenziarioRouteImport } from './routes/_app/scadenziario'
 import { Route as AppRichiesteRouteImport } from './routes/_app/richieste'
@@ -67,6 +68,11 @@ const AppWhatsappRoute = AppWhatsappRouteImport.update({
 const AppUtentiRoute = AppUtentiRouteImport.update({
   id: '/utenti',
   path: '/utenti',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTemplateLetteraRoute = AppTemplateLetteraRouteImport.update({
+  id: '/template-lettera',
+  path: '/template-lettera',
   getParentRoute: () => AppRoute,
 } as any)
 const AppTemplateEmailRoute = AppTemplateEmailRouteImport.update({
@@ -218,6 +224,7 @@ export interface FileRoutesByFullPath {
   '/richieste': typeof AppRichiesteRouteWithChildren
   '/scadenziario': typeof AppScadenziarioRoute
   '/template-email': typeof AppTemplateEmailRoute
+  '/template-lettera': typeof AppTemplateLetteraRoute
   '/utenti': typeof AppUtentiRoute
   '/whatsapp': typeof AppWhatsappRoute
   '/firma-privacy/$token': typeof FirmaPrivacyTokenRoute
@@ -249,6 +256,7 @@ export interface FileRoutesByTo {
   '/richieste': typeof AppRichiesteRouteWithChildren
   '/scadenziario': typeof AppScadenziarioRoute
   '/template-email': typeof AppTemplateEmailRoute
+  '/template-lettera': typeof AppTemplateLetteraRoute
   '/utenti': typeof AppUtentiRoute
   '/whatsapp': typeof AppWhatsappRoute
   '/firma-privacy/$token': typeof FirmaPrivacyTokenRoute
@@ -282,6 +290,7 @@ export interface FileRoutesById {
   '/_app/richieste': typeof AppRichiesteRouteWithChildren
   '/_app/scadenziario': typeof AppScadenziarioRoute
   '/_app/template-email': typeof AppTemplateEmailRoute
+  '/_app/template-lettera': typeof AppTemplateLetteraRoute
   '/_app/utenti': typeof AppUtentiRoute
   '/_app/whatsapp': typeof AppWhatsappRoute
   '/firma-privacy/$token': typeof FirmaPrivacyTokenRoute
@@ -315,6 +324,7 @@ export interface FileRouteTypes {
     | '/richieste'
     | '/scadenziario'
     | '/template-email'
+    | '/template-lettera'
     | '/utenti'
     | '/whatsapp'
     | '/firma-privacy/$token'
@@ -346,6 +356,7 @@ export interface FileRouteTypes {
     | '/richieste'
     | '/scadenziario'
     | '/template-email'
+    | '/template-lettera'
     | '/utenti'
     | '/whatsapp'
     | '/firma-privacy/$token'
@@ -378,6 +389,7 @@ export interface FileRouteTypes {
     | '/_app/richieste'
     | '/_app/scadenziario'
     | '/_app/template-email'
+    | '/_app/template-lettera'
     | '/_app/utenti'
     | '/_app/whatsapp'
     | '/firma-privacy/$token'
@@ -440,6 +452,13 @@ declare module '@tanstack/react-router' {
       path: '/utenti'
       fullPath: '/utenti'
       preLoaderRoute: typeof AppUtentiRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/template-lettera': {
+      id: '/_app/template-lettera'
+      path: '/template-lettera'
+      fullPath: '/template-lettera'
+      preLoaderRoute: typeof AppTemplateLetteraRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/template-email': {
@@ -657,6 +676,7 @@ interface AppRouteChildren {
   AppRichiesteRoute: typeof AppRichiesteRouteWithChildren
   AppScadenziarioRoute: typeof AppScadenziarioRoute
   AppTemplateEmailRoute: typeof AppTemplateEmailRoute
+  AppTemplateLetteraRoute: typeof AppTemplateLetteraRoute
   AppUtentiRoute: typeof AppUtentiRoute
   AppWhatsappRoute: typeof AppWhatsappRoute
 }
@@ -681,6 +701,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppRichiesteRoute: AppRichiesteRouteWithChildren,
   AppScadenziarioRoute: AppScadenziarioRoute,
   AppTemplateEmailRoute: AppTemplateEmailRoute,
+  AppTemplateLetteraRoute: AppTemplateLetteraRoute,
   AppUtentiRoute: AppUtentiRoute,
   AppWhatsappRoute: AppWhatsappRoute,
 }
