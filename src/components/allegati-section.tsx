@@ -90,8 +90,9 @@ export function AllegatiSection({
   entitaTipo, entitaId, clienteId, canEdit = true, title = "Allegati", compact = false,
 }: Props) {
   const qc = useQueryClient();
-  const { user, role } = useAuth();
-  const isAdmin = role === "amministratore";
+  const { user, roles } = useAuth();
+  const canManageAll =
+    roles.includes("amministratore") || roles.includes("amministrazione");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [toDelete, setToDelete] = useState<AllegatoRow | null>(null);
 
