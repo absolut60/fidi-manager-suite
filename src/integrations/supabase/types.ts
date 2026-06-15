@@ -2447,6 +2447,42 @@ export type Database = {
         }
         Relationships: []
       }
+      template_lettera: {
+        Row: {
+          attivo: boolean
+          corpo: string
+          created_at: string
+          id: string
+          nome: string
+          oggetto: string | null
+          tipo: string
+          updated_at: string
+          usa_dati_automatici: boolean
+        }
+        Insert: {
+          attivo?: boolean
+          corpo: string
+          created_at?: string
+          id?: string
+          nome: string
+          oggetto?: string | null
+          tipo?: string
+          updated_at?: string
+          usa_dati_automatici?: boolean
+        }
+        Update: {
+          attivo?: boolean
+          corpo?: string
+          created_at?: string
+          id?: string
+          nome?: string
+          oggetto?: string | null
+          tipo?: string
+          updated_at?: string
+          usa_dati_automatici?: boolean
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
