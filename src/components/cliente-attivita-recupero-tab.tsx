@@ -3,9 +3,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Send, Plus, Bell, Phone, StickyNote, FileText, Mail, Activity, Eye, CalendarClock, Paperclip,
+  Pencil, Trash2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { AllegatiSection } from "@/components/allegati-section";
+import { useAuth } from "@/hooks/use-auth";
+import { AllegatiSection, ALLEGATI_BUCKET } from "@/components/allegati-section";
 
 import { classificaScadenza } from "@/lib/scadenze";
 import { Card } from "@/components/ui/card";
@@ -18,10 +20,15 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { InviaSollecitoDialog } from "@/components/invia-sollecito-dialog";
 import { EmailLiberaDialog } from "@/components/email-libera-dialog";
 import { CreaAzioneDialog } from "@/components/crea-azione-dialog";
 import { EmailInviataView } from "@/components/email-inviata-view";
+import { ModificaAzioneDialog, type AzioneModificabile } from "@/components/modifica-azione-dialog";
 import type { TipoAzione } from "@/components/reminder-controls";
 
 type Esito = "da_fare" | "fatto" | "nessuna_risposta" | "promessa_pagamento" | "contestazione" | "pagato";
