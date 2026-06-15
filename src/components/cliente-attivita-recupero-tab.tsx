@@ -403,6 +403,49 @@ export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string })
           )}
         </DialogContent>
       </Dialog>
+
+      {editAzione && (
+        <ModificaAzioneDialog
+          key={editAzione.id}
+          open={!!editAzione}
+          onOpenChange={(v) => !v && setEditAzione(null)}
+          azione={editAzione as AzioneModificabile}
+          onSaved={invalidateRecupero}
+        />
+      )}
+
+      <AlertDialog open={!!deleteAzione} onOpenChange={(v) => !v && !deleting && setDeleteAzione(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminare questa azione?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <div>
+                  {deleteAzione ? TIPO_LABEL[deleteAzione.tipo] : ""} del {deleteAzione ? fmtDateTime(deleteAzione.data_azione) : ""}.
+                  Verranno rimossi anche eventuali allegati collegati (file e righe). L'operazione è irreversibile.
+                </div>
+                {deleteAzione?.tipo === "email" && deleteAzione.livello_sollecito != null && deleteAzione.livello_sollecito > 0 && (
+                  <div className="rounded-md border border-destructive/40 bg-destructive/10 text-destructive p-3 text-sm font-medium">
+                    Questa è un'email di sollecito (livello {deleteAzione.livello_sollecito}).
+                    Eliminandola lo stadio di escalation del cliente verrà ricalcolato e potrebbe abbassarsi
+                    (incidendo anche sull'icona "avvisato"). Procedere?
+                  </div>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleDelete(); }}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "Eliminazione…" : "Elimina"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
