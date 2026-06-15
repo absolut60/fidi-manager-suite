@@ -337,8 +337,11 @@ export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string })
                     azione={a}
                     operatoreName={a.operatore_id ? operatoreMap[a.operatore_id] : null}
                     highlight
+                    canEdit={canEditAzione(a)}
                     onChangeEsito={(e) => updateEsito(a.id, e)}
                     onViewEmail={() => setViewEmail(a)}
+                    onEdit={() => setEditAzione(a)}
+                    onDelete={() => setDeleteAzione(a)}
                   />
                 ))}
               </div>
