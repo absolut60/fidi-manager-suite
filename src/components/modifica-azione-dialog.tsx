@@ -86,16 +86,25 @@ export function ModificaAzioneDialog({
     setSaving(true);
     try {
       // Per email NON modifichiamo data_azione (è la data di invio reale).
-      const patch: Record<string, unknown> = {
+      const patch: {
+        esito: Esito;
+        note: string | null;
+        data_promessa_pagamento: string | null;
+        data_azione?: string;
+        importo_riferimento?: number | null;
+      } = {
         esito,
         note: note.trim() || null,
         data_promessa_pagamento: esito === "promessa_pagamento" && dataPromessa ? dataPromessa : null,
       };
       if (!isEmail) {
         patch.data_azione = dt.toISOString();
-        const n = importo.trim() === "" ? null : Number(importo);
-        if (n != null && !isNaN(n)) patch.importo_riferimento = n;
-        else if (importo.trim() === "") patch.importo_riferimento = null;
+        const trimmed = importo.trim();
+        if (trimmed === "") patch.importo_riferimento = null;
+        else {
+          const n = Number(trimmed);
+          if (!isNaN(n)) patch.importo_riferimento = n;
+        }
       }
       const { error } = await supabase
         .from("azioni_recupero")
