@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Pencil, Lock } from "lucide-react";
+import { Pencil, Lock, Mail, Phone, Bell, StickyNote, FileText, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -10,9 +11,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { AllegatiSection } from "@/components/allegati-section";
 
 type Esito = "da_fare" | "fatto" | "nessuna_risposta" | "promessa_pagamento" | "contestazione" | "pagato";
 
@@ -24,6 +28,15 @@ const ESITI: { value: Esito; label: string }[] = [
   { value: "contestazione", label: "Contestazione" },
   { value: "pagato", label: "Pagato" },
 ];
+
+const TIPO_META: Record<string, { label: string; Icon: typeof Mail }> = {
+  email: { label: "email", Icon: Mail },
+  telefonata: { label: "telefonata", Icon: Phone },
+  promemoria: { label: "promemoria", Icon: Bell },
+  promemoria_scadenza: { label: "promemoria scadenza", Icon: Calendar },
+  nota: { label: "nota", Icon: StickyNote },
+  lettera: { label: "lettera", Icon: FileText },
+};
 
 export type AzioneModificabile = {
   id: string;
@@ -38,6 +51,7 @@ export type AzioneModificabile = {
   email_corpo_html: string | null;
   email_destinatario: string | null;
   livello_sollecito: number | null;
+  operatore_id?: string | null;
 };
 
 function toDatetimeLocal(iso: string): string {
@@ -55,8 +69,18 @@ export function ModificaAzioneDialog({
   onSaved?: () => void;
 }) {
   const qc = useQueryClient();
+  const { user, roles } = useAuth();
   const isEmail = azione.tipo === "email";
   const isSollecito = isEmail && azione.livello_sollecito != null && azione.livello_sollecito > 0;
+  const meta = TIPO_META[azione.tipo] ?? { label: azione.tipo, Icon: FileText };
+  const TipoIcon = meta.Icon;
+  const titoloLabel = meta.label.charAt(0).toUpperCase() + meta.label.slice(1);
+
+  const canManageAll =
+    roles.includes("amministratore") ||
+    roles.includes("amministrazione") ||
+    roles.includes("direzione");
+  const canEditAllegati = canManageAll || (azione.operatore_id != null && azione.operatore_id === user?.id);
 
   const [dataAzione, setDataAzione] = useState(toDatetimeLocal(azione.data_azione));
   const [esito, setEsito] = useState<Esito>(azione.esito);
@@ -85,7 +109,6 @@ export function ModificaAzioneDialog({
     }
     setSaving(true);
     try {
-      // Per email NON modifichiamo data_azione (è la data di invio reale).
       const patch: {
         esito: Esito;
         note: string | null;
@@ -134,7 +157,7 @@ export function ModificaAzioneDialog({
       <DialogContent className="max-w-xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Pencil className="size-5" /> Modifica azione
+            <Pencil className="size-5" /> Modifica {meta.label}
           </DialogTitle>
           <DialogDescription>
             {isEmail
@@ -144,6 +167,23 @@ export function ModificaAzioneDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-2">
+          {/* Tipo (sola lettura) */}
+          <div className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2">
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-muted-foreground">Tipo:</span>
+              <Badge variant="secondary" className="gap-1.5">
+                <TipoIcon className="size-3.5" />
+                {titoloLabel}
+              </Badge>
+              {isSollecito && (
+                <Badge variant="outline">Sollecito liv. {azione.livello_sollecito}</Badge>
+              )}
+            </div>
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
+              <Lock className="size-3" /> non modificabile
+            </span>
+          </div>
+
           {isEmail && (
             <div className="rounded-md border bg-muted/30 p-3 space-y-2">
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -154,9 +194,6 @@ export function ModificaAzioneDialog({
               )}
               {azione.email_oggetto && (
                 <div className="text-sm"><span className="text-muted-foreground">Oggetto: </span>{azione.email_oggetto}</div>
-              )}
-              {isSollecito && (
-                <div className="text-xs text-muted-foreground">Livello sollecito: {azione.livello_sollecito}</div>
               )}
             </div>
           )}
@@ -184,17 +221,6 @@ export function ModificaAzioneDialog({
             </div>
           </div>
 
-          {esito === "promessa_pagamento" && (
-            <div className="space-y-1.5">
-              <Label>Data promessa pagamento</Label>
-              <Input
-                type="date"
-                value={dataPromessa}
-                onChange={(e) => setDataPromessa(e.target.value)}
-              />
-            </div>
-          )}
-
           {!isEmail && (
             <div className="space-y-1.5">
               <Label>Importo di riferimento (€)</Label>
@@ -208,6 +234,17 @@ export function ModificaAzioneDialog({
             </div>
           )}
 
+          {esito === "promessa_pagamento" && (
+            <div className="space-y-1.5">
+              <Label>Data promessa pagamento</Label>
+              <Input
+                type="date"
+                value={dataPromessa}
+                onChange={(e) => setDataPromessa(e.target.value)}
+              />
+            </div>
+          )}
+
           <div className="space-y-1.5">
             <Label>Note</Label>
             <Textarea
@@ -216,6 +253,16 @@ export function ModificaAzioneDialog({
               onChange={(e) => setNote(e.target.value)}
             />
           </div>
+
+          <Separator />
+
+          <AllegatiSection
+            entitaTipo="azione_recupero"
+            entitaId={azione.id}
+            clienteId={azione.cliente_id}
+            canEdit={canEditAllegati}
+            compact
+          />
         </div>
 
         <DialogFooter>
