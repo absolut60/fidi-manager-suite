@@ -394,19 +394,33 @@ function CalendarioPage() {
         )}
       </Card>
 
-      <Dialog open={!!openAzione} onOpenChange={(o) => !o && setOpenAzione(null)}>
-        <DialogContent className="max-w-2xl">
-          {openAzione && (
-            <DettaglioDialog
-              azione={openAzione}
-              onChangeEsito={(e) => handleChangeEsito(openAzione.id, e)}
-              onApriCliente={() => {
+      <Dialog open={false} onOpenChange={() => {}}>
+        <DialogContent />
+      </Dialog>
+
+      {openAzione && (
+        <ModificaAzioneDialog
+          key={openAzione.id}
+          open={!!openAzione}
+          onOpenChange={(o) => !o && setOpenAzione(null)}
+          azione={openAzione as unknown as AzioneModificabile}
+          onSaved={invalidateAzioniQueries}
+          footerExtra={
+            <Button
+              variant="outline"
+              onClick={() => {
                 const id = openAzione.cliente_id;
                 setOpenAzione(null);
                 navigate({ to: "/clienti/$clienteId", params: { clienteId: id } });
               }}
-            />
-          )}
+              className="mr-auto"
+            >
+              <ExternalLink className="size-4 mr-2" />
+              Apri scheda cliente
+            </Button>
+          }
+        />
+      )}
         </DialogContent>
       </Dialog>
 
