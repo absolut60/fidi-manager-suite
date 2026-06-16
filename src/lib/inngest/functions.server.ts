@@ -420,8 +420,16 @@ export const processAnagraficaImport = inngest.createFunction(
         created += stepRes.ok;
         skipped += stepRes.skipped;
         errorLog.push(...stepRes.errs);
-        // Persisti FUORI dallo step così sopravvive ai retry
-        await update("in_elaborazione");
+        // Persisti FUORI dallo step così sopravvive ai retry — wrap per non far esplodere il job
+        await step.run(`persist-after-insert-${i}`, async () => {
+          try {
+            await update("in_elaborazione");
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e);
+            logger.error(`persist-after-insert-${i} fallito (non bloccante): ${msg}`);
+          }
+          return { ok: true };
+        });
       }
 
       // UPDATE — uno step per chunk, concorrenza limitata, per-riga resiliente
@@ -470,12 +478,59 @@ export const processAnagraficaImport = inngest.createFunction(
         updated += stepRes.ok;
         skipped += stepRes.skipped;
         errorLog.push(...stepRes.errs);
-        await update("in_elaborazione");
+        await step.run(`persist-after-update-${i}`, async () => {
+          try {
+            await update("in_elaborazione");
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e);
+            logger.error(`persist-after-update-${i} fallito (non bloccante): ${msg}`);
+          }
+          return { ok: true };
+        });
       }
 
-      await update(errorLog.length ? "completata_con_errori" : "completata", true);
+      // FINALIZE — wrap in step.run con try/catch dettagliato e fallback difensivo
+      const finalRes = await step.run("finalize", async () => {
+        const statoFinale: "completata" | "completata_con_errori" =
+          errorLog.length ? "completata_con_errori" : "completata";
+        logger.info(
+          `Finalize: stato=${statoFinale}, creati=${created}, aggiornati=${updated}, saltati=${skipped}, errori=${errorLog.length} (log troncato a ${MAX_LOG_ERRORI})`,
+        );
+        try {
+          await update(statoFinale, true);
+          return { ok: true, statoFinale };
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          const stack = e instanceof Error ? e.stack : undefined;
+          logger.error(`Finalize fallito: ${msg}\n${stack ?? ""}`);
+          // Fallback difensivo: scrivi almeno lo stato + conteggi SENZA log_errori per non gonfiare il jsonb
+          const { error: minErr } = await supabaseAdmin
+            .from("importazioni")
+            .update({
+              righe_elaborate: created + updated + errorLog.length,
+              righe_create: created,
+              righe_aggiornate: updated,
+              righe_errore: skipped + errorLog.length,
+              stato: "completata_con_errori",
+              completata_at: new Date().toISOString(),
+              log_errori: [
+                {
+                  riga: 0,
+                  errore: `Finalize fallito (${errorLog.length} errori non persistiti): ${msg}`,
+                },
+              ],
+            })
+            .eq("id", importazioneId);
+          if (minErr) {
+            logger.error(`Anche il fallback finalize è fallito: ${minErr.message}`);
+            throw new Error(`finalize+fallback falliti: ${msg} / ${minErr.message}`);
+          }
+          return { ok: false, statoFinale: "completata_con_errori", finalizeError: msg };
+        }
+      });
+
       logger.info(
-        `Anagrafica completata: creati=${created}, aggiornati=${updated}, saltati=${skipped}, errori=${errorLog.length}`,
+        `Anagrafica completata: creati=${created}, aggiornati=${updated}, saltati=${skipped}, errori=${errorLog.length}, finalize=${JSON.stringify(finalRes)}`,
       );
       return {
         ok: true,
@@ -483,6 +538,7 @@ export const processAnagraficaImport = inngest.createFunction(
         aggiornati: updated,
         saltati: skipped,
         errori: errorLog.length,
+        finalize: finalRes,
       };
     } catch (err) {
       await setImportazioneError(importazioneId, err instanceof Error ? err.message : String(err));
