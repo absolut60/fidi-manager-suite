@@ -29,6 +29,7 @@ import { EmailLiberaDialog } from "@/components/email-libera-dialog";
 import { CreaAzioneDialog } from "@/components/crea-azione-dialog";
 import { EmailInviataView } from "@/components/email-inviata-view";
 import { ModificaAzioneDialog, type AzioneModificabile } from "@/components/modifica-azione-dialog";
+import { LetteraPdfDialog } from "@/components/lettera-pdf-dialog";
 import type { TipoAzione } from "@/components/reminder-controls";
 
 type Esito = "da_fare" | "fatto" | "nessuna_risposta" | "promessa_pagamento" | "contestazione" | "pagato";
