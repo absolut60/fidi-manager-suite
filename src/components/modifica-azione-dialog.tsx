@@ -61,12 +61,13 @@ function toDatetimeLocal(iso: string): string {
 }
 
 export function ModificaAzioneDialog({
-  open, onOpenChange, azione, onSaved,
+  open, onOpenChange, azione, onSaved, footerExtra,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   azione: AzioneModificabile;
   onSaved?: () => void;
+  footerExtra?: React.ReactNode;
 }) {
   const qc = useQueryClient();
   const { user, roles } = useAuth();
