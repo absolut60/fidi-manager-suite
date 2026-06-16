@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmailInviataView } from "@/components/email-inviata-view";
 import { CreaAzioneDialog } from "@/components/crea-azione-dialog";
+import { ModificaAzioneDialog, type AzioneModificabile } from "@/components/modifica-azione-dialog";
 import {
   Select,
   SelectContent,
