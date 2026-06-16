@@ -14,10 +14,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { EmailInviataView } from "@/components/email-inviata-view";
 import { CreaAzioneDialog } from "@/components/crea-azione-dialog";
+import { ModificaAzioneDialog, type AzioneModificabile } from "@/components/modifica-azione-dialog";
 import {
   Select,
   SelectContent,
@@ -32,21 +31,6 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 
 export const Route = createFileRoute("/_app/recupero-crediti-calendario")({
   component: CalendarioPage,
@@ -78,11 +62,14 @@ type AzioneRow = {
   tipo: Tipo;
   esito: Esito;
   data_azione: string;
+  data_promessa_pagamento: string | null;
   importo_riferimento: number | null;
   note: string | null;
   email_oggetto: string | null;
   email_corpo_html: string | null;
   email_destinatario: string | null;
+  livello_sollecito: number | null;
+  operatore_id: string | null;
   cliente: { id: string; ragione_sociale: string; store_id: string | null } | null;
 };
 
@@ -156,7 +143,7 @@ function CalendarioPage() {
       let q = supabase
         .from("azioni_recupero")
         .select(
-          "id, cliente_id, tipo, esito, data_azione, importo_riferimento, note, email_oggetto, email_corpo_html, email_destinatario, cliente:clienti!inner(id, ragione_sociale, store_id)"
+          "id, cliente_id, tipo, esito, data_azione, data_promessa_pagamento, importo_riferimento, note, email_oggetto, email_corpo_html, email_destinatario, livello_sollecito, operatore_id, cliente:clienti!inner(id, ragione_sociale, store_id)"
         )
         .eq("esito", "da_fare")
         .gte("data_azione", range!.start)
@@ -242,19 +229,11 @@ function CalendarioPage() {
     info.view.calendar.unselect();
   }
 
-  async function handleChangeEsito(id: string, nextEsito: Esito) {
-    const { error } = await supabase
-      .from("azioni_recupero")
-      .update({ esito: nextEsito })
-      .eq("id", id);
-    if (error) {
-      toast.error("Errore aggiornamento: " + error.message);
-      return;
-    }
-    toast.success("Esito aggiornato");
-    setOpenAzione(null);
+  function invalidateAzioniQueries() {
     qc.invalidateQueries({ queryKey: ["azioni-calendario"] });
     qc.invalidateQueries({ queryKey: ["azioni-recupero"] });
+    qc.invalidateQueries({ queryKey: ["recupero-clienti"] });
+    qc.invalidateQueries({ queryKey: ["clienti-avvisati"] });
   }
 
   function toggleTipo(t: Tipo) {
@@ -398,21 +377,29 @@ function CalendarioPage() {
         )}
       </Card>
 
-      <Dialog open={!!openAzione} onOpenChange={(o) => !o && setOpenAzione(null)}>
-        <DialogContent className="max-w-2xl">
-          {openAzione && (
-            <DettaglioDialog
-              azione={openAzione}
-              onChangeEsito={(e) => handleChangeEsito(openAzione.id, e)}
-              onApriCliente={() => {
+      {openAzione && (
+        <ModificaAzioneDialog
+          key={openAzione.id}
+          open={!!openAzione}
+          onOpenChange={(o) => !o && setOpenAzione(null)}
+          azione={openAzione as unknown as AzioneModificabile}
+          onSaved={invalidateAzioniQueries}
+          footerExtra={
+            <Button
+              variant="outline"
+              onClick={() => {
                 const id = openAzione.cliente_id;
                 setOpenAzione(null);
                 navigate({ to: "/clienti/$clienteId", params: { clienteId: id } });
               }}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+              className="mr-auto"
+            >
+              <ExternalLink className="size-4 mr-2" />
+              Apri scheda cliente
+            </Button>
+          }
+        />
+      )}
 
       <CreaAzioneDialog
         open={creaOpen}
@@ -425,115 +412,5 @@ function CalendarioPage() {
         }}
       />
     </div>
-  );
-}
-
-function DettaglioDialog({
-  azione,
-  onChangeEsito,
-  onApriCliente,
-}: {
-  azione: AzioneRow;
-  onChangeEsito: (e: Esito) => void;
-  onApriCliente: () => void;
-}) {
-  const tipoCfg = TIPI.find((t) => t.value === azione.tipo);
-  const scadenzeQuery = useQuery({
-    queryKey: ["azione-scadenze-cal", azione.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("azioni_recupero_scadenze")
-        .select("scadenza:scadenze!inner(id, numero_documento, data_scadenza, importo_scadenza)")
-        .eq("azione_id", azione.id);
-      if (error) throw error;
-      return (data ?? []).map((r: any) => r.scadenza);
-    },
-  });
-
-  return (
-    <>
-      <DialogHeader>
-        <DialogTitle className="flex items-center gap-2">
-          <span
-            className="inline-block size-3 rounded-sm"
-            style={{ backgroundColor: tipoCfg?.color ?? "#6b7280" }}
-          />
-          {azione.cliente?.ragione_sociale ?? "—"}
-        </DialogTitle>
-        <DialogDescription>
-          {tipoCfg?.label ?? azione.tipo} · {fmtDateTime(azione.data_azione)}
-        </DialogDescription>
-      </DialogHeader>
-
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Esito</div>
-            <Select value={azione.esito} onValueChange={(v) => onChangeEsito(v as Esito)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {ESITI.map((e) => (
-                  <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Importo rif.</div>
-            <div className="text-base font-medium pt-2">{fmtEuro(azione.importo_riferimento)}</div>
-          </div>
-        </div>
-
-        <div>
-          <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Note</div>
-          <div className="text-sm whitespace-pre-wrap min-h-[2rem]">{azione.note ?? "—"}</div>
-        </div>
-
-        {azione.tipo === "email" && azione.email_corpo_html && (
-          <EmailInviataView
-            destinatario={azione.email_destinatario}
-            oggetto={azione.email_oggetto}
-            corpoHtml={azione.email_corpo_html}
-          />
-        )}
-
-        <div>
-          <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Scadenze collegate</div>
-          {scadenzeQuery.isLoading ? (
-            <Skeleton className="h-16 w-full" />
-          ) : (scadenzeQuery.data?.length ?? 0) === 0 ? (
-            <div className="text-sm text-muted-foreground">Nessuna scadenza collegata</div>
-          ) : (
-            <div className="rounded-md border overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>N. documento</TableHead>
-                    <TableHead>Scadenza</TableHead>
-                    <TableHead className="text-right">Importo</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {(scadenzeQuery.data ?? []).map((s: any) => (
-                    <TableRow key={s.id}>
-                      <TableCell className="font-mono text-sm">{s.numero_documento ?? "—"}</TableCell>
-                      <TableCell>{fmtDate(s.data_scadenza)}</TableCell>
-                      <TableCell className="text-right">{fmtEuro(s.importo_scadenza)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </div>
-
-        <div className="flex justify-end gap-2 pt-2 border-t">
-          <Button variant="outline" onClick={onApriCliente}>
-            <ExternalLink className="size-4 mr-2" />
-            Apri scheda cliente
-          </Button>
-        </div>
-      </div>
-    </>
   );
 }

@@ -61,12 +61,13 @@ function toDatetimeLocal(iso: string): string {
 }
 
 export function ModificaAzioneDialog({
-  open, onOpenChange, azione, onSaved,
+  open, onOpenChange, azione, onSaved, footerExtra,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   azione: AzioneModificabile;
   onSaved?: () => void;
+  footerExtra?: React.ReactNode;
 }) {
   const qc = useQueryClient();
   const { user, roles } = useAuth();
@@ -266,6 +267,7 @@ export function ModificaAzioneDialog({
         </div>
 
         <DialogFooter>
+          {footerExtra}
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>Annulla</Button>
           <Button onClick={handleSave} disabled={saving} className="gap-1.5">
             <Pencil className="size-4" /> {saving ? "Salvataggio…" : "Salva"}
