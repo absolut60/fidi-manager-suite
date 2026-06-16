@@ -1,8 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Plus, Search, X } from "lucide-react";
+import { Paperclip, Plus, Search, Trash2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  uploadAllegatoFile,
+  validateAllegatoFile,
+  fmtAllegatoBytes,
+} from "@/components/allegati-section";
 import { useAuth } from "@/hooks/use-auth";
 import { classificaScadenza } from "@/lib/scadenze";
 import {
