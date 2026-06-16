@@ -560,7 +560,9 @@ function AnagraficaImportCard() {
     try {
       const buf = await f.arrayBuffer();
       const wb = XLSX.read(buf, { type: "array" });
-      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const sheetName =
+        wb.SheetNames.find((n) => normKey(n) === "anagrafica") ?? wb.SheetNames[0];
+      const sheet = wb.Sheets[sheetName];
       const raw = anagraficaSheetToObjects(sheet);
       if (!raw.length) {
         toast.error(
