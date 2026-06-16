@@ -1,8 +1,9 @@
 import * as XLSX from "xlsx";
+import { Unzip, UnzipInflate, unzipSync, strFromU8 } from "fflate";
 import { inngest } from "./client";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
-  anagraficaSheetToObjects,
+  ANAG_HEADERS,
   parseRischioSheet,
   parseScadenziarioBlockSheet,
   parseAssicurazioneSheet,
@@ -52,8 +53,11 @@ async function setImportazioneError(importazioneId: string, message: string) {
     .eq("id", importazioneId);
 }
 
-async function downloadJsonFromStorage<T>(filePath: string): Promise<T> {
-  const { data: file, error } = await supabaseAdmin.storage.from("import-files").download(filePath);
+async function downloadJsonFromStorage<T>(
+  filePath: string,
+  bucket: "import-files" | "import-staging" = "import-files",
+): Promise<T> {
+  const { data: file, error } = await supabaseAdmin.storage.from(bucket).download(filePath);
   if (error || !file) throw new Error(`Download JSON fallito: ${error?.message ?? "no data"}`);
   return JSON.parse(await file.text()) as T;
 }
@@ -141,6 +145,259 @@ type StagedAnagraficaChunk = {
   rows: AnagRow[];
 };
 
+function decodeXmlText(value: string): string {
+  return value.replace(/&(#x[0-9a-f]+|#\d+|amp|lt|gt|quot|apos);/gi, (m, ent) => {
+    const e = String(ent).toLowerCase();
+    if (e === "amp") return "&";
+    if (e === "lt") return "<";
+    if (e === "gt") return ">";
+    if (e === "quot") return '"';
+    if (e === "apos") return "'";
+    if (e.startsWith("#x")) return String.fromCodePoint(parseInt(e.slice(2), 16));
+    if (e.startsWith("#")) return String.fromCodePoint(parseInt(e.slice(1), 10));
+    return m;
+  });
+}
+
+function attrValue(xml: string, attr: string): string | null {
+  const re = new RegExp(`\\b${attr.replace(":", "(?::|&#58;)")}=["']([^"']*)["']`, "i");
+  return re.exec(xml)?.[1] ?? null;
+}
+
+function anagColumnIndex(cellRef: string | null, fallback: number): number {
+  const letters = cellRef?.match(/^[A-Z]+/i)?.[0]?.toUpperCase();
+  if (!letters) return fallback;
+  let idx = 0;
+  for (const ch of letters) idx = idx * 26 + (ch.charCodeAt(0) - 64);
+  return idx - 1;
+}
+
+function normAnagHeader(h: unknown): string {
+  return String(h ?? "")
+    .toLowerCase()
+    .replace(/[\s._\-/]+/g, "");
+}
+
+function parseSharedStrings(xml: string): string[] {
+  const strings: string[] = [];
+  const siRe = /<si\b[^>]*>([\s\S]*?)<\/si>/g;
+  let si: RegExpExecArray | null;
+  while ((si = siRe.exec(xml))) {
+    let text = "";
+    const tRe = /<t\b[^>]*>([\s\S]*?)<\/t>/g;
+    let t: RegExpExecArray | null;
+    while ((t = tRe.exec(si[1]))) text += decodeXmlText(t[1]);
+    strings.push(text);
+  }
+  return strings;
+}
+
+function parseAnagraficaRowXml(rowXml: string, sharedStrings: string[]): { rowNumber: number; values: string[] } {
+  const rowNumber = Number(attrValue(rowXml.slice(0, rowXml.indexOf(">") + 1), "r")) || 0;
+  const values: string[] = [];
+  const cellRe = /<c\b([^>]*)>([\s\S]*?)<\/c>|<c\b([^>]*)\/>/g;
+  let cell: RegExpExecArray | null;
+  let fallbackCol = 0;
+  while ((cell = cellRe.exec(rowXml))) {
+    const attrs = cell[1] ?? cell[3] ?? "";
+    const body = cell[2] ?? "";
+    const col = anagColumnIndex(attrValue(attrs, "r"), fallbackCol);
+    fallbackCol = col + 1;
+    const type = attrValue(attrs, "t");
+    let value = "";
+    if (type === "inlineStr") {
+      const pieces = Array.from(body.matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/g));
+      value = pieces.map((p) => decodeXmlText(p[1])).join("");
+    } else {
+      const raw = /<v\b[^>]*>([\s\S]*?)<\/v>/.exec(body)?.[1] ?? "";
+      value = type === "s" ? sharedStrings[Number(raw)] ?? "" : decodeXmlText(raw);
+    }
+    values[col] = String(value ?? "").trim();
+  }
+  return { rowNumber, values };
+}
+
+function resolveAnagraficaSheetPath(zip: Uint8Array): string {
+  const meta = unzipSync(zip, {
+    filter: (f) =>
+      f.name === "xl/workbook.xml" ||
+      f.name === "xl/_rels/workbook.xml.rels",
+  });
+  const workbookXml = meta["xl/workbook.xml"] ? strFromU8(meta["xl/workbook.xml"]) : "";
+  const relsXml = meta["xl/_rels/workbook.xml.rels"]
+    ? strFromU8(meta["xl/_rels/workbook.xml.rels"])
+    : "";
+
+  const sheets = Array.from(workbookXml.matchAll(/<sheet\b[^>]*>/g)).map((m, index) => {
+    const tag = m[0];
+    return {
+      index,
+      name: decodeXmlText(attrValue(tag, "name") ?? ""),
+      relId: attrValue(tag, "r:id") ?? attrValue(tag, "id"),
+    };
+  });
+  const selected =
+    sheets.find((s) => s.name.toLowerCase().replace(/[\s._\-/]+/g, "") === "anagrafica") ??
+    sheets[0];
+  if (!selected) throw new Error("Nessun foglio trovato nel workbook");
+
+  const rels = Array.from(relsXml.matchAll(/<Relationship\b[^>]*>/g)).map((m) => {
+    const tag = m[0];
+    return { id: attrValue(tag, "Id"), target: attrValue(tag, "Target") };
+  });
+  const target = rels.find((r) => r.id === selected.relId)?.target;
+  if (!target) return `xl/worksheets/sheet${selected.index + 1}.xml`;
+  const sheetPath = target.startsWith("/")
+    ? target.slice(1)
+    : target.startsWith("xl/")
+      ? target
+      : `xl/${target}`;
+  return sheetPath;
+}
+
+function extractSharedStringsIncremental(zip: Uint8Array): string[] {
+  const sharedStrings: string[] = [];
+  let tail = "";
+  let streamError: Error | null = null;
+  const unzip = new Unzip((entry) => {
+    if (entry.name !== "xl/sharedStrings.xml") return;
+    const decoder = new TextDecoder("utf-8");
+    entry.ondata = (err, data, final) => {
+      if (err) {
+        streamError = err;
+        return;
+      }
+      tail += decoder.decode(data, { stream: !final });
+      let last = 0;
+      const siRe = /<si\b[^>]*>[\s\S]*?<\/si>/g;
+      let match: RegExpExecArray | null;
+      while ((match = siRe.exec(tail))) {
+        sharedStrings.push(parseSharedStrings(match[0])[0] ?? "");
+        last = siRe.lastIndex;
+      }
+      tail = tail.slice(last);
+      if (final && tail.includes("<si")) {
+        const leftover = /<si\b[^>]*>[\s\S]*?<\/si>/.exec(tail)?.[0];
+        if (leftover) sharedStrings.push(parseSharedStrings(leftover)[0] ?? "");
+      }
+    };
+    entry.start();
+  });
+  unzip.register(UnzipInflate);
+  const ZIP_PUSH = 256 * 1024;
+  for (let offset = 0; offset < zip.length; offset += ZIP_PUSH) {
+    unzip.push(zip.subarray(offset, Math.min(offset + ZIP_PUSH, zip.length)), offset + ZIP_PUSH >= zip.length);
+    if (streamError) throw streamError;
+  }
+  if (streamError) throw streamError;
+  return sharedStrings;
+}
+
+async function stageAnagraficaWorkbookIncremental(filePath: string, stagingBase: string) {
+  const { data: file, error } = await supabaseAdmin.storage.from("import-files").download(filePath);
+  if (error || !file) throw new Error(`Download fallito: ${error?.message ?? "no data"}`);
+  const zip = new Uint8Array(await file.arrayBuffer());
+  const fileBytes = zip.byteLength;
+  const sheetPath = resolveAnagraficaSheetPath(zip);
+  const sharedStrings = extractSharedStringsIncremental(zip);
+  const chunkPaths: string[] = [];
+  let totalRows = 0;
+  let chunk: AnagRow[] = [];
+  let headerIdx = -1;
+  let headers: string[] = [];
+  let streamError: Error | null = null;
+  let sheetSeen = false;
+  let textTail = "";
+  let uploadChain = Promise.resolve();
+  let queuedUploads = 0;
+
+  const enqueueChunkUpload = (rows: AnagRow[]) => {
+    const chunkIndex = chunkPaths.length;
+    const path = `${stagingBase}/chunk_${chunkIndex}.json`;
+    chunkPaths.push(path);
+    const payload: StagedAnagraficaChunk = {
+      kind: "anagrafica-staging-v1",
+      chunkIndex,
+      totalChunks: 0,
+      rows,
+    };
+    queuedUploads++;
+    uploadChain = uploadChain.then(async () => {
+      const { error: upErr } = await supabaseAdmin.storage
+        .from("import-staging")
+        .upload(path, JSON.stringify(payload), { contentType: "application/json", upsert: true });
+      queuedUploads--;
+      if (upErr) throw new Error(`Upload chunk ${chunkIndex} fallito: ${upErr.message}`);
+    });
+  };
+
+  const consumeRow = (rowXml: string) => {
+    const { rowNumber, values } = parseAnagraficaRowXml(rowXml, sharedStrings);
+    const excelRow = rowNumber || totalRows + 1;
+    if (headerIdx < 0) {
+      if (excelRow <= 10 && values.some((c) => normAnagHeader(c) === "ragionesociale")) {
+        headerIdx = excelRow;
+        headers = values.map((c) => String(c ?? "").trim());
+      }
+      return;
+    }
+    if (excelRow <= headerIdx) return;
+    if (!values.some((c) => String(c ?? "").trim() !== "")) return;
+    const obj: Record<string, string> = {};
+    headers.forEach((h, j) => {
+      if (!h) return;
+      const f = ANAG_HEADERS[normalize(h)];
+      if (f) obj[f] = String(values[j] ?? "").trim();
+    });
+    if (!obj.ragione_sociale) return;
+    totalRows++;
+    chunk.push(Object.assign(obj, { __row: excelRow }));
+    if (chunk.length >= ANAG_CHUNK_SIZE) {
+      enqueueChunkUpload(chunk);
+      chunk = [];
+    }
+  };
+
+  const unzip = new Unzip((entry) => {
+    if (entry.name !== sheetPath) return;
+    sheetSeen = true;
+    const decoder = new TextDecoder("utf-8");
+    entry.ondata = (err, data, final) => {
+      if (err) {
+        streamError = err;
+        return;
+      }
+      textTail += decoder.decode(data, { stream: !final });
+      let last = 0;
+      const rowRe = /<row\b[\s\S]*?<\/row>/g;
+      let match: RegExpExecArray | null;
+      while ((match = rowRe.exec(textTail))) {
+        consumeRow(match[0]);
+        last = rowRe.lastIndex;
+      }
+      textTail = textTail.slice(last);
+      if (final && chunk.length) {
+        enqueueChunkUpload(chunk);
+        chunk = [];
+      }
+    };
+    entry.start();
+  });
+  unzip.register(UnzipInflate);
+
+  const ZIP_PUSH = 256 * 1024;
+  for (let offset = 0; offset < zip.length; offset += ZIP_PUSH) {
+    unzip.push(zip.subarray(offset, Math.min(offset + ZIP_PUSH, zip.length)), offset + ZIP_PUSH >= zip.length);
+    if (queuedUploads > 1) await uploadChain;
+    if (streamError) throw streamError;
+  }
+  await uploadChain;
+  if (streamError) throw streamError;
+  if (!sheetSeen) throw new Error(`Foglio Anagrafica non trovato nel file (${sheetPath})`);
+  if (headerIdx < 0) throw new Error("Header ragione_sociale non trovato nelle prime 10 righe del foglio Anagrafica");
+  return { totRows: totalRows, chunkCount: chunkPaths.length, chunks: chunkPaths, fileBytes, sheetPath };
+}
+
 async function setAnagraficaFinalState(
   importazioneId: string,
   stato: "completata" | "completata_con_errori" | "fallita",
@@ -198,37 +455,11 @@ export const processAnagraficaImport = inngest.createFunction(
     try {
       // STEP 1: parse file + scrittura chunk su storage (memoizzato)
       const init = await step.run("parse-and-stage", async () => {
-        const wb = await downloadWorkbook(filePath);
-        const sheetName =
-          wb.SheetNames.find(
-            (n) => n.toLowerCase().replace(/[\s._\-/]+/g, "") === "anagrafica",
-          ) ?? wb.SheetNames[0];
-        const rows = anagraficaSheetToObjects(wb.Sheets[sheetName]) as AnagRow[];
-        logger.info(`Anagrafica init: ${rows.length} righe da elaborare`);
-        if (!rows.length) {
-          return { totRows: 0, chunkCount: 0, chunks: [] as string[] };
-        }
-        const chunkCount = Math.ceil(rows.length / ANAG_CHUNK_SIZE);
-        const chunkPaths: string[] = [];
-        for (let i = 0; i < chunkCount; i++) {
-          const slice = rows.slice(i * ANAG_CHUNK_SIZE, (i + 1) * ANAG_CHUNK_SIZE);
-          const path = `${stagingBase}/chunk_${i}.json`;
-          const payload: StagedAnagraficaChunk = {
-            kind: "anagrafica-staging-v1",
-            chunkIndex: i,
-            totalChunks: chunkCount,
-            rows: slice,
-          };
-          const { error: upErr } = await supabaseAdmin.storage
-            .from("import-staging")
-            .upload(path, JSON.stringify(payload), {
-              contentType: "application/json",
-              upsert: true,
-            });
-          if (upErr) throw new Error(`Upload chunk ${i} fallito: ${upErr.message}`);
-          chunkPaths.push(path);
-        }
-        return { totRows: rows.length, chunkCount, chunks: chunkPaths };
+        const staged = await stageAnagraficaWorkbookIncremental(filePath, stagingBase);
+        logger.info(
+          `Anagrafica init streaming: file=${(staged.fileBytes / 1024 / 1024).toFixed(2)}MB, sheet=${staged.sheetPath}, rows=${staged.totRows}, chunks=${staged.chunkCount}`,
+        );
+        return staged;
       });
 
       if (init.totRows === 0) {
@@ -340,7 +571,10 @@ export const processAnagraficaChunk = inngest.createFunction(
 
     // STEP A: download chunk + prep + insert/update
     const result = await step.run("process-chunk", async () => {
-      const staged = await downloadJsonFromStorage<StagedAnagraficaChunk>(chunkPath);
+      const staged = await downloadJsonFromStorage<StagedAnagraficaChunk>(
+        chunkPath,
+        "import-staging",
+      );
       const rows = staged.rows;
       logger.info(
         `Chunk anagrafica ${chunkIndex + 1}/${totalChunks}: ${rows.length} righe`,
