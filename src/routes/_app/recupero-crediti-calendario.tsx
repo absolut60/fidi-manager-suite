@@ -14,9 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { EmailInviataView } from "@/components/email-inviata-view";
 import { CreaAzioneDialog } from "@/components/crea-azione-dialog";
 import { ModificaAzioneDialog, type AzioneModificabile } from "@/components/modifica-azione-dialog";
 import {
@@ -33,21 +31,6 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 
 export const Route = createFileRoute("/_app/recupero-crediti-calendario")({
   component: CalendarioPage,
