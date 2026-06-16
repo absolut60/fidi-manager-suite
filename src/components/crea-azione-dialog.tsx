@@ -66,6 +66,8 @@ export function CreaAzioneDialog({
   const [scadenzeSel, setScadenzeSel] = useState<Set<string>>(new Set());
   const [reminder, setReminder] = useState<ReminderState>(defaultReminderFor(tipoIniziale));
   const [saving, setSaving] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState<{ file: File; descrizione: string }[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   // Cliente: se fissato dal prop, usa quello; altrimenti gestito tramite picker interno
   const [pickedClienteId, setPickedClienteId] = useState<string | null>(null);
 
