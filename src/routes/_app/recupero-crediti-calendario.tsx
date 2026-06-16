@@ -246,19 +246,11 @@ function CalendarioPage() {
     info.view.calendar.unselect();
   }
 
-  async function handleChangeEsito(id: string, nextEsito: Esito) {
-    const { error } = await supabase
-      .from("azioni_recupero")
-      .update({ esito: nextEsito })
-      .eq("id", id);
-    if (error) {
-      toast.error("Errore aggiornamento: " + error.message);
-      return;
-    }
-    toast.success("Esito aggiornato");
-    setOpenAzione(null);
+  function invalidateAzioniQueries() {
     qc.invalidateQueries({ queryKey: ["azioni-calendario"] });
     qc.invalidateQueries({ queryKey: ["azioni-recupero"] });
+    qc.invalidateQueries({ queryKey: ["recupero-clienti"] });
+    qc.invalidateQueries({ queryKey: ["clienti-avvisati"] });
   }
 
   function toggleTipo(t: Tipo) {
