@@ -126,13 +126,55 @@ async function sendInngestEvents(events: object[]): Promise<void> {
 }
 
 /* ============================================================================
- * A — ANAGRAFICA
+ * A — ANAGRAFICA (init + fan-out → N chunk → finalize, staging su Storage)
  * ============================================================================ */
 
+const ANAG_CHUNK_SIZE = 500;
+const ANAG_UPDATE_CONCURRENCY = 20;
+const ANAG_MAX_LOG_ERRORI = 500;
+
+type AnagRow = Record<string, unknown> & { __row: number };
+type StagedAnagraficaChunk = {
+  kind: "anagrafica-staging-v1";
+  chunkIndex: number;
+  totalChunks: number;
+  rows: AnagRow[];
+};
+
+async function setAnagraficaFinalState(
+  importazioneId: string,
+  stato: "completata" | "completata_con_errori" | "fallita",
+  extraLog?: Array<{ riga: number; errore: string }>,
+) {
+  const { data: cur } = await supabaseAdmin
+    .from("importazioni")
+    .select("log_errori, righe_errore")
+    .eq("id", importazioneId)
+    .single();
+  const existing = (cur?.log_errori as Array<{ riga: number; errore: string }> | null) ?? [];
+  const merged = [...(extraLog ?? []), ...existing];
+  const capped = merged.slice(0, ANAG_MAX_LOG_ERRORI);
+  if (merged.length > ANAG_MAX_LOG_ERRORI) {
+    capped[ANAG_MAX_LOG_ERRORI - 1] = {
+      riga: 0,
+      errore: `... (${merged.length - ANAG_MAX_LOG_ERRORI + 1} ulteriori errori troncati per limite payload)`,
+    };
+  }
+  await supabaseAdmin
+    .from("importazioni")
+    .update({
+      stato,
+      completata_at: new Date().toISOString(),
+      log_errori: capped.length ? capped : null,
+    } as never)
+    .eq("id", importazioneId);
+}
+
+// === INIT: parse file, chunk su storage, fan-out ===
 export const processAnagraficaImport = inngest.createFunction(
   {
     id: "process-anagrafica-import",
-    name: "Process anagrafica import",
+    name: "Process anagrafica import (init + fan-out)",
     retries: 2,
     timeouts: { finish: "30m" },
     triggers: [{ event: "import/anagrafica.requested" }],
@@ -142,64 +184,144 @@ export const processAnagraficaImport = inngest.createFunction(
         (failedEvent.data as any)?.importazioneId ??
         null;
       if (!importazioneId) return;
-      await supabaseAdmin
-        .from("importazioni")
-        .update({
-          stato: "completata_con_errori",
-          completata_at: new Date().toISOString(),
-          log_errori: [
-            {
-              riga: 0,
-              errore: `Import anagrafica fallito dopo tutti i retry: ${error?.message ?? "errore sconosciuto"}`,
-            },
-          ],
-        } as never)
-        .eq("id", importazioneId)
-        .eq("stato", "in_elaborazione");
+      await setAnagraficaFinalState(importazioneId, "completata_con_errori", [
+        {
+          riga: 0,
+          errore: `Import anagrafica (init) fallito: ${error?.message ?? "errore sconosciuto"}`,
+        },
+      ]);
     },
   },
   async ({ event, step, logger }) => {
-    const { importazioneId, filePath } = event.data as EventData;
-    const errorLog: Array<{ riga: number; errore: string }> = [];
-    let created = 0;
-    let updated = 0;
-    let skipped = 0;
+    const { importazioneId, filePath, userId } = event.data as EventData;
+    const stagingBase = `_anagrafica_staging/${importazioneId}`;
+    try {
+      // STEP 1: parse file + scrittura chunk su storage (memoizzato)
+      const init = await step.run("parse-and-stage", async () => {
+        const wb = await downloadWorkbook(filePath);
+        const sheetName =
+          wb.SheetNames.find(
+            (n) => n.toLowerCase().replace(/[\s._\-/]+/g, "") === "anagrafica",
+          ) ?? wb.SheetNames[0];
+        const rows = anagraficaSheetToObjects(wb.Sheets[sheetName]) as AnagRow[];
+        logger.info(`Anagrafica init: ${rows.length} righe da elaborare`);
+        if (!rows.length) {
+          return { totRows: 0, chunkCount: 0, chunks: [] as string[] };
+        }
+        const chunkCount = Math.ceil(rows.length / ANAG_CHUNK_SIZE);
+        const chunkPaths: string[] = [];
+        for (let i = 0; i < chunkCount; i++) {
+          const slice = rows.slice(i * ANAG_CHUNK_SIZE, (i + 1) * ANAG_CHUNK_SIZE);
+          const path = `${stagingBase}/chunk_${i}.json`;
+          const payload: StagedAnagraficaChunk = {
+            kind: "anagrafica-staging-v1",
+            chunkIndex: i,
+            totalChunks: chunkCount,
+            rows: slice,
+          };
+          const { error: upErr } = await supabaseAdmin.storage
+            .from("import-staging")
+            .upload(path, JSON.stringify(payload), {
+              contentType: "application/json",
+              upsert: true,
+            });
+          if (upErr) throw new Error(`Upload chunk ${i} fallito: ${upErr.message}`);
+          chunkPaths.push(path);
+        }
+        return { totRows: rows.length, chunkCount, chunks: chunkPaths };
+      });
 
-    const MAX_LOG_ERRORI = 500;
-    const update = async (
-      stato: "in_elaborazione" | "completata" | "completata_con_errori",
-      done = false,
-    ) => {
-      const cappedLog = errorLog.length
-        ? errorLog.slice(0, MAX_LOG_ERRORI)
-        : null;
-      if (errorLog.length > MAX_LOG_ERRORI && cappedLog) {
-        cappedLog[MAX_LOG_ERRORI - 1] = {
-          riga: 0,
-          errore: `... (${errorLog.length - MAX_LOG_ERRORI + 1} ulteriori errori troncati per limite payload)`,
-        };
+      if (init.totRows === 0) {
+        await supabaseAdmin
+          .from("importazioni")
+          .update({
+            righe_totali: 0,
+            stato: "completata_con_errori",
+            completata_at: new Date().toISOString(),
+            log_errori: [{ riga: 0, errore: "Nessuna riga dati nel foglio Anagrafica" }],
+          } as never)
+          .eq("id", importazioneId);
+        return { totRows: 0, chunkCount: 0 };
       }
-      const { error: updErr } = await supabaseAdmin
-        .from("importazioni")
-        .update({
-          righe_elaborate: created + updated + errorLog.length,
-          righe_create: created,
-          righe_aggiornate: updated,
-          righe_errore: skipped + errorLog.length,
-          stato,
-          completata_at: done ? new Date().toISOString() : null,
-          log_errori: cappedLog,
-        })
-        .eq("id", importazioneId);
-      if (updErr) {
-        logger.error(
-          `update importazioni fallito (stato=${stato}, done=${done}, errs=${errorLog.length}): ${updErr.message}`,
-        );
-        throw new Error(`update importazioni: ${updErr.message}`);
-      }
-    };
 
-    // Concorrenza limitata: max N promesse contemporanee
+      // STEP 2: init importazioni con totali + chunks
+      await step.run("init-importazione", async () => {
+        await supabaseAdmin
+          .from("importazioni")
+          .update({
+            righe_totali: init.totRows,
+            righe_elaborate: 0,
+            righe_create: 0,
+            righe_aggiornate: 0,
+            righe_errore: 0,
+            righe_saltate: 0,
+            chunks_totali: init.chunkCount,
+            chunks_completati: 0,
+            stato: "in_elaborazione",
+            log_errori: [
+              {
+                riga: 0,
+                errore: `Init: ${init.totRows} righe totali, ${init.chunkCount} chunk da ${ANAG_CHUNK_SIZE}`,
+              },
+            ],
+          } as never)
+          .eq("id", importazioneId);
+      });
+
+      // STEP 3: fan-out di un evento per chunk
+      const events = init.chunks.map((chunkPath, i) => ({
+        name: "import/anagrafica.chunk" as const,
+        data: {
+          importazioneId,
+          chunkPath,
+          chunkIndex: i,
+          totalChunks: init.chunkCount,
+          userId,
+        },
+      }));
+      const SEND_BATCH = 200;
+      for (let i = 0; i < events.length; i += SEND_BATCH) {
+        const slice = events.slice(i, i + SEND_BATCH);
+        await step.run(`send-chunks-${i}`, async () => {
+          await sendInngestEvents(slice);
+        });
+      }
+
+      logger.info(
+        `Anagrafica init done: rows=${init.totRows}, chunks=${init.chunkCount}, events emessi`,
+      );
+      return { totRows: init.totRows, chunkCount: init.chunkCount };
+    } catch (err) {
+      await setAnagraficaFinalState(importazioneId, "completata_con_errori", [
+        { riga: 0, errore: `Init fallito: ${err instanceof Error ? err.message : String(err)}` },
+      ]);
+      throw err;
+    }
+  },
+);
+
+// === CHUNK: scarica e processa SOLO il proprio chunk ===
+type AnagChunkEventData = {
+  importazioneId: string;
+  chunkPath: string;
+  chunkIndex: number;
+  totalChunks: number;
+  userId?: string;
+};
+
+export const processAnagraficaChunk = inngest.createFunction(
+  {
+    id: "process-anagrafica-chunk",
+    name: "Process anagrafica chunk",
+    retries: 3,
+    concurrency: { limit: 3 },
+    triggers: [{ event: "import/anagrafica.chunk" }],
+  },
+  async ({ event, step, logger }) => {
+    const { importazioneId, chunkPath, chunkIndex, totalChunks } =
+      event.data as AnagChunkEventData;
+
+    // Concorrenza limitata
     async function runWithConcurrency<T>(
       items: T[],
       limit: number,
@@ -216,64 +338,91 @@ export const processAnagraficaImport = inngest.createFunction(
       await Promise.all(runners);
     }
 
-    try {
-      // Parse fuori da step.run (output step ~4MB)
-      const wb = await downloadWorkbook(filePath);
-      const anagSheetName =
-        wb.SheetNames.find((n) => n.toLowerCase().replace(/[\s._\-/]+/g, "") === "anagrafica") ??
-        wb.SheetNames[0];
-      const rows = anagraficaSheetToObjects(wb.Sheets[anagSheetName]);
-      logger.info(`Anagrafica: ${rows.length} righe da elaborare`);
-      await supabaseAdmin
-        .from("importazioni")
-        .update({ righe_totali: rows.length, stato: "in_elaborazione" })
-        .eq("id", importazioneId);
-      if (!rows.length) {
-        await update("completata_con_errori", true);
-        return { rows: 0 };
-      }
+    // STEP A: download chunk + prep + insert/update
+    const result = await step.run("process-chunk", async () => {
+      const staged = await downloadJsonFromStorage<StagedAnagraficaChunk>(chunkPath);
+      const rows = staged.rows;
+      logger.info(
+        `Chunk anagrafica ${chunkIndex + 1}/${totalChunks}: ${rows.length} righe`,
+      );
 
-      const { stores, storesByIndex } = await step.run("load-stores", async () => {
-        const { data } = await supabaseAdmin.from("stores").select("id, codice").order("codice");
-        const map: Record<string, string> = {};
-        (data ?? []).forEach((s) => {
-          if (s.codice) map[s.codice] = s.id;
-        });
-        return { stores: map, storesByIndex: data ?? [] };
+      const errs: Array<{ riga: number; errore: string }> = [];
+      let created = 0;
+      let updated = 0;
+      let skipped = 0;
+
+      // Stores
+      const { data: storesData } = await supabaseAdmin
+        .from("stores")
+        .select("id, codice")
+        .order("codice");
+      const stores: Record<string, string> = {};
+      (storesData ?? []).forEach((s) => {
+        if (s.codice) stores[s.codice] = s.id;
       });
+      const storesByIndex = storesData ?? [];
 
-      const codici = Array.from(new Set(rows.map((r) => r.codice_gestionale).filter(Boolean)));
-      const pive = Array.from(new Set(rows.map((r) => r.partita_iva).filter(Boolean)));
+      // Lookup existing clienti per i codici/pive di QUESTO chunk
+      const codici = Array.from(
+        new Set(
+          rows
+            .map((r) => toStr((r as Record<string, unknown>).codice_gestionale))
+            .filter((v): v is string => !!v),
+        ),
+      );
+      const pive = Array.from(
+        new Set(
+          rows
+            .map((r) => toStr((r as Record<string, unknown>).partita_iva))
+            .filter((v): v is string => !!v),
+        ),
+      );
       const existing: Record<string, string> = {};
-      {
-        const CHUNK = 200;
-        if (codici.length) {
-          for (let i = 0; i < codici.length; i += CHUNK) {
-            const slice = codici.slice(i, i + CHUNK);
-            const { data } = await supabaseAdmin
-              .from("clienti")
-              .select("id, codice_gestionale")
-              .in("codice_gestionale", slice)
-              .limit(CHUNK + 10);
-            (data ?? []).forEach((c) => {
-              if (c.codice_gestionale) existing[`cg:${c.codice_gestionale}`] = c.id;
-            });
-          }
-        }
-        if (pive.length) {
-          for (let i = 0; i < pive.length; i += CHUNK) {
-            const slice = pive.slice(i, i + CHUNK);
-            const { data } = await supabaseAdmin
-              .from("clienti")
-              .select("id, partita_iva")
-              .in("partita_iva", slice)
-              .limit(CHUNK + 10);
-            (data ?? []).forEach((c) => {
-              if (c.partita_iva) existing[`pi:${c.partita_iva}`] = c.id;
-            });
-          }
-        }
+      const LK_BATCH = 200;
+      for (let i = 0; i < codici.length; i += LK_BATCH) {
+        const slice = codici.slice(i, i + LK_BATCH);
+        const { data } = await supabaseAdmin
+          .from("clienti")
+          .select("id, codice_gestionale")
+          .in("codice_gestionale", slice);
+        (data ?? []).forEach((c) => {
+          if (c.codice_gestionale) existing[`cg:${c.codice_gestionale}`] = c.id;
+        });
       }
+      for (let i = 0; i < pive.length; i += LK_BATCH) {
+        const slice = pive.slice(i, i + LK_BATCH);
+        const { data } = await supabaseAdmin
+          .from("clienti")
+          .select("id, partita_iva")
+          .in("partita_iva", slice);
+        (data ?? []).forEach((c) => {
+          if (c.partita_iva) existing[`pi:${c.partita_iva}`] = c.id;
+        });
+      }
+
+      // Prepara payload per ogni riga
+      const MACRO_LOOKUP: Record<string, string> = {
+        "01": "IMPRESE EDILI",
+        "02": "PRIVATI",
+        "03": "DIPENDENTI",
+        "04": "AZIENDA",
+        "N/D": "Altre macrocategorie",
+      };
+      const CAT_LOOKUP: Record<string, string> = {
+        "01": "IMPRESE Categoria A",
+        "02": "IMPRESE Categoria B",
+        "03": "IMPRESE Categoria C",
+        "N/D": "Altre categorie",
+      };
+      const addIfPresent = (
+        p: Record<string, unknown>,
+        key: string,
+        value: unknown,
+      ) => {
+        if (value !== null && value !== undefined && String(value).trim() !== "") {
+          p[key] = value;
+        }
+      };
 
       type Prepared = {
         idx: number;
@@ -282,266 +431,321 @@ export const processAnagraficaImport = inngest.createFunction(
         existId: string | null;
       };
       const prepared: Prepared[] = [];
-      for (const r of rows) {
-        let storeId: string | null = null;
-        if (r.store_codice) {
-          storeId = stores[r.store_codice] ?? null;
-          if (!storeId && /^\d+$/.test(r.store_codice.trim())) {
-            const idx = parseInt(r.store_codice.trim(), 10) - 1;
-            if (idx >= 0 && idx < storesByIndex.length) storeId = storesByIndex[idx].id;
+      for (const r0 of rows) {
+        const r = r0 as Record<string, unknown> & { __row: number };
+        try {
+          let storeId: string | null = null;
+          const storeCodice = toStr(r.store_codice);
+          if (storeCodice) {
+            storeId = stores[storeCodice] ?? null;
+            if (!storeId && /^\d+$/.test(storeCodice.trim())) {
+              const idx = parseInt(storeCodice.trim(), 10) - 1;
+              if (idx >= 0 && idx < storesByIndex.length) storeId = storesByIndex[idx].id;
+            }
+            if (!storeId) {
+              errs.push({
+                riga: r.__row,
+                errore: `Store '${storeCodice}' non trovato (warning)`,
+              });
+            }
           }
-          if (!storeId)
-            errorLog.push({
-              riga: r.__row,
-              errore: `Store '${r.store_codice}' non trovato (warning)`,
-            });
-        }
-        const MACRO_LOOKUP: Record<string, string> = {
-          "01": "IMPRESE EDILI", "02": "PRIVATI", "03": "DIPENDENTI",
-          "04": "AZIENDA", "N/D": "Altre macrocategorie",
-        };
-        const CAT_LOOKUP: Record<string, string> = {
-          "01": "IMPRESE Categoria A", "02": "IMPRESE Categoria B",
-          "03": "IMPRESE Categoria C", "N/D": "Altre categorie",
-        };
-        const codMacro = toStr(r.codice_macrocategoria);
-        const macroLabel = toStr(r.macrocategoria) || (codMacro && MACRO_LOOKUP[codMacro]) || null;
-        const codCat = toStr(r.codice_categoria);
-        const catLabel = toStr(r.categoria) || (codCat && CAT_LOOKUP[codCat]) || null;
-        const addIfPresent = (p: Record<string, unknown>, key: string, value: unknown) => {
-          if (value !== null && value !== undefined && String(value).trim() !== "") {
-            p[key] = value;
-          }
-        };
-        const payload: Record<string, unknown> = {
-          ragione_sociale: r.ragione_sociale,
-        };
-        addIfPresent(payload, "codice_gestionale", toStr(r.codice_gestionale));
-        addIfPresent(payload, "partita_iva", toStr(r.partita_iva));
-        addIfPresent(payload, "codice_fiscale", toStr(r.codice_fiscale));
-        if (r.forma_giuridica) {
-          const ts = String(r.forma_giuridica).trim().toLowerCase();
-          const validValues = ["persona_fisica", "azienda"];
-          let normalized = ts.replace(/\s+/g, "_");
-          if (ts === "persona fisica") normalized = "persona_fisica";
-          if (ts === "ditta individuale") normalized = "persona_fisica";
-          if (ts === "privato" || ts === "privati") normalized = "persona_fisica";
-          if (!validValues.includes(normalized)) normalized = "azienda";
-          addIfPresent(payload, "tipo_soggetto", normalized);
-        }
-        addIfPresent(payload, "indirizzo", toStr(r.indirizzo));
-        addIfPresent(payload, "citta", toStr(r.citta));
-        addIfPresent(payload, "cap", toStr(r.cap));
-        addIfPresent(payload, "provincia", toStr(r.provincia));
-        addIfPresent(payload, "telefono", toStr(r.telefono));
-        addIfPresent(payload, "telefono_2", toStr(r.telefono_2));
-        addIfPresent(payload, "cellulare", toStr((r as Record<string, unknown>).cellulare));
-        addIfPresent(payload, "email", toStr(r.email));
-        addIfPresent(payload, "pec", toStr(r.pec));
-        addIfPresent(payload, "codice_sdi", toStr(r.codice_sdi));
-        addIfPresent(payload, "note", toStr(r.note));
-        addIfPresent(payload, "codice_macrocategoria", codMacro);
-        addIfPresent(payload, "macrocategoria", macroLabel);
-        addIfPresent(payload, "codice_categoria", codCat);
-        addIfPresent(payload, "categoria", catLabel);
-        addIfPresent(payload, "condizione_pagamento_cod", toStr((r as Record<string, unknown>).condizione_pagamento_cod));
-        addIfPresent(payload, "condizione_pagamento_desc", toStr((r as Record<string, unknown>).condizione_pagamento_desc));
-        addIfPresent(payload, "condizioni_pagamento", toStr((r as Record<string, unknown>).condizione_pagamento_desc) || toStr((r as Record<string, unknown>).condizioni_pagamento));
+          const codMacro = toStr(r.codice_macrocategoria);
+          const macroLabel =
+            toStr(r.macrocategoria) || (codMacro && MACRO_LOOKUP[codMacro]) || null;
+          const codCat = toStr(r.codice_categoria);
+          const catLabel = toStr(r.categoria) || (codCat && CAT_LOOKUP[codCat]) || null;
 
-        if (storeId) payload.store_id = storeId;
-        const existId =
-          (r.codice_gestionale && existing[`cg:${r.codice_gestionale}`]) ||
-          (r.partita_iva && existing[`pi:${r.partita_iva}`]) ||
-          null;
-        prepared.push({
-          idx: r.__row,
-          codice_gestionale: toStr(r.codice_gestionale) || null,
-          payload,
-          existId,
-        });
+          const payload: Record<string, unknown> = {
+            ragione_sociale: toStr(r.ragione_sociale),
+          };
+          addIfPresent(payload, "codice_gestionale", toStr(r.codice_gestionale));
+          addIfPresent(payload, "partita_iva", toStr(r.partita_iva));
+          addIfPresent(payload, "codice_fiscale", toStr(r.codice_fiscale));
+          if (r.forma_giuridica) {
+            const ts = String(r.forma_giuridica).trim().toLowerCase();
+            const validValues = ["persona_fisica", "azienda"];
+            let normalized = ts.replace(/\s+/g, "_");
+            if (ts === "persona fisica") normalized = "persona_fisica";
+            if (ts === "ditta individuale") normalized = "persona_fisica";
+            if (ts === "privato" || ts === "privati") normalized = "persona_fisica";
+            if (!validValues.includes(normalized)) normalized = "azienda";
+            addIfPresent(payload, "tipo_soggetto", normalized);
+          }
+          addIfPresent(payload, "indirizzo", toStr(r.indirizzo));
+          addIfPresent(payload, "citta", toStr(r.citta));
+          addIfPresent(payload, "cap", toStr(r.cap));
+          addIfPresent(payload, "provincia", toStr(r.provincia));
+          addIfPresent(payload, "telefono", toStr(r.telefono));
+          addIfPresent(payload, "telefono_2", toStr(r.telefono_2));
+          addIfPresent(payload, "cellulare", toStr(r.cellulare));
+          addIfPresent(payload, "email", toStr(r.email));
+          addIfPresent(payload, "pec", toStr(r.pec));
+          addIfPresent(payload, "codice_sdi", toStr(r.codice_sdi));
+          addIfPresent(payload, "note", toStr(r.note));
+          addIfPresent(payload, "codice_macrocategoria", codMacro);
+          addIfPresent(payload, "macrocategoria", macroLabel);
+          addIfPresent(payload, "codice_categoria", codCat);
+          addIfPresent(payload, "categoria", catLabel);
+          addIfPresent(
+            payload,
+            "condizione_pagamento_cod",
+            toStr(r.condizione_pagamento_cod),
+          );
+          addIfPresent(
+            payload,
+            "condizione_pagamento_desc",
+            toStr(r.condizione_pagamento_desc),
+          );
+          addIfPresent(
+            payload,
+            "condizioni_pagamento",
+            toStr(r.condizione_pagamento_desc) || toStr(r.condizioni_pagamento),
+          );
+          if (storeId) payload.store_id = storeId;
+
+          if (!payload.ragione_sociale) {
+            skipped++;
+            errs.push({ riga: r.__row, errore: "Riga senza ragione_sociale" });
+            continue;
+          }
+
+          const cg = toStr(r.codice_gestionale);
+          const pi = toStr(r.partita_iva);
+          const existId =
+            (cg && existing[`cg:${cg}`]) || (pi && existing[`pi:${pi}`]) || null;
+          prepared.push({
+            idx: r.__row,
+            codice_gestionale: cg,
+            payload,
+            existId,
+          });
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          skipped++;
+          errs.push({ riga: r.__row, errore: `Prep: ${msg}`.slice(0, 300) });
+        }
       }
 
       const toInsert = prepared.filter((p) => !p.existId);
       const toUpdate = prepared.filter((p) => p.existId);
-      logger.info(`Anagrafica: ${toInsert.length} insert, ${toUpdate.length} update`);
 
-      const CHUNK_SIZE = 500;
-      const UPDATE_CONCURRENCY = 20;
-
-      // INSERT — uno step per chunk, fallback per-riga su errore
-      const insertChunks = Math.ceil(toInsert.length / CHUNK_SIZE);
-      for (let i = 0; i < insertChunks; i++) {
-        const start = i * CHUNK_SIZE;
-        const chunk = toInsert.slice(start, start + CHUNK_SIZE);
-        const stepRes = await step.run(`process-inserts-chunk-${i}`, async () => {
-          logger.info(`Insert chunk ${i + 1}/${insertChunks} — ${chunk.length} righe`);
-          let ok = 0;
-          const errs: Array<{ riga: number; errore: string }> = [];
-          let skippedLocal = 0;
-          const { data, error } = await supabaseAdmin
-            .from("clienti")
-            .insert(chunk.map((c) => c.payload) as never)
-            .select("id");
-          if (error) {
-            logger.warn(`Insert chunk ${i} bulk fallito: ${error.message} — fallback per-riga`);
-            for (const c of chunk) {
-              try {
-                const { error: e2 } = await supabaseAdmin
-                  .from("clienti")
-                  .insert(c.payload as never);
-                if (e2) {
-                  logger.error(
-                    `Insert riga ${c.idx} (cod ${c.codice_gestionale ?? "?"}): ${e2.message}`,
-                  );
-                  errs.push({
-                    riga: c.idx,
-                    errore: `Insert [cod ${c.codice_gestionale ?? "?"}]: ${e2.message}`,
-                  });
-                  skippedLocal++;
-                } else ok++;
-              } catch (rowErr) {
-                const msg = rowErr instanceof Error ? rowErr.message : String(rowErr);
-                logger.error(`Insert eccezione riga ${c.idx}: ${msg}`);
-                errs.push({
-                  riga: c.idx,
-                  errore: `Insert eccezione [cod ${c.codice_gestionale ?? "?"}]: ${msg}`,
-                });
-                skippedLocal++;
-              }
-            }
-          } else {
-            ok = data?.length ?? chunk.length;
-          }
-          logger.info(
-            `Insert chunk ${i + 1}/${insertChunks} done: ok=${ok}, errs=${errs.length}`,
+      // INSERT bulk con fallback per-riga
+      if (toInsert.length) {
+        const { data, error } = await supabaseAdmin
+          .from("clienti")
+          .insert(toInsert.map((c) => c.payload) as never)
+          .select("id");
+        if (error) {
+          logger.warn(
+            `Chunk ${chunkIndex} insert bulk fallito: ${error.message} — fallback per-riga`,
           );
-          return { ok, errs, skipped: skippedLocal };
-        });
-        created += stepRes.ok;
-        skipped += stepRes.skipped;
-        errorLog.push(...stepRes.errs);
-        // Persisti FUORI dallo step così sopravvive ai retry — wrap per non far esplodere il job
-        await step.run(`persist-after-insert-${i}`, async () => {
-          try {
-            await update("in_elaborazione");
-          } catch (e) {
-            const msg = e instanceof Error ? e.message : String(e);
-            logger.error(`persist-after-insert-${i} fallito (non bloccante): ${msg}`);
-          }
-          return { ok: true };
-        });
-      }
-
-      // UPDATE — uno step per chunk, concorrenza limitata, per-riga resiliente
-      const updateChunks = Math.ceil(toUpdate.length / CHUNK_SIZE);
-      for (let i = 0; i < updateChunks; i++) {
-        const start = i * CHUNK_SIZE;
-        const chunk = toUpdate.slice(start, start + CHUNK_SIZE);
-        const stepRes = await step.run(`process-updates-chunk-${i}`, async () => {
-          logger.info(
-            `Update chunk ${i + 1}/${updateChunks} — ${chunk.length} righe (conc ${UPDATE_CONCURRENCY})`,
-          );
-          let ok = 0;
-          const errs: Array<{ riga: number; errore: string }> = [];
-          let skippedLocal = 0;
-          await runWithConcurrency(chunk, UPDATE_CONCURRENCY, async (c) => {
+          for (const c of toInsert) {
             try {
-              const { error } = await supabaseAdmin
+              const { error: e2 } = await supabaseAdmin
                 .from("clienti")
-                .update(c.payload as never)
-                .eq("id", c.existId!);
-              if (error) {
-                logger.error(
-                  `Update riga ${c.idx} (cod ${c.codice_gestionale ?? "?"}): ${error.message}`,
-                );
+                .insert(c.payload as never);
+              if (e2) {
                 errs.push({
                   riga: c.idx,
-                  errore: `Update [cod ${c.codice_gestionale ?? "?"}]: ${error.message}`,
+                  errore: `Insert [cod ${c.codice_gestionale ?? "?"}]: ${e2.message}`.slice(
+                    0,
+                    300,
+                  ),
                 });
-                skippedLocal++;
-              } else ok++;
+                skipped++;
+              } else {
+                created++;
+              }
             } catch (rowErr) {
               const msg = rowErr instanceof Error ? rowErr.message : String(rowErr);
-              logger.error(`Update eccezione riga ${c.idx}: ${msg}`);
               errs.push({
                 riga: c.idx,
-                errore: `Update eccezione [cod ${c.codice_gestionale ?? "?"}]: ${msg}`,
+                errore: `Insert exc [cod ${c.codice_gestionale ?? "?"}]: ${msg}`.slice(0, 300),
               });
-              skippedLocal++;
+              skipped++;
             }
-          });
-          logger.info(
-            `Update chunk ${i + 1}/${updateChunks} done: ok=${ok}, errs=${errs.length}`,
-          );
-          return { ok, errs, skipped: skippedLocal };
-        });
-        updated += stepRes.ok;
-        skipped += stepRes.skipped;
-        errorLog.push(...stepRes.errs);
-        await step.run(`persist-after-update-${i}`, async () => {
-          try {
-            await update("in_elaborazione");
-          } catch (e) {
-            const msg = e instanceof Error ? e.message : String(e);
-            logger.error(`persist-after-update-${i} fallito (non bloccante): ${msg}`);
           }
-          return { ok: true };
+        } else {
+          created += data?.length ?? toInsert.length;
+        }
+      }
+
+      // UPDATE con concorrenza
+      if (toUpdate.length) {
+        await runWithConcurrency(toUpdate, ANAG_UPDATE_CONCURRENCY, async (c) => {
+          try {
+            const { error } = await supabaseAdmin
+              .from("clienti")
+              .update(c.payload as never)
+              .eq("id", c.existId!);
+            if (error) {
+              errs.push({
+                riga: c.idx,
+                errore: `Update [cod ${c.codice_gestionale ?? "?"}]: ${error.message}`.slice(
+                  0,
+                  300,
+                ),
+              });
+              skipped++;
+            } else {
+              updated++;
+            }
+          } catch (rowErr) {
+            const msg = rowErr instanceof Error ? rowErr.message : String(rowErr);
+            errs.push({
+              riga: c.idx,
+              errore: `Update exc [cod ${c.codice_gestionale ?? "?"}]: ${msg}`.slice(0, 300),
+            });
+            skipped++;
+          }
         });
       }
 
-      // FINALIZE — wrap in step.run con try/catch dettagliato e fallback difensivo
-      const finalRes = await step.run("finalize", async () => {
-        const statoFinale: "completata" | "completata_con_errori" =
-          errorLog.length ? "completata_con_errori" : "completata";
-        logger.info(
-          `Finalize: stato=${statoFinale}, creati=${created}, aggiornati=${updated}, saltati=${skipped}, errori=${errorLog.length} (log troncato a ${MAX_LOG_ERRORI})`,
-        );
-        try {
-          await update(statoFinale, true);
-          return { ok: true, statoFinale };
-        } catch (e) {
-          const msg = e instanceof Error ? e.message : String(e);
-          const stack = e instanceof Error ? e.stack : undefined;
-          logger.error(`Finalize fallito: ${msg}\n${stack ?? ""}`);
-          // Fallback difensivo: scrivi almeno lo stato + conteggi SENZA log_errori per non gonfiare il jsonb
-          const { error: minErr } = await supabaseAdmin
-            .from("importazioni")
-            .update({
-              righe_elaborate: created + updated + errorLog.length,
-              righe_create: created,
-              righe_aggiornate: updated,
-              righe_errore: skipped + errorLog.length,
-              stato: "completata_con_errori",
-              completata_at: new Date().toISOString(),
-              log_errori: [
-                {
-                  riga: 0,
-                  errore: `Finalize fallito (${errorLog.length} errori non persistiti): ${msg}`,
-                },
-              ],
-            })
-            .eq("id", importazioneId);
-          if (minErr) {
-            logger.error(`Anche il fallback finalize è fallito: ${minErr.message}`);
-            throw new Error(`finalize+fallback falliti: ${msg} / ${minErr.message}`);
-          }
-          return { ok: false, statoFinale: "completata_con_errori", finalizeError: msg };
+      // Persisti errori incrementalmente con cap globale
+      if (errs.length) {
+        const { data: cur } = await supabaseAdmin
+          .from("importazioni")
+          .select("log_errori")
+          .eq("id", importazioneId)
+          .single();
+        const existingLog =
+          (cur?.log_errori as Array<{ riga: number; errore: string }> | null) ?? [];
+        const merged = [...existingLog, ...errs];
+        const capped = merged.slice(0, ANAG_MAX_LOG_ERRORI);
+        if (merged.length > ANAG_MAX_LOG_ERRORI) {
+          capped[ANAG_MAX_LOG_ERRORI - 1] = {
+            riga: 0,
+            errore: `... (${merged.length - ANAG_MAX_LOG_ERRORI + 1} ulteriori errori troncati per limite payload)`,
+          };
         }
+        await supabaseAdmin
+          .from("importazioni")
+          .update({ log_errori: capped } as never)
+          .eq("id", importazioneId);
+      }
+
+      logger.info(
+        `Chunk anagrafica ${chunkIndex + 1}/${totalChunks} done: created=${created}, updated=${updated}, skipped=${skipped}, errs=${errs.length}`,
+      );
+      return {
+        elaborate: rows.length,
+        created,
+        updated,
+        skipped,
+        errori: errs.length,
+      };
+    });
+
+    // STEP B: incremento atomico contatori
+    const progress = await step.run("increment-counters", async () => {
+      const { data: rpc, error: rpcErr } = await (
+        supabaseAdmin.rpc as unknown as (
+          fn: string,
+          args: Record<string, unknown>,
+        ) => Promise<{
+          data: Array<{ chunks_completati: number; chunks_totali: number }> | null;
+          error: { message: string } | null;
+        }>
+      )("increment_importazione_counters", {
+        _id: importazioneId,
+        _elaborate: result.elaborate,
+        _create: result.created,
+        _update: result.updated,
+        _error: result.errori,
+        _skipped: result.skipped,
+      });
+      if (rpcErr) throw new Error(`increment_importazione_counters: ${rpcErr.message}`);
+      const row = rpc?.[0] ?? { chunks_completati: 0, chunks_totali: totalChunks };
+      return row;
+    });
+
+    // STEP C: cleanup file chunk
+    await step.run("cleanup-chunk", async () => {
+      await supabaseAdmin.storage.from("import-staging").remove([chunkPath]).catch(() => {});
+      return { ok: true };
+    });
+
+    // STEP D: se è l'ultimo chunk, emetti evento finalize
+    if (progress.chunks_completati >= progress.chunks_totali) {
+      await step.run("send-finalize", async () => {
+        await sendInngestEvents([
+          { name: "import/anagrafica.finalize", data: { importazioneId } },
+        ]);
+      });
+    }
+
+    return {
+      chunkIndex,
+      ...result,
+      chunks_completati: progress.chunks_completati,
+      chunks_totali: progress.chunks_totali,
+    };
+  },
+);
+
+// === FINALIZE: somma e chiude lo stato ===
+export const finalizeAnagraficaImport = inngest.createFunction(
+  {
+    id: "finalize-anagrafica-import",
+    name: "Finalize anagrafica import",
+    retries: 2,
+    triggers: [{ event: "import/anagrafica.finalize" }],
+  },
+  async ({ event, step, logger }) => {
+    const { importazioneId } = event.data as { importazioneId: string };
+    try {
+      const final = await step.run("read-and-finalize", async () => {
+        const { data: cur } = await supabaseAdmin
+          .from("importazioni")
+          .select(
+            "righe_totali, righe_create, righe_aggiornate, righe_errore, righe_saltate, log_errori",
+          )
+          .eq("id", importazioneId)
+          .single();
+        const errs = (cur?.righe_errore as number | null) ?? 0;
+        const skp = (cur?.righe_saltate as number | null) ?? 0;
+        const stato: "completata" | "completata_con_errori" =
+          errs > 0 || skp > 0 ? "completata_con_errori" : "completata";
+        await supabaseAdmin
+          .from("importazioni")
+          .update({
+            stato,
+            completata_at: new Date().toISOString(),
+          } as never)
+          .eq("id", importazioneId);
+        return {
+          stato,
+          creati: (cur?.righe_create as number | null) ?? 0,
+          aggiornati: (cur?.righe_aggiornate as number | null) ?? 0,
+          errori: errs,
+          saltati: skp,
+        };
+      });
+
+      // Cleanup residui staging (best-effort)
+      await step.run("cleanup-staging", async () => {
+        const base = `_anagrafica_staging/${importazioneId}`;
+        const { data: list } = await supabaseAdmin.storage.from("import-staging").list(base);
+        if (list && list.length) {
+          await supabaseAdmin.storage
+            .from("import-staging")
+            .remove(list.map((f) => `${base}/${f.name}`))
+            .catch(() => {});
+        }
+        return { ok: true };
       });
 
       logger.info(
-        `Anagrafica completata: creati=${created}, aggiornati=${updated}, saltati=${skipped}, errori=${errorLog.length}, finalize=${JSON.stringify(finalRes)}`,
+        `Anagrafica finalize ${importazioneId}: stato=${final.stato}, creati=${final.creati}, aggiornati=${final.aggiornati}, errori=${final.errori}, saltati=${final.saltati}`,
       );
-      return {
-        ok: true,
-        creati: created,
-        aggiornati: updated,
-        saltati: skipped,
-        errori: errorLog.length,
-        finalize: finalRes,
-      };
+      return final;
     } catch (err) {
-      await setImportazioneError(importazioneId, err instanceof Error ? err.message : String(err));
+      await setAnagraficaFinalState(importazioneId, "completata_con_errori", [
+        {
+          riga: 0,
+          errore: `Finalize fallito: ${err instanceof Error ? err.message : String(err)}`,
+        },
+      ]);
       throw err;
     }
   },

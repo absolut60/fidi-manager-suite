@@ -3,6 +3,8 @@ import { serve } from "inngest/edge";
 import { inngest } from "@/lib/inngest/client";
 import {
   processAnagraficaImport,
+  processAnagraficaChunk,
+  finalizeAnagraficaImport,
   processRischioImport,
   processScadenziarioImport,
   processScadenziarioChunk,
@@ -17,6 +19,8 @@ const handler = serve({
   client: inngest,
   functions: [
     processAnagraficaImport,
+    processAnagraficaChunk,
+    finalizeAnagraficaImport,
     processRischioImport,
     processScadenziarioImport,
     processScadenziarioChunk,
