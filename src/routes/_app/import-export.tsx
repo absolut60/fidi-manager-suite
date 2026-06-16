@@ -566,7 +566,7 @@ function AnagraficaImportCard() {
       const raw = anagraficaSheetToObjects(sheet);
       if (!raw.length) {
         toast.error(
-          "Nessuna riga dati trovata: verifica che la riga 2 contenga le intestazioni e che i dati inizino dalla riga 4",
+          'Nessuna riga dati trovata: verifica che il foglio "Anagrafica" contenga la colonna "ragione_sociale" (o "ragione sociale") nelle prime righe',
         );
         return;
       }
