@@ -394,10 +394,6 @@ function CalendarioPage() {
         )}
       </Card>
 
-      <Dialog open={false} onOpenChange={() => {}}>
-        <DialogContent />
-      </Dialog>
-
       {openAzione && (
         <ModificaAzioneDialog
           key={openAzione.id}
@@ -421,8 +417,6 @@ function CalendarioPage() {
           }
         />
       )}
-        </DialogContent>
-      </Dialog>
 
       <CreaAzioneDialog
         open={creaOpen}
