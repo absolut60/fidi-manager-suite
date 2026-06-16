@@ -86,6 +86,59 @@ function isPreviewable(mime: string | null): boolean {
   return mime === "application/pdf" || mime.startsWith("image/");
 }
 
+export function validateAllegatoFile(f: File): string | null {
+  if (f.size > ALLEGATI_MAX_BYTES) {
+    return `File troppo grande (max ${ALLEGATI_MAX_BYTES / 1024 / 1024} MB)`;
+  }
+  if (f.type && !ALLEGATI_ALLOWED_MIMES.has(f.type)) {
+    return `Tipo file non consentito: ${f.type}`;
+  }
+  return null;
+}
+
+/** Upload di un file nel bucket allegati + insert riga su public.allegati.
+ *  Ritorna { ok:true } o { ok:false, error }. Se l'insert fallisce rimuove il file. */
+export async function uploadAllegatoFile(params: {
+  file: File;
+  descrizione?: string | null;
+  entitaTipo: AllegatoEntitaTipo;
+  entitaId: string;
+  clienteId: string;
+  userId: string | null | undefined;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { file, descrizione, entitaTipo, entitaId, clienteId, userId } = params;
+  try {
+    const uid = crypto.randomUUID();
+    const path = `${entitaTipo}/${entitaId}/${uid}-${sanitize(file.name)}`;
+    const { error: eUp } = await supabase.storage
+      .from(ALLEGATI_BUCKET)
+      .upload(path, file, { contentType: file.type || undefined, upsert: false });
+    if (eUp) return { ok: false, error: eUp.message };
+    const { error: eIns } = await supabase.from("allegati").insert({
+      entita_tipo: entitaTipo,
+      entita_id: entitaId,
+      cliente_id: clienteId,
+      nome_file: file.name,
+      storage_path: path,
+      mime_type: file.type || null,
+      dimensione_bytes: file.size,
+      descrizione: (descrizione ?? "").trim() || null,
+      caricato_da: userId ?? null,
+    });
+    if (eIns) {
+      await supabase.storage.from(ALLEGATI_BUCKET).remove([path]);
+      return { ok: false, error: eIns.message };
+    }
+    return { ok: true };
+  } catch (e: any) {
+    return { ok: false, error: e?.message ?? "Errore upload" };
+  }
+}
+
+export function fmtAllegatoBytes(n: number | null): string {
+  return fmtBytes(n);
+}
+
 export function AllegatiSection({
   entitaTipo, entitaId, clienteId, canEdit = true, title = "Allegati", compact = false,
 }: Props) {

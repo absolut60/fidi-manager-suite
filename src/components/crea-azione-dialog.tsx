@@ -1,8 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Plus, Search, X } from "lucide-react";
+import { Paperclip, Plus, Search, Trash2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  uploadAllegatoFile,
+  validateAllegatoFile,
+  fmtAllegatoBytes,
+} from "@/components/allegati-section";
 import { useAuth } from "@/hooks/use-auth";
 import { classificaScadenza } from "@/lib/scadenze";
 import {
@@ -61,6 +66,8 @@ export function CreaAzioneDialog({
   const [scadenzeSel, setScadenzeSel] = useState<Set<string>>(new Set());
   const [reminder, setReminder] = useState<ReminderState>(defaultReminderFor(tipoIniziale));
   const [saving, setSaving] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState<{ file: File; descrizione: string }[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   // Cliente: se fissato dal prop, usa quello; altrimenti gestito tramite picker interno
   const [pickedClienteId, setPickedClienteId] = useState<string | null>(null);
 
@@ -76,6 +83,7 @@ export function CreaAzioneDialog({
       setReminder(defaultReminderFor(tipoIniziale));
       setSaving(false);
       setPickedClienteId(null);
+      setPendingFiles([]);
     }
   }, [open, tipoIniziale, dataIniziale]);
 
@@ -185,12 +193,36 @@ export function CreaAzioneDialog({
         }
       }
 
-      toast.success("Azione creata");
+      // Upload allegati in sospeso (dopo che l'azione e stata creata con successo).
+      // Se un upload fallisce, l'azione resta valida e segnaliamo l'errore.
+      let allegatiFalliti: string[] = [];
+      if (pendingFiles.length && inserita?.id) {
+        for (const item of pendingFiles) {
+          const res = await uploadAllegatoFile({
+            file: item.file,
+            descrizione: item.descrizione,
+            entitaTipo: "azione_recupero",
+            entitaId: inserita.id,
+            clienteId: effectiveClienteId,
+            userId: user?.id ?? null,
+          });
+          if (!res.ok) allegatiFalliti.push(`${item.file.name}: ${res.error}`);
+        }
+      }
+
+      if (allegatiFalliti.length) {
+        toast.warning(
+          `Azione creata, ma alcuni allegati non sono stati caricati: ${allegatiFalliti.join("; ")}. Riprova dalla scheda azione.`,
+        );
+      } else {
+        toast.success("Azione creata");
+      }
       qc.invalidateQueries({ queryKey: ["azioni-recupero"] });
       qc.invalidateQueries({ queryKey: ["azioni-recupero-metrics"] });
       qc.invalidateQueries({ queryKey: ["azioni-recupero-counts"] });
       qc.invalidateQueries({ queryKey: ["azioni-recupero-cliente", effectiveClienteId] });
       qc.invalidateQueries({ queryKey: ["azioni-calendario"] });
+      qc.invalidateQueries({ queryKey: ["allegati", "azione_recupero", inserita?.id] });
       onCreated?.();
       onOpenChange(false);
     } catch (e: any) {
@@ -284,6 +316,72 @@ export function CreaAzioneDialog({
               </p>
             </div>
           )}
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="flex items-center gap-1.5">
+                <Paperclip className="size-4 text-muted-foreground" />
+                Allegati (opzionale)
+              </Label>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={saving}
+              >
+                <Plus className="size-4" /> Aggiungi
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                  const files = Array.from(e.target.files ?? []);
+                  const toAdd: { file: File; descrizione: string }[] = [];
+                  for (const f of files) {
+                    const err = validateAllegatoFile(f);
+                    if (err) {
+                      toast.error(`${f.name}: ${err}`);
+                      continue;
+                    }
+                    toAdd.push({ file: f, descrizione: "" });
+                  }
+                  if (toAdd.length) setPendingFiles((p) => [...p, ...toAdd]);
+                  if (fileInputRef.current) fileInputRef.current.value = "";
+                }}
+              />
+            </div>
+            {pendingFiles.length > 0 ? (
+              <ul className="rounded-md border border-border divide-y divide-border text-sm">
+                {pendingFiles.map((it, idx) => (
+                  <li key={idx} className="flex items-center gap-2 px-3 py-2">
+                    <Paperclip className="size-4 text-muted-foreground shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="truncate font-medium">{it.file.name}</div>
+                      <div className="text-xs text-muted-foreground">{fmtAllegatoBytes(it.file.size)}</div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-destructive hover:text-destructive"
+                      onClick={() => setPendingFiles((p) => p.filter((_, i) => i !== idx))}
+                      disabled={saving}
+                      title="Rimuovi"
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Nessun allegato selezionato. Verranno caricati dopo la creazione dell'azione.
+              </p>
+            )}
+          </div>
 
           <ReminderControls tipo={tipo} state={reminder} onChange={setReminder} />
         </div>
