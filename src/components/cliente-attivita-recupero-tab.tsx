@@ -29,6 +29,7 @@ import { EmailLiberaDialog } from "@/components/email-libera-dialog";
 import { CreaAzioneDialog } from "@/components/crea-azione-dialog";
 import { EmailInviataView } from "@/components/email-inviata-view";
 import { ModificaAzioneDialog, type AzioneModificabile } from "@/components/modifica-azione-dialog";
+import { LetteraPdfDialog } from "@/components/lettera-pdf-dialog";
 import type { TipoAzione } from "@/components/reminder-controls";
 
 type Esito = "da_fare" | "fatto" | "nessuna_risposta" | "promessa_pagamento" | "contestazione" | "pagato";
@@ -114,6 +115,7 @@ export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string })
   const [emailLiberaOpen, setEmailLiberaOpen] = useState(false);
   const [creaOpen, setCreaOpen] = useState(false);
   const [creaTipo, setCreaTipo] = useState<TipoAzione>("promemoria");
+  const [letteraOpen, setLetteraOpen] = useState(false);
   const [viewEmail, setViewEmail] = useState<Azione | null>(null);
   const [editAzione, setEditAzione] = useState<Azione | null>(null);
   const [deleteAzione, setDeleteAzione] = useState<Azione | null>(null);
@@ -305,10 +307,20 @@ export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string })
         <Button size="sm" variant="outline" onClick={() => openNuova("nota")} className="gap-1.5">
           <StickyNote className="size-4" /> Nuova nota
         </Button>
-        <Button size="sm" variant="ghost" onClick={() => openNuova("lettera")} className="gap-1.5">
+        <Button size="sm" variant="ghost" onClick={() => setLetteraOpen(true)} className="gap-1.5">
           <FileText className="size-4" /> Lettera
         </Button>
       </div>
+
+      <LetteraPdfDialog
+        open={letteraOpen}
+        onOpenChange={setLetteraOpen}
+        clienteId={clienteId}
+        onGenerated={() => {
+          qc.invalidateQueries({ queryKey: ["azioni-recupero-cliente", clienteId] });
+          qc.invalidateQueries({ queryKey: ["attivita-totale-scaduto", clienteId] });
+        }}
+      />
 
       {/* Timeline */}
       {isLoading ? (
