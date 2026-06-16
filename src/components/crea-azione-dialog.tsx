@@ -193,12 +193,36 @@ export function CreaAzioneDialog({
         }
       }
 
-      toast.success("Azione creata");
+      // Upload allegati in sospeso (dopo che l'azione e stata creata con successo).
+      // Se un upload fallisce, l'azione resta valida e segnaliamo l'errore.
+      let allegatiFalliti: string[] = [];
+      if (pendingFiles.length && inserita?.id) {
+        for (const item of pendingFiles) {
+          const res = await uploadAllegatoFile({
+            file: item.file,
+            descrizione: item.descrizione,
+            entitaTipo: "azione_recupero",
+            entitaId: inserita.id,
+            clienteId: effectiveClienteId,
+            userId: user?.id ?? null,
+          });
+          if (!res.ok) allegatiFalliti.push(`${item.file.name}: ${res.error}`);
+        }
+      }
+
+      if (allegatiFalliti.length) {
+        toast.warning(
+          `Azione creata, ma alcuni allegati non sono stati caricati: ${allegatiFalliti.join("; ")}. Riprova dalla scheda azione.`,
+        );
+      } else {
+        toast.success("Azione creata");
+      }
       qc.invalidateQueries({ queryKey: ["azioni-recupero"] });
       qc.invalidateQueries({ queryKey: ["azioni-recupero-metrics"] });
       qc.invalidateQueries({ queryKey: ["azioni-recupero-counts"] });
       qc.invalidateQueries({ queryKey: ["azioni-recupero-cliente", effectiveClienteId] });
       qc.invalidateQueries({ queryKey: ["azioni-calendario"] });
+      qc.invalidateQueries({ queryKey: ["allegati", "azione_recupero", inserita?.id] });
       onCreated?.();
       onOpenChange(false);
     } catch (e: any) {
