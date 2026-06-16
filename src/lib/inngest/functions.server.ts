@@ -165,11 +165,21 @@ export const processAnagraficaImport = inngest.createFunction(
     let updated = 0;
     let skipped = 0;
 
+    const MAX_LOG_ERRORI = 500;
     const update = async (
       stato: "in_elaborazione" | "completata" | "completata_con_errori",
       done = false,
     ) => {
-      await supabaseAdmin
+      const cappedLog = errorLog.length
+        ? errorLog.slice(0, MAX_LOG_ERRORI)
+        : null;
+      if (errorLog.length > MAX_LOG_ERRORI && cappedLog) {
+        cappedLog[MAX_LOG_ERRORI - 1] = {
+          riga: 0,
+          errore: `... (${errorLog.length - MAX_LOG_ERRORI + 1} ulteriori errori troncati per limite payload)`,
+        };
+      }
+      const { error: updErr } = await supabaseAdmin
         .from("importazioni")
         .update({
           righe_elaborate: created + updated + errorLog.length,
@@ -178,9 +188,15 @@ export const processAnagraficaImport = inngest.createFunction(
           righe_errore: skipped + errorLog.length,
           stato,
           completata_at: done ? new Date().toISOString() : null,
-          log_errori: errorLog.length ? errorLog : null,
+          log_errori: cappedLog,
         })
         .eq("id", importazioneId);
+      if (updErr) {
+        logger.error(
+          `update importazioni fallito (stato=${stato}, done=${done}, errs=${errorLog.length}): ${updErr.message}`,
+        );
+        throw new Error(`update importazioni: ${updErr.message}`);
+      }
     };
 
     // Concorrenza limitata: max N promesse contemporanee
