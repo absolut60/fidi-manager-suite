@@ -134,15 +134,36 @@ export const processAnagraficaImport = inngest.createFunction(
     id: "process-anagrafica-import",
     name: "Process anagrafica import",
     retries: 2,
-    timeouts: { finish: "15m" },
+    timeouts: { finish: "30m" },
     triggers: [{ event: "import/anagrafica.requested" }],
+    onFailure: async ({ error, event: failedEvent }) => {
+      const importazioneId =
+        (failedEvent.data as any)?.event?.data?.importazioneId ??
+        (failedEvent.data as any)?.importazioneId ??
+        null;
+      if (!importazioneId) return;
+      await supabaseAdmin
+        .from("importazioni")
+        .update({
+          stato: "completata_con_errori",
+          completata_at: new Date().toISOString(),
+          log_errori: [
+            {
+              riga: 0,
+              errore: `Import anagrafica fallito dopo tutti i retry: ${error?.message ?? "errore sconosciuto"}`,
+            },
+          ],
+        } as never)
+        .eq("id", importazioneId)
+        .eq("stato", "in_elaborazione");
+    },
   },
   async ({ event, step, logger }) => {
     const { importazioneId, filePath } = event.data as EventData;
     const errorLog: Array<{ riga: number; errore: string }> = [];
-    let created = 0,
-      updated = 0;
-    const skipped = 0;
+    let created = 0;
+    let updated = 0;
+    let skipped = 0;
 
     const update = async (
       stato: "in_elaborazione" | "completata" | "completata_con_errori",
@@ -157,21 +178,36 @@ export const processAnagraficaImport = inngest.createFunction(
           righe_errore: skipped + errorLog.length,
           stato,
           completata_at: done ? new Date().toISOString() : null,
-          log_errori: errorLog.length ? errorLog.slice(0, 500) : null,
+          log_errori: errorLog.length ? errorLog : null,
         })
         .eq("id", importazioneId);
     };
 
+    // Concorrenza limitata: max N promesse contemporanee
+    async function runWithConcurrency<T>(
+      items: T[],
+      limit: number,
+      worker: (item: T) => Promise<void>,
+    ): Promise<void> {
+      let idx = 0;
+      const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+        while (true) {
+          const current = idx++;
+          if (current >= items.length) return;
+          await worker(items[current]);
+        }
+      });
+      await Promise.all(runners);
+    }
+
     try {
-      // Parse fuori da step.run: l'output di step.run è limitato a ~4MB
-      // e un workbook parsato eccede facilmente quel limite.
-      // In caso di retry il file viene ri-scaricato e ri-parsato (accettabile).
+      // Parse fuori da step.run (output step ~4MB)
       const wb = await downloadWorkbook(filePath);
       const anagSheetName =
         wb.SheetNames.find((n) => n.toLowerCase().replace(/[\s._\-/]+/g, "") === "anagrafica") ??
         wb.SheetNames[0];
       const rows = anagraficaSheetToObjects(wb.Sheets[anagSheetName]);
-      logger.info(`Anagrafica: ${rows.length} righe`);
+      logger.info(`Anagrafica: ${rows.length} righe da elaborare`);
       await supabaseAdmin
         .from("importazioni")
         .update({ righe_totali: rows.length, stato: "in_elaborazione" })
@@ -192,7 +228,6 @@ export const processAnagraficaImport = inngest.createFunction(
 
       const codici = Array.from(new Set(rows.map((r) => r.codice_gestionale).filter(Boolean)));
       const pive = Array.from(new Set(rows.map((r) => r.partita_iva).filter(Boolean)));
-      // Lookup inline — senza step.run per evitare serializzazione della map grande
       const existing: Record<string, string> = {};
       {
         const CHUNK = 200;
@@ -224,7 +259,12 @@ export const processAnagraficaImport = inngest.createFunction(
         }
       }
 
-      type Prepared = { idx: number; payload: Record<string, unknown>; existId: string | null };
+      type Prepared = {
+        idx: number;
+        codice_gestionale: string | null;
+        payload: Record<string, unknown>;
+        existId: string | null;
+      };
       const prepared: Prepared[] = [];
       for (const r of rows) {
         let storeId: string | null = null;
@@ -297,65 +337,137 @@ export const processAnagraficaImport = inngest.createFunction(
           (r.codice_gestionale && existing[`cg:${r.codice_gestionale}`]) ||
           (r.partita_iva && existing[`pi:${r.partita_iva}`]) ||
           null;
-        prepared.push({ idx: r.__row, payload, existId });
+        prepared.push({
+          idx: r.__row,
+          codice_gestionale: toStr(r.codice_gestionale) || null,
+          payload,
+          existId,
+        });
       }
 
       const toInsert = prepared.filter((p) => !p.existId);
       const toUpdate = prepared.filter((p) => p.existId);
+      logger.info(`Anagrafica: ${toInsert.length} insert, ${toUpdate.length} update`);
 
-      // UN SOLO step.run per tutti gli insert
-      const insertRes = await step.run("process-all-inserts", async () => {
-        const BATCH = 500;
-        let ok = 0;
-        const errs: Array<{ riga: number; errore: string }> = [];
-        for (let i = 0; i < toInsert.length; i += BATCH) {
-          const chunk = toInsert.slice(i, i + BATCH);
+      const CHUNK_SIZE = 500;
+      const UPDATE_CONCURRENCY = 20;
+
+      // INSERT — uno step per chunk, fallback per-riga su errore
+      const insertChunks = Math.ceil(toInsert.length / CHUNK_SIZE);
+      for (let i = 0; i < insertChunks; i++) {
+        const start = i * CHUNK_SIZE;
+        const chunk = toInsert.slice(start, start + CHUNK_SIZE);
+        const stepRes = await step.run(`process-inserts-chunk-${i}`, async () => {
+          logger.info(`Insert chunk ${i + 1}/${insertChunks} — ${chunk.length} righe`);
+          let ok = 0;
+          const errs: Array<{ riga: number; errore: string }> = [];
+          let skippedLocal = 0;
           const { data, error } = await supabaseAdmin
             .from("clienti")
             .insert(chunk.map((c) => c.payload) as never)
             .select("id");
           if (error) {
+            logger.warn(`Insert chunk ${i} bulk fallito: ${error.message} — fallback per-riga`);
             for (const c of chunk) {
-              const { error: e2 } = await supabaseAdmin.from("clienti").insert(c.payload as never);
-              if (e2) errs.push({ riga: c.idx, errore: `Insert: ${e2.message}` });
-              else ok++;
+              try {
+                const { error: e2 } = await supabaseAdmin
+                  .from("clienti")
+                  .insert(c.payload as never);
+                if (e2) {
+                  logger.error(
+                    `Insert riga ${c.idx} (cod ${c.codice_gestionale ?? "?"}): ${e2.message}`,
+                  );
+                  errs.push({
+                    riga: c.idx,
+                    errore: `Insert [cod ${c.codice_gestionale ?? "?"}]: ${e2.message}`,
+                  });
+                  skippedLocal++;
+                } else ok++;
+              } catch (rowErr) {
+                const msg = rowErr instanceof Error ? rowErr.message : String(rowErr);
+                logger.error(`Insert eccezione riga ${c.idx}: ${msg}`);
+                errs.push({
+                  riga: c.idx,
+                  errore: `Insert eccezione [cod ${c.codice_gestionale ?? "?"}]: ${msg}`,
+                });
+                skippedLocal++;
+              }
             }
           } else {
-            ok += data?.length ?? chunk.length;
+            ok = data?.length ?? chunk.length;
           }
-          await update("in_elaborazione");
-        }
-        return { ok, errs };
-      });
-      created += insertRes.ok;
-      errorLog.push(...insertRes.errs);
+          logger.info(
+            `Insert chunk ${i + 1}/${insertChunks} done: ok=${ok}, errs=${errs.length}`,
+          );
+          return { ok, errs, skipped: skippedLocal };
+        });
+        created += stepRes.ok;
+        skipped += stepRes.skipped;
+        errorLog.push(...stepRes.errs);
+        // Persisti FUORI dallo step così sopravvive ai retry
+        await update("in_elaborazione");
+      }
 
-      // UN SOLO step.run per tutti gli update
-      const updateRes = await step.run("process-all-updates", async () => {
-        const BATCH = 500;
-        let ok = 0;
-        const errs: Array<{ riga: number; errore: string }> = [];
-        for (let i = 0; i < toUpdate.length; i += BATCH) {
-          const chunk = toUpdate.slice(i, i + BATCH);
-          await Promise.all(
-            chunk.map(async (c) => {
+      // UPDATE — uno step per chunk, concorrenza limitata, per-riga resiliente
+      const updateChunks = Math.ceil(toUpdate.length / CHUNK_SIZE);
+      for (let i = 0; i < updateChunks; i++) {
+        const start = i * CHUNK_SIZE;
+        const chunk = toUpdate.slice(start, start + CHUNK_SIZE);
+        const stepRes = await step.run(`process-updates-chunk-${i}`, async () => {
+          logger.info(
+            `Update chunk ${i + 1}/${updateChunks} — ${chunk.length} righe (conc ${UPDATE_CONCURRENCY})`,
+          );
+          let ok = 0;
+          const errs: Array<{ riga: number; errore: string }> = [];
+          let skippedLocal = 0;
+          await runWithConcurrency(chunk, UPDATE_CONCURRENCY, async (c) => {
+            try {
               const { error } = await supabaseAdmin
                 .from("clienti")
                 .update(c.payload as never)
                 .eq("id", c.existId!);
-              if (error) errs.push({ riga: c.idx, errore: `Update: ${error.message}` });
-              else ok++;
-            }),
+              if (error) {
+                logger.error(
+                  `Update riga ${c.idx} (cod ${c.codice_gestionale ?? "?"}): ${error.message}`,
+                );
+                errs.push({
+                  riga: c.idx,
+                  errore: `Update [cod ${c.codice_gestionale ?? "?"}]: ${error.message}`,
+                });
+                skippedLocal++;
+              } else ok++;
+            } catch (rowErr) {
+              const msg = rowErr instanceof Error ? rowErr.message : String(rowErr);
+              logger.error(`Update eccezione riga ${c.idx}: ${msg}`);
+              errs.push({
+                riga: c.idx,
+                errore: `Update eccezione [cod ${c.codice_gestionale ?? "?"}]: ${msg}`,
+              });
+              skippedLocal++;
+            }
+          });
+          logger.info(
+            `Update chunk ${i + 1}/${updateChunks} done: ok=${ok}, errs=${errs.length}`,
           );
-          await update("in_elaborazione");
-        }
-        return { ok, errs };
-      });
-      updated += updateRes.ok;
-      errorLog.push(...updateRes.errs);
+          return { ok, errs, skipped: skippedLocal };
+        });
+        updated += stepRes.ok;
+        skipped += stepRes.skipped;
+        errorLog.push(...stepRes.errs);
+        await update("in_elaborazione");
+      }
 
       await update(errorLog.length ? "completata_con_errori" : "completata", true);
-      return { ok: true, creati: created, aggiornati: updated, saltati: skipped, errori: errorLog.length };
+      logger.info(
+        `Anagrafica completata: creati=${created}, aggiornati=${updated}, saltati=${skipped}, errori=${errorLog.length}`,
+      );
+      return {
+        ok: true,
+        creati: created,
+        aggiornati: updated,
+        saltati: skipped,
+        errori: errorLog.length,
+      };
     } catch (err) {
       await setImportazioneError(importazioneId, err instanceof Error ? err.message : String(err));
       throw err;
