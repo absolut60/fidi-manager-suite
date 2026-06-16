@@ -191,25 +191,37 @@ export const ANAG_HEADERS: Record<string, string> = {
   condizione_pagamento_desc: "condizione_pagamento_desc",
 };
 
+// Normalizzazione robusta: rimuove spazi, underscore, punti, trattini, slash.
+// "ragione_sociale" / "ragione sociale" / "RAGIONE SOCIALE" -> "ragionesociale"
+function normKey(h: unknown): string {
+  return String(h ?? "")
+    .toLowerCase()
+    .replace(/[\s._\-/]+/g, "");
+}
+
 export function anagraficaSheetToObjects(sheet: XLSX.WorkSheet) {
   const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
     header: 1,
     defval: "",
-    blankrows: false,
+    blankrows: true,
   });
   if (!matrix.length) return [];
-  const rowHasRagSoc = (r: unknown[] | undefined) =>
-    (r ?? []).some((c) => normalize(String(c ?? "")) === "ragione sociale");
-  let headerIdx = -1,
-    dataStart = -1;
-  if (rowHasRagSoc(matrix[0])) {
-    headerIdx = 0;
-    dataStart = 1;
-  } else if (rowHasRagSoc(matrix[1])) {
-    headerIdx = 1;
-    dataStart = 3;
-  } else return [];
+
+  // Scan dinamico delle prime ~10 righe: trova la riga header che contiene "ragionesociale"
+  let headerIdx = -1;
+  const scanLimit = Math.min(10, matrix.length);
+  for (let i = 0; i < scanLimit; i++) {
+    const r = matrix[i] ?? [];
+    if (r.some((c) => normKey(c) === "ragionesociale")) {
+      headerIdx = i;
+      break;
+    }
+  }
+  if (headerIdx < 0) return [];
+
   const headers = (matrix[headerIdx] ?? []).map((c) => String(c ?? "").trim());
+  const dataStart = headerIdx + 1;
+
   const out: Array<Record<string, string> & { __row: number }> = [];
   for (let i = dataStart; i < matrix.length; i++) {
     const row = matrix[i] ?? [];

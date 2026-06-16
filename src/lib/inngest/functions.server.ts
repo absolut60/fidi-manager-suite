@@ -167,7 +167,10 @@ export const processAnagraficaImport = inngest.createFunction(
       // e un workbook parsato eccede facilmente quel limite.
       // In caso di retry il file viene ri-scaricato e ri-parsato (accettabile).
       const wb = await downloadWorkbook(filePath);
-      const rows = anagraficaSheetToObjects(wb.Sheets[wb.SheetNames[0]]);
+      const anagSheetName =
+        wb.SheetNames.find((n) => n.toLowerCase().replace(/[\s._\-/]+/g, "") === "anagrafica") ??
+        wb.SheetNames[0];
+      const rows = anagraficaSheetToObjects(wb.Sheets[anagSheetName]);
       logger.info(`Anagrafica: ${rows.length} righe`);
       await supabaseAdmin
         .from("importazioni")
