@@ -285,44 +285,51 @@ function sheetToObjects(
   return out;
 }
 
+// Normalizzazione robusta: rimuove spazi, underscore, punti, trattini, slash.
+// "ragione_sociale" / "ragione sociale" / "RAGIONE SOCIALE" -> "ragionesociale"
+function normKey(h: unknown): string {
+  return String(h ?? "")
+    .toLowerCase()
+    .replace(/[\s._\-/]+/g, "");
+}
+
 function anagraficaSheetToObjects(
   sheet: XLSX.WorkSheet,
 ): Array<Record<string, unknown> & { __row: number }> {
   const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
     header: 1,
     defval: "",
-    blankrows: false,
+    blankrows: true,
   });
   if (!matrix.length) return [];
 
-  const rowHasRagSoc = (r: unknown[] | undefined) =>
-    (r ?? []).some((c) => normalize(String(c ?? "")) === "ragione sociale");
-
+  // Scan dinamico delle prime ~10 righe: trova la riga header che contiene "ragionesociale"
   let headerIdx = -1;
-  let dataStart = -1;
-  if (rowHasRagSoc(matrix[0])) {
-    headerIdx = 0;
-    dataStart = 1;
-  } else if (rowHasRagSoc(matrix[1])) {
-    headerIdx = 1;
-    dataStart = 3; // riga 3 = descrizioni, dati da riga 4
-  } else {
-    return [];
+  const scanLimit = Math.min(10, matrix.length);
+  for (let i = 0; i < scanLimit; i++) {
+    const r = matrix[i] ?? [];
+    if (r.some((c) => normKey(c) === "ragionesociale")) {
+      headerIdx = i;
+      break;
+    }
   }
+  if (headerIdx < 0) return [];
 
   const headers = (matrix[headerIdx] ?? []).map((c) => String(c ?? "").trim());
-  const dataRows = matrix.slice(dataStart);
+  const dataStart = headerIdx + 1;
 
   const out: Array<Record<string, unknown> & { __row: number }> = [];
-  dataRows.forEach((row, idx) => {
-    const r = row ?? [];
-    if (!r.some((c) => String(c ?? "").trim() !== "")) return;
+  for (let i = dataStart; i < matrix.length; i++) {
+    const row = matrix[i] ?? [];
+    if (!row.some((c) => String(c ?? "").trim() !== "")) continue;
     const obj: Record<string, unknown> = {};
     headers.forEach((h, j) => {
-      if (h) obj[h] = r[j] ?? "";
+      if (!h) return;
+      const v = row[j];
+      obj[h] = typeof v === "string" ? v.trim() : (v ?? "");
     });
-    out.push(Object.assign(obj, { __row: dataStart + idx + 1 }));
-  });
+    out.push(Object.assign(obj, { __row: i + 1 }));
+  }
   return out;
 }
 
