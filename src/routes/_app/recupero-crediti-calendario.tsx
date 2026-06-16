@@ -79,11 +79,14 @@ type AzioneRow = {
   tipo: Tipo;
   esito: Esito;
   data_azione: string;
+  data_promessa_pagamento: string | null;
   importo_riferimento: number | null;
   note: string | null;
   email_oggetto: string | null;
   email_corpo_html: string | null;
   email_destinatario: string | null;
+  livello_sollecito: number | null;
+  operatore_id: string | null;
   cliente: { id: string; ragione_sociale: string; store_id: string | null } | null;
 };
 
