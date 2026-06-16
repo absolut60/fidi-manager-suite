@@ -160,7 +160,7 @@ function CalendarioPage() {
       let q = supabase
         .from("azioni_recupero")
         .select(
-          "id, cliente_id, tipo, esito, data_azione, importo_riferimento, note, email_oggetto, email_corpo_html, email_destinatario, cliente:clienti!inner(id, ragione_sociale, store_id)"
+          "id, cliente_id, tipo, esito, data_azione, data_promessa_pagamento, importo_riferimento, note, email_oggetto, email_corpo_html, email_destinatario, livello_sollecito, operatore_id, cliente:clienti!inner(id, ragione_sociale, store_id)"
         )
         .eq("esito", "da_fare")
         .gte("data_azione", range!.start)
