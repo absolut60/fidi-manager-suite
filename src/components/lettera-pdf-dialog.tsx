@@ -68,7 +68,7 @@ export function LetteraPdfDialog({
     let cancelled = false;
     (async () => {
       try {
-        const nomeOp = `${profile?.nome ?? ""} ${profile?.cognome ?? ""}`.trim() || (user?.email ?? "");
+        const nomeOp = `${profilo?.nome ?? ""} ${profilo?.cognome ?? ""}`.trim() || (user?.email ?? "");
         const dati = await caricaDatiClienteLettera(clienteId, nomeOp);
         const r = renderLettera({ oggetto: tpl.oggetto, corpo: tpl.corpo }, dati);
         if (cancelled) return;
