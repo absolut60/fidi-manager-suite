@@ -83,6 +83,7 @@ export function CreaAzioneDialog({
       setReminder(defaultReminderFor(tipoIniziale));
       setSaving(false);
       setPickedClienteId(null);
+      setPendingFiles([]);
     }
   }, [open, tipoIniziale, dataIniziale]);
 
