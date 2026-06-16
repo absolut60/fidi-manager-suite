@@ -317,6 +317,72 @@ export function CreaAzioneDialog({
             </div>
           )}
 
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="flex items-center gap-1.5">
+                <Paperclip className="size-4 text-muted-foreground" />
+                Allegati (opzionale)
+              </Label>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={saving}
+              >
+                <Plus className="size-4" /> Aggiungi
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                  const files = Array.from(e.target.files ?? []);
+                  const toAdd: { file: File; descrizione: string }[] = [];
+                  for (const f of files) {
+                    const err = validateAllegatoFile(f);
+                    if (err) {
+                      toast.error(`${f.name}: ${err}`);
+                      continue;
+                    }
+                    toAdd.push({ file: f, descrizione: "" });
+                  }
+                  if (toAdd.length) setPendingFiles((p) => [...p, ...toAdd]);
+                  if (fileInputRef.current) fileInputRef.current.value = "";
+                }}
+              />
+            </div>
+            {pendingFiles.length > 0 ? (
+              <ul className="rounded-md border border-border divide-y divide-border text-sm">
+                {pendingFiles.map((it, idx) => (
+                  <li key={idx} className="flex items-center gap-2 px-3 py-2">
+                    <Paperclip className="size-4 text-muted-foreground shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="truncate font-medium">{it.file.name}</div>
+                      <div className="text-xs text-muted-foreground">{fmtAllegatoBytes(it.file.size)}</div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-destructive hover:text-destructive"
+                      onClick={() => setPendingFiles((p) => p.filter((_, i) => i !== idx))}
+                      disabled={saving}
+                      title="Rimuovi"
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Nessun allegato selezionato. Verranno caricati dopo la creazione dell'azione.
+              </p>
+            )}
+          </div>
+
           <ReminderControls tipo={tipo} state={reminder} onChange={setReminder} />
         </div>
 
