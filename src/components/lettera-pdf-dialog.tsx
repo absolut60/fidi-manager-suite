@@ -31,7 +31,7 @@ export function LetteraPdfDialog({
   open, onOpenChange, clienteId, ragioneSociale, attachToAzioneId, onGenerated,
 }: Props) {
   const qc = useQueryClient();
-  const { user, profile } = useAuth() as any;
+  const { user, profilo } = useAuth();
   const genera = useServerFn(generaLetteraPdf);
   const [templateId, setTemplateId] = useState<string>("");
   const [oggetto, setOggetto] = useState("");
