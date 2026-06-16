@@ -307,10 +307,20 @@ export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string })
         <Button size="sm" variant="outline" onClick={() => openNuova("nota")} className="gap-1.5">
           <StickyNote className="size-4" /> Nuova nota
         </Button>
-        <Button size="sm" variant="ghost" onClick={() => openNuova("lettera")} className="gap-1.5">
+        <Button size="sm" variant="ghost" onClick={() => setLetteraOpen(true)} className="gap-1.5">
           <FileText className="size-4" /> Lettera
         </Button>
       </div>
+
+      <LetteraPdfDialog
+        open={letteraOpen}
+        onOpenChange={setLetteraOpen}
+        clienteId={clienteId}
+        onGenerated={() => {
+          qc.invalidateQueries({ queryKey: ["azioni-recupero-cliente", clienteId] });
+          qc.invalidateQueries({ queryKey: ["attivita-totale-scaduto", clienteId] });
+        }}
+      />
 
       {/* Timeline */}
       {isLoading ? (
