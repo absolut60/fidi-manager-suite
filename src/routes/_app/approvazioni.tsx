@@ -606,6 +606,11 @@ function ApprovazioniPage() {
 
                   <section className="border-t pt-4 space-y-3">
                     <h3 className="text-sm font-semibold">Azioni</h3>
+                    {!canApproveRow(detail) && (
+                      <p className="text-xs rounded-md bg-warning/10 text-warning border border-warning/30 p-2">
+                        Richiede livello {detail.livello_richiesto}: puoi solo consultare la richiesta. L'approvazione e' riservata ad un approvatore di livello {detail.livello_richiesto} o superiore.
+                      </p>
+                    )}
                     {singleAction && (
                       <Textarea
                         placeholder={
