@@ -943,6 +943,8 @@ function TuttoTab({ rows, loading, msgCounts }: { rows: any[]; loading: boolean;
                 <TableCell className="text-right tabular-nums">{formatEuro(Number(r.importo_richiesto))}</TableCell>
                 <TableCell><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${STATO_TONE[r.stato as keyof typeof STATO_TONE]}`}>{STATO_LABEL[r.stato as keyof typeof STATO_LABEL]}</span></TableCell>
                 <TableCell><Badge variant="outline">L{r.livello_corrente}/{r.livello_richiesto}</Badge></TableCell>
+                <TableCell className="text-sm">{userName((r as any).richiedente)}</TableCell>
+                <TableCell className="text-sm">{userName((r as any).approvatore)}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{formatDate(r.created_at)}</TableCell>
               </TableRow>
             ))}
