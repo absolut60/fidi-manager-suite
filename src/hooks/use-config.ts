@@ -48,10 +48,23 @@ export function useConfig(): AppConfig {
 
 // Calcola se un cliente è attivo in base all'ultima data fatturazione
 // e al cutoff configurato — usa questo invece del campo cliente_attivo dal DB
+// Regola "cliente ATTIVO" (centralizzata, unica fonte di verità):
+//   A) ha fatturato dall'anno di riferimento in poi (ultima_data_fatturazione >= cutoff)
+//   OPPURE
+//   B) ha documenti / DDT ancora da fatturare (doc_da_fatturare > 0)
+// Se nessuna delle due => Non attivo.
 export function isClienteAttivo(
   ultimaDataFatturazione: string | null | undefined,
+  docDaFatturare: number | string | null | undefined,
   config: AppConfig
 ): boolean {
+  // Condizione B: DDT/documenti da fatturare aperti
+  const docNum =
+    typeof docDaFatturare === "string"
+      ? parseFloat(docDaFatturare)
+      : docDaFatturare ?? 0;
+  if (docNum && !isNaN(docNum) && docNum > 0) return true;
+  // Condizione A: fatturato nell'anno di riferimento o successivo
   if (!ultimaDataFatturazione) return false;
   const cutoffDate = new Date(`${config.cutoff_cliente_attivo_anno}-01-01`);
   const dataFatt = new Date(ultimaDataFatturazione);
