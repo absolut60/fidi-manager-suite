@@ -498,9 +498,12 @@ function BozzeTab({
 /* ====================== IN APPROVAZIONE TAB ====================== */
 function InApprovazioneTab({
   rows, loading, canApprove, livelloUtente, isAdmin, onChanged,
+  currentUserId, onEditOwn, onDeleteOwn,
 }: {
   rows: any[]; loading: boolean; canApprove: boolean; livelloUtente: number; isAdmin: boolean; onChanged: () => void;
+  currentUserId?: string; onEditOwn?: (r: any) => void; onDeleteOwn?: (r: any) => void;
 }) {
+
   const { user } = useAuth();
   const navigate = useNavigate();
   const [selected, setSelected] = useState<Set<string>>(new Set());
