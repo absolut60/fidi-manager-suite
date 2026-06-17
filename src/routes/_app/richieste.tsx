@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Outlet, useMatchRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import {
@@ -963,31 +963,50 @@ function RichiestaFormDialog({
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [openCliente, setOpenCliente] = useState(false);
 
   const isEdit = !!richiesta;
 
-  const { data: clienti } = useQuery({
-    queryKey: ["clienti", "form-richiesta"],
-    enabled: !isEdit,
+  // Debounce search input (~300ms)
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const LIMIT = 50;
+  // Server-side search across the WHOLE clienti table.
+  // Query:
+  //   select id, ragione_sociale, codice_gestionale, ... from clienti
+  //   where attivo = true
+  //     and (ragione_sociale ILIKE %term% OR codice_gestionale ILIKE %term%)
+  //   order by ragione_sociale
+  //   limit 51   (51 to detect "ci sono altri risultati")
+  const { data: clientiSearch, isFetching: isSearching } = useQuery({
+    queryKey: ["clienti", "search-richiesta", debouncedSearch],
+    enabled: !isEdit && openCliente && debouncedSearch.length >= 2,
     queryFn: async () => {
+      const term = debouncedSearch.replace(/[%_,]/g, (m) => `\\${m}`);
       const { data, error } = await supabase
         .from("clienti")
         .select("id, ragione_sociale, codice_gestionale, store_id, fido_aziendale_concesso, fido_gestionale, bloccato, in_gestione_legale, scaduto, totale_rischio, fido_residuo, a_scadere, condizioni_pagamento, dilazione_concordata, dilazione_effettiva, num_insoluti, motivo_blocco, cliente_attivo, ultima_data_fatturazione, ultima_sincronizzazione")
         .eq("attivo", true)
-        .order("ragione_sociale");
+        .or(`ragione_sociale.ilike.%${term}%,codice_gestionale.ilike.%${term}%`)
+        .order("ragione_sociale")
+        .limit(LIMIT + 1);
       if (error) throw error;
       return data ?? [];
     },
   });
 
+  // Fetch selected cliente by id (covers both create and edit) so the preview/summary works.
   const { data: clienteEdit } = useQuery({
     queryKey: ["cliente", "form-richiesta", form.cliente_id],
-    enabled: isEdit && !!form.cliente_id,
+    enabled: !!form.cliente_id,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clienti")
-        .select("id, ragione_sociale, store_id, fido_aziendale_concesso, fido_gestionale, bloccato, in_gestione_legale, scaduto, totale_rischio, fido_residuo, a_scadere, condizioni_pagamento, dilazione_concordata, dilazione_effettiva, num_insoluti, motivo_blocco, cliente_attivo, ultima_data_fatturazione, ultima_sincronizzazione")
+        .select("id, ragione_sociale, codice_gestionale, store_id, fido_aziendale_concesso, fido_gestionale, bloccato, in_gestione_legale, scaduto, totale_rischio, fido_residuo, a_scadere, condizioni_pagamento, dilazione_concordata, dilazione_effettiva, num_insoluti, motivo_blocco, cliente_attivo, ultima_data_fatturazione, ultima_sincronizzazione")
         .eq("id", form.cliente_id)
         .maybeSingle();
       if (error) throw error;
@@ -995,7 +1014,7 @@ function RichiestaFormDialog({
     },
   });
 
-  const clienteSel: any = isEdit ? clienteEdit : clienti?.find((c) => c.id === form.cliente_id);
+  const clienteSel: any = clienteEdit ?? clientiSearch?.find((c) => c.id === form.cliente_id);
   const fidoAttuale = Number(clienteSel?.fido_aziendale_concesso ?? 0);
   const variazione = fidoAttuale > 0 && form.importo_richiesto > 0
     ? ((form.importo_richiesto - fidoAttuale) / fidoAttuale) * 100
@@ -1003,23 +1022,16 @@ function RichiestaFormDialog({
   const config = useConfig();
   const soglie = { liv1: config.soglia_livello_1, liv2: config.soglia_livello_2 };
   const livelloPreview = form.importo_richiesto > 0 ? calcolaLivello(Number(form.importo_richiesto), soglie) : null;
-  const filteredClienti = (() => {
-    const s = search.trim().toLowerCase();
-    const list = clienti ?? [];
-    if (!s) return list.slice(0, 100);
-    return list.filter((c) => {
-      const rs = (c.ragione_sociale ?? "").toLowerCase();
-      const cod = ((c as any).codice_gestionale ?? "").toString().toLowerCase();
-      return rs.includes(s) || cod.includes(s);
-    }).slice(0, 100);
-  })();
+  const allResults = clientiSearch ?? [];
+  const hasMore = allResults.length > LIMIT;
+  const filteredClienti = allResults.slice(0, LIMIT);
 
 
   const mut = useMutation({
     mutationFn: async (input: { invia: boolean }) => {
       const parsed = formSchema.parse(form);
       const { data: { user } } = await supabase.auth.getUser();
-      const cliente = clienteSel ?? clienti?.find((c) => c.id === parsed.cliente_id);
+      const cliente = clienteSel ?? clientiSearch?.find((c) => c.id === parsed.cliente_id);
       const payload = {
         cliente_id: parsed.cliente_id,
         tipo: parsed.tipo,
@@ -1101,7 +1113,11 @@ function RichiestaFormDialog({
                     />
                     <CommandList>
                       <CommandEmpty>
-                        {clienti ? "Nessun cliente trovato" : "Caricamento…"}
+                        {debouncedSearch.length < 2
+                          ? "Digita almeno 2 caratteri…"
+                          : isSearching
+                          ? "Ricerca in corso…"
+                          : "Nessun cliente trovato"}
                       </CommandEmpty>
                       <CommandGroup>
                         {filteredClienti.map((c) => (
@@ -1123,9 +1139,9 @@ function RichiestaFormDialog({
                             )}
                           </CommandItem>
                         ))}
-                        {clienti && clienti.length > filteredClienti.length && (
+                        {hasMore && (
                           <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                            Mostrati primi {filteredClienti.length} risultati. Affina la ricerca…
+                            Mostrati primi {LIMIT} risultati. Affina la ricerca…
                           </div>
                         )}
                       </CommandGroup>
