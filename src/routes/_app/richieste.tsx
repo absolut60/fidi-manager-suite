@@ -972,7 +972,7 @@ function RichiestaFormDialog({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clienti")
-        .select("id, ragione_sociale, store_id, fido_aziendale_concesso, fido_gestionale, bloccato, in_gestione_legale, scaduto, totale_rischio, fido_residuo, a_scadere, condizioni_pagamento, dilazione_concordata, dilazione_effettiva, num_insoluti, motivo_blocco, cliente_attivo, ultima_data_fatturazione, ultima_sincronizzazione")
+        .select("id, ragione_sociale, codice_gestionale, store_id, fido_aziendale_concesso, fido_gestionale, bloccato, in_gestione_legale, scaduto, totale_rischio, fido_residuo, a_scadere, condizioni_pagamento, dilazione_concordata, dilazione_effettiva, num_insoluti, motivo_blocco, cliente_attivo, ultima_data_fatturazione, ultima_sincronizzazione")
         .eq("attivo", true)
         .order("ragione_sociale");
       if (error) throw error;
