@@ -707,7 +707,7 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
   const bloccato = !!cliente.bloccato;
   const indBlocco = Number(cliente.ind_blocco ?? 0);
   const ultimaFatt = cliente.ultima_data_fatturazione;
-  const clienteAttivo = isClienteAttivo(cliente.ultima_data_fatturazione, config);
+  const clienteAttivo = isClienteAttivo(cliente.ultima_data_fatturazione, cliente.doc_da_fatturare, config);
   const assicurato = !!cliente.assicurazione_attiva;
 
   const { data: polizzaAttiva } = useQuery({
