@@ -94,7 +94,23 @@ function RichiestePage() {
   const [tab, setTab] = useState<string>(defaultTab);
   const [openNew, setOpenNew] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
+  const [editConfirm, setEditConfirm] = useState<any | null>(null);
   const [deleting, setDeleting] = useState<any | null>(null);
+
+  const isOwn = (r: any) => !!user?.id && r?.created_by === user.id;
+  const canEditOrDeleteRow = (r: any) => isAdmin || isAmministrazione || isOwn(r);
+
+  function handleEdit(r: any) {
+    if (r.stato === "bozza" || !canEditOrDeleteRow(r)) {
+      setEditing(r);
+    } else {
+      setEditConfirm(r);
+    }
+  }
+  function handleDelete(r: any) {
+    if (canEditOrDeleteRow(r)) setDeleting(r);
+  }
+
 
   const { data: richieste, isLoading } = useQuery({
     queryKey: ["richieste", role, profilo?.store_id, user?.id],
