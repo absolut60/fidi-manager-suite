@@ -494,7 +494,7 @@ function ApprovazioniPage() {
             const sem = semaforoCliente(c);
             const residuo = Number(c.fido_residuo ?? 0);
             const scaduto = Number(c.scaduto ?? 0);
-            const creatore = (detail as any).profilo;
+            const creatore = (detail as any).richiedente ?? (detail as any).profilo;
             return (
               <>
                 <SheetHeader>
