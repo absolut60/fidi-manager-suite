@@ -42,6 +42,8 @@ function semaforoCliente(c: any): { dot: string; tone: string; label: "Verde" | 
   return { dot: "bg-success", tone: "bg-success/15 text-success", label: "Verde" };
 }
 
+import { RICHIESTA_FIDO_SELECT } from "@/lib/richieste-fido-data";
+
 const CLIENTE_COLS =
   "ragione_sociale, partita_iva, store_id, fido_gestionale, totale_rischio, fido_residuo, scaduto, a_scadere, num_insoluti, doc_da_fatturare, doc_da_evadere, effetti_a_rischio, condizioni_pagamento, condizione_pagamento_desc, dilazione_concordata, dilazione_effettiva, bloccato, in_gestione_legale, cliente_attivo, ultima_data_fatturazione, ultima_sincronizzazione, stores(nome, codice)";
 
