@@ -362,6 +362,7 @@ function BozzeTab({
             <TableHead>Tipo</TableHead>
             <TableHead className="text-right">Importo richiesto</TableHead>
             <TableHead className="text-right">Fido attuale</TableHead>
+            <TableHead>Richiesto da</TableHead>
             <TableHead>Data creazione</TableHead>
             <TableHead className="text-right">Azioni</TableHead>
           </TableRow>
