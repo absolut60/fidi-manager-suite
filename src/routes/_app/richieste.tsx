@@ -752,7 +752,17 @@ function InApprovazioneTab({
                           <Button size="sm" variant="ghost" className="text-destructive h-8" onClick={() => annullaMut.mutate(r)}>
                             <Ban className="size-4" /> Annulla
                           </Button>
-                        ) : unread === 0 ? <span className="text-xs text-muted-foreground">—</span> : null}
+                        ) : null}
+                        {currentUserId && r.created_by === currentUserId && onEditOwn && onDeleteOwn && (
+                          <>
+                            <Button size="icon" variant="ghost" className="size-8" onClick={() => onEditOwn(r)} title="Modifica"><Pencil className="size-4" /></Button>
+                            <Button size="icon" variant="ghost" className="size-8 text-destructive" onClick={() => onDeleteOwn(r)} title="Elimina"><Trash2 className="size-4" /></Button>
+                          </>
+                        )}
+                        {!(canApprove && livMio) && !(r.stato === "integrazioni_richieste" || r.stato === "bozza") && !(currentUserId && r.created_by === currentUserId) && unread === 0 && (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+
                       </div>
                     </TableCell>
                   </TableRow>
