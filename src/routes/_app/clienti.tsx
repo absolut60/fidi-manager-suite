@@ -1124,7 +1124,7 @@ function ClientiPage() {
                   return (
                    <TableRow
                      key={c.id}
-                     className={`cursor-pointer hover:bg-muted/50 ${!isClienteAttivo((c as any).ultima_data_fatturazione, config) ? "bg-muted/40 text-muted-foreground" : ""} ${isBlocked ? "bg-[#FEF2F2] dark:bg-destructive/10 border-l-[3px] border-l-[#EF4444] hover:bg-[#FEE2E2] dark:hover:bg-destructive/15" : ""}`}
+                     className={`cursor-pointer hover:bg-muted/50 ${!isClienteAttivo((c as any).ultima_data_fatturazione, (c as any).doc_da_fatturare, config) ? "bg-muted/40 text-muted-foreground" : ""} ${isBlocked ? "bg-[#FEF2F2] dark:bg-destructive/10 border-l-[3px] border-l-[#EF4444] hover:bg-[#FEE2E2] dark:hover:bg-destructive/15" : ""}`}
                      onClick={() => navigate({ to: "/clienti/$clienteId", params: { clienteId: c.id } })}
                    >
                     <TableCell onClick={(e) => e.stopPropagation()}>
