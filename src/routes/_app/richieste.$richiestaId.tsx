@@ -77,8 +77,10 @@ function RichiestaDetail() {
   // 'amministrazione' NON da l'assenso di per se' (solo se ha anche cappello approvatore).
   const canApprove = r?.stato === "in_approvazione" &&
     (isAdmin || livelloUtente === r.livello_corrente);
-  // Elimina/gestisce: admin tecnico o amministrazione
-  const canDelete = isAdmin || isAmministrazione;
+  const isOwner = !!user?.id && r?.created_by === user.id;
+  // Elimina/gestisce: admin tecnico, amministrazione o il richiedente sulle proprie
+  const canDelete = isAdmin || isAmministrazione || isOwner;
+
   const canSubmit = r?.stato === "bozza" && r?.created_by === user?.id;
 
   const submitMutation = useMutation({
@@ -175,11 +177,19 @@ function RichiestaDetail() {
               <Button
                 variant="outline"
                 className="gap-1.5 text-destructive hover:text-destructive"
-                onClick={() => { if (confirm("Eliminare definitivamente questa richiesta?")) deleteMutation.mutate(); }}
+                onClick={() => {
+                  const msg = r.stato === "approvata"
+                    ? "⚠️ Questa richiesta è GIÀ APPROVATA e potrebbe essere già stata esportata nel gestionale. Eliminarla può creare disallineamenti. L'operazione è irreversibile. Procedere?"
+                    : (r.stato === "in_approvazione" || r.stato === "integrazioni_richieste")
+                    ? "Questa richiesta è in approvazione: eliminandola l'iter verrà interrotto. L'operazione è irreversibile. Procedere?"
+                    : "Eliminare definitivamente questa richiesta?";
+                  if (confirm(msg)) deleteMutation.mutate();
+                }}
               >
                 <Trash2 className="size-4" /> Elimina
               </Button>
             )}
+
           </div>
         </Card>
 

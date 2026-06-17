@@ -94,7 +94,23 @@ function RichiestePage() {
   const [tab, setTab] = useState<string>(defaultTab);
   const [openNew, setOpenNew] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
+  const [editConfirm, setEditConfirm] = useState<any | null>(null);
   const [deleting, setDeleting] = useState<any | null>(null);
+
+  const isOwn = (r: any) => !!user?.id && r?.created_by === user.id;
+  const canEditOrDeleteRow = (r: any) => isAdmin || isAmministrazione || isOwn(r);
+
+  function handleEdit(r: any) {
+    if (r.stato === "bozza" || !canEditOrDeleteRow(r)) {
+      setEditing(r);
+    } else {
+      setEditConfirm(r);
+    }
+  }
+  function handleDelete(r: any) {
+    if (canEditOrDeleteRow(r)) setDeleting(r);
+  }
+
 
   const { data: richieste, isLoading } = useQuery({
     queryKey: ["richieste", role, profilo?.store_id, user?.id],
@@ -226,8 +242,8 @@ function RichiestePage() {
           <BozzeTab
             rows={bozze}
             loading={isLoading}
-            onEdit={setEditing}
-            onDelete={setDeleting}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
             onChanged={qcInvalidate}
             msgCounts={msgCounts}
           />
@@ -241,6 +257,9 @@ function RichiestePage() {
             livelloUtente={livello}
             isAdmin={isAdmin}
             onChanged={qcInvalidate}
+            currentUserId={user?.id}
+            onEditOwn={handleEdit}
+            onDeleteOwn={handleDelete}
           />
         </TabsContent>
 
@@ -252,7 +271,16 @@ function RichiestePage() {
               </Button>
             </div>
           )}
-          <StoricoTab rows={approvate} loading={isLoading} kind="approvata" onRiinvia={null} msgCounts={msgCounts} />
+          <StoricoTab
+            rows={approvate}
+            loading={isLoading}
+            kind="approvata"
+            onRiinvia={null}
+            msgCounts={msgCounts}
+            currentUserId={user?.id}
+            onEditOwn={handleEdit}
+            onDeleteOwn={handleDelete}
+          />
         </TabsContent>
 
         <TabsContent value="rifiutate" className="mt-4">
@@ -262,6 +290,9 @@ function RichiestePage() {
             kind="rifiutata"
             onRiinvia={(r) => setEditing({ ...r, _riinvia: true })}
             msgCounts={msgCounts}
+            currentUserId={user?.id}
+            onEditOwn={handleEdit}
+            onDeleteOwn={handleDelete}
           />
         </TabsContent>
 
@@ -270,6 +301,7 @@ function RichiestePage() {
             <TuttoTab rows={all} loading={isLoading} msgCounts={msgCounts} />
           </TabsContent>
         )}
+
       </Tabs>
 
       <Dialog open={openNew} onOpenChange={setOpenNew}>
@@ -287,11 +319,50 @@ function RichiestePage() {
         )}
       </Dialog>
 
+      <AlertDialog open={!!editConfirm} onOpenChange={(v) => !v && setEditConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {editConfirm?.stato === "approvata"
+                ? "⚠️ Modificare una richiesta GIÀ APPROVATA?"
+                : STATI_IN_APPROVAZIONE.includes(editConfirm?.stato)
+                ? "Modificare una richiesta IN APPROVAZIONE?"
+                : "Modificare la richiesta?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {editConfirm?.stato === "approvata"
+                ? "Questa richiesta è già stata approvata e potrebbe essere già stata esportata nel gestionale. Modificarla può creare disallineamenti con il fido già concesso. Procedere?"
+                : STATI_IN_APPROVAZIONE.includes(editConfirm?.stato)
+                ? "Questa richiesta è in approvazione: modificandola l'iter potrebbe essere interrotto o ripartire da capo. Procedere?"
+                : "Stai modificando una richiesta non più in bozza. Procedere?"}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); const r = editConfirm; setEditConfirm(null); if (r) setEditing(r); }}
+            >Procedi con la modifica</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <AlertDialog open={!!deleting} onOpenChange={(v) => !v && setDeleting(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Eliminare la richiesta?</AlertDialogTitle>
-            <AlertDialogDescription>L'operazione è irreversibile.</AlertDialogDescription>
+            <AlertDialogTitle>
+              {deleting?.stato === "approvata"
+                ? "⚠️ Eliminare una richiesta GIÀ APPROVATA?"
+                : STATI_IN_APPROVAZIONE.includes(deleting?.stato)
+                ? "Eliminare una richiesta IN APPROVAZIONE?"
+                : "Eliminare la richiesta?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleting?.stato === "approvata"
+                ? "Questa richiesta è già stata approvata e potrebbe essere già stata esportata nel gestionale. Eliminarla può creare disallineamenti. L'operazione è irreversibile. Procedere?"
+                : STATI_IN_APPROVAZIONE.includes(deleting?.stato)
+                ? "Questa richiesta è in approvazione: eliminandola l'iter verrà interrotto. L'operazione è irreversibile. Procedere?"
+                : "L'operazione è irreversibile."}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annulla</AlertDialogCancel>
@@ -303,6 +374,7 @@ function RichiestePage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
     </div>
   );
 }
@@ -426,9 +498,12 @@ function BozzeTab({
 /* ====================== IN APPROVAZIONE TAB ====================== */
 function InApprovazioneTab({
   rows, loading, canApprove, livelloUtente, isAdmin, onChanged,
+  currentUserId, onEditOwn, onDeleteOwn,
 }: {
   rows: any[]; loading: boolean; canApprove: boolean; livelloUtente: number; isAdmin: boolean; onChanged: () => void;
+  currentUserId?: string; onEditOwn?: (r: any) => void; onDeleteOwn?: (r: any) => void;
 }) {
+
   const { user } = useAuth();
   const navigate = useNavigate();
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -677,7 +752,17 @@ function InApprovazioneTab({
                           <Button size="sm" variant="ghost" className="text-destructive h-8" onClick={() => annullaMut.mutate(r)}>
                             <Ban className="size-4" /> Annulla
                           </Button>
-                        ) : unread === 0 ? <span className="text-xs text-muted-foreground">—</span> : null}
+                        ) : null}
+                        {currentUserId && r.created_by === currentUserId && onEditOwn && onDeleteOwn && (
+                          <>
+                            <Button size="icon" variant="ghost" className="size-8" onClick={() => onEditOwn(r)} title="Modifica"><Pencil className="size-4" /></Button>
+                            <Button size="icon" variant="ghost" className="size-8 text-destructive" onClick={() => onDeleteOwn(r)} title="Elimina"><Trash2 className="size-4" /></Button>
+                          </>
+                        )}
+                        {!(canApprove && livMio) && !(r.stato === "integrazioni_richieste" || r.stato === "bozza") && !(currentUserId && r.created_by === currentUserId) && unread === 0 && (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+
                       </div>
                     </TableCell>
                   </TableRow>
@@ -768,8 +853,9 @@ function isStoreManagerView(canApprove: boolean): boolean { return !canApprove; 
 
 /* ============================ STORICO TAB ============================ */
 function StoricoTab({
-  rows, loading, kind, onRiinvia, msgCounts,
-}: { rows: any[]; loading: boolean; kind: "approvata" | "rifiutata"; onRiinvia: ((r: any) => void) | null; msgCounts?: Record<string, number> }) {
+  rows, loading, kind, onRiinvia, msgCounts, currentUserId, onEditOwn, onDeleteOwn,
+}: { rows: any[]; loading: boolean; kind: "approvata" | "rifiutata"; onRiinvia: ((r: any) => void) | null; msgCounts?: Record<string, number>; currentUserId?: string; onEditOwn?: (r: any) => void; onDeleteOwn?: (r: any) => void; }) {
+
   const navigate = useNavigate();
   const [meseFiltro, setMeseFiltro] = useState<string>("ultimi3");
   const [mostraTutto, setMostraTutto] = useState(false);
@@ -827,7 +913,7 @@ function StoricoTab({
                 <TableHead>Richiesto da</TableHead>
                 <TableHead>{kind === "approvata" ? "Approvato da" : "Decisione di"}</TableHead>
                 <TableHead>Data</TableHead>
-                {onRiinvia && <TableHead className="text-right">Azioni</TableHead>}
+                {(onRiinvia || (onEditOwn && onDeleteOwn)) && <TableHead className="text-right">Azioni</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -867,11 +953,22 @@ function StoricoTab({
                   <TableCell className="text-sm">{userName((r as any).richiedente)}</TableCell>
                   <TableCell className="text-sm">{userName((r as any).approvatore)}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{formatDate(r.data_chiusura ?? r.created_at)}</TableCell>
-                  {onRiinvia && (
+                  {(onRiinvia || (onEditOwn && onDeleteOwn)) && (
                     <TableCell className="text-right">
-                      <Button size="sm" variant="outline" onClick={() => onRiinvia(r)}><RotateCcw className="size-4" /> Ri-invia</Button>
+                      <div className="inline-flex gap-1 justify-end">
+                        {onRiinvia && (
+                          <Button size="sm" variant="outline" onClick={() => onRiinvia(r)}><RotateCcw className="size-4" /> Ri-invia</Button>
+                        )}
+                        {currentUserId && r.created_by === currentUserId && onEditOwn && onDeleteOwn && (
+                          <>
+                            <Button size="icon" variant="ghost" className="size-8" onClick={() => onEditOwn(r)} title="Modifica"><Pencil className="size-4" /></Button>
+                            <Button size="icon" variant="ghost" className="size-8 text-destructive" onClick={() => onDeleteOwn(r)} title="Elimina"><Trash2 className="size-4" /></Button>
+                          </>
+                        )}
+                      </div>
                     </TableCell>
                   )}
+
                 </TableRow>
                 );
               })}
