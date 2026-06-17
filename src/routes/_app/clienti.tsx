@@ -419,8 +419,16 @@ function ClientiPage() {
 
     if (statoCliente === "attivi") q = q.eq("attivo", true);
     else if (statoCliente === "disattivati") q = q.eq("attivo", false);
-    if (statoAttivita === "attivi") q = q.eq("cliente_attivo", true);
-    else if (statoAttivita === "non_attivi") q = q.eq("cliente_attivo", false);
+    // Stessa regola della colonna "Stato": isClienteAttivo(ultima_data_fatturazione, config).
+    // Cliente attivo  = ultima_data_fatturazione >= {cutoff_cliente_attivo_anno}-01-01
+    // Cliente non att.= ultima_data_fatturazione <  cutoff  OPPURE NULL
+    if (statoAttivita === "attivi") {
+      const cutoffIso = `${config.cutoff_cliente_attivo_anno}-01-01`;
+      q = q.gte("ultima_data_fatturazione", cutoffIso);
+    } else if (statoAttivita === "non_attivi") {
+      const cutoffIso = `${config.cutoff_cliente_attivo_anno}-01-01`;
+      q = q.or(`ultima_data_fatturazione.is.null,ultima_data_fatturazione.lt.${cutoffIso}`);
+    }
     if (storeFiltro !== "tutti") q = q.eq("store_id", storeFiltro);
     if (filtroBlocco === "bloccati") q = q.eq("bloccato", true);
     else if (filtroBlocco === "non_bloccati") q = q.eq("bloccato", false);
