@@ -30,7 +30,7 @@ function RichiestaDetail() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("richieste_fido")
-        .select("*, clienti(id, ragione_sociale, partita_iva), stores(nome, codice)")
+        .select("*, clienti(id, ragione_sociale, partita_iva), stores(nome, codice), richiedente:profili!richieste_fido_created_by_fkey(nome, cognome, email), approvatore:profili!richieste_fido_approvato_da_fkey(nome, cognome, email)")
         .eq("id", richiestaId)
         .maybeSingle();
       if (error) throw error;
@@ -140,6 +140,16 @@ function RichiestaDetail() {
             <Info label="Inviata il" value={formatDate(r.data_invio)} />
             <Info label="Chiusa il" value={formatDate(r.data_chiusura)} />
             <Info label="Scadenza fido" value={formatDate(r.data_scadenza)} />
+            <Info
+              label="Richiesto da"
+              value={`${userNameDet((r as any).richiedente)}${r.created_at ? ` · ${formatDate(r.created_at)}` : ""}`}
+            />
+            {(r.stato === "approvata" || r.stato === "rifiutata") && (
+              <Info
+                label={r.stato === "approvata" ? "Approvato da" : "Rifiutato da"}
+                value={`${userNameDet((r as any).approvatore)}${(r as any).data_approvazione ? ` · ${formatDate((r as any).data_approvazione)}` : r.data_chiusura ? ` · ${formatDate(r.data_chiusura)}` : ""}`}
+              />
+            )}
           </div>
           {r.motivazione && (
             <>
@@ -233,6 +243,12 @@ function RichiestaDetail() {
   );
 }
 
+function userNameDet(p: any): string {
+  if (!p) return "—";
+  const n = `${p.nome ?? ""} ${p.cognome ?? ""}`.trim();
+  return n || p.email || "—";
+}
+
 function Info({ label, value }: { label: string; value: string }) {
   return (
     <div>
@@ -261,16 +277,17 @@ function ApprovaForm({ richiesta, userId }: { richiesta: any; userId: string }) 
       if (e1) throw e1;
 
       // Aggiorna richiesta
+      const nowIso = new Date().toISOString();
       if (esito === "rifiutata") {
         const { error } = await supabase.from("richieste_fido")
-          .update({ stato: "rifiutata" })
+          .update({ stato: "rifiutata", approvato_da: userId, data_approvazione: nowIso })
           .eq("id", richiesta.id);
         if (error) throw error;
       } else {
         const nextLiv = richiesta.livello_corrente + 1;
         if (nextLiv > richiesta.livello_richiesto) {
           const { error } = await supabase.from("richieste_fido")
-            .update({ stato: "approvata", importo_approvato: importoNum })
+            .update({ stato: "approvata", importo_approvato: importoNum, approvato_da: userId, data_approvazione: nowIso })
             .eq("id", richiesta.id);
           if (error) throw error;
         } else {

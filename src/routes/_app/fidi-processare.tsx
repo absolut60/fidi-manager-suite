@@ -51,7 +51,7 @@ function FidiProcessarePage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("richieste_fido")
-        .select("*, clienti(ragione_sociale, codice_gestionale, codice_assegnato, partita_iva, fido_aziendale_concesso), stores(nome, codice)")
+        .select("*, clienti(ragione_sociale, codice_gestionale, codice_assegnato, partita_iva, fido_aziendale_concesso), stores(nome, codice), richiedente:profili!richieste_fido_created_by_fkey(nome, cognome, email), approvatore:profili!richieste_fido_approvato_da_fkey(nome, cognome, email)")
         .eq("stato", "approvata")
         .not("stato_export", "is", null)
         .order("data_chiusura", { ascending: false });
@@ -134,7 +134,7 @@ function FidiProcessarePage() {
         : null,
       importo_approvato: Number(r.importo_approvato ?? r.importo_richiesto),
       data_approvazione: formatDate(r.data_chiusura ?? r.updated_at),
-      approvato_da: profiloName(r.created_by),
+      approvato_da: profiloName(r.approvato_da) !== "—" ? profiloName(r.approvato_da) : profiloName(r.created_by),
       note: r.note ?? r.motivazione ?? "",
     }));
     generaExcelFidi(exportRows);
@@ -397,7 +397,7 @@ function GestireTab({
                       {formatEuro(Number(r.importo_approvato ?? r.importo_richiesto))}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">{formatDate(r.data_chiusura ?? r.updated_at)}</TableCell>
-                    <TableCell className="text-xs">{profiloName(r.created_by)}</TableCell>
+                    <TableCell className="text-xs">{profiloName(r.approvato_da) !== "—" ? profiloName(r.approvato_da) : profiloName(r.created_by)}</TableCell>
                     <TableCell><ExportBadge stato={se} /></TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">

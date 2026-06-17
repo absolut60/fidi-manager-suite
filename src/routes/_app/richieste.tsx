@@ -66,6 +66,12 @@ function semaforoCliente(c: any): { tone: string; label: string } {
   return { tone: "bg-success/15 text-success", label: "Verde" };
 }
 
+function userName(p: any): string {
+  if (!p) return "—";
+  const n = `${p.nome ?? ""} ${p.cognome ?? ""}`.trim();
+  return n || p.email || "—";
+}
+
 function RichiestePage() {
   const { user, role, profilo } = useAuth();
   const isAdmin = role === "amministratore";
@@ -88,7 +94,7 @@ function RichiestePage() {
     queryFn: async () => {
       let q = supabase
         .from("richieste_fido")
-        .select("*, clienti(ragione_sociale, fido_aziendale_concesso, fido_gestionale, bloccato, in_gestione_legale, scaduto, totale_rischio), stores(nome, codice)")
+        .select("*, clienti(ragione_sociale, fido_aziendale_concesso, fido_gestionale, bloccato, in_gestione_legale, scaduto, totale_rischio), stores(nome, codice), richiedente:profili!richieste_fido_created_by_fkey(nome, cognome, email), approvatore:profili!richieste_fido_approvato_da_fkey(nome, cognome, email)")
         .order("created_at", { ascending: false });
       if (isStoreManager) {
         q = q.eq("created_by", user!.id);
@@ -356,6 +362,7 @@ function BozzeTab({
             <TableHead>Tipo</TableHead>
             <TableHead className="text-right">Importo richiesto</TableHead>
             <TableHead className="text-right">Fido attuale</TableHead>
+            <TableHead>Richiesto da</TableHead>
             <TableHead>Data creazione</TableHead>
             <TableHead className="text-right">Azioni</TableHead>
           </TableRow>
@@ -391,6 +398,7 @@ function BozzeTab({
               <TableCell className="text-right tabular-nums text-muted-foreground">
                 {formatEuro(Number(r.clienti?.fido_aziendale_concesso ?? r.clienti?.fido_gestionale ?? 0))}
               </TableCell>
+              <TableCell className="text-sm">{userName((r as any).richiedente)}</TableCell>
               <TableCell className="text-sm text-muted-foreground">{formatDate(r.created_at)}</TableCell>
               <TableCell className="text-right">
                 <div className="inline-flex gap-1">
@@ -501,7 +509,7 @@ function InApprovazioneTab({
 
         if (kind === "rifiuta") {
           const { error } = await supabase.from("richieste_fido")
-            .update({ stato: "rifiutata" }).eq("id", r.id);
+            .update({ stato: "rifiutata", approvato_da: user.id, data_approvazione: new Date().toISOString() }).eq("id", r.id);
           if (error) throw error;
         } else {
           const nextLiv = livDecisione + 1;
@@ -509,7 +517,7 @@ function InApprovazioneTab({
             // approvazione finale
             const fidoPrec = Number(r.clienti?.fido_aziendale_concesso ?? 0);
             const { error } = await supabase.from("richieste_fido")
-              .update({ stato: "approvata", importo_approvato: imp }).eq("id", r.id);
+              .update({ stato: "approvata", importo_approvato: imp, approvato_da: user.id, data_approvazione: new Date().toISOString() }).eq("id", r.id);
             if (error) throw error;
             // aggiorna fido cliente
             await supabase.from("clienti")
@@ -604,6 +612,7 @@ function InApprovazioneTab({
                 <TableHead className="text-right">Tot. rischio</TableHead>
                 <TableHead className="text-right">Scaduto</TableHead>
                 <TableHead>Liv.</TableHead>
+                <TableHead>Richiesto da</TableHead>
                 <TableHead>Data invio</TableHead>
                 <TableHead>Giorni</TableHead>
                 {(canApprove || true) && <TableHead className="text-right">Azioni</TableHead>}
@@ -633,6 +642,7 @@ function InApprovazioneTab({
                     <TableCell className="text-right tabular-nums text-muted-foreground">{formatEuro(Number(r.clienti?.totale_rischio ?? 0))}</TableCell>
                     <TableCell className="text-right tabular-nums">{Number(r.clienti?.scaduto ?? 0) > 0 ? <span className="text-destructive">{formatEuro(Number(r.clienti?.scaduto))}</span> : "—"}</TableCell>
                     <TableCell><Badge variant="outline">L{r.livello_corrente}/{r.livello_richiesto}</Badge></TableCell>
+                    <TableCell className="text-sm">{userName((r as any).richiedente)}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{formatDate(r.data_invio)}</TableCell>
                     <TableCell><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${attesaTone(g)}`}>{g}gg</span></TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
@@ -806,6 +816,8 @@ function StoricoTab({
                 {kind === "approvata" && <TableHead className="text-right">Importo approvato</TableHead>}
                 {kind === "approvata" && <TableHead>Export</TableHead>}
                 {kind === "rifiutata" && <TableHead>Motivo</TableHead>}
+                <TableHead>Richiesto da</TableHead>
+                <TableHead>{kind === "approvata" ? "Approvato da" : "Decisione di"}</TableHead>
                 <TableHead>Data</TableHead>
                 {onRiinvia && <TableHead className="text-right">Azioni</TableHead>}
               </TableRow>
@@ -844,6 +856,8 @@ function StoricoTab({
                     </TableCell>
                   )}
                   {kind === "rifiutata" && <TableCell className="text-xs text-muted-foreground max-w-xs truncate" title={r.note ?? r.motivazione ?? ""}>{r.note ?? r.motivazione ?? "—"}</TableCell>}
+                  <TableCell className="text-sm">{userName((r as any).richiedente)}</TableCell>
+                  <TableCell className="text-sm">{userName((r as any).approvatore)}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{formatDate(r.data_chiusura ?? r.created_at)}</TableCell>
                   {onRiinvia && (
                     <TableCell className="text-right">
@@ -901,6 +915,8 @@ function TuttoTab({ rows, loading, msgCounts }: { rows: any[]; loading: boolean;
               <TableHead className="text-right">Importo</TableHead>
               <TableHead>Stato</TableHead>
               <TableHead>Liv.</TableHead>
+              <TableHead>Richiesto da</TableHead>
+              <TableHead>Approvato da</TableHead>
               <TableHead>Data</TableHead>
             </TableRow>
           </TableHeader>
@@ -927,6 +943,8 @@ function TuttoTab({ rows, loading, msgCounts }: { rows: any[]; loading: boolean;
                 <TableCell className="text-right tabular-nums">{formatEuro(Number(r.importo_richiesto))}</TableCell>
                 <TableCell><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${STATO_TONE[r.stato as keyof typeof STATO_TONE]}`}>{STATO_LABEL[r.stato as keyof typeof STATO_LABEL]}</span></TableCell>
                 <TableCell><Badge variant="outline">L{r.livello_corrente}/{r.livello_richiesto}</Badge></TableCell>
+                <TableCell className="text-sm">{userName((r as any).richiedente)}</TableCell>
+                <TableCell className="text-sm">{userName((r as any).approvatore)}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{formatDate(r.created_at)}</TableCell>
               </TableRow>
             ))}
