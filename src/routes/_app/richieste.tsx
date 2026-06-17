@@ -913,7 +913,7 @@ function StoricoTab({
                 <TableHead>Richiesto da</TableHead>
                 <TableHead>{kind === "approvata" ? "Approvato da" : "Decisione di"}</TableHead>
                 <TableHead>Data</TableHead>
-                {onRiinvia && <TableHead className="text-right">Azioni</TableHead>}
+                {(onRiinvia || (onEditOwn && onDeleteOwn)) && <TableHead className="text-right">Azioni</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
