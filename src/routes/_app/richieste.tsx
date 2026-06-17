@@ -42,6 +42,7 @@ import {
   formatEuro, formatDate, type TipoRichiesta,
 } from "@/lib/fidi";
 import { getFidoAttuale } from "@/lib/fido-cliente";
+import { RICHIESTA_FIDO_SELECT } from "@/lib/richieste-fido-data";
 import { NuovaComunicazioneDialog } from "@/components/nuova-comunicazione-dialog";
 
 export const Route = createFileRoute("/_app/richieste")({
@@ -120,7 +121,7 @@ function RichiestePage() {
     queryFn: async () => {
       let q = supabase
         .from("richieste_fido")
-        .select("*, clienti(ragione_sociale, store_id, fido_gestionale, bloccato, in_gestione_legale, scaduto, totale_rischio, stores(nome, codice)), richiedente:profili!richieste_fido_created_by_fkey(nome, cognome, email), approvatore:profili!richieste_fido_approvato_da_fkey(nome, cognome, email)")
+        .select(RICHIESTA_FIDO_SELECT)
         .order("created_at", { ascending: false });
       if (isStoreManager) {
         q = q.eq("created_by", user!.id);
@@ -736,7 +737,7 @@ function InApprovazioneTab({
                     <TableCell className="text-right tabular-nums">{Number(r.clienti?.scaduto ?? 0) > 0 ? <span className="text-destructive">{formatEuro(Number(r.clienti?.scaduto))}</span> : "—"}</TableCell>
                     <TableCell><Badge variant="outline">L{r.livello_corrente}/{r.livello_richiesto}</Badge></TableCell>
                     <TableCell className="text-sm">{userName((r as any).richiedente)}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{formatDate(r.data_invio)}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{formatDate(r.data_invio ?? (r.stato !== "bozza" ? r.created_at : null))}</TableCell>
                     <TableCell><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${attesaTone(g)}`}>{g}gg</span></TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="inline-flex items-center gap-1">

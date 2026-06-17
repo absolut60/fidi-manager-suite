@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/sheet";
 import { formatEuro, formatDate, TIPO_LABEL, TIPO_TONE, type TipoRichiesta } from "@/lib/fidi";
 import { getFidoAttuale } from "@/lib/fido-cliente";
+import { RICHIESTA_FIDO_SELECT } from "@/lib/richieste-fido-data";
 import { NuovaComunicazioneDialog } from "@/components/nuova-comunicazione-dialog";
 
 export const Route = createFileRoute("/_app/approvazioni")({
@@ -41,6 +42,7 @@ function semaforoCliente(c: any): { dot: string; tone: string; label: "Verde" | 
   if (Number(c.scaduto ?? 0) > 0) return { dot: "bg-warning", tone: "bg-warning/15 text-warning", label: "Giallo" };
   return { dot: "bg-success", tone: "bg-success/15 text-success", label: "Verde" };
 }
+
 
 const CLIENTE_COLS =
   "ragione_sociale, partita_iva, store_id, fido_gestionale, totale_rischio, fido_residuo, scaduto, a_scadere, num_insoluti, doc_da_fatturare, doc_da_evadere, effetti_a_rischio, condizioni_pagamento, condizione_pagamento_desc, dilazione_concordata, dilazione_effettiva, bloccato, in_gestione_legale, cliente_attivo, ultima_data_fatturazione, ultima_sincronizzazione, stores(nome, codice)";
@@ -100,18 +102,10 @@ function ApprovazioniPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("richieste_fido")
-        .select(`*, clienti(${CLIENTE_COLS}), profilo:profili!richieste_fido_created_by_fkey(nome, cognome, email)`)
+        .select(RICHIESTA_FIDO_SELECT)
         .eq("stato", "in_approvazione")
         .order("data_invio", { ascending: true });
-      if (error) {
-        const { data: d2, error: e2 } = await supabase
-          .from("richieste_fido")
-          .select(`*, clienti(${CLIENTE_COLS})`)
-          .eq("stato", "in_approvazione")
-          .order("data_invio", { ascending: true });
-        if (e2) throw e2;
-        return d2;
-      }
+      if (error) throw error;
       return data;
     },
     enabled: true,
@@ -500,7 +494,7 @@ function ApprovazioniPage() {
             const sem = semaforoCliente(c);
             const residuo = Number(c.fido_residuo ?? 0);
             const scaduto = Number(c.scaduto ?? 0);
-            const creatore = (detail as any).profilo;
+            const creatore = (detail as any).richiedente ?? (detail as any).profilo;
             return (
               <>
                 <SheetHeader>

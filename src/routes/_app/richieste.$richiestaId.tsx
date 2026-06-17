@@ -15,6 +15,8 @@ import { Separator } from "@/components/ui/separator";
 import { STATO_LABEL, STATO_TONE, TIPO_LABEL, TIPO_TONE, LIVELLO_LABEL, formatEuro, formatDate, type TipoRichiesta } from "@/lib/fidi";
 
 import { ComunicazioniRichiestaPanel } from "@/components/comunicazioni-richiesta-panel";
+import { RICHIESTA_FIDO_SELECT } from "@/lib/richieste-fido-data";
+import { getFidoAttuale } from "@/lib/fido-cliente";
 export const Route = createFileRoute("/_app/richieste/$richiestaId")({
   component: RichiestaDetail,
 });
@@ -31,7 +33,7 @@ function RichiestaDetail() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("richieste_fido")
-        .select("*, clienti(id, ragione_sociale, partita_iva), stores(nome, codice), richiedente:profili!richieste_fido_created_by_fkey(nome, cognome, email), approvatore:profili!richieste_fido_approvato_da_fkey(nome, cognome, email)")
+        .select(RICHIESTA_FIDO_SELECT)
         .eq("id", richiestaId)
         .maybeSingle();
       if (error) throw error;
@@ -135,11 +137,14 @@ function RichiestaDetail() {
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
             <Info label="Importo richiesto" value={formatEuro(Number(r.importo_richiesto))} />
             <Info label="Importo approvato" value={r.importo_approvato ? formatEuro(Number(r.importo_approvato)) : "—"} />
+            <Info label="Fido attuale" value={formatEuro(getFidoAttuale((r as any).clienti))} />
+            <Info label="Tot. rischio" value={formatEuro(Number((r as any).clienti?.totale_rischio ?? 0))} />
+            <Info label="Scaduto" value={Number((r as any).clienti?.scaduto ?? 0) > 0 ? formatEuro(Number((r as any).clienti?.scaduto)) : "—"} />
             <Info label="Durata" value={`${r.durata_mesi} mesi`} />
-            <Info label="Punto vendita" value={(r as any).stores?.nome ?? "—"} />
+            <Info label="Punto vendita" value={(r as any).clienti?.stores?.nome ?? (r as any).stores?.nome ?? "—"} />
             <Info label="Livello richiesto" value={LIVELLO_LABEL[r.livello_richiesto]} />
             <Info label="Livello corrente" value={`Liv. ${r.livello_corrente}`} />
-            <Info label="Inviata il" value={formatDate(r.data_invio)} />
+            <Info label="Inviata il" value={formatDate(r.data_invio ?? (r.stato !== "bozza" ? r.created_at : null))} />
             <Info label="Chiusa il" value={formatDate(r.data_chiusura)} />
             <Info label="Scadenza fido" value={formatDate(r.data_scadenza)} />
             <Info
