@@ -1003,7 +1003,16 @@ function RichiestaFormDialog({
   const config = useConfig();
   const soglie = { liv1: config.soglia_livello_1, liv2: config.soglia_livello_2 };
   const livelloPreview = form.importo_richiesto > 0 ? calcolaLivello(Number(form.importo_richiesto), soglie) : null;
-  const filteredClienti = clienti?.filter((c) => !search || c.ragione_sociale.toLowerCase().includes(search.toLowerCase())) ?? [];
+  const filteredClienti = (() => {
+    const s = search.trim().toLowerCase();
+    const list = clienti ?? [];
+    if (!s) return list.slice(0, 100);
+    return list.filter((c) => {
+      const rs = (c.ragione_sociale ?? "").toLowerCase();
+      const cod = ((c as any).codice_gestionale ?? "").toString().toLowerCase();
+      return rs.includes(s) || cod.includes(s);
+    }).slice(0, 100);
+  })();
 
 
   const mut = useMutation({
