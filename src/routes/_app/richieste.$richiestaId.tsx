@@ -77,8 +77,10 @@ function RichiestaDetail() {
   // 'amministrazione' NON da l'assenso di per se' (solo se ha anche cappello approvatore).
   const canApprove = r?.stato === "in_approvazione" &&
     (isAdmin || livelloUtente === r.livello_corrente);
-  // Elimina/gestisce: admin tecnico o amministrazione
-  const canDelete = isAdmin || isAmministrazione;
+  const isOwner = !!user?.id && r?.created_by === user.id;
+  // Elimina/gestisce: admin tecnico, amministrazione o il richiedente sulle proprie
+  const canDelete = isAdmin || isAmministrazione || isOwner;
+
   const canSubmit = r?.stato === "bozza" && r?.created_by === user?.id;
 
   const submitMutation = useMutation({
