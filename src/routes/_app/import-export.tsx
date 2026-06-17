@@ -2843,7 +2843,7 @@ function BloccoFidoAssicurazioneImportCard() {
 
 function ExportCard() {
   const qc = useQueryClient();
-  const [busy, setBusy] = useState<null | "clienti" | "richieste" | "senza_email">(null);
+  const [busy, setBusy] = useState<null | "clienti" | "richieste" | "senza_email" | "fidi_gestionale">(null);
 
   async function exportClientiSenzaEmail() {
     setBusy("senza_email");
