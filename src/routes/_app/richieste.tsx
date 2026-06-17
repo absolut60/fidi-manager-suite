@@ -398,6 +398,7 @@ function BozzeTab({
               <TableCell className="text-right tabular-nums text-muted-foreground">
                 {formatEuro(Number(r.clienti?.fido_aziendale_concesso ?? r.clienti?.fido_gestionale ?? 0))}
               </TableCell>
+              <TableCell className="text-sm">{userName((r as any).richiedente)}</TableCell>
               <TableCell className="text-sm text-muted-foreground">{formatDate(r.created_at)}</TableCell>
               <TableCell className="text-right">
                 <div className="inline-flex gap-1">
