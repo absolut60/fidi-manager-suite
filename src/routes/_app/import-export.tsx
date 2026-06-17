@@ -3119,6 +3119,21 @@ function ExportCard() {
           variant="outline"
           className="w-full justify-between"
           disabled={busy !== null}
+          onClick={exportFidiGestionale}
+        >
+          <span className="flex items-center gap-2">
+            <FileSpreadsheet className="size-4" /> Fidi approvati (tracciato gestionale)
+          </span>
+          {busy === "fidi_gestionale" ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <Download className="size-4" />
+          )}
+        </Button>
+        <Button
+          variant="outline"
+          className="w-full justify-between"
+          disabled={busy !== null}
           onClick={exportClientiSenzaEmail}
         >
           <span className="flex items-center gap-2">
