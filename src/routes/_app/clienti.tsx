@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, useNavigate, useRouterState } from "@tanstack/
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import { Plus, Search, Building, MapPin, FileCheck2, FileX2, ArrowLeft, ArrowRight, Check, Pencil, PenTool, FileText, SlidersHorizontal, X, AlertCircle, Clock, CheckCircle2, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
+import { Plus, Search, Building, MapPin, FileCheck2, FileX2, ArrowLeft, ArrowRight, Check, Pencil, PenTool, FileText, SlidersHorizontal, X, AlertCircle, Clock, CheckCircle2, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown, MessageSquare } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -1356,7 +1356,11 @@ type RigaProposta = {
   esposizione: number;
   fido_proposto: number;
   tipo: "nuovo_fido" | "aumento" | "diminuzione" | "rinnovo";
+  // Override motivazione per-riga. undefined = eredita la motivazione generale.
+  motivazione?: string;
 };
+
+const MOTIVAZIONE_DEFAULT = "Revisione fido massiva";
 
 function ProposteFidoMassivoDialog({
   open, onOpenChange, selectedRows, userId, onSuccess, onRemove,
@@ -1370,6 +1374,7 @@ function ProposteFidoMassivoDialog({
 }) {
   const [modalitaInvio, setModalitaInvio] = useState<"bozza" | "invia">("bozza");
   const [tipoForzato, setTipoForzato] = useState<"auto" | "nuovo_fido" | "aumento" | "diminuzione" | "rinnovo">("auto");
+  const [motivazioneGenerale, setMotivazioneGenerale] = useState<string>(MOTIVAZIONE_DEFAULT);
   const [righe, setRighe] = useState<RigaProposta[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
@@ -1409,6 +1414,9 @@ function ProposteFidoMassivoDialog({
   function aggiornaTipo(id: string, tipo: RigaProposta["tipo"]) {
     setRighe((prev) => prev.map((r) => r.cliente_id === id ? { ...r, tipo } : r));
   }
+  function aggiornaMotivazioneRiga(id: string, valore: string | undefined) {
+    setRighe((prev) => prev.map((r) => r.cliente_id === id ? { ...r, motivazione: valore } : r));
+  }
   function rimuoviRiga(id: string) {
     setRighe((prev) => prev.filter((r) => r.cliente_id !== id));
     onRemove(id);
@@ -1431,14 +1439,22 @@ function ProposteFidoMassivoDialog({
     setSubmitting(true);
     try {
       const stato = modalitaInvio === "bozza" ? "bozza" : "in_attesa_liv1";
-      const payload = righe.map((r) => ({
-        cliente_id: r.cliente_id,
-        tipo: r.tipo,
-        importo_richiesto: r.fido_proposto,
-        stato,
-        created_by: userId,
-        motivazione: "Proposta fido massiva",
-      }));
+      // Motivazione: override per-riga se valorizzato (anche stringa vuota = override "vuoto"),
+      // altrimenti motivazione generale. Stringhe vuote -> null nel DB.
+      const motivazioneGeneraleNorm = motivazioneGenerale.trim() === "" ? null : motivazioneGenerale;
+      const payload = righe.map((r) => {
+        const m = r.motivazione === undefined
+          ? motivazioneGeneraleNorm
+          : (r.motivazione.trim() === "" ? null : r.motivazione);
+        return {
+          cliente_id: r.cliente_id,
+          tipo: r.tipo,
+          importo_richiesto: r.fido_proposto,
+          stato,
+          created_by: userId,
+          motivazione: m,
+        };
+      });
       const { error } = await supabase.from("richieste_fido").insert(payload as any);
       if (error) throw error;
       toast.success(`${righe.length} richieste create`);
@@ -1487,6 +1503,19 @@ function ProposteFidoMassivoDialog({
           </div>
         </div>
 
+        <div>
+          <Label className="text-xs">Motivazione (applicata a tutti)</Label>
+          <Textarea
+            value={motivazioneGenerale}
+            onChange={(e) => setMotivazioneGenerale(e.target.value)}
+            placeholder="Motivazione comune a tutte le richieste del batch"
+            className="mt-2 min-h-16"
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Opzionale. Puoi sovrascriverla per singolo cliente dall'icona <MessageSquare className="inline size-3" /> sulla riga.
+          </p>
+        </div>
+
         <div className="overflow-x-auto border rounded-md">
           <Table>
             <TableHeader>
@@ -1496,41 +1525,84 @@ function ProposteFidoMassivoDialog({
                 <TableHead className="text-right">Esposizione</TableHead>
                 <TableHead className="text-right">Fido proposto</TableHead>
                 <TableHead>Tipo</TableHead>
+                <TableHead className="w-10">Mot.</TableHead>
                 <TableHead className="w-10"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {righe.map((r) => (
-                <TableRow key={r.cliente_id}>
-                  <TableCell className="font-medium text-sm">{r.ragione_sociale}</TableCell>
-                  <TableCell className="text-right text-sm">{fmtEuro(r.fido_attuale)}</TableCell>
-                  <TableCell className="text-right text-sm">{fmtEuro(r.esposizione)}</TableCell>
-                  <TableCell className="text-right">
-                    <Input
-                      type="number"
-                      className="h-8 text-right w-32 ml-auto"
-                      value={r.fido_proposto}
-                      onChange={(e) => aggiornaImporto(r.cliente_id, Number(e.target.value) || 0)}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Select value={r.tipo} onValueChange={(v) => aggiornaTipo(r.cliente_id, v as RigaProposta["tipo"])}>
-                      <SelectTrigger className="h-8 w-36"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="nuovo_fido">Nuovo fido</SelectItem>
-                        <SelectItem value="aumento">Aumento</SelectItem>
-                        <SelectItem value="diminuzione">Diminuzione</SelectItem>
-                        <SelectItem value="rinnovo">Rinnovo</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="icon" onClick={() => rimuoviRiga(r.cliente_id)} title="Rimuovi">
-                      <X className="size-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {righe.map((r) => {
+                const hasOverride = r.motivazione !== undefined;
+                return (
+                  <TableRow key={r.cliente_id}>
+                    <TableCell className="font-medium text-sm">{r.ragione_sociale}</TableCell>
+                    <TableCell className="text-right text-sm">{fmtEuro(r.fido_attuale)}</TableCell>
+                    <TableCell className="text-right text-sm">{fmtEuro(r.esposizione)}</TableCell>
+                    <TableCell className="text-right">
+                      <Input
+                        type="number"
+                        className="h-8 text-right w-32 ml-auto"
+                        value={r.fido_proposto}
+                        onChange={(e) => aggiornaImporto(r.cliente_id, Number(e.target.value) || 0)}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Select value={r.tipo} onValueChange={(v) => aggiornaTipo(r.cliente_id, v as RigaProposta["tipo"])}>
+                        <SelectTrigger className="h-8 w-36"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="nuovo_fido">Nuovo fido</SelectItem>
+                          <SelectItem value="aumento">Aumento</SelectItem>
+                          <SelectItem value="diminuzione">Diminuzione</SelectItem>
+                          <SelectItem value="rinnovo">Rinnovo</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={hasOverride ? "text-primary" : ""}
+                            title={hasOverride ? "Motivazione personalizzata" : "Eredita motivazione generale"}
+                          >
+                            <MessageSquare className="size-4" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-80" align="end">
+                          <div className="space-y-2">
+                            <Label className="text-xs">Motivazione per questo cliente</Label>
+                            <Textarea
+                              value={hasOverride ? r.motivazione ?? "" : motivazioneGenerale}
+                              onChange={(e) => aggiornaMotivazioneRiga(r.cliente_id, e.target.value)}
+                              placeholder="Lascia vuoto per ereditare quella generale"
+                              className="min-h-20"
+                            />
+                            <div className="flex justify-between items-center">
+                              <span className="text-xs text-muted-foreground">
+                                {hasOverride ? "Personalizzata" : "Eredita generale"}
+                              </span>
+                              {hasOverride && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => aggiornaMotivazioneRiga(r.cliente_id, undefined)}
+                                >
+                                  Reimposta
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    </TableCell>
+                    <TableCell>
+                      <Button variant="ghost" size="icon" onClick={() => rimuoviRiga(r.cliente_id)} title="Rimuovi">
+                        <X className="size-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>
