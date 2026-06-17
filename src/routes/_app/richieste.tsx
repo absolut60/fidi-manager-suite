@@ -737,7 +737,7 @@ function InApprovazioneTab({
                     <TableCell className="text-right tabular-nums">{Number(r.clienti?.scaduto ?? 0) > 0 ? <span className="text-destructive">{formatEuro(Number(r.clienti?.scaduto))}</span> : "—"}</TableCell>
                     <TableCell><Badge variant="outline">L{r.livello_corrente}/{r.livello_richiesto}</Badge></TableCell>
                     <TableCell className="text-sm">{userName((r as any).richiedente)}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{formatDate(r.data_invio)}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{formatDate(r.data_invio ?? (r.stato !== "bozza" ? r.created_at : null))}</TableCell>
                     <TableCell><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${attesaTone(g)}`}>{g}gg</span></TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="inline-flex items-center gap-1">
