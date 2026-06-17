@@ -419,15 +419,21 @@ function ClientiPage() {
 
     if (statoCliente === "attivi") q = q.eq("attivo", true);
     else if (statoCliente === "disattivati") q = q.eq("attivo", false);
-    // Stessa regola della colonna "Stato": isClienteAttivo(ultima_data_fatturazione, config).
-    // Cliente attivo  = ultima_data_fatturazione >= {cutoff_cliente_attivo_anno}-01-01
-    // Cliente non att.= ultima_data_fatturazione <  cutoff  OPPURE NULL
+    // Stessa regola della colonna "Stato" (isClienteAttivo, centralizzata in use-config):
+    //   A) ultima_data_fatturazione >= {cutoff_cliente_attivo_anno}-01-01
+    //   OPPURE
+    //   B) doc_da_fatturare > 0  (DDT/documenti da fatturare aperti)
+    // => Non attivo = NOT(A) AND NOT(B)
     if (statoAttivita === "attivi") {
       const cutoffIso = `${config.cutoff_cliente_attivo_anno}-01-01`;
-      q = q.gte("ultima_data_fatturazione", cutoffIso);
+      q = q.or(`ultima_data_fatturazione.gte.${cutoffIso},doc_da_fatturare.gt.0`);
     } else if (statoAttivita === "non_attivi") {
       const cutoffIso = `${config.cutoff_cliente_attivo_anno}-01-01`;
-      q = q.or(`ultima_data_fatturazione.is.null,ultima_data_fatturazione.lt.${cutoffIso}`);
+      // NOT A: ultima_data_fatturazione IS NULL OR < cutoff
+      // AND NOT B: doc_da_fatturare IS NULL OR <= 0
+      q = q
+        .or(`ultima_data_fatturazione.is.null,ultima_data_fatturazione.lt.${cutoffIso}`)
+        .or(`doc_da_fatturare.is.null,doc_da_fatturare.lte.0`);
     }
     if (storeFiltro !== "tutti") q = q.eq("store_id", storeFiltro);
     if (filtroBlocco === "bloccati") q = q.eq("bloccato", true);
