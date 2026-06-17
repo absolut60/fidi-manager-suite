@@ -319,11 +319,50 @@ function RichiestePage() {
         )}
       </Dialog>
 
+      <AlertDialog open={!!editConfirm} onOpenChange={(v) => !v && setEditConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {editConfirm?.stato === "approvata"
+                ? "⚠️ Modificare una richiesta GIÀ APPROVATA?"
+                : STATI_IN_APPROVAZIONE.includes(editConfirm?.stato)
+                ? "Modificare una richiesta IN APPROVAZIONE?"
+                : "Modificare la richiesta?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {editConfirm?.stato === "approvata"
+                ? "Questa richiesta è già stata approvata e potrebbe essere già stata esportata nel gestionale. Modificarla può creare disallineamenti con il fido già concesso. Procedere?"
+                : STATI_IN_APPROVAZIONE.includes(editConfirm?.stato)
+                ? "Questa richiesta è in approvazione: modificandola l'iter potrebbe essere interrotto o ripartire da capo. Procedere?"
+                : "Stai modificando una richiesta non più in bozza. Procedere?"}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); const r = editConfirm; setEditConfirm(null); if (r) setEditing(r); }}
+            >Procedi con la modifica</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <AlertDialog open={!!deleting} onOpenChange={(v) => !v && setDeleting(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Eliminare la richiesta?</AlertDialogTitle>
-            <AlertDialogDescription>L'operazione è irreversibile.</AlertDialogDescription>
+            <AlertDialogTitle>
+              {deleting?.stato === "approvata"
+                ? "⚠️ Eliminare una richiesta GIÀ APPROVATA?"
+                : STATI_IN_APPROVAZIONE.includes(deleting?.stato)
+                ? "Eliminare una richiesta IN APPROVAZIONE?"
+                : "Eliminare la richiesta?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleting?.stato === "approvata"
+                ? "Questa richiesta è già stata approvata e potrebbe essere già stata esportata nel gestionale. Eliminarla può creare disallineamenti. L'operazione è irreversibile. Procedere?"
+                : STATI_IN_APPROVAZIONE.includes(deleting?.stato)
+                ? "Questa richiesta è in approvazione: eliminandola l'iter verrà interrotto. L'operazione è irreversibile. Procedere?"
+                : "L'operazione è irreversibile."}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annulla</AlertDialogCancel>
@@ -335,6 +374,7 @@ function RichiestePage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
     </div>
   );
 }
