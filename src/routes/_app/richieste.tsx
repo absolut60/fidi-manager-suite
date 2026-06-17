@@ -953,11 +953,22 @@ function StoricoTab({
                   <TableCell className="text-sm">{userName((r as any).richiedente)}</TableCell>
                   <TableCell className="text-sm">{userName((r as any).approvatore)}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{formatDate(r.data_chiusura ?? r.created_at)}</TableCell>
-                  {onRiinvia && (
+                  {(onRiinvia || (onEditOwn && onDeleteOwn)) && (
                     <TableCell className="text-right">
-                      <Button size="sm" variant="outline" onClick={() => onRiinvia(r)}><RotateCcw className="size-4" /> Ri-invia</Button>
+                      <div className="inline-flex gap-1 justify-end">
+                        {onRiinvia && (
+                          <Button size="sm" variant="outline" onClick={() => onRiinvia(r)}><RotateCcw className="size-4" /> Ri-invia</Button>
+                        )}
+                        {currentUserId && r.created_by === currentUserId && onEditOwn && onDeleteOwn && (
+                          <>
+                            <Button size="icon" variant="ghost" className="size-8" onClick={() => onEditOwn(r)} title="Modifica"><Pencil className="size-4" /></Button>
+                            <Button size="icon" variant="ghost" className="size-8 text-destructive" onClick={() => onDeleteOwn(r)} title="Elimina"><Trash2 className="size-4" /></Button>
+                          </>
+                        )}
+                      </div>
                     </TableCell>
                   )}
+
                 </TableRow>
                 );
               })}
