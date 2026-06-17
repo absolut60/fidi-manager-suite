@@ -612,6 +612,7 @@ function InApprovazioneTab({
                 <TableHead className="text-right">Tot. rischio</TableHead>
                 <TableHead className="text-right">Scaduto</TableHead>
                 <TableHead>Liv.</TableHead>
+                <TableHead>Richiesto da</TableHead>
                 <TableHead>Data invio</TableHead>
                 <TableHead>Giorni</TableHead>
                 {(canApprove || true) && <TableHead className="text-right">Azioni</TableHead>}
