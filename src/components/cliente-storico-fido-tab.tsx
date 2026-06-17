@@ -211,9 +211,33 @@ export function ClienteStoricoFidoTab({ clienteId }: { clienteId: string }) {
         <RichiestaDialog
           clienteId={clienteId}
           clienteData={cliente}
+          ultimoApprovatoImp={(() => {
+            const r = (richieste ?? []).find(
+              (x) => x.stato === "approvata" && x.importo_approvato != null,
+            );
+            return r ? Number(r.importo_approvato) : null;
+          })()}
           onClose={() => setOpenNew(false)}
           onSaved={invalidate}
         />
+      </Dialog>
+
+      <Dialog open={!!editing} onOpenChange={(v) => !v && setEditing(null)}>
+        {editing && (
+          <RichiestaDialog
+            clienteId={clienteId}
+            clienteData={cliente}
+            ultimoApprovatoImp={(() => {
+              const r = (richieste ?? []).find(
+                (x) => x.stato === "approvata" && x.importo_approvato != null,
+              );
+              return r ? Number(r.importo_approvato) : null;
+            })()}
+            richiesta={editing}
+            onClose={() => setEditing(null)}
+            onSaved={invalidate}
+          />
+        )}
       </Dialog>
 
       <Dialog open={!!editing} onOpenChange={(v) => !v && setEditing(null)}>
