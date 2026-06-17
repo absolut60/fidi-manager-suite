@@ -30,7 +30,7 @@ function RichiestaDetail() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("richieste_fido")
-        .select("*, clienti(id, ragione_sociale, partita_iva), stores(nome, codice)")
+        .select("*, clienti(id, ragione_sociale, partita_iva), stores(nome, codice), richiedente:profili!richieste_fido_created_by_fkey(nome, cognome, email), approvatore:profili!richieste_fido_approvato_da_fkey(nome, cognome, email)")
         .eq("id", richiestaId)
         .maybeSingle();
       if (error) throw error;
