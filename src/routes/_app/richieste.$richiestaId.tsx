@@ -79,6 +79,7 @@ function RichiestaDetail() {
     (isAdmin || livelloUtente === r.livello_corrente);
   // Elimina/gestisce: admin tecnico o amministrazione
   const canDelete = isAdmin || isAmministrazione;
+  const canSubmit = r?.stato === "bozza" && r?.created_by === user?.id;
 
   const submitMutation = useMutation({
     mutationFn: async () => {
