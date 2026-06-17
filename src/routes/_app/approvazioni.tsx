@@ -23,6 +23,7 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
 } from "@/components/ui/sheet";
 import { formatEuro, formatDate, TIPO_LABEL, TIPO_TONE, type TipoRichiesta } from "@/lib/fidi";
+import { getFidoAttuale } from "@/lib/fido-cliente";
 import { NuovaComunicazioneDialog } from "@/components/nuova-comunicazione-dialog";
 
 export const Route = createFileRoute("/_app/approvazioni")({
@@ -42,7 +43,7 @@ function semaforoCliente(c: any): { dot: string; tone: string; label: "Verde" | 
 }
 
 const CLIENTE_COLS =
-  "ragione_sociale, partita_iva, fido_gestionale, totale_rischio, fido_residuo, scaduto, a_scadere, num_insoluti, doc_da_fatturare, doc_da_evadere, effetti_a_rischio, condizioni_pagamento, condizione_pagamento_desc, dilazione_concordata, dilazione_effettiva, bloccato, in_gestione_legale, cliente_attivo, ultima_data_fatturazione, ultima_sincronizzazione";
+  "ragione_sociale, partita_iva, store_id, fido_gestionale, totale_rischio, fido_residuo, scaduto, a_scadere, num_insoluti, doc_da_fatturare, doc_da_evadere, effetti_a_rischio, condizioni_pagamento, condizione_pagamento_desc, dilazione_concordata, dilazione_effettiva, bloccato, in_gestione_legale, cliente_attivo, ultima_data_fatturazione, ultima_sincronizzazione, stores(nome, codice)";
 
 function ritardoHelper(dilConc: number | null | undefined, dilEff: number | null | undefined): { text: string; cls: string } {
   if (dilConc == null || dilEff == null) return { text: "—", cls: "text-muted-foreground" };
@@ -99,13 +100,13 @@ function ApprovazioniPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("richieste_fido")
-        .select(`*, clienti(${CLIENTE_COLS}), stores(nome, codice), profilo:profili!richieste_fido_created_by_fkey(nome, cognome, email)`)
+        .select(`*, clienti(${CLIENTE_COLS}), profilo:profili!richieste_fido_created_by_fkey(nome, cognome, email)`)
         .eq("stato", "in_approvazione")
         .order("data_invio", { ascending: true });
       if (error) {
         const { data: d2, error: e2 } = await supabase
           .from("richieste_fido")
-          .select(`*, clienti(${CLIENTE_COLS}), stores(nome, codice)`)
+          .select(`*, clienti(${CLIENTE_COLS})`)
           .eq("stato", "in_approvazione")
           .order("data_invio", { ascending: true });
         if (e2) throw e2;
@@ -148,7 +149,7 @@ function ApprovazioniPage() {
     const min = fMin ? Number(fMin) : null;
     const max = fMax ? Number(fMax) : null;
     let out = list.filter((r) => {
-      if (fStore !== "all" && r.store_id !== fStore) return false;
+      if (fStore !== "all" && r.clienti?.store_id !== fStore) return false;
       if (fTipo !== "all" && r.tipo !== fTipo) return false;
       if (fLivello !== "all" && String(r.livello_corrente) !== fLivello) return false;
       const imp = Number(r.importo_richiesto);
@@ -457,8 +458,8 @@ function ApprovazioniPage() {
                           {!canAct && (
                             <Badge className="bg-warning/15 text-warning hover:bg-warning/15">Richiede liv. {r.livello_richiesto}</Badge>
                           )}
-                          {(r as any).stores?.nome && (
-                            <Badge variant="secondary" className="text-xs">{(r as any).stores.nome}</Badge>
+                          {(r.clienti as any)?.stores?.nome && (
+                            <Badge variant="secondary" className="text-xs">{(r.clienti as any).stores.nome}</Badge>
                           )}
                           {unread > 0 && (
                             <span className="inline-flex items-center gap-1 rounded-md bg-info/15 text-info px-2 py-0.5 text-xs font-medium">
@@ -531,7 +532,7 @@ function ApprovazioniPage() {
                       <Field label="Importo richiesto"><strong className="tabular-nums">{formatEuro(Number(detail.importo_richiesto))}</strong></Field>
                       <Field label="Durata">{detail.durata_mesi} mesi</Field>
                       <Field label="Livello">{detail.livello_corrente}/{detail.livello_richiesto}</Field>
-                      <Field label="Store">{(detail as any).stores?.nome ?? "—"}</Field>
+                      <Field label="Store">{(detail.clienti as any)?.stores?.nome ?? "—"}</Field>
                       <Field label="Data creazione">{formatDate(detail.created_at)}</Field>
                       <Field label="Data invio">{formatDate(detail.data_invio)}</Field>
                       <Field label="Creata da">
