@@ -1113,7 +1113,11 @@ function RichiestaFormDialog({
                     />
                     <CommandList>
                       <CommandEmpty>
-                        {clienti ? "Nessun cliente trovato" : "Caricamento…"}
+                        {debouncedSearch.length < 2
+                          ? "Digita almeno 2 caratteri…"
+                          : isSearching
+                          ? "Ricerca in corso…"
+                          : "Nessun cliente trovato"}
                       </CommandEmpty>
                       <CommandGroup>
                         {filteredClienti.map((c) => (
@@ -1135,9 +1139,9 @@ function RichiestaFormDialog({
                             )}
                           </CommandItem>
                         ))}
-                        {clienti && clienti.length > filteredClienti.length && (
+                        {hasMore && (
                           <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                            Mostrati primi {filteredClienti.length} risultati. Affina la ricerca…
+                            Mostrati primi {LIMIT} risultati. Affina la ricerca…
                           </div>
                         )}
                       </CommandGroup>
