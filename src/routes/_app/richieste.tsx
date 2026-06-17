@@ -5,7 +5,12 @@ import { z } from "zod";
 import {
   Plus, Search, FileText, Pencil, Trash2, Send, Check, X, AlertCircle,
   Clock, CheckCircle2, Wallet, RotateCcw, MessageSquareWarning, Ban, MessageSquare,
+  ChevronsUpDown,
 } from "lucide-react";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import {
+  Command, CommandInput, CommandList, CommandItem, CommandEmpty, CommandGroup,
+} from "@/components/ui/command";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -958,6 +963,7 @@ function RichiestaFormDialog({
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [search, setSearch] = useState("");
+  const [openCliente, setOpenCliente] = useState(false);
 
   const isEdit = !!richiesta;
 
@@ -967,7 +973,7 @@ function RichiestaFormDialog({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clienti")
-        .select("id, ragione_sociale, store_id, fido_aziendale_concesso, fido_gestionale, bloccato, in_gestione_legale, scaduto, totale_rischio, fido_residuo, a_scadere, condizioni_pagamento, dilazione_concordata, dilazione_effettiva, num_insoluti, motivo_blocco, cliente_attivo, ultima_data_fatturazione, ultima_sincronizzazione")
+        .select("id, ragione_sociale, codice_gestionale, store_id, fido_aziendale_concesso, fido_gestionale, bloccato, in_gestione_legale, scaduto, totale_rischio, fido_residuo, a_scadere, condizioni_pagamento, dilazione_concordata, dilazione_effettiva, num_insoluti, motivo_blocco, cliente_attivo, ultima_data_fatturazione, ultima_sincronizzazione")
         .eq("attivo", true)
         .order("ragione_sociale");
       if (error) throw error;
@@ -997,7 +1003,16 @@ function RichiestaFormDialog({
   const config = useConfig();
   const soglie = { liv1: config.soglia_livello_1, liv2: config.soglia_livello_2 };
   const livelloPreview = form.importo_richiesto > 0 ? calcolaLivello(Number(form.importo_richiesto), soglie) : null;
-  const filteredClienti = clienti?.filter((c) => !search || c.ragione_sociale.toLowerCase().includes(search.toLowerCase())) ?? [];
+  const filteredClienti = (() => {
+    const s = search.trim().toLowerCase();
+    const list = clienti ?? [];
+    if (!s) return list.slice(0, 100);
+    return list.filter((c) => {
+      const rs = (c.ragione_sociale ?? "").toLowerCase();
+      const cod = ((c as any).codice_gestionale ?? "").toString().toLowerCase();
+      return rs.includes(s) || cod.includes(s);
+    }).slice(0, 100);
+  })();
 
 
   const mut = useMutation({
@@ -1060,15 +1075,64 @@ function RichiestaFormDialog({
             <Input value={clienteSel?.ragione_sociale ?? richiesta?.clienti?.ragione_sociale ?? "Caricamento…"} readOnly disabled />
           ) : (
             <>
-              <Input placeholder="Cerca cliente..." value={search} onChange={(e) => setSearch(e.target.value)} />
-              <Select value={form.cliente_id} onValueChange={(v) => setForm({ ...form, cliente_id: v })}>
-                <SelectTrigger><SelectValue placeholder="Seleziona cliente..." /></SelectTrigger>
-                <SelectContent>
-                  {filteredClienti.slice(0, 100).map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.ragione_sociale}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={openCliente} onOpenChange={setOpenCliente}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={openCliente}
+                    className="w-full justify-between font-normal"
+                  >
+                    <span className={clienteSel ? "truncate" : "text-muted-foreground"}>
+                      {clienteSel
+                        ? `${clienteSel.ragione_sociale}${(clienteSel as any).codice_gestionale ? ` — cod. ${(clienteSel as any).codice_gestionale}` : ""}`
+                        : "Seleziona cliente..."}
+                    </span>
+                    <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command shouldFilter={false}>
+                    <CommandInput
+                      placeholder="Cerca per ragione sociale o codice..."
+                      value={search}
+                      onValueChange={setSearch}
+                    />
+                    <CommandList>
+                      <CommandEmpty>
+                        {clienti ? "Nessun cliente trovato" : "Caricamento…"}
+                      </CommandEmpty>
+                      <CommandGroup>
+                        {filteredClienti.map((c) => (
+                          <CommandItem
+                            key={c.id}
+                            value={c.id}
+                            onSelect={() => {
+                              setForm({ ...form, cliente_id: c.id });
+                              setOpenCliente(false);
+                              setSearch("");
+                            }}
+                            className="flex items-baseline gap-2"
+                          >
+                            <span className="text-sm truncate flex-1">{c.ragione_sociale}</span>
+                            {(c as any).codice_gestionale && (
+                              <span className="font-mono text-xs text-muted-foreground shrink-0">
+                                cod. {(c as any).codice_gestionale}
+                              </span>
+                            )}
+                          </CommandItem>
+                        ))}
+                        {clienti && clienti.length > filteredClienti.length && (
+                          <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                            Mostrati primi {filteredClienti.length} risultati. Affina la ricerca…
+                          </div>
+                        )}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
               {errors.cliente_id && <p className="text-xs text-destructive">{errors.cliente_id}</p>}
             </>
           )}
