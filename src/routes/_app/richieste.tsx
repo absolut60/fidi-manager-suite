@@ -41,6 +41,7 @@ import {
   STATO_LABEL, STATO_TONE, TIPO_LABEL, TIPO_TONE, calcolaLivello,
   formatEuro, formatDate, type TipoRichiesta,
 } from "@/lib/fidi";
+import { NuovaComunicazioneDialog } from "@/components/nuova-comunicazione-dialog";
 
 export const Route = createFileRoute("/_app/richieste")({
   component: RichiestePage,
@@ -137,13 +138,15 @@ function RichiestePage() {
     enabled: !!user,
     refetchInterval: 30000,
     queryFn: async () => {
-      const { data } = await supabase
+      // "Non letto da me" = letto_da NON contiene il mio user.id, e non sono autore
+      const { data } = await (supabase as any)
         .from("comunicazioni_richiesta")
-        .select("richiesta_id")
-        .eq("letto", false)
+        .select("richiesta_id, letto_da, autore_id")
         .neq("autore_id", user?.id ?? "");
       const counts: Record<string, number> = {};
       (data ?? []).forEach((m: any) => {
+        const lettoDa: string[] = m.letto_da ?? [];
+        if (!user?.id || lettoDa.includes(user.id)) return;
         counts[m.richiesta_id] = (counts[m.richiesta_id] ?? 0) + 1;
       });
       return counts;
@@ -515,18 +518,20 @@ function InApprovazioneTab({
   const [action, setAction] = useState<{ kind: "approva" | "rifiuta" | "integrazioni"; rows: any[] } | null>(null);
   const [importoApprovato, setImportoApprovato] = useState<string>("");
   const [note, setNote] = useState("");
+  const [comunicazioneFor, setComunicazioneFor] = useState<any | null>(null);
 
   const { data: msgNonLetti } = useQuery({
     queryKey: ["comunicazioni-non-lette", user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from("comunicazioni_richiesta")
-        .select("richiesta_id")
-        .eq("letto", false)
+        .select("richiesta_id, letto_da, autore_id")
         .neq("autore_id", user?.id ?? "");
       const counts: Record<string, number> = {};
       (data ?? []).forEach((m: any) => {
+        const lettoDa: string[] = m.letto_da ?? [];
+        if (!user?.id || lettoDa.includes(user.id)) return;
         counts[m.richiesta_id] = (counts[m.richiesta_id] ?? 0) + 1;
       });
       return counts;
@@ -741,7 +746,7 @@ function InApprovazioneTab({
                             <Button size="sm" variant="ghost" className="text-success h-8" onClick={() => { setImportoApprovato(String(r.importo_richiesto)); setAction({ kind: "approva", rows: [r] }); }}>
                               <Check className="size-4" /> Approva
                             </Button>
-                            <Button size="sm" variant="ghost" className="text-warning h-8" onClick={() => setAction({ kind: "integrazioni", rows: [r] })} title="Richiedi integrazioni">
+                            <Button size="sm" variant="ghost" className="text-info h-8" onClick={() => setComunicazioneFor(r)} title="Invia comunicazione (richiedi integrazioni)">
                               <MessageSquareWarning className="size-4" />
                             </Button>
                             <Button size="sm" variant="ghost" className="text-destructive h-8" onClick={() => setAction({ kind: "rifiuta", rows: [r] })}>
@@ -845,6 +850,14 @@ function InApprovazioneTab({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <NuovaComunicazioneDialog
+        open={!!comunicazioneFor}
+        onOpenChange={(o) => !o && setComunicazioneFor(null)}
+        richiestaId={comunicazioneFor?.id ?? ""}
+        clienteRagioneSociale={comunicazioneFor?.clienti?.ragione_sociale}
+        defaultDestinatario="richiedente"
+      />
     </div>
   );
 }
