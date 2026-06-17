@@ -397,7 +397,7 @@ function GestireTab({
                       {formatEuro(Number(r.importo_approvato ?? r.importo_richiesto))}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">{formatDate(r.data_chiusura ?? r.updated_at)}</TableCell>
-                    <TableCell className="text-xs">{profiloName(r.created_by)}</TableCell>
+                    <TableCell className="text-xs">{profiloName(r.approvato_da) !== "—" ? profiloName(r.approvato_da) : profiloName(r.created_by)}</TableCell>
                     <TableCell><ExportBadge stato={se} /></TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
