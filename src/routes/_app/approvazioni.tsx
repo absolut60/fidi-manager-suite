@@ -53,11 +53,13 @@ function ritardoHelper(dilConc: number | null | undefined, dilEff: number | null
 function ApprovazioniPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const { user, role, roles } = useAuth();
-  // Solo Amministratore (super-admin) vede tutto in approvazione.
-  // Amministrazione e Direzione NON sono approvatori: vengono trattati come utenti
-  // non abilitati (la RLS comunque blocca eventuali update tentati dall'UI).
+  const { user, roles } = useAuth();
+  // Visibilita': approvatori liv1/2/3, direzione, amministrazione e admin
+  // vedono tutte le richieste in approvazione (RLS). Lo store manager vede
+  // solo le proprie. Qui non filtriamo per livello in lettura: separiamo il
+  // "vedo" dal "posso approvare" (vedi canApproveRow).
   const isAdmin = roles.includes("amministratore");
+  // Livello massimo dell'utente (multi-ruolo): 3 batte 2 batte 1.
   const livello =
     roles.includes("approvatore_liv3") ? 3 :
     roles.includes("approvatore_liv2") ? 2 :
@@ -91,29 +93,19 @@ function ApprovazioniPage() {
   });
 
   const { data, isLoading } = useQuery({
-    queryKey: ["approvazioni-queue", role],
+    queryKey: ["approvazioni-queue"],
     queryFn: async () => {
-      let q = supabase
+      const { data, error } = await supabase
         .from("richieste_fido")
         .select(`*, clienti(${CLIENTE_COLS}), stores(nome, codice), profilo:profili!richieste_fido_created_by_fkey(nome, cognome, email)`)
         .eq("stato", "in_approvazione")
         .order("data_invio", { ascending: true });
-      // Solo gli approvatori puri vedono solo il loro livello
-      // Admin, resp_generale e amministrativo vedono tutto
-      const roleStr = role as string | null;
-      const soloMioLivello = !isAdmin && livello > 0 &&
-        roleStr !== "resp_generale" && roleStr !== "amministrativo";
-      if (soloMioLivello) q = q.eq("livello_corrente", livello);
-      const { data, error } = await q;
       if (error) {
-        // fallback senza relazione profilo (FK potrebbe non essere nominata così)
-        let q2 = supabase
+        const { data: d2, error: e2 } = await supabase
           .from("richieste_fido")
           .select(`*, clienti(${CLIENTE_COLS}), stores(nome, codice)`)
           .eq("stato", "in_approvazione")
           .order("data_invio", { ascending: true });
-        if (soloMioLivello) q2 = q2.eq("livello_corrente", livello);
-        const { data: d2, error: e2 } = await q2;
         if (e2) throw e2;
         return d2;
       }
@@ -121,6 +113,13 @@ function ApprovazioniPage() {
     },
     enabled: true,
   });
+
+  // Posso approvare/rifiutare questa richiesta?
+  // mio_livello >= livello_richiesto (cascata) oppure admin.
+  function canApproveRow(r: any): boolean {
+    if (isAdmin) return true;
+    return livello >= Number(r.livello_richiesto ?? 0);
+  }
 
   const { data: msgNonLetti } = useQuery({
     queryKey: ["comunicazioni-non-lette", user?.id],
@@ -169,7 +168,11 @@ function ApprovazioniPage() {
     return out;
   }, [data, fStore, fTipo, fLivello, fMin, fMax, fSem, fAttesa, sort]);
 
-  const allSelected = richieste.length > 0 && richieste.every((r) => selected.has(r.id));
+  const richiesteApprovabili = useMemo(
+    () => richieste.filter((r) => canApproveRow(r)),
+    [richieste, isAdmin, livello],
+  );
+  const allSelected = richiesteApprovabili.length > 0 && richiesteApprovabili.every((r) => selected.has(r.id));
 
   function toggle(id: string) {
     const next = new Set(selected);
@@ -177,7 +180,7 @@ function ApprovazioniPage() {
     setSelected(next);
   }
   function toggleAll() {
-    setSelected(allSelected ? new Set() : new Set(richieste.map((r) => r.id)));
+    setSelected(allSelected ? new Set() : new Set(richiesteApprovabili.map((r) => r.id)));
   }
   function clearFilters() {
     setFStore("all"); setFTipo("all"); setFLivello("all");
@@ -195,33 +198,19 @@ function ApprovazioniPage() {
 
   async function processaRichiesta(r: any, esito: "approvata" | "rifiutata", note: string | null) {
     if (!user) throw new Error("Utente non autenticato");
-    const livDecisione = r.livello_corrente;
-    const { error: e1 } = await supabase.from("approvazioni").insert({
-      richiesta_id: r.id,
-      approvatore_id: user.id,
-      livello: livDecisione,
-      esito,
-      importo_approvato: esito === "approvata" ? Number(r.importo_richiesto) : null,
-      note: note || null,
-    });
-    if (e1) throw e1;
-    if (esito === "rifiutata") {
-      const { error } = await supabase.from("richieste_fido")
-        .update({ stato: "rifiutata" }).eq("id", r.id);
-      if (error) throw error;
-    } else {
-      const nextLiv = livDecisione + 1;
-      if (nextLiv > r.livello_richiesto) {
-        const { error } = await supabase.from("richieste_fido")
-          .update({ stato: "approvata", importo_approvato: Number(r.importo_richiesto) }).eq("id", r.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from("richieste_fido")
-          .update({ livello_corrente: nextLiv }).eq("id", r.id);
-        if (error) throw error;
-      }
+    if (!canApproveRow(r)) {
+      throw new Error(`Richiede livello ${r.livello_richiesto}: il tuo livello non e' sufficiente.`);
     }
+    // Singolo assenso via funzione server (SECURITY DEFINER) che valida il livello.
+    const { error } = await (supabase as any).rpc("processa_richiesta_fido", {
+      _richiesta_id: r.id,
+      _esito: esito,
+      _note: note || null,
+      _importo_approvato: esito === "approvata" ? Number(r.importo_richiesto) : null,
+    });
+    if (error) throw error;
   }
+
 
   const bulk = useMutation({
     mutationFn: async (esito: "approvata" | "rifiutata") => {
@@ -274,9 +263,7 @@ function ApprovazioniPage() {
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Approvazioni</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          {(isAdmin || (role as string) === "resp_generale" || (role as string) === "amministrativo")
-            ? "Tutte le richieste in approvazione"
-            : `Richieste in attesa al tuo livello (${livello})`}
+          Tutte le richieste in approvazione · puoi approvare solo quelle che richiedono livello {isAdmin ? "1-3" : livello > 0 ? `≤ ${livello}` : "—"}
         </p>
       </div>
 
@@ -429,10 +416,17 @@ function ApprovazioniPage() {
             const residuo = Number(c.fido_residuo ?? 0);
             const scaduto = Number(c.scaduto ?? 0);
             const unread = msgNonLetti?.[r.id] ?? 0;
+            const canAct = canApproveRow(r);
             return (
-              <Card key={r.id} className={`p-4 transition-shadow ${isSel ? "border-primary bg-primary/5" : "hover:shadow-md hover:border-primary/30"}`}>
+              <Card key={r.id} className={`p-4 transition-shadow ${isSel ? "border-primary bg-primary/5" : "hover:shadow-md hover:border-primary/30"} ${!canAct ? "opacity-90" : ""}`}>
                 <div className="flex items-start gap-3">
-                  <Checkbox checked={isSel} onCheckedChange={() => toggle(r.id)} className="mt-1" />
+                  <Checkbox
+                    checked={isSel}
+                    onCheckedChange={() => canAct && toggle(r.id)}
+                    disabled={!canAct}
+                    className="mt-1"
+                    title={canAct ? "" : `Richiede liv. ${r.livello_richiesto}: non puoi approvare`}
+                  />
                   <div
                     className="flex-1 min-w-0 cursor-pointer"
                     onClick={() => navigate({ to: "/richieste/$richiestaId", params: { richiestaId: r.id } })}
@@ -456,7 +450,10 @@ function ApprovazioniPage() {
                           <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>
                             {TIPO_LABEL[r.tipo as TipoRichiesta]}
                           </span>
-                          <Badge variant="outline">Liv. {r.livello_corrente}/{r.livello_richiesto}</Badge>
+                          <Badge variant="outline">Liv. richiesto {r.livello_richiesto}</Badge>
+                          {!canAct && (
+                            <Badge className="bg-warning/15 text-warning hover:bg-warning/15">Richiede liv. {r.livello_richiesto}</Badge>
+                          )}
                           {(r as any).stores?.nome && (
                             <Badge variant="secondary" className="text-xs">{(r as any).stores.nome}</Badge>
                           )}
@@ -609,6 +606,11 @@ function ApprovazioniPage() {
 
                   <section className="border-t pt-4 space-y-3">
                     <h3 className="text-sm font-semibold">Azioni</h3>
+                    {!canApproveRow(detail) && (
+                      <p className="text-xs rounded-md bg-warning/10 text-warning border border-warning/30 p-2">
+                        Richiede livello {detail.livello_richiesto}: puoi solo consultare la richiesta. L'approvazione e' riservata ad un approvatore di livello {detail.livello_richiesto} o superiore.
+                      </p>
+                    )}
                     {singleAction && (
                       <Textarea
                         placeholder={
@@ -627,14 +629,17 @@ function ApprovazioniPage() {
                           <Button
                             className="bg-success text-success-foreground hover:bg-success/90"
                             onClick={() => setSingleAction("approva")}
+                            disabled={!canApproveRow(detail)}
                           ><Check className="size-4" /> Approva</Button>
                           <Button
                             variant="outline" className="text-destructive border-destructive/30"
                             onClick={() => setSingleAction("rifiuta")}
+                            disabled={!canApproveRow(detail)}
                           ><X className="size-4" /> Rifiuta</Button>
                           <Button
                             variant="outline"
                             onClick={() => setSingleAction("integrazioni")}
+                            disabled={!canApproveRow(detail)}
                           ><MessageSquare className="size-4" /> Richiedi integrazioni</Button>
                         </>
                       ) : (
