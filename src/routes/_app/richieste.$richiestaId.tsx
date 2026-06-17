@@ -68,15 +68,15 @@ function RichiestaDetail() {
 
   const isAdmin = roles.includes("amministratore");
   const isAmministrazione = roles.includes("amministrazione");
+  // Livello massimo dell'utente come approvatore (cascata: 3>=1,2,3; 2>=1,2; 1>=1)
   const livelloUtente =
     roles.includes("approvatore_liv3") ? 3 :
     roles.includes("approvatore_liv2") ? 2 :
     roles.includes("approvatore_liv1") ? 1 : 0;
 
-  // Approvazione SOLO ad approvatori (al loro livello) o all'admin tecnico.
-  // 'amministrazione' NON da l'assenso di per se' (solo se ha anche cappello approvatore).
+  // Singolo assenso: posso approvare se sono admin oppure il mio livello e' >= al livello_richiesto
   const canApprove = r?.stato === "in_approvazione" &&
-    (isAdmin || livelloUtente === r.livello_corrente);
+    (isAdmin || livelloUtente >= (r?.livello_richiesto ?? 99));
   const isOwner = !!user?.id && r?.created_by === user.id;
   // Elimina/gestisce: admin tecnico, amministrazione o il richiedente sulle proprie
   const canDelete = isAdmin || isAmministrazione || isOwner;
