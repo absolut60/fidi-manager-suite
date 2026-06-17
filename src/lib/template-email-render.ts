@@ -103,11 +103,11 @@ export function renderTemplate(
       : "Nessuna scadenza scaduta al momento.",
   });
   const values: Record<PlaceholderKey, string> = {
-    ragione_sociale: dati.ragione_sociale ?? "",
+    ragione_sociale: escapeHtml(dati.ragione_sociale ?? ""),
     totale_scaduto: formatEuro(totale),
     elenco_scadenze: elenco,
     data_oggi: formatDateIt(new Date()),
-    nome_operatore: dati.nome_operatore ?? "",
+    nome_operatore: escapeHtml(dati.nome_operatore ?? ""),
   };
   return {
     oggetto: replaceAll(template.oggetto ?? "", values),

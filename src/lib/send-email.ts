@@ -1,6 +1,15 @@
 import { supabase } from "@/integrations/supabase/client";
 import { LOGO_MADE_BASE64 } from "@/lib/logo-made-base64";
 
+function escHtml(s: string): string {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 export interface SendEmailOptions {
   to: string | string[];
   cc?: string | string[];
@@ -125,8 +134,8 @@ export async function sendPrivacyPdf(options: {
     html: buildEmailTemplate({
       title: "Informativa Privacy GDPR firmata",
       body: `
-        <p>Gentile ${toName},</p>
-        <p>in allegato trova copia dell'informativa sulla privacy (GDPR Rev.06) firmata in data <strong>${dataFirmaFormatted}</strong> per conto di <strong>${ragioneSociale}</strong>.</p>
+        <p>Gentile ${escHtml(toName)},</p>
+        <p>in allegato trova copia dell'informativa sulla privacy (GDPR Rev.06) firmata in data <strong>${escHtml(dataFirmaFormatted)}</strong> per conto di <strong>${escHtml(ragioneSociale)}</strong>.</p>
         <p>Il documento è conservato nei nostri archivi. Per qualsiasi informazione o per esercitare i suoi diritti ai sensi del GDPR, può contattarci all'indirizzo <a href="mailto:gdpr-md@madepoint.it">gdpr-md@madepoint.it</a>.</p>
       `,
     }),
@@ -165,8 +174,8 @@ export async function sendNotificaComunicazione(options: {
     html: buildEmailTemplate({
       title: "Nuovo messaggio sulla tua richiesta fido",
       body: `
-        <p>Gentile ${toName},</p>
-        <p><strong>${autoreNome}</strong> ha inviato un messaggio sulla richiesta fido:</p>
+        <p>Gentile ${escHtml(toName)},</p>
+        <p><strong>${escHtml(autoreNome)}</strong> ha inviato un messaggio sulla richiesta fido:</p>
         <blockquote style="margin:16px 0;padding:12px 16px;background:#f3f4f6;border-left:3px solid #1e3a8a;border-radius:4px;color:#374151;font-style:italic;">
           ${safeTesto}
         </blockquote>
