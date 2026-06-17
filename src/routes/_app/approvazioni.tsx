@@ -102,18 +102,10 @@ function ApprovazioniPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("richieste_fido")
-        .select(`*, clienti(${CLIENTE_COLS}), profilo:profili!richieste_fido_created_by_fkey(nome, cognome, email)`)
+        .select(RICHIESTA_FIDO_SELECT)
         .eq("stato", "in_approvazione")
         .order("data_invio", { ascending: true });
-      if (error) {
-        const { data: d2, error: e2 } = await supabase
-          .from("richieste_fido")
-          .select(`*, clienti(${CLIENTE_COLS})`)
-          .eq("stato", "in_approvazione")
-          .order("data_invio", { ascending: true });
-        if (e2) throw e2;
-        return d2;
-      }
+      if (error) throw error;
       return data;
     },
     enabled: true,
