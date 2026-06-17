@@ -53,11 +53,13 @@ function ritardoHelper(dilConc: number | null | undefined, dilEff: number | null
 function ApprovazioniPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const { user, role, roles } = useAuth();
-  // Solo Amministratore (super-admin) vede tutto in approvazione.
-  // Amministrazione e Direzione NON sono approvatori: vengono trattati come utenti
-  // non abilitati (la RLS comunque blocca eventuali update tentati dall'UI).
+  const { user, roles } = useAuth();
+  // Visibilita': approvatori liv1/2/3, direzione, amministrazione e admin
+  // vedono tutte le richieste in approvazione (RLS). Lo store manager vede
+  // solo le proprie. Qui non filtriamo per livello in lettura: separiamo il
+  // "vedo" dal "posso approvare" (vedi canApproveRow).
   const isAdmin = roles.includes("amministratore");
+  // Livello massimo dell'utente (multi-ruolo): 3 batte 2 batte 1.
   const livello =
     roles.includes("approvatore_liv3") ? 3 :
     roles.includes("approvatore_liv2") ? 2 :
@@ -91,29 +93,19 @@ function ApprovazioniPage() {
   });
 
   const { data, isLoading } = useQuery({
-    queryKey: ["approvazioni-queue", role],
+    queryKey: ["approvazioni-queue"],
     queryFn: async () => {
-      let q = supabase
+      const { data, error } = await supabase
         .from("richieste_fido")
         .select(`*, clienti(${CLIENTE_COLS}), stores(nome, codice), profilo:profili!richieste_fido_created_by_fkey(nome, cognome, email)`)
         .eq("stato", "in_approvazione")
         .order("data_invio", { ascending: true });
-      // Solo gli approvatori puri vedono solo il loro livello
-      // Admin, resp_generale e amministrativo vedono tutto
-      const roleStr = role as string | null;
-      const soloMioLivello = !isAdmin && livello > 0 &&
-        roleStr !== "resp_generale" && roleStr !== "amministrativo";
-      if (soloMioLivello) q = q.eq("livello_corrente", livello);
-      const { data, error } = await q;
       if (error) {
-        // fallback senza relazione profilo (FK potrebbe non essere nominata così)
-        let q2 = supabase
+        const { data: d2, error: e2 } = await supabase
           .from("richieste_fido")
           .select(`*, clienti(${CLIENTE_COLS}), stores(nome, codice)`)
           .eq("stato", "in_approvazione")
           .order("data_invio", { ascending: true });
-        if (soloMioLivello) q2 = q2.eq("livello_corrente", livello);
-        const { data: d2, error: e2 } = await q2;
         if (e2) throw e2;
         return d2;
       }
@@ -121,6 +113,13 @@ function ApprovazioniPage() {
     },
     enabled: true,
   });
+
+  // Posso approvare/rifiutare questa richiesta?
+  // mio_livello >= livello_richiesto (cascata) oppure admin.
+  function canApproveRow(r: any): boolean {
+    if (isAdmin) return true;
+    return livello >= Number(r.livello_richiesto ?? 0);
+  }
 
   const { data: msgNonLetti } = useQuery({
     queryKey: ["comunicazioni-non-lette", user?.id],
