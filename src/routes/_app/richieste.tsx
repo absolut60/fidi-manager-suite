@@ -843,8 +843,9 @@ function isStoreManagerView(canApprove: boolean): boolean { return !canApprove; 
 
 /* ============================ STORICO TAB ============================ */
 function StoricoTab({
-  rows, loading, kind, onRiinvia, msgCounts,
-}: { rows: any[]; loading: boolean; kind: "approvata" | "rifiutata"; onRiinvia: ((r: any) => void) | null; msgCounts?: Record<string, number> }) {
+  rows, loading, kind, onRiinvia, msgCounts, currentUserId, onEditOwn, onDeleteOwn,
+}: { rows: any[]; loading: boolean; kind: "approvata" | "rifiutata"; onRiinvia: ((r: any) => void) | null; msgCounts?: Record<string, number>; currentUserId?: string; onEditOwn?: (r: any) => void; onDeleteOwn?: (r: any) => void; }) {
+
   const navigate = useNavigate();
   const [meseFiltro, setMeseFiltro] = useState<string>("ultimi3");
   const [mostraTutto, setMostraTutto] = useState(false);
