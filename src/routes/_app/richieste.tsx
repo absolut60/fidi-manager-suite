@@ -5,7 +5,12 @@ import { z } from "zod";
 import {
   Plus, Search, FileText, Pencil, Trash2, Send, Check, X, AlertCircle,
   Clock, CheckCircle2, Wallet, RotateCcw, MessageSquareWarning, Ban, MessageSquare,
+  ChevronsUpDown,
 } from "lucide-react";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import {
+  Command, CommandInput, CommandList, CommandItem, CommandEmpty, CommandGroup,
+} from "@/components/ui/command";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
