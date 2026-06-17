@@ -194,33 +194,19 @@ function ApprovazioniPage() {
 
   async function processaRichiesta(r: any, esito: "approvata" | "rifiutata", note: string | null) {
     if (!user) throw new Error("Utente non autenticato");
-    const livDecisione = r.livello_corrente;
-    const { error: e1 } = await supabase.from("approvazioni").insert({
-      richiesta_id: r.id,
-      approvatore_id: user.id,
-      livello: livDecisione,
-      esito,
-      importo_approvato: esito === "approvata" ? Number(r.importo_richiesto) : null,
-      note: note || null,
-    });
-    if (e1) throw e1;
-    if (esito === "rifiutata") {
-      const { error } = await supabase.from("richieste_fido")
-        .update({ stato: "rifiutata" }).eq("id", r.id);
-      if (error) throw error;
-    } else {
-      const nextLiv = livDecisione + 1;
-      if (nextLiv > r.livello_richiesto) {
-        const { error } = await supabase.from("richieste_fido")
-          .update({ stato: "approvata", importo_approvato: Number(r.importo_richiesto) }).eq("id", r.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from("richieste_fido")
-          .update({ livello_corrente: nextLiv }).eq("id", r.id);
-        if (error) throw error;
-      }
+    if (!canApproveRow(r)) {
+      throw new Error(`Richiede livello ${r.livello_richiesto}: il tuo livello non e' sufficiente.`);
     }
+    // Singolo assenso via funzione server (SECURITY DEFINER) che valida il livello.
+    const { error } = await (supabase as any).rpc("processa_richiesta_fido", {
+      _richiesta_id: r.id,
+      _esito: esito,
+      _note: note || null,
+      _importo_approvato: esito === "approvata" ? Number(r.importo_richiesto) : null,
+    });
+    if (error) throw error;
   }
+
 
   const bulk = useMutation({
     mutationFn: async (esito: "approvata" | "rifiutata") => {
