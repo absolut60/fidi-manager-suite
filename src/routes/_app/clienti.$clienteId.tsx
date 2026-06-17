@@ -588,7 +588,7 @@ function ClienteDetail() {
 
 function DatiRischioCard({ cliente }: { cliente: any }) {
   const config = useConfig();
-  const clienteAttivo = isClienteAttivo((cliente as any).ultima_data_fatturazione, config);
+  const clienteAttivo = isClienteAttivo((cliente as any).ultima_data_fatturazione, (cliente as any).doc_da_fatturare, config);
   const fidoGest = Number(cliente.fido_gestionale ?? 0);
   const totRischio = Number(cliente.totale_rischio ?? 0);
   const fidoResiduo = cliente.fido_residuo == null ? null : Number(cliente.fido_residuo);
