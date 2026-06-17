@@ -10,6 +10,7 @@ import { generaPdfPrivacy } from "@/lib/privacy-pdf";
 import { useRef } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { getFidoAttuale } from "@/lib/fido-cliente";
 import { useAuth } from "@/hooks/use-auth";
 import { useConfig, isClienteAttivo } from "@/hooks/use-config";
 import { Button } from "@/components/ui/button";
@@ -589,7 +590,7 @@ function ClienteDetail() {
 function DatiRischioCard({ cliente }: { cliente: any }) {
   const config = useConfig();
   const clienteAttivo = isClienteAttivo((cliente as any).ultima_data_fatturazione, (cliente as any).doc_da_fatturare, config);
-  const fidoGest = Number(cliente.fido_gestionale ?? 0);
+  const fidoGest = getFidoAttuale(cliente);
   const totRischio = Number(cliente.totale_rischio ?? 0);
   const fidoResiduo = cliente.fido_residuo == null ? null : Number(cliente.fido_residuo);
   const scaduto = Number(cliente.scaduto ?? 0);

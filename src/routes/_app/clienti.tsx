@@ -9,6 +9,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import * as RadixSlider from "@radix-ui/react-slider";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { getFidoAttuale } from "@/lib/fido-cliente";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -380,7 +381,7 @@ function ClientiPage() {
     if (advApplied.percConsumato == null || !classifList) return null;
     const threshold = advApplied.percConsumato / 100;
     return (classifList as any[]).filter((c) => {
-      const fg = Number(c.fido_gestionale ?? 0);
+      const fg = getFidoAttuale(c);
       if (!fg || fg <= 0) return false;
       const fr = Number(c.fido_residuo ?? 0);
       const consumed = (fg - fr) / fg;
@@ -1387,10 +1388,10 @@ function ProposteFidoMassivoDialog({
         const existing = prevMap.get(c.id);
         if (existing) return existing;
         const proposto = calcolaFidoProposto(c);
-        // Fido di riferimento = fido_gestionale (stesso campo del form singolo
-        // e della scheda cliente / FidoGestionaleCard). NON usare fido_aziendale_concesso
-        // ne' c.fido: erano la causa del bug "Fido attuale = 0".
-        const attuale = Number(c.fido_gestionale ?? 0);
+        // Fido di riferimento = unico helper getFidoAttuale (centralizzato in
+        // src/lib/fido-cliente.ts) cosi' che lista, scheda cliente, form
+        // singolo e proposta massiva mostrino sempre lo stesso valore.
+        const attuale = getFidoAttuale(c);
 
         return {
           cliente_id: c.id,
