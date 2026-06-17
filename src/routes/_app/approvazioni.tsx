@@ -727,6 +727,14 @@ function ApprovazioniPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <NuovaComunicazioneDialog
+        open={!!comunicazioneFor}
+        onOpenChange={(o) => !o && setComunicazioneFor(null)}
+        richiestaId={comunicazioneFor?.id ?? ""}
+        clienteRagioneSociale={comunicazioneFor?.clienti?.ragione_sociale}
+        defaultDestinatario="richiedente"
+      />
     </div>
   );
 }
