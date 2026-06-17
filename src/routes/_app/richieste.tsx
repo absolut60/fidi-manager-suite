@@ -915,6 +915,8 @@ function TuttoTab({ rows, loading, msgCounts }: { rows: any[]; loading: boolean;
               <TableHead className="text-right">Importo</TableHead>
               <TableHead>Stato</TableHead>
               <TableHead>Liv.</TableHead>
+              <TableHead>Richiesto da</TableHead>
+              <TableHead>Approvato da</TableHead>
               <TableHead>Data</TableHead>
             </TableRow>
           </TableHeader>
