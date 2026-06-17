@@ -88,7 +88,7 @@ function RichiestePage() {
     queryFn: async () => {
       let q = supabase
         .from("richieste_fido")
-        .select("*, clienti(ragione_sociale, fido_aziendale_concesso, fido_gestionale, bloccato, in_gestione_legale, scaduto, totale_rischio), stores(nome, codice)")
+        .select("*, clienti(ragione_sociale, fido_aziendale_concesso, fido_gestionale, bloccato, in_gestione_legale, scaduto, totale_rischio), stores(nome, codice), richiedente:profili!richieste_fido_created_by_fkey(nome, cognome, email), approvatore:profili!richieste_fido_approvato_da_fkey(nome, cognome, email)")
         .order("created_at", { ascending: false });
       if (isStoreManager) {
         q = q.eq("created_by", user!.id);
