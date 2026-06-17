@@ -2994,6 +2994,90 @@ function ExportCard() {
     }
   }
 
+  async function exportFidiGestionale() {
+    setBusy("fidi_gestionale");
+    try {
+      const { data, error } = await supabase
+        .from("richieste_fido")
+        .select(
+          "cliente_id, importo_approvato, data_chiusura, created_at, clienti!inner(codice_gestionale, ragione_sociale, condizione_pagamento_cod, condizione_pagamento_desc, condizioni_pagamento, stores(codice))",
+        )
+        .eq("stato", "approvata")
+        .not("importo_approvato", "is", null)
+        .order("data_chiusura", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+
+      // Dedup: una sola riga per cliente (la più recente approvata)
+      const seen = new Set<string>();
+      const rows: Array<{
+        Codice_ditta: number;
+        Indicatore_cliente_fornitore: number;
+        Codice: number | string;
+        "Ragione sociale": string;
+        Sede: number | string;
+        "Cod.pag.": string;
+        "Des.pag.": string;
+        Fido: number;
+        Codice_rischio: number;
+        Tipo_controllo_fido: number;
+      }> = [];
+      for (const r of (data ?? []) as any[]) {
+        if (!r.cliente_id || seen.has(r.cliente_id)) continue;
+        seen.add(r.cliente_id);
+        const cli = r.clienti ?? {};
+        const codCli = cli.codice_gestionale ?? "";
+        const codNum = /^\d+$/.test(String(codCli)) ? Number(codCli) : codCli;
+        const sedeCod = cli.stores?.codice ?? "";
+        const sedeNum = /^\d+$/.test(String(sedeCod)) ? Number(sedeCod) : sedeCod;
+        rows.push({
+          Codice_ditta: 1,
+          Indicatore_cliente_fornitore: 0,
+          Codice: codNum,
+          "Ragione sociale": cli.ragione_sociale ?? "",
+          Sede: sedeNum,
+          "Cod.pag.": cli.condizione_pagamento_cod ?? "",
+          "Des.pag.": cli.condizione_pagamento_desc ?? cli.condizioni_pagamento ?? "",
+          Fido: Number(r.importo_approvato ?? 0),
+          Codice_rischio: 1,
+          Tipo_controllo_fido: 0,
+        });
+      }
+
+      // Ordina per Sede poi per Codice cliente
+      rows.sort((a, b) => {
+        const sa = String(a.Sede), sb = String(b.Sede);
+        if (sa !== sb) return sa.localeCompare(sb, "it", { numeric: true });
+        return String(a.Codice).localeCompare(String(b.Codice), "it", { numeric: true });
+      });
+
+      const fname = `fidi_approvati_gestionale_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      const ws = XLSX.utils.json_to_sheet(rows, {
+        header: [
+          "Codice_ditta",
+          "Indicatore_cliente_fornitore",
+          "Codice",
+          "Ragione sociale",
+          "Sede",
+          "Cod.pag.",
+          "Des.pag.",
+          "Fido",
+          "Codice_rischio",
+          "Tipo_controllo_fido",
+        ],
+      });
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Fidi");
+      XLSX.writeFile(wb, fname);
+      await logEsportazione(fname, rows.length);
+      toast.success(`Esportati ${rows.length} fidi approvati`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Errore export");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
     <Card className="p-5">
       <h2 className="font-semibold flex items-center gap-2 mb-1">
