@@ -168,7 +168,11 @@ function ApprovazioniPage() {
     return out;
   }, [data, fStore, fTipo, fLivello, fMin, fMax, fSem, fAttesa, sort]);
 
-  const allSelected = richieste.length > 0 && richieste.every((r) => selected.has(r.id));
+  const richiesteApprovabili = useMemo(
+    () => richieste.filter((r) => canApproveRow(r)),
+    [richieste, isAdmin, livello],
+  );
+  const allSelected = richiesteApprovabili.length > 0 && richiesteApprovabili.every((r) => selected.has(r.id));
 
   function toggle(id: string) {
     const next = new Set(selected);
@@ -176,7 +180,7 @@ function ApprovazioniPage() {
     setSelected(next);
   }
   function toggleAll() {
-    setSelected(allSelected ? new Set() : new Set(richieste.map((r) => r.id)));
+    setSelected(allSelected ? new Set() : new Set(richiesteApprovabili.map((r) => r.id)));
   }
   function clearFilters() {
     setFStore("all"); setFTipo("all"); setFLivello("all");
