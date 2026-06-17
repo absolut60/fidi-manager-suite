@@ -42,6 +42,7 @@ import {
   formatEuro, formatDate, type TipoRichiesta,
 } from "@/lib/fidi";
 import { getFidoAttuale } from "@/lib/fido-cliente";
+import { RICHIESTA_FIDO_SELECT } from "@/lib/richieste-fido-data";
 import { NuovaComunicazioneDialog } from "@/components/nuova-comunicazione-dialog";
 
 export const Route = createFileRoute("/_app/richieste")({
