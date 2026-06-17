@@ -816,6 +816,8 @@ function StoricoTab({
                 {kind === "approvata" && <TableHead className="text-right">Importo approvato</TableHead>}
                 {kind === "approvata" && <TableHead>Export</TableHead>}
                 {kind === "rifiutata" && <TableHead>Motivo</TableHead>}
+                <TableHead>Richiesto da</TableHead>
+                <TableHead>{kind === "approvata" ? "Approvato da" : "Decisione di"}</TableHead>
                 <TableHead>Data</TableHead>
                 {onRiinvia && <TableHead className="text-right">Azioni</TableHead>}
               </TableRow>
