@@ -256,13 +256,14 @@ export function ClienteStoricoFidoTab({ clienteId }: { clienteId: string }) {
 }
 
 function RichiestaDialog({
-  clienteId, richiesta, onClose, onSaved, clienteData,
+  clienteId, richiesta, onClose, onSaved, clienteData, ultimoApprovatoImp,
 }: {
   clienteId: string;
   richiesta?: any;
   onClose: () => void;
   onSaved: () => void;
   clienteData?: any;
+  ultimoApprovatoImp?: number | null;
 }) {
   const config = useConfig();
   const fidoAttuale = Number(clienteData?.fido_gestionale ?? 0);
