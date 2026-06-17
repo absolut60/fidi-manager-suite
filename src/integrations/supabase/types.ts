@@ -1711,9 +1711,11 @@ export type Database = {
       }
       richieste_fido: {
         Row: {
+          approvato_da: string | null
           cliente_id: string
           created_at: string
           created_by: string | null
+          data_approvazione: string | null
           data_chiusura: string | null
           data_export: string | null
           data_invio: string | null
@@ -1737,9 +1739,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          approvato_da?: string | null
           cliente_id: string
           created_at?: string
           created_by?: string | null
+          data_approvazione?: string | null
           data_chiusura?: string | null
           data_export?: string | null
           data_invio?: string | null
@@ -1763,9 +1767,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          approvato_da?: string | null
           cliente_id?: string
           created_at?: string
           created_by?: string | null
+          data_approvazione?: string | null
           data_chiusura?: string | null
           data_export?: string | null
           data_invio?: string | null
@@ -1789,6 +1795,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "richieste_fido_approvato_da_fkey"
+            columns: ["approvato_da"]
+            isOneToOne: false
+            referencedRelation: "profili"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "richieste_fido_cliente_id_fkey"
             columns: ["cliente_id"]
