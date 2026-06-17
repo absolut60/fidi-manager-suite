@@ -211,9 +211,33 @@ export function ClienteStoricoFidoTab({ clienteId }: { clienteId: string }) {
         <RichiestaDialog
           clienteId={clienteId}
           clienteData={cliente}
+          ultimoApprovatoImp={(() => {
+            const r = (richieste ?? []).find(
+              (x) => x.stato === "approvata" && x.importo_approvato != null,
+            );
+            return r ? Number(r.importo_approvato) : null;
+          })()}
           onClose={() => setOpenNew(false)}
           onSaved={invalidate}
         />
+      </Dialog>
+
+      <Dialog open={!!editing} onOpenChange={(v) => !v && setEditing(null)}>
+        {editing && (
+          <RichiestaDialog
+            clienteId={clienteId}
+            clienteData={cliente}
+            ultimoApprovatoImp={(() => {
+              const r = (richieste ?? []).find(
+                (x) => x.stato === "approvata" && x.importo_approvato != null,
+              );
+              return r ? Number(r.importo_approvato) : null;
+            })()}
+            richiesta={editing}
+            onClose={() => setEditing(null)}
+            onSaved={invalidate}
+          />
+        )}
       </Dialog>
 
       <Dialog open={!!editing} onOpenChange={(v) => !v && setEditing(null)}>
@@ -232,13 +256,14 @@ export function ClienteStoricoFidoTab({ clienteId }: { clienteId: string }) {
 }
 
 function RichiestaDialog({
-  clienteId, richiesta, onClose, onSaved, clienteData,
+  clienteId, richiesta, onClose, onSaved, clienteData, ultimoApprovatoImp,
 }: {
   clienteId: string;
   richiesta?: any;
   onClose: () => void;
   onSaved: () => void;
   clienteData?: any;
+  ultimoApprovatoImp?: number | null;
 }) {
   const config = useConfig();
   const fidoAttuale = Number(clienteData?.fido_gestionale ?? 0);
@@ -341,8 +366,16 @@ function RichiestaDialog({
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
               <div>
-                <p className="text-xs text-muted-foreground">Fido attuale</p>
+                <p className="text-xs text-muted-foreground">Fido gestionale</p>
                 <p className="font-semibold tabular-nums">{formatEuro(fidoAttuale)}</p>
+                {ultimoApprovatoImp != null && (
+                  <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1 flex-wrap">
+                    Ultimo approv. in app: <span className="font-medium tabular-nums">{formatEuro(ultimoApprovatoImp)}</span>
+                    {Math.abs(ultimoApprovatoImp - fidoAttuale) > 0.01 && (
+                      <span className="inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium bg-warning/15 text-warning border border-warning/30">Da allineare</span>
+                    )}
+                  </p>
+                )}
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Totale rischio</p>

@@ -1015,7 +1015,31 @@ function RichiestaFormDialog({
   });
 
   const clienteSel: any = clienteEdit ?? clientiSearch?.find((c) => c.id === form.cliente_id);
-  const fidoAttuale = Number(clienteSel?.fido_aziendale_concesso ?? 0);
+  const fidoAttuale = Number(clienteSel?.fido_gestionale ?? 0);
+
+  // Ultimo fido approvato in FidiManager (informativo, per verifica allineamento col gestionale)
+  const { data: ultimoApprovato } = useQuery({
+    queryKey: ["ultimo-fido-approvato", form.cliente_id],
+    enabled: !!form.cliente_id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("richieste_fido")
+        .select("importo_approvato, data_chiusura")
+        .eq("cliente_id", form.cliente_id)
+        .eq("stato", "approvata")
+        .not("importo_approvato", "is", null)
+        .order("data_chiusura", { ascending: false, nullsFirst: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+  const ultimoApprovatoImp = ultimoApprovato?.importo_approvato != null
+    ? Number(ultimoApprovato.importo_approvato) : null;
+  const disallineato = ultimoApprovatoImp != null
+    && Math.abs(ultimoApprovatoImp - fidoAttuale) > 0.01;
+
   const variazione = fidoAttuale > 0 && form.importo_richiesto > 0
     ? ((form.importo_richiesto - fidoAttuale) / fidoAttuale) * 100
     : null;
@@ -1157,7 +1181,23 @@ function RichiestaFormDialog({
         {clienteSel && (
           <div className="rounded-md border p-3 text-xs space-y-1.5 bg-muted/30">
             <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-              <div className="flex justify-between"><span className="text-muted-foreground">Fido gestionale</span><span className="tabular-nums font-medium">{formatEuro(Number(clienteSel.fido_gestionale ?? 0))}</span></div>
+              <div className="flex justify-between col-span-2 items-center gap-2 flex-wrap">
+                <span className="text-muted-foreground">Fido gestionale</span>
+                <span className="flex items-center gap-2 flex-wrap justify-end">
+                  <span className="tabular-nums font-medium">{formatEuro(Number(clienteSel.fido_gestionale ?? 0))}</span>
+                  {ultimoApprovatoImp != null && (
+                    <>
+                      <span className="text-muted-foreground">· Ultimo approvato in app:</span>
+                      <span className="tabular-nums font-medium">{formatEuro(ultimoApprovatoImp)}</span>
+                      {disallineato && (
+                        <span className="inline-flex rounded-md px-2 py-0.5 font-medium bg-warning/15 text-warning border border-warning/30">
+                          Da allineare
+                        </span>
+                      )}
+                    </>
+                  )}
+                </span>
+              </div>
               <div className="flex justify-between"><span className="text-muted-foreground">Totale rischio</span><span className="tabular-nums">{formatEuro(Number(clienteSel.totale_rischio ?? 0))}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Fido residuo</span><span className={`tabular-nums ${Number(clienteSel.fido_residuo ?? 0) < 0 ? "text-destructive font-medium" : ""}`}>{formatEuro(Number(clienteSel.fido_residuo ?? 0))}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Scaduto</span><span className={`tabular-nums ${Number(clienteSel.scaduto ?? 0) > 0 ? "text-destructive font-medium" : ""}`}>{formatEuro(Number(clienteSel.scaduto ?? 0))}</span></div>
