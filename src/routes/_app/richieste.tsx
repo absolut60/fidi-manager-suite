@@ -1075,15 +1075,64 @@ function RichiestaFormDialog({
             <Input value={clienteSel?.ragione_sociale ?? richiesta?.clienti?.ragione_sociale ?? "Caricamento…"} readOnly disabled />
           ) : (
             <>
-              <Input placeholder="Cerca cliente..." value={search} onChange={(e) => setSearch(e.target.value)} />
-              <Select value={form.cliente_id} onValueChange={(v) => setForm({ ...form, cliente_id: v })}>
-                <SelectTrigger><SelectValue placeholder="Seleziona cliente..." /></SelectTrigger>
-                <SelectContent>
-                  {filteredClienti.slice(0, 100).map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.ragione_sociale}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={openCliente} onOpenChange={setOpenCliente}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={openCliente}
+                    className="w-full justify-between font-normal"
+                  >
+                    <span className={clienteSel ? "truncate" : "text-muted-foreground"}>
+                      {clienteSel
+                        ? `${clienteSel.ragione_sociale}${(clienteSel as any).codice_gestionale ? ` — cod. ${(clienteSel as any).codice_gestionale}` : ""}`
+                        : "Seleziona cliente..."}
+                    </span>
+                    <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command shouldFilter={false}>
+                    <CommandInput
+                      placeholder="Cerca per ragione sociale o codice..."
+                      value={search}
+                      onValueChange={setSearch}
+                    />
+                    <CommandList>
+                      <CommandEmpty>
+                        {clienti ? "Nessun cliente trovato" : "Caricamento…"}
+                      </CommandEmpty>
+                      <CommandGroup>
+                        {filteredClienti.map((c) => (
+                          <CommandItem
+                            key={c.id}
+                            value={c.id}
+                            onSelect={() => {
+                              setForm({ ...form, cliente_id: c.id });
+                              setOpenCliente(false);
+                              setSearch("");
+                            }}
+                            className="flex items-baseline gap-2"
+                          >
+                            <span className="text-sm truncate flex-1">{c.ragione_sociale}</span>
+                            {(c as any).codice_gestionale && (
+                              <span className="font-mono text-xs text-muted-foreground shrink-0">
+                                cod. {(c as any).codice_gestionale}
+                              </span>
+                            )}
+                          </CommandItem>
+                        ))}
+                        {clienti && clienti.length > filteredClienti.length && (
+                          <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                            Mostrati primi {filteredClienti.length} risultati. Affina la ricerca…
+                          </div>
+                        )}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
               {errors.cliente_id && <p className="text-xs text-destructive">{errors.cliente_id}</p>}
             </>
           )}
