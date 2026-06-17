@@ -2915,6 +2915,49 @@ export type Database = {
               chunks_totali: number
             }[]
           }
+      livello_approvatore: { Args: { _user_id: string }; Returns: number }
+      processa_richiesta_fido: {
+        Args: {
+          _esito: string
+          _importo_approvato?: number
+          _note?: string
+          _richiesta_id: string
+        }
+        Returns: {
+          approvato_da: string | null
+          cliente_id: string
+          created_at: string
+          created_by: string | null
+          data_approvazione: string | null
+          data_chiusura: string | null
+          data_export: string | null
+          data_invio: string | null
+          data_processata: string | null
+          data_scadenza: string | null
+          durata_mesi: number
+          esportata_da: string | null
+          id: string
+          importo_approvato: number | null
+          importo_richiesto: number
+          livello_corrente: number
+          livello_richiesto: number
+          motivazione: string | null
+          note: string | null
+          note_export: string | null
+          processata_da: string | null
+          stato: Database["public"]["Enums"]["stato_richiesta"]
+          stato_export: string | null
+          store_id: string | null
+          tipo: Database["public"]["Enums"]["tipo_richiesta"]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "richieste_fido"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       storage_path_cliente_id: { Args: { _name: string }; Returns: string }
       user_can_access_cliente: {
         Args: { _cliente_id: string }
