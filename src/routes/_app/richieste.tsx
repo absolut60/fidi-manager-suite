@@ -73,14 +73,20 @@ function userName(p: any): string {
 }
 
 function RichiestePage() {
-  const { user, role, profilo } = useAuth();
-  const isAdmin = role === "amministratore";
+  const { user, role, roles, profilo } = useAuth();
+  // Multi-ruolo: un utente puo' avere piu' ruoli, usiamo sempre roles.includes(...)
+  const isAdmin = roles.includes("amministratore");
   const livello =
-    role === "approvatore_liv3" ? 3 :
-    role === "approvatore_liv2" ? 2 :
-    role === "approvatore_liv1" ? 1 : 0;
+    roles.includes("approvatore_liv3") ? 3 :
+    roles.includes("approvatore_liv2") ? 2 :
+    roles.includes("approvatore_liv1") ? 1 : 0;
   const isApprovatore = livello > 0;
+  const isAmministrazione = roles.includes("amministrazione");
+  // "Vede solo le proprie" = chi non e' admin ne' approvatore (store_manager, amministrazione, direzione)
   const isStoreManager = !isAdmin && !isApprovatore;
+  // Puo' creare/inviare richieste: admin, store_manager, amministrazione, approvatori
+  const canCreateRichiesta =
+    isAdmin || isApprovatore || isAmministrazione || roles.includes("store_manager");
 
   const defaultTab = isApprovatore && !isAdmin ? "in_approvazione" : "bozze";
   const [tab, setTab] = useState<string>(defaultTab);
