@@ -41,6 +41,7 @@ import {
   STATO_LABEL, STATO_TONE, TIPO_LABEL, TIPO_TONE, calcolaLivello,
   formatEuro, formatDate, type TipoRichiesta,
 } from "@/lib/fidi";
+import { getFidoAttuale } from "@/lib/fido-cliente";
 import { NuovaComunicazioneDialog } from "@/components/nuova-comunicazione-dialog";
 
 export const Route = createFileRoute("/_app/richieste")({
@@ -119,7 +120,7 @@ function RichiestePage() {
     queryFn: async () => {
       let q = supabase
         .from("richieste_fido")
-        .select("*, clienti(ragione_sociale, fido_aziendale_concesso, fido_gestionale, bloccato, in_gestione_legale, scaduto, totale_rischio), stores(nome, codice), richiedente:profili!richieste_fido_created_by_fkey(nome, cognome, email), approvatore:profili!richieste_fido_approvato_da_fkey(nome, cognome, email)")
+        .select("*, clienti(ragione_sociale, store_id, fido_gestionale, bloccato, in_gestione_legale, scaduto, totale_rischio, stores(nome, codice)), richiedente:profili!richieste_fido_created_by_fkey(nome, cognome, email), approvatore:profili!richieste_fido_approvato_da_fkey(nome, cognome, email)")
         .order("created_at", { ascending: false });
       if (isStoreManager) {
         q = q.eq("created_by", user!.id);
@@ -479,7 +480,7 @@ function BozzeTab({
               </TableCell>
               <TableCell className="text-right tabular-nums">{formatEuro(Number(r.importo_richiesto))}</TableCell>
               <TableCell className="text-right tabular-nums text-muted-foreground">
-                {formatEuro(Number(r.clienti?.fido_aziendale_concesso ?? r.clienti?.fido_gestionale ?? 0))}
+                {formatEuro(getFidoAttuale(r.clienti))}
               </TableCell>
               <TableCell className="text-sm">{userName((r as any).richiedente)}</TableCell>
               <TableCell className="text-sm text-muted-foreground">{formatDate(r.created_at)}</TableCell>
@@ -541,12 +542,16 @@ function InApprovazioneTab({
 
   const stores = useMemo(() => {
     const map = new Map<string, string>();
-    rows.forEach((r) => { if (r.stores?.nome) map.set(r.store_id, r.stores.nome); });
+    rows.forEach((r) => {
+      const cStoreId = r.clienti?.store_id;
+      const cStoreNome = r.clienti?.stores?.nome;
+      if (cStoreId && cStoreNome) map.set(cStoreId, cStoreNome);
+    });
     return Array.from(map.entries());
   }, [rows]);
 
   const filtered = rows
-    .filter((r) => storeFilter === "tutti" || r.store_id === storeFilter)
+    .filter((r) => storeFilter === "tutti" || r.clienti?.store_id === storeFilter)
     .filter((r) => tipoFilter === "tutti" || r.tipo === tipoFilter)
     .filter((r) => !importoMin || Number(r.importo_richiesto) >= Number(importoMin))
     .filter((r) => !importoMax || Number(r.importo_richiesto) <= Number(importoMax))
@@ -603,7 +608,7 @@ function InApprovazioneTab({
           const nextLiv = livDecisione + 1;
           if (nextLiv > r.livello_richiesto) {
             // approvazione finale
-            const fidoPrec = Number(r.clienti?.fido_aziendale_concesso ?? 0);
+            const fidoPrec = getFidoAttuale(r.clienti);
             const { error } = await supabase.from("richieste_fido")
               .update({ stato: "approvata", importo_approvato: imp, approvato_da: user.id, data_approvazione: new Date().toISOString() }).eq("id", r.id);
             if (error) throw error;
@@ -723,10 +728,10 @@ function InApprovazioneTab({
                       </TableCell>
                     )}
                     <TableCell className="font-medium">{r.clienti?.ragione_sociale ?? "—"}</TableCell>
-                    {!isStoreManagerView(canApprove) && <TableCell className="text-sm text-muted-foreground">{r.stores?.nome ?? "—"}</TableCell>}
+                    {!isStoreManagerView(canApprove) && <TableCell className="text-sm text-muted-foreground">{r.clienti?.stores?.nome ?? "—"}</TableCell>}
                     <TableCell><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{TIPO_LABEL[r.tipo as TipoRichiesta]}</span></TableCell>
                     <TableCell className="text-right tabular-nums font-medium">{formatEuro(Number(r.importo_richiesto))}</TableCell>
-                    <TableCell className="text-right tabular-nums text-muted-foreground">{formatEuro(Number(r.clienti?.fido_aziendale_concesso ?? 0))}</TableCell>
+                    <TableCell className="text-right tabular-nums text-muted-foreground">{formatEuro(getFidoAttuale(r.clienti))}</TableCell>
                     <TableCell className="text-right tabular-nums text-muted-foreground">{formatEuro(Number(r.clienti?.totale_rischio ?? 0))}</TableCell>
                     <TableCell className="text-right tabular-nums">{Number(r.clienti?.scaduto ?? 0) > 0 ? <span className="text-destructive">{formatEuro(Number(r.clienti?.scaduto))}</span> : "—"}</TableCell>
                     <TableCell><Badge variant="outline">L{r.livello_corrente}/{r.livello_richiesto}</Badge></TableCell>
@@ -796,7 +801,7 @@ function InApprovazioneTab({
 
           {action?.rows.length === 1 && (
             <div className="rounded-md border p-3 text-xs space-y-1 bg-muted/30">
-              <div className="flex justify-between"><span>Fido attuale</span><span className="tabular-nums">{formatEuro(Number(action.rows[0].clienti?.fido_aziendale_concesso ?? 0))}</span></div>
+              <div className="flex justify-between"><span>Fido attuale</span><span className="tabular-nums">{formatEuro(getFidoAttuale(action.rows[0].clienti))}</span></div>
               <div className="flex justify-between"><span>Scaduto</span><span className="tabular-nums">{formatEuro(Number(action.rows[0].clienti?.scaduto ?? 0))}</span></div>
               <div className="flex justify-between"><span>Totale rischio</span><span className="tabular-nums">{formatEuro(Number(action.rows[0].clienti?.totale_rischio ?? 0))}</span></div>
               <div className="flex justify-between"><span>Semaforo</span>
@@ -1056,7 +1061,7 @@ function TuttoTab({ rows, loading, msgCounts }: { rows: any[]; loading: boolean;
                     )}
                   </div>
                 </TableCell>
-                <TableCell className="text-sm text-muted-foreground">{r.stores?.nome ?? "—"}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">{r.clienti?.stores?.nome ?? "—"}</TableCell>
                 <TableCell><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{TIPO_LABEL[r.tipo as TipoRichiesta]}</span></TableCell>
                 <TableCell className="text-right tabular-nums">{formatEuro(Number(r.importo_richiesto))}</TableCell>
                 <TableCell><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${STATO_TONE[r.stato as keyof typeof STATO_TONE]}`}>{STATO_LABEL[r.stato as keyof typeof STATO_LABEL]}</span></TableCell>
@@ -1151,7 +1156,7 @@ function RichiestaFormDialog({
   });
 
   const clienteSel: any = clienteEdit ?? clientiSearch?.find((c) => c.id === form.cliente_id);
-  const fidoAttuale = Number(clienteSel?.fido_gestionale ?? 0);
+  const fidoAttuale = getFidoAttuale(clienteSel);
 
   // Ultimo fido approvato in FidiManager (informativo, per verifica allineamento col gestionale)
   const { data: ultimoApprovato } = useQuery({
@@ -1320,7 +1325,7 @@ function RichiestaFormDialog({
               <div className="flex justify-between col-span-2 items-center gap-2 flex-wrap">
                 <span className="text-muted-foreground">Fido gestionale</span>
                 <span className="flex items-center gap-2 flex-wrap justify-end">
-                  <span className="tabular-nums font-medium">{formatEuro(Number(clienteSel.fido_gestionale ?? 0))}</span>
+                  <span className="tabular-nums font-medium">{formatEuro(getFidoAttuale(clienteSel))}</span>
                   {ultimoApprovatoImp != null && (
                     <>
                       <span className="text-muted-foreground">· Ultimo approvato in app:</span>

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { Plus, FileText, Pencil, Ban, Send, History, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { getFidoAttuale } from "@/lib/fido-cliente";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -266,7 +267,7 @@ function RichiestaDialog({
   ultimoApprovatoImp?: number | null;
 }) {
   const config = useConfig();
-  const fidoAttuale = Number(clienteData?.fido_gestionale ?? 0);
+  const fidoAttuale = getFidoAttuale(clienteData);
   const totaleRischio = Number(clienteData?.totale_rischio ?? 0);
   const scaduto = Number(clienteData?.scaduto ?? 0);
   const fidoResiduo = clienteData?.fido_residuo != null
