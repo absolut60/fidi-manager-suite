@@ -140,6 +140,16 @@ function RichiestaDetail() {
             <Info label="Inviata il" value={formatDate(r.data_invio)} />
             <Info label="Chiusa il" value={formatDate(r.data_chiusura)} />
             <Info label="Scadenza fido" value={formatDate(r.data_scadenza)} />
+            <Info
+              label="Richiesto da"
+              value={`${userNameDet((r as any).richiedente)}${r.created_at ? ` · ${formatDate(r.created_at)}` : ""}`}
+            />
+            {(r.stato === "approvata" || r.stato === "rifiutata") && (
+              <Info
+                label={r.stato === "approvata" ? "Approvato da" : "Rifiutato da"}
+                value={`${userNameDet((r as any).approvatore)}${(r as any).data_approvazione ? ` · ${formatDate((r as any).data_approvazione)}` : r.data_chiusura ? ` · ${formatDate(r.data_chiusura)}` : ""}`}
+              />
+            )}
           </div>
           {r.motivazione && (
             <>
