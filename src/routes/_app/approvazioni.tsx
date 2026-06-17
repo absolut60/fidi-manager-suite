@@ -412,10 +412,17 @@ function ApprovazioniPage() {
             const residuo = Number(c.fido_residuo ?? 0);
             const scaduto = Number(c.scaduto ?? 0);
             const unread = msgNonLetti?.[r.id] ?? 0;
+            const canAct = canApproveRow(r);
             return (
-              <Card key={r.id} className={`p-4 transition-shadow ${isSel ? "border-primary bg-primary/5" : "hover:shadow-md hover:border-primary/30"}`}>
+              <Card key={r.id} className={`p-4 transition-shadow ${isSel ? "border-primary bg-primary/5" : "hover:shadow-md hover:border-primary/30"} ${!canAct ? "opacity-90" : ""}`}>
                 <div className="flex items-start gap-3">
-                  <Checkbox checked={isSel} onCheckedChange={() => toggle(r.id)} className="mt-1" />
+                  <Checkbox
+                    checked={isSel}
+                    onCheckedChange={() => canAct && toggle(r.id)}
+                    disabled={!canAct}
+                    className="mt-1"
+                    title={canAct ? "" : `Richiede liv. ${r.livello_richiesto}: non puoi approvare`}
+                  />
                   <div
                     className="flex-1 min-w-0 cursor-pointer"
                     onClick={() => navigate({ to: "/richieste/$richiestaId", params: { richiestaId: r.id } })}
