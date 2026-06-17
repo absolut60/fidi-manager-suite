@@ -629,14 +629,17 @@ function ApprovazioniPage() {
                           <Button
                             className="bg-success text-success-foreground hover:bg-success/90"
                             onClick={() => setSingleAction("approva")}
+                            disabled={!canApproveRow(detail)}
                           ><Check className="size-4" /> Approva</Button>
                           <Button
                             variant="outline" className="text-destructive border-destructive/30"
                             onClick={() => setSingleAction("rifiuta")}
+                            disabled={!canApproveRow(detail)}
                           ><X className="size-4" /> Rifiuta</Button>
                           <Button
                             variant="outline"
                             onClick={() => setSingleAction("integrazioni")}
+                            disabled={!canApproveRow(detail)}
                           ><MessageSquare className="size-4" /> Richiedi integrazioni</Button>
                         </>
                       ) : (
