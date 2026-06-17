@@ -243,6 +243,12 @@ function RichiestaDetail() {
   );
 }
 
+function userNameDet(p: any): string {
+  if (!p) return "—";
+  const n = `${p.nome ?? ""} ${p.cognome ?? ""}`.trim();
+  return n || p.email || "—";
+}
+
 function Info({ label, value }: { label: string; value: string }) {
   return (
     <div>
