@@ -145,6 +145,14 @@ export const inviaCredenziali = createServerFn({ method: "POST" })
     const nome = [profilo?.nome, profilo?.cognome].filter(Boolean).join(" ") || email;
     const appUrl = process.env.VITE_APP_URL ?? "https://fidi-manager-suite.lovable.app";
 
+    const esc = (s: string) =>
+      String(s ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+
     const html = `<!doctype html>
 <html><body style="margin:0;padding:0;background:#f4f5f7;font-family:Arial,sans-serif;color:#1a1a2e;">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f5f7;padding:24px 0;">
@@ -153,10 +161,10 @@ export const inviaCredenziali = createServerFn({ method: "POST" })
         <tr><td style="background:#0f1b3d;padding:24px;text-align:center;color:#ffffff;font-weight:700;font-size:18px;">MADE — FidiManager</td></tr>
         <tr><td style="padding:32px 28px;">
           <h1 style="margin:0 0 16px;font-size:20px;color:#0f1b3d;">Benvenuto in FidiManager</h1>
-          <p style="margin:0 0 16px;font-size:14px;line-height:1.5;">Gentile ${nome},<br/>di seguito le tue credenziali di accesso:</p>
+          <p style="margin:0 0 16px;font-size:14px;line-height:1.5;">Gentile ${esc(nome)},<br/>di seguito le tue credenziali di accesso:</p>
           <table role="presentation" cellspacing="0" cellpadding="8" style="width:100%;border:1px solid #e5e7eb;border-radius:6px;font-size:14px;margin:16px 0;">
-            <tr><td style="font-weight:600;width:120px;background:#f9fafb;">Email</td><td>${email}</td></tr>
-            <tr><td style="font-weight:600;background:#f9fafb;">Password</td><td style="font-family:monospace;">${data.password}</td></tr>
+            <tr><td style="font-weight:600;width:120px;background:#f9fafb;">Email</td><td>${esc(email)}</td></tr>
+            <tr><td style="font-weight:600;background:#f9fafb;">Password</td><td style="font-family:monospace;">${esc(data.password)}</td></tr>
           </table>
           <p style="margin:0 0 24px;font-size:13px;color:#6b7280;">Ti consigliamo di cambiare la password al primo accesso.</p>
           <p style="text-align:center;margin:24px 0;">
