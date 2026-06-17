@@ -23,7 +23,8 @@ function RichiestaDetail() {
   const { richiestaId } = Route.useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { user, role } = useAuth();
+  const { user, role, roles } = useAuth();
+
 
   const { data: r, isLoading } = useQuery({
     queryKey: ["richiesta", richiestaId],
