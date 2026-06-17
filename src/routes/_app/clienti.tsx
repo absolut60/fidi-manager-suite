@@ -1382,7 +1382,11 @@ function ProposteFidoMassivoDialog({
         const existing = prevMap.get(c.id);
         if (existing) return existing;
         const proposto = calcolaFidoProposto(c);
-        const attuale = Number(c.fido ?? 0);
+        // Fido di riferimento = fido_gestionale (stesso campo del form singolo
+        // e della scheda cliente / FidoGestionaleCard). NON usare fido_aziendale_concesso
+        // ne' c.fido: erano la causa del bug "Fido attuale = 0".
+        const attuale = Number(c.fido_gestionale ?? 0);
+
         return {
           cliente_id: c.id,
           ragione_sociale: c.ragione_sociale,
