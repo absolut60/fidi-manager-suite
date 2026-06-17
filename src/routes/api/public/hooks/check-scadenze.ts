@@ -6,9 +6,19 @@ export const Route = createFileRoute("/api/public/hooks/check-scadenze")({
     handlers: {
       POST: async ({ request }) => {
         try {
-          // Auth: richiede apikey header == SUPABASE_PUBLISHABLE_KEY (pattern pg_cron)
-          const apikey = request.headers.get("apikey");
-          if (!apikey || apikey !== process.env.SUPABASE_PUBLISHABLE_KEY) {
+          // Auth: richiede header x-cron-secret == segreto salvato in Supabase Vault ('cron_secret').
+          // NON usare SUPABASE_PUBLISHABLE_KEY: e' la anon key, embedded nel bundle frontend.
+          const provided = request.headers.get("x-cron-secret");
+          if (!provided) return new Response("Unauthorized", { status: 401 });
+          const { data: secretRow } = await supabaseAdmin
+            .schema("vault" as never)
+            .from("decrypted_secrets")
+            .select("decrypted_secret")
+            .eq("name", "cron_secret")
+            .limit(1)
+            .maybeSingle();
+          const expected = (secretRow as { decrypted_secret?: string } | null)?.decrypted_secret;
+          if (!expected || provided !== expected) {
             return new Response("Unauthorized", { status: 401 });
           }
           // Leggi configurazioni
