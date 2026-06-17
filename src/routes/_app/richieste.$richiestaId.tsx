@@ -23,7 +23,8 @@ function RichiestaDetail() {
   const { richiestaId } = Route.useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { user, role } = useAuth();
+  const { user, role, roles } = useAuth();
+
 
   const { data: r, isLoading } = useQuery({
     queryKey: ["richiesta", richiestaId],
@@ -65,16 +66,20 @@ function RichiestaDetail() {
       });
   }, [richiestaId, user?.id, qc]);
 
-  const isAdmin = role === "amministratore";
+  const isAdmin = roles.includes("amministratore");
+  const isAmministrazione = roles.includes("amministrazione");
   const livelloUtente =
-    role === "approvatore_liv3" ? 3 :
-    role === "approvatore_liv2" ? 2 :
-    role === "approvatore_liv1" ? 1 : 0;
+    roles.includes("approvatore_liv3") ? 3 :
+    roles.includes("approvatore_liv2") ? 2 :
+    roles.includes("approvatore_liv1") ? 1 : 0;
 
+  // Approvazione SOLO ad approvatori (al loro livello) o all'admin tecnico.
+  // 'amministrazione' NON da l'assenso di per se' (solo se ha anche cappello approvatore).
   const canApprove = r?.stato === "in_approvazione" &&
     (isAdmin || livelloUtente === r.livello_corrente);
+  // Elimina/gestisce: admin tecnico o amministrazione
+  const canDelete = isAdmin || isAmministrazione;
   const canSubmit = r?.stato === "bozza" && r?.created_by === user?.id;
-  const canDelete = isAdmin;
 
   const submitMutation = useMutation({
     mutationFn: async () => {

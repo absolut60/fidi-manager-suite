@@ -36,10 +36,14 @@ export const Route = createFileRoute("/_app/fidi-processare")({
 });
 
 function FidiProcessarePage() {
-  const { user, role } = useAuth();
-  const isAdmin = role === "amministratore";
-  const isApprovatore = role?.startsWith("approvatore_liv") ?? false;
-  const hasAccess = isAdmin || isApprovatore;
+  const { user, roles } = useAuth();
+  const isAdmin = roles.includes("amministratore");
+  const isAmministrazione = roles.includes("amministrazione");
+  const isApprovatore =
+    roles.includes("approvatore_liv1") ||
+    roles.includes("approvatore_liv2") ||
+    roles.includes("approvatore_liv3");
+  const hasAccess = isAdmin || isApprovatore || isAmministrazione;
   const qc = useQueryClient();
 
   const [tab, setTab] = useState("gestire");
