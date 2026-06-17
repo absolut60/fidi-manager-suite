@@ -242,8 +242,8 @@ function RichiestePage() {
           <BozzeTab
             rows={bozze}
             loading={isLoading}
-            onEdit={setEditing}
-            onDelete={setDeleting}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
             onChanged={qcInvalidate}
             msgCounts={msgCounts}
           />
@@ -257,6 +257,9 @@ function RichiestePage() {
             livelloUtente={livello}
             isAdmin={isAdmin}
             onChanged={qcInvalidate}
+            currentUserId={user?.id}
+            onEditOwn={handleEdit}
+            onDeleteOwn={handleDelete}
           />
         </TabsContent>
 
@@ -268,7 +271,16 @@ function RichiestePage() {
               </Button>
             </div>
           )}
-          <StoricoTab rows={approvate} loading={isLoading} kind="approvata" onRiinvia={null} msgCounts={msgCounts} />
+          <StoricoTab
+            rows={approvate}
+            loading={isLoading}
+            kind="approvata"
+            onRiinvia={null}
+            msgCounts={msgCounts}
+            currentUserId={user?.id}
+            onEditOwn={handleEdit}
+            onDeleteOwn={handleDelete}
+          />
         </TabsContent>
 
         <TabsContent value="rifiutate" className="mt-4">
@@ -278,6 +290,9 @@ function RichiestePage() {
             kind="rifiutata"
             onRiinvia={(r) => setEditing({ ...r, _riinvia: true })}
             msgCounts={msgCounts}
+            currentUserId={user?.id}
+            onEditOwn={handleEdit}
+            onDeleteOwn={handleDelete}
           />
         </TabsContent>
 
@@ -286,6 +301,7 @@ function RichiestePage() {
             <TuttoTab rows={all} loading={isLoading} msgCounts={msgCounts} />
           </TabsContent>
         )}
+
       </Tabs>
 
       <Dialog open={openNew} onOpenChange={setOpenNew}>
