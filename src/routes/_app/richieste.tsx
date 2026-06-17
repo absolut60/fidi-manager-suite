@@ -1156,7 +1156,7 @@ function RichiestaFormDialog({
   });
 
   const clienteSel: any = clienteEdit ?? clientiSearch?.find((c) => c.id === form.cliente_id);
-  const fidoAttuale = Number(clienteSel?.fido_gestionale ?? 0);
+  const fidoAttuale = getFidoAttuale(clienteSel);
 
   // Ultimo fido approvato in FidiManager (informativo, per verifica allineamento col gestionale)
   const { data: ultimoApprovato } = useQuery({
@@ -1325,7 +1325,7 @@ function RichiestaFormDialog({
               <div className="flex justify-between col-span-2 items-center gap-2 flex-wrap">
                 <span className="text-muted-foreground">Fido gestionale</span>
                 <span className="flex items-center gap-2 flex-wrap justify-end">
-                  <span className="tabular-nums font-medium">{formatEuro(Number(clienteSel.fido_gestionale ?? 0))}</span>
+                  <span className="tabular-nums font-medium">{formatEuro(getFidoAttuale(clienteSel))}</span>
                   {ultimoApprovatoImp != null && (
                     <>
                       <span className="text-muted-foreground">· Ultimo approvato in app:</span>
