@@ -273,7 +273,7 @@ function Info({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ApprovaForm({ richiesta, userId }: { richiesta: any; userId: string }) {
+function ApprovaForm({ richiesta }: { richiesta: any; userId: string }) {
   const qc = useQueryClient();
   const [importo, setImporto] = useState<string>(String(richiesta.importo_richiesto));
   const [note, setNote] = useState("");
@@ -281,37 +281,16 @@ function ApprovaForm({ richiesta, userId }: { richiesta: any; userId: string }) 
   const decide = useMutation({
     mutationFn: async (esito: "approvata" | "rifiutata") => {
       const importoNum = Number(importo);
-      const { error: e1 } = await supabase.from("approvazioni").insert({
-        richiesta_id: richiesta.id,
-        approvatore_id: userId,
-        livello: richiesta.livello_corrente,
-        esito,
-        importo_approvato: esito === "approvata" ? importoNum : null,
-        note: note || null,
+      // Singolo assenso via RPC SECURITY DEFINER: la funzione server valida
+      // che il livello dell'utente sia >= al livello_richiesto e imposta
+      // direttamente stato finale + approvato_da + data_chiusura.
+      const { error } = await (supabase as any).rpc("processa_richiesta_fido", {
+        _richiesta_id: richiesta.id,
+        _esito: esito,
+        _note: note || null,
+        _importo_approvato: esito === "approvata" ? importoNum : null,
       });
-      if (e1) throw e1;
-
-      // Aggiorna richiesta
-      const nowIso = new Date().toISOString();
-      if (esito === "rifiutata") {
-        const { error } = await supabase.from("richieste_fido")
-          .update({ stato: "rifiutata", approvato_da: userId, data_approvazione: nowIso })
-          .eq("id", richiesta.id);
-        if (error) throw error;
-      } else {
-        const nextLiv = richiesta.livello_corrente + 1;
-        if (nextLiv > richiesta.livello_richiesto) {
-          const { error } = await supabase.from("richieste_fido")
-            .update({ stato: "approvata", importo_approvato: importoNum, approvato_da: userId, data_approvazione: nowIso })
-            .eq("id", richiesta.id);
-          if (error) throw error;
-        } else {
-          const { error } = await supabase.from("richieste_fido")
-            .update({ livello_corrente: nextLiv })
-            .eq("id", richiesta.id);
-          if (error) throw error;
-        }
-      }
+      if (error) throw error;
     },
     onSuccess: (_d, esito) => {
       toast.success(esito === "approvata" ? "Approvazione registrata" : "Richiesta rifiutata");
@@ -325,7 +304,7 @@ function ApprovaForm({ richiesta, userId }: { richiesta: any; userId: string }) 
 
   return (
     <Card className="p-5 border-info/40 bg-info/5">
-      <h2 className="font-semibold mb-3">Decisione livello {richiesta.livello_corrente}</h2>
+      <h2 className="font-semibold mb-3">Decisione (richiede livello {richiesta.livello_richiesto})</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <Label htmlFor="importo_app">Importo da approvare (€)</Label>
