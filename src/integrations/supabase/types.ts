@@ -1824,6 +1824,13 @@ export type Database = {
             referencedColumns: ["cliente_id"]
           },
           {
+            foreignKeyName: "richieste_fido_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profili"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "richieste_fido_store_id_fkey"
             columns: ["store_id"]
             isOneToOne: false
