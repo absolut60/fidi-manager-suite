@@ -66,6 +66,12 @@ function semaforoCliente(c: any): { tone: string; label: string } {
   return { tone: "bg-success/15 text-success", label: "Verde" };
 }
 
+function userName(p: any): string {
+  if (!p) return "—";
+  const n = `${p.nome ?? ""} ${p.cognome ?? ""}`.trim();
+  return n || p.email || "—";
+}
+
 function RichiestePage() {
   const { user, role, profilo } = useAuth();
   const isAdmin = role === "amministratore";
