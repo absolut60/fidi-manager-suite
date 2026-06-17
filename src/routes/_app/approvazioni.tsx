@@ -53,15 +53,15 @@ function ritardoHelper(dilConc: number | null | undefined, dilEff: number | null
 function ApprovazioniPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const { user, role } = useAuth();
-  const isAdmin =
-    role === "amministratore" ||
-    role === "amministrazione" ||
-    role === "direzione";
+  const { user, role, roles } = useAuth();
+  // Solo Amministratore (super-admin) vede tutto in approvazione.
+  // Amministrazione e Direzione NON sono approvatori: vengono trattati come utenti
+  // non abilitati (la RLS comunque blocca eventuali update tentati dall'UI).
+  const isAdmin = roles.includes("amministratore");
   const livello =
-    role === "approvatore_liv3" ? 3 :
-    role === "approvatore_liv2" ? 2 :
-    role === "approvatore_liv1" ? 1 : 0;
+    roles.includes("approvatore_liv3") ? 3 :
+    roles.includes("approvatore_liv2") ? 2 :
+    roles.includes("approvatore_liv1") ? 1 : 0;
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [action, setAction] = useState<"approva" | "rifiuta" | null>(null);
