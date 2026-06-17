@@ -261,16 +261,17 @@ function ApprovaForm({ richiesta, userId }: { richiesta: any; userId: string }) 
       if (e1) throw e1;
 
       // Aggiorna richiesta
+      const nowIso = new Date().toISOString();
       if (esito === "rifiutata") {
         const { error } = await supabase.from("richieste_fido")
-          .update({ stato: "rifiutata" })
+          .update({ stato: "rifiutata", approvato_da: userId, data_approvazione: nowIso })
           .eq("id", richiesta.id);
         if (error) throw error;
       } else {
         const nextLiv = richiesta.livello_corrente + 1;
         if (nextLiv > richiesta.livello_richiesto) {
           const { error } = await supabase.from("richieste_fido")
-            .update({ stato: "approvata", importo_approvato: importoNum })
+            .update({ stato: "approvata", importo_approvato: importoNum, approvato_da: userId, data_approvazione: nowIso })
             .eq("id", richiesta.id);
           if (error) throw error;
         } else {
