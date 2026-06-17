@@ -856,6 +856,8 @@ function StoricoTab({
                     </TableCell>
                   )}
                   {kind === "rifiutata" && <TableCell className="text-xs text-muted-foreground max-w-xs truncate" title={r.note ?? r.motivazione ?? ""}>{r.note ?? r.motivazione ?? "—"}</TableCell>}
+                  <TableCell className="text-sm">{userName((r as any).richiedente)}</TableCell>
+                  <TableCell className="text-sm">{userName((r as any).approvatore)}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{formatDate(r.data_chiusura ?? r.created_at)}</TableCell>
                   {onRiinvia && (
                     <TableCell className="text-right">
