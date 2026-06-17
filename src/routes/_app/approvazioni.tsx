@@ -446,7 +446,10 @@ function ApprovazioniPage() {
                           <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>
                             {TIPO_LABEL[r.tipo as TipoRichiesta]}
                           </span>
-                          <Badge variant="outline">Liv. {r.livello_corrente}/{r.livello_richiesto}</Badge>
+                          <Badge variant="outline">Liv. richiesto {r.livello_richiesto}</Badge>
+                          {!canAct && (
+                            <Badge className="bg-warning/15 text-warning hover:bg-warning/15">Richiede liv. {r.livello_richiesto}</Badge>
+                          )}
                           {(r as any).stores?.nome && (
                             <Badge variant="secondary" className="text-xs">{(r as any).stores.nome}</Badge>
                           )}
