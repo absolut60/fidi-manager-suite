@@ -192,7 +192,7 @@ function RichiestePage() {
             {isStoreManager ? "Le tue richieste" : isApprovatore && !isAdmin ? `Coda approvazioni Liv. ${livello}` : "Tutte le richieste del sistema"}
           </p>
         </div>
-        {(isStoreManager || isAdmin) && (
+        {canCreateRichiesta && (
           <Button className="gap-1.5" onClick={() => setOpenNew(true)}>
             <Plus className="size-4" /> Nuova richiesta
           </Button>
