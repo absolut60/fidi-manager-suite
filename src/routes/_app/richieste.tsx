@@ -1181,7 +1181,23 @@ function RichiestaFormDialog({
         {clienteSel && (
           <div className="rounded-md border p-3 text-xs space-y-1.5 bg-muted/30">
             <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-              <div className="flex justify-between"><span className="text-muted-foreground">Fido gestionale</span><span className="tabular-nums font-medium">{formatEuro(Number(clienteSel.fido_gestionale ?? 0))}</span></div>
+              <div className="flex justify-between col-span-2 items-center gap-2 flex-wrap">
+                <span className="text-muted-foreground">Fido gestionale</span>
+                <span className="flex items-center gap-2 flex-wrap justify-end">
+                  <span className="tabular-nums font-medium">{formatEuro(Number(clienteSel.fido_gestionale ?? 0))}</span>
+                  {ultimoApprovatoImp != null && (
+                    <>
+                      <span className="text-muted-foreground">· Ultimo approvato in app:</span>
+                      <span className="tabular-nums font-medium">{formatEuro(ultimoApprovatoImp)}</span>
+                      {disallineato && (
+                        <span className="inline-flex rounded-md px-2 py-0.5 font-medium bg-warning/15 text-warning border border-warning/30">
+                          Da allineare
+                        </span>
+                      )}
+                    </>
+                  )}
+                </span>
+              </div>
               <div className="flex justify-between"><span className="text-muted-foreground">Totale rischio</span><span className="tabular-nums">{formatEuro(Number(clienteSel.totale_rischio ?? 0))}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Fido residuo</span><span className={`tabular-nums ${Number(clienteSel.fido_residuo ?? 0) < 0 ? "text-destructive font-medium" : ""}`}>{formatEuro(Number(clienteSel.fido_residuo ?? 0))}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Scaduto</span><span className={`tabular-nums ${Number(clienteSel.scaduto ?? 0) > 0 ? "text-destructive font-medium" : ""}`}>{formatEuro(Number(clienteSel.scaduto ?? 0))}</span></div>
