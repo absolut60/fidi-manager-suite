@@ -419,15 +419,21 @@ function ClientiPage() {
 
     if (statoCliente === "attivi") q = q.eq("attivo", true);
     else if (statoCliente === "disattivati") q = q.eq("attivo", false);
-    // Stessa regola della colonna "Stato": isClienteAttivo(ultima_data_fatturazione, config).
-    // Cliente attivo  = ultima_data_fatturazione >= {cutoff_cliente_attivo_anno}-01-01
-    // Cliente non att.= ultima_data_fatturazione <  cutoff  OPPURE NULL
+    // Stessa regola della colonna "Stato" (isClienteAttivo, centralizzata in use-config):
+    //   A) ultima_data_fatturazione >= {cutoff_cliente_attivo_anno}-01-01
+    //   OPPURE
+    //   B) doc_da_fatturare > 0  (DDT/documenti da fatturare aperti)
+    // => Non attivo = NOT(A) AND NOT(B)
     if (statoAttivita === "attivi") {
       const cutoffIso = `${config.cutoff_cliente_attivo_anno}-01-01`;
-      q = q.gte("ultima_data_fatturazione", cutoffIso);
+      q = q.or(`ultima_data_fatturazione.gte.${cutoffIso},doc_da_fatturare.gt.0`);
     } else if (statoAttivita === "non_attivi") {
       const cutoffIso = `${config.cutoff_cliente_attivo_anno}-01-01`;
-      q = q.or(`ultima_data_fatturazione.is.null,ultima_data_fatturazione.lt.${cutoffIso}`);
+      // NOT A: ultima_data_fatturazione IS NULL OR < cutoff
+      // AND NOT B: doc_da_fatturare IS NULL OR <= 0
+      q = q
+        .or(`ultima_data_fatturazione.is.null,ultima_data_fatturazione.lt.${cutoffIso}`)
+        .or(`doc_da_fatturare.is.null,doc_da_fatturare.lte.0`);
     }
     if (storeFiltro !== "tutti") q = q.eq("store_id", storeFiltro);
     if (filtroBlocco === "bloccati") q = q.eq("bloccato", true);
@@ -1124,7 +1130,7 @@ function ClientiPage() {
                   return (
                    <TableRow
                      key={c.id}
-                     className={`cursor-pointer hover:bg-muted/50 ${!isClienteAttivo((c as any).ultima_data_fatturazione, config) ? "bg-muted/40 text-muted-foreground" : ""} ${isBlocked ? "bg-[#FEF2F2] dark:bg-destructive/10 border-l-[3px] border-l-[#EF4444] hover:bg-[#FEE2E2] dark:hover:bg-destructive/15" : ""}`}
+                     className={`cursor-pointer hover:bg-muted/50 ${!isClienteAttivo((c as any).ultima_data_fatturazione, (c as any).doc_da_fatturare, config) ? "bg-muted/40 text-muted-foreground" : ""} ${isBlocked ? "bg-[#FEF2F2] dark:bg-destructive/10 border-l-[3px] border-l-[#EF4444] hover:bg-[#FEE2E2] dark:hover:bg-destructive/15" : ""}`}
                      onClick={() => navigate({ to: "/clienti/$clienteId", params: { clienteId: c.id } })}
                    >
                     <TableCell onClick={(e) => e.stopPropagation()}>
@@ -1208,8 +1214,8 @@ function ClientiPage() {
 
                      <TableCell>
                        <div className="flex flex-col gap-1 items-start">
-                         <Badge variant={!isClienteAttivo((c as any).ultima_data_fatturazione, config) ? "secondary" : "default"}>
-                           {!isClienteAttivo((c as any).ultima_data_fatturazione, config) ? "Non attivo" : "Attivo"}
+                         <Badge variant={!isClienteAttivo((c as any).ultima_data_fatturazione, (c as any).doc_da_fatturare, config) ? "secondary" : "default"}>
+                           {!isClienteAttivo((c as any).ultima_data_fatturazione, (c as any).doc_da_fatturare, config) ? "Non attivo" : "Attivo"}
                          </Badge>
                          {c.ind_blocco === 1 && (
                            <Badge className="bg-yellow-500/15 text-yellow-700 dark:text-yellow-500 hover:bg-yellow-500/20" title="Blocco con possibilità di sblocco">
