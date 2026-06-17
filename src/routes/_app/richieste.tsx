@@ -963,6 +963,7 @@ function RichiestaFormDialog({
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [search, setSearch] = useState("");
+  const [openCliente, setOpenCliente] = useState(false);
 
   const isEdit = !!richiesta;
 
