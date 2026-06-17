@@ -10,20 +10,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { sendNotificaComunicazione } from "@/lib/send-email";
-
-type Destinatario = "richiedente" | "approvatore" | "tutti";
+import {
+  inviaComunicazioneRichiesta,
+  DESTINATARIO_LABEL,
+  type DestinatarioComunicazione,
+} from "@/lib/comunicazioni-richiesta";
 
 interface Props {
   richiestaId: string;
   richiestaCreatedBy: string;
 }
-
-const DESTINATARIO_LABEL: Record<Destinatario, string> = {
-  richiedente: "Richiedente",
-  approvatore: "Approvatore",
-  tutti: "Tutti",
-};
 
 function iniziali(nome?: string | null, cognome?: string | null): string {
   const n = (nome ?? "").trim();
@@ -43,7 +39,7 @@ function formatTs(iso: string): string {
 export function ComunicazioniRichiestaPanel({ richiestaId, richiestaCreatedBy }: Props) {
   const { user } = useAuth();
   const qc = useQueryClient();
-  const [destinatario, setDestinatario] = useState<Destinatario>("approvatore");
+  const [destinatario, setDestinatario] = useState<DestinatarioComunicazione>("approvatore");
   const [testo, setTesto] = useState("");
 
   const { data: messaggi, isLoading } = useQuery({
@@ -62,83 +58,19 @@ export function ComunicazioniRichiestaPanel({ richiestaId, richiestaCreatedBy }:
   const sendMutation = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Non autenticato");
-      const testoTrim = testo.trim();
-      if (!testoTrim) throw new Error("Testo vuoto");
-
-      const { error } = await supabase.from("comunicazioni_richiesta").insert({
-        richiesta_id: richiestaId,
-        autore_id: user.id,
+      return inviaComunicazioneRichiesta({
+        richiestaId,
         destinatario,
-        testo: testoTrim,
+        testo,
+        autoreId: user.id,
+        autoreEmail: user.email,
       });
-      if (error) throw error;
-
-      // Recupera profilo autore + destinatari per email
-      const { data: meProfilo } = await supabase
-        .from("profili")
-        .select("nome, cognome")
-        .eq("id", user.id)
-        .maybeSingle();
-      const autoreNome = [meProfilo?.nome, meProfilo?.cognome].filter(Boolean).join(" ") || "Un utente";
-
-      // Determina destinatari email
-      const destinatariEmail: { email: string; nome: string }[] = [];
-
-      if (destinatario === "richiedente" || destinatario === "tutti") {
-        const { data: richProf } = await supabase
-          .from("profili")
-          .select("nome, cognome, email")
-          .eq("id", richiestaCreatedBy)
-          .maybeSingle();
-        if (richProf?.email && richProf.email !== user.email) {
-          destinatariEmail.push({
-            email: richProf.email,
-            nome: [richProf.nome, richProf.cognome].filter(Boolean).join(" ") || "Richiedente",
-          });
-        }
-      }
-
-      if (destinatario === "approvatore" || destinatario === "tutti") {
-        // Approvatori = chi ha già approvato la richiesta
-        const { data: appr } = await supabase
-          .from("approvazioni")
-          .select("approvatore_id")
-          .eq("richiesta_id", richiestaId);
-        const ids = Array.from(new Set((appr ?? []).map((a) => a.approvatore_id))).filter(
-          (id) => id !== user.id,
-        );
-        if (ids.length > 0) {
-          const { data: profs } = await supabase
-            .from("profili")
-            .select("id, nome, cognome, email")
-            .in("id", ids);
-          for (const p of profs ?? []) {
-            if (p.email) {
-              destinatariEmail.push({
-                email: p.email,
-                nome: [p.nome, p.cognome].filter(Boolean).join(" ") || "Approvatore",
-              });
-            }
-          }
-        }
-      }
-
-      // Invia email (non bloccante)
-      const appUrl = typeof window !== "undefined" ? window.location.origin : "";
-      for (const d of destinatariEmail) {
-        sendNotificaComunicazione({
-          toEmail: d.email,
-          toName: d.nome,
-          autoreNome,
-          richiestaId,
-          testo: testoTrim,
-          appUrl,
-        }).catch((e) => console.error("Errore notifica email:", e));
-      }
     },
     onSuccess: () => {
       setTesto("");
       qc.invalidateQueries({ queryKey: ["comunicazioni", richiestaId] });
+      qc.invalidateQueries({ queryKey: ["msg-non-letti-richieste"] });
+      qc.invalidateQueries({ queryKey: ["comunicazioni-non-lette"] });
       toast.success("Messaggio inviato");
     },
     onError: (e) => {
@@ -183,7 +115,7 @@ export function ComunicazioniRichiestaPanel({ richiestaId, richiestaCreatedBy }:
                       {ruoloLabel}
                     </Badge>
                     <span className="text-xs text-muted-foreground">
-                      → a {DESTINATARIO_LABEL[m.destinatario as Destinatario] ?? m.destinatario}
+                      → a {DESTINATARIO_LABEL[m.destinatario as DestinatarioComunicazione] ?? m.destinatario}
                     </span>
                     <span className="text-xs text-muted-foreground ml-auto">{formatTs(m.created_at)}</span>
                   </div>
@@ -198,7 +130,7 @@ export function ComunicazioniRichiestaPanel({ richiestaId, richiestaCreatedBy }:
       <div className="border-t pt-4 space-y-3">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs font-medium text-muted-foreground">Destinatario:</span>
-          {(["richiedente", "approvatore", "tutti"] as Destinatario[]).map((d) => (
+          {(["richiedente", "approvatore", "tutti"] as DestinatarioComunicazione[]).map((d) => (
             <button
               key={d}
               type="button"

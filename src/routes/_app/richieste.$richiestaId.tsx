@@ -54,16 +54,11 @@ function RichiestaDetail() {
 
   useEffect(() => {
     if (!richiestaId || !user?.id) return;
-    supabase
-      .from("comunicazioni_richiesta")
-      .update({ letto: true })
-      .eq("richiesta_id", richiestaId)
-      .neq("autore_id", user.id)
-      .eq("letto", false)
-      .then(() => {
-        qc.invalidateQueries({ queryKey: ["msg-non-letti-richieste"] });
-        qc.invalidateQueries({ queryKey: ["comunicazioni-non-lette"] });
-      });
+    // RPC per-utente: aggiunge user.id a letto_da (non sovrascrive lo stato degli altri)
+    (supabase as any).rpc("marca_comunicazioni_lette", { _richiesta_id: richiestaId }).then(() => {
+      qc.invalidateQueries({ queryKey: ["msg-non-letti-richieste"] });
+      qc.invalidateQueries({ queryKey: ["comunicazioni-non-lette"] });
+    });
   }, [richiestaId, user?.id, qc]);
 
   const isAdmin = roles.includes("amministratore");

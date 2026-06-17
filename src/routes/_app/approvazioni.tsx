@@ -23,6 +23,7 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
 } from "@/components/ui/sheet";
 import { formatEuro, formatDate, TIPO_LABEL, TIPO_TONE, type TipoRichiesta } from "@/lib/fidi";
+import { NuovaComunicazioneDialog } from "@/components/nuova-comunicazione-dialog";
 
 export const Route = createFileRoute("/_app/approvazioni")({
   component: ApprovazioniPage,
@@ -71,6 +72,7 @@ function ApprovazioniPage() {
   const [bulkMotivo, setBulkMotivo] = useState("");
   const [detail, setDetail] = useState<any | null>(null);
   const [singleAction, setSingleAction] = useState<"approva" | "rifiuta" | "integrazioni" | null>(null);
+  const [comunicazioneFor, setComunicazioneFor] = useState<any | null>(null);
   const [singleNote, setSingleNote] = useState("");
 
   // Filtri
@@ -125,13 +127,14 @@ function ApprovazioniPage() {
     queryKey: ["comunicazioni-non-lette", user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from("comunicazioni_richiesta")
-        .select("richiesta_id")
-        .eq("letto", false)
+        .select("richiesta_id, letto_da, autore_id")
         .neq("autore_id", user?.id ?? "");
       const counts: Record<string, number> = {};
       (data ?? []).forEach((m: any) => {
+        const lettoDa: string[] = m.letto_da ?? [];
+        if (!user?.id || lettoDa.includes(user.id)) return;
         counts[m.richiesta_id] = (counts[m.richiesta_id] ?? 0) + 1;
       });
       return counts;
@@ -638,8 +641,7 @@ function ApprovazioniPage() {
                           ><X className="size-4" /> Rifiuta</Button>
                           <Button
                             variant="outline"
-                            onClick={() => setSingleAction("integrazioni")}
-                            disabled={!canApproveRow(detail)}
+                            onClick={() => setComunicazioneFor(detail)}
                           ><MessageSquare className="size-4" /> Richiedi integrazioni</Button>
                         </>
                       ) : (
@@ -725,6 +727,14 @@ function ApprovazioniPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <NuovaComunicazioneDialog
+        open={!!comunicazioneFor}
+        onOpenChange={(o) => !o && setComunicazioneFor(null)}
+        richiestaId={comunicazioneFor?.id ?? ""}
+        clienteRagioneSociale={comunicazioneFor?.clienti?.ragione_sociale}
+        defaultDestinatario="richiedente"
+      />
     </div>
   );
 }

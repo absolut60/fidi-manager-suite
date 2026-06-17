@@ -990,6 +990,7 @@ export type Database = {
           destinatario: string
           id: string
           letto: boolean
+          letto_da: string[]
           richiesta_id: string
           testo: string
         }
@@ -999,6 +1000,7 @@ export type Database = {
           destinatario: string
           id?: string
           letto?: boolean
+          letto_da?: string[]
           richiesta_id: string
           testo: string
         }
@@ -1008,6 +1010,7 @@ export type Database = {
           destinatario?: string
           id?: string
           letto?: boolean
+          letto_da?: string[]
           richiesta_id?: string
           testo?: string
         }
@@ -2915,7 +2918,15 @@ export type Database = {
               chunks_totali: number
             }[]
           }
+      invia_comunicazione_richiesta: {
+        Args: { _destinatario: string; _richiesta_id: string; _testo: string }
+        Returns: Json
+      }
       livello_approvatore: { Args: { _user_id: string }; Returns: number }
+      marca_comunicazioni_lette: {
+        Args: { _richiesta_id: string }
+        Returns: undefined
+      }
       processa_richiesta_fido: {
         Args: {
           _esito: string
