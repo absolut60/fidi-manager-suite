@@ -134,7 +134,7 @@ function FidiProcessarePage() {
         : null,
       importo_approvato: Number(r.importo_approvato ?? r.importo_richiesto),
       data_approvazione: formatDate(r.data_chiusura ?? r.updated_at),
-      approvato_da: profiloName(r.created_by),
+      approvato_da: profiloName(r.approvato_da) !== "—" ? profiloName(r.approvato_da) : profiloName(r.created_by),
       note: r.note ?? r.motivazione ?? "",
     }));
     generaExcelFidi(exportRows);
