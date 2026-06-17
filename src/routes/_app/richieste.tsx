@@ -501,7 +501,7 @@ function InApprovazioneTab({
 
         if (kind === "rifiuta") {
           const { error } = await supabase.from("richieste_fido")
-            .update({ stato: "rifiutata" }).eq("id", r.id);
+            .update({ stato: "rifiutata", approvato_da: user.id, data_approvazione: new Date().toISOString() }).eq("id", r.id);
           if (error) throw error;
         } else {
           const nextLiv = livDecisione + 1;
@@ -509,7 +509,7 @@ function InApprovazioneTab({
             // approvazione finale
             const fidoPrec = Number(r.clienti?.fido_aziendale_concesso ?? 0);
             const { error } = await supabase.from("richieste_fido")
-              .update({ stato: "approvata", importo_approvato: imp }).eq("id", r.id);
+              .update({ stato: "approvata", importo_approvato: imp, approvato_da: user.id, data_approvazione: new Date().toISOString() }).eq("id", r.id);
             if (error) throw error;
             // aggiorna fido cliente
             await supabase.from("clienti")
