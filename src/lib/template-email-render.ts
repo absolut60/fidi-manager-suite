@@ -123,18 +123,27 @@ function replaceAll(text: string, values: Record<string, string>): string {
 }
 
 // Replica della logica di `classificaScadenza` ma senza dipendenze esterne,
-// per uso nel worker Inngest.
+// per uso nel worker Inngest. Fonte di verita': stato_contabile +
+// data_pagamento_effettiva + data_scadenza. tempi_scadenza NON e' usato
+// (nel tracciato MADE_VISTASCADENZE indica solo la fascia di anzianita').
 export function isScaduto(s: {
   stato_contabile?: string | null;
+  data_pagamento_effettiva?: string | null;
+  data_scadenza?: string | null;
   giorni_ritardo?: number | null;
   tempi_scadenza?: string | null;
 }): boolean {
-  const t = String(s.tempi_scadenza ?? "").toLowerCase();
-  if (t.includes("pagat")) return false;
-  if (t.includes("a scadere")) return false;
-  if (t.includes("scadut")) return true;
-  if (s.stato_contabile === "Aperta" && Number(s.giorni_ritardo ?? 0) > 0) return true;
-  return false;
+  if (s.data_pagamento_effettiva) return false;
+  if (s.stato_contabile && s.stato_contabile !== "Aperta") return false;
+  if (s.stato_contabile !== "Aperta") return false;
+  if (s.data_scadenza) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const d = new Date(s.data_scadenza);
+    d.setHours(0, 0, 0, 0);
+    return d < today;
+  }
+  return Number(s.giorni_ritardo ?? 0) > 0;
 }
 
 // =============================================================================
