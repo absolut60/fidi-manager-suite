@@ -143,7 +143,7 @@ function RiepilogoSection({ clienteId }: { clienteId: string }) {
     queryFn: async () => {
       const { data: scad, error } = await supabase
         .from("scadenze")
-        .select("importo_scadenza, giorni_ritardo, stato_contabile, tempi_scadenza")
+        .select("importo_scadenza, giorni_ritardo, stato_contabile, tempi_scadenza, data_scadenza, data_pagamento_effettiva")
         .eq("cliente_id", clienteId);
       if (error) throw error;
       const rows = (scad ?? []) as Array<{ importo_scadenza: number | null; giorni_ritardo: number | null; stato_contabile: string | null; tempi_scadenza: string | null }>;
