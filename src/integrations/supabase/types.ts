@@ -2832,6 +2832,37 @@ export type Database = {
           scaduto_cambiato: boolean
         }[]
       }
+      get_dso_aggregato: {
+        Args: {
+          _cliente_id?: string
+          _data_a?: string
+          _data_da?: string
+          _store_id?: string
+        }
+        Returns: {
+          dso_mediano: number
+          dso_medio: number
+          dso_ponderato: number
+          importo_totale: number
+          n_anticipo: number
+          n_puntuali: number
+          n_ritardo: number
+          n_totale: number
+        }[]
+      }
+      get_dso_serie_mensile: {
+        Args: {
+          _cliente_id?: string
+          _mesi_indietro?: number
+          _store_id?: string
+        }
+        Returns: {
+          dso_ponderato: number
+          importo_totale: number
+          mese: string
+          n_scadenze: number
+        }[]
+      }
       get_promemoria_clienti_aggregato: {
         Args: {
           _escludi_bloccati?: boolean
