@@ -44,14 +44,28 @@ export function ComunicazioniRichiestaPanel({ richiestaId, richiestaCreatedBy }:
 
   const { data: messaggi, isLoading } = useQuery({
     queryKey: ["comunicazioni", richiestaId],
+    enabled: !!user?.id && !!richiestaId,
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: comunicazioni, error } = await supabase
         .from("comunicazioni_richiesta")
-        .select("*, autore:profili(nome, cognome, email)")
+        .select("id, richiesta_id, autore_id, destinatario, testo, created_at, letto_da")
         .eq("richiesta_id", richiestaId)
         .order("created_at", { ascending: true });
+      console.log("[ComunicazioniRichiestaPanel] richiestaId", richiestaId, "righe", comunicazioni?.length ?? 0, "errore", error);
       if (error) throw error;
-      return data ?? [];
+
+      const rows = comunicazioni ?? [];
+      const autoreIds = Array.from(new Set(rows.map((m) => m.autore_id).filter(Boolean)));
+      if (autoreIds.length === 0) return rows.map((m) => ({ ...m, autore: null }));
+
+      const { data: profili, error: profiliError } = await supabase
+        .from("profili")
+        .select("id, nome, cognome, email")
+        .in("id", autoreIds);
+      console.log("[ComunicazioniRichiestaPanel] profili", profili?.length ?? 0, "errore", profiliError);
+
+      const profiliById = new Map((profili ?? []).map((p: any) => [p.id, p]));
+      return rows.map((m) => ({ ...m, autore: profiliById.get(m.autore_id) ?? null }));
     },
   });
 
