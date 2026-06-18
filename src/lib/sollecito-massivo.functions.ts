@@ -59,22 +59,21 @@ export const avviaCampagnaSollecito = createServerFn({ method: "POST" })
       const slice = clienteIds.slice(i, i + CHUNK);
       const { data: sc } = await supabase
         .from("scadenze")
-        .select("cliente_id, importo_scadenza, data_scadenza, stato_contabile, giorni_ritardo, tempi_scadenza, in_legale")
+        .select("cliente_id, importo_scadenza, data_scadenza, stato_contabile, data_pagamento_effettiva, giorni_ritardo, in_legale")
         .in("cliente_id", slice);
       (sc ?? []).forEach((s) => {
         if (!s.cliente_id) return;
-        const t = String(s.tempi_scadenza ?? "").toLowerCase();
+        // Regola: fonte di verita' = stato_contabile + data_pagamento_effettiva + data_scadenza.
+        if (s.data_pagamento_effettiva) return;
+        if (s.stato_contabile !== "Aperta") return;
         if (isPromemoria) {
-          if (!t.includes("scader")) return;
           if (s.in_legale) return;
           if (!s.data_scadenza || String(s.data_scadenza) < oggi) return;
           const k = String(s.data_scadenza).slice(0, 7);
           if (mesiSet.size > 0 && !mesiSet.has(k)) return;
         } else {
-          const pagato = t.includes("pagat");
-          const aScadere = t.includes("a scadere");
-          const scaduto = t.includes("scadut") || (s.stato_contabile === "Aperta" && Number(s.giorni_ritardo ?? 0) > 0);
-          if (pagato || aScadere || !scaduto) return;
+          // Scaduto: Aperta + non pagata + data_scadenza nel passato
+          if (!s.data_scadenza || String(s.data_scadenza) >= oggi) return;
         }
         importi[s.cliente_id] = (importi[s.cliente_id] ?? 0) + Number(s.importo_scadenza ?? 0);
       });

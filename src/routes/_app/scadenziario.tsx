@@ -45,6 +45,7 @@ type ScadRow = {
   data_scadenza: string | null;
   stato_contabile: string | null;
   tempi_scadenza: string | null;
+  data_pagamento_effettiva: string | null;
   codice_pagamento: string | null;
 };
 type Cliente = {
@@ -168,21 +169,21 @@ function ScadenziarioPage() {
   });
 
   const { data: scad, isLoading } = useQuery({
-    queryKey: ["scadenze-globali-v4-aperte-o-tempi"],
+    queryKey: ["scadenze-globali-v5-aperte"],
     queryFn: async () => {
       const all: ScadRow[] = [];
       const pageSize = 1000;
       let from = 0;
       while (true) {
-        // Includiamo:
-        // - tutte le righe Aperta (qualunque tempi_scadenza)
-        // - le righe Chiuse con tempi_scadenza che indica "a scadere" o "scaduto"
-        //   (escluse quelle "pagat*"): il gestionale a volte importa righe
-        //   ancora aperte come "Chiusa" ma con tempi_scadenza valorizzato.
+        // Regola unica: una scadenza e' "attiva" (scaduta o a scadere) se
+        // ha stato_contabile='Aperta' e nessuna data di pagamento effettiva.
+        // tempi_scadenza nel nuovo tracciato e' solo fascia di anzianita',
+        // non e' affidabile per decidere lo stato.
         const { data, error } = await supabase
           .from("scadenze")
-          .select("id, cliente_id, importo_scadenza, giorni_ritardo, data_scadenza, stato_contabile, tempi_scadenza, codice_pagamento")
-          .or("stato_contabile.eq.Aperta,and(stato_contabile.neq.Aperta,tempi_scadenza.ilike.%scader%),and(stato_contabile.neq.Aperta,tempi_scadenza.ilike.%scadut%)")
+          .select("id, cliente_id, importo_scadenza, giorni_ritardo, data_scadenza, stato_contabile, tempi_scadenza, data_pagamento_effettiva, codice_pagamento")
+          .eq("stato_contabile", "Aperta")
+          .is("data_pagamento_effettiva", null)
           .order("cliente_id", { ascending: true })
           .range(from, from + pageSize - 1);
         if (error) throw error;

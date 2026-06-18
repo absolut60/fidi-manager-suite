@@ -127,7 +127,7 @@ export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string })
     queryFn: async () => {
       const { data, error } = await supabase
         .from("scadenze")
-        .select("importo_scadenza, giorni_ritardo, stato_contabile, tempi_scadenza")
+        .select("importo_scadenza, giorni_ritardo, stato_contabile, tempi_scadenza, data_scadenza, data_pagamento_effettiva")
         .eq("cliente_id", clienteId);
       if (error) throw error;
       return (data ?? [])

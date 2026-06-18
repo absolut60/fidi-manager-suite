@@ -193,7 +193,7 @@ export function InvioMassivoDialog({
       if (e1) throw e1;
       const { data: rawScad, error: e2 } = await supabase
         .from("scadenze")
-        .select("numero_documento, data_documento, data_scadenza, importo_scadenza, stato_contabile, giorni_ritardo, tempi_scadenza, in_legale")
+        .select("numero_documento, data_documento, data_scadenza, importo_scadenza, stato_contabile, data_pagamento_effettiva, giorni_ritardo, tempi_scadenza, in_legale")
         .eq("cliente_id", id)
         .order("data_scadenza", { ascending: true });
       if (e2) throw e2;
@@ -201,8 +201,9 @@ export function InvioMassivoDialog({
       const mesiSet = new Set(mesi);
       const rilevanti = (rawScad ?? []).filter((s) => {
         if (tipoCampagna === "promemoria_scadenza") {
-          const t = String(s.tempi_scadenza ?? "").toLowerCase();
-          if (!t.includes("scader")) return false;
+          // A scadere: Aperta + non pagata + scadenza futura nei mesi richiesti
+          if (s.stato_contabile !== "Aperta") return false;
+          if ((s as { data_pagamento_effettiva?: string | null }).data_pagamento_effettiva) return false;
           if ((s as { in_legale?: boolean | null }).in_legale) return false;
           if (!s.data_scadenza || String(s.data_scadenza) < oggiStr) return false;
           if (mesiSet.size > 0) {

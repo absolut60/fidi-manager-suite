@@ -734,10 +734,10 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
     queryFn: async () => {
       const { data: scad, error } = await supabase
         .from("scadenze")
-        .select("importo_scadenza, giorni_ritardo, stato_contabile, tempi_scadenza")
+        .select("importo_scadenza, giorni_ritardo, stato_contabile, tempi_scadenza, data_scadenza, data_pagamento_effettiva")
         .eq("cliente_id", clienteId);
       if (error) throw error;
-      const rows = (scad ?? []) as Array<{ importo_scadenza: number | null; giorni_ritardo: number | null; stato_contabile: string | null; tempi_scadenza: string | null }>;
+      const rows = (scad ?? []) as Array<{ importo_scadenza: number | null; giorni_ritardo: number | null; stato_contabile: string | null; tempi_scadenza: string | null; data_scadenza: string | null; data_pagamento_effettiva: string | null }>;
       const scadute = rows.filter((s) => classificaScadenza(s) === "scaduto");
       const aScadere = rows.filter((s) => classificaScadenza(s) === "a_scadere");
       const sum = (arr: typeof rows) => arr.reduce((a, r) => a + Number(r.importo_scadenza ?? 0), 0);

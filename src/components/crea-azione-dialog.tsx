@@ -108,7 +108,7 @@ export function CreaAzioneDialog({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("scadenze")
-        .select("id, numero_documento, data_scadenza, importo_scadenza, giorni_ritardo, stato_contabile, tempi_scadenza")
+        .select("id, numero_documento, data_scadenza, importo_scadenza, giorni_ritardo, stato_contabile, tempi_scadenza, data_pagamento_effettiva")
         .eq("cliente_id", effectiveClienteId!)
         .order("data_scadenza", { ascending: true });
       if (error) throw error;
