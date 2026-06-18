@@ -45,6 +45,7 @@ type ScadRow = {
   data_scadenza: string | null;
   stato_contabile: string | null;
   tempi_scadenza: string | null;
+  data_pagamento_effettiva: string | null;
   codice_pagamento: string | null;
 };
 type Cliente = {
