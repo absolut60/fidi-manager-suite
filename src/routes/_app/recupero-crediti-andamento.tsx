@@ -274,3 +274,120 @@ function Riga({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+
+type DsoData = {
+  dso_ponderato: number | null;
+  dso_medio: number | null;
+  dso_mediano: number | null;
+  n_anticipo: number;
+  n_puntuali: number;
+  n_ritardo: number;
+  n_totale: number;
+  importo_totale: number;
+} | null;
+
+function fmtDso(n: number | null | undefined) {
+  if (n == null) return "—";
+  const v = Number(n);
+  return `${v.toLocaleString("it-IT", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} gg`;
+}
+
+function pct(n: number, tot: number) {
+  if (!tot) return "0%";
+  return `${((n / tot) * 100).toFixed(1)}%`;
+}
+
+function DsoSection({
+  dso,
+  loading,
+  serie,
+}: {
+  dso: DsoData;
+  loading: boolean;
+  serie: Array<{ mese: string; dso: number | null; n: number }>;
+}) {
+  if (loading) return <Skeleton className="h-40" />;
+  if (!dso || !dso.n_totale) {
+    return (
+      <Card className="p-6 text-sm text-muted-foreground">
+        DSO non disponibile: importa lo scadenziario con la colonna "Data Pagamento Effettiva" per vedere i tempi reali di incasso.
+      </Card>
+    );
+  }
+  const tot = Number(dso.n_totale);
+  return (
+    <Card className="p-5">
+      <div className="flex items-center gap-2 mb-4">
+        <Timer className="size-5 text-primary" />
+        <h2 className="font-semibold">Tempi reali di incasso (DSO)</h2>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Info className="size-4 text-muted-foreground cursor-help" />
+          </TooltipTrigger>
+          <TooltipContent className="max-w-xs">
+            Differenza media in giorni tra data scadenza e data di incasso effettivo. Calcolato solo sulle
+            scadenze realmente pagate ({tot.toLocaleString("it-IT")} fatture).
+            Il <strong>ponderato per importo</strong> e la misura principale: pesa le fatture grandi.
+          </TooltipContent>
+        </Tooltip>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+        <div className="md:col-span-1">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">DSO ponderato</p>
+          <p className="text-4xl font-bold mt-1">{fmtDso(dso.dso_ponderato)}</p>
+          <p className="text-xs text-muted-foreground mt-1">pesato per importo fattura</p>
+        </div>
+        <div className="grid grid-cols-2 gap-3 md:col-span-2">
+          <div className="rounded-lg border p-3">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Medio</p>
+            <p className="text-xl font-semibold mt-1">{fmtDso(dso.dso_medio)}</p>
+          </div>
+          <div className="rounded-lg border p-3">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Mediano</p>
+            <p className="text-xl font-semibold mt-1">{fmtDso(dso.dso_mediano)}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-3 mb-5">
+        <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/30 p-3">
+          <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">In anticipo (&lt; 0 gg)</p>
+          <p className="text-lg font-bold mt-1">{pct(Number(dso.n_anticipo), tot)}</p>
+          <p className="text-xs text-muted-foreground">{Number(dso.n_anticipo).toLocaleString("it-IT")} fatture</p>
+        </div>
+        <div className="rounded-lg bg-blue-50 dark:bg-blue-950/30 p-3">
+          <p className="text-xs font-medium text-blue-700 dark:text-blue-400">Puntuali (= 0 gg)</p>
+          <p className="text-lg font-bold mt-1">{pct(Number(dso.n_puntuali), tot)}</p>
+          <p className="text-xs text-muted-foreground">{Number(dso.n_puntuali).toLocaleString("it-IT")} fatture</p>
+        </div>
+        <div className="rounded-lg bg-amber-50 dark:bg-amber-950/30 p-3">
+          <p className="text-xs font-medium text-amber-700 dark:text-amber-400">In ritardo (&gt; 0 gg)</p>
+          <p className="text-lg font-bold mt-1">{pct(Number(dso.n_ritardo), tot)}</p>
+          <p className="text-xs text-muted-foreground">{Number(dso.n_ritardo).toLocaleString("it-IT")} fatture</p>
+        </div>
+      </div>
+
+      {serie.length > 0 && (
+        <div>
+          <h3 className="text-sm font-medium mb-2">Andamento DSO ponderato per mese di scadenza</h3>
+          <div className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={serie} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis dataKey="mese" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} unit="gg" />
+                <RTooltip
+                  formatter={(v: number | string) =>
+                    v == null ? "—" : `${Number(v).toLocaleString("it-IT", { maximumFractionDigits: 1 })} gg`
+                  }
+                />
+                <Line type="monotone" dataKey="dso" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} connectNulls />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
