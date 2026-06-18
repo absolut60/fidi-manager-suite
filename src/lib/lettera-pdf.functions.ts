@@ -134,7 +134,7 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
 
     const { data: rawScad, error: eSc } = await supabase
       .from("scadenze")
-      .select("numero_documento, data_documento, data_scadenza, importo_scadenza, stato_contabile, giorni_ritardo, tempi_scadenza")
+      .select("numero_documento, data_documento, data_scadenza, importo_scadenza, stato_contabile, giorni_ritardo, tempi_scadenza, data_pagamento_effettiva")
       .eq("cliente_id", data.clienteId)
       .order("data_scadenza", { ascending: true });
     if (eSc) throw eSc;

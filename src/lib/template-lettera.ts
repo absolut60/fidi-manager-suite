@@ -154,7 +154,7 @@ export async function caricaDatiClienteLettera(
   const { data: rawScad, error: e2 } = await supabase
     .from("scadenze")
     .select(
-      "numero_documento, data_documento, data_scadenza, importo_scadenza, stato_contabile, giorni_ritardo, tempi_scadenza",
+      "numero_documento, data_documento, data_scadenza, importo_scadenza, stato_contabile, giorni_ritardo, tempi_scadenza, data_pagamento_effettiva",
     )
     .eq("cliente_id", clienteId)
     .order("data_scadenza", { ascending: true });

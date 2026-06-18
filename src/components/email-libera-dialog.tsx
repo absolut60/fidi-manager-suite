@@ -112,7 +112,7 @@ export function EmailLiberaDialog({ open, onOpenChange, clienteId, onSent }: Pro
     queryFn: async () => {
       const { data, error } = await supabase
         .from("scadenze")
-        .select("id, stato_contabile, giorni_ritardo, tempi_scadenza")
+        .select("id, stato_contabile, giorni_ritardo, tempi_scadenza, data_scadenza, data_pagamento_effettiva")
         .eq("cliente_id", clienteId);
       if (error) throw error;
       return (data ?? [])
