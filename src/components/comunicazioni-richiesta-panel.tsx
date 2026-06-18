@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { MessageCircle, Send } from "lucide-react";
+import { MessageCircle, Send, Pencil, Trash2, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -37,10 +37,14 @@ function formatTs(iso: string): string {
 }
 
 export function ComunicazioniRichiestaPanel({ richiestaId, richiestaCreatedBy }: Props) {
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
   const qc = useQueryClient();
   const [destinatario, setDestinatario] = useState<DestinatarioComunicazione>("approvatore");
   const [testo, setTesto] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editText, setEditText] = useState("");
+
+  const canModerate = roles.includes("amministratore") || roles.includes("amministrazione");
 
   const { data: messaggi, isLoading } = useQuery({
     queryKey: ["comunicazioni", richiestaId],
@@ -92,6 +96,40 @@ export function ComunicazioniRichiestaPanel({ richiestaId, richiestaCreatedBy }:
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, testo }: { id: string; testo: string }) => {
+      const { error } = await supabase
+        .from("comunicazioni_richiesta")
+        .update({ testo })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setEditingId(null);
+      setEditText("");
+      qc.invalidateQueries({ queryKey: ["comunicazioni", richiestaId] });
+      toast.success("Messaggio aggiornato");
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Errore modifica"),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("comunicazioni_richiesta")
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["comunicazioni", richiestaId] });
+      qc.invalidateQueries({ queryKey: ["msg-non-letti-richieste"] });
+      qc.invalidateQueries({ queryKey: ["comunicazioni-non-lette"] });
+      toast.success("Messaggio eliminato");
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Errore eliminazione"),
+  });
+
   return (
     <Card className="p-5">
       <div className="flex items-center gap-2 mb-4">
@@ -132,8 +170,66 @@ export function ComunicazioniRichiestaPanel({ richiestaId, richiestaCreatedBy }:
                       → a {DESTINATARIO_LABEL[m.destinatario as DestinatarioComunicazione] ?? m.destinatario}
                     </span>
                     <span className="text-xs text-muted-foreground ml-auto">{formatTs(m.created_at)}</span>
+                    {(isMine || (canModerate)) && editingId !== m.id && (
+                      <div className="flex items-center gap-0.5">
+                        {isMine && (
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="size-6"
+                            onClick={() => { setEditingId(m.id); setEditText(m.testo); }}
+                            title="Modifica"
+                          >
+                            <Pencil className="size-3.5" />
+                          </Button>
+                        )}
+                        {(isMine || canModerate) && (
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="size-6 text-destructive hover:text-destructive"
+                            onClick={() => {
+                              if (confirm("Eliminare questo messaggio?")) deleteMutation.mutate(m.id);
+                            }}
+                            title="Elimina"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <p className="text-sm whitespace-pre-wrap">{m.testo}</p>
+                  {editingId === m.id ? (
+                    <div className="space-y-2">
+                      <Textarea
+                        value={editText}
+                        onChange={(e) => setEditText(e.target.value)}
+                        rows={3}
+                      />
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => { setEditingId(null); setEditText(""); }}
+                        >
+                          <X className="size-4 mr-1" /> Annulla
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={!editText.trim() || updateMutation.isPending}
+                          onClick={() => updateMutation.mutate({ id: m.id, testo: editText.trim() })}
+                        >
+                          <Check className="size-4 mr-1" /> Salva
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm whitespace-pre-wrap">{m.testo}</p>
+                  )}
                 </div>
               </div>
             );
