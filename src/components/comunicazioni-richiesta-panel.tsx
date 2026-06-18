@@ -96,6 +96,40 @@ export function ComunicazioniRichiestaPanel({ richiestaId, richiestaCreatedBy }:
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, testo }: { id: string; testo: string }) => {
+      const { error } = await supabase
+        .from("comunicazioni_richiesta")
+        .update({ testo })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setEditingId(null);
+      setEditText("");
+      qc.invalidateQueries({ queryKey: ["comunicazioni", richiestaId] });
+      toast.success("Messaggio aggiornato");
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Errore modifica"),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("comunicazioni_richiesta")
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["comunicazioni", richiestaId] });
+      qc.invalidateQueries({ queryKey: ["msg-non-letti-richieste"] });
+      qc.invalidateQueries({ queryKey: ["comunicazioni-non-lette"] });
+      toast.success("Messaggio eliminato");
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Errore eliminazione"),
+  });
+
   return (
     <Card className="p-5">
       <div className="flex items-center gap-2 mb-4">
