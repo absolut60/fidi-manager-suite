@@ -139,6 +139,8 @@ function AndamentoPage() {
           )}
         </div>
 
+        <DsoSection dso={dso} loading={loadingDso} serie={dsoSerie ?? []} />
+
         {isLoading ? (
           <Skeleton className="h-40" />
         ) : !ultimo ? (
