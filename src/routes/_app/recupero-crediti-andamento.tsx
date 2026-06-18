@@ -65,7 +65,7 @@ function AndamentoPage() {
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_dso_serie_mensile", {} as never);
       if (error) throw error;
-      return (data ?? []).map((r: { mese: string; dso_ponderato: number | null; n_scadenze: number }) => ({
+      return ((data ?? []) as Array<{ mese: string; dso_ponderato: number | null; n_scadenze: number }>).map((r) => ({
         mese: format(new Date(r.mese), "MMM yy", { locale: it }),
         dso: r.dso_ponderato == null ? null : Number(r.dso_ponderato),
         n: r.n_scadenze,
