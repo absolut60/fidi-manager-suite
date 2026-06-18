@@ -354,8 +354,8 @@ export const SCAD_HEADERS: Record<string, string> = {
   "numero documento origine": "numero_documento",
   "numero documento": "numero_documento",
   "num doc": "numero_documento",
-  "sezionale documento": "sezionale",
-  sezionale: "sezionale",
+  // sezionale rimosso: ora dentro "Numero Documento Origine"
+
   "data documento": "data_documento",
   "data doc": "data_documento",
   "data scadenza": "data_scadenza",
@@ -395,14 +395,20 @@ export type ScadRow = {
  * -------------------------------------------------------------------------- */
 
 const SCAD_OFFICIAL_MAP: Record<string, string> = {
+  // Match cliente
   "cod cli": "codice_gestionale",
   cod_cli: "codice_gestionale",
   codcli: "codice_gestionale",
+  // (Ragione Sociale: assente nel tracciato MADE_VISTASCADENZE, ma supportato per retrocompat)
   "ragione sociale": "__ragsoc",
+  // Nuovo tracciato MADE_VISTASCADENZE
+  keydocumento: "key_documento",
+  keytipoeffetto: "key_tipo_effetto",
+  "data pagamento effettiva": "data_pagamento_effettiva",
+  // Campi documento
   "codice pagamento scad": "codice_pagamento",
   "descrizione pagamento": "descrizione_pagamento",
   "numero documento origine": "numero_documento",
-  "sezionale documento": "sezionale",
   "data documento": "data_documento",
   "anno partita": "anno_partita",
   "tipologia scadenza": "tipologia_scadenza",
@@ -420,6 +426,7 @@ const SCAD_OFFICIAL_MAP: Record<string, string> = {
   // Chiave sintetica (vedi normalizeOfficialHeader) per la colonna "_Tempi Scadenza"
   "__tempi scadenza": "tempi_scadenza_key",
 };
+
 
 // Normalizza l'header del foglio SCADENZIARIO ufficiale.
 // Le colonne "Tempi Scadenza" e "_Tempi Scadenza" collidono dopo normalize()
@@ -457,8 +464,19 @@ export function parseScadenziarioOfficialSheet(sheet: XLSX.WorkSheet): {
     "importo_netto_prev",
     "importo_ritardo",
   ]);
-  const intFields = new Set(["giorni_ritardo", "dilazione_effettiva", "anno_partita"]);
-  const dateFields = new Set(["data_documento", "data_scadenza", "data_pagamento"]);
+  const intFields = new Set([
+    "giorni_ritardo",
+    "dilazione_effettiva",
+    "anno_partita",
+    "key_tipo_effetto",
+  ]);
+  const dateFields = new Set([
+    "data_documento",
+    "data_scadenza",
+    "data_pagamento",
+    "data_pagamento_effettiva",
+  ]);
+
   const rows: ScadRow[] = [];
   const missing: number[] = [];
   let totRead = 0;
@@ -681,31 +699,60 @@ const SCAD_OFFICIAL_NUM = new Set([
   "importo_netto_prev",
   "importo_ritardo",
 ]);
-const SCAD_OFFICIAL_INT = new Set(["giorni_ritardo", "dilazione_effettiva", "anno_partita"]);
-const SCAD_OFFICIAL_DATE = new Set(["data_documento", "data_scadenza", "data_pagamento"]);
+const SCAD_OFFICIAL_INT = new Set([
+  "giorni_ritardo",
+  "dilazione_effettiva",
+  "anno_partita",
+  "key_tipo_effetto",
+]);
+const SCAD_OFFICIAL_DATE = new Set([
+  "data_documento",
+  "data_scadenza",
+  "data_pagamento",
+  "data_pagamento_effettiva",
+]);
+
 
 export function scanScadenziarioMeta(sheet: XLSX.WorkSheet): {
   headers: string[];
-  firstDataRow: number; // 0-indexed (row 2 = third row)
+  firstDataRow: number; // 0-indexed (riga successiva all'header)
   lastRow: number; // 0-indexed last row with content
   totRowsApprox: number;
 } {
   const ref = sheet["!ref"];
-  if (!ref) return { headers: [], firstDataRow: 2, lastRow: 1, totRowsApprox: 0 };
+  if (!ref) return { headers: [], firstDataRow: 1, lastRow: 0, totRowsApprox: 0 };
   const range = XLSX.utils.decode_range(ref);
-  const headers: string[] = new Array(range.e.c + 1).fill("");
-  for (let c = 0; c <= range.e.c; c++) {
-    const addr = XLSX.utils.encode_cell({ r: 1, c });
-    const cell = sheet[addr] as XLSX.CellObject | undefined;
-    headers[c] = normalizeOfficialHeader(cell?.v);
+  // Scan dinamico delle prime 15 righe per trovare quella che contiene COD_CLI.
+  // Il tracciato nuovo (MADE_VISTASCADENZE) ha l'header in riga 1 (r=0);
+  // il vecchio (Copia_di_FORMAT_SCADENZIARIO_NEW) in riga 2 (r=1).
+  const HEADER_SCAN_LIMIT = Math.min(15, range.e.r + 1);
+  let headerRowIdx = -1;
+  let headers: string[] = new Array(range.e.c + 1).fill("");
+  for (let r = 0; r < HEADER_SCAN_LIMIT; r++) {
+    const candidate: string[] = new Array(range.e.c + 1).fill("");
+    for (let c = 0; c <= range.e.c; c++) {
+      const addr = XLSX.utils.encode_cell({ r, c });
+      const cell = sheet[addr] as XLSX.CellObject | undefined;
+      candidate[c] = normalizeOfficialHeader(cell?.v);
+    }
+    if (candidate.some((h) => SCAD_OFFICIAL_MAP[h] === "codice_gestionale")) {
+      headerRowIdx = r;
+      headers = candidate;
+      break;
+    }
   }
+  if (headerRowIdx < 0) {
+    return { headers: [], firstDataRow: 1, lastRow: range.e.r, totRowsApprox: 0 };
+  }
+  const firstDataRow = headerRowIdx + 1;
   return {
     headers,
-    firstDataRow: 2,
+    firstDataRow,
     lastRow: range.e.r,
-    totRowsApprox: Math.max(0, range.e.r - 1),
+    totRowsApprox: Math.max(0, range.e.r - headerRowIdx),
   };
 }
+
 
 export function parseScadenziarioRangeLean(
   sheet: XLSX.WorkSheet,
@@ -721,7 +768,7 @@ export function parseScadenziarioRangeLean(
   const ref = sheet["!ref"];
   if (!ref) return { rows: [], missing: [], totRead: 0, rowErrors: [] };
   const range = XLSX.utils.decode_range(ref);
-  const startR = Math.max(2, startRow0);
+  const startR = Math.max(0, startRow0);
   const endR = Math.min(range.e.r, endRow0Inclusive);
   const rows: ScadRow[] = [];
   const missing: number[] = [];

@@ -1163,8 +1163,8 @@ const SCAD_HEADERS: Record<string, string> = {
   "numero documento origine": "numero_documento",
   "numero documento": "numero_documento",
   "num doc": "numero_documento",
-  "sezionale documento": "sezionale",
-  sezionale: "sezionale",
+  // sezionale rimosso: ora dentro "Numero Documento Origine"
+
   "data documento": "data_documento",
   "data doc": "data_documento",
   "data scadenza": "data_scadenza",
@@ -1203,10 +1203,13 @@ const SCAD_OFFICIAL_MAP: Record<string, string> = {
   cod_cli: "codice_gestionale",
   codcli: "codice_gestionale",
   "ragione sociale": "__ragsoc",
+  // Nuovo tracciato MADE_VISTASCADENZE
+  keydocumento: "key_documento",
+  keytipoeffetto: "key_tipo_effetto",
+  "data pagamento effettiva": "data_pagamento_effettiva",
   "codice pagamento scad": "codice_pagamento",
   "descrizione pagamento": "descrizione_pagamento",
   "numero documento origine": "numero_documento",
-  "sezionale documento": "sezionale",
   "data documento": "data_documento",
   "anno partita": "anno_partita",
   "tipologia scadenza": "tipologia_scadenza",
@@ -1221,9 +1224,9 @@ const SCAD_OFFICIAL_MAP: Record<string, string> = {
   "importo originario effetto": "importo_originario",
   "importo scadenza netto prev": "importo_netto_prev",
   "tempi scadenza": "tempi_scadenza",
-  // Chiave sintetica per "_Tempi Scadenza" (vedi normalizeOfficialHeader)
   "__tempi scadenza": "tempi_scadenza_key",
 };
+
 
 // Distingue "Tempi Scadenza" da "_Tempi Scadenza" (entrambi collassano dopo normalize()).
 function normalizeOfficialHeader(raw: unknown): string {
@@ -1298,8 +1301,19 @@ function parseOfficialScadenziarioSheet(sheet: XLSX.WorkSheet): {
     "importo_netto_prev",
     "importo_ritardo",
   ]);
-  const intFields = new Set(["giorni_ritardo", "dilazione_effettiva", "anno_partita"]);
-  const dateFields = new Set(["data_documento", "data_scadenza", "data_pagamento"]);
+  const intFields = new Set([
+    "giorni_ritardo",
+    "dilazione_effettiva",
+    "anno_partita",
+    "key_tipo_effetto",
+  ]);
+  const dateFields = new Set([
+    "data_documento",
+    "data_scadenza",
+    "data_pagamento",
+    "data_pagamento_effettiva",
+  ]);
+
   const rows: ScadRow[] = [];
   const missing: number[] = [];
   let totRead = 0;
@@ -1724,14 +1738,20 @@ function ScadenziarioImportCard() {
         <h2 className="font-semibold flex items-center gap-2">
           <CalendarClock className="size-4" /> C · Importa Scadenziario
         </h2>
-        <Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={downloadTemplate}>
-          <FileDown className="size-3.5" /> Template
-        </Button>
+        <div className="flex items-center gap-1">
+          <ResetScadenzeButton />
+          <Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={downloadTemplate}>
+            <FileDown className="size-3.5" /> Template
+          </Button>
+        </div>
       </div>
       <p className="text-xs text-muted-foreground mb-4">
-        Carica il file Excel: viene letto solo il foglio <code>SCADENZIARIO</code> (intestazioni in
-        riga 2, dati da riga 3). Match cliente su <code>COD_CLI</code>. Chiave univoca: COD_CLI +
-        Numero Documento + Sezionale.
+        Carica il file Excel (tracciato MADE_VISTASCADENZE): viene letto solo il foglio{" "}
+        <code>SCADENZIARIO</code>. La riga delle intestazioni è individuata automaticamente
+        (compatibile con header in riga 1 o riga 2). Match cliente su <code>COD_CLI</code>. Chiave
+        univoca: COD_CLI + <code>_KEYDOCUMENTO</code> + Data Scadenza + <code>_KEYTIPOEFFETTO</code>{" "}
+        + Importo Scadenza. <code>Data Pagamento Effettiva</code> viene salvata in
+        <code> data_pagamento_effettiva</code>.
       </p>
       {showProgress ? (
         <ScadenziarioProgressBlock
@@ -1795,6 +1815,91 @@ function ScadenziarioImportCard() {
     </Card>
   );
 }
+
+function ResetScadenzeButton() {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [conferma, setConferma] = useState("");
+  const PHRASE = "AZZERA SCADENZE";
+
+  const mut = useMutation({
+    mutationFn: async () => {
+      const { resetScadenze } = await import("@/lib/scadenze-reset.functions");
+      return resetScadenze({ data: { conferma } });
+    },
+    onSuccess: (res) => {
+      toast.success(
+        `Reset completato: ${res.reset.scadenze_eliminate.toLocaleString("it-IT")} scadenze, ${res.reset.reminder_eliminati} reminder, ${res.reset.azioni_scadenze_scollegate} link azioni rimossi.`,
+      );
+      setOpen(false);
+      setConferma("");
+      qc.invalidateQueries({ queryKey: ["scadenze"] });
+      qc.invalidateQueries({ queryKey: ["clienti"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="gap-1.5 text-xs text-destructive hover:text-destructive"
+        onClick={() => setOpen(true)}
+      >
+        <AlertCircle className="size-3.5" /> Reset scadenze
+      </Button>
+      {open ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <Card className="w-full max-w-md p-5 space-y-3">
+            <h3 className="font-semibold flex items-center gap-2 text-destructive">
+              <AlertCircle className="size-4" /> Reset distruttivo scadenze
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Elimina TUTTE le righe della tabella scadenze e i reminder collegati. Le azioni di
+              recupero restano ma si scollegano dalle scadenze. Gli stadi di sollecito vengono
+              azzerati. Operazione irreversibile.
+            </p>
+            <p className="text-sm">
+              Per confermare scrivi: <code className="font-mono text-destructive">{PHRASE}</code>
+            </p>
+            <input
+              type="text"
+              value={conferma}
+              onChange={(e) => setConferma(e.target.value)}
+              placeholder={PHRASE}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
+            />
+            <div className="flex justify-end gap-2 pt-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setOpen(false);
+                  setConferma("");
+                }}
+                disabled={mut.isPending}
+              >
+                Annulla
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={conferma !== PHRASE || mut.isPending}
+                onClick={() => mut.mutate()}
+                className="gap-1.5"
+              >
+                {mut.isPending && <Loader2 className="size-3.5 animate-spin" />}
+                Azzera scadenze
+              </Button>
+            </div>
+          </Card>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
 
 /* ============================================================================
  * D — SCADENZIARIO + ASSICURAZIONI (file unico, due fogli)
