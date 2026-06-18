@@ -1852,6 +1852,7 @@ export type Database = {
           created_at: string
           data_documento: string | null
           data_pagamento: string | null
+          data_pagamento_effettiva: string | null
           data_scadenza: string | null
           descrizione_pagamento: string | null
           dilazione_effettiva: number | null
@@ -1866,9 +1867,10 @@ export type Database = {
           importo_ritardo: number | null
           importo_scadenza: number | null
           in_legale: boolean | null
+          key_documento: string | null
+          key_tipo_effetto: number | null
           numero_documento: string | null
           sede: number | null
-          sezionale: string | null
           sollecitato: boolean | null
           stato_contabile: string | null
           tempi_scadenza: string | null
@@ -1886,6 +1888,7 @@ export type Database = {
           created_at?: string
           data_documento?: string | null
           data_pagamento?: string | null
+          data_pagamento_effettiva?: string | null
           data_scadenza?: string | null
           descrizione_pagamento?: string | null
           dilazione_effettiva?: number | null
@@ -1900,9 +1903,10 @@ export type Database = {
           importo_ritardo?: number | null
           importo_scadenza?: number | null
           in_legale?: boolean | null
+          key_documento?: string | null
+          key_tipo_effetto?: number | null
           numero_documento?: string | null
           sede?: number | null
-          sezionale?: string | null
           sollecitato?: boolean | null
           stato_contabile?: string | null
           tempi_scadenza?: string | null
@@ -1920,6 +1924,7 @@ export type Database = {
           created_at?: string
           data_documento?: string | null
           data_pagamento?: string | null
+          data_pagamento_effettiva?: string | null
           data_scadenza?: string | null
           descrizione_pagamento?: string | null
           dilazione_effettiva?: number | null
@@ -1934,9 +1939,10 @@ export type Database = {
           importo_ritardo?: number | null
           importo_scadenza?: number | null
           in_legale?: boolean | null
+          key_documento?: string | null
+          key_tipo_effetto?: number | null
           numero_documento?: string | null
           sede?: number | null
-          sezionale?: string | null
           sollecitato?: boolean | null
           stato_contabile?: string | null
           tempi_scadenza?: string | null

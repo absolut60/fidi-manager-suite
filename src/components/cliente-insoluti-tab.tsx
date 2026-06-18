@@ -287,9 +287,9 @@ function FasciaBar({ label, value, pct, color }: { label: string; value: number;
 type ScadenzaRow = {
   id: string;
   numero_documento: string | null;
-  sezionale: string | null;
   data_documento: string | null;
   data_scadenza: string | null;
+  data_pagamento_effettiva: string | null;
   descrizione_pagamento: string | null;
   importo_scadenza: number | null;
   giorni_ritardo: number | null;
@@ -303,13 +303,14 @@ function ScadenziarioSection({ clienteId }: { clienteId: string; canEdit?: boole
     queryFn: async () => {
       const { data, error } = await supabase
         .from("scadenze")
-        .select("id, numero_documento, sezionale, data_documento, data_scadenza, descrizione_pagamento, importo_scadenza, giorni_ritardo, stato_contabile, tempi_scadenza")
+        .select("id, numero_documento, data_documento, data_scadenza, data_pagamento_effettiva, descrizione_pagamento, importo_scadenza, giorni_ritardo, stato_contabile, tempi_scadenza")
         .eq("cliente_id", clienteId)
         .order("data_scadenza", { ascending: true });
       if (error) throw error;
       return (data ?? []) as ScadenzaRow[];
     },
   });
+
 
   if (isLoading) return <Skeleton className="h-40" />;
   const rows = scadenze ?? [];
@@ -350,7 +351,6 @@ function ScadutoBlock({ rows }: { rows: ScadenzaRow[] }) {
               <TableHeader>
                 <TableRow>
                   <TableHead>N. Documento</TableHead>
-                  <TableHead>Sezionale</TableHead>
                   <TableHead>Data Doc.</TableHead>
                   <TableHead>Data Scadenza</TableHead>
                   <TableHead>Cond. Pagamento</TableHead>
@@ -358,6 +358,7 @@ function ScadutoBlock({ rows }: { rows: ScadenzaRow[] }) {
                   <TableHead className="text-right">Gg Ritardo</TableHead>
                 </TableRow>
               </TableHeader>
+
               <TableBody>
                 {rows.map((s) => {
                   const gg = Number(s.giorni_ritardo ?? 0);
@@ -365,8 +366,8 @@ function ScadutoBlock({ rows }: { rows: ScadenzaRow[] }) {
                   return (
                     <TableRow key={s.id} className={rowCls}>
                       <TableCell className="font-mono text-xs">{s.numero_documento ?? "—"}</TableCell>
-                      <TableCell className="text-xs">{s.sezionale ?? "—"}</TableCell>
                       <TableCell className="text-sm">{fmtDate(s.data_documento)}</TableCell>
+
                       <TableCell className="text-sm">{fmtDate(s.data_scadenza)}</TableCell>
                       <TableCell className="text-xs">{s.descrizione_pagamento ?? "—"}</TableCell>
                       <TableCell className="text-right tabular-nums">{fmtEuro(s.importo_scadenza)}</TableCell>
@@ -375,10 +376,11 @@ function ScadutoBlock({ rows }: { rows: ScadenzaRow[] }) {
                   );
                 })}
                 <TableRow className="bg-muted/40">
-                  <TableCell colSpan={5} className="font-semibold text-right">Totale</TableCell>
+                  <TableCell colSpan={4} className="font-semibold text-right">Totale</TableCell>
                   <TableCell className="text-right font-bold text-destructive tabular-nums">{fmtEuro(totale)}</TableCell>
                   <TableCell />
                 </TableRow>
+
               </TableBody>
             </Table>
           </Card>
@@ -435,8 +437,8 @@ function AScadereBlock({ rows }: { rows: ScadenzaRow[] }) {
                   return (
                     <TableRow key={s.id} className={rowCls}>
                       <TableCell className="font-mono text-xs">{s.numero_documento ?? "—"}</TableCell>
-                      <TableCell className="text-xs">{s.sezionale ?? "—"}</TableCell>
                       <TableCell className="text-sm">{fmtDate(s.data_documento)}</TableCell>
+
                       <TableCell className="text-sm">{fmtDate(s.data_scadenza)}</TableCell>
                       <TableCell className="text-xs">{s.descrizione_pagamento ?? "—"}</TableCell>
                       <TableCell className="text-right tabular-nums">{fmtEuro(s.importo_scadenza)}</TableCell>
@@ -445,7 +447,7 @@ function AScadereBlock({ rows }: { rows: ScadenzaRow[] }) {
                   );
                 })}
                 <TableRow className="bg-muted/40">
-                  <TableCell colSpan={5} className="font-semibold text-right">Totale</TableCell>
+                  <TableCell colSpan={4} className="font-semibold text-right">Totale</TableCell>
                   <TableCell className="text-right font-bold tabular-nums">{fmtEuro(totale)}</TableCell>
                   <TableCell />
                 </TableRow>

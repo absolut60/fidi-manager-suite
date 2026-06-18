@@ -1527,20 +1527,23 @@ export const processScadenziarioChunk = inngest.createFunction(
         }
       }
 
-      // Dedup per chiave conflict (include data_scadenza)
+      // Dedup per chiave conflict NUOVA: (cliente, key_documento, data_scadenza, key_tipo_effetto, importo_scadenza)
       const deduped = new Map<string, Record<string, unknown>>();
       for (const row of rawValidRows) {
         try {
           const cid = row.cliente_id as string;
-          if (!cid) continue; // safety: NOT NULL guard
-          const numDoc = (row.numero_documento as string | null | undefined) ?? "NULL";
-          const sez = (row.sezionale as string | null | undefined) ?? "NULL";
-          const anno =
-            (row.anno_partita as number | null | undefined) != null
-              ? String(row.anno_partita)
-              : "NULL";
+          if (!cid) continue;
+          const kd = (row.key_documento as string | null | undefined) ?? "NULL";
           const ds = (row.data_scadenza as string | null | undefined) ?? "NULL";
-          deduped.set(`${cid}|${numDoc}|${sez}|${anno}|${ds}`, row);
+          const kt =
+            (row.key_tipo_effetto as number | null | undefined) != null
+              ? String(row.key_tipo_effetto)
+              : "NULL";
+          const imp =
+            (row.importo_scadenza as number | null | undefined) != null
+              ? String(row.importo_scadenza)
+              : "NULL";
+          deduped.set(`${cid}|${kd}|${ds}|${kt}|${imp}`, row);
         } catch (err) {
           rowErrs.push({
             riga: 0,
@@ -1557,19 +1560,19 @@ export const processScadenziarioChunk = inngest.createFunction(
       if (cids.length) {
         const { data: edata } = await supabaseAdmin
           .from("scadenze" as never)
-          .select("cliente_id, numero_documento, sezionale, anno_partita, data_scadenza")
+          .select("cliente_id, key_documento, data_scadenza, key_tipo_effetto, importo_scadenza")
           .in("cliente_id", cids);
         (
           (edata ?? []) as Array<{
             cliente_id: string;
-            numero_documento: string | null;
-            sezionale: string | null;
-            anno_partita: number | null;
+            key_documento: string | null;
             data_scadenza: string | null;
+            key_tipo_effetto: number | null;
+            importo_scadenza: number | null;
           }>
         ).forEach((s) => {
           existingKeys.add(
-            `${s.cliente_id}|${s.numero_documento ?? "NULL"}|${s.sezionale ?? "NULL"}|${s.anno_partita != null ? String(s.anno_partita) : "NULL"}|${s.data_scadenza ?? "NULL"}`,
+            `${s.cliente_id}|${s.key_documento ?? "NULL"}|${s.data_scadenza ?? "NULL"}|${s.key_tipo_effetto != null ? String(s.key_tipo_effetto) : "NULL"}|${s.importo_scadenza != null ? String(s.importo_scadenza) : "NULL"}`,
           );
         });
       }
@@ -1585,7 +1588,7 @@ export const processScadenziarioChunk = inngest.createFunction(
             ) => Promise<{ error: { message: string } | null }>;
           }
         ).upsert(validRows, {
-          onConflict: "cliente_id,numero_documento,sezionale,anno_partita,data_scadenza",
+          onConflict: "cliente_id,key_documento,data_scadenza,key_tipo_effetto,importo_scadenza",
           ignoreDuplicates: false,
         });
         if (upErr) {
@@ -1600,6 +1603,7 @@ export const processScadenziarioChunk = inngest.createFunction(
           }
         }
       }
+
 
       // Persisti errori/codici mancanti + report_saltati ricco (no cap)
       const totalErrs = rowErrs.length + batchErrs.length;
@@ -1737,23 +1741,13 @@ export const finalizeScadenziarioImport = inngest.createFunction(
       timestampInizio: string;
     };
     try {
-      // Cleanup finale: rimuovi in UNA sola query tutte le scadenze marcate
-      // come pagate (tempi_scadenza contiene "pagat"). Sostituisce il DELETE
-      // per-riga che era nel chunk e che causava migliaia di query sequenziali.
-      await step.run("cleanup-pagate", async () => {
-        const { error: delErr } = await supabaseAdmin
-          .from("scadenze" as never)
-          .delete()
-          .ilike("tempi_scadenza", "%pagat%");
-        if (delErr) throw new Error(`Cleanup pagate: ${delErr.message}`);
-      });
-
-      // Reconciliation DISABILITATA: con la nuova logica le righe pagate vengono
-      // rimosse dal cleanup sopra. Non chiudiamo più automaticamente le righe
-      // assenti dal file: potrebbero essere ancora valide (es. a scadere) ma
-      // non presenti in questo file.
+      // Le righe pagate vengono ora MANTENUTE: hanno data_pagamento_effettiva
+      // valorizzata e vengono filtrate downstream (queries scaduto/recupero).
+      // Nessuna reconciliation: il file potrebbe non contenere tutte le scadenze
+      // ancora valide (es. a scadere) e non vogliamo chiuderle erroneamente.
       const reconc = { totChiuse: 0, totClienti: 0 };
       void timestampInizio;
+
 
 
       // Aggiornamento finale dello stato
