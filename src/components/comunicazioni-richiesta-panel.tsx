@@ -37,10 +37,14 @@ function formatTs(iso: string): string {
 }
 
 export function ComunicazioniRichiestaPanel({ richiestaId, richiestaCreatedBy }: Props) {
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
   const qc = useQueryClient();
   const [destinatario, setDestinatario] = useState<DestinatarioComunicazione>("approvatore");
   const [testo, setTesto] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editText, setEditText] = useState("");
+
+  const canModerate = roles.includes("amministratore") || roles.includes("amministrazione");
 
   const { data: messaggi, isLoading } = useQuery({
     queryKey: ["comunicazioni", richiestaId],
