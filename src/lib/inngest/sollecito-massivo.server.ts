@@ -317,7 +317,7 @@ export const invioMassivoSolleciti = inngest.createFunction(
             const { data: rawScad } = await supabaseAdmin
               .from("scadenze")
               .select(
-                "id, numero_documento, data_documento, data_scadenza, importo_scadenza, stato_contabile, giorni_ritardo, tempi_scadenza, in_legale",
+                "id, numero_documento, data_documento, data_scadenza, importo_scadenza, stato_contabile, data_pagamento_effettiva, giorni_ritardo, tempi_scadenza, in_legale",
               )
               .eq("cliente_id", d.cliente_id)
               .order("data_scadenza", { ascending: true });
@@ -327,9 +327,10 @@ export const invioMassivoSolleciti = inngest.createFunction(
             const mesiSet = new Set(prep.mesi ?? []);
 
             const scadenzeRilevanti = (rawScad ?? []).filter((s) => {
+              // Regola: stato + data_pagamento_effettiva + data_scadenza
+              if ((s as { data_pagamento_effettiva?: string | null }).data_pagamento_effettiva) return false;
+              if (s.stato_contabile !== "Aperta") return false;
               if (isPromemoria) {
-                const t = String(s.tempi_scadenza ?? "").toLowerCase();
-                if (!t.includes("scader")) return false;
                 if ((s as { in_legale?: boolean | null }).in_legale) return false;
                 if (!s.data_scadenza || String(s.data_scadenza) < oggiStr) return false;
                 if (mesiSet.size > 0) {
