@@ -139,7 +139,7 @@ function AndamentoPage() {
           )}
         </div>
 
-        <DsoSection dso={dso} loading={loadingDso} serie={dsoSerie ?? []} />
+        <DsoSection dso={dso ?? null} loading={loadingDso} serie={dsoSerie ?? []} />
 
         {isLoading ? (
           <Skeleton className="h-40" />
