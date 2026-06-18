@@ -170,8 +170,66 @@ export function ComunicazioniRichiestaPanel({ richiestaId, richiestaCreatedBy }:
                       → a {DESTINATARIO_LABEL[m.destinatario as DestinatarioComunicazione] ?? m.destinatario}
                     </span>
                     <span className="text-xs text-muted-foreground ml-auto">{formatTs(m.created_at)}</span>
+                    {(isMine || (canModerate)) && editingId !== m.id && (
+                      <div className="flex items-center gap-0.5">
+                        {isMine && (
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="size-6"
+                            onClick={() => { setEditingId(m.id); setEditText(m.testo); }}
+                            title="Modifica"
+                          >
+                            <Pencil className="size-3.5" />
+                          </Button>
+                        )}
+                        {(isMine || canModerate) && (
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="size-6 text-destructive hover:text-destructive"
+                            onClick={() => {
+                              if (confirm("Eliminare questo messaggio?")) deleteMutation.mutate(m.id);
+                            }}
+                            title="Elimina"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <p className="text-sm whitespace-pre-wrap">{m.testo}</p>
+                  {editingId === m.id ? (
+                    <div className="space-y-2">
+                      <Textarea
+                        value={editText}
+                        onChange={(e) => setEditText(e.target.value)}
+                        rows={3}
+                      />
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => { setEditingId(null); setEditText(""); }}
+                        >
+                          <X className="size-4 mr-1" /> Annulla
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={!editText.trim() || updateMutation.isPending}
+                          onClick={() => updateMutation.mutate({ id: m.id, testo: editText.trim() })}
+                        >
+                          <Check className="size-4 mr-1" /> Salva
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm whitespace-pre-wrap">{m.testo}</p>
+                  )}
                 </div>
               </div>
             );
