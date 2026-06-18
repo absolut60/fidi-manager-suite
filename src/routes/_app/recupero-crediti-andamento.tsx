@@ -51,6 +51,37 @@ function AndamentoPage() {
     },
   });
 
+  const { data: dso, isLoading: loadingDso } = useQuery({
+    queryKey: ["dso_aggregato"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_dso_aggregato", {
+        _cliente_id: null,
+        _store_id: null,
+        _data_da: null,
+        _data_a: null,
+      });
+      if (error) throw error;
+      return data?.[0] ?? null;
+    },
+  });
+
+  const { data: dsoSerie } = useQuery({
+    queryKey: ["dso_serie_mensile"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_dso_serie_mensile", {
+        _cliente_id: null,
+        _store_id: null,
+        _mesi_indietro: 24,
+      });
+      if (error) throw error;
+      return (data ?? []).map((r: { mese: string; dso_ponderato: number | null; n_scadenze: number }) => ({
+        mese: format(new Date(r.mese), "MMM yy", { locale: it }),
+        dso: r.dso_ponderato == null ? null : Number(r.dso_ponderato),
+        n: r.n_scadenze,
+      }));
+    },
+  });
+
   const ultimo = snapshots?.[0];
   const finestre = useMemo(() => {
     if (!ultimo) return [];
