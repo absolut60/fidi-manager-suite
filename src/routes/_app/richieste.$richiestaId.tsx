@@ -18,6 +18,7 @@ import { ComunicazioniRichiestaPanel } from "@/components/comunicazioni-richiest
 import { AllegatiSection } from "@/components/allegati-section";
 import { RICHIESTA_FIDO_SELECT } from "@/lib/richieste-fido-data";
 import { getFidoAttuale } from "@/lib/fido-cliente";
+import { PannelloRischioCliente } from "@/components/pannello-rischio-cliente";
 export const Route = createFileRoute("/_app/richieste/$richiestaId")({
   component: RichiestaDetail,
 });
