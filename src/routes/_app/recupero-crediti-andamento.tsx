@@ -56,7 +56,7 @@ function AndamentoPage() {
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_dso_aggregato", {} as never);
       if (error) throw error;
-      return (data as Array<{ dso_ponderato: number | null; dso_medio: number | null; dso_mediano: number | null; n_anticipo: number; n_puntuali: number; n_ritardo: number; n_totale: number; importo_totale: number }> | null)?.[0] ?? null;
+      return (data as Array<{ dso_ponderato: number | null; dso_medio: number | null; dso_mediano: number | null; n_anticipo: number; n_puntuali: number; n_ritardo: number; n_totale: number; importo_totale: number; importo_anticipo: number; importo_puntuali: number; importo_ritardo: number }> | null)?.[0] ?? null;
     },
   });
 
