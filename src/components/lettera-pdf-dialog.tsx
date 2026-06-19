@@ -147,13 +147,15 @@ export function LetteraPdfDialog({
                 <SelectValue placeholder={tplLoading ? "Caricamento…" : "Scegli un modello attivo"} />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="__libera__">— Modalita libera (senza modello) —</SelectItem>
                 {(templates ?? []).map((t) => (
                   <SelectItem key={t.id} value={t.id}>{t.nome}</SelectItem>
                 ))}
                 {!tplLoading && !(templates?.length) && (
-                  <div className="px-3 py-2 text-xs text-muted-foreground">Nessun modello attivo</div>
+                  <div className="px-3 py-2 text-xs text-muted-foreground">Nessun modello attivo (usa modalita libera)</div>
                 )}
               </SelectContent>
+
             </Select>
           </div>
 
