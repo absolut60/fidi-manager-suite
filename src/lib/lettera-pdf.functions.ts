@@ -26,12 +26,13 @@ const LEGAL_FOOTER_LINES = [
 ];
 
 type Input = {
-  templateId: string;
+  templateId?: string | null;
   clienteId: string;
   oggettoOverride?: string | null;
   corpoOverride?: string | null;
   attachToAzioneId?: string | null;
 };
+
 
 function sanitizeName(s: string): string {
   return s.replace(/[^\w.\-]+/g, "_").slice(0, 100);
