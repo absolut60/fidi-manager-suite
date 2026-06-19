@@ -90,10 +90,12 @@ function RichiestePage() {
     roles.includes("approvatore_liv1") ? 1 : 0;
   const isApprovatore = livello > 0;
   const isAmministrazione = roles.includes("amministrazione");
-  // "Vede solo le proprie" = chi non e' admin, ne' approvatore, ne' amministrazione (= store_manager / direzione)
-  const isStoreManager = !isAdmin && !isApprovatore && !isAmministrazione;
-  // Visibilità totale (vede tutte le richieste di tutti gli store/livelli/stati)
-  const hasFullVisibility = isAdmin || isAmministrazione;
+  const isDirezione = roles.includes("direzione");
+  // Visibilità totale (vede tutte le richieste di tutti gli store/livelli/stati).
+  // Il livello di approvatore limita solo COSA si puo' approvare, non COSA si vede.
+  const hasFullVisibility = isAdmin || isAmministrazione || isDirezione;
+  // "Vede solo le proprie" = chi non ha visibilita' totale e non e' approvatore (= store_manager)
+  const isStoreManager = !hasFullVisibility && !isApprovatore;
   // Puo' creare/inviare richieste: admin, store_manager, amministrazione, approvatori
   const canCreateRichiesta =
     isAdmin || isApprovatore || isAmministrazione || roles.includes("store_manager");
