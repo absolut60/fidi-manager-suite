@@ -2875,8 +2875,21 @@ export const processBloccoFidoImport = inngest.createFunction(
       });
 
       // STEP 5: azzeramento clienti assenti dal file
+      // SOLO se la quadratura è OK: se gap>0, l'azzeramento aggraverebbe il problema
+      // marcando come "assenti" clienti che invece sono stati persi nei chunk.
       let azzerati = 0;
+      const quadraturaOk = quadratura.gap === 0;
       await step.run("azzera-assenti", async () => {
+        if (!quadraturaOk) {
+          logger.warn(
+            `azzera-assenti SALTATO: quadratura gap=${quadratura.gap} (attesi=${quadratura.atteso}, aggiornati_db=${quadratura.aggiornati_db}). Evito di azzerare clienti potenzialmente persi nei chunk.`,
+          );
+          errors.push({
+            riga: 0,
+            errore: `azzera-assenti SALTATO per gap di quadratura (gap=${quadratura.gap}). Rilanciare l'import.`,
+          });
+          return;
+        }
         const { data: assenti } = await supabaseAdmin
           .from("clienti")
           .select("id")
@@ -2913,6 +2926,8 @@ export const processBloccoFidoImport = inngest.createFunction(
           azzerati += slice.length;
         }
       });
+
+
 
       // STEP 6: stato finale + log riepilogo
       await step.run("finalize", async () => {
