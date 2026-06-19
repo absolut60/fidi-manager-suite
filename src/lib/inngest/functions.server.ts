@@ -2618,17 +2618,18 @@ export const processBloccoFidoImport = inngest.createFunction(
             }
           }
 
-          // --- BULK upsert clienti (un solo round-trip per chunk)
+          // --- BULK UPDATE clienti via RPC (aggiorna SOLO i campi blocco/fido/assicurazione;
+          //     NON tocca ragione_sociale né altri campi anagrafici, NON inserisce nuovi clienti)
           let cAgg = 0;
           if (payloads.length) {
-            const { data, error } = await supabaseAdmin
-              .from("clienti")
-              .upsert(payloads as never, { onConflict: "id" })
-              .select("id");
+            const { data, error } = await supabaseAdmin.rpc(
+              "bulk_update_clienti_bfa" as never,
+              { _payloads: payloads as never } as never,
+            );
             if (error) {
-              cErr.push({ riga: 0, errore: `upsert clienti chunk ${ci + 1}: ${error.message}` });
+              cErr.push({ riga: 0, errore: `bulk_update clienti chunk ${ci + 1}: ${error.message}` });
             } else {
-              cAgg = data?.length ?? 0;
+              cAgg = typeof data === "number" ? data : Number(data) || 0;
             }
           }
 

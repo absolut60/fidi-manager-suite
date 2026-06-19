@@ -2794,6 +2794,7 @@ export type Database = {
         Args: { _name: string }
         Returns: string
       }
+      bulk_update_clienti_bfa: { Args: { _payloads: Json }; Returns: number }
       calcola_livello_fido: { Args: { _importo: number }; Returns: number }
       genera_snapshot: { Args: { _data: string }; Returns: string }
       get_clienti_avvisati: {
