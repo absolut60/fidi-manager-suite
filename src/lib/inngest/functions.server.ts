@@ -2368,47 +2368,46 @@ export const processBloccoFidoImport = inngest.createFunction(
       const parsed = parseResult.rows;
       const noteLegaliFromSheet = parseResult.noteLegali;
       const initialWarnings = parseResult.warnings;
-      const timestampInizio = new Date().toISOString();
 
-      logger.info(
-        `Blocco fido (staging): ${parsed.length} righe, ${noteLegaliFromSheet.length} note legali`,
-      );
-      await supabaseAdmin
-        .from("importazioni")
-        .update({
-          righe_totali: parsed.length,
-          righe_elaborate: 0,
-          righe_aggiornate: 0,
-          righe_create: 0,
-          righe_errore: 0,
-          righe_saltate: 0,
-          stato: "in_elaborazione",
-        })
-        .eq("id", importazioneId);
-
-      if (initialWarnings.length) {
-        await supabaseAdmin
-          .from("importazioni")
-          .update({ log_errori: initialWarnings as never } as never)
-          .eq("id", importazioneId);
-      }
-
-      if (!parsed.length) {
+      // STEP 2: init-importazione — REPLAY-SAFE
+      // - genera timestampInizio UNA SOLA VOLTA (cached da Inngest tra i replay)
+      // - resetta i contatori UNA SOLA VOLTA (non più riazzerati a ogni replay)
+      const init = await step.run("init-importazione", async () => {
+        const ts = new Date().toISOString();
+        logger.info(
+          `Blocco fido (staging): ${parsed.length} righe, ${noteLegaliFromSheet.length} note legali`,
+        );
         await supabaseAdmin
           .from("importazioni")
           .update({
-            stato: "completata_con_errori",
-            completata_at: new Date().toISOString(),
-            log_errori: [{ riga: 0, errore: "Nessuna riga da processare" }],
-          })
+            righe_totali: parsed.length,
+            righe_elaborate: 0,
+            righe_aggiornate: 0,
+            righe_create: 0,
+            righe_errore: 0,
+            righe_saltate: 0,
+            stato: "in_elaborazione",
+            log_errori: (initialWarnings.length ? initialWarnings : []) as never,
+          } as never)
           .eq("id", importazioneId);
+        return { timestampInizio: ts };
+      });
+      const timestampInizio = init.timestampInizio;
+
+      if (!parsed.length) {
+        await step.run("finalize-empty", async () => {
+          await supabaseAdmin
+            .from("importazioni")
+            .update({
+              stato: "completata_con_errori",
+              completata_at: new Date().toISOString(),
+              log_errori: [{ riga: 0, errore: "Nessuna riga da processare" }] as never,
+            } as never)
+            .eq("id", importazioneId);
+        });
         return { rows: 0 };
       }
 
-      // STEP 2: lookup cliente + STATO ATTUALE (per anomalie)
-      const codici = Array.from(
-        new Set(parsed.map((r) => normalizeBfaCodice(r.codice_gestionale)).filter(Boolean)),
-      );
       type ClienteSnap = {
         id: string;
         ragione_sociale: string | null;
@@ -2416,64 +2415,8 @@ export const processBloccoFidoImport = inngest.createFunction(
         assicurazione_attiva: boolean | null;
         in_gestione_legale: boolean | null;
       };
-      // Lookup inline — senza step.run per evitare serializzazione della map grande
-      const clientMap: Record<string, ClienteSnap> = {};
-      {
-        const BATCH = 500;
-        for (let i = 0; i < codici.length; i += BATCH) {
-          const slice = codici.slice(i, i + BATCH);
-          const { data, error } = await supabaseAdmin
-            .from("clienti")
-            .select(
-              "id, codice_gestionale, ragione_sociale, ind_blocco, assicurazione_attiva, in_gestione_legale",
-            )
-            .in("codice_gestionale", slice);
-          if (error)
-            throw new Error(`lookup clienti chunk ${Math.floor(i / BATCH) + 1}: ${error.message}`);
-          logger.info(
-            `Import D lookup clienti ${Math.floor(i / BATCH) + 1}: ${data?.length ?? 0}/${slice.length} trovati`,
-          );
-          (data ?? []).forEach((c) => {
-            if (c.codice_gestionale) {
-              clientMap[normalizeBfaCodice(c.codice_gestionale)] = {
-                id: c.id,
-                ragione_sociale: c.ragione_sociale ?? null,
-                ind_blocco: (c as { ind_blocco?: number | null }).ind_blocco ?? null,
-                assicurazione_attiva:
-                  (c as { assicurazione_attiva?: boolean | null }).assicurazione_attiva ?? null,
-                in_gestione_legale:
-                  (c as { in_gestione_legale?: boolean | null }).in_gestione_legale ?? null,
-              };
-            }
-          });
-        }
-      }
 
-      // STEP 3: pre-fetch polizze POUEY esistenti
-      const allClienteIds = Array.from(
-        new Set(parsed.map((r) => clientMap[normalizeBfaCodice(r.codice_gestionale)]?.id).filter(Boolean) as string[]),
-      );
-      // Lookup inline — senza step.run per evitare serializzazione della map grande
-      const poueyMap: Record<string, string> = {};
-      {
-        const BATCH = 500;
-        for (let i = 0; i < allClienteIds.length; i += BATCH) {
-          const slice = allClienteIds.slice(i, i + BATCH);
-          if (!slice.length) continue;
-          const { data } = await supabaseAdmin
-            .from("assicurazioni_credito")
-            .select("id, cliente_id")
-            .eq("assicuratore", "POUEY")
-            .in("cliente_id", slice);
-          ((data ?? []) as Array<{ id: string; cliente_id: string }>).forEach((p) => {
-            poueyMap[p.cliente_id] = p.id;
-          });
-        }
-      }
-
-      // STEP 4: chunk processing con anomalie
-      const CHUNK = 500;
-      // Leggi cutoff anno dal DB configurazioni (default 2025 se non trovato)
+      // STEP 3: cutoff config — subito dopo init, PRIMA di qualunque lookup pesante
       const cutoffAnno = await step.run("read-cutoff-config", async () => {
         const { data } = await supabaseAdmin
           .from("configurazioni")
@@ -2484,8 +2427,9 @@ export const processBloccoFidoImport = inngest.createFunction(
         const annoValido = isFinite(anno) && anno >= 2020 && anno <= 2100 ? anno : 2025;
         return `${annoValido}-01-01`;
       });
-      const cutoff2025 = cutoffAnno; // mantieni il nome per non rompere i riferimenti
-      const nowIso = new Date().toISOString();
+      const cutoff2025 = cutoffAnno;
+      const ultimaImpIso = new Date(new Date(timestampInizio).getTime() + 1000).toISOString();
+
       const errors: Array<{ riga: number; errore: string }> = [];
       let errorsCount = 0;
       const nonTrovati: string[] = [];
@@ -2498,22 +2442,63 @@ export const processBloccoFidoImport = inngest.createFunction(
       let polizze = 0;
       let anomalieTotali = 0;
 
+      const CHUNK = 500;
       const totalChunks = Math.ceil(parsed.length / CHUNK);
-      // UN SOLO step.run per tutti i chunk — BULK UPSERT + contatori diretti
-      const chunkAllRes = await step.run("process-all-chunks", async () => {
-        let tAgg = 0,
-          tBlk = 0,
-          tSblk = 0,
-          tNonAtt = 0,
-          tPol = 0,
-          tAnom = 0,
-          tErr = 0,
-          tMiss = 0,
-          tElaborate = 0;
-        const ultimaImpIso = new Date(new Date(timestampInizio).getTime() + 1000).toISOString();
 
-        for (let ci = 0; ci < totalChunks; ci++) {
+      // STEP 4: un step.run STABILE per ogni chunk — id deterministico padded.
+      // Ogni chunk è autocontenuto: lookup clienti mirato, lookup polizze mirato,
+      // bulk_update_clienti_bfa, polizze, anomalie, log, aggiornamento contatori.
+      // Niente lookup globali fuori dagli step → niente lavoro pesante che si rifa a ogni replay.
+      for (let ci = 0; ci < totalChunks; ci++) {
+        const nowIso = new Date().toISOString();
+        const stepId = `process-bfa-chunk-${String(ci).padStart(3, "0")}`;
+        const res = await step.run(stepId, async () => {
           const slice = parsed.slice(ci * CHUNK, (ci + 1) * CHUNK);
+
+          // --- Lookup clienti SOLO per i codici di questo chunk
+          const codiciChunk = Array.from(
+            new Set(slice.map((r) => normalizeBfaCodice(r.codice_gestionale)).filter(Boolean)),
+          );
+          const clientMap: Record<string, ClienteSnap> = {};
+          if (codiciChunk.length) {
+            const { data, error } = await supabaseAdmin
+              .from("clienti")
+              .select(
+                "id, codice_gestionale, ragione_sociale, ind_blocco, assicurazione_attiva, in_gestione_legale",
+              )
+              .in("codice_gestionale", codiciChunk);
+            if (error) throw new Error(`lookup clienti chunk ${ci + 1}: ${error.message}`);
+            (data ?? []).forEach((c) => {
+              if (c.codice_gestionale) {
+                clientMap[normalizeBfaCodice(c.codice_gestionale)] = {
+                  id: c.id,
+                  ragione_sociale: c.ragione_sociale ?? null,
+                  ind_blocco: (c as { ind_blocco?: number | null }).ind_blocco ?? null,
+                  assicurazione_attiva:
+                    (c as { assicurazione_attiva?: boolean | null }).assicurazione_attiva ?? null,
+                  in_gestione_legale:
+                    (c as { in_gestione_legale?: boolean | null }).in_gestione_legale ?? null,
+                };
+              }
+            });
+          }
+
+          // --- Lookup polizze POUEY SOLO per i cliente_id di questo chunk
+          const clienteIdsChunk = Array.from(
+            new Set(Object.values(clientMap).map((s) => s.id).filter(Boolean) as string[]),
+          );
+          const poueyMap: Record<string, string> = {};
+          if (clienteIdsChunk.length) {
+            const { data } = await supabaseAdmin
+              .from("assicurazioni_credito")
+              .select("id, cliente_id")
+              .eq("assicuratore", "POUEY")
+              .in("cliente_id", clienteIdsChunk);
+            ((data ?? []) as Array<{ id: string; cliente_id: string }>).forEach((p) => {
+              poueyMap[p.cliente_id] = p.id;
+            });
+          }
+
           let cBlk = 0,
             cSblk = 0,
             cNonAtt = 0,
@@ -2522,7 +2507,6 @@ export const processBloccoFidoImport = inngest.createFunction(
           const cMiss: string[] = [];
           const anomalieBatch: AnomaliaImport[] = [];
           const payloads: Array<Record<string, unknown>> = [];
-          // polizze da inserire/aggiornare (cliente_id, importo, [existingPolizzaId])
           const polizzeUpdate: Array<{ id: string; importo: number }> = [];
           const polizzeInsert: Array<{ cliente_id: string; importo: number; riga: number }> = [];
 
@@ -2537,7 +2521,6 @@ export const processBloccoFidoImport = inngest.createFunction(
               const clienteId = snap.id;
               const payload: Record<string, unknown> = { id: clienteId };
 
-              // --- Blocco
               const indNuovoRaw = r.ind_blocco;
               const indNuovo = indNuovoRaw != null ? Number(indNuovoRaw) : null;
               const indAttuale = snap.ind_blocco ?? 0;
@@ -2618,8 +2601,7 @@ export const processBloccoFidoImport = inngest.createFunction(
             }
           }
 
-          // --- BULK UPDATE clienti via RPC (aggiorna SOLO i campi blocco/fido/assicurazione;
-          //     NON tocca ragione_sociale né altri campi anagrafici, NON inserisce nuovi clienti)
+          // --- BULK UPDATE via RPC: aggiorna SOLO campi blocco/fido/assic, mai ragione_sociale
           let cAgg = 0;
           if (payloads.length) {
             const { data, error } = await supabaseAdmin.rpc(
@@ -2633,7 +2615,6 @@ export const processBloccoFidoImport = inngest.createFunction(
             }
           }
 
-          // --- BULK polizze: update esistenti
           if (polizzeUpdate.length) {
             for (const p of polizzeUpdate) {
               const { error } = await supabaseAdmin
@@ -2644,7 +2625,6 @@ export const processBloccoFidoImport = inngest.createFunction(
               else cPol++;
             }
           }
-          // --- BULK polizze: insert nuove
           if (polizzeInsert.length) {
             const { data, error } = await supabaseAdmin
               .from("assicurazioni_credito")
@@ -2660,14 +2640,10 @@ export const processBloccoFidoImport = inngest.createFunction(
             if (error) {
               cErr.push({ riga: 0, errore: `polizze insert chunk ${ci + 1}: ${error.message}` });
             } else {
-              for (const ins of (data ?? []) as Array<{ id: string; cliente_id: string }>) {
-                poueyMap[ins.cliente_id] = ins.id;
-                cPol++;
-              }
+              cPol += ((data ?? []) as Array<unknown>).length;
             }
           }
 
-          // --- BULK anomalie
           if (anomalieBatch.length) {
             const { error } = await supabaseAdmin
               .from("anomalie_import" as never)
@@ -2675,56 +2651,69 @@ export const processBloccoFidoImport = inngest.createFunction(
             if (error) cErr.push({ riga: 0, errore: `anomalie insert: ${error.message}` });
           }
 
-          // --- Log per chunk (sempre, anche se zero errori)
           const chunkLog = {
             riga: 0,
-            errore: `Chunk ${ci + 1}/${totalChunks}: payloads=${payloads.length}, upsert_aggiornati=${cAgg}, polizze=${cPol}, anomalie=${anomalieBatch.length}, non_trovati=${cMiss.length}, errori=${cErr.length}`,
+            errore: `Chunk ${ci + 1}/${totalChunks}: payloads=${payloads.length}, aggiornati=${cAgg}, polizze=${cPol}, anomalie=${anomalieBatch.length}, non_trovati=${cMiss.length}, errori=${cErr.length}`,
           };
           logger.info(chunkLog.errore);
 
-          // --- Aggiorna contatori CON UPDATE DIRETTO (no RPC, no fallimento muto)
-          tAgg += cAgg;
-          tBlk += cBlk;
-          tSblk += cSblk;
-          tNonAtt += cNonAtt;
-          tPol += cPol;
-          tAnom += anomalieBatch.length;
-          tErr += cErr.length;
-          tMiss += cMiss.length;
-          tElaborate += slice.length;
-
+          // --- Aggiornamento contatori importazione: read-modify-write atomico per chunk
           const { data: cur } = await supabaseAdmin
             .from("importazioni")
-            .select("log_errori, codici_mancanti")
+            .select("righe_elaborate, righe_aggiornate, righe_errore, righe_saltate, log_errori, codici_mancanti")
             .eq("id", importazioneId)
             .single();
+          const baseElab = (cur?.righe_elaborate as number | null) ?? 0;
+          const baseAgg = (cur?.righe_aggiornate as number | null) ?? 0;
+          const baseErr = (cur?.righe_errore as number | null) ?? 0;
+          const baseMiss = (cur?.righe_saltate as number | null) ?? 0;
           const existingLog =
             (cur?.log_errori as Array<{ riga: number; errore: string }> | null) ?? [];
           const existingMiss = (cur?.codici_mancanti as string[] | null) ?? [];
+
           await supabaseAdmin
             .from("importazioni")
             .update({
-              righe_elaborate: tElaborate,
-              righe_aggiornate: tAgg,
-              righe_errore: tErr,
-              righe_saltate: tMiss,
+              righe_elaborate: baseElab + slice.length,
+              righe_aggiornate: baseAgg + cAgg,
+              righe_errore: baseErr + cErr.length,
+              righe_saltate: baseMiss + cMiss.length,
               log_errori: [...existingLog, chunkLog, ...cErr].slice(-500),
               codici_mancanti: cMiss.length
                 ? Array.from(new Set([...existingMiss, ...cMiss])).slice(0, 500)
                 : existingMiss,
             } as never)
             .eq("id", importazioneId);
-        }
-        return { tAgg, tBlk, tSblk, tNonAtt, tPol, tAnom, tErr, tMiss };
-      });
-      aggiornati += chunkAllRes.tAgg;
-      bloccati += chunkAllRes.tBlk;
-      sbloccati += chunkAllRes.tSblk;
-      nonAttivi += chunkAllRes.tNonAtt;
-      polizze += chunkAllRes.tPol;
-      anomalieTotali += chunkAllRes.tAnom;
-      errorsCount += chunkAllRes.tErr;
-      nonTrovatiCount += chunkAllRes.tMiss;
+
+          return {
+            cAgg,
+            cBlk,
+            cSblk,
+            cNonAtt,
+            cPol,
+            cAnom: anomalieBatch.length,
+            cErr: cErr.length,
+            cMissCount: cMiss.length,
+            cMissCodes: cMiss.slice(0, 200),
+          };
+        });
+
+        aggiornati += res.cAgg;
+        bloccati += res.cBlk;
+        sbloccati += res.cSblk;
+        nonAttivi += res.cNonAtt;
+        polizze += res.cPol;
+        anomalieTotali += res.cAnom;
+        errorsCount += res.cErr;
+        nonTrovatiCount += res.cMissCount;
+        nonTrovati.push(...res.cMissCodes);
+      }
+
+      // --- clientMap globale per gli step note-legali / azzera-assenti (ricostruito su richiesta)
+      const codici = Array.from(
+        new Set(parsed.map((r) => normalizeBfaCodice(r.codice_gestionale)).filter(Boolean)),
+      );
+      const clientMap: Record<string, ClienteSnap> = {};
 
       // STEP 4c: QUADRATURA — verifica oggettiva contro il DB
       const quadratura = await step.run("verifica-quadratura", async () => {
