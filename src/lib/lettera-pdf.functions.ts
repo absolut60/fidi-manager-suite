@@ -14,9 +14,7 @@ import {
 } from "@/lib/template-email-render";
 import { classificaScadenza } from "@/lib/scadenze";
 import { buildElencoScadenzeTesto, renderLettera, type DatiTemplateLettera } from "@/lib/template-lettera";
-
-const LOGO_URL =
-  "https://fidi-manager-suite.lovable.app/__l5e/assets-v1/035e2dea-71e9-4ef5-a16d-94aee28def35/logo-made.png";
+import { LOGO_MADE_BASE64 } from "@/lib/logo-made-base64";
 
 const LEGAL_FOOTER_LINES = [
   "MADE DISTRIBUZIONE S.p.A.",
@@ -24,6 +22,28 @@ const LEGAL_FOOTER_LINES = [
   "PEC: madedistribuzionesrl@pecplus.it - Capitale Sociale 2.593.000,00 \u20AC i.v.",
   "Societ\u00E0 sotto la Direzione e il Coordinamento di MADE Italia S.p.A.",
 ];
+
+// "CASOREZZO" -> "Casorezzo"; "SEDE DI MILANO" -> "Sede di Milano"
+function titleCaseSede(raw: string): string {
+  const minuscole = new Set(["di", "da", "de", "del", "della", "dei", "delle", "degli", "e", "a", "in", "al", "alla"]);
+  return raw
+    .toLowerCase()
+    .split(/(\s+)/)
+    .map((tok, i) => {
+      if (/^\s+$/.test(tok)) return tok;
+      if (i > 0 && minuscole.has(tok)) return tok;
+      return tok.charAt(0).toUpperCase() + tok.slice(1);
+    })
+    .join("");
+}
+
+// Decodifica base64 (no Buffer su Workers)
+function b64ToBytes(b64: string): Uint8Array {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
 
 // Rimuove dal corpo i blocchi che il PDF disegna gia da se (destinatario in alto,
 // luogo+data, riga "Oggetto:", saluti+firma+ragione sociale azienda) per evitare doppioni
