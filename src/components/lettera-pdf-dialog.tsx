@@ -116,8 +116,11 @@ export function LetteraPdfDialog({
 
       toast.success("Lettera generata e allegata");
       qc.invalidateQueries({ queryKey: ["allegati", "azione_recupero", res.azioneId] });
+      qc.invalidateQueries({ queryKey: ["allegati"] });
       qc.invalidateQueries({ queryKey: ["azioni-recupero"] });
+      qc.invalidateQueries({ queryKey: ["azioni-recupero-cliente", clienteId] });
       qc.invalidateQueries({ queryKey: ["azioni-calendario"] });
+
       onGenerated?.();
       onOpenChange(false);
     } catch (e: any) {
