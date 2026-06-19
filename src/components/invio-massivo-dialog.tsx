@@ -201,9 +201,8 @@ export function InvioMassivoDialog({
       const mesiSet = new Set(mesi);
       const rilevanti = (rawScad ?? []).filter((s) => {
         if (tipoCampagna === "promemoria_scadenza") {
-          // A scadere: Aperta + non pagata + scadenza futura nei mesi richiesti
+          // A scadere: Aperta + scadenza futura nei mesi richiesti
           if (s.stato_contabile !== "Aperta") return false;
-          if ((s as { data_pagamento_effettiva?: string | null }).data_pagamento_effettiva) return false;
           if ((s as { in_legale?: boolean | null }).in_legale) return false;
           if (!s.data_scadenza || String(s.data_scadenza) < oggiStr) return false;
           if (mesiSet.size > 0) {
