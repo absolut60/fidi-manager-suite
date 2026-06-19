@@ -399,7 +399,7 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
     }
 
     // 6) Upload su bucket allegati + insert in tabella allegati
-    const fileName = `lettera-${sanitizeName(tpl.nome || "documento")}-${formatDateIt(new Date()).replace(/\//g, "-")}.pdf`;
+    const fileName = `lettera-${sanitizeName(tplNome || "documento")}-${formatDateIt(new Date()).replace(/\//g, "-")}.pdf`;
     const storagePath = `azione_recupero/${azioneId}/${crypto.randomUUID()}-${fileName}`;
     const { error: eUp } = await supabase.storage
       .from("allegati")
