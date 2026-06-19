@@ -63,8 +63,7 @@ export const avviaCampagnaSollecito = createServerFn({ method: "POST" })
         .in("cliente_id", slice);
       (sc ?? []).forEach((s) => {
         if (!s.cliente_id) return;
-        // Regola: fonte di verita' = stato_contabile + data_pagamento_effettiva + data_scadenza.
-        if (s.data_pagamento_effettiva) return;
+        // Regola: fonte di verita' = stato_contabile + data_scadenza (gestionale).
         if (s.stato_contabile !== "Aperta") return;
         if (isPromemoria) {
           if (s.in_legale) return;
@@ -72,7 +71,7 @@ export const avviaCampagnaSollecito = createServerFn({ method: "POST" })
           const k = String(s.data_scadenza).slice(0, 7);
           if (mesiSet.size > 0 && !mesiSet.has(k)) return;
         } else {
-          // Scaduto: Aperta + non pagata + data_scadenza nel passato
+          // Scaduto: Aperta + data_scadenza nel passato
           if (!s.data_scadenza || String(s.data_scadenza) >= oggi) return;
         }
         importi[s.cliente_id] = (importi[s.cliente_id] ?? 0) + Number(s.importo_scadenza ?? 0);
