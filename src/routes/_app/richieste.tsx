@@ -203,11 +203,25 @@ function RichiestePage() {
   });
 
   const qc = useQueryClient();
-  function qcInvalidate() {
+  // Invalidazione + refetch IMMEDIATO di tutte le query osservate che
+  // dipendono dalle richieste fido (lista + KPI in alto + contatori messaggi
+  // + viste correlate). `refetchQueries({type:"active"})` forza il refetch
+  // subito invece di limitarsi a marcare stale, cosi' la riga sparisce
+  // (o cambia tab) appena la mutation finisce, senza bisogno di ricaricare.
+  async function qcInvalidate() {
+    await Promise.all([
+      qc.refetchQueries({ queryKey: ["richieste"], type: "active" }),
+      qc.refetchQueries({ queryKey: ["approvazioni-queue"], type: "active" }),
+      qc.refetchQueries({ queryKey: ["richieste-cliente"], type: "active" }),
+      qc.refetchQueries({ queryKey: ["msg-non-letti-richieste"], type: "active" }),
+      qc.refetchQueries({ queryKey: ["comunicazioni-non-lette"], type: "active" }),
+    ]);
+    // Marca stale anche le inattive cosi' al prossimo mount sono fresche.
     qc.invalidateQueries({ queryKey: ["richieste"] });
     qc.invalidateQueries({ queryKey: ["approvazioni-queue"] });
     qc.invalidateQueries({ queryKey: ["richieste-cliente"] });
   }
+
 
   if (isDetailOpen) return <Outlet />;
 
