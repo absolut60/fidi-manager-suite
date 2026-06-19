@@ -1,21 +1,21 @@
 // Classificazione UNICA per scadenze.
-// Fonte di verità: stato_contabile + data_pagamento_effettiva + data_scadenza.
-// tempi_scadenza NON e' piu' usato per decidere lo stato: nel tracciato
-// MADE_VISTASCADENZE indica la FASCIA DI ANZIANITA (es. "Scaduto oltre 120
-// giorni") ed e' presente anche su righe gia' pagate.
+// Fonte di verita': SOLO stato_contabile + data_scadenza (allineata al gestionale).
+// - data_pagamento_effettiva NON entra nella classificazione (serve solo per
+//   il calcolo del DSO: giorni di ritardo di incasso).
+// - tempi_scadenza NON e' usato per lo stato: nel tracciato MADE_VISTASCADENZE
+//   indica la FASCIA DI ANZIANITA ed e' presente anche su righe gia' pagate.
 
 export type CategoriaScadenza = "scaduto" | "a_scadere" | "pagato";
 
 export function classificaScadenza(s: {
   stato_contabile?: string | null;
-  data_pagamento_effettiva?: string | null;
   data_scadenza?: string | null;
   // legacy: ignorati, accettati solo per retro-compatibilita' di firma
+  data_pagamento_effettiva?: string | null;
   tempi_scadenza?: string | null;
   giorni_ritardo?: number | null;
 }): CategoriaScadenza {
-  // 1. Pagato: ha data di pagamento effettiva, oppure stato Chiusa.
-  if (s.data_pagamento_effettiva) return "pagato";
+  // 1. Pagato: stato diverso da Aperta (tipicamente Chiusa).
   if (s.stato_contabile && s.stato_contabile !== "Aperta") return "pagato";
 
   // 2. Aperta: scaduto se data scadenza nel passato, altrimenti a scadere.
