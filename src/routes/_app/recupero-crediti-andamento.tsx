@@ -284,6 +284,9 @@ type DsoData = {
   n_ritardo: number;
   n_totale: number;
   importo_totale: number;
+  importo_anticipo: number;
+  importo_puntuali: number;
+  importo_ritardo: number;
 } | null;
 
 function fmtDso(n: number | null | undefined) {
