@@ -169,20 +169,22 @@ function ScadenziarioPage() {
   });
 
   const { data: scad, isLoading } = useQuery({
-    queryKey: ["scadenze-globali-v5-aperte"],
+    queryKey: ["scadenze-globali-v6-attive"],
     queryFn: async () => {
       const all: ScadRow[] = [];
       const pageSize = 1000;
       let from = 0;
       while (true) {
-        // Regola unica: una scadenza e' "attiva" (scaduta o a scadere) se
-        // ha stato_contabile='Aperta' e nessuna data di pagamento effettiva.
-        // tempi_scadenza nel nuovo tracciato e' solo fascia di anzianita',
-        // non e' affidabile per decidere lo stato.
+        // Regola unica (allineata a classificaScadenza / RPC):
+        // - SCADUTO  = stato_contabile='Aperta' AND data_scadenza < oggi (anche con DPE)
+        // - A SCADERE = data_pagamento_effettiva IS NULL AND data_scadenza >= oggi
+        //               (a prescindere dallo stato: include R.B./effetti 'Chiusa'
+        //                presentati ma non ancora incassati)
+        // Per coprire entrambi i casi serve: stato='Aperta' OR data_pagamento_effettiva IS NULL.
         const { data, error } = await supabase
           .from("scadenze")
           .select("id, cliente_id, importo_scadenza, giorni_ritardo, data_scadenza, stato_contabile, tempi_scadenza, data_pagamento_effettiva, codice_pagamento")
-          .eq("stato_contabile", "Aperta")
+          .or("stato_contabile.eq.Aperta,data_pagamento_effettiva.is.null")
           .order("cliente_id", { ascending: true })
           .range(from, from + pageSize - 1);
         if (error) throw error;
@@ -194,6 +196,7 @@ function ScadenziarioPage() {
       return all;
     },
   });
+
 
   const annoCorrente = useMemo(() => new Date().getFullYear(), []);
   const annoPrec = annoCorrente - 1;
