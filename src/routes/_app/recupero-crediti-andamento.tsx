@@ -56,7 +56,7 @@ function AndamentoPage() {
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_dso_aggregato", {} as never);
       if (error) throw error;
-      return (data as Array<{ dso_ponderato: number | null; dso_medio: number | null; dso_mediano: number | null; n_anticipo: number; n_puntuali: number; n_ritardo: number; n_totale: number; importo_totale: number; importo_anticipo: number; importo_puntuali: number; importo_ritardo: number }> | null)?.[0] ?? null;
+      return (((data as unknown) as Array<DsoRow> | null) ?? [])[0] ?? null;
     },
   });
 
@@ -65,10 +65,12 @@ function AndamentoPage() {
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_dso_serie_mensile", {} as never);
       if (error) throw error;
-      return ((data ?? []) as Array<{ mese: string; dso_ponderato: number | null; n_scadenze: number }>).map((r) => ({
+      return (((data ?? []) as unknown) as Array<{ mese: string; all_teorico: number | null; all_reale: number | null; cred_teorico: number | null; cred_reale: number | null; n_scadenze: number }>).map((r) => ({
         mese: format(new Date(r.mese), "MMM yy", { locale: it }),
-        dso: r.dso_ponderato == null ? null : Number(r.dso_ponderato),
-        n: r.n_scadenze,
+        allTeorico: r.all_teorico == null ? null : Number(r.all_teorico),
+        allReale: r.all_reale == null ? null : Number(r.all_reale),
+        credTeorico: r.cred_teorico == null ? null : Number(r.cred_teorico),
+        credReale: r.cred_reale == null ? null : Number(r.cred_reale),
       }));
     },
   });
