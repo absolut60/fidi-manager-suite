@@ -15,6 +15,7 @@ import { Separator } from "@/components/ui/separator";
 import { STATO_LABEL, STATO_TONE, TIPO_LABEL, TIPO_TONE, LIVELLO_LABEL, formatEuro, formatDate, type TipoRichiesta } from "@/lib/fidi";
 
 import { ComunicazioniRichiestaPanel } from "@/components/comunicazioni-richiesta-panel";
+import { AllegatiSection } from "@/components/allegati-section";
 import { RICHIESTA_FIDO_SELECT } from "@/lib/richieste-fido-data";
 import { getFidoAttuale } from "@/lib/fido-cliente";
 export const Route = createFileRoute("/_app/richieste/$richiestaId")({
