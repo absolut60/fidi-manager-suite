@@ -744,7 +744,7 @@ function InApprovazioneTab({
             <TableBody>
               {filtered.map((r) => {
                 const g = giorniDa(r.data_invio);
-                const livMio = canApprove && (isAdmin || r.livello_corrente === livelloUtente);
+                const livMio = canApprove && (isAdmin || livelloUtente >= Number(r.livello_richiesto ?? 99));
                 const unread = msgNonLetti?.[r.id] ?? 0;
                 return (
                   <TableRow
