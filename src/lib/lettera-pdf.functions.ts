@@ -43,6 +43,27 @@ function b64ToBytes(b64: string): Uint8Array {
   const out = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
   return out;
+
+// Normalizza insegna sede: title-case ma preserva "MADE" e acronimi corti (<=3 lettere)
+function formatInsegna(raw: string | null | undefined): string {
+  if (!raw) return "";
+  return raw
+    .split("|")
+    .map((part) =>
+      part
+        .trim()
+        .split(/\s+/)
+        .map((w) => {
+          if (w.toUpperCase() === "MADE") return "MADE";
+          if (w.length <= 3 && /^[A-Z]+$/.test(w)) return w.toUpperCase();
+          return w
+            .split("-")
+            .map((seg) => (seg ? seg.charAt(0).toUpperCase() + seg.slice(1).toLowerCase() : seg))
+            .join("-");
+        })
+        .join(" "),
+    )
+    .join(" | ");
 }
 
 // Rimuove dal corpo i blocchi che il PDF disegna gia da se (destinatario in alto,
