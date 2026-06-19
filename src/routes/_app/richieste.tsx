@@ -1104,7 +1104,7 @@ const formSchema = z.object({
   tipo: z.enum(["nuovo", "nuovo_fido", "aumento", "diminuzione", "rinnovo"]),
   importo_richiesto: z.coerce.number().positive("Importo > 0").max(99999999),
   durata_mesi: z.coerce.number().int().min(1).max(120).default(12),
-  motivazione: z.string().trim().min(1, "Obbligatoria").max(2000),
+  motivazione: z.string().trim().max(2000),
   note: z.string().trim().max(2000).optional().or(z.literal("")),
 });
 type FormVals = z.infer<typeof formSchema>;
