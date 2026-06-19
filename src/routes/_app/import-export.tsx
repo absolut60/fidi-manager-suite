@@ -1304,6 +1304,9 @@ function parseOfficialScadenziarioSheet(sheet: XLSX.WorkSheet): {
     "importo_originario",
     "importo_netto_prev",
     "importo_ritardo",
+    "importo_pagato",
+    "importo_residuo",
+    "importo_effetto_orig",
   ]);
   const intFields = new Set([
     "giorni_ritardo",
