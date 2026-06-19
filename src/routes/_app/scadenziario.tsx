@@ -201,18 +201,25 @@ function ScadenziarioPage() {
   const { data: fatturatoMap } = useQuery({
     queryKey: ["scadenziario-fatturato-clienti", annoCorrente, annoPrec],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("fatturato_clienti")
-        .select("cliente_id, anno, fatturato")
-        .in("anno", [annoCorrente, annoPrec]);
+      // RPC server-side: una riga per cliente con scadenze aperte, con cur/prev
+      // gia' aggregati. Evita il troncamento a 1000 righe di PostgREST che
+      // affliggeva la lettura diretta della view fatturato_clienti.
+      const { data, error } = await supabase.rpc(
+        "get_fatturato_clienti_scadenziario" as never,
+        { _anno_corrente: annoCorrente, _anno_prec: annoPrec } as never,
+      );
       if (error) throw error;
       const m = new Map<string, { cur: number; prev: number }>();
-      for (const r of (data ?? []) as Array<{ cliente_id: string | null; anno: number | null; fatturato: number | null }>) {
+      for (const r of (data ?? []) as unknown as Array<{
+        cliente_id: string | null;
+        fatturato_anno_corrente: number | string | null;
+        fatturato_anno_prec: number | string | null;
+      }>) {
         if (!r.cliente_id) continue;
-        const entry = m.get(r.cliente_id) ?? { cur: 0, prev: 0 };
-        if (Number(r.anno) === annoCorrente) entry.cur = Number(r.fatturato) || 0;
-        else if (Number(r.anno) === annoPrec) entry.prev = Number(r.fatturato) || 0;
-        m.set(r.cliente_id, entry);
+        m.set(r.cliente_id, {
+          cur: Number(r.fatturato_anno_corrente) || 0,
+          prev: Number(r.fatturato_anno_prec) || 0,
+        });
       }
       return m;
     },

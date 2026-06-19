@@ -2889,6 +2889,14 @@ export type Database = {
           n_scadenze: number
         }[]
       }
+      get_fatturato_clienti_scadenziario: {
+        Args: { _anno_corrente: number; _anno_prec: number }
+        Returns: {
+          cliente_id: string
+          fatturato_anno_corrente: number
+          fatturato_anno_prec: number
+        }[]
+      }
       get_promemoria_clienti_aggregato: {
         Args: {
           _escludi_bloccati?: boolean
