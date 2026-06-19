@@ -102,8 +102,20 @@ function RichiestaDetail() {
       const { error } = await supabase.from("richieste_fido").delete().eq("id", richiestaId);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success("Richiesta eliminata");
+      // Stesso meccanismo di invalidazione usato dalla lista (qcInvalidate in /richieste):
+      // forza il refetch immediato di lista + contatori/code correlate, cosi al ritorno
+      // la richiesta cancellata non e' piu' visibile e i KPI in cima sono aggiornati.
+      await Promise.all([
+        qc.refetchQueries({ queryKey: ["richieste"], type: "active" }),
+        qc.refetchQueries({ queryKey: ["approvazioni-queue"], type: "active" }),
+        qc.refetchQueries({ queryKey: ["richieste-cliente"], type: "active" }),
+        qc.refetchQueries({ queryKey: ["msg-non-letti-richieste"], type: "active" }),
+        qc.refetchQueries({ queryKey: ["comunicazioni-non-lette"], type: "active" }),
+      ]);
+      qc.invalidateQueries({ queryKey: ["richieste"] });
+      qc.invalidateQueries({ queryKey: ["approvazioni-queue"] });
       navigate({ to: "/richieste" });
     },
     onError: (e: Error) => toast.error(e.message),
