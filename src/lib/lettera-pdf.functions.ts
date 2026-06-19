@@ -253,6 +253,11 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
       { oggetto: data.oggettoOverride ?? tpl?.oggetto ?? "", corpo: data.corpoOverride ?? tpl?.corpo ?? "" },
       dati,
     );
+    // Dedup: rimuovi prefisso "Oggetto:" se l'utente l'ha gia incluso nel campo oggetto
+    rendered.oggetto = stripOggettoPrefix(rendered.oggetto);
+    // Dedup: rimuovi dal corpo intestazione destinatario/luogo-data/oggetto e saluti+firma
+    // (il PDF li disegna gia da se' come blocchi separati)
+    rendered.corpo = stripLetterChrome(rendered.corpo, dati);
 
 
     // 4) Costruisci PDF con pdf-lib
