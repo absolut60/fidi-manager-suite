@@ -60,9 +60,15 @@ export function LetteraPdfDialog({
     }
   }, [open]);
 
-  // Quando l'utente sceglie un template, renderizza l'anteprima con i dati reali
+  // Quando l'utente sceglie un template, renderizza l'anteprima con i dati reali.
+  // Se templateId === "__libera__", lascia il campo vuoto per scrittura libera.
   useEffect(() => {
     if (!open || !templateId) return;
+    if (templateId === "__libera__") {
+      setOggetto((o) => o);
+      setCorpo((c) => c);
+      return;
+    }
     const tpl = (templates ?? []).find((t) => t.id === templateId);
     if (!tpl) return;
     let cancelled = false;
@@ -81,7 +87,8 @@ export function LetteraPdfDialog({
     return () => { cancelled = true; };
   }, [templateId, open]); // eslint-disable-line
 
-  const canGen = !!templateId && !!corpo.trim() && !busy;
+  const isLibera = templateId === "__libera__";
+  const canGen = !!templateId && !!corpo.trim() && (!isLibera || !!oggetto.trim()) && !busy;
 
   async function handleGenera() {
     if (!canGen) return;
@@ -89,13 +96,14 @@ export function LetteraPdfDialog({
     try {
       const res = await genera({
         data: {
-          templateId,
+          templateId: isLibera ? null : templateId,
           clienteId,
           oggettoOverride: oggetto,
           corpoOverride: corpo,
           attachToAzioneId: attachToAzioneId ?? null,
         },
       });
+
       // Download del PDF
       const bin = atob(res.pdfBase64);
       const arr = new Uint8Array(bin.length);
