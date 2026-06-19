@@ -181,9 +181,10 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
       sede: sedeFinal,
     };
     const rendered = renderLettera(
-      { oggetto: data.oggettoOverride ?? tpl.oggetto, corpo: data.corpoOverride ?? tpl.corpo },
+      { oggetto: data.oggettoOverride ?? tpl?.oggetto ?? "", corpo: data.corpoOverride ?? tpl?.corpo ?? "" },
       dati,
     );
+
 
     // 4) Costruisci PDF con pdf-lib
     const pdfDoc = await PDFDocument.create();
