@@ -1114,6 +1114,9 @@ function RichiestaFormDialog({
   const [openCliente, setOpenCliente] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<{ file: File; descrizione: string }[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Se editing/clone, il tipo proviene dal record esistente: rispetta la scelta dell'utente.
+  // In creazione nuova, il tipo viene calcolato automaticamente finche' l'utente non lo tocca.
+  const [tipoTouched, setTipoTouched] = useState<boolean>(!!seed);
 
   const isEdit = !!richiesta;
 
