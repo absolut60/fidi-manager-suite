@@ -2499,7 +2499,7 @@ export const processBloccoFidoImport = inngest.createFunction(
       let anomalieTotali = 0;
 
       const totalChunks = Math.ceil(parsed.length / CHUNK);
-      // UN SOLO step.run per tutti i chunk
+      // UN SOLO step.run per tutti i chunk — BULK UPSERT + contatori diretti
       const chunkAllRes = await step.run("process-all-chunks", async () => {
         let tAgg = 0,
           tBlk = 0,
@@ -2508,169 +2508,165 @@ export const processBloccoFidoImport = inngest.createFunction(
           tPol = 0,
           tAnom = 0,
           tErr = 0,
-          tMiss = 0;
+          tMiss = 0,
+          tElaborate = 0;
+        const ultimaImpIso = new Date(new Date(timestampInizio).getTime() + 1000).toISOString();
+
         for (let ci = 0; ci < totalChunks; ci++) {
           const slice = parsed.slice(ci * CHUNK, (ci + 1) * CHUNK);
-          let cAgg = 0,
-            cBlk = 0,
+          let cBlk = 0,
             cSblk = 0,
             cNonAtt = 0,
-            cPol = 0,
-            cAnom = 0;
-          let cUpdateTentati = 0,
-            cUpdateZero = 0,
-            cUpdateMulti = 0;
+            cPol = 0;
           const cErr: Array<{ riga: number; errore: string }> = [];
           const cMiss: string[] = [];
           const anomalieBatch: AnomaliaImport[] = [];
-          const updateDiagnostics: Array<{ riga: number; errore: string }> = [];
+          const payloads: Array<Record<string, unknown>> = [];
+          // polizze da inserire/aggiornare (cliente_id, importo, [existingPolizzaId])
+          const polizzeUpdate: Array<{ id: string; importo: number }> = [];
+          const polizzeInsert: Array<{ cliente_id: string; importo: number; riga: number }> = [];
 
-          await Promise.all(
-            slice.map(async (r) => {
-              try {
-                const codiceGestionale = normalizeBfaCodice(r.codice_gestionale);
-                const snap = clientMap[codiceGestionale];
-                if (!snap) {
-                  cMiss.push(codiceGestionale || r.codice_gestionale);
-                  return;
-                }
-                const clienteId = snap.id;
-                const payload: Record<string, unknown> = {};
-                const rowAnomalie: AnomaliaImport[] = [];
-
-                // --- Blocco: applicato automaticamente senza anomalia ---
-                const indNuovoRaw = r.ind_blocco;
-                const indNuovo = indNuovoRaw != null ? Number(indNuovoRaw) : null;
-                const indAttuale = snap.ind_blocco ?? 0;
-                if (indNuovo != null) {
-                  if (indNuovo === 0) {
-                    payload.bloccato = false;
-                    payload.ind_blocco = 0;
-                    payload.motivo_blocco = null;
-                    payload.data_blocco = null;
-                    if (indAttuale !== 0) cSblk++;
-                  } else if (indNuovo === 1) {
-                    payload.bloccato = true;
-                    payload.ind_blocco = 1;
-                    payload.motivo_blocco = "Bloccato con possibilità di sblocco";
-                    payload.data_blocco = nowIso;
-                    if (indAttuale !== 1) cBlk++;
-                  } else if (indNuovo === 2) {
-                    payload.bloccato = true;
-                    payload.ind_blocco = 2;
-                    payload.motivo_blocco = "Bloccato";
-                    payload.data_blocco = nowIso;
-                    if (indAttuale !== 2) cBlk++;
-                  }
-                }
-
-                payload.ultima_data_fatturazione = r.ultima_data_fatturazione;
-                const attivo =
-                  r.ultima_data_fatturazione != null && r.ultima_data_fatturazione >= cutoff2025;
-                payload.cliente_attivo = attivo;
-                if (!attivo) cNonAtt++;
-
-                if (r.fido !== null && r.fido !== undefined) {
-                  payload.fido_gestionale = r.fido ?? 0;
-                }
-
-                const nuovaAssic =
-                  r.assicurazione !== null && r.assicurazione !== undefined && r.assicurazione > 0;
-                let assicAnomalo = false;
-                if (snap.assicurazione_attiva === true && !nuovaAssic) {
-                  rowAnomalie.push({
-                    importazione_id: importazioneId,
-                    cliente_id: clienteId,
-                    codice_gestionale: codiceGestionale,
-                    ragione_sociale: snap.ragione_sociale,
-                    tipo_anomalia: "perde_assicurazione",
-                    campo: "assicurazione_attiva",
-                    valore_attuale: "true",
-                    valore_nuovo: "false",
-                    stato: "in_attesa",
-                  });
-                  assicAnomalo = true;
-                }
-
-                if (!assicAnomalo) {
-                  if (nuovaAssic) {
-                    payload.assicurazione_attiva = true;
-                    const existingId = poueyMap[clienteId];
-                    if (existingId) {
-                      const { error } = await supabaseAdmin
-                        .from("assicurazioni_credito")
-                        .update({
-                          importo_massimale: r.assicurazione,
-                          stato: "attiva",
-                        } as never)
-                        .eq("id", existingId);
-                      if (error)
-                        cErr.push({ riga: r.riga, errore: `polizza update: ${error.message}` });
-                      else cPol++;
-                    } else {
-                      const { data: ins, error } = await supabaseAdmin
-                        .from("assicurazioni_credito")
-                        .insert({
-                          cliente_id: clienteId,
-                          assicuratore: "POUEY",
-                          importo_massimale: r.assicurazione,
-                          stato: "attiva",
-                        } as never)
-                        .select("id")
-                        .single();
-                      if (error)
-                        cErr.push({ riga: r.riga, errore: `polizza insert: ${error.message}` });
-                      else {
-                        cPol++;
-                        if (ins?.id) poueyMap[clienteId] = ins.id;
-                      }
-                    }
-                  } else {
-                    payload.assicurazione_attiva = false;
-                  }
-                }
-
-                payload.ultima_importazione_d = new Date(new Date(timestampInizio).getTime() + 1000).toISOString();
-
-                if (Object.keys(payload).length > 0) {
-                  cUpdateTentati++;
-                  const { error, count } = await supabaseAdmin
-                    .from("clienti")
-                    .update(payload as never, { count: "exact" })
-                    .eq("id", clienteId);
-                  if (error) cErr.push({ riga: r.riga, errore: error.message });
-                  else {
-                    const affected = count ?? 0;
-                    cAgg += affected;
-                    if (affected === 0) {
-                      cUpdateZero++;
-                      cErr.push({
-                        riga: r.riga,
-                        errore: `UPDATE clienti COD_CLI=${codiceGestionale}: count=0`,
-                      });
-                    } else if (affected > 1) {
-                      cUpdateMulti++;
-                      updateDiagnostics.push({
-                        riga: r.riga,
-                        errore: `UPDATE clienti COD_CLI=${codiceGestionale}: count=${affected}`,
-                      });
-                    }
-                  }
-                }
-
-                if (rowAnomalie.length) {
-                  anomalieBatch.push(...rowAnomalie);
-                  cAnom += rowAnomalie.length;
-                }
-              } catch (e) {
-                cErr.push({
-                  riga: r.riga,
-                  errore: `Errore riga COD_CLI=${normalizeBfaCodice(r.codice_gestionale)}: ${e instanceof Error ? e.message : String(e)}`,
-                });
+          for (const r of slice) {
+            try {
+              const codiceGestionale = normalizeBfaCodice(r.codice_gestionale);
+              const snap = clientMap[codiceGestionale];
+              if (!snap) {
+                cMiss.push(codiceGestionale || r.codice_gestionale);
+                continue;
               }
-            }),
-          );
+              const clienteId = snap.id;
+              const payload: Record<string, unknown> = { id: clienteId };
 
+              // --- Blocco
+              const indNuovoRaw = r.ind_blocco;
+              const indNuovo = indNuovoRaw != null ? Number(indNuovoRaw) : null;
+              const indAttuale = snap.ind_blocco ?? 0;
+              if (indNuovo != null && !Number.isNaN(indNuovo)) {
+                if (indNuovo === 0) {
+                  payload.bloccato = false;
+                  payload.ind_blocco = 0;
+                  payload.motivo_blocco = null;
+                  payload.data_blocco = null;
+                  if (indAttuale !== 0) cSblk++;
+                } else if (indNuovo === 1) {
+                  payload.bloccato = true;
+                  payload.ind_blocco = 1;
+                  payload.motivo_blocco = "Bloccato con possibilità di sblocco";
+                  payload.data_blocco = nowIso;
+                  if (indAttuale !== 1) cBlk++;
+                } else if (indNuovo === 2) {
+                  payload.bloccato = true;
+                  payload.ind_blocco = 2;
+                  payload.motivo_blocco = "Bloccato";
+                  payload.data_blocco = nowIso;
+                  if (indAttuale !== 2) cBlk++;
+                }
+              }
+
+              payload.ultima_data_fatturazione = r.ultima_data_fatturazione;
+              const attivo =
+                r.ultima_data_fatturazione != null && r.ultima_data_fatturazione >= cutoff2025;
+              payload.cliente_attivo = attivo;
+              if (!attivo) cNonAtt++;
+
+              if (r.fido !== null && r.fido !== undefined) {
+                payload.fido_gestionale = r.fido ?? 0;
+              }
+
+              const nuovaAssic =
+                r.assicurazione !== null && r.assicurazione !== undefined && r.assicurazione > 0;
+              let assicAnomalo = false;
+              if (snap.assicurazione_attiva === true && !nuovaAssic) {
+                anomalieBatch.push({
+                  importazione_id: importazioneId,
+                  cliente_id: clienteId,
+                  codice_gestionale: codiceGestionale,
+                  ragione_sociale: snap.ragione_sociale,
+                  tipo_anomalia: "perde_assicurazione",
+                  campo: "assicurazione_attiva",
+                  valore_attuale: "true",
+                  valore_nuovo: "false",
+                  stato: "in_attesa",
+                });
+                assicAnomalo = true;
+              }
+              if (!assicAnomalo) {
+                if (nuovaAssic) {
+                  payload.assicurazione_attiva = true;
+                  const existingId = poueyMap[clienteId];
+                  if (existingId) {
+                    polizzeUpdate.push({ id: existingId, importo: r.assicurazione as number });
+                  } else {
+                    polizzeInsert.push({
+                      cliente_id: clienteId,
+                      importo: r.assicurazione as number,
+                      riga: r.riga,
+                    });
+                  }
+                } else {
+                  payload.assicurazione_attiva = false;
+                }
+              }
+
+              payload.ultima_importazione_d = ultimaImpIso;
+              payloads.push(payload);
+            } catch (e) {
+              cErr.push({
+                riga: r.riga,
+                errore: `Errore riga COD_CLI=${normalizeBfaCodice(r.codice_gestionale)}: ${e instanceof Error ? e.message : String(e)}`,
+              });
+            }
+          }
+
+          // --- BULK upsert clienti (un solo round-trip per chunk)
+          let cAgg = 0;
+          if (payloads.length) {
+            const { data, error } = await supabaseAdmin
+              .from("clienti")
+              .upsert(payloads as never, { onConflict: "id" })
+              .select("id");
+            if (error) {
+              cErr.push({ riga: 0, errore: `upsert clienti chunk ${ci + 1}: ${error.message}` });
+            } else {
+              cAgg = data?.length ?? 0;
+            }
+          }
+
+          // --- BULK polizze: update esistenti
+          if (polizzeUpdate.length) {
+            for (const p of polizzeUpdate) {
+              const { error } = await supabaseAdmin
+                .from("assicurazioni_credito")
+                .update({ importo_massimale: p.importo, stato: "attiva" } as never)
+                .eq("id", p.id);
+              if (error) cErr.push({ riga: 0, errore: `polizza update: ${error.message}` });
+              else cPol++;
+            }
+          }
+          // --- BULK polizze: insert nuove
+          if (polizzeInsert.length) {
+            const { data, error } = await supabaseAdmin
+              .from("assicurazioni_credito")
+              .insert(
+                polizzeInsert.map((p) => ({
+                  cliente_id: p.cliente_id,
+                  assicuratore: "POUEY",
+                  importo_massimale: p.importo,
+                  stato: "attiva",
+                })) as never,
+              )
+              .select("id, cliente_id");
+            if (error) {
+              cErr.push({ riga: 0, errore: `polizze insert chunk ${ci + 1}: ${error.message}` });
+            } else {
+              for (const ins of (data ?? []) as Array<{ id: string; cliente_id: string }>) {
+                poueyMap[ins.cliente_id] = ins.id;
+                cPol++;
+              }
+            }
+          }
+
+          // --- BULK anomalie
           if (anomalieBatch.length) {
             const { error } = await supabaseAdmin
               .from("anomalie_import" as never)
@@ -2678,52 +2674,45 @@ export const processBloccoFidoImport = inngest.createFunction(
             if (error) cErr.push({ riga: 0, errore: `anomalie insert: ${error.message}` });
           }
 
-          const { error: rpcError } = await supabaseAdmin.rpc("increment_importazione_counters", {
-            _id: importazioneId,
-            _elaborate: slice.length,
-            _create: 0,
-            _update: cAgg,
-            _error: cErr.length,
-            _skipped: cMiss.length,
-          });
-          if (rpcError) cErr.push({ riga: 0, errore: `increment counters: ${rpcError.message}` });
-
+          // --- Log per chunk (sempre, anche se zero errori)
           const chunkLog = {
             riga: 0,
-            errore: `Chunk ${ci + 1}/${totalChunks}: UPDATE clienti tentati=${cUpdateTentati}, count aggiornate=${cAgg}, count=0=${cUpdateZero}, count>1=${cUpdateMulti}, non trovati=${cMiss.length}, errori=${cErr.length}`,
+            errore: `Chunk ${ci + 1}/${totalChunks}: payloads=${payloads.length}, upsert_aggiornati=${cAgg}, polizze=${cPol}, anomalie=${anomalieBatch.length}, non_trovati=${cMiss.length}, errori=${cErr.length}`,
           };
           logger.info(chunkLog.errore);
 
-          if (cErr.length || cMiss.length || updateDiagnostics.length || cUpdateTentati > 0) {
-            const { data: cur } = await supabaseAdmin
-              .from("importazioni")
-              .select("log_errori, codici_mancanti")
-              .eq("id", importazioneId)
-              .single();
-            const updates: Record<string, unknown> = {};
-            if (cErr.length || updateDiagnostics.length || cUpdateTentati > 0) {
-              const exist =
-                (cur?.log_errori as Array<{ riga: number; errore: string }> | null) ?? [];
-              updates.log_errori = [...exist, chunkLog, ...updateDiagnostics, ...cErr].slice(-500);
-            }
-            if (cMiss.length) {
-              const exist = (cur?.codici_mancanti as string[] | null) ?? [];
-              updates.codici_mancanti = Array.from(new Set([...exist, ...cMiss])).slice(0, 500);
-            }
-            await supabaseAdmin
-              .from("importazioni")
-              .update(updates as never)
-              .eq("id", importazioneId);
-          }
-
+          // --- Aggiorna contatori CON UPDATE DIRETTO (no RPC, no fallimento muto)
           tAgg += cAgg;
           tBlk += cBlk;
           tSblk += cSblk;
           tNonAtt += cNonAtt;
           tPol += cPol;
-          tAnom += cAnom;
+          tAnom += anomalieBatch.length;
           tErr += cErr.length;
           tMiss += cMiss.length;
+          tElaborate += slice.length;
+
+          const { data: cur } = await supabaseAdmin
+            .from("importazioni")
+            .select("log_errori, codici_mancanti")
+            .eq("id", importazioneId)
+            .single();
+          const existingLog =
+            (cur?.log_errori as Array<{ riga: number; errore: string }> | null) ?? [];
+          const existingMiss = (cur?.codici_mancanti as string[] | null) ?? [];
+          await supabaseAdmin
+            .from("importazioni")
+            .update({
+              righe_elaborate: tElaborate,
+              righe_aggiornate: tAgg,
+              righe_errore: tErr,
+              righe_saltate: tMiss,
+              log_errori: [...existingLog, chunkLog, ...cErr].slice(-500),
+              codici_mancanti: cMiss.length
+                ? Array.from(new Set([...existingMiss, ...cMiss])).slice(0, 500)
+                : existingMiss,
+            } as never)
+            .eq("id", importazioneId);
         }
         return { tAgg, tBlk, tSblk, tNonAtt, tPol, tAnom, tErr, tMiss };
       });
@@ -2735,6 +2724,22 @@ export const processBloccoFidoImport = inngest.createFunction(
       anomalieTotali += chunkAllRes.tAnom;
       errorsCount += chunkAllRes.tErr;
       nonTrovatiCount += chunkAllRes.tMiss;
+
+      // STEP 4c: QUADRATURA — verifica oggettiva contro il DB
+      const quadratura = await step.run("verifica-quadratura", async () => {
+        const atteso = parsed.length - nonTrovatiCount;
+        // Conta i clienti effettivamente toccati da questo import
+        const { count: aggiornatiDb } = await supabaseAdmin
+          .from("clienti")
+          .select("id", { count: "exact", head: true })
+          .gte("ultima_importazione_d", timestampInizio);
+        const real = aggiornatiDb ?? 0;
+        const gap = atteso - real;
+        logger.info(
+          `QUADRATURA: parsed=${parsed.length}, non_trovati=${nonTrovatiCount}, attesi=${atteso}, aggiornati_db=${real}, gap=${gap}`,
+        );
+        return { parsed: parsed.length, non_trovati: nonTrovatiCount, atteso, aggiornati_db: real, gap };
+      });
 
 
       // STEP 4b: Note Legale + anomalie perde_gestione_legale
