@@ -252,6 +252,15 @@ function RichiestaDetail() {
         </Card>
       )}
 
+      <Card className="p-5">
+        <AllegatiSection
+          entitaTipo="richiesta_fido"
+          entitaId={r.id}
+          clienteId={r.cliente_id}
+          title="Allegati richiesta"
+        />
+      </Card>
+
       {r.stato !== "bozza" && r.created_by && (
         <ComunicazioniRichiestaPanel richiestaId={r.id} richiestaCreatedBy={r.created_by} />
       )}
