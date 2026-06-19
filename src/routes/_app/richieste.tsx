@@ -1,17 +1,22 @@
 import { createFileRoute, useNavigate, Outlet, useMatchRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import {
   Plus, Search, FileText, Pencil, Trash2, Send, Check, X, AlertCircle,
   Clock, CheckCircle2, Wallet, RotateCcw, MessageSquareWarning, Ban, MessageSquare,
-  ChevronsUpDown,
+  ChevronsUpDown, Paperclip,
 } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import {
   Command, CommandInput, CommandList, CommandItem, CommandEmpty, CommandGroup,
 } from "@/components/ui/command";
 import { toast } from "sonner";
+import {
+  uploadAllegatoFile,
+  validateAllegatoFile,
+  fmtAllegatoBytes,
+} from "@/components/allegati-section";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useConfig } from "@/hooks/use-config";
