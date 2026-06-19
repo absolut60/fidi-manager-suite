@@ -1112,6 +1112,8 @@ function RichiestaFormDialog({
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [openCliente, setOpenCliente] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState<{ file: File; descrizione: string }[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isEdit = !!richiesta;
 
