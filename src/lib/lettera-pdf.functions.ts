@@ -298,17 +298,13 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
     const MUTED: [number, number, number] = [0.42, 0.46, 0.52];
     const HAIRLINE: [number, number, number] = [0.85, 0.87, 0.90];
 
-    // Logo (fetch best-effort)
+    // Logo ufficiale MADE: embed dal base64 in bundle (no fetch, sempre disponibile)
     let logoImg: { width: number; height: number; embed: any } | null = null;
     try {
-      const res = await fetch(LOGO_URL);
-      if (res.ok) {
-        const bytes = new Uint8Array(await res.arrayBuffer());
-        const png = await pdfDoc.embedPng(bytes);
-        const targetW = 120;
-        const scale = targetW / png.width;
-        logoImg = { width: targetW, height: png.height * scale, embed: png };
-      }
+      const png = await pdfDoc.embedPng(b64ToBytes(LOGO_MADE_BASE64));
+      const targetW = 140;
+      const scale = targetW / png.width;
+      logoImg = { width: targetW, height: png.height * scale, embed: png };
     } catch {
       // logo opzionale
     }
@@ -331,7 +327,7 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
     const textWidth = (text: string, size: number, bold = false) =>
       (bold ? fontB : font).widthOfTextAtSize(toWinAnsi(text), size);
 
-    // === HEADER MITTENTE: logo + sede operativa (NO nome operatore) ===
+    // === HEADER MITTENTE: logo ufficiale + sede operativa (NO nome operatore) ===
     if (logoImg) {
       page.drawImage(logoImg.embed, {
         x: MARGIN_X,
@@ -340,10 +336,12 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
         height: logoImg.height,
       });
     }
-    const nomeSedeHeader = (sedeFinal.nome ?? "").trim();
+    const nomeSedeRaw = (sedeFinal.nome ?? "").trim();
     const insegnaSede = (sedeFinal.insegna ?? "").trim();
-    const titoloMittente = nomeSedeHeader
-      ? `MADE - ${nomeSedeHeader}`
+    // Normalizza: rimuovi eventuale prefisso "Sede di " e Capitalize la citta
+    const cittaSedeNorm = titleCaseSede(nomeSedeRaw.replace(/^sede\s+(di\s+)?/i, ""));
+    const titoloMittente = cittaSedeNorm
+      ? `Sede di ${cittaSedeNorm}`
       : insegnaSede || "MADE DISTRIBUZIONE";
     const sedeHeadLines: string[] = [];
     const indirSede = (sedeFinal.indirizzo ?? "").trim();
