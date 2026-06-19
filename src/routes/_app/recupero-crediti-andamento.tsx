@@ -483,6 +483,3 @@ function DsoSection({
     </Card>
   );
 }
-
-  );
-}
