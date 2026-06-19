@@ -87,25 +87,18 @@ function stripLetterChrome(
   // Solo se abbiamo riconosciuto almeno un marcatore (Spett./Oggetto/data)
   const head = removedLead >= 1 ? lines.slice(start) : lines.slice();
 
-  // Strip trailing firma block
-  const tailLike = (t: string): boolean => {
-    if (!t) return true;
-    if (/^(cordiali|distinti|cordialmente|con\s+i\s+migliori)\s+saluti/i.test(t)) return true;
-    if (/^saluti\b/i.test(t)) return true;
-    if (/^firma\b/i.test(t)) return true;
-    if (/^made\b/i.test(t)) return true;
-    if (/^il\s+(responsabile|direttore|titolare)\b/i.test(t)) return true;
-    return false;
-  };
-  let end = head.length;
-  let removedTail = 0;
-  // Rimuove fino a 6 righe finali se sembrano firma/saluti, piu eventuali blank
-  for (let k = 0; k < 8 && end > 0; k++) {
-    const t = head[end - 1].trim();
-    if (tailLike(t)) { end--; if (t !== "") removedTail++; continue; }
-    break;
+  // Strip tail firma: dal primo "<...> saluti" (cordiali/distinti/...) in poi
+  // togli TUTTO fino alla fine del corpo. Cosi spariscono anche "GARAVAGLIA | MADE",
+  // "Andrea Giani", "MADE DISTRIBUZIONE..." e simili, che il PDF stampa gia da se.
+  let cutAt = head.length;
+  for (let i = 0; i < head.length; i++) {
+    const t = head[i].trim();
+    if (/^(cordiali|distinti|cordialmente|con\s+i\s+migliori)\s+saluti/i.test(t) || /^saluti\b/i.test(t)) {
+      cutAt = i;
+      break;
+    }
   }
-  const cleaned = removedTail >= 1 ? head.slice(0, end) : head;
+  const cleaned = head.slice(0, cutAt);
 
   return cleaned.join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
