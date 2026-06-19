@@ -2823,23 +2823,35 @@ export const processBloccoFidoImport = inngest.createFunction(
           }
 
           // Anomalie perde_gestione_legale: clienti nel file con in_gestione_legale=true
-          // ma NON presenti nel foglio Note Legale
+          // ma NON presenti nel foglio Note Legale.
+          // Query mirata: in_gestione_legale=true AND codice_gestionale IN (codici), batch.
           const anomaliePerdita: AnomaliaImport[] = [];
-          for (const codCli of codici) {
-            const snap = clientMap[codCli];
-            if (!snap) continue;
-            if (snap.in_gestione_legale === true && !clientiInGestioneNuovi.has(snap.id)) {
-              anomaliePerdita.push({
-                importazione_id: importazioneId,
-                cliente_id: snap.id,
-                codice_gestionale: codCli,
-                ragione_sociale: snap.ragione_sociale,
-                tipo_anomalia: "perde_gestione_legale",
-                campo: "in_gestione_legale",
-                valore_attuale: "true",
-                valore_nuovo: "false",
-                stato: "in_attesa",
-              });
+          const BATCH_PG = 500;
+          for (let i = 0; i < codici.length; i += BATCH_PG) {
+            const sliceCod = codici.slice(i, i + BATCH_PG);
+            const { data: rowsPG } = await supabaseAdmin
+              .from("clienti")
+              .select("id, codice_gestionale, ragione_sociale")
+              .eq("in_gestione_legale", true)
+              .in("codice_gestionale", sliceCod);
+            for (const c of (rowsPG ?? []) as Array<{
+              id: string;
+              codice_gestionale: string | null;
+              ragione_sociale: string | null;
+            }>) {
+              if (!clientiInGestioneNuovi.has(c.id)) {
+                anomaliePerdita.push({
+                  importazione_id: importazioneId,
+                  cliente_id: c.id,
+                  codice_gestionale: c.codice_gestionale ?? "",
+                  ragione_sociale: c.ragione_sociale,
+                  tipo_anomalia: "perde_gestione_legale",
+                  campo: "in_gestione_legale",
+                  valore_attuale: "true",
+                  valore_nuovo: "false",
+                  stato: "in_attesa",
+                });
+              }
             }
           }
           if (anomaliePerdita.length) {
