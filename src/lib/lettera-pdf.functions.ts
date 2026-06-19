@@ -389,7 +389,7 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
           tipo: "lettera",
           esito: "fatto",
           data_azione: new Date().toISOString(),
-          note: `Lettera generata: ${tpl.nome}`,
+          note: `Lettera generata: ${tplNome}`,
         })
         .select("id")
         .single();
