@@ -1,17 +1,22 @@
 import { createFileRoute, useNavigate, Outlet, useMatchRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import {
   Plus, Search, FileText, Pencil, Trash2, Send, Check, X, AlertCircle,
   Clock, CheckCircle2, Wallet, RotateCcw, MessageSquareWarning, Ban, MessageSquare,
-  ChevronsUpDown,
+  ChevronsUpDown, Paperclip,
 } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import {
   Command, CommandInput, CommandList, CommandItem, CommandEmpty, CommandGroup,
 } from "@/components/ui/command";
 import { toast } from "sonner";
+import {
+  uploadAllegatoFile,
+  validateAllegatoFile,
+  fmtAllegatoBytes,
+} from "@/components/allegati-section";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useConfig } from "@/hooks/use-config";
@@ -1107,6 +1112,8 @@ function RichiestaFormDialog({
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [openCliente, setOpenCliente] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState<{ file: File; descrizione: string }[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isEdit = !!richiesta;
 
@@ -1209,16 +1216,49 @@ function RichiestaFormDialog({
         stato: input.invia ? "in_approvazione" : "bozza",
         data_invio: input.invia ? new Date().toISOString() : null,
       } as any;
+      let richiestaId: string | null = null;
       if (richiesta?.id) {
         const { error } = await supabase.from("richieste_fido").update(payload).eq("id", richiesta.id);
         if (error) throw error;
+        richiestaId = richiesta.id;
       } else {
-        const { error } = await supabase.from("richieste_fido").insert({ ...payload, created_by: user?.id });
+        const { data: inserted, error } = await supabase
+          .from("richieste_fido")
+          .insert({ ...payload, created_by: user?.id })
+          .select("id")
+          .single();
         if (error) throw error;
+        richiestaId = inserted?.id ?? null;
       }
+
+      // Upload allegati pending (dopo che la richiesta esiste) — best-effort.
+      const allegatiFalliti: string[] = [];
+      if (pendingFiles.length && richiestaId) {
+        for (const item of pendingFiles) {
+          const res = await uploadAllegatoFile({
+            file: item.file,
+            descrizione: item.descrizione,
+            entitaTipo: "richiesta_fido",
+            entitaId: richiestaId,
+            clienteId: parsed.cliente_id,
+            userId: user?.id ?? null,
+          });
+          if (!res.ok) allegatiFalliti.push(`${item.file.name}: ${res.error}`);
+        }
+      }
+      return { invia: input.invia, allegatiFalliti, richiestaId };
     },
-    onSuccess: (_d, v) => {
-      toast.success(v.invia ? "Richiesta inviata" : "Bozza salvata");
+    onSuccess: (res) => {
+      if (res.allegatiFalliti.length) {
+        toast.warning(
+          `Richiesta salvata, ma alcuni allegati non sono stati caricati: ${res.allegatiFalliti.join("; ")}. Riprova dal dettaglio.`,
+        );
+      } else {
+        toast.success(res.invia ? "Richiesta inviata" : "Bozza salvata");
+      }
+      if (res.richiestaId) {
+        qc.invalidateQueries({ queryKey: ["allegati", "richiesta_fido", res.richiestaId] });
+      }
       onSaved();
       onClose();
     },
@@ -1436,6 +1476,69 @@ function RichiestaFormDialog({
           <Label>Note interne</Label>
           <Textarea rows={2} value={form.note}
             onChange={(e) => setForm({ ...form, note: e.target.value })} />
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label className="flex items-center gap-1.5">
+              <Paperclip className="size-4 text-muted-foreground" />
+              Allegati (opzionale)
+            </Label>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={mut.isPending}
+            >
+              <Plus className="size-4" /> Allega documento
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                const files = Array.from(e.target.files ?? []);
+                const toAdd: { file: File; descrizione: string }[] = [];
+                for (const f of files) {
+                  const err = validateAllegatoFile(f);
+                  if (err) { toast.error(`${f.name}: ${err}`); continue; }
+                  toAdd.push({ file: f, descrizione: "" });
+                }
+                if (toAdd.length) setPendingFiles((p) => [...p, ...toAdd]);
+                if (fileInputRef.current) fileInputRef.current.value = "";
+              }}
+            />
+          </div>
+          {pendingFiles.length > 0 ? (
+            <ul className="rounded-md border border-border divide-y divide-border text-sm">
+              {pendingFiles.map((it, idx) => (
+                <li key={idx} className="flex items-center gap-2 px-3 py-2">
+                  <Paperclip className="size-4 text-muted-foreground shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="truncate font-medium">{it.file.name}</div>
+                    <div className="text-xs text-muted-foreground">{fmtAllegatoBytes(it.file.size)}</div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-destructive hover:text-destructive"
+                    onClick={() => setPendingFiles((p) => p.filter((_, i) => i !== idx))}
+                    disabled={mut.isPending}
+                    title="Rimuovi"
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Nessun allegato selezionato. Verranno caricati al salvataggio della richiesta.
+            </p>
+          )}
         </div>
       </div>
 
