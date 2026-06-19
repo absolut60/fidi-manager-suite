@@ -328,9 +328,10 @@ function DsoSection({
             <Info className="size-4 text-muted-foreground cursor-help" />
           </TooltipTrigger>
           <TooltipContent className="max-w-xs">
-            Differenza media in giorni tra data scadenza e data di incasso effettivo. Calcolato solo sulle
-            scadenze realmente pagate ({tot.toLocaleString("it-IT")} fatture).
-            Il <strong>ponderato per importo</strong> e la misura principale: pesa le fatture grandi.
+            Differenza in giorni tra data scadenza e data di incasso effettivo. Calcolato solo sugli
+            incassi reali ({tot.toLocaleString("it-IT")} righe pagate).
+            Il <strong>ponderato per importo pagato</strong> e la misura principale: pesa ciascun incasso
+            (anche parziale) per la quota realmente versata.
           </TooltipContent>
         </Tooltip>
       </div>
@@ -339,7 +340,7 @@ function DsoSection({
         <div className="md:col-span-1">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">DSO ponderato</p>
           <p className="text-4xl font-bold mt-1">{fmtDso(dso.dso_ponderato)}</p>
-          <p className="text-xs text-muted-foreground mt-1">pesato per importo fattura</p>
+          <p className="text-xs text-muted-foreground mt-1">pesato per importo pagato</p>
         </div>
         <div className="grid grid-cols-2 gap-3 md:col-span-2">
           <div className="rounded-lg border p-3">
@@ -356,20 +357,27 @@ function DsoSection({
       <div className="grid grid-cols-3 gap-3 mb-5">
         <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/30 p-3">
           <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">In anticipo (&lt; 0 gg)</p>
-          <p className="text-lg font-bold mt-1">{pct(Number(dso.n_anticipo), tot)}</p>
-          <p className="text-xs text-muted-foreground">{Number(dso.n_anticipo).toLocaleString("it-IT")} fatture</p>
+          <p className="text-lg font-bold mt-1">{pct(Number(dso.importo_anticipo), Number(dso.importo_totale))}</p>
+          <p className="text-xs text-muted-foreground">
+            {fmtEuro(Number(dso.importo_anticipo))} · {Number(dso.n_anticipo).toLocaleString("it-IT")} righe
+          </p>
         </div>
         <div className="rounded-lg bg-blue-50 dark:bg-blue-950/30 p-3">
           <p className="text-xs font-medium text-blue-700 dark:text-blue-400">Puntuali (= 0 gg)</p>
-          <p className="text-lg font-bold mt-1">{pct(Number(dso.n_puntuali), tot)}</p>
-          <p className="text-xs text-muted-foreground">{Number(dso.n_puntuali).toLocaleString("it-IT")} fatture</p>
+          <p className="text-lg font-bold mt-1">{pct(Number(dso.importo_puntuali), Number(dso.importo_totale))}</p>
+          <p className="text-xs text-muted-foreground">
+            {fmtEuro(Number(dso.importo_puntuali))} · {Number(dso.n_puntuali).toLocaleString("it-IT")} righe
+          </p>
         </div>
         <div className="rounded-lg bg-amber-50 dark:bg-amber-950/30 p-3">
           <p className="text-xs font-medium text-amber-700 dark:text-amber-400">In ritardo (&gt; 0 gg)</p>
-          <p className="text-lg font-bold mt-1">{pct(Number(dso.n_ritardo), tot)}</p>
-          <p className="text-xs text-muted-foreground">{Number(dso.n_ritardo).toLocaleString("it-IT")} fatture</p>
+          <p className="text-lg font-bold mt-1">{pct(Number(dso.importo_ritardo), Number(dso.importo_totale))}</p>
+          <p className="text-xs text-muted-foreground">
+            {fmtEuro(Number(dso.importo_ritardo))} · {Number(dso.n_ritardo).toLocaleString("it-IT")} righe
+          </p>
         </div>
       </div>
+
 
       {serie.length > 0 && (
         <div>
