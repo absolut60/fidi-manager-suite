@@ -123,9 +123,9 @@ function replaceAll(text: string, values: Record<string, string>): string {
 }
 
 // Replica della logica di `classificaScadenza` ma senza dipendenze esterne,
-// per uso nel worker Inngest. Fonte di verita': stato_contabile +
-// data_pagamento_effettiva + data_scadenza. tempi_scadenza NON e' usato
-// (nel tracciato MADE_VISTASCADENZE indica solo la fascia di anzianita').
+// per uso nel worker Inngest. Fonte di verita': SOLO stato_contabile +
+// data_scadenza (allineata al gestionale). data_pagamento_effettiva e
+// tempi_scadenza NON entrano nella classificazione.
 export function isScaduto(s: {
   stato_contabile?: string | null;
   data_pagamento_effettiva?: string | null;
@@ -133,8 +133,6 @@ export function isScaduto(s: {
   giorni_ritardo?: number | null;
   tempi_scadenza?: string | null;
 }): boolean {
-  if (s.data_pagamento_effettiva) return false;
-  if (s.stato_contabile && s.stato_contabile !== "Aperta") return false;
   if (s.stato_contabile !== "Aperta") return false;
   if (s.data_scadenza) {
     const today = new Date();

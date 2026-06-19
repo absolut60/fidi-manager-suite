@@ -327,8 +327,7 @@ export const invioMassivoSolleciti = inngest.createFunction(
             const mesiSet = new Set(prep.mesi ?? []);
 
             const scadenzeRilevanti = (rawScad ?? []).filter((s) => {
-              // Regola: stato + data_pagamento_effettiva + data_scadenza
-              if ((s as { data_pagamento_effettiva?: string | null }).data_pagamento_effettiva) return false;
+              // Regola: stato_contabile + data_scadenza (gestionale)
               if (s.stato_contabile !== "Aperta") return false;
               if (isPromemoria) {
                 if ((s as { in_legale?: boolean | null }).in_legale) return false;
