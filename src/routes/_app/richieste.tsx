@@ -1216,16 +1216,49 @@ function RichiestaFormDialog({
         stato: input.invia ? "in_approvazione" : "bozza",
         data_invio: input.invia ? new Date().toISOString() : null,
       } as any;
+      let richiestaId: string | null = null;
       if (richiesta?.id) {
         const { error } = await supabase.from("richieste_fido").update(payload).eq("id", richiesta.id);
         if (error) throw error;
+        richiestaId = richiesta.id;
       } else {
-        const { error } = await supabase.from("richieste_fido").insert({ ...payload, created_by: user?.id });
+        const { data: inserted, error } = await supabase
+          .from("richieste_fido")
+          .insert({ ...payload, created_by: user?.id })
+          .select("id")
+          .single();
         if (error) throw error;
+        richiestaId = inserted?.id ?? null;
       }
+
+      // Upload allegati pending (dopo che la richiesta esiste) — best-effort.
+      const allegatiFalliti: string[] = [];
+      if (pendingFiles.length && richiestaId) {
+        for (const item of pendingFiles) {
+          const res = await uploadAllegatoFile({
+            file: item.file,
+            descrizione: item.descrizione,
+            entitaTipo: "richiesta_fido",
+            entitaId: richiestaId,
+            clienteId: parsed.cliente_id,
+            userId: user?.id ?? null,
+          });
+          if (!res.ok) allegatiFalliti.push(`${item.file.name}: ${res.error}`);
+        }
+      }
+      return { invia: input.invia, allegatiFalliti, richiestaId };
     },
-    onSuccess: (_d, v) => {
-      toast.success(v.invia ? "Richiesta inviata" : "Bozza salvata");
+    onSuccess: (res) => {
+      if (res.allegatiFalliti.length) {
+        toast.warning(
+          `Richiesta salvata, ma alcuni allegati non sono stati caricati: ${res.allegatiFalliti.join("; ")}. Riprova dal dettaglio.`,
+        );
+      } else {
+        toast.success(res.invia ? "Richiesta inviata" : "Bozza salvata");
+      }
+      if (res.richiestaId) {
+        qc.invalidateQueries({ queryKey: ["allegati", "richiesta_fido", res.richiestaId] });
+      }
       onSaved();
       onClose();
     },
