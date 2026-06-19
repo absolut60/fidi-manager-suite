@@ -145,6 +145,42 @@ export function isScaduto(s: {
 }
 
 // =============================================================================
+// RIFERIMENTI BANCARI (fonte UNICA — modifica qui per aggiornarli ovunque)
+// =============================================================================
+// Vengono iniettati automaticamente in `wrapEmailHtml` per i template che
+// riguardano un pagamento (promemoria + solleciti + messa in mora). Per i
+// template "libero" o sconosciuti non vengono aggiunti.
+export const RIFERIMENTI_BANCARI = {
+  beneficiario: "Made Distribuzione S.p.A.",
+  banca: "Intesa Sanpaolo",
+  iban: "IT74Y0306902505100000005423",
+} as const;
+
+export function buildRiferimentiBancariHtml(): string {
+  const { beneficiario, banca, iban } = RIFERIMENTI_BANCARI;
+  return `
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:20px;border-collapse:separate;">
+            <tr>
+              <td style="background:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid #0d1f3c;border-radius:4px;padding:14px 16px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6;color:#1f2937;">
+                <div style="font-weight:700;margin-bottom:8px;color:#0d1f3c;">Coordinate bancarie per il pagamento</div>
+                <div><span style="color:#64748b;">Beneficiario:</span> <strong>${escapeHtml(beneficiario)}</strong></div>
+                <div><span style="color:#64748b;">Banca:</span> ${escapeHtml(banca)}</div>
+                <div style="margin-top:4px;"><span style="color:#64748b;">IBAN:</span> <strong style="font-family:'Courier New',Consolas,monospace;letter-spacing:0.5px;white-space:nowrap;word-break:keep-all;">${escapeHtml(iban)}</strong></div>
+              </td>
+            </tr>
+          </table>`;
+}
+
+function tipoRichiedeRiferimentiBancari(tipo: string | null | undefined): boolean {
+  return (
+    tipo === "promemoria_scadenza" ||
+    tipo === "sollecito_1" ||
+    tipo === "sollecito_2" ||
+    tipo === "messa_in_mora"
+  );
+}
+
+// =============================================================================
 // CORNICE HTML EMAIL (header con logo, footer con dati sede)
 // =============================================================================
 
@@ -395,6 +431,7 @@ export function wrapEmailHtml(
         <td style="padding:24px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.55;color:#1f2937;">
           ${corpoRenderizzato}
           ${opts?.senzaBande ? "" : boxHtml}
+          ${!opts?.senzaBande && tipoRichiedeRiferimentiBancari(opts?.tipo ?? null) ? buildRiferimentiBancariHtml() : ""}
           <div style="margin-top:24px;padding-top:12px;border-top:1px solid #e5e7eb;font-size:13px;color:#374151;">
             <div style="font-weight:600;color:#0d1f3c;">${operatore}</div>
             ${operatoreEmail}
