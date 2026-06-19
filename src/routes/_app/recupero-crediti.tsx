@@ -612,7 +612,14 @@ function RecuperoCreditiPage() {
                       </TableCell>
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
-                          <span>{r.ragione_sociale}</span>
+                          <Link
+                            to="/clienti/$clienteId"
+                            params={{ clienteId: r.cliente_id }}
+                            className="text-primary hover:underline"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {r.ragione_sociale}
+                          </Link>
                           {r.ha_promessa && (
                             <Badge className="bg-orange-500 text-white hover:bg-orange-500 whitespace-nowrap">
                               Promessa {r.data_promessa ? fmtDate(r.data_promessa) : ""}
