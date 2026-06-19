@@ -705,6 +705,9 @@ const SCAD_OFFICIAL_NUM = new Set([
   "importo_originario",
   "importo_netto_prev",
   "importo_ritardo",
+  "importo_pagato",
+  "importo_residuo",
+  "importo_effetto_orig",
 ]);
 const SCAD_OFFICIAL_INT = new Set([
   "giorni_ritardo",
