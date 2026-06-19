@@ -465,7 +465,6 @@ function ScadenzeDettaglio({
         .select("id, numero_documento, data_documento, data_scadenza, importo_scadenza, in_legale, tempi_scadenza")
         .eq("cliente_id", clienteId)
         .eq("stato_contabile", "Aperta")
-        .is("data_pagamento_effettiva", null)
         .gte("data_scadenza", today.toISOString().slice(0, 10))
         .order("data_scadenza", { ascending: true });
       if (escludiLegale) q = q.eq("in_legale", false);
