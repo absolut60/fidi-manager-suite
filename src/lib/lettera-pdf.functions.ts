@@ -14,9 +14,7 @@ import {
 } from "@/lib/template-email-render";
 import { classificaScadenza } from "@/lib/scadenze";
 import { buildElencoScadenzeTesto, renderLettera, type DatiTemplateLettera } from "@/lib/template-lettera";
-
-const LOGO_URL =
-  "https://fidi-manager-suite.lovable.app/__l5e/assets-v1/035e2dea-71e9-4ef5-a16d-94aee28def35/logo-made.png";
+import { LOGO_MADE_BASE64 } from "@/lib/logo-made-base64";
 
 const LEGAL_FOOTER_LINES = [
   "MADE DISTRIBUZIONE S.p.A.",
@@ -24,6 +22,28 @@ const LEGAL_FOOTER_LINES = [
   "PEC: madedistribuzionesrl@pecplus.it - Capitale Sociale 2.593.000,00 \u20AC i.v.",
   "Societ\u00E0 sotto la Direzione e il Coordinamento di MADE Italia S.p.A.",
 ];
+
+// "CASOREZZO" -> "Casorezzo"; "SEDE DI MILANO" -> "Sede di Milano"
+function titleCaseSede(raw: string): string {
+  const minuscole = new Set(["di", "da", "de", "del", "della", "dei", "delle", "degli", "e", "a", "in", "al", "alla"]);
+  return raw
+    .toLowerCase()
+    .split(/(\s+)/)
+    .map((tok, i) => {
+      if (/^\s+$/.test(tok)) return tok;
+      if (i > 0 && minuscole.has(tok)) return tok;
+      return tok.charAt(0).toUpperCase() + tok.slice(1);
+    })
+    .join("");
+}
+
+// Decodifica base64 (no Buffer su Workers)
+function b64ToBytes(b64: string): Uint8Array {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
 
 // Rimuove dal corpo i blocchi che il PDF disegna gia da se (destinatario in alto,
 // luogo+data, riga "Oggetto:", saluti+firma+ragione sociale azienda) per evitare doppioni
@@ -67,25 +87,18 @@ function stripLetterChrome(
   // Solo se abbiamo riconosciuto almeno un marcatore (Spett./Oggetto/data)
   const head = removedLead >= 1 ? lines.slice(start) : lines.slice();
 
-  // Strip trailing firma block
-  const tailLike = (t: string): boolean => {
-    if (!t) return true;
-    if (/^(cordiali|distinti|cordialmente|con\s+i\s+migliori)\s+saluti/i.test(t)) return true;
-    if (/^saluti\b/i.test(t)) return true;
-    if (/^firma\b/i.test(t)) return true;
-    if (/^made\b/i.test(t)) return true;
-    if (/^il\s+(responsabile|direttore|titolare)\b/i.test(t)) return true;
-    return false;
-  };
-  let end = head.length;
-  let removedTail = 0;
-  // Rimuove fino a 6 righe finali se sembrano firma/saluti, piu eventuali blank
-  for (let k = 0; k < 8 && end > 0; k++) {
-    const t = head[end - 1].trim();
-    if (tailLike(t)) { end--; if (t !== "") removedTail++; continue; }
-    break;
+  // Strip tail firma: dal primo "<...> saluti" (cordiali/distinti/...) in poi
+  // togli TUTTO fino alla fine del corpo. Cosi spariscono anche "GARAVAGLIA | MADE",
+  // "Andrea Giani", "MADE DISTRIBUZIONE..." e simili, che il PDF stampa gia da se.
+  let cutAt = head.length;
+  for (let i = 0; i < head.length; i++) {
+    const t = head[i].trim();
+    if (/^(cordiali|distinti|cordialmente|con\s+i\s+migliori)\s+saluti/i.test(t) || /^saluti\b/i.test(t)) {
+      cutAt = i;
+      break;
+    }
   }
-  const cleaned = removedTail >= 1 ? head.slice(0, end) : head;
+  const cleaned = head.slice(0, cutAt);
 
   return cleaned.join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
@@ -285,17 +298,13 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
     const MUTED: [number, number, number] = [0.42, 0.46, 0.52];
     const HAIRLINE: [number, number, number] = [0.85, 0.87, 0.90];
 
-    // Logo (fetch best-effort)
+    // Logo ufficiale MADE: embed dal base64 in bundle (no fetch, sempre disponibile)
     let logoImg: { width: number; height: number; embed: any } | null = null;
     try {
-      const res = await fetch(LOGO_URL);
-      if (res.ok) {
-        const bytes = new Uint8Array(await res.arrayBuffer());
-        const png = await pdfDoc.embedPng(bytes);
-        const targetW = 120;
-        const scale = targetW / png.width;
-        logoImg = { width: targetW, height: png.height * scale, embed: png };
-      }
+      const png = await pdfDoc.embedPng(b64ToBytes(LOGO_MADE_BASE64));
+      const targetW = 140;
+      const scale = targetW / png.width;
+      logoImg = { width: targetW, height: png.height * scale, embed: png };
     } catch {
       // logo opzionale
     }
@@ -318,7 +327,7 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
     const textWidth = (text: string, size: number, bold = false) =>
       (bold ? fontB : font).widthOfTextAtSize(toWinAnsi(text), size);
 
-    // === HEADER MITTENTE: logo + sede operativa (NO nome operatore) ===
+    // === HEADER MITTENTE: logo ufficiale + sede operativa (NO nome operatore) ===
     if (logoImg) {
       page.drawImage(logoImg.embed, {
         x: MARGIN_X,
@@ -327,10 +336,12 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
         height: logoImg.height,
       });
     }
-    const nomeSedeHeader = (sedeFinal.nome ?? "").trim();
+    const nomeSedeRaw = (sedeFinal.nome ?? "").trim();
     const insegnaSede = (sedeFinal.insegna ?? "").trim();
-    const titoloMittente = nomeSedeHeader
-      ? `MADE - ${nomeSedeHeader}`
+    // Normalizza: rimuovi eventuale prefisso "Sede di " e Capitalize la citta
+    const cittaSedeNorm = titleCaseSede(nomeSedeRaw.replace(/^sede\s+(di\s+)?/i, ""));
+    const titoloMittente = cittaSedeNorm
+      ? `Sede di ${cittaSedeNorm}`
       : insegnaSede || "MADE DISTRIBUZIONE";
     const sedeHeadLines: string[] = [];
     const indirSede = (sedeFinal.indirizzo ?? "").trim();
@@ -518,7 +529,7 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
 
       // Componi righe SEDE OPERATIVA del cliente (graceful: omette righe vuote)
       const sedeFootLines: string[] = [];
-      const nomeSedeFoot = nomeSedeHeader ? `Sede di ${nomeSedeHeader.replace(/^sede\s+(di\s+)?/i, "")}` : (insegnaSede || "Sede operativa");
+      const nomeSedeFoot = cittaSedeNorm ? `Sede di ${cittaSedeNorm}` : (insegnaSede || "Sede operativa");
       const indirCompleto = [
         (sedeFinal.indirizzo ?? "").trim(),
         [
