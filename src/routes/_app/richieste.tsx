@@ -1439,7 +1439,7 @@ function RichiestaFormDialog({
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label>Tipo *</Label>
-            <Select value={form.tipo} onValueChange={(v) => setForm({ ...form, tipo: v as any })}>
+            <Select value={form.tipo} onValueChange={(v) => { setTipoTouched(true); setForm({ ...form, tipo: v as any }); }}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="nuovo_fido">Nuovo fido</SelectItem>
