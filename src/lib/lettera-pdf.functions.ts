@@ -43,6 +43,7 @@ function b64ToBytes(b64: string): Uint8Array {
   const out = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
   return out;
+}
 
 // Normalizza insegna sede: title-case ma preserva "MADE" e acronimi corti (<=3 lettere)
 function formatInsegna(raw: string | null | undefined): string {
