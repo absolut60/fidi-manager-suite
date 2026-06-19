@@ -359,13 +359,12 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
       });
     }
     const nomeSedeRaw = (sedeFinal.nome ?? "").trim();
-    const insegnaSede = (sedeFinal.insegna ?? "").trim();
+    const insegnaSede = formatInsegna(sedeFinal.insegna);
     // Normalizza: rimuovi eventuale prefisso "Sede di " e Capitalize la citta
     const cittaSedeNorm = titleCaseSede(nomeSedeRaw.replace(/^sede\s+(di\s+)?/i, ""));
-    const titoloMittente = cittaSedeNorm
-      ? `Sede di ${cittaSedeNorm}`
-      : insegnaSede || "MADE DISTRIBUZIONE";
+    const sedeLabel = cittaSedeNorm ? `Sede di ${cittaSedeNorm}` : "";
     const sedeHeadLines: string[] = [];
+    if (sedeLabel) sedeHeadLines.push(sedeLabel);
     const indirSede = (sedeFinal.indirizzo ?? "").trim();
     if (indirSede) sedeHeadLines.push(indirSede);
     const rigaCittaSede = [
@@ -377,9 +376,14 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
 
     const sedeX = MARGIN_X + (logoImg ? logoImg.width + 18 : 0);
     let sedeY = y - 6;
-    drawText(titoloMittente, sedeX, sedeY, { size: 10.5, bold: true, color: BRAND_NAVY });
-    sedeY -= 13;
-    for (const ln of sedeHeadLines) {
+    // Insegna come riga principale (se presente), altrimenti fallback su sede o brand
+    const titoloMittente = insegnaSede || sedeLabel || "MADE DISTRIBUZIONE";
+    drawText(titoloMittente, sedeX, sedeY, { size: 12, bold: true, color: BRAND_NAVY });
+    sedeY -= 15;
+    // Se l'insegna era la riga principale, la "Sede di X" e' gia in sedeHeadLines.
+    // Altrimenti rimuoviamo il duplicato.
+    const subLines = insegnaSede ? sedeHeadLines : sedeHeadLines.filter((l) => l !== sedeLabel);
+    for (const ln of subLines) {
       drawText(ln, sedeX, sedeY, { size: 9, color: MUTED });
       sedeY -= 11;
     }
