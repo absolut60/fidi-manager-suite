@@ -87,21 +87,31 @@ function wrapText(text: string, font: PDFFont, size: number, maxWidth: number): 
 export const generaLetteraPdf = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: Input) => {
-    if (!data?.templateId) throw new Error("templateId mancante");
     if (!data?.clienteId) throw new Error("clienteId mancante");
+    // templateId opzionale (modalita libera): richiede oggetto+corpo override
+    if (!data?.templateId) {
+      if (!data?.corpoOverride || !data.corpoOverride.trim()) {
+        throw new Error("In modalita libera: oggetto e corpo sono richiesti");
+      }
+    }
     return data;
   })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
-    // 1) Carica template
-    const { data: tpl, error: eTpl } = await supabase
-      .from("template_lettera")
-      .select("id, nome, oggetto, corpo, tipo, attivo")
-      .eq("id", data.templateId)
-      .maybeSingle();
-    if (eTpl) throw eTpl;
-    if (!tpl) throw new Error("Template non trovato");
+    // 1) Carica template (se presente)
+    let tpl: { id: string; nome: string; oggetto: string; corpo: string } | null = null;
+    if (data.templateId) {
+      const { data: tplRow, error: eTpl } = await supabase
+        .from("template_lettera")
+        .select("id, nome, oggetto, corpo, tipo, attivo")
+        .eq("id", data.templateId)
+        .maybeSingle();
+      if (eTpl) throw eTpl;
+      if (!tplRow) throw new Error("Template non trovato");
+      tpl = tplRow as typeof tpl;
+    }
+
 
     // 2) Carica cliente + sede + scadenze scadute + operatore (server-side)
     const { data: cliente, error: eCli } = await supabase
