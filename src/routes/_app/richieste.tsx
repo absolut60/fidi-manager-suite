@@ -1169,6 +1169,21 @@ function RichiestaFormDialog({
   const clienteSel: any = clienteEdit ?? clientiSearch?.find((c) => c.id === form.cliente_id);
   const fidoAttuale = getFidoAttuale(clienteSel);
 
+  // Auto-calcolo TIPO in base al confronto Importo richiesto vs Fido attuale.
+  // Regola: fido=0 -> nuovo_fido; importo>fido -> aumento; importo<fido -> diminuzione;
+  // importo=fido -> aumento (default ragionevole, variazione 0).
+  // Se l'utente ha gia' modificato il campo a mano (tipoTouched), NON sovrascriviamo.
+  useEffect(() => {
+    if (tipoTouched) return;
+    if (!form.cliente_id || !form.importo_richiesto || form.importo_richiesto <= 0) return;
+    const tipoAuto: FormVals["tipo"] =
+      fidoAttuale <= 0 ? "nuovo_fido"
+      : form.importo_richiesto < fidoAttuale ? "diminuzione"
+      : "aumento";
+    if (form.tipo !== tipoAuto) setForm((f) => ({ ...f, tipo: tipoAuto }));
+  }, [fidoAttuale, form.importo_richiesto, form.cliente_id, tipoTouched, form.tipo]);
+
+
   // Ultimo fido approvato in FidiManager (informativo, per verifica allineamento col gestionale)
   const { data: ultimoApprovato } = useQuery({
     queryKey: ["ultimo-fido-approvato", form.cliente_id],
