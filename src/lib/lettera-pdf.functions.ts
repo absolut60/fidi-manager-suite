@@ -555,7 +555,9 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
 
       // Componi righe SEDE OPERATIVA del cliente (graceful: omette righe vuote)
       const sedeFootLines: string[] = [];
-      const nomeSedeFoot = cittaSedeNorm ? `Sede di ${cittaSedeNorm}` : (insegnaSede || "Sede operativa");
+      // Titolo footer: "Insegna - Sede di X" se insegna presente, altrimenti solo "Sede di X"
+      const sedeFootBase = cittaSedeNorm ? `Sede di ${cittaSedeNorm}` : "Sede operativa";
+      const nomeSedeFoot = insegnaSede ? `${insegnaSede} - ${sedeFootBase}` : sedeFootBase;
       const indirCompleto = [
         (sedeFinal.indirizzo ?? "").trim(),
         [
