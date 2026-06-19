@@ -422,7 +422,7 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
         storage_path: storagePath,
         mime_type: "application/pdf",
         dimensione_bytes: pdfBytes.byteLength,
-        descrizione: `Lettera generata da modello: ${tpl.nome}`,
+        descrizione: tpl ? `Lettera generata da modello: ${tpl.nome}` : "Lettera generata (modalita libera)",
         caricato_da: userId,
       })
       .select("id")
