@@ -2849,17 +2849,28 @@ export type Database = {
           _store_id?: string
         }
         Returns: {
-          dso_mediano: number
-          dso_medio: number
-          dso_ponderato: number
+          all_importo: number
+          all_n: number
+          all_reale_medio: number
+          all_reale_pond: number
+          all_scollamento_medio: number
+          all_scollamento_pond: number
+          all_teorico_medio: number
+          all_teorico_pond: number
+          cred_importo: number
+          cred_n: number
+          cred_reale_medio: number
+          cred_reale_pond: number
+          cred_scollamento_medio: number
+          cred_scollamento_pond: number
+          cred_teorico_medio: number
+          cred_teorico_pond: number
           importo_anticipo: number
           importo_puntuali: number
           importo_ritardo: number
-          importo_totale: number
           n_anticipo: number
           n_puntuali: number
           n_ritardo: number
-          n_totale: number
         }[]
       }
       get_dso_serie_mensile: {
@@ -2869,8 +2880,10 @@ export type Database = {
           _store_id?: string
         }
         Returns: {
-          dso_ponderato: number
-          importo_totale: number
+          all_reale: number
+          all_teorico: number
+          cred_reale: number
+          cred_teorico: number
           mese: string
           n_scadenze: number
         }[]

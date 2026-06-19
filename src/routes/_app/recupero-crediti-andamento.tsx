@@ -56,7 +56,7 @@ function AndamentoPage() {
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_dso_aggregato", {} as never);
       if (error) throw error;
-      return (data as Array<{ dso_ponderato: number | null; dso_medio: number | null; dso_mediano: number | null; n_anticipo: number; n_puntuali: number; n_ritardo: number; n_totale: number; importo_totale: number; importo_anticipo: number; importo_puntuali: number; importo_ritardo: number }> | null)?.[0] ?? null;
+      return (((data as unknown) as Array<DsoRow> | null) ?? [])[0] ?? null;
     },
   });
 
@@ -65,10 +65,12 @@ function AndamentoPage() {
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_dso_serie_mensile", {} as never);
       if (error) throw error;
-      return ((data ?? []) as Array<{ mese: string; dso_ponderato: number | null; n_scadenze: number }>).map((r) => ({
+      return (((data ?? []) as unknown) as Array<{ mese: string; all_teorico: number | null; all_reale: number | null; cred_teorico: number | null; cred_reale: number | null; n_scadenze: number }>).map((r) => ({
         mese: format(new Date(r.mese), "MMM yy", { locale: it }),
-        dso: r.dso_ponderato == null ? null : Number(r.dso_ponderato),
-        n: r.n_scadenze,
+        allTeorico: r.all_teorico == null ? null : Number(r.all_teorico),
+        allReale: r.all_reale == null ? null : Number(r.all_reale),
+        credTeorico: r.cred_teorico == null ? null : Number(r.cred_teorico),
+        credReale: r.cred_reale == null ? null : Number(r.cred_reale),
       }));
     },
   });
@@ -275,19 +277,24 @@ function Riga({ label, value }: { label: string; value: string }) {
   );
 }
 
-type DsoData = {
-  dso_ponderato: number | null;
-  dso_medio: number | null;
-  dso_mediano: number | null;
-  n_anticipo: number;
-  n_puntuali: number;
-  n_ritardo: number;
-  n_totale: number;
-  importo_totale: number;
-  importo_anticipo: number;
-  importo_puntuali: number;
-  importo_ritardo: number;
-} | null;
+type DsoRow = {
+  all_teorico_pond: number | null; all_teorico_medio: number | null;
+  all_reale_pond: number | null; all_reale_medio: number | null;
+  all_scollamento_pond: number | null; all_scollamento_medio: number | null;
+  all_n: number; all_importo: number;
+  cred_teorico_pond: number | null; cred_teorico_medio: number | null;
+  cred_reale_pond: number | null; cred_reale_medio: number | null;
+  cred_scollamento_pond: number | null; cred_scollamento_medio: number | null;
+  cred_n: number; cred_importo: number;
+  n_anticipo: number; n_puntuali: number; n_ritardo: number;
+  importo_anticipo: number; importo_puntuali: number; importo_ritardo: number;
+};
+
+type DsoSerieRow = {
+  mese: string;
+  allTeorico: number | null; allReale: number | null;
+  credTeorico: number | null; credReale: number | null;
+};
 
 function fmtDso(n: number | null | undefined) {
   if (n == null) return "—";
@@ -295,9 +302,38 @@ function fmtDso(n: number | null | undefined) {
   return `${v.toLocaleString("it-IT", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} gg`;
 }
 
+function fmtScoll(n: number | null | undefined) {
+  if (n == null) return "—";
+  const v = Number(n);
+  const sign = v > 0 ? "+" : "";
+  return `${sign}${v.toLocaleString("it-IT", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} gg`;
+}
+
 function pct(n: number, tot: number) {
   if (!tot) return "0%";
   return `${((n / tot) * 100).toFixed(1)}%`;
+}
+
+function DsoMetricCard({
+  label, pond, medio, accent,
+}: { label: string; pond: number | null; medio: number | null; accent?: "neutral" | "scoll" }) {
+  const isScoll = accent === "scoll";
+  const valStr = isScoll ? fmtScoll(pond) : fmtDso(pond);
+  const color =
+    isScoll && pond != null
+      ? Number(pond) > 0 ? "text-amber-700 dark:text-amber-400"
+        : Number(pond) < 0 ? "text-emerald-700 dark:text-emerald-400"
+        : ""
+      : "";
+  return (
+    <div className="rounded-lg border p-3">
+      <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className={`text-2xl font-bold mt-1 ${color}`}>{valStr}</p>
+      <p className="text-xs text-muted-foreground mt-0.5">
+        media semplice: {isScoll ? fmtScoll(medio) : fmtDso(medio)}
+      </p>
+    </div>
+  );
 }
 
 function DsoSection({
@@ -305,95 +341,140 @@ function DsoSection({
   loading,
   serie,
 }: {
-  dso: DsoData;
+  dso: DsoRow | null;
   loading: boolean;
-  serie: Array<{ mese: string; dso: number | null; n: number }>;
+  serie: Array<DsoSerieRow>;
 }) {
+  const [vista, setVista] = useState<"all" | "cred">("all");
+
   if (loading) return <Skeleton className="h-40" />;
-  if (!dso || !dso.n_totale) {
+  if (!dso || !dso.all_n) {
     return (
       <Card className="p-6 text-sm text-muted-foreground">
-        DSO non disponibile: importa lo scadenziario con la colonna "Data Pagamento Effettiva" per vedere i tempi reali di incasso.
+        DSO non disponibile: importa lo scadenziario con Data Documento, Data Scadenza e Data Pagamento Effettiva valorizzate.
       </Card>
     );
   }
-  const tot = Number(dso.n_totale);
+  const isAll = vista === "all";
+  const teoricoP = isAll ? dso.all_teorico_pond : dso.cred_teorico_pond;
+  const teoricoM = isAll ? dso.all_teorico_medio : dso.cred_teorico_medio;
+  const realeP = isAll ? dso.all_reale_pond : dso.cred_reale_pond;
+  const realeM = isAll ? dso.all_reale_medio : dso.cred_reale_medio;
+  const scollP = isAll ? dso.all_scollamento_pond : dso.cred_scollamento_pond;
+  const scollM = isAll ? dso.all_scollamento_medio : dso.cred_scollamento_medio;
+  const n = isAll ? dso.all_n : dso.cred_n;
+  const imp = isAll ? dso.all_importo : dso.cred_importo;
+
   return (
     <Card className="p-5">
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex items-center gap-2 mb-4 flex-wrap">
         <Timer className="size-5 text-primary" />
-        <h2 className="font-semibold">Tempi reali di incasso (DSO)</h2>
+        <h2 className="font-semibold">Tempi reali di incasso · dilazione concessa vs effettiva</h2>
         <Tooltip>
           <TooltipTrigger asChild>
             <Info className="size-4 text-muted-foreground cursor-help" />
           </TooltipTrigger>
-          <TooltipContent className="max-w-xs">
-            Differenza in giorni tra data scadenza e data di incasso effettivo. Calcolato solo sugli
-            incassi reali ({tot.toLocaleString("it-IT")} righe pagate).
-            Il <strong>ponderato per importo pagato</strong> e la misura principale: pesa ciascun incasso
-            (anche parziale) per la quota realmente versata.
+          <TooltipContent className="max-w-sm">
+            <strong>Teorico</strong> = scadenza − data documento (dilazione concessa).{" "}
+            <strong>Reale</strong> = pagamento − data documento (giorni reali fino all'incasso).{" "}
+            <strong>Scollamento</strong> = reale − teorico. Ponderato per importo pagato (fallback importo scadenza).
+            <br /><br />
+            <em>Tutti i pagamenti</em> include anche le righe con dilazione teorica = 0 (POS, contanti, rimessa diretta).{" "}
+            <em>Solo a credito</em> esclude i pagamenti immediati per misurare la dinamica reale del credito concesso.
           </TooltipContent>
         </Tooltip>
+        <div className="ml-auto">
+          <Tabs value={vista} onValueChange={(v) => setVista(v as "all" | "cred")}>
+            <TabsList>
+              <TabsTrigger value="all">
+                Tutti i pagamenti
+                <span className="ml-2 text-[10px] text-muted-foreground">
+                  {Number(dso.all_n).toLocaleString("it-IT")}
+                </span>
+              </TabsTrigger>
+              <TabsTrigger value="cred">
+                Solo a credito
+                <span className="ml-2 text-[10px] text-muted-foreground">
+                  {Number(dso.cred_n).toLocaleString("it-IT")}
+                </span>
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
-        <div className="md:col-span-1">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">DSO ponderato</p>
-          <p className="text-4xl font-bold mt-1">{fmtDso(dso.dso_ponderato)}</p>
-          <p className="text-xs text-muted-foreground mt-1">pesato per importo pagato</p>
-        </div>
-        <div className="grid grid-cols-2 gap-3 md:col-span-2">
-          <div className="rounded-lg border p-3">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Medio</p>
-            <p className="text-xl font-semibold mt-1">{fmtDso(dso.dso_medio)}</p>
-          </div>
-          <div className="rounded-lg border p-3">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Mediano</p>
-            <p className="text-xl font-semibold mt-1">{fmtDso(dso.dso_mediano)}</p>
-          </div>
-        </div>
+      <p className="text-xs text-muted-foreground mb-3">
+        {n.toLocaleString("it-IT")} righe · {fmtEuro(Number(imp))} incassati
+        {isAll ? " (incluse vendite a pronta cassa)" : " (escluse vendite a pronta cassa, teorico > 0)"}
+      </p>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
+        <DsoMetricCard label="DSO Teorico (concesso)" pond={teoricoP} medio={teoricoM} />
+        <DsoMetricCard label="DSO Reale (effettivo)" pond={realeP} medio={realeM} />
+        <DsoMetricCard label="Scollamento (reale − teorico)" pond={scollP} medio={scollM} accent="scoll" />
       </div>
 
       <div className="grid grid-cols-3 gap-3 mb-5">
         <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/30 p-3">
-          <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">In anticipo (&lt; 0 gg)</p>
-          <p className="text-lg font-bold mt-1">{pct(Number(dso.importo_anticipo), Number(dso.importo_totale))}</p>
+          <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">Pagati in anticipo</p>
+          <p className="text-lg font-bold mt-1">{pct(Number(dso.importo_anticipo), Number(dso.all_importo))}</p>
           <p className="text-xs text-muted-foreground">
             {fmtEuro(Number(dso.importo_anticipo))} · {Number(dso.n_anticipo).toLocaleString("it-IT")} righe
           </p>
         </div>
         <div className="rounded-lg bg-blue-50 dark:bg-blue-950/30 p-3">
-          <p className="text-xs font-medium text-blue-700 dark:text-blue-400">Puntuali (= 0 gg)</p>
-          <p className="text-lg font-bold mt-1">{pct(Number(dso.importo_puntuali), Number(dso.importo_totale))}</p>
+          <p className="text-xs font-medium text-blue-700 dark:text-blue-400">Puntuali a scadenza</p>
+          <p className="text-lg font-bold mt-1">{pct(Number(dso.importo_puntuali), Number(dso.all_importo))}</p>
           <p className="text-xs text-muted-foreground">
             {fmtEuro(Number(dso.importo_puntuali))} · {Number(dso.n_puntuali).toLocaleString("it-IT")} righe
           </p>
         </div>
         <div className="rounded-lg bg-amber-50 dark:bg-amber-950/30 p-3">
-          <p className="text-xs font-medium text-amber-700 dark:text-amber-400">In ritardo (&gt; 0 gg)</p>
-          <p className="text-lg font-bold mt-1">{pct(Number(dso.importo_ritardo), Number(dso.importo_totale))}</p>
+          <p className="text-xs font-medium text-amber-700 dark:text-amber-400">Pagati in ritardo</p>
+          <p className="text-lg font-bold mt-1">{pct(Number(dso.importo_ritardo), Number(dso.all_importo))}</p>
           <p className="text-xs text-muted-foreground">
             {fmtEuro(Number(dso.importo_ritardo))} · {Number(dso.n_ritardo).toLocaleString("it-IT")} righe
           </p>
         </div>
       </div>
 
-
       {serie.length > 0 && (
         <div>
-          <h3 className="text-sm font-medium mb-2">Andamento DSO ponderato per mese di scadenza</h3>
-          <div className="h-56">
+          <h3 className="text-sm font-medium mb-2">
+            Andamento mensile · DSO Teorico vs Reale ({isAll ? "tutti i pagamenti" : "solo a credito"})
+          </h3>
+          <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={serie} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis dataKey="mese" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} unit="gg" />
                 <RTooltip
-                  formatter={(v: number | string) =>
-                    v == null ? "—" : `${Number(v).toLocaleString("it-IT", { maximumFractionDigits: 1 })} gg`
+                  formatter={(v: number | string, name: string) =>
+                    v == null
+                      ? ["—", name]
+                      : [`${Number(v).toLocaleString("it-IT", { maximumFractionDigits: 1 })} gg`, name]
                   }
                 />
-                <Line type="monotone" dataKey="dso" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} connectNulls />
+                <Line
+                  type="monotone"
+                  dataKey={isAll ? "allTeorico" : "credTeorico"}
+                  name="Teorico"
+                  stroke="hsl(var(--muted-foreground))"
+                  strokeDasharray="4 4"
+                  strokeWidth={2}
+                  dot={false}
+                  connectNulls
+                />
+                <Line
+                  type="monotone"
+                  dataKey={isAll ? "allReale" : "credReale"}
+                  name="Reale"
+                  stroke="hsl(var(--primary))"
+                  strokeWidth={2}
+                  dot={false}
+                  connectNulls
+                />
               </LineChart>
             </ResponsiveContainer>
           </div>
