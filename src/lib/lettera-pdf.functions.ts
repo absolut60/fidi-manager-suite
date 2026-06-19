@@ -529,7 +529,7 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
 
       // Componi righe SEDE OPERATIVA del cliente (graceful: omette righe vuote)
       const sedeFootLines: string[] = [];
-      const nomeSedeFoot = nomeSedeHeader ? `Sede di ${nomeSedeHeader.replace(/^sede\s+(di\s+)?/i, "")}` : (insegnaSede || "Sede operativa");
+      const nomeSedeFoot = cittaSedeNorm ? `Sede di ${cittaSedeNorm}` : (insegnaSede || "Sede operativa");
       const indirCompleto = [
         (sedeFinal.indirizzo ?? "").trim(),
         [
