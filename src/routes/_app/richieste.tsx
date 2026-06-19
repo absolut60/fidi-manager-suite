@@ -1498,10 +1498,9 @@ function RichiestaFormDialog({
         )}
 
         <div className="space-y-1.5">
-          <Label>Motivazione *</Label>
+          <Label>Motivazione</Label>
           <Textarea rows={3} value={form.motivazione}
             onChange={(e) => setForm({ ...form, motivazione: e.target.value })} />
-          {errors.motivazione && <p className="text-xs text-destructive">{errors.motivazione}</p>}
         </div>
 
         <div className="space-y-1.5">
