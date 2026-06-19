@@ -22,8 +22,77 @@ const LEGAL_FOOTER_LINES = [
   "MADE DISTRIBUZIONE S.p.A.",
   "Sede Legale: Corso di Porta Nuova 11, 20121 Milano (MI) - C.F. e P.IVA 10126430965 - REA Milano MI 2507310",
   "PEC: madedistribuzionesrl@pecplus.it - Capitale Sociale 2.593.000,00 \u20AC i.v.",
-  "Societa sotto la Direzione e il Coordinamento di MADE Italia S.p.A.",
+  "Societ\u00E0 sotto la Direzione e il Coordinamento di MADE Italia S.p.A.",
 ];
+
+// Rimuove dal corpo i blocchi che il PDF disegna gia da se (destinatario in alto,
+// luogo+data, riga "Oggetto:", saluti+firma+ragione sociale azienda) per evitare doppioni
+// quando il corpo proviene da un template che li include o da un'anteprima residua.
+function stripLetterChrome(
+  corpo: string,
+  dati: { cliente: { ragione_sociale: string; indirizzo: string | null; cap: string | null; citta: string | null; provincia: string | null } },
+): string {
+  const raw = (corpo ?? "").replace(/\r\n/g, "\n");
+  const lines = raw.split("\n");
+
+  const rag = (dati.cliente.ragione_sociale ?? "").trim().toUpperCase();
+  const indir = (dati.cliente.indirizzo ?? "").trim().toLowerCase();
+  const cap = (dati.cliente.cap ?? "").trim();
+  const citta = (dati.cliente.citta ?? "").trim().toLowerCase();
+
+  const headerLike = (t: string): boolean => {
+    if (!t) return true; // blank
+    if (/^spett\.?\s*le?\b/i.test(t)) return true;
+    if (/^oggetto\s*:/i.test(t)) return true;
+    // riga "Citta, gg/mm/aaaa" (luogo_data)
+    if (/^[A-Za-z\u00C0-\u017F'\-\s]{2,40},\s*\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}\s*$/.test(t)) return true;
+    // riga CAP + citta
+    if (/^\d{5}\b/.test(t)) return true;
+    if (rag && t.toUpperCase().includes(rag)) return true;
+    if (indir && indir.length > 3 && t.toLowerCase().includes(indir)) return true;
+    if (citta && citta.length > 2 && t.toLowerCase().includes(citta) && t.length < 80) return true;
+    return false;
+  };
+
+  // Strip leading chrome
+  let start = 0;
+  let removedLead = 0;
+  while (start < lines.length) {
+    const t = lines[start].trim();
+    if (headerLike(t)) { start++; if (t !== "") removedLead++; continue; }
+    break;
+  }
+  // Strip leading blank lines after removal
+  while (start < lines.length && lines[start].trim() === "") start++;
+  // Solo se abbiamo riconosciuto almeno un marcatore (Spett./Oggetto/data)
+  const head = removedLead >= 1 ? lines.slice(start) : lines.slice();
+
+  // Strip trailing firma block
+  const tailLike = (t: string): boolean => {
+    if (!t) return true;
+    if (/^(cordiali|distinti|cordialmente|con\s+i\s+migliori)\s+saluti/i.test(t)) return true;
+    if (/^saluti\b/i.test(t)) return true;
+    if (/^firma\b/i.test(t)) return true;
+    if (/^made\b/i.test(t)) return true;
+    if (/^il\s+(responsabile|direttore|titolare)\b/i.test(t)) return true;
+    return false;
+  };
+  let end = head.length;
+  let removedTail = 0;
+  // Rimuove fino a 6 righe finali se sembrano firma/saluti, piu eventuali blank
+  for (let k = 0; k < 8 && end > 0; k++) {
+    const t = head[end - 1].trim();
+    if (tailLike(t)) { end--; if (t !== "") removedTail++; continue; }
+    break;
+  }
+  const cleaned = removedTail >= 1 ? head.slice(0, end) : head;
+
+  return cleaned.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+function stripOggettoPrefix(s: string): string {
+  return (s ?? "").replace(/^\s*oggetto\s*:\s*/i, "").trim();
+}
 
 type Input = {
   templateId?: string | null;
