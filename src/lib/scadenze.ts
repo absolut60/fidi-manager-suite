@@ -1,38 +1,54 @@
 // Classificazione UNICA per scadenze.
-// Fonte di verita': SOLO stato_contabile + data_scadenza (allineata al gestionale).
-// - data_pagamento_effettiva NON entra nella classificazione (serve solo per
-//   il calcolo del DSO: giorni di ritardo di incasso).
-// - tempi_scadenza NON e' usato per lo stato: nel tracciato MADE_VISTASCADENZE
-//   indica la FASCIA DI ANZIANITA ed e' presente anche su righe gia' pagate.
+//
+// Regola (allineata alla scheda rischio del gestionale):
+// - PAGATO  = data_pagamento_effettiva valorizzata (riga incassata davvero).
+//             Anche se la data_scadenza e' futura (pagamento anticipato).
+// - A SCADERE = data_pagamento_effettiva IS NULL AND data_scadenza >= oggi
+//             (a prescindere dallo stato Aperta/Chiusa: include le R.B./effetti
+//              "Chiusa" alla presentazione ma non ancora incassati).
+// - SCADUTO = stato_contabile = 'Aperta' AND data_scadenza < oggi
+//             AND data_pagamento_effettiva IS NULL
+//             (regola invariata: lo scaduto resta ancorato allo stato Aperta).
+//
+// Fallback: se mancano sia data_scadenza sia data_pagamento_effettiva, si usa
+// giorni_ritardo solo per le righe Aperte; le Chiuse senza dati si considerano
+// pagate.
 
 export type CategoriaScadenza = "scaduto" | "a_scadere" | "pagato";
 
 export function classificaScadenza(s: {
   stato_contabile?: string | null;
   data_scadenza?: string | null;
-  // legacy: ignorati, accettati solo per retro-compatibilita' di firma
   data_pagamento_effettiva?: string | null;
-  tempi_scadenza?: string | null;
   giorni_ritardo?: number | null;
+  // legacy: ignorato, accettato solo per retro-compatibilita' di firma
+  tempi_scadenza?: string | null;
 }): CategoriaScadenza {
-  // 1. Pagato: stato diverso da Aperta (tipicamente Chiusa).
-  if (s.stato_contabile && s.stato_contabile !== "Aperta") return "pagato";
+  // 1. Incassata davvero (anche in anticipo) -> pagato.
+  if (s.data_pagamento_effettiva) return "pagato";
 
-  // 2. Aperta: scaduto se data scadenza nel passato, altrimenti a scadere.
-  if (s.stato_contabile === "Aperta") {
-    if (s.data_scadenza) {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const d = new Date(s.data_scadenza);
-      d.setHours(0, 0, 0, 0);
-      return d < today ? "scaduto" : "a_scadere";
+  // 2. Confronto con la data odierna.
+  if (s.data_scadenza) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const d = new Date(s.data_scadenza);
+    d.setHours(0, 0, 0, 0);
+
+    if (d >= today) {
+      // Futura e non incassata -> a scadere (anche se "Chiusa" tipo R.B. presentata).
+      return "a_scadere";
     }
-    // Senza data scadenza: usa giorni_ritardo come ultimo fallback.
+    // Data passata: scaduto solo se Aperta (regola invariata).
+    if (s.stato_contabile === "Aperta") return "scaduto";
+    // Data passata + Chiusa + nessun data_pagamento_effettiva -> consideriamo pagata.
+    return "pagato";
+  }
+
+  // 3. Senza data scadenza: fallback su giorni_ritardo (solo per Aperte).
+  if (s.stato_contabile === "Aperta") {
     const gg = Number(s.giorni_ritardo ?? 0);
     return gg > 0 ? "scaduto" : "a_scadere";
   }
-
-  // 3. Nessuna info utile: trattala come pagata (no rischio).
   return "pagato";
 }
 
