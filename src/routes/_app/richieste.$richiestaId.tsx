@@ -239,6 +239,13 @@ function RichiestaDetail() {
         </Card>
       </div>
 
+      {/* Pannello rischio cliente — stesso componente usato in creazione richiesta,
+          mostrato sempre (qualsiasi stato) sopra il box Decisione per dare il quadro
+          rischio a chi approva. */}
+      {(r as any).clienti && (
+        <PannelloRischioCliente cliente={(r as any).clienti} />
+      )}
+
       {canApprove && <ApprovaForm richiesta={r} userId={user!.id} />}
 
       {approvazioni && approvazioni.length > 0 && (
