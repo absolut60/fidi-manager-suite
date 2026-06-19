@@ -26,12 +26,13 @@ const LEGAL_FOOTER_LINES = [
 ];
 
 type Input = {
-  templateId: string;
+  templateId?: string | null;
   clienteId: string;
   oggettoOverride?: string | null;
   corpoOverride?: string | null;
   attachToAzioneId?: string | null;
 };
+
 
 function sanitizeName(s: string): string {
   return s.replace(/[^\w.\-]+/g, "_").slice(0, 100);
@@ -86,21 +87,33 @@ function wrapText(text: string, font: PDFFont, size: number, maxWidth: number): 
 export const generaLetteraPdf = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: Input) => {
-    if (!data?.templateId) throw new Error("templateId mancante");
     if (!data?.clienteId) throw new Error("clienteId mancante");
+    // templateId opzionale (modalita libera): richiede oggetto+corpo override
+    if (!data?.templateId) {
+      if (!data?.corpoOverride || !data.corpoOverride.trim()) {
+        throw new Error("In modalita libera: oggetto e corpo sono richiesti");
+      }
+    }
     return data;
   })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
-    // 1) Carica template
-    const { data: tpl, error: eTpl } = await supabase
-      .from("template_lettera")
-      .select("id, nome, oggetto, corpo, tipo, attivo")
-      .eq("id", data.templateId)
-      .maybeSingle();
-    if (eTpl) throw eTpl;
-    if (!tpl) throw new Error("Template non trovato");
+    // 1) Carica template (se presente)
+    let tpl: { id: string; nome: string; oggetto: string; corpo: string } | null = null;
+    if (data.templateId) {
+      const { data: tplRow, error: eTpl } = await supabase
+        .from("template_lettera")
+        .select("id, nome, oggetto, corpo, tipo, attivo")
+        .eq("id", data.templateId)
+        .maybeSingle();
+      if (eTpl) throw eTpl;
+      if (!tplRow) throw new Error("Template non trovato");
+      tpl = { id: tplRow.id, nome: tplRow.nome, oggetto: tplRow.oggetto ?? "", corpo: tplRow.corpo ?? "" };
+    }
+    const tplNome = tpl?.nome ?? "Comunicazione libera";
+
+
 
     // 2) Carica cliente + sede + scadenze scadute + operatore (server-side)
     const { data: cliente, error: eCli } = await supabase
@@ -168,9 +181,10 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
       sede: sedeFinal,
     };
     const rendered = renderLettera(
-      { oggetto: data.oggettoOverride ?? tpl.oggetto, corpo: data.corpoOverride ?? tpl.corpo },
+      { oggetto: data.oggettoOverride ?? tpl?.oggetto ?? "", corpo: data.corpoOverride ?? tpl?.corpo ?? "" },
       dati,
     );
+
 
     // 4) Costruisci PDF con pdf-lib
     const pdfDoc = await PDFDocument.create();
@@ -375,7 +389,7 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
           tipo: "lettera",
           esito: "fatto",
           data_azione: new Date().toISOString(),
-          note: `Lettera generata: ${tpl.nome}`,
+          note: `Lettera generata: ${tplNome}`,
         })
         .select("id")
         .single();
@@ -385,7 +399,7 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
     }
 
     // 6) Upload su bucket allegati + insert in tabella allegati
-    const fileName = `lettera-${sanitizeName(tpl.nome || "documento")}-${formatDateIt(new Date()).replace(/\//g, "-")}.pdf`;
+    const fileName = `lettera-${sanitizeName(tplNome || "documento")}-${formatDateIt(new Date()).replace(/\//g, "-")}.pdf`;
     const storagePath = `azione_recupero/${azioneId}/${crypto.randomUUID()}-${fileName}`;
     const { error: eUp } = await supabase.storage
       .from("allegati")
@@ -408,7 +422,7 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
         storage_path: storagePath,
         mime_type: "application/pdf",
         dimensione_bytes: pdfBytes.byteLength,
-        descrizione: `Lettera generata da modello: ${tpl.nome}`,
+        descrizione: tpl ? `Lettera generata da modello: ${tpl.nome}` : "Lettera generata (modalita libera)",
         caricato_da: userId,
       })
       .select("id")
