@@ -194,10 +194,13 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
     if (!cliente) throw new Error("Cliente non trovato");
 
     let sede: DatiSede | null = null;
+    let sedeExtra: { email: string | null; pec: string | null; ragSociale: string | null } = {
+      email: null, pec: null, ragSociale: null,
+    };
     if (cliente.store_id) {
       const { data: store } = await supabase
         .from("stores")
-        .select("nome, insegna, indirizzo, cap, citta, provincia, telefono")
+        .select("nome, insegna, indirizzo, cap, citta, provincia, telefono, email_sede, pec_sede, ragione_sociale_sede")
         .eq("id", cliente.store_id)
         .maybeSingle();
       if (store) {
@@ -209,6 +212,11 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
           citta: store.citta ?? null,
           provincia: store.provincia ?? null,
           telefono: store.telefono ?? null,
+        };
+        sedeExtra = {
+          email: (store as { email_sede?: string | null }).email_sede ?? null,
+          pec: (store as { pec_sede?: string | null }).pec_sede ?? null,
+          ragSociale: (store as { ragione_sociale_sede?: string | null }).ragione_sociale_sede ?? null,
         };
       }
     }
@@ -253,25 +261,29 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
       { oggetto: data.oggettoOverride ?? tpl?.oggetto ?? "", corpo: data.corpoOverride ?? tpl?.corpo ?? "" },
       dati,
     );
-    // Dedup: rimuovi prefisso "Oggetto:" se l'utente l'ha gia incluso nel campo oggetto
     rendered.oggetto = stripOggettoPrefix(rendered.oggetto);
-    // Dedup: rimuovi dal corpo intestazione destinatario/luogo-data/oggetto e saluti+firma
-    // (il PDF li disegna gia da se' come blocchi separati)
     rendered.corpo = stripLetterChrome(rendered.corpo, dati);
-
 
     // 4) Costruisci PDF con pdf-lib
     const pdfDoc = await PDFDocument.create();
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const fontB = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const fontI = await pdfDoc.embedFont(StandardFonts.HelveticaOblique);
 
     // A4 in punti
     const PAGE_W = 595.28;
     const PAGE_H = 841.89;
-    const MARGIN_X = 56; // ~2cm
+    const MARGIN_X = 64; // ~2.25cm margini ampi
     const MARGIN_TOP = 56;
-    const MARGIN_BOTTOM = 90; // spazio per footer legale
+    const MARGIN_BOTTOM = 150; // spazio footer a due blocchi
     const CONTENT_W = PAGE_W - 2 * MARGIN_X;
+
+    // Palette brand MADE (sobria)
+    const BRAND_NAVY: [number, number, number] = [0.12, 0.23, 0.37];   // #1F3A5F
+    const BRAND_ACCENT: [number, number, number] = [0.78, 0.06, 0.18]; // #C8102E
+    const INK: [number, number, number] = [0.10, 0.12, 0.16];
+    const MUTED: [number, number, number] = [0.42, 0.46, 0.52];
+    const HAIRLINE: [number, number, number] = [0.85, 0.87, 0.90];
 
     // Logo (fetch best-effort)
     let logoImg: { width: number; height: number; embed: any } | null = null;
@@ -280,12 +292,12 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
       if (res.ok) {
         const bytes = new Uint8Array(await res.arrayBuffer());
         const png = await pdfDoc.embedPng(bytes);
-        const targetW = 130;
+        const targetW = 120;
         const scale = targetW / png.width;
         logoImg = { width: targetW, height: png.height * scale, embed: png };
       }
     } catch {
-      // logo opzionale, prosegui senza
+      // logo opzionale
     }
 
     let page: PDFPage = pdfDoc.addPage([PAGE_W, PAGE_H]);
@@ -295,15 +307,18 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
       text: string,
       x: number,
       yy: number,
-      opts?: { size?: number; bold?: boolean; color?: [number, number, number] },
+      opts?: { size?: number; bold?: boolean; italic?: boolean; color?: [number, number, number]; pageRef?: PDFPage },
     ) => {
       const size = opts?.size ?? 10.5;
-      const f = opts?.bold ? fontB : font;
-      const c = opts?.color ?? [0.1, 0.12, 0.16];
-      page.drawText(toWinAnsi(text), { x, y: yy, size, font: f, color: rgb(c[0], c[1], c[2]) });
+      const f = opts?.bold ? fontB : opts?.italic ? fontI : font;
+      const c = opts?.color ?? INK;
+      (opts?.pageRef ?? page).drawText(toWinAnsi(text), { x, y: yy, size, font: f, color: rgb(c[0], c[1], c[2]) });
     };
 
-    // === HEADER: logo + sede mittente ===
+    const textWidth = (text: string, size: number, bold = false) =>
+      (bold ? fontB : font).widthOfTextAtSize(toWinAnsi(text), size);
+
+    // === HEADER MITTENTE: logo + sede operativa (NO nome operatore) ===
     if (logoImg) {
       page.drawImage(logoImg.embed, {
         x: MARGIN_X,
@@ -312,80 +327,65 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
         height: logoImg.height,
       });
     }
-    // Sede mittente a sinistra sotto il logo (oppure a destra del logo)
-    const sedeLines: string[] = [];
-    const insegna = (sedeFinal.insegna ?? sedeFinal.nome ?? "MADE DISTRIBUZIONE").toString().trim();
-    if (insegna) sedeLines.push(insegna);
-    const indir = (sedeFinal.indirizzo ?? "").trim();
-    const cap = (sedeFinal.cap ?? "").trim();
-    const citta = (sedeFinal.citta ?? "").trim();
-    const prov = (sedeFinal.provincia ?? "").trim();
-    if (indir) sedeLines.push(indir);
-    const rigaCitta = [cap, citta, prov ? `(${prov})` : ""].filter(Boolean).join(" ").trim();
-    if (rigaCitta) sedeLines.push(rigaCitta);
-    if (sedeFinal.telefono) sedeLines.push(`Tel. ${sedeFinal.telefono}`);
+    const nomeSedeHeader = (sedeFinal.nome ?? "").trim();
+    const insegnaSede = (sedeFinal.insegna ?? "").trim();
+    const titoloMittente = nomeSedeHeader
+      ? `MADE - ${nomeSedeHeader}`
+      : insegnaSede || "MADE DISTRIBUZIONE";
+    const sedeHeadLines: string[] = [];
+    const indirSede = (sedeFinal.indirizzo ?? "").trim();
+    if (indirSede) sedeHeadLines.push(indirSede);
+    const rigaCittaSede = [
+      (sedeFinal.cap ?? "").trim(),
+      (sedeFinal.citta ?? "").trim(),
+      sedeFinal.provincia ? `(${sedeFinal.provincia.trim()})` : "",
+    ].filter(Boolean).join(" ").trim();
+    if (rigaCittaSede) sedeHeadLines.push(rigaCittaSede);
 
-    const sedeX = MARGIN_X + (logoImg ? logoImg.width + 16 : 0);
-    let sedeY = y - 8;
-    drawText(sedeLines[0] ?? "", sedeX, sedeY, { size: 10, bold: true });
-    sedeY -= 12;
-    for (let i = 1; i < sedeLines.length; i++) {
-      drawText(sedeLines[i], sedeX, sedeY, { size: 9, color: [0.3, 0.34, 0.4] });
+    const sedeX = MARGIN_X + (logoImg ? logoImg.width + 18 : 0);
+    let sedeY = y - 6;
+    drawText(titoloMittente, sedeX, sedeY, { size: 10.5, bold: true, color: BRAND_NAVY });
+    sedeY -= 13;
+    for (const ln of sedeHeadLines) {
+      drawText(ln, sedeX, sedeY, { size: 9, color: MUTED });
       sedeY -= 11;
     }
     const headerBottom = Math.min(sedeY, logoImg ? y - logoImg.height - 4 : sedeY);
 
-    // Linea separatrice
-    page.drawLine({
-      start: { x: MARGIN_X, y: headerBottom - 6 },
-      end: { x: PAGE_W - MARGIN_X, y: headerBottom - 6 },
-      thickness: 0.5,
-      color: rgb(0.78, 0.81, 0.85),
+    // Filetto brand sotto l'intestazione
+    page.drawRectangle({
+      x: MARGIN_X,
+      y: headerBottom - 10,
+      width: CONTENT_W,
+      height: 1.6,
+      color: rgb(BRAND_NAVY[0], BRAND_NAVY[1], BRAND_NAVY[2]),
     });
-    y = headerBottom - 28;
+    y = headerBottom - 36;
 
-    // === DESTINATARIO (riquadro a destra in stile lettera) ===
-    const destBoxW = 250;
+    // === DESTINATARIO (in alto a destra) ===
+    const destBoxW = 240;
     const destX = PAGE_W - MARGIN_X - destBoxW;
     let destY = y;
-    drawText("Spett.le", destX, destY, { size: 9, color: [0.4, 0.44, 0.5] });
+    drawText("Spett.le", destX, destY, { size: 9, color: MUTED, italic: true });
     destY -= 13;
-    drawText(dati.cliente.ragione_sociale || "—", destX, destY, { size: 11, bold: true });
+    drawText(dati.cliente.ragione_sociale || "-", destX, destY, { size: 11, bold: true });
     destY -= 13;
-    drawText(dati.cliente.indirizzo?.trim() || "—", destX, destY, { size: 10 });
+    drawText(dati.cliente.indirizzo?.trim() || "-", destX, destY, { size: 10 });
     destY -= 12;
     const capCittaDest = [
       (dati.cliente.cap ?? "").trim(),
       (dati.cliente.citta ?? "").trim(),
       dati.cliente.provincia ? `(${dati.cliente.provincia.trim()})` : "",
-    ].filter(Boolean).join(" ").trim() || "—";
+    ].filter(Boolean).join(" ").trim() || "-";
     drawText(capCittaDest, destX, destY, { size: 10 });
-    destY -= 18;
+    destY -= 22;
 
-    y = Math.min(y, destY) - 10;
+    y = Math.min(y, destY) - 8;
 
     // === LUOGO E DATA ===
     const luogoData = `${(sedeFinal.citta ?? "Casorezzo").trim()}, ${formatDateIt(new Date())}`;
-    drawText(luogoData, MARGIN_X, y, { size: 10 });
-    y -= 24;
-
-    // === OGGETTO ===
-    if (rendered.oggetto?.trim()) {
-      const oggLines = wrapText(`Oggetto: ${rendered.oggetto.trim()}`, fontB, 11, CONTENT_W);
-      for (const l of oggLines) {
-        drawText(l, MARGIN_X, y, { size: 11, bold: true });
-        y -= 14;
-      }
-      y -= 10;
-    }
-
-    // === CORPO ===
-    // Se il corpo contiene {{elenco_scadenze}} renderLettera lo ha gia sostituito col testo.
-    // In ogni caso aggiungiamo una resa pulita: se l'utente non lo ha incluso, mostriamo la lista
-    // SOLO se non c'e gia (evita doppione semplice: controllo presenza di "TOTALE:").
-    let corpoFinale = rendered.corpo ?? "";
-    const corpoSize = 10.5;
-    const corpoLineH = 14;
+    drawText(luogoData, MARGIN_X, y, { size: 10, color: MUTED });
+    y -= 28;
 
     const ensureSpace = (h: number) => {
       if (y - h < MARGIN_BOTTOM) {
@@ -394,6 +394,25 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
       }
     };
 
+    // === OGGETTO (in evidenza, accent brand) ===
+    if (rendered.oggetto?.trim()) {
+      ensureSpace(34);
+      drawText("OGGETTO", MARGIN_X, y, { size: 8.5, bold: true, color: BRAND_ACCENT });
+      y -= 13;
+      const oggLines = wrapText(rendered.oggetto.trim(), fontB, 12, CONTENT_W);
+      for (const l of oggLines) {
+        ensureSpace(15);
+        drawText(l, MARGIN_X, y, { size: 12, bold: true, color: BRAND_NAVY });
+        y -= 15;
+      }
+      y -= 14;
+    }
+
+    // === CORPO ===
+    let corpoFinale = rendered.corpo ?? "";
+    const corpoSize = 10.5;
+    const corpoLineH = 15; // interlinea piu arieggiata
+
     const corpoLines = wrapText(corpoFinale, font, corpoSize, CONTENT_W);
     for (const ln of corpoLines) {
       ensureSpace(corpoLineH);
@@ -401,53 +420,160 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
       y -= corpoLineH;
     }
 
-    // Se il corpo NON contiene l'elenco scadenze e ce ne sono, aggiungilo
+    // === TABELLA SCADENZE (sostituisce l'elenco puntato) ===
     if (scadute.length && !/TOTALE:/i.test(corpoFinale)) {
-      y -= 6;
-      ensureSpace(corpoLineH * 3);
-      drawText("Dettaglio scadenze scadute:", MARGIN_X, y, { size: 10.5, bold: true });
-      y -= corpoLineH;
-      const elenco = buildElencoScadenzeTesto(scadute);
-      for (const ln of wrapText(elenco, font, 10, CONTENT_W)) {
-        ensureSpace(corpoLineH);
-        drawText(ln, MARGIN_X, y, { size: 10 });
-        y -= 12;
+      y -= 14;
+      ensureSpace(80);
+      drawText("Dettaglio scadenze scadute", MARGIN_X, y, { size: 10.5, bold: true, color: BRAND_NAVY });
+      y -= 14;
+
+      // Layout colonne: Documento | Data doc. | Scadenza | Importo
+      const colW = [CONTENT_W * 0.32, CONTENT_W * 0.20, CONTENT_W * 0.20, CONTENT_W * 0.28];
+      const colX = [
+        MARGIN_X,
+        MARGIN_X + colW[0],
+        MARGIN_X + colW[0] + colW[1],
+        MARGIN_X + colW[0] + colW[1] + colW[2],
+      ];
+      const rowH = 18;
+
+      // Header riga
+      page.drawRectangle({
+        x: MARGIN_X, y: y - rowH + 4, width: CONTENT_W, height: rowH,
+        color: rgb(BRAND_NAVY[0], BRAND_NAVY[1], BRAND_NAVY[2]),
+      });
+      const headers = ["Documento", "Data doc.", "Scadenza", "Importo"];
+      const headerY = y - rowH + 9;
+      drawText(headers[0], colX[0] + 8, headerY, { size: 9, bold: true, color: [1, 1, 1] });
+      drawText(headers[1], colX[1] + 8, headerY, { size: 9, bold: true, color: [1, 1, 1] });
+      drawText(headers[2], colX[2] + 8, headerY, { size: 9, bold: true, color: [1, 1, 1] });
+      // Importo allineato a destra
+      const hImpW = textWidth(headers[3], 9, true);
+      drawText(headers[3], colX[3] + colW[3] - 8 - hImpW, headerY, { size: 9, bold: true, color: [1, 1, 1] });
+      y -= rowH;
+
+      // Righe
+      let totale = 0;
+      for (let i = 0; i < scadute.length; i++) {
+        const s = scadute[i];
+        ensureSpace(rowH + 6);
+        // Zebra leggera
+        if (i % 2 === 1) {
+          page.drawRectangle({
+            x: MARGIN_X, y: y - rowH + 4, width: CONTENT_W, height: rowH,
+            color: rgb(0.97, 0.97, 0.98),
+          });
+        }
+        const rowY = y - rowH + 9;
+        const doc = s.numero_documento ?? "-";
+        const dataDoc = formatDateIt(s.data_documento);
+        const dataScad = formatDateIt(s.data_scadenza);
+        const importo = formatEuro(s.importo_scadenza);
+        totale += Number(s.importo_scadenza ?? 0);
+
+        drawText(doc, colX[0] + 8, rowY, { size: 9.5 });
+        drawText(dataDoc, colX[1] + 8, rowY, { size: 9.5 });
+        drawText(dataScad, colX[2] + 8, rowY, { size: 9.5 });
+        const impW = textWidth(importo, 9.5);
+        drawText(importo, colX[3] + colW[3] - 8 - impW, rowY, { size: 9.5 });
+
+        // Linea separatrice sottile
+        page.drawLine({
+          start: { x: MARGIN_X, y: y - rowH + 4 },
+          end: { x: PAGE_W - MARGIN_X, y: y - rowH + 4 },
+          thickness: 0.4,
+          color: rgb(HAIRLINE[0], HAIRLINE[1], HAIRLINE[2]),
+        });
+        y -= rowH;
       }
+
+      // Riga TOTALE
+      ensureSpace(rowH + 4);
+      page.drawRectangle({
+        x: MARGIN_X, y: y - rowH + 4, width: CONTENT_W, height: rowH,
+        borderColor: rgb(BRAND_NAVY[0], BRAND_NAVY[1], BRAND_NAVY[2]),
+        borderWidth: 0,
+        color: rgb(0.94, 0.95, 0.97),
+      });
+      const totLabel = "TOTALE SCADUTO";
+      const totVal = formatEuro(totale);
+      drawText(totLabel, colX[0] + 8, y - rowH + 9, { size: 10, bold: true, color: BRAND_NAVY });
+      const totW = textWidth(totVal, 10, true);
+      drawText(totVal, colX[3] + colW[3] - 8 - totW, y - rowH + 9, { size: 10, bold: true, color: BRAND_ACCENT });
+      y -= rowH + 6;
     }
 
-    // === FIRMA ===
-    y -= 30;
-    ensureSpace(60);
+    // === FIRMA (unica) ===
+    y -= 22;
+    ensureSpace(58);
     drawText("Distinti saluti,", MARGIN_X, y, { size: 10.5 });
-    y -= 32;
-    drawText(nomeOperatore, MARGIN_X, y, { size: 10.5, bold: true });
+    y -= 34;
+    drawText(nomeOperatore, MARGIN_X, y, { size: 10.5, bold: true, color: BRAND_NAVY });
     y -= 12;
-    drawText("MADE DISTRIBUZIONE S.p.A.", MARGIN_X, y, { size: 9.5, color: [0.4, 0.44, 0.5] });
+    drawText("MADE DISTRIBUZIONE S.p.A.", MARGIN_X, y, { size: 9.5, color: MUTED });
 
-    // === FOOTER LEGALE (solo ultima pagina) ===
+    // === FOOTER (solo ultima pagina): sede operativa + dati legali ===
     {
       const lastPage = pdfDoc.getPage(pdfDoc.getPageCount() - 1);
-      let fy = 56;
-      lastPage.drawLine({
-        start: { x: MARGIN_X, y: fy + 8 + LEGAL_FOOTER_LINES.length * 9 },
-        end: { x: PAGE_W - MARGIN_X, y: fy + 8 + LEGAL_FOOTER_LINES.length * 9 },
-        thickness: 0.5,
-        color: rgb(0.85, 0.87, 0.9),
+
+      // Componi righe SEDE OPERATIVA del cliente (graceful: omette righe vuote)
+      const sedeFootLines: string[] = [];
+      const nomeSedeFoot = nomeSedeHeader ? `Sede di ${nomeSedeHeader.replace(/^sede\s+(di\s+)?/i, "")}` : (insegnaSede || "Sede operativa");
+      const indirCompleto = [
+        (sedeFinal.indirizzo ?? "").trim(),
+        [
+          (sedeFinal.cap ?? "").trim(),
+          (sedeFinal.citta ?? "").trim(),
+          sedeFinal.provincia ? `(${sedeFinal.provincia.trim()})` : "",
+        ].filter(Boolean).join(" ").trim(),
+      ].filter(Boolean).join(" - ");
+      if (indirCompleto) sedeFootLines.push(indirCompleto);
+      const contatti: string[] = [];
+      if (sedeFinal.telefono) contatti.push(`Tel. ${sedeFinal.telefono}`);
+      if (sedeExtra.email) contatti.push(`Email: ${sedeExtra.email}`);
+      if (sedeExtra.pec) contatti.push(`PEC: ${sedeExtra.pec}`);
+      if (contatti.length) sedeFootLines.push(contatti.join("  -  "));
+
+      // Calcolo altezza footer
+      const footTopY = 130;
+      // Filetto brand
+      lastPage.drawRectangle({
+        x: MARGIN_X, y: footTopY, width: CONTENT_W, height: 1.2,
+        color: rgb(BRAND_NAVY[0], BRAND_NAVY[1], BRAND_NAVY[2]),
       });
-      // disegno dalle ultime righe verso l'alto (semplice: dall'alto)
-      let footY = fy + LEGAL_FOOTER_LINES.length * 9;
+
+      // Blocco SEDE OPERATIVA
+      let fy = footTopY - 12;
+      drawText(nomeSedeFoot, MARGIN_X, fy, { size: 8.5, bold: true, color: BRAND_NAVY, pageRef: lastPage });
+      fy -= 10;
+      for (const ln of sedeFootLines) {
+        drawText(ln, MARGIN_X, fy, { size: 7.5, color: MUTED, pageRef: lastPage });
+        fy -= 9;
+      }
+
+      // Separatore sottile
+      fy -= 4;
+      lastPage.drawLine({
+        start: { x: MARGIN_X, y: fy },
+        end: { x: PAGE_W - MARGIN_X, y: fy },
+        thickness: 0.4,
+        color: rgb(HAIRLINE[0], HAIRLINE[1], HAIRLINE[2]),
+      });
+      fy -= 11;
+
+      // Blocco DATI LEGALI MADE
       for (let i = 0; i < LEGAL_FOOTER_LINES.length; i++) {
         const isFirst = i === 0;
-        lastPage.drawText(toWinAnsi(LEGAL_FOOTER_LINES[i]), {
-          x: MARGIN_X,
-          y: footY,
-          size: isFirst ? 8.5 : 7.5,
-          font: isFirst ? fontB : font,
-          color: rgb(0.5, 0.53, 0.58),
+        drawText(LEGAL_FOOTER_LINES[i], MARGIN_X, fy, {
+          size: isFirst ? 8 : 7,
+          bold: isFirst,
+          color: isFirst ? BRAND_NAVY : MUTED,
+          pageRef: lastPage,
         });
-        footY -= isFirst ? 11 : 9;
+        fy -= isFirst ? 10 : 9;
       }
     }
+
 
     const pdfBytes = await pdfDoc.save();
 
