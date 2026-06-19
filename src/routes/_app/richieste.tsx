@@ -90,10 +90,12 @@ function RichiestePage() {
     roles.includes("approvatore_liv1") ? 1 : 0;
   const isApprovatore = livello > 0;
   const isAmministrazione = roles.includes("amministrazione");
-  // "Vede solo le proprie" = chi non e' admin, ne' approvatore, ne' amministrazione (= store_manager / direzione)
-  const isStoreManager = !isAdmin && !isApprovatore && !isAmministrazione;
-  // Visibilità totale (vede tutte le richieste di tutti gli store/livelli/stati)
-  const hasFullVisibility = isAdmin || isAmministrazione;
+  const isDirezione = roles.includes("direzione");
+  // Visibilità totale (vede tutte le richieste di tutti gli store/livelli/stati).
+  // Il livello di approvatore limita solo COSA si puo' approvare, non COSA si vede.
+  const hasFullVisibility = isAdmin || isAmministrazione || isDirezione;
+  // "Vede solo le proprie" = chi non ha visibilita' totale e non e' approvatore (= store_manager)
+  const isStoreManager = !hasFullVisibility && !isApprovatore;
   // Puo' creare/inviare richieste: admin, store_manager, amministrazione, approvatori
   const canCreateRichiesta =
     isAdmin || isApprovatore || isAmministrazione || roles.includes("store_manager");
@@ -169,21 +171,29 @@ function RichiestePage() {
     const mie = isStoreManager ? all : all;
     const bozze = mie.filter((r) => r.stato === "bozza" && (isStoreManager ? r.created_by === user?.id : true)).length;
     const inAttesa = all.filter((r) => STATI_IN_APPROVAZIONE.includes(r.stato));
-    const inAttesaCount = isApprovatore && !isAdmin
+    // KPI "in attesa": per approvatori puri (senza visibilita' totale) mostra
+    // solo le richieste del proprio livello; admin/amministrazione/direzione
+    // vedono il totale complessivo.
+    const inAttesaCount = isApprovatore && !hasFullVisibility
       ? inAttesa.filter((r) => r.livello_corrente === livello).length
       : inAttesa.length;
     const approvateMese = all.filter((r) => r.stato === "approvata" && r.data_chiusura && r.data_chiusura >= inizioMese).length;
-    const valoreInAttesa = (isApprovatore && !isAdmin
+    const valoreInAttesa = (isApprovatore && !hasFullVisibility
       ? inAttesa.filter((r) => r.livello_corrente === livello)
       : inAttesa
     ).reduce((s, r) => s + Number(r.importo_richiesto ?? 0), 0);
     return { bozze, inAttesaCount, approvateMese, valoreInAttesa };
-  }, [all, user?.id, isStoreManager, isApprovatore, isAdmin, livello, inizioMese]);
+  }, [all, user?.id, isStoreManager, isApprovatore, hasFullVisibility, livello, inizioMese]);
 
   const bozze = all.filter((r) => r.stato === "bozza");
   const inApprovazione = all.filter((r) => {
     if (!STATI_IN_APPROVAZIONE.includes(r.stato)) return false;
-    if (isApprovatore && !isAdmin) return r.livello_corrente === livello;
+    // Visibilita': admin/amministrazione/direzione vedono tutto.
+    // Un approvatore puro vede tutte le richieste del proprio livello corrente
+    // (il filtro per livello qui e' una scelta UI per la propria coda di lavoro,
+    // non un limite di sicurezza: l'utente puo' comunque aprire il dettaglio
+    // tramite link diretto se serve consultare gli altri livelli).
+    if (isApprovatore && !hasFullVisibility) return r.livello_corrente === livello;
     return true;
   });
   const approvate = all.filter((r) => r.stato === "approvata");
@@ -734,7 +744,7 @@ function InApprovazioneTab({
             <TableBody>
               {filtered.map((r) => {
                 const g = giorniDa(r.data_invio);
-                const livMio = canApprove && (isAdmin || r.livello_corrente === livelloUtente);
+                const livMio = canApprove && (isAdmin || livelloUtente >= Number(r.livello_richiesto ?? 99));
                 const unread = msgNonLetti?.[r.id] ?? 0;
                 return (
                   <TableRow
