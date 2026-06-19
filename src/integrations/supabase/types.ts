@@ -1862,8 +1862,11 @@ export type Database = {
           id: string
           importato_da: string | null
           importo_documento: number | null
+          importo_effetto_orig: number | null
           importo_netto_prev: number | null
           importo_originario: number | null
+          importo_pagato: number | null
+          importo_residuo: number | null
           importo_ritardo: number | null
           importo_scadenza: number | null
           in_legale: boolean | null
@@ -1898,8 +1901,11 @@ export type Database = {
           id?: string
           importato_da?: string | null
           importo_documento?: number | null
+          importo_effetto_orig?: number | null
           importo_netto_prev?: number | null
           importo_originario?: number | null
+          importo_pagato?: number | null
+          importo_residuo?: number | null
           importo_ritardo?: number | null
           importo_scadenza?: number | null
           in_legale?: boolean | null
@@ -1934,8 +1940,11 @@ export type Database = {
           id?: string
           importato_da?: string | null
           importo_documento?: number | null
+          importo_effetto_orig?: number | null
           importo_netto_prev?: number | null
           importo_originario?: number | null
+          importo_pagato?: number | null
+          importo_residuo?: number | null
           importo_ritardo?: number | null
           importo_scadenza?: number | null
           in_legale?: boolean | null
@@ -2843,6 +2852,9 @@ export type Database = {
           dso_mediano: number
           dso_medio: number
           dso_ponderato: number
+          importo_anticipo: number
+          importo_puntuali: number
+          importo_ritardo: number
           importo_totale: number
           n_anticipo: number
           n_puntuali: number

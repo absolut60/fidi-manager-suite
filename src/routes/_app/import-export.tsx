@@ -1207,6 +1207,10 @@ const SCAD_OFFICIAL_MAP: Record<string, string> = {
   keydocumento: "key_documento",
   keytipoeffetto: "key_tipo_effetto",
   "data pagamento effettiva": "data_pagamento_effettiva",
+  "importo pagato": "importo_pagato",
+  "importo residuo": "importo_residuo",
+  "importo effetto originario": "importo_effetto_orig",
+  "importo effetto orig": "importo_effetto_orig",
   "codice pagamento scad": "codice_pagamento",
   "descrizione pagamento": "descrizione_pagamento",
   "numero documento origine": "numero_documento",
@@ -1300,6 +1304,9 @@ function parseOfficialScadenziarioSheet(sheet: XLSX.WorkSheet): {
     "importo_originario",
     "importo_netto_prev",
     "importo_ritardo",
+    "importo_pagato",
+    "importo_residuo",
+    "importo_effetto_orig",
   ]);
   const intFields = new Set([
     "giorni_ritardo",
