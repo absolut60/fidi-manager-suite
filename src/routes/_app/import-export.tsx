@@ -2893,11 +2893,32 @@ function BloccoFidoAssicurazioneImportCard() {
         const nonTrovati = parseNum(/(\d+)\s+non\s+trovati/);
         const errori = parseNum(/(\d+)\s+errori/);
         const altri = logArr.filter((l) => l !== riepilogo);
+        const report = (progress as unknown as { report_saltati?: { quadratura?: { parsed: number; non_trovati: number; atteso: number; aggiornati_db: number; gap: number } } }).report_saltati;
+        const q = report?.quadratura;
         return (
           <div className="space-y-2 p-3 rounded-md border bg-muted/30 text-sm">
             <div className="flex items-center gap-2 font-medium">
               <CheckCircle2 className="size-4 text-success" /> Import completato
             </div>
+            {q && (
+              <div
+                className={`rounded-md border px-3 py-2 text-xs ${q.gap === 0 ? "border-success/30 bg-success/10 text-success" : "border-destructive/40 bg-destructive/10 text-destructive"}`}
+              >
+                <div className="font-medium">
+                  {q.gap === 0 ? "✓ Quadratura OK" : "✗ Quadratura KO"}
+                </div>
+                <div className="mt-0.5">
+                  Attesi: <b>{q.atteso.toLocaleString("it-IT")}</b> · Aggiornati nel DB:{" "}
+                  <b>{q.aggiornati_db.toLocaleString("it-IT")}</b> · Gap:{" "}
+                  <b>{q.gap.toLocaleString("it-IT")}</b>
+                  {q.gap !== 0 && " (righe perse, rilanciare l'import)"}
+                </div>
+                <div className="text-[10px] opacity-75">
+                  Parsed: {q.parsed.toLocaleString("it-IT")} · Non trovati:{" "}
+                  {q.non_trovati.toLocaleString("it-IT")}
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
               <Badge className="bg-success/15 text-success hover:bg-success/20">
                 {aggiornati ?? progress.righe_aggiornate ?? 0} aggiornati
@@ -2915,6 +2936,7 @@ function BloccoFidoAssicurazioneImportCard() {
                 {errori ?? progress.righe_errore ?? 0} errori
               </Badge>
             </div>
+
             {(anomalie ?? 0) > 0 && (
               <a
                 href="/import-export#anomalie"
