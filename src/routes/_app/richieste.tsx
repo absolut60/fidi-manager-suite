@@ -171,21 +171,29 @@ function RichiestePage() {
     const mie = isStoreManager ? all : all;
     const bozze = mie.filter((r) => r.stato === "bozza" && (isStoreManager ? r.created_by === user?.id : true)).length;
     const inAttesa = all.filter((r) => STATI_IN_APPROVAZIONE.includes(r.stato));
-    const inAttesaCount = isApprovatore && !isAdmin
+    // KPI "in attesa": per approvatori puri (senza visibilita' totale) mostra
+    // solo le richieste del proprio livello; admin/amministrazione/direzione
+    // vedono il totale complessivo.
+    const inAttesaCount = isApprovatore && !hasFullVisibility
       ? inAttesa.filter((r) => r.livello_corrente === livello).length
       : inAttesa.length;
     const approvateMese = all.filter((r) => r.stato === "approvata" && r.data_chiusura && r.data_chiusura >= inizioMese).length;
-    const valoreInAttesa = (isApprovatore && !isAdmin
+    const valoreInAttesa = (isApprovatore && !hasFullVisibility
       ? inAttesa.filter((r) => r.livello_corrente === livello)
       : inAttesa
     ).reduce((s, r) => s + Number(r.importo_richiesto ?? 0), 0);
     return { bozze, inAttesaCount, approvateMese, valoreInAttesa };
-  }, [all, user?.id, isStoreManager, isApprovatore, isAdmin, livello, inizioMese]);
+  }, [all, user?.id, isStoreManager, isApprovatore, hasFullVisibility, livello, inizioMese]);
 
   const bozze = all.filter((r) => r.stato === "bozza");
   const inApprovazione = all.filter((r) => {
     if (!STATI_IN_APPROVAZIONE.includes(r.stato)) return false;
-    if (isApprovatore && !isAdmin) return r.livello_corrente === livello;
+    // Visibilita': admin/amministrazione/direzione vedono tutto.
+    // Un approvatore puro vede tutte le richieste del proprio livello corrente
+    // (il filtro per livello qui e' una scelta UI per la propria coda di lavoro,
+    // non un limite di sicurezza: l'utente puo' comunque aprire il dettaglio
+    // tramite link diretto se serve consultare gli altri livelli).
+    if (isApprovatore && !hasFullVisibility) return r.livello_corrente === livello;
     return true;
   });
   const approvate = all.filter((r) => r.stato === "approvata");
