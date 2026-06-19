@@ -183,7 +183,6 @@ function ScadenziarioPage() {
           .from("scadenze")
           .select("id, cliente_id, importo_scadenza, giorni_ritardo, data_scadenza, stato_contabile, tempi_scadenza, data_pagamento_effettiva, codice_pagamento")
           .eq("stato_contabile", "Aperta")
-          .is("data_pagamento_effettiva", null)
           .order("cliente_id", { ascending: true })
           .range(from, from + pageSize - 1);
         if (error) throw error;
