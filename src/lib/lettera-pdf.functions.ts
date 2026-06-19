@@ -45,6 +45,28 @@ function b64ToBytes(b64: string): Uint8Array {
   return out;
 }
 
+// Normalizza insegna sede: title-case ma preserva "MADE" e acronimi corti (<=3 lettere)
+function formatInsegna(raw: string | null | undefined): string {
+  if (!raw) return "";
+  return raw
+    .split("|")
+    .map((part) =>
+      part
+        .trim()
+        .split(/\s+/)
+        .map((w) => {
+          if (w.toUpperCase() === "MADE") return "MADE";
+          if (w.length <= 3 && /^[A-Z]+$/.test(w)) return w.toUpperCase();
+          return w
+            .split("-")
+            .map((seg) => (seg ? seg.charAt(0).toUpperCase() + seg.slice(1).toLowerCase() : seg))
+            .join("-");
+        })
+        .join(" "),
+    )
+    .join(" | ");
+}
+
 // Rimuove dal corpo i blocchi che il PDF disegna gia da se (destinatario in alto,
 // luogo+data, riga "Oggetto:", saluti+firma+ragione sociale azienda) per evitare doppioni
 // quando il corpo proviene da un template che li include o da un'anteprima residua.
@@ -337,13 +359,12 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
       });
     }
     const nomeSedeRaw = (sedeFinal.nome ?? "").trim();
-    const insegnaSede = (sedeFinal.insegna ?? "").trim();
+    const insegnaSede = formatInsegna(sedeFinal.insegna);
     // Normalizza: rimuovi eventuale prefisso "Sede di " e Capitalize la citta
     const cittaSedeNorm = titleCaseSede(nomeSedeRaw.replace(/^sede\s+(di\s+)?/i, ""));
-    const titoloMittente = cittaSedeNorm
-      ? `Sede di ${cittaSedeNorm}`
-      : insegnaSede || "MADE DISTRIBUZIONE";
+    const sedeLabel = cittaSedeNorm ? `Sede di ${cittaSedeNorm}` : "";
     const sedeHeadLines: string[] = [];
+    if (sedeLabel) sedeHeadLines.push(sedeLabel);
     const indirSede = (sedeFinal.indirizzo ?? "").trim();
     if (indirSede) sedeHeadLines.push(indirSede);
     const rigaCittaSede = [
@@ -355,9 +376,14 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
 
     const sedeX = MARGIN_X + (logoImg ? logoImg.width + 18 : 0);
     let sedeY = y - 6;
-    drawText(titoloMittente, sedeX, sedeY, { size: 10.5, bold: true, color: BRAND_NAVY });
-    sedeY -= 13;
-    for (const ln of sedeHeadLines) {
+    // Insegna come riga principale (se presente), altrimenti fallback su sede o brand
+    const titoloMittente = insegnaSede || sedeLabel || "MADE DISTRIBUZIONE";
+    drawText(titoloMittente, sedeX, sedeY, { size: 12, bold: true, color: BRAND_NAVY });
+    sedeY -= 15;
+    // Se l'insegna era la riga principale, la "Sede di X" e' gia in sedeHeadLines.
+    // Altrimenti rimuoviamo il duplicato.
+    const subLines = insegnaSede ? sedeHeadLines : sedeHeadLines.filter((l) => l !== sedeLabel);
+    for (const ln of subLines) {
       drawText(ln, sedeX, sedeY, { size: 9, color: MUTED });
       sedeY -= 11;
     }
@@ -529,7 +555,9 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
 
       // Componi righe SEDE OPERATIVA del cliente (graceful: omette righe vuote)
       const sedeFootLines: string[] = [];
-      const nomeSedeFoot = cittaSedeNorm ? `Sede di ${cittaSedeNorm}` : (insegnaSede || "Sede operativa");
+      // Titolo footer: "Insegna - Sede di X" se insegna presente, altrimenti solo "Sede di X"
+      const sedeFootBase = cittaSedeNorm ? `Sede di ${cittaSedeNorm}` : "Sede operativa";
+      const nomeSedeFoot = insegnaSede ? `${insegnaSede} - ${sedeFootBase}` : sedeFootBase;
       const indirCompleto = [
         (sedeFinal.indirizzo ?? "").trim(),
         [
