@@ -109,8 +109,10 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
         .maybeSingle();
       if (eTpl) throw eTpl;
       if (!tplRow) throw new Error("Template non trovato");
-      tpl = tplRow as typeof tpl;
+      tpl = { id: tplRow.id, nome: tplRow.nome, oggetto: tplRow.oggetto ?? "", corpo: tplRow.corpo ?? "" };
     }
+    const tplNome = tpl?.nome ?? "Comunicazione libera";
+
 
 
     // 2) Carica cliente + sede + scadenze scadute + operatore (server-side)
