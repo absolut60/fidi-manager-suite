@@ -2929,9 +2929,14 @@ export const processBloccoFidoImport = inngest.createFunction(
 
 
 
-      // STEP 6: stato finale + log riepilogo
+      // STEP 6: stato finale + log riepilogo + QUADRATURA visibile
       await step.run("finalize", async () => {
+        const quadOk = quadratura.gap === 0;
+        const quadLine = quadOk
+          ? `✓ QUADRATURA OK: attesi=${quadratura.atteso}, aggiornati nel DB=${quadratura.aggiornati_db}, gap=0`
+          : `✗ QUADRATURA KO: attesi=${quadratura.atteso}, aggiornati nel DB=${quadratura.aggiornati_db}, GAP=${quadratura.gap} righe perse`;
         const summary = [
+          { riga: 0, errore: quadLine },
           {
             riga: 0,
             errore: `Riepilogo: ${aggiornati} aggiornati, ${azzerati} azzerati (assenti), ${anomalieTotali} anomalie in attesa, ${nonTrovatiCount + noteNonTrovate} non trovati, ${errorsCount + errors.length} errori`,
@@ -2943,19 +2948,24 @@ export const processBloccoFidoImport = inngest.createFunction(
         ];
         const { data: cur } = await supabaseAdmin
           .from("importazioni")
-          .select("log_errori")
+          .select("log_errori, report_saltati")
           .eq("id", importazioneId)
           .single();
         const existing = (cur?.log_errori as Array<{ riga: number; errore: string }> | null) ?? [];
+        const existingReport = (cur?.report_saltati as Record<string, unknown> | null) ?? {};
+        const statoFinale =
+          !quadOk || errorsCount + errors.length > 0 ? "completata_con_errori" : "completata";
         await supabaseAdmin
           .from("importazioni")
           .update({
-            stato: errorsCount + errors.length > 0 ? "completata_con_errori" : "completata",
+            stato: statoFinale,
             completata_at: new Date().toISOString(),
             log_errori: [...summary, ...existing].slice(0, 500),
+            report_saltati: { ...existingReport, quadratura } as never,
           } as never)
           .eq("id", importazioneId);
       });
+
 
       logger.info(
         `Blocco fido done: agg=${aggiornati}, azzerati=${azzerati}, anom=${anomalieTotali}, blk=${bloccati}, sblk=${sbloccati}, nonAtt=${nonAttivi}, pol=${polizze}, noteLeg=${noteImportate}, miss=${nonTrovatiCount}, err=${errorsCount + errors.length}`,
