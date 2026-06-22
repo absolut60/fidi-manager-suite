@@ -173,6 +173,10 @@ export function PannelloRischioCliente({
           </DetailRow>
         </div>
 
+        <EsperienzaPagamentoBlock esp={esp} variant="extended" />
+        <ValutazioneEsternaBlock cliente={cliente} variant="extended" />
+
+
         <div className="border-t pt-3 flex flex-wrap items-center gap-2 text-xs">
           <span className="text-muted-foreground">Stato:</span>
           {cliente.bloccato ? (
