@@ -66,7 +66,7 @@ export function PannelloRischioCliente({
     enabled: !!cliente?.id,
     queryFn: async () => {
       const { data, error } = await (supabase as any).rpc("get_esperienza_pagamento_cliente", {
-        _cliente_id: cliente.id,
+        p_cliente_id: cliente.id,
       });
       if (error) throw error;
       const row = Array.isArray(data) ? data[0] : data;
@@ -74,12 +74,13 @@ export function PannelloRischioCliente({
       return {
         nPagate: Number(row.n_pagate ?? 0),
         nInRitardo: Number(row.n_in_ritardo ?? 0),
-        pctInRitardo: row.pct_in_ritardo != null ? Number(row.pct_in_ritardo) : null,
-        ritardoMedio: row.ritardo_medio != null ? Number(row.ritardo_medio) : null,
-        maxRitardo: row.max_ritardo != null ? Number(row.max_ritardo) : null,
+        pctInRitardo: row.perc_in_ritardo != null ? Number(row.perc_in_ritardo) : null,
+        ritardoMedio: row.ritardo_medio_gg != null ? Number(row.ritardo_medio_gg) : null,
+        maxRitardo: row.max_ritardo_gg != null ? Number(row.max_ritardo_gg) : null,
       };
     },
   });
+
 
   if (!cliente) return null;
   const sem = semaforoCliente(cliente);
@@ -343,8 +344,9 @@ function EsperienzaPagamentoBlock({ esp, variant }: { esp: EspData; variant: "co
   const e = esp!;
   const ritMedio = e.ritardoMedio ?? 0;
   const pct = e.pctInRitardo ?? 0;
+  // Soglie indicative (NON è il semaforo): verde ≤5gg, ambra 6–20gg, rosso >20gg
   const toneMedio: "neutral" | "destructive" | "success" =
-    ritMedio > 15 ? "destructive" : ritMedio > 5 ? "neutral" : "success";
+    ritMedio > 20 ? "destructive" : ritMedio > 5 ? "neutral" : "success";
   const tonePct: "neutral" | "destructive" | "success" =
     pct > 50 ? "destructive" : pct > 20 ? "neutral" : "success";
 
@@ -359,18 +361,17 @@ function EsperienzaPagamentoBlock({ esp, variant }: { esp: EspData; variant: "co
             tone={toneMedio}
           />
           <MetricCard
-            label="% in ritardo"
+            label="Pagate in ritardo"
             value={`${pct.toFixed(1)}%`}
             tone={tonePct}
           />
           <MetricCard
-            label="N. in ritardo"
-            value={`${e.nInRitardo}`}
-            subtext={`su ${e.nPagate}`}
+            label="N. ritardi"
+            value={`${e.nInRitardo} su ${e.nPagate}`}
           />
           <MetricCard
-            label="Max ritardo"
-            value={e.maxRitardo != null ? `${e.maxRitardo} gg` : "—"}
+            label="Ritardo massimo"
+            value={`${e.maxRitardo ?? 0} gg`}
             tone={e.maxRitardo != null && e.maxRitardo > 60 ? "destructive" : "neutral"}
           />
         </div>
@@ -378,6 +379,7 @@ function EsperienzaPagamentoBlock({ esp, variant }: { esp: EspData; variant: "co
     );
   }
 
+  // compact: solo ritardo medio + % in ritardo
   return (
     <div className="border-t pt-1.5 space-y-1">
       {title}
@@ -389,23 +391,16 @@ function EsperienzaPagamentoBlock({ esp, variant }: { esp: EspData; variant: "co
           </span>
         </div>
         <div className="flex justify-between">
-          <span className="text-muted-foreground">% in ritardo</span>
+          <span className="text-muted-foreground">Pagate in ritardo</span>
           <span className={`tabular-nums ${tonePct === "destructive" ? "text-destructive font-medium" : tonePct === "success" ? "text-success" : ""}`}>
             {pct.toFixed(1)}%
           </span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-muted-foreground">N. in ritardo</span>
-          <span className="tabular-nums">{e.nInRitardo} / {e.nPagate}</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-muted-foreground">Max ritardo</span>
-          <span className="tabular-nums">{e.maxRitardo != null ? `${e.maxRitardo} gg` : "—"}</span>
         </div>
       </div>
     </div>
   );
 }
+
 
 function ValutazioneEsternaBlock({ cliente, variant }: { cliente: any; variant: "compact" | "extended" }) {
   const rating = cliente?.rating_esterno ?? null;
