@@ -2342,6 +2342,7 @@ function ScadenziarioAssicurazioniImportCard() {
       toast.success("Import scadenziario+assicurazioni completato");
       qc.invalidateQueries({ queryKey: ["clienti"] });
       qc.invalidateQueries({ queryKey: ["scadenze"] });
+      qc.invalidateQueries({ queryKey: ["esperienza-pagamento"] });
       qc.invalidateQueries({ queryKey: ["assicurazioni"] });
       qc.invalidateQueries({ queryKey: ["pratiche_legali"] });
       qc.invalidateQueries({ queryKey: ["solleciti"] });
