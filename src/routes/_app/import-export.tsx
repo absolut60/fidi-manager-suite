@@ -1510,7 +1510,7 @@ function ScadenziarioImportCard() {
 
   const bg = useBackgroundImport({
     fonte: "scadenziario",
-    invalidateKeys: [["scadenze"], ["clienti"]],
+    invalidateKeys: [["scadenze"], ["clienti"], ["esperienza-pagamento"]],
     onUploadComplete: () => setUploadDone(true),
     onError: (msg) => setErrorMsg(msg),
   });
