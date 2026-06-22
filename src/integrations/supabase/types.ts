@@ -2899,13 +2899,13 @@ export type Database = {
         }[]
       }
       get_esperienza_pagamento_cliente: {
-        Args: { _cliente_id: string }
+        Args: { p_cliente_id: string }
         Returns: {
-          max_ritardo: number
+          max_ritardo_gg: number
           n_in_ritardo: number
           n_pagate: number
-          pct_in_ritardo: number
-          ritardo_medio: number
+          perc_in_ritardo: number
+          ritardo_medio_gg: number
         }[]
       }
       get_fatturato_clienti_scadenziario: {
