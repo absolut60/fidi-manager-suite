@@ -307,3 +307,125 @@ function DetailRow({ label, children }: { label: string; children: React.ReactNo
     </div>
   );
 }
+
+type EspData = {
+  nPagate: number;
+  nInRitardo: number;
+  pctInRitardo: number | null;
+  ritardoMedio: number | null;
+  maxRitardo: number | null;
+} | null | undefined;
+
+function EsperienzaPagamentoBlock({ esp, variant }: { esp: EspData; variant: "compact" | "extended" }) {
+  const noStorico = !esp || esp.nPagate === 0;
+  const title = (
+    <div className="flex items-end justify-between gap-2 flex-wrap">
+      <h3 className={variant === "extended" ? "font-semibold text-sm" : "font-medium text-xs"}>
+        Esperienza di pagamento
+      </h3>
+      {!noStorico && (
+        <span className="text-[11px] text-muted-foreground">
+          su {esp!.nPagate} scadenze pagate
+        </span>
+      )}
+    </div>
+  );
+
+  if (noStorico) {
+    return (
+      <div className={variant === "extended" ? "border-t pt-3 space-y-2" : "border-t pt-1.5 space-y-1"}>
+        {title}
+        <p className="text-xs text-muted-foreground">Nessuno storico pagamenti disponibile</p>
+      </div>
+    );
+  }
+
+  const e = esp!;
+  const ritMedio = e.ritardoMedio ?? 0;
+  const pct = e.pctInRitardo ?? 0;
+  const toneMedio: "neutral" | "destructive" | "success" =
+    ritMedio > 15 ? "destructive" : ritMedio > 5 ? "neutral" : "success";
+  const tonePct: "neutral" | "destructive" | "success" =
+    pct > 50 ? "destructive" : pct > 20 ? "neutral" : "success";
+
+  if (variant === "extended") {
+    return (
+      <div className="border-t pt-3 space-y-3">
+        {title}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <MetricCard
+            label="Ritardo medio"
+            value={`${ritMedio.toFixed(1)} gg`}
+            tone={toneMedio}
+          />
+          <MetricCard
+            label="% in ritardo"
+            value={`${pct.toFixed(1)}%`}
+            tone={tonePct}
+          />
+          <MetricCard
+            label="N. in ritardo"
+            value={`${e.nInRitardo}`}
+            subtext={`su ${e.nPagate}`}
+          />
+          <MetricCard
+            label="Max ritardo"
+            value={e.maxRitardo != null ? `${e.maxRitardo} gg` : "—"}
+            tone={e.maxRitardo != null && e.maxRitardo > 60 ? "destructive" : "neutral"}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="border-t pt-1.5 space-y-1">
+      {title}
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Ritardo medio</span>
+          <span className={`tabular-nums ${toneMedio === "destructive" ? "text-destructive font-medium" : toneMedio === "success" ? "text-success" : ""}`}>
+            {ritMedio.toFixed(1)} gg
+          </span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">% in ritardo</span>
+          <span className={`tabular-nums ${tonePct === "destructive" ? "text-destructive font-medium" : tonePct === "success" ? "text-success" : ""}`}>
+            {pct.toFixed(1)}%
+          </span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">N. in ritardo</span>
+          <span className="tabular-nums">{e.nInRitardo} / {e.nPagate}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Max ritardo</span>
+          <span className="tabular-nums">{e.maxRitardo != null ? `${e.maxRitardo} gg` : "—"}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ValutazioneEsternaBlock({ cliente, variant }: { cliente: any; variant: "compact" | "extended" }) {
+  const rating = cliente?.rating_esterno ?? null;
+  const fonte = cliente?.rating_esterno_fonte ?? null;
+  const data = cliente?.rating_esterno_data ?? null;
+  const vuoto = !rating;
+
+  return (
+    <div className={variant === "extended" ? "border-t pt-3 space-y-2" : "border-t pt-1.5 space-y-1"}>
+      <div className="flex items-end justify-between gap-2 flex-wrap">
+        <h3 className={variant === "extended" ? "font-semibold text-sm" : "font-medium text-xs"}>
+          Valutazione esterna
+        </h3>
+        {fonte && <span className="text-[11px] text-muted-foreground">{fonte}{data ? ` · ${formatDate(data)}` : ""}</span>}
+      </div>
+      {vuoto ? (
+        <p className="text-xs text-muted-foreground">Non disponibile</p>
+      ) : (
+        <p className="text-sm font-medium">{rating}</p>
+      )}
+    </div>
+  );
+}
