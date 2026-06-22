@@ -3045,6 +3045,10 @@ export type Database = {
         Args: { _cliente_id: string }
         Returns: boolean
       }
+      user_can_access_richiesta_fido: {
+        Args: { _id: string }
+        Returns: boolean
+      }
       user_can_write_cliente: {
         Args: { _cliente_id: string }
         Returns: boolean
