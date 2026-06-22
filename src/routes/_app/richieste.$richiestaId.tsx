@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Check, X, Send, Trash2 } from "lucide-react";
+import { ArrowLeft, Check, X, Send, Trash2, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -11,24 +11,36 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Separator } from "@/components/ui/separator";
-import { STATO_LABEL, STATO_TONE, TIPO_LABEL, TIPO_TONE, LIVELLO_LABEL, formatEuro, formatDate, type TipoRichiesta } from "@/lib/fidi";
+
+import {
+  STATO_LABEL, STATO_TONE, TIPO_LABEL, TIPO_TONE, LIVELLO_LABEL,
+  formatEuro, formatDate, type TipoRichiesta,
+} from "@/lib/fidi";
 
 import { ComunicazioniRichiestaPanel } from "@/components/comunicazioni-richiesta-panel";
 import { AllegatiSection } from "@/components/allegati-section";
 import { RICHIESTA_FIDO_SELECT } from "@/lib/richieste-fido-data";
 import { getFidoAttuale } from "@/lib/fido-cliente";
 import { PannelloRischioCliente } from "@/components/pannello-rischio-cliente";
+
 export const Route = createFileRoute("/_app/richieste/$richiestaId")({
   component: RichiestaDetail,
 });
+
+function semaforoTone(c: any): { dot: string; label: string; text: string } {
+  if (!c) return { dot: "bg-muted-foreground", label: "—", text: "text-muted-foreground" };
+  if (c.bloccato || c.in_gestione_legale)
+    return { dot: "bg-destructive", label: "Rosso", text: "text-destructive" };
+  if (Number(c.scaduto ?? 0) > 0)
+    return { dot: "bg-warning", label: "Giallo", text: "text-warning" };
+  return { dot: "bg-success", label: "Verde", text: "text-success" };
+}
 
 function RichiestaDetail() {
   const { richiestaId } = Route.useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { user, role, roles } = useAuth();
-
+  const { user, roles } = useAuth();
 
   const { data: r, isLoading } = useQuery({
     queryKey: ["richiesta", richiestaId],
@@ -58,7 +70,6 @@ function RichiestaDetail() {
 
   useEffect(() => {
     if (!richiestaId || !user?.id) return;
-    // RPC per-utente: aggiunge user.id a letto_da (non sovrascrive lo stato degli altri)
     (supabase as any).rpc("marca_comunicazioni_lette", { _richiesta_id: richiestaId }).then(() => {
       qc.invalidateQueries({ queryKey: ["msg-non-letti-richieste"] });
       qc.invalidateQueries({ queryKey: ["comunicazioni-non-lette"] });
@@ -67,19 +78,15 @@ function RichiestaDetail() {
 
   const isAdmin = roles.includes("amministratore");
   const isAmministrazione = roles.includes("amministrazione");
-  // Livello massimo dell'utente come approvatore (cascata: 3>=1,2,3; 2>=1,2; 1>=1)
   const livelloUtente =
     roles.includes("approvatore_liv3") ? 3 :
     roles.includes("approvatore_liv2") ? 2 :
     roles.includes("approvatore_liv1") ? 1 : 0;
 
-  // Singolo assenso: posso approvare se sono admin oppure il mio livello e' >= al livello_richiesto
   const canApprove = r?.stato === "in_approvazione" &&
     (isAdmin || livelloUtente >= (r?.livello_richiesto ?? 99));
   const isOwner = !!user?.id && r?.created_by === user.id;
-  // Elimina/gestisce: admin tecnico, amministrazione o il richiedente sulle proprie
   const canDelete = isAdmin || isAmministrazione || isOwner;
-
   const canSubmit = r?.stato === "bozza" && r?.created_by === user?.id;
 
   const submitMutation = useMutation({
@@ -105,9 +112,6 @@ function RichiestaDetail() {
     },
     onSuccess: async () => {
       toast.success("Richiesta eliminata");
-      // Stesso meccanismo di invalidazione usato dalla lista (qcInvalidate in /richieste):
-      // forza il refetch immediato di lista + contatori/code correlate, cosi al ritorno
-      // la richiesta cancellata non e' piu' visibile e i KPI in cima sono aggiornati.
       await Promise.all([
         qc.refetchQueries({ queryKey: ["richieste"], type: "active" }),
         qc.refetchQueries({ queryKey: ["approvazioni-queue"], type: "active" }),
@@ -122,19 +126,40 @@ function RichiestaDetail() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  if (isLoading) return <div className="space-y-4"><Skeleton className="h-8 w-64" /><Skeleton className="h-64 w-full" /></div>;
-  if (!r) return <div className="text-center py-12"><p>Richiesta non trovata</p><Link to="/richieste" className="text-primary text-sm">← Torna alla lista</Link></div>;
+  if (isLoading)
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  if (!r)
+    return (
+      <div className="text-center py-12">
+        <p>Richiesta non trovata</p>
+        <Link to="/richieste" className="text-primary text-sm">← Torna alla lista</Link>
+      </div>
+    );
+
+  const cliente = (r as any).clienti;
+  const fidoAttuale = getFidoAttuale(cliente);
+  const sem = semaforoTone(cliente);
+  const storeNome = cliente?.stores?.nome ?? (r as any).stores?.nome ?? "—";
+  const dataInvio = r.data_invio ?? (r.stato !== "bozza" ? r.created_at : null);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
+    <div className="space-y-5">
+      {/* 1) TESTATA COMPATTA */}
+      <div className="flex items-center gap-3 flex-wrap">
         <Button variant="ghost" size="sm" asChild>
           <Link to="/richieste"><ArrowLeft className="size-4" /></Link>
         </Button>
-        <div className="flex-1">
-          <h1 className="text-xl sm:text-2xl font-bold">{(r as any).clienti?.ragione_sociale}</h1>
-          <p className="text-xs text-muted-foreground">
-            Richiesta del {formatDate(r.created_at)} · {(r as any).clienti?.partita_iva || "P.IVA non specificata"}
+        <div className="flex-1 min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold truncate">{cliente?.ragione_sociale ?? "—"}</h1>
+          <p className="text-xs text-muted-foreground truncate">
+            Richiesta del {formatDate(r.created_at)}
+            {cliente?.partita_iva ? ` · P.IVA ${cliente.partita_iva}` : ""}
+            {storeNome !== "—" ? ` · ${storeNome}` : ""}
           </p>
         </div>
         <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>
@@ -145,70 +170,113 @@ function RichiestaDetail() {
         </span>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <Card className="p-5 lg:col-span-2 space-y-4">
-          <h2 className="font-semibold">Dettagli</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
-            <Info label="Importo richiesto" value={formatEuro(Number(r.importo_richiesto))} />
-            <Info label="Importo approvato" value={r.importo_approvato ? formatEuro(Number(r.importo_approvato)) : "—"} />
-            <Info label="Fido attuale" value={formatEuro(getFidoAttuale((r as any).clienti))} />
-            <Info label="Tot. rischio" value={formatEuro(Number((r as any).clienti?.totale_rischio ?? 0))} />
-            <Info label="Scaduto" value={Number((r as any).clienti?.scaduto ?? 0) > 0 ? formatEuro(Number((r as any).clienti?.scaduto)) : "—"} />
-            <Info label="Durata" value={`${r.durata_mesi} mesi`} />
-            <Info label="Punto vendita" value={(r as any).clienti?.stores?.nome ?? (r as any).stores?.nome ?? "—"} />
-            <Info label="Livello richiesto" value={LIVELLO_LABEL[r.livello_richiesto]} />
-            <Info label="Livello corrente" value={`Liv. ${r.livello_corrente}`} />
-            <Info label="Inviata il" value={formatDate(r.data_invio ?? (r.stato !== "bozza" ? r.created_at : null))} />
-            <Info label="Chiusa il" value={formatDate(r.data_chiusura)} />
-            <Info label="Scadenza fido" value={formatDate(r.data_scadenza)} />
-            <Info
-              label="Richiesto da"
-              value={`${userNameDet((r as any).richiedente)}${r.created_at ? ` · ${formatDate(r.created_at)}` : ""}`}
-            />
-            {(r.stato === "approvata" || r.stato === "rifiutata") && (
-              <Info
-                label={r.stato === "approvata" ? "Approvato da" : "Rifiutato da"}
-                value={`${userNameDet((r as any).approvatore)}${(r as any).data_approvazione ? ` · ${formatDate((r as any).data_approvazione)}` : r.data_chiusura ? ` · ${formatDate(r.data_chiusura)}` : ""}`}
-              />
-            )}
-          </div>
-          {r.motivazione && (
-            <>
-              <Separator />
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Motivazione</p>
-                <p className="text-sm whitespace-pre-wrap">{r.motivazione}</p>
-              </div>
-            </>
+      {/* 2) TRE CARD IN EVIDENZA */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="p-5 border-info/40 bg-info/5">
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+            Importo richiesto
+          </p>
+          <p className="mt-2 text-3xl font-bold tabular-nums text-info">
+            {formatEuro(Number(r.importo_richiesto))}
+          </p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Fido attuale <span className="font-medium text-foreground tabular-nums">{formatEuro(fidoAttuale)}</span>
+            {" · "}durata <span className="font-medium text-foreground">{r.durata_mesi} mesi</span>
+          </p>
+          {r.importo_approvato != null && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Approvato: <span className="font-medium text-foreground tabular-nums">{formatEuro(Number(r.importo_approvato))}</span>
+            </p>
           )}
-          <div className="flex flex-wrap gap-2 pt-2">
-            {canSubmit && (
-              <Button onClick={() => submitMutation.mutate()} disabled={submitMutation.isPending} className="gap-1.5">
-                <Send className="size-4" /> Invia in approvazione
-              </Button>
-            )}
-            {canDelete && (
-              <Button
-                variant="outline"
-                className="gap-1.5 text-destructive hover:text-destructive"
-                onClick={() => {
-                  const msg = r.stato === "approvata"
-                    ? "⚠️ Questa richiesta è GIÀ APPROVATA e potrebbe essere già stata esportata nel gestionale. Eliminarla può creare disallineamenti. L'operazione è irreversibile. Procedere?"
-                    : (r.stato === "in_approvazione" || r.stato === "integrazioni_richieste")
-                    ? "Questa richiesta è in approvazione: eliminandola l'iter verrà interrotto. L'operazione è irreversibile. Procedere?"
-                    : "Eliminare definitivamente questa richiesta?";
-                  if (confirm(msg)) deleteMutation.mutate();
-                }}
-              >
-                <Trash2 className="size-4" /> Elimina
-              </Button>
-            )}
-
-          </div>
         </Card>
 
+        <Card className="p-5">
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+            Livello richiesto
+          </p>
+          <p className="mt-2 text-2xl font-bold">{LIVELLO_LABEL[r.livello_richiesto]}</p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            {r.stato === "in_approvazione"
+              ? <>In attesa · livello corrente <span className="font-medium text-foreground">Liv. {r.livello_corrente}</span></>
+              : r.stato === "bozza"
+                ? "Da inviare in approvazione"
+                : <>Livello corrente <span className="font-medium text-foreground">Liv. {r.livello_corrente}</span></>}
+          </p>
+        </Card>
+
+        <Card className="p-5">
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+            Semaforo rischio
+          </p>
+          <div className="mt-2 flex items-center gap-2.5">
+            <span className={`inline-block size-3.5 rounded-full ${sem.dot}`} />
+            <span className={`text-2xl font-bold ${sem.text}`}>{sem.label}</span>
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            {cliente?.bloccato
+              ? <span className="text-destructive font-medium">Cliente bloccato{cliente?.motivo_blocco ? ` · ${cliente.motivo_blocco}` : ""}</span>
+              : cliente?.in_gestione_legale
+                ? <span className="text-warning font-medium">In gestione legale</span>
+                : "Non bloccato"}
+          </p>
+        </Card>
+      </div>
+
+      {/* 3) BOX DECISIONE — subito sotto, raggiungibile senza scrollare */}
+      {r.stato === "in_approvazione" && (
+        canApprove
+          ? <ApprovaForm richiesta={r} userId={user!.id} />
+          : <DecisioneReadOnly livelloRichiesto={r.livello_richiesto} livelloUtente={livelloUtente} />
+      )}
+
+      {/* Azioni richiesta (invio bozza / elimina) */}
+      {(canSubmit || canDelete) && (
+        <div className="flex flex-wrap gap-2">
+          {canSubmit && (
+            <Button onClick={() => submitMutation.mutate()} disabled={submitMutation.isPending} className="gap-1.5">
+              <Send className="size-4" /> Invia in approvazione
+            </Button>
+          )}
+          {canDelete && (
+            <Button
+              variant="outline"
+              className="gap-1.5 text-destructive hover:text-destructive"
+              onClick={() => {
+                const msg = r.stato === "approvata"
+                  ? "⚠️ Questa richiesta è GIÀ APPROVATA e potrebbe essere già stata esportata nel gestionale. Eliminarla può creare disallineamenti. L'operazione è irreversibile. Procedere?"
+                  : (r.stato === "in_approvazione" || r.stato === "integrazioni_richieste")
+                  ? "Questa richiesta è in approvazione: eliminandola l'iter verrà interrotto. L'operazione è irreversibile. Procedere?"
+                  : "Eliminare definitivamente questa richiesta?";
+                if (confirm(msg)) deleteMutation.mutate();
+              }}
+            >
+              <Trash2 className="size-4" /> Elimina
+            </Button>
+          )}
+        </div>
+      )}
+
+      {/* Motivazione */}
+      {r.motivazione && (
+        <Card className="p-5">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
+            Motivazione
+          </p>
+          <p className="text-sm whitespace-pre-wrap">{r.motivazione}</p>
+        </Card>
+      )}
+
+      {/* 4) QUADRO CLIENTE — variante estesa con metric card */}
+      {cliente && (
+        <Card className="p-5">
+          <PannelloRischioCliente cliente={cliente} variant="extended" />
+        </Card>
+      )}
+
+      {/* 5) WORKFLOW + DATI RICHIESTA */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card className="p-5 space-y-3">
-          <h2 className="font-semibold">Workflow</h2>
+          <h2 className="font-semibold">Workflow approvazione</h2>
           {[1, 2, 3].slice(0, r.livello_richiesto).map((liv) => {
             const done = approvazioni?.find((a) => a.livello === liv);
             const isCurrent = r.stato === "in_approvazione" && r.livello_corrente === liv;
@@ -238,17 +306,28 @@ function RichiestaDetail() {
             );
           })}
         </Card>
+
+        <Card className="p-5 space-y-3">
+          <h2 className="font-semibold">Dati richiesta</h2>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <Info label="Richiesto da" value={userNameDet((r as any).richiedente)} />
+            <Info label="Inviata il" value={formatDate(dataInvio)} />
+            <Info label="Punto vendita" value={storeNome} />
+            <Info label="Scadenza fido" value={formatDate(r.data_scadenza)} />
+            {(r.stato === "approvata" || r.stato === "rifiutata") && (
+              <Info
+                label={r.stato === "approvata" ? "Approvato da" : "Rifiutato da"}
+                value={`${userNameDet((r as any).approvatore)}${(r as any).data_approvazione ? ` · ${formatDate((r as any).data_approvazione)}` : r.data_chiusura ? ` · ${formatDate(r.data_chiusura)}` : ""}`}
+              />
+            )}
+            {r.data_chiusura && (
+              <Info label="Chiusa il" value={formatDate(r.data_chiusura)} />
+            )}
+          </div>
+        </Card>
       </div>
 
-      {/* Pannello rischio cliente — stesso componente usato in creazione richiesta,
-          mostrato sempre (qualsiasi stato) sopra il box Decisione per dare il quadro
-          rischio a chi approva. */}
-      {(r as any).clienti && (
-        <PannelloRischioCliente cliente={(r as any).clienti} />
-      )}
-
-      {canApprove && <ApprovaForm richiesta={r} userId={user!.id} />}
-
+      {/* Storico decisioni (se ci sono) */}
       {approvazioni && approvazioni.length > 0 && (
         <Card className="p-5">
           <h2 className="font-semibold mb-3">Storico decisioni</h2>
@@ -272,6 +351,7 @@ function RichiestaDetail() {
         </Card>
       )}
 
+      {/* 6) ALLEGATI + COMUNICAZIONI (invariati) */}
       <Card className="p-5">
         <AllegatiSection
           entitaTipo="richiesta_fido"
@@ -310,6 +390,30 @@ function Info({ label, value }: { label: string; value: string }) {
   );
 }
 
+function DecisioneReadOnly({
+  livelloRichiesto,
+  livelloUtente,
+}: { livelloRichiesto: number; livelloUtente: number }) {
+  return (
+    <Card className="p-5 border-muted bg-muted/30">
+      <div className="flex items-start gap-3">
+        <div className="size-9 rounded-full bg-muted flex items-center justify-center shrink-0">
+          <Lock className="size-4 text-muted-foreground" />
+        </div>
+        <div className="flex-1">
+          <h2 className="font-semibold">Decisione</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Richiede approvatore di livello <strong className="text-foreground">{livelloRichiesto}</strong>.
+            {livelloUtente > 0
+              ? ` Il tuo livello (${livelloUtente}) non è sufficiente.`
+              : " Non hai i permessi per decidere su questa richiesta."}
+          </p>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 function ApprovaForm({ richiesta }: { richiesta: any; userId: string }) {
   const qc = useQueryClient();
   const [importo, setImporto] = useState<string>(String(richiesta.importo_richiesto));
@@ -318,9 +422,6 @@ function ApprovaForm({ richiesta }: { richiesta: any; userId: string }) {
   const decide = useMutation({
     mutationFn: async (esito: "approvata" | "rifiutata") => {
       const importoNum = Number(importo);
-      // Singolo assenso via RPC SECURITY DEFINER: la funzione server valida
-      // che il livello dell'utente sia >= al livello_richiesto e imposta
-      // direttamente stato finale + approvato_da + data_chiusura.
       const { error } = await (supabase as any).rpc("processa_richiesta_fido", {
         _richiesta_id: richiesta.id,
         _esito: esito,
@@ -341,7 +442,9 @@ function ApprovaForm({ richiesta }: { richiesta: any; userId: string }) {
 
   return (
     <Card className="p-5 border-info/40 bg-info/5">
-      <h2 className="font-semibold mb-3">Decisione (richiede livello {richiesta.livello_richiesto})</h2>
+      <h2 className="font-semibold mb-3">
+        Decisione <span className="text-xs font-normal text-muted-foreground">(richiede livello {richiesta.livello_richiesto})</span>
+      </h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <Label htmlFor="importo_app">Importo da approvare (€)</Label>
