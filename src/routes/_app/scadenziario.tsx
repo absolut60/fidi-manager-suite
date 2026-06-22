@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, Fragment, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, Calendar, FileText, Ban, CalendarClock, Scale, ChevronDown, ChevronUp, Megaphone, Mail, Bell, MailOpen } from "lucide-react";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { AlertTriangle, Calendar, FileText, Ban, CalendarClock, Scale, ChevronDown, ChevronUp, Megaphone, Mail, Bell, ChevronLeft, ChevronRight } from "lucide-react";
 import { InvioMassivoDialog } from "@/components/invio-massivo-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
@@ -19,7 +19,6 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
-import { classificaScadenza } from "@/lib/scadenze";
 import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/_app/scadenziario")({
@@ -37,17 +36,6 @@ function fmtDate(v: unknown): string {
   try { return new Date(String(v)).toLocaleDateString("it-IT"); } catch { return String(v); }
 }
 
-type ScadRow = {
-  id: string;
-  cliente_id: string;
-  importo_scadenza: number | null;
-  giorni_ritardo: number | null;
-  data_scadenza: string | null;
-  stato_contabile: string | null;
-  tempi_scadenza: string | null;
-  data_pagamento_effettiva: string | null;
-  codice_pagamento: string | null;
-};
 type Cliente = {
   id: string;
   ragione_sociale: string;
@@ -59,12 +47,45 @@ type Cliente = {
 };
 type StoreRow = { id: string; nome: string };
 
-function fasciaOf(gg: number): "0_30" | "31_60" | "oltre_60" | null {
-  if (gg <= 0) return null;
-  if (gg <= 30) return "0_30";
-  if (gg <= 60) return "31_60";
-  return "oltre_60";
-}
+// Riga ritornata dalla RPC get_scadenziario_lista_paginata
+type ScadRow = {
+  cliente_id: string;
+  ragione_sociale: string;
+  codice_gestionale: string | null;
+  store_id: string | null;
+  store_nome: string | null;
+  bloccato: boolean;
+  ind_blocco: number | null;
+  in_gestione_legale: boolean;
+  n_scadute: number;
+  tot_scaduto: number | string;
+  n_a_scadere: number;
+  tot_a_scadere: number | string;
+  prossima_scadenza: string | null;
+  max_gg_ritardo: number;
+  scadute_ids: string[] | null;
+  fascia: "0_30" | "31_60" | "oltre_60" | null;
+  fatturato_cur: number | string;
+  fatturato_prec: number | string;
+  avvisato_n: number;
+  avvisato_ha_email: boolean;
+  avvisato_ultima_tipo: string | null;
+  avvisato_ultima_data: string | null;
+  total_count: number | string;
+};
+
+type TotaliRow = {
+  n_clienti_totali: number;
+  tot_scaduto: number | string;
+  tot_a_scadere: number | string;
+  n_clienti_scaduti: number;
+  n_clienti_bloccati: number;
+  n_clienti_in_legale: number;
+  n_clienti_crediti: number;
+  tot_crediti: number | string;
+  n_bonifici_esclusi: number;
+  n_legale_esclusi: number;
+};
 
 function fasciaBadge(f: "0_30" | "31_60" | "oltre_60" | null) {
   if (f === "oltre_60") return <Badge className="bg-destructive text-destructive-foreground hover:bg-destructive">oltre 60gg</Badge>;
@@ -73,22 +94,18 @@ function fasciaBadge(f: "0_30" | "31_60" | "oltre_60" | null) {
   return <Badge variant="outline">—</Badge>;
 }
 
-function blockBadge(c: Cliente) {
+function blockBadge(c: { bloccato: boolean; ind_blocco: number | null }) {
   if (c.bloccato) return <Badge className="bg-destructive text-destructive-foreground hover:bg-destructive">Bloccato</Badge>;
   if (Number(c.ind_blocco ?? 0) === 1) return <Badge className="bg-orange-500 text-white hover:bg-orange-500">Rev.</Badge>;
   return <span className="text-muted-foreground text-xs">—</span>;
 }
 
-function legaleBadge(c: Cliente) {
+function legaleBadge(c: { in_gestione_legale: boolean }) {
   if (c.in_gestione_legale) return <Badge className="bg-amber-500 text-white hover:bg-amber-500">⚖️ Legale</Badge>;
   return <span className="text-muted-foreground text-xs">—</span>;
 }
 
-function isBonifico(codice: string | null | undefined): boolean {
-  if (!codice) return false;
-  return codice.trim().toUpperCase() === "BOS";
-}
-
+const PAGE_SIZE = 25;
 
 function ScadenziarioPage() {
   const navigate = useNavigate();
@@ -104,21 +121,87 @@ function ScadenziarioPage() {
   const [escludiLegale, setEscludiLegale] = useState(true);
   const [avvisatoFilter, setAvvisatoFilter] = useState<"tutti" | "con_azioni" | "senza_azioni">("tutti");
   const [mostraACredito, setMostraACredito] = useState(false);
+  const [search, setSearch] = useState("");
+  const [searchDebounced, setSearchDebounced] = useState("");
+  const [page, setPage] = useState(1);
+  const [sortBy, setSortBy] = useState<"tot_scaduto" | "tot_a_scadere" | "ragione_sociale" | "max_gg">("tot_scaduto");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [expandedClienteId, setExpandedClienteId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [dialogOpen, setDialogOpen] = useState(false);
   const [invioMassivoOpen, setInvioMassivoOpen] = useState(false);
 
-  // Reset selection on filter changes
+  // Debounce ricerca
+  useEffect(() => {
+    const t = setTimeout(() => setSearchDebounced(search.trim()), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // Reset selezione + pagina ai cambi filtro
   useEffect(() => {
     setSelectedIds(new Set());
-  }, [storeId, fascia, importoMin, statoBlocco, statoLegale, escludiBonifici, escludiLegale, avvisatoFilter, mostraACredito]);
+    setPage(1);
+  }, [storeId, fascia, importoMin, statoBlocco, statoLegale, escludiBonifici, escludiLegale, avvisatoFilter, mostraACredito, searchDebounced, sortBy, sortDir]);
 
   useEffect(() => {
-    if (statoLegale === "in_legale") {
-      setEscludiLegale(false);
-    }
+    if (statoLegale === "in_legale") setEscludiLegale(false);
   }, [statoLegale]);
+
+  const annoCorrente = useMemo(() => new Date().getFullYear(), []);
+  const annoPrec = annoCorrente - 1;
+  const minImp = Number(importoMin) || 0;
+
+  const commonParams = useMemo(() => ({
+    p_search: searchDebounced || null,
+    p_store_id: storeId === "all" ? null : storeId,
+    p_fascia: fascia,
+    p_stato_blocco: statoBlocco,
+    p_stato_legale: statoLegale,
+    p_escludi_bonifici: escludiBonifici,
+    p_escludi_legale: escludiLegale,
+    p_avvisato: avvisatoFilter,
+    p_importo_min: minImp,
+    p_mostra_a_credito: mostraACredito,
+  }), [searchDebounced, storeId, fascia, statoBlocco, statoLegale, escludiBonifici, escludiLegale, avvisatoFilter, minImp, mostraACredito]);
+
+  const { data: rows, isLoading } = useQuery({
+    queryKey: ["scadenziario-paginata-v1", commonParams, sortBy, sortDir, page, annoCorrente, annoPrec],
+    placeholderData: keepPreviousData,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_scadenziario_lista_paginata" as never, {
+        ...commonParams,
+        p_anno_corrente: annoCorrente,
+        p_anno_prec: annoPrec,
+        p_sort_by: sortBy,
+        p_sort_dir: sortDir,
+        p_page: page,
+        p_page_size: PAGE_SIZE,
+      } as never);
+      if (error) throw error;
+      return (data ?? []) as unknown as ScadRow[];
+    },
+  });
+
+  const { data: totali } = useQuery({
+    queryKey: ["scadenziario-totali-v1", commonParams],
+    placeholderData: keepPreviousData,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_scadenziario_totali" as never, commonParams as never);
+      if (error) throw error;
+      const arr = (data ?? []) as unknown as TotaliRow[];
+      return arr[0] ?? null;
+    },
+  });
+
+  const { data: stores } = useQuery({
+    queryKey: ["stores-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("stores").select("id, nome").order("nome");
+      if (error) throw error;
+      return (data ?? []) as StoreRow[];
+    },
+    staleTime: 5 * 60_000,
+  });
 
   const { data: rischioExpanded, isLoading: loadingRischio } = useQuery({
     queryKey: ["rischio-expanded", expandedClienteId],
@@ -138,270 +221,30 @@ function ScadenziarioPage() {
     },
   });
 
-  const { data: stores } = useQuery({
-    queryKey: ["stores-list"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("stores").select("id, nome").order("nome");
-      if (error) throw error;
-      return (data ?? []) as StoreRow[];
-    },
-  });
+  const totalCount = Number(rows?.[0]?.total_count ?? totali?.n_clienti_totali ?? 0);
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
-  const { data: clienti } = useQuery({
-    queryKey: ["clienti-min-scad"],
-    queryFn: async () => {
-      const all: Cliente[] = [];
-      const size = 1000;
-      let off = 0;
-      while (true) {
-        const { data, error } = await supabase
-          .from("clienti")
-          .select("id, ragione_sociale, codice_gestionale, store_id, bloccato, ind_blocco, in_gestione_legale")
-          .range(off, off + size - 1);
-        if (error) throw error;
-        const batch = (data ?? []) as Cliente[];
-        all.push(...batch);
-        if (batch.length < size) break;
-        off += size;
-      }
-      return all;
-    },
-  });
-
-  const { data: scad, isLoading } = useQuery({
-    queryKey: ["scadenze-globali-v6-attive"],
-    queryFn: async () => {
-      const all: ScadRow[] = [];
-      const pageSize = 1000;
-      let from = 0;
-      while (true) {
-        // Regola unica (allineata a classificaScadenza / RPC):
-        // - SCADUTO  = stato_contabile='Aperta' AND data_scadenza < oggi (anche con DPE)
-        // - A SCADERE = data_pagamento_effettiva IS NULL AND data_scadenza >= oggi
-        //               (a prescindere dallo stato: include R.B./effetti 'Chiusa'
-        //                presentati ma non ancora incassati)
-        // Per coprire entrambi i casi serve: stato='Aperta' OR data_pagamento_effettiva IS NULL.
-        const { data, error } = await supabase
-          .from("scadenze")
-          .select("id, cliente_id, importo_scadenza, giorni_ritardo, data_scadenza, stato_contabile, tempi_scadenza, data_pagamento_effettiva, codice_pagamento")
-          .or("stato_contabile.eq.Aperta,data_pagamento_effettiva.is.null")
-          .order("cliente_id", { ascending: true })
-          .range(from, from + pageSize - 1);
-        if (error) throw error;
-        const batch = (data ?? []) as ScadRow[];
-        all.push(...batch);
-        if (batch.length < pageSize) break;
-        from += pageSize;
-      }
-      return all;
-    },
-  });
-
-
-  const annoCorrente = useMemo(() => new Date().getFullYear(), []);
-  const annoPrec = annoCorrente - 1;
-
-  const { data: fatturatoMap } = useQuery({
-    queryKey: ["scadenziario-fatturato-clienti", annoCorrente, annoPrec],
-    queryFn: async () => {
-      // RPC server-side: una riga per cliente con scadenze aperte, con cur/prev
-      // gia' aggregati. Evita il troncamento a 1000 righe di PostgREST che
-      // affliggeva la lettura diretta della view fatturato_clienti.
-      const { data, error } = await supabase.rpc(
-        "get_fatturato_clienti_scadenziario" as never,
-        { _anno_corrente: annoCorrente, _anno_prec: annoPrec } as never,
-      );
-      if (error) throw error;
-      const m = new Map<string, { cur: number; prev: number }>();
-      for (const r of (data ?? []) as unknown as Array<{
-        cliente_id: string | null;
-        fatturato_anno_corrente: number | string | null;
-        fatturato_anno_prec: number | string | null;
-      }>) {
-        if (!r.cliente_id) continue;
-        m.set(r.cliente_id, {
-          cur: Number(r.fatturato_anno_corrente) || 0,
-          prev: Number(r.fatturato_anno_prec) || 0,
-        });
-      }
-      return m;
-    },
-    staleTime: 60_000,
-  });
-
-  type AvvisatoRow = {
-    cliente_id: string;
-    n_azioni: number;
-    ha_email: boolean;
-    ultima_tipo: string | null;
-    ultima_data: string | null;
-  };
-  const { data: avvisatiMap } = useQuery({
-    queryKey: ["clienti-avvisati"],
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_clienti_avvisati" as never);
-      if (error) throw error;
-      const m = new Map<string, AvvisatoRow>();
-      for (const r of (data ?? []) as unknown as AvvisatoRow[]) {
-        m.set(r.cliente_id, r);
-      }
-      return m;
-    },
-    staleTime: 60_000,
-  });
-
-  const clientiMap = useMemo(() => {
-    const m = new Map<string, Cliente>();
-    (clienti ?? []).forEach((c) => m.set(c.id, c));
-    return m;
-  }, [clienti]);
-
-  const bonificiCount = useMemo(() => {
-    if (!escludiBonifici) return 0;
-    return (scad ?? []).filter((r) => {
-      const cat = classificaScadenza(r);
-      return cat !== "pagato" && isBonifico(r.codice_pagamento);
-    }).length;
-  }, [scad, escludiBonifici]);
-
-  const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
-
-  // Aggregazione per cliente, applicando filtri store / blocco / bonifici
-  const aggregato = useMemo(() => {
-    const map = new Map<string, {
-      cliente: Cliente;
-      scadute: ScadRow[];
-      aScadere: ScadRow[];
-    }>();
-    (scad ?? []).forEach((s) => {
-      const cli = clientiMap.get(s.cliente_id);
-      if (!cli) return;
-      if (storeId !== "all" && cli.store_id !== storeId) return;
-      if (statoBlocco === "bloccati" && !cli.bloccato) return;
-      if (statoBlocco === "non_bloccati" && cli.bloccato) return;
-      if (statoLegale === "in_legale" && !cli.in_gestione_legale) return;
-      if (statoLegale === "non_in_legale" && cli.in_gestione_legale) return;
-      if (escludiLegale && cli.in_gestione_legale) return;
-      if (escludiBonifici && isBonifico(s.codice_pagamento)) return;
-      const cat = classificaScadenza(s);
-      if (cat === "pagato") return;
-      const entry = map.get(s.cliente_id) ?? { cliente: cli, scadute: [], aScadere: [] };
-      if (cat === "scaduto") entry.scadute.push(s);
-      else entry.aScadere.push(s);
-      map.set(s.cliente_id, entry);
-    });
-    return map;
-  }, [scad, clientiMap, storeId, statoBlocco, statoLegale, escludiBonifici, escludiLegale]);
-
-  const minImp = Number(importoMin) || 0;
-
-  // Riga unica per ogni cliente con almeno una scadenza aperta
-  const rows = useMemo(() => {
-    const out = Array.from(aggregato.values()).map((e) => {
-      const totScad = e.scadute.reduce((a, r) => a + Number(r.importo_scadenza ?? 0), 0);
-      const maxGg = e.scadute.reduce((m, r) => Math.max(m, Number(r.giorni_ritardo ?? 0)), 0);
-      const aScadFiltered = e.aScadere.filter((r) => {
-        if (!r.data_scadenza) return false;
-        const d = new Date(r.data_scadenza); d.setHours(0, 0, 0, 0);
-        return d >= today;
-      });
-      const totAScad = aScadFiltered.reduce((a, r) => a + Number(r.importo_scadenza ?? 0), 0);
-      const prossima = aScadFiltered
-        .map((r) => r.data_scadenza)
-        .filter((d): d is string => !!d)
-        .sort()[0] ?? null;
-      return {
-        cliente: e.cliente,
-        nScadute: e.scadute.length,
-        totScad,
-        nAScadere: aScadFiltered.length,
-        totAScad,
-        prossima,
-        maxGg,
-        fascia: fasciaOf(maxGg),
-        scaduteIds: e.scadute.map((r) => r.id),
-      };
-    }).filter((r) => r.nScadute > 0);
-    return out
-      .filter((r) => {
-        // Toggle "a credito" SPENTO: comportamento attuale (solo saldi positivi >= minImp)
-        // ACCESO: includi anche r.totScad < 0, applicando minImp in valore assoluto
-        if (r.totScad >= 0) return r.totScad >= minImp;
-        if (!mostraACredito) return false;
-        return Math.abs(r.totScad) >= minImp;
-      })
-      .filter((r) => {
-        if (fascia === "tutte") return true;
-        if (r.nScadute === 0) return false;
-        return r.fascia === fascia;
-      })
-      .filter((r) => {
-        if (avvisatoFilter === "tutti") return true;
-        const a = avvisatiMap?.get(r.cliente.id);
-        const avvisato = !!a && a.n_azioni > 0;
-        return avvisatoFilter === "con_azioni" ? avvisato : !avvisato;
-      })
-      .sort((a, b) => {
-        // Debitori prima (positivi desc), clienti a credito in fondo (più negativo prima)
-        if (a.totScad >= 0 && b.totScad < 0) return -1;
-        if (a.totScad < 0 && b.totScad >= 0) return 1;
-        if (a.totScad < 0 && b.totScad < 0) return a.totScad - b.totScad;
-        return b.totScad - a.totScad;
-      });
-  }, [aggregato, minImp, fascia, today, avvisatoFilter, avvisatiMap, mostraACredito]);
-
-  // Conteggio clienti in legale esclusi dalla lista (per badge accanto al toggle).
-  // Conta i clienti con scadenze aperte (non pagate, non bonifici) che verrebbero
-  // mostrati se non fosse per il toggle.
-  const legaleEsclusiCount = useMemo(() => {
-    if (!escludiLegale) return 0;
-    const ids = new Set<string>();
-    (scad ?? []).forEach((s) => {
-      const cli = clientiMap.get(s.cliente_id);
-      if (!cli || !cli.in_gestione_legale) return;
-      if (storeId !== "all" && cli.store_id !== storeId) return;
-      if (escludiBonifici && isBonifico(s.codice_pagamento)) return;
-      const cat = classificaScadenza(s);
-      if (cat === "pagato") return;
-      ids.add(cli.id);
-    });
-    return ids.size;
-  }, [scad, clientiMap, escludiLegale, storeId, escludiBonifici]);
-
-  // KPI calcolati sulla lista filtrata (rows) + clienti in legale (sull'intero dataset
-  // prima del toggle "escludi legale", così rimane visibile anche quando li nasconde).
   const kpi = useMemo(() => {
-    let totScad = 0, totAScad = 0, clientiScad = 0, bloccati = 0;
-    let nCrediti = 0, totCrediti = 0;
-    rows.forEach((r) => {
-      // Totali scaduto: SOLO saldi positivi, per non sottostimare l'esposizione reale
-      if (r.totScad > 0) {
-        totScad += r.totScad;
-        clientiScad += 1;
-      } else if (r.totScad < 0) {
-        nCrediti += 1;
-        totCrediti += r.totScad;
-      }
-      totAScad += r.totAScad;
-      if (r.cliente.bloccato) bloccati += 1;
-    });
-    // Clienti in legale con scadenze aperte (ignora toggle escludiLegale)
-    const legaleIds = new Set<string>();
-    (scad ?? []).forEach((s) => {
-      const cli = clientiMap.get(s.cliente_id);
-      if (!cli || !cli.in_gestione_legale) return;
-      if (storeId !== "all" && cli.store_id !== storeId) return;
-      if (escludiBonifici && isBonifico(s.codice_pagamento)) return;
-      const cat = classificaScadenza(s);
-      if (cat === "pagato") return;
-      legaleIds.add(cli.id);
-    });
-    return { totScad, totAScad, clientiScad, bloccati, inLegale: legaleIds.size, nCrediti, totCrediti };
-  }, [rows, scad, clientiMap, storeId, escludiBonifici]);
+    const t = totali;
+    return {
+      totScad: Number(t?.tot_scaduto ?? 0),
+      totAScad: Number(t?.tot_a_scadere ?? 0),
+      clientiScad: Number(t?.n_clienti_scaduti ?? 0),
+      bloccati: Number(t?.n_clienti_bloccati ?? 0),
+      inLegale: Number(t?.n_clienti_in_legale ?? 0),
+      nCrediti: Number(t?.n_clienti_crediti ?? 0),
+      totCrediti: Number(t?.tot_crediti ?? 0),
+    };
+  }, [totali]);
+
+  const bonificiCount = Number(totali?.n_bonifici_esclusi ?? 0);
+  const legaleEsclusiCount = Number(totali?.n_legale_esclusi ?? 0);
 
   function apriCliente(id: string) {
     navigate({ to: "/clienti/$clienteId", params: { clienteId: id }, search: { tab: "insoluti", insolutiTab: "scadenziario" } as never });
   }
+
+  const pageRows = rows ?? [];
 
   return (
     <div className="space-y-6">
@@ -444,7 +287,11 @@ function ScadenziarioPage() {
 
       {/* Filtri */}
       <Card className="p-4 space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+          <div className="lg:col-span-2">
+            <label className="text-xs font-medium text-muted-foreground">Cerca cliente</label>
+            <Input className="mt-1" placeholder="Ragione sociale o codice gestionale" value={search} onChange={(e) => setSearch(e.target.value)} />
+          </div>
           {!isStoreManager && (
             <div>
               <label className="text-xs font-medium text-muted-foreground">Store</label>
@@ -506,6 +353,20 @@ function ScadenziarioPage() {
               </SelectContent>
             </Select>
           </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Ordina per</label>
+            <Select value={`${sortBy}:${sortDir}`} onValueChange={(v) => { const [b, d] = v.split(":"); setSortBy(b as typeof sortBy); setSortDir(d as typeof sortDir); }}>
+              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="tot_scaduto:desc">Scaduto ↓</SelectItem>
+                <SelectItem value="tot_scaduto:asc">Scaduto ↑</SelectItem>
+                <SelectItem value="tot_a_scadere:desc">A scadere ↓</SelectItem>
+                <SelectItem value="max_gg:desc">Giorni ritardo ↓</SelectItem>
+                <SelectItem value="ragione_sociale:asc">Ragione sociale A→Z</SelectItem>
+                <SelectItem value="ragione_sociale:desc">Ragione sociale Z→A</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t">
           <div className="flex flex-wrap items-center gap-4">
@@ -555,17 +416,17 @@ function ScadenziarioPage() {
         </Card>
       )}
 
-      {/* TABELLA UNICA */}
+      {/* TABELLA */}
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <h2 className="text-sm font-semibold uppercase text-foreground flex items-center gap-2">
-            <FileText className="size-4" /> Clienti con scadenze aperte ({rows.length})
+            <FileText className="size-4" /> Clienti con scadenze aperte ({totalCount})
           </h2>
           <Button size="sm" variant="outline" onClick={() => setInvioMassivoOpen(true)} className="gap-1.5">
             <Mail className="size-4" /> Invio massivo solleciti
           </Button>
         </div>
-        {isLoading ? <Skeleton className="h-40" /> : rows.length === 0 ? (
+        {isLoading && pageRows.length === 0 ? <Skeleton className="h-40" /> : pageRows.length === 0 ? (
           <Card className="p-8 text-center text-sm text-muted-foreground">Nessun cliente con scadenze aperte</Card>
         ) : (
           <Card>
@@ -575,11 +436,11 @@ function ScadenziarioPage() {
                   <TableHead className="w-10">
                     <Checkbox
                       aria-label="Seleziona pagina"
-                      checked={rows.length > 0 && rows.every((r) => selectedIds.has(r.cliente.id))}
+                      checked={pageRows.length > 0 && pageRows.every((r) => selectedIds.has(r.cliente_id))}
                       onCheckedChange={(v) => {
                         const next = new Set(selectedIds);
-                        if (v) rows.forEach((r) => next.add(r.cliente.id));
-                        else rows.forEach((r) => next.delete(r.cliente.id));
+                        if (v) pageRows.forEach((r) => next.add(r.cliente_id));
+                        else pageRows.forEach((r) => next.delete(r.cliente_id));
                         setSelectedIds(next);
                       }}
                     />
@@ -602,17 +463,18 @@ function ScadenziarioPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map((r) => {
-                  const storeName = stores?.find((s) => s.id === r.cliente.store_id)?.nome ?? "—";
-                  const fatt = fatturatoMap?.get(r.cliente.id);
-                  const isExpanded = expandedClienteId === r.cliente.id;
-                  const isSel = selectedIds.has(r.cliente.id);
+                {pageRows.map((r) => {
+                  const totScad = Number(r.tot_scaduto ?? 0);
+                  const totAScad = Number(r.tot_a_scadere ?? 0);
+                  const fattCur = Number(r.fatturato_cur ?? 0);
+                  const fattPrev = Number(r.fatturato_prec ?? 0);
+                  const isExpanded = expandedClienteId === r.cliente_id;
+                  const isSel = selectedIds.has(r.cliente_id);
                   return (
-                    <Fragment key={r.cliente.id}>
+                    <Fragment key={r.cliente_id}>
                       <TableRow
-                        key={r.cliente.id}
-                        className={`cursor-pointer ${r.cliente.bloccato ? "bg-destructive/10 hover:bg-destructive/15" : r.cliente.in_gestione_legale ? "bg-amber-500/10 hover:bg-amber-500/15" : ""}`}
-                        onClick={() => setExpandedClienteId(isExpanded ? null : r.cliente.id)}
+                        className={`cursor-pointer ${r.bloccato ? "bg-destructive/10 hover:bg-destructive/15" : r.in_gestione_legale ? "bg-amber-500/10 hover:bg-amber-500/15" : ""}`}
+                        onClick={() => setExpandedClienteId(isExpanded ? null : r.cliente_id)}
                       >
                         <TableCell className="w-10" onClick={(e) => e.stopPropagation()}>
                           <Checkbox
@@ -620,57 +482,63 @@ function ScadenziarioPage() {
                             checked={isSel}
                             onCheckedChange={(v) => {
                               const next = new Set(selectedIds);
-                              if (v) next.add(r.cliente.id);
-                              else next.delete(r.cliente.id);
+                              if (v) next.add(r.cliente_id);
+                              else next.delete(r.cliente_id);
                               setSelectedIds(next);
                             }}
                           />
                         </TableCell>
                         <TableCell className="w-10 text-center" onClick={(e) => e.stopPropagation()}>
                           <AvvisatoIcon
-                            info={avvisatiMap?.get(r.cliente.id) ?? null}
+                            info={r.avvisato_n > 0 ? {
+                              cliente_id: r.cliente_id,
+                              n_azioni: r.avvisato_n,
+                              ha_email: r.avvisato_ha_email,
+                              ultima_tipo: r.avvisato_ultima_tipo,
+                              ultima_data: r.avvisato_ultima_data,
+                            } : null}
                             onClick={() => navigate({
                               to: "/clienti/$clienteId",
-                              params: { clienteId: r.cliente.id },
+                              params: { clienteId: r.cliente_id },
                               search: { tab: "attivita" } as never,
                             })}
                           />
                         </TableCell>
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-2">
-                            <span>{r.cliente.ragione_sociale}</span>
-                            {r.totScad < 0 && (
+                            <span>{r.ragione_sociale}</span>
+                            {totScad < 0 && (
                               <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">A credito</Badge>
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="font-mono text-xs">{r.cliente.codice_gestionale ?? "—"}</TableCell>
-                        <TableCell className="text-xs">{storeName}</TableCell>
-                        <TableCell>{blockBadge(r.cliente)}</TableCell>
-                        <TableCell>{legaleBadge(r.cliente)}</TableCell>
-                        <TableCell className="text-right tabular-nums">{fatt && fatt.cur > 0 ? fmtEuro(fatt.cur) : "—"}</TableCell>
-                        <TableCell className="text-right tabular-nums text-muted-foreground">{fatt && fatt.prev > 0 ? fmtEuro(fatt.prev) : "—"}</TableCell>
-                        <TableCell className="text-right tabular-nums">{r.nScadute || "—"}</TableCell>
-                        <TableCell className={`text-right tabular-nums font-semibold ${r.totScad < 0 ? "text-emerald-700 dark:text-emerald-400" : "text-destructive"}`}>
-                          {r.totScad !== 0 ? fmtEuro(r.totScad) : "—"}
+                        <TableCell className="font-mono text-xs">{r.codice_gestionale ?? "—"}</TableCell>
+                        <TableCell className="text-xs">{r.store_nome ?? "—"}</TableCell>
+                        <TableCell>{blockBadge(r)}</TableCell>
+                        <TableCell>{legaleBadge(r)}</TableCell>
+                        <TableCell className="text-right tabular-nums">{fattCur > 0 ? fmtEuro(fattCur) : "—"}</TableCell>
+                        <TableCell className="text-right tabular-nums text-muted-foreground">{fattPrev > 0 ? fmtEuro(fattPrev) : "—"}</TableCell>
+                        <TableCell className="text-right tabular-nums">{r.n_scadute || "—"}</TableCell>
+                        <TableCell className={`text-right tabular-nums font-semibold ${totScad < 0 ? "text-emerald-700 dark:text-emerald-400" : "text-destructive"}`}>
+                          {totScad !== 0 ? fmtEuro(totScad) : "—"}
                         </TableCell>
-                        <TableCell className="text-right tabular-nums">{r.nAScadere || "—"}</TableCell>
+                        <TableCell className="text-right tabular-nums">{r.n_a_scadere || "—"}</TableCell>
                         <TableCell className="text-right tabular-nums">
-                          {r.totAScad > 0 ? fmtEuro(r.totAScad) : "—"}
+                          {totAScad > 0 ? fmtEuro(totAScad) : "—"}
                         </TableCell>
-                        <TableCell className="text-sm">{fmtDate(r.prossima)}</TableCell>
+                        <TableCell className="text-sm">{fmtDate(r.prossima_scadenza)}</TableCell>
                         <TableCell>{fasciaBadge(r.fascia)}</TableCell>
                         <TableCell className="w-8 text-muted-foreground">
                           {isExpanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
                         </TableCell>
                       </TableRow>
                       {isExpanded && (
-                        <TableRow key={`${r.cliente.id}-exp`} className="bg-muted/40 hover:bg-muted/40">
+                        <TableRow key={`${r.cliente_id}-exp`} className="bg-muted/40 hover:bg-muted/40">
                           <TableCell colSpan={16} className="px-4 py-3">
                             <ExpandedRischioPanel
                               loading={loadingRischio}
                               data={rischioExpanded}
-                              onApri={(e: React.MouseEvent) => { e.stopPropagation(); apriCliente(r.cliente.id); }}
+                              onApri={(e: React.MouseEvent) => { e.stopPropagation(); apriCliente(r.cliente_id); }}
                             />
                           </TableCell>
                         </TableRow>
@@ -680,6 +548,22 @@ function ScadenziarioPage() {
                 })}
               </TableBody>
             </Table>
+
+            {/* Paginazione */}
+            <div className="flex items-center justify-between px-4 py-3 border-t text-sm">
+              <div className="text-muted-foreground">
+                Pagina <span className="font-medium text-foreground">{page}</span> di {totalPages}
+                {" · "}{totalCount} clienti
+              </div>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+                  <ChevronLeft className="size-4" /> Precedente
+                </Button>
+                <Button size="sm" variant="outline" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
+                  Successiva <ChevronRight className="size-4" />
+                </Button>
+              </div>
+            </div>
           </Card>
         )}
       </section>
@@ -687,7 +571,21 @@ function ScadenziarioPage() {
       <AzioneRecuperoDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        selectedRows={rows.filter((r) => selectedIds.has(r.cliente.id))}
+        selectedRows={pageRows
+          .filter((r) => selectedIds.has(r.cliente_id))
+          .map((r) => ({
+            cliente: {
+              id: r.cliente_id,
+              ragione_sociale: r.ragione_sociale,
+              codice_gestionale: r.codice_gestionale,
+              store_id: r.store_id,
+              bloccato: r.bloccato,
+              ind_blocco: r.ind_blocco,
+              in_gestione_legale: r.in_gestione_legale,
+            },
+            totScad: Number(r.tot_scaduto ?? 0),
+            scaduteIds: r.scadute_ids ?? [],
+          }))}
         userId={user?.id ?? null}
         onDone={() => { setSelectedIds(new Set()); setDialogOpen(false); }}
       />
@@ -695,8 +593,8 @@ function ScadenziarioPage() {
       <InvioMassivoDialog
         open={invioMassivoOpen}
         onOpenChange={setInvioMassivoOpen}
-        clienteIdsSelezionati={rows.filter((r) => selectedIds.has(r.cliente.id)).map((r) => r.cliente.id)}
-        clienteIdsFiltrati={rows.map((r) => r.cliente.id)}
+        clienteIdsSelezionati={pageRows.filter((r) => selectedIds.has(r.cliente_id)).map((r) => r.cliente_id)}
+        clienteIdsFiltrati={pageRows.map((r) => r.cliente_id)}
       />
     </div>
   );
