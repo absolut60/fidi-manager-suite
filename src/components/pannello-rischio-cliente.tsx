@@ -61,6 +61,26 @@ export function PannelloRischioCliente({
     },
   });
 
+  const { data: esp } = useQuery({
+    queryKey: ["esperienza-pagamento", cliente?.id],
+    enabled: !!cliente?.id,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc("get_esperienza_pagamento_cliente", {
+        _cliente_id: cliente.id,
+      });
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!row) return null;
+      return {
+        nPagate: Number(row.n_pagate ?? 0),
+        nInRitardo: Number(row.n_in_ritardo ?? 0),
+        pctInRitardo: row.pct_in_ritardo != null ? Number(row.pct_in_ritardo) : null,
+        ritardoMedio: row.ritardo_medio != null ? Number(row.ritardo_medio) : null,
+        maxRitardo: row.max_ritardo != null ? Number(row.max_ritardo) : null,
+      };
+    },
+  });
+
   if (!cliente) return null;
   const sem = semaforoCliente(cliente);
   const fidoAttuale = getFidoAttuale(cliente);
