@@ -779,6 +779,9 @@ export type Database = {
           privacy_token_expires_at: string | null
           provincia: string | null
           ragione_sociale: string
+          rating_esterno: string | null
+          rating_esterno_data: string | null
+          rating_esterno_fonte: string | null
           saldo_contabile: number | null
           scaduto: number | null
           scheda_pdf_url: string | null
@@ -858,6 +861,9 @@ export type Database = {
           privacy_token_expires_at?: string | null
           provincia?: string | null
           ragione_sociale: string
+          rating_esterno?: string | null
+          rating_esterno_data?: string | null
+          rating_esterno_fonte?: string | null
           saldo_contabile?: number | null
           scaduto?: number | null
           scheda_pdf_url?: string | null
@@ -937,6 +943,9 @@ export type Database = {
           privacy_token_expires_at?: string | null
           provincia?: string | null
           ragione_sociale?: string
+          rating_esterno?: string | null
+          rating_esterno_data?: string | null
+          rating_esterno_fonte?: string | null
           saldo_contabile?: number | null
           scaduto?: number | null
           scheda_pdf_url?: string | null
@@ -2887,6 +2896,16 @@ export type Database = {
           cred_teorico: number
           mese: string
           n_scadenze: number
+        }[]
+      }
+      get_esperienza_pagamento_cliente: {
+        Args: { _cliente_id: string }
+        Returns: {
+          max_ritardo: number
+          n_in_ritardo: number
+          n_pagate: number
+          pct_in_ritardo: number
+          ritardo_medio: number
         }[]
       }
       get_fatturato_clienti_scadenziario: {
