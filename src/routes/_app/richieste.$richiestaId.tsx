@@ -168,6 +168,24 @@ function RichiestaDetail() {
         <span className={`inline-flex items-center rounded-md px-3 py-1 text-sm font-medium ${STATO_TONE[r.stato]}`}>
           {STATO_LABEL[r.stato]}
         </span>
+        {canDelete && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+            title="Elimina richiesta"
+            onClick={() => {
+              const msg = r.stato === "approvata"
+                ? "⚠️ Questa richiesta è GIÀ APPROVATA e potrebbe essere già stata esportata nel gestionale. Eliminarla può creare disallineamenti. L'operazione è irreversibile. Procedere?"
+                : (r.stato === "in_approvazione" || r.stato === "integrazioni_richieste")
+                ? "Questa richiesta è in approvazione: eliminandola l'iter verrà interrotto. L'operazione è irreversibile. Procedere?"
+                : "Eliminare definitivamente questa richiesta?";
+              if (confirm(msg)) deleteMutation.mutate();
+            }}
+          >
+            <Trash2 className="size-4" />
+          </Button>
+        )}
       </div>
 
       {/* 2) TRE CARD IN EVIDENZA */}
@@ -229,30 +247,12 @@ function RichiestaDetail() {
           : <DecisioneReadOnly livelloRichiesto={r.livello_richiesto} livelloUtente={livelloUtente} />
       )}
 
-      {/* Azioni richiesta (invio bozza / elimina) */}
-      {(canSubmit || canDelete) && (
+      {/* Invio bozza */}
+      {canSubmit && (
         <div className="flex flex-wrap gap-2">
-          {canSubmit && (
-            <Button onClick={() => submitMutation.mutate()} disabled={submitMutation.isPending} className="gap-1.5">
-              <Send className="size-4" /> Invia in approvazione
-            </Button>
-          )}
-          {canDelete && (
-            <Button
-              variant="outline"
-              className="gap-1.5 text-destructive hover:text-destructive"
-              onClick={() => {
-                const msg = r.stato === "approvata"
-                  ? "⚠️ Questa richiesta è GIÀ APPROVATA e potrebbe essere già stata esportata nel gestionale. Eliminarla può creare disallineamenti. L'operazione è irreversibile. Procedere?"
-                  : (r.stato === "in_approvazione" || r.stato === "integrazioni_richieste")
-                  ? "Questa richiesta è in approvazione: eliminandola l'iter verrà interrotto. L'operazione è irreversibile. Procedere?"
-                  : "Eliminare definitivamente questa richiesta?";
-                if (confirm(msg)) deleteMutation.mutate();
-              }}
-            >
-              <Trash2 className="size-4" /> Elimina
-            </Button>
-          )}
+          <Button onClick={() => submitMutation.mutate()} disabled={submitMutation.isPending} className="gap-1.5">
+            <Send className="size-4" /> Invia in approvazione
+          </Button>
         </div>
       )}
 
