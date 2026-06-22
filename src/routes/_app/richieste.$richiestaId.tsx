@@ -278,6 +278,13 @@ function RichiestaDetail() {
           entitaId={r.id}
           clienteId={r.cliente_id}
           title="Allegati richiesta"
+          canEdit={
+            isAdmin ||
+            isAmministrazione ||
+            roles.includes("direzione") ||
+            livelloUtente > 0 ||
+            isOwner
+          }
         />
       </Card>
 
