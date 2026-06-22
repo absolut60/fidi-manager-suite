@@ -264,6 +264,8 @@ export function PannelloRischioCliente({
           <span className="text-muted-foreground">· Ultima fatt. {formatDate(cliente.ultima_data_fatturazione)}</span>
         )}
       </div>
+      <EsperienzaPagamentoBlock esp={esp} variant="compact" />
+      <ValutazioneEsternaBlock cliente={cliente} variant="compact" />
       <div className="border-t pt-1.5 text-muted-foreground">
         Ultima sincronizzazione: {ultimaSync}
       </div>
