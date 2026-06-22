@@ -63,6 +63,8 @@ export function PannelloRischioCliente({
 
   const { data: esp } = useQuery({
     queryKey: ["esperienza-pagamento", cliente?.id],
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
     enabled: !!cliente?.id,
     queryFn: async () => {
       const { data, error } = await (supabase as any).rpc("get_esperienza_pagamento_cliente", {
