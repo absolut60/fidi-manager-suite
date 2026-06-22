@@ -1842,6 +1842,7 @@ function ResetScadenzeButton() {
       setConferma("");
       qc.invalidateQueries({ queryKey: ["scadenze"] });
       qc.invalidateQueries({ queryKey: ["clienti"] });
+      qc.invalidateQueries({ queryKey: ["esperienza-pagamento"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
