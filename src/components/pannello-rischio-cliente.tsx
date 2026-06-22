@@ -90,7 +90,8 @@ export function PannelloRischioCliente({
           <MetricCard
             label="Scaduto"
             value={formatEuro(scaduto)}
-            tone={scaduto > 0 ? "destructive" : "neutral"}
+            tone={scaduto > 0 ? "destructive" : "success"}
+            subtext={scaduto === 0 ? "nessuno scaduto" : undefined}
           />
           <MetricCard
             label={`Fatturato ${annoCorrente}`}
@@ -250,18 +251,25 @@ function MetricCard({
   label,
   value,
   tone = "neutral",
+  subtext,
 }: {
   label: string;
   value: string;
-  tone?: "neutral" | "destructive" | "info";
+  tone?: "neutral" | "destructive" | "info" | "success";
+  subtext?: string;
 }) {
   const valueTone =
-    tone === "destructive" ? "text-destructive" : tone === "info" ? "text-info" : "";
+    tone === "destructive" ? "text-destructive" :
+    tone === "info" ? "text-info" :
+    tone === "success" ? "text-success" : "";
   return (
     <div className="rounded-md bg-secondary px-3 py-2.5">
       <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{label}</p>
       <p className={`mt-1 text-base sm:text-lg font-semibold tabular-nums ${valueTone}`}>{value}</p>
-    </div>
+      {subtext && (
+        <p className="mt-0.5 text-[11px] text-muted-foreground">{subtext}</p>
+      )}
+	</div>
   );
 }
 
