@@ -277,7 +277,7 @@ function DetailRow({ label, children }: { label: string; children: React.ReactNo
   return (
     <div className="flex items-center justify-between gap-3 py-1.5 border-b last:border-b-0 border-border/50">
       <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="text-right">{children}</span>
+      <span className="text-right text-foreground font-medium">{children}</span>
     </div>
   );
 }
