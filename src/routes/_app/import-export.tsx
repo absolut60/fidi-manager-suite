@@ -3537,8 +3537,43 @@ function HistoryCard({ kind }: { kind: "importazioni" | "esportazioni" }) {
                         Segna come fallito
                       </Button>
                     ) : null}
+                    {kind === "importazioni" ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 mt-1 text-[11px] px-2"
+                        onClick={async () => {
+                          try {
+                            const { data, error } = await (supabase as any)
+                              .from("anomalie_import")
+                              .select(
+                                "codice_gestionale, ragione_sociale, campo, valore_attuale, valore_nuovo, tipo_anomalia, created_at",
+                              )
+                              .eq("importazione_id", r.id)
+                              .order("created_at", { ascending: false })
+                              .limit(50000);
+                            if (error) throw error;
+                            const rows = (data ?? []) as AnomaliaExportRow[];
+                            if (rows.length === 0) {
+                              toast.info("Nessuna anomalia per questo import");
+                              return;
+                            }
+                            const base = (r.nome_file ?? "import").replace(/\.[^.]+$/, "");
+                            const fname = `anomalie_${base}_${new Date(r.created_at).toISOString().slice(0, 10)}.xlsx`;
+                            await downloadAnomalieXlsx(rows, fname, false);
+                            toast.success(`Esportate ${rows.length} anomalie`);
+                          } catch (e) {
+                            toast.error(e instanceof Error ? e.message : "Errore export");
+                          }
+                        }}
+                      >
+                        <Download className="size-3 mr-1" /> Anomalie
+                      </Button>
+                    ) : null}
                   </div>
                 </div>
+
                 {kind === "importazioni" && (inCorso || (totali > 0 && elaborate < totali)) ? (
                   <div className="space-y-1">
                     <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
