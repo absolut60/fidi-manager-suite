@@ -201,7 +201,10 @@ function parseSharedStrings(xml: string): string[] {
 function parseAnagraficaRowXml(rowXml: string, sharedStrings: string[]): { rowNumber: number; values: string[] } {
   const rowNumber = Number(attrValue(rowXml.slice(0, rowXml.indexOf(">") + 1), "r")) || 0;
   const values: string[] = [];
-  const cellRe = /<c\b([^>]*)>([\s\S]*?)<\/c>|<c\b([^>]*)\/>/g;
+  // FIX: escludi '/' dagli attrs della forma aperta, altrimenti le celle self-closing
+  // <c r="X" s="4"/> matchano la prima alternativa e il body non-greedy ruba il <v>
+  // della cella successiva (causa delle anomalie fantasma email/pec/telefono).
+  const cellRe = /<c\b([^>/]*)>([\s\S]*?)<\/c>|<c\b([^>]*?)\/>/g;
   let cell: RegExpExecArray | null;
   let fallbackCol = 0;
   while ((cell = cellRe.exec(rowXml))) {
