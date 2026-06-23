@@ -3384,7 +3384,23 @@ function ExportCard() {
             <Download className="size-4" />
           )}
         </Button>
+        <Button
+          variant="outline"
+          className="w-full justify-between"
+          disabled={busy !== null}
+          onClick={exportAnomalieAll}
+        >
+          <span className="flex items-center gap-2">
+            <FileSpreadsheet className="size-4" /> Anomalie import (tutte)
+          </span>
+          {busy === "anomalie_all" ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <Download className="size-4" />
+          )}
+        </Button>
       </div>
+
     </Card>
   );
 }
