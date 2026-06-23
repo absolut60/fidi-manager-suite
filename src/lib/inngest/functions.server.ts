@@ -14,7 +14,12 @@ import {
   findSheetByName,
   type ScadRow,
 } from "./parsers.server";
-import { isEmailValida, classificaEmail } from "@/lib/email-validazione";
+import {
+  isEmailValida,
+  classificaEmail,
+  isTelefonoValido,
+  classificaTelefono,
+} from "@/lib/email-validazione";
 
 type EventData = { importazioneId: string; filePath: string; userId?: string };
 
