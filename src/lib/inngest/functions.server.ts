@@ -952,8 +952,29 @@ export const processAnagraficaChunk = inngest.createFunction(
           .eq("id", importazioneId);
       }
 
+      // Persisti anomalie email/pec del chunk + log riassuntivo
+      if (anomalieEmail.length) {
+        const ANOM_BATCH = 500;
+        for (let i = 0; i < anomalieEmail.length; i += ANOM_BATCH) {
+          const slice = anomalieEmail.slice(i, i + ANOM_BATCH);
+          const { error: anomErr } = await supabaseAdmin
+            .from("anomalie_import" as never)
+            .insert(slice as never);
+          if (anomErr) {
+            errs.push({
+              riga: 0,
+              errore: `anomalie email insert: ${anomErr.message}`.slice(0, 300),
+            });
+          }
+        }
+        errs.push({
+          riga: 0,
+          errore: `Email anomalie chunk ${chunkIndex + 1}/${totalChunks}: ${anomalieEmail.length} rilevate (${emailAzzerate} azzerate, ${emailSplittate} splittate). Consulta la tabella anomalie_import.`,
+        });
+      }
+
       logger.info(
-        `Chunk anagrafica ${chunkIndex + 1}/${totalChunks} done: created=${created}, updated=${updated}, skipped=${skipped}, errs=${errs.length}`,
+        `Chunk anagrafica ${chunkIndex + 1}/${totalChunks} done: created=${created}, updated=${updated}, skipped=${skipped}, errs=${errs.length}, anomalie_email=${anomalieEmail.length} (azzerate=${emailAzzerate}, splittate=${emailSplittate})`,
       );
       return {
         elaborate: rows.length,
