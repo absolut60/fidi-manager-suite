@@ -54,7 +54,7 @@ async function fetchRiepilogo(): Promise<Riepilogo> {
   const { data, error } = await supabase
     .from("anomalie_import" as never)
     .select("campo, tipo_anomalia, valore_nuovo")
-    .eq("importazione_id", importId)
+    .eq("importazione_id", importId as never)
     .limit(50000);
   if (error) throw error;
 
