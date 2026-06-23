@@ -733,6 +733,7 @@ export const processAnagraficaChunk = inngest.createFunction(
       }
 
       // Stores
+      const { data: storesData } = await supabaseAdmin
         .from("stores")
         .select("id, codice")
         .order("codice");
