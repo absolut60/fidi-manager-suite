@@ -17,9 +17,11 @@ import {
 import {
   isEmailValida,
   classificaEmail,
+  splitEmailsMultiple,
   isTelefonoValido,
   classificaTelefono,
 } from "@/lib/email-validazione";
+
 
 type EventData = { importazioneId: string; filePath: string; userId?: string };
 
