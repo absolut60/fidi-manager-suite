@@ -2996,18 +2996,33 @@ function ExportCard() {
         totale_scaduto: number | string | null;
         totale_a_scadere: number | string | null;
         n_scadenze_aperte: number | null;
+        stato_email: string | null;
       }>;
+      const labelStato = (s: string | null | undefined) => {
+        switch (s) {
+          case "ok": return "OK";
+          case "vuota": return "Vuota";
+          case "multipla": return "Doppia email (;)";
+          case "non_email": return "Non è un'email";
+          case "malformata": return "Malformata";
+          default: return s ?? "—";
+        }
+      };
       const totScaduto = rows.reduce((s, r) => s + Number(r.totale_scaduto ?? 0), 0);
+      const conScaduto = rows.filter((r) => Number(r.totale_scaduto ?? 0) > 0);
+      const totScadutoConScaduto = conScaduto.reduce((s, r) => s + Number(r.totale_scaduto ?? 0), 0);
       const intestazione = [
-        [`Clienti con scadenze aperte e senza email`],
+        [`Clienti con scadenze aperte e email NON valida (vuota / doppia / non email / malformata)`],
         [`Totale clienti: ${rows.length}`, `Totale scaduto: € ${totScaduto.toFixed(2)}`],
+        [`Di cui con scaduto > 0: ${conScaduto.length}`, `Importo scaduto: € ${totScadutoConScaduto.toFixed(2)}`],
         [],
       ];
       const header = [
         "Sede",
         "Codice cliente",
         "Ragione sociale",
-        "Email",
+        "Stato email",
+        "Email (valore grezzo)",
         "Ha PEC",
         "Totale scaduto (€)",
         "Totale a scadere (€)",
@@ -3017,6 +3032,7 @@ function ExportCard() {
         r.store_nome ?? "",
         r.codice_gestionale ?? "",
         r.ragione_sociale ?? "",
+        labelStato(r.stato_email),
         r.email ?? "",
         r.pec && r.pec.trim() !== "" ? "sì" : "no",
         Number(r.totale_scaduto ?? 0),
@@ -3025,11 +3041,13 @@ function ExportCard() {
       ]);
       const ws = XLSX.utils.aoa_to_sheet([...intestazione, header, ...body]);
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Clienti senza email");
-      const fname = `clienti_scadenze_senza_email_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      XLSX.utils.book_append_sheet(wb, ws, "Email non valida");
+      const fname = `clienti_scadenze_email_non_valida_${new Date().toISOString().slice(0, 10)}.xlsx`;
       XLSX.writeFile(wb, fname);
       await logEsportazione(fname, rows.length);
-      toast.success(`Esportati ${rows.length} clienti (€ ${totScaduto.toFixed(2)} scaduto)`);
+      toast.success(
+        `Esportati ${rows.length} clienti con email non valida (${conScaduto.length} con scaduto, € ${totScadutoConScaduto.toFixed(2)})`,
+      );
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Errore export");
     } finally {
@@ -3273,7 +3291,7 @@ function ExportCard() {
           onClick={exportClientiSenzaEmail}
         >
           <span className="flex items-center gap-2">
-            <FileSpreadsheet className="size-4" /> Clienti con scadenze senza email
+            <FileSpreadsheet className="size-4" /> Clienti con scadenze e email non valida
           </span>
           {busy === "senza_email" ? (
             <Loader2 className="size-4 animate-spin" />

@@ -2835,6 +2835,7 @@ export type Database = {
           n_scadenze_aperte: number
           pec: string
           ragione_sociale: string
+          stato_email: string
           store_nome: string
           totale_a_scadere: number
           totale_scaduto: number
