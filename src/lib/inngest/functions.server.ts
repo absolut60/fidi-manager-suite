@@ -508,7 +508,21 @@ export const processAnagraficaImport = inngest.createFunction(
           .eq("id", importazioneId);
       });
 
+      // STEP 2.5: svuotamento anomalie_import (una sola volta, prima dei chunk)
+      // A regime: la tabella contiene SOLO la fotografia dell'import corrente.
+      // Eseguito qui nel setup -> NON dentro il loop dei chunk.
+      await step.run("reset-anomalie-import", async () => {
+        const { error } = await supabaseAdmin
+          .from("anomalie_import" as never)
+          .delete()
+          .gte("created_at", "1900-01-01");
+        if (error) {
+          logger.warn(`reset anomalie_import fallito: ${error.message}`);
+        }
+      });
+
       // STEP 3: fan-out di un evento per chunk
+
       const events = init.chunks.map((chunkPath, i) => ({
         name: "import/anagrafica.chunk" as const,
         data: {
