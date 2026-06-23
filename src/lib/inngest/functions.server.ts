@@ -674,7 +674,7 @@ export const processAnagraficaChunk = inngest.createFunction(
         } else if (pClass === "vuota") {
           if (pecFromSplit) payload.pec = pecFromSplit;
         } else if (pClass === "multipla") {
-          const parts = pRaw.split(/[;,]/).map((s) => s.trim()).filter(Boolean);
+          const parts = splitEmailsMultiple(pRaw);
           const first = parts.find((p) => isEmailValida(p));
           if (first) payload.pec = first;
           else if (pecFromSplit) payload.pec = pecFromSplit;
