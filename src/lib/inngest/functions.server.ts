@@ -631,7 +631,7 @@ export const processAnagraficaChunk = inngest.createFunction(
         } else if (eClass === "vuota") {
           // niente da scrivere, nessuna anomalia
         } else if (eClass === "multipla") {
-          const parts = eRaw.split(/[;,]/).map((s) => s.trim()).filter(Boolean);
+          const parts = splitEmailsMultiple(eRaw);
           const first = parts[0];
           const second = parts[1];
           if (first && isEmailValida(first)) {
