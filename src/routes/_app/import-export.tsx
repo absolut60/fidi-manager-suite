@@ -40,7 +40,7 @@ import { useBackgroundImport, type BackgroundImportProgress } from "@/lib/use-ba
 import { triggerImport } from "@/lib/import.functions";
 import { MACROCATEGORIE, CATEGORIE } from "@/lib/macrocategorie";
 import { CODICI_PAGAMENTO } from "@/lib/codici-pagamento";
-import { AnomalieImportCard, useAnomalieCount } from "@/components/anomalie-import-card";
+import { RiepilogoAnomalieCard } from "@/components/riepilogo-anomalie-card";
 
 export const Route = createFileRoute("/_app/import-export")({
   component: ImportExportPage,
