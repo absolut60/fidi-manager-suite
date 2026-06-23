@@ -14,7 +14,12 @@ import {
   findSheetByName,
   type ScadRow,
 } from "./parsers.server";
-import { isEmailValida, classificaEmail } from "@/lib/email-validazione";
+import {
+  isEmailValida,
+  classificaEmail,
+  isTelefonoValido,
+  classificaTelefono,
+} from "@/lib/email-validazione";
 
 type EventData = { importazioneId: string; filePath: string; userId?: string };
 
@@ -685,6 +690,48 @@ export const processAnagraficaChunk = inngest.createFunction(
       }
 
 
+      // Barriera anti-sporco telefono/cellulare/telefono_2: stesso pattern di applyEmailPec.
+      // Riusa isTelefonoValido (fonte unica in src/lib/email-validazione.ts).
+      // - valido (anche "035/986692" o "345/...; 059/...") -> scrive trim
+      // - vuoto/NULL -> non scrive nulla (silenzioso)
+      // - non valido (testo, ID, serial-date Excel, num puro <=6 cifre, <4 cifre)
+      //   -> assegna NULL DIRETTAMENTE al payload (bypass addIfPresent) + anomalia
+      const anomalieTelefono: Array<Record<string, unknown>> = [];
+      let telefoniAzzerati = 0;
+
+      function applyTelefoni(
+        payload: Record<string, unknown>,
+        raw: { telefono: unknown; cellulare: unknown; telefono_2: unknown },
+        meta: { codice_gestionale: string | null; ragione_sociale: string | null },
+      ) {
+        const fields: Array<["telefono" | "cellulare" | "telefono_2", unknown]> = [
+          ["telefono", raw.telefono],
+          ["cellulare", raw.cellulare],
+          ["telefono_2", raw.telefono_2],
+        ];
+        for (const [campo, valore] of fields) {
+          const v = valore == null ? "" : String(valore).trim();
+          if (v === "") continue; // vuoto -> silenzioso
+          if (isTelefonoValido(v)) {
+            payload[campo] = v;
+          } else {
+            // azzera DIRETTAMENTE (no addIfPresent: salta i null e lascia il valore sporco)
+            payload[campo] = null;
+            telefoniAzzerati++;
+            anomalieTelefono.push({
+              importazione_id: importazioneId,
+              codice_gestionale: meta.codice_gestionale ?? "",
+              ragione_sociale: meta.ragione_sociale,
+              tipo_anomalia: classificaTelefono(v),
+              campo,
+              valore_attuale: v.slice(0, 500),
+              valore_nuovo: "azzerato",
+              stato: "in_attesa",
+            });
+          }
+        }
+      }
+
       // Stores
       const { data: storesData } = await supabaseAdmin
         .from("stores")
@@ -809,9 +856,14 @@ export const processAnagraficaChunk = inngest.createFunction(
           addIfPresent(payload, "citta", toStr(r.citta));
           addIfPresent(payload, "cap", toStr(r.cap));
           addIfPresent(payload, "provincia", toStr(r.provincia));
-          addIfPresent(payload, "telefono", toStr(r.telefono));
-          addIfPresent(payload, "telefono_2", toStr(r.telefono_2));
-          addIfPresent(payload, "cellulare", toStr(r.cellulare));
+          applyTelefoni(
+            payload,
+            { telefono: r.telefono, cellulare: r.cellulare, telefono_2: r.telefono_2 },
+            {
+              codice_gestionale: toStr(r.codice_gestionale),
+              ragione_sociale: toStr(r.ragione_sociale),
+            },
+          );
           applyEmailPec(payload, r.email, r.pec, {
             __row: r.__row,
             codice_gestionale: toStr(r.codice_gestionale),
@@ -982,8 +1034,29 @@ export const processAnagraficaChunk = inngest.createFunction(
         });
       }
 
+      // Persisti anomalie telefono del chunk
+      if (anomalieTelefono.length) {
+        const ANOM_BATCH = 500;
+        for (let i = 0; i < anomalieTelefono.length; i += ANOM_BATCH) {
+          const slice = anomalieTelefono.slice(i, i + ANOM_BATCH);
+          const { error: anomErr } = await supabaseAdmin
+            .from("anomalie_import" as never)
+            .insert(slice as never);
+          if (anomErr) {
+            errs.push({
+              riga: 0,
+              errore: `anomalie telefono insert: ${anomErr.message}`.slice(0, 300),
+            });
+          }
+        }
+        errs.push({
+          riga: 0,
+          errore: `Telefono anomalie chunk ${chunkIndex + 1}/${totalChunks}: ${anomalieTelefono.length} azzerate. Consulta la tabella anomalie_import.`,
+        });
+      }
+
       logger.info(
-        `Chunk anagrafica ${chunkIndex + 1}/${totalChunks} done: created=${created}, updated=${updated}, skipped=${skipped}, errs=${errs.length}, anomalie_email=${anomalieEmail.length} (azzerate=${emailAzzerate}, splittate=${emailSplittate})`,
+        `Chunk anagrafica ${chunkIndex + 1}/${totalChunks} done: created=${created}, updated=${updated}, skipped=${skipped}, errs=${errs.length}, anomalie_email=${anomalieEmail.length} (azzerate=${emailAzzerate}, splittate=${emailSplittate}), anomalie_telefono=${anomalieTelefono.length} (azzerate=${telefoniAzzerati})`,
       );
       return {
         elaborate: rows.length,
