@@ -586,6 +586,96 @@ export const processAnagraficaChunk = inngest.createFunction(
       let updated = 0;
       let skipped = 0;
 
+      // Barriera anti-sporco email/pec: registro anomalie del chunk
+      const anomalieEmail: Array<Record<string, unknown>> = [];
+      let emailAzzerate = 0;
+      let emailSplittate = 0;
+
+      function applyEmailPec(
+        payload: Record<string, unknown>,
+        rawEmail: unknown,
+        rawPec: unknown,
+        meta: { __row: number; codice_gestionale: string | null; ragione_sociale: string | null },
+      ) {
+        const eRaw = rawEmail == null ? "" : String(rawEmail).trim();
+        const pRaw = rawPec == null ? "" : String(rawPec).trim();
+        const eClass = classificaEmail(eRaw);
+        let pecFromSplit: string | null = null;
+
+        if (eClass === "ok") {
+          payload.email = eRaw;
+        } else if (eClass === "vuota") {
+          // niente da scrivere, nessuna anomalia
+        } else if (eClass === "multipla") {
+          const parts = eRaw.split(/[;,]/).map((s) => s.trim()).filter(Boolean);
+          const first = parts[0];
+          const second = parts[1];
+          if (first && isEmailValida(first)) payload.email = first;
+          if (second && isEmailValida(second)) pecFromSplit = second;
+          emailSplittate++;
+          anomalieEmail.push({
+            importazione_id: importazioneId,
+            codice_gestionale: meta.codice_gestionale ?? "",
+            ragione_sociale: meta.ragione_sociale,
+            tipo_anomalia: "multipla",
+            campo: "email",
+            valore_attuale: eRaw.slice(0, 500),
+            valore_nuovo: "splittato_pec",
+            stato: "in_attesa",
+          });
+        } else {
+          // non_email | malformata → azzera
+          emailAzzerate++;
+          anomalieEmail.push({
+            importazione_id: importazioneId,
+            codice_gestionale: meta.codice_gestionale ?? "",
+            ragione_sociale: meta.ragione_sociale,
+            tipo_anomalia: eClass,
+            campo: "email",
+            valore_attuale: eRaw.slice(0, 500),
+            valore_nuovo: "azzerato",
+            stato: "in_attesa",
+          });
+        }
+
+        const pClass = classificaEmail(pRaw);
+        if (pClass === "ok") {
+          payload.pec = pRaw;
+        } else if (pClass === "vuota") {
+          if (pecFromSplit) payload.pec = pecFromSplit;
+        } else if (pClass === "multipla") {
+          const parts = pRaw.split(/[;,]/).map((s) => s.trim()).filter(Boolean);
+          const first = parts.find((p) => isEmailValida(p));
+          if (first) payload.pec = first;
+          else if (pecFromSplit) payload.pec = pecFromSplit;
+          emailSplittate++;
+          anomalieEmail.push({
+            importazione_id: importazioneId,
+            codice_gestionale: meta.codice_gestionale ?? "",
+            ragione_sociale: meta.ragione_sociale,
+            tipo_anomalia: "multipla",
+            campo: "pec",
+            valore_attuale: pRaw.slice(0, 500),
+            valore_nuovo: "splittato_pec",
+            stato: "in_attesa",
+          });
+        } else {
+          if (pecFromSplit) payload.pec = pecFromSplit;
+          emailAzzerate++;
+          anomalieEmail.push({
+            importazione_id: importazioneId,
+            codice_gestionale: meta.codice_gestionale ?? "",
+            ragione_sociale: meta.ragione_sociale,
+            tipo_anomalia: pClass,
+            campo: "pec",
+            valore_attuale: pRaw.slice(0, 500),
+            valore_nuovo: "azzerato",
+            stato: "in_attesa",
+          });
+        }
+      }
+
+
       // Stores
       const { data: storesData } = await supabaseAdmin
         .from("stores")
