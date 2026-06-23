@@ -690,8 +690,49 @@ export const processAnagraficaChunk = inngest.createFunction(
       }
 
 
+      // Barriera anti-sporco telefono/cellulare/telefono_2: stesso pattern di applyEmailPec.
+      // Riusa isTelefonoValido (fonte unica in src/lib/email-validazione.ts).
+      // - valido (anche "035/986692" o "345/...; 059/...") -> scrive trim
+      // - vuoto/NULL -> non scrive nulla (silenzioso)
+      // - non valido (testo, ID, serial-date Excel, num puro <=6 cifre, <4 cifre)
+      //   -> assegna NULL DIRETTAMENTE al payload (bypass addIfPresent) + anomalia
+      const anomalieTelefono: Array<Record<string, unknown>> = [];
+      let telefoniAzzerati = 0;
+
+      function applyTelefoni(
+        payload: Record<string, unknown>,
+        raw: { telefono: unknown; cellulare: unknown; telefono_2: unknown },
+        meta: { codice_gestionale: string | null; ragione_sociale: string | null },
+      ) {
+        const fields: Array<["telefono" | "cellulare" | "telefono_2", unknown]> = [
+          ["telefono", raw.telefono],
+          ["cellulare", raw.cellulare],
+          ["telefono_2", raw.telefono_2],
+        ];
+        for (const [campo, valore] of fields) {
+          const v = valore == null ? "" : String(valore).trim();
+          if (v === "") continue; // vuoto -> silenzioso
+          if (isTelefonoValido(v)) {
+            payload[campo] = v;
+          } else {
+            // azzera DIRETTAMENTE (no addIfPresent: salta i null e lascia il valore sporco)
+            payload[campo] = null;
+            telefoniAzzerati++;
+            anomalieTelefono.push({
+              importazione_id: importazioneId,
+              codice_gestionale: meta.codice_gestionale ?? "",
+              ragione_sociale: meta.ragione_sociale,
+              tipo_anomalia: classificaTelefono(v),
+              campo,
+              valore_attuale: v.slice(0, 500),
+              valore_nuovo: "azzerato",
+              stato: "in_attesa",
+            });
+          }
+        }
+      }
+
       // Stores
-      const { data: storesData } = await supabaseAdmin
         .from("stores")
         .select("id, codice")
         .order("codice");
