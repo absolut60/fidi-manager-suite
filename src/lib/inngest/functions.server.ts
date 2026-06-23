@@ -1034,8 +1034,29 @@ export const processAnagraficaChunk = inngest.createFunction(
         });
       }
 
+      // Persisti anomalie telefono del chunk
+      if (anomalieTelefono.length) {
+        const ANOM_BATCH = 500;
+        for (let i = 0; i < anomalieTelefono.length; i += ANOM_BATCH) {
+          const slice = anomalieTelefono.slice(i, i + ANOM_BATCH);
+          const { error: anomErr } = await supabaseAdmin
+            .from("anomalie_import" as never)
+            .insert(slice as never);
+          if (anomErr) {
+            errs.push({
+              riga: 0,
+              errore: `anomalie telefono insert: ${anomErr.message}`.slice(0, 300),
+            });
+          }
+        }
+        errs.push({
+          riga: 0,
+          errore: `Telefono anomalie chunk ${chunkIndex + 1}/${totalChunks}: ${anomalieTelefono.length} azzerate. Consulta la tabella anomalie_import.`,
+        });
+      }
+
       logger.info(
-        `Chunk anagrafica ${chunkIndex + 1}/${totalChunks} done: created=${created}, updated=${updated}, skipped=${skipped}, errs=${errs.length}, anomalie_email=${anomalieEmail.length} (azzerate=${emailAzzerate}, splittate=${emailSplittate})`,
+        `Chunk anagrafica ${chunkIndex + 1}/${totalChunks} done: created=${created}, updated=${updated}, skipped=${skipped}, errs=${errs.length}, anomalie_email=${anomalieEmail.length} (azzerate=${emailAzzerate}, splittate=${emailSplittate}), anomalie_telefono=${anomalieTelefono.length} (azzerate=${telefoniAzzerati})`,
       );
       return {
         elaborate: rows.length,
