@@ -856,9 +856,14 @@ export const processAnagraficaChunk = inngest.createFunction(
           addIfPresent(payload, "citta", toStr(r.citta));
           addIfPresent(payload, "cap", toStr(r.cap));
           addIfPresent(payload, "provincia", toStr(r.provincia));
-          addIfPresent(payload, "telefono", toStr(r.telefono));
-          addIfPresent(payload, "telefono_2", toStr(r.telefono_2));
-          addIfPresent(payload, "cellulare", toStr(r.cellulare));
+          applyTelefoni(
+            payload,
+            { telefono: r.telefono, cellulare: r.cellulare, telefono_2: r.telefono_2 },
+            {
+              codice_gestionale: toStr(r.codice_gestionale),
+              ragione_sociale: toStr(r.ragione_sociale),
+            },
+          );
           applyEmailPec(payload, r.email, r.pec, {
             __row: r.__row,
             codice_gestionale: toStr(r.codice_gestionale),
