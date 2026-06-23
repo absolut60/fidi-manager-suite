@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.fn_normalizza_contatti() FROM PUBLIC, anon, authenticated;
