@@ -631,16 +631,17 @@ export const processAnagraficaChunk = inngest.createFunction(
         } else if (eClass === "vuota") {
           // niente da scrivere, nessuna anomalia
         } else if (eClass === "multipla") {
-          const parts = splitEmailsMultiple(eRaw);
-          const first = parts[0];
-          const second = parts[1];
-          if (first && isEmailValida(first)) {
-            payload.email = first;
-          } else {
-            // split non produce prima email valida → azzera per sovrascrivere valore sporco esistente
+          // Tieni solo i pezzi VALIDI (scarta garbage tipo "info" o "mario @").
+          // 1ª valida → email; 2ª valida → candidata pec (solo se pec attuale non è valida).
+          const validParts = splitEmailsMultiple(eRaw).filter((p) => isEmailValida(p));
+          if (validParts.length === 0) {
+            // nessun pezzo valido (es. "mario @ gmail.com") → azzera
             payload.email = null;
+          } else {
+            payload.email = validParts[0];
+            if (validParts[1]) pecFromSplit = validParts[1];
           }
-          if (second && isEmailValida(second)) pecFromSplit = second;
+
           emailSplittate++;
           anomalieEmail.push({
             importazione_id: importazioneId,
