@@ -1,6 +1,7 @@
 import { inngest } from "./client";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { renderTemplate, isScaduto, wrapEmailHtml, livelloSollecitoFromTipo, type DatiSede, type ScadenzaSollecito } from "@/lib/template-email-render";
+import { isEmailValida } from "@/lib/email-validazione";
 
 type EventData = { campagna_id: string };
 
@@ -269,6 +270,7 @@ export const invioMassivoSolleciti = inngest.createFunction(
 
         let inviati = 0;
         let falliti = 0;
+        let emailNonValide = 0;
 
         // Carica i dati necessari del blocco
         const { data: destBlock } = await supabaseAdmin
@@ -285,6 +287,22 @@ export const invioMassivoSolleciti = inngest.createFunction(
                 .eq("id", d.id);
               continue;
             }
+
+            // Validazione email PRIMA di tentare l'invio.
+            // Intercetta: indirizzi multipli ("a@x.it; b@y.it"), date Excel ("43999"),
+            // stringhe con spazi, senza '@', con più '@', dominio senza punto.
+            if (!isEmailValida(d.indirizzo_usato)) {
+              await supabaseAdmin
+                .from("campagne_sollecito_destinatari")
+                .update({
+                  stato: "email_non_valida",
+                  errore: "Indirizzo email non valido o malformato",
+                })
+                .eq("id", d.id);
+              emailNonValide += 1;
+              continue;
+            }
+
 
             // Cliente: ragione sociale + store (per dati sede footer)
             const { data: cliente } = await supabaseAdmin
