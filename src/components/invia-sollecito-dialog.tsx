@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ReminderControls, defaultReminderFor, creaFollowUp, type ReminderState } from "@/components/reminder-controls";
+import { isEmailValida } from "@/lib/email-validazione";
 
 type Props = {
   open: boolean;
@@ -157,9 +158,8 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
     else if (src === "pec") setDestEmail(cliente?.pec ?? "");
   }
 
-  function isValidEmail(e: string) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim());
-  }
+  // Validazione email: fonte unica di verità in src/lib/email-validazione.ts
+  const isValidEmail = isEmailValida;
 
   const senzaIndirizzo = !!cliente && !cliente.email && !cliente.pec;
 

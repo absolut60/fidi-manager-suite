@@ -300,6 +300,7 @@ function statoLabel(s: string) {
   if (s === "inviato") return <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">Inviato</Badge>;
   if (s === "da_inviare") return <Badge className="bg-slate-500 text-white hover:bg-slate-500">In coda</Badge>;
   if (s === "saltato_no_indirizzo") return <Badge className="bg-amber-500 text-white hover:bg-amber-500"><MailWarning className="size-3 mr-1" />Senza indirizzo</Badge>;
+  if (s === "email_non_valida") return <Badge className="bg-amber-600 text-white hover:bg-amber-600"><MailWarning className="size-3 mr-1" />Email non valida</Badge>;
   if (s === "fallito") return <Badge className="bg-destructive text-destructive-foreground hover:bg-destructive"><XCircle className="size-3 mr-1" />Fallito</Badge>;
   if (s === "annullato") return <Badge variant="outline"><Ban className="size-3 mr-1" />Annullato</Badge>;
   return <Badge variant="outline">{s}</Badge>;
@@ -372,6 +373,7 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
               <SelectItem value="tutti">Tutti</SelectItem>
               <SelectItem value="inviato">Inviati</SelectItem>
               <SelectItem value="saltato_no_indirizzo">Senza indirizzo</SelectItem>
+              <SelectItem value="email_non_valida">Email non valida</SelectItem>
               <SelectItem value="fallito">Falliti</SelectItem>
               <SelectItem value="da_inviare">In coda</SelectItem>
             </SelectContent>
