@@ -610,7 +610,12 @@ export const processAnagraficaChunk = inngest.createFunction(
           const parts = eRaw.split(/[;,]/).map((s) => s.trim()).filter(Boolean);
           const first = parts[0];
           const second = parts[1];
-          if (first && isEmailValida(first)) payload.email = first;
+          if (first && isEmailValida(first)) {
+            payload.email = first;
+          } else {
+            // split non produce prima email valida → azzera per sovrascrivere valore sporco esistente
+            payload.email = null;
+          }
           if (second && isEmailValida(second)) pecFromSplit = second;
           emailSplittate++;
           anomalieEmail.push({
@@ -624,7 +629,8 @@ export const processAnagraficaChunk = inngest.createFunction(
             stato: "in_attesa",
           });
         } else {
-          // non_email | malformata → azzera
+          // non_email | malformata → azzera realmente il campo nel DB
+          payload.email = null;
           emailAzzerate++;
           anomalieEmail.push({
             importazione_id: importazioneId,
@@ -648,6 +654,7 @@ export const processAnagraficaChunk = inngest.createFunction(
           const first = parts.find((p) => isEmailValida(p));
           if (first) payload.pec = first;
           else if (pecFromSplit) payload.pec = pecFromSplit;
+          else payload.pec = null;
           emailSplittate++;
           anomalieEmail.push({
             importazione_id: importazioneId,
@@ -660,7 +667,9 @@ export const processAnagraficaChunk = inngest.createFunction(
             stato: "in_attesa",
           });
         } else {
+          // non_email | malformata → azzera (salvo il pec recuperato dallo split email)
           if (pecFromSplit) payload.pec = pecFromSplit;
+          else payload.pec = null;
           emailAzzerate++;
           anomalieEmail.push({
             importazione_id: importazioneId,
