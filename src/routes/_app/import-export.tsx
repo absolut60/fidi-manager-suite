@@ -334,7 +334,6 @@ function anagraficaSheetToObjects(
 }
 
 function ImportExportPage() {
-  const anomalieCount = useAnomalieCount();
   const queryClient = useQueryClient();
   useEffect(() => {
     // Marca automaticamente come falliti gli import bloccati da più di 4 ore
@@ -362,15 +361,6 @@ function ImportExportPage() {
             Importa anagrafiche o dati di rischio da Excel ed esporta i dati per analisi.
           </p>
         </div>
-        {(anomalieCount.data ?? 0) > 0 && (
-          <a
-            href="#anomalie-import"
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-destructive text-destructive-foreground text-sm font-medium"
-          >
-            Anomalie in attesa
-            <Badge variant="secondary">{anomalieCount.data}</Badge>
-          </a>
-        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -383,21 +373,13 @@ function ImportExportPage() {
         <ExportCard />
       </div>
 
-      {/* Sezione "C - Importa Scadenziario e Assicurazioni" (versione vecchia a doppio foglio)
-          rimossa dalla UI su richiesta. Il componente ScadenziarioAssicurazioniImportCard
-          e i parser parseScadenziarioSheet/parseAssicurazioneSheet restano nel codice (inattivi)
-          per non rompere eventuali helper condivisi. */}
-
-
       <div className="grid grid-cols-1 gap-6">
         <BloccoFidoAssicurazioneImportCard />
       </div>
 
-      {(anomalieCount.data ?? 0) > 0 && (
-        <div id="anomalie-import" className="grid grid-cols-1 gap-6">
-          <AnomalieImportCard />
-        </div>
-      )}
+      <div className="grid grid-cols-1 gap-6">
+        <RiepilogoAnomalieCard />
+      </div>
 
       <div className="grid grid-cols-1 gap-6">
         <HistoryCard kind="importazioni" />
@@ -405,6 +387,7 @@ function ImportExportPage() {
     </div>
   );
 }
+
 
 
 /* ============================================================================
