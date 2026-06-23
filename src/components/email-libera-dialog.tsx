@@ -153,9 +153,8 @@ export function EmailLiberaDialog({ open, onOpenChange, clienteId, onSent }: Pro
     else if (src === "pec") setDestEmail(cliente?.pec ?? "");
   }
 
-  function isValidEmail(e: string) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim());
-  }
+  // Validazione email: fonte unica di verità in src/lib/email-validazione.ts
+  const isValidEmail = isEmailValida;
 
   const senzaIndirizzo = !!cliente && !cliente.email && !cliente.pec;
 
