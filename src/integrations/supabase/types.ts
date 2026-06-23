@@ -82,7 +82,7 @@ export type Database = {
         Row: {
           campo: string
           cliente_id: string | null
-          codice_gestionale: string
+          codice_gestionale: string | null
           created_at: string
           gestita_at: string | null
           gestita_da: string | null
@@ -97,7 +97,7 @@ export type Database = {
         Insert: {
           campo: string
           cliente_id?: string | null
-          codice_gestionale: string
+          codice_gestionale?: string | null
           created_at?: string
           gestita_at?: string | null
           gestita_da?: string | null
@@ -112,7 +112,7 @@ export type Database = {
         Update: {
           campo?: string
           cliente_id?: string | null
-          codice_gestionale?: string
+          codice_gestionale?: string | null
           created_at?: string
           gestita_at?: string | null
           gestita_da?: string | null
