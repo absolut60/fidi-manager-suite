@@ -35,6 +35,17 @@ function sanitizeDisplayName(s: string | undefined | null): string {
   return String(s).replace(/[\r\n"]/g, "").trim().slice(0, 80);
 }
 
+// Validazione email — fonte di verità: src/lib/email-validazione.ts.
+// Replicata qui perché Deno edge non importa il modulo TS del bundle Vite.
+// Se cambi la regex là, aggiornala anche qui.
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+function isEmailValida(raw: unknown): boolean {
+  if (raw == null) return false;
+  const v = String(raw).trim();
+  if (v === "") return false;
+  return EMAIL_REGEX.test(v);
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -61,6 +72,21 @@ serve(async (req) => {
     const from = displayName ? `${displayName} <${user}>` : defaultFrom;
 
     const recipients = Array.isArray(to) ? to : [to];
+
+    // Difesa in profondità: rifiuta payload con destinatari non validi
+    // (indirizzi multipli in un campo, date Excel "43999", spazi, ecc.)
+    // invece di passarli a nodemailer alla cieca.
+    const invalidRecipients = recipients.filter((r) => !isEmailValida(r));
+    if (invalidRecipients.length > 0) {
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          error: "Indirizzo email non valido o malformato",
+          invalidRecipients,
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     // Nodemailer: gestisce automaticamente multipart/related quando un
     // attachment ha `cid` impostato e `Content-Disposition: inline`.
