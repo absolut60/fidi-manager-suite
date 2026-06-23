@@ -2977,9 +2977,65 @@ function BloccoFidoAssicurazioneImportCard() {
  * EXPORT
  * ============================================================================ */
 
+type AnomaliaExportRow = {
+  codice_gestionale: string | null;
+  ragione_sociale: string | null;
+  campo: string | null;
+  valore_attuale: string | null;
+  valore_nuovo: string | null;
+  tipo_anomalia: string | null;
+  created_at: string;
+  importazione_id?: string | null;
+  importazioni?: { nome_file: string | null; created_at: string } | null;
+};
+
+async function downloadAnomalieXlsx(
+  rows: AnomaliaExportRow[],
+  fname: string,
+  includeImport: boolean,
+) {
+  const header = [
+    "Codice gestionale",
+    "Ragione sociale",
+    "Campo",
+    "Valore grezzo",
+    "Tipo anomalia",
+    "Azione",
+    "Data",
+    ...(includeImport ? ["Import di provenienza", "Data import"] : []),
+  ];
+  const body = rows.map((r) => {
+    const base: (string | number)[] = [
+      r.codice_gestionale ?? "",
+      r.ragione_sociale ?? "",
+      r.campo ?? "",
+      r.valore_attuale ?? "",
+      r.tipo_anomalia ?? "",
+      r.valore_nuovo ?? "",
+      new Date(r.created_at).toLocaleString("it-IT"),
+    ];
+    if (includeImport) {
+      base.push(
+        r.importazioni?.nome_file ?? "",
+        r.importazioni?.created_at
+          ? new Date(r.importazioni.created_at).toLocaleString("it-IT")
+          : "",
+      );
+    }
+    return base;
+  });
+  const ws = XLSX.utils.aoa_to_sheet([header, ...body]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Anomalie");
+  XLSX.writeFile(wb, fname);
+}
+
 function ExportCard() {
   const qc = useQueryClient();
-  const [busy, setBusy] = useState<null | "clienti" | "richieste" | "senza_email" | "fidi_gestionale">(null);
+  const [busy, setBusy] = useState<
+    null | "clienti" | "richieste" | "senza_email" | "fidi_gestionale" | "anomalie_all"
+  >(null);
+
 
   async function exportClientiSenzaEmail() {
     setBusy("senza_email");
@@ -3232,6 +3288,35 @@ function ExportCard() {
     }
   }
 
+  async function exportAnomalieAll() {
+    setBusy("anomalie_all");
+    try {
+      const { data, error } = await (supabase as any)
+        .from("anomalie_import")
+        .select(
+          "codice_gestionale, ragione_sociale, campo, valore_attuale, valore_nuovo, tipo_anomalia, created_at, importazione_id, importazioni(nome_file, created_at)",
+        )
+        .order("created_at", { ascending: false })
+        .limit(50000);
+      if (error) throw error;
+      const rows = (data ?? []) as AnomaliaExportRow[];
+      if (rows.length === 0) {
+        toast.info("Nessuna anomalia da esportare");
+        return;
+      }
+      const fname = `anomalie_import_tutte_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      await downloadAnomalieXlsx(rows, fname, true);
+      await logEsportazione(fname, rows.length);
+      toast.success(`Esportate ${rows.length} anomalie`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Errore export");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+
+
   return (
     <Card className="p-5">
       <h2 className="font-semibold flex items-center gap-2 mb-1">
@@ -3299,7 +3384,23 @@ function ExportCard() {
             <Download className="size-4" />
           )}
         </Button>
+        <Button
+          variant="outline"
+          className="w-full justify-between"
+          disabled={busy !== null}
+          onClick={exportAnomalieAll}
+        >
+          <span className="flex items-center gap-2">
+            <FileSpreadsheet className="size-4" /> Anomalie import (tutte)
+          </span>
+          {busy === "anomalie_all" ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <Download className="size-4" />
+          )}
+        </Button>
       </div>
+
     </Card>
   );
 }
@@ -3436,8 +3537,43 @@ function HistoryCard({ kind }: { kind: "importazioni" | "esportazioni" }) {
                         Segna come fallito
                       </Button>
                     ) : null}
+                    {kind === "importazioni" ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 mt-1 text-[11px] px-2"
+                        onClick={async () => {
+                          try {
+                            const { data, error } = await (supabase as any)
+                              .from("anomalie_import")
+                              .select(
+                                "codice_gestionale, ragione_sociale, campo, valore_attuale, valore_nuovo, tipo_anomalia, created_at",
+                              )
+                              .eq("importazione_id", r.id)
+                              .order("created_at", { ascending: false })
+                              .limit(50000);
+                            if (error) throw error;
+                            const rows = (data ?? []) as AnomaliaExportRow[];
+                            if (rows.length === 0) {
+                              toast.info("Nessuna anomalia per questo import");
+                              return;
+                            }
+                            const base = (r.nome_file ?? "import").replace(/\.[^.]+$/, "");
+                            const fname = `anomalie_${base}_${new Date(r.created_at).toISOString().slice(0, 10)}.xlsx`;
+                            await downloadAnomalieXlsx(rows, fname, false);
+                            toast.success(`Esportate ${rows.length} anomalie`);
+                          } catch (e) {
+                            toast.error(e instanceof Error ? e.message : "Errore export");
+                          }
+                        }}
+                      >
+                        <Download className="size-3 mr-1" /> Anomalie
+                      </Button>
+                    ) : null}
                   </div>
                 </div>
+
                 {kind === "importazioni" && (inCorso || (totali > 0 && elaborate < totali)) ? (
                   <div className="space-y-1">
                     <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
