@@ -3288,6 +3288,35 @@ function ExportCard() {
     }
   }
 
+  async function exportAnomalieAll() {
+    setBusy("anomalie_all");
+    try {
+      const { data, error } = await (supabase as any)
+        .from("anomalie_import")
+        .select(
+          "codice_gestionale, ragione_sociale, campo, valore_attuale, valore_nuovo, tipo_anomalia, created_at, importazione_id, importazioni(nome_file, created_at)",
+        )
+        .order("created_at", { ascending: false })
+        .limit(50000);
+      if (error) throw error;
+      const rows = (data ?? []) as AnomaliaExportRow[];
+      if (rows.length === 0) {
+        toast.info("Nessuna anomalia da esportare");
+        return;
+      }
+      const fname = `anomalie_import_tutte_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      await downloadAnomalieXlsx(rows, fname, true);
+      await logEsportazione(fname, rows.length);
+      toast.success(`Esportate ${rows.length} anomalie`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Errore export");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+
+
   return (
     <Card className="p-5">
       <h2 className="font-semibold flex items-center gap-2 mb-1">
