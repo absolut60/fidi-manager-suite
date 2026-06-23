@@ -46,3 +46,51 @@ export function classificaEmail(
   if (EMAIL_REGEX.test(v)) return "ok";
   return "malformata";
 }
+
+// ============================================================================
+// TELEFONO — fonte unica di verità per validazione/classificazione
+// ============================================================================
+/**
+ * Regola telefono (basata su diagnosi composizione campo telefono clienti):
+ *  - NULL/vuoto -> non valido
+ *  - Solo testo/placeholder senza cifre significative -> non valido (".", "-", nomi)
+ *  - Numerico puro <= 6 cifre (tolti separatori/spazi) -> non valido
+ *    (sono ID gestionale o seriali data Excel, NON telefoni)
+ *  - < 4 cifre totali -> non valido
+ *  - >= 8 cifre significative -> valido (anche con prefisso +/00, separatori - / spazi)
+ *  - 7 cifre -> valido (fissi vecchi, prudenza)
+ *  - ATTENZIONE: '/' NON è separatore di multipli (notazione italiana prefisso/numero
+ *    es. "035/986692"); è considerato separatore interno valido.
+ */
+export type ClassificazioneTelefono =
+  | "ok"
+  | "vuoto"
+  | "testo"
+  | "id_o_data"
+  | "corto";
+
+export function classificaTelefono(
+  raw: string | null | undefined,
+): ClassificazioneTelefono {
+  if (raw == null) return "vuoto";
+  const v = String(raw).trim();
+  if (v === "") return "vuoto";
+
+  // Conta cifre totali
+  const digits = v.replace(/\D/g, "");
+  if (digits.length === 0) return "testo";
+  if (digits.length < 4) return "corto";
+
+  // "Numerico puro" = solo cifre e separatori "neutri" (spazi, -, (, ))
+  // ma SENZA / e SENZA + (cioè senza segnali tipici di formato telefonico).
+  // I valori con '/', '+' o lettere di prefisso vengono trattati come telefonici.
+  const senzaSeparatoriBase = v.replace(/[\s\-().]/g, "");
+  const isNumericoPuro = /^\d+$/.test(senzaSeparatoriBase);
+  if (isNumericoPuro && digits.length <= 6) return "id_o_data";
+
+  return "ok";
+}
+
+export function isTelefonoValido(raw: string | null | undefined): boolean {
+  return classificaTelefono(raw) === "ok";
+}
