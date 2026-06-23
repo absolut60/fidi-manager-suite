@@ -454,10 +454,12 @@ export const invioMassivoSolleciti = inngest.createFunction(
         }
 
         // Aggiorna contatori sulla campagna (incremento via RPC non disponibile:
-        // facciamo una read+write sicuro)
+        // facciamo una read+write sicuro).
+        // Le email non valide vengono conteggiate in `saltati` accanto a
+        // saltato_no_indirizzo: non sono tentativi falliti SMTP, sono pre-filtri.
         const { data: campNow } = await supabaseAdmin
           .from("campagne_sollecito")
-          .select("inviati, falliti")
+          .select("inviati, falliti, saltati")
           .eq("id", campagna_id)
           .maybeSingle();
         await supabaseAdmin
@@ -465,11 +467,13 @@ export const invioMassivoSolleciti = inngest.createFunction(
           .update({
             inviati: Number(campNow?.inviati ?? 0) + inviati,
             falliti: Number(campNow?.falliti ?? 0) + falliti,
+            saltati: Number(campNow?.saltati ?? 0) + emailNonValide,
           })
           .eq("id", campagna_id);
 
-        return { inviati, falliti };
+        return { inviati, falliti, emailNonValide };
       });
+
 
       logger.info(`[sollecito-massivo] blocco ${b + 1}/${numBlocchi}`, blockResult);
 
