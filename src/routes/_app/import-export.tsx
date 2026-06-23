@@ -2977,9 +2977,65 @@ function BloccoFidoAssicurazioneImportCard() {
  * EXPORT
  * ============================================================================ */
 
+type AnomaliaExportRow = {
+  codice_gestionale: string | null;
+  ragione_sociale: string | null;
+  campo: string | null;
+  valore_attuale: string | null;
+  valore_nuovo: string | null;
+  tipo_anomalia: string | null;
+  created_at: string;
+  importazione_id?: string | null;
+  importazioni?: { nome_file: string | null; created_at: string } | null;
+};
+
+async function downloadAnomalieXlsx(
+  rows: AnomaliaExportRow[],
+  fname: string,
+  includeImport: boolean,
+) {
+  const header = [
+    "Codice gestionale",
+    "Ragione sociale",
+    "Campo",
+    "Valore grezzo",
+    "Tipo anomalia",
+    "Azione",
+    "Data",
+    ...(includeImport ? ["Import di provenienza", "Data import"] : []),
+  ];
+  const body = rows.map((r) => {
+    const base: (string | number)[] = [
+      r.codice_gestionale ?? "",
+      r.ragione_sociale ?? "",
+      r.campo ?? "",
+      r.valore_attuale ?? "",
+      r.tipo_anomalia ?? "",
+      r.valore_nuovo ?? "",
+      new Date(r.created_at).toLocaleString("it-IT"),
+    ];
+    if (includeImport) {
+      base.push(
+        r.importazioni?.nome_file ?? "",
+        r.importazioni?.created_at
+          ? new Date(r.importazioni.created_at).toLocaleString("it-IT")
+          : "",
+      );
+    }
+    return base;
+  });
+  const ws = XLSX.utils.aoa_to_sheet([header, ...body]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Anomalie");
+  XLSX.writeFile(wb, fname);
+}
+
 function ExportCard() {
   const qc = useQueryClient();
-  const [busy, setBusy] = useState<null | "clienti" | "richieste" | "senza_email" | "fidi_gestionale">(null);
+  const [busy, setBusy] = useState<
+    null | "clienti" | "richieste" | "senza_email" | "fidi_gestionale" | "anomalie_all"
+  >(null);
+
 
   async function exportClientiSenzaEmail() {
     setBusy("senza_email");
