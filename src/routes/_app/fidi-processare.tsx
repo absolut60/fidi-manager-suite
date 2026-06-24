@@ -240,8 +240,8 @@ function FidiProcessarePage() {
             loading={isLoading}
             stores={stores ?? []}
             profiloName={profiloName}
-            onGeneraFile={(rows) => generaFile(rows, true)}
-            onRigenera={(rows) => generaFile(rows, false)}
+            onGeneraFile={(rows) => { void generaFileEProcessa(rows); }}
+            onRigenera={(rows) => rigeneraFile(rows)}
             onSetStato={(ids, stato, note, setProc) =>
               setStatoMutation.mutate({
                 ids,
@@ -259,6 +259,7 @@ function FidiProcessarePage() {
             loading={isLoading}
             stores={stores ?? []}
             profiloName={profiloName}
+            onRiportaDaGestire={(ids) => { void riportaDaGestire(ids); }}
           />
         </TabsContent>
       </Tabs>
