@@ -1213,6 +1213,41 @@ function RichiestaFormDialog({
     if (form.tipo !== tipoAuto) setForm((f) => ({ ...f, tipo: tipoAuto }));
   }, [fidoAttuale, form.importo_richiesto, form.cliente_id, tipoTouched, form.tipo]);
 
+  // Lista codici di pagamento (fonte autoritativa = tabella DB).
+  const { data: codiciPagamento } = useQuery({
+    queryKey: ["codici-pagamento", "all"],
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("codici_pagamento")
+        .select("cod, descrizione")
+        .order("cod", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as { cod: string; descrizione: string | null }[];
+    },
+  });
+  const codiciSet = new Set((codiciPagamento ?? []).map((c) => c.cod));
+
+  // Default condizione: alla selezione cliente precompila con la sua condizione
+  // (se presente in tabella). Se l'utente l'ha gia' toccata, non sovrascrivere.
+  useEffect(() => {
+    if (condPagTouched) return;
+    if (!clienteSel) return;
+    const cod = (clienteSel as any).condizione_pagamento_cod as string | null;
+    const next = cod && codiciSet.has(cod) ? cod : "";
+    if ((form.condizione_pagamento_cod ?? "") !== next) {
+      setForm((f) => ({ ...f, condizione_pagamento_cod: next }));
+    }
+  }, [clienteSel, codiciPagamento, condPagTouched]);
+
+  const condPagFiltered = (codiciPagamento ?? []).filter((c) => {
+    const q = searchCondPag.trim().toLowerCase();
+    if (!q) return true;
+    return c.cod.toLowerCase().includes(q) || (c.descrizione ?? "").toLowerCase().includes(q);
+  });
+  const condPagSel = (codiciPagamento ?? []).find((c) => c.cod === form.condizione_pagamento_cod) ?? null;
+
+
 
   // Ultimo fido approvato in FidiManager (informativo, per verifica allineamento col gestionale)
   const { data: ultimoApprovato } = useQuery({
