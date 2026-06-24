@@ -3133,6 +3133,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      rimuovi_orfani_scadenze: {
+        Args: { _importazione_id: string }
+        Returns: number
+      }
       storage_path_cliente_id: { Args: { _name: string }; Returns: string }
       user_can_access_cliente: {
         Args: { _cliente_id: string }
