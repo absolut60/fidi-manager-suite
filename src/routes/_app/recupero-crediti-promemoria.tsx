@@ -114,6 +114,7 @@ function PromemoriaScadenzaPage() {
   const [importoMin, setImportoMin] = useState<string>("");
   const [escludiLegale, setEscludiLegale] = useState(true);
   const [escludiBloccati, setEscludiBloccati] = useState(false);
+  const [escludiBos, setEscludiBos] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [selezionati, setSelezionati] = useState<Set<string>>(new Set());
   const [invioOpen, setInvioOpen] = useState(false);
