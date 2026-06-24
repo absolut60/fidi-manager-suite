@@ -221,17 +221,29 @@ function ScadenziarioPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clienti")
-        .select("fido_gestionale, fido_residuo, totale_rischio, doc_da_fatturare, doc_da_evadere, effetti_a_rischio, num_insoluti, dilazione_concordata, dilazione_effettiva")
+        .select("fido_gestionale, fido_residuo, totale_rischio, doc_da_fatturare, doc_da_evadere, effetti_a_rischio, num_insoluti, dilazione_concordata, dilazione_effettiva, condizione_pagamento_cod")
         .eq("id", expandedClienteId!)
         .maybeSingle();
       if (error) throw error;
-      return data as {
+      let condizione_pagamento_desc_db: string | null = null;
+      const cod = (data as { condizione_pagamento_cod: string | null } | null)?.condizione_pagamento_cod ?? null;
+      if (cod) {
+        const { data: cp } = await supabase
+          .from("codici_pagamento")
+          .select("descrizione")
+          .eq("cod", cod)
+          .maybeSingle();
+        condizione_pagamento_desc_db = (cp as { descrizione: string } | null)?.descrizione ?? null;
+      }
+      return data ? { ...(data as object), condizione_pagamento_desc_db } as {
         fido_gestionale: number | null; fido_residuo: number | null; totale_rischio: number | null;
         doc_da_fatturare: number | null; doc_da_evadere: number | null; effetti_a_rischio: number | null;
         num_insoluti: number | null; dilazione_concordata: number | null; dilazione_effettiva: number | null;
-      } | null;
+        condizione_pagamento_cod: string | null; condizione_pagamento_desc_db: string | null;
+      } : null;
     },
   });
+
 
   const totalCount = Number(rows?.[0]?.total_count ?? totali?.n_clienti_totali ?? 0);
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
@@ -681,7 +693,9 @@ type RischioData = {
   fido_gestionale: number | null; fido_residuo: number | null; totale_rischio: number | null;
   doc_da_fatturare: number | null; doc_da_evadere: number | null; effetti_a_rischio: number | null;
   num_insoluti: number | null; dilazione_concordata: number | null; dilazione_effettiva: number | null;
+  condizione_pagamento_cod?: string | null; condizione_pagamento_desc_db?: string | null;
 } | null | undefined;
+
 
 function ExpandedRischioPanel({ loading, data, onApri }: { loading: boolean; data: RischioData; onApri: (e: React.MouseEvent) => void }) {
   if (loading) {
@@ -714,6 +728,19 @@ function ExpandedRischioPanel({ loading, data, onApri }: { loading: boolean; dat
         <CellInfo label="Dilaz. concordata" value={d.dilazione_concordata != null ? `${d.dilazione_concordata} gg` : "—"} />
         <CellInfo label="Ritardo medio" value={r.text} cls={r.cls} />
       </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+        <CellInfo
+          label="Condizione pagamento"
+          value={
+            d.condizione_pagamento_cod
+              ? d.condizione_pagamento_desc_db
+                ? `${d.condizione_pagamento_cod} — ${d.condizione_pagamento_desc_db}`
+                : d.condizione_pagamento_cod
+              : "—"
+          }
+        />
+      </div>
+
       <div className="pt-1">
         <button type="button" onClick={onApri} className="text-xs text-primary hover:underline font-medium">
           Apri scheda cliente →
