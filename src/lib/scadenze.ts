@@ -73,3 +73,41 @@ export function fasciaAnzianita(tempi_scadenza?: string | null): string | null {
   if (t.includes("30")) return "0-30 gg";
   return null;
 }
+
+// ---------------------------------------------------------------------------
+// ANTICIPI - regola "lo scaduto si riduce dell'anticipo"
+// ---------------------------------------------------------------------------
+// Definizione (unico criterio affidabile, verificato sul dataset reale):
+//   una riga scadenza e' un ANTICIPO se numero_documento ILIKE '%ANTICIPO%'.
+//   NON usare key_tipo_effetto: =14 e' R.B. attiva generica (anticipo+R.B.).
+//
+// Effetto sul calcolo dello SCADUTO (NON sul dato grezzo in DB):
+//   - le righe NON-anticipo contribuiscono col loro segno reale
+//     (note credito Passivi restano negative);
+//   - le righe ANTICIPO contribuiscono col SEGNO OPPOSTO (sottratte);
+//   - CLAMP per cliente: se il totale risulta < 0 -> 0. Mai sul totale
+//     aggregato (un cliente a credito non compensa un altro a debito).
+//
+// Fonte di verita' TS: le RPC SQL replicano la STESSA logica.
+export function isAnticipo(s: { numero_documento?: string | null }): boolean {
+  const nd = s.numero_documento ?? "";
+  return /ANTICIPO/i.test(nd);
+}
+
+// Contributo SIGNED di una singola riga al totale scaduto del cliente.
+export function contributoScaduto(s: {
+  importo_scadenza?: number | null;
+  numero_documento?: string | null;
+}): number {
+  const imp = Number(s.importo_scadenza ?? 0);
+  return isAnticipo(s) ? -imp : imp;
+}
+
+// Somma scaduto di un cliente con anticipi sottratti + clamp a >= 0.
+// Le righe passate devono essere gia' filtrate come "scaduto" (Aperta + scaduta).
+export function sommaScadutoCliente(
+  rows: Array<{ importo_scadenza?: number | null; numero_documento?: string | null }>,
+): number {
+  const t = rows.reduce((a, r) => a + contributoScaduto(r), 0);
+  return t < 0 ? 0 : t;
+}
