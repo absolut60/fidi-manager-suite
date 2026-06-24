@@ -245,6 +245,21 @@ function ScadenziarioPage() {
     navigate({ to: "/clienti/$clienteId", params: { clienteId: id }, search: { tab: "insoluti", insolutiTab: "scadenziario" } as never });
   }
 
+  async function selezionaTuttiFiltrati() {
+    setLoadingAllIds(true);
+    try {
+      const { data, error } = await supabase.rpc("get_scadenziario_ids" as never, commonParams as never);
+      if (error) throw error;
+      const ids = ((data ?? []) as unknown as { cliente_id: string }[]).map((r) => r.cliente_id);
+      setSelectedIds(new Set(ids));
+    } catch (e) {
+      toast.error("Impossibile selezionare tutti i clienti filtrati");
+      console.error(e);
+    } finally {
+      setLoadingAllIds(false);
+    }
+  }
+
   const pageRows = rows ?? [];
 
   return (
