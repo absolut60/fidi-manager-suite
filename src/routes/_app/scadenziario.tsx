@@ -728,6 +728,19 @@ function ExpandedRischioPanel({ loading, data, onApri }: { loading: boolean; dat
         <CellInfo label="Dilaz. concordata" value={d.dilazione_concordata != null ? `${d.dilazione_concordata} gg` : "—"} />
         <CellInfo label="Ritardo medio" value={r.text} cls={r.cls} />
       </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+        <CellInfo
+          label="Condizione pagamento"
+          value={
+            d.condizione_pagamento_cod
+              ? d.condizione_pagamento_desc_db
+                ? `${d.condizione_pagamento_cod} — ${d.condizione_pagamento_desc_db}`
+                : d.condizione_pagamento_cod
+              : "—"
+          }
+        />
+      </div>
+
       <div className="pt-1">
         <button type="button" onClick={onApri} className="text-xs text-primary hover:underline font-medium">
           Apri scheda cliente →
