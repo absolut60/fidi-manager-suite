@@ -401,6 +401,23 @@ function ScadenziarioPage() {
         <Card className="p-3 flex flex-wrap items-center justify-between gap-3 border-primary/40 bg-primary/5">
           <div className="text-sm">
             <span className="font-semibold">{selectedIds.size}</span> clienti selezionati
+            {totalCount > 0 && selectedIds.size < totalCount && (
+              <>
+                {" "}su {totalCount} filtrati
+                {" · "}
+                <button
+                  type="button"
+                  className="text-xs text-primary hover:underline"
+                  onClick={() => selezionaTuttiFiltrati()}
+                  disabled={loadingAllIds}
+                >
+                  {loadingAllIds ? "Caricamento…" : `Seleziona tutti i ${totalCount}`}
+                </button>
+              </>
+            )}
+            {selectedIds.size === totalCount && totalCount > 0 && (
+              <span className="text-xs text-muted-foreground ml-2">(tutti i filtrati)</span>
+            )}
           </div>
           <div className="flex items-center gap-3">
             <button
