@@ -41,7 +41,15 @@ export function classificaEmail(
   if (raw == null) return "vuota";
   const v = String(raw).trim();
   if (v === "") return "vuota";
-  if (/[;,]/.test(v) || /\s{2,}/.test(v)) return "multipla";
+  // 'multipla' = dopo split su ; , o uno+ spazi ci sono ALMENO 2 pezzi VALIDI.
+  // Richiediamo 2+ pezzi validi (non solo 2 pezzi) per evitare falsi positivi
+  // come "info @termoidralicags.it" (spazio interno -> 0 pezzi validi -> resta
+  // 'malformata') o "s.lualdi@... AMMNE" (1 valido + 1 testo -> NON multipla).
+  const pezziValidi = v
+    .split(/[;,]|\s+/)
+    .map((s) => s.trim())
+    .filter((s) => s && isEmailValida(s));
+  if (pezziValidi.length >= 2) return "multipla";
   if (!v.includes("@")) return "non_email";
   if (EMAIL_REGEX.test(v)) return "ok";
   return "malformata";
@@ -50,16 +58,17 @@ export function classificaEmail(
 /**
  * Split di un campo email/pec con più indirizzi.
  * Fonte unica usata sia dalla barriera import (applyEmailPec) sia dalla
- * bonifica una-tantum. Separatori: ';' ',' e due o più spazi consecutivi
- * (il doppio spazio è la convenzione del gestionale per concatenare due
- * indirizzi nello stesso campo).
- * NOTA: NON usare per il telefono — "Ramona  3247806191" verrebbe spezzato
+ * bonifica una-tantum. Separatori: ';' ',' e UNO O PIÙ spazi (gestisce sia
+ * il doppio spazio del gestionale sia lo spazio singolo "email1 email2").
+ * La salvaguardia (validare ogni pezzo con isEmailValida a valle dello split)
+ * protegge dai falsi split come "info @termoidralicags.it" (0 pezzi validi).
+ * NOTA: NON usare per il telefono — "Ramona 3247806191" verrebbe spezzato
  * a torto. Il telefono ha regole proprie in classificaTelefono.
  */
 export function splitEmailsMultiple(raw: string | null | undefined): string[] {
   if (raw == null) return [];
   return String(raw)
-    .split(/[;,]|\s{2,}/)
+    .split(/[;,]|\s+/)
     .map((s) => s.trim())
     .filter(Boolean);
 }
