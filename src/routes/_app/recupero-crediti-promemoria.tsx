@@ -147,6 +147,7 @@ function PromemoriaScadenzaPage() {
       importoMin,
       escludiLegale,
       escludiBloccati,
+      escludiBos,
     ],
     enabled: mesiArr.length > 0,
     queryFn: async () => {
@@ -159,6 +160,7 @@ function PromemoriaScadenzaPage() {
           _importo_min: importoMin ? Number(importoMin) : null,
           _escludi_legale: escludiLegale,
           _escludi_bloccati: escludiBloccati,
+          _escludi_bos: escludiBos,
         } as never
       );
       if (error) throw error;
