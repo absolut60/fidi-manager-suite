@@ -128,8 +128,11 @@ function ScadenziarioPage() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [expandedClienteId, setExpandedClienteId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectAllMode, setSelectAllMode] = useState(false);
+  const [deselectedIds, setDeselectedIds] = useState<Set<string>>(new Set());
   const [dialogOpen, setDialogOpen] = useState(false);
   const [invioMassivoOpen, setInvioMassivoOpen] = useState(false);
+  const [loadingAllIds, setLoadingAllIds] = useState(false);
 
   // Debounce ricerca
   useEffect(() => {
