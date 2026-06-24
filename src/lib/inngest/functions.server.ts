@@ -2000,9 +2000,10 @@ export const finalizeScadenziarioImport = inngest.createFunction(
         const summary = [
           {
             riga: 0,
-            errore: `Reconciliation: chiuse ${reconc.totChiuse} scadenze su ${reconc.totClienti} clienti`,
+            errore: `Reconciliation: chiuse ${reconc.totChiuse} scadenze su ${reconc.totClienti} clienti; orfani rimossi (rettifiche): ${reconc.orfaniRimossi}`,
           },
         ];
+
         await supabaseAdmin
           .from("importazioni")
           .update({
