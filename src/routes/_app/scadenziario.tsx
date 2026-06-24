@@ -468,13 +468,20 @@ function ScadenziarioPage() {
                 <TableRow>
                   <TableHead className="w-10">
                     <Checkbox
-                      aria-label="Seleziona pagina"
-                      checked={pageRows.length > 0 && pageRows.every((r) => selectedIds.has(r.cliente_id))}
+                      aria-label="Seleziona tutti i clienti filtrati"
+                      checked={
+                        selectedIds.size > 0 && selectedIds.size >= totalCount
+                          ? true
+                          : selectedIds.size > 0
+                          ? "indeterminate"
+                          : false
+                      }
                       onCheckedChange={(v) => {
-                        const next = new Set(selectedIds);
-                        if (v) pageRows.forEach((r) => next.add(r.cliente_id));
-                        else pageRows.forEach((r) => next.delete(r.cliente_id));
-                        setSelectedIds(next);
+                        if (v) {
+                          void selezionaTuttiFiltrati();
+                        } else {
+                          setSelectedIds(new Set());
+                        }
                       }}
                     />
                   </TableHead>
