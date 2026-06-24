@@ -130,6 +130,7 @@ function ScadenziarioPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [dialogOpen, setDialogOpen] = useState(false);
   const [invioMassivoOpen, setInvioMassivoOpen] = useState(false);
+  const [loadingAllIds, setLoadingAllIds] = useState(false);
 
   // Debounce ricerca
   useEffect(() => {
@@ -203,6 +204,17 @@ function ScadenziarioPage() {
     staleTime: 5 * 60_000,
   });
 
+  const { data: allFilteredIdsData } = useQuery({
+    queryKey: ["scadenziario-all-ids", commonParams],
+    enabled: invioMassivoOpen,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_scadenziario_ids" as never, commonParams as never);
+      if (error) throw error;
+      return ((data ?? []) as unknown as { cliente_id: string }[]).map((r) => r.cliente_id);
+    },
+  });
+  const allFilteredIds = allFilteredIdsData ?? null;
+
   const { data: rischioExpanded, isLoading: loadingRischio } = useQuery({
     queryKey: ["rischio-expanded", expandedClienteId],
     enabled: !!expandedClienteId,
@@ -242,6 +254,21 @@ function ScadenziarioPage() {
 
   function apriCliente(id: string) {
     navigate({ to: "/clienti/$clienteId", params: { clienteId: id }, search: { tab: "insoluti", insolutiTab: "scadenziario" } as never });
+  }
+
+  async function selezionaTuttiFiltrati() {
+    setLoadingAllIds(true);
+    try {
+      const { data, error } = await supabase.rpc("get_scadenziario_ids" as never, commonParams as never);
+      if (error) throw error;
+      const ids = ((data ?? []) as unknown as { cliente_id: string }[]).map((r) => r.cliente_id);
+      setSelectedIds(new Set(ids));
+    } catch (e) {
+      toast.error("Impossibile selezionare tutti i clienti filtrati");
+      console.error(e);
+    } finally {
+      setLoadingAllIds(false);
+    }
   }
 
   const pageRows = rows ?? [];
@@ -400,6 +427,23 @@ function ScadenziarioPage() {
         <Card className="p-3 flex flex-wrap items-center justify-between gap-3 border-primary/40 bg-primary/5">
           <div className="text-sm">
             <span className="font-semibold">{selectedIds.size}</span> clienti selezionati
+            {totalCount > 0 && selectedIds.size < totalCount && (
+              <>
+                {" "}su {totalCount} filtrati
+                {" · "}
+                <button
+                  type="button"
+                  className="text-xs text-primary hover:underline"
+                  onClick={() => selezionaTuttiFiltrati()}
+                  disabled={loadingAllIds}
+                >
+                  {loadingAllIds ? "Caricamento…" : `Seleziona tutti i ${totalCount}`}
+                </button>
+              </>
+            )}
+            {selectedIds.size === totalCount && totalCount > 0 && (
+              <span className="text-xs text-muted-foreground ml-2">(tutti i filtrati)</span>
+            )}
           </div>
           <div className="flex items-center gap-3">
             <button
@@ -435,13 +479,20 @@ function ScadenziarioPage() {
                 <TableRow>
                   <TableHead className="w-10">
                     <Checkbox
-                      aria-label="Seleziona pagina"
-                      checked={pageRows.length > 0 && pageRows.every((r) => selectedIds.has(r.cliente_id))}
+                      aria-label="Seleziona tutti i clienti filtrati"
+                      checked={
+                        selectedIds.size > 0 && selectedIds.size >= totalCount
+                          ? true
+                          : selectedIds.size > 0
+                          ? "indeterminate"
+                          : false
+                      }
                       onCheckedChange={(v) => {
-                        const next = new Set(selectedIds);
-                        if (v) pageRows.forEach((r) => next.add(r.cliente_id));
-                        else pageRows.forEach((r) => next.delete(r.cliente_id));
-                        setSelectedIds(next);
+                        if (v) {
+                          void selezionaTuttiFiltrati();
+                        } else {
+                          setSelectedIds(new Set());
+                        }
                       }}
                     />
                   </TableHead>
@@ -593,8 +644,8 @@ function ScadenziarioPage() {
       <InvioMassivoDialog
         open={invioMassivoOpen}
         onOpenChange={setInvioMassivoOpen}
-        clienteIdsSelezionati={pageRows.filter((r) => selectedIds.has(r.cliente_id)).map((r) => r.cliente_id)}
-        clienteIdsFiltrati={pageRows.map((r) => r.cliente_id)}
+        clienteIdsSelezionati={Array.from(selectedIds)}
+        clienteIdsFiltrati={allFilteredIds ?? Array.from(selectedIds)}
       />
     </div>
   );

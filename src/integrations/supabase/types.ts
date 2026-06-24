@@ -2999,6 +2999,23 @@ export type Database = {
           ultima_fatta_tipo: string
         }[]
       }
+      get_scadenziario_ids: {
+        Args: {
+          p_avvisato?: string
+          p_escludi_bonifici?: boolean
+          p_escludi_legale?: boolean
+          p_fascia?: string
+          p_importo_min?: number
+          p_mostra_a_credito?: boolean
+          p_search?: string
+          p_stato_blocco?: string
+          p_stato_legale?: string
+          p_store_id?: string
+        }
+        Returns: {
+          cliente_id: string
+        }[]
+      }
       get_scadenziario_lista_paginata: {
         Args: {
           p_anno_corrente?: number
