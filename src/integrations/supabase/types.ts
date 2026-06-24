@@ -1725,6 +1725,7 @@ export type Database = {
         Row: {
           approvato_da: string | null
           cliente_id: string
+          condizione_pagamento_cod: string | null
           created_at: string
           created_by: string | null
           data_approvazione: string | null
@@ -1753,6 +1754,7 @@ export type Database = {
         Insert: {
           approvato_da?: string | null
           cliente_id: string
+          condizione_pagamento_cod?: string | null
           created_at?: string
           created_by?: string | null
           data_approvazione?: string | null
@@ -1781,6 +1783,7 @@ export type Database = {
         Update: {
           approvato_da?: string | null
           cliente_id?: string
+          condizione_pagamento_cod?: string | null
           created_at?: string
           created_by?: string | null
           data_approvazione?: string | null
@@ -3125,6 +3128,7 @@ export type Database = {
         Returns: {
           approvato_da: string | null
           cliente_id: string
+          condizione_pagamento_cod: string | null
           created_at: string
           created_by: string | null
           data_approvazione: string | null

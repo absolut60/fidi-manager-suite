@@ -1117,6 +1117,7 @@ const formSchema = z.object({
   durata_mesi: z.coerce.number().int().min(1).max(120).default(12),
   motivazione: z.string().trim().max(2000),
   note: z.string().trim().max(2000).optional().or(z.literal("")),
+  condizione_pagamento_cod: z.string().trim().max(20).optional().or(z.literal("")),
 });
 type FormVals = z.infer<typeof formSchema>;
 
@@ -1132,7 +1133,11 @@ function RichiestaFormDialog({
     durata_mesi: seed?.durata_mesi ?? 12,
     motivazione: seed?.motivazione ?? "",
     note: seed?.note ?? "",
+    condizione_pagamento_cod: seed?.condizione_pagamento_cod ?? "",
   });
+  const [openCondPag, setOpenCondPag] = useState(false);
+  const [searchCondPag, setSearchCondPag] = useState("");
+  const [condPagTouched, setCondPagTouched] = useState<boolean>(!!seed);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -1166,7 +1171,7 @@ function RichiestaFormDialog({
       const term = debouncedSearch.replace(/[%_,]/g, (m) => `\\${m}`);
       const { data, error } = await supabase
         .from("clienti")
-        .select("id, ragione_sociale, codice_gestionale, store_id, fido_aziendale_concesso, fido_gestionale, bloccato, in_gestione_legale, scaduto, totale_rischio, fido_residuo, a_scadere, condizioni_pagamento, dilazione_concordata, dilazione_effettiva, num_insoluti, motivo_blocco, cliente_attivo, ultima_data_fatturazione, ultima_sincronizzazione")
+        .select("id, ragione_sociale, codice_gestionale, store_id, fido_aziendale_concesso, fido_gestionale, bloccato, in_gestione_legale, scaduto, totale_rischio, fido_residuo, a_scadere, condizioni_pagamento, condizione_pagamento_cod, dilazione_concordata, dilazione_effettiva, num_insoluti, motivo_blocco, cliente_attivo, ultima_data_fatturazione, ultima_sincronizzazione")
         .eq("attivo", true)
         .or(`ragione_sociale.ilike.%${term}%,codice_gestionale.ilike.%${term}%`)
         .order("ragione_sociale")
@@ -1183,7 +1188,7 @@ function RichiestaFormDialog({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clienti")
-        .select("id, ragione_sociale, codice_gestionale, store_id, fido_aziendale_concesso, fido_gestionale, bloccato, in_gestione_legale, scaduto, totale_rischio, fido_residuo, a_scadere, condizioni_pagamento, dilazione_concordata, dilazione_effettiva, num_insoluti, motivo_blocco, cliente_attivo, ultima_data_fatturazione, ultima_sincronizzazione")
+        .select("id, ragione_sociale, codice_gestionale, store_id, fido_aziendale_concesso, fido_gestionale, bloccato, in_gestione_legale, scaduto, totale_rischio, fido_residuo, a_scadere, condizioni_pagamento, condizione_pagamento_cod, dilazione_concordata, dilazione_effettiva, num_insoluti, motivo_blocco, cliente_attivo, ultima_data_fatturazione, ultima_sincronizzazione")
         .eq("id", form.cliente_id)
         .maybeSingle();
       if (error) throw error;
@@ -1207,6 +1212,41 @@ function RichiestaFormDialog({
       : "aumento";
     if (form.tipo !== tipoAuto) setForm((f) => ({ ...f, tipo: tipoAuto }));
   }, [fidoAttuale, form.importo_richiesto, form.cliente_id, tipoTouched, form.tipo]);
+
+  // Lista codici di pagamento (fonte autoritativa = tabella DB).
+  const { data: codiciPagamento } = useQuery({
+    queryKey: ["codici-pagamento", "all"],
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("codici_pagamento")
+        .select("cod, descrizione")
+        .order("cod", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as { cod: string; descrizione: string | null }[];
+    },
+  });
+  const codiciSet = new Set((codiciPagamento ?? []).map((c) => c.cod));
+
+  // Default condizione: alla selezione cliente precompila con la sua condizione
+  // (se presente in tabella). Se l'utente l'ha gia' toccata, non sovrascrivere.
+  useEffect(() => {
+    if (condPagTouched) return;
+    if (!clienteSel) return;
+    const cod = (clienteSel as any).condizione_pagamento_cod as string | null;
+    const next = cod && codiciSet.has(cod) ? cod : "";
+    if ((form.condizione_pagamento_cod ?? "") !== next) {
+      setForm((f) => ({ ...f, condizione_pagamento_cod: next }));
+    }
+  }, [clienteSel, codiciPagamento, condPagTouched]);
+
+  const condPagFiltered = (codiciPagamento ?? []).filter((c) => {
+    const q = searchCondPag.trim().toLowerCase();
+    if (!q) return true;
+    return c.cod.toLowerCase().includes(q) || (c.descrizione ?? "").toLowerCase().includes(q);
+  });
+  const condPagSel = (codiciPagamento ?? []).find((c) => c.cod === form.condizione_pagamento_cod) ?? null;
+
 
 
   // Ultimo fido approvato in FidiManager (informativo, per verifica allineamento col gestionale)
@@ -1258,6 +1298,9 @@ function RichiestaFormDialog({
         note: parsed.note || null,
         stato: input.invia ? "in_approvazione" : "bozza",
         data_invio: input.invia ? new Date().toISOString() : null,
+        condizione_pagamento_cod: parsed.condizione_pagamento_cod
+          ? parsed.condizione_pagamento_cod
+          : null,
       } as any;
       let richiestaId: string | null = null;
       if (richiesta?.id) {
@@ -1454,6 +1497,80 @@ function RichiestaFormDialog({
             Livello approvazione richiesto: <strong>Liv. {livelloPreview}</strong>
           </div>
         )}
+
+        <div className="space-y-1.5">
+          <Label>Condizione di pagamento</Label>
+          <Popover open={openCondPag} onOpenChange={setOpenCondPag}>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                role="combobox"
+                aria-expanded={openCondPag}
+                className="w-full justify-between font-normal"
+              >
+                <span className={condPagSel ? "truncate" : "text-muted-foreground"}>
+                  {condPagSel
+                    ? `${condPagSel.cod} — ${condPagSel.descrizione ?? ""}`
+                    : "Seleziona condizione di pagamento…"}
+                </span>
+                <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+              <Command shouldFilter={false}>
+                <CommandInput
+                  placeholder="Cerca per codice o descrizione…"
+                  value={searchCondPag}
+                  onValueChange={setSearchCondPag}
+                />
+                <CommandList>
+                  <CommandEmpty>Nessun codice trovato</CommandEmpty>
+                  <CommandGroup>
+                    {form.condizione_pagamento_cod && (
+                      <CommandItem
+                        value="__clear__"
+                        onSelect={() => {
+                          setCondPagTouched(true);
+                          setForm((f) => ({ ...f, condizione_pagamento_cod: "" }));
+                          setOpenCondPag(false);
+                          setSearchCondPag("");
+                        }}
+                        className="text-muted-foreground italic"
+                      >
+                        — Nessuna —
+                      </CommandItem>
+                    )}
+                    {condPagFiltered.map((c) => (
+                      <CommandItem
+                        key={c.cod}
+                        value={c.cod}
+                        onSelect={() => {
+                          setCondPagTouched(true);
+                          setForm((f) => ({ ...f, condizione_pagamento_cod: c.cod }));
+                          setOpenCondPag(false);
+                          setSearchCondPag("");
+                        }}
+                        className="flex items-baseline gap-2"
+                      >
+                        <span className="font-mono text-xs shrink-0">{c.cod}</span>
+                        <span className="text-sm truncate text-muted-foreground">— {c.descrizione ?? ""}</span>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+          {clienteSel && (clienteSel as any).condizione_pagamento_cod && (
+            <p className="text-[11px] text-muted-foreground">
+              Cliente attuale: <span className="font-mono">{(clienteSel as any).condizione_pagamento_cod}</span>
+              {" "}— modificabile solo per questa richiesta.
+            </p>
+          )}
+        </div>
+
+
 
         <div className="space-y-1.5">
           <Label>Motivazione</Label>
