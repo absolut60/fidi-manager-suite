@@ -27,9 +27,11 @@ import {
 } from "@/components/ui/select";
 import { formatEuro, formatDate, TIPO_LABEL, TIPO_TONE, type TipoRichiesta } from "@/lib/fidi";
 import {
-  STATO_EXPORT_LABEL, STATO_EXPORT_TONE, generaExcelFidi, tipoVariazione,
+  STATO_EXPORT_LABEL, STATO_EXPORT_TONE,
   type StatoExport,
 } from "@/lib/fidi-export";
+import { generaTracciatoFidiGestionale } from "@/lib/export-fidi-tracciato";
+import { Undo2 } from "lucide-react";
 
 export const Route = createFileRoute("/_app/fidi-processare")({
   component: FidiProcessarePage,
