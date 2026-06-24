@@ -1499,6 +1499,80 @@ function RichiestaFormDialog({
         )}
 
         <div className="space-y-1.5">
+          <Label>Condizione di pagamento</Label>
+          <Popover open={openCondPag} onOpenChange={setOpenCondPag}>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                role="combobox"
+                aria-expanded={openCondPag}
+                className="w-full justify-between font-normal"
+              >
+                <span className={condPagSel ? "truncate" : "text-muted-foreground"}>
+                  {condPagSel
+                    ? `${condPagSel.cod} — ${condPagSel.descrizione ?? ""}`
+                    : "Seleziona condizione di pagamento…"}
+                </span>
+                <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+              <Command shouldFilter={false}>
+                <CommandInput
+                  placeholder="Cerca per codice o descrizione…"
+                  value={searchCondPag}
+                  onValueChange={setSearchCondPag}
+                />
+                <CommandList>
+                  <CommandEmpty>Nessun codice trovato</CommandEmpty>
+                  <CommandGroup>
+                    {form.condizione_pagamento_cod && (
+                      <CommandItem
+                        value="__clear__"
+                        onSelect={() => {
+                          setCondPagTouched(true);
+                          setForm((f) => ({ ...f, condizione_pagamento_cod: "" }));
+                          setOpenCondPag(false);
+                          setSearchCondPag("");
+                        }}
+                        className="text-muted-foreground italic"
+                      >
+                        — Nessuna —
+                      </CommandItem>
+                    )}
+                    {condPagFiltered.map((c) => (
+                      <CommandItem
+                        key={c.cod}
+                        value={c.cod}
+                        onSelect={() => {
+                          setCondPagTouched(true);
+                          setForm((f) => ({ ...f, condizione_pagamento_cod: c.cod }));
+                          setOpenCondPag(false);
+                          setSearchCondPag("");
+                        }}
+                        className="flex items-baseline gap-2"
+                      >
+                        <span className="font-mono text-xs shrink-0">{c.cod}</span>
+                        <span className="text-sm truncate text-muted-foreground">— {c.descrizione ?? ""}</span>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+          {clienteSel && (clienteSel as any).condizione_pagamento_cod && (
+            <p className="text-[11px] text-muted-foreground">
+              Cliente attuale: <span className="font-mono">{(clienteSel as any).condizione_pagamento_cod}</span>
+              {" "}— modificabile solo per questa richiesta.
+            </p>
+          )}
+        </div>
+
+
+
+        <div className="space-y-1.5">
           <Label>Motivazione</Label>
           <Textarea rows={3} value={form.motivazione}
             onChange={(e) => setForm({ ...form, motivazione: e.target.value })} />
