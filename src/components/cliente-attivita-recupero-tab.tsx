@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { AllegatiSection, ALLEGATI_BUCKET } from "@/components/allegati-section";
 
-import { classificaScadenza } from "@/lib/scadenze";
+import { classificaScadenza, sommaScadutoCliente } from "@/lib/scadenze";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -127,12 +127,12 @@ export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string })
     queryFn: async () => {
       const { data, error } = await supabase
         .from("scadenze")
-        .select("importo_scadenza, giorni_ritardo, stato_contabile, tempi_scadenza, data_scadenza, data_pagamento_effettiva")
+        .select("importo_scadenza, giorni_ritardo, stato_contabile, tempi_scadenza, data_scadenza, data_pagamento_effettiva, numero_documento")
         .eq("cliente_id", clienteId);
       if (error) throw error;
-      return (data ?? [])
-        .filter((s: any) => classificaScadenza(s) === "scaduto")
-        .reduce((a: number, s: any) => a + Number(s.importo_scadenza ?? 0), 0);
+      const scadute = (data ?? []).filter((s: any) => classificaScadenza(s) === "scaduto");
+      // Anticipi sottratti + clamp a 0 (fonte di verita': src/lib/scadenze.ts).
+      return sommaScadutoCliente(scadute as any);
     },
   });
 

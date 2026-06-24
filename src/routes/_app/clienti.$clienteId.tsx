@@ -32,7 +32,7 @@ import { ClienteAttivitaRecuperoTab } from "@/components/cliente-attivita-recupe
 import { AllegatiSection } from "@/components/allegati-section";
 import { ClienteFatturato } from "@/components/cliente-fatturato";
 import { formatEuro } from "@/lib/fidi";
-import { classificaScadenza } from "@/lib/scadenze";
+import { classificaScadenza, sommaScadutoCliente, contributoScaduto } from "@/lib/scadenze";
 import { Ban, Calendar, Clock, Bell, CheckCircle2, Shield, ShieldOff, Scale, FileText, Activity } from "lucide-react";
 import { NuovoContattoWizard } from "@/components/nuovo-contatto-wizard";
 import { RuoloSelect } from "@/components/ruolo-select";
@@ -734,16 +734,18 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
     queryFn: async () => {
       const { data: scad, error } = await supabase
         .from("scadenze")
-        .select("importo_scadenza, giorni_ritardo, stato_contabile, tempi_scadenza, data_scadenza, data_pagamento_effettiva")
+        .select("importo_scadenza, giorni_ritardo, stato_contabile, tempi_scadenza, data_scadenza, data_pagamento_effettiva, numero_documento")
         .eq("cliente_id", clienteId);
       if (error) throw error;
-      const rows = (scad ?? []) as Array<{ importo_scadenza: number | null; giorni_ritardo: number | null; stato_contabile: string | null; tempi_scadenza: string | null; data_scadenza: string | null; data_pagamento_effettiva: string | null }>;
+      const rows = (scad ?? []) as Array<{ importo_scadenza: number | null; giorni_ritardo: number | null; stato_contabile: string | null; tempi_scadenza: string | null; data_scadenza: string | null; data_pagamento_effettiva: string | null; numero_documento: string | null }>;
       const scadute = rows.filter((s) => classificaScadenza(s) === "scaduto");
       const aScadere = rows.filter((s) => classificaScadenza(s) === "a_scadere");
       const sum = (arr: typeof rows) => arr.reduce((a, r) => a + Number(r.importo_scadenza ?? 0), 0);
+      // Fasce: contributo signed con anticipi sottratti (no clamp per-fascia).
+      const sumContrib = (arr: typeof rows) => arr.reduce((acc, r) => acc + contributoScaduto(r), 0);
       const maxGg = [...scadute, ...aScadere].reduce((m, r) => Math.max(m, Number(r.giorni_ritardo ?? 0)), 0);
       const fascia = (min: number, max: number | null) =>
-        sum(scadute.filter((s) => {
+        sumContrib(scadute.filter((s) => {
           const g = Number(s.giorni_ritardo ?? 0);
           return g >= min && (max == null || g <= max);
         }));
@@ -755,7 +757,8 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
         .limit(1)
         .maybeSingle();
       return {
-        totale_scaduto: sum(scadute),
+        // Scaduto con anticipi sottratti + clamp >=0 (src/lib/scadenze.ts).
+        totale_scaduto: sommaScadutoCliente(scadute),
         totale_a_scadere: sum(aScadere),
         max_giorni_ritardo: maxGg,
         scaduto_0_30: fascia(1, 30),
