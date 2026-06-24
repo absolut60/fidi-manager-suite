@@ -1298,6 +1298,9 @@ function RichiestaFormDialog({
         note: parsed.note || null,
         stato: input.invia ? "in_approvazione" : "bozza",
         data_invio: input.invia ? new Date().toISOString() : null,
+        condizione_pagamento_cod: parsed.condizione_pagamento_cod
+          ? parsed.condizione_pagamento_cod
+          : null,
       } as any;
       let richiestaId: string | null = null;
       if (richiesta?.id) {
