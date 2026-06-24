@@ -223,7 +223,17 @@ function RichiestaDetail() {
               Approvato: <span className="font-medium text-foreground tabular-nums">{formatEuro(Number(r.importo_approvato))}</span>
             </p>
           )}
+          {condPagCod && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Cond. pagamento:{" "}
+              <span className="font-medium text-foreground">
+                <span className="font-mono">{condPagCod}</span>
+                {condPagRow?.descrizione ? ` — ${condPagRow.descrizione}` : ""}
+              </span>
+            </p>
+          )}
         </Card>
+
 
         <Card className="p-5">
           <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
