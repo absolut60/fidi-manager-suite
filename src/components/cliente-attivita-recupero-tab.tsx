@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { AllegatiSection, ALLEGATI_BUCKET } from "@/components/allegati-section";
 
-import { classificaScadenza } from "@/lib/scadenze";
+import { classificaScadenza, sommaScadutoCliente } from "@/lib/scadenze";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
