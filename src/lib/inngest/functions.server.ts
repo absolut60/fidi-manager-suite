@@ -1962,8 +1962,29 @@ export const finalizeScadenziarioImport = inngest.createFunction(
       // valorizzata e vengono filtrate downstream (queries scaduto/recupero).
       // Nessuna reconciliation: il file potrebbe non contenere tutte le scadenze
       // ancora valide (es. a scadere) e non vogliamo chiuderle erroneamente.
-      const reconc = { totChiuse: 0, totClienti: 0 };
+      const reconc = { totChiuse: 0, totClienti: 0, orfaniRimossi: 0 };
       void timestampInizio;
+
+      // STEP anti-orfani: per ogni tripla naturale presente nell'import corrente,
+      // rimuove le righe scadenze in DB con stessa tripla ma importo NON aggiornato
+      // dall'import corrente (rettifica importo lato gestionale → riga vecchia orfana).
+      // Agisce SOLO su triple effettivamente presenti nel file (protegge da export
+      // parziali) e preserva i frazionamenti legittimi (entrambe le righe nel file
+      // vengono upsertate ed entrambe restano). Eseguito UNA volta dopo l'upsert
+      // di tutti i chunk. Le righe orfane sono loggate in anomalie_import per audit.
+      reconc.orfaniRimossi = await step.run("rimuovi-orfani-scadenze", async () => {
+        const { data, error } = await (
+          supabaseAdmin.rpc as unknown as (
+            fn: string,
+            args: Record<string, unknown>,
+          ) => Promise<{ data: number | null; error: { message: string } | null }>
+        )("rimuovi_orfani_scadenze", { _importazione_id: importazioneId });
+        if (error) throw new Error(`rimuovi_orfani_scadenze: ${error.message}`);
+        return (data as number | null) ?? 0;
+      });
+      logger.info(`Finalize ${importazioneId}: orfani rimossi=${reconc.orfaniRimossi}`);
+
+
 
 
 
@@ -1979,9 +2000,10 @@ export const finalizeScadenziarioImport = inngest.createFunction(
         const summary = [
           {
             riga: 0,
-            errore: `Reconciliation: chiuse ${reconc.totChiuse} scadenze su ${reconc.totClienti} clienti`,
+            errore: `Reconciliation: chiuse ${reconc.totChiuse} scadenze su ${reconc.totClienti} clienti; orfani rimossi (rettifiche): ${reconc.orfaniRimossi}`,
           },
         ];
+
         await supabaseAdmin
           .from("importazioni")
           .update({
@@ -1993,8 +2015,9 @@ export const finalizeScadenziarioImport = inngest.createFunction(
       });
 
       logger.info(
-        `Finalize ${importazioneId}: chiuse=${reconc.totChiuse}, clienti=${reconc.totClienti}`,
+        `Finalize ${importazioneId}: chiuse=${reconc.totChiuse}, clienti=${reconc.totClienti}, orfani=${reconc.orfaniRimossi}`,
       );
+
       return reconc;
     } catch (err) {
       await setImportazioneError(importazioneId, err instanceof Error ? err.message : String(err));
