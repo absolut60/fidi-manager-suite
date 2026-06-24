@@ -74,8 +74,20 @@ export function generaExcelFidi(rows: ExportRow[]): void {
     { wch: 16 }, { wch: 16 }, { wch: 14 }, { wch: 24 }, { wch: 32 },
   ];
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Variazioni Fido");
+  // Il gestionale richiede il nome foglio esatto "Foglio1"
+  XLSX.utils.book_append_sheet(wb, ws, "Foglio1");
 
   const oggi = new Date().toISOString().slice(0, 10);
-  XLSX.writeFile(wb, `FidiManager_Export_${oggi}.xlsx`);
+  // Vero .xls BIFF8 (firma OLE2 D0CF11E0), non .xlsx rinominato.
+  // SheetJS community 0.18.5 supporta bookType:'biff8'.
+  const buf = XLSX.write(wb, { type: "array", bookType: "biff8" }) as ArrayBuffer;
+  const blob = new Blob([buf], { type: "application/vnd.ms-excel" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `FidiManager_Export_${oggi}.xls`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
