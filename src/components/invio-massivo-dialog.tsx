@@ -201,9 +201,12 @@ export function InvioMassivoDialog({
       const mesiSet = new Set(mesi);
       const rilevanti = (rawScad ?? []).filter((s) => {
         if (tipoCampagna === "promemoria_scadenza") {
-          // A scadere: Aperta + scadenza futura nei mesi richiesti
-          if (s.stato_contabile !== "Aperta") return false;
+          // A scadere (regola unificata, allineata a scadenze.ts / RPC aggregato / dettaglio):
+          // data_scadenza >= oggi AND data_pagamento_effettiva IS NULL.
+          // NON filtrare per stato_contabile: le R.B. Chiuse alla presentazione
+          // ma non incassate restano "a scadere" finché DPE è NULL.
           if ((s as { in_legale?: boolean | null }).in_legale) return false;
+          if (s.data_pagamento_effettiva) return false;
           if (!s.data_scadenza || String(s.data_scadenza) < oggiStr) return false;
           if (mesiSet.size > 0) {
             const k = String(s.data_scadenza).slice(0, 7);
