@@ -204,6 +204,17 @@ function ScadenziarioPage() {
     staleTime: 5 * 60_000,
   });
 
+  const { data: allFilteredIdsData } = useQuery({
+    queryKey: ["scadenziario-all-ids", commonParams],
+    enabled: invioMassivoOpen,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_scadenziario_ids" as never, commonParams as never);
+      if (error) throw error;
+      return ((data ?? []) as unknown as { cliente_id: string }[]).map((r) => r.cliente_id);
+    },
+  });
+  const allFilteredIds = allFilteredIdsData ?? null;
+
   const { data: rischioExpanded, isLoading: loadingRischio } = useQuery({
     queryKey: ["rischio-expanded", expandedClienteId],
     enabled: !!expandedClienteId,
