@@ -563,12 +563,13 @@ function GestireTab({
 
 /* ============================ STORICO TAB ============================ */
 function StoricoTab({
-  rows, loading, stores, profiloName,
+  rows, loading, stores, profiloName, onRiportaDaGestire,
 }: {
   rows: any[];
   loading: boolean;
   stores: Array<{ id: string; nome: string }>;
   profiloName: (id: string | null | undefined) => string;
+  onRiportaDaGestire: (ids: string[]) => void;
 }) {
   const [storeFilter, setStoreFilter] = useState<string>("all");
   const [meseFiltro, setMeseFiltro] = useState<string>("ultimi3");
