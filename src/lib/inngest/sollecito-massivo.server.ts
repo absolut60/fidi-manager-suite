@@ -345,10 +345,13 @@ export const invioMassivoSolleciti = inngest.createFunction(
             const mesiSet = new Set(prep.mesi ?? []);
 
             const scadenzeRilevanti = (rawScad ?? []).filter((s) => {
-              // Regola: stato_contabile + data_scadenza (gestionale)
-              if (s.stato_contabile !== "Aperta") return false;
               if (isPromemoria) {
+                // A scadere (regola unificata, allineata a scadenze.ts / RPC aggregato / dettaglio / anteprima):
+                // data_scadenza >= oggi AND data_pagamento_effettiva IS NULL.
+                // NON filtrare per stato_contabile: le R.B. Chiuse alla presentazione
+                // ma non incassate restano "a scadere" finché DPE è NULL.
                 if ((s as { in_legale?: boolean | null }).in_legale) return false;
+                if (s.data_pagamento_effettiva) return false;
                 if (!s.data_scadenza || String(s.data_scadenza) < oggiStr) return false;
                 if (mesiSet.size > 0) {
                   const k = String(s.data_scadenza).slice(0, 7);
@@ -356,6 +359,8 @@ export const invioMassivoSolleciti = inngest.createFunction(
                 }
                 return true;
               }
+              // Sollecito (scaduto): regola gestionale invariata.
+              if (s.stato_contabile !== "Aperta") return false;
               return isScaduto(s);
             });
             const totaleRif = scadenzeRilevanti.reduce(
