@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Send, Users, ListChecks, AlertTriangle, Eye, ChevronLeft, ChevronRight, Pencil, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Send, Users, ListChecks, AlertTriangle, Eye, ChevronLeft, ChevronRight, Pencil, AlertCircle, CheckCircle2, Trash2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useConfig } from "@/hooks/use-config";
@@ -64,8 +64,10 @@ export function InvioMassivoDialog({
   const [overrides, setOverrides] = useState<Record<string, string>>({});
   // Indirizzi risolti scoperti durante la navigazione: cliente_id -> indirizzo default
   const [risolti, setRisolti] = useState<Record<string, string>>({});
-  // Esclusioni manuali (check coerenza escalation)
+  // Esclusioni manuali (rimossi dalla coda di invio di QUESTA campagna)
   const [esclusi, setEsclusi] = useState<Set<string>>(new Set());
+  // Cache nomi per mostrare l'elenco esclusi
+  const [nomiCache, setNomiCache] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!open) {
@@ -76,22 +78,30 @@ export function InvioMassivoDialog({
       setOverrides({});
       setRisolti({});
       setEsclusi(new Set());
+      setNomiCache({});
     } else {
       setModo(clienteIdsSelezionati.length > 0 ? "selezionati" : "filtrati");
     }
   }, [open, clienteIdsSelezionati.length]);
 
-  const clienteIds = useMemo(
+  const clienteIdsBase = useMemo(
     () => (modo === "selezionati" ? clienteIdsSelezionati : clienteIdsFiltrati),
     [modo, clienteIdsSelezionati, clienteIdsFiltrati],
   );
+  // Coda effettiva di invio: esclude i clienti rimossi manualmente.
+  const clienteIds = useMemo(
+    () => clienteIdsBase.filter((cid) => !esclusi.has(cid)),
+    [clienteIdsBase, esclusi],
+  );
   const totale = clienteIds.length;
 
-  // Reset indice quando cambia il gruppo
+  // Reset indice quando cambia il gruppo o il totale diminuisce sotto l'indice
   useEffect(() => {
-    setIndice(0);
     setJumpInput("");
-  }, [modo, totale]);
+  }, [modo]);
+  useEffect(() => {
+    setIndice((i) => (i >= totale ? Math.max(0, totale - 1) : i));
+  }, [totale]);
 
   const { data: templates } = useQuery({
     queryKey: ["template-email-attivi", tipoCampagna],
@@ -248,6 +258,9 @@ export function InvioMassivoDialog({
       setRisolti((prev) =>
         prev[clienteCorrenteId] === indirizzoRisolto ? prev : { ...prev, [clienteCorrenteId]: indirizzoRisolto },
       );
+      setNomiCache((prev) =>
+        prev[clienteCorrenteId] ? prev : { ...prev, [clienteCorrenteId]: clientePreview.ragione_sociale || "—" },
+      );
     }
   }, [clientePreview, clienteCorrenteId, indirizzoRisolto]);
 
@@ -357,8 +370,7 @@ export function InvioMassivoDialog({
         const cur = (v ?? "").trim();
         if (cur && cur !== def.trim()) indirizziCorretti[cid] = cur;
       }
-      const clienteIdsFinali = clienteIds.filter((cid) => !esclusi.has(cid));
-      if (clienteIdsFinali.length === 0) {
+      if (clienteIds.length === 0) {
         toast.error("Tutti i destinatari sono stati esclusi.");
         setSubmitting(false);
         return;
@@ -368,7 +380,7 @@ export function InvioMassivoDialog({
           templateId: selectedTemplate.id,
           preferenzaIndirizzo: preferenza,
           nota: nota.trim() || null,
-          clienteIds: clienteIdsFinali,
+          clienteIds,
           indirizziCorretti,
           tipoCampagna,
           mesi,
@@ -471,11 +483,32 @@ export function InvioMassivoDialog({
 
           {/* Anteprima scorrevole */}
           <div className="space-y-2 pt-2 border-t border-border">
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
               <Label className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                 <Eye className="size-3.5" /> Anteprima destinatario
               </Label>
               <div className="flex items-center gap-1.5">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (!clienteCorrenteId) return;
+                    setEsclusi((prev) => {
+                      const n = new Set(prev);
+                      n.add(clienteCorrenteId);
+                      return n;
+                    });
+                    toast.success("Cliente rimosso dalla coda di invio", {
+                      description: "Solo per questa campagna. Puoi ripristinarlo qui sotto.",
+                    });
+                  }}
+                  disabled={!clienteCorrenteId}
+                  className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive gap-1.5"
+                >
+                  <Trash2 className="size-3.5" />
+                  Elimina dall'invio
+                </Button>
                 <Button type="button" variant="outline" size="sm" onClick={() => vai(-1)} disabled={indice === 0 || totale === 0}>
                   <ChevronLeft className="size-4" />
                 </Button>
@@ -496,6 +529,48 @@ export function InvioMassivoDialog({
               </div>
             </div>
 
+            {/* Pannello esclusi */}
+            {esclusi.size > 0 && (
+              <div className="rounded-md border border-amber-500/40 bg-amber-500/5 px-3 py-2 text-xs space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-medium text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                    <Trash2 className="size-3.5" />
+                    {esclusi.size} {esclusi.size === 1 ? "cliente escluso" : "clienti esclusi"} da questa campagna
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setEsclusi(new Set())}
+                    className="text-[11px] underline text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
+                  >
+                    <RotateCcw className="size-3" /> Ripristina tutti
+                  </button>
+                </div>
+                <ul className="space-y-0.5 max-h-28 overflow-y-auto">
+                  {Array.from(esclusi).map((cid) => (
+                    <li key={cid} className="flex items-center justify-between gap-2">
+                      <span className="truncate text-foreground/80">{nomiCache[cid] ?? cid.slice(0, 8)}</span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setEsclusi((prev) => {
+                            const n = new Set(prev);
+                            n.delete(cid);
+                            return n;
+                          })
+                        }
+                        className="text-[11px] text-primary underline hover:no-underline shrink-0"
+                      >
+                        Reinserisci
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-[10px] text-muted-foreground">
+                  L'esclusione vale solo per questa campagna: i clienti restano selezionati nello Scadenziario.
+                </p>
+              </div>
+            )}
+
             {totale === 0 ? (
               <div className="text-sm text-muted-foreground">Nessun destinatario.</div>
             ) : loadingPreview && !clientePreview ? (
@@ -510,6 +585,7 @@ export function InvioMassivoDialog({
                     {clientePreview.ragione_sociale || "—"}
                   </div>
                 </div>
+
 
                 {/* Check coerenza escalation */}
                 {livelloPrecedente !== null && coerenzaCorrente && (
@@ -536,24 +612,10 @@ export function InvioMassivoDialog({
                         </span>
                       </div>
                     )}
-                    <label className="flex items-center gap-2 text-xs cursor-pointer">
-                      <input
-                        type="checkbox"
-                        className="size-3.5"
-                        checked={!esclusi.has(clienteCorrenteId!)}
-                        onChange={(e) => {
-                          setEsclusi((prev) => {
-                            const n = new Set(prev);
-                            if (e.target.checked) n.delete(clienteCorrenteId!);
-                            else n.add(clienteCorrenteId!);
-                            return n;
-                          });
-                        }}
-                      />
-                      <span>Includi questo cliente nell'invio</span>
-                    </label>
                   </div>
                 )}
+                {/* (la rimozione dalla coda avviene tramite "Elimina dall'invio" nell'header) */}
+
 
                 {/* Indirizzo editabile */}
                 <div>
@@ -655,10 +717,11 @@ export function InvioMassivoDialog({
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={submitting}>
             Annulla
           </Button>
-          <Button onClick={handleAvvia} disabled={submitting || !templateId || totale - esclusi.size === 0} className="gap-1.5">
+          <Button onClick={handleAvvia} disabled={submitting || !templateId || totale === 0} className="gap-1.5">
             <Send className="size-4" />
-            {submitting ? "Avvio..." : `Avvia campagna (${totale - esclusi.size})`}
+            {submitting ? "Avvio..." : `Avvia campagna (${totale})`}
           </Button>
+
         </DialogFooter>
       </DialogContent>
     </Dialog>
