@@ -483,11 +483,32 @@ export function InvioMassivoDialog({
 
           {/* Anteprima scorrevole */}
           <div className="space-y-2 pt-2 border-t border-border">
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
               <Label className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                 <Eye className="size-3.5" /> Anteprima destinatario
               </Label>
               <div className="flex items-center gap-1.5">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (!clienteCorrenteId) return;
+                    setEsclusi((prev) => {
+                      const n = new Set(prev);
+                      n.add(clienteCorrenteId);
+                      return n;
+                    });
+                    toast.success("Cliente rimosso dalla coda di invio", {
+                      description: "Solo per questa campagna. Puoi ripristinarlo qui sotto.",
+                    });
+                  }}
+                  disabled={!clienteCorrenteId}
+                  className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive gap-1.5"
+                >
+                  <Trash2 className="size-3.5" />
+                  Elimina dall'invio
+                </Button>
                 <Button type="button" variant="outline" size="sm" onClick={() => vai(-1)} disabled={indice === 0 || totale === 0}>
                   <ChevronLeft className="size-4" />
                 </Button>
@@ -508,6 +529,48 @@ export function InvioMassivoDialog({
               </div>
             </div>
 
+            {/* Pannello esclusi */}
+            {esclusi.size > 0 && (
+              <div className="rounded-md border border-amber-500/40 bg-amber-500/5 px-3 py-2 text-xs space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-medium text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                    <Trash2 className="size-3.5" />
+                    {esclusi.size} {esclusi.size === 1 ? "cliente escluso" : "clienti esclusi"} da questa campagna
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setEsclusi(new Set())}
+                    className="text-[11px] underline text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
+                  >
+                    <RotateCcw className="size-3" /> Ripristina tutti
+                  </button>
+                </div>
+                <ul className="space-y-0.5 max-h-28 overflow-y-auto">
+                  {Array.from(esclusi).map((cid) => (
+                    <li key={cid} className="flex items-center justify-between gap-2">
+                      <span className="truncate text-foreground/80">{nomiCache[cid] ?? cid.slice(0, 8)}</span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setEsclusi((prev) => {
+                            const n = new Set(prev);
+                            n.delete(cid);
+                            return n;
+                          })
+                        }
+                        className="text-[11px] text-primary underline hover:no-underline shrink-0"
+                      >
+                        Reinserisci
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-[10px] text-muted-foreground">
+                  L'esclusione vale solo per questa campagna: i clienti restano selezionati nello Scadenziario.
+                </p>
+              </div>
+            )}
+
             {totale === 0 ? (
               <div className="text-sm text-muted-foreground">Nessun destinatario.</div>
             ) : loadingPreview && !clientePreview ? (
@@ -522,6 +585,7 @@ export function InvioMassivoDialog({
                     {clientePreview.ragione_sociale || "—"}
                   </div>
                 </div>
+
 
                 {/* Check coerenza escalation */}
                 {livelloPrecedente !== null && coerenzaCorrente && (
