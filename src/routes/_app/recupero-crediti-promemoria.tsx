@@ -114,6 +114,7 @@ function PromemoriaScadenzaPage() {
   const [importoMin, setImportoMin] = useState<string>("");
   const [escludiLegale, setEscludiLegale] = useState(true);
   const [escludiBloccati, setEscludiBloccati] = useState(false);
+  const [escludiBos, setEscludiBos] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [selezionati, setSelezionati] = useState<Set<string>>(new Set());
   const [invioOpen, setInvioOpen] = useState(false);
@@ -146,6 +147,7 @@ function PromemoriaScadenzaPage() {
       importoMin,
       escludiLegale,
       escludiBloccati,
+      escludiBos,
     ],
     enabled: mesiArr.length > 0,
     queryFn: async () => {
@@ -158,6 +160,7 @@ function PromemoriaScadenzaPage() {
           _importo_min: importoMin ? Number(importoMin) : null,
           _escludi_legale: escludiLegale,
           _escludi_bloccati: escludiBloccati,
+          _escludi_bos: escludiBos,
         } as never
       );
       if (error) throw error;
@@ -285,6 +288,13 @@ function PromemoriaScadenzaPage() {
                 onCheckedChange={(v) => setEscludiBloccati(v === true)}
               />
               Escludi clienti bloccati
+            </label>
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <Checkbox
+                checked={escludiBos}
+                onCheckedChange={(v) => setEscludiBos(v === true)}
+              />
+              Escludi pagamenti BOS
             </label>
           </div>
         </div>
