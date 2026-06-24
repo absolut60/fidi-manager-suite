@@ -143,6 +143,8 @@ function ScadenziarioPage() {
   // Reset selezione + pagina ai cambi filtro
   useEffect(() => {
     setSelectedIds(new Set());
+    setSelectAllMode(false);
+    setDeselectedIds(new Set());
     setPage(1);
   }, [storeId, fascia, importoMin, statoBlocco, statoLegale, escludiBonifici, escludiLegale, avvisatoFilter, mostraACredito, searchDebounced, sortBy, sortDir]);
 
