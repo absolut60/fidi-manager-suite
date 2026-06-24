@@ -55,6 +55,23 @@ function RichiestaDetail() {
     },
   });
 
+  // Lookup descrizione condizione di pagamento scelta sulla richiesta.
+  const condPagCod = (r as any)?.condizione_pagamento_cod as string | null | undefined;
+  const { data: condPagRow } = useQuery({
+    queryKey: ["codici-pagamento", "single", condPagCod],
+    enabled: !!condPagCod,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("codici_pagamento")
+        .select("cod, descrizione")
+        .eq("cod", condPagCod!)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const { data: approvazioni } = useQuery({
     queryKey: ["approvazioni", richiestaId],
     queryFn: async () => {
