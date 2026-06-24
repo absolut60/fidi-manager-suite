@@ -614,12 +614,8 @@ export function InvioMassivoDialog({
                     )}
                   </div>
                 )}
-                {/* (la rimozione dalla coda usa il pulsante "Elimina dall'invio" in alto) */}
-                {false && (
-                  <span hidden />
+                {/* (la rimozione dalla coda avviene tramite "Elimina dall'invio" nell'header) */}
 
-                  </div>
-                )}
 
                 {/* Indirizzo editabile */}
                 <div>
