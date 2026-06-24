@@ -75,26 +75,35 @@ export function fasciaAnzianita(tempi_scadenza?: string | null): string | null {
 }
 
 // ---------------------------------------------------------------------------
-// ANTICIPI - regola "lo scaduto si riduce dell'anticipo"
+// ANTICIPI vs NOTE DI CREDITO - regola scaduto con clamp selettivo
 // ---------------------------------------------------------------------------
-// Definizione (unico criterio affidabile, verificato sul dataset reale):
-//   una riga scadenza e' un ANTICIPO se numero_documento ILIKE '%ANTICIPO%'.
-//   NON usare key_tipo_effetto: =14 e' R.B. attiva generica (anticipo+R.B.).
+// Definizioni:
+//   ANTICIPO = riga scaduta con numero_documento ILIKE '%ANTICIPO%' (importo
+//              positivo nel dato). Non usare key_tipo_effetto.
+//   NOTA DI CREDITO = riga scaduta con importo_scadenza < 0 NON anticipo.
 //
-// Effetto sul calcolo dello SCADUTO (NON sul dato grezzo in DB):
-//   - le righe NON-anticipo contribuiscono col loro segno reale
-//     (note credito Passivi restano negative);
-//   - le righe ANTICIPO contribuiscono col SEGNO OPPOSTO (sottratte);
-//   - CLAMP per cliente: se il totale risulta < 0 -> 0. Mai sul totale
-//     aggregato (un cliente a credito non compensa un altro a debito).
+// Regola scaduto per cliente (NON modifica il dato grezzo in DB):
+//   scaduto_senza_anticipi = SUM(importo_scadenza) col segno, righe NON-anticipo
+//   totale_anticipi        = SUM(importo_scadenza) sulle righe anticipo
+//   scaduto_finale         = max(scaduto_senza_anticipi - totale_anticipi,
+//                                min(scaduto_senza_anticipi, 0))
 //
-// Fonte di verita' TS: le RPC SQL replicano la STESSA logica.
+// Significato del clamp selettivo:
+//   - se scaduto_senza_anticipi >= 0 (no note credito o gia' compensate):
+//     floor = 0  -> l'anticipo non puo' rendere negativo il totale.
+//   - se scaduto_senza_anticipi < 0 (cliente a credito da note credito):
+//     floor = scaduto_senza_anticipi -> resta visibile il saldo NC,
+//     l'anticipo non lo peggiora oltre.
+//
+// Fonte di verita' TS: queste funzioni. Le RPC SQL replicano la stessa formula.
+
 export function isAnticipo(s: { numero_documento?: string | null }): boolean {
   const nd = s.numero_documento ?? "";
   return /ANTICIPO/i.test(nd);
 }
 
-// Contributo SIGNED di una singola riga al totale scaduto del cliente.
+// Contributo SIGNED di una singola riga al totale per FASCIA (non clampato).
+// Le anticipi contribuiscono col segno opposto, le NC col loro segno reale.
 export function contributoScaduto(s: {
   importo_scadenza?: number | null;
   numero_documento?: string | null;
@@ -103,11 +112,18 @@ export function contributoScaduto(s: {
   return isAnticipo(s) ? -imp : imp;
 }
 
-// Somma scaduto di un cliente con anticipi sottratti + clamp a >= 0.
-// Le righe passate devono essere gia' filtrate come "scaduto" (Aperta + scaduta).
+// Scaduto cliente con clamp selettivo: gli anticipi non rendono negativo il
+// totale, ma le note di credito reali restano visibili.
 export function sommaScadutoCliente(
   rows: Array<{ importo_scadenza?: number | null; numero_documento?: string | null }>,
 ): number {
-  const t = rows.reduce((a, r) => a + contributoScaduto(r), 0);
-  return t < 0 ? 0 : t;
+  let scadutoSenzaAnticipi = 0;
+  let totaleAnticipi = 0;
+  for (const r of rows) {
+    const imp = Number(r.importo_scadenza ?? 0);
+    if (isAnticipo(r)) totaleAnticipi += imp;
+    else scadutoSenzaAnticipi += imp;
+  }
+  return Math.max(scadutoSenzaAnticipi - totaleAnticipi, Math.min(scadutoSenzaAnticipi, 0));
 }
+
