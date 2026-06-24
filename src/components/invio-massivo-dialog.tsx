@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Send, Users, ListChecks, AlertTriangle, Eye, ChevronLeft, ChevronRight, Pencil, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Send, Users, ListChecks, AlertTriangle, Eye, ChevronLeft, ChevronRight, Pencil, AlertCircle, CheckCircle2, Trash2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useConfig } from "@/hooks/use-config";
