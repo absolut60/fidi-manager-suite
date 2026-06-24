@@ -64,8 +64,10 @@ export function InvioMassivoDialog({
   const [overrides, setOverrides] = useState<Record<string, string>>({});
   // Indirizzi risolti scoperti durante la navigazione: cliente_id -> indirizzo default
   const [risolti, setRisolti] = useState<Record<string, string>>({});
-  // Esclusioni manuali (check coerenza escalation)
+  // Esclusioni manuali (rimossi dalla coda di invio di QUESTA campagna)
   const [esclusi, setEsclusi] = useState<Set<string>>(new Set());
+  // Cache nomi per mostrare l'elenco esclusi
+  const [nomiCache, setNomiCache] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!open) {
@@ -76,22 +78,30 @@ export function InvioMassivoDialog({
       setOverrides({});
       setRisolti({});
       setEsclusi(new Set());
+      setNomiCache({});
     } else {
       setModo(clienteIdsSelezionati.length > 0 ? "selezionati" : "filtrati");
     }
   }, [open, clienteIdsSelezionati.length]);
 
-  const clienteIds = useMemo(
+  const clienteIdsBase = useMemo(
     () => (modo === "selezionati" ? clienteIdsSelezionati : clienteIdsFiltrati),
     [modo, clienteIdsSelezionati, clienteIdsFiltrati],
   );
+  // Coda effettiva di invio: esclude i clienti rimossi manualmente.
+  const clienteIds = useMemo(
+    () => clienteIdsBase.filter((cid) => !esclusi.has(cid)),
+    [clienteIdsBase, esclusi],
+  );
   const totale = clienteIds.length;
 
-  // Reset indice quando cambia il gruppo
+  // Reset indice quando cambia il gruppo o il totale diminuisce sotto l'indice
   useEffect(() => {
-    setIndice(0);
     setJumpInput("");
-  }, [modo, totale]);
+  }, [modo]);
+  useEffect(() => {
+    setIndice((i) => (i >= totale ? Math.max(0, totale - 1) : i));
+  }, [totale]);
 
   const { data: templates } = useQuery({
     queryKey: ["template-email-attivi", tipoCampagna],
