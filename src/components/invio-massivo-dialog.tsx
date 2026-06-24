@@ -258,6 +258,9 @@ export function InvioMassivoDialog({
       setRisolti((prev) =>
         prev[clienteCorrenteId] === indirizzoRisolto ? prev : { ...prev, [clienteCorrenteId]: indirizzoRisolto },
       );
+      setNomiCache((prev) =>
+        prev[clienteCorrenteId] ? prev : { ...prev, [clienteCorrenteId]: clientePreview.ragione_sociale || "—" },
+      );
     }
   }, [clientePreview, clienteCorrenteId, indirizzoRisolto]);
 
