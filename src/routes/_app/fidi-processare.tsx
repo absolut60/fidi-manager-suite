@@ -128,31 +128,73 @@ function FidiProcessarePage() {
     onError: (e: any) => toast.error(e?.message ?? "Errore"),
   });
 
-  function generaFile(rows: any[], aggiornaStato: boolean) {
+  /** Riporta righe da "Storico processati" a "Da gestire". */
+  async function riportaDaGestire(ids: string[]) {
+    if (!ids.length) return;
+    const { error } = await supabase
+      .from("richieste_fido")
+      .update({
+        stato_export: "da_esportare",
+        data_processata: null,
+        processata_da: null,
+        data_export: null,
+        esportata_da: null,
+      })
+      .in("id", ids);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    await qc.invalidateQueries({ queryKey: ["fidi-processare"] });
+    toast.success(`${ids.length} richieste riportate a "Da gestire"`);
+  }
+
+  /**
+   * Genera file gestionale per le righe selezionate e marca come processate.
+   * Annullabile dal toast. Se la generazione fallisce, NON tocca lo stato.
+   */
+  async function generaFileEProcessa(rows: any[]) {
     if (!rows.length) return;
-    const exportRows = rows.map((r) => ({
-      codice_cliente: r.clienti?.codice_gestionale ?? r.clienti?.codice_assegnato ?? "",
-      ragione_sociale: r.clienti?.ragione_sociale ?? "",
-      partita_iva: r.clienti?.partita_iva ?? "",
-      tipo_variazione: tipoVariazione(r.tipo as TipoRichiesta),
-      importo_precedente: r.clienti?.fido_aziendale_concesso != null
-        ? Number(r.clienti.fido_aziendale_concesso) - Number(r.importo_approvato ?? r.importo_richiesto)
-        : null,
-      importo_approvato: Number(r.importo_approvato ?? r.importo_richiesto),
-      data_approvazione: formatDate(r.data_chiusura ?? r.updated_at),
-      approvato_da: profiloName(r.approvato_da) !== "—" ? profiloName(r.approvato_da) : profiloName(r.created_by),
-      note: r.note ?? r.motivazione ?? "",
-    }));
-    generaExcelFidi(exportRows);
-    if (aggiornaStato) {
-      setStatoMutation.mutate({
-        ids: rows.map((r) => r.id),
-        stato_export: "esportata",
+    let result;
+    try {
+      // FONTE UNICA: stesso file dell'export "Fidi approvati (tracciato gestionale)".
+      result = generaTracciatoFidiGestionale(rows as any[]);
+    } catch (e: any) {
+      toast.error(`Errore nella generazione del file: ${e?.message ?? e}`);
+      return;
+    }
+    const ids = rows.map((r) => r.id);
+    try {
+      await setStatoMutation.mutateAsync({
+        ids,
+        stato_export: "processata",
         setExport: true,
+        setProcessata: true,
       });
-      toast.success(`File generato (${rows.length} righe). Stato aggiornato a "Esportata".`);
-    } else {
-      toast.success(`File rigenerato (${rows.length} righe).`);
+    } catch {
+      // toast gia' mostrato da onError
+      return;
+    }
+    toast.success(
+      `File generato — ${ids.length} fid${ids.length === 1 ? "o" : "i"} marcat${ids.length === 1 ? "o" : "i"} come processat${ids.length === 1 ? "o" : "i"}`,
+      {
+        duration: 10000,
+        action: {
+          label: "Annulla",
+          onClick: () => { void riportaDaGestire(ids); },
+        },
+      },
+    );
+  }
+
+  /** Rigenera il file SENZA aggiornare lo stato (per righe gia' esportate). */
+  function rigeneraFile(rows: any[]) {
+    if (!rows.length) return;
+    try {
+      const { rows: out } = generaTracciatoFidiGestionale(rows as any[]);
+      toast.success(`File rigenerato (${out.length} righe).`);
+    } catch (e: any) {
+      toast.error(`Errore nella generazione del file: ${e?.message ?? e}`);
     }
   }
 
