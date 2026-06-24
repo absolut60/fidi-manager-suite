@@ -2015,8 +2015,9 @@ export const finalizeScadenziarioImport = inngest.createFunction(
       });
 
       logger.info(
-        `Finalize ${importazioneId}: chiuse=${reconc.totChiuse}, clienti=${reconc.totClienti}`,
+        `Finalize ${importazioneId}: chiuse=${reconc.totChiuse}, clienti=${reconc.totClienti}, orfani=${reconc.orfaniRimossi}`,
       );
+
       return reconc;
     } catch (err) {
       await setImportazioneError(importazioneId, err instanceof Error ? err.message : String(err));
