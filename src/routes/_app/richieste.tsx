@@ -1117,6 +1117,7 @@ const formSchema = z.object({
   durata_mesi: z.coerce.number().int().min(1).max(120).default(12),
   motivazione: z.string().trim().max(2000),
   note: z.string().trim().max(2000).optional().or(z.literal("")),
+  condizione_pagamento_cod: z.string().trim().max(20).optional().or(z.literal("")),
 });
 type FormVals = z.infer<typeof formSchema>;
 
@@ -1132,7 +1133,11 @@ function RichiestaFormDialog({
     durata_mesi: seed?.durata_mesi ?? 12,
     motivazione: seed?.motivazione ?? "",
     note: seed?.note ?? "",
+    condizione_pagamento_cod: seed?.condizione_pagamento_cod ?? "",
   });
+  const [openCondPag, setOpenCondPag] = useState(false);
+  const [searchCondPag, setSearchCondPag] = useState("");
+  const [condPagTouched, setCondPagTouched] = useState<boolean>(!!seed);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
