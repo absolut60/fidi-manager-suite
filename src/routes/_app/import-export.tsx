@@ -41,6 +41,10 @@ import { triggerImport } from "@/lib/import.functions";
 import { MACROCATEGORIE, CATEGORIE } from "@/lib/macrocategorie";
 import { CODICI_PAGAMENTO } from "@/lib/codici-pagamento";
 import { RiepilogoAnomalieCard } from "@/components/riepilogo-anomalie-card";
+import {
+  generaTracciatoFidiGestionale,
+  TRACCIATO_FIDI_SELECT,
+} from "@/lib/export-fidi-tracciato";
 
 export const Route = createFileRoute("/_app/import-export")({
   component: ImportExportPage,
