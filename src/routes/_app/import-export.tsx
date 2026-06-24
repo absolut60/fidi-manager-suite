@@ -3244,7 +3244,7 @@ function ExportCard() {
         return String(a.Codice).localeCompare(String(b.Codice), "it", { numeric: true });
       });
 
-      const fname = `fidi_approvati_gestionale_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      const fname = `fidi_approvati_gestionale_${new Date().toISOString().slice(0, 10)}.xls`;
       const ws = XLSX.utils.json_to_sheet(rows, {
         header: [
           "Codice_ditta",
@@ -3260,8 +3260,17 @@ function ExportCard() {
         ],
       });
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Fidi");
-      XLSX.writeFile(wb, fname);
+      XLSX.utils.book_append_sheet(wb, ws, "Foglio1");
+      const buf = XLSX.write(wb, { type: "array", bookType: "biff8" }) as ArrayBuffer;
+      const blob = new Blob([buf], { type: "application/vnd.ms-excel" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fname;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
       await logEsportazione(fname, rows.length);
       toast.success(`Esportati ${rows.length} fidi approvati`);
     } catch (e) {
