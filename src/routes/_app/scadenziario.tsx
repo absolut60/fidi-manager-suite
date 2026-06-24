@@ -633,8 +633,8 @@ function ScadenziarioPage() {
       <InvioMassivoDialog
         open={invioMassivoOpen}
         onOpenChange={setInvioMassivoOpen}
-        clienteIdsSelezionati={pageRows.filter((r) => selectedIds.has(r.cliente_id)).map((r) => r.cliente_id)}
-        clienteIdsFiltrati={pageRows.map((r) => r.cliente_id)}
+        clienteIdsSelezionati={Array.from(selectedIds)}
+        clienteIdsFiltrati={allFilteredIds ?? Array.from(selectedIds)}
       />
     </div>
   );
