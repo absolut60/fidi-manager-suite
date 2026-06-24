@@ -612,22 +612,12 @@ export function InvioMassivoDialog({
                         </span>
                       </div>
                     )}
-                    <label className="flex items-center gap-2 text-xs cursor-pointer">
-                      <input
-                        type="checkbox"
-                        className="size-3.5"
-                        checked={!esclusi.has(clienteCorrenteId!)}
-                        onChange={(e) => {
-                          setEsclusi((prev) => {
-                            const n = new Set(prev);
-                            if (e.target.checked) n.delete(clienteCorrenteId!);
-                            else n.add(clienteCorrenteId!);
-                            return n;
-                          });
-                        }}
-                      />
-                      <span>Includi questo cliente nell'invio</span>
-                    </label>
+                  </div>
+                )}
+                {/* (la rimozione dalla coda usa il pulsante "Elimina dall'invio" in alto) */}
+                {false && (
+                  <span hidden />
+
                   </div>
                 )}
 
