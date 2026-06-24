@@ -693,7 +693,9 @@ type RischioData = {
   fido_gestionale: number | null; fido_residuo: number | null; totale_rischio: number | null;
   doc_da_fatturare: number | null; doc_da_evadere: number | null; effetti_a_rischio: number | null;
   num_insoluti: number | null; dilazione_concordata: number | null; dilazione_effettiva: number | null;
+  condizione_pagamento_cod?: string | null; condizione_pagamento_desc_db?: string | null;
 } | null | undefined;
+
 
 function ExpandedRischioPanel({ loading, data, onApri }: { loading: boolean; data: RischioData; onApri: (e: React.MouseEvent) => void }) {
   if (loading) {
