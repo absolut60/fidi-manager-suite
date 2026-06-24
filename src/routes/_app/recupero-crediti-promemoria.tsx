@@ -460,11 +460,14 @@ function ScadenzeDettaglio({
   const { data, isLoading } = useQuery({
     queryKey: ["promemoria-dettaglio", clienteId, mesi, escludiLegale],
     queryFn: async () => {
+      // Regola "a scadere" unificata (allineata a scadenze.ts e get_promemoria_clienti_aggregato):
+      // data_scadenza >= oggi AND data_pagamento_effettiva IS NULL, a prescindere da stato_contabile.
+      // Le R.B. Chiuse alla presentazione ma non incassate restano "a scadere" finché DPE è NULL.
       let q = supabase
         .from("scadenze")
         .select("id, numero_documento, data_documento, data_scadenza, importo_scadenza, in_legale, tempi_scadenza")
         .eq("cliente_id", clienteId)
-        .eq("stato_contabile", "Aperta")
+        .is("data_pagamento_effettiva", null)
         .gte("data_scadenza", today.toISOString().slice(0, 10))
         .order("data_scadenza", { ascending: true });
       if (escludiLegale) q = q.eq("in_legale", false);
