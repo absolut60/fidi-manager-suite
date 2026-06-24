@@ -639,6 +639,7 @@ function StoricoTab({
                 <TableHead>Data processata</TableHead>
                 <TableHead>Esportata da</TableHead>
                 <TableHead>Processata da</TableHead>
+                <TableHead className="text-right">Azioni</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -658,6 +659,16 @@ function StoricoTab({
                   <TableCell className="text-sm text-muted-foreground">{formatDate(r.data_processata)}</TableCell>
                   <TableCell className="text-xs">{profiloName(r.esportata_da)}</TableCell>
                   <TableCell className="text-xs">{profiloName(r.processata_da)}</TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onRiportaDaGestire([r.id])}
+                      title='Riporta a "Da gestire"'
+                    >
+                      <Undo2 className="size-4" /> Annulla
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
