@@ -717,10 +717,11 @@ export function InvioMassivoDialog({
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={submitting}>
             Annulla
           </Button>
-          <Button onClick={handleAvvia} disabled={submitting || !templateId || totale - esclusi.size === 0} className="gap-1.5">
+          <Button onClick={handleAvvia} disabled={submitting || !templateId || totale === 0} className="gap-1.5">
             <Send className="size-4" />
-            {submitting ? "Avvio..." : `Avvia campagna (${totale - esclusi.size})`}
+            {submitting ? "Avvio..." : `Avvia campagna (${totale})`}
           </Button>
+
         </DialogFooter>
       </DialogContent>
     </Dialog>
