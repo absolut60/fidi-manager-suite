@@ -2919,28 +2919,52 @@ export type Database = {
           fatturato_anno_prec: number
         }[]
       }
-      get_promemoria_clienti_aggregato: {
-        Args: {
-          _escludi_bloccati?: boolean
-          _escludi_legale?: boolean
-          _importo_min?: number
-          _mesi: string[]
-          _search?: string
-          _store_id?: string
-        }
-        Returns: {
-          bloccato: boolean
-          cliente_id: string
-          email: string
-          n_scadenze: number
-          pec: string
-          prima_scadenza: string
-          ragione_sociale: string
-          store_id: string
-          store_nome: string
-          totale_a_scadere: number
-        }[]
-      }
+      get_promemoria_clienti_aggregato:
+        | {
+            Args: {
+              _escludi_bloccati?: boolean
+              _escludi_legale?: boolean
+              _importo_min?: number
+              _mesi: string[]
+              _search?: string
+              _store_id?: string
+            }
+            Returns: {
+              bloccato: boolean
+              cliente_id: string
+              email: string
+              n_scadenze: number
+              pec: string
+              prima_scadenza: string
+              ragione_sociale: string
+              store_id: string
+              store_nome: string
+              totale_a_scadere: number
+            }[]
+          }
+        | {
+            Args: {
+              _escludi_bloccati?: boolean
+              _escludi_bos?: boolean
+              _escludi_legale?: boolean
+              _importo_min?: number
+              _mesi: string[]
+              _search?: string
+              _store_id?: string
+            }
+            Returns: {
+              bloccato: boolean
+              cliente_id: string
+              email: string
+              n_scadenze: number
+              pec: string
+              prima_scadenza: string
+              ragione_sociale: string
+              store_id: string
+              store_nome: string
+              totale_a_scadere: number
+            }[]
+          }
       get_recupero_clienti_aggregato: {
         Args: {
           _data_a?: string
