@@ -1814,10 +1814,16 @@ export const processScadenziarioChunk = inngest.createFunction(
       const cids = Array.from(new Set(matched));
       const existingKeys = new Set<string>();
       if (cids.length) {
-        const { data: edata } = await supabaseAdmin
-          .from("scadenze" as never)
-          .select("cliente_id, key_documento, data_scadenza, key_tipo_effetto, importo_scadenza")
-          .in("cliente_id", cids);
+        const tPF = Date.now();
+        logger.info(`[chunk ${chunkIndex}] C.start prefetch-scadenze cids=${cids.length}`);
+        const { data: edata } = await withTimeout(
+          supabaseAdmin
+            .from("scadenze" as never)
+            .select("cliente_id, key_documento, data_scadenza, key_tipo_effetto, importo_scadenza")
+            .in("cliente_id", cids),
+          60_000,
+          `chunk ${chunkIndex} prefetch-scadenze cids=${cids.length}`,
+        );
         (
           (edata ?? []) as Array<{
             cliente_id: string;
@@ -1831,22 +1837,30 @@ export const processScadenziarioChunk = inngest.createFunction(
             `${s.cliente_id}|${s.key_documento ?? "NULL"}|${s.data_scadenza ?? "NULL"}|${s.key_tipo_effetto != null ? String(s.key_tipo_effetto) : "NULL"}|${s.importo_scadenza != null ? String(s.importo_scadenza) : "NULL"}`,
           );
         });
+        logger.info(`[chunk ${chunkIndex}] C.end prefetch-scadenze in ${Date.now() - tPF}ms got=${(edata ?? []).length}`);
       }
 
       let c = 0;
       let u = 0;
       if (validRows.length) {
-        const { error: upErr } = await (
-          supabaseAdmin.from("scadenze" as never) as never as {
-            upsert: (
-              rows: unknown,
-              opts: { onConflict: string; ignoreDuplicates: boolean },
-            ) => Promise<{ error: { message: string } | null }>;
-          }
-        ).upsert(validRows, {
-          onConflict: "cliente_id,key_documento,data_scadenza,key_tipo_effetto,importo_scadenza",
-          ignoreDuplicates: false,
-        });
+        const tUp = Date.now();
+        logger.info(`[chunk ${chunkIndex}] C.start upsert-scadenze rows=${validRows.length}`);
+        const { error: upErr } = await withTimeout(
+          (
+            supabaseAdmin.from("scadenze" as never) as never as {
+              upsert: (
+                rows: unknown,
+                opts: { onConflict: string; ignoreDuplicates: boolean },
+              ) => Promise<{ error: { message: string } | null }>;
+            }
+          ).upsert(validRows, {
+            onConflict: "cliente_id,key_documento,data_scadenza,key_tipo_effetto,importo_scadenza",
+            ignoreDuplicates: false,
+          }),
+          120_000,
+          `chunk ${chunkIndex} upsert-scadenze rows=${validRows.length}`,
+        );
+        logger.info(`[chunk ${chunkIndex}] C.end upsert-scadenze in ${Date.now() - tUp}ms err=${upErr ? upErr.message : "ok"}`);
         if (upErr) {
           batchErrs.push({
             riga: chunkIndex,
@@ -1859,6 +1873,7 @@ export const processScadenziarioChunk = inngest.createFunction(
           }
         }
       }
+
 
 
       // Persisti errori/codici mancanti + report_saltati ricco (no cap)
