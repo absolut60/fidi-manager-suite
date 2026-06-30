@@ -3446,30 +3446,15 @@ function HistoryCard({ kind }: { kind: "importazioni" | "esportazioni" }) {
                         ? `${r.righe_create ?? 0} nuovi · ${r.righe_aggiornate ?? 0} agg. / ${r.righe_totali ?? 0}`
                         : `${r.righe_esportate ?? 0} righe`}
                     </p>
-                    {bloccato ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="h-6 mt-1 text-[11px] px-2"
-                        onClick={async () => {
-                          await supabase
-                            .from("importazioni")
-                            .update({
-                              stato: "completata_con_errori",
-                              completata_at: new Date().toISOString(),
-                              log_errori:
-                                "Import interrotto: nessun aggiornamento da oltre 60 minuti.",
-                            })
-                            .eq("id", r.id);
+                    {inCorso ? (
+                      <AnnullaImportButton
+                        row={r}
+                        onDone={() =>
                           queryClient.invalidateQueries({
                             queryKey: ["storico-import-export", "importazioni"],
-                          });
-                          toast.info("Import marcato come fallito");
-                        }}
-                      >
-                        Segna come fallito
-                      </Button>
+                          })
+                        }
+                      />
                     ) : null}
                     {kind === "importazioni" ? (
                       <Button
