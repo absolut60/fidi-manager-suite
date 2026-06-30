@@ -1967,26 +1967,34 @@ export const processScadenziarioChunk = inngest.createFunction(
 
     // STEP D: incremento atomico contatori (errori/codici già persistiti)
     const progress = await step.run("increment-counters", async () => {
-      const { data: rpc, error: rpcErr } = await (
-        supabaseAdmin.rpc as unknown as (
-          fn: string,
-          args: Record<string, unknown>,
-        ) => Promise<{
-          data: Array<{ chunks_completati: number; chunks_totali: number }> | null;
-          error: { message: string } | null;
-        }>
-      )("increment_importazione_counters", {
-        _id: importazioneId,
-        _elaborate: result.elaborate,
-        _create: result.created,
-        _update: result.updated,
-        _error: result.errori,
-        _skipped: result.skipped,
-      });
+      const tD = Date.now();
+      logger.info(`[chunk ${chunkIndex}] D.start increment-counters`);
+      const { data: rpc, error: rpcErr } = await withTimeout(
+        (
+          supabaseAdmin.rpc as unknown as (
+            fn: string,
+            args: Record<string, unknown>,
+          ) => Promise<{
+            data: Array<{ chunks_completati: number; chunks_totali: number }> | null;
+            error: { message: string } | null;
+          }>
+        )("increment_importazione_counters", {
+          _id: importazioneId,
+          _elaborate: result.elaborate,
+          _create: result.created,
+          _update: result.updated,
+          _error: result.errori,
+          _skipped: result.skipped,
+        }),
+        20_000,
+        `chunk ${chunkIndex} rpc increment_importazione_counters`,
+      );
       if (rpcErr) throw new Error(`increment_importazione_counters: ${rpcErr.message}`);
       const row = rpc?.[0] ?? { chunks_completati: 0, chunks_totali: totalChunks };
+      logger.info(`[chunk ${chunkIndex}] D.end increment-counters in ${Date.now() - tD}ms progress=${row.chunks_completati}/${row.chunks_totali}`);
       return row;
     });
+
 
     // STEP E: se è l'ultimo chunk, emetti evento finalize
     if (progress.chunks_completati >= progress.chunks_totali) {
