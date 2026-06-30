@@ -61,6 +61,25 @@ async function setImportazioneError(importazioneId: string, message: string) {
     .eq("id", importazioneId);
 }
 
+/**
+ * Avvolge una Promise con un timeout: se non si risolve entro `ms`, rigetta
+ * con un errore identificabile (label) che fa fallire lo step Inngest e
+ * abilita il retry, invece di lasciarlo "Running" per sempre.
+ * NB: non cancella la richiesta HTTP sottostante (supabase-js non espone
+ * AbortSignal sulle query); serve a sbloccare lo step Inngest.
+ */
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      reject(new Error(`TIMEOUT after ${ms}ms: ${label}`));
+    }, ms);
+  });
+  return Promise.race([p, timeout]).finally(() => {
+    if (timer) clearTimeout(timer);
+  }) as Promise<T>;
+}
+
 async function downloadJsonFromStorage<T>(
   filePath: string,
   bucket: "import-files" | "import-staging" = "import-files",
