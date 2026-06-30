@@ -61,6 +61,25 @@ async function setImportazioneError(importazioneId: string, message: string) {
     .eq("id", importazioneId);
 }
 
+/**
+ * Avvolge una Promise con un timeout: se non si risolve entro `ms`, rigetta
+ * con un errore identificabile (label) che fa fallire lo step Inngest e
+ * abilita il retry, invece di lasciarlo "Running" per sempre.
+ * NB: non cancella la richiesta HTTP sottostante (supabase-js non espone
+ * AbortSignal sulle query); serve a sbloccare lo step Inngest.
+ */
+function withTimeout<T>(p: PromiseLike<T>, ms: number, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      reject(new Error(`TIMEOUT after ${ms}ms: ${label}`));
+    }, ms);
+  });
+  return Promise.race([Promise.resolve(p), timeout]).finally(() => {
+    if (timer) clearTimeout(timer);
+  }) as Promise<T>;
+}
+
 async function downloadJsonFromStorage<T>(
   filePath: string,
   bucket: "import-files" | "import-staging" = "import-files",
@@ -1643,9 +1662,16 @@ export const processScadenziarioChunk = inngest.createFunction(
 
     // STEP A: download + parse SOLO il range, oppure carica chunk JSON pre-staged
     const parsed = await step.run("download-parse-range", async () => {
+      const t0 = Date.now();
+      logger.info(`[chunk ${chunkIndex}] A.start download-parse-range`);
       if (chunkPath) {
-        const staged = await downloadJsonFromStorage<StagedScadenziarioChunk>(chunkPath);
+        const staged = await withTimeout(
+          downloadJsonFromStorage<StagedScadenziarioChunk>(chunkPath),
+          60_000,
+          `chunk ${chunkIndex} download-json ${chunkPath}`,
+        );
         const codici = Array.from(new Set(staged.rows.map((r) => r.codice_gestionale)));
+        logger.info(`[chunk ${chunkIndex}] A.end download-json in ${Date.now() - t0}ms rows=${staged.rows.length}`);
         return {
           rows: staged.rows,
           missing: staged.missing,
@@ -1653,7 +1679,11 @@ export const processScadenziarioChunk = inngest.createFunction(
           parseRowErrors: staged.rowErrors ?? [],
         };
       }
-      const wb = await downloadWorkbookLean(filePath, "SCADENZIARIO");
+      const wb = await withTimeout(
+        downloadWorkbookLean(filePath, "SCADENZIARIO"),
+        120_000,
+        `chunk ${chunkIndex} download-workbook ${filePath}`,
+      );
       const sheet = findSheetByName(wb, "SCADENZIARIO");
       if (!sheet) throw new Error("Foglio SCADENZIARIO non trovato");
       const { rows, missing, rowErrors } = parseScadenziarioRangeLean(
@@ -1663,6 +1693,7 @@ export const processScadenziarioChunk = inngest.createFunction(
         endRow0,
       );
       const codici = Array.from(new Set(rows.map((r) => r.codice_gestionale)));
+      logger.info(`[chunk ${chunkIndex}] A.end download-parse-range in ${Date.now() - t0}ms rows=${rows.length}`);
       return { rows, missing, codici, parseRowErrors: rowErrors };
     });
 
@@ -1679,14 +1710,21 @@ export const processScadenziarioChunk = inngest.createFunction(
       for (let i = 0; i < codici.length; i += BATCH) {
         const slice = codici.slice(i, i + BATCH);
         if (!slice.length) continue;
+        const tB = Date.now();
+        logger.info(`[chunk ${chunkIndex}] B.start lookup-clienti batch=${i} size=${slice.length}`);
         try {
-          const { data: cdata } = await supabaseAdmin
-            .from("clienti")
-            .select("id, codice_gestionale")
-            .in("codice_gestionale", slice as string[]);
+          const { data: cdata } = await withTimeout(
+            supabaseAdmin
+              .from("clienti")
+              .select("id, codice_gestionale")
+              .in("codice_gestionale", slice as string[]),
+            30_000,
+            `chunk ${chunkIndex} lookup-clienti batch=${i}`,
+          );
           (cdata ?? []).forEach((c) => {
             if (c.codice_gestionale) clientMap[c.codice_gestionale] = c.id;
           });
+          logger.info(`[chunk ${chunkIndex}] B.end lookup-clienti batch=${i} in ${Date.now() - tB}ms`);
         } catch (err) {
           logger.warn(
             `Lookup clienti fallito (chunk ${chunkIndex}, batch ${i}): ${err instanceof Error ? err.message : String(err)}`,
@@ -1694,6 +1732,7 @@ export const processScadenziarioChunk = inngest.createFunction(
         }
       }
     }
+
 
     // STEP C: prepara, deduplica, upsert + persisti errori/codici inline
     const result = await step.run("upsert-batch", async () => {
@@ -1775,10 +1814,16 @@ export const processScadenziarioChunk = inngest.createFunction(
       const cids = Array.from(new Set(matched));
       const existingKeys = new Set<string>();
       if (cids.length) {
-        const { data: edata } = await supabaseAdmin
-          .from("scadenze" as never)
-          .select("cliente_id, key_documento, data_scadenza, key_tipo_effetto, importo_scadenza")
-          .in("cliente_id", cids);
+        const tPF = Date.now();
+        logger.info(`[chunk ${chunkIndex}] C.start prefetch-scadenze cids=${cids.length}`);
+        const { data: edata } = await withTimeout(
+          supabaseAdmin
+            .from("scadenze" as never)
+            .select("cliente_id, key_documento, data_scadenza, key_tipo_effetto, importo_scadenza")
+            .in("cliente_id", cids),
+          60_000,
+          `chunk ${chunkIndex} prefetch-scadenze cids=${cids.length}`,
+        );
         (
           (edata ?? []) as Array<{
             cliente_id: string;
@@ -1792,22 +1837,30 @@ export const processScadenziarioChunk = inngest.createFunction(
             `${s.cliente_id}|${s.key_documento ?? "NULL"}|${s.data_scadenza ?? "NULL"}|${s.key_tipo_effetto != null ? String(s.key_tipo_effetto) : "NULL"}|${s.importo_scadenza != null ? String(s.importo_scadenza) : "NULL"}`,
           );
         });
+        logger.info(`[chunk ${chunkIndex}] C.end prefetch-scadenze in ${Date.now() - tPF}ms got=${(edata ?? []).length}`);
       }
 
       let c = 0;
       let u = 0;
       if (validRows.length) {
-        const { error: upErr } = await (
-          supabaseAdmin.from("scadenze" as never) as never as {
-            upsert: (
-              rows: unknown,
-              opts: { onConflict: string; ignoreDuplicates: boolean },
-            ) => Promise<{ error: { message: string } | null }>;
-          }
-        ).upsert(validRows, {
-          onConflict: "cliente_id,key_documento,data_scadenza,key_tipo_effetto,importo_scadenza",
-          ignoreDuplicates: false,
-        });
+        const tUp = Date.now();
+        logger.info(`[chunk ${chunkIndex}] C.start upsert-scadenze rows=${validRows.length}`);
+        const { error: upErr } = await withTimeout(
+          (
+            supabaseAdmin.from("scadenze" as never) as never as {
+              upsert: (
+                rows: unknown,
+                opts: { onConflict: string; ignoreDuplicates: boolean },
+              ) => Promise<{ error: { message: string } | null }>;
+            }
+          ).upsert(validRows, {
+            onConflict: "cliente_id,key_documento,data_scadenza,key_tipo_effetto,importo_scadenza",
+            ignoreDuplicates: false,
+          }),
+          120_000,
+          `chunk ${chunkIndex} upsert-scadenze rows=${validRows.length}`,
+        );
+        logger.info(`[chunk ${chunkIndex}] C.end upsert-scadenze in ${Date.now() - tUp}ms err=${upErr ? upErr.message : "ok"}`);
         if (upErr) {
           batchErrs.push({
             riga: chunkIndex,
@@ -1822,15 +1875,23 @@ export const processScadenziarioChunk = inngest.createFunction(
       }
 
 
+
       // Persisti errori/codici mancanti + report_saltati ricco (no cap)
       const totalErrs = rowErrs.length + batchErrs.length;
       const skippedCodesArr = Object.keys(skippedDetails);
       if (rowErrs.length || batchErrs.length || skippedCodesArr.length) {
-        const { data: cur } = await supabaseAdmin
-          .from("importazioni")
-          .select("log_errori, codici_mancanti, report_saltati")
-          .eq("id", importazioneId)
-          .single();
+        const tSel = Date.now();
+        logger.info(`[chunk ${chunkIndex}] C.start select-importazioni`);
+        const { data: cur } = await withTimeout(
+          supabaseAdmin
+            .from("importazioni")
+            .select("log_errori, codici_mancanti, report_saltati")
+            .eq("id", importazioneId)
+            .single(),
+          30_000,
+          `chunk ${chunkIndex} select-importazioni`,
+        );
+        logger.info(`[chunk ${chunkIndex}] C.end select-importazioni in ${Date.now() - tSel}ms`);
         const updates: Record<string, unknown> = {};
         if (rowErrs.length || batchErrs.length) {
           const existing =
@@ -1880,11 +1941,19 @@ export const processScadenziarioChunk = inngest.createFunction(
             errori_riga: [...existingErr, ...rowErrs, ...batchErrs].slice(0, 2000),
           };
         }
-        await supabaseAdmin
-          .from("importazioni")
-          .update(updates as never)
-          .eq("id", importazioneId);
+        const tUpd = Date.now();
+        logger.info(`[chunk ${chunkIndex}] C.start update-importazioni`);
+        await withTimeout(
+          supabaseAdmin
+            .from("importazioni")
+            .update(updates as never)
+            .eq("id", importazioneId),
+          30_000,
+          `chunk ${chunkIndex} update-importazioni`,
+        );
+        logger.info(`[chunk ${chunkIndex}] C.end update-importazioni in ${Date.now() - tUpd}ms`);
       }
+
 
       // SOLO contatori
       return {
@@ -1898,26 +1967,34 @@ export const processScadenziarioChunk = inngest.createFunction(
 
     // STEP D: incremento atomico contatori (errori/codici già persistiti)
     const progress = await step.run("increment-counters", async () => {
-      const { data: rpc, error: rpcErr } = await (
-        supabaseAdmin.rpc as unknown as (
-          fn: string,
-          args: Record<string, unknown>,
-        ) => Promise<{
-          data: Array<{ chunks_completati: number; chunks_totali: number }> | null;
-          error: { message: string } | null;
-        }>
-      )("increment_importazione_counters", {
-        _id: importazioneId,
-        _elaborate: result.elaborate,
-        _create: result.created,
-        _update: result.updated,
-        _error: result.errori,
-        _skipped: result.skipped,
-      });
+      const tD = Date.now();
+      logger.info(`[chunk ${chunkIndex}] D.start increment-counters`);
+      const { data: rpc, error: rpcErr } = await withTimeout(
+        (
+          supabaseAdmin.rpc as unknown as (
+            fn: string,
+            args: Record<string, unknown>,
+          ) => Promise<{
+            data: Array<{ chunks_completati: number; chunks_totali: number }> | null;
+            error: { message: string } | null;
+          }>
+        )("increment_importazione_counters", {
+          _id: importazioneId,
+          _elaborate: result.elaborate,
+          _create: result.created,
+          _update: result.updated,
+          _error: result.errori,
+          _skipped: result.skipped,
+        }),
+        20_000,
+        `chunk ${chunkIndex} rpc increment_importazione_counters`,
+      );
       if (rpcErr) throw new Error(`increment_importazione_counters: ${rpcErr.message}`);
       const row = rpc?.[0] ?? { chunks_completati: 0, chunks_totali: totalChunks };
+      logger.info(`[chunk ${chunkIndex}] D.end increment-counters in ${Date.now() - tD}ms progress=${row.chunks_completati}/${row.chunks_totali}`);
       return row;
     });
+
 
     // STEP E: se è l'ultimo chunk, emetti evento finalize
     if (progress.chunks_completati >= progress.chunks_totali) {
