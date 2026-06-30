@@ -1880,11 +1880,18 @@ export const processScadenziarioChunk = inngest.createFunction(
       const totalErrs = rowErrs.length + batchErrs.length;
       const skippedCodesArr = Object.keys(skippedDetails);
       if (rowErrs.length || batchErrs.length || skippedCodesArr.length) {
-        const { data: cur } = await supabaseAdmin
-          .from("importazioni")
-          .select("log_errori, codici_mancanti, report_saltati")
-          .eq("id", importazioneId)
-          .single();
+        const tSel = Date.now();
+        logger.info(`[chunk ${chunkIndex}] C.start select-importazioni`);
+        const { data: cur } = await withTimeout(
+          supabaseAdmin
+            .from("importazioni")
+            .select("log_errori, codici_mancanti, report_saltati")
+            .eq("id", importazioneId)
+            .single(),
+          30_000,
+          `chunk ${chunkIndex} select-importazioni`,
+        );
+        logger.info(`[chunk ${chunkIndex}] C.end select-importazioni in ${Date.now() - tSel}ms`);
         const updates: Record<string, unknown> = {};
         if (rowErrs.length || batchErrs.length) {
           const existing =
@@ -1934,11 +1941,19 @@ export const processScadenziarioChunk = inngest.createFunction(
             errori_riga: [...existingErr, ...rowErrs, ...batchErrs].slice(0, 2000),
           };
         }
-        await supabaseAdmin
-          .from("importazioni")
-          .update(updates as never)
-          .eq("id", importazioneId);
+        const tUpd = Date.now();
+        logger.info(`[chunk ${chunkIndex}] C.start update-importazioni`);
+        await withTimeout(
+          supabaseAdmin
+            .from("importazioni")
+            .update(updates as never)
+            .eq("id", importazioneId),
+          30_000,
+          `chunk ${chunkIndex} update-importazioni`,
+        );
+        logger.info(`[chunk ${chunkIndex}] C.end update-importazioni in ${Date.now() - tUpd}ms`);
       }
+
 
       // SOLO contatori
       return {
