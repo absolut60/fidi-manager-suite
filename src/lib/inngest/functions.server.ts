@@ -1662,9 +1662,16 @@ export const processScadenziarioChunk = inngest.createFunction(
 
     // STEP A: download + parse SOLO il range, oppure carica chunk JSON pre-staged
     const parsed = await step.run("download-parse-range", async () => {
+      const t0 = Date.now();
+      logger.info(`[chunk ${chunkIndex}] A.start download-parse-range`);
       if (chunkPath) {
-        const staged = await downloadJsonFromStorage<StagedScadenziarioChunk>(chunkPath);
+        const staged = await withTimeout(
+          downloadJsonFromStorage<StagedScadenziarioChunk>(chunkPath),
+          60_000,
+          `chunk ${chunkIndex} download-json ${chunkPath}`,
+        );
         const codici = Array.from(new Set(staged.rows.map((r) => r.codice_gestionale)));
+        logger.info(`[chunk ${chunkIndex}] A.end download-json in ${Date.now() - t0}ms rows=${staged.rows.length}`);
         return {
           rows: staged.rows,
           missing: staged.missing,
@@ -1672,7 +1679,11 @@ export const processScadenziarioChunk = inngest.createFunction(
           parseRowErrors: staged.rowErrors ?? [],
         };
       }
-      const wb = await downloadWorkbookLean(filePath, "SCADENZIARIO");
+      const wb = await withTimeout(
+        downloadWorkbookLean(filePath, "SCADENZIARIO"),
+        120_000,
+        `chunk ${chunkIndex} download-workbook ${filePath}`,
+      );
       const sheet = findSheetByName(wb, "SCADENZIARIO");
       if (!sheet) throw new Error("Foglio SCADENZIARIO non trovato");
       const { rows, missing, rowErrors } = parseScadenziarioRangeLean(
@@ -1682,6 +1693,7 @@ export const processScadenziarioChunk = inngest.createFunction(
         endRow0,
       );
       const codici = Array.from(new Set(rows.map((r) => r.codice_gestionale)));
+      logger.info(`[chunk ${chunkIndex}] A.end download-parse-range in ${Date.now() - t0}ms rows=${rows.length}`);
       return { rows, missing, codici, parseRowErrors: rowErrors };
     });
 
@@ -1698,14 +1710,21 @@ export const processScadenziarioChunk = inngest.createFunction(
       for (let i = 0; i < codici.length; i += BATCH) {
         const slice = codici.slice(i, i + BATCH);
         if (!slice.length) continue;
+        const tB = Date.now();
+        logger.info(`[chunk ${chunkIndex}] B.start lookup-clienti batch=${i} size=${slice.length}`);
         try {
-          const { data: cdata } = await supabaseAdmin
-            .from("clienti")
-            .select("id, codice_gestionale")
-            .in("codice_gestionale", slice as string[]);
+          const { data: cdata } = await withTimeout(
+            supabaseAdmin
+              .from("clienti")
+              .select("id, codice_gestionale")
+              .in("codice_gestionale", slice as string[]),
+            30_000,
+            `chunk ${chunkIndex} lookup-clienti batch=${i}`,
+          );
           (cdata ?? []).forEach((c) => {
             if (c.codice_gestionale) clientMap[c.codice_gestionale] = c.id;
           });
+          logger.info(`[chunk ${chunkIndex}] B.end lookup-clienti batch=${i} in ${Date.now() - tB}ms`);
         } catch (err) {
           logger.warn(
             `Lookup clienti fallito (chunk ${chunkIndex}, batch ${i}): ${err instanceof Error ? err.message : String(err)}`,
@@ -1713,6 +1732,7 @@ export const processScadenziarioChunk = inngest.createFunction(
         }
       }
     }
+
 
     // STEP C: prepara, deduplica, upsert + persisti errori/codici inline
     const result = await step.run("upsert-batch", async () => {
