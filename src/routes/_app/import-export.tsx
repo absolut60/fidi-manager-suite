@@ -45,6 +45,16 @@ import {
   generaTracciatoFidiGestionale,
   TRACCIATO_FIDI_SELECT,
 } from "@/lib/export-fidi-tracciato";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/_app/import-export")({
   component: ImportExportPage,
