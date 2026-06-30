@@ -45,6 +45,16 @@ import {
   generaTracciatoFidiGestionale,
   TRACCIATO_FIDI_SELECT,
 } from "@/lib/export-fidi-tracciato";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/_app/import-export")({
   component: ImportExportPage,
@@ -3333,6 +3343,125 @@ function ExportCard() {
  * HISTORY
  * ============================================================================ */
 
+function AnnullaImportButton({
+  row,
+  onDone,
+}: {
+  row: {
+    id: string;
+    nome_file?: string | null;
+    fonte?: string | null;
+    created_at: string;
+    righe_totali?: number | null;
+    righe_elaborate?: number | null;
+    righe_create?: number | null;
+    righe_aggiornate?: number | null;
+  };
+  onDone: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const inizio = new Date(row.created_at);
+  const minutiFa = Math.round((Date.now() - inizio.getTime()) / 60000);
+  return (
+    <>
+      <Button
+        type="button"
+        variant="destructive"
+        size="sm"
+        className="h-6 mt-1 text-[11px] px-2"
+        onClick={() => setOpen(true)}
+      >
+        Annulla importazione
+      </Button>
+      <AlertDialog open={open} onOpenChange={setOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Annullare questa importazione?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <div>
+                  Verrà marcata come <strong>fallita</strong>. I dati già scritti nel database
+                  (righe importate) <strong>NON verranno toccati</strong>.
+                </div>
+                <div className="rounded border bg-muted/40 p-2 font-mono text-xs space-y-0.5">
+                  <div>ID: {row.id}</div>
+                  <div>File: {row.nome_file ?? "—"}</div>
+                  <div>Fonte: {row.fonte ?? "—"}</div>
+                  <div>Inizio: {inizio.toLocaleString("it-IT")} ({minutiFa} min fa)</div>
+                  <div>
+                    Elaborate: {row.righe_elaborate ?? 0} / {row.righe_totali ?? 0} (
+                    {row.righe_create ?? 0} create · {row.righe_aggiornate ?? 0} aggiornate)
+                  </div>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Verranno rimossi anche gli eventuali file di staging temporanei collegati.
+                  Ricorda di annullare manualmente la run su <strong>Inngest</strong> se è ancora
+                  &quot;Running&quot;.
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={busy}>Indietro</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={busy}
+              onClick={async (e) => {
+                e.preventDefault();
+                setBusy(true);
+                try {
+                  // 1) Marca l'import come fallito
+                  const { error } = await supabase
+                    .from("importazioni")
+                    .update({
+                      stato: "fallita",
+                      completata_at: new Date().toISOString(),
+                      log_errori: [
+                        {
+                          riga: 0,
+                          errore: `Annullata manualmente: chunk Inngest non rispondente. Elaborate ${row.righe_elaborate ?? 0}/${row.righe_totali ?? 0} righe.`,
+                        },
+                      ],
+                    })
+                    .eq("id", row.id);
+                  if (error) throw error;
+
+                  // 2) Rimuovi staging _staging/{id}/*
+                  try {
+                    const { data: files } = await supabase.storage
+                      .from("import-files")
+                      .list(`_staging/${row.id}`, { limit: 1000 });
+                    if (files && files.length > 0) {
+                      const paths = files.map((f) => `_staging/${row.id}/${f.name}`);
+                      await supabase.storage.from("import-files").remove(paths);
+                    }
+                  } catch {
+                    // non bloccante
+                  }
+
+                  toast.success(
+                    "Importazione annullata. Ricorda di cancellare la run su Inngest.",
+                    { duration: 6000 },
+                  );
+                  setOpen(false);
+                  onDone();
+                } catch (err) {
+                  toast.error(err instanceof Error ? err.message : "Errore annullamento");
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              {busy ? "Annullamento…" : "Sì, annulla importazione"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
+
 function HistoryCard({ kind }: { kind: "importazioni" | "esportazioni" }) {
   type HistoryRow = {
     id: string;
@@ -3436,30 +3565,15 @@ function HistoryCard({ kind }: { kind: "importazioni" | "esportazioni" }) {
                         ? `${r.righe_create ?? 0} nuovi · ${r.righe_aggiornate ?? 0} agg. / ${r.righe_totali ?? 0}`
                         : `${r.righe_esportate ?? 0} righe`}
                     </p>
-                    {bloccato ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="h-6 mt-1 text-[11px] px-2"
-                        onClick={async () => {
-                          await supabase
-                            .from("importazioni")
-                            .update({
-                              stato: "completata_con_errori",
-                              completata_at: new Date().toISOString(),
-                              log_errori:
-                                "Import interrotto: nessun aggiornamento da oltre 60 minuti.",
-                            })
-                            .eq("id", r.id);
+                    {inCorso ? (
+                      <AnnullaImportButton
+                        row={r}
+                        onDone={() =>
                           queryClient.invalidateQueries({
                             queryKey: ["storico-import-export", "importazioni"],
-                          });
-                          toast.info("Import marcato come fallito");
-                        }}
-                      >
-                        Segna come fallito
-                      </Button>
+                          })
+                        }
+                      />
                     ) : null}
                     {kind === "importazioni" ? (
                       <Button
