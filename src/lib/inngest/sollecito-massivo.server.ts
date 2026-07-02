@@ -385,6 +385,7 @@ export const invioMassivoSolleciti = inngest.createFunction(
               data_documento: s.data_documento,
               data_scadenza: s.data_scadenza,
               importo_scadenza: s.importo_scadenza,
+              codice_pagamento: (s as { codice_pagamento?: string | null }).codice_pagamento ?? null,
             }));
 
             const rendered = renderTemplate(
@@ -394,7 +395,7 @@ export const invioMassivoSolleciti = inngest.createFunction(
                 nome_operatore: cfg.nomeOperatore,
                 scadenze: scadenzeForTpl,
               },
-              { tipo: tpl.tipo },
+              { tipo: tpl.tipo, speseImportoUnitario: cfg.speseInsolutoUnit },
             );
 
             const htmlCompleto = wrapEmailHtml(rendered.corpo, sede, {
