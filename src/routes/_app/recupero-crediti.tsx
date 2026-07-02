@@ -756,6 +756,27 @@ function RecuperoCreditiPage() {
           qc.invalidateQueries({ queryKey: ["azioni-recupero-metrics"] });
         }}
       />
+
+      <RegistraPromessaSelectorDialog
+        open={promessaSelectorOpen}
+        onOpenChange={setPromessaSelectorOpen}
+        onCreated={() => {
+          qc.invalidateQueries({ queryKey: ["recupero-clienti-aggregato"] });
+          qc.invalidateQueries({ queryKey: ["azioni-recupero-metrics"] });
+        }}
+      />
+
+      {promessaRigaClienteId && (
+        <RegistraPromessaDialog
+          open={!!promessaRigaClienteId}
+          onOpenChange={(v) => { if (!v) setPromessaRigaClienteId(null); }}
+          clienteId={promessaRigaClienteId}
+          onCreated={() => {
+            qc.invalidateQueries({ queryKey: ["recupero-clienti-aggregato"] });
+            qc.invalidateQueries({ queryKey: ["azioni-recupero-metrics"] });
+          }}
+        />
+      )}
     </div>
   );
 }
