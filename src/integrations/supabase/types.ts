@@ -2963,6 +2963,7 @@ export type Database = {
         Returns: {
           cliente_id: string
           codice_gestionale: string
+          metodo_prevalente: string
           n_incassi: number
           n_parziali: number
           n_saldi: number
@@ -2975,10 +2976,12 @@ export type Database = {
       get_incassi_periodo_dettaglio: {
         Args: { _al: string; _cliente_id: string; _dal: string }
         Returns: {
+          codice_pagamento: string
           data_pagamento_effettiva: string
           data_scadenza: string
           importo_pagato: number
           importo_scadenza: number
+          metodo_descrizione: string
           numero_documento: string
           scadenza_id: string
         }[]
