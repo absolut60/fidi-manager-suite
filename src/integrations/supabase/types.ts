@@ -2873,6 +2873,7 @@ export type Database = {
       get_cruscotto_incassi_mese_dettaglio: {
         Args: { _anno: number; _mese: number }
         Returns: {
+          a_scadere_mese: number
           bloccato: boolean
           cliente_id: string
           codice_gestionale: string
@@ -2882,10 +2883,12 @@ export type Database = {
           in_gestione_legale: boolean
           incassato_mese: number
           insoluto_mese: number
+          metodo_prevalente: string
           n_scadenze_mese: number
           n_scadenze_pagate_mese: number
           pec: string
           ragione_sociale: string
+          scaduto_mese: number
           store_id: string
           store_nome: string
         }[]
