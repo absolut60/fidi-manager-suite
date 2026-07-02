@@ -2861,6 +2861,8 @@ export type Database = {
       get_cruscotto_incassi_mensile: {
         Args: { _anno: number }
         Returns: {
+          a_scadere: number
+          a_scadere_riba: number
           da_incassare: number
           dovuto: number
           incassato: number
@@ -2868,6 +2870,8 @@ export type Database = {
           n_pagate: number
           n_scadenze: number
           pct: number
+          scaduto: number
+          scaduto_riba: number
         }[]
       }
       get_cruscotto_incassi_mese_dettaglio: {
