@@ -9,6 +9,7 @@ export interface AppConfig {
   cutoff_cliente_attivo_anno: number;
   sollecito_massivo_blocco: number;
   sollecito_massivo_pausa_sec: number;
+  spese_insoluto_riba_eur: number;
 }
 
 const DEFAULTS: AppConfig = {
@@ -19,6 +20,7 @@ const DEFAULTS: AppConfig = {
   cutoff_cliente_attivo_anno: 2025,
   sollecito_massivo_blocco: 12,
   sollecito_massivo_pausa_sec: 60,
+  spese_insoluto_riba_eur: 3,
 };
 
 export function useConfig(): AppConfig {
