@@ -311,6 +311,7 @@ export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string })
         </Button>
         <Button size="sm" variant="outline" onClick={() => setPromessaOpen(true)} className="gap-1.5">
           <HandCoins className="size-4" /> Registra promessa
+        </Button>
         <Button size="sm" variant="ghost" onClick={() => setLetteraOpen(true)} className="gap-1.5">
           <FileText className="size-4" /> Lettera
         </Button>
