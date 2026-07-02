@@ -129,12 +129,17 @@ function CruscottoIncassiPage() {
   const totali = useMemo(() => {
     const dovuto = righe.reduce((a, r) => a + Number(r.dovuto), 0);
     const incassato = righe.reduce((a, r) => a + Number(r.incassato), 0);
-    return {
-      dovuto,
-      incassato,
-      da_incassare: Math.max(dovuto - incassato, 0),
-      pct: dovuto > 0 ? Math.min((incassato / dovuto) * 100, 100) : 0,
-    };
+    const scaduto = righe.reduce((a, r) => a + Number(r.scaduto), 0);
+    const aScadere = righe.reduce((a, r) => a + Number(r.a_scadere), 0);
+    const scadutoRiba = righe.reduce((a, r) => a + Number(r.scaduto_riba), 0);
+    const aScadereRiba = righe.reduce((a, r) => a + Number(r.a_scadere_riba), 0);
+    const daIncassare = scaduto + aScadere;
+    const pct = dovuto > 0
+      ? (daIncassare > 0
+          ? Math.min((incassato / dovuto) * 100, 99.9)
+          : Math.min((incassato / dovuto) * 100, 100))
+      : 0;
+    return { dovuto, incassato, scaduto, aScadere, scadutoRiba, aScadereRiba, da_incassare: daIncassare, pct };
   }, [righe]);
 
   const dettaglioMese = meseSel != null ? righe.find((r) => r.mese === meseSel) : null;
