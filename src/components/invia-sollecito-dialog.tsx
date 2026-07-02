@@ -43,6 +43,8 @@ type ClienteInfo = { id: string; ragione_sociale: string; email: string | null; 
 export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsistenteId, onSent }: Props) {
   const qc = useQueryClient();
   const { user, profilo } = useAuth();
+  const appCfg = useConfig();
+  const speseUnit = appCfg.spese_insoluto_riba_eur;
   const nomeOperatore = `${profilo?.nome ?? ""} ${profilo?.cognome ?? ""}`.trim() || "Operatore";
 
   const [templateId, setTemplateId] = useState<string>("");
