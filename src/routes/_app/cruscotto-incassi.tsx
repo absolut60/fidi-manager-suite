@@ -21,6 +21,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { InvioMassivoDialog } from "@/components/invio-massivo-dialog";
 import { RegistraPromessaDialog } from "@/components/registra-promessa-dialog";
+import { isRiBa } from "@/lib/spese-insoluto";
 
 export const Route = createFileRoute("/_app/cruscotto-incassi")({
   component: CruscottoIncassiPage,
