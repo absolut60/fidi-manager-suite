@@ -975,6 +975,7 @@ function RicercaIncassiBlock() {
               <TableHead className="w-24">Cod.</TableHead>
               <TableHead className="text-right w-24">N. incassi</TableHead>
               <TableHead className="text-right w-40">Totale incassato</TableHead>
+              <TableHead className="w-28">Metodo</TableHead>
               <TableHead className="w-28">Tipo prev.</TableHead>
               <TableHead className="w-32">Ultimo incasso</TableHead>
             </TableRow>
