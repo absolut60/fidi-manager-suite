@@ -75,9 +75,7 @@ export function buildElencoScadenzeHtml(
     )
     .join("");
 
-  // Import "differito" per evitare ciclo di import: spese-insoluto usa questo modulo.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { calcolaSpeseInsoluto, buildTotaliRowsHtml } = require("@/lib/spese-insoluto") as typeof import("@/lib/spese-insoluto");
+  // calcolaSpeseInsoluto/buildTotaliRowsHtml importati staticamente in cima al file.
   const totals = calcolaSpeseInsoluto(scadenze, Number(opts?.speseImportoUnitario ?? 0));
   const tfootRows = buildTotaliRowsHtml(totals, { labelTotale: opts?.labelTotale ?? "Totale", colspan: 3 });
 
