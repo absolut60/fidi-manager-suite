@@ -203,7 +203,7 @@ export function InvioMassivoDialog({
       if (e1) throw e1;
       const { data: rawScad, error: e2 } = await supabase
         .from("scadenze")
-        .select("numero_documento, data_documento, data_scadenza, importo_scadenza, stato_contabile, data_pagamento_effettiva, giorni_ritardo, tempi_scadenza, in_legale")
+        .select("numero_documento, data_documento, data_scadenza, importo_scadenza, codice_pagamento, stato_contabile, data_pagamento_effettiva, giorni_ritardo, tempi_scadenza, in_legale")
         .eq("cliente_id", id)
         .order("data_scadenza", { ascending: true });
       if (e2) throw e2;
@@ -239,6 +239,7 @@ export function InvioMassivoDialog({
             data_documento: s.data_documento,
             data_scadenza: s.data_scadenza,
             importo_scadenza: s.importo_scadenza,
+            codice_pagamento: s.codice_pagamento,
           })),
         },
       };
