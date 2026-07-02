@@ -510,6 +510,13 @@ const CONFIG_FIELDS: { chiave: string; label: string; suffix?: string; hint?: st
     hint: "Un cliente è considerato 'attivo' se ha fatture con data ≥ 01/01/[anno]. Aggiorna ogni anno (es. 2026).",
     type: "year",
   },
+  {
+    chiave: "spese_insoluto_riba_eur",
+    label: "Spese di insoluto per RiBa",
+    suffix: "€",
+    hint: "Importo unitario addebitato a ogni scadenza con codice pagamento RB* nei solleciti (default 3,00 €).",
+    type: "decimal",
+  },
 ];
 
 function ConfigurazioniCard() {
