@@ -5,14 +5,20 @@
 export type PlaceholderKey =
   | "ragione_sociale"
   | "totale_scaduto"
+  | "spese_insoluto"
+  | "totale_da_pagare"
+  | "n_riba"
   | "elenco_scadenze"
   | "data_oggi"
   | "nome_operatore";
 
 export const PLACEHOLDERS: { key: PlaceholderKey; label: string; descr: string; soloCorpo?: boolean }[] = [
   { key: "ragione_sociale", label: "{{ragione_sociale}}", descr: "Denominazione del cliente" },
-  { key: "totale_scaduto", label: "{{totale_scaduto}}", descr: "Importo totale scaduto, formato euro" },
-  { key: "elenco_scadenze", label: "{{elenco_scadenze}}", descr: "Tabella HTML delle scadenze scadute", soloCorpo: true },
+  { key: "totale_scaduto", label: "{{totale_scaduto}}", descr: "Somma delle scadenze in lettera (senza spese)" },
+  { key: "spese_insoluto", label: "{{spese_insoluto}}", descr: "Spese di insoluto (nRiBa × importo unitario) — 0 € se nessuna RiBa" },
+  { key: "totale_da_pagare", label: "{{totale_da_pagare}}", descr: "Totale scaduto + spese di insoluto RiBa" },
+  { key: "n_riba", label: "{{n_riba}}", descr: "Numero di scadenze RiBa in lettera" },
+  { key: "elenco_scadenze", label: "{{elenco_scadenze}}", descr: "Tabella HTML delle scadenze scadute (include righe spese/totale)", soloCorpo: true },
   { key: "data_oggi", label: "{{data_oggi}}", descr: "Data odierna", soloCorpo: true },
   { key: "nome_operatore", label: "{{nome_operatore}}", descr: "Nome dell'operatore", soloCorpo: true },
 ];
