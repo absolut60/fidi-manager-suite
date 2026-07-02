@@ -309,6 +309,8 @@ export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string })
         <Button size="sm" variant="outline" onClick={() => openNuova("nota")} className="gap-1.5">
           <StickyNote className="size-4" /> Nuova nota
         </Button>
+        <Button size="sm" variant="outline" onClick={() => setPromessaOpen(true)} className="gap-1.5">
+          <HandCoins className="size-4" /> Registra promessa
         <Button size="sm" variant="ghost" onClick={() => setLetteraOpen(true)} className="gap-1.5">
           <FileText className="size-4" /> Lettera
         </Button>
