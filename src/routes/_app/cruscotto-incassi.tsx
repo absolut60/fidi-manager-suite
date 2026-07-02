@@ -258,7 +258,7 @@ function CruscottoIncassiPage() {
               label="Incassato"
               value={fmtEuro(totali.incassato)}
               tone="green"
-              sub={totali.eccedenza > 0 ? `di cui sovrapagati ${fmtEuro(totali.eccedenza)}` : undefined}
+              sub={totali.eccedenza > 0 ? `eccedenza incassi ${fmtEuro(totali.eccedenza)}` : undefined}
             />
             <TotBox
               label="Scaduto"
@@ -345,7 +345,7 @@ function CruscottoIncassiPage() {
               <MetricButton
                 label="Incassato"
                 value={fmtEuro(dettaglioMese.incassato)}
-                subLabel={dettaglioMese.eccedenza > 0 ? `di cui sovrapagati ${fmtEuro(dettaglioMese.eccedenza)}` : undefined}
+                subLabel={dettaglioMese.eccedenza > 0 ? `eccedenza incassi ${fmtEuro(dettaglioMese.eccedenza)}` : undefined}
                 tone="green"
                 selected={vista === "incassato"}
                 onClick={() => setVista("incassato")}
@@ -860,7 +860,7 @@ function MeseCard({
         <Row label="Incassato" value={futuro ? "—" : fmtEuro(riga.incassato)} tone="green" />
         {!futuro && riga.eccedenza > 0 && (
           <div className="flex items-center justify-between gap-2 -mt-0.5">
-            <span className="text-[10px] text-muted-foreground pl-2">di cui sovrapagati</span>
+            <span className="text-[10px] text-muted-foreground pl-2">eccedenza incassi</span>
             <span className="text-[10px] text-muted-foreground tabular-nums">{fmtEuro(riga.eccedenza)}</span>
           </div>
         )}
