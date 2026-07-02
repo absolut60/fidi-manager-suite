@@ -984,12 +984,12 @@ function RicercaIncassiBlock() {
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell colSpan={7}><Skeleton className="h-6 w-full" /></TableCell>
+                  <TableCell colSpan={8}><Skeleton className="h-6 w-full" /></TableCell>
                 </TableRow>
               ))
             ) : (righe ?? []).length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-6">
+                <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-6">
                   Nessun incasso nel periodo selezionato.
                 </TableCell>
               </TableRow>
