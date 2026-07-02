@@ -320,6 +320,8 @@ function PreviewDialog({
   template, onClose,
 }: { template: { oggetto: string; corpo: string; tipo: string }; onClose: () => void }) {
   const { profilo } = useAuth();
+  const appCfg = useConfig();
+  const speseUnit = appCfg.spese_insoluto_riba_eur;
   const nomeOperatore = `${profilo?.nome ?? ""} ${profilo?.cognome ?? ""}`.trim() || "Operatore";
 
   const [search, setSearch] = useState("");
