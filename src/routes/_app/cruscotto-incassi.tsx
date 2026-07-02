@@ -183,6 +183,16 @@ function CruscottoIncassiPage() {
     () => (dettaglio ?? []).reduce((a, r) => a + Number(r.a_scadere_mese || 0), 0),
     [dettaglio],
   );
+  // "Di cui RiBa": sottoinsieme informativo, non altera il totale
+  const { scadutoRiba, aScadereRiba } = useMemo(() => {
+    let sr = 0, ar = 0;
+    for (const r of scadenze ?? []) {
+      if (!isRiBa(r.codice_pagamento) || Number(r.residuo) <= 0) continue;
+      if (r.scaduta) sr += Number(r.residuo);
+      else ar += Number(r.residuo);
+    }
+    return { scadutoRiba: sr, aScadereRiba: ar };
+  }, [scadenze]);
   const loadingLista = loadingDettaglio || loadingScadenze;
 
   function apriSollecita(clienteIds: string[]) {
@@ -317,6 +327,7 @@ function CruscottoIncassiPage() {
               <MetricButton
                 label="Da incassare — scaduto"
                 value={loadingDettaglio ? "…" : fmtEuro(totScadutoMese)}
+                subLabel={loadingScadenze ? undefined : `di cui RiBa ${fmtEuro(scadutoRiba)}`}
                 tone="red"
                 selected={vista === "scaduto"}
                 onClick={() => setVista("scaduto")}
@@ -324,6 +335,7 @@ function CruscottoIncassiPage() {
               <MetricButton
                 label="Da incassare — a scadere"
                 value={loadingDettaglio ? "…" : fmtEuro(totAScadereMese)}
+                subLabel={loadingScadenze ? undefined : `di cui RiBa ${fmtEuro(aScadereRiba)}`}
                 tone="amber"
                 selected={vista === "a_scadere"}
                 onClick={() => setVista("a_scadere")}
@@ -696,10 +708,11 @@ function TotBox({
 }
 
 function MetricButton({
-  label, value, tone, icon, selected, onClick,
+  label, value, subLabel, tone, icon, selected, onClick,
 }: {
   label: string;
   value: string;
+  subLabel?: string;
   tone?: "green" | "red" | "amber";
   icon?: React.ReactNode;
   selected?: boolean;
@@ -732,6 +745,9 @@ function MetricButton({
         {label}
       </div>
       <div className={cn("text-xl font-semibold tabular-nums mt-0.5", color)}>{value}</div>
+      {subLabel && (
+        <div className="text-[11px] text-muted-foreground tabular-nums mt-0.5">{subLabel}</div>
+      )}
     </button>
   );
 }
