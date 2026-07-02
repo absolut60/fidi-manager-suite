@@ -82,7 +82,7 @@ function CruscottoIncassiPage() {
   const annoCorrente = oggi.getFullYear();
   const [anno, setAnno] = useState<number>(annoCorrente);
   const [meseSel, setMeseSel] = useState<number | null>(null);
-  const [vista, setVista] = useState<"da_incassare" | "incassato">("da_incassare");
+  const [vista, setVista] = useState<VistaDettaglio>("scaduto");
   const [invioMassivoOpen, setInvioMassivoOpen] = useState(false);
   const [invioClienti, setInvioClienti] = useState<string[]>([]);
   const [promessaClienteId, setPromessaClienteId] = useState<string | null>(null);
