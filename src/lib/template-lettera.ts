@@ -22,6 +22,9 @@ export type PlaceholderLetteraKey =
   | "indirizzo_cliente"
   | "cap_citta_cliente"
   | "totale_scaduto"
+  | "spese_insoluto"
+  | "totale_da_pagare"
+  | "n_riba"
   | "elenco_scadenze"
   | "data_oggi"
   | "luogo_data"
@@ -38,8 +41,11 @@ export const PLACEHOLDERS_LETTERA: {
   { key: "ragione_sociale", label: "{{ragione_sociale}}", descr: "Denominazione del cliente" },
   { key: "indirizzo_cliente", label: "{{indirizzo_cliente}}", descr: "Via/indirizzo del cliente" },
   { key: "cap_citta_cliente", label: "{{cap_citta_cliente}}", descr: "CAP, città e provincia del cliente" },
-  { key: "totale_scaduto", label: "{{totale_scaduto}}", descr: "Importo totale scaduto, formato euro" },
-  { key: "elenco_scadenze", label: "{{elenco_scadenze}}", descr: "Elenco testuale delle scadenze scadute", soloCorpo: true },
+  { key: "totale_scaduto", label: "{{totale_scaduto}}", descr: "Somma delle scadenze in lettera (senza spese)" },
+  { key: "spese_insoluto", label: "{{spese_insoluto}}", descr: "Spese di insoluto (nRiBa × importo unitario)" },
+  { key: "totale_da_pagare", label: "{{totale_da_pagare}}", descr: "Totale scaduto + spese di insoluto RiBa" },
+  { key: "n_riba", label: "{{n_riba}}", descr: "Numero di scadenze RiBa in lettera" },
+  { key: "elenco_scadenze", label: "{{elenco_scadenze}}", descr: "Elenco testuale delle scadenze scadute (include riepilogo totali)", soloCorpo: true },
   { key: "data_oggi", label: "{{data_oggi}}", descr: "Data odierna (gg/mm/aaaa)" },
   { key: "luogo_data", label: "{{luogo_data}}", descr: "Luogo e data (es. \"Casorezzo, 16/06/2026\")" },
   { key: "nome_operatore", label: "{{nome_operatore}}", descr: "Nome dell'operatore che firma" },
