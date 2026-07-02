@@ -40,6 +40,7 @@ type RigaMese = {
   a_scadere: number;
   scaduto_riba: number;
   a_scadere_riba: number;
+  eccedenza: number;
   da_incassare: number;
   pct: number;
   n_scadenze: number;
@@ -54,6 +55,7 @@ type RigaDettaglio = {
   store_nome: string | null;
   dovuto_mese: number;
   incassato_mese: number;
+  eccedenza_mese: number;
   insoluto_mese: number;
   scaduto_mese: number;
   a_scadere_mese: number;
@@ -82,6 +84,7 @@ type RigaScadenza = {
   importo_pagato: number;
   quota_incassata: number;
   residuo: number;
+  eccedenza: number;
   scaduta: boolean;
   codice_pagamento: string | null;
   metodo_descrizione: string | null;
@@ -133,13 +136,10 @@ function CruscottoIncassiPage() {
     const aScadere = righe.reduce((a, r) => a + Number(r.a_scadere), 0);
     const scadutoRiba = righe.reduce((a, r) => a + Number(r.scaduto_riba), 0);
     const aScadereRiba = righe.reduce((a, r) => a + Number(r.a_scadere_riba), 0);
+    const eccedenza = righe.reduce((a, r) => a + Number(r.eccedenza || 0), 0);
     const daIncassare = scaduto + aScadere;
-    const pct = dovuto > 0
-      ? (daIncassare > 0
-          ? Math.min((incassato / dovuto) * 100, 99.9)
-          : Math.min((incassato / dovuto) * 100, 100))
-      : 0;
-    return { dovuto, incassato, scaduto, aScadere, scadutoRiba, aScadereRiba, da_incassare: daIncassare, pct };
+    const pct = dovuto > 0 ? Math.min((incassato / dovuto) * 100, 100) : 0;
+    return { dovuto, incassato, scaduto, aScadere, scadutoRiba, aScadereRiba, eccedenza, da_incassare: daIncassare, pct };
   }, [righe]);
 
   const dettaglioMese = meseSel != null ? righe.find((r) => r.mese === meseSel) : null;
@@ -254,7 +254,12 @@ function CruscottoIncassiPage() {
         <Card className="p-4">
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <TotBox label="Dovuto anno" value={fmtEuro(totali.dovuto)} />
-            <TotBox label="Incassato" value={fmtEuro(totali.incassato)} tone="green" />
+            <TotBox
+              label="Incassato"
+              value={fmtEuro(totali.incassato)}
+              tone="green"
+              sub={totali.eccedenza > 0 ? `di cui sovrapagati ${fmtEuro(totali.eccedenza)}` : undefined}
+            />
             <TotBox
               label="Scaduto"
               value={fmtEuro(totali.scaduto)}
@@ -340,6 +345,7 @@ function CruscottoIncassiPage() {
               <MetricButton
                 label="Incassato"
                 value={fmtEuro(dettaglioMese.incassato)}
+                subLabel={dettaglioMese.eccedenza > 0 ? `di cui sovrapagati ${fmtEuro(dettaglioMese.eccedenza)}` : undefined}
                 tone="green"
                 selected={vista === "incassato"}
                 onClick={() => setVista("incassato")}
@@ -852,6 +858,12 @@ function MeseCard({
       <div className="space-y-1 text-xs">
         <Row label="Dovuto" value={fmtEuro(riga.dovuto)} />
         <Row label="Incassato" value={futuro ? "—" : fmtEuro(riga.incassato)} tone="green" />
+        {!futuro && riga.eccedenza > 0 && (
+          <div className="flex items-center justify-between gap-2 -mt-0.5">
+            <span className="text-[10px] text-muted-foreground pl-2">di cui sovrapagati</span>
+            <span className="text-[10px] text-muted-foreground tabular-nums">{fmtEuro(riga.eccedenza)}</span>
+          </div>
+        )}
         <Row label="Scaduto" value={futuro ? "—" : fmtEuro(riga.scaduto)} tone="red" />
         <Row label="A scadere" value={futuro ? "—" : fmtEuro(riga.a_scadere)} tone="amber" />
       </div>
