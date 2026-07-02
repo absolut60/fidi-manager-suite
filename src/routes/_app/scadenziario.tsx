@@ -288,6 +288,7 @@ function ScadenziarioPage() {
   const pageRows = rows ?? [];
 
   return (
+    <TooltipProvider delayDuration={200}>
     <div className="space-y-6">
       <header className="flex items-center gap-3">
         <CalendarClock className="size-6 text-primary" />
