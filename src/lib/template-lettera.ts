@@ -5,6 +5,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { classificaScadenza } from "@/lib/scadenze";
 import { formatEuro, formatDateIt, SEDE_FALLBACK, type DatiSede, type ScadenzaSollecito } from "@/lib/template-email-render";
+import { calcolaSpeseInsoluto, buildTotaliBloccoTesto } from "@/lib/spese-insoluto";
 
 export type TemplateLettera = {
   id: string;
