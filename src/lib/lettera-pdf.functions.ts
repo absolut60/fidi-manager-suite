@@ -259,7 +259,7 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
 
     const { data: rawScad, error: eSc } = await supabase
       .from("scadenze")
-      .select("numero_documento, data_documento, data_scadenza, importo_scadenza, stato_contabile, giorni_ritardo, tempi_scadenza, data_pagamento_effettiva")
+      .select("numero_documento, data_documento, data_scadenza, importo_scadenza, codice_pagamento, stato_contabile, giorni_ritardo, tempi_scadenza, data_pagamento_effettiva")
       .eq("cliente_id", data.clienteId)
       .order("data_scadenza", { ascending: true });
     if (eSc) throw eSc;
@@ -270,6 +270,7 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
         data_documento: s.data_documento,
         data_scadenza: s.data_scadenza,
         importo_scadenza: s.importo_scadenza,
+        codice_pagamento: (s as { codice_pagamento?: string | null }).codice_pagamento ?? null,
       }));
 
     const { data: prof } = await supabase
@@ -278,6 +279,15 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
       .eq("id", userId)
       .maybeSingle();
     const nomeOperatore = `${prof?.nome ?? ""} ${prof?.cognome ?? ""}`.trim() || "MADE DISTRIBUZIONE S.p.A.";
+
+    // Importo unitario spese di insoluto RiBa (fonte: configurazioni)
+    const { data: cfgRow } = await supabase
+      .from("configurazioni")
+      .select("valore")
+      .eq("chiave", "spese_insoluto_riba_eur")
+      .maybeSingle();
+    const parsedSpese = parseFloat(String(cfgRow?.valore ?? ""));
+    const speseUnit = Number.isFinite(parsedSpese) && parsedSpese >= 0 ? parsedSpese : 3;
 
     // 3) Render (override se passato)
     const dati: DatiTemplateLettera = {
@@ -295,6 +305,7 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
     const rendered = renderLettera(
       { oggetto: data.oggettoOverride ?? tpl?.oggetto ?? "", corpo: data.corpoOverride ?? tpl?.corpo ?? "" },
       dati,
+      { speseImportoUnitario: speseUnit },
     );
     rendered.oggetto = stripOggettoPrefix(rendered.oggetto);
     rendered.corpo = stripLetterChrome(rendered.corpo, dati);
