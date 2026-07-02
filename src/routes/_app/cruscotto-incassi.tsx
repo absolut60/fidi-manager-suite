@@ -148,18 +148,33 @@ function CruscottoIncassiPage() {
     },
   });
 
-  const scaduti = useMemo(
-    () => (dettaglio ?? []).filter((r) => Number(r.scaduto_mese) > 0),
-    [dettaglio],
-  );
-  const aScadere = useMemo(
-    () => (dettaglio ?? []).filter((r) => Number(r.a_scadere_mese) > 0),
-    [dettaglio],
-  );
-  const incassato = useMemo(
-    () => (dettaglio ?? []).filter((r) => Number(r.incassato_mese) > 0),
-    [dettaglio],
-  );
+  const { data: scadenze, isLoading: loadingScadenze } = useQuery({
+    queryKey: ["cruscotto_incassi_scadenze", anno, meseSel],
+    enabled: meseSel != null,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc(
+        "get_cruscotto_incassi_mese_scadenze" as never,
+        { _anno: anno, _mese: meseSel! } as never,
+      );
+      if (error) throw error;
+      return ((data as unknown) as RigaScadenza[]) ?? [];
+    },
+  });
+
+  const scadenzeFiltrate = useMemo(() => {
+    const rows = scadenze ?? [];
+    if (vista === "incassato") {
+      return rows.filter((r) => Number(r.quota_incassata) > 0)
+        .map((r) => ({ ...r, importoVista: Number(r.quota_incassata) }));
+    }
+    if (vista === "scaduto") {
+      return rows.filter((r) => Number(r.residuo) > 0 && r.scaduta)
+        .map((r) => ({ ...r, importoVista: Number(r.residuo) }));
+    }
+    return rows.filter((r) => Number(r.residuo) > 0 && !r.scaduta)
+      .map((r) => ({ ...r, importoVista: Number(r.residuo) }));
+  }, [scadenze, vista]);
+
   const totScadutoMese = useMemo(
     () => (dettaglio ?? []).reduce((a, r) => a + Number(r.scaduto_mese || 0), 0),
     [dettaglio],
@@ -168,6 +183,7 @@ function CruscottoIncassiPage() {
     () => (dettaglio ?? []).reduce((a, r) => a + Number(r.a_scadere_mese || 0), 0),
     [dettaglio],
   );
+  const loadingLista = loadingDettaglio || loadingScadenze;
 
   function apriSollecita(clienteIds: string[]) {
     if (clienteIds.length === 0) {
