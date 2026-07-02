@@ -336,16 +336,18 @@ function CruscottoIncassiPage() {
 
             {/* Toolbar liste (solo per da incassare) */}
             {vista !== "incassato" && (() => {
-              const lista = vista === "scaduto" ? scaduti : aScadere;
+              const clientiUnici = Array.from(
+                new Set(scadenzeFiltrate.map((r) => r.cliente_id)),
+              );
               return (
                 <div className="flex flex-wrap items-center gap-2 pt-1">
                   <Button
                     size="sm"
-                    onClick={() => apriSollecita(lista.map((r) => r.cliente_id))}
-                    disabled={loadingDettaglio || lista.length === 0}
+                    onClick={() => apriSollecita(clientiUnici)}
+                    disabled={loadingLista || clientiUnici.length === 0}
                     className="gap-1.5"
                   >
-                    <Send className="size-4" /> Sollecita tutti ({lista.length})
+                    <Send className="size-4" /> Sollecita tutti ({clientiUnici.length})
                   </Button>
                   <Button size="sm" variant="outline" disabled className="gap-1.5" title="Funzione in arrivo">
                     <Mail className="size-4" /> Invia riepilogo via mail
@@ -357,21 +359,22 @@ function CruscottoIncassiPage() {
               );
             })()}
 
-            {/* Lista */}
-            {loadingDettaglio ? (
+            {/* Lista raggruppata per cliente, espandibile sulle singole scadenze */}
+            {loadingLista ? (
               <div className="space-y-2">
                 {Array.from({ length: 6 }).map((_, i) => (
                   <Skeleton key={i} className="h-10 w-full rounded" />
                 ))}
               </div>
-            ) : vista === "incassato" ? (
-              <IncassatoLista righe={incassato} />
             ) : (
-              <DaIncassareLista
-                righe={vista === "scaduto" ? scaduti : aScadere}
+              <ScadenzeGroupedLista
+                righe={scadenzeFiltrate}
                 vista={vista}
                 onSollecita={(id) => apriSollecita([id])}
-                onPromessa={apriPromessa}
+                onPromessa={(clienteId, ragione) => {
+                  setPromessaClienteId(clienteId);
+                  setPromessaLabel(ragione);
+                }}
               />
             )}
           </Card>
