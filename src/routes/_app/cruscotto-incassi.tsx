@@ -345,6 +345,7 @@ function CruscottoIncassiPage() {
               <MetricButton
                 label="Incassato"
                 value={fmtEuro(dettaglioMese.incassato)}
+                subLabel={dettaglioMese.eccedenza > 0 ? `di cui sovrapagati ${fmtEuro(dettaglioMese.eccedenza)}` : undefined}
                 tone="green"
                 selected={vista === "incassato"}
                 onClick={() => setVista("incassato")}
