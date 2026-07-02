@@ -585,7 +585,7 @@ function MetricButton({
 }: {
   label: string;
   value: string;
-  tone?: "green" | "red";
+  tone?: "green" | "red" | "amber";
   icon?: React.ReactNode;
   selected?: boolean;
   onClick?: () => void;
@@ -593,7 +593,13 @@ function MetricButton({
   const color =
     tone === "green" ? "text-emerald-700"
     : tone === "red" ? "text-red-700"
+    : tone === "amber" ? "text-amber-700"
     : "text-foreground";
+  const selectedRing =
+    tone === "red" ? "border-red-500 ring-2 ring-red-500/20 bg-red-500/5"
+    : tone === "amber" ? "border-amber-500 ring-2 ring-amber-500/20 bg-amber-500/5"
+    : tone === "green" ? "border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-500/5"
+    : "border-primary ring-2 ring-primary/20 bg-primary/5";
   const clickable = !!onClick;
   return (
     <button
@@ -603,7 +609,7 @@ function MetricButton({
       className={cn(
         "text-left rounded-md border px-3 py-2.5 transition-colors",
         clickable ? "cursor-pointer hover:border-primary/50 hover:bg-muted/40" : "cursor-default",
-        selected && "border-primary ring-2 ring-primary/20 bg-primary/5",
+        selected && selectedRing,
       )}
     >
       <div className="text-[11px] uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
