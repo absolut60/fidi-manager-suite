@@ -231,7 +231,7 @@ function CruscottoIncassiPage() {
                         setMeseSel(null);
                       } else {
                         setMeseSel(r.mese);
-                        setVista("da_incassare");
+                        setVista("scaduto");
                       }
                     }}
                   />
@@ -251,12 +251,24 @@ function CruscottoIncassiPage() {
                   {MESI[dettaglioMese.mese - 1]} {anno}
                 </div>
               </div>
-              <div className="text-sm text-muted-foreground tabular-nums">
-                {dettaglioMese.n_pagate} / {dettaglioMese.n_scadenze} scadenze incassate
+              <div className="flex items-center gap-3">
+                <div className="text-sm text-muted-foreground tabular-nums">
+                  {dettaglioMese.n_pagate} / {dettaglioMese.n_scadenze} scadenze incassate
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-8"
+                  onClick={() => setMeseSel(null)}
+                  aria-label="Chiudi dettaglio mese"
+                  title="Chiudi dettaglio"
+                >
+                  <X className="size-4" />
+                </Button>
               </div>
             </div>
 
-            {/* 4 riquadri: due cliccabili come selettori */}
+            {/* 4 riquadri: Dovuto, Incassato, Scaduto, A scadere */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <MetricButton
                 label="Dovuto"
@@ -270,50 +282,43 @@ function CruscottoIncassiPage() {
                 onClick={() => setVista("incassato")}
               />
               <MetricButton
-                label="Da incassare"
-                value={fmtEuro(dettaglioMese.da_incassare)}
+                label="Da incassare — scaduto"
+                value={loadingDettaglio ? "…" : fmtEuro(totScadutoMese)}
                 tone="red"
-                selected={vista === "da_incassare"}
-                onClick={() => setVista("da_incassare")}
+                selected={vista === "scaduto"}
+                onClick={() => setVista("scaduto")}
               />
               <MetricButton
-                label="N. clienti coinvolti"
-                value={String(loadingDettaglio ? "…" : (dettaglio?.length ?? 0))}
-                icon={<Users className="size-4" />}
+                label="Da incassare — a scadere"
+                value={loadingDettaglio ? "…" : fmtEuro(totAScadereMese)}
+                tone="amber"
+                selected={vista === "a_scadere"}
+                onClick={() => setVista("a_scadere")}
               />
             </div>
 
-            {/* Toolbar liste */}
-            {vista === "da_incassare" && (
-              <div className="flex flex-wrap items-center gap-2 pt-1">
-                <Button
-                  size="sm"
-                  onClick={() => apriSollecita(daIncassare.map((r) => r.cliente_id))}
-                  disabled={loadingDettaglio || daIncassare.length === 0}
-                  className="gap-1.5"
-                >
-                  <Send className="size-4" /> Sollecita tutti ({daIncassare.length})
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled
-                  className="gap-1.5"
-                  title="Funzione in arrivo"
-                >
-                  <Mail className="size-4" /> Invia riepilogo via mail
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled
-                  className="gap-1.5"
-                  title="Funzione in arrivo"
-                >
-                  <Download className="size-4" /> Esporta
-                </Button>
-              </div>
-            )}
+            {/* Toolbar liste (solo per da incassare) */}
+            {vista !== "incassato" && (() => {
+              const lista = vista === "scaduto" ? scaduti : aScadere;
+              return (
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <Button
+                    size="sm"
+                    onClick={() => apriSollecita(lista.map((r) => r.cliente_id))}
+                    disabled={loadingDettaglio || lista.length === 0}
+                    className="gap-1.5"
+                  >
+                    <Send className="size-4" /> Sollecita tutti ({lista.length})
+                  </Button>
+                  <Button size="sm" variant="outline" disabled className="gap-1.5" title="Funzione in arrivo">
+                    <Mail className="size-4" /> Invia riepilogo via mail
+                  </Button>
+                  <Button size="sm" variant="outline" disabled className="gap-1.5" title="Funzione in arrivo">
+                    <Download className="size-4" /> Esporta
+                  </Button>
+                </div>
+              );
+            })()}
 
             {/* Lista */}
             {loadingDettaglio ? (
@@ -322,14 +327,15 @@ function CruscottoIncassiPage() {
                   <Skeleton key={i} className="h-10 w-full rounded" />
                 ))}
               </div>
-            ) : vista === "da_incassare" ? (
+            ) : vista === "incassato" ? (
+              <IncassatoLista righe={incassato} />
+            ) : (
               <DaIncassareLista
-                righe={daIncassare}
+                righe={vista === "scaduto" ? scaduti : aScadere}
+                vista={vista}
                 onSollecita={(id) => apriSollecita([id])}
                 onPromessa={apriPromessa}
               />
-            ) : (
-              <IncassatoLista righe={incassato} />
             )}
           </Card>
         )}
