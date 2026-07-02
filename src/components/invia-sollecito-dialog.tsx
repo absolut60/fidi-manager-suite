@@ -27,6 +27,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ReminderControls, defaultReminderFor, creaFollowUp, type ReminderState } from "@/components/reminder-controls";
 import { isEmailValida } from "@/lib/email-validazione";
+import { useConfig } from "@/hooks/use-config";
 
 type Props = {
   open: boolean;
