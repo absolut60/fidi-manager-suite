@@ -2857,6 +2857,18 @@ export type Database = {
           scaduto_cambiato: boolean
         }[]
       }
+      get_cruscotto_incassi_mensile: {
+        Args: { _anno: number }
+        Returns: {
+          da_incassare: number
+          dovuto: number
+          incassato: number
+          mese: number
+          n_pagate: number
+          n_scadenze: number
+          pct: number
+        }[]
+      }
       get_dso_aggregato: {
         Args: {
           _cliente_id?: string

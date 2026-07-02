@@ -30,6 +30,7 @@ import { Route as AppImpostazioniRouteImport } from './routes/_app/impostazioni'
 import { Route as AppImportExportRouteImport } from './routes/_app/import-export'
 import { Route as AppFidiProcessareRouteImport } from './routes/_app/fidi-processare'
 import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
+import { Route as AppCruscottoIncassiRouteImport } from './routes/_app/cruscotto-incassi'
 import { Route as AppContattiRouteImport } from './routes/_app/contatti'
 import { Route as AppClientiRouteImport } from './routes/_app/clienti'
 import { Route as AppAuditRouteImport } from './routes/_app/audit'
@@ -149,6 +150,11 @@ const AppDashboardRoute = AppDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCruscottoIncassiRoute = AppCruscottoIncassiRouteImport.update({
+  id: '/cruscotto-incassi',
+  path: '/cruscotto-incassi',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppContattiRoute = AppContattiRouteImport.update({
   id: '/contatti',
   path: '/contatti',
@@ -210,6 +216,7 @@ export interface FileRoutesByFullPath {
   '/audit': typeof AppAuditRoute
   '/clienti': typeof AppClientiRouteWithChildren
   '/contatti': typeof AppContattiRoute
+  '/cruscotto-incassi': typeof AppCruscottoIncassiRoute
   '/dashboard': typeof AppDashboardRoute
   '/fidi-processare': typeof AppFidiProcessareRoute
   '/import-export': typeof AppImportExportRoute
@@ -242,6 +249,7 @@ export interface FileRoutesByTo {
   '/audit': typeof AppAuditRoute
   '/clienti': typeof AppClientiRouteWithChildren
   '/contatti': typeof AppContattiRoute
+  '/cruscotto-incassi': typeof AppCruscottoIncassiRoute
   '/dashboard': typeof AppDashboardRoute
   '/fidi-processare': typeof AppFidiProcessareRoute
   '/import-export': typeof AppImportExportRoute
@@ -276,6 +284,7 @@ export interface FileRoutesById {
   '/_app/audit': typeof AppAuditRoute
   '/_app/clienti': typeof AppClientiRouteWithChildren
   '/_app/contatti': typeof AppContattiRoute
+  '/_app/cruscotto-incassi': typeof AppCruscottoIncassiRoute
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/fidi-processare': typeof AppFidiProcessareRoute
   '/_app/import-export': typeof AppImportExportRoute
@@ -310,6 +319,7 @@ export interface FileRouteTypes {
     | '/audit'
     | '/clienti'
     | '/contatti'
+    | '/cruscotto-incassi'
     | '/dashboard'
     | '/fidi-processare'
     | '/import-export'
@@ -342,6 +352,7 @@ export interface FileRouteTypes {
     | '/audit'
     | '/clienti'
     | '/contatti'
+    | '/cruscotto-incassi'
     | '/dashboard'
     | '/fidi-processare'
     | '/import-export'
@@ -375,6 +386,7 @@ export interface FileRouteTypes {
     | '/_app/audit'
     | '/_app/clienti'
     | '/_app/contatti'
+    | '/_app/cruscotto-incassi'
     | '/_app/dashboard'
     | '/_app/fidi-processare'
     | '/_app/import-export'
@@ -559,6 +571,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDashboardRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/cruscotto-incassi': {
+      id: '/_app/cruscotto-incassi'
+      path: '/cruscotto-incassi'
+      fullPath: '/cruscotto-incassi'
+      preLoaderRoute: typeof AppCruscottoIncassiRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/contatti': {
       id: '/_app/contatti'
       path: '/contatti'
@@ -662,6 +681,7 @@ interface AppRouteChildren {
   AppAuditRoute: typeof AppAuditRoute
   AppClientiRoute: typeof AppClientiRouteWithChildren
   AppContattiRoute: typeof AppContattiRoute
+  AppCruscottoIncassiRoute: typeof AppCruscottoIncassiRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppFidiProcessareRoute: typeof AppFidiProcessareRoute
   AppImportExportRoute: typeof AppImportExportRoute
@@ -687,6 +707,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAuditRoute: AppAuditRoute,
   AppClientiRoute: AppClientiRouteWithChildren,
   AppContattiRoute: AppContattiRoute,
+  AppCruscottoIncassiRoute: AppCruscottoIncassiRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppFidiProcessareRoute: AppFidiProcessareRoute,
   AppImportExportRoute: AppImportExportRoute,
