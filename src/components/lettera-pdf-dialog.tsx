@@ -33,6 +33,8 @@ export function LetteraPdfDialog({
 }: Props) {
   const qc = useQueryClient();
   const { user, profilo } = useAuth();
+  const appCfg = useConfig();
+  const speseUnit = appCfg.spese_insoluto_riba_eur;
   const genera = useServerFn(generaLetteraPdf);
   const [templateId, setTemplateId] = useState<string>("");
   const [oggetto, setOggetto] = useState("");
