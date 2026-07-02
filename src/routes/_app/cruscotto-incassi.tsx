@@ -136,13 +136,10 @@ function CruscottoIncassiPage() {
     const aScadere = righe.reduce((a, r) => a + Number(r.a_scadere), 0);
     const scadutoRiba = righe.reduce((a, r) => a + Number(r.scaduto_riba), 0);
     const aScadereRiba = righe.reduce((a, r) => a + Number(r.a_scadere_riba), 0);
+    const eccedenza = righe.reduce((a, r) => a + Number(r.eccedenza || 0), 0);
     const daIncassare = scaduto + aScadere;
-    const pct = dovuto > 0
-      ? (daIncassare > 0
-          ? Math.min((incassato / dovuto) * 100, 99.9)
-          : Math.min((incassato / dovuto) * 100, 100))
-      : 0;
-    return { dovuto, incassato, scaduto, aScadere, scadutoRiba, aScadereRiba, da_incassare: daIncassare, pct };
+    const pct = dovuto > 0 ? Math.min((incassato / dovuto) * 100, 100) : 0;
+    return { dovuto, incassato, scaduto, aScadere, scadutoRiba, aScadereRiba, eccedenza, da_incassare: daIncassare, pct };
   }, [righe]);
 
   const dettaglioMese = meseSel != null ? righe.find((r) => r.mese === meseSel) : null;
