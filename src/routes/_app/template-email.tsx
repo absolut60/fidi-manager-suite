@@ -352,15 +352,13 @@ function PreviewDialog({
 
   const rendered = useMemo(() => {
     if (!dati) return null;
-    // Nota: anteprima con importo unitario di default (3€). L'anteprima nella preview page
-    // non ha accesso rapido al valore configurato; il valore vero è usato in tutti gli invii reali.
-    const base = renderTemplate({ oggetto: template.oggetto, corpo: template.corpo }, dati, { tipo: template.tipo, speseImportoUnitario: 3 });
+    const base = renderTemplate({ oggetto: template.oggetto, corpo: template.corpo }, dati, { tipo: template.tipo, speseImportoUnitario: speseUnit });
     const corpo = wrapEmailHtml(base.corpo, sede ?? null, {
       nome: nomeOperatore,
       email: profilo?.email ?? null,
     }, { tipo: template.tipo });
     return { oggetto: base.oggetto, corpo };
-  }, [template, dati, sede, nomeOperatore, profilo?.email]);
+  }, [template, dati, sede, nomeOperatore, profilo?.email, speseUnit]);
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
