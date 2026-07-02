@@ -591,7 +591,8 @@ function ConfigurazioniCard() {
                   <Input
                     id={f.chiave}
                     type="number"
-                    inputMode="numeric"
+                    inputMode={f.type === "decimal" ? "decimal" : "numeric"}
+                    step={f.type === "decimal" ? "0.01" : undefined}
                     placeholder={f.type === "year" ? "es. 2025" : undefined}
                     value={values[f.chiave] ?? ""}
                     onChange={(e) => setValues((v) => ({ ...v, [f.chiave]: e.target.value }))}
