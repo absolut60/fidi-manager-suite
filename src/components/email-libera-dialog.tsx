@@ -179,7 +179,7 @@ export function EmailLiberaDialog({ open, onOpenChange, clienteId, onSent }: Pro
     }
     setSending(true);
     try {
-      const baseRender = renderTemplate({ oggetto, corpo: corpoHtml }, datiTemplate!);
+      const baseRender = renderTemplate({ oggetto, corpo: corpoHtml }, datiTemplate!, { speseImportoUnitario: speseUnit });
       const htmlPerEmail = wrapEmailHtml(baseRender.corpo, datiSede ?? null, {
         nome: nomeOperatore,
         email: user?.email ?? null,
