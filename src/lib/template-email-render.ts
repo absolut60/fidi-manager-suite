@@ -105,8 +105,6 @@ export function renderTemplate(
   opts?: { tipo?: string | null; speseImportoUnitario?: number },
 ): RenderedTemplate {
   const isPromemoria = opts?.tipo === "promemoria_scadenza";
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { calcolaSpeseInsoluto } = require("@/lib/spese-insoluto") as typeof import("@/lib/spese-insoluto");
   const totals = calcolaSpeseInsoluto(dati.scadenze, Number(opts?.speseImportoUnitario ?? 0));
   const elenco = buildElencoScadenzeHtml(dati.scadenze, {
     labelTotale: isPromemoria ? "Totale in scadenza" : "Totale",
