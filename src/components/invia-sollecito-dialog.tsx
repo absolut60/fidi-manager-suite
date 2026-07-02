@@ -184,6 +184,7 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
       const baseRender = renderTemplate(
         { oggetto: selectedTemplate.oggetto, corpo: selectedTemplate.corpo },
         datiTemplate!,
+        { tipo: selectedTemplate.tipo, speseImportoUnitario: speseUnit },
       );
       const htmlPerEmail = wrapEmailHtml(baseRender.corpo, datiSede ?? null, {
         nome: nomeOperatore,
