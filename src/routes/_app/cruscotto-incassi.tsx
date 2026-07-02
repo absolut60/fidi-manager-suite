@@ -1073,7 +1073,7 @@ function RicercaIncassiBlock() {
                 <TableCell className="text-right tabular-nums font-semibold">
                   {fmtEuro(totali.totale, 2)}
                 </TableCell>
-                <TableCell className="text-xs text-muted-foreground" colSpan={2}>
+                <TableCell className="text-xs text-muted-foreground" colSpan={3}>
                   {totali.n_clienti} client{totali.n_clienti === 1 ? "e" : "i"}
                   {isFetching ? " · aggiornamento…" : ""}
                 </TableCell>
