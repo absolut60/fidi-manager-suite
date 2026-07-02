@@ -864,10 +864,13 @@ function Row({
 }: {
   label: string;
   value: string;
-  tone?: "green" | "red";
+  tone?: "green" | "red" | "amber";
 }) {
   const color =
-    tone === "green" ? "text-emerald-700" : tone === "red" ? "text-red-700" : "";
+    tone === "green" ? "text-emerald-700"
+    : tone === "red" ? "text-red-700"
+    : tone === "amber" ? "text-amber-700"
+    : "";
   return (
     <div className="flex items-center justify-between gap-2">
       <span className="text-muted-foreground">{label}</span>
