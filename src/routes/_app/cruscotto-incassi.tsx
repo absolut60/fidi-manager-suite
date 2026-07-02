@@ -50,14 +50,19 @@ type RigaDettaglio = {
   dovuto_mese: number;
   incassato_mese: number;
   insoluto_mese: number;
+  scaduto_mese: number;
+  a_scadere_mese: number;
   esposizione_scaduta_totale: number;
   n_scadenze_mese: number;
   n_scadenze_pagate_mese: number;
+  metodo_prevalente: string | null;
   in_gestione_legale: boolean;
   bloccato: boolean;
   email: string | null;
   pec: string | null;
 };
+
+type VistaDettaglio = "scaduto" | "a_scadere" | "incassato";
 
 function fmtEuro(n: number | null | undefined, decimals = 0) {
   if (n == null) return "—";
