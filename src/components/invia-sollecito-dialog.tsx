@@ -146,6 +146,7 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
     const base = renderTemplate(
       { oggetto: selectedTemplate.oggetto, corpo: selectedTemplate.corpo },
       datiTemplate,
+      { tipo: selectedTemplate.tipo, speseImportoUnitario: speseUnit },
     );
     // Anteprima in-app: usa URL pubblico del logo (cid: non si risolve nel browser).
     const corpoCompleto = wrapEmailHtml(base.corpo, datiSede ?? null, {
@@ -153,7 +154,7 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
       email: user?.email ?? null,
     }, { tipo: selectedTemplate.tipo });
     return { oggetto: base.oggetto, corpo: corpoCompleto };
-  }, [selectedTemplate, datiTemplate, datiSede, nomeOperatore, user?.email]);
+  }, [selectedTemplate, datiTemplate, datiSede, nomeOperatore, user?.email, speseUnit]);
 
   function onPickSource(src: "email" | "pec" | "custom") {
     setDestSource(src);
