@@ -352,6 +352,8 @@ function PreviewDialog({
   template, onClose,
 }: { template: { oggetto: string; corpo: string }; onClose: () => void }) {
   const { profilo } = useAuth();
+  const appCfg = useConfig();
+  const speseUnit = appCfg.spese_insoluto_riba_eur;
   const nomeOperatore = `${profilo?.nome ?? ""} ${profilo?.cognome ?? ""}`.trim() || "Operatore";
 
   const [search, setSearch] = useState("");
@@ -376,8 +378,8 @@ function PreviewDialog({
 
   const rendered = useMemo(() => {
     if (!dati) return null;
-    return renderLettera({ oggetto: template.oggetto, corpo: template.corpo }, dati);
-  }, [template, dati]);
+    return renderLettera({ oggetto: template.oggetto, corpo: template.corpo }, dati, { speseImportoUnitario: speseUnit });
+  }, [template, dati, speseUnit]);
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
