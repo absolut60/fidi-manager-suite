@@ -143,13 +143,13 @@ export function EmailLiberaDialog({ open, onOpenChange, clienteId, onSent }: Pro
 
   const rendered = useMemo(() => {
     if (!datiTemplate) return null;
-    const base = renderTemplate({ oggetto, corpo: corpoHtml }, datiTemplate);
+    const base = renderTemplate({ oggetto, corpo: corpoHtml }, datiTemplate, { speseImportoUnitario: speseUnit });
     const corpoCompleto = wrapEmailHtml(base.corpo, datiSede ?? null, {
       nome: nomeOperatore,
       email: user?.email ?? null,
     }, { senzaBande: true });
     return { oggetto: base.oggetto, corpo: corpoCompleto };
-  }, [oggetto, corpoHtml, datiTemplate, datiSede, nomeOperatore, user?.email]);
+  }, [oggetto, corpoHtml, datiTemplate, datiSede, nomeOperatore, user?.email, speseUnit]);
 
   function onPickSource(src: "email" | "pec" | "custom") {
     setDestSource(src);
