@@ -574,7 +574,7 @@ function PagatoBlock({
       ) : (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <KpiCard label="Totale incassato" value={fmtEuro(totale)} tone="success" icon={CheckCircle2} />
+            <KpiCard label="Totale incassato" value={fmtEuro(totale)} tone="info" icon={CheckCircle2} />
             <KpiCard label="Righe pagate" value={String(nDoc)} tone="info" icon={FileText} />
             <KpiCard
               label="Ritardo medio pagamento"
