@@ -206,6 +206,7 @@ export const invioMassivoSolleciti = inngest.createFunction(
       pausa: number;
       nomeOperatore: string;
       emailOperatore: string | null;
+      speseInsolutoUnit: number;
     }> => {
       const op = await getOperatoreInfo(prep.operatoreId);
       return {
@@ -213,6 +214,7 @@ export const invioMassivoSolleciti = inngest.createFunction(
         pausa: await getConfigInt("sollecito_massivo_pausa_sec", DEFAULT_PAUSA),
         nomeOperatore: op.nome,
         emailOperatore: op.email,
+        speseInsolutoUnit: await getConfigNumber("spese_insoluto_riba_eur", 3),
       };
     });
 
