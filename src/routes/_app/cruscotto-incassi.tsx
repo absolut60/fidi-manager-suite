@@ -40,6 +40,7 @@ type RigaMese = {
   a_scadere: number;
   scaduto_riba: number;
   a_scadere_riba: number;
+  eccedenza: number;
   da_incassare: number;
   pct: number;
   n_scadenze: number;
@@ -54,6 +55,7 @@ type RigaDettaglio = {
   store_nome: string | null;
   dovuto_mese: number;
   incassato_mese: number;
+  eccedenza_mese: number;
   insoluto_mese: number;
   scaduto_mese: number;
   a_scadere_mese: number;
@@ -82,6 +84,7 @@ type RigaScadenza = {
   importo_pagato: number;
   quota_incassata: number;
   residuo: number;
+  eccedenza: number;
   scaduta: boolean;
   codice_pagamento: string | null;
   metodo_descrizione: string | null;
