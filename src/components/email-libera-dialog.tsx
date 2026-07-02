@@ -41,6 +41,8 @@ type ClienteInfo = { id: string; ragione_sociale: string; email: string | null; 
 export function EmailLiberaDialog({ open, onOpenChange, clienteId, onSent }: Props) {
   const qc = useQueryClient();
   const { user, profilo } = useAuth();
+  const appCfg = useConfig();
+  const speseUnit = appCfg.spese_insoluto_riba_eur;
   const nomeOperatore = `${profilo?.nome ?? ""} ${profilo?.cognome ?? ""}`.trim() || "Operatore";
 
   const [oggetto, setOggetto] = useState("");
