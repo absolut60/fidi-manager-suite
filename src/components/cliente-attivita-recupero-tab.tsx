@@ -405,6 +405,12 @@ export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string })
         clienteId={clienteId}
         tipoIniziale={creaTipo}
       />
+      <RegistraPromessaDialog
+        open={promessaOpen}
+        onOpenChange={setPromessaOpen}
+        clienteId={clienteId}
+        onCreated={invalidateRecupero}
+      />
 
       <Dialog open={!!viewEmail} onOpenChange={(v) => !v && setViewEmail(null)}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
