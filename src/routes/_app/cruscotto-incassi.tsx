@@ -926,8 +926,8 @@ function RicercaIncassiBlock() {
                         <div className="flex items-center gap-2">
                           <span>{r.ragione_sociale}</span>
                           <Link
-                            to="/clienti/$id"
-                            params={{ id: r.cliente_id }}
+                            to="/clienti/$clienteId"
+                            params={{ clienteId: r.cliente_id }}
                             onClick={(e) => e.stopPropagation()}
                             className="text-muted-foreground hover:text-primary"
                             title="Apri scheda cliente"
