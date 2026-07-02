@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { caricaDatiClienteLettera, renderLettera, type TemplateLettera } from "@/lib/template-lettera";
 import { generaLetteraPdf } from "@/lib/lettera-pdf.functions";
+import { useConfig } from "@/hooks/use-config";
 
 type Props = {
   open: boolean;
@@ -32,6 +33,8 @@ export function LetteraPdfDialog({
 }: Props) {
   const qc = useQueryClient();
   const { user, profilo } = useAuth();
+  const appCfg = useConfig();
+  const speseUnit = appCfg.spese_insoluto_riba_eur;
   const genera = useServerFn(generaLetteraPdf);
   const [templateId, setTemplateId] = useState<string>("");
   const [oggetto, setOggetto] = useState("");
@@ -76,7 +79,7 @@ export function LetteraPdfDialog({
       try {
         const nomeOp = `${profilo?.nome ?? ""} ${profilo?.cognome ?? ""}`.trim() || (user?.email ?? "");
         const dati = await caricaDatiClienteLettera(clienteId, nomeOp);
-        const r = renderLettera({ oggetto: tpl.oggetto, corpo: tpl.corpo }, dati);
+        const r = renderLettera({ oggetto: tpl.oggetto, corpo: tpl.corpo }, dati, { speseImportoUnitario: speseUnit });
         if (cancelled) return;
         setOggetto(r.oggetto);
         setCorpo(r.corpo);

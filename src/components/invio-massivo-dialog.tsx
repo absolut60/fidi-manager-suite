@@ -203,7 +203,7 @@ export function InvioMassivoDialog({
       if (e1) throw e1;
       const { data: rawScad, error: e2 } = await supabase
         .from("scadenze")
-        .select("numero_documento, data_documento, data_scadenza, importo_scadenza, stato_contabile, data_pagamento_effettiva, giorni_ritardo, tempi_scadenza, in_legale")
+        .select("numero_documento, data_documento, data_scadenza, importo_scadenza, codice_pagamento, stato_contabile, data_pagamento_effettiva, giorni_ritardo, tempi_scadenza, in_legale")
         .eq("cliente_id", id)
         .order("data_scadenza", { ascending: true });
       if (e2) throw e2;
@@ -239,6 +239,7 @@ export function InvioMassivoDialog({
             data_documento: s.data_documento,
             data_scadenza: s.data_scadenza,
             importo_scadenza: s.importo_scadenza,
+            codice_pagamento: s.codice_pagamento,
           })),
         },
       };
@@ -298,14 +299,14 @@ export function InvioMassivoDialog({
     const base = renderTemplate(
       { oggetto: selectedTemplate.oggetto, corpo: selectedTemplate.corpo },
       dati,
-      { tipo: selectedTemplate.tipo },
+      { tipo: selectedTemplate.tipo, speseImportoUnitario: cfg.spese_insoluto_riba_eur },
     );
     const corpo = wrapEmailHtml(base.corpo, sedeCorrente ?? null, {
       nome: nomeOperatore,
       email: user?.email ?? null,
     }, { tipo: selectedTemplate.tipo });
     return { oggetto: base.oggetto, corpo };
-  }, [selectedTemplate, clientePreview, sedeCorrente, nomeOperatore, user?.email]);
+  }, [selectedTemplate, clientePreview, sedeCorrente, nomeOperatore, user?.email, cfg.spese_insoluto_riba_eur]);
 
   // Conteggi rapidi: si basano solo su ciò che è stato esplorato/corretto
   const numeroCorretti = useMemo(

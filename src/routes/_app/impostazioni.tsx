@@ -510,6 +510,13 @@ const CONFIG_FIELDS: { chiave: string; label: string; suffix?: string; hint?: st
     hint: "Un cliente è considerato 'attivo' se ha fatture con data ≥ 01/01/[anno]. Aggiorna ogni anno (es. 2026).",
     type: "year",
   },
+  {
+    chiave: "spese_insoluto_riba_eur",
+    label: "Spese di insoluto per RiBa",
+    suffix: "€",
+    hint: "Importo unitario addebitato a ogni scadenza con codice pagamento RB* nei solleciti (default 3,00 €).",
+    type: "decimal",
+  },
 ];
 
 function ConfigurazioniCard() {
@@ -543,6 +550,10 @@ function ConfigurazioniCard() {
       const anno = Number(values.cutoff_cliente_attivo_anno);
       if (!isFinite(anno) || anno < 2020 || anno > 2100) {
         throw new Error("Anno attività cliente non valido (es. 2025, 2026)");
+      }
+      const spese = Number(values.spese_insoluto_riba_eur);
+      if (!isFinite(spese) || spese < 0 || spese > 1000) {
+        throw new Error("Spese di insoluto RiBa non valide (0–1000 €)");
       }
       const updates = CONFIG_FIELDS.map((f) =>
         supabase.from("configurazioni").update({ valore: values[f.chiave] ?? "" }).eq("chiave", f.chiave)
@@ -580,7 +591,8 @@ function ConfigurazioniCard() {
                   <Input
                     id={f.chiave}
                     type="number"
-                    inputMode="numeric"
+                    inputMode={f.type === "decimal" ? "decimal" : "numeric"}
+                    step={f.type === "decimal" ? "0.01" : undefined}
                     placeholder={f.type === "year" ? "es. 2025" : undefined}
                     value={values[f.chiave] ?? ""}
                     onChange={(e) => setValues((v) => ({ ...v, [f.chiave]: e.target.value }))}

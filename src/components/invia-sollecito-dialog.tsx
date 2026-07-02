@@ -27,6 +27,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ReminderControls, defaultReminderFor, creaFollowUp, type ReminderState } from "@/components/reminder-controls";
 import { isEmailValida } from "@/lib/email-validazione";
+import { useConfig } from "@/hooks/use-config";
 
 type Props = {
   open: boolean;
@@ -42,6 +43,8 @@ type ClienteInfo = { id: string; ragione_sociale: string; email: string | null; 
 export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsistenteId, onSent }: Props) {
   const qc = useQueryClient();
   const { user, profilo } = useAuth();
+  const appCfg = useConfig();
+  const speseUnit = appCfg.spese_insoluto_riba_eur;
   const nomeOperatore = `${profilo?.nome ?? ""} ${profilo?.cognome ?? ""}`.trim() || "Operatore";
 
   const [templateId, setTemplateId] = useState<string>("");
@@ -143,6 +146,7 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
     const base = renderTemplate(
       { oggetto: selectedTemplate.oggetto, corpo: selectedTemplate.corpo },
       datiTemplate,
+      { tipo: selectedTemplate.tipo, speseImportoUnitario: speseUnit },
     );
     // Anteprima in-app: usa URL pubblico del logo (cid: non si risolve nel browser).
     const corpoCompleto = wrapEmailHtml(base.corpo, datiSede ?? null, {
@@ -150,7 +154,7 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
       email: user?.email ?? null,
     }, { tipo: selectedTemplate.tipo });
     return { oggetto: base.oggetto, corpo: corpoCompleto };
-  }, [selectedTemplate, datiTemplate, datiSede, nomeOperatore, user?.email]);
+  }, [selectedTemplate, datiTemplate, datiSede, nomeOperatore, user?.email, speseUnit]);
 
   function onPickSource(src: "email" | "pec" | "custom") {
     setDestSource(src);
@@ -180,6 +184,7 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
       const baseRender = renderTemplate(
         { oggetto: selectedTemplate.oggetto, corpo: selectedTemplate.corpo },
         datiTemplate!,
+        { tipo: selectedTemplate.tipo, speseImportoUnitario: speseUnit },
       );
       const htmlPerEmail = wrapEmailHtml(baseRender.corpo, datiSede ?? null, {
         nome: nomeOperatore,

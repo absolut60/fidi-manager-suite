@@ -14,6 +14,7 @@ import {
 } from "@/lib/template-email-render";
 import { classificaScadenza } from "@/lib/scadenze";
 import { buildElencoScadenzeTesto, renderLettera, type DatiTemplateLettera } from "@/lib/template-lettera";
+import { calcolaSpeseInsoluto } from "@/lib/spese-insoluto";
 import { LOGO_MADE_BASE64 } from "@/lib/logo-made-base64";
 
 const LEGAL_FOOTER_LINES = [
@@ -259,7 +260,7 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
 
     const { data: rawScad, error: eSc } = await supabase
       .from("scadenze")
-      .select("numero_documento, data_documento, data_scadenza, importo_scadenza, stato_contabile, giorni_ritardo, tempi_scadenza, data_pagamento_effettiva")
+      .select("numero_documento, data_documento, data_scadenza, importo_scadenza, codice_pagamento, stato_contabile, giorni_ritardo, tempi_scadenza, data_pagamento_effettiva")
       .eq("cliente_id", data.clienteId)
       .order("data_scadenza", { ascending: true });
     if (eSc) throw eSc;
@@ -270,6 +271,7 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
         data_documento: s.data_documento,
         data_scadenza: s.data_scadenza,
         importo_scadenza: s.importo_scadenza,
+        codice_pagamento: (s as { codice_pagamento?: string | null }).codice_pagamento ?? null,
       }));
 
     const { data: prof } = await supabase
@@ -278,6 +280,15 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
       .eq("id", userId)
       .maybeSingle();
     const nomeOperatore = `${prof?.nome ?? ""} ${prof?.cognome ?? ""}`.trim() || "MADE DISTRIBUZIONE S.p.A.";
+
+    // Importo unitario spese di insoluto RiBa (fonte: configurazioni)
+    const { data: cfgRow } = await supabase
+      .from("configurazioni")
+      .select("valore")
+      .eq("chiave", "spese_insoluto_riba_eur")
+      .maybeSingle();
+    const parsedSpese = parseFloat(String(cfgRow?.valore ?? ""));
+    const speseUnit = Number.isFinite(parsedSpese) && parsedSpese >= 0 ? parsedSpese : 3;
 
     // 3) Render (override se passato)
     const dati: DatiTemplateLettera = {
@@ -295,6 +306,7 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
     const rendered = renderLettera(
       { oggetto: data.oggettoOverride ?? tpl?.oggetto ?? "", corpo: data.corpoOverride ?? tpl?.corpo ?? "" },
       dati,
+      { speseImportoUnitario: speseUnit },
     );
     rendered.oggetto = stripOggettoPrefix(rendered.oggetto);
     rendered.corpo = stripLetterChrome(rendered.corpo, dati);
@@ -490,7 +502,6 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
       y -= rowH;
 
       // Righe
-      let totale = 0;
       for (let i = 0; i < scadute.length; i++) {
         const s = scadute[i];
         ensureSpace(rowH + 6);
@@ -506,7 +517,6 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
         const dataDoc = formatDateIt(s.data_documento);
         const dataScad = formatDateIt(s.data_scadenza);
         const importo = formatEuro(s.importo_scadenza);
-        totale += Number(s.importo_scadenza ?? 0);
 
         drawText(doc, colX[0] + 8, rowY, { size: 9.5 });
         drawText(dataDoc, colX[1] + 8, rowY, { size: 9.5 });
@@ -524,20 +534,35 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
         y -= rowH;
       }
 
-      // Riga TOTALE
-      ensureSpace(rowH + 4);
-      page.drawRectangle({
-        x: MARGIN_X, y: y - rowH + 4, width: CONTENT_W, height: rowH,
-        borderColor: rgb(BRAND_NAVY[0], BRAND_NAVY[1], BRAND_NAVY[2]),
-        borderWidth: 0,
-        color: rgb(0.94, 0.95, 0.97),
-      });
-      const totLabel = "TOTALE SCADUTO";
-      const totVal = formatEuro(totale);
-      drawText(totLabel, colX[0] + 8, y - rowH + 9, { size: 10, bold: true, color: BRAND_NAVY });
-      const totW = textWidth(totVal, 10, true);
-      drawText(totVal, colX[3] + colW[3] - 8 - totW, y - rowH + 9, { size: 10, bold: true, color: BRAND_ACCENT });
-      y -= rowH + 6;
+      // Righe TOTALI (Totale scaduto — Spese di insoluto — Totale da pagare)
+      // Se non ci sono RiBa: solo "TOTALE SCADUTO" (comportamento invariato).
+      const totals = calcolaSpeseInsoluto(scadute, speseUnit);
+      const totalRowsData: { label: string; value: string; strong?: boolean; accent?: boolean }[] =
+        totals.nRiba === 0
+          ? [{ label: "TOTALE SCADUTO", value: formatEuro(totals.totaleScaduto), strong: true, accent: true }]
+          : [
+              { label: "Totale scaduto", value: formatEuro(totals.totaleScaduto) },
+              { label: `Spese di insoluto (${totals.nRiba} × ${formatEuro(totals.importoUnitario)})`, value: formatEuro(totals.speseInsoluto) },
+              { label: "TOTALE DA PAGARE", value: formatEuro(totals.totaleDaPagare), strong: true, accent: true },
+            ];
+      for (const tr of totalRowsData) {
+        ensureSpace(rowH + 4);
+        page.drawRectangle({
+          x: MARGIN_X, y: y - rowH + 4, width: CONTENT_W, height: rowH,
+          borderColor: rgb(BRAND_NAVY[0], BRAND_NAVY[1], BRAND_NAVY[2]),
+          borderWidth: 0,
+          color: rgb(0.94, 0.95, 0.97),
+        });
+        drawText(tr.label, colX[0] + 8, y - rowH + 9, { size: 10, bold: !!tr.strong, color: BRAND_NAVY });
+        const w = textWidth(tr.value, 10, !!tr.strong);
+        drawText(tr.value, colX[3] + colW[3] - 8 - w, y - rowH + 9, {
+          size: 10,
+          bold: !!tr.strong,
+          color: tr.accent ? BRAND_ACCENT : INK,
+        });
+        y -= rowH;
+      }
+      y -= 6;
     }
 
     // === FIRMA (unica) ===

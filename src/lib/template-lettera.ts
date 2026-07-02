@@ -5,6 +5,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { classificaScadenza } from "@/lib/scadenze";
 import { formatEuro, formatDateIt, SEDE_FALLBACK, type DatiSede, type ScadenzaSollecito } from "@/lib/template-email-render";
+import { calcolaSpeseInsoluto, buildTotaliBloccoTesto } from "@/lib/spese-insoluto";
 
 export type TemplateLettera = {
   id: string;
@@ -21,6 +22,9 @@ export type PlaceholderLetteraKey =
   | "indirizzo_cliente"
   | "cap_citta_cliente"
   | "totale_scaduto"
+  | "spese_insoluto"
+  | "totale_da_pagare"
+  | "n_riba"
   | "elenco_scadenze"
   | "data_oggi"
   | "luogo_data"
@@ -37,8 +41,11 @@ export const PLACEHOLDERS_LETTERA: {
   { key: "ragione_sociale", label: "{{ragione_sociale}}", descr: "Denominazione del cliente" },
   { key: "indirizzo_cliente", label: "{{indirizzo_cliente}}", descr: "Via/indirizzo del cliente" },
   { key: "cap_citta_cliente", label: "{{cap_citta_cliente}}", descr: "CAP, città e provincia del cliente" },
-  { key: "totale_scaduto", label: "{{totale_scaduto}}", descr: "Importo totale scaduto, formato euro" },
-  { key: "elenco_scadenze", label: "{{elenco_scadenze}}", descr: "Elenco testuale delle scadenze scadute", soloCorpo: true },
+  { key: "totale_scaduto", label: "{{totale_scaduto}}", descr: "Somma delle scadenze in lettera (senza spese)" },
+  { key: "spese_insoluto", label: "{{spese_insoluto}}", descr: "Spese di insoluto (nRiBa × importo unitario)" },
+  { key: "totale_da_pagare", label: "{{totale_da_pagare}}", descr: "Totale scaduto + spese di insoluto RiBa" },
+  { key: "n_riba", label: "{{n_riba}}", descr: "Numero di scadenze RiBa in lettera" },
+  { key: "elenco_scadenze", label: "{{elenco_scadenze}}", descr: "Elenco testuale delle scadenze scadute (include riepilogo totali)", soloCorpo: true },
   { key: "data_oggi", label: "{{data_oggi}}", descr: "Data odierna (gg/mm/aaaa)" },
   { key: "luogo_data", label: "{{luogo_data}}", descr: "Luogo e data (es. \"Casorezzo, 16/06/2026\")" },
   { key: "nome_operatore", label: "{{nome_operatore}}", descr: "Nome dell'operatore che firma" },
@@ -95,7 +102,10 @@ function buildIndirizzoSede(sede: DatiSede | null): string {
   return [indir, right].filter(Boolean).join(", ");
 }
 
-export function buildElencoScadenzeTesto(scadenze: ScadenzaSollecito[]): string {
+export function buildElencoScadenzeTesto(
+  scadenze: ScadenzaSollecito[],
+  opts?: { speseImportoUnitario?: number },
+): string {
   if (!scadenze.length) return "Nessuna scadenza scaduta al momento.";
   const righe = scadenze.map((s) => {
     const doc = s.numero_documento ?? "—";
@@ -104,8 +114,8 @@ export function buildElencoScadenzeTesto(scadenze: ScadenzaSollecito[]): string 
     const importo = formatEuro(s.importo_scadenza);
     return `  • Doc. ${doc} del ${dataDoc} — scadenza ${dataScad} — ${importo}`;
   });
-  const totale = scadenze.reduce((a, s) => a + Number(s.importo_scadenza ?? 0), 0);
-  return [...righe, "", `  TOTALE: ${formatEuro(totale)}`].join("\n");
+  const totals = calcolaSpeseInsoluto(scadenze, Number(opts?.speseImportoUnitario ?? 0));
+  return [...righe, "", buildTotaliBloccoTesto(totals)].join("\n");
 }
 
 function replaceAll(text: string, values: Record<string, string>): string {
@@ -120,14 +130,18 @@ export type RenderedLettera = { oggetto: string; corpo: string };
 export function renderLettera(
   template: { oggetto: string | null; corpo: string },
   dati: DatiTemplateLettera,
+  opts?: { speseImportoUnitario?: number },
 ): RenderedLettera {
-  const totale = dati.scadenze.reduce((a, s) => a + Number(s.importo_scadenza ?? 0), 0);
+  const totals = calcolaSpeseInsoluto(dati.scadenze, Number(opts?.speseImportoUnitario ?? 0));
   const values: Record<PlaceholderLetteraKey, string> = {
     ragione_sociale: dati.cliente.ragione_sociale ?? "",
     indirizzo_cliente: buildIndirizzoCliente(dati.cliente),
     cap_citta_cliente: buildCapCittaCliente(dati.cliente),
-    totale_scaduto: formatEuro(totale),
-    elenco_scadenze: buildElencoScadenzeTesto(dati.scadenze),
+    totale_scaduto: formatEuro(totals.totaleScaduto),
+    spese_insoluto: formatEuro(totals.speseInsoluto),
+    totale_da_pagare: formatEuro(totals.totaleDaPagare),
+    n_riba: String(totals.nRiba),
+    elenco_scadenze: buildElencoScadenzeTesto(dati.scadenze, { speseImportoUnitario: opts?.speseImportoUnitario }),
     data_oggi: formatDateIt(new Date()),
     luogo_data: buildLuogoData(dati.sede),
     nome_operatore: dati.nome_operatore ?? "",
@@ -154,7 +168,7 @@ export async function caricaDatiClienteLettera(
   const { data: rawScad, error: e2 } = await supabase
     .from("scadenze")
     .select(
-      "numero_documento, data_documento, data_scadenza, importo_scadenza, stato_contabile, giorni_ritardo, tempi_scadenza, data_pagamento_effettiva",
+      "numero_documento, data_documento, data_scadenza, importo_scadenza, codice_pagamento, stato_contabile, giorni_ritardo, tempi_scadenza, data_pagamento_effettiva",
     )
     .eq("cliente_id", clienteId)
     .order("data_scadenza", { ascending: true });
@@ -195,6 +209,7 @@ export async function caricaDatiClienteLettera(
       data_documento: s.data_documento,
       data_scadenza: s.data_scadenza,
       importo_scadenza: s.importo_scadenza,
+      codice_pagamento: s.codice_pagamento,
     })),
     nome_operatore: nomeOperatore,
     sede,

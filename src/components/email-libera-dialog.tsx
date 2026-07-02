@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { isEmailValida } from "@/lib/email-validazione";
+import { useConfig } from "@/hooks/use-config";
 
 type Props = {
   open: boolean;
@@ -40,6 +41,8 @@ type ClienteInfo = { id: string; ragione_sociale: string; email: string | null; 
 export function EmailLiberaDialog({ open, onOpenChange, clienteId, onSent }: Props) {
   const qc = useQueryClient();
   const { user, profilo } = useAuth();
+  const appCfg = useConfig();
+  const speseUnit = appCfg.spese_insoluto_riba_eur;
   const nomeOperatore = `${profilo?.nome ?? ""} ${profilo?.cognome ?? ""}`.trim() || "Operatore";
 
   const [oggetto, setOggetto] = useState("");
@@ -140,13 +143,13 @@ export function EmailLiberaDialog({ open, onOpenChange, clienteId, onSent }: Pro
 
   const rendered = useMemo(() => {
     if (!datiTemplate) return null;
-    const base = renderTemplate({ oggetto, corpo: corpoHtml }, datiTemplate);
+    const base = renderTemplate({ oggetto, corpo: corpoHtml }, datiTemplate, { speseImportoUnitario: speseUnit });
     const corpoCompleto = wrapEmailHtml(base.corpo, datiSede ?? null, {
       nome: nomeOperatore,
       email: user?.email ?? null,
     }, { senzaBande: true });
     return { oggetto: base.oggetto, corpo: corpoCompleto };
-  }, [oggetto, corpoHtml, datiTemplate, datiSede, nomeOperatore, user?.email]);
+  }, [oggetto, corpoHtml, datiTemplate, datiSede, nomeOperatore, user?.email, speseUnit]);
 
   function onPickSource(src: "email" | "pec" | "custom") {
     setDestSource(src);
@@ -176,7 +179,7 @@ export function EmailLiberaDialog({ open, onOpenChange, clienteId, onSent }: Pro
     }
     setSending(true);
     try {
-      const baseRender = renderTemplate({ oggetto, corpo: corpoHtml }, datiTemplate!);
+      const baseRender = renderTemplate({ oggetto, corpo: corpoHtml }, datiTemplate!, { speseImportoUnitario: speseUnit });
       const htmlPerEmail = wrapEmailHtml(baseRender.corpo, datiSede ?? null, {
         nome: nomeOperatore,
         email: user?.email ?? null,

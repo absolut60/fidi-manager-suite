@@ -5,6 +5,7 @@ import { Plus, Pencil, Trash2, Eye, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useConfig } from "@/hooks/use-config";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -319,6 +320,8 @@ function PreviewDialog({
   template, onClose,
 }: { template: { oggetto: string; corpo: string; tipo: string }; onClose: () => void }) {
   const { profilo } = useAuth();
+  const appCfg = useConfig();
+  const speseUnit = appCfg.spese_insoluto_riba_eur;
   const nomeOperatore = `${profilo?.nome ?? ""} ${profilo?.cognome ?? ""}`.trim() || "Operatore";
 
   const [search, setSearch] = useState("");
@@ -349,13 +352,13 @@ function PreviewDialog({
 
   const rendered = useMemo(() => {
     if (!dati) return null;
-    const base = renderTemplate({ oggetto: template.oggetto, corpo: template.corpo }, dati);
+    const base = renderTemplate({ oggetto: template.oggetto, corpo: template.corpo }, dati, { tipo: template.tipo, speseImportoUnitario: speseUnit });
     const corpo = wrapEmailHtml(base.corpo, sede ?? null, {
       nome: nomeOperatore,
       email: profilo?.email ?? null,
     }, { tipo: template.tipo });
     return { oggetto: base.oggetto, corpo };
-  }, [template, dati, sede, nomeOperatore, profilo?.email]);
+  }, [template, dati, sede, nomeOperatore, profilo?.email, speseUnit]);
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>

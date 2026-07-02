@@ -18,6 +18,16 @@ async function getConfigInt(chiave: string, fallback: number): Promise<number> {
   return Number.isFinite(v) && v > 0 ? Math.floor(v) : fallback;
 }
 
+async function getConfigNumber(chiave: string, fallback: number): Promise<number> {
+  const { data } = await supabaseAdmin
+    .from("configurazioni")
+    .select("valore")
+    .eq("chiave", chiave)
+    .maybeSingle();
+  const v = parseFloat(String(data?.valore ?? ""));
+  return Number.isFinite(v) && v >= 0 ? v : fallback;
+}
+
 async function sendEmailViaEdge(payload: {
   to: string;
   subject: string;
@@ -196,6 +206,7 @@ export const invioMassivoSolleciti = inngest.createFunction(
       pausa: number;
       nomeOperatore: string;
       emailOperatore: string | null;
+      speseInsolutoUnit: number;
     }> => {
       const op = await getOperatoreInfo(prep.operatoreId);
       return {
@@ -203,6 +214,7 @@ export const invioMassivoSolleciti = inngest.createFunction(
         pausa: await getConfigInt("sollecito_massivo_pausa_sec", DEFAULT_PAUSA),
         nomeOperatore: op.nome,
         emailOperatore: op.email,
+        speseInsolutoUnit: await getConfigNumber("spese_insoluto_riba_eur", 3),
       };
     });
 
@@ -335,7 +347,7 @@ export const invioMassivoSolleciti = inngest.createFunction(
             const { data: rawScad } = await supabaseAdmin
               .from("scadenze")
               .select(
-                "id, numero_documento, data_documento, data_scadenza, importo_scadenza, stato_contabile, data_pagamento_effettiva, giorni_ritardo, tempi_scadenza, in_legale",
+                "id, numero_documento, data_documento, data_scadenza, importo_scadenza, codice_pagamento, stato_contabile, data_pagamento_effettiva, giorni_ritardo, tempi_scadenza, in_legale",
               )
               .eq("cliente_id", d.cliente_id)
               .order("data_scadenza", { ascending: true });
@@ -373,6 +385,7 @@ export const invioMassivoSolleciti = inngest.createFunction(
               data_documento: s.data_documento,
               data_scadenza: s.data_scadenza,
               importo_scadenza: s.importo_scadenza,
+              codice_pagamento: (s as { codice_pagamento?: string | null }).codice_pagamento ?? null,
             }));
 
             const rendered = renderTemplate(
@@ -382,7 +395,7 @@ export const invioMassivoSolleciti = inngest.createFunction(
                 nome_operatore: cfg.nomeOperatore,
                 scadenze: scadenzeForTpl,
               },
-              { tipo: tpl.tipo },
+              { tipo: tpl.tipo, speseImportoUnitario: cfg.speseInsolutoUnit },
             );
 
             const htmlCompleto = wrapEmailHtml(rendered.corpo, sede, {

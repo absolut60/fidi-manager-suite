@@ -1,18 +1,25 @@
 // Helpers PURI per il rendering dei template email.
 // NIENTE import di supabase: questo modulo deve poter girare sia nel browser
 // sia nel worker Inngest. Mantieni questo file privo di side-effect.
+import { calcolaSpeseInsoluto, buildTotaliRowsHtml } from "@/lib/spese-insoluto";
 
 export type PlaceholderKey =
   | "ragione_sociale"
   | "totale_scaduto"
+  | "spese_insoluto"
+  | "totale_da_pagare"
+  | "n_riba"
   | "elenco_scadenze"
   | "data_oggi"
   | "nome_operatore";
 
 export const PLACEHOLDERS: { key: PlaceholderKey; label: string; descr: string; soloCorpo?: boolean }[] = [
   { key: "ragione_sociale", label: "{{ragione_sociale}}", descr: "Denominazione del cliente" },
-  { key: "totale_scaduto", label: "{{totale_scaduto}}", descr: "Importo totale scaduto, formato euro" },
-  { key: "elenco_scadenze", label: "{{elenco_scadenze}}", descr: "Tabella HTML delle scadenze scadute", soloCorpo: true },
+  { key: "totale_scaduto", label: "{{totale_scaduto}}", descr: "Somma delle scadenze in lettera (senza spese)" },
+  { key: "spese_insoluto", label: "{{spese_insoluto}}", descr: "Spese di insoluto (nRiBa × importo unitario) — 0 € se nessuna RiBa" },
+  { key: "totale_da_pagare", label: "{{totale_da_pagare}}", descr: "Totale scaduto + spese di insoluto RiBa" },
+  { key: "n_riba", label: "{{n_riba}}", descr: "Numero di scadenze RiBa in lettera" },
+  { key: "elenco_scadenze", label: "{{elenco_scadenze}}", descr: "Tabella HTML delle scadenze scadute (include righe spese/totale)", soloCorpo: true },
   { key: "data_oggi", label: "{{data_oggi}}", descr: "Data odierna", soloCorpo: true },
   { key: "nome_operatore", label: "{{nome_operatore}}", descr: "Nome dell'operatore", soloCorpo: true },
 ];
@@ -36,6 +43,9 @@ export type ScadenzaSollecito = {
   data_documento: string | null;
   data_scadenza: string | null;
   importo_scadenza: number | null;
+  // Codice di pagamento della SINGOLA riga (fonte per il predicato isRiBa).
+  // Popolato dai loader dei solleciti da public.scadenze.codice_pagamento.
+  codice_pagamento?: string | null;
 };
 
 export function escapeHtml(s: string): string {
@@ -49,13 +59,11 @@ export function escapeHtml(s: string): string {
 
 export function buildElencoScadenzeHtml(
   scadenze: ScadenzaSollecito[],
-  opts?: { labelTotale?: string; labelEmpty?: string },
+  opts?: { labelTotale?: string; labelEmpty?: string; speseImportoUnitario?: number },
 ): string {
   if (!scadenze.length) {
     return `<p style="margin:8px 0;color:#475569;">${escapeHtml(opts?.labelEmpty ?? "Nessuna scadenza scaduta al momento.")}</p>`;
   }
-  const totale = scadenze.reduce((acc, s) => acc + Number(s.importo_scadenza ?? 0), 0);
-  const labelTot = opts?.labelTotale ?? "Totale";
   const rows = scadenze
     .map(
       (s) => `<tr>
@@ -66,6 +74,11 @@ export function buildElencoScadenzeHtml(
       </tr>`,
     )
     .join("");
+
+  // calcolaSpeseInsoluto/buildTotaliRowsHtml importati staticamente in cima al file.
+  const totals = calcolaSpeseInsoluto(scadenze, Number(opts?.speseImportoUnitario ?? 0));
+  const tfootRows = buildTotaliRowsHtml(totals, { labelTotale: opts?.labelTotale ?? "Totale", colspan: 3 });
+
   return `<table style="border-collapse:collapse;border:1px solid #e2e8f0;font-family:Arial,sans-serif;font-size:13px;margin:8px 0;">
     <thead><tr style="background:#f1f5f9;">
       <th style="padding:6px 10px;border:1px solid #e2e8f0;text-align:left;">Documento</th>
@@ -74,10 +87,7 @@ export function buildElencoScadenzeHtml(
       <th style="padding:6px 10px;border:1px solid #e2e8f0;text-align:right;">Importo</th>
     </tr></thead>
     <tbody>${rows}</tbody>
-    <tfoot><tr style="background:#f8fafc;font-weight:600;">
-      <td colspan="3" style="padding:6px 10px;border:1px solid #e2e8f0;text-align:right;">${escapeHtml(labelTot)}</td>
-      <td style="padding:6px 10px;border:1px solid #e2e8f0;text-align:right;">${escapeHtml(formatEuro(totale))}</td>
-    </tr></tfoot>
+    <tfoot>${tfootRows}</tfoot>
   </table>`;
 }
 
@@ -92,19 +102,23 @@ export type RenderedTemplate = { oggetto: string; corpo: string };
 export function renderTemplate(
   template: { oggetto: string; corpo: string },
   dati: DatiTemplate,
-  opts?: { tipo?: string | null },
+  opts?: { tipo?: string | null; speseImportoUnitario?: number },
 ): RenderedTemplate {
-  const totale = dati.scadenze.reduce((a, s) => a + Number(s.importo_scadenza ?? 0), 0);
   const isPromemoria = opts?.tipo === "promemoria_scadenza";
+  const totals = calcolaSpeseInsoluto(dati.scadenze, Number(opts?.speseImportoUnitario ?? 0));
   const elenco = buildElencoScadenzeHtml(dati.scadenze, {
     labelTotale: isPromemoria ? "Totale in scadenza" : "Totale",
     labelEmpty: isPromemoria
       ? "Nessuna scadenza in arrivo nel periodo selezionato."
       : "Nessuna scadenza scaduta al momento.",
+    speseImportoUnitario: opts?.speseImportoUnitario,
   });
   const values: Record<PlaceholderKey, string> = {
     ragione_sociale: escapeHtml(dati.ragione_sociale ?? ""),
-    totale_scaduto: formatEuro(totale),
+    totale_scaduto: formatEuro(totals.totaleScaduto),
+    spese_insoluto: formatEuro(totals.speseInsoluto),
+    totale_da_pagare: formatEuro(totals.totaleDaPagare),
+    n_riba: String(totals.nRiba),
     elenco_scadenze: elenco,
     data_oggi: formatDateIt(new Date()),
     nome_operatore: escapeHtml(dati.nome_operatore ?? ""),
