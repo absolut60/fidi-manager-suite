@@ -709,20 +709,23 @@ function MetodoBadge({ metodo }: { metodo: string | null }) {
 /* ─── small components ─────────────────────────────────────────────────── */
 
 function TotBox({
-  label, value, tone,
+  label, value, tone, sub,
 }: {
   label: string;
   value: string;
-  tone?: "green" | "red" | "neutral";
+  tone?: "green" | "red" | "amber" | "neutral";
+  sub?: string;
 }) {
   const color =
     tone === "green" ? "text-emerald-700"
     : tone === "red" ? "text-red-700"
+    : tone === "amber" ? "text-amber-700"
     : "text-foreground";
   return (
     <div>
       <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</div>
       <div className={cn("text-xl font-semibold tabular-nums mt-0.5", color)}>{value}</div>
+      {sub && <div className="text-[10px] text-muted-foreground mt-0.5 tabular-nums">{sub}</div>}
     </div>
   );
 }
