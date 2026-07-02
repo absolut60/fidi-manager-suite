@@ -79,7 +79,7 @@ export function LetteraPdfDialog({
       try {
         const nomeOp = `${profilo?.nome ?? ""} ${profilo?.cognome ?? ""}`.trim() || (user?.email ?? "");
         const dati = await caricaDatiClienteLettera(clienteId, nomeOp);
-        const r = renderLettera({ oggetto: tpl.oggetto, corpo: tpl.corpo }, dati);
+        const r = renderLettera({ oggetto: tpl.oggetto, corpo: tpl.corpo }, dati, { speseImportoUnitario: speseUnit });
         if (cancelled) return;
         setOggetto(r.oggetto);
         setCorpo(r.corpo);
