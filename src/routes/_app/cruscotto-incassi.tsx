@@ -706,10 +706,11 @@ function TotBox({
 }
 
 function MetricButton({
-  label, value, tone, icon, selected, onClick,
+  label, value, subLabel, tone, icon, selected, onClick,
 }: {
   label: string;
   value: string;
+  subLabel?: string;
   tone?: "green" | "red" | "amber";
   icon?: React.ReactNode;
   selected?: boolean;
@@ -742,6 +743,9 @@ function MetricButton({
         {label}
       </div>
       <div className={cn("text-xl font-semibold tabular-nums mt-0.5", color)}>{value}</div>
+      {subLabel && (
+        <div className="text-[11px] text-muted-foreground tabular-nums mt-0.5">{subLabel}</div>
+      )}
     </button>
   );
 }
