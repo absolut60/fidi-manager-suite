@@ -30,7 +30,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { classificaScadenza, sommaScadutoCliente, contributoScaduto } from "@/lib/scadenze";
+import { classificaScadenza, sommaScadutoCliente, contributoScaduto, isPagatoReale } from "@/lib/scadenze";
 import { AllegatiSection, ALLEGATI_BUCKET } from "@/components/allegati-section";
 
 // ============================================================================
@@ -296,18 +296,34 @@ type ScadenzaRow = {
   data_pagamento_effettiva: string | null;
   descrizione_pagamento: string | null;
   importo_scadenza: number | null;
+  importo_pagato: number | null;
   giorni_ritardo: number | null;
   stato_contabile: string | null;
   tempi_scadenza: string | null;
 };
 
+// Opzioni finestra pagato (mesi mobili). "0" = tutto lo storico.
+const PAGATO_WINDOW_OPTIONS: Array<{ label: string; mesi: number }> = [
+  { label: "Ultimi 6 mesi", mesi: 6 },
+  { label: "Ultimi 12 mesi", mesi: 12 },
+  { label: "Ultimi 24 mesi", mesi: 24 },
+  { label: "Ultimi 36 mesi", mesi: 36 },
+  { label: "Tutto lo storico", mesi: 0 },
+];
+
 function ScadenziarioSection({ clienteId }: { clienteId: string; canEdit?: boolean }) {
+  // Finestra di default: 12 mesi mobili. L'utente puo' allargare.
+  const [pagatoMesi, setPagatoMesi] = useState<number>(12);
+
+  // Query 1: righe aperte (scaduto + a scadere). NON toccare: comportamento
+  // invariante. NB: importo_pagato viene aggiunto solo per non richiederlo
+  // a parte, ma non cambia i totali di scaduto/a-scadere.
   const { data: scadenze, isLoading } = useQuery({
     queryKey: ["scadenze", clienteId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("scadenze")
-        .select("id, numero_documento, data_documento, data_scadenza, data_pagamento_effettiva, descrizione_pagamento, importo_scadenza, giorni_ritardo, stato_contabile, tempi_scadenza")
+        .select("id, numero_documento, data_documento, data_scadenza, data_pagamento_effettiva, descrizione_pagamento, importo_scadenza, importo_pagato, giorni_ritardo, stato_contabile, tempi_scadenza")
         .eq("cliente_id", clienteId)
         .order("data_scadenza", { ascending: true });
       if (error) throw error;
@@ -315,19 +331,54 @@ function ScadenziarioSection({ clienteId }: { clienteId: string; canEdit?: boole
     },
   });
 
+  // Query 2: righe pagate nella finestra selezionata. Filtro server-side su
+  // data_pagamento_effettiva (data di incasso) per evitare di caricare tutto
+  // lo storico di un cliente. importo_pagato > 0 esclude righe con soli 0
+  // e RiBa non incassate (dpe NULL -> gia' escluse dal .not.is null).
+  const dataDal = pagatoMesi > 0 ? (() => {
+    const d = new Date(); d.setHours(0, 0, 0, 0);
+    d.setMonth(d.getMonth() - pagatoMesi);
+    return d.toISOString().slice(0, 10);
+  })() : null;
+
+  const { data: pagate, isLoading: loadingPagate } = useQuery({
+    queryKey: ["scadenze-pagate", clienteId, pagatoMesi],
+    queryFn: async () => {
+      let q = supabase
+        .from("scadenze")
+        .select("id, numero_documento, data_documento, data_scadenza, data_pagamento_effettiva, descrizione_pagamento, importo_scadenza, importo_pagato, giorni_ritardo, stato_contabile, tempi_scadenza")
+        .eq("cliente_id", clienteId)
+        .not("data_pagamento_effettiva", "is", null)
+        .gt("importo_pagato", 0)
+        .order("data_pagamento_effettiva", { ascending: false })
+        .limit(2000);
+      if (dataDal) q = q.gte("data_pagamento_effettiva", dataDal);
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data ?? []) as ScadenzaRow[];
+    },
+  });
 
   if (isLoading) return <Skeleton className="h-40" />;
   const rows = scadenze ?? [];
   const scadute = rows.filter((s) => classificaScadenza(s) === "scaduto");
   const aScadere = rows.filter((s) => classificaScadenza(s) === "a_scadere");
+  const pagateRows = (pagate ?? []).filter(isPagatoReale).filter((r) => Number(r.importo_scadenza ?? 0) !== 0);
 
   return (
     <div className="space-y-6">
       <ScadutoBlock rows={scadute} />
       <AScadereBlock rows={aScadere} />
+      <PagatoBlock
+        rows={pagateRows}
+        mesi={pagatoMesi}
+        onMesiChange={setPagatoMesi}
+        loading={loadingPagate}
+      />
     </div>
   );
 }
+
 
 function ScadutoBlock({ rows }: { rows: ScadenzaRow[] }) {
   const totale = rows.reduce((acc, r) => acc + Number(r.importo_scadenza ?? 0), 0);
@@ -463,6 +514,128 @@ function AScadereBlock({ rows }: { rows: ScadenzaRow[] }) {
     </div>
   );
 }
+
+function PagatoBlock({
+  rows,
+  mesi,
+  onMesiChange,
+  loading,
+}: {
+  rows: ScadenzaRow[];
+  mesi: number;
+  onMesiChange: (m: number) => void;
+  loading: boolean;
+}) {
+  // Somma delle QUOTE effettivamente incassate (importo_pagato), non
+  // dell'importo di fattura: per gli acconti su partita Aperta contribuisce
+  // solo la quota incassata; il residuo resta nello scaduto.
+  const totale = rows.reduce((acc, r) => acc + Number(r.importo_pagato ?? 0), 0);
+  const nDoc = rows.length;
+  // Ritardo medio (informativo, non ancora "esperienza di pagamento":
+  // dati per-riga preservati per un calcolo futuro).
+  const ritardi = rows
+    .map((r) => {
+      if (!r.data_scadenza || !r.data_pagamento_effettiva) return null;
+      const ds = new Date(r.data_scadenza).getTime();
+      const dp = new Date(r.data_pagamento_effettiva).getTime();
+      if (!Number.isFinite(ds) || !Number.isFinite(dp)) return null;
+      return Math.round((dp - ds) / 86400000);
+    })
+    .filter((n): n is number => n !== null);
+  const ritardoMedio = ritardi.length ? Math.round(ritardi.reduce((a, b) => a + b, 0) / ritardi.length) : 0;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <h3 className="text-sm font-semibold uppercase text-success flex items-center gap-2">
+          <CheckCircle2 className="size-4" /> Pagato (incassato reale)
+        </h3>
+        <div className="flex items-center gap-2">
+          <Label className="text-xs text-muted-foreground">Periodo</Label>
+          <Select value={String(mesi)} onValueChange={(v) => onMesiChange(Number(v))}>
+            <SelectTrigger className="h-8 w-[180px] text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PAGATO_WINDOW_OPTIONS.map((o) => (
+                <SelectItem key={o.mesi} value={String(o.mesi)}>{o.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {loading ? (
+        <Skeleton className="h-40" />
+      ) : rows.length === 0 ? (
+        <Card className="p-8 text-center text-sm text-muted-foreground">
+          Nessun incasso nella finestra selezionata
+        </Card>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <KpiCard label="Totale incassato" value={fmtEuro(totale)} tone="info" icon={CheckCircle2} />
+            <KpiCard label="Righe pagate" value={String(nDoc)} tone="info" icon={FileText} />
+            <KpiCard
+              label="Ritardo medio pagamento"
+              value={`${ritardoMedio >= 0 ? "+" : ""}${ritardoMedio} gg`}
+              tone={ritardoMedio > 30 ? "warning" : "default"}
+              icon={Clock}
+            />
+          </div>
+          <Card>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>N. Documento</TableHead>
+                  <TableHead>Data Scadenza</TableHead>
+                  <TableHead>Data Pagamento</TableHead>
+                  <TableHead>Cond. Pagamento</TableHead>
+                  <TableHead className="text-right">Importo scad.</TableHead>
+                  <TableHead className="text-right">Incassato</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((s) => {
+                  const impScad = Number(s.importo_scadenza ?? 0);
+                  const impPag = Number(s.importo_pagato ?? 0);
+                  // Parziale: quota incassata < importo fattura (tipico
+                  // dell'acconto su partita Aperta). La stessa riga
+                  // compare per il residuo nello scaduto.
+                  const parziale = Math.abs(impPag - impScad) > 0.01 && impScad !== 0;
+                  return (
+                    <TableRow key={s.id} className="bg-success/5">
+                      <TableCell className="font-mono text-xs">{s.numero_documento ?? "—"}</TableCell>
+                      <TableCell className="text-sm">{fmtDate(s.data_scadenza)}</TableCell>
+                      <TableCell className="text-sm">{fmtDate(s.data_pagamento_effettiva)}</TableCell>
+                      <TableCell className="text-xs">{s.descrizione_pagamento ?? "—"}</TableCell>
+                      <TableCell className="text-right tabular-nums">{fmtEuro(impScad)}</TableCell>
+                      <TableCell className="text-right tabular-nums font-medium">
+                        {parziale ? (
+                          <span title="Pagamento parziale: il residuo resta nello scaduto">
+                            {fmtEuro(impPag)}{" "}
+                            <span className="text-xs text-muted-foreground">di {fmtEuro(impScad)}</span>
+                          </span>
+                        ) : (
+                          fmtEuro(impPag)
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                <TableRow className="bg-muted/40">
+                  <TableCell colSpan={5} className="font-semibold text-right">Totale incassato</TableCell>
+                  <TableCell className="text-right font-bold text-success tabular-nums">{fmtEuro(totale)}</TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </Card>
+        </>
+      )}
+    </div>
+  );
+}
+
 
 /* ============================== SOLLECITI ============================== */
 

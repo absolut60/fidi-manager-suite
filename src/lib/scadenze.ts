@@ -127,3 +127,29 @@ export function sommaScadutoCliente(
   return Math.max(scadutoSenzaAnticipi - totaleAnticipi, Math.min(scadutoSenzaAnticipi, 0));
 }
 
+// ---------------------------------------------------------------------------
+// PAGATO (incassato reale) — definizione canonica
+// ---------------------------------------------------------------------------
+// Una riga concorre al pagato SE e SOLO SE:
+//   data_pagamento_effettiva IS NOT NULL AND importo_pagato > 0
+// (allineata a get_esperienza_pagamento_cliente e a classificaScadenza).
+//
+// Escluse:
+//   - RiBa presentate ma non incassate (imp_pag>0 ma dpe IS NULL);
+//   - partite tecniche (importo_scadenza = 0) — filtro applicato dai chiamanti.
+//
+// Nota acconti su partita Aperta: la riga puo' avere sia una quota pagata
+// (importo_pagato) sia un residuo scaduto (importo_scadenza - importo_pagato).
+// La quota pagata concorre al PAGATO; il residuo continua a comparire nello
+// SCADUTO tramite classificaScadenza. La riga puo' quindi comparire in
+// entrambe le sezioni: e' voluto (visibilita' "X di Y").
+export function isPagatoReale(s: {
+  data_pagamento_effettiva?: string | null;
+  importo_pagato?: number | null;
+}): boolean {
+  if (!s.data_pagamento_effettiva) return false;
+  const q = Number(s.importo_pagato ?? 0);
+  return q > 0;
+}
+
+
