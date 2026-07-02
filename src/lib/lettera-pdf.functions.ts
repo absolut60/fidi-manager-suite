@@ -14,6 +14,7 @@ import {
 } from "@/lib/template-email-render";
 import { classificaScadenza } from "@/lib/scadenze";
 import { buildElencoScadenzeTesto, renderLettera, type DatiTemplateLettera } from "@/lib/template-lettera";
+import { calcolaSpeseInsoluto } from "@/lib/spese-insoluto";
 import { LOGO_MADE_BASE64 } from "@/lib/logo-made-base64";
 
 const LEGAL_FOOTER_LINES = [
