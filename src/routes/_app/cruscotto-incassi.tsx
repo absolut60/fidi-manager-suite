@@ -21,6 +21,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { InvioMassivoDialog } from "@/components/invio-massivo-dialog";
 import { RegistraPromessaDialog } from "@/components/registra-promessa-dialog";
+import { isRiBa } from "@/lib/spese-insoluto";
 
 export const Route = createFileRoute("/_app/cruscotto-incassi")({
   component: CruscottoIncassiPage,
@@ -783,6 +784,7 @@ type RigaIncassoPeriodo = {
   n_parziali: number;
   tipo_prevalente: "saldo" | "parziale";
   ultimo_incasso: string | null;
+  metodo_prevalente: string | null;
 };
 
 type RigaIncassoDettaglio = {
@@ -792,6 +794,8 @@ type RigaIncassoDettaglio = {
   importo_scadenza: number;
   importo_pagato: number;
   data_pagamento_effettiva: string;
+  codice_pagamento: string | null;
+  metodo_descrizione: string | null;
 };
 
 function fmtDateIt(v: string | null | undefined): string {
@@ -971,6 +975,7 @@ function RicercaIncassiBlock() {
               <TableHead className="w-24">Cod.</TableHead>
               <TableHead className="text-right w-24">N. incassi</TableHead>
               <TableHead className="text-right w-40">Totale incassato</TableHead>
+              <TableHead className="w-28">Metodo</TableHead>
               <TableHead className="w-28">Tipo prev.</TableHead>
               <TableHead className="w-32">Ultimo incasso</TableHead>
             </TableRow>
@@ -979,12 +984,12 @@ function RicercaIncassiBlock() {
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell colSpan={7}><Skeleton className="h-6 w-full" /></TableCell>
+                  <TableCell colSpan={8}><Skeleton className="h-6 w-full" /></TableCell>
                 </TableRow>
               ))
             ) : (righe ?? []).length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-6">
+                <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-6">
                   Nessun incasso nel periodo selezionato.
                 </TableCell>
               </TableRow>
@@ -1023,6 +1028,9 @@ function RicercaIncassiBlock() {
                         {fmtEuro(Number(r.totale_incassato), 2)}
                       </TableCell>
                       <TableCell>
+                        <MetodoBadge metodo={r.metodo_prevalente} />
+                      </TableCell>
+                      <TableCell>
                         <Badge
                           variant="secondary"
                           className={cn(
@@ -1040,7 +1048,7 @@ function RicercaIncassiBlock() {
                     {isOpen && (
                       <TableRow key={`${r.cliente_id}-exp`} className="bg-muted/30 hover:bg-muted/30">
                         <TableCell />
-                        <TableCell colSpan={6} className="py-2">
+                        <TableCell colSpan={7} className="py-2">
                           <DettaglioIncassiCliente
                             clienteId={r.cliente_id}
                             dal={dal}
@@ -1065,7 +1073,7 @@ function RicercaIncassiBlock() {
                 <TableCell className="text-right tabular-nums font-semibold">
                   {fmtEuro(totali.totale, 2)}
                 </TableCell>
-                <TableCell className="text-xs text-muted-foreground" colSpan={2}>
+                <TableCell className="text-xs text-muted-foreground" colSpan={3}>
                   {totali.n_clienti} client{totali.n_clienti === 1 ? "e" : "i"}
                   {isFetching ? " · aggiornamento…" : ""}
                 </TableCell>
@@ -1112,11 +1120,15 @@ function DettaglioIncassiCliente({
             <TableHead className="text-right">Importo scadenza</TableHead>
             <TableHead className="text-right">Quota incassata</TableHead>
             <TableHead>Data pagamento</TableHead>
+            <TableHead>Metodo</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {righe.map((r) => {
             const parziale = Number(r.importo_pagato) < Number(r.importo_scadenza);
+            const metodoLabel = isRiBa(r.codice_pagamento)
+              ? "RiBa"
+              : (r.metodo_descrizione?.trim() || r.codice_pagamento || "—");
             return (
               <TableRow key={r.scadenza_id} className="text-sm">
                 <TableCell className="font-mono text-xs">{r.numero_documento ?? "—"}</TableCell>
@@ -1129,6 +1141,14 @@ function DettaglioIncassiCliente({
                   {parziale && <span className="text-xs text-muted-foreground ml-1">(parziale)</span>}
                 </TableCell>
                 <TableCell className="tabular-nums">{fmtDateIt(r.data_pagamento_effettiva)}</TableCell>
+                <TableCell className="text-xs">
+                  <span title={r.codice_pagamento ?? undefined} className="font-medium">
+                    {metodoLabel}
+                  </span>
+                  {r.codice_pagamento && !isRiBa(r.codice_pagamento) && r.metodo_descrizione && (
+                    <span className="ml-1 text-muted-foreground font-mono">({r.codice_pagamento})</span>
+                  )}
+                </TableCell>
               </TableRow>
             );
           })}
@@ -1139,7 +1159,7 @@ function DettaglioIncassiCliente({
               {righe.length} scadenz{righe.length === 1 ? "a" : "e"} incassat{righe.length === 1 ? "a" : "e"} nel periodo
             </TableCell>
             <TableCell className="text-right tabular-nums font-semibold">{fmtEuro(somma, 2)}</TableCell>
-            <TableCell />
+            <TableCell colSpan={2} />
           </TableRow>
         </TableFooter>
       </Table>
