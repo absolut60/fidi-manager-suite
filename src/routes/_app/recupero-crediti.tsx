@@ -23,6 +23,8 @@ import {
 } from "lucide-react";
 import { InvioMassivoDialog } from "@/components/invio-massivo-dialog";
 import { ClienteAttivitaRecuperoTab } from "@/components/cliente-attivita-recupero-tab";
+import { RegistraPromessaDialog } from "@/components/registra-promessa-dialog";
+import { RegistraPromessaSelectorDialog } from "@/components/registra-promessa-selector-dialog";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -205,6 +207,8 @@ function RecuperoCreditiPage() {
   const [expandedClienteId, setExpandedClienteId] = useState<string | null>(null);
   const [invioMassivoOpen, setInvioMassivoOpen] = useState(false);
   const [nuovaAzioneOpen, setNuovaAzioneOpen] = useState(false);
+  const [promessaSelectorOpen, setPromessaSelectorOpen] = useState(false);
+  const [promessaRigaClienteId, setPromessaRigaClienteId] = useState<string | null>(null);
   const qc = useQueryClient();
 
   useEffect(() => {
@@ -426,6 +430,9 @@ function RecuperoCreditiPage() {
         <Button size="sm" onClick={() => setNuovaAzioneOpen(true)} className="gap-1.5">
           <Plus className="size-4" /> Nuova azione
         </Button>
+        <Button size="sm" variant="outline" onClick={() => setPromessaSelectorOpen(true)} className="gap-1.5">
+          <HandCoins className="size-4" /> Registra promessa
+        </Button>
         <Button asChild variant="outline" size="sm" className="gap-1.5">
           <Link to="/recupero-crediti-promemoria">
             <CalendarClockIcon className="size-4" /> Promemoria di scadenza
@@ -568,6 +575,7 @@ function RecuperoCreditiPage() {
                 <SortableHead label="Ultima fatta" k="ultima" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
                 <TableHead>Stadio</TableHead>
                 <TableHead>Stato</TableHead>
+                <TableHead className="w-16 text-center">Azioni</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -681,10 +689,25 @@ function RecuperoCreditiPage() {
                           <Badge variant="secondary">Solo storico</Badge>
                         )}
                       </TableCell>
+                      <TableCell className="text-center">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={(e) => { e.stopPropagation(); setPromessaRigaClienteId(r.cliente_id); }}
+                            >
+                              <HandCoins className="size-4 text-orange-600" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Registra promessa di pagamento</TooltipContent>
+                        </Tooltip>
+                      </TableCell>
                     </TableRow>
                     {expanded && (
                       <TableRow className="bg-muted/30">
-                        <TableCell colSpan={9}>
+                        <TableCell colSpan={10}>
                           <div className="p-2">
                             <ClienteAttivitaRecuperoTab clienteId={r.cliente_id} />
                           </div>
