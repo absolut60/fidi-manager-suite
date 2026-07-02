@@ -63,6 +63,26 @@ type RigaDettaglio = {
   pec: string | null;
 };
 
+type RigaScadenza = {
+  cliente_id: string;
+  ragione_sociale: string;
+  codice_gestionale: string | null;
+  in_gestione_legale: boolean;
+  bloccato: boolean;
+  email: string | null;
+  pec: string | null;
+  scadenza_id: string;
+  numero_documento: string | null;
+  data_scadenza: string;
+  importo_scadenza: number;
+  importo_pagato: number;
+  quota_incassata: number;
+  residuo: number;
+  scaduta: boolean;
+  codice_pagamento: string | null;
+  metodo_descrizione: string | null;
+};
+
 type VistaDettaglio = "scaduto" | "a_scadere" | "incassato";
 
 function fmtEuro(n: number | null | undefined, decimals = 0) {
@@ -128,18 +148,33 @@ function CruscottoIncassiPage() {
     },
   });
 
-  const scaduti = useMemo(
-    () => (dettaglio ?? []).filter((r) => Number(r.scaduto_mese) > 0),
-    [dettaglio],
-  );
-  const aScadere = useMemo(
-    () => (dettaglio ?? []).filter((r) => Number(r.a_scadere_mese) > 0),
-    [dettaglio],
-  );
-  const incassato = useMemo(
-    () => (dettaglio ?? []).filter((r) => Number(r.incassato_mese) > 0),
-    [dettaglio],
-  );
+  const { data: scadenze, isLoading: loadingScadenze } = useQuery({
+    queryKey: ["cruscotto_incassi_scadenze", anno, meseSel],
+    enabled: meseSel != null,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc(
+        "get_cruscotto_incassi_mese_scadenze" as never,
+        { _anno: anno, _mese: meseSel! } as never,
+      );
+      if (error) throw error;
+      return ((data as unknown) as RigaScadenza[]) ?? [];
+    },
+  });
+
+  const scadenzeFiltrate = useMemo(() => {
+    const rows = scadenze ?? [];
+    if (vista === "incassato") {
+      return rows.filter((r) => Number(r.quota_incassata) > 0)
+        .map((r) => ({ ...r, importoVista: Number(r.quota_incassata) }));
+    }
+    if (vista === "scaduto") {
+      return rows.filter((r) => Number(r.residuo) > 0 && r.scaduta)
+        .map((r) => ({ ...r, importoVista: Number(r.residuo) }));
+    }
+    return rows.filter((r) => Number(r.residuo) > 0 && !r.scaduta)
+      .map((r) => ({ ...r, importoVista: Number(r.residuo) }));
+  }, [scadenze, vista]);
+
   const totScadutoMese = useMemo(
     () => (dettaglio ?? []).reduce((a, r) => a + Number(r.scaduto_mese || 0), 0),
     [dettaglio],
@@ -148,6 +183,7 @@ function CruscottoIncassiPage() {
     () => (dettaglio ?? []).reduce((a, r) => a + Number(r.a_scadere_mese || 0), 0),
     [dettaglio],
   );
+  const loadingLista = loadingDettaglio || loadingScadenze;
 
   function apriSollecita(clienteIds: string[]) {
     if (clienteIds.length === 0) {
@@ -158,10 +194,6 @@ function CruscottoIncassiPage() {
     setInvioMassivoOpen(true);
   }
 
-  function apriPromessa(r: RigaDettaglio) {
-    setPromessaClienteId(r.cliente_id);
-    setPromessaLabel(r.ragione_sociale);
-  }
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -300,16 +332,18 @@ function CruscottoIncassiPage() {
 
             {/* Toolbar liste (solo per da incassare) */}
             {vista !== "incassato" && (() => {
-              const lista = vista === "scaduto" ? scaduti : aScadere;
+              const clientiUnici = Array.from(
+                new Set(scadenzeFiltrate.map((r) => r.cliente_id)),
+              );
               return (
                 <div className="flex flex-wrap items-center gap-2 pt-1">
                   <Button
                     size="sm"
-                    onClick={() => apriSollecita(lista.map((r) => r.cliente_id))}
-                    disabled={loadingDettaglio || lista.length === 0}
+                    onClick={() => apriSollecita(clientiUnici)}
+                    disabled={loadingLista || clientiUnici.length === 0}
                     className="gap-1.5"
                   >
-                    <Send className="size-4" /> Sollecita tutti ({lista.length})
+                    <Send className="size-4" /> Sollecita tutti ({clientiUnici.length})
                   </Button>
                   <Button size="sm" variant="outline" disabled className="gap-1.5" title="Funzione in arrivo">
                     <Mail className="size-4" /> Invia riepilogo via mail
@@ -321,21 +355,22 @@ function CruscottoIncassiPage() {
               );
             })()}
 
-            {/* Lista */}
-            {loadingDettaglio ? (
+            {/* Lista raggruppata per cliente, espandibile sulle singole scadenze */}
+            {loadingLista ? (
               <div className="space-y-2">
                 {Array.from({ length: 6 }).map((_, i) => (
                   <Skeleton key={i} className="h-10 w-full rounded" />
                 ))}
               </div>
-            ) : vista === "incassato" ? (
-              <IncassatoLista righe={incassato} />
             ) : (
-              <DaIncassareLista
-                righe={vista === "scaduto" ? scaduti : aScadere}
+              <ScadenzeGroupedLista
+                righe={scadenzeFiltrate}
                 vista={vista}
                 onSollecita={(id) => apriSollecita([id])}
-                onPromessa={apriPromessa}
+                onPromessa={(clienteId, ragione) => {
+                  setPromessaClienteId(clienteId);
+                  setPromessaLabel(ragione);
+                }}
               />
             )}
           </Card>
@@ -367,147 +402,258 @@ function CruscottoIncassiPage() {
 
 /* ─── UI blocks ────────────────────────────────────────────────────────── */
 
-function DaIncassareLista({
+type RigaScadenzaVista = RigaScadenza & { importoVista: number };
+
+type GruppoCliente = {
+  cliente_id: string;
+  ragione_sociale: string;
+  codice_gestionale: string | null;
+  in_gestione_legale: boolean;
+  bloccato: boolean;
+  email: string | null;
+  pec: string | null;
+  totale: number;
+  scadenze: RigaScadenzaVista[];
+};
+
+function ScadenzeGroupedLista({
   righe, vista, onSollecita, onPromessa,
 }: {
-  righe: RigaDettaglio[];
-  vista: "scaduto" | "a_scadere";
+  righe: RigaScadenzaVista[];
+  vista: VistaDettaglio;
   onSollecita: (clienteId: string) => void;
-  onPromessa: (r: RigaDettaglio) => void;
+  onPromessa: (clienteId: string, ragione: string) => void;
 }) {
-  if (righe.length === 0) {
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const toggle = (id: string) =>
+    setExpanded((prev) => {
+      const s = new Set(prev);
+      if (s.has(id)) s.delete(id);
+      else s.add(id);
+      return s;
+    });
+
+  const gruppi = useMemo<GruppoCliente[]>(() => {
+    const map = new Map<string, GruppoCliente>();
+    for (const r of righe) {
+      let g = map.get(r.cliente_id);
+      if (!g) {
+        g = {
+          cliente_id: r.cliente_id,
+          ragione_sociale: r.ragione_sociale,
+          codice_gestionale: r.codice_gestionale,
+          in_gestione_legale: r.in_gestione_legale,
+          bloccato: r.bloccato,
+          email: r.email,
+          pec: r.pec,
+          totale: 0,
+          scadenze: [],
+        };
+        map.set(r.cliente_id, g);
+      }
+      g.totale += Number(r.importoVista);
+      g.scadenze.push(r);
+    }
+    for (const g of map.values()) {
+      g.scadenze.sort((a, b) => (a.data_scadenza < b.data_scadenza ? -1 : 1));
+    }
+    return Array.from(map.values()).sort((a, b) => b.totale - a.totale);
+  }, [righe]);
+
+  if (gruppi.length === 0) {
+    const msg =
+      vista === "scaduto" ? "Nessuna scadenza scaduta per questo mese."
+      : vista === "a_scadere" ? "Nessuna scadenza ancora da maturare per questo mese."
+      : "Nessun incasso registrato per questo mese.";
     return (
       <div className="text-sm text-muted-foreground text-center py-8 border rounded-md">
-        {vista === "scaduto"
-          ? "Nessun cliente con scadenze già scadute per questo mese."
-          : "Nessun cliente con scadenze ancora da maturare per questo mese."}
+        {msg}
       </div>
     );
   }
-  const tot_importo = righe.reduce(
-    (a, r) => a + Number(vista === "scaduto" ? r.scaduto_mese : r.a_scadere_mese),
-    0,
-  );
-  const tot_esposizione = righe.reduce((a, r) => a + Number(r.esposizione_scaduta_totale), 0);
-  const importoLabel = vista === "scaduto" ? "Scaduto del mese" : "A scadere del mese";
-  const importoCls = vista === "scaduto" ? "text-red-700" : "text-amber-700";
+
+  const importoLabel =
+    vista === "scaduto" ? "Scaduto del mese"
+    : vista === "a_scadere" ? "A scadere del mese"
+    : "Incassato del mese";
+  const importoCls =
+    vista === "scaduto" ? "text-red-700"
+    : vista === "a_scadere" ? "text-amber-700"
+    : "text-emerald-700";
+  const tot = gruppi.reduce((a, g) => a + g.totale, 0);
+  const showActions = vista !== "incassato";
+
   return (
     <div className="rounded-md border overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead className="w-8" />
             <TableHead>Cliente</TableHead>
             <TableHead className="w-24">Cod.</TableHead>
             <TableHead className="text-right whitespace-nowrap">{importoLabel}</TableHead>
-            <TableHead className="text-right whitespace-nowrap">Esposizione scaduta totale</TableHead>
-            <TableHead className="w-28">Metodo</TableHead>
-            <TableHead className="w-36">Stato</TableHead>
             <TableHead className="w-40">Note</TableHead>
-            <TableHead className="w-32 text-right">Azioni</TableHead>
+            {showActions && <TableHead className="w-32 text-right">Azioni</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
-          {righe.map((r) => {
-            const importo = Number(vista === "scaduto" ? r.scaduto_mese : r.a_scadere_mese);
-            const haScaduto = Number(r.scaduto_mese) > 0;
-            const haAScadere = Number(r.a_scadere_mese) > 0;
+          {gruppi.map((g) => {
+            const isOpen = expanded.has(g.cliente_id);
             return (
-              <TableRow key={r.cliente_id}>
-                <TableCell className="font-medium">
-                  <Link
-                    to="/clienti/$clienteId"
-                    params={{ clienteId: r.cliente_id }}
-                    className="text-primary hover:underline"
-                  >
-                    {r.ragione_sociale}
-                  </Link>
-                </TableCell>
-                <TableCell className="text-muted-foreground text-xs font-mono">
-                  {r.codice_gestionale ?? "—"}
-                </TableCell>
-                <TableCell className={cn("text-right tabular-nums font-medium", importoCls)}>
-                  {fmtEuro(importo)}
-                </TableCell>
-                <TableCell className="text-right tabular-nums font-medium text-red-700">
-                  {fmtEuro(Number(r.esposizione_scaduta_totale))}
-                </TableCell>
-                <TableCell>
-                  <MetodoBadge metodo={r.metodo_prevalente} />
-                </TableCell>
-                <TableCell>
-                  <div className="flex flex-wrap gap-1">
-                    {haScaduto && (
-                      <span className="rounded bg-red-100 text-red-800 px-1.5 py-0.5 text-[11px] font-medium">
-                        Scaduto
+              <>
+                <TableRow
+                  key={g.cliente_id}
+                  className="cursor-pointer hover:bg-muted/40"
+                  onClick={() => toggle(g.cliente_id)}
+                >
+                  <TableCell>
+                    {isOpen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+                  </TableCell>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      <span>{g.ragione_sociale}</span>
+                      <span className="text-xs text-muted-foreground">
+                        ({g.scadenze.length} scadenz{g.scadenze.length === 1 ? "a" : "e"})
                       </span>
-                    )}
-                    {haAScadere && (
-                      <span className="rounded bg-amber-100 text-amber-800 px-1.5 py-0.5 text-[11px] font-medium">
-                        A scadere
-                      </span>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell className="text-xs">
-                  <div className="flex flex-wrap gap-1">
-                    {r.bloccato && (
-                      <span className="rounded bg-amber-100 text-amber-800 px-1.5 py-0.5">
-                        Bloccato
-                      </span>
-                    )}
-                    {r.in_gestione_legale && (
-                      <span className="rounded bg-red-100 text-red-800 px-1.5 py-0.5">
-                        Legale
-                      </span>
-                    )}
-                    {!r.email && !r.pec && (
-                      <span className="rounded bg-muted text-muted-foreground px-1.5 py-0.5">
-                        No email
-                      </span>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center justify-end gap-1">
-                    <IconAction
-                      label="Sollecita"
-                      onClick={() => onSollecita(r.cliente_id)}
-                      icon={<Send className="size-4" />}
-                    />
-                    <IconAction
-                      label="Registra promessa di pagamento"
-                      onClick={() => onPromessa(r)}
-                      icon={<HandCoins className="size-4" />}
-                    />
-                    <IconAction
-                      label="Apri scheda cliente"
-                      asChild
-                      icon={<ExternalLink className="size-4" />}
-                    >
-                      <Link to="/clienti/$clienteId" params={{ clienteId: r.cliente_id }} />
-                    </IconAction>
-                  </div>
-                </TableCell>
-              </TableRow>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-xs font-mono">
+                    {g.codice_gestionale ?? "—"}
+                  </TableCell>
+                  <TableCell className={cn("text-right tabular-nums font-medium", importoCls)}>
+                    {fmtEuro(g.totale)}
+                  </TableCell>
+                  <TableCell className="text-xs">
+                    <div className="flex flex-wrap gap-1">
+                      {g.bloccato && (
+                        <span className="rounded bg-amber-100 text-amber-800 px-1.5 py-0.5">
+                          Bloccato
+                        </span>
+                      )}
+                      {g.in_gestione_legale && (
+                        <span className="rounded bg-red-100 text-red-800 px-1.5 py-0.5">
+                          Legale
+                        </span>
+                      )}
+                      {!g.email && !g.pec && (
+                        <span className="rounded bg-muted text-muted-foreground px-1.5 py-0.5">
+                          No email
+                        </span>
+                      )}
+                    </div>
+                  </TableCell>
+                  {showActions && (
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-1">
+                        <IconAction
+                          label="Sollecita"
+                          onClick={() => onSollecita(g.cliente_id)}
+                          icon={<Send className="size-4" />}
+                        />
+                        <IconAction
+                          label="Registra promessa di pagamento"
+                          onClick={() => onPromessa(g.cliente_id, g.ragione_sociale)}
+                          icon={<HandCoins className="size-4" />}
+                        />
+                        <IconAction
+                          label="Apri scheda cliente"
+                          asChild
+                          icon={<ExternalLink className="size-4" />}
+                        >
+                          <Link to="/clienti/$clienteId" params={{ clienteId: g.cliente_id }} />
+                        </IconAction>
+                      </div>
+                    </TableCell>
+                  )}
+                </TableRow>
+                {isOpen && (
+                  <TableRow key={`${g.cliente_id}-exp`} className="bg-muted/30 hover:bg-muted/30">
+                    <TableCell />
+                    <TableCell colSpan={showActions ? 5 : 4} className="py-2">
+                      <ScadenzeInnerTable scadenze={g.scadenze} vista={vista} />
+                    </TableCell>
+                  </TableRow>
+                )}
+              </>
             );
           })}
         </TableBody>
         <TableFooter>
           <TableRow>
+            <TableCell />
             <TableCell colSpan={2} className="font-medium">
-              Totale ({righe.length} clienti)
+              Totale ({gruppi.length} client{gruppi.length === 1 ? "e" : "i"})
             </TableCell>
             <TableCell className={cn("text-right tabular-nums font-semibold", importoCls)}>
-              {fmtEuro(tot_importo)}
+              {fmtEuro(tot)}
             </TableCell>
-            <TableCell className="text-right tabular-nums font-semibold text-red-700">
-              {fmtEuro(tot_esposizione)}
-            </TableCell>
-            <TableCell colSpan={4} />
+            <TableCell colSpan={showActions ? 2 : 1} />
           </TableRow>
         </TableFooter>
       </Table>
     </div>
+  );
+}
+
+function ScadenzeInnerTable({
+  scadenze, vista,
+}: {
+  scadenze: RigaScadenzaVista[];
+  vista: VistaDettaglio;
+}) {
+  const importoLabel =
+    vista === "scaduto" ? "Da incassare"
+    : vista === "a_scadere" ? "Da incassare"
+    : "Quota incassata";
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow className="text-xs">
+          <TableHead>Documento</TableHead>
+          <TableHead>Data scadenza</TableHead>
+          <TableHead className="text-right">{importoLabel}</TableHead>
+          <TableHead className="w-28">Metodo</TableHead>
+          <TableHead className="w-32">Stato</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {scadenze.map((s) => {
+          const metodoLabel = isRiBa(s.codice_pagamento)
+            ? "RiBa"
+            : (s.metodo_descrizione?.trim() || s.codice_pagamento || "—");
+          return (
+            <TableRow key={s.scadenza_id} className="text-sm">
+              <TableCell className="font-mono text-xs">{s.numero_documento ?? "—"}</TableCell>
+              <TableCell className="tabular-nums">{fmtDateIt(s.data_scadenza)}</TableCell>
+              <TableCell className="text-right tabular-nums">
+                {fmtEuro(Number(s.importoVista), 2)}
+                {vista === "incassato" && Number(s.residuo) > 0 && (
+                  <span className="text-xs text-muted-foreground ml-1">
+                    (di {fmtEuro(Number(s.importo_scadenza), 2)})
+                  </span>
+                )}
+              </TableCell>
+              <TableCell className="text-xs">
+                <span title={s.codice_pagamento ?? undefined} className="font-medium">
+                  {metodoLabel}
+                </span>
+              </TableCell>
+              <TableCell>
+                {s.scaduta ? (
+                  <span className="rounded bg-red-100 text-red-800 px-1.5 py-0.5 text-[11px] font-medium">
+                    Scaduto
+                  </span>
+                ) : (
+                  <span className="rounded bg-amber-100 text-amber-800 px-1.5 py-0.5 text-[11px] font-medium">
+                    A scadere
+                  </span>
+                )}
+              </TableCell>
+            </TableRow>
+          );
+        })}
+      </TableBody>
+    </Table>
   );
 }
 
@@ -527,88 +673,6 @@ function MetodoBadge({ metodo }: { metodo: string | null }) {
   );
 }
 
-
-
-function IncassatoLista({ righe }: { righe: RigaDettaglio[] }) {
-  if (righe.length === 0) {
-    return (
-      <div className="text-sm text-muted-foreground text-center py-8 border rounded-md">
-        Nessun incasso registrato per questo mese.
-      </div>
-    );
-  }
-  const tot = righe.reduce((a, r) => a + Number(r.incassato_mese), 0);
-  return (
-    <div className="rounded-md border overflow-x-auto">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Cliente</TableHead>
-            <TableHead className="w-24">Cod.</TableHead>
-            <TableHead className="text-right">Incassato del mese</TableHead>
-            <TableHead className="w-32">Tipo</TableHead>
-            <TableHead className="w-24 text-right">Azioni</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {righe.map((r) => {
-            const dov = Number(r.dovuto_mese);
-            const inc = Number(r.incassato_mese);
-            const tipo = inc + 0.005 >= dov
-              ? { label: "Saldo", cls: "bg-emerald-100 text-emerald-800" }
-              : { label: "Parziale", cls: "bg-amber-100 text-amber-800" };
-            return (
-              <TableRow key={r.cliente_id}>
-                <TableCell className="font-medium">
-                  <Link
-                    to="/clienti/$clienteId"
-                    params={{ clienteId: r.cliente_id }}
-                    className="text-primary hover:underline"
-                  >
-                    {r.ragione_sociale}
-                  </Link>
-                </TableCell>
-                <TableCell className="text-muted-foreground text-xs font-mono">
-                  {r.codice_gestionale ?? "—"}
-                </TableCell>
-                <TableCell className="text-right tabular-nums font-medium text-emerald-700">
-                  {fmtEuro(inc)}
-                </TableCell>
-                <TableCell>
-                  <span className={cn("rounded px-1.5 py-0.5 text-[11px] font-medium", tipo.cls)}>
-                    {tipo.label}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center justify-end gap-1">
-                    <IconAction
-                      label="Apri scheda cliente"
-                      asChild
-                      icon={<ExternalLink className="size-4" />}
-                    >
-                      <Link to="/clienti/$clienteId" params={{ clienteId: r.cliente_id }} />
-                    </IconAction>
-                  </div>
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-        <TableFooter>
-          <TableRow>
-            <TableCell colSpan={2} className="font-medium">
-              Totale ({righe.length} clienti)
-            </TableCell>
-            <TableCell className="text-right tabular-nums font-semibold text-emerald-700">
-              {fmtEuro(tot)}
-            </TableCell>
-            <TableCell colSpan={2} />
-          </TableRow>
-        </TableFooter>
-      </Table>
-    </div>
-  );
-}
 
 /* ─── small components ─────────────────────────────────────────────────── */
 
