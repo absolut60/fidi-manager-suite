@@ -18,6 +18,16 @@ async function getConfigInt(chiave: string, fallback: number): Promise<number> {
   return Number.isFinite(v) && v > 0 ? Math.floor(v) : fallback;
 }
 
+async function getConfigNumber(chiave: string, fallback: number): Promise<number> {
+  const { data } = await supabaseAdmin
+    .from("configurazioni")
+    .select("valore")
+    .eq("chiave", chiave)
+    .maybeSingle();
+  const v = parseFloat(String(data?.valore ?? ""));
+  return Number.isFinite(v) && v >= 0 ? v : fallback;
+}
+
 async function sendEmailViaEdge(payload: {
   to: string;
   subject: string;
