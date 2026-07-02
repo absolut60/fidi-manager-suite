@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   ChevronLeft, ChevronRight, TrendingUp, Send, HandCoins, ExternalLink,
-  Mail, Download, Users, Search, ChevronDown, ChevronUp,
+  Mail, Download, Search, ChevronDown, ChevronUp, X,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
