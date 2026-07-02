@@ -783,6 +783,7 @@ type RigaIncassoPeriodo = {
   n_parziali: number;
   tipo_prevalente: "saldo" | "parziale";
   ultimo_incasso: string | null;
+  metodo_prevalente: string | null;
 };
 
 type RigaIncassoDettaglio = {
@@ -792,6 +793,8 @@ type RigaIncassoDettaglio = {
   importo_scadenza: number;
   importo_pagato: number;
   data_pagamento_effettiva: string;
+  codice_pagamento: string | null;
+  metodo_descrizione: string | null;
 };
 
 function fmtDateIt(v: string | null | undefined): string {
