@@ -298,14 +298,14 @@ export function InvioMassivoDialog({
     const base = renderTemplate(
       { oggetto: selectedTemplate.oggetto, corpo: selectedTemplate.corpo },
       dati,
-      { tipo: selectedTemplate.tipo },
+      { tipo: selectedTemplate.tipo, speseImportoUnitario: cfg.spese_insoluto_riba_eur },
     );
     const corpo = wrapEmailHtml(base.corpo, sedeCorrente ?? null, {
       nome: nomeOperatore,
       email: user?.email ?? null,
     }, { tipo: selectedTemplate.tipo });
     return { oggetto: base.oggetto, corpo };
-  }, [selectedTemplate, clientePreview, sedeCorrente, nomeOperatore, user?.email]);
+  }, [selectedTemplate, clientePreview, sedeCorrente, nomeOperatore, user?.email, cfg.spese_insoluto_riba_eur]);
 
   // Conteggi rapidi: si basano solo su ciò che è stato esplorato/corretto
   const numeroCorretti = useMemo(
