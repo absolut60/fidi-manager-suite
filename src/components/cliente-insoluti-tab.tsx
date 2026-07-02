@@ -30,7 +30,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { classificaScadenza, sommaScadutoCliente, contributoScaduto } from "@/lib/scadenze";
+import { classificaScadenza, sommaScadutoCliente, contributoScaduto, isPagatoReale } from "@/lib/scadenze";
 import { AllegatiSection, ALLEGATI_BUCKET } from "@/components/allegati-section";
 
 // ============================================================================
