@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, Fragment, useEffect } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
-import { AlertTriangle, Calendar, FileText, Ban, CalendarClock, Scale, ChevronDown, ChevronUp, Megaphone, Mail, Bell, ChevronLeft, ChevronRight } from "lucide-react";
+import { AlertTriangle, Calendar, FileText, Ban, CalendarClock, Scale, ChevronDown, ChevronUp, Megaphone, Mail, Bell, ChevronLeft, ChevronRight, HandCoins } from "lucide-react";
 import { InvioMassivoDialog } from "@/components/invio-massivo-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
@@ -71,6 +71,8 @@ type ScadRow = {
   avvisato_ha_email: boolean;
   avvisato_ultima_tipo: string | null;
   avvisato_ultima_data: string | null;
+  ha_promessa?: boolean | null;
+  data_promessa?: string | null;
   total_count: number | string;
 };
 
@@ -286,6 +288,7 @@ function ScadenziarioPage() {
   const pageRows = rows ?? [];
 
   return (
+    <TooltipProvider delayDuration={200}>
     <div className="space-y-6">
       <header className="flex items-center gap-3">
         <CalendarClock className="size-6 text-primary" />
@@ -573,6 +576,18 @@ function ScadenziarioPage() {
                             {totScad < 0 && (
                               <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">A credito</Badge>
                             )}
+                            {r.ha_promessa && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-flex items-center text-orange-600" onClick={(e) => e.stopPropagation()}>
+                                    <HandCoins className="size-4" />
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  Promessa di pagamento{r.data_promessa ? ` entro il ${fmtDate(r.data_promessa)}` : ""}
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell className="font-mono text-xs">{r.codice_gestionale ?? "—"}</TableCell>
@@ -597,7 +612,8 @@ function ScadenziarioPage() {
                       </TableRow>
                       {isExpanded && (
                         <TableRow key={`${r.cliente_id}-exp`} className="bg-muted/40 hover:bg-muted/40">
-                          <TableCell colSpan={16} className="px-4 py-3">
+                          <TableCell colSpan={16} className="px-4 py-3 space-y-3">
+                            {r.ha_promessa && <PromesseAttiveBlock clienteId={r.cliente_id} />}
                             <ExpandedRischioPanel
                               loading={loadingRischio}
                               data={rischioExpanded}
@@ -660,6 +676,7 @@ function ScadenziarioPage() {
         clienteIdsFiltrati={allFilteredIds ?? Array.from(selectedIds)}
       />
     </div>
+    </TooltipProvider>
   );
 }
 
@@ -695,6 +712,49 @@ type RischioData = {
   num_insoluti: number | null; dilazione_concordata: number | null; dilazione_effettiva: number | null;
   condizione_pagamento_cod?: string | null; condizione_pagamento_desc_db?: string | null;
 } | null | undefined;
+
+function PromesseAttiveBlock({ clienteId }: { clienteId: string }) {
+  const { data } = useQuery({
+    queryKey: ["promesse-attive-scadenziario", clienteId],
+    queryFn: async () => {
+      const oggi = new Date();
+      oggi.setHours(0, 0, 0, 0);
+      const { data, error } = await supabase
+        .from("azioni_recupero")
+        .select("id, data_promessa_pagamento, importo_riferimento, note")
+        .eq("cliente_id", clienteId)
+        .eq("esito", "promessa_pagamento")
+        .gte("data_promessa_pagamento", oggi.toISOString().slice(0, 10))
+        .order("data_promessa_pagamento", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  if (!data || data.length === 0) return null;
+  return (
+    <div className="rounded-md border border-orange-500/30 bg-orange-500/10 p-3">
+      <div className="flex items-center gap-2 text-sm font-semibold text-orange-700 dark:text-orange-400 mb-2">
+        <HandCoins className="size-4" />
+        {data.length === 1 ? "Promessa di pagamento" : `${data.length} promesse di pagamento`}
+      </div>
+      <ul className="space-y-1 text-sm">
+        {data.map((p) => (
+          <li key={p.id} className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span>
+              {p.importo_riferimento != null
+                ? fmtEuro(Number(p.importo_riferimento))
+                : "Importo non indicato"}
+            </span>
+            <span className="text-muted-foreground">
+              entro il {fmtDate(p.data_promessa_pagamento)}
+            </span>
+            {p.note && <span className="text-xs text-muted-foreground italic">— {p.note}</span>}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 
 function ExpandedRischioPanel({ loading, data, onApri }: { loading: boolean; data: RischioData; onApri: (e: React.MouseEvent) => void }) {

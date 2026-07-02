@@ -2808,6 +2808,7 @@ export type Database = {
       }
       bulk_update_clienti_bfa: { Args: { _payloads: Json }; Returns: number }
       calcola_livello_fido: { Args: { _importo: number }; Returns: number }
+      calcola_scaduto: { Args: { _ant: number; _ssa: number }; Returns: number }
       fn_email_valida: { Args: { _raw: string }; Returns: boolean }
       fn_telefono_valido: { Args: { _raw: string }; Returns: boolean }
       genera_snapshot: { Args: { _data: string }; Returns: string }
@@ -3075,9 +3076,11 @@ export type Database = {
           bloccato: boolean
           cliente_id: string
           codice_gestionale: string
+          data_promessa: string
           fascia: string
           fatturato_cur: number
           fatturato_prec: number
+          ha_promessa: boolean
           in_gestione_legale: boolean
           ind_blocco: number
           max_gg_ritardo: number
@@ -3162,6 +3165,7 @@ export type Database = {
         Args: { _destinatario: string; _richiesta_id: string; _testo: string }
         Returns: Json
       }
+      is_anticipo: { Args: { _numero_documento: string }; Returns: boolean }
       livello_approvatore: { Args: { _user_id: string }; Returns: number }
       marca_comunicazioni_lette: {
         Args: { _richiesta_id: string }
