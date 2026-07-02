@@ -36,6 +36,10 @@ type RigaMese = {
   mese: number;
   dovuto: number;
   incassato: number;
+  scaduto: number;
+  a_scadere: number;
+  scaduto_riba: number;
+  a_scadere_riba: number;
   da_incassare: number;
   pct: number;
   n_scadenze: number;
@@ -125,12 +129,17 @@ function CruscottoIncassiPage() {
   const totali = useMemo(() => {
     const dovuto = righe.reduce((a, r) => a + Number(r.dovuto), 0);
     const incassato = righe.reduce((a, r) => a + Number(r.incassato), 0);
-    return {
-      dovuto,
-      incassato,
-      da_incassare: Math.max(dovuto - incassato, 0),
-      pct: dovuto > 0 ? Math.min((incassato / dovuto) * 100, 100) : 0,
-    };
+    const scaduto = righe.reduce((a, r) => a + Number(r.scaduto), 0);
+    const aScadere = righe.reduce((a, r) => a + Number(r.a_scadere), 0);
+    const scadutoRiba = righe.reduce((a, r) => a + Number(r.scaduto_riba), 0);
+    const aScadereRiba = righe.reduce((a, r) => a + Number(r.a_scadere_riba), 0);
+    const daIncassare = scaduto + aScadere;
+    const pct = dovuto > 0
+      ? (daIncassare > 0
+          ? Math.min((incassato / dovuto) * 100, 99.9)
+          : Math.min((incassato / dovuto) * 100, 100))
+      : 0;
+    return { dovuto, incassato, scaduto, aScadere, scadutoRiba, aScadereRiba, da_incassare: daIncassare, pct };
   }, [righe]);
 
   const dettaglioMese = meseSel != null ? righe.find((r) => r.mese === meseSel) : null;
@@ -243,10 +252,21 @@ function CruscottoIncassiPage() {
 
         {/* Totali anno */}
         <Card className="p-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <TotBox label="Dovuto anno" value={fmtEuro(totali.dovuto)} />
             <TotBox label="Incassato" value={fmtEuro(totali.incassato)} tone="green" />
-            <TotBox label="Da incassare" value={fmtEuro(totali.da_incassare)} tone="red" />
+            <TotBox
+              label="Scaduto"
+              value={fmtEuro(totali.scaduto)}
+              tone="red"
+              sub={totali.scadutoRiba > 0 ? `di cui RiBa ${fmtEuro(totali.scadutoRiba)}` : undefined}
+            />
+            <TotBox
+              label="A scadere"
+              value={fmtEuro(totali.aScadere)}
+              tone="amber"
+              sub={totali.aScadereRiba > 0 ? `di cui RiBa ${fmtEuro(totali.aScadereRiba)}` : undefined}
+            />
             <TotBox label="% incassato" value={fmtPct(totali.pct)} tone="neutral" />
           </div>
         </Card>
@@ -689,20 +709,23 @@ function MetodoBadge({ metodo }: { metodo: string | null }) {
 /* ─── small components ─────────────────────────────────────────────────── */
 
 function TotBox({
-  label, value, tone,
+  label, value, tone, sub,
 }: {
   label: string;
   value: string;
-  tone?: "green" | "red" | "neutral";
+  tone?: "green" | "red" | "amber" | "neutral";
+  sub?: string;
 }) {
   const color =
     tone === "green" ? "text-emerald-700"
     : tone === "red" ? "text-red-700"
+    : tone === "amber" ? "text-amber-700"
     : "text-foreground";
   return (
     <div>
       <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</div>
       <div className={cn("text-xl font-semibold tabular-nums mt-0.5", color)}>{value}</div>
+      {sub && <div className="text-[10px] text-muted-foreground mt-0.5 tabular-nums">{sub}</div>}
     </div>
   );
 }
@@ -829,7 +852,8 @@ function MeseCard({
       <div className="space-y-1 text-xs">
         <Row label="Dovuto" value={fmtEuro(riga.dovuto)} />
         <Row label="Incassato" value={futuro ? "—" : fmtEuro(riga.incassato)} tone="green" />
-        <Row label="Da incassare" value={futuro ? "—" : fmtEuro(riga.da_incassare)} tone="red" />
+        <Row label="Scaduto" value={futuro ? "—" : fmtEuro(riga.scaduto)} tone="red" />
+        <Row label="A scadere" value={futuro ? "—" : fmtEuro(riga.a_scadere)} tone="amber" />
       </div>
     </button>
   );
@@ -840,10 +864,13 @@ function Row({
 }: {
   label: string;
   value: string;
-  tone?: "green" | "red";
+  tone?: "green" | "red" | "amber";
 }) {
   const color =
-    tone === "green" ? "text-emerald-700" : tone === "red" ? "text-red-700" : "";
+    tone === "green" ? "text-emerald-700"
+    : tone === "red" ? "text-red-700"
+    : tone === "amber" ? "text-amber-700"
+    : "";
   return (
     <div className="flex items-center justify-between gap-2">
       <span className="text-muted-foreground">{label}</span>
