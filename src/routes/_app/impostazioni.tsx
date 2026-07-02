@@ -551,6 +551,10 @@ function ConfigurazioniCard() {
       if (!isFinite(anno) || anno < 2020 || anno > 2100) {
         throw new Error("Anno attività cliente non valido (es. 2025, 2026)");
       }
+      const spese = Number(values.spese_insoluto_riba_eur);
+      if (!isFinite(spese) || spese < 0 || spese > 1000) {
+        throw new Error("Spese di insoluto RiBa non valide (0–1000 €)");
+      }
       const updates = CONFIG_FIELDS.map((f) =>
         supabase.from("configurazioni").update({ valore: values[f.chiave] ?? "" }).eq("chiave", f.chiave)
       );
