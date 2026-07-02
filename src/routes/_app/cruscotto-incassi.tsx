@@ -852,7 +852,8 @@ function MeseCard({
       <div className="space-y-1 text-xs">
         <Row label="Dovuto" value={fmtEuro(riga.dovuto)} />
         <Row label="Incassato" value={futuro ? "—" : fmtEuro(riga.incassato)} tone="green" />
-        <Row label="Da incassare" value={futuro ? "—" : fmtEuro(riga.da_incassare)} tone="red" />
+        <Row label="Scaduto" value={futuro ? "—" : fmtEuro(riga.scaduto)} tone="red" />
+        <Row label="A scadere" value={futuro ? "—" : fmtEuro(riga.a_scadere)} tone="amber" />
       </div>
     </button>
   );
