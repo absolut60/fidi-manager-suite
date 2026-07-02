@@ -1,6 +1,7 @@
 // Helpers PURI per il rendering dei template email.
 // NIENTE import di supabase: questo modulo deve poter girare sia nel browser
 // sia nel worker Inngest. Mantieni questo file privo di side-effect.
+import { calcolaSpeseInsoluto, buildTotaliRowsHtml } from "@/lib/spese-insoluto";
 
 export type PlaceholderKey =
   | "ragione_sociale"
