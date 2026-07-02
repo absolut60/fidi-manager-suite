@@ -63,6 +63,26 @@ type RigaDettaglio = {
   pec: string | null;
 };
 
+type RigaScadenza = {
+  cliente_id: string;
+  ragione_sociale: string;
+  codice_gestionale: string | null;
+  in_gestione_legale: boolean;
+  bloccato: boolean;
+  email: string | null;
+  pec: string | null;
+  scadenza_id: string;
+  numero_documento: string | null;
+  data_scadenza: string;
+  importo_scadenza: number;
+  importo_pagato: number;
+  quota_incassata: number;
+  residuo: number;
+  scaduta: boolean;
+  codice_pagamento: string | null;
+  metodo_descrizione: string | null;
+};
+
 type VistaDettaglio = "scaduto" | "a_scadere" | "incassato";
 
 function fmtEuro(n: number | null | undefined, decimals = 0) {
