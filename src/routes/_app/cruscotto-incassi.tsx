@@ -525,10 +525,8 @@ function MetodoBadge({ metodo }: { metodo: string | null }) {
     </span>
   );
 }
-      </Table>
-    </div>
-  );
-}
+
+
 
 function IncassatoLista({ righe }: { righe: RigaDettaglio[] }) {
   if (righe.length === 0) {
