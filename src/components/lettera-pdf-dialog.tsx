@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { caricaDatiClienteLettera, renderLettera, type TemplateLettera } from "@/lib/template-lettera";
 import { generaLetteraPdf } from "@/lib/lettera-pdf.functions";
+import { useConfig } from "@/hooks/use-config";
 
 type Props = {
   open: boolean;
