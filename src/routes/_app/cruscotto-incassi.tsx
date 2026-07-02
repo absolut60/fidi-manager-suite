@@ -254,7 +254,12 @@ function CruscottoIncassiPage() {
         <Card className="p-4">
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <TotBox label="Dovuto anno" value={fmtEuro(totali.dovuto)} />
-            <TotBox label="Incassato" value={fmtEuro(totali.incassato)} tone="green" />
+            <TotBox
+              label="Incassato"
+              value={fmtEuro(totali.incassato)}
+              tone="green"
+              sub={totali.eccedenza > 0 ? `di cui sovrapagati ${fmtEuro(totali.eccedenza)}` : undefined}
+            />
             <TotBox
               label="Scaduto"
               value={fmtEuro(totali.scaduto)}
