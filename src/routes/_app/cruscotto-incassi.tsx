@@ -127,12 +127,24 @@ function CruscottoIncassiPage() {
     },
   });
 
-  const daIncassare = useMemo(
-    () => (dettaglio ?? []).filter((r) => Number(r.insoluto_mese) > 0),
+  const scaduti = useMemo(
+    () => (dettaglio ?? []).filter((r) => Number(r.scaduto_mese) > 0),
+    [dettaglio],
+  );
+  const aScadere = useMemo(
+    () => (dettaglio ?? []).filter((r) => Number(r.a_scadere_mese) > 0),
     [dettaglio],
   );
   const incassato = useMemo(
     () => (dettaglio ?? []).filter((r) => Number(r.incassato_mese) > 0),
+    [dettaglio],
+  );
+  const totScadutoMese = useMemo(
+    () => (dettaglio ?? []).reduce((a, r) => a + Number(r.scaduto_mese || 0), 0),
+    [dettaglio],
+  );
+  const totAScadereMese = useMemo(
+    () => (dettaglio ?? []).reduce((a, r) => a + Number(r.a_scadere_mese || 0), 0),
     [dettaglio],
   );
 
