@@ -676,6 +676,7 @@ function ScadenziarioPage() {
         clienteIdsFiltrati={allFilteredIds ?? Array.from(selectedIds)}
       />
     </div>
+    </TooltipProvider>
   );
 }
 
