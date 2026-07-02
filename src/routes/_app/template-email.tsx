@@ -349,7 +349,9 @@ function PreviewDialog({
 
   const rendered = useMemo(() => {
     if (!dati) return null;
-    const base = renderTemplate({ oggetto: template.oggetto, corpo: template.corpo }, dati);
+    // Nota: anteprima con importo unitario di default (3€). L'anteprima nella preview page
+    // non ha accesso rapido al valore configurato; il valore vero è usato in tutti gli invii reali.
+    const base = renderTemplate({ oggetto: template.oggetto, corpo: template.corpo }, dati, { tipo: template.tipo, speseImportoUnitario: 3 });
     const corpo = wrapEmailHtml(base.corpo, sede ?? null, {
       nome: nomeOperatore,
       email: profilo?.email ?? null,
