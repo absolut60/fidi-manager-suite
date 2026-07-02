@@ -2893,6 +2893,28 @@ export type Database = {
           store_nome: string
         }[]
       }
+      get_cruscotto_incassi_mese_scadenze: {
+        Args: { _anno: number; _mese: number }
+        Returns: {
+          bloccato: boolean
+          cliente_id: string
+          codice_gestionale: string
+          codice_pagamento: string
+          data_scadenza: string
+          email: string
+          importo_pagato: number
+          importo_scadenza: number
+          in_gestione_legale: boolean
+          metodo_descrizione: string
+          numero_documento: string
+          pec: string
+          quota_incassata: number
+          ragione_sociale: string
+          residuo: number
+          scadenza_id: string
+          scaduta: boolean
+        }[]
+      }
       get_dso_aggregato: {
         Args: {
           _cliente_id?: string
