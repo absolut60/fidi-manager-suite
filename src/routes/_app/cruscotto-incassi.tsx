@@ -327,6 +327,7 @@ function CruscottoIncassiPage() {
               <MetricButton
                 label="Da incassare — scaduto"
                 value={loadingDettaglio ? "…" : fmtEuro(totScadutoMese)}
+                subLabel={loadingScadenze ? undefined : `di cui RiBa ${fmtEuro(scadutoRiba)}`}
                 tone="red"
                 selected={vista === "scaduto"}
                 onClick={() => setVista("scaduto")}
@@ -334,6 +335,7 @@ function CruscottoIncassiPage() {
               <MetricButton
                 label="Da incassare — a scadere"
                 value={loadingDettaglio ? "…" : fmtEuro(totAScadereMese)}
+                subLabel={loadingScadenze ? undefined : `di cui RiBa ${fmtEuro(aScadereRiba)}`}
                 tone="amber"
                 selected={vista === "a_scadere"}
                 onClick={() => setVista("a_scadere")}
