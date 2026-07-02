@@ -1028,6 +1028,9 @@ function RicercaIncassiBlock() {
                         {fmtEuro(Number(r.totale_incassato), 2)}
                       </TableCell>
                       <TableCell>
+                        <MetodoBadge metodo={r.metodo_prevalente} />
+                      </TableCell>
+                      <TableCell>
                         <Badge
                           variant="secondary"
                           className={cn(
@@ -1045,7 +1048,7 @@ function RicercaIncassiBlock() {
                     {isOpen && (
                       <TableRow key={`${r.cliente_id}-exp`} className="bg-muted/30 hover:bg-muted/30">
                         <TableCell />
-                        <TableCell colSpan={6} className="py-2">
+                        <TableCell colSpan={7} className="py-2">
                           <DettaglioIncassiCliente
                             clienteId={r.cliente_id}
                             dal={dal}
