@@ -3,8 +3,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Send, Plus, Bell, Phone, StickyNote, FileText, Mail, Activity, Eye, CalendarClock, Paperclip,
-  Pencil, Trash2,
+  Pencil, Trash2, HandCoins,
 } from "lucide-react";
+import { RegistraPromessaDialog } from "@/components/registra-promessa-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { AllegatiSection, ALLEGATI_BUCKET } from "@/components/allegati-section";
@@ -116,6 +117,7 @@ export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string })
   const [creaOpen, setCreaOpen] = useState(false);
   const [creaTipo, setCreaTipo] = useState<TipoAzione>("promemoria");
   const [letteraOpen, setLetteraOpen] = useState(false);
+  const [promessaOpen, setPromessaOpen] = useState(false);
   const [viewEmail, setViewEmail] = useState<Azione | null>(null);
   const [editAzione, setEditAzione] = useState<Azione | null>(null);
   const [deleteAzione, setDeleteAzione] = useState<Azione | null>(null);
@@ -307,6 +309,9 @@ export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string })
         <Button size="sm" variant="outline" onClick={() => openNuova("nota")} className="gap-1.5">
           <StickyNote className="size-4" /> Nuova nota
         </Button>
+        <Button size="sm" variant="outline" onClick={() => setPromessaOpen(true)} className="gap-1.5">
+          <HandCoins className="size-4" /> Registra promessa
+        </Button>
         <Button size="sm" variant="ghost" onClick={() => setLetteraOpen(true)} className="gap-1.5">
           <FileText className="size-4" /> Lettera
         </Button>
@@ -399,6 +404,12 @@ export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string })
         onOpenChange={setCreaOpen}
         clienteId={clienteId}
         tipoIniziale={creaTipo}
+      />
+      <RegistraPromessaDialog
+        open={promessaOpen}
+        onOpenChange={setPromessaOpen}
+        clienteId={clienteId}
+        onCreated={invalidateRecupero}
       />
 
       <Dialog open={!!viewEmail} onOpenChange={(v) => !v && setViewEmail(null)}>

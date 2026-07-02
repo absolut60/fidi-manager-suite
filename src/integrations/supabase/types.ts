@@ -2869,6 +2869,26 @@ export type Database = {
           pct: number
         }[]
       }
+      get_cruscotto_incassi_mese_dettaglio: {
+        Args: { _anno: number; _mese: number }
+        Returns: {
+          bloccato: boolean
+          cliente_id: string
+          codice_gestionale: string
+          dovuto_mese: number
+          email: string
+          esposizione_scaduta_totale: number
+          in_gestione_legale: boolean
+          incassato_mese: number
+          insoluto_mese: number
+          n_scadenze_mese: number
+          n_scadenze_pagate_mese: number
+          pec: string
+          ragione_sociale: string
+          store_id: string
+          store_nome: string
+        }[]
+      }
       get_dso_aggregato: {
         Args: {
           _cliente_id?: string
