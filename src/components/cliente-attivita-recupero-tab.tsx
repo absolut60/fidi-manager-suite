@@ -117,6 +117,7 @@ export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string })
   const [creaOpen, setCreaOpen] = useState(false);
   const [creaTipo, setCreaTipo] = useState<TipoAzione>("promemoria");
   const [letteraOpen, setLetteraOpen] = useState(false);
+  const [promessaOpen, setPromessaOpen] = useState(false);
   const [viewEmail, setViewEmail] = useState<Azione | null>(null);
   const [editAzione, setEditAzione] = useState<Azione | null>(null);
   const [deleteAzione, setDeleteAzione] = useState<Azione | null>(null);
