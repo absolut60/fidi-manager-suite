@@ -2955,6 +2955,31 @@ export type Database = {
           fatturato_anno_prec: number
         }[]
       }
+      get_incassi_periodo: {
+        Args: { _al: string; _cliente_search?: string; _dal: string }
+        Returns: {
+          cliente_id: string
+          codice_gestionale: string
+          n_incassi: number
+          n_parziali: number
+          n_saldi: number
+          ragione_sociale: string
+          tipo_prevalente: string
+          totale_incassato: number
+          ultimo_incasso: string
+        }[]
+      }
+      get_incassi_periodo_dettaglio: {
+        Args: { _al: string; _cliente_id: string; _dal: string }
+        Returns: {
+          data_pagamento_effettiva: string
+          data_scadenza: string
+          importo_pagato: number
+          importo_scadenza: number
+          numero_documento: string
+          scadenza_id: string
+        }[]
+      }
       get_promemoria_clienti_aggregato:
         | {
             Args: {

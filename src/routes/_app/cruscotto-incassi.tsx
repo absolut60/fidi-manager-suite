@@ -3,10 +3,12 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   ChevronLeft, ChevronRight, TrendingUp, Send, HandCoins, ExternalLink,
-  Mail, Download, Users,
+  Mail, Download, Users, Search, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter,
@@ -314,6 +316,8 @@ function CruscottoIncassiPage() {
             )}
           </Card>
         )}
+        {/* ─── Ricerca incassi (per data di pagamento) ─── */}
+        <RicercaIncassiBlock />
 
         <InvioMassivoDialog
           open={invioMassivoOpen}
@@ -687,3 +691,385 @@ function Row({
     </div>
   );
 }
+
+/* ─── Ricerca Incassi (per data di pagamento) ─────────────────────────── */
+
+type RigaIncassoPeriodo = {
+  cliente_id: string;
+  ragione_sociale: string;
+  codice_gestionale: string | null;
+  n_incassi: number;
+  totale_incassato: number;
+  n_saldi: number;
+  n_parziali: number;
+  tipo_prevalente: "saldo" | "parziale";
+  ultimo_incasso: string | null;
+};
+
+type RigaIncassoDettaglio = {
+  scadenza_id: string;
+  numero_documento: string | null;
+  data_scadenza: string | null;
+  importo_scadenza: number;
+  importo_pagato: number;
+  data_pagamento_effettiva: string;
+};
+
+function fmtDateIt(v: string | null | undefined): string {
+  if (!v) return "—";
+  const d = new Date(v);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+function toISO(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const g = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${g}`;
+}
+
+type Scorciatoia = "oggi" | "mese" | "7gg" | "mese_scorso" | null;
+
+function RicercaIncassiBlock() {
+  const oggi = new Date();
+  oggi.setHours(0, 0, 0, 0);
+  const primoDelMese = new Date(oggi.getFullYear(), oggi.getMonth(), 1);
+
+  const [dal, setDal] = useState<string>(toISO(primoDelMese));
+  const [al, setAl] = useState<string>(toISO(oggi));
+  const [cercaCliente, setCercaCliente] = useState<string>("");
+  const [scorciatoia, setScorciatoia] = useState<Scorciatoia>("mese");
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  // Debounce ricerca cliente
+  const [clienteDebounced, setClienteDebounced] = useState("");
+  useMemo(() => {
+    const t = setTimeout(() => setClienteDebounced(cercaCliente.trim()), 300);
+    return () => clearTimeout(t);
+  }, [cercaCliente]);
+
+  function applicaScorciatoia(s: Exclude<Scorciatoia, null>) {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    if (s === "oggi") {
+      setDal(toISO(now)); setAl(toISO(now));
+    } else if (s === "mese") {
+      setDal(toISO(new Date(now.getFullYear(), now.getMonth(), 1)));
+      setAl(toISO(now));
+    } else if (s === "7gg") {
+      const start = new Date(now); start.setDate(start.getDate() - 6);
+      setDal(toISO(start)); setAl(toISO(now));
+    } else if (s === "mese_scorso") {
+      const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const end = new Date(now.getFullYear(), now.getMonth(), 0);
+      setDal(toISO(start)); setAl(toISO(end));
+    }
+    setScorciatoia(s);
+    setExpanded(new Set());
+  }
+
+  const { data: righe, isLoading, isFetching } = useQuery({
+    queryKey: ["ricerca_incassi_periodo", dal, al, clienteDebounced],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc(
+        "get_incassi_periodo" as never,
+        { _dal: dal, _al: al, _cliente_search: clienteDebounced || null } as never,
+      );
+      if (error) throw error;
+      return ((data as unknown) as RigaIncassoPeriodo[]) ?? [];
+    },
+    enabled: !!dal && !!al && dal <= al,
+  });
+
+  const totali = useMemo(() => {
+    const rows = righe ?? [];
+    return {
+      totale: rows.reduce((a, r) => a + Number(r.totale_incassato ?? 0), 0),
+      n_incassi: rows.reduce((a, r) => a + Number(r.n_incassi ?? 0), 0),
+      n_clienti: rows.length,
+    };
+  }, [righe]);
+
+  function toggle(id: string) {
+    setExpanded((prev) => {
+      const s = new Set(prev);
+      if (s.has(id)) s.delete(id); else s.add(id);
+      return s;
+    });
+  }
+
+  const periodoValido = dal && al && dal <= al;
+
+  return (
+    <Card className="p-5 space-y-4">
+      <div className="flex items-baseline justify-between flex-wrap gap-2">
+        <div>
+          <div className="text-xs uppercase tracking-wide text-muted-foreground">
+            Ricerca incassi
+          </div>
+          <div className="text-lg font-semibold flex items-center gap-2">
+            <Search className="size-5 text-primary" />
+            Cassa entrata per periodo
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Criterio: data di pagamento effettivo (diverso dall'andamento mensile, che va per data di scadenza).
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button size="sm" variant="outline" disabled className="gap-1.5" title="Funzione in arrivo">
+            <Mail className="size-4" /> Invia riepilogo
+          </Button>
+          <Button size="sm" variant="outline" disabled className="gap-1.5" title="Funzione in arrivo">
+            <Download className="size-4" /> Esporta
+          </Button>
+        </div>
+      </div>
+
+      {/* Filtri */}
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {([
+            ["oggi", "Oggi"],
+            ["mese", "Questo mese"],
+            ["7gg", "Ultimi 7 giorni"],
+            ["mese_scorso", "Mese scorso"],
+          ] as const).map(([k, label]) => (
+            <Button
+              key={k}
+              size="sm"
+              variant={scorciatoia === k ? "default" : "outline"}
+              className="h-8"
+              onClick={() => applicaScorciatoia(k)}
+            >
+              {label}
+            </Button>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">Dal</label>
+            <Input
+              type="date"
+              value={dal}
+              onChange={(e) => { setDal(e.target.value); setScorciatoia(null); setExpanded(new Set()); }}
+              className="h-9 w-[160px]"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">Al</label>
+            <Input
+              type="date"
+              value={al}
+              onChange={(e) => { setAl(e.target.value); setScorciatoia(null); setExpanded(new Set()); }}
+              className="h-9 w-[160px]"
+            />
+          </div>
+          <div className="flex flex-col gap-1 flex-1 min-w-[220px]">
+            <label className="text-xs text-muted-foreground">Cerca cliente</label>
+            <div className="relative">
+              <Search className="size-4 absolute left-2.5 top-2.5 text-muted-foreground" />
+              <Input
+                value={cercaCliente}
+                onChange={(e) => setCercaCliente(e.target.value)}
+                placeholder="Ragione sociale o codice…"
+                className="h-9 pl-8"
+              />
+            </div>
+          </div>
+        </div>
+        {!periodoValido && (
+          <p className="text-xs text-red-600">Il periodo non è valido: la data "Dal" deve precedere o coincidere con "Al".</p>
+        )}
+      </div>
+
+      {/* Tabella */}
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-8" />
+              <TableHead>Cliente</TableHead>
+              <TableHead className="w-24">Cod.</TableHead>
+              <TableHead className="text-right w-24">N. incassi</TableHead>
+              <TableHead className="text-right w-40">Totale incassato</TableHead>
+              <TableHead className="w-28">Tipo prev.</TableHead>
+              <TableHead className="w-32">Ultimo incasso</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell colSpan={7}><Skeleton className="h-6 w-full" /></TableCell>
+                </TableRow>
+              ))
+            ) : (righe ?? []).length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-6">
+                  Nessun incasso nel periodo selezionato.
+                </TableCell>
+              </TableRow>
+            ) : (
+              (righe ?? []).map((r) => {
+                const isOpen = expanded.has(r.cliente_id);
+                return (
+                  <>
+                    <TableRow
+                      key={r.cliente_id}
+                      className="cursor-pointer hover:bg-muted/40"
+                      onClick={() => toggle(r.cliente_id)}
+                    >
+                      <TableCell>
+                        {isOpen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          <span>{r.ragione_sociale}</span>
+                          <Link
+                            to="/clienti/$clienteId"
+                            params={{ clienteId: r.cliente_id }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-muted-foreground hover:text-primary"
+                            title="Apri scheda cliente"
+                          >
+                            <ExternalLink className="size-3.5" />
+                          </Link>
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">
+                        {r.codice_gestionale ?? "—"}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">{r.n_incassi}</TableCell>
+                      <TableCell className="text-right tabular-nums font-semibold">
+                        {fmtEuro(Number(r.totale_incassato), 2)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="secondary"
+                          className={cn(
+                            "font-normal",
+                            r.tipo_prevalente === "saldo"
+                              ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-100"
+                              : "bg-amber-100 text-amber-800 hover:bg-amber-100",
+                          )}
+                        >
+                          {r.tipo_prevalente === "saldo" ? "Saldo" : "Parziale"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="tabular-nums">{fmtDateIt(r.ultimo_incasso)}</TableCell>
+                    </TableRow>
+                    {isOpen && (
+                      <TableRow key={`${r.cliente_id}-exp`} className="bg-muted/30 hover:bg-muted/30">
+                        <TableCell />
+                        <TableCell colSpan={6} className="py-2">
+                          <DettaglioIncassiCliente
+                            clienteId={r.cliente_id}
+                            dal={dal}
+                            al={al}
+                            totaleAtteso={Number(r.totale_incassato)}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </>
+                );
+              })
+            )}
+          </TableBody>
+          {(righe ?? []).length > 0 && (
+            <TableFooter>
+              <TableRow>
+                <TableCell />
+                <TableCell className="font-semibold">Totale generale</TableCell>
+                <TableCell />
+                <TableCell className="text-right tabular-nums font-semibold">{totali.n_incassi}</TableCell>
+                <TableCell className="text-right tabular-nums font-semibold">
+                  {fmtEuro(totali.totale, 2)}
+                </TableCell>
+                <TableCell className="text-xs text-muted-foreground" colSpan={2}>
+                  {totali.n_clienti} client{totali.n_clienti === 1 ? "e" : "i"}
+                  {isFetching ? " · aggiornamento…" : ""}
+                </TableCell>
+              </TableRow>
+            </TableFooter>
+          )}
+        </Table>
+      </div>
+    </Card>
+  );
+}
+
+function DettaglioIncassiCliente({
+  clienteId, dal, al, totaleAtteso,
+}: {
+  clienteId: string; dal: string; al: string; totaleAtteso: number;
+}) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["ricerca_incassi_dettaglio", clienteId, dal, al],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc(
+        "get_incassi_periodo_dettaglio" as never,
+        { _dal: dal, _al: al, _cliente_id: clienteId } as never,
+      );
+      if (error) throw error;
+      return ((data as unknown) as RigaIncassoDettaglio[]) ?? [];
+    },
+  });
+
+  if (isLoading) {
+    return <Skeleton className="h-16 w-full" />;
+  }
+  const righe = data ?? [];
+  const somma = righe.reduce((a, r) => a + Number(r.importo_pagato ?? 0), 0);
+  const scostamento = Math.abs(somma - totaleAtteso);
+
+  return (
+    <div className="space-y-1.5">
+      <Table>
+        <TableHeader>
+          <TableRow className="text-xs">
+            <TableHead>Documento</TableHead>
+            <TableHead>Data scadenza</TableHead>
+            <TableHead className="text-right">Importo scadenza</TableHead>
+            <TableHead className="text-right">Quota incassata</TableHead>
+            <TableHead>Data pagamento</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {righe.map((r) => {
+            const parziale = Number(r.importo_pagato) < Number(r.importo_scadenza);
+            return (
+              <TableRow key={r.scadenza_id} className="text-sm">
+                <TableCell className="font-mono text-xs">{r.numero_documento ?? "—"}</TableCell>
+                <TableCell className="tabular-nums">{fmtDateIt(r.data_scadenza)}</TableCell>
+                <TableCell className="text-right tabular-nums">{fmtEuro(Number(r.importo_scadenza), 2)}</TableCell>
+                <TableCell className="text-right tabular-nums">
+                  <span className={cn(parziale && "text-amber-700 font-medium")}>
+                    {fmtEuro(Number(r.importo_pagato), 2)}
+                  </span>
+                  {parziale && <span className="text-xs text-muted-foreground ml-1">(parziale)</span>}
+                </TableCell>
+                <TableCell className="tabular-nums">{fmtDateIt(r.data_pagamento_effettiva)}</TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+        <TableFooter>
+          <TableRow>
+            <TableCell colSpan={3} className="text-xs text-muted-foreground">
+              {righe.length} scadenz{righe.length === 1 ? "a" : "e"} incassat{righe.length === 1 ? "a" : "e"} nel periodo
+            </TableCell>
+            <TableCell className="text-right tabular-nums font-semibold">{fmtEuro(somma, 2)}</TableCell>
+            <TableCell />
+          </TableRow>
+        </TableFooter>
+      </Table>
+      {scostamento > 0.01 && (
+        <p className="text-xs text-amber-700">
+          ⚠ Scostamento dal totale riga cliente: {fmtEuro(scostamento, 2)}
+        </p>
+      )}
+    </div>
+  );
+}
+
