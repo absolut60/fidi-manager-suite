@@ -367,21 +367,29 @@ function CruscottoIncassiPage() {
 /* ─── UI blocks ────────────────────────────────────────────────────────── */
 
 function DaIncassareLista({
-  righe, onSollecita, onPromessa,
+  righe, vista, onSollecita, onPromessa,
 }: {
   righe: RigaDettaglio[];
+  vista: "scaduto" | "a_scadere";
   onSollecita: (clienteId: string) => void;
   onPromessa: (r: RigaDettaglio) => void;
 }) {
   if (righe.length === 0) {
     return (
       <div className="text-sm text-muted-foreground text-center py-8 border rounded-md">
-        Nessun cliente con insoluto per questo mese.
+        {vista === "scaduto"
+          ? "Nessun cliente con scadenze già scadute per questo mese."
+          : "Nessun cliente con scadenze ancora da maturare per questo mese."}
       </div>
     );
   }
-  const tot_insoluto = righe.reduce((a, r) => a + Number(r.insoluto_mese), 0);
+  const tot_importo = righe.reduce(
+    (a, r) => a + Number(vista === "scaduto" ? r.scaduto_mese : r.a_scadere_mese),
+    0,
+  );
   const tot_esposizione = righe.reduce((a, r) => a + Number(r.esposizione_scaduta_totale), 0);
+  const importoLabel = vista === "scaduto" ? "Scaduto del mese" : "A scadere del mese";
+  const importoCls = vista === "scaduto" ? "text-red-700" : "text-amber-700";
   return (
     <div className="rounded-md border overflow-x-auto">
       <Table>
@@ -389,90 +397,134 @@ function DaIncassareLista({
           <TableRow>
             <TableHead>Cliente</TableHead>
             <TableHead className="w-24">Cod.</TableHead>
-            <TableHead className="text-right whitespace-nowrap">Insoluto del mese</TableHead>
+            <TableHead className="text-right whitespace-nowrap">{importoLabel}</TableHead>
             <TableHead className="text-right whitespace-nowrap">Esposizione scaduta totale</TableHead>
+            <TableHead className="w-28">Metodo</TableHead>
+            <TableHead className="w-36">Stato</TableHead>
             <TableHead className="w-40">Note</TableHead>
             <TableHead className="w-32 text-right">Azioni</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {righe.map((r) => (
-            <TableRow key={r.cliente_id}>
-              <TableCell className="font-medium">
-                <Link
-                  to="/clienti/$clienteId"
-                  params={{ clienteId: r.cliente_id }}
-                  className="text-primary hover:underline"
-                >
-                  {r.ragione_sociale}
-                </Link>
-              </TableCell>
-              <TableCell className="text-muted-foreground text-xs font-mono">
-                {r.codice_gestionale ?? "—"}
-              </TableCell>
-              <TableCell className="text-right tabular-nums font-medium">
-                {fmtEuro(Number(r.insoluto_mese))}
-              </TableCell>
-              <TableCell className="text-right tabular-nums font-medium text-red-700">
-                {fmtEuro(Number(r.esposizione_scaduta_totale))}
-              </TableCell>
-              <TableCell className="text-xs">
-                <div className="flex flex-wrap gap-1">
-                  {r.bloccato && (
-                    <span className="rounded bg-amber-100 text-amber-800 px-1.5 py-0.5">
-                      Bloccato
-                    </span>
-                  )}
-                  {r.in_gestione_legale && (
-                    <span className="rounded bg-red-100 text-red-800 px-1.5 py-0.5">
-                      Legale
-                    </span>
-                  )}
-                  {!r.email && !r.pec && (
-                    <span className="rounded bg-muted text-muted-foreground px-1.5 py-0.5">
-                      No email
-                    </span>
-                  )}
-                </div>
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center justify-end gap-1">
-                  <IconAction
-                    label="Sollecita"
-                    onClick={() => onSollecita(r.cliente_id)}
-                    icon={<Send className="size-4" />}
-                  />
-                  <IconAction
-                    label="Registra promessa di pagamento"
-                    onClick={() => onPromessa(r)}
-                    icon={<HandCoins className="size-4" />}
-                  />
-                  <IconAction
-                    label="Apri scheda cliente"
-                    asChild
-                    icon={<ExternalLink className="size-4" />}
+          {righe.map((r) => {
+            const importo = Number(vista === "scaduto" ? r.scaduto_mese : r.a_scadere_mese);
+            const haScaduto = Number(r.scaduto_mese) > 0;
+            const haAScadere = Number(r.a_scadere_mese) > 0;
+            return (
+              <TableRow key={r.cliente_id}>
+                <TableCell className="font-medium">
+                  <Link
+                    to="/clienti/$clienteId"
+                    params={{ clienteId: r.cliente_id }}
+                    className="text-primary hover:underline"
                   >
-                    <Link to="/clienti/$clienteId" params={{ clienteId: r.cliente_id }} />
-                  </IconAction>
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
+                    {r.ragione_sociale}
+                  </Link>
+                </TableCell>
+                <TableCell className="text-muted-foreground text-xs font-mono">
+                  {r.codice_gestionale ?? "—"}
+                </TableCell>
+                <TableCell className={cn("text-right tabular-nums font-medium", importoCls)}>
+                  {fmtEuro(importo)}
+                </TableCell>
+                <TableCell className="text-right tabular-nums font-medium text-red-700">
+                  {fmtEuro(Number(r.esposizione_scaduta_totale))}
+                </TableCell>
+                <TableCell>
+                  <MetodoBadge metodo={r.metodo_prevalente} />
+                </TableCell>
+                <TableCell>
+                  <div className="flex flex-wrap gap-1">
+                    {haScaduto && (
+                      <span className="rounded bg-red-100 text-red-800 px-1.5 py-0.5 text-[11px] font-medium">
+                        Scaduto
+                      </span>
+                    )}
+                    {haAScadere && (
+                      <span className="rounded bg-amber-100 text-amber-800 px-1.5 py-0.5 text-[11px] font-medium">
+                        A scadere
+                      </span>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell className="text-xs">
+                  <div className="flex flex-wrap gap-1">
+                    {r.bloccato && (
+                      <span className="rounded bg-amber-100 text-amber-800 px-1.5 py-0.5">
+                        Bloccato
+                      </span>
+                    )}
+                    {r.in_gestione_legale && (
+                      <span className="rounded bg-red-100 text-red-800 px-1.5 py-0.5">
+                        Legale
+                      </span>
+                    )}
+                    {!r.email && !r.pec && (
+                      <span className="rounded bg-muted text-muted-foreground px-1.5 py-0.5">
+                        No email
+                      </span>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center justify-end gap-1">
+                    <IconAction
+                      label="Sollecita"
+                      onClick={() => onSollecita(r.cliente_id)}
+                      icon={<Send className="size-4" />}
+                    />
+                    <IconAction
+                      label="Registra promessa di pagamento"
+                      onClick={() => onPromessa(r)}
+                      icon={<HandCoins className="size-4" />}
+                    />
+                    <IconAction
+                      label="Apri scheda cliente"
+                      asChild
+                      icon={<ExternalLink className="size-4" />}
+                    >
+                      <Link to="/clienti/$clienteId" params={{ clienteId: r.cliente_id }} />
+                    </IconAction>
+                  </div>
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
         <TableFooter>
           <TableRow>
             <TableCell colSpan={2} className="font-medium">
               Totale ({righe.length} clienti)
             </TableCell>
-            <TableCell className="text-right tabular-nums font-semibold">
-              {fmtEuro(tot_insoluto)}
+            <TableCell className={cn("text-right tabular-nums font-semibold", importoCls)}>
+              {fmtEuro(tot_importo)}
             </TableCell>
             <TableCell className="text-right tabular-nums font-semibold text-red-700">
               {fmtEuro(tot_esposizione)}
             </TableCell>
-            <TableCell colSpan={2} />
+            <TableCell colSpan={4} />
           </TableRow>
         </TableFooter>
+      </Table>
+    </div>
+  );
+}
+
+function MetodoBadge({ metodo }: { metodo: string | null }) {
+  const m = (metodo ?? "Altro").trim();
+  const cls =
+    m === "RiBa" ? "bg-blue-100 text-blue-800"
+    : m === "Bonifico" ? "bg-emerald-100 text-emerald-800"
+    : m === "RID" ? "bg-violet-100 text-violet-800"
+    : m === "Rimessa" ? "bg-slate-100 text-slate-800"
+    : m === "Misto" ? "bg-amber-100 text-amber-800"
+    : "bg-muted text-muted-foreground";
+  return (
+    <span className={cn("rounded px-1.5 py-0.5 text-[11px] font-medium", cls)}>
+      {m || "Altro"}
+    </span>
+  );
+}
       </Table>
     </div>
   );
