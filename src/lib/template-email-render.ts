@@ -58,13 +58,11 @@ export function escapeHtml(s: string): string {
 
 export function buildElencoScadenzeHtml(
   scadenze: ScadenzaSollecito[],
-  opts?: { labelTotale?: string; labelEmpty?: string },
+  opts?: { labelTotale?: string; labelEmpty?: string; speseImportoUnitario?: number },
 ): string {
   if (!scadenze.length) {
     return `<p style="margin:8px 0;color:#475569;">${escapeHtml(opts?.labelEmpty ?? "Nessuna scadenza scaduta al momento.")}</p>`;
   }
-  const totale = scadenze.reduce((acc, s) => acc + Number(s.importo_scadenza ?? 0), 0);
-  const labelTot = opts?.labelTotale ?? "Totale";
   const rows = scadenze
     .map(
       (s) => `<tr>
@@ -75,6 +73,13 @@ export function buildElencoScadenzeHtml(
       </tr>`,
     )
     .join("");
+
+  // Import "differito" per evitare ciclo di import: spese-insoluto usa questo modulo.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { calcolaSpeseInsoluto, buildTotaliRowsHtml } = require("@/lib/spese-insoluto") as typeof import("@/lib/spese-insoluto");
+  const totals = calcolaSpeseInsoluto(scadenze, Number(opts?.speseImportoUnitario ?? 0));
+  const tfootRows = buildTotaliRowsHtml(totals, { labelTotale: opts?.labelTotale ?? "Totale", colspan: 3 });
+
   return `<table style="border-collapse:collapse;border:1px solid #e2e8f0;font-family:Arial,sans-serif;font-size:13px;margin:8px 0;">
     <thead><tr style="background:#f1f5f9;">
       <th style="padding:6px 10px;border:1px solid #e2e8f0;text-align:left;">Documento</th>
@@ -83,10 +88,7 @@ export function buildElencoScadenzeHtml(
       <th style="padding:6px 10px;border:1px solid #e2e8f0;text-align:right;">Importo</th>
     </tr></thead>
     <tbody>${rows}</tbody>
-    <tfoot><tr style="background:#f8fafc;font-weight:600;">
-      <td colspan="3" style="padding:6px 10px;border:1px solid #e2e8f0;text-align:right;">${escapeHtml(labelTot)}</td>
-      <td style="padding:6px 10px;border:1px solid #e2e8f0;text-align:right;">${escapeHtml(formatEuro(totale))}</td>
-    </tr></tfoot>
+    <tfoot>${tfootRows}</tfoot>
   </table>`;
 }
 
@@ -101,19 +103,25 @@ export type RenderedTemplate = { oggetto: string; corpo: string };
 export function renderTemplate(
   template: { oggetto: string; corpo: string },
   dati: DatiTemplate,
-  opts?: { tipo?: string | null },
+  opts?: { tipo?: string | null; speseImportoUnitario?: number },
 ): RenderedTemplate {
-  const totale = dati.scadenze.reduce((a, s) => a + Number(s.importo_scadenza ?? 0), 0);
   const isPromemoria = opts?.tipo === "promemoria_scadenza";
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { calcolaSpeseInsoluto } = require("@/lib/spese-insoluto") as typeof import("@/lib/spese-insoluto");
+  const totals = calcolaSpeseInsoluto(dati.scadenze, Number(opts?.speseImportoUnitario ?? 0));
   const elenco = buildElencoScadenzeHtml(dati.scadenze, {
     labelTotale: isPromemoria ? "Totale in scadenza" : "Totale",
     labelEmpty: isPromemoria
       ? "Nessuna scadenza in arrivo nel periodo selezionato."
       : "Nessuna scadenza scaduta al momento.",
+    speseImportoUnitario: opts?.speseImportoUnitario,
   });
   const values: Record<PlaceholderKey, string> = {
     ragione_sociale: escapeHtml(dati.ragione_sociale ?? ""),
-    totale_scaduto: formatEuro(totale),
+    totale_scaduto: formatEuro(totals.totaleScaduto),
+    spese_insoluto: formatEuro(totals.speseInsoluto),
+    totale_da_pagare: formatEuro(totals.totaleDaPagare),
+    n_riba: String(totals.nRiba),
     elenco_scadenze: elenco,
     data_oggi: formatDateIt(new Date()),
     nome_operatore: escapeHtml(dati.nome_operatore ?? ""),
