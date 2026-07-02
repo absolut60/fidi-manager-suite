@@ -502,7 +502,6 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
       y -= rowH;
 
       // Righe
-      let totale = 0;
       for (let i = 0; i < scadute.length; i++) {
         const s = scadute[i];
         ensureSpace(rowH + 6);
@@ -518,7 +517,6 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
         const dataDoc = formatDateIt(s.data_documento);
         const dataScad = formatDateIt(s.data_scadenza);
         const importo = formatEuro(s.importo_scadenza);
-        totale += Number(s.importo_scadenza ?? 0);
 
         drawText(doc, colX[0] + 8, rowY, { size: 9.5 });
         drawText(dataDoc, colX[1] + 8, rowY, { size: 9.5 });
