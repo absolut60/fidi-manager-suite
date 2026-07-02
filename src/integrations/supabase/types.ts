@@ -2865,6 +2865,7 @@ export type Database = {
           a_scadere_riba: number
           da_incassare: number
           dovuto: number
+          eccedenza: number
           incassato: number
           mese: number
           n_pagate: number
@@ -2882,6 +2883,7 @@ export type Database = {
           cliente_id: string
           codice_gestionale: string
           dovuto_mese: number
+          eccedenza_mese: number
           email: string
           esposizione_scaduta_totale: number
           in_gestione_legale: boolean
@@ -2905,6 +2907,7 @@ export type Database = {
           codice_gestionale: string
           codice_pagamento: string
           data_scadenza: string
+          eccedenza: number
           email: string
           importo_pagato: number
           importo_scadenza: number
