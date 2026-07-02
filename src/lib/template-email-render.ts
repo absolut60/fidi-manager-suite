@@ -42,6 +42,9 @@ export type ScadenzaSollecito = {
   data_documento: string | null;
   data_scadenza: string | null;
   importo_scadenza: number | null;
+  // Codice di pagamento della SINGOLA riga (fonte per il predicato isRiBa).
+  // Popolato dai loader dei solleciti da public.scadenze.codice_pagamento.
+  codice_pagamento?: string | null;
 };
 
 export function escapeHtml(s: string): string {
