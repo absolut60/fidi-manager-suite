@@ -183,6 +183,16 @@ function CruscottoIncassiPage() {
     () => (dettaglio ?? []).reduce((a, r) => a + Number(r.a_scadere_mese || 0), 0),
     [dettaglio],
   );
+  // "Di cui RiBa": sottoinsieme informativo, non altera il totale
+  const { scadutoRiba, aScadereRiba } = useMemo(() => {
+    let sr = 0, ar = 0;
+    for (const r of scadenze ?? []) {
+      if (!isRiBa(r.codice_pagamento) || Number(r.residuo) <= 0) continue;
+      if (r.scaduta) sr += Number(r.residuo);
+      else ar += Number(r.residuo);
+    }
+    return { scadutoRiba: sr, aScadereRiba: ar };
+  }, [scadenze]);
   const loadingLista = loadingDettaglio || loadingScadenze;
 
   function apriSollecita(clienteIds: string[]) {
