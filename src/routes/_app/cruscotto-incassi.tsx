@@ -36,6 +36,10 @@ type RigaMese = {
   mese: number;
   dovuto: number;
   incassato: number;
+  scaduto: number;
+  a_scadere: number;
+  scaduto_riba: number;
+  a_scadere_riba: number;
   da_incassare: number;
   pct: number;
   n_scadenze: number;
