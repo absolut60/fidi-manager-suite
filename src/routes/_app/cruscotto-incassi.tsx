@@ -1120,11 +1120,15 @@ function DettaglioIncassiCliente({
             <TableHead className="text-right">Importo scadenza</TableHead>
             <TableHead className="text-right">Quota incassata</TableHead>
             <TableHead>Data pagamento</TableHead>
+            <TableHead>Metodo</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {righe.map((r) => {
             const parziale = Number(r.importo_pagato) < Number(r.importo_scadenza);
+            const metodoLabel = isRiBa(r.codice_pagamento)
+              ? "RiBa"
+              : (r.metodo_descrizione?.trim() || r.codice_pagamento || "—");
             return (
               <TableRow key={r.scadenza_id} className="text-sm">
                 <TableCell className="font-mono text-xs">{r.numero_documento ?? "—"}</TableCell>
@@ -1137,6 +1141,14 @@ function DettaglioIncassiCliente({
                   {parziale && <span className="text-xs text-muted-foreground ml-1">(parziale)</span>}
                 </TableCell>
                 <TableCell className="tabular-nums">{fmtDateIt(r.data_pagamento_effettiva)}</TableCell>
+                <TableCell className="text-xs">
+                  <span title={r.codice_pagamento ?? undefined} className="font-medium">
+                    {metodoLabel}
+                  </span>
+                  {r.codice_pagamento && !isRiBa(r.codice_pagamento) && r.metodo_descrizione && (
+                    <span className="ml-1 text-muted-foreground font-mono">({r.codice_pagamento})</span>
+                  )}
+                </TableCell>
               </TableRow>
             );
           })}
@@ -1147,7 +1159,7 @@ function DettaglioIncassiCliente({
               {righe.length} scadenz{righe.length === 1 ? "a" : "e"} incassat{righe.length === 1 ? "a" : "e"} nel periodo
             </TableCell>
             <TableCell className="text-right tabular-nums font-semibold">{fmtEuro(somma, 2)}</TableCell>
-            <TableCell />
+            <TableCell colSpan={2} />
           </TableRow>
         </TableFooter>
       </Table>
