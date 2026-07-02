@@ -3,8 +3,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Send, Plus, Bell, Phone, StickyNote, FileText, Mail, Activity, Eye, CalendarClock, Paperclip,
-  Pencil, Trash2,
+  Pencil, Trash2, HandCoins,
 } from "lucide-react";
+import { RegistraPromessaDialog } from "@/components/registra-promessa-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { AllegatiSection, ALLEGATI_BUCKET } from "@/components/allegati-section";
