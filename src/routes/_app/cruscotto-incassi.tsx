@@ -194,10 +194,6 @@ function CruscottoIncassiPage() {
     setInvioMassivoOpen(true);
   }
 
-  function apriPromessa(r: RigaDettaglio) {
-    setPromessaClienteId(r.cliente_id);
-    setPromessaLabel(r.ragione_sociale);
-  }
 
   return (
     <TooltipProvider delayDuration={200}>
