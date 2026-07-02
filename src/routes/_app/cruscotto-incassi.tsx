@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   ChevronLeft, ChevronRight, TrendingUp, Send, HandCoins, ExternalLink,
-  Mail, Download, Users, Search, ChevronDown, ChevronUp,
+  Mail, Download, Search, ChevronDown, ChevronUp, X,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -50,14 +50,19 @@ type RigaDettaglio = {
   dovuto_mese: number;
   incassato_mese: number;
   insoluto_mese: number;
+  scaduto_mese: number;
+  a_scadere_mese: number;
   esposizione_scaduta_totale: number;
   n_scadenze_mese: number;
   n_scadenze_pagate_mese: number;
+  metodo_prevalente: string | null;
   in_gestione_legale: boolean;
   bloccato: boolean;
   email: string | null;
   pec: string | null;
 };
+
+type VistaDettaglio = "scaduto" | "a_scadere" | "incassato";
 
 function fmtEuro(n: number | null | undefined, decimals = 0) {
   if (n == null) return "—";
@@ -77,7 +82,7 @@ function CruscottoIncassiPage() {
   const annoCorrente = oggi.getFullYear();
   const [anno, setAnno] = useState<number>(annoCorrente);
   const [meseSel, setMeseSel] = useState<number | null>(null);
-  const [vista, setVista] = useState<"da_incassare" | "incassato">("da_incassare");
+  const [vista, setVista] = useState<VistaDettaglio>("scaduto");
   const [invioMassivoOpen, setInvioMassivoOpen] = useState(false);
   const [invioClienti, setInvioClienti] = useState<string[]>([]);
   const [promessaClienteId, setPromessaClienteId] = useState<string | null>(null);
@@ -122,12 +127,24 @@ function CruscottoIncassiPage() {
     },
   });
 
-  const daIncassare = useMemo(
-    () => (dettaglio ?? []).filter((r) => Number(r.insoluto_mese) > 0),
+  const scaduti = useMemo(
+    () => (dettaglio ?? []).filter((r) => Number(r.scaduto_mese) > 0),
+    [dettaglio],
+  );
+  const aScadere = useMemo(
+    () => (dettaglio ?? []).filter((r) => Number(r.a_scadere_mese) > 0),
     [dettaglio],
   );
   const incassato = useMemo(
     () => (dettaglio ?? []).filter((r) => Number(r.incassato_mese) > 0),
+    [dettaglio],
+  );
+  const totScadutoMese = useMemo(
+    () => (dettaglio ?? []).reduce((a, r) => a + Number(r.scaduto_mese || 0), 0),
+    [dettaglio],
+  );
+  const totAScadereMese = useMemo(
+    () => (dettaglio ?? []).reduce((a, r) => a + Number(r.a_scadere_mese || 0), 0),
     [dettaglio],
   );
 
@@ -214,7 +231,7 @@ function CruscottoIncassiPage() {
                         setMeseSel(null);
                       } else {
                         setMeseSel(r.mese);
-                        setVista("da_incassare");
+                        setVista("scaduto");
                       }
                     }}
                   />
@@ -234,12 +251,24 @@ function CruscottoIncassiPage() {
                   {MESI[dettaglioMese.mese - 1]} {anno}
                 </div>
               </div>
-              <div className="text-sm text-muted-foreground tabular-nums">
-                {dettaglioMese.n_pagate} / {dettaglioMese.n_scadenze} scadenze incassate
+              <div className="flex items-center gap-3">
+                <div className="text-sm text-muted-foreground tabular-nums">
+                  {dettaglioMese.n_pagate} / {dettaglioMese.n_scadenze} scadenze incassate
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-8"
+                  onClick={() => setMeseSel(null)}
+                  aria-label="Chiudi dettaglio mese"
+                  title="Chiudi dettaglio"
+                >
+                  <X className="size-4" />
+                </Button>
               </div>
             </div>
 
-            {/* 4 riquadri: due cliccabili come selettori */}
+            {/* 4 riquadri: Dovuto, Incassato, Scaduto, A scadere */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <MetricButton
                 label="Dovuto"
@@ -253,50 +282,43 @@ function CruscottoIncassiPage() {
                 onClick={() => setVista("incassato")}
               />
               <MetricButton
-                label="Da incassare"
-                value={fmtEuro(dettaglioMese.da_incassare)}
+                label="Da incassare — scaduto"
+                value={loadingDettaglio ? "…" : fmtEuro(totScadutoMese)}
                 tone="red"
-                selected={vista === "da_incassare"}
-                onClick={() => setVista("da_incassare")}
+                selected={vista === "scaduto"}
+                onClick={() => setVista("scaduto")}
               />
               <MetricButton
-                label="N. clienti coinvolti"
-                value={String(loadingDettaglio ? "…" : (dettaglio?.length ?? 0))}
-                icon={<Users className="size-4" />}
+                label="Da incassare — a scadere"
+                value={loadingDettaglio ? "…" : fmtEuro(totAScadereMese)}
+                tone="amber"
+                selected={vista === "a_scadere"}
+                onClick={() => setVista("a_scadere")}
               />
             </div>
 
-            {/* Toolbar liste */}
-            {vista === "da_incassare" && (
-              <div className="flex flex-wrap items-center gap-2 pt-1">
-                <Button
-                  size="sm"
-                  onClick={() => apriSollecita(daIncassare.map((r) => r.cliente_id))}
-                  disabled={loadingDettaglio || daIncassare.length === 0}
-                  className="gap-1.5"
-                >
-                  <Send className="size-4" /> Sollecita tutti ({daIncassare.length})
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled
-                  className="gap-1.5"
-                  title="Funzione in arrivo"
-                >
-                  <Mail className="size-4" /> Invia riepilogo via mail
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled
-                  className="gap-1.5"
-                  title="Funzione in arrivo"
-                >
-                  <Download className="size-4" /> Esporta
-                </Button>
-              </div>
-            )}
+            {/* Toolbar liste (solo per da incassare) */}
+            {vista !== "incassato" && (() => {
+              const lista = vista === "scaduto" ? scaduti : aScadere;
+              return (
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <Button
+                    size="sm"
+                    onClick={() => apriSollecita(lista.map((r) => r.cliente_id))}
+                    disabled={loadingDettaglio || lista.length === 0}
+                    className="gap-1.5"
+                  >
+                    <Send className="size-4" /> Sollecita tutti ({lista.length})
+                  </Button>
+                  <Button size="sm" variant="outline" disabled className="gap-1.5" title="Funzione in arrivo">
+                    <Mail className="size-4" /> Invia riepilogo via mail
+                  </Button>
+                  <Button size="sm" variant="outline" disabled className="gap-1.5" title="Funzione in arrivo">
+                    <Download className="size-4" /> Esporta
+                  </Button>
+                </div>
+              );
+            })()}
 
             {/* Lista */}
             {loadingDettaglio ? (
@@ -305,14 +327,15 @@ function CruscottoIncassiPage() {
                   <Skeleton key={i} className="h-10 w-full rounded" />
                 ))}
               </div>
-            ) : vista === "da_incassare" ? (
+            ) : vista === "incassato" ? (
+              <IncassatoLista righe={incassato} />
+            ) : (
               <DaIncassareLista
-                righe={daIncassare}
+                righe={vista === "scaduto" ? scaduti : aScadere}
+                vista={vista}
                 onSollecita={(id) => apriSollecita([id])}
                 onPromessa={apriPromessa}
               />
-            ) : (
-              <IncassatoLista righe={incassato} />
             )}
           </Card>
         )}
@@ -344,21 +367,29 @@ function CruscottoIncassiPage() {
 /* ─── UI blocks ────────────────────────────────────────────────────────── */
 
 function DaIncassareLista({
-  righe, onSollecita, onPromessa,
+  righe, vista, onSollecita, onPromessa,
 }: {
   righe: RigaDettaglio[];
+  vista: "scaduto" | "a_scadere";
   onSollecita: (clienteId: string) => void;
   onPromessa: (r: RigaDettaglio) => void;
 }) {
   if (righe.length === 0) {
     return (
       <div className="text-sm text-muted-foreground text-center py-8 border rounded-md">
-        Nessun cliente con insoluto per questo mese.
+        {vista === "scaduto"
+          ? "Nessun cliente con scadenze già scadute per questo mese."
+          : "Nessun cliente con scadenze ancora da maturare per questo mese."}
       </div>
     );
   }
-  const tot_insoluto = righe.reduce((a, r) => a + Number(r.insoluto_mese), 0);
+  const tot_importo = righe.reduce(
+    (a, r) => a + Number(vista === "scaduto" ? r.scaduto_mese : r.a_scadere_mese),
+    0,
+  );
   const tot_esposizione = righe.reduce((a, r) => a + Number(r.esposizione_scaduta_totale), 0);
+  const importoLabel = vista === "scaduto" ? "Scaduto del mese" : "A scadere del mese";
+  const importoCls = vista === "scaduto" ? "text-red-700" : "text-amber-700";
   return (
     <div className="rounded-md border overflow-x-auto">
       <Table>
@@ -366,94 +397,136 @@ function DaIncassareLista({
           <TableRow>
             <TableHead>Cliente</TableHead>
             <TableHead className="w-24">Cod.</TableHead>
-            <TableHead className="text-right whitespace-nowrap">Insoluto del mese</TableHead>
+            <TableHead className="text-right whitespace-nowrap">{importoLabel}</TableHead>
             <TableHead className="text-right whitespace-nowrap">Esposizione scaduta totale</TableHead>
+            <TableHead className="w-28">Metodo</TableHead>
+            <TableHead className="w-36">Stato</TableHead>
             <TableHead className="w-40">Note</TableHead>
             <TableHead className="w-32 text-right">Azioni</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {righe.map((r) => (
-            <TableRow key={r.cliente_id}>
-              <TableCell className="font-medium">
-                <Link
-                  to="/clienti/$clienteId"
-                  params={{ clienteId: r.cliente_id }}
-                  className="text-primary hover:underline"
-                >
-                  {r.ragione_sociale}
-                </Link>
-              </TableCell>
-              <TableCell className="text-muted-foreground text-xs font-mono">
-                {r.codice_gestionale ?? "—"}
-              </TableCell>
-              <TableCell className="text-right tabular-nums font-medium">
-                {fmtEuro(Number(r.insoluto_mese))}
-              </TableCell>
-              <TableCell className="text-right tabular-nums font-medium text-red-700">
-                {fmtEuro(Number(r.esposizione_scaduta_totale))}
-              </TableCell>
-              <TableCell className="text-xs">
-                <div className="flex flex-wrap gap-1">
-                  {r.bloccato && (
-                    <span className="rounded bg-amber-100 text-amber-800 px-1.5 py-0.5">
-                      Bloccato
-                    </span>
-                  )}
-                  {r.in_gestione_legale && (
-                    <span className="rounded bg-red-100 text-red-800 px-1.5 py-0.5">
-                      Legale
-                    </span>
-                  )}
-                  {!r.email && !r.pec && (
-                    <span className="rounded bg-muted text-muted-foreground px-1.5 py-0.5">
-                      No email
-                    </span>
-                  )}
-                </div>
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center justify-end gap-1">
-                  <IconAction
-                    label="Sollecita"
-                    onClick={() => onSollecita(r.cliente_id)}
-                    icon={<Send className="size-4" />}
-                  />
-                  <IconAction
-                    label="Registra promessa di pagamento"
-                    onClick={() => onPromessa(r)}
-                    icon={<HandCoins className="size-4" />}
-                  />
-                  <IconAction
-                    label="Apri scheda cliente"
-                    asChild
-                    icon={<ExternalLink className="size-4" />}
+          {righe.map((r) => {
+            const importo = Number(vista === "scaduto" ? r.scaduto_mese : r.a_scadere_mese);
+            const haScaduto = Number(r.scaduto_mese) > 0;
+            const haAScadere = Number(r.a_scadere_mese) > 0;
+            return (
+              <TableRow key={r.cliente_id}>
+                <TableCell className="font-medium">
+                  <Link
+                    to="/clienti/$clienteId"
+                    params={{ clienteId: r.cliente_id }}
+                    className="text-primary hover:underline"
                   >
-                    <Link to="/clienti/$clienteId" params={{ clienteId: r.cliente_id }} />
-                  </IconAction>
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
+                    {r.ragione_sociale}
+                  </Link>
+                </TableCell>
+                <TableCell className="text-muted-foreground text-xs font-mono">
+                  {r.codice_gestionale ?? "—"}
+                </TableCell>
+                <TableCell className={cn("text-right tabular-nums font-medium", importoCls)}>
+                  {fmtEuro(importo)}
+                </TableCell>
+                <TableCell className="text-right tabular-nums font-medium text-red-700">
+                  {fmtEuro(Number(r.esposizione_scaduta_totale))}
+                </TableCell>
+                <TableCell>
+                  <MetodoBadge metodo={r.metodo_prevalente} />
+                </TableCell>
+                <TableCell>
+                  <div className="flex flex-wrap gap-1">
+                    {haScaduto && (
+                      <span className="rounded bg-red-100 text-red-800 px-1.5 py-0.5 text-[11px] font-medium">
+                        Scaduto
+                      </span>
+                    )}
+                    {haAScadere && (
+                      <span className="rounded bg-amber-100 text-amber-800 px-1.5 py-0.5 text-[11px] font-medium">
+                        A scadere
+                      </span>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell className="text-xs">
+                  <div className="flex flex-wrap gap-1">
+                    {r.bloccato && (
+                      <span className="rounded bg-amber-100 text-amber-800 px-1.5 py-0.5">
+                        Bloccato
+                      </span>
+                    )}
+                    {r.in_gestione_legale && (
+                      <span className="rounded bg-red-100 text-red-800 px-1.5 py-0.5">
+                        Legale
+                      </span>
+                    )}
+                    {!r.email && !r.pec && (
+                      <span className="rounded bg-muted text-muted-foreground px-1.5 py-0.5">
+                        No email
+                      </span>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center justify-end gap-1">
+                    <IconAction
+                      label="Sollecita"
+                      onClick={() => onSollecita(r.cliente_id)}
+                      icon={<Send className="size-4" />}
+                    />
+                    <IconAction
+                      label="Registra promessa di pagamento"
+                      onClick={() => onPromessa(r)}
+                      icon={<HandCoins className="size-4" />}
+                    />
+                    <IconAction
+                      label="Apri scheda cliente"
+                      asChild
+                      icon={<ExternalLink className="size-4" />}
+                    >
+                      <Link to="/clienti/$clienteId" params={{ clienteId: r.cliente_id }} />
+                    </IconAction>
+                  </div>
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
         <TableFooter>
           <TableRow>
             <TableCell colSpan={2} className="font-medium">
               Totale ({righe.length} clienti)
             </TableCell>
-            <TableCell className="text-right tabular-nums font-semibold">
-              {fmtEuro(tot_insoluto)}
+            <TableCell className={cn("text-right tabular-nums font-semibold", importoCls)}>
+              {fmtEuro(tot_importo)}
             </TableCell>
             <TableCell className="text-right tabular-nums font-semibold text-red-700">
               {fmtEuro(tot_esposizione)}
             </TableCell>
-            <TableCell colSpan={2} />
+            <TableCell colSpan={4} />
           </TableRow>
         </TableFooter>
       </Table>
     </div>
   );
 }
+
+function MetodoBadge({ metodo }: { metodo: string | null }) {
+  const m = (metodo ?? "Altro").trim();
+  const cls =
+    m === "RiBa" ? "bg-blue-100 text-blue-800"
+    : m === "Bonifico" ? "bg-emerald-100 text-emerald-800"
+    : m === "RID" ? "bg-violet-100 text-violet-800"
+    : m === "Rimessa" ? "bg-slate-100 text-slate-800"
+    : m === "Misto" ? "bg-amber-100 text-amber-800"
+    : "bg-muted text-muted-foreground";
+  return (
+    <span className={cn("rounded px-1.5 py-0.5 text-[11px] font-medium", cls)}>
+      {m || "Altro"}
+    </span>
+  );
+}
+
+
 
 function IncassatoLista({ righe }: { righe: RigaDettaglio[] }) {
   if (righe.length === 0) {
@@ -562,7 +635,7 @@ function MetricButton({
 }: {
   label: string;
   value: string;
-  tone?: "green" | "red";
+  tone?: "green" | "red" | "amber";
   icon?: React.ReactNode;
   selected?: boolean;
   onClick?: () => void;
@@ -570,7 +643,13 @@ function MetricButton({
   const color =
     tone === "green" ? "text-emerald-700"
     : tone === "red" ? "text-red-700"
+    : tone === "amber" ? "text-amber-700"
     : "text-foreground";
+  const selectedRing =
+    tone === "red" ? "border-red-500 ring-2 ring-red-500/20 bg-red-500/5"
+    : tone === "amber" ? "border-amber-500 ring-2 ring-amber-500/20 bg-amber-500/5"
+    : tone === "green" ? "border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-500/5"
+    : "border-primary ring-2 ring-primary/20 bg-primary/5";
   const clickable = !!onClick;
   return (
     <button
@@ -580,7 +659,7 @@ function MetricButton({
       className={cn(
         "text-left rounded-md border px-3 py-2.5 transition-colors",
         clickable ? "cursor-pointer hover:border-primary/50 hover:bg-muted/40" : "cursor-default",
-        selected && "border-primary ring-2 ring-primary/20 bg-primary/5",
+        selected && selectedRing,
       )}
     >
       <div className="text-[11px] uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
