@@ -536,20 +536,35 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
         y -= rowH;
       }
 
-      // Riga TOTALE
-      ensureSpace(rowH + 4);
-      page.drawRectangle({
-        x: MARGIN_X, y: y - rowH + 4, width: CONTENT_W, height: rowH,
-        borderColor: rgb(BRAND_NAVY[0], BRAND_NAVY[1], BRAND_NAVY[2]),
-        borderWidth: 0,
-        color: rgb(0.94, 0.95, 0.97),
-      });
-      const totLabel = "TOTALE SCADUTO";
-      const totVal = formatEuro(totale);
-      drawText(totLabel, colX[0] + 8, y - rowH + 9, { size: 10, bold: true, color: BRAND_NAVY });
-      const totW = textWidth(totVal, 10, true);
-      drawText(totVal, colX[3] + colW[3] - 8 - totW, y - rowH + 9, { size: 10, bold: true, color: BRAND_ACCENT });
-      y -= rowH + 6;
+      // Righe TOTALI (Totale scaduto — Spese di insoluto — Totale da pagare)
+      // Se non ci sono RiBa: solo "TOTALE SCADUTO" (comportamento invariato).
+      const totals = calcolaSpeseInsoluto(scadute, speseUnit);
+      const totalRowsData: { label: string; value: string; strong?: boolean; accent?: boolean }[] =
+        totals.nRiba === 0
+          ? [{ label: "TOTALE SCADUTO", value: formatEuro(totals.totaleScaduto), strong: true, accent: true }]
+          : [
+              { label: "Totale scaduto", value: formatEuro(totals.totaleScaduto) },
+              { label: `Spese di insoluto (${totals.nRiba} × ${formatEuro(totals.importoUnitario)})`, value: formatEuro(totals.speseInsoluto) },
+              { label: "TOTALE DA PAGARE", value: formatEuro(totals.totaleDaPagare), strong: true, accent: true },
+            ];
+      for (const tr of totalRowsData) {
+        ensureSpace(rowH + 4);
+        page.drawRectangle({
+          x: MARGIN_X, y: y - rowH + 4, width: CONTENT_W, height: rowH,
+          borderColor: rgb(BRAND_NAVY[0], BRAND_NAVY[1], BRAND_NAVY[2]),
+          borderWidth: 0,
+          color: rgb(0.94, 0.95, 0.97),
+        });
+        drawText(tr.label, colX[0] + 8, y - rowH + 9, { size: 10, bold: !!tr.strong, color: BRAND_NAVY });
+        const w = textWidth(tr.value, 10, !!tr.strong);
+        drawText(tr.value, colX[3] + colW[3] - 8 - w, y - rowH + 9, {
+          size: 10,
+          bold: !!tr.strong,
+          color: tr.accent ? BRAND_ACCENT : INK,
+        });
+        y -= rowH;
+      }
+      y -= 6;
     }
 
     // === FIRMA (unica) ===
