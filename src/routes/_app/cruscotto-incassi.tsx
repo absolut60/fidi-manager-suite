@@ -3,8 +3,10 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   ChevronLeft, ChevronRight, TrendingUp, Send, HandCoins, ExternalLink,
-  Mail, Download, Search, ChevronDown, ChevronUp, X,
+  Mail, Download, Search, ChevronDown, ChevronUp, X, Filter, ArrowUp, ArrowDown, ArrowUpDown,
 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -932,6 +934,42 @@ function toISO(d: Date): string {
 
 type Scorciatoia = "oggi" | "mese" | "7gg" | "mese_scorso" | null;
 
+function SortHeader({
+  label, col, sortKey, sortDir, onSort, align = "left",
+}: {
+  label: string;
+  col: SortKey;
+  sortKey: SortKey;
+  sortDir: SortDir;
+  onSort: (k: SortKey) => void;
+  align?: "left" | "right";
+}) {
+  const active = sortKey === col;
+  const Icon = active ? (sortDir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
+  return (
+    <button
+      type="button"
+      onClick={() => onSort(col)}
+      className={cn(
+        "inline-flex items-center gap-1 hover:text-foreground transition-colors",
+        active ? "text-foreground font-semibold" : "text-muted-foreground",
+        align === "right" && "flex-row-reverse",
+      )}
+    >
+      <span>{label}</span>
+      <Icon className={cn("size-3.5", !active && "opacity-50")} />
+    </button>
+  );
+}
+
+const METODI_OPZIONI = ["RiBa", "Bonifico", "RID", "Rimessa", "Altro"] as const;
+type MetodoOpt = (typeof METODI_OPZIONI)[number];
+// Default: escludi rimesse dirette (codici S*/RD*/O* → "Rimessa").
+const METODI_DEFAULT: MetodoOpt[] = ["RiBa", "Bonifico", "RID", "Altro"];
+
+type SortKey = "cliente" | "n_incassi" | "totale_incassato" | "ultimo_incasso";
+type SortDir = "asc" | "desc";
+
 function RicercaIncassiBlock() {
   const oggi = new Date();
   oggi.setHours(0, 0, 0, 0);
@@ -942,6 +980,9 @@ function RicercaIncassiBlock() {
   const [cercaCliente, setCercaCliente] = useState<string>("");
   const [scorciatoia, setScorciatoia] = useState<Scorciatoia>("mese");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [metodi, setMetodi] = useState<MetodoOpt[]>(METODI_DEFAULT);
+  const [sortKey, setSortKey] = useState<SortKey>("totale_incassato");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   // Debounce ricerca cliente
   const [clienteDebounced, setClienteDebounced] = useState("");
@@ -971,17 +1012,63 @@ function RicercaIncassiBlock() {
   }
 
   const { data: righe, isLoading, isFetching } = useQuery({
-    queryKey: ["ricerca_incassi_periodo", dal, al, clienteDebounced],
+    queryKey: ["ricerca_incassi_periodo", dal, al, clienteDebounced, metodi.slice().sort().join(",")],
     queryFn: async () => {
       const { data, error } = await supabase.rpc(
         "get_incassi_periodo" as never,
-        { _dal: dal, _al: al, _cliente_search: clienteDebounced || null } as never,
+        {
+          _dal: dal,
+          _al: al,
+          _cliente_search: clienteDebounced || null,
+          _metodi: metodi.length === METODI_OPZIONI.length ? null : metodi,
+        } as never,
       );
       if (error) throw error;
       return ((data as unknown) as RigaIncassoPeriodo[]) ?? [];
     },
     enabled: !!dal && !!al && dal <= al,
   });
+
+  const righeSorted = useMemo(() => {
+    const arr = [...(righe ?? [])];
+    const dir = sortDir === "asc" ? 1 : -1;
+    arr.sort((a, b) => {
+      let av: string | number = "";
+      let bv: string | number = "";
+      if (sortKey === "cliente") {
+        av = (a.ragione_sociale ?? "").toLowerCase();
+        bv = (b.ragione_sociale ?? "").toLowerCase();
+      } else if (sortKey === "n_incassi") {
+        av = Number(a.n_incassi ?? 0);
+        bv = Number(b.n_incassi ?? 0);
+      } else if (sortKey === "totale_incassato") {
+        av = Number(a.totale_incassato ?? 0);
+        bv = Number(b.totale_incassato ?? 0);
+      } else if (sortKey === "ultimo_incasso") {
+        av = a.ultimo_incasso ?? "";
+        bv = b.ultimo_incasso ?? "";
+      }
+      if (av < bv) return -1 * dir;
+      if (av > bv) return 1 * dir;
+      return 0;
+    });
+    return arr;
+  }, [righe, sortKey, sortDir]);
+
+  function toggleSort(k: SortKey) {
+    if (sortKey === k) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(k);
+      // default: numeriche/data → desc, testo → asc
+      setSortDir(k === "cliente" ? "asc" : "desc");
+    }
+  }
+
+  function toggleMetodo(m: MetodoOpt) {
+    setMetodi((prev) => (prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m]));
+    setExpanded(new Set());
+  }
 
   const totali = useMemo(() => {
     const rows = righe ?? [];
@@ -1078,6 +1165,65 @@ function RicercaIncassiBlock() {
               />
             </div>
           </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">Metodo</label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9 gap-1.5 min-w-[180px] justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Filter className="size-3.5" />
+                    {metodi.length === 0
+                      ? "Nessun metodo"
+                      : metodi.length === METODI_OPZIONI.length
+                      ? "Tutti i metodi"
+                      : metodi.length === 1
+                      ? metodi[0]
+                      : `${metodi.length} metodi`}
+                  </span>
+                  <ChevronDown className="size-3.5 opacity-60" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-56 p-2">
+                <div className="flex items-center justify-between px-1 pb-2 text-xs text-muted-foreground">
+                  <button
+                    type="button"
+                    className="hover:text-foreground underline-offset-2 hover:underline"
+                    onClick={() => { setMetodi([...METODI_OPZIONI]); setExpanded(new Set()); }}
+                  >
+                    Tutti
+                  </button>
+                  <button
+                    type="button"
+                    className="hover:text-foreground underline-offset-2 hover:underline"
+                    onClick={() => { setMetodi(METODI_DEFAULT); setExpanded(new Set()); }}
+                  >
+                    Escludi rimesse
+                  </button>
+                  <button
+                    type="button"
+                    className="hover:text-foreground underline-offset-2 hover:underline"
+                    onClick={() => { setMetodi([]); setExpanded(new Set()); }}
+                  >
+                    Nessuno
+                  </button>
+                </div>
+                <div className="space-y-1">
+                  {METODI_OPZIONI.map((m) => (
+                    <label
+                      key={m}
+                      className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm"
+                    >
+                      <Checkbox
+                        checked={metodi.includes(m)}
+                        onCheckedChange={() => toggleMetodo(m)}
+                      />
+                      <span>{m === "Rimessa" ? "Rimessa diretta" : m}</span>
+                    </label>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
         </div>
         {!periodoValido && (
           <p className="text-xs text-red-600">Il periodo non è valido: la data "Dal" deve precedere o coincidere con "Al".</p>
@@ -1090,13 +1236,21 @@ function RicercaIncassiBlock() {
           <TableHeader>
             <TableRow>
               <TableHead className="w-8" />
-              <TableHead>Cliente</TableHead>
+              <TableHead>
+                <SortHeader label="Cliente" col="cliente" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+              </TableHead>
               <TableHead className="w-24">Cod.</TableHead>
-              <TableHead className="text-right w-24">N. incassi</TableHead>
-              <TableHead className="text-right w-40">Totale incassato</TableHead>
+              <TableHead className="text-right w-24">
+                <SortHeader label="N. incassi" col="n_incassi" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} align="right" />
+              </TableHead>
+              <TableHead className="text-right w-40">
+                <SortHeader label="Totale incassato" col="totale_incassato" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} align="right" />
+              </TableHead>
               <TableHead className="w-28">Metodo</TableHead>
               <TableHead className="w-28">Tipo prev.</TableHead>
-              <TableHead className="w-32">Ultimo incasso</TableHead>
+              <TableHead className="w-32">
+                <SortHeader label="Ultimo incasso" col="ultimo_incasso" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -1106,14 +1260,14 @@ function RicercaIncassiBlock() {
                   <TableCell colSpan={8}><Skeleton className="h-6 w-full" /></TableCell>
                 </TableRow>
               ))
-            ) : (righe ?? []).length === 0 ? (
+            ) : righeSorted.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-6">
                   Nessun incasso nel periodo selezionato.
                 </TableCell>
               </TableRow>
             ) : (
-              (righe ?? []).map((r) => {
+              righeSorted.map((r) => {
                 const isOpen = expanded.has(r.cliente_id);
                 return (
                   <>
@@ -1172,6 +1326,7 @@ function RicercaIncassiBlock() {
                             clienteId={r.cliente_id}
                             dal={dal}
                             al={al}
+                            metodi={metodi.length === METODI_OPZIONI.length ? null : metodi}
                             totaleAtteso={Number(r.totale_incassato)}
                           />
                         </TableCell>
@@ -1206,16 +1361,17 @@ function RicercaIncassiBlock() {
 }
 
 function DettaglioIncassiCliente({
-  clienteId, dal, al, totaleAtteso,
+  clienteId, dal, al, totaleAtteso, metodi,
 }: {
-  clienteId: string; dal: string; al: string; totaleAtteso: number;
+  clienteId: string; dal: string; al: string; totaleAtteso: number; metodi: string[] | null;
 }) {
+  const metodiKey = metodi ? metodi.slice().sort().join(",") : "*";
   const { data, isLoading } = useQuery({
-    queryKey: ["ricerca_incassi_dettaglio", clienteId, dal, al],
+    queryKey: ["ricerca_incassi_dettaglio", clienteId, dal, al, metodiKey],
     queryFn: async () => {
       const { data, error } = await supabase.rpc(
         "get_incassi_periodo_dettaglio" as never,
-        { _dal: dal, _al: al, _cliente_id: clienteId } as never,
+        { _dal: dal, _al: al, _cliente_id: clienteId, _metodi: metodi } as never,
       );
       if (error) throw error;
       return ((data as unknown) as RigaIncassoDettaglio[]) ?? [];

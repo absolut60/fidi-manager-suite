@@ -2988,7 +2988,12 @@ export type Database = {
         }[]
       }
       get_incassi_periodo: {
-        Args: { _al: string; _cliente_search?: string; _dal: string }
+        Args: {
+          _al: string
+          _cliente_search?: string
+          _dal: string
+          _metodi?: string[]
+        }
         Returns: {
           cliente_id: string
           codice_gestionale: string
@@ -3003,7 +3008,12 @@ export type Database = {
         }[]
       }
       get_incassi_periodo_dettaglio: {
-        Args: { _al: string; _cliente_id: string; _dal: string }
+        Args: {
+          _al: string
+          _cliente_id: string
+          _dal: string
+          _metodi?: string[]
+        }
         Returns: {
           codice_pagamento: string
           data_pagamento_effettiva: string
