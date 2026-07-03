@@ -386,27 +386,41 @@ function CruscottoIncassiPage() {
               />
             </div>
 
-            {/* Toolbar liste (solo per da incassare) */}
-            {vista !== "incassato" && (() => {
+            {/* Toolbar liste — sempre presente (agisce sulla selezione) */}
+            {(() => {
               const clientiUnici = Array.from(
                 new Set(scadenzeFiltrate.map((r) => r.cliente_id)),
               );
+              const selezionatiValidi = clientiUnici.filter((id) => selezionati.has(id));
+              const nSel = selezionatiValidi.length;
               return (
                 <div className="flex flex-wrap items-center gap-2 pt-1">
                   <Button
                     size="sm"
-                    onClick={() => apriSollecita(clientiUnici)}
-                    disabled={loadingLista || clientiUnici.length === 0}
+                    onClick={() => {
+                      if (nSel === 0) {
+                        toast.info("Seleziona almeno un cliente");
+                        return;
+                      }
+                      apriSollecita(selezionatiValidi);
+                    }}
+                    disabled={loadingLista || nSel === 0}
                     className="gap-1.5"
+                    title={nSel === 0 ? "Seleziona almeno un cliente" : undefined}
                   >
-                    <Send className="size-4" /> Sollecita tutti ({clientiUnici.length})
+                    <Send className="size-4" /> Sollecita selezionati ({nSel})
                   </Button>
-                  <Button size="sm" variant="outline" disabled className="gap-1.5" title="Funzione in arrivo">
+                  <Button size="sm" variant="outline" disabled className="gap-1.5" title="Funzione in arrivo — considera tutti i clienti del mese">
                     <Mail className="size-4" /> Invia riepilogo via mail
                   </Button>
-                  <Button size="sm" variant="outline" disabled className="gap-1.5" title="Funzione in arrivo">
+                  <Button size="sm" variant="outline" disabled className="gap-1.5" title="Funzione in arrivo — considera tutti i clienti del mese">
                     <Download className="size-4" /> Esporta
                   </Button>
+                  {nSel > 0 && (
+                    <span className="text-xs text-muted-foreground ml-1">
+                      {nSel} selezionat{nSel === 1 ? "o" : "i"}
+                    </span>
+                  )}
                 </div>
               );
             })()}
@@ -426,6 +440,25 @@ function CruscottoIncassiPage() {
                 onPromessa={(clienteId, ragione) => {
                   setPromessaClienteId(clienteId);
                   setPromessaLabel(ragione);
+                }}
+                sortKey={dettSortKey}
+                sortDir={dettSortDir}
+                onSort={toggleDettSort}
+                selezionati={selezionati}
+                onToggleSelezionato={(id) => {
+                  setSelezionati((prev) => {
+                    const s = new Set(prev);
+                    if (s.has(id)) s.delete(id); else s.add(id);
+                    return s;
+                  });
+                }}
+                onToggleAll={(clientiVisibili, checked) => {
+                  setSelezionati((prev) => {
+                    const s = new Set(prev);
+                    if (checked) clientiVisibili.forEach((id) => s.add(id));
+                    else clientiVisibili.forEach((id) => s.delete(id));
+                    return s;
+                  });
                 }}
               />
             )}
