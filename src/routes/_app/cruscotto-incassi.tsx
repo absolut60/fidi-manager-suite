@@ -934,6 +934,34 @@ function toISO(d: Date): string {
 
 type Scorciatoia = "oggi" | "mese" | "7gg" | "mese_scorso" | null;
 
+function SortHeader({
+  label, col, sortKey, sortDir, onSort, align = "left",
+}: {
+  label: string;
+  col: SortKey;
+  sortKey: SortKey;
+  sortDir: SortDir;
+  onSort: (k: SortKey) => void;
+  align?: "left" | "right";
+}) {
+  const active = sortKey === col;
+  const Icon = active ? (sortDir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
+  return (
+    <button
+      type="button"
+      onClick={() => onSort(col)}
+      className={cn(
+        "inline-flex items-center gap-1 hover:text-foreground transition-colors",
+        active ? "text-foreground font-semibold" : "text-muted-foreground",
+        align === "right" && "flex-row-reverse",
+      )}
+    >
+      <span>{label}</span>
+      <Icon className={cn("size-3.5", !active && "opacity-50")} />
+    </button>
+  );
+}
+
 const METODI_OPZIONI = ["RiBa", "Bonifico", "RID", "Rimessa", "Altro"] as const;
 type MetodoOpt = (typeof METODI_OPZIONI)[number];
 // Default: escludi rimesse dirette (codici S*/RD*/O* → "Rimessa").
