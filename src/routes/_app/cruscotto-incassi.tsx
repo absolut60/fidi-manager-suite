@@ -985,6 +985,7 @@ const METODI_DEFAULT: MetodoOpt[] = ["RiBa", "Bonifico", "RID", "Altro"];
 
 type SortKey = "cliente" | "n_incassi" | "totale_incassato" | "ultimo_incasso";
 type SortDir = "asc" | "desc";
+type DettSortKey = "cliente" | "codice" | "importo";
 
 function RicercaIncassiBlock() {
   const oggi = new Date();
