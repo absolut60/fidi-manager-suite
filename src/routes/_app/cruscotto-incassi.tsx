@@ -934,14 +934,14 @@ function toISO(d: Date): string {
 
 type Scorciatoia = "oggi" | "mese" | "7gg" | "mese_scorso" | null;
 
-function SortHeader({
+function SortHeader<K extends string>({
   label, col, sortKey, sortDir, onSort, align = "left",
 }: {
   label: string;
-  col: SortKey;
-  sortKey: SortKey;
+  col: K;
+  sortKey: K;
   sortDir: SortDir;
-  onSort: (k: SortKey) => void;
+  onSort: (k: K) => void;
   align?: "left" | "right";
 }) {
   const active = sortKey === col;
