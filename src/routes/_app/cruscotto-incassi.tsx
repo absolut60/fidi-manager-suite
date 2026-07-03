@@ -934,6 +934,14 @@ function toISO(d: Date): string {
 
 type Scorciatoia = "oggi" | "mese" | "7gg" | "mese_scorso" | null;
 
+const METODI_OPZIONI = ["RiBa", "Bonifico", "RID", "Rimessa", "Altro"] as const;
+type MetodoOpt = (typeof METODI_OPZIONI)[number];
+// Default: escludi rimesse dirette (codici S*/RD*/O* → "Rimessa").
+const METODI_DEFAULT: MetodoOpt[] = ["RiBa", "Bonifico", "RID", "Altro"];
+
+type SortKey = "cliente" | "n_incassi" | "totale_incassato" | "ultimo_incasso";
+type SortDir = "asc" | "desc";
+
 function RicercaIncassiBlock() {
   const oggi = new Date();
   oggi.setHours(0, 0, 0, 0);
@@ -944,6 +952,9 @@ function RicercaIncassiBlock() {
   const [cercaCliente, setCercaCliente] = useState<string>("");
   const [scorciatoia, setScorciatoia] = useState<Scorciatoia>("mese");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [metodi, setMetodi] = useState<MetodoOpt[]>(METODI_DEFAULT);
+  const [sortKey, setSortKey] = useState<SortKey>("totale_incassato");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   // Debounce ricerca cliente
   const [clienteDebounced, setClienteDebounced] = useState("");
