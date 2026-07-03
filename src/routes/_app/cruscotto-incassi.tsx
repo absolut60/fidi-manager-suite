@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   ChevronLeft, ChevronRight, TrendingUp, Send, HandCoins, ExternalLink,
@@ -117,6 +117,22 @@ function CruscottoIncassiPage() {
   const [invioClienti, setInvioClienti] = useState<string[]>([]);
   const [promessaClienteId, setPromessaClienteId] = useState<string | null>(null);
   const [promessaLabel, setPromessaLabel] = useState<string>("");
+  // Ordinamento del dettaglio mese (persiste al cambio vista)
+  const [dettSortKey, setDettSortKey] = useState<DettSortKey>("importo");
+  const [dettSortDir, setDettSortDir] = useState<SortDir>("desc");
+  const toggleDettSort = (k: DettSortKey) => {
+    if (k === dettSortKey) setDettSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else {
+      setDettSortKey(k);
+      // Default: importi in decrescente, testuali in crescente
+      setDettSortDir(k === "importo" ? "desc" : "asc");
+    }
+  };
+  // Selezione clienti per Sollecita mirato (reset al cambio mese/anno)
+  const [selezionati, setSelezionati] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    setSelezionati(new Set());
+  }, [meseSel, anno]);
 
   const { data: mensile, isLoading } = useQuery({
     queryKey: ["cruscotto_incassi_mensile", anno],
@@ -370,27 +386,41 @@ function CruscottoIncassiPage() {
               />
             </div>
 
-            {/* Toolbar liste (solo per da incassare) */}
-            {vista !== "incassato" && (() => {
+            {/* Toolbar liste — sempre presente (agisce sulla selezione) */}
+            {(() => {
               const clientiUnici = Array.from(
                 new Set(scadenzeFiltrate.map((r) => r.cliente_id)),
               );
+              const selezionatiValidi = clientiUnici.filter((id) => selezionati.has(id));
+              const nSel = selezionatiValidi.length;
               return (
                 <div className="flex flex-wrap items-center gap-2 pt-1">
                   <Button
                     size="sm"
-                    onClick={() => apriSollecita(clientiUnici)}
-                    disabled={loadingLista || clientiUnici.length === 0}
+                    onClick={() => {
+                      if (nSel === 0) {
+                        toast.info("Seleziona almeno un cliente");
+                        return;
+                      }
+                      apriSollecita(selezionatiValidi);
+                    }}
+                    disabled={loadingLista || nSel === 0}
                     className="gap-1.5"
+                    title={nSel === 0 ? "Seleziona almeno un cliente" : undefined}
                   >
-                    <Send className="size-4" /> Sollecita tutti ({clientiUnici.length})
+                    <Send className="size-4" /> Sollecita selezionati ({nSel})
                   </Button>
-                  <Button size="sm" variant="outline" disabled className="gap-1.5" title="Funzione in arrivo">
+                  <Button size="sm" variant="outline" disabled className="gap-1.5" title="Funzione in arrivo — considera tutti i clienti del mese">
                     <Mail className="size-4" /> Invia riepilogo via mail
                   </Button>
-                  <Button size="sm" variant="outline" disabled className="gap-1.5" title="Funzione in arrivo">
+                  <Button size="sm" variant="outline" disabled className="gap-1.5" title="Funzione in arrivo — considera tutti i clienti del mese">
                     <Download className="size-4" /> Esporta
                   </Button>
+                  {nSel > 0 && (
+                    <span className="text-xs text-muted-foreground ml-1">
+                      {nSel} selezionat{nSel === 1 ? "o" : "i"}
+                    </span>
+                  )}
                 </div>
               );
             })()}
@@ -410,6 +440,25 @@ function CruscottoIncassiPage() {
                 onPromessa={(clienteId, ragione) => {
                   setPromessaClienteId(clienteId);
                   setPromessaLabel(ragione);
+                }}
+                sortKey={dettSortKey}
+                sortDir={dettSortDir}
+                onSort={toggleDettSort}
+                selezionati={selezionati}
+                onToggleSelezionato={(id) => {
+                  setSelezionati((prev) => {
+                    const s = new Set(prev);
+                    if (s.has(id)) s.delete(id); else s.add(id);
+                    return s;
+                  });
+                }}
+                onToggleAll={(clientiVisibili, checked) => {
+                  setSelezionati((prev) => {
+                    const s = new Set(prev);
+                    if (checked) clientiVisibili.forEach((id) => s.add(id));
+                    else clientiVisibili.forEach((id) => s.delete(id));
+                    return s;
+                  });
                 }}
               />
             )}
@@ -458,11 +507,19 @@ type GruppoCliente = {
 
 function ScadenzeGroupedLista({
   righe, vista, onSollecita, onPromessa,
+  sortKey, sortDir, onSort,
+  selezionati, onToggleSelezionato, onToggleAll,
 }: {
   righe: RigaScadenzaVista[];
   vista: VistaDettaglio;
   onSollecita: (clienteId: string) => void;
   onPromessa: (clienteId: string, ragione: string) => void;
+  sortKey: DettSortKey;
+  sortDir: SortDir;
+  onSort: (k: DettSortKey) => void;
+  selezionati: Set<string>;
+  onToggleSelezionato: (clienteId: string) => void;
+  onToggleAll: (clientiVisibili: string[], checked: boolean) => void;
 }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const toggle = (id: string) =>
@@ -497,8 +554,16 @@ function ScadenzeGroupedLista({
     for (const g of map.values()) {
       g.scadenze.sort((a, b) => (a.data_scadenza < b.data_scadenza ? -1 : 1));
     }
-    return Array.from(map.values()).sort((a, b) => b.totale - a.totale);
-  }, [righe]);
+    const arr = Array.from(map.values());
+    const dir = sortDir === "asc" ? 1 : -1;
+    const collator = new Intl.Collator("it", { sensitivity: "base", numeric: true });
+    arr.sort((a, b) => {
+      if (sortKey === "cliente") return dir * collator.compare(a.ragione_sociale, b.ragione_sociale);
+      if (sortKey === "codice") return dir * collator.compare(a.codice_gestionale ?? "", b.codice_gestionale ?? "");
+      return dir * (a.totale - b.totale);
+    });
+    return arr;
+  }, [righe, sortKey, sortDir]);
 
   if (gruppi.length === 0) {
     const msg =
@@ -523,15 +588,33 @@ function ScadenzeGroupedLista({
   const tot = gruppi.reduce((a, g) => a + g.totale, 0);
   const showActions = vista !== "incassato";
 
+  const clientiVisibili = gruppi.map((g) => g.cliente_id);
+  const nSelVisibili = clientiVisibili.filter((id) => selezionati.has(id)).length;
+  const headerChecked: boolean | "indeterminate" =
+    nSelVisibili === 0 ? false : nSelVisibili === clientiVisibili.length ? true : "indeterminate";
+
   return (
     <div className="rounded-md border overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead className="w-8">
+              <Checkbox
+                checked={headerChecked}
+                onCheckedChange={(c) => onToggleAll(clientiVisibili, c === true)}
+                aria-label="Seleziona tutti"
+              />
+            </TableHead>
             <TableHead className="w-8" />
-            <TableHead>Cliente</TableHead>
-            <TableHead className="w-24">Cod.</TableHead>
-            <TableHead className="text-right whitespace-nowrap">{importoLabel}</TableHead>
+            <TableHead>
+              <SortHeader<DettSortKey> label="Cliente" col="cliente" sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
+            </TableHead>
+            <TableHead className="w-24">
+              <SortHeader<DettSortKey> label="Cod." col="codice" sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
+            </TableHead>
+            <TableHead className="text-right whitespace-nowrap">
+              <SortHeader<DettSortKey> label={importoLabel} col="importo" sortKey={sortKey} sortDir={sortDir} onSort={onSort} align="right" />
+            </TableHead>
             <TableHead className="w-40">Note</TableHead>
             {showActions && <TableHead className="w-32 text-right">Azioni</TableHead>}
           </TableRow>
@@ -539,6 +622,7 @@ function ScadenzeGroupedLista({
         <TableBody>
           {gruppi.map((g) => {
             const isOpen = expanded.has(g.cliente_id);
+            const isSel = selezionati.has(g.cliente_id);
             return (
               <>
                 <TableRow
@@ -546,6 +630,13 @@ function ScadenzeGroupedLista({
                   className="cursor-pointer hover:bg-muted/40"
                   onClick={() => toggle(g.cliente_id)}
                 >
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      checked={isSel}
+                      onCheckedChange={() => onToggleSelezionato(g.cliente_id)}
+                      aria-label={`Seleziona ${g.ragione_sociale}`}
+                    />
+                  </TableCell>
                   <TableCell>
                     {isOpen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
                   </TableCell>
@@ -609,6 +700,7 @@ function ScadenzeGroupedLista({
                 {isOpen && (
                   <TableRow key={`${g.cliente_id}-exp`} className="bg-muted/30 hover:bg-muted/30">
                     <TableCell />
+                    <TableCell />
                     <TableCell colSpan={showActions ? 5 : 4} className="py-2">
                       <ScadenzeInnerTable scadenze={g.scadenze} vista={vista} />
                     </TableCell>
@@ -620,6 +712,7 @@ function ScadenzeGroupedLista({
         </TableBody>
         <TableFooter>
           <TableRow>
+            <TableCell />
             <TableCell />
             <TableCell colSpan={2} className="font-medium">
               Totale ({gruppi.length} client{gruppi.length === 1 ? "e" : "i"})
@@ -634,6 +727,7 @@ function ScadenzeGroupedLista({
     </div>
   );
 }
+
 
 function ScadenzeInnerTable({
   scadenze, vista,
@@ -934,14 +1028,14 @@ function toISO(d: Date): string {
 
 type Scorciatoia = "oggi" | "mese" | "7gg" | "mese_scorso" | null;
 
-function SortHeader({
+function SortHeader<K extends string>({
   label, col, sortKey, sortDir, onSort, align = "left",
 }: {
   label: string;
-  col: SortKey;
-  sortKey: SortKey;
+  col: K;
+  sortKey: K;
   sortDir: SortDir;
-  onSort: (k: SortKey) => void;
+  onSort: (k: K) => void;
   align?: "left" | "right";
 }) {
   const active = sortKey === col;
@@ -969,6 +1063,7 @@ const METODI_DEFAULT: MetodoOpt[] = ["RiBa", "Bonifico", "RID", "Altro"];
 
 type SortKey = "cliente" | "n_incassi" | "totale_incassato" | "ultimo_incasso";
 type SortDir = "asc" | "desc";
+type DettSortKey = "cliente" | "codice" | "importo";
 
 function RicercaIncassiBlock() {
   const oggi = new Date();
