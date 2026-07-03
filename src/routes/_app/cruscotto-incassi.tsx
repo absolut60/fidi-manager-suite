@@ -1208,13 +1208,21 @@ function RicercaIncassiBlock() {
           <TableHeader>
             <TableRow>
               <TableHead className="w-8" />
-              <TableHead>Cliente</TableHead>
+              <TableHead>
+                <SortHeader label="Cliente" col="cliente" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+              </TableHead>
               <TableHead className="w-24">Cod.</TableHead>
-              <TableHead className="text-right w-24">N. incassi</TableHead>
-              <TableHead className="text-right w-40">Totale incassato</TableHead>
+              <TableHead className="text-right w-24">
+                <SortHeader label="N. incassi" col="n_incassi" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} align="right" />
+              </TableHead>
+              <TableHead className="text-right w-40">
+                <SortHeader label="Totale incassato" col="totale_incassato" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} align="right" />
+              </TableHead>
               <TableHead className="w-28">Metodo</TableHead>
               <TableHead className="w-28">Tipo prev.</TableHead>
-              <TableHead className="w-32">Ultimo incasso</TableHead>
+              <TableHead className="w-32">
+                <SortHeader label="Ultimo incasso" col="ultimo_incasso" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -1224,14 +1232,14 @@ function RicercaIncassiBlock() {
                   <TableCell colSpan={8}><Skeleton className="h-6 w-full" /></TableCell>
                 </TableRow>
               ))
-            ) : (righe ?? []).length === 0 ? (
+            ) : righeSorted.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-6">
                   Nessun incasso nel periodo selezionato.
                 </TableCell>
               </TableRow>
             ) : (
-              (righe ?? []).map((r) => {
+              righeSorted.map((r) => {
                 const isOpen = expanded.has(r.cliente_id);
                 return (
                   <>
