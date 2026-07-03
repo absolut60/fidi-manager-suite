@@ -507,11 +507,19 @@ type GruppoCliente = {
 
 function ScadenzeGroupedLista({
   righe, vista, onSollecita, onPromessa,
+  sortKey, sortDir, onSort,
+  selezionati, onToggleSelezionato, onToggleAll,
 }: {
   righe: RigaScadenzaVista[];
   vista: VistaDettaglio;
   onSollecita: (clienteId: string) => void;
   onPromessa: (clienteId: string, ragione: string) => void;
+  sortKey: DettSortKey;
+  sortDir: SortDir;
+  onSort: (k: DettSortKey) => void;
+  selezionati: Set<string>;
+  onToggleSelezionato: (clienteId: string) => void;
+  onToggleAll: (clientiVisibili: string[], checked: boolean) => void;
 }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const toggle = (id: string) =>
@@ -546,8 +554,16 @@ function ScadenzeGroupedLista({
     for (const g of map.values()) {
       g.scadenze.sort((a, b) => (a.data_scadenza < b.data_scadenza ? -1 : 1));
     }
-    return Array.from(map.values()).sort((a, b) => b.totale - a.totale);
-  }, [righe]);
+    const arr = Array.from(map.values());
+    const dir = sortDir === "asc" ? 1 : -1;
+    const collator = new Intl.Collator("it", { sensitivity: "base", numeric: true });
+    arr.sort((a, b) => {
+      if (sortKey === "cliente") return dir * collator.compare(a.ragione_sociale, b.ragione_sociale);
+      if (sortKey === "codice") return dir * collator.compare(a.codice_gestionale ?? "", b.codice_gestionale ?? "");
+      return dir * (a.totale - b.totale);
+    });
+    return arr;
+  }, [righe, sortKey, sortDir]);
 
   if (gruppi.length === 0) {
     const msg =
@@ -572,15 +588,33 @@ function ScadenzeGroupedLista({
   const tot = gruppi.reduce((a, g) => a + g.totale, 0);
   const showActions = vista !== "incassato";
 
+  const clientiVisibili = gruppi.map((g) => g.cliente_id);
+  const nSelVisibili = clientiVisibili.filter((id) => selezionati.has(id)).length;
+  const headerChecked: boolean | "indeterminate" =
+    nSelVisibili === 0 ? false : nSelVisibili === clientiVisibili.length ? true : "indeterminate";
+
   return (
     <div className="rounded-md border overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead className="w-8">
+              <Checkbox
+                checked={headerChecked}
+                onCheckedChange={(c) => onToggleAll(clientiVisibili, c === true)}
+                aria-label="Seleziona tutti"
+              />
+            </TableHead>
             <TableHead className="w-8" />
-            <TableHead>Cliente</TableHead>
-            <TableHead className="w-24">Cod.</TableHead>
-            <TableHead className="text-right whitespace-nowrap">{importoLabel}</TableHead>
+            <TableHead>
+              <SortHeader<DettSortKey> label="Cliente" col="cliente" sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
+            </TableHead>
+            <TableHead className="w-24">
+              <SortHeader<DettSortKey> label="Cod." col="codice" sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
+            </TableHead>
+            <TableHead className="text-right whitespace-nowrap">
+              <SortHeader<DettSortKey> label={importoLabel} col="importo" sortKey={sortKey} sortDir={sortDir} onSort={onSort} align="right" />
+            </TableHead>
             <TableHead className="w-40">Note</TableHead>
             {showActions && <TableHead className="w-32 text-right">Azioni</TableHead>}
           </TableRow>
@@ -588,6 +622,7 @@ function ScadenzeGroupedLista({
         <TableBody>
           {gruppi.map((g) => {
             const isOpen = expanded.has(g.cliente_id);
+            const isSel = selezionati.has(g.cliente_id);
             return (
               <>
                 <TableRow
@@ -595,6 +630,13 @@ function ScadenzeGroupedLista({
                   className="cursor-pointer hover:bg-muted/40"
                   onClick={() => toggle(g.cliente_id)}
                 >
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      checked={isSel}
+                      onCheckedChange={() => onToggleSelezionato(g.cliente_id)}
+                      aria-label={`Seleziona ${g.ragione_sociale}`}
+                    />
+                  </TableCell>
                   <TableCell>
                     {isOpen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
                   </TableCell>
@@ -658,6 +700,7 @@ function ScadenzeGroupedLista({
                 {isOpen && (
                   <TableRow key={`${g.cliente_id}-exp`} className="bg-muted/30 hover:bg-muted/30">
                     <TableCell />
+                    <TableCell />
                     <TableCell colSpan={showActions ? 5 : 4} className="py-2">
                       <ScadenzeInnerTable scadenze={g.scadenze} vista={vista} />
                     </TableCell>
@@ -669,6 +712,7 @@ function ScadenzeGroupedLista({
         </TableBody>
         <TableFooter>
           <TableRow>
+            <TableCell />
             <TableCell />
             <TableCell colSpan={2} className="font-medium">
               Totale ({gruppi.length} client{gruppi.length === 1 ? "e" : "i"})
@@ -683,6 +727,7 @@ function ScadenzeGroupedLista({
     </div>
   );
 }
+
 
 function ScadenzeInnerTable({
   scadenze, vista,
