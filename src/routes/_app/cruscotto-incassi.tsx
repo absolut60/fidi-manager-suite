@@ -984,17 +984,63 @@ function RicercaIncassiBlock() {
   }
 
   const { data: righe, isLoading, isFetching } = useQuery({
-    queryKey: ["ricerca_incassi_periodo", dal, al, clienteDebounced],
+    queryKey: ["ricerca_incassi_periodo", dal, al, clienteDebounced, metodi.slice().sort().join(",")],
     queryFn: async () => {
       const { data, error } = await supabase.rpc(
         "get_incassi_periodo" as never,
-        { _dal: dal, _al: al, _cliente_search: clienteDebounced || null } as never,
+        {
+          _dal: dal,
+          _al: al,
+          _cliente_search: clienteDebounced || null,
+          _metodi: metodi.length === METODI_OPZIONI.length ? null : metodi,
+        } as never,
       );
       if (error) throw error;
       return ((data as unknown) as RigaIncassoPeriodo[]) ?? [];
     },
     enabled: !!dal && !!al && dal <= al,
   });
+
+  const righeSorted = useMemo(() => {
+    const arr = [...(righe ?? [])];
+    const dir = sortDir === "asc" ? 1 : -1;
+    arr.sort((a, b) => {
+      let av: string | number = "";
+      let bv: string | number = "";
+      if (sortKey === "cliente") {
+        av = (a.ragione_sociale ?? "").toLowerCase();
+        bv = (b.ragione_sociale ?? "").toLowerCase();
+      } else if (sortKey === "n_incassi") {
+        av = Number(a.n_incassi ?? 0);
+        bv = Number(b.n_incassi ?? 0);
+      } else if (sortKey === "totale_incassato") {
+        av = Number(a.totale_incassato ?? 0);
+        bv = Number(b.totale_incassato ?? 0);
+      } else if (sortKey === "ultimo_incasso") {
+        av = a.ultimo_incasso ?? "";
+        bv = b.ultimo_incasso ?? "";
+      }
+      if (av < bv) return -1 * dir;
+      if (av > bv) return 1 * dir;
+      return 0;
+    });
+    return arr;
+  }, [righe, sortKey, sortDir]);
+
+  function toggleSort(k: SortKey) {
+    if (sortKey === k) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(k);
+      // default: numeriche/data → desc, testo → asc
+      setSortDir(k === "cliente" ? "asc" : "desc");
+    }
+  }
+
+  function toggleMetodo(m: MetodoOpt) {
+    setMetodi((prev) => (prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m]));
+    setExpanded(new Set());
+  }
 
   const totali = useMemo(() => {
     const rows = righe ?? [];
