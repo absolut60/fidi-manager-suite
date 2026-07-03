@@ -1333,16 +1333,17 @@ function RicercaIncassiBlock() {
 }
 
 function DettaglioIncassiCliente({
-  clienteId, dal, al, totaleAtteso,
+  clienteId, dal, al, totaleAtteso, metodi,
 }: {
-  clienteId: string; dal: string; al: string; totaleAtteso: number;
+  clienteId: string; dal: string; al: string; totaleAtteso: number; metodi: string[] | null;
 }) {
+  const metodiKey = metodi ? metodi.slice().sort().join(",") : "*";
   const { data, isLoading } = useQuery({
-    queryKey: ["ricerca_incassi_dettaglio", clienteId, dal, al],
+    queryKey: ["ricerca_incassi_dettaglio", clienteId, dal, al, metodiKey],
     queryFn: async () => {
       const { data, error } = await supabase.rpc(
         "get_incassi_periodo_dettaglio" as never,
-        { _dal: dal, _al: al, _cliente_id: clienteId } as never,
+        { _dal: dal, _al: al, _cliente_id: clienteId, _metodi: metodi } as never,
       );
       if (error) throw error;
       return ((data as unknown) as RigaIncassoDettaglio[]) ?? [];
