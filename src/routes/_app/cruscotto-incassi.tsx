@@ -1137,6 +1137,65 @@ function RicercaIncassiBlock() {
               />
             </div>
           </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">Metodo</label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9 gap-1.5 min-w-[180px] justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Filter className="size-3.5" />
+                    {metodi.length === 0
+                      ? "Nessun metodo"
+                      : metodi.length === METODI_OPZIONI.length
+                      ? "Tutti i metodi"
+                      : metodi.length === 1
+                      ? metodi[0]
+                      : `${metodi.length} metodi`}
+                  </span>
+                  <ChevronDown className="size-3.5 opacity-60" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-56 p-2">
+                <div className="flex items-center justify-between px-1 pb-2 text-xs text-muted-foreground">
+                  <button
+                    type="button"
+                    className="hover:text-foreground underline-offset-2 hover:underline"
+                    onClick={() => { setMetodi([...METODI_OPZIONI]); setExpanded(new Set()); }}
+                  >
+                    Tutti
+                  </button>
+                  <button
+                    type="button"
+                    className="hover:text-foreground underline-offset-2 hover:underline"
+                    onClick={() => { setMetodi(METODI_DEFAULT); setExpanded(new Set()); }}
+                  >
+                    Escludi rimesse
+                  </button>
+                  <button
+                    type="button"
+                    className="hover:text-foreground underline-offset-2 hover:underline"
+                    onClick={() => { setMetodi([]); setExpanded(new Set()); }}
+                  >
+                    Nessuno
+                  </button>
+                </div>
+                <div className="space-y-1">
+                  {METODI_OPZIONI.map((m) => (
+                    <label
+                      key={m}
+                      className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm"
+                    >
+                      <Checkbox
+                        checked={metodi.includes(m)}
+                        onCheckedChange={() => toggleMetodo(m)}
+                      />
+                      <span>{m === "Rimessa" ? "Rimessa diretta" : m}</span>
+                    </label>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
         </div>
         {!periodoValido && (
           <p className="text-xs text-red-600">Il periodo non è valido: la data "Dal" deve precedere o coincidere con "Al".</p>
