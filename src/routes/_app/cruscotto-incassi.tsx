@@ -117,6 +117,22 @@ function CruscottoIncassiPage() {
   const [invioClienti, setInvioClienti] = useState<string[]>([]);
   const [promessaClienteId, setPromessaClienteId] = useState<string | null>(null);
   const [promessaLabel, setPromessaLabel] = useState<string>("");
+  // Ordinamento del dettaglio mese (persiste al cambio vista)
+  const [dettSortKey, setDettSortKey] = useState<DettSortKey>("importo");
+  const [dettSortDir, setDettSortDir] = useState<SortDir>("desc");
+  const toggleDettSort = (k: DettSortKey) => {
+    if (k === dettSortKey) setDettSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else {
+      setDettSortKey(k);
+      // Default: importi in decrescente, testuali in crescente
+      setDettSortDir(k === "importo" ? "desc" : "asc");
+    }
+  };
+  // Selezione clienti per Sollecita mirato (reset al cambio mese/anno)
+  const [selezionati, setSelezionati] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    setSelezionati(new Set());
+  }, [meseSel, anno]);
 
   const { data: mensile, isLoading } = useQuery({
     queryKey: ["cruscotto_incassi_mensile", anno],
