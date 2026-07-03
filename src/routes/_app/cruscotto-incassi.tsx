@@ -3,8 +3,10 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   ChevronLeft, ChevronRight, TrendingUp, Send, HandCoins, ExternalLink,
-  Mail, Download, Search, ChevronDown, ChevronUp, X,
+  Mail, Download, Search, ChevronDown, ChevronUp, X, Filter, ArrowUp, ArrowDown, ArrowUpDown,
 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
