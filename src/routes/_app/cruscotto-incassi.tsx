@@ -1298,6 +1298,7 @@ function RicercaIncassiBlock() {
                             clienteId={r.cliente_id}
                             dal={dal}
                             al={al}
+                            metodi={metodi.length === METODI_OPZIONI.length ? null : metodi}
                             totaleAtteso={Number(r.totale_incassato)}
                           />
                         </TableCell>
