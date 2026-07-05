@@ -92,7 +92,7 @@ export function PianoRientroNuovoDialog({ open, onOpenChange, clienteId, cliente
         .select("piano_id, scadenza_id")
         .in("piano_id", pRows.map((p) => p.id));
       if (eD) throw eD;
-      const pById = new Map(pRows.map((p) => [p.id, p]));
+      const pById = new Map(pRows.map((p) => [p.id, { piano_id: p.id, created_at: p.created_at, stato: p.stato }]));
       const map = new Map<string, { piano_id: string; created_at: string; stato: string }[]>();
       for (const d of (docs ?? []) as never as Array<{ piano_id: string; scadenza_id: string }>) {
         const p = pById.get(d.piano_id);
