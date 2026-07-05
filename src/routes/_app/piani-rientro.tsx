@@ -57,6 +57,12 @@ function PianiRientroPage() {
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("prossima");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [nuovoPianoOpen, setNuovoPianoOpen] = useState(false);
+  const qc = useQueryClient();
+  const { roles } = useAuth();
+  const canManage = roles.some((r) =>
+    ["amministratore", "amministrazione", "direzione", "approvatore_liv1", "approvatore_liv2", "approvatore_liv3"].includes(r),
+  );
 
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ["piani-rientro-lista"],
