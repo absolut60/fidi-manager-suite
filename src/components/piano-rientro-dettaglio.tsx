@@ -390,6 +390,80 @@ export function PianoRientroDettaglio({ pianoId, onDeleted }: { pianoId: string;
           title="Allegati piano"
         />
       </Card>
+
+      {/* Elimina piano — doppia conferma */}
+      <AlertDialog open={confirmStep1} onOpenChange={(v) => { if (!deleting) setConfirmStep1(v); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="size-5" /> Eliminare definitivamente il piano?
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm">
+                <div>Stai per eliminare in modo permanente:</div>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>Il piano di rientro <strong>Livello {piano.livello}</strong> (creato il {fmtDate(piano.created_at)})</li>
+                  <li><strong>{rate.length}</strong> {rate.length === 1 ? "rata" : "rate"} (incluse quelle future)</li>
+                  <li><strong>{documenti.length}</strong> collegamenti a documenti (scadenze)</li>
+                  <li><strong>{allegatiCount}</strong> {allegatiCount === 1 ? "allegato" : "allegati"} (record + file)</li>
+                  <li>La voce corrispondente nello storico azioni di recupero</li>
+                </ul>
+                <div className="bg-muted/50 border rounded-md p-3 text-xs">
+                  <strong>Verranno eliminati definitivamente</strong> il piano, tutte le rate, i promemoria a calendario e gli allegati.
+                  Le scadenze collegate verranno <strong>sganciate</strong> e torneranno disponibili per un nuovo piano.
+                  Le scadenze <strong>NON</strong> vengono modificate né cancellate.
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => {
+                e.preventDefault();
+                setConfirmStep1(false);
+                setConfirmText("");
+                setConfirmStep2(true);
+              }}
+            >
+              Continua
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmStep2} onOpenChange={(v) => { if (!deleting) setConfirmStep2(v); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-destructive">Confermi l'eliminazione definitiva?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm">
+                <div>
+                  Per procedere, digita <strong>ELIMINA</strong> qui sotto. L'operazione è irreversibile.
+                </div>
+                <Input
+                  autoFocus
+                  value={confirmText}
+                  onChange={(e) => setConfirmText(e.target.value)}
+                  placeholder="Digita ELIMINA"
+                  disabled={deleting}
+                />
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting} onClick={() => setConfirmText("")}>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleting || confirmText.trim() !== "ELIMINA"}
+              onClick={(e) => { e.preventDefault(); eliminaPianoDefinitivamente(); }}
+            >
+              {deleting ? "Eliminazione…" : "Elimina definitivamente"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
