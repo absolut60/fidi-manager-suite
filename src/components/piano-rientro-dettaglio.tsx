@@ -64,10 +64,12 @@ export function PianoRientroDettaglio({ pianoId }: { pianoId: string }) {
       const patch: Record<string, unknown> = { stato: nuovoStato };
       if (nuovoStato === "pagata") patch.data_pagamento_confermata = dataPag ?? new Date().toISOString().slice(0, 10);
       if (nuovoStato !== "pagata") patch.data_pagamento_confermata = null;
-      const { error } = await supabase.from("piani_rientro_rate" as never).update(patch).eq("id", rata.id);
+      const { error } = await supabase
+        .from("piani_rientro_rate" as never)
+        .update(patch as never)
+        .eq("id", rata.id);
       if (error) throw error;
 
-      // Se tutte le rate risultano pagata → proponi 'completato'
       const nuoveRate = rate.map((r) => (r.id === rata.id ? { ...r, stato: nuovoStato } : r));
       const tutteOK = nuoveRate.every((r) => r.stato === "pagata");
       if (tutteOK && piano?.stato === "attivo") {
@@ -90,7 +92,10 @@ export function PianoRientroDettaglio({ pianoId }: { pianoId: string }) {
 
   async function updatePianoStato(nuovoStato: PianoStato) {
     try {
-      const { error } = await supabase.from("piani_rientro" as never).update({ stato: nuovoStato }).eq("id", pianoId);
+      const { error } = await supabase
+        .from("piani_rientro" as never)
+        .update({ stato: nuovoStato } as never)
+        .eq("id", pianoId);
       if (error) throw error;
       toast.success(`Piano segnato come ${STATO_LABEL[nuovoStato].toLowerCase()}`);
       invalidateAll();

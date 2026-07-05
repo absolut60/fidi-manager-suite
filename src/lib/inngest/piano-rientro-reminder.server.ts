@@ -7,7 +7,6 @@
 // - Idempotente: un secondo run non reinvia.
 import { inngest } from "./client";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { renderTemplate, wrapEmailHtml } from "@/lib/template-email-render";
 
 async function getConfig(chiave: string, fallback: string): Promise<string> {
   const { data } = await supabaseAdmin
@@ -24,11 +23,7 @@ async function sendEmailViaEdge(payload: { to: string; subject: string; html: st
   try {
     const res = await fetch(`${SUPABASE_URL}/functions/v1/send-email`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        apikey: KEY,
-        Authorization: `Bearer ${KEY}`,
-      },
+      headers: { "Content-Type": "application/json", apikey: KEY, Authorization: `Bearer ${KEY}` },
       body: JSON.stringify(payload),
     });
     const txt = await res.text();
@@ -45,6 +40,29 @@ function fmtEuro(n: number): string {
 function fmtDateIt(iso: string): string {
   return new Date(iso).toLocaleDateString("it-IT");
 }
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+// Sostituzione semplice {{key}} — rimpiazza solo le variabili passate.
+function fillTemplate(text: string, vars: Record<string, string>): string {
+  return text.replace(/\{\{\s*([a-z_]+)\s*\}\}/gi, (_m, k) => (String(k).toLowerCase() in vars ? vars[String(k).toLowerCase()] : ""));
+}
+function wrapHtml(inner: string): string {
+  return `<!doctype html><html><body style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;line-height:1.5;">
+<div style="max-width:640px;margin:0 auto;padding:16px 20px;">
+${inner}
+<hr style="margin-top:24px;border:none;border-top:1px solid #e2e8f0;" />
+<p style="font-size:11px;color:#64748b;margin-top:12px;">Email generata automaticamente da FidiManager.</p>
+</div></body></html>`;
+}
+
+type RataRow = {
+  id: string; piano_id: string; numero_rata: number; data_rata: string; importo: number;
+  piano: {
+    id: string; livello: number; cliente_id: string; stato: string;
+    cliente: { ragione_sociale: string };
+  };
+};
 
 export const remindRatePianoRientro = inngest.createFunction(
   {
@@ -60,13 +78,11 @@ export const remindRatePianoRientro = inngest.createFunction(
       return { ok: false, reason: "email_amministrazione_non_configurata" };
     }
 
-    // target date
     const target = new Date();
     target.setHours(0, 0, 0, 0);
     target.setDate(target.getDate() + giorni);
     const targetISO = target.toISOString().slice(0, 10);
 
-    // Rate candidate (idempotenza: reminder_inviato_il IS NULL)
     const { data: rate, error } = await supabaseAdmin
       .from("piani_rientro_rate" as never)
       .select("id, piano_id, numero_rata, data_rata, importo, piano:piani_rientro(id, livello, cliente_id, stato, cliente:clienti(ragione_sociale))")
@@ -75,41 +91,37 @@ export const remindRatePianoRientro = inngest.createFunction(
       .eq("data_rata", targetISO);
     if (error) throw new Error(error.message);
 
-    type RataRow = {
-      id: string; piano_id: string; numero_rata: number; data_rata: string; importo: number;
-      piano: { id: string; livello: number; cliente_id: string; stato: string; cliente: { ragione_sociale: string } };
-    };
     const rows = (rate ?? []) as unknown as RataRow[];
-    const attive = rows.filter((r) => r.piano.stato === "attivo");
+    const attive = rows.filter((r) => r.piano?.stato === "attivo");
 
-    // Template
-    const { data: tpl } = await supabaseAdmin
+    const { data: tplRaw } = await supabaseAdmin
       .from("template_email")
       .select("oggetto, corpo")
       .eq("tipo", "reminder_rata_piano")
       .eq("attivo", true)
       .maybeSingle();
+    const tpl = tplRaw as { oggetto: string | null; corpo: string | null } | null;
     if (!tpl) return { ok: false, reason: "template_reminder_non_trovato" };
 
-    let inviate = 0;
-    let fallite = 0;
+    let inviate = 0, fallite = 0;
     for (const r of attive) {
       const vars: Record<string, string> = {
-        ragione_sociale: r.piano.cliente.ragione_sociale,
+        ragione_sociale: escapeHtml(r.piano.cliente.ragione_sociale),
         numero_rata: String(r.numero_rata),
         data_rata: fmtDateIt(r.data_rata),
         importo_rata: fmtEuro(Number(r.importo)),
         livello_piano: `L${r.piano.livello}`,
         piano_id: r.piano_id,
       };
-      const oggetto = renderTemplate(tpl.oggetto ?? "", vars);
-      const corpo = renderTemplate(tpl.corpo ?? "", vars);
-      const html = wrapEmailHtml(corpo);
+      const oggetto = fillTemplate(tpl.oggetto ?? "", vars);
+      const corpo = fillTemplate(tpl.corpo ?? "", vars);
+      const html = wrapHtml(corpo);
 
       const res = await sendEmailViaEdge({ to: emailAmm, subject: oggetto, html });
       if (res.ok) {
-        await supabaseAdmin.from("piani_rientro_rate" as never)
-          .update({ reminder_inviato_il: new Date().toISOString() })
+        await supabaseAdmin
+          .from("piani_rientro_rate" as never)
+          .update({ reminder_inviato_il: new Date().toISOString() } as never)
           .eq("id", r.id);
         inviate++;
       } else {
@@ -118,6 +130,9 @@ export const remindRatePianoRientro = inngest.createFunction(
       }
     }
 
-    return { ok: true, target_date: targetISO, giorni_anticipo: giorni, email: emailAmm, candidate: attive.length, inviate, fallite };
+    return {
+      ok: true, target_date: targetISO, giorni_anticipo: giorni,
+      email: emailAmm, candidate: attive.length, inviate, fallite,
+    };
   },
 );

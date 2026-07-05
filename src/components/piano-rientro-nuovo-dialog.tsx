@@ -128,15 +128,16 @@ export function PianoRientroNuovoDialog({ open, onOpenChange, clienteId, cliente
     setSaving(true);
     try {
       // 1) crea piano
+      const pianoPayload = {
+        cliente_id: clienteId,
+        livello,
+        stato: "attivo",
+        note: note.trim() || null,
+        creato_da: user?.id ?? null,
+      };
       const { data: piano, error: eP } = await supabase
         .from("piani_rientro" as never)
-        .insert({
-          cliente_id: clienteId,
-          livello,
-          stato: "attivo",
-          note: note.trim() || null,
-          creato_da: user?.id ?? null,
-        })
+        .insert(pianoPayload as never)
         .select("id")
         .single();
       if (eP) throw eP;
@@ -151,7 +152,9 @@ export function PianoRientroNuovoDialog({ open, onOpenChange, clienteId, cliente
           importo_alla_selezione: s ? Number(s.importo_scadenza ?? 0) : null,
         };
       });
-      const { error: eD } = await supabase.from("piani_rientro_documenti" as never).insert(docsRows);
+      const { error: eD } = await supabase
+        .from("piani_rientro_documenti" as never)
+        .insert(docsRows as never);
       if (eD) throw eD;
 
       // 3) rate
@@ -162,7 +165,9 @@ export function PianoRientroNuovoDialog({ open, onOpenChange, clienteId, cliente
         importo: Number(String(r.importo).replace(",", ".")),
         stato: "da_pagare",
       }));
-      const { error: eR } = await supabase.from("piani_rientro_rate" as never).insert(rateRows);
+      const { error: eR } = await supabase
+        .from("piani_rientro_rate" as never)
+        .insert(rateRows as never);
       if (eR) throw eR;
 
       // 4) registra azione nello storico (stesso pattern promessa)
