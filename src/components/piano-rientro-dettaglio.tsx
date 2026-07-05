@@ -6,14 +6,20 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Check, X, CalendarClock, AlertTriangle, CheckCircle2, Info, Ban } from "lucide-react";
+import { Check, X, CalendarClock, AlertTriangle, CheckCircle2, Info, Ban, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { AllegatiSection } from "@/components/allegati-section";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { AllegatiSection, ALLEGATI_BUCKET } from "@/components/allegati-section";
 import {
   fetchPiano, fetchRatePiano, fetchDocumentiPiano, fmtEuro, fmtDate,
   totaleIncassatoDocumenti, prossimaRata, type PianoRata, type PianoStato,
