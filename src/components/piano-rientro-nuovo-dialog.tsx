@@ -288,12 +288,28 @@ export function PianoRientroNuovoDialog({ open, onOpenChange, clienteId, cliente
                   <TableBody>
                     {(scadenze ?? []).map((s) => {
                       const sel = selectedScadenze.has(s.id);
+                      const altriPiani = scadenzeInAltriPiani.get(s.id) ?? [];
                       return (
                         <TableRow key={s.id} className="cursor-pointer" onClick={() => toggleScadenza(s.id)}>
                           <TableCell onClick={(e) => e.stopPropagation()}>
                             <Checkbox checked={sel} onCheckedChange={() => toggleScadenza(s.id)} />
                           </TableCell>
-                          <TableCell className="font-mono text-xs">{s.numero_documento ?? "—"}</TableCell>
+                          <TableCell className="font-mono text-xs">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span>{s.numero_documento ?? "—"}</span>
+                              {altriPiani.length > 0 && (
+                                <Badge
+                                  variant="outline"
+                                  className="bg-amber-500/10 text-amber-700 border-amber-500/30 text-[10px] font-normal"
+                                  title={altriPiani
+                                    .map((p) => `Piano del ${fmtDate(p.created_at)} — ${p.stato}`)
+                                    .join("\n")}
+                                >
+                                  già in {altriPiani.length === 1 ? "un piano" : `${altriPiani.length} piani`} del {fmtDate(altriPiani[0].created_at)}
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
                           <TableCell className="text-sm">{fmtDate(s.data_scadenza)}</TableCell>
                           <TableCell className="text-right tabular-nums">{fmtEuro(s.importo_scadenza)}</TableCell>
                           <TableCell className="text-right">
