@@ -32,6 +32,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { classificaScadenza, sommaScadutoCliente, contributoScaduto, isPagatoReale } from "@/lib/scadenze";
 import { AllegatiSection, ALLEGATI_BUCKET } from "@/components/allegati-section";
+import { ClientePianiRientroTab } from "@/components/cliente-piani-rientro-tab";
 
 // ============================================================================
 // Helper TRANSITORI per gestione import (POUEY assicurazioni, pratiche aperte).
@@ -116,6 +117,7 @@ export function ClienteInsolutiTab({ cliente, defaultSubTab }: { cliente: { id: 
           <TabsTrigger value="riepilogo">Riepilogo</TabsTrigger>
           <TabsTrigger value="scadenziario">Scadenziario</TabsTrigger>
           <TabsTrigger value="solleciti">Solleciti</TabsTrigger>
+          <TabsTrigger value="piani">Piani di rientro</TabsTrigger>
           {!isStoreManager && <TabsTrigger value="legali">Pratiche legali</TabsTrigger>}
           {!isStoreManager && <TabsTrigger value="assicurazioni">Assicurazione</TabsTrigger>}
         </TabsList>
@@ -123,6 +125,7 @@ export function ClienteInsolutiTab({ cliente, defaultSubTab }: { cliente: { id: 
         <TabsContent value="riepilogo"><RiepilogoSection clienteId={cliente.id} /></TabsContent>
         <TabsContent value="scadenziario"><ScadenziarioSection clienteId={cliente.id} canEdit={isAdminOrApprov} /></TabsContent>
         <TabsContent value="solleciti"><SollecitiSection clienteId={cliente.id} canEdit={isAdminOrApprov} /></TabsContent>
+        <TabsContent value="piani"><ClientePianiRientroTab clienteId={cliente.id} /></TabsContent>
         {!isStoreManager && <TabsContent value="legali">
           <div className="space-y-4">
             <NoteLegaliGestionaliCard clienteId={cliente.id} />
