@@ -201,7 +201,9 @@ export function PianoRientroNuovoDialog({ open, onOpenChange, clienteId, cliente
         .insert(rateRows as never);
       if (eR) throw eR;
 
-      // 4) registra azione nello storico (stesso pattern promessa)
+      // 4) registra azione nello storico (stesso pattern promessa) — collegata
+      //    al piano tramite piano_rientro_id: quando il piano viene eliminato,
+      //    l'azione viene cancellata in cascade.
       await supabase.from("azioni_recupero").insert({
         cliente_id: clienteId,
         operatore_id: user?.id ?? null,
@@ -209,8 +211,9 @@ export function PianoRientroNuovoDialog({ open, onOpenChange, clienteId, cliente
         esito: "piano_rientro",
         data_azione: new Date().toISOString(),
         importo_riferimento: totaleSelezionato,
+        piano_rientro_id: pianoId,
         note: `Piano di rientro L${livello} creato: ${selectedScadenze.size} documenti, ${rate.length} rate, totale rate ${totaleRate.toFixed(2)} €.${note.trim() ? ` Note: ${note.trim()}` : ""}`,
-      });
+      } as never);
 
       toast.success("Piano di rientro creato");
       qc.invalidateQueries({ queryKey: ["piani-cliente", clienteId] });
