@@ -179,12 +179,19 @@ function PianiRientroPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <CalendarClock className="size-7 text-primary" />
-        <div>
-          <h1 className="text-2xl font-semibold">Piani di rientro</h1>
-          <p className="text-sm text-muted-foreground">Elenco di tutti gli accordi di rientro concordati con i clienti</p>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3">
+          <CalendarClock className="size-7 text-primary" />
+          <div>
+            <h1 className="text-2xl font-semibold">Piani di rientro</h1>
+            <p className="text-sm text-muted-foreground">Elenco di tutti gli accordi di rientro concordati con i clienti</p>
+          </div>
         </div>
+        {canManage && (
+          <Button onClick={() => setNuovoPianoOpen(true)}>
+            <Plus className="size-4" /> Nuovo piano di rientro
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
