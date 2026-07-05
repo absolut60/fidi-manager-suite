@@ -3,15 +3,18 @@
 // Badge in alto: attivi, con rata scaduta, totale in piani attivi.
 import { useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { CalendarClock, Search, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { CalendarClock, Search, AlertTriangle, CheckCircle2, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { PianoRientroSelectorDialog } from "@/components/piano-rientro-selector-dialog";
 import { fmtEuro, fmtDate, type PianoStato } from "@/lib/piani-rientro";
 
 export const Route = createFileRoute("/_app/piani-rientro")({
