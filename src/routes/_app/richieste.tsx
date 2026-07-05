@@ -268,9 +268,17 @@ function RichiestePage() {
           <TabsTrigger value="in_approvazione">
             In Approvazione {inApprovazione.length > 0 && <Badge variant="secondary" className="ml-2">{inApprovazione.length}</Badge>}
           </TabsTrigger>
-          <TabsTrigger value="approvate">Approvate</TabsTrigger>
-          <TabsTrigger value="rifiutate">Rifiutate</TabsTrigger>
-          {isAdmin && <TabsTrigger value="tutto">Tutto</TabsTrigger>}
+          <TabsTrigger value="approvate">
+            Approvate {approvate.length > 0 && <Badge variant="secondary" className="ml-2">{approvate.length}</Badge>}
+          </TabsTrigger>
+          <TabsTrigger value="rifiutate">
+            Rifiutate {rifiutate.length > 0 && <Badge variant="secondary" className="ml-2">{rifiutate.length}</Badge>}
+          </TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="tutto">
+              Tutto {all.length > 0 && <Badge variant="secondary" className="ml-2">{all.length}</Badge>}
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="bozze" className="mt-4">
