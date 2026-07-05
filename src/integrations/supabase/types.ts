@@ -1452,6 +1452,147 @@ export type Database = {
         }
         Relationships: []
       }
+      piani_rientro: {
+        Row: {
+          cliente_id: string
+          created_at: string
+          creato_da: string | null
+          id: string
+          livello: number
+          note: string | null
+          stato: string
+          updated_at: string
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string
+          creato_da?: string | null
+          id?: string
+          livello: number
+          note?: string | null
+          stato?: string
+          updated_at?: string
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string
+          creato_da?: string | null
+          id?: string
+          livello?: number
+          note?: string | null
+          stato?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "piani_rientro_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "piani_rientro_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti_con_rischio"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "piani_rientro_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+        ]
+      }
+      piani_rientro_documenti: {
+        Row: {
+          created_at: string
+          importo_alla_selezione: number | null
+          piano_id: string
+          scadenza_id: string
+        }
+        Insert: {
+          created_at?: string
+          importo_alla_selezione?: number | null
+          piano_id: string
+          scadenza_id: string
+        }
+        Update: {
+          created_at?: string
+          importo_alla_selezione?: number | null
+          piano_id?: string
+          scadenza_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "piani_rientro_documenti_piano_id_fkey"
+            columns: ["piano_id"]
+            isOneToOne: false
+            referencedRelation: "piani_rientro"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "piani_rientro_documenti_scadenza_id_fkey"
+            columns: ["scadenza_id"]
+            isOneToOne: false
+            referencedRelation: "scadenze"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      piani_rientro_rate: {
+        Row: {
+          created_at: string
+          data_pagamento_confermata: string | null
+          data_rata: string
+          id: string
+          importo: number
+          note: string | null
+          numero_rata: number
+          piano_id: string
+          reminder_inviato_il: string | null
+          stato: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data_pagamento_confermata?: string | null
+          data_rata: string
+          id?: string
+          importo: number
+          note?: string | null
+          numero_rata: number
+          piano_id: string
+          reminder_inviato_il?: string | null
+          stato?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data_pagamento_confermata?: string | null
+          data_rata?: string
+          id?: string
+          importo?: number
+          note?: string | null
+          numero_rata?: number
+          piano_id?: string
+          reminder_inviato_il?: string | null
+          stato?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "piani_rientro_rate_piano_id_fkey"
+            columns: ["piano_id"]
+            isOneToOne: false
+            referencedRelation: "piani_rientro"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pratiche_legali: {
         Row: {
           cliente_id: string
@@ -3160,12 +3301,18 @@ export type Database = {
           fascia: string
           fatturato_cur: number
           fatturato_prec: number
+          ha_piano_rientro: boolean
           ha_promessa: boolean
           in_gestione_legale: boolean
           ind_blocco: number
           max_gg_ritardo: number
           n_a_scadere: number
           n_scadute: number
+          piano_prossima_rata_data: string
+          piano_prossima_rata_importo: number
+          piano_rate_pagate: number
+          piano_rate_totali: number
+          piano_rientro_id: string
           prossima_scadenza: string
           ragione_sociale: string
           scadute_ids: string[]

@@ -25,6 +25,7 @@ import { Route as AppRecuperoCreditiCalendarioRouteImport } from './routes/_app/
 import { Route as AppRecuperoCreditiAndamentoRouteImport } from './routes/_app/recupero-crediti-andamento'
 import { Route as AppRecuperoCreditiRouteImport } from './routes/_app/recupero-crediti'
 import { Route as AppPrivacyRouteImport } from './routes/_app/privacy'
+import { Route as AppPianiRientroRouteImport } from './routes/_app/piani-rientro'
 import { Route as AppLegaliRouteImport } from './routes/_app/legali'
 import { Route as AppImpostazioniRouteImport } from './routes/_app/impostazioni'
 import { Route as AppImportExportRouteImport } from './routes/_app/import-export'
@@ -125,6 +126,11 @@ const AppPrivacyRoute = AppPrivacyRouteImport.update({
   path: '/privacy',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPianiRientroRoute = AppPianiRientroRouteImport.update({
+  id: '/piani-rientro',
+  path: '/piani-rientro',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppLegaliRoute = AppLegaliRouteImport.update({
   id: '/legali',
   path: '/legali',
@@ -222,6 +228,7 @@ export interface FileRoutesByFullPath {
   '/import-export': typeof AppImportExportRoute
   '/impostazioni': typeof AppImpostazioniRoute
   '/legali': typeof AppLegaliRoute
+  '/piani-rientro': typeof AppPianiRientroRoute
   '/privacy': typeof AppPrivacyRoute
   '/recupero-crediti': typeof AppRecuperoCreditiRoute
   '/recupero-crediti-andamento': typeof AppRecuperoCreditiAndamentoRoute
@@ -255,6 +262,7 @@ export interface FileRoutesByTo {
   '/import-export': typeof AppImportExportRoute
   '/impostazioni': typeof AppImpostazioniRoute
   '/legali': typeof AppLegaliRoute
+  '/piani-rientro': typeof AppPianiRientroRoute
   '/privacy': typeof AppPrivacyRoute
   '/recupero-crediti': typeof AppRecuperoCreditiRoute
   '/recupero-crediti-andamento': typeof AppRecuperoCreditiAndamentoRoute
@@ -290,6 +298,7 @@ export interface FileRoutesById {
   '/_app/import-export': typeof AppImportExportRoute
   '/_app/impostazioni': typeof AppImpostazioniRoute
   '/_app/legali': typeof AppLegaliRoute
+  '/_app/piani-rientro': typeof AppPianiRientroRoute
   '/_app/privacy': typeof AppPrivacyRoute
   '/_app/recupero-crediti': typeof AppRecuperoCreditiRoute
   '/_app/recupero-crediti-andamento': typeof AppRecuperoCreditiAndamentoRoute
@@ -325,6 +334,7 @@ export interface FileRouteTypes {
     | '/import-export'
     | '/impostazioni'
     | '/legali'
+    | '/piani-rientro'
     | '/privacy'
     | '/recupero-crediti'
     | '/recupero-crediti-andamento'
@@ -358,6 +368,7 @@ export interface FileRouteTypes {
     | '/import-export'
     | '/impostazioni'
     | '/legali'
+    | '/piani-rientro'
     | '/privacy'
     | '/recupero-crediti'
     | '/recupero-crediti-andamento'
@@ -392,6 +403,7 @@ export interface FileRouteTypes {
     | '/_app/import-export'
     | '/_app/impostazioni'
     | '/_app/legali'
+    | '/_app/piani-rientro'
     | '/_app/privacy'
     | '/_app/recupero-crediti'
     | '/_app/recupero-crediti-andamento'
@@ -534,6 +546,13 @@ declare module '@tanstack/react-router' {
       path: '/privacy'
       fullPath: '/privacy'
       preLoaderRoute: typeof AppPrivacyRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/piani-rientro': {
+      id: '/_app/piani-rientro'
+      path: '/piani-rientro'
+      fullPath: '/piani-rientro'
+      preLoaderRoute: typeof AppPianiRientroRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/legali': {
@@ -687,6 +706,7 @@ interface AppRouteChildren {
   AppImportExportRoute: typeof AppImportExportRoute
   AppImpostazioniRoute: typeof AppImpostazioniRoute
   AppLegaliRoute: typeof AppLegaliRoute
+  AppPianiRientroRoute: typeof AppPianiRientroRoute
   AppPrivacyRoute: typeof AppPrivacyRoute
   AppRecuperoCreditiRoute: typeof AppRecuperoCreditiRoute
   AppRecuperoCreditiAndamentoRoute: typeof AppRecuperoCreditiAndamentoRoute
@@ -713,6 +733,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppImportExportRoute: AppImportExportRoute,
   AppImpostazioniRoute: AppImpostazioniRoute,
   AppLegaliRoute: AppLegaliRoute,
+  AppPianiRientroRoute: AppPianiRientroRoute,
   AppPrivacyRoute: AppPrivacyRoute,
   AppRecuperoCreditiRoute: AppRecuperoCreditiRoute,
   AppRecuperoCreditiAndamentoRoute: AppRecuperoCreditiAndamentoRoute,
@@ -742,13 +763,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
