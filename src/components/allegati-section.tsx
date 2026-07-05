@@ -24,7 +24,8 @@ export type AllegatoEntitaTipo =
   | "assicurazione"
   | "pratica_legale"
   | "azione_recupero"
-  | "richiesta_fido";
+  | "richiesta_fido"
+  | "piano_rientro";
 
 export const ALLEGATI_BUCKET = "allegati";
 export const ALLEGATI_MAX_BYTES = 20 * 1024 * 1024; // 20 MB

@@ -158,9 +158,33 @@ function CalendarioPage() {
     },
   });
 
+  // Query separata: rate piano di rientro da pagare nel range visibile.
+  // Non filtrata dai tipi (evento distinto), sempre visibile.
+  const rateQuery = useQuery({
+    queryKey: ["piano-rate-calendario", range?.start ?? null, range?.end ?? null, storeId],
+    enabled: !!range,
+    queryFn: async () => {
+      const startISO = range!.start.slice(0, 10);
+      const endISO = range!.end.slice(0, 10);
+      let q = supabase
+        .from("piani_rientro_rate" as never)
+        .select("id, piano_id, numero_rata, data_rata, importo, stato, piano:piani_rientro!inner(cliente_id, livello, stato, cliente:clienti!inner(id, ragione_sociale, store_id))")
+        .eq("stato", "da_pagare")
+        .gte("data_rata", startISO)
+        .lt("data_rata", endISO);
+      const { data, error } = await q;
+      if (error) throw error;
+      type RR = { id: string; piano_id: string; numero_rata: number; data_rata: string; importo: number; stato: string; piano: { cliente_id: string; livello: number; stato: string; cliente: { id: string; ragione_sociale: string; store_id: string | null } } };
+      const rows = (data ?? []) as unknown as RR[];
+      return rows
+        .filter((r) => r.piano.stato === "attivo")
+        .filter((r) => storeId === "all" || r.piano.cliente.store_id === storeId);
+    },
+  });
+
   const events = useMemo(() => {
     const now = Date.now();
-    return (azioniQuery.data ?? []).map((a) => {
+    const azEvents = (azioniQuery.data ?? []).map((a) => {
       const tipoCfg = TIPI.find((t) => t.value === a.tipo);
       const color = tipoCfg?.color ?? "#6b7280";
       const start = new Date(a.data_azione);
@@ -173,10 +197,28 @@ function CalendarioPage() {
         borderColor: isOverdue ? "#dc2626" : color,
         textColor: isOverdue ? "#7f1d1d" : "#ffffff",
         classNames: isOverdue ? ["azione-arretrata"] : [],
-        extendedProps: { azione: a, isOverdue },
+        extendedProps: { azione: a, isOverdue, kind: "azione" as const },
       };
     });
-  }, [azioniQuery.data]);
+    const rateEvents = (rateQuery.data ?? []).map((r) => {
+      const start = new Date(r.data_rata + "T09:00:00");
+      const isOverdue = start.getTime() < now;
+      const color = "#0ea5e9"; // sky-500 per differenziare
+      const importoFmt = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(Number(r.importo));
+      return {
+        id: `rata-${r.id}`,
+        title: `Rata #${r.numero_rata} · ${r.piano.cliente.ragione_sociale} · ${importoFmt}`,
+        start: start.toISOString(),
+        backgroundColor: isOverdue ? hexToRgba(color, 0.35) : color,
+        borderColor: isOverdue ? "#dc2626" : color,
+        textColor: isOverdue ? "#7f1d1d" : "#ffffff",
+        classNames: isOverdue ? ["azione-arretrata"] : [],
+        editable: false,
+        extendedProps: { kind: "rata_piano" as const, rata: r },
+      };
+    });
+    return [...azEvents, ...rateEvents];
+  }, [azioniQuery.data, rateQuery.data]);
 
   function handleDatesSet(arg: DatesSetArg) {
     const next = { start: arg.start.toISOString(), end: arg.end.toISOString() };
@@ -206,8 +248,17 @@ function CalendarioPage() {
   }
 
   function handleEventClick(info: EventClickArg) {
-    const azione = info.event.extendedProps.azione as AzioneRow | undefined;
-    if (azione) setOpenAzione(azione);
+    const props = info.event.extendedProps as { kind?: "azione" | "rata_piano"; azione?: AzioneRow; rata?: { piano: { cliente: { id: string } }; piano_id: string } };
+    if (props.kind === "rata_piano" && props.rata) {
+      const clienteId = props.rata.piano.cliente.id;
+      navigate({
+        to: "/clienti/$clienteId",
+        params: { clienteId },
+        search: { tab: "insoluti", insolutiTab: "piani" } as never,
+      });
+      return;
+    }
+    if (props.azione) setOpenAzione(props.azione);
   }
 
   // Click su un GIORNO vuoto (vista mese): apre il dialog con quel giorno alle 09:00

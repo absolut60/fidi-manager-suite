@@ -14,6 +14,7 @@ import {
 } from "@/lib/inngest/functions.server";
 import { invioMassivoSolleciti } from "@/lib/inngest/sollecito-massivo.server";
 import { snapshotMensile } from "@/lib/inngest/snapshot.server";
+import { remindRatePianoRientro } from "@/lib/inngest/piano-rientro-reminder.server";
 
 const handler = serve({
   client: inngest,
@@ -29,6 +30,7 @@ const handler = serve({
     processBloccoFidoImport,
     invioMassivoSolleciti,
     snapshotMensile,
+    remindRatePianoRientro,
   ],
 });
 
