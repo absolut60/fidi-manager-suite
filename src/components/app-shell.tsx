@@ -35,33 +35,41 @@ import { Button } from "@/components/ui/button";
 import { NotificationsBell } from "@/components/notifications-bell";
 import { toast } from "sonner";
 
+type NavGroupKey = "generale" | "fidi" | "incassi" | "recupero" | "strumenti" | "admin";
+
 type NavItem = {
   to: string;
   label: string;
   icon: typeof LayoutDashboard;
   roles?: Array<"admin" | "approvatore" | "store_manager" | "amministrazione">;
-  group?: "main" | "approvazioni" | "admin";
+  group: NavGroupKey;
 };
 
 const NAV: NavItem[] = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, group: "main" },
-  { to: "/richieste", label: "Richieste fido", icon: FileText, group: "main" },
-  { to: "/clienti", label: "Clienti", icon: Building, group: "main" },
-  { to: "/contatti", label: "Contatti", icon: Users, group: "main" },
-  { to: "/approvazioni", label: "Approvazioni", icon: CheckCheck, roles: ["admin", "approvatore"], group: "approvazioni" },
-  { to: "/fidi-processare", label: "Fidi da processare", icon: ClipboardCheck, roles: ["admin", "approvatore"], group: "approvazioni" },
-  { to: "/assicurazioni", label: "Assicurazioni", icon: ShieldCheck, roles: ["admin", "approvatore", "store_manager"], group: "approvazioni" },
-  { to: "/legali", label: "Pratiche Legali", icon: Gavel, roles: ["admin", "approvatore", "store_manager"], group: "approvazioni" },
-  { to: "/scadenziario", label: "Scadenziario", icon: CalendarClock, roles: ["admin", "approvatore", "store_manager"], group: "approvazioni" },
-  { to: "/recupero-crediti", label: "Recupero Crediti", icon: HandCoins, roles: ["admin", "approvatore", "store_manager"], group: "approvazioni" },
-  { to: "/recupero-crediti-promemoria", label: "Promemoria scadenza", icon: CalendarClock, roles: ["admin", "approvatore", "store_manager"], group: "approvazioni" },
-  { to: "/recupero-crediti-calendario", label: "Calendario Recupero", icon: CalendarClock, roles: ["admin", "approvatore", "store_manager"], group: "approvazioni" },
-  { to: "/recupero-crediti-campagne", label: "Invii massivi", icon: Megaphone, roles: ["admin", "approvatore", "store_manager"], group: "approvazioni" },
-  { to: "/recupero-crediti-andamento", label: "Andamento / Storico", icon: TrendingUp, roles: ["admin", "approvatore", "store_manager"], group: "approvazioni" },
-  { to: "/cruscotto-incassi", label: "Cruscotto incassi", icon: LineChart, roles: ["admin", "approvatore", "store_manager"], group: "approvazioni" },
-  { to: "/privacy", label: "Privacy", icon: FileSignature, roles: ["admin", "approvatore", "store_manager"], group: "approvazioni" },
-  { to: "/import-export", label: "Import / Export", icon: FileSpreadsheet, roles: ["admin", "amministrazione"], group: "approvazioni" },
-  { to: "/whatsapp", label: "WhatsApp", icon: MessageCircle, roles: ["admin"], group: "approvazioni" },
+  // GENERALE
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, group: "generale" },
+  { to: "/clienti", label: "Clienti", icon: Building, group: "generale" },
+  { to: "/contatti", label: "Contatti", icon: Users, group: "generale" },
+  // FIDI
+  { to: "/richieste", label: "Richieste fido", icon: FileText, group: "fidi" },
+  { to: "/approvazioni", label: "Approvazioni", icon: CheckCheck, roles: ["admin", "approvatore"], group: "fidi" },
+  { to: "/fidi-processare", label: "Fidi da processare", icon: ClipboardCheck, roles: ["admin", "approvatore"], group: "fidi" },
+  { to: "/assicurazioni", label: "Assicurazioni", icon: ShieldCheck, roles: ["admin", "approvatore", "store_manager"], group: "fidi" },
+  // INCASSI
+  { to: "/scadenziario", label: "Scadenziario", icon: CalendarClock, roles: ["admin", "approvatore", "store_manager"], group: "incassi" },
+  { to: "/cruscotto-incassi", label: "Cruscotto incassi", icon: LineChart, roles: ["admin", "approvatore", "store_manager"], group: "incassi" },
+  { to: "/recupero-crediti-promemoria", label: "Promemoria scadenza", icon: CalendarClock, roles: ["admin", "approvatore", "store_manager"], group: "incassi" },
+  // RECUPERO CREDITI
+  { to: "/recupero-crediti", label: "Recupero Crediti", icon: HandCoins, roles: ["admin", "approvatore", "store_manager"], group: "recupero" },
+  { to: "/recupero-crediti-calendario", label: "Calendario Recupero", icon: CalendarClock, roles: ["admin", "approvatore", "store_manager"], group: "recupero" },
+  { to: "/recupero-crediti-campagne", label: "Invii massivi", icon: Megaphone, roles: ["admin", "approvatore", "store_manager"], group: "recupero" },
+  { to: "/legali", label: "Pratiche Legali", icon: Gavel, roles: ["admin", "approvatore", "store_manager"], group: "recupero" },
+  { to: "/recupero-crediti-andamento", label: "Andamento / Storico", icon: TrendingUp, roles: ["admin", "approvatore", "store_manager"], group: "recupero" },
+  // STRUMENTI
+  { to: "/import-export", label: "Import / Export", icon: FileSpreadsheet, roles: ["admin", "amministrazione"], group: "strumenti" },
+  { to: "/whatsapp", label: "WhatsApp", icon: MessageCircle, roles: ["admin"], group: "strumenti" },
+  { to: "/privacy", label: "Privacy", icon: FileSignature, roles: ["admin", "approvatore", "store_manager"], group: "strumenti" },
+  // AMMINISTRAZIONE
   { to: "/template-email", label: "Template Email", icon: Mail, roles: ["admin"], group: "admin" },
   { to: "/template-lettera", label: "Template Lettere", icon: FileText, roles: ["admin"], group: "admin" },
   { to: "/impostazioni", label: "Impostazioni", icon: Settings, roles: ["admin"], group: "admin" },
@@ -93,11 +101,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return false;
   });
 
-  const grouped = {
-    main: visibleNav.filter((i) => i.group === "main"),
-    approvazioni: visibleNav.filter((i) => i.group === "approvazioni"),
-    admin: visibleNav.filter((i) => i.group === "admin"),
-  };
+  const grouped: Array<{ key: NavGroupKey; label?: string; items: NavItem[] }> = [
+    { key: "generale", items: visibleNav.filter((i) => i.group === "generale") },
+    { key: "fidi", label: "Fidi", items: visibleNav.filter((i) => i.group === "fidi") },
+    { key: "incassi", label: "Incassi", items: visibleNav.filter((i) => i.group === "incassi") },
+    { key: "recupero", label: "Recupero crediti", items: visibleNav.filter((i) => i.group === "recupero") },
+    { key: "strumenti", label: "Strumenti", items: visibleNav.filter((i) => i.group === "strumenti") },
+    { key: "admin", label: "Amministrazione", items: visibleNav.filter((i) => i.group === "admin") },
+  ];
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -122,12 +133,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
-        <NavGroup items={grouped.main} currentPath={currentPath} onNav={() => setMobileOpen(false)} />
-        {grouped.approvazioni.length > 0 && (
-          <NavGroup label="Gestione" items={grouped.approvazioni} currentPath={currentPath} onNav={() => setMobileOpen(false)} />
-        )}
-        {grouped.admin.length > 0 && (
-          <NavGroup label="Amministrazione" items={grouped.admin} currentPath={currentPath} onNav={() => setMobileOpen(false)} />
+        {grouped.map((g) =>
+          g.items.length === 0 ? null : (
+            <NavGroup
+              key={g.key}
+              label={g.label}
+              items={g.items}
+              currentPath={currentPath}
+              onNav={() => setMobileOpen(false)}
+            />
+          )
         )}
       </nav>
 
