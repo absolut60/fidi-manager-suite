@@ -6,14 +6,20 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Check, X, CalendarClock, AlertTriangle, CheckCircle2, Info, Ban } from "lucide-react";
+import { Check, X, CalendarClock, AlertTriangle, CheckCircle2, Info, Ban, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { AllegatiSection } from "@/components/allegati-section";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { AllegatiSection, ALLEGATI_BUCKET } from "@/components/allegati-section";
 import {
   fetchPiano, fetchRatePiano, fetchDocumentiPiano, fmtEuro, fmtDate,
   totaleIncassatoDocumenti, prossimaRata, type PianoRata, type PianoStato,
@@ -32,9 +38,17 @@ const STATO_CLASS: Record<PianoStato, string> = {
   annullato: "bg-muted text-muted-foreground border-border",
 };
 
-export function PianoRientroDettaglio({ pianoId }: { pianoId: string }) {
+export function PianoRientroDettaglio({ pianoId, onDeleted }: { pianoId: string; onDeleted?: () => void }) {
   const qc = useQueryClient();
+  const { roles } = useAuth();
+  const canDelete = roles.some((r) =>
+    ["amministratore", "amministrazione", "direzione", "approvatore_liv1", "approvatore_liv2", "approvatore_liv3"].includes(r),
+  );
   const [saving, setSaving] = useState<string | null>(null);
+  const [confirmStep1, setConfirmStep1] = useState(false);
+  const [confirmStep2, setConfirmStep2] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   const { data: piano, isLoading: lp } = useQuery({
     queryKey: ["piano", pianoId],
@@ -49,6 +63,20 @@ export function PianoRientroDettaglio({ pianoId }: { pianoId: string }) {
     queryFn: () => fetchDocumentiPiano(pianoId),
   });
 
+  // Allegati count (solo per il riepilogo di eliminazione)
+  const { data: allegatiCount = 0 } = useQuery({
+    queryKey: ["piano-allegati-count", pianoId],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("allegati")
+        .select("id", { count: "exact", head: true })
+        .eq("entita_tipo", "piano_rientro")
+        .eq("entita_id", pianoId);
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+
   const invalidateAll = () => {
     qc.invalidateQueries({ queryKey: ["piano", pianoId] });
     qc.invalidateQueries({ queryKey: ["piano-rate", pianoId] });
@@ -56,7 +84,59 @@ export function PianoRientroDettaglio({ pianoId }: { pianoId: string }) {
     qc.invalidateQueries({ queryKey: ["piani-rientro-lista"] });
     qc.invalidateQueries({ queryKey: ["scadenziario-lista"] });
     qc.invalidateQueries({ queryKey: ["azioni-calendario"] });
+    qc.invalidateQueries({ queryKey: ["piano-rate-calendario"] });
+    qc.invalidateQueries({ queryKey: ["azioni-recupero-cliente"] });
+    qc.invalidateQueries({ queryKey: ["piano-scadenze-altri-piani"] });
   };
+
+  async function eliminaPianoDefinitivamente() {
+    if (deleting) return;
+    setDeleting(true);
+    try {
+      // 1) fetch storage_path degli allegati per rimuovere i file
+      const { data: allegatiRows, error: eA } = await supabase
+        .from("allegati")
+        .select("id, storage_path")
+        .eq("entita_tipo", "piano_rientro")
+        .eq("entita_id", pianoId);
+      if (eA) throw eA;
+      const paths = (allegatiRows ?? []).map((a) => a.storage_path).filter(Boolean);
+
+      // 2) rimuovi i file dallo storage (best-effort: se fallisce, non blocca)
+      if (paths.length > 0) {
+        const { error: eSt } = await supabase.storage.from(ALLEGATI_BUCKET).remove(paths);
+        if (eSt) console.warn("Rimozione file allegati (storage):", eSt.message);
+      }
+
+      // 3) rimuovi le righe allegati
+      if ((allegatiRows ?? []).length > 0) {
+        const { error: eAd } = await supabase
+          .from("allegati")
+          .delete()
+          .eq("entita_tipo", "piano_rientro")
+          .eq("entita_id", pianoId);
+        if (eAd) throw eAd;
+      }
+
+      // 4) elimina il piano — CASCADE su piani_rientro_rate, piani_rientro_documenti
+      //    e azioni_recupero (via piano_rientro_id). Nessuna scrittura su `scadenze`.
+      const { error: eP } = await supabase
+        .from("piani_rientro" as never)
+        .delete()
+        .eq("id", pianoId);
+      if (eP) throw eP;
+
+      toast.success("Piano eliminato definitivamente");
+      invalidateAll();
+      setConfirmStep2(false);
+      setConfirmStep1(false);
+      onDeleted?.();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Errore eliminazione piano");
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   async function updateRataStato(rata: PianoRata, nuovoStato: "pagata" | "saltata" | "da_pagare", dataPag?: string) {
     setSaving(rata.id);
@@ -138,20 +218,28 @@ export function PianoRientroDettaglio({ pianoId }: { pianoId: string }) {
               </div>
             </div>
           </div>
-          {piano.stato === "attivo" && (
-            <div className="flex gap-2">
-              <Button size="sm" variant="outline" onClick={() => updatePianoStato("completato")}>
-                <CheckCircle2 className="size-4" /> Completato
+          <div className="flex gap-2 flex-wrap">
+            {piano.stato === "attivo" && (
+              <>
+                <Button size="sm" variant="outline" onClick={() => updatePianoStato("completato")}>
+                  <CheckCircle2 className="size-4" /> Completato
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => updatePianoStato("non_rispettato")}
+                  className="text-destructive hover:text-destructive">
+                  <AlertTriangle className="size-4" /> Non rispettato
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => updatePianoStato("annullato")}>
+                  <Ban className="size-4" /> Annulla
+                </Button>
+              </>
+            )}
+            {canDelete && (
+              <Button size="sm" variant="ghost" onClick={() => setConfirmStep1(true)}
+                className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                <Trash2 className="size-4" /> Elimina piano
               </Button>
-              <Button size="sm" variant="outline" onClick={() => updatePianoStato("non_rispettato")}
-                className="text-destructive hover:text-destructive">
-                <AlertTriangle className="size-4" /> Non rispettato
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => updatePianoStato("annullato")}>
-                <Ban className="size-4" /> Annulla
-              </Button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
@@ -302,6 +390,80 @@ export function PianoRientroDettaglio({ pianoId }: { pianoId: string }) {
           title="Allegati piano"
         />
       </Card>
+
+      {/* Elimina piano — doppia conferma */}
+      <AlertDialog open={confirmStep1} onOpenChange={(v) => { if (!deleting) setConfirmStep1(v); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="size-5" /> Eliminare definitivamente il piano?
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm">
+                <div>Stai per eliminare in modo permanente:</div>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>Il piano di rientro <strong>Livello {piano.livello}</strong> (creato il {fmtDate(piano.created_at)})</li>
+                  <li><strong>{rate.length}</strong> {rate.length === 1 ? "rata" : "rate"} (incluse quelle future)</li>
+                  <li><strong>{documenti.length}</strong> collegamenti a documenti (scadenze)</li>
+                  <li><strong>{allegatiCount}</strong> {allegatiCount === 1 ? "allegato" : "allegati"} (record + file)</li>
+                  <li>La voce corrispondente nello storico azioni di recupero</li>
+                </ul>
+                <div className="bg-muted/50 border rounded-md p-3 text-xs">
+                  <strong>Verranno eliminati definitivamente</strong> il piano, tutte le rate, i promemoria a calendario e gli allegati.
+                  Le scadenze collegate verranno <strong>sganciate</strong> e torneranno disponibili per un nuovo piano.
+                  Le scadenze <strong>NON</strong> vengono modificate né cancellate.
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => {
+                e.preventDefault();
+                setConfirmStep1(false);
+                setConfirmText("");
+                setConfirmStep2(true);
+              }}
+            >
+              Continua
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmStep2} onOpenChange={(v) => { if (!deleting) setConfirmStep2(v); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-destructive">Confermi l'eliminazione definitiva?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm">
+                <div>
+                  Per procedere, digita <strong>ELIMINA</strong> qui sotto. L'operazione è irreversibile.
+                </div>
+                <Input
+                  autoFocus
+                  value={confirmText}
+                  onChange={(e) => setConfirmText(e.target.value)}
+                  placeholder="Digita ELIMINA"
+                  disabled={deleting}
+                />
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting} onClick={() => setConfirmText("")}>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleting || confirmText.trim() !== "ELIMINA"}
+              onClick={(e) => { e.preventDefault(); eliminaPianoDefinitivamente(); }}
+            >
+              {deleting ? "Eliminazione…" : "Elimina definitivamente"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

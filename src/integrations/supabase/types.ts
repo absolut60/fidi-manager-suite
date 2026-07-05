@@ -347,6 +347,7 @@ export type Database = {
           livello_sollecito: number | null
           note: string | null
           operatore_id: string | null
+          piano_rientro_id: string | null
           tipo: string
           updated_at: string
         }
@@ -365,6 +366,7 @@ export type Database = {
           livello_sollecito?: number | null
           note?: string | null
           operatore_id?: string | null
+          piano_rientro_id?: string | null
           tipo: string
           updated_at?: string
         }
@@ -383,6 +385,7 @@ export type Database = {
           livello_sollecito?: number | null
           note?: string | null
           operatore_id?: string | null
+          piano_rientro_id?: string | null
           tipo?: string
           updated_at?: string
         }
@@ -407,6 +410,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "riepilogo_insoluti"
             referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "azioni_recupero_piano_rientro_id_fkey"
+            columns: ["piano_rientro_id"]
+            isOneToOne: false
+            referencedRelation: "piani_rientro"
+            referencedColumns: ["id"]
           },
         ]
       }
