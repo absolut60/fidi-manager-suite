@@ -2769,6 +2769,16 @@ export type Database = {
           },
         ]
       }
+      fatturato_ytd_globale: {
+        Row: {
+          anno: number | null
+          fatturato: number | null
+          num_clienti: number | null
+          num_fatture: number | null
+          ytd_alla_data: string | null
+        }
+        Relationships: []
+      }
       riepilogo_insoluti: {
         Row: {
           assicurazione_attiva: boolean | null
