@@ -3,15 +3,18 @@
 // Badge in alto: attivi, con rata scaduta, totale in piani attivi.
 import { useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { CalendarClock, Search, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { CalendarClock, Search, AlertTriangle, CheckCircle2, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { PianoRientroSelectorDialog } from "@/components/piano-rientro-selector-dialog";
 import { fmtEuro, fmtDate, type PianoStato } from "@/lib/piani-rientro";
 
 export const Route = createFileRoute("/_app/piani-rientro")({
@@ -54,6 +57,12 @@ function PianiRientroPage() {
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("prossima");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [nuovoPianoOpen, setNuovoPianoOpen] = useState(false);
+  const qc = useQueryClient();
+  const { roles } = useAuth();
+  const canManage = roles.some((r) =>
+    ["amministratore", "amministrazione", "direzione", "approvatore_liv1", "approvatore_liv2", "approvatore_liv3"].includes(r),
+  );
 
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ["piani-rientro-lista"],
@@ -170,12 +179,19 @@ function PianiRientroPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <CalendarClock className="size-7 text-primary" />
-        <div>
-          <h1 className="text-2xl font-semibold">Piani di rientro</h1>
-          <p className="text-sm text-muted-foreground">Elenco di tutti gli accordi di rientro concordati con i clienti</p>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3">
+          <CalendarClock className="size-7 text-primary" />
+          <div>
+            <h1 className="text-2xl font-semibold">Piani di rientro</h1>
+            <p className="text-sm text-muted-foreground">Elenco di tutti gli accordi di rientro concordati con i clienti</p>
+          </div>
         </div>
+        {canManage && (
+          <Button onClick={() => setNuovoPianoOpen(true)}>
+            <Plus className="size-4" /> Nuovo piano di rientro
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -258,6 +274,14 @@ function PianiRientroPage() {
           </Table>
         )}
       </Card>
+
+      <PianoRientroSelectorDialog
+        open={nuovoPianoOpen}
+        onOpenChange={setNuovoPianoOpen}
+        onCreated={() => {
+          qc.invalidateQueries({ queryKey: ["piani-rientro-lista"] });
+        }}
+      />
     </div>
   );
 }
