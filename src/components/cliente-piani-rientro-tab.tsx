@@ -81,7 +81,7 @@ export function ClientePianiRientroTab({ clienteId }: { clienteId: string }) {
         <Button variant="ghost" size="sm" onClick={() => setSelectedPiano(null)}>
           <ChevronLeft className="size-4" /> Torna ai piani
         </Button>
-        <PianoRientroDettaglio pianoId={selectedPiano} />
+        <PianoRientroDettaglio pianoId={selectedPiano} onDeleted={() => setSelectedPiano(null)} />
       </div>
     );
   }
