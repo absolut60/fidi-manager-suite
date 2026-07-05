@@ -274,6 +274,14 @@ function PianiRientroPage() {
           </Table>
         )}
       </Card>
+
+      <PianoRientroSelectorDialog
+        open={nuovoPianoOpen}
+        onOpenChange={setNuovoPianoOpen}
+        onCreated={() => {
+          qc.invalidateQueries({ queryKey: ["piani-rientro-lista"] });
+        }}
+      />
     </div>
   );
 }
