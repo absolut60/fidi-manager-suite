@@ -9,43 +9,77 @@ function fmtEuro(v: number | null | undefined): string {
   return new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(Number(v));
 }
 
+function fmtDate(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return new Intl.DateTimeFormat("it-IT", { day: "2-digit", month: "2-digit" }).format(d);
+}
+
 export function DashboardFatturato() {
   const annoCorrente = new Date().getFullYear();
   const annoPrec = annoCorrente - 1;
 
   const { data, isLoading } = useQuery({
-    queryKey: ["dashboard-fatturato-globale"],
+    queryKey: ["dashboard-fatturato-globale", annoCorrente, annoPrec],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("fatturato_annuale_globale")
-        .select("anno, num_clienti, num_fatture_totali, fatturato_totale")
-        .in("anno", [annoCorrente, annoPrec]);
-      if (error) throw error;
-      return data ?? [];
+      const [annuale, ytd] = await Promise.all([
+        supabase
+          .from("fatturato_annuale_globale")
+          .select("anno, num_clienti, num_fatture_totali, fatturato_totale")
+          .in("anno", [annoCorrente, annoPrec]),
+        supabase
+          .from("fatturato_ytd_globale")
+          .select("anno, num_clienti, num_fatture, fatturato, ytd_alla_data")
+          .in("anno", [annoCorrente, annoPrec]),
+      ]);
+      if (annuale.error) throw annuale.error;
+      if (ytd.error) throw ytd.error;
+      return { annuale: annuale.data ?? [], ytd: ytd.data ?? [] };
     },
   });
 
-  const byAnno = new Map<number, { fatturato: number; clienti: number; fatture: number }>();
-  (data ?? []).forEach((r) => {
-    byAnno.set(Number(r.anno), {
+  const annuale = new Map<number, { fatturato: number; clienti: number; fatture: number }>();
+  (data?.annuale ?? []).forEach((r: any) => {
+    annuale.set(Number(r.anno), {
       fatturato: Number(r.fatturato_totale) || 0,
       clienti: Number(r.num_clienti) || 0,
       fatture: Number(r.num_fatture_totali) || 0,
     });
   });
 
-  const cur = byAnno.get(annoCorrente);
-  const prev = byAnno.get(annoPrec);
+  const ytd = new Map<number, { fatturato: number; clienti: number; fatture: number; alla_data: string | null }>();
+  (data?.ytd ?? []).forEach((r: any) => {
+    ytd.set(Number(r.anno), {
+      fatturato: Number(r.fatturato) || 0,
+      clienti: Number(r.num_clienti) || 0,
+      fatture: Number(r.num_fatture) || 0,
+      alla_data: r.ytd_alla_data ?? null,
+    });
+  });
+
+  const cur = annuale.get(annoCorrente);
+  const prev = annuale.get(annoPrec);
+  const ytdCur = ytd.get(annoCorrente);
+  const ytdPrev = ytd.get(annoPrec);
+
   const fatturatoCur = cur?.fatturato ?? 0;
   const fatturatoPrev = prev?.fatturato ?? 0;
-  const variazione = fatturatoPrev > 0
-    ? ((fatturatoCur - fatturatoPrev) / fatturatoPrev) * 100
-    : fatturatoCur > 0 ? 100 : null;
+
+  // Variazione a parità di periodo (YTD vs YTD)
+  const ytdCurVal = ytdCur?.fatturato ?? 0;
+  const ytdPrevVal = ytdPrev?.fatturato ?? 0;
+  const variazione = ytdPrevVal > 0
+    ? ((ytdCurVal - ytdPrevVal) / ytdPrevVal) * 100
+    : ytdCurVal > 0 ? 100 : null;
 
   const TrendIcon = variazione == null ? Minus : variazione > 0 ? TrendingUp : variazione < 0 ? TrendingDown : Minus;
   const trendColor = variazione == null
     ? "text-muted-foreground"
     : variazione > 0 ? "text-success" : variazione < 0 ? "text-destructive" : "text-muted-foreground";
+
+  const dataYtd = ytdCur?.alla_data ?? ytdPrev?.alla_data ?? null;
+  const dataYtdLabel = fmtDate(dataYtd);
 
   return (
     <section className="space-y-3">
@@ -65,10 +99,13 @@ export function DashboardFatturato() {
           {isLoading ? <Skeleton className="h-8 w-32 mt-1" /> : (
             <p className="text-2xl font-bold mt-1 tabular-nums">{fmtEuro(fatturatoPrev)}</p>
           )}
-          <p className="text-xs text-muted-foreground mt-1">{prev?.fatture ?? 0} fatture</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {prev?.fatture ?? 0} fatture
+            {dataYtdLabel && ytdPrev ? ` · al ${dataYtdLabel}: ${fmtEuro(ytdPrevVal)}` : ""}
+          </p>
         </Card>
         <Card className="p-5">
-          <p className="text-xs font-medium text-muted-foreground uppercase">Variazione</p>
+          <p className="text-xs font-medium text-muted-foreground uppercase">Variazione YTD</p>
           {isLoading ? <Skeleton className="h-8 w-24 mt-1" /> : (
             <div className={`mt-1 flex items-center gap-2 ${trendColor}`}>
               <TrendIcon className="size-5" />
@@ -77,7 +114,9 @@ export function DashboardFatturato() {
               </span>
             </div>
           )}
-          <p className="text-xs text-muted-foreground mt-1">{annoCorrente} vs {annoPrec}</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {annoCorrente} vs {annoPrec} · stesso periodo{dataYtdLabel ? ` (al ${dataYtdLabel})` : ""}
+          </p>
         </Card>
         <Card className="p-5">
           <p className="text-xs font-medium text-muted-foreground uppercase">Clienti fatturati {annoCorrente}</p>
