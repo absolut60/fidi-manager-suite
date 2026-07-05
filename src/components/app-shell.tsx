@@ -101,11 +101,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return false;
   });
 
-  const grouped = {
-    main: visibleNav.filter((i) => i.group === "main"),
-    approvazioni: visibleNav.filter((i) => i.group === "approvazioni"),
-    admin: visibleNav.filter((i) => i.group === "admin"),
-  };
+  const grouped: Array<{ key: NavGroupKey; label?: string; items: NavItem[] }> = [
+    { key: "generale", items: visibleNav.filter((i) => i.group === "generale") },
+    { key: "fidi", label: "Fidi", items: visibleNav.filter((i) => i.group === "fidi") },
+    { key: "incassi", label: "Incassi", items: visibleNav.filter((i) => i.group === "incassi") },
+    { key: "recupero", label: "Recupero crediti", items: visibleNav.filter((i) => i.group === "recupero") },
+    { key: "strumenti", label: "Strumenti", items: visibleNav.filter((i) => i.group === "strumenti") },
+    { key: "admin", label: "Amministrazione", items: visibleNav.filter((i) => i.group === "admin") },
+  ];
 
   async function handleLogout() {
     await supabase.auth.signOut();
