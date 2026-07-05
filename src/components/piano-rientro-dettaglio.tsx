@@ -38,9 +38,17 @@ const STATO_CLASS: Record<PianoStato, string> = {
   annullato: "bg-muted text-muted-foreground border-border",
 };
 
-export function PianoRientroDettaglio({ pianoId }: { pianoId: string }) {
+export function PianoRientroDettaglio({ pianoId, onDeleted }: { pianoId: string; onDeleted?: () => void }) {
   const qc = useQueryClient();
+  const { roles } = useAuth();
+  const canDelete = roles.some((r) =>
+    ["amministratore", "amministrazione", "direzione", "approvatore_liv1", "approvatore_liv2", "approvatore_liv3"].includes(r),
+  );
   const [saving, setSaving] = useState<string | null>(null);
+  const [confirmStep1, setConfirmStep1] = useState(false);
+  const [confirmStep2, setConfirmStep2] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   const { data: piano, isLoading: lp } = useQuery({
     queryKey: ["piano", pianoId],
@@ -55,6 +63,20 @@ export function PianoRientroDettaglio({ pianoId }: { pianoId: string }) {
     queryFn: () => fetchDocumentiPiano(pianoId),
   });
 
+  // Allegati count (solo per il riepilogo di eliminazione)
+  const { data: allegatiCount = 0 } = useQuery({
+    queryKey: ["piano-allegati-count", pianoId],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("allegati")
+        .select("id", { count: "exact", head: true })
+        .eq("entita_tipo", "piano_rientro")
+        .eq("entita_id", pianoId);
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+
   const invalidateAll = () => {
     qc.invalidateQueries({ queryKey: ["piano", pianoId] });
     qc.invalidateQueries({ queryKey: ["piano-rate", pianoId] });
@@ -62,7 +84,59 @@ export function PianoRientroDettaglio({ pianoId }: { pianoId: string }) {
     qc.invalidateQueries({ queryKey: ["piani-rientro-lista"] });
     qc.invalidateQueries({ queryKey: ["scadenziario-lista"] });
     qc.invalidateQueries({ queryKey: ["azioni-calendario"] });
+    qc.invalidateQueries({ queryKey: ["piano-rate-calendario"] });
+    qc.invalidateQueries({ queryKey: ["azioni-recupero-cliente"] });
+    qc.invalidateQueries({ queryKey: ["piano-scadenze-altri-piani"] });
   };
+
+  async function eliminaPianoDefinitivamente() {
+    if (deleting) return;
+    setDeleting(true);
+    try {
+      // 1) fetch storage_path degli allegati per rimuovere i file
+      const { data: allegatiRows, error: eA } = await supabase
+        .from("allegati")
+        .select("id, storage_path")
+        .eq("entita_tipo", "piano_rientro")
+        .eq("entita_id", pianoId);
+      if (eA) throw eA;
+      const paths = (allegatiRows ?? []).map((a) => a.storage_path).filter(Boolean);
+
+      // 2) rimuovi i file dallo storage (best-effort: se fallisce, non blocca)
+      if (paths.length > 0) {
+        const { error: eSt } = await supabase.storage.from(ALLEGATI_BUCKET).remove(paths);
+        if (eSt) console.warn("Rimozione file allegati (storage):", eSt.message);
+      }
+
+      // 3) rimuovi le righe allegati
+      if ((allegatiRows ?? []).length > 0) {
+        const { error: eAd } = await supabase
+          .from("allegati")
+          .delete()
+          .eq("entita_tipo", "piano_rientro")
+          .eq("entita_id", pianoId);
+        if (eAd) throw eAd;
+      }
+
+      // 4) elimina il piano — CASCADE su piani_rientro_rate, piani_rientro_documenti
+      //    e azioni_recupero (via piano_rientro_id). Nessuna scrittura su `scadenze`.
+      const { error: eP } = await supabase
+        .from("piani_rientro" as never)
+        .delete()
+        .eq("id", pianoId);
+      if (eP) throw eP;
+
+      toast.success("Piano eliminato definitivamente");
+      invalidateAll();
+      setConfirmStep2(false);
+      setConfirmStep1(false);
+      onDeleted?.();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Errore eliminazione piano");
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   async function updateRataStato(rata: PianoRata, nuovoStato: "pagata" | "saltata" | "da_pagare", dataPag?: string) {
     setSaving(rata.id);
