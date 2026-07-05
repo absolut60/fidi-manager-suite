@@ -218,20 +218,28 @@ export function PianoRientroDettaglio({ pianoId, onDeleted }: { pianoId: string;
               </div>
             </div>
           </div>
-          {piano.stato === "attivo" && (
-            <div className="flex gap-2">
-              <Button size="sm" variant="outline" onClick={() => updatePianoStato("completato")}>
-                <CheckCircle2 className="size-4" /> Completato
+          <div className="flex gap-2 flex-wrap">
+            {piano.stato === "attivo" && (
+              <>
+                <Button size="sm" variant="outline" onClick={() => updatePianoStato("completato")}>
+                  <CheckCircle2 className="size-4" /> Completato
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => updatePianoStato("non_rispettato")}
+                  className="text-destructive hover:text-destructive">
+                  <AlertTriangle className="size-4" /> Non rispettato
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => updatePianoStato("annullato")}>
+                  <Ban className="size-4" /> Annulla
+                </Button>
+              </>
+            )}
+            {canDelete && (
+              <Button size="sm" variant="ghost" onClick={() => setConfirmStep1(true)}
+                className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                <Trash2 className="size-4" /> Elimina piano
               </Button>
-              <Button size="sm" variant="outline" onClick={() => updatePianoStato("non_rispettato")}
-                className="text-destructive hover:text-destructive">
-                <AlertTriangle className="size-4" /> Non rispettato
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => updatePianoStato("annullato")}>
-                <Ban className="size-4" /> Annulla
-              </Button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
