@@ -73,6 +73,37 @@ export function PianoRientroNuovoDialog({ open, onOpenChange, clienteId, cliente
     },
   });
 
+  // Mappa "scadenza → piani precedenti in cui compare" (solo informativa, mai bloccante).
+  // Il principio è: una scadenza PUÒ essere in più piani (es. piano non rispettato → nuovo piano
+  // con le rimanenze). Mostriamo solo un avviso "già in piano del …".
+  const { data: scadenzeInAltriPiani = new Map<string, { piano_id: string; created_at: string; stato: string }[]>() } = useQuery({
+    queryKey: ["piano-scadenze-altri-piani", clienteId],
+    enabled: open,
+    queryFn: async () => {
+      const { data: piani, error: eP } = await supabase
+        .from("piani_rientro" as never)
+        .select("id, created_at, stato")
+        .eq("cliente_id", clienteId);
+      if (eP) throw eP;
+      const pRows = (piani ?? []) as unknown as Array<{ id: string; created_at: string; stato: string }>;
+      if (pRows.length === 0) return new Map();
+      const { data: docs, error: eD } = await supabase
+        .from("piani_rientro_documenti" as never)
+        .select("piano_id, scadenza_id")
+        .in("piano_id", pRows.map((p) => p.id));
+      if (eD) throw eD;
+      const pById = new Map(pRows.map((p) => [p.id, { piano_id: p.id, created_at: p.created_at, stato: p.stato }]));
+      const map = new Map<string, { piano_id: string; created_at: string; stato: string }[]>();
+      for (const d of (docs ?? []) as never as Array<{ piano_id: string; scadenza_id: string }>) {
+        const p = pById.get(d.piano_id);
+        if (!p) continue;
+        if (!map.has(d.scadenza_id)) map.set(d.scadenza_id, []);
+        map.get(d.scadenza_id)!.push(p);
+      }
+      return map;
+    },
+  });
+
   const totaleSelezionato = useMemo(() => {
     const set = selectedScadenze;
     return (scadenze ?? []).reduce((acc, s) => acc + (set.has(s.id) ? Number(s.importo_scadenza ?? 0) : 0), 0);
@@ -257,12 +288,28 @@ export function PianoRientroNuovoDialog({ open, onOpenChange, clienteId, cliente
                   <TableBody>
                     {(scadenze ?? []).map((s) => {
                       const sel = selectedScadenze.has(s.id);
+                      const altriPiani = scadenzeInAltriPiani.get(s.id) ?? [];
                       return (
                         <TableRow key={s.id} className="cursor-pointer" onClick={() => toggleScadenza(s.id)}>
                           <TableCell onClick={(e) => e.stopPropagation()}>
                             <Checkbox checked={sel} onCheckedChange={() => toggleScadenza(s.id)} />
                           </TableCell>
-                          <TableCell className="font-mono text-xs">{s.numero_documento ?? "—"}</TableCell>
+                          <TableCell className="font-mono text-xs">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span>{s.numero_documento ?? "—"}</span>
+                              {altriPiani.length > 0 && (
+                                <Badge
+                                  variant="outline"
+                                  className="bg-amber-500/10 text-amber-700 border-amber-500/30 text-[10px] font-normal"
+                                  title={altriPiani
+                                    .map((p: { piano_id: string; created_at: string; stato: string }) => `Piano del ${fmtDate(p.created_at)} — ${p.stato}`)
+                                    .join("\n")}
+                                >
+                                  già in {altriPiani.length === 1 ? "un piano" : `${altriPiani.length} piani`} del {fmtDate(altriPiani[0].created_at)}
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
                           <TableCell className="text-sm">{fmtDate(s.data_scadenza)}</TableCell>
                           <TableCell className="text-right tabular-nums">{fmtEuro(s.importo_scadenza)}</TableCell>
                           <TableCell className="text-right">
