@@ -133,12 +133,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
-        <NavGroup items={grouped.main} currentPath={currentPath} onNav={() => setMobileOpen(false)} />
-        {grouped.approvazioni.length > 0 && (
-          <NavGroup label="Gestione" items={grouped.approvazioni} currentPath={currentPath} onNav={() => setMobileOpen(false)} />
-        )}
-        {grouped.admin.length > 0 && (
-          <NavGroup label="Amministrazione" items={grouped.admin} currentPath={currentPath} onNav={() => setMobileOpen(false)} />
+        {grouped.map((g) =>
+          g.items.length === 0 ? null : (
+            <NavGroup
+              key={g.key}
+              label={g.label}
+              items={g.items}
+              currentPath={currentPath}
+              onNav={() => setMobileOpen(false)}
+            />
+          )
         )}
       </nav>
 
