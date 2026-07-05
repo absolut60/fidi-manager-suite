@@ -73,6 +73,12 @@ type ScadRow = {
   avvisato_ultima_data: string | null;
   ha_promessa?: boolean | null;
   data_promessa?: string | null;
+  ha_piano_rientro?: boolean | null;
+  piano_rientro_id?: string | null;
+  piano_rate_pagate?: number | null;
+  piano_rate_totali?: number | null;
+  piano_prossima_rata_data?: string | null;
+  piano_prossima_rata_importo?: number | null;
   total_count: number | string;
 };
 
@@ -585,6 +591,29 @@ function ScadenziarioPage() {
                                 </TooltipTrigger>
                                 <TooltipContent>
                                   Promessa di pagamento{r.data_promessa ? ` entro il ${fmtDate(r.data_promessa)}` : ""}
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                            {r.ha_piano_rientro && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span
+                                    className="inline-flex items-center text-primary cursor-pointer"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigate({
+                                        to: "/clienti/$clienteId",
+                                        params: { clienteId: r.cliente_id },
+                                        search: { tab: "insoluti", insolutiTab: "piani" } as never,
+                                      });
+                                    }}
+                                  >
+                                    <CalendarClock className="size-4" />
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  Piano di rientro attivo — {r.piano_rate_pagate ?? 0}/{r.piano_rate_totali ?? 0} rate pagate
+                                  {r.piano_prossima_rata_data ? ` · prossima ${fmtDate(r.piano_prossima_rata_data)} (${fmtEuro(r.piano_prossima_rata_importo)})` : ""}
                                 </TooltipContent>
                               </Tooltip>
                             )}
