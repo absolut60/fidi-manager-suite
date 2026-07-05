@@ -234,8 +234,13 @@ export function PianoRientroDettaglio({ pianoId, onDeleted }: { pianoId: string;
               </>
             )}
             {canDelete && (
-              <Button size="sm" variant="ghost" onClick={() => setConfirmStep1(true)}
-                className="text-destructive hover:text-destructive hover:bg-destructive/10">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setConfirmStep1(true)}
+                className="border-destructive/60 bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                aria-label="Elimina piano di rientro"
+              >
                 <Trash2 className="size-4" /> Elimina piano
               </Button>
             )}
