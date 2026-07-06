@@ -781,7 +781,7 @@ function ScadenzeGroupedLista({
                   <TableRow key={`${g.cliente_id}-exp`} className="bg-muted/30 hover:bg-muted/30">
                     <TableCell />
                     <TableCell />
-                    <TableCell colSpan={showActions ? 5 : 4} className="py-2">
+                    <TableCell colSpan={showActions ? 6 : 5} className="py-2">
                       <ScadenzeInnerTable scadenze={g.scadenze} vista={vista} />
                     </TableCell>
                   </TableRow>
