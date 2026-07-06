@@ -565,7 +565,7 @@ function ClientiPage() {
     (privacyFiltro !== "tutti" ? 1 : 0) +
     (filtroAssic !== "tutti" ? 1 : 0) +
     (filtroLegale !== "tutti" ? 1 : 0) +
-    (filtroTipoSoggetto !== "tutti" ? 1 : 0) +
+    (filtroTipoSoggetto !== "giuridica" ? 1 : 0) +
     (scadenziarioFiltro !== "tutti" ? 1 : 0) +
     (totaleRischioFiltro !== "tutti" ? 1 : 0) +
     (aScadereFiltro !== "tutti" ? 1 : 0) +
