@@ -537,7 +537,7 @@ function CruscottoIncassiPage() {
           </Card>
         )}
         {/* ─── Ricerca incassi (per data di pagamento) ─── */}
-        <RicercaIncassiBlock />
+        <RicercaIncassiBlock storeSel={storeSel} />
 
         <InvioMassivoDialog
           open={invioMassivoOpen}
