@@ -1436,12 +1436,12 @@ function RicercaIncassiBlock({ storeSel }: { storeSel: string | null }) {
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell colSpan={8}><Skeleton className="h-6 w-full" /></TableCell>
+                  <TableCell colSpan={9}><Skeleton className="h-6 w-full" /></TableCell>
                 </TableRow>
               ))
             ) : righeSorted.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-6">
+                <TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-6">
                   Nessun incasso nel periodo selezionato.
                 </TableCell>
               </TableRow>
