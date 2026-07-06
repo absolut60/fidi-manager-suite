@@ -3104,6 +3104,20 @@ function FiltriAvanzatiDialog({
               </div>
             </div>
           </section>
+
+          {fidoSlider && (
+            <section>
+              <h3 className="text-sm font-semibold mb-2">Slider fido residuo</h3>
+              {fidoSlider}
+            </section>
+          )}
+
+          {movedFilters && (
+            <section>
+              <h3 className="text-sm font-semibold mb-2">Altri filtri</h3>
+              {movedFilters}
+            </section>
+          )}
         </div>
 
         <DialogFooter className="gap-2">
