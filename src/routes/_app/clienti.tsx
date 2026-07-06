@@ -152,7 +152,8 @@ function ClientiPage() {
   const [privacyFiltro, setPrivacyFiltro] = useState<string>("tutti");
   const [filtroAssic, setFiltroAssic] = useState<"tutti" | "assicurati" | "non_assicurati">("tutti");
   const [filtroLegale, setFiltroLegale] = useState<"tutti" | "in_legale" | "non_in_legale">("tutti");
-  const [filtroTipoSoggetto, setFiltroTipoSoggetto] = useState<"tutti" | "fisica" | "giuridica">("tutti");
+  // Default: "giuridica" → mostra solo Imprese, esclude i Privati (persona_fisica)
+  const [filtroTipoSoggetto, setFiltroTipoSoggetto] = useState<"tutti" | "fisica" | "giuridica">("giuridica");
   const [scadenziarioFiltro, setScadenziarioFiltro] = useState<string>("tutti");
   const [totaleRischioFiltro, setTotaleRischioFiltro] = useState<string>("tutti");
   const [fatturatoFiltro, setFatturatoFiltro] = useState<string>("tutti");
@@ -564,7 +565,7 @@ function ClientiPage() {
     (privacyFiltro !== "tutti" ? 1 : 0) +
     (filtroAssic !== "tutti" ? 1 : 0) +
     (filtroLegale !== "tutti" ? 1 : 0) +
-    (filtroTipoSoggetto !== "tutti" ? 1 : 0) +
+    (filtroTipoSoggetto !== "giuridica" ? 1 : 0) +
     (scadenziarioFiltro !== "tutti" ? 1 : 0) +
     (totaleRischioFiltro !== "tutti" ? 1 : 0) +
     (aScadereFiltro !== "tutti" ? 1 : 0) +
@@ -582,7 +583,7 @@ function ClientiPage() {
     (filtroBlocco !== "tutti" ? 1 : 0) +
     (filtroLegale !== "tutti" ? 1 : 0) +
     (filtroAssic !== "tutti" ? 1 : 0) +
-    (filtroTipoSoggetto !== "tutti" ? 1 : 0) +
+    (filtroTipoSoggetto !== "giuridica" ? 1 : 0) +
     ((sliderCommitted[0] !== FIDO_RANGE_MIN || sliderCommitted[1] !== FIDO_RANGE_MAX) ? 1 : 0);
 
   function resetFiltri() {
@@ -596,7 +597,7 @@ function ClientiPage() {
     setPrivacyFiltro("tutti");
     setFiltroAssic("tutti");
     setFiltroLegale("tutti");
-    setFiltroTipoSoggetto("tutti");
+    setFiltroTipoSoggetto("giuridica");
     setScadenziarioFiltro("tutti");
     setTotaleRischioFiltro("tutti");
     setAScadereFiltro("tutti");
@@ -864,11 +865,11 @@ function ClientiPage() {
 
   const TipoSoggettoSelect = (
     <Select value={filtroTipoSoggetto} onValueChange={(v) => setFiltroTipoSoggetto(v as typeof filtroTipoSoggetto)}>
-      <SelectTrigger className="w-full"><SelectValue placeholder="Tipo soggetto" /></SelectTrigger>
+      <SelectTrigger className="w-full"><SelectValue placeholder="Tipo cliente" /></SelectTrigger>
       <SelectContent>
-        <SelectItem value="tutti">Tutti</SelectItem>
-        <SelectItem value="fisica">Persona fisica</SelectItem>
-        <SelectItem value="giuridica">Persona giuridica</SelectItem>
+        <SelectItem value="giuridica">Solo Imprese</SelectItem>
+        <SelectItem value="fisica">Solo Privati</SelectItem>
+        <SelectItem value="tutti">Tutti (privati + imprese)</SelectItem>
       </SelectContent>
     </Select>
   );
@@ -904,7 +905,7 @@ function ClientiPage() {
   if (filtroBlocco !== "tutti") activeChips.push({ key: "blocco", label: filtroBlocco === "bloccati" ? "Bloccati" : "Non bloccati", onRemove: () => setFiltroBlocco("tutti") });
   if (filtroLegale !== "tutti") activeChips.push({ key: "legale", label: filtroLegale === "in_legale" ? "In gestione legale" : "Non in gestione legale", onRemove: () => setFiltroLegale("tutti") });
   if (filtroAssic !== "tutti") activeChips.push({ key: "assic", label: filtroAssic === "assicurati" ? "Assicurati" : "Non assicurati", onRemove: () => setFiltroAssic("tutti") });
-  if (filtroTipoSoggetto !== "tutti") activeChips.push({ key: "tipo", label: filtroTipoSoggetto === "fisica" ? "Persona fisica" : "Persona giuridica", onRemove: () => setFiltroTipoSoggetto("tutti") });
+  if (filtroTipoSoggetto !== "giuridica") activeChips.push({ key: "tipo", label: filtroTipoSoggetto === "fisica" ? "Tipo: Solo Privati" : "Tipo: Tutti (privati+imprese)", onRemove: () => setFiltroTipoSoggetto("giuridica") });
   if (sliderCommitted[0] !== FIDO_RANGE_MIN || sliderCommitted[1] !== FIDO_RANGE_MAX) {
     activeChips.push({ key: "slider", label: `Fido slider: ${fmtEuro(sliderCommitted[0])} → ${fmtEuro(sliderCommitted[1])}`, onRemove: () => { setSliderDisplay([FIDO_RANGE_MIN, FIDO_RANGE_MAX]); setSliderCommitted([FIDO_RANGE_MIN, FIDO_RANGE_MAX]); } });
   }
@@ -957,6 +958,7 @@ function ClientiPage() {
           {SemaforoSelect}
           {StatoFidoPopover}
           <div className="border-t pt-3 grid grid-cols-1 gap-3">
+            {TipoSoggettoSelect}
             {FidoFasciaSelect}
             {TotaleRischioSelect}
             {FatturatoSelect}
@@ -984,7 +986,8 @@ function ClientiPage() {
           {StatoFidoPopover}
         </div>
         {/* Livello 2 — filtri secondari (più leggeri) */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 opacity-90">
+        <div className="grid grid-cols-2 lg:grid-cols-6 gap-2 opacity-90">
+          {TipoSoggettoSelect}
           {FidoFasciaSelect}
           {TotaleRischioSelect}
           {FatturatoSelect}
@@ -1136,6 +1139,18 @@ function ClientiPage() {
             <span className="ml-1">— <strong className="text-foreground">{totaleClienti}</strong> clienti totali</span>
           </span>
           {attiviCount > 0 && <span>(filtri attivi: {attiviCount})</span>}
+          {filtroTipoSoggetto === "giuridica" && (
+            <span className="text-xs text-muted-foreground italic">
+              Privati esclusi ·{" "}
+              <button
+                type="button"
+                onClick={() => setFiltroTipoSoggetto("tutti")}
+                className="underline hover:text-foreground"
+              >
+                mostra tutti
+              </button>
+            </span>
+          )}
           <span className="ml-auto flex items-center gap-2">
             <span className="text-xs">Per pagina:</span>
             <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
