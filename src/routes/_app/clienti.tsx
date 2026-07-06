@@ -2964,7 +2964,7 @@ type AdvAppliedT = {
 };
 
 function FiltriAvanzatiDialog({
-  open, onOpenChange, applied, onApply, onReset, onSetMainFiltro, currentMain,
+  open, onOpenChange, applied, onApply, onReset, onSetMainFiltro, currentMain, movedFilters, fidoSlider,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -2973,6 +2973,8 @@ function FiltriAvanzatiDialog({
   onReset: () => void;
   onSetMainFiltro: (p: { filtroBlocco?: "tutti" | "bloccati" | "non_bloccati"; filtroAssic?: "tutti" | "assicurati" | "non_assicurati"; scadenziarioFiltro?: string }) => void;
   currentMain: { filtroBlocco: "tutti" | "bloccati" | "non_bloccati"; filtroAssic: "tutti" | "assicurati" | "non_assicurati"; scadenziarioFiltro: string };
+  movedFilters?: React.ReactNode;
+  fidoSlider?: React.ReactNode;
 }) {
   const [draft, setDraft] = useState<AdvAppliedT>(applied);
   useEffect(() => { if (open) setDraft(applied); }, [open, applied]);
