@@ -533,7 +533,8 @@ function ClientiPage() {
 
   // Fetch di tutti gli id filtrati (per "Seleziona tutti i filtrati")
   async function fetchAllFilteredRows(): Promise<any[]> {
-    const built = buildBaseQuery("id, ragione_sociale, fido, totale_rischio", undefined);
+    const cols = `id, ragione_sociale, ${FIDO_CLIENTE_SELECT}, totale_rischio`;
+    const built = buildBaseQuery(cols, undefined);
     if ("empty" in built) return [];
     const all: any[] = [];
     let off = 0;
@@ -547,7 +548,7 @@ function ClientiPage() {
       if (batch.length < size) break;
       off += size;
       if (off > 20000) break;
-      const rebuilt = buildBaseQuery("id, ragione_sociale, fido, totale_rischio", undefined);
+      const rebuilt = buildBaseQuery(cols, undefined);
       if ("empty" in rebuilt) break;
       (built as any).q = rebuilt.q;
     }
