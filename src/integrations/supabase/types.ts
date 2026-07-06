@@ -3082,6 +3082,8 @@ export type Database = {
           residuo: number
           scadenza_id: string
           scaduta: boolean
+          store_id: string
+          store_nome: string
         }[]
       }
       get_dso_aggregato: {
@@ -3165,6 +3167,8 @@ export type Database = {
           n_parziali: number
           n_saldi: number
           ragione_sociale: string
+          store_id: string
+          store_nome: string
           tipo_prevalente: string
           totale_incassato: number
           ultimo_incasso: string
