@@ -575,6 +575,7 @@ type GruppoCliente = {
   bloccato: boolean;
   email: string | null;
   pec: string | null;
+  store_nome: string | null;
   totale: number;
   scadenze: RigaScadenzaVista[];
 };
