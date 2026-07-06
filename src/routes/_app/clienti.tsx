@@ -958,6 +958,7 @@ function ClientiPage() {
           {SemaforoSelect}
           {StatoFidoPopover}
           <div className="border-t pt-3 grid grid-cols-1 gap-3">
+            {TipoSoggettoSelect}
             {FidoFasciaSelect}
             {TotaleRischioSelect}
             {FatturatoSelect}
