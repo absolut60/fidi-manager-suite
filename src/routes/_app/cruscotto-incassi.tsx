@@ -24,6 +24,47 @@ import { cn } from "@/lib/utils";
 import { InvioMassivoDialog } from "@/components/invio-massivo-dialog";
 import { RegistraPromessaDialog } from "@/components/registra-promessa-dialog";
 import { isRiBa } from "@/lib/spese-insoluto";
+import { useAuth } from "@/hooks/use-auth";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+
+type StoreOpt = { id: string; nome: string };
+
+/** Ruoli che vedono tutte le sedi (specchio server-side di effective_store_filter). */
+function useStorePerimetro() {
+  const { profilo, hasAnyRole } = useAuth();
+  const trasversale = hasAnyRole(
+    "amministratore",
+    "amministrazione",
+    "direzione",
+    "approvatore_liv1",
+    "approvatore_liv2",
+    "approvatore_liv3",
+  );
+  const { data: stores } = useQuery({
+    queryKey: ["stores_perimetro", trasversale, profilo?.store_id],
+    queryFn: async (): Promise<StoreOpt[]> => {
+      if (trasversale) {
+        const { data, error } = await supabase
+          .from("stores")
+          .select("id, nome")
+          .order("nome", { ascending: true });
+        if (error) throw error;
+        return (data ?? []) as StoreOpt[];
+      }
+      if (!profilo?.store_id) return [];
+      const { data, error } = await supabase
+        .from("stores")
+        .select("id, nome")
+        .eq("id", profilo.store_id)
+        .maybeSingle();
+      if (error) throw error;
+      return data ? [data as StoreOpt] : [];
+    },
+  });
+  return { trasversale, stores: stores ?? [] };
+}
 
 export const Route = createFileRoute("/_app/cruscotto-incassi")({
   component: CruscottoIncassiPage,
@@ -134,12 +175,19 @@ function CruscottoIncassiPage() {
     setSelezionati(new Set());
   }, [meseSel, anno]);
 
+  const { trasversale, stores } = useStorePerimetro();
+  // Sede selezionata: null = "tutte le sedi consentite" (per trasversali).
+  // Per utenti ristretti il server IGNORA comunque il valore e forza la loro sede.
+  const [storeSel, setStoreSel] = useState<string | null>(null);
+  // Reset selezione clienti quando cambia sede
+  useEffect(() => { setSelezionati(new Set()); }, [storeSel]);
+
   const { data: mensile, isLoading } = useQuery({
-    queryKey: ["cruscotto_incassi_mensile", anno],
+    queryKey: ["cruscotto_incassi_mensile", anno, storeSel],
     queryFn: async () => {
       const { data, error } = await supabase.rpc(
         "get_cruscotto_incassi_mensile" as never,
-        { _anno: anno } as never,
+        { _anno: anno, _store_id: storeSel } as never,
       );
       if (error) throw error;
       return ((data as unknown) as RigaMese[]) ?? [];
@@ -163,12 +211,12 @@ function CruscottoIncassiPage() {
   const dettaglioMese = meseSel != null ? righe.find((r) => r.mese === meseSel) : null;
 
   const { data: dettaglio, isLoading: loadingDettaglio } = useQuery({
-    queryKey: ["cruscotto_incassi_dettaglio", anno, meseSel],
+    queryKey: ["cruscotto_incassi_dettaglio", anno, meseSel, storeSel],
     enabled: meseSel != null,
     queryFn: async () => {
       const { data, error } = await supabase.rpc(
         "get_cruscotto_incassi_mese_dettaglio" as never,
-        { _anno: anno, _mese: meseSel! } as never,
+        { _anno: anno, _mese: meseSel!, _store_id: storeSel } as never,
       );
       if (error) throw error;
       return ((data as unknown) as RigaDettaglio[]) ?? [];
@@ -176,12 +224,12 @@ function CruscottoIncassiPage() {
   });
 
   const { data: scadenze, isLoading: loadingScadenze } = useQuery({
-    queryKey: ["cruscotto_incassi_scadenze", anno, meseSel],
+    queryKey: ["cruscotto_incassi_scadenze", anno, meseSel, storeSel],
     enabled: meseSel != null,
     queryFn: async () => {
       const { data, error } = await supabase.rpc(
         "get_cruscotto_incassi_mese_scadenze" as never,
-        { _anno: anno, _mese: meseSel! } as never,
+        { _anno: anno, _mese: meseSel!, _store_id: storeSel } as never,
       );
       if (error) throw error;
       return ((data as unknown) as RigaScadenza[]) ?? [];
@@ -245,26 +293,50 @@ function CruscottoIncassiPage() {
               Andamento mensile per data di scadenza — valori vivi, ricalcolati a ogni apertura.
             </p>
           </div>
-          <div className="flex items-center gap-1 border rounded-md bg-background">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8"
-              onClick={() => { setAnno(anno - 1); setMeseSel(null); }}
-            >
-              <ChevronLeft className="size-4" />
-            </Button>
-            <div className="px-3 text-sm font-semibold tabular-nums min-w-[3.5rem] text-center">
-              {anno}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Selettore Sede: per trasversali mostra "Tutte" + elenco;
+                per ristretti mostra solo la propria (disabilitato). */}
+            {stores.length > 0 && (
+              <Select
+                value={storeSel ?? "__all__"}
+                onValueChange={(v) => {
+                  setStoreSel(v === "__all__" ? null : v);
+                  setMeseSel(null);
+                }}
+                disabled={!trasversale && stores.length <= 1}
+              >
+                <SelectTrigger className="h-8 w-[200px]">
+                  <SelectValue placeholder="Sede" />
+                </SelectTrigger>
+                <SelectContent>
+                  {trasversale && <SelectItem value="__all__">Tutte le sedi</SelectItem>}
+                  {stores.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <div className="flex items-center gap-1 border rounded-md bg-background">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8"
+                onClick={() => { setAnno(anno - 1); setMeseSel(null); }}
+              >
+                <ChevronLeft className="size-4" />
+              </Button>
+              <div className="px-3 text-sm font-semibold tabular-nums min-w-[3.5rem] text-center">
+                {anno}
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8"
+                onClick={() => { setAnno(anno + 1); setMeseSel(null); }}
+              >
+                <ChevronRight className="size-4" />
+              </Button>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8"
-              onClick={() => { setAnno(anno + 1); setMeseSel(null); }}
-            >
-              <ChevronRight className="size-4" />
-            </Button>
           </div>
         </div>
 
@@ -465,7 +537,7 @@ function CruscottoIncassiPage() {
           </Card>
         )}
         {/* ─── Ricerca incassi (per data di pagamento) ─── */}
-        <RicercaIncassiBlock />
+        <RicercaIncassiBlock storeSel={storeSel} />
 
         <InvioMassivoDialog
           open={invioMassivoOpen}
@@ -1065,7 +1137,7 @@ type SortKey = "cliente" | "n_incassi" | "totale_incassato" | "ultimo_incasso";
 type SortDir = "asc" | "desc";
 type DettSortKey = "cliente" | "codice" | "importo";
 
-function RicercaIncassiBlock() {
+function RicercaIncassiBlock({ storeSel }: { storeSel: string | null }) {
   const oggi = new Date();
   oggi.setHours(0, 0, 0, 0);
   const primoDelMese = new Date(oggi.getFullYear(), oggi.getMonth(), 1);
@@ -1107,7 +1179,7 @@ function RicercaIncassiBlock() {
   }
 
   const { data: righe, isLoading, isFetching } = useQuery({
-    queryKey: ["ricerca_incassi_periodo", dal, al, clienteDebounced, metodi.slice().sort().join(",")],
+    queryKey: ["ricerca_incassi_periodo", dal, al, clienteDebounced, metodi.slice().sort().join(","), storeSel],
     queryFn: async () => {
       const { data, error } = await supabase.rpc(
         "get_incassi_periodo" as never,
@@ -1116,6 +1188,7 @@ function RicercaIncassiBlock() {
           _al: al,
           _cliente_search: clienteDebounced || null,
           _metodi: metodi.length === METODI_OPZIONI.length ? null : metodi,
+          _store_id: storeSel,
         } as never,
       );
       if (error) throw error;
@@ -1423,6 +1496,7 @@ function RicercaIncassiBlock() {
                             al={al}
                             metodi={metodi.length === METODI_OPZIONI.length ? null : metodi}
                             totaleAtteso={Number(r.totale_incassato)}
+                            storeSel={storeSel}
                           />
                         </TableCell>
                       </TableRow>
@@ -1456,17 +1530,17 @@ function RicercaIncassiBlock() {
 }
 
 function DettaglioIncassiCliente({
-  clienteId, dal, al, totaleAtteso, metodi,
+  clienteId, dal, al, totaleAtteso, metodi, storeSel,
 }: {
-  clienteId: string; dal: string; al: string; totaleAtteso: number; metodi: string[] | null;
+  clienteId: string; dal: string; al: string; totaleAtteso: number; metodi: string[] | null; storeSel: string | null;
 }) {
   const metodiKey = metodi ? metodi.slice().sort().join(",") : "*";
   const { data, isLoading } = useQuery({
-    queryKey: ["ricerca_incassi_dettaglio", clienteId, dal, al, metodiKey],
+    queryKey: ["ricerca_incassi_dettaglio", clienteId, dal, al, metodiKey, storeSel],
     queryFn: async () => {
       const { data, error } = await supabase.rpc(
         "get_incassi_periodo_dettaglio" as never,
-        { _dal: dal, _al: al, _cliente_id: clienteId, _metodi: metodi } as never,
+        { _dal: dal, _al: al, _cliente_id: clienteId, _metodi: metodi, _store_id: storeSel } as never,
       );
       if (error) throw error;
       return ((data as unknown) as RigaIncassoDettaglio[]) ?? [];
