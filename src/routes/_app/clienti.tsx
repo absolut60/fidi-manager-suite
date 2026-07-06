@@ -152,7 +152,8 @@ function ClientiPage() {
   const [privacyFiltro, setPrivacyFiltro] = useState<string>("tutti");
   const [filtroAssic, setFiltroAssic] = useState<"tutti" | "assicurati" | "non_assicurati">("tutti");
   const [filtroLegale, setFiltroLegale] = useState<"tutti" | "in_legale" | "non_in_legale">("tutti");
-  const [filtroTipoSoggetto, setFiltroTipoSoggetto] = useState<"tutti" | "fisica" | "giuridica">("tutti");
+  // Default: "giuridica" → mostra solo Imprese, esclude i Privati (persona_fisica)
+  const [filtroTipoSoggetto, setFiltroTipoSoggetto] = useState<"tutti" | "fisica" | "giuridica">("giuridica");
   const [scadenziarioFiltro, setScadenziarioFiltro] = useState<string>("tutti");
   const [totaleRischioFiltro, setTotaleRischioFiltro] = useState<string>("tutti");
   const [fatturatoFiltro, setFatturatoFiltro] = useState<string>("tutti");
