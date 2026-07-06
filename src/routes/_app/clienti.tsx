@@ -571,13 +571,18 @@ function ClientiPage() {
     (fidoFascia !== "tutti" ? 1 : 0) +
     ((sliderCommitted[0] !== FIDO_RANGE_MIN || sliderCommitted[1] !== FIDO_RANGE_MAX) ? 1 : 0);
 
-  // Conteggio filtri avanzati attivi
+  // Conteggio filtri avanzati attivi (include quelli spostati dentro il dialog)
   const advCount =
     (advApplied.fidoOp !== "none" ? 1 : 0) +
     (advApplied.percConsumato != null ? 1 : 0) +
     (advApplied.dataFattPrima ? 1 : 0) +
     (advApplied.dataFattDopo ? 1 : 0) +
-    (advApplied.presetScopertoInsoluto ? 1 : 0);
+    (advApplied.presetScopertoInsoluto ? 1 : 0) +
+    (filtroBlocco !== "tutti" ? 1 : 0) +
+    (filtroLegale !== "tutti" ? 1 : 0) +
+    (filtroAssic !== "tutti" ? 1 : 0) +
+    (filtroTipoSoggetto !== "tutti" ? 1 : 0) +
+    ((sliderCommitted[0] !== FIDO_RANGE_MIN || sliderCommitted[1] !== FIDO_RANGE_MAX) ? 1 : 0);
 
   function resetFiltri() {
     setSearchInput(""); setSearch("");
