@@ -1501,7 +1501,7 @@ function RicercaIncassiBlock({ storeSel }: { storeSel: string | null }) {
                     {isOpen && (
                       <TableRow key={`${r.cliente_id}-exp`} className="bg-muted/30 hover:bg-muted/30">
                         <TableCell />
-                        <TableCell colSpan={7} className="py-2">
+                        <TableCell colSpan={8} className="py-2">
                           <DettaglioIncassiCliente
                             clienteId={r.cliente_id}
                             dal={dal}
