@@ -730,14 +730,13 @@ function ClientiPage() {
     </Select>
   );
 
-  const ScadenziarioSelect = (
+  const ScadutoSelect = (
     <Select value={scadenziarioFiltro} onValueChange={setScadenziarioFiltro}>
-      <SelectTrigger className="w-full"><SelectValue placeholder="Scadenziario" /></SelectTrigger>
+      <SelectTrigger className="w-full"><SelectValue placeholder="Scaduto" /></SelectTrigger>
       <SelectContent>
-        <SelectItem value="tutti">Scadenziario: tutti</SelectItem>
-        <SelectItem value="scaduto">Con scaduto</SelectItem>
-        <SelectItem value="a_scadere">Solo a scadere</SelectItem>
-        <SelectItem value="in_regola">Tutto in regola</SelectItem>
+        <SelectItem value="tutti">Scaduto: tutti</SelectItem>
+        <SelectItem value="con_scaduto">Con scaduto</SelectItem>
+        <SelectItem value="senza_scaduto">Senza scaduto</SelectItem>
       </SelectContent>
     </Select>
   );
