@@ -258,18 +258,20 @@ function ClientiPage() {
     staleTime: 60_000,
   });
 
-  // ID set per filtro scadenziario
+  // ID set per filtro "Scaduto" (con / senza scaduto)
   const scadenziarioIdsFilter = useMemo(() => {
     if (!scadenziarioMap || scadenziarioFiltro === "tutti") return null;
-    const ids: string[] = [];
-    if (scadenziarioFiltro === "scaduto") {
+    if (scadenziarioFiltro === "con_scaduto") {
+      const ids: string[] = [];
       for (const [id, s] of scadenziarioMap) if (s.ha_scaduto) ids.push(id);
-    } else if (scadenziarioFiltro === "a_scadere") {
-      for (const [id, s] of scadenziarioMap) if (s.ha_a_scadere && !s.ha_scaduto) ids.push(id);
-    } else if (scadenziarioFiltro === "in_regola") {
-      return { mode: "exclude" as const, ids: Array.from(scadenziarioMap.keys()) };
+      return { mode: "include" as const, ids };
     }
-    return { mode: "include" as const, ids };
+    if (scadenziarioFiltro === "senza_scaduto") {
+      const ids: string[] = [];
+      for (const [id, s] of scadenziarioMap) if (s.ha_scaduto) ids.push(id);
+      return { mode: "exclude" as const, ids };
+    }
+    return null;
   }, [scadenziarioMap, scadenziarioFiltro]);
 
   // ID set per filtro "A scadere" (scadenze aperte, non scadute, entro N giorni)
@@ -569,13 +571,18 @@ function ClientiPage() {
     (fidoFascia !== "tutti" ? 1 : 0) +
     ((sliderCommitted[0] !== FIDO_RANGE_MIN || sliderCommitted[1] !== FIDO_RANGE_MAX) ? 1 : 0);
 
-  // Conteggio filtri avanzati attivi
+  // Conteggio filtri avanzati attivi (include quelli spostati dentro il dialog)
   const advCount =
     (advApplied.fidoOp !== "none" ? 1 : 0) +
     (advApplied.percConsumato != null ? 1 : 0) +
     (advApplied.dataFattPrima ? 1 : 0) +
     (advApplied.dataFattDopo ? 1 : 0) +
-    (advApplied.presetScopertoInsoluto ? 1 : 0);
+    (advApplied.presetScopertoInsoluto ? 1 : 0) +
+    (filtroBlocco !== "tutti" ? 1 : 0) +
+    (filtroLegale !== "tutti" ? 1 : 0) +
+    (filtroAssic !== "tutti" ? 1 : 0) +
+    (filtroTipoSoggetto !== "tutti" ? 1 : 0) +
+    ((sliderCommitted[0] !== FIDO_RANGE_MIN || sliderCommitted[1] !== FIDO_RANGE_MAX) ? 1 : 0);
 
   function resetFiltri() {
     setSearchInput(""); setSearch("");
@@ -728,14 +735,13 @@ function ClientiPage() {
     </Select>
   );
 
-  const ScadenziarioSelect = (
+  const ScadutoSelect = (
     <Select value={scadenziarioFiltro} onValueChange={setScadenziarioFiltro}>
-      <SelectTrigger className="w-full"><SelectValue placeholder="Scadenziario" /></SelectTrigger>
+      <SelectTrigger className="w-full"><SelectValue placeholder="Scaduto" /></SelectTrigger>
       <SelectContent>
-        <SelectItem value="tutti">Scadenziario: tutti</SelectItem>
-        <SelectItem value="scaduto">Con scaduto</SelectItem>
-        <SelectItem value="a_scadere">Solo a scadere</SelectItem>
-        <SelectItem value="in_regola">Tutto in regola</SelectItem>
+        <SelectItem value="tutti">Scaduto: tutti</SelectItem>
+        <SelectItem value="con_scaduto">Con scaduto</SelectItem>
+        <SelectItem value="senza_scaduto">Senza scaduto</SelectItem>
       </SelectContent>
     </Select>
   );
@@ -866,24 +872,97 @@ function ClientiPage() {
     </Select>
   );
 
+  // === Chip filtri attivi ===
+  type Chip = { key: string; label: string; onRemove: () => void };
+  const activeChips: Chip[] = [];
+  if (search) activeChips.push({ key: "search", label: `Ricerca: "${search}"`, onRemove: () => { setSearchInput(""); setSearch(""); } });
+  if (statoCliente !== "attivi") activeChips.push({ key: "statoCliente", label: statoCliente === "disattivati" ? "Solo disattivati" : "Attivi+disattivati", onRemove: () => setStatoCliente("attivi") });
+  if (statoAttivita !== "attivi") activeChips.push({ key: "statoAttivita", label: statoAttivita === "non_attivi" ? "Solo non attivi" : "Tutti (attività)", onRemove: () => setStatoAttivita("attivi") });
+  if (storeFiltro !== "tutti") {
+    const s = (stores ?? []).find((x) => x.id === storeFiltro);
+    activeChips.push({ key: "store", label: `Punto vendita: ${s?.nome ?? "—"}`, onRemove: () => setStoreFiltro("tutti") });
+  }
+  if (statoFido.size > 0) {
+    activeChips.push({ key: "statoFido", label: `Stato fido: ${Array.from(statoFido).join(", ")}`, onRemove: () => setStatoFido(new Set()) });
+  }
+  if (semaforoFiltro !== "tutti") activeChips.push({ key: "semaforo", label: `Semaforo: ${semaforoFiltro}`, onRemove: () => setSemaforoFiltro("tutti") });
+  if (scadenziarioFiltro !== "tutti") {
+    const lbl = scadenziarioFiltro === "con_scaduto" ? "Con scaduto" : "Senza scaduto";
+    activeChips.push({ key: "scaduto", label: lbl, onRemove: () => setScadenziarioFiltro("tutti") });
+  }
+  if (aScadereFiltro !== "tutti") {
+    const map: Record<string, string> = { "7": "entro 7gg", "30": "entro 30gg", "60": "entro 60gg", "oltre60": "oltre 60gg" };
+    activeChips.push({ key: "ascadere", label: `A scadere: ${map[aScadereFiltro] ?? aScadereFiltro}`, onRemove: () => setAScadereFiltro("tutti") });
+  }
+  if (fidoFascia !== "tutti") {
+    const map: Record<string, string> = { negativo: "negativo", basso: "basso", medio: "medio", alto: "alto" };
+    activeChips.push({ key: "fidoFascia", label: `Fido residuo: ${map[fidoFascia] ?? fidoFascia}`, onRemove: () => setFidoFascia("tutti") });
+  }
+  if (totaleRischioFiltro !== "tutti") activeChips.push({ key: "rischio", label: `Rischio: ${totaleRischioFiltro}`, onRemove: () => setTotaleRischioFiltro("tutti") });
+  if (fatturatoFiltro !== "tutti") activeChips.push({ key: "fatturato", label: `Fatturato: ${fatturatoFiltro}`, onRemove: () => setFatturatoFiltro("tutti") });
+  if (filtroBlocco !== "tutti") activeChips.push({ key: "blocco", label: filtroBlocco === "bloccati" ? "Bloccati" : "Non bloccati", onRemove: () => setFiltroBlocco("tutti") });
+  if (filtroLegale !== "tutti") activeChips.push({ key: "legale", label: filtroLegale === "in_legale" ? "In gestione legale" : "Non in gestione legale", onRemove: () => setFiltroLegale("tutti") });
+  if (filtroAssic !== "tutti") activeChips.push({ key: "assic", label: filtroAssic === "assicurati" ? "Assicurati" : "Non assicurati", onRemove: () => setFiltroAssic("tutti") });
+  if (filtroTipoSoggetto !== "tutti") activeChips.push({ key: "tipo", label: filtroTipoSoggetto === "fisica" ? "Persona fisica" : "Persona giuridica", onRemove: () => setFiltroTipoSoggetto("tutti") });
+  if (sliderCommitted[0] !== FIDO_RANGE_MIN || sliderCommitted[1] !== FIDO_RANGE_MAX) {
+    activeChips.push({ key: "slider", label: `Fido slider: ${fmtEuro(sliderCommitted[0])} → ${fmtEuro(sliderCommitted[1])}`, onRemove: () => { setSliderDisplay([FIDO_RANGE_MIN, FIDO_RANGE_MAX]); setSliderCommitted([FIDO_RANGE_MIN, FIDO_RANGE_MAX]); } });
+  }
+  if (advApplied.fidoOp !== "none") activeChips.push({ key: "advFido", label: `Fido (avanzato): ${advApplied.fidoOp}`, onRemove: () => setAdvApplied({ ...advApplied, fidoOp: "none", fidoVal: null, fidoFrom: null, fidoTo: null }) });
+  if (advApplied.percConsumato != null) activeChips.push({ key: "advPerc", label: `Fido consumato ≥ ${advApplied.percConsumato}%`, onRemove: () => setAdvApplied({ ...advApplied, percConsumato: null }) });
+  if (advApplied.dataFattPrima) activeChips.push({ key: "advDataPrima", label: `Fatt. prima di ${advApplied.dataFattPrima}`, onRemove: () => setAdvApplied({ ...advApplied, dataFattPrima: "" }) });
+  if (advApplied.dataFattDopo) activeChips.push({ key: "advDataDopo", label: `Fatt. dopo il ${advApplied.dataFattDopo}`, onRemove: () => setAdvApplied({ ...advApplied, dataFattDopo: "" }) });
+  if (advApplied.presetScopertoInsoluto) activeChips.push({ key: "advScoperto", label: "Preset: scoperti con insoluto", onRemove: () => setAdvApplied({ ...advApplied, presetScopertoInsoluto: false }) });
+
+  const ChipsRow = activeChips.length === 0 ? null : (
+    <div className="flex flex-wrap gap-1.5 pt-1">
+      {activeChips.map((c) => (
+        <button
+          key={c.key}
+          type="button"
+          onClick={c.onRemove}
+          className="inline-flex items-center gap-1 rounded-full border bg-muted/50 hover:bg-muted px-2.5 py-1 text-xs transition-colors"
+        >
+          <span>{c.label}</span>
+          <X className="size-3 opacity-60" />
+        </button>
+      ))}
+    </div>
+  );
+
+  const AdvFilterBtn = (
+    <Button
+      type="button"
+      variant={advCount > 0 ? "default" : "outline"}
+      size="sm"
+      className="gap-1.5 h-9 text-[13px] w-full"
+      onClick={() => setAdvOpen(true)}
+    >
+      <SlidersHorizontal className="size-4" />
+      Filtri avanzati
+      {advCount > 0 && (
+        <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5 text-xs">{advCount}</Badge>
+      )}
+    </Button>
+  );
+
   function renderFiltriContent(stack = false) {
     if (stack) {
       return (
         <div className="grid grid-cols-1 gap-3">
           <SearchInput value={searchInput} onChange={setSearchInput} />
           {StoreSelect}
-          {StatoFidoPopover}
-          {SemaforoSelect}
-          {ScadenziarioSelect}
-          {FidoFasciaSelect}
-          {TotaleRischioSelect}
+          {ScadutoSelect}
           {AScadereSelect}
-          {FidoRangeSlider}
-          {BloccoSelect}
-          {AssicSelect}
-          {LegaleSelect}
-          {TipoSoggettoSelect}
-          {StatoAttivitaSelect}
+          {SemaforoSelect}
+          {StatoFidoPopover}
+          <div className="border-t pt-3 grid grid-cols-1 gap-3">
+            {FidoFasciaSelect}
+            {TotaleRischioSelect}
+            {FatturatoSelect}
+            {StatoAttivitaSelect}
+          </div>
+          {AdvFilterBtn}
+          {ChipsRow}
           {attiviCount > 0 && (
             <Button variant="ghost" size="sm" onClick={resetFiltri} className="gap-1 justify-start">
               <X className="size-4" /> Azzera tutti
@@ -892,49 +971,27 @@ function ClientiPage() {
         </div>
       );
     }
-    const AdvFilterBtn = (
-      <Button
-        type="button"
-        variant={advCount > 0 ? "default" : "outline"}
-        size="sm"
-        className="gap-1.5 h-9 text-[13px] w-full"
-        onClick={() => setAdvOpen(true)}
-      >
-        <SlidersHorizontal className="size-4" />
-        Filtri avanzati
-        {advCount > 0 && (
-          <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5 text-xs">{advCount}</Badge>
-        )}
-      </Button>
-    );
     return (
       <div className="space-y-2 text-[13px]">
-        {/* Riga 1: search + store + stato fido + semaforo */}
-        <div className="grid grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr] gap-2">
+        {/* Livello 1 — filtri primari */}
+        <div className="grid grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] gap-2">
           <SearchInput value={searchInput} onChange={setSearchInput} />
           {StoreSelect}
-          {StatoFidoPopover}
+          {ScadutoSelect}
+          {AScadereSelect}
           {SemaforoSelect}
+          {StatoFidoPopover}
         </div>
-        {/* Riga 2: scadenziario / fido residuo / totale rischio / a scadere / fatturato / filtri avanzati */}
-        <div className="grid grid-cols-2 lg:grid-cols-6 gap-2">
-          {ScadenziarioSelect}
+        {/* Livello 2 — filtri secondari (più leggeri) */}
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 opacity-90">
           {FidoFasciaSelect}
           {TotaleRischioSelect}
-          {AScadereSelect}
           {FatturatoSelect}
+          {StatoAttivitaSelect}
           {AdvFilterBtn}
         </div>
-        {/* Riga 3: stato attività + filtri a 3 stati */}
-        <div className="flex flex-wrap items-center gap-3 pt-1">
-          <div className="w-44">{StatoAttivitaSelect}</div>
-          <div className="w-44">{BloccoSelect}</div>
-          <div className="w-44">{AssicSelect}</div>
-          <div className="w-44">{LegaleSelect}</div>
-          <div className="w-44">{TipoSoggettoSelect}</div>
-        </div>
-        {/* Slider fido residuo: larghezza piena */}
-        <div>{FidoRangeSlider}</div>
+        {/* Livello chip — filtri attivi */}
+        {ChipsRow}
       </div>
     );
   }
@@ -1014,6 +1071,15 @@ function ClientiPage() {
           if (patch.scadenziarioFiltro !== undefined) setScadenziarioFiltro(patch.scadenziarioFiltro);
         }}
         currentMain={{ filtroBlocco, filtroAssic, scadenziarioFiltro }}
+        movedFilters={
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div><Label className="text-xs">Bloccati</Label>{BloccoSelect}</div>
+            <div><Label className="text-xs">Gestione legale</Label>{LegaleSelect}</div>
+            <div><Label className="text-xs">Assicurazione</Label>{AssicSelect}</div>
+            <div><Label className="text-xs">Tipo soggetto</Label>{TipoSoggettoSelect}</div>
+          </div>
+        }
+        fidoSlider={FidoRangeSlider}
       />
 
 
@@ -2898,7 +2964,7 @@ type AdvAppliedT = {
 };
 
 function FiltriAvanzatiDialog({
-  open, onOpenChange, applied, onApply, onReset, onSetMainFiltro, currentMain,
+  open, onOpenChange, applied, onApply, onReset, onSetMainFiltro, currentMain, movedFilters, fidoSlider,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -2907,6 +2973,8 @@ function FiltriAvanzatiDialog({
   onReset: () => void;
   onSetMainFiltro: (p: { filtroBlocco?: "tutti" | "bloccati" | "non_bloccati"; filtroAssic?: "tutti" | "assicurati" | "non_assicurati"; scadenziarioFiltro?: string }) => void;
   currentMain: { filtroBlocco: "tutti" | "bloccati" | "non_bloccati"; filtroAssic: "tutti" | "assicurati" | "non_assicurati"; scadenziarioFiltro: string };
+  movedFilters?: React.ReactNode;
+  fidoSlider?: React.ReactNode;
 }) {
   const [draft, setDraft] = useState<AdvAppliedT>(applied);
   useEffect(() => { if (open) setDraft(applied); }, [open, applied]);
@@ -3036,6 +3104,20 @@ function FiltriAvanzatiDialog({
               </div>
             </div>
           </section>
+
+          {fidoSlider && (
+            <section>
+              <h3 className="text-sm font-semibold mb-2">Slider fido residuo</h3>
+              {fidoSlider}
+            </section>
+          )}
+
+          {movedFilters && (
+            <section>
+              <h3 className="text-sm font-semibold mb-2">Altri filtri</h3>
+              {movedFilters}
+            </section>
+          )}
         </div>
 
         <DialogFooter className="gap-2">
