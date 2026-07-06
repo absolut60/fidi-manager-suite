@@ -120,6 +120,8 @@ type RigaScadenza = {
   bloccato: boolean;
   email: string | null;
   pec: string | null;
+  store_id: string | null;
+  store_nome: string | null;
   scadenza_id: string;
   numero_documento: string | null;
   data_scadenza: string;
@@ -573,6 +575,7 @@ type GruppoCliente = {
   bloccato: boolean;
   email: string | null;
   pec: string | null;
+  store_nome: string | null;
   totale: number;
   scadenze: RigaScadenzaVista[];
 };
@@ -615,6 +618,7 @@ function ScadenzeGroupedLista({
           bloccato: r.bloccato,
           email: r.email,
           pec: r.pec,
+          store_nome: r.store_nome,
           totale: 0,
           scadenze: [],
         };
@@ -684,6 +688,7 @@ function ScadenzeGroupedLista({
             <TableHead className="w-24">
               <SortHeader<DettSortKey> label="Cod." col="codice" sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
             </TableHead>
+            <TableHead className="w-32">Sede</TableHead>
             <TableHead className="text-right whitespace-nowrap">
               <SortHeader<DettSortKey> label={importoLabel} col="importo" sortKey={sortKey} sortDir={sortDir} onSort={onSort} align="right" />
             </TableHead>
@@ -722,6 +727,9 @@ function ScadenzeGroupedLista({
                   </TableCell>
                   <TableCell className="text-muted-foreground text-xs font-mono">
                     {g.codice_gestionale ?? "—"}
+                  </TableCell>
+                  <TableCell className="text-xs">
+                    {g.store_nome ?? "—"}
                   </TableCell>
                   <TableCell className={cn("text-right tabular-nums font-medium", importoCls)}>
                     {fmtEuro(g.totale)}
@@ -773,7 +781,7 @@ function ScadenzeGroupedLista({
                   <TableRow key={`${g.cliente_id}-exp`} className="bg-muted/30 hover:bg-muted/30">
                     <TableCell />
                     <TableCell />
-                    <TableCell colSpan={showActions ? 5 : 4} className="py-2">
+                    <TableCell colSpan={showActions ? 6 : 5} className="py-2">
                       <ScadenzeInnerTable scadenze={g.scadenze} vista={vista} />
                     </TableCell>
                   </TableRow>
@@ -786,7 +794,7 @@ function ScadenzeGroupedLista({
           <TableRow>
             <TableCell />
             <TableCell />
-            <TableCell colSpan={2} className="font-medium">
+            <TableCell colSpan={3} className="font-medium">
               Totale ({gruppi.length} client{gruppi.length === 1 ? "e" : "i"})
             </TableCell>
             <TableCell className={cn("text-right tabular-nums font-semibold", importoCls)}>
@@ -1065,6 +1073,8 @@ type RigaIncassoPeriodo = {
   cliente_id: string;
   ragione_sociale: string;
   codice_gestionale: string | null;
+  store_id: string | null;
+  store_nome: string | null;
   n_incassi: number;
   totale_incassato: number;
   n_saldi: number;
@@ -1408,6 +1418,7 @@ function RicercaIncassiBlock({ storeSel }: { storeSel: string | null }) {
                 <SortHeader label="Cliente" col="cliente" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
               </TableHead>
               <TableHead className="w-24">Cod.</TableHead>
+              <TableHead className="w-32">Sede</TableHead>
               <TableHead className="text-right w-24">
                 <SortHeader label="N. incassi" col="n_incassi" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} align="right" />
               </TableHead>
@@ -1425,12 +1436,12 @@ function RicercaIncassiBlock({ storeSel }: { storeSel: string | null }) {
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell colSpan={8}><Skeleton className="h-6 w-full" /></TableCell>
+                  <TableCell colSpan={9}><Skeleton className="h-6 w-full" /></TableCell>
                 </TableRow>
               ))
             ) : righeSorted.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-6">
+                <TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-6">
                   Nessun incasso nel periodo selezionato.
                 </TableCell>
               </TableRow>
@@ -1464,6 +1475,7 @@ function RicercaIncassiBlock({ storeSel }: { storeSel: string | null }) {
                       <TableCell className="font-mono text-xs text-muted-foreground">
                         {r.codice_gestionale ?? "—"}
                       </TableCell>
+                      <TableCell className="text-xs">{r.store_nome ?? "—"}</TableCell>
                       <TableCell className="text-right tabular-nums">{r.n_incassi}</TableCell>
                       <TableCell className="text-right tabular-nums font-semibold">
                         {fmtEuro(Number(r.totale_incassato), 2)}
@@ -1489,7 +1501,7 @@ function RicercaIncassiBlock({ storeSel }: { storeSel: string | null }) {
                     {isOpen && (
                       <TableRow key={`${r.cliente_id}-exp`} className="bg-muted/30 hover:bg-muted/30">
                         <TableCell />
-                        <TableCell colSpan={7} className="py-2">
+                        <TableCell colSpan={8} className="py-2">
                           <DettaglioIncassiCliente
                             clienteId={r.cliente_id}
                             dal={dal}
@@ -1511,6 +1523,7 @@ function RicercaIncassiBlock({ storeSel }: { storeSel: string | null }) {
               <TableRow>
                 <TableCell />
                 <TableCell className="font-semibold">Totale generale</TableCell>
+                <TableCell />
                 <TableCell />
                 <TableCell className="text-right tabular-nums font-semibold">{totali.n_incassi}</TableCell>
                 <TableCell className="text-right tabular-nums font-semibold">
