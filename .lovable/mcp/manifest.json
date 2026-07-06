@@ -1,0 +1,111 @@
+{
+  "version": 1,
+  "sdk_version": "0.20.0",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://bbjmdrctjkoliclmqzcl.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "fidi-manager-suite-mcp",
+      "version": "0.1.0",
+      "title": "FidiManager MCP"
+    },
+    "tools": [
+      {
+        "name": "search_clienti",
+        "title": "Cerca clienti",
+        "description": "Cerca clienti per ragione sociale o partita IVA. Restituisce id, ragione sociale, partita IVA, città e store.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Testo da cercare in ragione sociale o partita IVA"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "description": "Numero massimo di risultati (default 20)"
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_cliente",
+        "title": "Dettaglio cliente",
+        "description": "Restituisce l'anagrafica completa di un cliente (dati identificativi, contatti, bancari, fido, contabili) per l'ID fornito.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "cliente_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "UUID del cliente"
+            }
+          },
+          "required": [
+            "cliente_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_scadenze_aperte",
+        "title": "Scadenze aperte del cliente",
+        "description": "Elenca le scadenze aperte (importo_residuo > 0) di un cliente, ordinate per data scadenza crescente.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "cliente_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "UUID del cliente"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "description": "Numero massimo di righe (default 100)"
+            }
+          },
+          "required": [
+            "cliente_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}

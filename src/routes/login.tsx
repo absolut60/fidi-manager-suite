@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -8,21 +8,33 @@ import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { LOGO_MADE_BASE64 } from "@/lib/logo-made-base64";
 
+function safeNext(next: unknown): string {
+  if (typeof next !== "string") return "/dashboard";
+  // Solo path relativi same-origin.
+  if (!next.startsWith("/") || next.startsWith("//")) return "/dashboard";
+  return next;
+}
+
 export const Route = createFileRoute("/login")({
+  validateSearch: (s: Record<string, unknown>) => ({
+    next: typeof s.next === "string" ? s.next : undefined,
+  }),
   component: LoginPage,
 });
 
 function LoginPage() {
   const navigate = useNavigate();
+  const { next } = useSearch({ from: "/login" });
+  const target = safeNext(next);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) navigate({ to: "/dashboard" });
+      if (session) window.location.href = target;
     });
-  }, [navigate]);
+  }, [target]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -31,7 +43,9 @@ function LoginPage() {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       toast.success("Accesso effettuato");
-      navigate({ to: "/dashboard" });
+      // Uso window.location per far girare i loader di rotte con auth-gate
+      // (la sessione appena creata è ancora in fase di hydration).
+      window.location.href = target;
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Errore sconosciuto";
       const tradotto = msg.includes("Invalid login credentials")
