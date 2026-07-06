@@ -44,6 +44,7 @@ import { Route as ApiPublicInngestRouteImport } from './routes/api/public/innges
 import { Route as AppRichiesteRichiestaIdRouteImport } from './routes/_app/richieste.$richiestaId'
 import { Route as AppClientiClienteIdRouteImport } from './routes/_app/clienti.$clienteId'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
+import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as ApiPublicHooksCheckScadenzeRouteImport } from './routes/api/public/hooks/check-scadenze'
 import { Route as ApiPublicHooksCheckReminderRitardiRouteImport } from './routes/api/public/hooks/check-reminder-ritardi'
 
@@ -228,6 +229,11 @@ const Char91DotmcpChar93InvokeToolToolRoute =
     path: '/.mcp/invoke-tool/$tool',
     getParentRoute: () => rootRouteImport,
   } as any)
+const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
+  id: '/.lovable/oauth/consent',
+  path: '/.lovable/oauth/consent',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicHooksCheckScadenzeRoute =
   ApiPublicHooksCheckScadenzeRouteImport.update({
     id: '/api/public/hooks/check-scadenze',
@@ -272,6 +278,7 @@ export interface FileRoutesByFullPath {
   '/utenti': typeof AppUtentiRoute
   '/whatsapp': typeof AppWhatsappRoute
   '/firma-privacy/$token': typeof FirmaPrivacyTokenRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
   '/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
@@ -310,6 +317,7 @@ export interface FileRoutesByTo {
   '/utenti': typeof AppUtentiRoute
   '/whatsapp': typeof AppWhatsappRoute
   '/firma-privacy/$token': typeof FirmaPrivacyTokenRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
   '/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
@@ -350,6 +358,7 @@ export interface FileRoutesById {
   '/_app/utenti': typeof AppUtentiRoute
   '/_app/whatsapp': typeof AppWhatsappRoute
   '/firma-privacy/$token': typeof FirmaPrivacyTokenRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_app/clienti/$clienteId': typeof AppClientiClienteIdRoute
   '/_app/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
@@ -390,6 +399,7 @@ export interface FileRouteTypes {
     | '/utenti'
     | '/whatsapp'
     | '/firma-privacy/$token'
+    | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/clienti/$clienteId'
     | '/richieste/$richiestaId'
@@ -428,6 +438,7 @@ export interface FileRouteTypes {
     | '/utenti'
     | '/whatsapp'
     | '/firma-privacy/$token'
+    | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/clienti/$clienteId'
     | '/richieste/$richiestaId'
@@ -467,6 +478,7 @@ export interface FileRouteTypes {
     | '/_app/utenti'
     | '/_app/whatsapp'
     | '/firma-privacy/$token'
+    | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/_app/clienti/$clienteId'
     | '/_app/richieste/$richiestaId'
@@ -483,6 +495,7 @@ export interface RootRouteChildren {
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   FirmaPrivacyTokenRoute: typeof FirmaPrivacyTokenRoute
+  DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiPublicInngestRoute: typeof ApiPublicInngestRoute
   ApiPublicHooksCheckReminderRitardiRoute: typeof ApiPublicHooksCheckReminderRitardiRoute
@@ -736,6 +749,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/.lovable/oauth/consent': {
+      id: '/.lovable/oauth/consent'
+      path: '/.lovable/oauth/consent'
+      fullPath: '/.lovable/oauth/consent'
+      preLoaderRoute: typeof DotlovableOauthConsentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/check-scadenze': {
       id: '/api/public/hooks/check-scadenze'
       path: '/api/public/hooks/check-scadenze'
@@ -842,6 +862,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   FirmaPrivacyTokenRoute: FirmaPrivacyTokenRoute,
+  DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiPublicInngestRoute: ApiPublicInngestRoute,
   ApiPublicHooksCheckReminderRitardiRoute:
