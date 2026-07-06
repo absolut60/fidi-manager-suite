@@ -1418,6 +1418,7 @@ function RicercaIncassiBlock({ storeSel }: { storeSel: string | null }) {
                 <SortHeader label="Cliente" col="cliente" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
               </TableHead>
               <TableHead className="w-24">Cod.</TableHead>
+              <TableHead className="w-32">Sede</TableHead>
               <TableHead className="text-right w-24">
                 <SortHeader label="N. incassi" col="n_incassi" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} align="right" />
               </TableHead>
