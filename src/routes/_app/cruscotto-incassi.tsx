@@ -120,6 +120,8 @@ type RigaScadenza = {
   bloccato: boolean;
   email: string | null;
   pec: string | null;
+  store_id: string | null;
+  store_nome: string | null;
   scadenza_id: string;
   numero_documento: string | null;
   data_scadenza: string;
