@@ -1475,6 +1475,7 @@ function RicercaIncassiBlock({ storeSel }: { storeSel: string | null }) {
                       <TableCell className="font-mono text-xs text-muted-foreground">
                         {r.codice_gestionale ?? "—"}
                       </TableCell>
+                      <TableCell className="text-xs">{r.store_nome ?? "—"}</TableCell>
                       <TableCell className="text-right tabular-nums">{r.n_incassi}</TableCell>
                       <TableCell className="text-right tabular-nums font-semibold">
                         {fmtEuro(Number(r.totale_incassato), 2)}
