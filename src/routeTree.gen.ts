@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as McpRouteImport } from './routes/mcp'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
@@ -37,12 +38,20 @@ import { Route as AppClientiRouteImport } from './routes/_app/clienti'
 import { Route as AppAuditRouteImport } from './routes/_app/audit'
 import { Route as AppAssicurazioniRouteImport } from './routes/_app/assicurazioni'
 import { Route as AppApprovazioniRouteImport } from './routes/_app/approvazioni'
+import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
+import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as ApiPublicInngestRouteImport } from './routes/api/public/inngest'
 import { Route as AppRichiesteRichiestaIdRouteImport } from './routes/_app/richieste.$richiestaId'
 import { Route as AppClientiClienteIdRouteImport } from './routes/_app/clienti.$clienteId'
+import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as ApiPublicHooksCheckScadenzeRouteImport } from './routes/api/public/hooks/check-scadenze'
 import { Route as ApiPublicHooksCheckReminderRitardiRouteImport } from './routes/api/public/hooks/check-reminder-ritardi'
 
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -186,6 +195,18 @@ const AppApprovazioniRoute = AppApprovazioniRouteImport.update({
   path: '/approvazioni',
   getParentRoute: () => AppRoute,
 } as any)
+const Char91DotwellKnownChar93OauthProtectedResourceRoute =
+  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
+    id: '/.well-known/oauth-protected-resource',
+    path: '/.well-known/oauth-protected-resource',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const Char91DotmcpChar93ListToolsRoute =
+  Char91DotmcpChar93ListToolsRouteImport.update({
+    id: '/.mcp/list-tools',
+    path: '/.mcp/list-tools',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicInngestRoute = ApiPublicInngestRouteImport.update({
   id: '/api/public/inngest',
   path: '/api/public/inngest',
@@ -201,6 +222,12 @@ const AppClientiClienteIdRoute = AppClientiClienteIdRouteImport.update({
   path: '/$clienteId',
   getParentRoute: () => AppClientiRoute,
 } as any)
+const Char91DotmcpChar93InvokeToolToolRoute =
+  Char91DotmcpChar93InvokeToolToolRouteImport.update({
+    id: '/.mcp/invoke-tool/$tool',
+    path: '/.mcp/invoke-tool/$tool',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksCheckScadenzeRoute =
   ApiPublicHooksCheckScadenzeRouteImport.update({
     id: '/api/public/hooks/check-scadenze',
@@ -217,6 +244,9 @@ const ApiPublicHooksCheckReminderRitardiRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/mcp': typeof McpRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/approvazioni': typeof AppApprovazioniRoute
   '/assicurazioni': typeof AppAssicurazioniRoute
   '/audit': typeof AppAuditRoute
@@ -242,6 +272,7 @@ export interface FileRoutesByFullPath {
   '/utenti': typeof AppUtentiRoute
   '/whatsapp': typeof AppWhatsappRoute
   '/firma-privacy/$token': typeof FirmaPrivacyTokenRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
   '/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
   '/api/public/inngest': typeof ApiPublicInngestRoute
@@ -251,6 +282,9 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/mcp': typeof McpRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/approvazioni': typeof AppApprovazioniRoute
   '/assicurazioni': typeof AppAssicurazioniRoute
   '/audit': typeof AppAuditRoute
@@ -276,6 +310,7 @@ export interface FileRoutesByTo {
   '/utenti': typeof AppUtentiRoute
   '/whatsapp': typeof AppWhatsappRoute
   '/firma-privacy/$token': typeof FirmaPrivacyTokenRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
   '/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
   '/api/public/inngest': typeof ApiPublicInngestRoute
@@ -287,6 +322,9 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/mcp': typeof McpRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/_app/approvazioni': typeof AppApprovazioniRoute
   '/_app/assicurazioni': typeof AppAssicurazioniRoute
   '/_app/audit': typeof AppAuditRoute
@@ -312,6 +350,7 @@ export interface FileRoutesById {
   '/_app/utenti': typeof AppUtentiRoute
   '/_app/whatsapp': typeof AppWhatsappRoute
   '/firma-privacy/$token': typeof FirmaPrivacyTokenRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_app/clienti/$clienteId': typeof AppClientiClienteIdRoute
   '/_app/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
   '/api/public/inngest': typeof ApiPublicInngestRoute
@@ -323,6 +362,9 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/mcp'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/approvazioni'
     | '/assicurazioni'
     | '/audit'
@@ -348,6 +390,7 @@ export interface FileRouteTypes {
     | '/utenti'
     | '/whatsapp'
     | '/firma-privacy/$token'
+    | '/.mcp/invoke-tool/$tool'
     | '/clienti/$clienteId'
     | '/richieste/$richiestaId'
     | '/api/public/inngest'
@@ -357,6 +400,9 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/mcp'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/approvazioni'
     | '/assicurazioni'
     | '/audit'
@@ -382,6 +428,7 @@ export interface FileRouteTypes {
     | '/utenti'
     | '/whatsapp'
     | '/firma-privacy/$token'
+    | '/.mcp/invoke-tool/$tool'
     | '/clienti/$clienteId'
     | '/richieste/$richiestaId'
     | '/api/public/inngest'
@@ -392,6 +439,9 @@ export interface FileRouteTypes {
     | '/'
     | '/_app'
     | '/login'
+    | '/mcp'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/_app/approvazioni'
     | '/_app/assicurazioni'
     | '/_app/audit'
@@ -417,6 +467,7 @@ export interface FileRouteTypes {
     | '/_app/utenti'
     | '/_app/whatsapp'
     | '/firma-privacy/$token'
+    | '/.mcp/invoke-tool/$tool'
     | '/_app/clienti/$clienteId'
     | '/_app/richieste/$richiestaId'
     | '/api/public/inngest'
@@ -428,7 +479,11 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
+  McpRoute: typeof McpRoute
+  Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
+  Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   FirmaPrivacyTokenRoute: typeof FirmaPrivacyTokenRoute
+  Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiPublicInngestRoute: typeof ApiPublicInngestRoute
   ApiPublicHooksCheckReminderRitardiRoute: typeof ApiPublicHooksCheckReminderRitardiRoute
   ApiPublicHooksCheckScadenzeRoute: typeof ApiPublicHooksCheckScadenzeRoute
@@ -436,6 +491,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -632,6 +694,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppApprovazioniRouteImport
       parentRoute: typeof AppRoute
     }
+    '/.well-known/oauth-protected-resource': {
+      id: '/.well-known/oauth-protected-resource'
+      path: '/.well-known/oauth-protected-resource'
+      fullPath: '/.well-known/oauth-protected-resource'
+      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.mcp/list-tools': {
+      id: '/.mcp/list-tools'
+      path: '/.mcp/list-tools'
+      fullPath: '/.mcp/list-tools'
+      preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/inngest': {
       id: '/api/public/inngest'
       path: '/api/public/inngest'
@@ -652,6 +728,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/clienti/$clienteId'
       preLoaderRoute: typeof AppClientiClienteIdRouteImport
       parentRoute: typeof AppClientiRoute
+    }
+    '/.mcp/invoke-tool/$tool': {
+      id: '/.mcp/invoke-tool/$tool'
+      path: '/.mcp/invoke-tool/$tool'
+      fullPath: '/.mcp/invoke-tool/$tool'
+      preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/public/hooks/check-scadenze': {
       id: '/api/public/hooks/check-scadenze'
@@ -754,7 +837,12 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
+  McpRoute: McpRoute,
+  Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
+  Char91DotwellKnownChar93OauthProtectedResourceRoute:
+    Char91DotwellKnownChar93OauthProtectedResourceRoute,
   FirmaPrivacyTokenRoute: FirmaPrivacyTokenRoute,
+  Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiPublicInngestRoute: ApiPublicInngestRoute,
   ApiPublicHooksCheckReminderRitardiRoute:
     ApiPublicHooksCheckReminderRitardiRoute,
