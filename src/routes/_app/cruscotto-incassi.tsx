@@ -224,12 +224,12 @@ function CruscottoIncassiPage() {
   });
 
   const { data: scadenze, isLoading: loadingScadenze } = useQuery({
-    queryKey: ["cruscotto_incassi_scadenze", anno, meseSel],
+    queryKey: ["cruscotto_incassi_scadenze", anno, meseSel, storeSel],
     enabled: meseSel != null,
     queryFn: async () => {
       const { data, error } = await supabase.rpc(
         "get_cruscotto_incassi_mese_scadenze" as never,
-        { _anno: anno, _mese: meseSel! } as never,
+        { _anno: anno, _mese: meseSel!, _store_id: storeSel } as never,
       );
       if (error) throw error;
       return ((data as unknown) as RigaScadenza[]) ?? [];
