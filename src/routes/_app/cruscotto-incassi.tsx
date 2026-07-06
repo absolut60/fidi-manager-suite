@@ -1073,6 +1073,8 @@ type RigaIncassoPeriodo = {
   cliente_id: string;
   ragione_sociale: string;
   codice_gestionale: string | null;
+  store_id: string | null;
+  store_nome: string | null;
   n_incassi: number;
   totale_incassato: number;
   n_saldi: number;
