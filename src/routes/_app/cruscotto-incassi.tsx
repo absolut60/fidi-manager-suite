@@ -293,26 +293,50 @@ function CruscottoIncassiPage() {
               Andamento mensile per data di scadenza — valori vivi, ricalcolati a ogni apertura.
             </p>
           </div>
-          <div className="flex items-center gap-1 border rounded-md bg-background">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8"
-              onClick={() => { setAnno(anno - 1); setMeseSel(null); }}
-            >
-              <ChevronLeft className="size-4" />
-            </Button>
-            <div className="px-3 text-sm font-semibold tabular-nums min-w-[3.5rem] text-center">
-              {anno}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Selettore Sede: per trasversali mostra "Tutte" + elenco;
+                per ristretti mostra solo la propria (disabilitato). */}
+            {stores.length > 0 && (
+              <Select
+                value={storeSel ?? "__all__"}
+                onValueChange={(v) => {
+                  setStoreSel(v === "__all__" ? null : v);
+                  setMeseSel(null);
+                }}
+                disabled={!trasversale && stores.length <= 1}
+              >
+                <SelectTrigger className="h-8 w-[200px]">
+                  <SelectValue placeholder="Sede" />
+                </SelectTrigger>
+                <SelectContent>
+                  {trasversale && <SelectItem value="__all__">Tutte le sedi</SelectItem>}
+                  {stores.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <div className="flex items-center gap-1 border rounded-md bg-background">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8"
+                onClick={() => { setAnno(anno - 1); setMeseSel(null); }}
+              >
+                <ChevronLeft className="size-4" />
+              </Button>
+              <div className="px-3 text-sm font-semibold tabular-nums min-w-[3.5rem] text-center">
+                {anno}
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8"
+                onClick={() => { setAnno(anno + 1); setMeseSel(null); }}
+              >
+                <ChevronRight className="size-4" />
+              </Button>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8"
-              onClick={() => { setAnno(anno + 1); setMeseSel(null); }}
-            >
-              <ChevronRight className="size-4" />
-            </Button>
           </div>
         </div>
 
