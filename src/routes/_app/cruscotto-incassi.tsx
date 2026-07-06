@@ -728,6 +728,9 @@ function ScadenzeGroupedLista({
                   <TableCell className="text-muted-foreground text-xs font-mono">
                     {g.codice_gestionale ?? "—"}
                   </TableCell>
+                  <TableCell className="text-xs">
+                    {g.store_nome ?? "—"}
+                  </TableCell>
                   <TableCell className={cn("text-right tabular-nums font-medium", importoCls)}>
                     {fmtEuro(g.totale)}
                   </TableCell>
