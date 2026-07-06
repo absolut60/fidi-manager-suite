@@ -1137,7 +1137,7 @@ type SortKey = "cliente" | "n_incassi" | "totale_incassato" | "ultimo_incasso";
 type SortDir = "asc" | "desc";
 type DettSortKey = "cliente" | "codice" | "importo";
 
-function RicercaIncassiBlock() {
+function RicercaIncassiBlock({ storeSel }: { storeSel: string | null }) {
   const oggi = new Date();
   oggi.setHours(0, 0, 0, 0);
   const primoDelMese = new Date(oggi.getFullYear(), oggi.getMonth(), 1);
