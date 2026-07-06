@@ -24,6 +24,47 @@ import { cn } from "@/lib/utils";
 import { InvioMassivoDialog } from "@/components/invio-massivo-dialog";
 import { RegistraPromessaDialog } from "@/components/registra-promessa-dialog";
 import { isRiBa } from "@/lib/spese-insoluto";
+import { useAuth } from "@/hooks/use-auth";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+
+type StoreOpt = { id: string; nome: string };
+
+/** Ruoli che vedono tutte le sedi (specchio server-side di effective_store_filter). */
+function useStorePerimetro() {
+  const { profilo, hasAnyRole } = useAuth();
+  const trasversale = hasAnyRole(
+    "amministratore",
+    "amministrazione",
+    "direzione",
+    "approvatore_liv1",
+    "approvatore_liv2",
+    "approvatore_liv3",
+  );
+  const { data: stores } = useQuery({
+    queryKey: ["stores_perimetro", trasversale, profilo?.store_id],
+    queryFn: async (): Promise<StoreOpt[]> => {
+      if (trasversale) {
+        const { data, error } = await supabase
+          .from("stores")
+          .select("id, nome")
+          .order("nome", { ascending: true });
+        if (error) throw error;
+        return (data ?? []) as StoreOpt[];
+      }
+      if (!profilo?.store_id) return [];
+      const { data, error } = await supabase
+        .from("stores")
+        .select("id, nome")
+        .eq("id", profilo.store_id)
+        .maybeSingle();
+      if (error) throw error;
+      return data ? [data as StoreOpt] : [];
+    },
+  });
+  return { trasversale, stores: stores ?? [] };
+}
 
 export const Route = createFileRoute("/_app/cruscotto-incassi")({
   component: CruscottoIncassiPage,
