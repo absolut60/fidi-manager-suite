@@ -30,7 +30,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SignaturePad, getCanvasDataURL } from "@/components/signature-pad";
 import { generaSchedaCliente } from "@/lib/scheda-pdf";
 import { useAuth } from "@/hooks/use-auth";
-import { useConfig, isClienteAttivo } from "@/hooks/use-config";
+import { useConfig, useConfigReady, isClienteAttivo } from "@/hooks/use-config";
 import { CondizionePagamentoSelect } from "@/components/condizione-pagamento-select";
 import { CategoriaSelect } from "@/components/categoria-select";
 
@@ -141,6 +141,7 @@ function ClientiPage() {
   const { role: _roleEarly, profilo: _profiloEarly } = useAuth();
   const isStoreManager = _roleEarly === "store_manager";
   const config = useConfig();
+  const isConfigReady = useConfigReady();
   const myStoreId = _profiloEarly?.store_id ?? null;
   const [storeFiltro, setStoreFiltro] = useState<string>(
     isStoreManager && myStoreId ? myStoreId : "tutti"
@@ -515,7 +516,7 @@ function ClientiPage() {
   const scadReady = scadenziarioFiltro === "tutti" || !!scadenziarioMap;
 
   const { data: clientiResp, isLoading } = useQuery({
-    queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize, advApplied, sortBy, sortDir }],
+    queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize, advApplied, sortBy, sortDir, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
     queryFn: async () => {
       const built = buildBaseQuery("*, stores(nome, codice)", "exact");
       if ("empty" in built) return { rows: [], count: 0 };
@@ -523,7 +524,7 @@ function ClientiPage() {
       if (error) throw error;
       return { rows: data ?? [], count: count ?? (data?.length ?? 0) };
     },
-    enabled: isListRoute && scadReady && classifReady,
+    enabled: isListRoute && scadReady && classifReady && isConfigReady,
   });
   const clienti = (clientiResp?.rows ?? []) as any[];
   const totaleClienti = clientiResp?.count ?? 0;
