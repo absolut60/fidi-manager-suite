@@ -9,7 +9,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import * as RadixSlider from "@radix-ui/react-slider";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { getFidoAttuale } from "@/lib/fido-cliente";
+import { getFidoAttuale, FIDO_CLIENTE_SELECT } from "@/lib/fido-cliente";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
