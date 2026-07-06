@@ -794,7 +794,7 @@ function ScadenzeGroupedLista({
           <TableRow>
             <TableCell />
             <TableCell />
-            <TableCell colSpan={2} className="font-medium">
+            <TableCell colSpan={3} className="font-medium">
               Totale ({gruppi.length} client{gruppi.length === 1 ? "e" : "i"})
             </TableCell>
             <TableCell className={cn("text-right tabular-nums font-semibold", importoCls)}>
