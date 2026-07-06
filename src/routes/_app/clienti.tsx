@@ -205,21 +205,33 @@ function ClientiPage() {
   const { data: scadenziarioMap } = useQuery({
     queryKey: ["clienti-scadenziario-agg"],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_clienti_scadenziario");
-      if (error) throw error;
       const map = new Map<string, ScadenziarioState>();
-      for (const r of (data ?? []) as any[]) {
-        map.set(r.cliente_id, {
-          totale_scaduto: Number(r.totale_scaduto) || 0,
-          totale_a_scadere: Number(r.totale_a_scadere) || 0,
-          ha_scaduto: !!r.ha_scaduto,
-          ha_a_scadere: !!r.ha_a_scadere,
-        });
+      let offset = 0;
+      const size = 1000;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await supabase
+          .rpc("get_clienti_scadenziario")
+          .range(offset, offset + size - 1);
+        if (error) throw error;
+        const batch = (data ?? []) as any[];
+        for (const r of batch) {
+          map.set(r.cliente_id, {
+            totale_scaduto: Number(r.totale_scaduto) || 0,
+            totale_a_scadere: Number(r.totale_a_scadere) || 0,
+            ha_scaduto: !!r.ha_scaduto,
+            ha_a_scadere: !!r.ha_a_scadere,
+          });
+        }
+        if (batch.length < size) break;
+        offset += size;
+        if (offset > 100000) break;
       }
       return map;
     },
     staleTime: 60_000,
   });
+
 
   // Mappa classificazione (id + colonne necessarie per semaforo e stato fido)
   // Carica tutti i clienti in chunk da 1000 per superare il limite Supabase.
