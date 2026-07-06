@@ -1179,7 +1179,7 @@ function RicercaIncassiBlock({ storeSel }: { storeSel: string | null }) {
   }
 
   const { data: righe, isLoading, isFetching } = useQuery({
-    queryKey: ["ricerca_incassi_periodo", dal, al, clienteDebounced, metodi.slice().sort().join(",")],
+    queryKey: ["ricerca_incassi_periodo", dal, al, clienteDebounced, metodi.slice().sort().join(","), storeSel],
     queryFn: async () => {
       const { data, error } = await supabase.rpc(
         "get_incassi_periodo" as never,
@@ -1188,6 +1188,7 @@ function RicercaIncassiBlock({ storeSel }: { storeSel: string | null }) {
           _al: al,
           _cliente_search: clienteDebounced || null,
           _metodi: metodi.length === METODI_OPZIONI.length ? null : metodi,
+          _store_id: storeSel,
         } as never,
       );
       if (error) throw error;
