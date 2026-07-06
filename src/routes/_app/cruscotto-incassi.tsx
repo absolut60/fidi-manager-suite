@@ -175,12 +175,19 @@ function CruscottoIncassiPage() {
     setSelezionati(new Set());
   }, [meseSel, anno]);
 
+  const { trasversale, stores } = useStorePerimetro();
+  // Sede selezionata: null = "tutte le sedi consentite" (per trasversali).
+  // Per utenti ristretti il server IGNORA comunque il valore e forza la loro sede.
+  const [storeSel, setStoreSel] = useState<string | null>(null);
+  // Reset selezione clienti quando cambia sede
+  useEffect(() => { setSelezionati(new Set()); }, [storeSel]);
+
   const { data: mensile, isLoading } = useQuery({
-    queryKey: ["cruscotto_incassi_mensile", anno],
+    queryKey: ["cruscotto_incassi_mensile", anno, storeSel],
     queryFn: async () => {
       const { data, error } = await supabase.rpc(
         "get_cruscotto_incassi_mensile" as never,
-        { _anno: anno } as never,
+        { _anno: anno, _store_id: storeSel } as never,
       );
       if (error) throw error;
       return ((data as unknown) as RigaMese[]) ?? [];
@@ -204,12 +211,12 @@ function CruscottoIncassiPage() {
   const dettaglioMese = meseSel != null ? righe.find((r) => r.mese === meseSel) : null;
 
   const { data: dettaglio, isLoading: loadingDettaglio } = useQuery({
-    queryKey: ["cruscotto_incassi_dettaglio", anno, meseSel],
+    queryKey: ["cruscotto_incassi_dettaglio", anno, meseSel, storeSel],
     enabled: meseSel != null,
     queryFn: async () => {
       const { data, error } = await supabase.rpc(
         "get_cruscotto_incassi_mese_dettaglio" as never,
-        { _anno: anno, _mese: meseSel! } as never,
+        { _anno: anno, _mese: meseSel!, _store_id: storeSel } as never,
       );
       if (error) throw error;
       return ((data as unknown) as RigaDettaglio[]) ?? [];
