@@ -688,6 +688,7 @@ function ScadenzeGroupedLista({
             <TableHead className="w-24">
               <SortHeader<DettSortKey> label="Cod." col="codice" sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
             </TableHead>
+            <TableHead className="w-32">Sede</TableHead>
             <TableHead className="text-right whitespace-nowrap">
               <SortHeader<DettSortKey> label={importoLabel} col="importo" sortKey={sortKey} sortDir={sortDir} onSort={onSort} align="right" />
             </TableHead>
