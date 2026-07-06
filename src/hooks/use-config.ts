@@ -48,6 +48,24 @@ export function useConfig(): AppConfig {
   return cfg;
 }
 
+// Flag "config pronto": true solo quando la query configurazioni ha risolto
+// dal DB. Serve a evitare che query dipendenti dal config partano con i
+// DEFAULTS e producano risultati sbagliati (es. cutoff cliente attivo).
+export function useConfigReady(): boolean {
+  const { data } = useQuery({
+    queryKey: ["configurazioni"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("configurazioni")
+        .select("chiave, valore");
+      if (error) throw error;
+      return data ?? [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  return !!data;
+}
+
 // Calcola se un cliente è attivo in base all'ultima data fatturazione
 // e al cutoff configurato — usa questo invece del campo cliente_attivo dal DB
 // Regola "cliente ATTIVO" (centralizzata, unica fonte di verità):
