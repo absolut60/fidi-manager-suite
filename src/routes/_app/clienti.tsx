@@ -583,7 +583,7 @@ function ClientiPage() {
     (filtroBlocco !== "tutti" ? 1 : 0) +
     (filtroLegale !== "tutti" ? 1 : 0) +
     (filtroAssic !== "tutti" ? 1 : 0) +
-    (filtroTipoSoggetto !== "tutti" ? 1 : 0) +
+    (filtroTipoSoggetto !== "giuridica" ? 1 : 0) +
     ((sliderCommitted[0] !== FIDO_RANGE_MIN || sliderCommitted[1] !== FIDO_RANGE_MAX) ? 1 : 0);
 
   function resetFiltri() {
