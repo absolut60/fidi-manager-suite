@@ -1139,6 +1139,18 @@ function ClientiPage() {
             <span className="ml-1">— <strong className="text-foreground">{totaleClienti}</strong> clienti totali</span>
           </span>
           {attiviCount > 0 && <span>(filtri attivi: {attiviCount})</span>}
+          {filtroTipoSoggetto === "giuridica" && (
+            <span className="text-xs text-muted-foreground italic">
+              Privati esclusi ·{" "}
+              <button
+                type="button"
+                onClick={() => setFiltroTipoSoggetto("tutti")}
+                className="underline hover:text-foreground"
+              >
+                mostra tutti
+              </button>
+            </span>
+          )}
           <span className="ml-auto flex items-center gap-2">
             <span className="text-xs">Per pagina:</span>
             <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
