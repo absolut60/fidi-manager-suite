@@ -865,11 +865,11 @@ function ClientiPage() {
 
   const TipoSoggettoSelect = (
     <Select value={filtroTipoSoggetto} onValueChange={(v) => setFiltroTipoSoggetto(v as typeof filtroTipoSoggetto)}>
-      <SelectTrigger className="w-full"><SelectValue placeholder="Tipo soggetto" /></SelectTrigger>
+      <SelectTrigger className="w-full"><SelectValue placeholder="Tipo cliente" /></SelectTrigger>
       <SelectContent>
-        <SelectItem value="tutti">Tutti</SelectItem>
-        <SelectItem value="fisica">Persona fisica</SelectItem>
-        <SelectItem value="giuridica">Persona giuridica</SelectItem>
+        <SelectItem value="giuridica">Solo Imprese</SelectItem>
+        <SelectItem value="fisica">Solo Privati</SelectItem>
+        <SelectItem value="tutti">Tutti (privati + imprese)</SelectItem>
       </SelectContent>
     </Select>
   );
