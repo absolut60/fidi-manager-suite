@@ -258,18 +258,20 @@ function ClientiPage() {
     staleTime: 60_000,
   });
 
-  // ID set per filtro scadenziario
+  // ID set per filtro "Scaduto" (con / senza scaduto)
   const scadenziarioIdsFilter = useMemo(() => {
     if (!scadenziarioMap || scadenziarioFiltro === "tutti") return null;
-    const ids: string[] = [];
-    if (scadenziarioFiltro === "scaduto") {
+    if (scadenziarioFiltro === "con_scaduto") {
+      const ids: string[] = [];
       for (const [id, s] of scadenziarioMap) if (s.ha_scaduto) ids.push(id);
-    } else if (scadenziarioFiltro === "a_scadere") {
-      for (const [id, s] of scadenziarioMap) if (s.ha_a_scadere && !s.ha_scaduto) ids.push(id);
-    } else if (scadenziarioFiltro === "in_regola") {
-      return { mode: "exclude" as const, ids: Array.from(scadenziarioMap.keys()) };
+      return { mode: "include" as const, ids };
     }
-    return { mode: "include" as const, ids };
+    if (scadenziarioFiltro === "senza_scaduto") {
+      const ids: string[] = [];
+      for (const [id, s] of scadenziarioMap) if (s.ha_scaduto) ids.push(id);
+      return { mode: "exclude" as const, ids };
+    }
+    return null;
   }, [scadenziarioMap, scadenziarioFiltro]);
 
   // ID set per filtro "A scadere" (scadenze aperte, non scadute, entro N giorni)
