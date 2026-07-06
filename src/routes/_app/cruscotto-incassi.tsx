@@ -618,6 +618,7 @@ function ScadenzeGroupedLista({
           bloccato: r.bloccato,
           email: r.email,
           pec: r.pec,
+          store_nome: r.store_nome,
           totale: 0,
           scadenze: [],
         };
