@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, useNavigate, useRouterState } from "@tanstack/
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import { Plus, Search, Building, MapPin, FileCheck2, FileX2, ArrowLeft, ArrowRight, Check, Pencil, PenTool, FileText, SlidersHorizontal, X, AlertCircle, Clock, CheckCircle2, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown, MessageSquare } from "lucide-react";
+import { Plus, Search, Building, MapPin, FileCheck2, FileX2, ArrowLeft, ArrowRight, Check, Pencil, PenTool, FileText, SlidersHorizontal, X, AlertCircle, Clock, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown, MessageSquare } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -1125,7 +1125,8 @@ function ClientiPage() {
                   <TableHead>Punto vendita</TableHead>
                   <TableHead className="text-right"><SortHeader col="fido_gestionale" label="Fido attuale" align="right" /></TableHead>
                   <TableHead className="text-right"><SortHeader col="fido_residuo" label="Fido residuo" align="right" /></TableHead>
-                  <TableHead>Scadenziario</TableHead>
+                  <TableHead className="whitespace-nowrap">Scaduto</TableHead>
+                  <TableHead className="whitespace-nowrap">A scadere</TableHead>
                   <TableHead>Privacy</TableHead>
                   <TableHead>Assic.</TableHead>
                   <TableHead>Stato</TableHead>
@@ -1190,20 +1191,21 @@ function ClientiPage() {
                       {fmtEuro(residuo)}
                     </TableCell>
                     <TableCell>
-                      {!sc ? (
-                        <span className="text-muted-foreground text-sm">—</span>
-                      ) : sc.ha_scaduto ? (
+                      {sc && sc.ha_scaduto ? (
                         <Badge className="bg-destructive/15 text-destructive hover:bg-destructive/20 gap-1" title="Importo scaduto">
                           <AlertCircle className="size-3" /> {fmtEuro(sc.totale_scaduto)}
                         </Badge>
-                      ) : sc.ha_a_scadere ? (
+                      ) : (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {sc && sc.ha_a_scadere ? (
                         <Badge className="bg-yellow-500/15 text-yellow-700 dark:text-yellow-500 hover:bg-yellow-500/20 gap-1" title="A scadere">
                           <Clock className="size-3" /> {fmtEuro(sc.totale_a_scadere)}
                         </Badge>
                       ) : (
-                        <Badge className="bg-success/15 text-success hover:bg-success/20 gap-1" title="Tutto pagato">
-                          <CheckCircle2 className="size-3" /> In regola
-                        </Badge>
+                        <span className="text-muted-foreground text-sm">—</span>
                       )}
                     </TableCell>
                     <TableCell>
