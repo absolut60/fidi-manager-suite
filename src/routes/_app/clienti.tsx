@@ -905,7 +905,7 @@ function ClientiPage() {
   if (filtroBlocco !== "tutti") activeChips.push({ key: "blocco", label: filtroBlocco === "bloccati" ? "Bloccati" : "Non bloccati", onRemove: () => setFiltroBlocco("tutti") });
   if (filtroLegale !== "tutti") activeChips.push({ key: "legale", label: filtroLegale === "in_legale" ? "In gestione legale" : "Non in gestione legale", onRemove: () => setFiltroLegale("tutti") });
   if (filtroAssic !== "tutti") activeChips.push({ key: "assic", label: filtroAssic === "assicurati" ? "Assicurati" : "Non assicurati", onRemove: () => setFiltroAssic("tutti") });
-  if (filtroTipoSoggetto !== "tutti") activeChips.push({ key: "tipo", label: filtroTipoSoggetto === "fisica" ? "Persona fisica" : "Persona giuridica", onRemove: () => setFiltroTipoSoggetto("tutti") });
+  if (filtroTipoSoggetto !== "giuridica") activeChips.push({ key: "tipo", label: filtroTipoSoggetto === "fisica" ? "Tipo: Solo Privati" : "Tipo: Tutti (privati+imprese)", onRemove: () => setFiltroTipoSoggetto("giuridica") });
   if (sliderCommitted[0] !== FIDO_RANGE_MIN || sliderCommitted[1] !== FIDO_RANGE_MAX) {
     activeChips.push({ key: "slider", label: `Fido slider: ${fmtEuro(sliderCommitted[0])} → ${fmtEuro(sliderCommitted[1])}`, onRemove: () => { setSliderDisplay([FIDO_RANGE_MIN, FIDO_RANGE_MAX]); setSliderCommitted([FIDO_RANGE_MIN, FIDO_RANGE_MAX]); } });
   }
