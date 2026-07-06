@@ -1071,6 +1071,15 @@ function ClientiPage() {
           if (patch.scadenziarioFiltro !== undefined) setScadenziarioFiltro(patch.scadenziarioFiltro);
         }}
         currentMain={{ filtroBlocco, filtroAssic, scadenziarioFiltro }}
+        movedFilters={
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div><Label className="text-xs">Bloccati</Label>{BloccoSelect}</div>
+            <div><Label className="text-xs">Gestione legale</Label>{LegaleSelect}</div>
+            <div><Label className="text-xs">Assicurazione</Label>{AssicSelect}</div>
+            <div><Label className="text-xs">Tipo soggetto</Label>{TipoSoggettoSelect}</div>
+          </div>
+        }
+        fidoSlider={FidoRangeSlider}
       />
 
 
