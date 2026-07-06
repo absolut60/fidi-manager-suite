@@ -597,7 +597,7 @@ function ClientiPage() {
     setPrivacyFiltro("tutti");
     setFiltroAssic("tutti");
     setFiltroLegale("tutti");
-    setFiltroTipoSoggetto("tutti");
+    setFiltroTipoSoggetto("giuridica");
     setScadenziarioFiltro("tutti");
     setTotaleRischioFiltro("tutti");
     setAScadereFiltro("tutti");
