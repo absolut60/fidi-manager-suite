@@ -773,13 +773,6 @@ function ScadenzeGroupedLista({
                           onClick={() => onPromessa(g.cliente_id, g.ragione_sociale)}
                           icon={<HandCoins className="size-4" />}
                         />
-                        <IconAction
-                          label="Apri scheda cliente"
-                          asChild
-                          icon={<ExternalLink className="size-4" />}
-                        >
-                          <Link to="/clienti/$clienteId" params={{ clienteId: g.cliente_id }} />
-                        </IconAction>
                       </div>
                     </TableCell>
                   )}
