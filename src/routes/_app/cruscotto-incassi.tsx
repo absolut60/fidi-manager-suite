@@ -1171,8 +1171,10 @@ function RicercaIncassiBlock({ storeSel }: { storeSel: string | null }) {
   function applicaScorciatoia(s: Exclude<Scorciatoia, null>) {
     const now = new Date();
     now.setHours(0, 0, 0, 0);
-    if (s === "oggi") {
-      setDal(toISO(now)); setAl(toISO(now));
+    if (s === "ieri") {
+      const yesterday = new Date(now); yesterday.setDate(yesterday.getDate() - 1);
+      setDal(toISO(yesterday)); setAl(toISO(yesterday));
+    } else if (s === "oggi") {
     } else if (s === "mese") {
       setDal(toISO(new Date(now.getFullYear(), now.getMonth(), 1)));
       setAl(toISO(now));
