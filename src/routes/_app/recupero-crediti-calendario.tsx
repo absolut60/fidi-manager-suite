@@ -461,6 +461,14 @@ function CalendarioPage() {
             </span>
           ))}
           <span className="inline-flex items-center gap-1.5">
+            <span className="inline-block size-3 rounded-sm" style={{ backgroundColor: "#0ea5e9" }} />
+            Rata piano di rientro
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-block size-3 rounded-sm" style={{ backgroundColor: "#16a34a" }} />
+            Promessa di pagamento
+          </span>
+          <span className="inline-flex items-center gap-1.5">
             <span className="inline-block size-3 rounded-sm border-2 border-red-600 bg-red-200" />
             Arretrate (data passata)
           </span>
