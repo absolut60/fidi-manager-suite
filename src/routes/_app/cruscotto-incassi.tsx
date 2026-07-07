@@ -1108,7 +1108,7 @@ function toISO(d: Date): string {
   return `${y}-${m}-${g}`;
 }
 
-type Scorciatoia = "oggi" | "mese" | "7gg" | "mese_scorso" | null;
+type Scorciatoia = "ieri" | "oggi" | "mese" | "7gg" | "mese_scorso" | null;
 
 function SortHeader<K extends string>({
   label, col, sortKey, sortDir, onSort, align = "left",
@@ -1171,7 +1171,10 @@ function RicercaIncassiBlock({ storeSel }: { storeSel: string | null }) {
   function applicaScorciatoia(s: Exclude<Scorciatoia, null>) {
     const now = new Date();
     now.setHours(0, 0, 0, 0);
-    if (s === "oggi") {
+    if (s === "ieri") {
+      const yesterday = new Date(now); yesterday.setDate(yesterday.getDate() - 1);
+      setDal(toISO(yesterday)); setAl(toISO(yesterday));
+    } else if (s === "oggi") {
       setDal(toISO(now)); setAl(toISO(now));
     } else if (s === "mese") {
       setDal(toISO(new Date(now.getFullYear(), now.getMonth(), 1)));
@@ -1296,6 +1299,7 @@ function RicercaIncassiBlock({ storeSel }: { storeSel: string | null }) {
       <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-1.5">
           {([
+            ["ieri", "Ieri"],
             ["oggi", "Oggi"],
             ["mese", "Questo mese"],
             ["7gg", "Ultimi 7 giorni"],
