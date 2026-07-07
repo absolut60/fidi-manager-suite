@@ -1108,7 +1108,7 @@ function toISO(d: Date): string {
   return `${y}-${m}-${g}`;
 }
 
-type Scorciatoia = "oggi" | "mese" | "7gg" | "mese_scorso" | null;
+type Scorciatoia = "ieri" | "oggi" | "mese" | "7gg" | "mese_scorso" | null;
 
 function SortHeader<K extends string>({
   label, col, sortKey, sortDir, onSort, align = "left",
