@@ -1,8 +1,7 @@
-// Wizard "Nuovo piano di rientro":
 // 1) Livello 1/2  2) Selezione scadenze aperte  3) Rate libere (no vincolo)
 // 4) Note  →  Salva (crea piano, documenti, rate + registra azione recupero).
-import { useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Plus, Trash2, CalendarClock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,12 +13,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { fmtEuro, fmtDate } from "@/lib/piani-rientro";
+import { fmtEuro } from "@/lib/piani-rientro";
+import { SelettoreScadenzeAperte, type ScadenzaAperta } from "@/components/selettore-scadenze-aperte";
 
 type Props = {
   open: boolean;
