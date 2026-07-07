@@ -78,15 +78,8 @@ export function PianoRientroNuovoDialog({ open, onOpenChange, clienteId, cliente
     setSaving(false);
   }
 
-  function toggleScadenza(id: string) {
-    const next = new Set(selectedScadenze);
-    if (next.has(id)) next.delete(id); else next.add(id);
-    setSelectedScadenze(next);
-  }
-  function toggleAll(v: boolean) {
-    if (!v) { setSelectedScadenze(new Set()); return; }
-    setSelectedScadenze(new Set((scadenze ?? []).map((s) => s.id)));
-  }
+  // toggleScadenza / toggleAll ora sono gestiti internamente dal
+  // componente SelettoreScadenzeAperte tramite selectedScadenze/onChange.
 
   function aggiungiRata() {
     setRate((r) => [...r, { data: addDaysISO(30 * (r.length + 1)), importo: "" }]);
