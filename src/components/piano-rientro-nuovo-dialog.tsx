@@ -121,7 +121,7 @@ export function PianoRientroNuovoDialog({ open, onOpenChange, clienteId, cliente
 
       // 2) documenti
       const docsRows = Array.from(selectedScadenze).map((sid) => {
-        const s = (scadenze ?? []).find((x) => x.id === sid);
+        const s = scadenzeCaricate.find((x) => x.id === sid);
         return {
           piano_id: pianoId,
           scadenza_id: sid,
