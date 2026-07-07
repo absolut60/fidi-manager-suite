@@ -1,8 +1,7 @@
-// Wizard "Nuovo piano di rientro":
 // 1) Livello 1/2  2) Selezione scadenze aperte  3) Rate libere (no vincolo)
 // 4) Note  →  Salva (crea piano, documenti, rate + registra azione recupero).
-import { useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Plus, Trash2, CalendarClock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,12 +13,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { fmtEuro, fmtDate } from "@/lib/piani-rientro";
+import { fmtEuro } from "@/lib/piani-rientro";
+import { SelettoreScadenzeAperte, type ScadenzaAperta } from "@/components/selettore-scadenze-aperte";
 
 type Props = {
   open: boolean;
@@ -29,13 +26,7 @@ type Props = {
   onCreated?: (pianoId: string) => void;
 };
 
-type ScadenzaAperta = {
-  id: string;
-  numero_documento: string | null;
-  data_scadenza: string | null;
-  importo_scadenza: number | null;
-  giorni_ritardo: number | null;
-};
+// ScadenzaAperta ora è importata da @/components/selettore-scadenze-aperte.
 
 type RataForm = { data: string; importo: string };
 
@@ -57,57 +48,18 @@ export function PianoRientroNuovoDialog({ open, onOpenChange, clienteId, cliente
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const { data: scadenze, isLoading } = useQuery({
-    queryKey: ["piano-scadenze-aperte", clienteId],
-    enabled: open,
-    queryFn: async () => {
-      // "Aperta" = data_pagamento_effettiva IS NULL (definizione canonica scadenziario).
-      const { data, error } = await supabase
-        .from("scadenze")
-        .select("id, numero_documento, data_scadenza, importo_scadenza, giorni_ritardo, stato_contabile, data_pagamento_effettiva")
-        .eq("cliente_id", clienteId)
-        .is("data_pagamento_effettiva", null)
-        .order("data_scadenza", { ascending: true, nullsFirst: false });
-      if (error) throw error;
-      return (data ?? []).filter((s) => (s.importo_scadenza ?? 0) > 0) as ScadenzaAperta[];
+  // Scadenze aperte + totale selezionato sono gestiti dal componente
+  // SelettoreScadenzeAperte (fonte unica). Qui teniamo solo lo specchio
+  // necessario al salvataggio (importo_alla_selezione per ogni riga scelta).
+  const [scadenzeCaricate, setScadenzeCaricate] = useState<ScadenzaAperta[]>([]);
+  const [totaleSelezionato, setTotaleSelezionato] = useState<number>(0);
+  const handleSelettoreState = useCallback(
+    (info: { scadenze: ScadenzaAperta[]; totaleSelezionato: number }) => {
+      setScadenzeCaricate(info.scadenze);
+      setTotaleSelezionato(info.totaleSelezionato);
     },
-  });
-
-  // Mappa "scadenza → piani precedenti in cui compare" (solo informativa, mai bloccante).
-  // Il principio è: una scadenza PUÒ essere in più piani (es. piano non rispettato → nuovo piano
-  // con le rimanenze). Mostriamo solo un avviso "già in piano del …".
-  const { data: scadenzeInAltriPiani = new Map<string, { piano_id: string; created_at: string; stato: string }[]>() } = useQuery({
-    queryKey: ["piano-scadenze-altri-piani", clienteId],
-    enabled: open,
-    queryFn: async () => {
-      const { data: piani, error: eP } = await supabase
-        .from("piani_rientro" as never)
-        .select("id, created_at, stato")
-        .eq("cliente_id", clienteId);
-      if (eP) throw eP;
-      const pRows = (piani ?? []) as unknown as Array<{ id: string; created_at: string; stato: string }>;
-      if (pRows.length === 0) return new Map();
-      const { data: docs, error: eD } = await supabase
-        .from("piani_rientro_documenti" as never)
-        .select("piano_id, scadenza_id")
-        .in("piano_id", pRows.map((p) => p.id));
-      if (eD) throw eD;
-      const pById = new Map(pRows.map((p) => [p.id, { piano_id: p.id, created_at: p.created_at, stato: p.stato }]));
-      const map = new Map<string, { piano_id: string; created_at: string; stato: string }[]>();
-      for (const d of (docs ?? []) as never as Array<{ piano_id: string; scadenza_id: string }>) {
-        const p = pById.get(d.piano_id);
-        if (!p) continue;
-        if (!map.has(d.scadenza_id)) map.set(d.scadenza_id, []);
-        map.get(d.scadenza_id)!.push(p);
-      }
-      return map;
-    },
-  });
-
-  const totaleSelezionato = useMemo(() => {
-    const set = selectedScadenze;
-    return (scadenze ?? []).reduce((acc, s) => acc + (set.has(s.id) ? Number(s.importo_scadenza ?? 0) : 0), 0);
-  }, [scadenze, selectedScadenze]);
+    [],
+  );
 
   const totaleRate = useMemo(() => {
     return rate.reduce((acc, r) => {
@@ -126,15 +78,8 @@ export function PianoRientroNuovoDialog({ open, onOpenChange, clienteId, cliente
     setSaving(false);
   }
 
-  function toggleScadenza(id: string) {
-    const next = new Set(selectedScadenze);
-    if (next.has(id)) next.delete(id); else next.add(id);
-    setSelectedScadenze(next);
-  }
-  function toggleAll(v: boolean) {
-    if (!v) { setSelectedScadenze(new Set()); return; }
-    setSelectedScadenze(new Set((scadenze ?? []).map((s) => s.id)));
-  }
+  // toggleScadenza / toggleAll ora sono gestiti internamente dal
+  // componente SelettoreScadenzeAperte tramite selectedScadenze/onChange.
 
   function aggiungiRata() {
     setRate((r) => [...r, { data: addDaysISO(30 * (r.length + 1)), importo: "" }]);
@@ -176,7 +121,7 @@ export function PianoRientroNuovoDialog({ open, onOpenChange, clienteId, cliente
 
       // 2) documenti
       const docsRows = Array.from(selectedScadenze).map((sid) => {
-        const s = (scadenze ?? []).find((x) => x.id === sid);
+        const s = scadenzeCaricate.find((x) => x.id === sid);
         return {
           piano_id: pianoId,
           scadenza_id: sid,
@@ -231,8 +176,7 @@ export function PianoRientroNuovoDialog({ open, onOpenChange, clienteId, cliente
     }
   }
 
-  const allSelected = (scadenze ?? []).length > 0 && (scadenze ?? []).every((s) => selectedScadenze.has(s.id));
-  const someSelected = selectedScadenze.size > 0 && !allSelected;
+  // allSelected/someSelected sono derivati dentro SelettoreScadenzeAperte.
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!saving) { if (!v) reset(); onOpenChange(v); } }}>
@@ -260,74 +204,16 @@ export function PianoRientroNuovoDialog({ open, onOpenChange, clienteId, cliente
             </RadioGroup>
           </div>
 
-          {/* 2. Documenti */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <Label className="text-sm font-semibold">2. Documenti (scadenze aperte)</Label>
-              <div className="text-sm">
-                Totale selezionato: <strong className="tabular-nums">{fmtEuro(totaleSelezionato)}</strong>
-                {" · "}<span className="text-muted-foreground">{selectedScadenze.size} righe</span>
-              </div>
-            </div>
-            <div className="border rounded-md max-h-72 overflow-y-auto">
-              {isLoading ? <Skeleton className="h-24 m-2" /> : (scadenze ?? []).length === 0 ? (
-                <div className="p-4 text-sm text-muted-foreground italic">Nessuna scadenza aperta per questo cliente.</div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-10">
-                        <Checkbox
-                          checked={allSelected ? true : someSelected ? "indeterminate" : false}
-                          onCheckedChange={(v) => toggleAll(!!v)}
-                        />
-                      </TableHead>
-                      <TableHead>Documento</TableHead>
-                      <TableHead>Data scadenza</TableHead>
-                      <TableHead className="text-right">Importo</TableHead>
-                      <TableHead className="text-right">gg ritardo</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {(scadenze ?? []).map((s) => {
-                      const sel = selectedScadenze.has(s.id);
-                      const altriPiani = scadenzeInAltriPiani.get(s.id) ?? [];
-                      return (
-                        <TableRow key={s.id} className="cursor-pointer" onClick={() => toggleScadenza(s.id)}>
-                          <TableCell onClick={(e) => e.stopPropagation()}>
-                            <Checkbox checked={sel} onCheckedChange={() => toggleScadenza(s.id)} />
-                          </TableCell>
-                          <TableCell className="font-mono text-xs">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span>{s.numero_documento ?? "—"}</span>
-                              {altriPiani.length > 0 && (
-                                <Badge
-                                  variant="outline"
-                                  className="bg-amber-500/10 text-amber-700 border-amber-500/30 text-[10px] font-normal"
-                                  title={altriPiani
-                                    .map((p: { piano_id: string; created_at: string; stato: string }) => `Piano del ${fmtDate(p.created_at)} — ${p.stato}`)
-                                    .join("\n")}
-                                >
-                                  già in {altriPiani.length === 1 ? "un piano" : `${altriPiani.length} piani`} del {fmtDate(altriPiani[0].created_at)}
-                                </Badge>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-sm">{fmtDate(s.data_scadenza)}</TableCell>
-                          <TableCell className="text-right tabular-nums">{fmtEuro(s.importo_scadenza)}</TableCell>
-                          <TableCell className="text-right">
-                            {(s.giorni_ritardo ?? 0) > 0 ? (
-                              <Badge className="bg-orange-500 text-white hover:bg-orange-500">{s.giorni_ritardo} gg</Badge>
-                            ) : "—"}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              )}
-            </div>
-          </div>
+          {/* 2. Documenti (fonte unica: SelettoreScadenzeAperte) */}
+          <SelettoreScadenzeAperte
+            clienteId={clienteId}
+            open={open}
+            selectedIds={selectedScadenze}
+            onChange={setSelectedScadenze}
+            mostraBadgePiani={true}
+            titolo="2. Documenti (scadenze aperte)"
+            onStateChange={handleSelettoreState}
+          />
 
           {/* 3. Rate */}
           <div>
