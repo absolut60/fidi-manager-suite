@@ -717,9 +717,16 @@ function ScadenzeGroupedLista({
                   <TableCell>
                     {isOpen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
                   </TableCell>
-                  <TableCell className="font-medium">
+                  <TableCell className="font-medium" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center gap-2">
-                      <span>{g.ragione_sociale}</span>
+                      <Link
+                        to="/clienti/$clienteId"
+                        params={{ clienteId: g.cliente_id }}
+                        search={{ tab: "insoluti", insolutiTab: "scadenziario" }}
+                        className="font-medium hover:underline hover:text-primary cursor-pointer"
+                      >
+                        {g.ragione_sociale}
+                      </Link>
                       <span className="text-xs text-muted-foreground">
                         ({g.scadenze.length} scadenz{g.scadenze.length === 1 ? "a" : "e"})
                       </span>
