@@ -295,13 +295,27 @@ function CalendarioPage() {
   }
 
   function handleEventClick(info: EventClickArg) {
-    const props = info.event.extendedProps as { kind?: "azione" | "rata_piano"; azione?: AzioneRow; rata?: { piano: { cliente: { id: string } }; piano_id: string } };
+    const props = info.event.extendedProps as {
+      kind?: "azione" | "rata_piano" | "promessa";
+      azione?: AzioneRow;
+      rata?: { piano: { cliente: { id: string } }; piano_id: string };
+      promessa?: { cliente_id: string; cliente: { id: string } | null };
+    };
     if (props.kind === "rata_piano" && props.rata) {
       const clienteId = props.rata.piano.cliente.id;
       navigate({
         to: "/clienti/$clienteId",
         params: { clienteId },
         search: { tab: "insoluti", insolutiTab: "piani" } as never,
+      });
+      return;
+    }
+    if (props.kind === "promessa" && props.promessa) {
+      const clienteId = props.promessa.cliente?.id ?? props.promessa.cliente_id;
+      navigate({
+        to: "/clienti/$clienteId",
+        params: { clienteId },
+        search: { tab: "insoluti", insolutiTab: "scadenziario" } as never,
       });
       return;
     }
