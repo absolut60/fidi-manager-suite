@@ -8,15 +8,19 @@ import interactionPlugin from "@fullcalendar/interaction";
 import itLocale from "@fullcalendar/core/locales/it";
 import type { DatesSetArg, EventClickArg, EventDropArg, DateSelectArg } from "@fullcalendar/core";
 import type { DateClickArg } from "@fullcalendar/interaction";
-import { CalendarClock, ExternalLink, ChevronDown } from "lucide-react";
+import { CalendarClock, ExternalLink, ChevronDown, Plus, HandCoins, Search } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CreaAzioneDialog } from "@/components/crea-azione-dialog";
 import { ModificaAzioneDialog, type AzioneModificabile } from "@/components/modifica-azione-dialog";
+import { RegistraPromessaDialog } from "@/components/registra-promessa-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { useEffect } from "react";
 import {
   Select,
   SelectContent,
@@ -120,6 +124,8 @@ function CalendarioPage() {
   const [openAzione, setOpenAzione] = useState<AzioneRow | null>(null);
   const [creaOpen, setCreaOpen] = useState(false);
   const [creaData, setCreaData] = useState<Date | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [promessaTarget, setPromessaTarget] = useState<{ id: string; ragione_sociale: string } | null>(null);
 
   const { data: stores } = useQuery({
     queryKey: ["stores-list"],
@@ -182,6 +188,28 @@ function CalendarioPage() {
     },
   });
 
+  // Promesse di pagamento: sempre visibili, non filtrate dai TIPI. Filtrate solo per store.
+  const promesseQuery = useQuery({
+    queryKey: ["promesse-calendario", range?.start ?? null, range?.end ?? null, storeId],
+    enabled: !!range,
+    queryFn: async () => {
+      const startISO = range!.start.slice(0, 10);
+      const endISO = range!.end.slice(0, 10);
+      let q = supabase
+        .from("azioni_recupero")
+        .select("id, cliente_id, data_promessa_pagamento, importo_riferimento, note, cliente:clienti!inner(id, ragione_sociale, store_id)")
+        .eq("esito", "promessa_pagamento")
+        .not("data_promessa_pagamento", "is", null)
+        .gte("data_promessa_pagamento", startISO)
+        .lt("data_promessa_pagamento", endISO);
+      if (storeId !== "all") q = q.eq("cliente.store_id", storeId);
+      const { data, error } = await q;
+      if (error) throw error;
+      type PR = { id: string; cliente_id: string; data_promessa_pagamento: string; importo_riferimento: number | null; note: string | null; cliente: { id: string; ragione_sociale: string; store_id: string | null } | null };
+      return (data ?? []) as unknown as PR[];
+    },
+  });
+
   const events = useMemo(() => {
     const now = Date.now();
     const azEvents = (azioniQuery.data ?? []).map((a) => {
@@ -217,8 +245,27 @@ function CalendarioPage() {
         extendedProps: { kind: "rata_piano" as const, rata: r },
       };
     });
-    return [...azEvents, ...rateEvents];
-  }, [azioniQuery.data, rateQuery.data]);
+    const promesseEvents = (promesseQuery.data ?? []).map((p) => {
+      const start = new Date(p.data_promessa_pagamento + "T09:00:00");
+      const isOverdue = start.getTime() < now;
+      const color = "#16a34a"; // green-600
+      const importoFmt = p.importo_riferimento != null
+        ? " · " + new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(Number(p.importo_riferimento))
+        : "";
+      return {
+        id: `promessa-${p.id}`,
+        title: `Promessa · ${p.cliente?.ragione_sociale ?? "—"}${importoFmt}`,
+        start: start.toISOString(),
+        backgroundColor: isOverdue ? hexToRgba(color, 0.35) : color,
+        borderColor: isOverdue ? "#dc2626" : color,
+        textColor: isOverdue ? "#7f1d1d" : "#ffffff",
+        classNames: isOverdue ? ["azione-arretrata"] : [],
+        editable: false,
+        extendedProps: { kind: "promessa" as const, promessa: p },
+      };
+    });
+    return [...azEvents, ...rateEvents, ...promesseEvents];
+  }, [azioniQuery.data, rateQuery.data, promesseQuery.data]);
 
   function handleDatesSet(arg: DatesSetArg) {
     const next = { start: arg.start.toISOString(), end: arg.end.toISOString() };
@@ -248,13 +295,27 @@ function CalendarioPage() {
   }
 
   function handleEventClick(info: EventClickArg) {
-    const props = info.event.extendedProps as { kind?: "azione" | "rata_piano"; azione?: AzioneRow; rata?: { piano: { cliente: { id: string } }; piano_id: string } };
+    const props = info.event.extendedProps as {
+      kind?: "azione" | "rata_piano" | "promessa";
+      azione?: AzioneRow;
+      rata?: { piano: { cliente: { id: string } }; piano_id: string };
+      promessa?: { cliente_id: string; cliente: { id: string } | null };
+    };
     if (props.kind === "rata_piano" && props.rata) {
       const clienteId = props.rata.piano.cliente.id;
       navigate({
         to: "/clienti/$clienteId",
         params: { clienteId },
         search: { tab: "insoluti", insolutiTab: "piani" } as never,
+      });
+      return;
+    }
+    if (props.kind === "promessa" && props.promessa) {
+      const clienteId = props.promessa.cliente?.id ?? props.promessa.cliente_id;
+      navigate({
+        to: "/clienti/$clienteId",
+        params: { clienteId },
+        search: { tab: "insoluti", insolutiTab: "scadenziario" } as never,
       });
       return;
     }
@@ -306,13 +367,30 @@ function CalendarioPage() {
         .fc .azione-arretrata { font-style: italic; }
       `}</style>
 
-      <div className="flex items-center gap-3">
-        <CalendarClock className="size-7 text-primary" />
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Calendario Recupero Crediti</h1>
-          <p className="text-sm text-muted-foreground">
-            Attività di recupero da fare — trascina per riprogrammare
-          </p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <CalendarClock className="size-7 text-primary" />
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">Calendario Recupero Crediti</h1>
+            <p className="text-sm text-muted-foreground">
+              Attività di recupero da fare — trascina per riprogrammare
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => { setCreaData(new Date()); setCreaOpen(true); }}
+            className="gap-1.5"
+          >
+            <Plus className="size-4" /> Azione
+          </Button>
+          <Button
+            onClick={() => setPickerOpen(true)}
+            className="gap-1.5 bg-green-600 hover:bg-green-700 text-white"
+          >
+            <HandCoins className="size-4" /> Promessa
+          </Button>
         </div>
       </div>
 
@@ -382,6 +460,14 @@ function CalendarioPage() {
               {t.label}
             </span>
           ))}
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-block size-3 rounded-sm" style={{ backgroundColor: "#0ea5e9" }} />
+            Rata piano di rientro
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-block size-3 rounded-sm" style={{ backgroundColor: "#16a34a" }} />
+            Promessa di pagamento
+          </span>
           <span className="inline-flex items-center gap-1.5">
             <span className="inline-block size-3 rounded-sm border-2 border-red-600 bg-red-200" />
             Arretrate (data passata)
@@ -462,6 +548,106 @@ function CalendarioPage() {
           qc.invalidateQueries({ queryKey: ["azioni-recupero"] });
         }}
       />
+
+      <ClientePickerDialog
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        onPick={(c) => {
+          setPickerOpen(false);
+          setPromessaTarget(c);
+        }}
+      />
+
+      {promessaTarget && (
+        <RegistraPromessaDialog
+          open={!!promessaTarget}
+          onOpenChange={(o) => !o && setPromessaTarget(null)}
+          clienteId={promessaTarget.id}
+          clienteLabel={promessaTarget.ragione_sociale}
+          onCreated={() => {
+            qc.invalidateQueries({ queryKey: ["promesse-calendario"] });
+            qc.invalidateQueries({ queryKey: ["azioni-calendario"] });
+            qc.invalidateQueries({ queryKey: ["azioni-recupero"] });
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+function ClientePickerDialog({
+  open, onOpenChange, onPick,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onPick: (c: { id: string; ragione_sociale: string }) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [debounced, setDebounced] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(search.trim()), 250);
+    return () => clearTimeout(t);
+  }, [search]);
+  useEffect(() => {
+    if (open) { setSearch(""); setDebounced(""); }
+  }, [open]);
+  const { data: risultati, isFetching } = useQuery({
+    queryKey: ["promessa-cliente-picker", debounced],
+    enabled: open && debounced.length >= 2,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("clienti")
+        .select("id, ragione_sociale, partita_iva")
+        .ilike("ragione_sociale", `%${debounced}%`)
+        .order("ragione_sociale")
+        .limit(20);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <HandCoins className="size-5" /> Nuova promessa — scegli il cliente
+          </DialogTitle>
+          <DialogDescription>Cerca per ragione sociale (min. 2 caratteri).</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-2">
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <Input
+              autoFocus
+              placeholder="Cerca cliente…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-8"
+            />
+          </div>
+          {debounced.length >= 2 && (
+            <div className="rounded-md border max-h-64 overflow-y-auto divide-y">
+              {isFetching && <div className="px-3 py-2 text-xs text-muted-foreground">Ricerca…</div>}
+              {!isFetching && (risultati?.length ?? 0) === 0 && (
+                <div className="px-3 py-2 text-xs text-muted-foreground">Nessun cliente trovato</div>
+              )}
+              {(risultati ?? []).map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => onPick({ id: c.id, ragione_sociale: c.ragione_sociale })}
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-muted/40 flex items-center justify-between gap-2"
+                >
+                  <span className="font-medium truncate">{c.ragione_sociale}</span>
+                  {c.partita_iva && (
+                    <span className="text-xs text-muted-foreground shrink-0">{c.partita_iva}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
