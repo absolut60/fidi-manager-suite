@@ -1458,19 +1458,15 @@ function RicercaIncassiBlock({ storeSel }: { storeSel: string | null }) {
                       <TableCell>
                         {isOpen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
                       </TableCell>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          <span>{r.ragione_sociale}</span>
-                          <Link
-                            to="/clienti/$clienteId"
-                            params={{ clienteId: r.cliente_id }}
-                            onClick={(e) => e.stopPropagation()}
-                            className="text-muted-foreground hover:text-primary"
-                            title="Apri scheda cliente"
-                          >
-                            <ExternalLink className="size-3.5" />
-                          </Link>
-                        </div>
+                      <TableCell className="font-medium" onClick={(e) => e.stopPropagation()}>
+                        <Link
+                          to="/clienti/$clienteId"
+                          params={{ clienteId: r.cliente_id }}
+                          search={{ tab: "insoluti", insolutiTab: "scadenziario" }}
+                          className="font-medium hover:underline hover:text-primary cursor-pointer"
+                        >
+                          {r.ragione_sociale}
+                        </Link>
                       </TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">
                         {r.codice_gestionale ?? "—"}
