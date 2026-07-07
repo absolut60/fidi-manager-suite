@@ -1298,6 +1298,7 @@ function RicercaIncassiBlock({ storeSel }: { storeSel: string | null }) {
       <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-1.5">
           {([
+            ["ieri", "Ieri"],
             ["oggi", "Oggi"],
             ["mese", "Questo mese"],
             ["7gg", "Ultimi 7 giorni"],
