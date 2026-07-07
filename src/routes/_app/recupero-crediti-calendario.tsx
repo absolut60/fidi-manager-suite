@@ -367,13 +367,30 @@ function CalendarioPage() {
         .fc .azione-arretrata { font-style: italic; }
       `}</style>
 
-      <div className="flex items-center gap-3">
-        <CalendarClock className="size-7 text-primary" />
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Calendario Recupero Crediti</h1>
-          <p className="text-sm text-muted-foreground">
-            Attività di recupero da fare — trascina per riprogrammare
-          </p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <CalendarClock className="size-7 text-primary" />
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">Calendario Recupero Crediti</h1>
+            <p className="text-sm text-muted-foreground">
+              Attività di recupero da fare — trascina per riprogrammare
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => { setCreaData(new Date()); setCreaOpen(true); }}
+            className="gap-1.5"
+          >
+            <Plus className="size-4" /> Azione
+          </Button>
+          <Button
+            onClick={() => setPickerOpen(true)}
+            className="gap-1.5 bg-green-600 hover:bg-green-700 text-white"
+          >
+            <HandCoins className="size-4" /> Promessa
+          </Button>
         </div>
       </div>
 
