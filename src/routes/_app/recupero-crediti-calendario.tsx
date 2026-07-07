@@ -124,6 +124,8 @@ function CalendarioPage() {
   const [openAzione, setOpenAzione] = useState<AzioneRow | null>(null);
   const [creaOpen, setCreaOpen] = useState(false);
   const [creaData, setCreaData] = useState<Date | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [promessaTarget, setPromessaTarget] = useState<{ id: string; ragione_sociale: string } | null>(null);
 
   const { data: stores } = useQuery({
     queryKey: ["stores-list"],
