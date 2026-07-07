@@ -598,7 +598,7 @@ function ScadenziarioPage() {
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <span
-                                    className="inline-flex items-center text-primary cursor-pointer"
+                                    className="inline-flex items-center text-emerald-600 dark:text-emerald-400 cursor-pointer"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       navigate({
