@@ -26,13 +26,7 @@ type Props = {
   onCreated?: (pianoId: string) => void;
 };
 
-type ScadenzaAperta = {
-  id: string;
-  numero_documento: string | null;
-  data_scadenza: string | null;
-  importo_scadenza: number | null;
-  giorni_ritardo: number | null;
-};
+// ScadenzaAperta ora è importata da @/components/selettore-scadenze-aperte.
 
 type RataForm = { data: string; importo: string };
 
