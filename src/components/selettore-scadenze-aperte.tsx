@@ -153,7 +153,7 @@ export function SelettoreScadenzeAperte({
                             variant="outline"
                             className="bg-amber-500/10 text-amber-700 border-amber-500/30 text-[10px] font-normal"
                             title={altriPiani
-                              .map((p) => `Piano del ${fmtDate(p.created_at)} — ${p.stato}`)
+                              .map((p: { piano_id: string; created_at: string; stato: string }) => `Piano del ${fmtDate(p.created_at)} — ${p.stato}`)
                               .join("\n")}
                           >
                             già in {altriPiani.length === 1 ? "un piano" : `${altriPiani.length} piani`} del {fmtDate(altriPiani[0].created_at)}
