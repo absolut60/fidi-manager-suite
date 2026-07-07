@@ -188,6 +188,28 @@ function CalendarioPage() {
     },
   });
 
+  // Promesse di pagamento: sempre visibili, non filtrate dai TIPI. Filtrate solo per store.
+  const promesseQuery = useQuery({
+    queryKey: ["promesse-calendario", range?.start ?? null, range?.end ?? null, storeId],
+    enabled: !!range,
+    queryFn: async () => {
+      const startISO = range!.start.slice(0, 10);
+      const endISO = range!.end.slice(0, 10);
+      let q = supabase
+        .from("azioni_recupero")
+        .select("id, cliente_id, data_promessa_pagamento, importo_riferimento, note, cliente:clienti!inner(id, ragione_sociale, store_id)")
+        .eq("esito", "promessa_pagamento")
+        .not("data_promessa_pagamento", "is", null)
+        .gte("data_promessa_pagamento", startISO)
+        .lt("data_promessa_pagamento", endISO);
+      if (storeId !== "all") q = q.eq("cliente.store_id", storeId);
+      const { data, error } = await q;
+      if (error) throw error;
+      type PR = { id: string; cliente_id: string; data_promessa_pagamento: string; importo_riferimento: number | null; note: string | null; cliente: { id: string; ragione_sociale: string; store_id: string | null } | null };
+      return (data ?? []) as unknown as PR[];
+    },
+  });
+
   const events = useMemo(() => {
     const now = Date.now();
     const azEvents = (azioniQuery.data ?? []).map((a) => {
@@ -223,8 +245,27 @@ function CalendarioPage() {
         extendedProps: { kind: "rata_piano" as const, rata: r },
       };
     });
-    return [...azEvents, ...rateEvents];
-  }, [azioniQuery.data, rateQuery.data]);
+    const promesseEvents = (promesseQuery.data ?? []).map((p) => {
+      const start = new Date(p.data_promessa_pagamento + "T09:00:00");
+      const isOverdue = start.getTime() < now;
+      const color = "#16a34a"; // green-600
+      const importoFmt = p.importo_riferimento != null
+        ? " · " + new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(Number(p.importo_riferimento))
+        : "";
+      return {
+        id: `promessa-${p.id}`,
+        title: `Promessa · ${p.cliente?.ragione_sociale ?? "—"}${importoFmt}`,
+        start: start.toISOString(),
+        backgroundColor: isOverdue ? hexToRgba(color, 0.35) : color,
+        borderColor: isOverdue ? "#dc2626" : color,
+        textColor: isOverdue ? "#7f1d1d" : "#ffffff",
+        classNames: isOverdue ? ["azione-arretrata"] : [],
+        editable: false,
+        extendedProps: { kind: "promessa" as const, promessa: p },
+      };
+    });
+    return [...azEvents, ...rateEvents, ...promesseEvents];
+  }, [azioniQuery.data, rateQuery.data, promesseQuery.data]);
 
   function handleDatesSet(arg: DatesSetArg) {
     const next = { start: arg.start.toISOString(), end: arg.end.toISOString() };
