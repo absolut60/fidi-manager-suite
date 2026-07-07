@@ -548,6 +548,106 @@ function CalendarioPage() {
           qc.invalidateQueries({ queryKey: ["azioni-recupero"] });
         }}
       />
+
+      <ClientePickerDialog
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        onPick={(c) => {
+          setPickerOpen(false);
+          setPromessaTarget(c);
+        }}
+      />
+
+      {promessaTarget && (
+        <RegistraPromessaDialog
+          open={!!promessaTarget}
+          onOpenChange={(o) => !o && setPromessaTarget(null)}
+          clienteId={promessaTarget.id}
+          clienteLabel={promessaTarget.ragione_sociale}
+          onCreated={() => {
+            qc.invalidateQueries({ queryKey: ["promesse-calendario"] });
+            qc.invalidateQueries({ queryKey: ["azioni-calendario"] });
+            qc.invalidateQueries({ queryKey: ["azioni-recupero"] });
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+function ClientePickerDialog({
+  open, onOpenChange, onPick,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onPick: (c: { id: string; ragione_sociale: string }) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [debounced, setDebounced] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(search.trim()), 250);
+    return () => clearTimeout(t);
+  }, [search]);
+  useEffect(() => {
+    if (open) { setSearch(""); setDebounced(""); }
+  }, [open]);
+  const { data: risultati, isFetching } = useQuery({
+    queryKey: ["promessa-cliente-picker", debounced],
+    enabled: open && debounced.length >= 2,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("clienti")
+        .select("id, ragione_sociale, partita_iva")
+        .ilike("ragione_sociale", `%${debounced}%`)
+        .order("ragione_sociale")
+        .limit(20);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <HandCoins className="size-5" /> Nuova promessa — scegli il cliente
+          </DialogTitle>
+          <DialogDescription>Cerca per ragione sociale (min. 2 caratteri).</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-2">
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <Input
+              autoFocus
+              placeholder="Cerca cliente…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-8"
+            />
+          </div>
+          {debounced.length >= 2 && (
+            <div className="rounded-md border max-h-64 overflow-y-auto divide-y">
+              {isFetching && <div className="px-3 py-2 text-xs text-muted-foreground">Ricerca…</div>}
+              {!isFetching && (risultati?.length ?? 0) === 0 && (
+                <div className="px-3 py-2 text-xs text-muted-foreground">Nessun cliente trovato</div>
+              )}
+              {(risultati ?? []).map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => onPick({ id: c.id, ragione_sociale: c.ragione_sociale })}
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-muted/40 flex items-center justify-between gap-2"
+                >
+                  <span className="font-medium truncate">{c.ragione_sociale}</span>
+                  {c.partita_iva && (
+                    <span className="text-xs text-muted-foreground shrink-0">{c.partita_iva}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
