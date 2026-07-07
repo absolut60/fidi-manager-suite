@@ -204,74 +204,16 @@ export function PianoRientroNuovoDialog({ open, onOpenChange, clienteId, cliente
             </RadioGroup>
           </div>
 
-          {/* 2. Documenti */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <Label className="text-sm font-semibold">2. Documenti (scadenze aperte)</Label>
-              <div className="text-sm">
-                Totale selezionato: <strong className="tabular-nums">{fmtEuro(totaleSelezionato)}</strong>
-                {" · "}<span className="text-muted-foreground">{selectedScadenze.size} righe</span>
-              </div>
-            </div>
-            <div className="border rounded-md max-h-72 overflow-y-auto">
-              {isLoading ? <Skeleton className="h-24 m-2" /> : (scadenze ?? []).length === 0 ? (
-                <div className="p-4 text-sm text-muted-foreground italic">Nessuna scadenza aperta per questo cliente.</div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-10">
-                        <Checkbox
-                          checked={allSelected ? true : someSelected ? "indeterminate" : false}
-                          onCheckedChange={(v) => toggleAll(!!v)}
-                        />
-                      </TableHead>
-                      <TableHead>Documento</TableHead>
-                      <TableHead>Data scadenza</TableHead>
-                      <TableHead className="text-right">Importo</TableHead>
-                      <TableHead className="text-right">gg ritardo</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {(scadenze ?? []).map((s) => {
-                      const sel = selectedScadenze.has(s.id);
-                      const altriPiani = scadenzeInAltriPiani.get(s.id) ?? [];
-                      return (
-                        <TableRow key={s.id} className="cursor-pointer" onClick={() => toggleScadenza(s.id)}>
-                          <TableCell onClick={(e) => e.stopPropagation()}>
-                            <Checkbox checked={sel} onCheckedChange={() => toggleScadenza(s.id)} />
-                          </TableCell>
-                          <TableCell className="font-mono text-xs">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span>{s.numero_documento ?? "—"}</span>
-                              {altriPiani.length > 0 && (
-                                <Badge
-                                  variant="outline"
-                                  className="bg-amber-500/10 text-amber-700 border-amber-500/30 text-[10px] font-normal"
-                                  title={altriPiani
-                                    .map((p: { piano_id: string; created_at: string; stato: string }) => `Piano del ${fmtDate(p.created_at)} — ${p.stato}`)
-                                    .join("\n")}
-                                >
-                                  già in {altriPiani.length === 1 ? "un piano" : `${altriPiani.length} piani`} del {fmtDate(altriPiani[0].created_at)}
-                                </Badge>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-sm">{fmtDate(s.data_scadenza)}</TableCell>
-                          <TableCell className="text-right tabular-nums">{fmtEuro(s.importo_scadenza)}</TableCell>
-                          <TableCell className="text-right">
-                            {(s.giorni_ritardo ?? 0) > 0 ? (
-                              <Badge className="bg-orange-500 text-white hover:bg-orange-500">{s.giorni_ritardo} gg</Badge>
-                            ) : "—"}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              )}
-            </div>
-          </div>
+          {/* 2. Documenti (fonte unica: SelettoreScadenzeAperte) */}
+          <SelettoreScadenzeAperte
+            clienteId={clienteId}
+            open={open}
+            selectedIds={selectedScadenze}
+            onChange={setSelectedScadenze}
+            mostraBadgePiani={true}
+            titolo="2. Documenti (scadenze aperte)"
+            onStateChange={handleSelettoreState}
+          />
 
           {/* 3. Rate */}
           <div>
