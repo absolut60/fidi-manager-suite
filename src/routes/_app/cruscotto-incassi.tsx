@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  ChevronLeft, ChevronRight, TrendingUp, Send, HandCoins, ExternalLink,
+  ChevronLeft, ChevronRight, TrendingUp, Send, HandCoins,
   Mail, Download, Search, ChevronDown, ChevronUp, X, Filter, ArrowUp, ArrowDown, ArrowUpDown,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
