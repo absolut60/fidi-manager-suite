@@ -5,8 +5,8 @@
 //
 // Persistenza: azioni_recupero (tipo='nota', esito='promessa_pagamento',
 // data_promessa_pagamento=<data promessa>, importo_riferimento=<importo>).
-// Compare automaticamente nello storico azioni del cliente.
-import { useEffect, useState } from "react";
+// Facoltativamente collega scadenze aperte via ponte azioni_recupero_scadenze.
+import { useCallback, useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { HandCoins } from "lucide-react";
@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { SelettoreScadenzeAperte } from "@/components/selettore-scadenze-aperte";
 
 type Props = {
   open: boolean;
@@ -45,6 +46,8 @@ export function RegistraPromessaDialog({
   const [importo, setImporto] = useState<string>("");
   const [note, setNote] = useState<string>("");
   const [saving, setSaving] = useState(false);
+  const [selectedScadenze, setSelectedScadenze] = useState<Set<string>>(new Set());
+  const [totaleSelezionato, setTotaleSelezionato] = useState(0);
 
   useEffect(() => {
     if (open) {
@@ -52,6 +55,8 @@ export function RegistraPromessaDialog({
       setImporto("");
       setNote("");
       setSaving(false);
+      setSelectedScadenze(new Set());
+      setTotaleSelezionato(0);
     }
   }, [open, clienteId]);
 
@@ -71,6 +76,13 @@ export function RegistraPromessaDialog({
 
   const label = clienteLabel ?? cliente?.ragione_sociale ?? "…";
 
+  const handleStateChange = useCallback(
+    (info: { scadenze: unknown[]; totaleSelezionato: number }) => {
+      setTotaleSelezionato(info.totaleSelezionato);
+    },
+    [],
+  );
+
   async function handleSubmit() {
     if (saving) return;
     if (!dataPromessa) {
@@ -84,23 +96,42 @@ export function RegistraPromessaDialog({
     }
     setSaving(true);
     try {
-      const { error } = await supabase.from("azioni_recupero").insert({
-        cliente_id: clienteId,
-        operatore_id: user?.id ?? null,
-        tipo: "nota",
-        esito: "promessa_pagamento",
-        data_azione: new Date().toISOString(),
-        data_promessa_pagamento: dataPromessa,
-        importo_riferimento: importoNum,
-        note: note.trim() || null,
-      });
+      const { data: inserted, error } = await supabase
+        .from("azioni_recupero")
+        .insert({
+          cliente_id: clienteId,
+          operatore_id: user?.id ?? null,
+          tipo: "nota",
+          esito: "promessa_pagamento",
+          data_azione: new Date().toISOString(),
+          data_promessa_pagamento: dataPromessa,
+          importo_riferimento: importoNum,
+          note: note.trim() || null,
+        })
+        .select("id")
+        .single();
       if (error) throw error;
+
+      const azioneId = inserted?.id as string | undefined;
+      const scadenzeIds = Array.from(selectedScadenze);
+      if (azioneId && scadenzeIds.length > 0) {
+        const { error: eLink } = await supabase
+          .from("azioni_recupero_scadenze")
+          .insert(scadenzeIds.map((sid) => ({ azione_id: azioneId, scadenza_id: sid })));
+        if (eLink) {
+          // rollback manuale: elimina l'azione appena creata per non lasciarla orfana
+          await supabase.from("azioni_recupero").delete().eq("id", azioneId);
+          throw eLink;
+        }
+      }
+
       toast.success("Promessa registrata");
       qc.invalidateQueries({ queryKey: ["azioni-recupero"] });
       qc.invalidateQueries({ queryKey: ["azioni-recupero-cliente", clienteId] });
       qc.invalidateQueries({ queryKey: ["azioni-recupero-metrics"] });
       qc.invalidateQueries({ queryKey: ["recupero-clienti-aggregato"] });
       qc.invalidateQueries({ queryKey: ["cruscotto_incassi_dettaglio"] });
+      qc.invalidateQueries({ queryKey: ["azioni-calendario"] });
       onCreated?.();
       onOpenChange(false);
     } catch (e) {
@@ -113,7 +144,7 @@ export function RegistraPromessaDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !saving && onOpenChange(v)}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <HandCoins className="size-5" /> Registra promessa di pagamento
@@ -123,7 +154,7 @@ export function RegistraPromessaDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
+        <div className="space-y-4 py-2 max-h-[70vh] overflow-y-auto">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="promessa-data">Data promessa *</Label>
@@ -135,7 +166,18 @@ export function RegistraPromessaDialog({
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="promessa-importo">Importo (opzionale)</Label>
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="promessa-importo">Importo (opzionale)</Label>
+                {selectedScadenze.size > 0 && (
+                  <button
+                    type="button"
+                    className="text-xs text-primary hover:underline"
+                    onClick={() => setImporto(String(totaleSelezionato.toFixed(2)))}
+                  >
+                    Usa totale selezionato
+                  </button>
+                )}
+              </div>
               <Input
                 id="promessa-importo"
                 type="number"
@@ -158,6 +200,16 @@ export function RegistraPromessaDialog({
               placeholder="Riferimenti, modalità, canale…"
             />
           </div>
+
+          <SelettoreScadenzeAperte
+            clienteId={clienteId}
+            open={open}
+            selectedIds={selectedScadenze}
+            onChange={setSelectedScadenze}
+            mostraBadgePiani={false}
+            titolo="Scadenze collegate (opzionale)"
+            onStateChange={handleStateChange}
+          />
         </div>
 
         <DialogFooter>
