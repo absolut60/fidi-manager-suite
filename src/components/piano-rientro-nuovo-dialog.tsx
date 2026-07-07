@@ -176,8 +176,7 @@ export function PianoRientroNuovoDialog({ open, onOpenChange, clienteId, cliente
     }
   }
 
-  const allSelected = (scadenze ?? []).length > 0 && (scadenze ?? []).every((s) => selectedScadenze.has(s.id));
-  const someSelected = selectedScadenze.size > 0 && !allSelected;
+  // allSelected/someSelected sono derivati dentro SelettoreScadenzeAperte.
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!saving) { if (!v) reset(); onOpenChange(v); } }}>
