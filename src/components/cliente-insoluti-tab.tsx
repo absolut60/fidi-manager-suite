@@ -475,7 +475,7 @@ function AScadereBlock({ rows }: { rows: ScadenzaRow[] }) {
               <TableHeader>
                 <TableRow>
                   <TableHead>N. Documento</TableHead>
-                  <TableHead>Sezionale</TableHead>
+                  
                   <TableHead>Data Doc.</TableHead>
                   <TableHead>Data Scadenza</TableHead>
                   <TableHead>Cond. Pagamento</TableHead>
