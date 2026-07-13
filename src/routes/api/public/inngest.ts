@@ -33,6 +33,8 @@ const handler = serve({
     invioMassivoSolleciti,
     snapshotMensile,
     remindRatePianoRientro,
+    promemoriaScadenzaAutomatico,
+
   ],
 });
 
