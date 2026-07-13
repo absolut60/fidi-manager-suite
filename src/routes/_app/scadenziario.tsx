@@ -842,7 +842,7 @@ function ExpandedRischioPanel({ loading, data, onApri }: { loading: boolean; dat
         <CellInfo label="Dilaz. concordata" value={d.dilazione_concordata != null ? `${d.dilazione_concordata} gg` : "—"} />
         <CellInfo label="Ritardo medio" value={r.text} cls={r.cls} />
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+      <div className="grid grid-cols-2 sm:grid-cols-2 gap-3 text-sm">
         <CellInfo
           label="Condizione pagamento"
           value={
@@ -850,6 +850,14 @@ function ExpandedRischioPanel({ loading, data, onApri }: { loading: boolean; dat
               ? d.condizione_pagamento_desc_db
                 ? `${d.condizione_pagamento_cod} — ${d.condizione_pagamento_desc_db}`
                 : d.condizione_pagamento_cod
+              : "—"
+          }
+        />
+        <CellInfo
+          label="Agente"
+          value={
+            d.codice_agente && d.agente
+              ? `${d.codice_agente} — ${d.agente}`
               : "—"
           }
         />
