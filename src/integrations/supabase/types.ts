@@ -1807,6 +1807,7 @@ export type Database = {
           created_at: string
           data_esecuzione: string
           email_destinatario: string | null
+          email_html: string | null
           errore: string | null
           esito: string
           giorni_anticipo: number
@@ -1819,6 +1820,7 @@ export type Database = {
           created_at?: string
           data_esecuzione: string
           email_destinatario?: string | null
+          email_html?: string | null
           errore?: string | null
           esito: string
           giorni_anticipo: number
@@ -1831,6 +1833,7 @@ export type Database = {
           created_at?: string
           data_esecuzione?: string
           email_destinatario?: string | null
+          email_html?: string | null
           errore?: string | null
           esito?: string
           giorni_anticipo?: number
