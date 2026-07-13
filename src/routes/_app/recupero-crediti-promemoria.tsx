@@ -443,6 +443,8 @@ function PromemoriaScadenzaPage() {
         </div>
       </Card>
 
+      <InviiAutomaticiSection />
+
       <InvioMassivoDialog
         open={invioOpen}
         onOpenChange={setInvioOpen}
@@ -454,6 +456,169 @@ function PromemoriaScadenzaPage() {
     </div>
   );
 }
+
+// ==================== Storico invii automatici ====================
+
+type PromLogRow = {
+  id: string;
+  cliente_id: string;
+  email_destinatario: string | null;
+  data_esecuzione: string;
+  giorni_anticipo: number;
+  num_scadenze: number;
+  importo_totale: number;
+  esito: string;
+  errore: string | null;
+  created_at: string;
+  cliente: { ragione_sociale: string | null } | null;
+};
+
+function fmtDateTime(v: string): string {
+  try {
+    return new Date(v).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  } catch {
+    return v;
+  }
+}
+
+function fmtEuroFull(n: number): string {
+  return new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(n);
+}
+
+function InviiAutomaticiSection() {
+  const trentaGiorniFa = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d.toISOString();
+  }, []);
+  const [filtroEsito, setFiltroEsito] = useState<string>("tutti");
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["promemoria_scadenza_log", "recenti"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("promemoria_scadenza_log")
+        .select("id, cliente_id, email_destinatario, data_esecuzione, giorni_anticipo, num_scadenze, importo_totale, esito, errore, created_at, cliente:clienti(ragione_sociale)")
+        .gte("created_at", trentaGiorniFa)
+        .order("created_at", { ascending: false })
+        .limit(200);
+      if (error) throw error;
+      return (data ?? []) as unknown as PromLogRow[];
+    },
+  });
+
+  const rows = data ?? [];
+  const counts = useMemo(() => {
+    let inviati = 0, falliti = 0, saltati = 0;
+    for (const r of rows) {
+      if (r.esito === "inviato") inviati++;
+      else if (r.esito === "fallito") falliti++;
+      else if (r.esito === "saltato_no_email") saltati++;
+    }
+    return { inviati, falliti, saltati };
+  }, [rows]);
+
+  const filtered = filtroEsito === "tutti" ? rows : rows.filter((r) => r.esito === filtroEsito);
+
+  if (error) {
+    return (
+      <Card className="p-4">
+        <div className="text-sm text-muted-foreground">
+          Storico non disponibile per il tuo ruolo.
+        </div>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="p-4 space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold">Promemoria automatici inviati</h2>
+          <p className="text-xs text-muted-foreground">Ultimi 30 giorni · massimo 200 record</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+            Inviati: {counts.inviati}
+          </Badge>
+          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+            Falliti: {counts.falliti}
+          </Badge>
+          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+            Saltati (no email): {counts.saltati}
+          </Badge>
+          <Select value={filtroEsito} onValueChange={setFiltroEsito}>
+            <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="tutti">Tutti gli esiti</SelectItem>
+              <SelectItem value="inviato">Solo inviati</SelectItem>
+              <SelectItem value="fallito">Solo falliti</SelectItem>
+              <SelectItem value="saltato_no_email">Solo saltati</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-2">
+          {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-8 text-sm text-muted-foreground">
+          Nessun promemoria automatico inviato nel periodo selezionato.
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Data esecuzione</TableHead>
+                <TableHead>Cliente</TableHead>
+                <TableHead>Email destinatario</TableHead>
+                <TableHead className="text-right">N. scad.</TableHead>
+                <TableHead className="text-right">Importo totale</TableHead>
+                <TableHead>Esito</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((r) => (
+                <TableRow key={r.id}>
+                  <TableCell className="whitespace-nowrap">{fmtDateTime(r.created_at)}</TableCell>
+                  <TableCell className="font-medium">{r.cliente?.ragione_sociale ?? "—"}</TableCell>
+                  <TableCell className="text-sm">{r.email_destinatario ?? <span className="text-muted-foreground italic">nessuna</span>}</TableCell>
+                  <TableCell className="text-right">{r.num_scadenze}</TableCell>
+                  <TableCell className="text-right">{fmtEuroFull(Number(r.importo_totale ?? 0))}</TableCell>
+                  <TableCell>
+                    <EsitoBadge esito={r.esito} errore={r.errore} />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function EsitoBadge({ esito, errore }: { esito: string; errore: string | null }) {
+  if (esito === "inviato") {
+    return <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border-0">Inviato</Badge>;
+  }
+  if (esito === "fallito") {
+    return (
+      <span className="inline-flex flex-col gap-0.5">
+        <Badge className="bg-red-100 text-red-800 hover:bg-red-100 border-0 w-fit" title={errore ?? undefined}>Fallito</Badge>
+        {errore && <span className="text-[10px] text-muted-foreground max-w-xs truncate" title={errore}>{errore}</span>}
+      </span>
+    );
+  }
+  if (esito === "saltato_no_email") {
+    return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Saltato · no email</Badge>;
+  }
+  return <Badge variant="outline">{esito}</Badge>;
+}
+
 
 function ScadenzeDettaglio({
   clienteId,
