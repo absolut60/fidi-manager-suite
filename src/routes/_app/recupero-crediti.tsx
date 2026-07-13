@@ -520,7 +520,7 @@ function RecuperoCreditiPage() {
             onClear={() => setTipoFilter(new Set())}
           />
 
-          {!isStoreManager && (
+          {!isRistretto && (
             <Select value={storeId} onValueChange={setStoreId}>
               <SelectTrigger>
                 <SelectValue placeholder="Store" />
@@ -534,7 +534,7 @@ function RecuperoCreditiPage() {
             </Select>
           )}
 
-          {!isStoreManager && (
+          {!isRistretto && (
             <Select value={operatoreId} onValueChange={setOperatoreId}>
               <SelectTrigger>
                 <SelectValue placeholder="Operatore" />
