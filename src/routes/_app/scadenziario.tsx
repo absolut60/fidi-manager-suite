@@ -241,7 +241,7 @@ function ScadenziarioPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clienti")
-        .select("fido_gestionale, fido_residuo, totale_rischio, doc_da_fatturare, doc_da_evadere, effetti_a_rischio, num_insoluti, dilazione_concordata, dilazione_effettiva, condizione_pagamento_cod")
+        .select("fido_gestionale, fido_residuo, totale_rischio, doc_da_fatturare, doc_da_evadere, effetti_a_rischio, num_insoluti, dilazione_concordata, dilazione_effettiva, condizione_pagamento_cod, codice_agente, agente")
         .eq("id", expandedClienteId!)
         .maybeSingle();
       if (error) throw error;
@@ -260,6 +260,7 @@ function ScadenziarioPage() {
         doc_da_fatturare: number | null; doc_da_evadere: number | null; effetti_a_rischio: number | null;
         num_insoluti: number | null; dilazione_concordata: number | null; dilazione_effettiva: number | null;
         condizione_pagamento_cod: string | null; condizione_pagamento_desc_db: string | null;
+        codice_agente: string | null; agente: string | null;
       } : null;
     },
   });
@@ -763,6 +764,7 @@ type RischioData = {
   doc_da_fatturare: number | null; doc_da_evadere: number | null; effetti_a_rischio: number | null;
   num_insoluti: number | null; dilazione_concordata: number | null; dilazione_effettiva: number | null;
   condizione_pagamento_cod?: string | null; condizione_pagamento_desc_db?: string | null;
+  codice_agente?: string | null; agente?: string | null;
 } | null | undefined;
 
 function PromesseAttiveBlock({ clienteId }: { clienteId: string }) {
@@ -840,7 +842,7 @@ function ExpandedRischioPanel({ loading, data, onApri }: { loading: boolean; dat
         <CellInfo label="Dilaz. concordata" value={d.dilazione_concordata != null ? `${d.dilazione_concordata} gg` : "—"} />
         <CellInfo label="Ritardo medio" value={r.text} cls={r.cls} />
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+      <div className="grid grid-cols-2 sm:grid-cols-2 gap-3 text-sm">
         <CellInfo
           label="Condizione pagamento"
           value={
@@ -848,6 +850,14 @@ function ExpandedRischioPanel({ loading, data, onApri }: { loading: boolean; dat
               ? d.condizione_pagamento_desc_db
                 ? `${d.condizione_pagamento_cod} — ${d.condizione_pagamento_desc_db}`
                 : d.condizione_pagamento_cod
+              : "—"
+          }
+        />
+        <CellInfo
+          label="Agente"
+          value={
+            d.codice_agente && d.agente
+              ? `${d.codice_agente} — ${d.agente}`
               : "—"
           }
         />
