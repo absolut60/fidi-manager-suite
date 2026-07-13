@@ -804,6 +804,29 @@ function PromemoriaScadenzaCard() {
             </div>
 
             <div className="space-y-1.5 md:col-span-3">
+              <Label>Metodi di pagamento</Label>
+              <p className="text-xs text-muted-foreground -mt-0.5">
+                Restringe i codici di pagamento inclusi nell&apos;invio. Diverso dalle esclusioni: qui decidi quali tipi passano.
+              </p>
+              <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:gap-6">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox checked={includiBonifici} onCheckedChange={(v) => setIncludiBonifici(v === true)} />
+                  <span className="text-sm">Includi bonifici <span className="text-muted-foreground">(BO*)</span></span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox checked={includiRiba} onCheckedChange={(v) => setIncludiRiba(v === true)} />
+                  <span className="text-sm">Includi RiBa <span className="text-muted-foreground">(RB*)</span></span>
+                </label>
+              </div>
+              {!includiBonifici && !includiRiba && (
+                <div className="mt-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+                  Nessun metodo selezionato: il promemoria non verrà inviato.
+                </div>
+              )}
+            </div>
+
+
+            <div className="space-y-1.5 md:col-span-3">
               <Label htmlFor="prom-operatore">Utente collegato all&apos;invio automatico</Label>
               <select
                 id="prom-operatore"
