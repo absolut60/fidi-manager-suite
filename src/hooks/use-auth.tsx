@@ -151,4 +151,5 @@ export const RUOLI_LABEL: Record<AppRole, string> = {
   amministratore: "Admin",
   amministrazione: "Amministrazione",
   direzione: "Direzione",
+  agente: "Agente",
 };
