@@ -184,6 +184,10 @@ export const ANAG_HEADERS: Record<string, string> = {
   "codice categoria": "codice_categoria",
   codice_categoria: "codice_categoria",
   categoria: "categoria",
+  // agente
+  "id agente": "codice_agente",
+  id_agente: "codice_agente",
+  agente: "agente",
   // condizione pagamento
   "cod. pagamento": "condizione_pagamento_cod",
   condizione_pagamento_cod: "condizione_pagamento_cod",
