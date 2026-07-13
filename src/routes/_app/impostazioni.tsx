@@ -629,15 +629,25 @@ function ConfigurazioniCard() {
 const PROMEMORIA_KEYS = [
   "promemoria_scadenza_attivo",
   "promemoria_scadenza_giorni_anticipo",
-  "promemoria_scadenza_metodi",
+  "promemoria_scadenza_escludi_legale",
+  "promemoria_scadenza_escludi_bloccati",
+  "promemoria_scadenza_escludi_bos",
+  "promemoria_scadenza_operatore_id",
 ] as const;
 
 function PromemoriaScadenzaCard() {
   const qc = useQueryClient();
   const [attivo, setAttivo] = useState(true);
   const [giorni, setGiorni] = useState("3");
-  const [bo, setBo] = useState(true);
-  const [rb, setRb] = useState(false);
+  const [escludiLegale, setEscludiLegale] = useState(true);
+  const [escludiBloccati, setEscludiBloccati] = useState(false);
+  const [escludiBos, setEscludiBos] = useState(true);
+  const [operatoreId, setOperatoreId] = useState<string>("");
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [previewMeta, setPreviewMeta] = useState<{ cliente: string; email: string | null; num_scadenze: number; data_target: string; demo: boolean } | null>(null);
+  const [previewErr, setPreviewErr] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const previewFn = useServerFn(previewPromemoriaEmail);
 
   const { data, isLoading } = useQuery({
     queryKey: ["configurazioni", "promemoria_scadenza"],
@@ -651,15 +661,28 @@ function PromemoriaScadenzaCard() {
     },
   });
 
+  const utentiQuery = useQuery({
+    queryKey: ["profili", "attivi", "select-firmatario"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profili")
+        .select("id, nome, cognome, email, attivo")
+        .eq("attivo", true)
+        .order("cognome", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as { id: string; nome: string | null; cognome: string | null; email: string | null; attivo: boolean }[];
+    },
+  });
+
   useEffect(() => {
     if (!data) return;
-    const map = new Map(data.map((r) => [r.chiave, r.valore]));
-    setAttivo((map.get("promemoria_scadenza_attivo") ?? "true").trim() !== "false");
-    setGiorni((map.get("promemoria_scadenza_giorni_anticipo") ?? "3").trim() || "3");
-    const metodi = (map.get("promemoria_scadenza_metodi") ?? "BO")
-      .split(",").map((s) => s.trim().toUpperCase()).filter(Boolean);
-    setBo(metodi.includes("BO"));
-    setRb(metodi.includes("RB"));
+    const map = new Map(data.map((r) => [r.chiave, (r.valore ?? "").trim()]));
+    setAttivo((map.get("promemoria_scadenza_attivo") ?? "true") !== "false");
+    setGiorni((map.get("promemoria_scadenza_giorni_anticipo") ?? "3") || "3");
+    setEscludiLegale((map.get("promemoria_scadenza_escludi_legale") ?? "true") !== "false");
+    setEscludiBloccati((map.get("promemoria_scadenza_escludi_bloccati") ?? "false") === "true");
+    setEscludiBos((map.get("promemoria_scadenza_escludi_bos") ?? "true") !== "false");
+    setOperatoreId(map.get("promemoria_scadenza_operatore_id") ?? "");
   }, [data]);
 
   const save = useMutation({
@@ -668,18 +691,16 @@ function PromemoriaScadenzaCard() {
       if (!Number.isFinite(n) || n < 1 || n > 30) {
         throw new Error("Giorni di anticipo: intero tra 1 e 30");
       }
-      if (!bo && !rb) {
-        throw new Error("Seleziona almeno un metodo di pagamento");
-      }
-      const metodiCsv = [bo ? "BO" : null, rb ? "RB" : null].filter(Boolean).join(",");
       const updates = [
         supabase.from("configurazioni").update({ valore: attivo ? "true" : "false" }).eq("chiave", "promemoria_scadenza_attivo"),
         supabase.from("configurazioni").update({ valore: String(n) }).eq("chiave", "promemoria_scadenza_giorni_anticipo"),
-        supabase.from("configurazioni").update({ valore: metodiCsv }).eq("chiave", "promemoria_scadenza_metodi"),
+        supabase.from("configurazioni").update({ valore: escludiLegale ? "true" : "false" }).eq("chiave", "promemoria_scadenza_escludi_legale"),
+        supabase.from("configurazioni").update({ valore: escludiBloccati ? "true" : "false" }).eq("chiave", "promemoria_scadenza_escludi_bloccati"),
+        supabase.from("configurazioni").update({ valore: escludiBos ? "true" : "false" }).eq("chiave", "promemoria_scadenza_escludi_bos"),
+        supabase.from("configurazioni").update({ valore: operatoreId ?? "" }).eq("chiave", "promemoria_scadenza_operatore_id"),
       ];
       const results = await Promise.all(updates);
       const err = results.find((r) => r.error)?.error;
-
       if (err) throw err;
     },
     onSuccess: () => {
@@ -690,16 +711,40 @@ function PromemoriaScadenzaCard() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  async function aggiornaAnteprima() {
+    setPreviewLoading(true);
+    setPreviewErr(null);
+    try {
+      const res = await previewFn();
+      if (!res.ok) {
+        setPreviewErr(res.reason === "template_non_trovato"
+          ? "Template 'promemoria_scadenza' non attivo o non trovato."
+          : res.reason === "forbidden"
+          ? "Non autorizzato."
+          : (res.reason ?? "Errore"));
+        setPreviewHtml(null);
+        setPreviewMeta(null);
+      } else {
+        setPreviewHtml(res.html ?? "");
+        setPreviewMeta(res.meta ?? null);
+      }
+    } catch (e) {
+      setPreviewErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setPreviewLoading(false);
+    }
+  }
+
   return (
     <Card className="p-4 sm:p-5">
       <h2 className="font-semibold mb-1 flex items-center gap-2">
         <BellRing className="size-4" /> Promemoria scadenza automatico
       </h2>
       <p className="text-xs text-muted-foreground mb-4">
-        Quando attivo, il sistema invia ogni mattina un&apos;email di promemoria ai clienti che hanno scadenze in arrivo tra N giorni, per i metodi di pagamento selezionati. Se disattivato, non viene inviato nulla.
+        Quando attivo, il sistema invia ogni mattina un&apos;email di promemoria ai clienti che hanno scadenze in arrivo tra N giorni. La regola &ldquo;a scadere&rdquo; e le esclusioni sono le stesse della pagina manuale.
       </p>
       {isLoading ? (
-        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-64 w-full" />
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -732,18 +777,45 @@ function PromemoriaScadenzaCard() {
             </div>
 
             <div className="space-y-1.5 md:col-span-2">
-              <Label>Metodi di pagamento inclusi</Label>
-              <div className="flex flex-wrap gap-4 pt-1">
+              <Label>Esclusioni</Label>
+              <div className="flex flex-col gap-2 pt-1">
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <Checkbox checked={bo} onCheckedChange={(v) => setBo(v === true)} />
-                  <span className="text-sm">Bonifici (BO)</span>
+                  <Checkbox checked={escludiLegale} onCheckedChange={(v) => setEscludiLegale(v === true)} />
+                  <span className="text-sm">Escludi scadenze in gestione legale</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <Checkbox checked={rb} onCheckedChange={(v) => setRb(v === true)} />
-                  <span className="text-sm">RiBa (RB)</span>
+                  <Checkbox checked={escludiBloccati} onCheckedChange={(v) => setEscludiBloccati(v === true)} />
+                  <span className="text-sm">Escludi clienti bloccati</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox checked={escludiBos} onCheckedChange={(v) => setEscludiBos(v === true)} />
+                  <span className="text-sm">Escludi pagamenti BOS</span>
                 </label>
               </div>
-              <p className="text-xs text-muted-foreground">Almeno un metodo deve essere selezionato.</p>
+            </div>
+
+            <div className="space-y-1.5 md:col-span-3">
+              <Label htmlFor="prom-operatore">Utente collegato all&apos;invio automatico</Label>
+              <select
+                id="prom-operatore"
+                className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                value={operatoreId}
+                onChange={(e) => setOperatoreId(e.target.value)}
+                disabled={utentiQuery.isLoading}
+              >
+                <option value="">— Nessuno (l&apos;invio automatico verra&apos; saltato) —</option>
+                {(utentiQuery.data ?? []).map((u) => {
+                  const nome = [u.nome ?? "", u.cognome ?? ""].map((s) => (s ?? "").trim()).filter(Boolean).join(" ").trim();
+                  return (
+                    <option key={u.id} value={u.id}>
+                      {nome || u.email || u.id}{u.email ? ` — ${u.email}` : ""}
+                    </option>
+                  );
+                })}
+              </select>
+              <p className="text-xs text-muted-foreground">
+                Nome + email di quest&apos;utente compaiono in firma, come <em>fromName</em> e come <em>Reply-To</em> nell&apos;email inviata. Se nessuno e&apos; selezionato, il job non invia (nessuna email anonima).
+              </p>
             </div>
           </div>
           <div className="flex justify-end mt-4">
@@ -751,9 +823,45 @@ function PromemoriaScadenzaCard() {
               <Save className="size-4" /> {save.isPending ? "Salvataggio..." : "Salva impostazioni"}
             </Button>
           </div>
+
+          {/* Anteprima reale */}
+          <div className="mt-6 pt-4 border-t">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className="text-sm font-medium">Anteprima email</h3>
+                <p className="text-xs text-muted-foreground">
+                  Renderizzata con la stessa pipeline dell&apos;invio (template, esclusioni, firma). Salva prima le impostazioni per vedere l&apos;effetto.
+                </p>
+              </div>
+              <Button variant="outline" size="sm" onClick={aggiornaAnteprima} disabled={previewLoading}>
+                {previewLoading ? "Generazione..." : "Aggiorna anteprima"}
+              </Button>
+            </div>
+            {previewErr && (
+              <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
+                {previewErr}
+              </div>
+            )}
+            {previewMeta && (
+              <div className="text-xs text-muted-foreground mb-2">
+                {previewMeta.demo
+                  ? <>Nessun cliente reale a T+{giorni} giorni oggi: mostrata versione demo (data target {previewMeta.data_target}).</>
+                  : <>Anteprima su cliente reale: <strong>{previewMeta.cliente}</strong>{previewMeta.email ? ` — ${previewMeta.email}` : ""} · {previewMeta.num_scadenze} scadenze · data target {previewMeta.data_target}.</>}
+              </div>
+            )}
+            {previewHtml && (
+              <iframe
+                title="Anteprima promemoria di scadenza"
+                srcDoc={previewHtml}
+                className="w-full rounded-md border bg-white"
+                style={{ height: 720 }}
+              />
+            )}
+          </div>
         </>
       )}
     </Card>
   );
 }
+
 
