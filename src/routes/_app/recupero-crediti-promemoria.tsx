@@ -484,7 +484,7 @@ function PromemoriaScadenzaPage() {
         </div>
       </Card>
 
-      <InviiAutomaticiSection />
+      <InviiAutomaticiSection __unused />
 
       <InvioMassivoDialog
         open={invioOpen}
