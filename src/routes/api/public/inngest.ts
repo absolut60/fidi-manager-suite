@@ -15,6 +15,8 @@ import {
 import { invioMassivoSolleciti } from "@/lib/inngest/sollecito-massivo.server";
 import { snapshotMensile } from "@/lib/inngest/snapshot.server";
 import { remindRatePianoRientro } from "@/lib/inngest/piano-rientro-reminder.server";
+import { promemoriaScadenzaAutomatico } from "@/lib/inngest/promemoria-scadenza.server";
+
 
 const handler = serve({
   client: inngest,
