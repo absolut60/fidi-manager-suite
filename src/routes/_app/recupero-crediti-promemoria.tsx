@@ -186,7 +186,21 @@ function PromemoriaScadenzaPage() {
     },
   });
 
-  const rows = aggQuery.data ?? [];
+  const rowsRaw = aggQuery.data ?? [];
+  const rows = useMemo(() => {
+    const arr = [...rowsRaw];
+    const dir = sortDir === "asc" ? 1 : -1;
+    arr.sort((a, b) => {
+      const av = a[sortKey];
+      const bv = b[sortKey];
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      if (typeof av === "number" && typeof bv === "number") return (av - bv) * dir;
+      return String(av).localeCompare(String(bv), "it", { sensitivity: "base" }) * dir;
+    });
+    return arr;
+  }, [rowsRaw, sortKey, sortDir]);
   const totClienti = rows.length;
   const totImporto = rows.reduce((s, r) => s + Number(r.totale_a_scadere ?? 0), 0);
   const totScadenze = rows.reduce((s, r) => s + (r.n_scadenze ?? 0), 0);
