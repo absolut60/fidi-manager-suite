@@ -385,11 +385,11 @@ function PromemoriaScadenzaPage() {
                   />
                 </TableHead>
                 <TableHead className="w-10" />
-                <TableHead>Cliente</TableHead>
-                <TableHead>Store</TableHead>
-                <TableHead className="text-center">N. scadenze</TableHead>
-                <TableHead className="text-right">Totale a scadere</TableHead>
-                <TableHead>Prima scadenza</TableHead>
+                <SortableHead label="Cliente" k="ragione_sociale" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                <SortableHead label="Store" k="store_nome" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                <SortableHead label="N. scadenze" k="n_scadenze" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} align="center" />
+                <SortableHead label="Totale a scadere" k="totale_a_scadere" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} align="right" />
+                <SortableHead label="Prima scadenza" k="prima_scadenza" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
                 <TableHead>Email / PEC</TableHead>
                 <TableHead className="w-10" />
               </TableRow>
