@@ -575,13 +575,14 @@ function InviiAutomaticiSection() {
     return d.toISOString();
   }, []);
   const [filtroEsito, setFiltroEsito] = useState<string>("tutti");
+  const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["promemoria_scadenza_log", "recenti"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("promemoria_scadenza_log")
-        .select("id, cliente_id, email_destinatario, data_esecuzione, giorni_anticipo, num_scadenze, importo_totale, esito, errore, created_at, cliente:clienti(ragione_sociale)")
+        .select("id, cliente_id, email_destinatario, data_esecuzione, giorni_anticipo, num_scadenze, importo_totale, esito, errore, email_html, created_at, cliente:clienti(ragione_sociale)")
         .gte("created_at", trentaGiorniFa)
         .order("created_at", { ascending: false })
         .limit(200);
@@ -618,7 +619,7 @@ function InviiAutomaticiSection() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold">Promemoria automatici inviati</h2>
-          <p className="text-xs text-muted-foreground">Ultimi 30 giorni · massimo 200 record</p>
+          <p className="text-xs text-muted-foreground">Ultimi 30 giorni · massimo 200 record · anteprima email disponibile per 90 gg</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
@@ -655,6 +656,7 @@ function InviiAutomaticiSection() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-8"></TableHead>
                 <TableHead>Data esecuzione</TableHead>
                 <TableHead>Cliente</TableHead>
                 <TableHead>Email destinatario</TableHead>
@@ -664,18 +666,36 @@ function InviiAutomaticiSection() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((r) => (
-                <TableRow key={r.id}>
-                  <TableCell className="whitespace-nowrap">{fmtDateTime(r.created_at)}</TableCell>
-                  <TableCell className="font-medium">{r.cliente?.ragione_sociale ?? "—"}</TableCell>
-                  <TableCell className="text-sm">{r.email_destinatario ?? <span className="text-muted-foreground italic">nessuna</span>}</TableCell>
-                  <TableCell className="text-right">{r.num_scadenze}</TableCell>
-                  <TableCell className="text-right">{fmtEuroFull(Number(r.importo_totale ?? 0))}</TableCell>
-                  <TableCell>
-                    <EsitoBadge esito={r.esito} errore={r.errore} />
-                  </TableCell>
-                </TableRow>
-              ))}
+              {filtered.map((r) => {
+                const isOpen = expandedLogId === r.id;
+                return (
+                  <Fragment key={r.id}>
+                    <TableRow
+                      className="cursor-pointer hover:bg-muted/40"
+                      onClick={() => setExpandedLogId(isOpen ? null : r.id)}
+                    >
+                      <TableCell className="w-8">
+                        {isOpen ? <ChevronUp className="size-4 text-muted-foreground" /> : <ChevronDown className="size-4 text-muted-foreground" />}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">{fmtDateTime(r.created_at)}</TableCell>
+                      <TableCell className="font-medium">{r.cliente?.ragione_sociale ?? "—"}</TableCell>
+                      <TableCell className="text-sm">{r.email_destinatario ?? <span className="text-muted-foreground italic">nessuna</span>}</TableCell>
+                      <TableCell className="text-right">{r.num_scadenze}</TableCell>
+                      <TableCell className="text-right">{fmtEuroFull(Number(r.importo_totale ?? 0))}</TableCell>
+                      <TableCell>
+                        <EsitoBadge esito={r.esito} errore={r.errore} />
+                      </TableCell>
+                    </TableRow>
+                    {isOpen && (
+                      <TableRow>
+                        <TableCell colSpan={7} className="bg-muted/20 p-4">
+                          <LogDettaglio row={r} />
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </Fragment>
+                );
+              })}
             </TableBody>
           </Table>
         </div>
@@ -683,6 +703,125 @@ function InviiAutomaticiSection() {
     </Card>
   );
 }
+
+function LogDettaglio({ row }: { row: PromLogRow }) {
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      <div className="space-y-2">
+        <div className="text-xs uppercase tracking-wider text-muted-foreground">
+          Anteprima email {row.esito === "saltato_no_email" && "(non inviata — no email)"}
+          {row.esito === "fallito" && "(non recapitata)"}
+        </div>
+        {row.email_html ? (
+          <iframe
+            title={`email-${row.id}`}
+            srcDoc={row.email_html}
+            className="w-full h-[520px] rounded-md border border-border bg-background"
+          />
+        ) : (
+          <div className="rounded-md border border-dashed border-border bg-background p-4 text-sm text-muted-foreground">
+            Anteprima non disponibile per questo invio (log precedente all'archiviazione HTML,
+            oppure oltre la finestra di retention di 90 giorni).
+          </div>
+        )}
+      </div>
+      <div className="space-y-2">
+        <div className="text-xs uppercase tracking-wider text-muted-foreground">
+          Scadenze incluse ({row.num_scadenze})
+        </div>
+        <LogScadenzeIncluse logId={row.id} numScadenze={row.num_scadenze} />
+      </div>
+    </div>
+  );
+}
+
+type BridgeRow = {
+  scadenza_id: string;
+  scadenza: {
+    numero_documento: string | null;
+    data_documento: string | null;
+    data_scadenza: string | null;
+    importo_scadenza: number | null;
+    codice_pagamento: string | null;
+  } | null;
+};
+
+function LogScadenzeIncluse({ logId, numScadenze }: { logId: string; numScadenze: number }) {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["promemoria_scadenza_log_scadenze", logId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("promemoria_scadenza_log_scadenze")
+        .select("scadenza_id, scadenza:scadenze(numero_documento, data_documento, data_scadenza, importo_scadenza, codice_pagamento)")
+        .eq("log_id", logId);
+      if (error) throw error;
+      return (data ?? []) as unknown as BridgeRow[];
+    },
+  });
+
+  if (isLoading) return <Skeleton className="h-32 w-full" />;
+  if (error) return <div className="text-sm text-muted-foreground">Dettaglio non disponibile.</div>;
+
+  const rows = data ?? [];
+  const trovate = rows.filter((r) => r.scadenza !== null).length;
+  const mancanti = rows.length - trovate;
+
+  return (
+    <div className="rounded-md border border-border bg-background overflow-hidden">
+      {mancanti > 0 && (
+        <div className="px-3 py-1.5 text-xs text-amber-800 bg-amber-50 border-b border-amber-200">
+          {mancanti} scadenz{mancanti === 1 ? "a" : "e"} non più disponibil{mancanti === 1 ? "e" : "i"} nello scadenziario
+          (probabile re-import o cancellazione). L'anteprima email resta la fonte fedele congelata.
+        </div>
+      )}
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="h-8">Documento</TableHead>
+            <TableHead className="h-8">Scadenza</TableHead>
+            <TableHead className="h-8">Metodo</TableHead>
+            <TableHead className="h-8 text-right">Importo</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.length === 0 && (
+            <TableRow>
+              <TableCell colSpan={4} className="text-center text-sm text-muted-foreground py-3">
+                Nessuna scadenza collegata ({numScadenze} salvata nel log).
+              </TableCell>
+            </TableRow>
+          )}
+          {rows.map((r) => {
+            const s = r.scadenza;
+            if (!s) {
+              return (
+                <TableRow key={r.scadenza_id} className="text-muted-foreground italic">
+                  <TableCell colSpan={4} className="text-sm">
+                    Scadenza non più disponibile (rimossa dallo scadenziario)
+                  </TableCell>
+                </TableRow>
+              );
+            }
+            const isRiBa = /^RB/i.test(s.codice_pagamento ?? "");
+            return (
+              <TableRow key={r.scadenza_id}>
+                <TableCell className="text-sm">{s.numero_documento ?? "—"}</TableCell>
+                <TableCell className="text-sm">{s.data_scadenza ? new Date(s.data_scadenza).toLocaleDateString("it-IT") : "—"}</TableCell>
+                <TableCell className="text-sm">
+                  <Badge variant="outline" className={cn("text-[10px]", isRiBa ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-slate-50 text-slate-700 border-slate-200")}>
+                    {isRiBa ? "RiBa" : "Bonifico"}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-right text-sm font-medium">{fmtEuroFull(Number(s.importo_scadenza ?? 0))}</TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
 
 function EsitoBadge({ esito, errore }: { esito: string; errore: string | null }) {
   if (esito === "inviato") {
