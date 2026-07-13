@@ -203,6 +203,9 @@ export const inviaCredenziali = createServerFn({ method: "POST" })
         subject: "Le tue credenziali di accesso — FidiManager MADE",
         html,
       },
+      headers: {
+        "x-internal-secret": process.env.INTERNAL_EMAIL_SECRET ?? "",
+      },
     });
     if (eSend) throw new Error(eSend.message);
 

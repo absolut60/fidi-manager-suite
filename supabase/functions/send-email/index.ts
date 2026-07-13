@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import nodemailer from "npm:nodemailer@6.9.16";
 import { LOGO_MADE_BASE64 } from "./logo-made.ts";
 
@@ -6,10 +7,47 @@ import { LOGO_MADE_BASE64 } from "./logo-made.ts";
 // Senza trattini per evitare bug di parser legacy.
 const LOGO_CID = "logoMade";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+// Ruoli abilitati al ramo UTENTE (invio email dal frontend con JWT).
+// I job Inngest usano il ramo SERVER (header x-internal-secret) e bypassano
+// questa lista.
+const RUOLI_AUTORIZZATI = new Set([
+  "amministratore",
+  "amministrazione",
+  "direzione",
+  "approvatore",
+  "store_manager",
+]);
+
+function getAllowedOrigins(): string[] {
+  const raw = Deno.env.get("APP_URL") ?? "";
+  return raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+}
+
+function buildCorsHeaders(originHeader: string | null): Record<string, string> {
+  const allowlist = getAllowedOrigins();
+  const origin =
+    originHeader && allowlist.includes(originHeader)
+      ? originHeader
+      : allowlist[0] ?? "";
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Headers":
+      "authorization, x-client-info, apikey, content-type, x-internal-secret",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Vary": "Origin",
+  };
+}
+
+// Confronto costante nel tempo per evitare timing attack sul secret.
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
 
 interface EmailAttachment {
   filename: string;
@@ -46,9 +84,74 @@ function isEmailValida(raw: unknown): boolean {
   return EMAIL_REGEX.test(v);
 }
 
+async function authorizeRequest(req: Request): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
+  // Ramo SERVER: header segreto condiviso (job Inngest / server functions).
+  const providedSecret = req.headers.get("x-internal-secret");
+  const expectedSecret = Deno.env.get("INTERNAL_EMAIL_SECRET") ?? "";
+  if (providedSecret && expectedSecret && safeEqual(providedSecret, expectedSecret)) {
+    return { ok: true };
+  }
+
+  // Ramo UTENTE: JWT reale + ruolo abilitato.
+  const authHeader = req.headers.get("authorization") ?? "";
+  if (!authHeader.toLowerCase().startsWith("bearer ")) {
+    return { ok: false, status: 401, error: "Missing authorization" };
+  }
+  const token = authHeader.slice(7).trim();
+  if (!token) return { ok: false, status: 401, error: "Missing token" };
+
+  const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+  const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    return { ok: false, status: 500, error: "Server misconfigured" };
+  }
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  const { data: userData, error: userErr } = await supabase.auth.getUser(token);
+  if (userErr || !userData?.user) {
+    return { ok: false, status: 401, error: "Invalid token" };
+  }
+  const user = userData.user;
+  // Rifiuta anon key (role: "anon" nel JWT). Un utente reale ha role "authenticated".
+  if (user.role !== "authenticated" || !user.id) {
+    return { ok: false, status: 401, error: "Anonymous tokens not allowed" };
+  }
+
+  // Verifica ruolo abilitato.
+  const { data: roles, error: rolesErr } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", user.id);
+  if (rolesErr) {
+    console.error("Errore lettura user_roles:", rolesErr);
+    return { ok: false, status: 500, error: "Role lookup failed" };
+  }
+  const abilitato = (roles ?? []).some((r: { role: string }) => RUOLI_AUTORIZZATI.has(r.role));
+  if (!abilitato) {
+    return { ok: false, status: 403, error: "Forbidden: role not allowed to send email" };
+  }
+
+  return { ok: true };
+}
+
 serve(async (req) => {
+  const corsHeaders = buildCorsHeaders(req.headers.get("origin"));
+
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
+  }
+
+  // Autorizzazione a doppio binario.
+  const auth = await authorizeRequest(req);
+  if (!auth.ok) {
+    return new Response(JSON.stringify({ ok: false, error: auth.error }), {
+      status: auth.status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   try {
