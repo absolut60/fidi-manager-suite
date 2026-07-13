@@ -1267,12 +1267,14 @@ function ClientiPage() {
                       className={`cursor-pointer hover:bg-muted/50 ${isBlocked ? "bg-[#FEF2F2] dark:bg-destructive/10 border-l-[3px] border-l-[#EF4444] hover:bg-[#FEE2E2] dark:hover:bg-destructive/15" : (c as { in_gestione_legale?: boolean }).in_gestione_legale ? "bg-amber-50 dark:bg-amber-500/10 border-l-[3px] border-l-amber-500 hover:bg-amber-100 dark:hover:bg-amber-500/15" : !isClienteAttivo((c as any).ultima_data_fatturazione, (c as any).doc_da_fatturare, config) ? "bg-muted/40 text-muted-foreground" : ""}`}
                      onClick={() => navigate({ to: "/clienti/$clienteId", params: { clienteId: c.id } })}
                    >
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <Checkbox
-                        checked={selectedIds.has(c.id)}
-                        onCheckedChange={() => toggleSelect(c)}
-                      />
-                    </TableCell>
+                    {!isAgente && (
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={selectedIds.has(c.id)}
+                          onCheckedChange={() => toggleSelect(c)}
+                        />
+                      </TableCell>
+                    )}
                     <TableCell>
                       <span
                         className={`inline-block size-2.5 rounded-full ${SEMAFORO_DOT[sem]}`}
