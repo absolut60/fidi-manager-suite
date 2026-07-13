@@ -96,8 +96,9 @@ export const promemoriaScadenzaAutomatico = inngest.createFunction(
       .gt("importo_scadenza", 0)
       .eq("data_scadenza", targetISO)
       .is("promemoria_scadenza_inviato_il", null)
-      .or("sollecitato.is.null,sollecitato.eq.false")
+      .not("sollecitato", "is", true)
       .or(orExpr);
+
     if (error) throw new Error(error.message);
 
     const scadenze = (rows ?? []) as unknown as ScadenzaRow[];
