@@ -200,6 +200,17 @@ function useStores() {
   });
 }
 
+function useAgenti() {
+  return useQuery({
+    queryKey: ["agenti", "all"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("agenti").select("codice, descrizione").order("descrizione");
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
 function EditUtenteDialog({ utente, onClose }: { utente: UserRow; onClose: () => void }) {
   const qc = useQueryClient();
   const { role } = useAuth();
