@@ -125,6 +125,17 @@ function PromemoriaScadenzaPage() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [selezionati, setSelezionati] = useState<Set<string>>(new Set());
   const [invioOpen, setInvioOpen] = useState(false);
+  const [sortKey, setSortKey] = useState<SortKey>("ragione_sociale");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  function toggleSort(k: SortKey) {
+    if (sortKey === k) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(k);
+      setSortDir("asc");
+    }
+  }
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDeb(search.trim()), 300);
