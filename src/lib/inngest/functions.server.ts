@@ -956,6 +956,35 @@ export const processAnagraficaChunk = inngest.createFunction(
         }
       }
 
+      // Auto-popolamento tabella agenti (idempotente, non blocca l'import)
+      try {
+        const agentiMap = new Map<string, string>();
+        for (const p of prepared) {
+          const cod = toStr((p.payload as Record<string, unknown>).codice_agente);
+          const desc = toStr((p.payload as Record<string, unknown>).agente);
+          if (cod && desc) agentiMap.set(cod, desc);
+        }
+        if (agentiMap.size > 0) {
+          const agentiArray = Array.from(agentiMap.entries()).map(
+            ([codice, descrizione]) => ({ codice, descrizione }),
+          );
+          const { error: agErr } = await supabaseAdmin
+            .from("agenti")
+            .upsert(agentiArray as never, {
+              onConflict: "codice",
+              ignoreDuplicates: false,
+            });
+          if (agErr) {
+            logger.warn(
+              `Chunk ${chunkIndex} upsert agenti fallito: ${agErr.message}`,
+            );
+          }
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        logger.warn(`Chunk ${chunkIndex} upsert agenti eccezione: ${msg}`);
+      }
+
       const toInsert = prepared.filter((p) => !p.existId);
       const toUpdate = prepared.filter((p) => p.existId);
 
