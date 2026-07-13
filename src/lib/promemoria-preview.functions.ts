@@ -111,6 +111,8 @@ export const previewPromemoriaEmail = createServerFn({ method: "GET" })
         _escludi_legale: escludiLegale,
         _escludi_bloccati: escludiBloccati,
         _escludi_bos: escludiBos,
+        _includi_bonifici: includiBonifici,
+        _includi_riba: includiRiba,
       } as never,
     );
     const scadenzeReali = (rows ?? []) as unknown as Array<{
