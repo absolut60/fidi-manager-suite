@@ -138,8 +138,9 @@ function ClientiPage() {
   }, [searchInput]);
   const [statoCliente, setStatoCliente] = useState<"attivi" | "disattivati" | "tutti">("attivi");
   const [statoAttivita, setStatoAttivita] = useState<"tutti" | "attivi" | "non_attivi">("attivi");
-  const { role: _roleEarly, profilo: _profiloEarly } = useAuth();
+  const { role: _roleEarly, profilo: _profiloEarly, hasRole: _hasRoleEarly } = useAuth();
   const isStoreManager = _roleEarly === "store_manager";
+  const isAgente = _hasRoleEarly("agente");
   const config = useConfig();
   const isConfigReady = useConfigReady();
   const myStoreId = _profiloEarly?.store_id ?? null;
