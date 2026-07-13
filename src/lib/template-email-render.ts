@@ -126,6 +126,8 @@ export function renderTemplate(
       ? "Nessuna scadenza in arrivo nel periodo selezionato."
       : "Nessuna scadenza scaduta al momento.",
     speseImportoUnitario: opts?.speseImportoUnitario,
+    // Il promemoria distingue esplicitamente RiBa da Bonifico riga per riga.
+    showMetodo: isPromemoria,
   });
   const values: Record<PlaceholderKey, string> = {
     ragione_sociale: escapeHtml(dati.ragione_sociale ?? ""),
