@@ -34,8 +34,8 @@ export const previewPromemoriaEmail = createServerFn({ method: "GET" })
   .handler(async ({ context }): Promise<PromemoriaPreviewResult> => {
     const { supabase, userId } = context;
 
-    // Autorizzazione: solo admin / amministrazione / approvatori.
-    const roles = ["admin", "amministrazione", "approvatore"] as const;
+    // Autorizzazione: solo ruoli amministrativi.
+    const roles = ["amministratore", "amministrazione", "direzione"] as const;
     let allowed = false;
     for (const r of roles) {
       const { data } = await supabase.rpc("has_role", { _user_id: userId, _role: r });
