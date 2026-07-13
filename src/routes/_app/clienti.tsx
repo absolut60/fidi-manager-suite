@@ -204,6 +204,15 @@ function ClientiPage() {
     },
   });
 
+  const { data: agenti } = useQuery({
+    queryKey: ["agenti-list"],
+    queryFn: async () => {
+      const { data } = await supabase.from("agenti").select("codice, descrizione").order("descrizione");
+      return (data ?? []) as { codice: string; descrizione: string }[];
+    },
+    staleTime: 5 * 60_000,
+  });
+
   // Aggregato scadenziario (una sola query, cached) per badge + filtro
   const { data: scadenziarioMap } = useQuery({
     queryKey: ["clienti-scadenziario-agg"],
