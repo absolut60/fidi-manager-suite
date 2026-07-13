@@ -764,6 +764,7 @@ type RischioData = {
   doc_da_fatturare: number | null; doc_da_evadere: number | null; effetti_a_rischio: number | null;
   num_insoluti: number | null; dilazione_concordata: number | null; dilazione_effettiva: number | null;
   condizione_pagamento_cod?: string | null; condizione_pagamento_desc_db?: string | null;
+  codice_agente?: string | null; agente?: string | null;
 } | null | undefined;
 
 function PromesseAttiveBlock({ clienteId }: { clienteId: string }) {
