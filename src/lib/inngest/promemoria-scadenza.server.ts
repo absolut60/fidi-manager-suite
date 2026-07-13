@@ -280,6 +280,8 @@ export const promemoriaScadenzaAutomatico = inngest.createFunction(
       escludi_legale: escludiLegale,
       escludi_bloccati: escludiBloccati,
       escludi_bos: escludiBos,
+      includi_bonifici: includiBonifici,
+      includi_riba: includiRiba,
       operatore_id: operatoreId,
       clienti_candidati: perCliente.size,
       inviati,
