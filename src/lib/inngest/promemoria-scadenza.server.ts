@@ -1,14 +1,22 @@
 // Job giornaliero: promemoria automatico scadenze in arrivo.
 // - Cron: 06:00 UTC ogni giorno.
-// - Trova scadenze aperte con data_scadenza = today + N giorni (N = config),
-//   metodo di pagamento con prefisso configurato (default 'BO'), non ancora
-//   sollecitate e senza promemoria già inviato.
-// - Raggruppa per cliente, invia UNA email con la lista scadenze.
-// - Idempotente: marca `scadenze.promemoria_scadenza_inviato_il` = now().
 // - Rispetta il flag `promemoria_scadenza_attivo`.
+// - Regola "a scadere" centralizzata nella RPC SQL
+//   `get_promemoria_scadenze_dettaglio(_data, _escludi_legale, _escludi_bloccati, _escludi_bos)`:
+//     data_pagamento_effettiva IS NULL AND data_scadenza = today+N
+//     + esclusioni configurabili (in_legale, bloccato, codice_pagamento BOS%).
+//   NESSUN filtro replicato qui.
+// - Pipeline email condivisa: `buildPromemoriaEmail` (renderTemplate +
+//   wrapEmailHtml, tipo "promemoria_scadenza", useCid:true).
+// - Firma: nome + email dell'utente firmatario configurato
+//   (`promemoria_scadenza_operatore_id`); se assente il job salta l'invio.
+// - Idempotenza: `scadenze.promemoria_scadenza_inviato_il` viene marcata dopo
+//   l'invio effettivo. Log su `promemoria_scadenza_log` (+ bridge scadenze).
 import { inngest } from "./client";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendEmailViaEdge } from "./send-email.server";
+import { buildPromemoriaEmail } from "@/lib/promemoria-scadenza-render";
+import type { DatiSede, ScadenzaSollecito } from "@/lib/template-email-render";
 
 async function getConfig(chiave: string, fallback: string): Promise<string> {
   const { data } = await supabaseAdmin
@@ -19,36 +27,39 @@ async function getConfig(chiave: string, fallback: string): Promise<string> {
   return (data?.valore ?? "").toString().trim() || fallback;
 }
 
-function fmtEuro(n: number): string {
-  return new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 2 }).format(n);
-}
-function fmtDateIt(iso: string): string {
-  return new Date(iso).toLocaleDateString("it-IT");
-}
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-}
-function fillTemplate(text: string, vars: Record<string, string>): string {
-  return text.replace(/\{\{\s*([a-z_]+)\s*\}\}/gi, (_m, k) => (String(k).toLowerCase() in vars ? vars[String(k).toLowerCase()] : ""));
-}
-function wrapHtml(inner: string): string {
-  return `<!doctype html><html><body style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;line-height:1.5;">
-<div style="max-width:640px;margin:0 auto;padding:16px 20px;">
-${inner}
-<hr style="margin-top:24px;border:none;border-top:1px solid #e2e8f0;" />
-<p style="font-size:11px;color:#64748b;margin-top:12px;">Email generata automaticamente da FidiManager.</p>
-</div></body></html>`;
-}
-
-type ScadenzaRow = {
-  id: string;
+type ScadenzaDettaglioRow = {
+  scadenza_id: string;
   cliente_id: string;
+  ragione_sociale: string | null;
+  email: string | null;
+  pec: string | null;
+  store_id: string | null;
+  store_nome: string | null;
+  store_insegna: string | null;
+  store_indirizzo: string | null;
+  store_cap: string | null;
+  store_citta: string | null;
+  store_provincia: string | null;
+  store_telefono: string | null;
   numero_documento: string | null;
+  data_documento: string | null;
   data_scadenza: string;
   importo_scadenza: number;
   codice_pagamento: string | null;
-  cliente: { ragione_sociale: string | null; email: string | null } | null;
 };
+
+function sedeFromRow(r: ScadenzaDettaglioRow): DatiSede | null {
+  if (!r.store_id) return null;
+  return {
+    nome: r.store_nome,
+    insegna: r.store_insegna,
+    indirizzo: r.store_indirizzo,
+    cap: r.store_cap,
+    citta: r.store_citta,
+    provincia: r.store_provincia,
+    telefono: r.store_telefono,
+  };
+}
 
 export const promemoriaScadenzaAutomatico = inngest.createFunction(
   {
@@ -64,18 +75,34 @@ export const promemoriaScadenzaAutomatico = inngest.createFunction(
 
     const giorniStr = await getConfig("promemoria_scadenza_giorni_anticipo", "3");
     const giorni = Math.max(0, parseInt(giorniStr, 10) || 3);
-    const metodiCsv = await getConfig("promemoria_scadenza_metodi", "BO");
-    const prefissi = metodiCsv.split(",").map((s) => s.trim()).filter(Boolean);
-    if (prefissi.length === 0) {
-      return { ok: true, skipped: true, reason: "nessun_metodo_configurato" };
-    }
+    const escludiLegale = (await getConfig("promemoria_scadenza_escludi_legale", "true")) !== "false";
+    const escludiBloccati = (await getConfig("promemoria_scadenza_escludi_bloccati", "false")) === "true";
+    const escludiBos = (await getConfig("promemoria_scadenza_escludi_bos", "true")) !== "false";
 
+    // Firmatario: senza operatore configurato NON inviamo email anonime.
+    const operatoreId = (await getConfig("promemoria_scadenza_operatore_id", "")).trim();
+    if (!operatoreId) {
+      return { ok: true, skipped: true, reason: "no_operatore_configurato" };
+    }
+    const { data: prof } = await supabaseAdmin
+      .from("profili")
+      .select("nome, cognome, email")
+      .eq("id", operatoreId)
+      .maybeSingle();
+    const mittenteNome = [prof?.nome ?? "", prof?.cognome ?? ""].map((s) => (s ?? "").trim()).filter(Boolean).join(" ").trim();
+    const mittenteEmail = (prof?.email ?? "").trim();
+    if (!mittenteNome || !mittenteEmail) {
+      return { ok: true, skipped: true, reason: "operatore_incompleto" };
+    }
+    const mittente = { nome: mittenteNome, email: mittenteEmail };
+
+    // Data target = oggi + N giorni (ISO YYYY-MM-DD).
     const target = new Date();
     target.setHours(0, 0, 0, 0);
     target.setDate(target.getDate() + giorni);
     const targetISO = target.toISOString().slice(0, 10);
 
-    // Template
+    // Template email (fonte unica: template_email tipo=promemoria_scadenza attivo).
     const { data: tplRaw } = await supabaseAdmin
       .from("template_email")
       .select("oggetto, corpo")
@@ -84,40 +111,53 @@ export const promemoriaScadenzaAutomatico = inngest.createFunction(
       .maybeSingle();
     const tpl = tplRaw as { oggetto: string | null; corpo: string | null } | null;
     if (!tpl) return { ok: true, skipped: true, reason: "template_non_trovato" };
+    const template = { oggetto: tpl.oggetto ?? "", corpo: tpl.corpo ?? "" };
 
-    // Filtro codice_pagamento: OR di ilike per ciascun prefisso
-    const orExpr = prefissi.map((p) => `codice_pagamento.ilike.${p}%`).join(",");
-
-    const { data: rows, error } = await supabaseAdmin
-      .from("scadenze")
-      .select("id, cliente_id, numero_documento, data_scadenza, importo_scadenza, codice_pagamento, cliente:clienti(ragione_sociale, email)")
-      .eq("stato_contabile", "Aperta")
-      .is("data_pagamento_effettiva", null)
-      .gt("importo_scadenza", 0)
-      .eq("data_scadenza", targetISO)
-      .is("promemoria_scadenza_inviato_il", null)
-      .not("sollecitato", "is", true)
-      .or(orExpr);
-
+    // Regola "a scadere" UNIFICATA: la RPC decide tutto (dpe IS NULL, data,
+    // in_legale, bloccato, BOS%). Il job non replica filtri.
+    const { data: rows, error } = await supabaseAdmin.rpc(
+      "get_promemoria_scadenze_dettaglio" as never,
+      {
+        _data: targetISO,
+        _escludi_legale: escludiLegale,
+        _escludi_bloccati: escludiBloccati,
+        _escludi_bos: escludiBos,
+      } as never,
+    );
     if (error) throw new Error(error.message);
+    const scadenze = (rows ?? []) as unknown as ScadenzaDettaglioRow[];
 
-    const scadenze = (rows ?? []) as unknown as ScadenzaRow[];
+    // Escludi scadenze gia' promemoriate (idempotenza) in un secondo round-trip
+    // — evita di appesantire la RPC con la colonna dedicata.
+    const scadenzaIds = scadenze.map((r) => r.scadenza_id);
+    let giaInviate = new Set<string>();
+    if (scadenzaIds.length > 0) {
+      const { data: yaSent } = await supabaseAdmin
+        .from("scadenze")
+        .select("id")
+        .in("id", scadenzaIds)
+        .not("promemoria_scadenza_inviato_il", "is", null);
+      giaInviate = new Set(((yaSent ?? []) as { id: string }[]).map((r) => r.id));
+    }
+    const scadenzeFiltrate = scadenze.filter((r) => !giaInviate.has(r.scadenza_id));
 
-    // Raggruppa per cliente
-    const perCliente = new Map<string, ScadenzaRow[]>();
-    for (const s of scadenze) {
+    // Raggruppa per cliente.
+    const perCliente = new Map<string, ScadenzaDettaglioRow[]>();
+    for (const s of scadenzeFiltrate) {
       const arr = perCliente.get(s.cliente_id) ?? [];
       arr.push(s);
       perCliente.set(s.cliente_id, arr);
     }
 
     const todayISO = new Date().toISOString().slice(0, 10);
-    let inviati = 0, saltati_no_email = 0, falliti = 0;
+    let inviati = 0;
+    let saltati_no_email = 0;
+    let falliti = 0;
 
     for (const [clienteId, lista] of perCliente) {
-      const cliente = lista[0].cliente;
-      const ragioneSociale = cliente?.ragione_sociale ?? "Cliente";
-      const email = (cliente?.email ?? "").trim();
+      const first = lista[0];
+      const ragioneSociale = first.ragione_sociale ?? "Cliente";
+      const email = (first.email ?? "").trim();
       const importoTotale = lista.reduce((acc, r) => acc + Number(r.importo_scadenza || 0), 0);
       const numScadenze = lista.length;
 
@@ -135,30 +175,32 @@ export const promemoriaScadenzaAutomatico = inngest.createFunction(
         continue;
       }
 
-      // Costruisci elenco HTML scadenze
-      const righeHtml = lista
-        .map((r) => {
-          const num = escapeHtml(r.numero_documento ?? "—");
-          const dt = escapeHtml(fmtDateIt(r.data_scadenza));
-          const imp = escapeHtml(fmtEuro(Number(r.importo_scadenza || 0)));
-          return `<tr><td style="padding:6px 12px;border-bottom:1px solid #e2e8f0;">${num}</td><td style="padding:6px 12px;border-bottom:1px solid #e2e8f0;">${dt}</td><td style="padding:6px 12px;border-bottom:1px solid #e2e8f0;text-align:right;">${imp}</td></tr>`;
-        })
-        .join("");
-      const elencoScadenze = `<table style="width:100%;border-collapse:collapse;margin:12px 0;">
-<thead><tr style="background:#f1f5f9;"><th style="padding:6px 12px;text-align:left;">Documento</th><th style="padding:6px 12px;text-align:left;">Scadenza</th><th style="padding:6px 12px;text-align:right;">Importo</th></tr></thead>
-<tbody>${righeHtml}</tbody>
-<tfoot><tr><td colspan="2" style="padding:6px 12px;text-align:right;font-weight:600;">Totale</td><td style="padding:6px 12px;text-align:right;font-weight:600;">${escapeHtml(fmtEuro(importoTotale))}</td></tr></tfoot>
-</table>`;
+      const scadenzePerRender: ScadenzaSollecito[] = lista.map((r) => ({
+        numero_documento: r.numero_documento,
+        data_documento: r.data_documento,
+        data_scadenza: r.data_scadenza,
+        importo_scadenza: Number(r.importo_scadenza || 0),
+        codice_pagamento: r.codice_pagamento,
+      }));
 
-      const vars: Record<string, string> = {
-        ragione_sociale: escapeHtml(ragioneSociale),
-        elenco_scadenze: elencoScadenze,
-      };
-      const oggetto = fillTemplate(tpl.oggetto ?? "", vars);
-      const corpo = fillTemplate(tpl.corpo ?? "", vars);
-      const html = wrapHtml(corpo);
+      const { oggetto, html } = buildPromemoriaEmail({
+        template,
+        ragioneSociale,
+        scadenze: scadenzePerRender,
+        sede: sedeFromRow(first),
+        mittente,
+        useCid: true,
+      });
 
-      const res = await sendEmailViaEdge({ to: email, subject: oggetto, html });
+      const res = await sendEmailViaEdge({
+        to: email,
+        subject: oggetto,
+        html,
+        inlineLogo: true,
+        fromName: mittente.nome,
+        replyTo: mittente.email,
+      });
+
       if (res.ok) {
         const { data: logRow, error: logErr } = await supabaseAdmin
           .from("promemoria_scadenza_log" as never)
@@ -175,14 +217,14 @@ export const promemoriaScadenzaAutomatico = inngest.createFunction(
           .single();
         if (!logErr && logRow) {
           const logId = (logRow as { id: string }).id;
-          const bridgeRows = lista.map((r) => ({ log_id: logId, scadenza_id: r.id }));
+          const bridgeRows = lista.map((r) => ({ log_id: logId, scadenza_id: r.scadenza_id }));
           await supabaseAdmin.from("promemoria_scadenza_log_scadenze" as never).insert(bridgeRows as never);
         }
         const nowIso = new Date().toISOString();
         await supabaseAdmin
           .from("scadenze")
           .update({ promemoria_scadenza_inviato_il: nowIso } as never)
-          .in("id", lista.map((r) => r.id));
+          .in("id", lista.map((r) => r.scadenza_id));
         inviati++;
       } else {
         await supabaseAdmin.from("promemoria_scadenza_log" as never).insert({
@@ -204,7 +246,10 @@ export const promemoriaScadenzaAutomatico = inngest.createFunction(
       ok: true,
       target_date: targetISO,
       giorni_anticipo: giorni,
-      metodi: prefissi,
+      escludi_legale: escludiLegale,
+      escludi_bloccati: escludiBloccati,
+      escludi_bos: escludiBos,
+      operatore_id: operatoreId,
       clienti_candidati: perCliente.size,
       inviati,
       saltati_no_email,

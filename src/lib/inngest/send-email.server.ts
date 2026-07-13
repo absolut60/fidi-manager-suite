@@ -4,6 +4,13 @@ export async function sendEmailViaEdge(payload: {
   to: string;
   subject: string;
   html: string;
+  // Se true, la edge allega logo-made.png inline con cid "logoMade"
+  // (richiesto quando il corpo HTML usa <img src="cid:logoMade">).
+  inlineLogo?: boolean;
+  // Display-name mittente (l'indirizzo resta quello SMTP autenticato lato edge).
+  fromName?: string;
+  // Reply-To: quando l'utente risponde alla mail arriva a questa casella.
+  replyTo?: string;
 }): Promise<{ ok: boolean; err?: string }> {
   const SUPABASE_URL = process.env.SUPABASE_URL!;
   const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_ANON_KEY ?? "";
