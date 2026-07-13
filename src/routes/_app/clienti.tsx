@@ -1223,18 +1223,20 @@ function ClientiPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-8">
-                    <Checkbox
-                      checked={clienti.length > 0 && clienti.every((c: any) => selectedIds.has(c.id))}
-                      onCheckedChange={async (v) => {
-                        if (v) {
-                          await selezionaTuttiFiltrati();
-                        } else {
-                          clearSelection();
-                        }
-                      }}
-                    />
-                  </TableHead>
+                  {!isAgente && (
+                    <TableHead className="w-8">
+                      <Checkbox
+                        checked={clienti.length > 0 && clienti.every((c: any) => selectedIds.has(c.id))}
+                        onCheckedChange={async (v) => {
+                          if (v) {
+                            await selezionaTuttiFiltrati();
+                          } else {
+                            clearSelection();
+                          }
+                        }}
+                      />
+                    </TableHead>
+                  )}
                   <TableHead className="w-8"></TableHead>
                   <TableHead><SortHeader col="ragione_sociale" label="Ragione sociale" /></TableHead>
                   <TableHead><SortHeader col="codice_gestionale" label="Cod. gest." /></TableHead>
