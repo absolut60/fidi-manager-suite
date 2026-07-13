@@ -25,6 +25,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   CalendarClock,
   ChevronDown,
   ChevronUp,
@@ -35,7 +38,11 @@ import {
   Send,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { InvioMassivoDialog } from "@/components/invio-massivo-dialog";
+
+type SortKey = "ragione_sociale" | "store_nome" | "n_scadenze" | "totale_a_scadere" | "prima_scadenza";
+type SortDir = "asc" | "desc";
 
 export const Route = createFileRoute("/_app/recupero-crediti-promemoria")({
   component: PromemoriaScadenzaPage,
