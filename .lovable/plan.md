@@ -1,110 +1,83 @@
+# Chiusura vulnerabilità edge function `send-email`
 
-# Stadio escalation sollecito + check coerenza pre-invio
+## A) Censimento chiamanti
 
-## 1. Derivazione `livello_sollecito` (rispondo al "dimmi come lo ricavi")
+### Server-side (fetch diretto `/functions/v1/send-email` con SERVICE_ROLE)
+1. `src/lib/inngest/send-email.server.ts` — helper condiviso `sendEmailViaEdge`. Usato da:
+   - `src/lib/inngest/promemoria-scadenza.server.ts` (job promemoria scadenza)
+   - `src/lib/inngest/piano-rientro-reminder.server.ts` (reminder rate piano)
+2. `src/lib/inngest/sollecito-massivo.server.ts` — **duplica** localmente `sendEmailViaEdge` (stessa logica, va allineato).
 
-`azioni_recupero` oggi NON ha `template_id`. Aggiungo:
+Identità: `SUPABASE_SERVICE_ROLE_KEY` (con fallback improprio a ANON — vedi punto D).
 
-- Colonna `livello_sollecito smallint NULL` su `azioni_recupero` (0..3, dove 1=sollecito_1, 2=sollecito_2, 3=messa_in_mora, NULL=non pertinente, es. telefonate/note/promemoria).
-- Valorizzato all'invio (singolo + massivo) leggendo `template_email.tipo` del template usato:
-  - `sollecito_1` → 1
-  - `sollecito_2` → 2
-  - `messa_in_mora` → 3
-  - `promemoria_scadenza` → NULL (esplicitamente escluso: lo stadio escalation NON deve mai includere i promemoria cortesia).
+### Server-side (server function, `supabaseAdmin.functions.invoke`)
+3. `src/lib/utenti.functions.ts` (`inviaCredenzialiUtente`) — invio credenziali nuovo utente. Gira in server function autenticata, invoca con service role (via `supabaseAdmin`).
 
-### Backfill retroattivo (limite)
+### Client-side (browser, `supabase.functions.invoke` con JWT utente)
+4. `src/lib/send-email.ts` — wrapper `sendEmail` + helper `sendPrivacyPdf`, `sendNotificaComunicazione`. Chiamanti UI:
+   - `src/routes/_app/impostazioni.tsx` (email di test)
+   - `src/routes/_app/clienti.$clienteId.tsx` (invio PDF privacy)
+   - `src/components/email-libera-dialog.tsx` (email libera dai dialog)
+   - `src/components/invia-sollecito-dialog.tsx` (sollecito singolo)
+   - `src/components/nuovo-contatto-wizard.tsx` (PDF privacy dopo firma)
+   - `src/lib/comunicazioni-richiesta.ts` → `sendNotificaComunicazione` (notifica messaggi richiesta fido)
 
-Non avendo template_id storico, faccio un best-effort matching sul testo di `azioni_recupero.email_oggetto` rimuovendo i placeholder dai template e confrontando il prefisso fisso:
+Identità in tutti i casi client: `supabase.functions.invoke` aggiunge automaticamente `Authorization: Bearer <access_token>` della sessione utente (JWT `role: authenticated`). Se non c'è sessione, ricade sull'anon key (`role: anon`) — è esattamente il caso da bloccare.
 
-- "Sollecito di pagamento" → livello 1
-- "Secondo sollecito" → livello 2
-- "Costituzione in mora" → livello 3
-- "Promemoria" → NULL
+## B) Schema autorizzazione a doppio binario nella edge
 
-Limite: se in futuro vengono modificati gli oggetti dei template, il match retroattivo potrebbe non coprire azioni vecchie inviate con oggetti diversi. Per le nuove azioni, invece, il campo viene valorizzato in modo deterministico al momento dell'invio.
+Nel `serve()` di `supabase/functions/send-email/index.ts`, PRIMA di leggere il payload:
 
-## 2. Migration
+1. **Ramo SERVER** — header `x-internal-secret` presente e `timingSafeEqual` con `Deno.env.get("INTERNAL_EMAIL_SECRET")`. Se combacia → autorizzato, salta ogni altro check.
+2. **Ramo UTENTE** — se non c'è il secret:
+   - Leggere `Authorization: Bearer <token>`. Se assente → 401.
+   - Creare client Supabase con quel token, chiamare `auth.getUser(token)`.
+   - Se `user` mancante o `user.role !== 'authenticated'` (rifiuta anon key, che ha `role: 'anon'` nel JWT decodificato) → 401.
+   - Interrogare `user_roles` per `user.id` e verificare che contenga almeno uno tra: `amministratore`, `amministrazione`, `direzione`, `approvatore`. (Da confermare: `store_manager` per solleciti — vedi domanda aperta.)
+   - Altrimenti → 403.
+3. Qualsiasi altro esito → 401.
 
-```sql
-ALTER TABLE public.azioni_recupero
-  ADD COLUMN livello_sollecito smallint NULL
-    CHECK (livello_sollecito IS NULL OR livello_sollecito BETWEEN 0 AND 3);
+Nuovi secret Supabase: `INTERNAL_EMAIL_SECRET` (random 32+ char, generato via `generate_secret`, mai esposto al frontend).
 
-CREATE INDEX idx_azioni_recupero_livello
-  ON public.azioni_recupero (cliente_id, livello_sollecito)
-  WHERE livello_sollecito IS NOT NULL;
+## C) CORS ristretto
 
--- Backfill best-effort dalle email gia inviate
-UPDATE public.azioni_recupero
-SET livello_sollecito = CASE
-  WHEN email_oggetto ILIKE 'Costituzione in mora%' THEN 3
-  WHEN email_oggetto ILIKE 'Secondo sollecito%'    THEN 2
-  WHEN email_oggetto ILIKE 'Sollecito di pagamento%' THEN 1
-  ELSE NULL
-END
-WHERE tipo = 'email' AND livello_sollecito IS NULL;
-```
+- Sostituire `Access-Control-Allow-Origin: *` con echo dell'origin quando compreso in una allowlist derivata da `Deno.env.get("APP_URL")` (+ eventuali URL preview/published). Fallback: primo valore allowlist.
+- Aggiungere `x-internal-secret` a `Access-Control-Allow-Headers`.
+- OPTIONS resta 204 con gli stessi header.
+- Nuovo secret: `APP_URL` (valore = published URL principale; opzionalmente lista separata da virgola per includere preview).
 
-Poi sostituisco/affianco la RPC aggregato per restituire anche lo stadio:
+## D) Fix effetto collaterale `sendEmailViaEdge`
 
-```sql
-CREATE OR REPLACE FUNCTION public.get_recupero_clienti_aggregato_v2(...)
-RETURNS TABLE (
-  -- tutti i campi attuali +
-  stadio_sollecito smallint,           -- 0 mai, 1..3
-  stadio_data timestamptz,             -- data ultima email del livello max
-  stadio_giorni int                    -- oggi - stadio_data
-)
-```
+Oggi: `const KEY = SERVICE_ROLE ?? ANON ?? ""` — se manca la service role, cade sull'anon (che dopo il fix non passerebbe più).
 
-Lo `stadio` di un cliente è il `MAX(livello_sollecito)` tra le azioni email collegate (via `azioni_recupero_scadenze`) ad almeno una scadenza ANCORA APERTA (stessa logica già usata: tempi_scadenza non "pagat" oppure stato_contabile = 'Aperta'). Reset automatico: se tutte le vecchie scadenze sono state pagate, nessuna azione viene più associata → stadio 0.
+Interventi:
+- `src/lib/inngest/send-email.server.ts`: rimuovere fallback ad ANON. Richiedere `SUPABASE_SERVICE_ROLE_KEY` **e** `INTERNAL_EMAIL_SECRET`; se manca uno dei due → `throw` esplicito ("Configurazione email server incompleta: manca X"). Aggiungere header `x-internal-secret: <INTERNAL_EMAIL_SECRET>` alla fetch. Continuare a inviare `Authorization: Bearer <service_role>` (per superare il gateway della edge function, che pretende un JWT valido — l'autorizzazione applicativa la fa il secret).
+- `src/lib/inngest/sollecito-massivo.server.ts`: eliminare la copia locale e riusare `sendEmailViaEdge` dall'helper condiviso (o allineare identica logica: secret + no fallback anon).
+- `src/lib/utenti.functions.ts`: `supabaseAdmin.functions.invoke` usa il service role JWT come Authorization, ma NON aggiunge header custom → aggiungere `headers: { "x-internal-secret": process.env.INTERNAL_EMAIL_SECRET! }` all'invoke, oppure passare al fetch diretto via `sendEmailViaEdge`. Preferibile la seconda per uniformità.
 
-## 3. UI Recupero Crediti
+## File toccati (riepilogo)
 
-- Nuova colonna "Stadio" con badge colorato:
-  - 0 grigio "Mai sollecitato"
-  - 1 blu "1° sollecito — gg/mm (da N gg)"
-  - 2 arancione "2° sollecito — gg/mm (da N gg)"
-  - 3 rosso "Messa in mora — gg/mm (da N gg)"
-- Nuovo filtro `Select` "Stadio": Tutti / Mai / 1° / 2° / Messa in mora (passato come parametro `_stadi` alla RPC).
-- Il pulsante "Invio massivo solleciti" già usa `clienteIdsFiltrati`: con il filtro Stadio attivo, isolare "tutti al 1°" e poi scegliere il template `sollecito_2` produce l'ondata di escalation senza modifiche al motore.
+- `supabase/functions/send-email/index.ts` — auth dual-track + CORS ristretto
+- `src/lib/inngest/send-email.server.ts` — richiede service role + secret, header interno, no fallback anon
+- `src/lib/inngest/sollecito-massivo.server.ts` — usa l'helper condiviso
+- `src/lib/utenti.functions.ts` — passa dal fetch server con secret
+- Nessuna modifica ai file client (`src/lib/send-email.ts` e chiamanti): `supabase.functions.invoke` già inoltra il JWT dell'utente loggato — sufficiente per il ramo UTENTE. **Precondizione**: tutti i chiamanti client sono dentro pagine autenticate (`_app/*`) — confermato dal censimento.
 
-## 4. Check coerenza pre-invio (in `InvioMassivoDialog`)
+## Nuovi secret
 
-Quando il template scelto è `sollecito_2` o `messa_in_mora` (cioè un'escalation), nell'anteprima il dialog esegue una query lato server per ciascun cliente selezionato:
+- `INTERNAL_EMAIL_SECRET` (Supabase Function Secret, generato random) — NON esporre al frontend.
+- `APP_URL` (Supabase Function Secret) — allowlist CORS.
 
-1. Trova le scadenze attualmente aperte del cliente.
-2. Trova le scadenze collegate all'ultima azione email di livello inferiore (sollecito_2 → confronto col sollecito_1; messa_in_mora → confronto col sollecito_2 oppure 1 se manca il 2).
-3. Confronta i due set: se il vecchio set NON è interamente incluso nelle aperte correnti → flag `scaduto_cambiato = true`.
+## Punti di rischio / flussi da testare dopo il rollout
 
-Mostra:
-- Badge giallo "Scaduto cambiato dal sollecito precedente — verifica" nella riga.
-- Riepilogo in testa: "N coerenti · M da verificare".
-- Checkbox per riga (default selezionata) → l'utente può deselezionare i casi sospetti.
+1. Job Inngest promemoria scadenza / reminder piani / sollecito massivo → verificare che i secret siano presenti in prod prima del deploy (senza li i job falliscono in modo esplicito, non silente).
+2. `inviaCredenzialiUtente` (creazione nuovo utente) → dopo il refactor deve continuare a funzionare.
+3. Invio PDF privacy dal wizard nuovo contatto e da scheda cliente → richiede utente loggato (già garantito).
+4. Email di test dalle Impostazioni.
+5. Notifica comunicazioni richieste fido: eseguita in reazione a un'azione utente autenticato → OK. Verificare che non venga invocata da trigger/webhook senza sessione.
+6. Ruolo `store_manager` per invio solleciti singoli dal dialog: **domanda aperta**, da chiarire prima dell'implementazione (se lo escludi, un capo-sede perde la possibilità di inviare solleciti dal frontend).
 
-Non blocca mai l'invio; serve solo come safety net.
+## Domande aperte prima dell'implementazione
 
-## 5. Persistenza al momento dell'invio
-
-- `src/lib/sollecito-massivo.functions.ts` → quando crea la campagna, ricava `tipoTemplate` da `template_email.tipo` e salva su ogni `azioni_recupero` futura il `livello_sollecito` calcolato.
-- `src/lib/inngest/sollecito-massivo.server.ts` → al momento dell'insert in `azioni_recupero` aggiunge `livello_sollecito`.
-- `src/components/invia-sollecito-dialog.tsx` (invio singolo) → idem.
-
-## File modificati / creati
-
-- `supabase/migrations/<ts>_stadio_escalation.sql` (nuovo)
-- `src/integrations/supabase/types.ts` (auto-rigenerato)
-- `src/routes/_app/recupero-crediti.tsx` (colonna + filtro stadio)
-- `src/components/invio-massivo-dialog.tsx` (check coerenza + riepilogo)
-- `src/lib/sollecito-massivo.functions.ts` (passa livello)
-- `src/lib/inngest/sollecito-massivo.server.ts` (salva livello su azione)
-- `src/components/invia-sollecito-dialog.tsx` (salva livello su invio singolo)
-
-## Cosa NON tocco
-
-- Logica throttling Inngest, wrapper email, footer, mittente, logo.
-- Icona scadenziario, conteggi recupero, RLS esistenti.
-- Tipo `promemoria_scadenza` (resta escluso dall'escalation per costruzione).
-- I codici sede e l'import.
-
-Confermi: procedo con migration + codice?
+- Ruoli abilitati al ramo UTENTE: confermi `amministratore`, `amministrazione`, `direzione`, `approvatore`? Includiamo `store_manager` (per solleciti)? E `agente`?
+- `APP_URL` per CORS: solo il published `https://fidi-manager-suite.lovable.app`, o anche preview/custom domain futuri (allowlist multipla)?
