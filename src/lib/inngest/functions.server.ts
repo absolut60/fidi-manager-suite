@@ -914,6 +914,8 @@ export const processAnagraficaChunk = inngest.createFunction(
           addIfPresent(payload, "macrocategoria", macroLabel);
           addIfPresent(payload, "codice_categoria", codCat);
           addIfPresent(payload, "categoria", catLabel);
+          addIfPresent(payload, "codice_agente", toStr(r.codice_agente));
+          addIfPresent(payload, "agente", toStr(r.agente));
           addIfPresent(
             payload,
             "condizione_pagamento_cod",
@@ -952,6 +954,35 @@ export const processAnagraficaChunk = inngest.createFunction(
           skipped++;
           errs.push({ riga: r.__row, errore: `Prep: ${msg}`.slice(0, 300) });
         }
+      }
+
+      // Auto-popolamento tabella agenti (idempotente, non blocca l'import)
+      try {
+        const agentiMap = new Map<string, string>();
+        for (const p of prepared) {
+          const cod = toStr((p.payload as Record<string, unknown>).codice_agente);
+          const desc = toStr((p.payload as Record<string, unknown>).agente);
+          if (cod && desc) agentiMap.set(cod, desc);
+        }
+        if (agentiMap.size > 0) {
+          const agentiArray = Array.from(agentiMap.entries()).map(
+            ([codice, descrizione]) => ({ codice, descrizione }),
+          );
+          const { error: agErr } = await supabaseAdmin
+            .from("agenti")
+            .upsert(agentiArray as never, {
+              onConflict: "codice",
+              ignoreDuplicates: false,
+            });
+          if (agErr) {
+            logger.warn(
+              `Chunk ${chunkIndex} upsert agenti fallito: ${agErr.message}`,
+            );
+          }
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        logger.warn(`Chunk ${chunkIndex} upsert agenti eccezione: ${msg}`);
       }
 
       const toInsert = prepared.filter((p) => !p.existId);
