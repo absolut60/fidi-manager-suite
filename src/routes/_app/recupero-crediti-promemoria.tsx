@@ -245,6 +245,15 @@ function PromemoriaScadenzaPage() {
         </Button>
       </div>
 
+      <Tabs defaultValue="seleziona" className="space-y-6">
+        <TabsList className="flex-wrap h-auto">
+          <TabsTrigger value="seleziona">Seleziona per invio</TabsTrigger>
+          <TabsTrigger value="automatici">Invii automatici</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="seleziona" className="space-y-6 mt-0">
+
+
       {/* Filtri */}
       <Card className="p-4 space-y-4">
         <div>
