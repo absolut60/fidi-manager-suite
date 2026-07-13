@@ -113,7 +113,7 @@ export function ClienteStoricoFidoTab({ clienteId }: { clienteId: string }) {
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="font-semibold text-base">Richieste in corso</h3>
-          {inCorso.length > 0 && (
+          {inCorso.length > 0 && !isAgente && (
             <Button size="sm" className="gap-1.5" onClick={() => setOpenNew(true)}>
               <Plus className="size-4" /> Nuova richiesta fido
             </Button>
