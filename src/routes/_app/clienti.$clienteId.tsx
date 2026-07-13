@@ -367,21 +367,23 @@ function ClienteDetail() {
               onOpenChange={setOpenSollecito}
               clienteId={clienteId}
             />
-            <Dialog open={openEdit} onOpenChange={setOpenEdit}>
-              <DialogTrigger asChild>
-                <Button size="sm" variant="outline" className="gap-1.5">
-                  <Pencil className="size-4" /> Modifica
-                </Button>
-              </DialogTrigger>
-              <EditClienteDialog
-                key={cliente.id}
-                cliente={cliente}
-                onClose={() => setOpenEdit(false)}
-                onSaved={() => qc.invalidateQueries({ queryKey: ["cliente", clienteId] })}
-              />
-            </Dialog>
+            {!isAgente && (
+              <Dialog open={openEdit} onOpenChange={setOpenEdit}>
+                <DialogTrigger asChild>
+                  <Button size="sm" variant="outline" className="gap-1.5">
+                    <Pencil className="size-4" /> Modifica
+                  </Button>
+                </DialogTrigger>
+                <EditClienteDialog
+                  key={cliente.id}
+                  cliente={cliente}
+                  onClose={() => setOpenEdit(false)}
+                  onSaved={() => qc.invalidateQueries({ queryKey: ["cliente", clienteId] })}
+                />
+              </Dialog>
+            )}
 
-            {cliente.attivo && (
+            {!isAgente && cliente.attivo && (
               <Dialog open={openDisattiva} onOpenChange={setOpenDisattiva}>
                 <DialogTrigger asChild>
                   <Button size="sm" variant="outline" className="gap-1.5">
