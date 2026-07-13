@@ -1760,6 +1760,7 @@ export type Database = {
       profili: {
         Row: {
           attivo: boolean
+          codice_agente: string | null
           cognome: string | null
           created_at: string
           email: string | null
@@ -1770,6 +1771,7 @@ export type Database = {
         }
         Insert: {
           attivo?: boolean
+          codice_agente?: string | null
           cognome?: string | null
           created_at?: string
           email?: string | null
@@ -1780,6 +1782,7 @@ export type Database = {
         }
         Update: {
           attivo?: boolean
+          codice_agente?: string | null
           cognome?: string | null
           created_at?: string
           email?: string | null
@@ -3614,6 +3617,7 @@ export type Database = {
         | "amministratore"
         | "amministrazione"
         | "direzione"
+        | "agente"
       esito_approvazione: "approvata" | "rifiutata"
       stato_importazione:
         | "in_elaborazione"
@@ -3828,6 +3832,7 @@ export const Constants = {
         "amministratore",
         "amministrazione",
         "direzione",
+        "agente",
       ],
       esito_approvazione: ["approvata", "rifiutata"],
       stato_importazione: [
