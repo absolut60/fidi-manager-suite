@@ -16,6 +16,8 @@ import { invioMassivoSolleciti } from "@/lib/inngest/sollecito-massivo.server";
 import { snapshotMensile } from "@/lib/inngest/snapshot.server";
 import { remindRatePianoRientro } from "@/lib/inngest/piano-rientro-reminder.server";
 import { promemoriaScadenzaAutomatico } from "@/lib/inngest/promemoria-scadenza.server";
+import { promemoriaScadenzaRetention } from "@/lib/inngest/promemoria-scadenza-retention.server";
+
 
 
 const handler = serve({
@@ -34,6 +36,9 @@ const handler = serve({
     snapshotMensile,
     remindRatePianoRientro,
     promemoriaScadenzaAutomatico,
+    promemoriaScadenzaRetention,
+
+
 
   ],
 });
