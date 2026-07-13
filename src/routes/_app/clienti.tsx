@@ -464,6 +464,9 @@ function ClientiPage() {
     else if (filtroLegale === "non_in_legale") q = q.eq("in_gestione_legale", false);
     if (filtroTipoSoggetto === "fisica") q = q.eq("tipo_soggetto", "persona_fisica");
     else if (filtroTipoSoggetto === "giuridica") q = q.eq("tipo_soggetto", "azienda");
+    if (filtroAgente === "__none__") q = q.is("codice_agente", null);
+    else if (filtroAgente !== "tutti") q = q.eq("codice_agente", filtroAgente);
+
 
     // Fido residuo: fascia E range slider applicati insieme
     if (fidoFascia === "negativo") q = q.lt("fido_residuo", 0);
