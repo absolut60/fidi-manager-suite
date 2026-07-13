@@ -633,6 +633,8 @@ const PROMEMORIA_KEYS = [
   "promemoria_scadenza_escludi_legale",
   "promemoria_scadenza_escludi_bloccati",
   "promemoria_scadenza_escludi_bos",
+  "promemoria_scadenza_includi_bonifici",
+  "promemoria_scadenza_includi_riba",
   "promemoria_scadenza_operatore_id",
 ] as const;
 
@@ -643,6 +645,8 @@ function PromemoriaScadenzaCard() {
   const [escludiLegale, setEscludiLegale] = useState(true);
   const [escludiBloccati, setEscludiBloccati] = useState(false);
   const [escludiBos, setEscludiBos] = useState(true);
+  const [includiBonifici, setIncludiBonifici] = useState(true);
+  const [includiRiba, setIncludiRiba] = useState(true);
   const [operatoreId, setOperatoreId] = useState<string>("");
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewMeta, setPreviewMeta] = useState<{ cliente: string; email: string | null; num_scadenze: number; data_target: string; demo: boolean } | null>(null);
