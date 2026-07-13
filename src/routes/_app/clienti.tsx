@@ -890,6 +890,19 @@ function ClientiPage() {
     </Select>
   );
 
+  const AgenteSelect = (
+    <Select value={filtroAgente} onValueChange={setFiltroAgente}>
+      <SelectTrigger className="w-full"><SelectValue placeholder="Agente" /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="tutti">Tutti gli agenti</SelectItem>
+        <SelectItem value="__none__">Senza agente</SelectItem>
+        {(agenti ?? []).map((a) => (
+          <SelectItem key={a.codice} value={a.codice}>{a.descrizione}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+
   // === Chip filtri attivi ===
   type Chip = { key: string; label: string; onRemove: () => void };
   const activeChips: Chip[] = [];
