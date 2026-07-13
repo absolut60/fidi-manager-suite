@@ -317,6 +317,20 @@ function EditUtenteDialog({ utente, onClose }: { utente: UserRow; onClose: () =>
             </SelectContent>
           </Select>
         </div>
+        {richiedeAgente && (
+          <div className="space-y-1.5">
+            <Label>Agente collegato <span className="text-destructive">*</span></Label>
+            <Select value={codiceAgente} onValueChange={setCodiceAgente}>
+              <SelectTrigger><SelectValue placeholder="Seleziona un agente..." /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_none">— Nessuno —</SelectItem>
+                {agenti?.map((a) => (
+                  <SelectItem key={a.codice} value={a.codice}>{a.codice} — {a.descrizione}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         <label className="flex items-center gap-2 text-sm">
           <Checkbox checked={attivo} onCheckedChange={(c) => setAttivo(c === true)} />
           Utente attivo
