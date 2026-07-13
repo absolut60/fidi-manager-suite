@@ -92,8 +92,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isApprovatore = userRoles.some((r) => r.startsWith("approvatore_liv"));
   const isStoreManager = hasUserRole("store_manager");
   const isAmministrazione = hasUserRole("amministrazione");
+  const isAgente = hasUserRole("agente");
+  // Un utente è "solo agente" se ha il ruolo agente e nessuno degli altri ruoli operativi.
+  const isOnlyAgente = isAgente && !isAdmin && !isApprovatore && !isStoreManager && !isAmministrazione && !hasUserRole("direzione");
+
+  // Whitelist voci di menu per l'agente puro (vede solo ciò che è pertinente).
+  const AGENTE_WHITELIST = new Set<string>([
+    "/clienti",
+    "/contatti",
+    "/scadenziario",
+    "/recupero-crediti",
+    "/recupero-crediti-calendario",
+    "/recupero-crediti-promemoria",
+    "/piani-rientro",
+  ]);
 
   const visibleNav = NAV.filter((item) => {
+    if (isOnlyAgente) return AGENTE_WHITELIST.has(item.to);
     if (!item.roles) return true;
     if (item.roles.includes("admin") && isAdmin) return true;
     if (item.roles.includes("approvatore") && (isAdmin || isApprovatore)) return true;
