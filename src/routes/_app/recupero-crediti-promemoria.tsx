@@ -550,9 +550,11 @@ type PromLogRow = {
   importo_totale: number;
   esito: string;
   errore: string | null;
+  email_html: string | null;
   created_at: string;
   cliente: { ragione_sociale: string | null } | null;
 };
+
 
 function fmtDateTime(v: string): string {
   try {
