@@ -186,6 +186,8 @@ function StadioBadge({ s }: { s: ClienteAgg }) {
 function RecuperoCreditiPage() {
   const { role, profilo } = useAuth();
   const isStoreManager = role === "store_manager";
+  const isAgente = role === "agente";
+  const isRistretto = isStoreManager || isAgente;
   const myStoreId = profilo?.store_id ?? null;
 
   // Filters
