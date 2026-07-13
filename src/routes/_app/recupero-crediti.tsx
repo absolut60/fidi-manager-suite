@@ -277,7 +277,7 @@ function RecuperoCreditiPage() {
         "get_recupero_clienti_aggregato" as never,
         {
           _store_id: storeId !== "all" ? storeId : null,
-          _operatore_id: operatoreId !== "all" && !isStoreManager ? operatoreId : null,
+          _operatore_id: operatoreId !== "all" && !isRistretto ? operatoreId : null,
           _search: searchDebounced || null,
           _data_da: dataDa ? dataDa.toISOString() : null,
           _data_a: dataAEnd ? dataAEnd.toISOString() : null,
