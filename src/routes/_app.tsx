@@ -1,6 +1,7 @@
 import { createFileRoute, Navigate, Outlet } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
 import { useAuth } from "@/hooks/use-auth";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 export const Route = createFileRoute("/_app")({
   component: ProtectedAppLayout,
@@ -22,8 +23,10 @@ function ProtectedAppLayout() {
   }
 
   return (
-    <AppShell>
-      <Outlet />
-    </AppShell>
+    <TooltipProvider>
+      <AppShell>
+        <Outlet />
+      </AppShell>
+    </TooltipProvider>
   );
 }

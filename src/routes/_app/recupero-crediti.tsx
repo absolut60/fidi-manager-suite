@@ -33,7 +33,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -424,7 +424,8 @@ function RecuperoCreditiPage() {
   }, [aggQuery.data]);
 
   return (
-    <div className="space-y-6">
+    <TooltipProvider delayDuration={200}>
+      <div className="space-y-6">
       <div className="flex items-center gap-3">
         <HandCoins className="size-7 text-primary" />
         <div className="flex-1">
@@ -783,6 +784,7 @@ function RecuperoCreditiPage() {
         />
       )}
     </div>
+  </TooltipProvider>
   );
 }
 
