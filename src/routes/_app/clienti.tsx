@@ -1439,7 +1439,7 @@ function ClientiPage() {
       </Card>
 
       {/* Barra azione selezione */}
-      {selectedIds.size > 0 && (
+      {!isAgente && selectedIds.size > 0 && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 bg-background border shadow-lg rounded-lg px-4 py-3 flex flex-wrap items-center gap-3">
           <div className="flex flex-col">
             <span className="text-sm font-medium">{selectedIds.size} clienti selezionati</span>
