@@ -36,6 +36,9 @@ const handler = serve({
     snapshotMensile,
     remindRatePianoRientro,
     promemoriaScadenzaAutomatico,
+    promemoriaScadenzaRetention,
+
+
 
   ],
 });
