@@ -188,8 +188,9 @@ function ClienteDetail() {
   const { edit, tab, insolutiTab, from } = Route.useSearch();
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const { role } = useAuth();
+  const { role, hasRole } = useAuth();
   const isAdmin = role === "amministratore";
+  const isAgente = hasRole("agente");
   const [openNew, setOpenNew] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openDisattiva, setOpenDisattiva] = useState(false);
