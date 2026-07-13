@@ -78,6 +78,13 @@ export const promemoriaScadenzaAutomatico = inngest.createFunction(
     const escludiLegale = (await getConfig("promemoria_scadenza_escludi_legale", "true")) !== "false";
     const escludiBloccati = (await getConfig("promemoria_scadenza_escludi_bloccati", "false")) === "true";
     const escludiBos = (await getConfig("promemoria_scadenza_escludi_bos", "true")) !== "false";
+    // Filtro metodi (restrittivo, distinto dalle esclusioni): default true/true =
+    // comportamento invariato (bonifici + RiBa). Se entrambi false, non inviare.
+    const includiBonifici = (await getConfig("promemoria_scadenza_includi_bonifici", "true")) !== "false";
+    const includiRiba = (await getConfig("promemoria_scadenza_includi_riba", "true")) !== "false";
+    if (!includiBonifici && !includiRiba) {
+      return { ok: true, skipped: true, reason: "nessun_metodo_incluso" };
+    }
 
     // Firmatario: senza operatore configurato NON inviamo email anonime.
     const operatoreId = (await getConfig("promemoria_scadenza_operatore_id", "")).trim();
@@ -122,6 +129,8 @@ export const promemoriaScadenzaAutomatico = inngest.createFunction(
         _escludi_legale: escludiLegale,
         _escludi_bloccati: escludiBloccati,
         _escludi_bos: escludiBos,
+        _includi_bonifici: includiBonifici,
+        _includi_riba: includiRiba,
       } as never,
     );
     if (error) throw new Error(error.message);
@@ -271,6 +280,8 @@ export const promemoriaScadenzaAutomatico = inngest.createFunction(
       escludi_legale: escludiLegale,
       escludi_bloccati: escludiBloccati,
       escludi_bos: escludiBos,
+      includi_bonifici: includiBonifici,
+      includi_riba: includiRiba,
       operatore_id: operatoreId,
       clienti_candidati: perCliente.size,
       inviati,

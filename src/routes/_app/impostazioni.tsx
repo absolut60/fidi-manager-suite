@@ -633,6 +633,8 @@ const PROMEMORIA_KEYS = [
   "promemoria_scadenza_escludi_legale",
   "promemoria_scadenza_escludi_bloccati",
   "promemoria_scadenza_escludi_bos",
+  "promemoria_scadenza_includi_bonifici",
+  "promemoria_scadenza_includi_riba",
   "promemoria_scadenza_operatore_id",
 ] as const;
 
@@ -643,6 +645,8 @@ function PromemoriaScadenzaCard() {
   const [escludiLegale, setEscludiLegale] = useState(true);
   const [escludiBloccati, setEscludiBloccati] = useState(false);
   const [escludiBos, setEscludiBos] = useState(true);
+  const [includiBonifici, setIncludiBonifici] = useState(true);
+  const [includiRiba, setIncludiRiba] = useState(true);
   const [operatoreId, setOperatoreId] = useState<string>("");
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewMeta, setPreviewMeta] = useState<{ cliente: string; email: string | null; num_scadenze: number; data_target: string; demo: boolean } | null>(null);
@@ -683,6 +687,8 @@ function PromemoriaScadenzaCard() {
     setEscludiLegale((map.get("promemoria_scadenza_escludi_legale") ?? "true") !== "false");
     setEscludiBloccati((map.get("promemoria_scadenza_escludi_bloccati") ?? "false") === "true");
     setEscludiBos((map.get("promemoria_scadenza_escludi_bos") ?? "true") !== "false");
+    setIncludiBonifici((map.get("promemoria_scadenza_includi_bonifici") ?? "true") !== "false");
+    setIncludiRiba((map.get("promemoria_scadenza_includi_riba") ?? "true") !== "false");
     setOperatoreId(map.get("promemoria_scadenza_operatore_id") ?? "");
   }, [data]);
 
@@ -698,6 +704,8 @@ function PromemoriaScadenzaCard() {
         supabase.from("configurazioni").update({ valore: escludiLegale ? "true" : "false" }).eq("chiave", "promemoria_scadenza_escludi_legale"),
         supabase.from("configurazioni").update({ valore: escludiBloccati ? "true" : "false" }).eq("chiave", "promemoria_scadenza_escludi_bloccati"),
         supabase.from("configurazioni").update({ valore: escludiBos ? "true" : "false" }).eq("chiave", "promemoria_scadenza_escludi_bos"),
+        supabase.from("configurazioni").update({ valore: includiBonifici ? "true" : "false" }).eq("chiave", "promemoria_scadenza_includi_bonifici"),
+        supabase.from("configurazioni").update({ valore: includiRiba ? "true" : "false" }).eq("chiave", "promemoria_scadenza_includi_riba"),
         supabase.from("configurazioni").update({ valore: operatoreId ?? "" }).eq("chiave", "promemoria_scadenza_operatore_id"),
       ];
       const results = await Promise.all(updates);
@@ -722,6 +730,8 @@ function PromemoriaScadenzaCard() {
           ? "Template 'promemoria_scadenza' non attivo o non trovato."
           : res.reason === "forbidden"
           ? "Non autorizzato."
+          : res.reason === "nessun_metodo_incluso"
+          ? "Nessun metodo selezionato: il promemoria non verrà inviato."
           : (res.reason ?? "Errore"));
         setPreviewHtml(null);
         setPreviewMeta(null);
@@ -794,6 +804,29 @@ function PromemoriaScadenzaCard() {
                 </label>
               </div>
             </div>
+
+            <div className="space-y-1.5 md:col-span-3">
+              <Label>Metodi di pagamento</Label>
+              <p className="text-xs text-muted-foreground -mt-0.5">
+                Restringe i codici di pagamento inclusi nell&apos;invio. Diverso dalle esclusioni: qui decidi quali tipi passano.
+              </p>
+              <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:gap-6">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox checked={includiBonifici} onCheckedChange={(v) => setIncludiBonifici(v === true)} />
+                  <span className="text-sm">Includi bonifici <span className="text-muted-foreground">(BO*)</span></span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox checked={includiRiba} onCheckedChange={(v) => setIncludiRiba(v === true)} />
+                  <span className="text-sm">Includi RiBa <span className="text-muted-foreground">(RB*)</span></span>
+                </label>
+              </div>
+              {!includiBonifici && !includiRiba && (
+                <div className="mt-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+                  Nessun metodo selezionato: il promemoria non verrà inviato.
+                </div>
+              )}
+            </div>
+
 
             <div className="space-y-1.5 md:col-span-3">
               <Label htmlFor="prom-operatore">Utente collegato all&apos;invio automatico</Label>

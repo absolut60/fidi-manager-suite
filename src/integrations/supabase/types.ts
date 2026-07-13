@@ -3372,6 +3372,8 @@ export type Database = {
           _escludi_bloccati?: boolean
           _escludi_bos?: boolean
           _escludi_legale?: boolean
+          _includi_bonifici?: boolean
+          _includi_riba?: boolean
         }
         Returns: {
           cliente_id: string
