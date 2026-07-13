@@ -623,3 +623,136 @@ function ConfigurazioniCard() {
     </Card>
   );
 }
+
+// ==================== Promemoria scadenza automatico ====================
+
+const PROMEMORIA_KEYS = [
+  "promemoria_scadenza_attivo",
+  "promemoria_scadenza_giorni_anticipo",
+  "promemoria_scadenza_metodi",
+] as const;
+
+function PromemoriaScadenzaCard() {
+  const qc = useQueryClient();
+  const [attivo, setAttivo] = useState(true);
+  const [giorni, setGiorni] = useState("3");
+  const [bo, setBo] = useState(true);
+  const [rb, setRb] = useState(false);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["configurazioni", "promemoria_scadenza"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("configurazioni")
+        .select("chiave, valore")
+        .in("chiave", PROMEMORIA_KEYS as unknown as string[]);
+      if (error) throw error;
+      return data as { chiave: string; valore: string }[];
+    },
+  });
+
+  useEffect(() => {
+    if (!data) return;
+    const map = new Map(data.map((r) => [r.chiave, r.valore]));
+    setAttivo((map.get("promemoria_scadenza_attivo") ?? "true").trim() !== "false");
+    setGiorni((map.get("promemoria_scadenza_giorni_anticipo") ?? "3").trim() || "3");
+    const metodi = (map.get("promemoria_scadenza_metodi") ?? "BO")
+      .split(",").map((s) => s.trim().toUpperCase()).filter(Boolean);
+    setBo(metodi.includes("BO"));
+    setRb(metodi.includes("RB"));
+  }, [data]);
+
+  const save = useMutation({
+    mutationFn: async () => {
+      const n = parseInt(giorni, 10);
+      if (!Number.isFinite(n) || n < 1 || n > 30) {
+        throw new Error("Giorni di anticipo: intero tra 1 e 30");
+      }
+      if (!bo && !rb) {
+        throw new Error("Seleziona almeno un metodo di pagamento");
+      }
+      const metodiCsv = [bo ? "BO" : null, rb ? "RB" : null].filter(Boolean).join(",");
+      const updates: Array<Promise<{ error: unknown }>> = [
+        supabase.from("configurazioni").update({ valore: attivo ? "true" : "false" }).eq("chiave", "promemoria_scadenza_attivo"),
+        supabase.from("configurazioni").update({ valore: String(n) }).eq("chiave", "promemoria_scadenza_giorni_anticipo"),
+        supabase.from("configurazioni").update({ valore: metodiCsv }).eq("chiave", "promemoria_scadenza_metodi"),
+      ];
+      const results = await Promise.all(updates);
+      const err = results.find((r) => r.error)?.error as Error | undefined;
+      if (err) throw err;
+    },
+    onSuccess: () => {
+      toast.success("Impostazioni promemoria aggiornate");
+      qc.invalidateQueries({ queryKey: ["configurazioni"] });
+      qc.invalidateQueries({ queryKey: ["configurazioni", "promemoria_scadenza"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <Card className="p-4 sm:p-5">
+      <h2 className="font-semibold mb-1 flex items-center gap-2">
+        <BellRing className="size-4" /> Promemoria scadenza automatico
+      </h2>
+      <p className="text-xs text-muted-foreground mb-4">
+        Quando attivo, il sistema invia ogni mattina un&apos;email di promemoria ai clienti che hanno scadenze in arrivo tra N giorni, per i metodi di pagamento selezionati. Se disattivato, non viene inviato nulla.
+      </p>
+      {isLoading ? (
+        <Skeleton className="h-32 w-full" />
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="flex items-center justify-between md:col-span-3 rounded-md border p-3">
+              <div>
+                <Label htmlFor="prom-attivo" className="text-sm font-medium">Invio automatico attivo</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Cron giornaliero alle 06:00. Se spento, il job non invia email.
+                </p>
+              </div>
+              <Switch id="prom-attivo" checked={attivo} onCheckedChange={setAttivo} />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="prom-giorni">Giorni di anticipo</Label>
+              <div className="relative">
+                <Input
+                  id="prom-giorni"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={30}
+                  value={giorni}
+                  onChange={(e) => setGiorni(e.target.value)}
+                  className="pr-16"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">giorni</span>
+              </div>
+              <p className="text-xs text-muted-foreground">Invio quando data scadenza = oggi + N giorni.</p>
+            </div>
+
+            <div className="space-y-1.5 md:col-span-2">
+              <Label>Metodi di pagamento inclusi</Label>
+              <div className="flex flex-wrap gap-4 pt-1">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox checked={bo} onCheckedChange={(v) => setBo(v === true)} />
+                  <span className="text-sm">Bonifici (BO)</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox checked={rb} onCheckedChange={(v) => setRb(v === true)} />
+                  <span className="text-sm">RiBa (RB)</span>
+                </label>
+              </div>
+              <p className="text-xs text-muted-foreground">Almeno un metodo deve essere selezionato.</p>
+            </div>
+          </div>
+          <div className="flex justify-end mt-4">
+            <Button onClick={() => save.mutate()} disabled={save.isPending} className="gap-1.5">
+              <Save className="size-4" /> {save.isPending ? "Salvataggio..." : "Salva impostazioni"}
+            </Button>
+          </div>
+        </>
+      )}
+    </Card>
+  );
+}
+
