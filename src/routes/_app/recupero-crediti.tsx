@@ -239,13 +239,16 @@ function RecuperoCreditiPage() {
   // Operatori
   const { data: operatori } = useQuery({
     queryKey: ["operatori-list"],
-    enabled: !isStoreManager,
+    enabled: !isRistretto,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profili")
         .select("id, nome, cognome, email")
         .order("cognome");
-      if (error) throw error;
+      if (error) {
+        console.warn("[recupero-crediti] operatori query failed:", error.message);
+        return [];
+      }
       return data ?? [];
     },
   });
