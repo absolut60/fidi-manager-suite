@@ -672,13 +672,14 @@ function PromemoriaScadenzaCard() {
         throw new Error("Seleziona almeno un metodo di pagamento");
       }
       const metodiCsv = [bo ? "BO" : null, rb ? "RB" : null].filter(Boolean).join(",");
-      const updates: Array<Promise<{ error: unknown }>> = [
+      const updates = [
         supabase.from("configurazioni").update({ valore: attivo ? "true" : "false" }).eq("chiave", "promemoria_scadenza_attivo"),
         supabase.from("configurazioni").update({ valore: String(n) }).eq("chiave", "promemoria_scadenza_giorni_anticipo"),
         supabase.from("configurazioni").update({ valore: metodiCsv }).eq("chiave", "promemoria_scadenza_metodi"),
       ];
       const results = await Promise.all(updates);
-      const err = results.find((r) => r.error)?.error as Error | undefined;
+      const err = results.find((r) => r.error)?.error;
+
       if (err) throw err;
     },
     onSuccess: () => {
