@@ -101,6 +101,9 @@ function ImpostazioniPage() {
 
       <ConfigurazioniCard />
 
+      <PromemoriaScadenzaCard />
+
+
       <Card className="p-4 sm:p-5">
         <h2 className="font-semibold mb-3 flex items-center gap-2">
           <Building2 className="size-4" /> Punti vendita ({stores?.length ?? 0})
