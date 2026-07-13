@@ -483,8 +483,12 @@ function PromemoriaScadenzaPage() {
           </Table>
         </div>
       </Card>
+        </TabsContent>
 
-      <InviiAutomaticiSection __unused />
+        <TabsContent value="automatici" className="space-y-6 mt-0">
+          <InviiAutomaticiSection />
+        </TabsContent>
+      </Tabs>
 
       <InvioMassivoDialog
         open={invioOpen}
