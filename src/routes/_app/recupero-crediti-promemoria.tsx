@@ -502,7 +502,43 @@ function PromemoriaScadenzaPage() {
   );
 }
 
+function SortableHead({
+  label, k, sortKey, sortDir, onSort, align,
+}: {
+  label: string;
+  k: SortKey;
+  sortKey: SortKey;
+  sortDir: SortDir;
+  onSort: (k: SortKey) => void;
+  align?: "left" | "center" | "right";
+}) {
+  const active = sortKey === k;
+  const alignCls = align === "right" ? "text-right" : align === "center" ? "text-center" : "";
+  const justifyCls = align === "right" ? "justify-end" : align === "center" ? "justify-center" : "justify-start";
+  return (
+    <TableHead className={alignCls}>
+      <button
+        type="button"
+        onClick={() => onSort(k)}
+        className={cn(
+          "inline-flex items-center gap-1 w-full select-none hover:text-foreground transition-colors",
+          justifyCls,
+          active ? "text-foreground font-medium" : "text-muted-foreground"
+        )}
+      >
+        <span>{label}</span>
+        {active ? (
+          sortDir === "asc" ? <ArrowUp className="size-3.5" /> : <ArrowDown className="size-3.5" />
+        ) : (
+          <ArrowUpDown className="size-3.5 opacity-40" />
+        )}
+      </button>
+    </TableHead>
+  );
+}
+
 // ==================== Storico invii automatici ====================
+
 
 type PromLogRow = {
   id: string;
