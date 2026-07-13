@@ -687,6 +687,8 @@ function PromemoriaScadenzaCard() {
     setEscludiLegale((map.get("promemoria_scadenza_escludi_legale") ?? "true") !== "false");
     setEscludiBloccati((map.get("promemoria_scadenza_escludi_bloccati") ?? "false") === "true");
     setEscludiBos((map.get("promemoria_scadenza_escludi_bos") ?? "true") !== "false");
+    setIncludiBonifici((map.get("promemoria_scadenza_includi_bonifici") ?? "true") !== "false");
+    setIncludiRiba((map.get("promemoria_scadenza_includi_riba") ?? "true") !== "false");
     setOperatoreId(map.get("promemoria_scadenza_operatore_id") ?? "");
   }, [data]);
 
