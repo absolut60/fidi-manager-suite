@@ -23,6 +23,7 @@ import {
   type TipoRichiesta, type StatoRichiesta,
 } from "@/lib/fidi";
 import { useConfig } from "@/hooks/use-config";
+import { useAuth } from "@/hooks/use-auth";
 
 const STATI_IN_CORSO: StatoRichiesta[] = ["bozza", "in_approvazione", "in_attesa_liv1", "in_attesa_liv2", "in_attesa_liv3", "integrazioni_richieste"];
 const STATI_MODIFICABILI: StatoRichiesta[] = ["bozza", "integrazioni_richieste"];
