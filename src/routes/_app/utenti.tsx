@@ -37,6 +37,7 @@ const ORDINE_RUOLI: AppRole[] = [
   "approvatore_liv2",
   "approvatore_liv1",
   "store_manager",
+  "agente",
 ];
 
 const TUTTI_RUOLI: AppRole[] = [
@@ -47,6 +48,7 @@ const TUTTI_RUOLI: AppRole[] = [
   "approvatore_liv1",
   "approvatore_liv2",
   "approvatore_liv3",
+  "agente",
 ];
 
 type UserRow = {
@@ -55,6 +57,7 @@ type UserRow = {
   cognome: string | null;
   email: string | null;
   store_id: string | null;
+  codice_agente: string | null;
   attivo: boolean;
   ruoli: AppRole[];
   store_nome: string | null;
