@@ -3363,6 +3363,34 @@ export type Database = {
               totale_a_scadere: number
             }[]
           }
+      get_promemoria_scadenze_dettaglio: {
+        Args: {
+          _data: string
+          _escludi_bloccati?: boolean
+          _escludi_bos?: boolean
+          _escludi_legale?: boolean
+        }
+        Returns: {
+          cliente_id: string
+          codice_pagamento: string
+          data_documento: string
+          data_scadenza: string
+          email: string
+          importo_scadenza: number
+          numero_documento: string
+          pec: string
+          ragione_sociale: string
+          scadenza_id: string
+          store_cap: string
+          store_citta: string
+          store_id: string
+          store_indirizzo: string
+          store_insegna: string
+          store_nome: string
+          store_provincia: string
+          store_telefono: string
+        }[]
+      }
       get_recupero_clienti_aggregato: {
         Args: {
           _data_a?: string
