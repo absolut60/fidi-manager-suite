@@ -914,6 +914,8 @@ export const processAnagraficaChunk = inngest.createFunction(
           addIfPresent(payload, "macrocategoria", macroLabel);
           addIfPresent(payload, "codice_categoria", codCat);
           addIfPresent(payload, "categoria", catLabel);
+          addIfPresent(payload, "codice_agente", toStr(r.codice_agente));
+          addIfPresent(payload, "agente", toStr(r.agente));
           addIfPresent(
             payload,
             "condizione_pagamento_cod",
