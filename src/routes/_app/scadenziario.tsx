@@ -121,6 +121,7 @@ function ScadenziarioPage() {
   const isStoreManager = role === "store_manager";
   const myStoreId = profilo?.store_id ?? null;
   const [storeId, setStoreId] = useState(isStoreManager && myStoreId ? myStoreId : "all");
+  const [agenteFiltro, setAgenteFiltro] = useState<string>("tutti");
   const [fascia, setFascia] = useState<string>("tutte");
   const [importoMin, setImportoMin] = useState("");
   const [statoBlocco, setStatoBlocco] = useState<"tutti" | "bloccati" | "non_bloccati">("tutti");
@@ -150,7 +151,7 @@ function ScadenziarioPage() {
   useEffect(() => {
     setSelectedIds(new Set());
     setPage(1);
-  }, [storeId, fascia, importoMin, statoBlocco, statoLegale, escludiBonifici, escludiLegale, avvisatoFilter, mostraACredito, searchDebounced, sortBy, sortDir]);
+  }, [storeId, agenteFiltro, fascia, importoMin, statoBlocco, statoLegale, escludiBonifici, escludiLegale, avvisatoFilter, mostraACredito, searchDebounced, sortBy, sortDir]);
 
   useEffect(() => {
     if (statoLegale === "in_legale") setEscludiLegale(false);
@@ -171,7 +172,8 @@ function ScadenziarioPage() {
     p_avvisato: avvisatoFilter,
     p_importo_min: minImp,
     p_mostra_a_credito: mostraACredito,
-  }), [searchDebounced, storeId, fascia, statoBlocco, statoLegale, escludiBonifici, escludiLegale, avvisatoFilter, minImp, mostraACredito]);
+    p_agente: agenteFiltro === "tutti" ? null : agenteFiltro,
+  }), [searchDebounced, storeId, fascia, statoBlocco, statoLegale, escludiBonifici, escludiLegale, avvisatoFilter, minImp, mostraACredito, agenteFiltro]);
 
   const { data: rows, isLoading } = useQuery({
     queryKey: ["scadenziario-paginata-v1", commonParams, sortBy, sortDir, page, annoCorrente, annoPrec],
@@ -208,6 +210,16 @@ function ScadenziarioPage() {
       const { data, error } = await supabase.from("stores").select("id, nome").order("nome");
       if (error) throw error;
       return (data ?? []) as StoreRow[];
+    },
+    staleTime: 5 * 60_000,
+  });
+
+  const { data: agenti } = useQuery({
+    queryKey: ["agenti-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("agenti").select("codice, descrizione").order("descrizione");
+      if (error) throw error;
+      return (data ?? []) as { codice: string; descrizione: string }[];
     },
     staleTime: 5 * 60_000,
   });
@@ -352,6 +364,17 @@ function ScadenziarioPage() {
               </Select>
             </div>
           )}
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Agente</label>
+            <Select value={agenteFiltro} onValueChange={setAgenteFiltro}>
+              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="tutti">Tutti gli agenti</SelectItem>
+                <SelectItem value="__none__">Senza agente</SelectItem>
+                {(agenti ?? []).map((a) => <SelectItem key={a.codice} value={a.codice}>{a.descrizione}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground">Fascia scaduto</label>
             <Select value={fascia} onValueChange={setFascia}>
