@@ -48,6 +48,7 @@ export const creaUtente = createServerFn({ method: "POST" })
     cognome?: string;
     ruoli: string[];
     storeId?: string | null;
+    codiceAgente?: string | null;
     attivo?: boolean;
   }) =>
     z.object({
@@ -55,8 +56,9 @@ export const creaUtente = createServerFn({ method: "POST" })
       password: z.string().min(8, "Password minimo 8 caratteri").max(100),
       nome: z.string().max(100).optional(),
       cognome: z.string().max(100).optional(),
-      ruoli: z.array(z.enum(RUOLI_VALIDI)).min(1).max(7),
+      ruoli: z.array(z.enum(RUOLI_VALIDI)).min(1).max(8),
       storeId: z.string().uuid().nullable().optional(),
+      codiceAgente: z.string().max(50).nullable().optional(),
       attivo: z.boolean().optional().default(true),
     }).parse(d)
   )
@@ -65,6 +67,12 @@ export const creaUtente = createServerFn({ method: "POST" })
 
     if (data.ruoli.includes("store_manager") && !data.storeId) {
       throw new Error("Il ruolo Store Manager richiede un punto vendita");
+    }
+    if (data.ruoli.includes("agente") && !data.codiceAgente) {
+      throw new Error("Il ruolo Agente richiede un agente collegato");
+    }
+    if (data.ruoli.includes("agente") && data.codiceAgente) {
+      await assertAgenteEsiste(data.codiceAgente);
     }
 
     // Crea utente con password — nessuna conferma email richiesta
@@ -96,6 +104,7 @@ export const creaUtente = createServerFn({ method: "POST" })
         nome: data.nome ?? "",
         cognome: data.cognome ?? "",
         store_id: data.storeId ?? null,
+        codice_agente: data.ruoli.includes("agente") ? (data.codiceAgente ?? null) : null,
         attivo: data.attivo ?? true,
       })
       .eq("id", userId);
