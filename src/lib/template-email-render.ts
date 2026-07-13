@@ -59,17 +59,27 @@ export function escapeHtml(s: string): string {
 
 export function buildElencoScadenzeHtml(
   scadenze: ScadenzaSollecito[],
-  opts?: { labelTotale?: string; labelEmpty?: string; speseImportoUnitario?: number },
+  opts?: {
+    labelTotale?: string;
+    labelEmpty?: string;
+    speseImportoUnitario?: number;
+    // Opt-in: aggiunge una colonna "Metodo" (RiBa / Bonifico) derivata dal
+    // codice_pagamento della singola riga (predicato /^RB/i). Usata dal
+    // promemoria_scadenza; i solleciti restano invariati (default false).
+    showMetodo?: boolean;
+  },
 ): string {
   if (!scadenze.length) {
     return `<p style="margin:8px 0;color:#475569;">${escapeHtml(opts?.labelEmpty ?? "Nessuna scadenza scaduta al momento.")}</p>`;
   }
+  const showMetodo = opts?.showMetodo === true;
   const rows = scadenze
     .map(
       (s) => `<tr>
         <td style="padding:6px 10px;border:1px solid #e2e8f0;">${escapeHtml(s.numero_documento ?? "—")}</td>
         <td style="padding:6px 10px;border:1px solid #e2e8f0;">${escapeHtml(formatDateIt(s.data_documento))}</td>
         <td style="padding:6px 10px;border:1px solid #e2e8f0;">${escapeHtml(formatDateIt(s.data_scadenza))}</td>
+        ${showMetodo ? `<td style="padding:6px 10px;border:1px solid #e2e8f0;">${/^rb/i.test((s.codice_pagamento ?? "").trim()) ? "RiBa" : "Bonifico"}</td>` : ""}
         <td style="padding:6px 10px;border:1px solid #e2e8f0;text-align:right;">${escapeHtml(formatEuro(s.importo_scadenza))}</td>
       </tr>`,
     )
@@ -77,13 +87,17 @@ export function buildElencoScadenzeHtml(
 
   // calcolaSpeseInsoluto/buildTotaliRowsHtml importati staticamente in cima al file.
   const totals = calcolaSpeseInsoluto(scadenze, Number(opts?.speseImportoUnitario ?? 0));
-  const tfootRows = buildTotaliRowsHtml(totals, { labelTotale: opts?.labelTotale ?? "Totale", colspan: 3 });
+  // Colspan tfoot: 3 (default) o 4 quando c'e' la colonna Metodo, cosi' il
+  // totale resta allineato con la colonna Importo.
+  const tfootColspan = showMetodo ? 4 : 3;
+  const tfootRows = buildTotaliRowsHtml(totals, { labelTotale: opts?.labelTotale ?? "Totale", colspan: tfootColspan });
 
   return `<table style="border-collapse:collapse;border:1px solid #e2e8f0;font-family:Arial,sans-serif;font-size:13px;margin:8px 0;">
     <thead><tr style="background:#f1f5f9;">
       <th style="padding:6px 10px;border:1px solid #e2e8f0;text-align:left;">Documento</th>
       <th style="padding:6px 10px;border:1px solid #e2e8f0;text-align:left;">Data doc.</th>
       <th style="padding:6px 10px;border:1px solid #e2e8f0;text-align:left;">Scadenza</th>
+      ${showMetodo ? `<th style="padding:6px 10px;border:1px solid #e2e8f0;text-align:left;">Metodo</th>` : ""}
       <th style="padding:6px 10px;border:1px solid #e2e8f0;text-align:right;">Importo</th>
     </tr></thead>
     <tbody>${rows}</tbody>
