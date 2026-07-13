@@ -475,6 +475,14 @@ function ClienteDetail() {
                     : null
                 }
               />
+              <Field
+                label="Agente"
+                value={
+                  (cliente as any).codice_agente || (cliente as any).agente
+                    ? `${(cliente as any).codice_agente ?? ""}${(cliente as any).codice_agente && (cliente as any).agente ? " — " : ""}${(cliente as any).agente ?? ""}`
+                    : null
+                }
+              />
               <Field label="Forma giuridica" value={(cliente as any).forma_giuridica} />
               <Field label="Banca" value={(cliente as any).banca} />
               <Field label="Agenzia" value={(cliente as any).agenzia} />
