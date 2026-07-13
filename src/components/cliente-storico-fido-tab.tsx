@@ -41,6 +41,8 @@ export function ClienteStoricoFidoTab({ clienteId }: { clienteId: string }) {
   const qc = useQueryClient();
   const [openNew, setOpenNew] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
+  const { hasRole } = useAuth();
+  const isAgente = hasRole("agente");
 
   const { data: richieste, isLoading } = useQuery({
     queryKey: ["richieste-cliente", clienteId],
