@@ -140,6 +140,15 @@ export const previewPromemoriaEmail = createServerFn({ method: "GET" })
         { numero_documento: "2026/001234", data_documento: "2026-06-15", data_scadenza: targetISO, importo_scadenza: 1250.5, codice_pagamento: "BO30" },
         { numero_documento: "2026/001255", data_documento: "2026-06-20", data_scadenza: targetISO, importo_scadenza: 780, codice_pagamento: "RB60" },
       ];
+      sede = {
+        nome: "SEDE DI ESEMPIO",
+        insegna: "MADE",
+        indirizzo: "Via Esempio 1",
+        cap: "20100",
+        citta: "Milano",
+        provincia: "MI",
+        telefono: null,
+      };
     }
 
     const { oggetto, html } = buildPromemoriaEmail({
