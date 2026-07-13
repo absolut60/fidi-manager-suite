@@ -186,6 +186,8 @@ function StadioBadge({ s }: { s: ClienteAgg }) {
 function RecuperoCreditiPage() {
   const { role, profilo } = useAuth();
   const isStoreManager = role === "store_manager";
+  const isAgente = role === "agente";
+  const isRistretto = isStoreManager || isAgente;
   const myStoreId = profilo?.store_id ?? null;
 
   // Filters
@@ -237,13 +239,16 @@ function RecuperoCreditiPage() {
   // Operatori
   const { data: operatori } = useQuery({
     queryKey: ["operatori-list"],
-    enabled: !isStoreManager,
+    enabled: !isRistretto,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profili")
         .select("id, nome, cognome, email")
         .order("cognome");
-      if (error) throw error;
+      if (error) {
+        console.warn("[recupero-crediti] operatori query failed:", error.message);
+        return [];
+      }
       return data ?? [];
     },
   });
@@ -272,7 +277,7 @@ function RecuperoCreditiPage() {
         "get_recupero_clienti_aggregato" as never,
         {
           _store_id: storeId !== "all" ? storeId : null,
-          _operatore_id: operatoreId !== "all" && !isStoreManager ? operatoreId : null,
+          _operatore_id: operatoreId !== "all" && !isRistretto ? operatoreId : null,
           _search: searchDebounced || null,
           _data_da: dataDa ? dataDa.toISOString() : null,
           _data_a: dataAEnd ? dataAEnd.toISOString() : null,
@@ -297,7 +302,7 @@ function RecuperoCreditiPage() {
         );
       if (esitoFilter.size > 0) q = q.in("esito", Array.from(esitoFilter));
       if (tipoFilter.size > 0) q = q.in("tipo", Array.from(tipoFilter));
-      if (operatoreId !== "all" && !isStoreManager) q = q.eq("operatore_id", operatoreId);
+      if (operatoreId !== "all" && !isRistretto) q = q.eq("operatore_id", operatoreId);
       if (dataDa) q = q.gte("data_azione", dataDa.toISOString());
       if (dataA) {
         const end = new Date(dataA);
@@ -515,7 +520,7 @@ function RecuperoCreditiPage() {
             onClear={() => setTipoFilter(new Set())}
           />
 
-          {!isStoreManager && (
+          {!isRistretto && (
             <Select value={storeId} onValueChange={setStoreId}>
               <SelectTrigger>
                 <SelectValue placeholder="Store" />
@@ -529,7 +534,7 @@ function RecuperoCreditiPage() {
             </Select>
           )}
 
-          {!isStoreManager && (
+          {!isRistretto && (
             <Select value={operatoreId} onValueChange={setOperatoreId}>
               <SelectTrigger>
                 <SelectValue placeholder="Operatore" />
