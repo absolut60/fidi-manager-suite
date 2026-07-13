@@ -241,7 +241,7 @@ function ScadenziarioPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clienti")
-        .select("fido_gestionale, fido_residuo, totale_rischio, doc_da_fatturare, doc_da_evadere, effetti_a_rischio, num_insoluti, dilazione_concordata, dilazione_effettiva, condizione_pagamento_cod")
+        .select("fido_gestionale, fido_residuo, totale_rischio, doc_da_fatturare, doc_da_evadere, effetti_a_rischio, num_insoluti, dilazione_concordata, dilazione_effettiva, condizione_pagamento_cod, codice_agente, agente")
         .eq("id", expandedClienteId!)
         .maybeSingle();
       if (error) throw error;
@@ -260,6 +260,7 @@ function ScadenziarioPage() {
         doc_da_fatturare: number | null; doc_da_evadere: number | null; effetti_a_rischio: number | null;
         num_insoluti: number | null; dilazione_concordata: number | null; dilazione_effettiva: number | null;
         condizione_pagamento_cod: string | null; condizione_pagamento_desc_db: string | null;
+        codice_agente: string | null; agente: string | null;
       } : null;
     },
   });
