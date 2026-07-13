@@ -124,9 +124,11 @@ export function ClienteStoricoFidoTab({ clienteId }: { clienteId: string }) {
           <Card className="p-8 text-center">
             <FileText className="size-8 mx-auto text-muted-foreground mb-2" />
             <p className="font-medium text-sm">Nessuna richiesta in corso</p>
-            <Button size="sm" className="gap-1.5 mt-3" onClick={() => setOpenNew(true)}>
-              <Plus className="size-4" /> Nuova richiesta fido
-            </Button>
+            {!isAgente && (
+              <Button size="sm" className="gap-1.5 mt-3" onClick={() => setOpenNew(true)}>
+                <Plus className="size-4" /> Nuova richiesta fido
+              </Button>
+            )}
           </Card>
         ) : (
           <div className="space-y-2">
