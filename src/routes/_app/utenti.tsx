@@ -218,20 +218,25 @@ function EditUtenteDialog({ utente, onClose }: { utente: UserRow; onClose: () =>
   const [cognome, setCognome] = useState(utente.cognome ?? "");
   const [ruoli, setRuoli] = useState<AppRole[]>(utente.ruoli.length ? utente.ruoli : ["store_manager"]);
   const [storeId, setStoreId] = useState<string>(utente.store_id ?? "_none");
+  const [codiceAgente, setCodiceAgente] = useState<string>(utente.codice_agente ?? "_none");
   const [attivo, setAttivo] = useState(utente.attivo);
   const { data: stores } = useStores();
+  const { data: agenti } = useAgenti();
   const fn = useServerFn(updateUtenteRuoli);
 
   const richiedeStore = ruoli.includes("store_manager");
+  const richiedeAgente = ruoli.includes("agente");
 
   const mutation = useMutation({
     mutationFn: async () => {
       if (ruoli.length === 0) throw new Error("Seleziona almeno un ruolo");
       if (richiedeStore && storeId === "_none") throw new Error("Il ruolo Store Manager richiede un punto vendita");
+      if (richiedeAgente && codiceAgente === "_none") throw new Error("Il ruolo Agente richiede un agente collegato");
       await fn({ data: {
         userId: utente.id,
         ruoli,
         storeId: storeId === "_none" ? null : storeId,
+        codiceAgente: richiedeAgente && codiceAgente !== "_none" ? codiceAgente : null,
         attivo,
         nome: nome.trim(),
         cognome: cognome.trim(),
