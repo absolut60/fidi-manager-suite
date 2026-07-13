@@ -161,20 +161,6 @@ export const promemoriaScadenzaAutomatico = inngest.createFunction(
       const importoTotale = lista.reduce((acc, r) => acc + Number(r.importo_scadenza || 0), 0);
       const numScadenze = lista.length;
 
-      if (!email) {
-        await supabaseAdmin.from("promemoria_scadenza_log" as never).insert({
-          cliente_id: clienteId,
-          email_destinatario: null,
-          data_esecuzione: todayISO,
-          giorni_anticipo: giorni,
-          num_scadenze: numScadenze,
-          importo_totale: importoTotale,
-          esito: "saltato_no_email",
-        } as never);
-        saltati_no_email++;
-        continue;
-      }
-
       const scadenzePerRender: ScadenzaSollecito[] = lista.map((r) => ({
         numero_documento: r.numero_documento,
         data_documento: r.data_documento,
@@ -183,6 +169,47 @@ export const promemoriaScadenzaAutomatico = inngest.createFunction(
         codice_pagamento: r.codice_pagamento,
       }));
 
+      // Composizione ARCHIVIO (useCid:false) prodotta SEMPRE, prima del check email,
+      // cosi' anche i saltato_no_email hanno l'anteprima "di cosa sarebbe partito".
+      // Logo via URL pubblico -> ri-renderizzabile in iframe browser.
+      const { html: htmlArchivio } = buildPromemoriaEmail({
+        template,
+        ragioneSociale,
+        scadenze: scadenzePerRender,
+        sede: sedeFromRow(first),
+        mittente,
+        useCid: false,
+      });
+
+      // Helper: inserisce log + bridge scadenze (per tutti gli esiti).
+      const insertLog = async (payload: Record<string, unknown>) => {
+        const { data: logRow, error: logErr } = await supabaseAdmin
+          .from("promemoria_scadenza_log" as never)
+          .insert(payload as never)
+          .select("id")
+          .single();
+        if (logErr || !logRow) return;
+        const logId = (logRow as { id: string }).id;
+        const bridgeRows = lista.map((r) => ({ log_id: logId, scadenza_id: r.scadenza_id }));
+        await supabaseAdmin.from("promemoria_scadenza_log_scadenze" as never).insert(bridgeRows as never);
+      };
+
+      if (!email) {
+        await insertLog({
+          cliente_id: clienteId,
+          email_destinatario: null,
+          data_esecuzione: todayISO,
+          giorni_anticipo: giorni,
+          num_scadenze: numScadenze,
+          importo_totale: importoTotale,
+          esito: "saltato_no_email",
+          email_html: htmlArchivio,
+        });
+        saltati_no_email++;
+        continue;
+      }
+
+      // Composizione INVIO (useCid:true) SOLO se c'e' un'email valida.
       const { oggetto, html } = buildPromemoriaEmail({
         template,
         ragioneSociale,
@@ -202,24 +229,17 @@ export const promemoriaScadenzaAutomatico = inngest.createFunction(
       });
 
       if (res.ok) {
-        const { data: logRow, error: logErr } = await supabaseAdmin
-          .from("promemoria_scadenza_log" as never)
-          .insert({
-            cliente_id: clienteId,
-            email_destinatario: email,
-            data_esecuzione: todayISO,
-            giorni_anticipo: giorni,
-            num_scadenze: numScadenze,
-            importo_totale: importoTotale,
-            esito: "inviato",
-          } as never)
-          .select("id")
-          .single();
-        if (!logErr && logRow) {
-          const logId = (logRow as { id: string }).id;
-          const bridgeRows = lista.map((r) => ({ log_id: logId, scadenza_id: r.scadenza_id }));
-          await supabaseAdmin.from("promemoria_scadenza_log_scadenze" as never).insert(bridgeRows as never);
-        }
+        await insertLog({
+          cliente_id: clienteId,
+          email_destinatario: email,
+          data_esecuzione: todayISO,
+          giorni_anticipo: giorni,
+          num_scadenze: numScadenze,
+          importo_totale: importoTotale,
+          esito: "inviato",
+          email_html: htmlArchivio,
+        });
+        // Idempotenza: la marca resta ESCLUSIVAMENTE nel ramo di invio ok.
         const nowIso = new Date().toISOString();
         await supabaseAdmin
           .from("scadenze")
@@ -227,7 +247,7 @@ export const promemoriaScadenzaAutomatico = inngest.createFunction(
           .in("id", lista.map((r) => r.scadenza_id));
         inviati++;
       } else {
-        await supabaseAdmin.from("promemoria_scadenza_log" as never).insert({
+        await insertLog({
           cliente_id: clienteId,
           email_destinatario: email,
           data_esecuzione: todayISO,
@@ -236,11 +256,13 @@ export const promemoriaScadenzaAutomatico = inngest.createFunction(
           importo_totale: importoTotale,
           esito: "fallito",
           errore: res.err ?? null,
-        } as never);
+          email_html: htmlArchivio,
+        });
         falliti++;
         console.error(`[promemoria-scadenza] fail cliente ${clienteId}:`, res.err);
       }
     }
+
 
     return {
       ok: true,
