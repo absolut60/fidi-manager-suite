@@ -730,6 +730,8 @@ function PromemoriaScadenzaCard() {
           ? "Template 'promemoria_scadenza' non attivo o non trovato."
           : res.reason === "forbidden"
           ? "Non autorizzato."
+          : res.reason === "nessun_metodo_incluso"
+          ? "Nessun metodo selezionato: il promemoria non verrà inviato."
           : (res.reason ?? "Errore"));
         setPreviewHtml(null);
         setPreviewMeta(null);
