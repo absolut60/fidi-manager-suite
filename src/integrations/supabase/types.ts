@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      agenti: {
+        Row: {
+          codice: string
+          created_at: string
+          descrizione: string
+          updated_at: string
+        }
+        Insert: {
+          codice: string
+          created_at?: string
+          descrizione: string
+          updated_at?: string
+        }
+        Update: {
+          codice?: string
+          created_at?: string
+          descrizione?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       allegati: {
         Row: {
           caricato_da: string | null
@@ -727,6 +748,7 @@ export type Database = {
         Row: {
           a_scadere: number | null
           abi: string | null
+          agente: string | null
           agenzia: string | null
           assicurazione_attiva: boolean
           attivo: boolean
@@ -739,6 +761,7 @@ export type Database = {
           cellulare: string | null
           citta: string | null
           cliente_attivo: boolean
+          codice_agente: string | null
           codice_assegnato: string | null
           codice_categoria: string | null
           codice_fiscale: string | null
@@ -809,6 +832,7 @@ export type Database = {
         Insert: {
           a_scadere?: number | null
           abi?: string | null
+          agente?: string | null
           agenzia?: string | null
           assicurazione_attiva?: boolean
           attivo?: boolean
@@ -821,6 +845,7 @@ export type Database = {
           cellulare?: string | null
           citta?: string | null
           cliente_attivo?: boolean
+          codice_agente?: string | null
           codice_assegnato?: string | null
           codice_categoria?: string | null
           codice_fiscale?: string | null
@@ -891,6 +916,7 @@ export type Database = {
         Update: {
           a_scadere?: number | null
           abi?: string | null
+          agente?: string | null
           agenzia?: string | null
           assicurazione_attiva?: boolean
           attivo?: boolean
@@ -903,6 +929,7 @@ export type Database = {
           cellulare?: string | null
           citta?: string | null
           cliente_attivo?: boolean
+          codice_agente?: string | null
           codice_assegnato?: string | null
           codice_categoria?: string | null
           codice_fiscale?: string | null
