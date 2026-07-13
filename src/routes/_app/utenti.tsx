@@ -390,15 +390,18 @@ function NewUtenteDialog({ onClose }: { onClose: () => void }) {
   const [cognome, setCognome] = useState("");
   const [ruoli, setRuoli] = useState<AppRole[]>(["store_manager"]);
   const [storeId, setStoreId] = useState<string>("_none");
+  const [codiceAgente, setCodiceAgente] = useState<string>("_none");
   const [attivo, setAttivo] = useState(true);
   const [createdUserId, setCreatedUserId] = useState<string | null>(null);
   const [inviato, setInviato] = useState(false);
   const [inviando, setInviando] = useState(false);
   const { data: stores } = useStores();
+  const { data: agenti } = useAgenti();
   const fn = useServerFn(creaUtente);
   const fnInviaCred = useServerFn(inviaCredenziali);
 
   const richiedeStore = ruoli.includes("store_manager");
+  const richiedeAgente = ruoli.includes("agente");
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -406,6 +409,7 @@ function NewUtenteDialog({ onClose }: { onClose: () => void }) {
       if (password.length < 8) throw new Error("Password minimo 8 caratteri");
       if (ruoli.length === 0) throw new Error("Seleziona almeno un ruolo");
       if (richiedeStore && storeId === "_none") throw new Error("Il ruolo Store Manager richiede un punto vendita");
+      if (richiedeAgente && codiceAgente === "_none") throw new Error("Il ruolo Agente richiede un agente collegato");
       const res = await fn({ data: {
         email: email.trim(),
         password,
@@ -413,6 +417,7 @@ function NewUtenteDialog({ onClose }: { onClose: () => void }) {
         cognome: cognome.trim() || undefined,
         ruoli,
         storeId: storeId === "_none" ? null : storeId,
+        codiceAgente: richiedeAgente && codiceAgente !== "_none" ? codiceAgente : null,
         attivo,
       }});
       return res;
