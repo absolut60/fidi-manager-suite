@@ -612,6 +612,7 @@ function ClientiPage() {
     setFiltroAssic("tutti");
     setFiltroLegale("tutti");
     setFiltroTipoSoggetto("giuridica");
+    setFiltroAgente("tutti");
     setScadenziarioFiltro("tutti");
     setTotaleRischioFiltro("tutti");
     setAScadereFiltro("tutti");
