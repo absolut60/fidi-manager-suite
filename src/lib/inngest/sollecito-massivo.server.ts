@@ -2,6 +2,7 @@ import { inngest } from "./client";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { renderTemplate, isScaduto, wrapEmailHtml, livelloSollecitoFromTipo, type DatiSede, type ScadenzaSollecito } from "@/lib/template-email-render";
 import { isEmailValida } from "@/lib/email-validazione";
+import { sendEmailViaEdge } from "./send-email.server";
 
 type EventData = { campagna_id: string };
 
@@ -26,44 +27,6 @@ async function getConfigNumber(chiave: string, fallback: number): Promise<number
     .maybeSingle();
   const v = parseFloat(String(data?.valore ?? ""));
   return Number.isFinite(v) && v >= 0 ? v : fallback;
-}
-
-async function sendEmailViaEdge(payload: {
-  to: string;
-  subject: string;
-  html: string;
-  fromName?: string;
-  replyTo?: string;
-  inlineLogo?: boolean;
-}): Promise<{ ok: boolean; err?: string }> {
-  const SUPABASE_URL = process.env.SUPABASE_URL!;
-  const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_ANON_KEY ?? "";
-  try {
-    const res = await fetch(`${SUPABASE_URL}/functions/v1/send-email`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        apikey: KEY,
-        Authorization: `Bearer ${KEY}`,
-      },
-      body: JSON.stringify(payload),
-    });
-    const text = await res.text();
-    let parsed: unknown = null;
-    try {
-      parsed = JSON.parse(text);
-    } catch {
-      /* noop */
-    }
-    if (!res.ok) {
-      return { ok: false, err: `HTTP ${res.status}: ${text.slice(0, 300)}` };
-    }
-    const ok = (parsed as { ok?: boolean } | null)?.ok ?? false;
-    if (!ok) return { ok: false, err: text.slice(0, 300) };
-    return { ok: true };
-  } catch (e) {
-    return { ok: false, err: e instanceof Error ? e.message : String(e) };
-  }
 }
 
 async function getOperatoreInfo(userId: string | null): Promise<{ nome: string; email: string | null }> {
