@@ -302,7 +302,7 @@ function RecuperoCreditiPage() {
         );
       if (esitoFilter.size > 0) q = q.in("esito", Array.from(esitoFilter));
       if (tipoFilter.size > 0) q = q.in("tipo", Array.from(tipoFilter));
-      if (operatoreId !== "all" && !isStoreManager) q = q.eq("operatore_id", operatoreId);
+      if (operatoreId !== "all" && !isRistretto) q = q.eq("operatore_id", operatoreId);
       if (dataDa) q = q.gte("data_azione", dataDa.toISOString());
       if (dataA) {
         const end = new Date(dataA);
