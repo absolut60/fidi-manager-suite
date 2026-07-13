@@ -3297,102 +3297,204 @@ export type Database = {
           ultima_fatta_tipo: string
         }[]
       }
-      get_scadenziario_ids: {
-        Args: {
-          p_avvisato?: string
-          p_escludi_bonifici?: boolean
-          p_escludi_legale?: boolean
-          p_fascia?: string
-          p_importo_min?: number
-          p_mostra_a_credito?: boolean
-          p_search?: string
-          p_stato_blocco?: string
-          p_stato_legale?: string
-          p_store_id?: string
-        }
-        Returns: {
-          cliente_id: string
-        }[]
-      }
-      get_scadenziario_lista_paginata: {
-        Args: {
-          p_anno_corrente?: number
-          p_anno_prec?: number
-          p_avvisato?: string
-          p_escludi_bonifici?: boolean
-          p_escludi_legale?: boolean
-          p_fascia?: string
-          p_importo_min?: number
-          p_mostra_a_credito?: boolean
-          p_page?: number
-          p_page_size?: number
-          p_search?: string
-          p_sort_by?: string
-          p_sort_dir?: string
-          p_stato_blocco?: string
-          p_stato_legale?: string
-          p_store_id?: string
-        }
-        Returns: {
-          avvisato_ha_email: boolean
-          avvisato_n: number
-          avvisato_ultima_data: string
-          avvisato_ultima_tipo: string
-          bloccato: boolean
-          cliente_id: string
-          codice_gestionale: string
-          data_promessa: string
-          fascia: string
-          fatturato_cur: number
-          fatturato_prec: number
-          ha_piano_rientro: boolean
-          ha_promessa: boolean
-          in_gestione_legale: boolean
-          ind_blocco: number
-          max_gg_ritardo: number
-          n_a_scadere: number
-          n_scadute: number
-          piano_prossima_rata_data: string
-          piano_prossima_rata_importo: number
-          piano_rate_pagate: number
-          piano_rate_totali: number
-          piano_rientro_id: string
-          prossima_scadenza: string
-          ragione_sociale: string
-          scadute_ids: string[]
-          store_id: string
-          store_nome: string
-          tot_a_scadere: number
-          tot_scaduto: number
-          total_count: number
-        }[]
-      }
-      get_scadenziario_totali: {
-        Args: {
-          p_avvisato?: string
-          p_escludi_bonifici?: boolean
-          p_escludi_legale?: boolean
-          p_fascia?: string
-          p_importo_min?: number
-          p_mostra_a_credito?: boolean
-          p_search?: string
-          p_stato_blocco?: string
-          p_stato_legale?: string
-          p_store_id?: string
-        }
-        Returns: {
-          n_bonifici_esclusi: number
-          n_clienti_bloccati: number
-          n_clienti_crediti: number
-          n_clienti_in_legale: number
-          n_clienti_scaduti: number
-          n_clienti_totali: number
-          n_legale_esclusi: number
-          tot_a_scadere: number
-          tot_crediti: number
-          tot_scaduto: number
-        }[]
-      }
+      get_scadenziario_ids:
+        | {
+            Args: {
+              p_avvisato?: string
+              p_escludi_bonifici?: boolean
+              p_escludi_legale?: boolean
+              p_fascia?: string
+              p_importo_min?: number
+              p_mostra_a_credito?: boolean
+              p_search?: string
+              p_stato_blocco?: string
+              p_stato_legale?: string
+              p_store_id?: string
+            }
+            Returns: {
+              cliente_id: string
+            }[]
+          }
+        | {
+            Args: {
+              p_agente?: string
+              p_avvisato?: string
+              p_escludi_bonifici?: boolean
+              p_escludi_legale?: boolean
+              p_fascia?: string
+              p_importo_min?: number
+              p_mostra_a_credito?: boolean
+              p_search?: string
+              p_stato_blocco?: string
+              p_stato_legale?: string
+              p_store_id?: string
+            }
+            Returns: {
+              cliente_id: string
+            }[]
+          }
+      get_scadenziario_lista_paginata:
+        | {
+            Args: {
+              p_anno_corrente?: number
+              p_anno_prec?: number
+              p_avvisato?: string
+              p_escludi_bonifici?: boolean
+              p_escludi_legale?: boolean
+              p_fascia?: string
+              p_importo_min?: number
+              p_mostra_a_credito?: boolean
+              p_page?: number
+              p_page_size?: number
+              p_search?: string
+              p_sort_by?: string
+              p_sort_dir?: string
+              p_stato_blocco?: string
+              p_stato_legale?: string
+              p_store_id?: string
+            }
+            Returns: {
+              avvisato_ha_email: boolean
+              avvisato_n: number
+              avvisato_ultima_data: string
+              avvisato_ultima_tipo: string
+              bloccato: boolean
+              cliente_id: string
+              codice_gestionale: string
+              data_promessa: string
+              fascia: string
+              fatturato_cur: number
+              fatturato_prec: number
+              ha_piano_rientro: boolean
+              ha_promessa: boolean
+              in_gestione_legale: boolean
+              ind_blocco: number
+              max_gg_ritardo: number
+              n_a_scadere: number
+              n_scadute: number
+              piano_prossima_rata_data: string
+              piano_prossima_rata_importo: number
+              piano_rate_pagate: number
+              piano_rate_totali: number
+              piano_rientro_id: string
+              prossima_scadenza: string
+              ragione_sociale: string
+              scadute_ids: string[]
+              store_id: string
+              store_nome: string
+              tot_a_scadere: number
+              tot_scaduto: number
+              total_count: number
+            }[]
+          }
+        | {
+            Args: {
+              p_agente?: string
+              p_anno_corrente?: number
+              p_anno_prec?: number
+              p_avvisato?: string
+              p_escludi_bonifici?: boolean
+              p_escludi_legale?: boolean
+              p_fascia?: string
+              p_importo_min?: number
+              p_mostra_a_credito?: boolean
+              p_page?: number
+              p_page_size?: number
+              p_search?: string
+              p_sort_by?: string
+              p_sort_dir?: string
+              p_stato_blocco?: string
+              p_stato_legale?: string
+              p_store_id?: string
+            }
+            Returns: {
+              avvisato_ha_email: boolean
+              avvisato_n: number
+              avvisato_ultima_data: string
+              avvisato_ultima_tipo: string
+              bloccato: boolean
+              cliente_id: string
+              codice_gestionale: string
+              data_promessa: string
+              fascia: string
+              fatturato_cur: number
+              fatturato_prec: number
+              ha_piano_rientro: boolean
+              ha_promessa: boolean
+              in_gestione_legale: boolean
+              ind_blocco: number
+              max_gg_ritardo: number
+              n_a_scadere: number
+              n_scadute: number
+              piano_prossima_rata_data: string
+              piano_prossima_rata_importo: number
+              piano_rate_pagate: number
+              piano_rate_totali: number
+              piano_rientro_id: string
+              prossima_scadenza: string
+              ragione_sociale: string
+              scadute_ids: string[]
+              store_id: string
+              store_nome: string
+              tot_a_scadere: number
+              tot_scaduto: number
+              total_count: number
+            }[]
+          }
+      get_scadenziario_totali:
+        | {
+            Args: {
+              p_avvisato?: string
+              p_escludi_bonifici?: boolean
+              p_escludi_legale?: boolean
+              p_fascia?: string
+              p_importo_min?: number
+              p_mostra_a_credito?: boolean
+              p_search?: string
+              p_stato_blocco?: string
+              p_stato_legale?: string
+              p_store_id?: string
+            }
+            Returns: {
+              n_bonifici_esclusi: number
+              n_clienti_bloccati: number
+              n_clienti_crediti: number
+              n_clienti_in_legale: number
+              n_clienti_scaduti: number
+              n_clienti_totali: number
+              n_legale_esclusi: number
+              tot_a_scadere: number
+              tot_crediti: number
+              tot_scaduto: number
+            }[]
+          }
+        | {
+            Args: {
+              p_agente?: string
+              p_avvisato?: string
+              p_escludi_bonifici?: boolean
+              p_escludi_legale?: boolean
+              p_fascia?: string
+              p_importo_min?: number
+              p_mostra_a_credito?: boolean
+              p_search?: string
+              p_stato_blocco?: string
+              p_stato_legale?: string
+              p_store_id?: string
+            }
+            Returns: {
+              n_bonifici_esclusi: number
+              n_clienti_bloccati: number
+              n_clienti_crediti: number
+              n_clienti_in_legale: number
+              n_clienti_scaduti: number
+              n_clienti_totali: number
+              n_legale_esclusi: number
+              tot_a_scadere: number
+              tot_crediti: number
+              tot_scaduto: number
+            }[]
+          }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]

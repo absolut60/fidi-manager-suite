@@ -320,6 +320,7 @@ function ClienteDetail() {
                 (cliente as any).codice_gestionale ? `Cod. ${(cliente as any).codice_gestionale}` : null,
                 cliente.partita_iva ? `P.IVA ${cliente.partita_iva}` : null,
                 (cliente as any).stores?.nome ? String((cliente as any).stores.nome).toUpperCase() : null,
+                (cliente as any).agente ? `Agente: ${(cliente as any).agente}` : null,
               ].filter(Boolean).join(" — ") || "Partita IVA non inserita"}
             </p>
             {((cliente as any).bloccato || (cliente as any).in_gestione_legale) && (
@@ -471,6 +472,14 @@ function ClienteDetail() {
                 value={
                   (cliente as any).codice_categoria || (cliente as any).categoria
                     ? `${(cliente as any).codice_categoria ?? ""}${(cliente as any).codice_categoria && (cliente as any).categoria ? " — " : ""}${(cliente as any).categoria ?? ""}`
+                    : null
+                }
+              />
+              <Field
+                label="Agente"
+                value={
+                  (cliente as any).codice_agente || (cliente as any).agente
+                    ? `${(cliente as any).codice_agente ?? ""}${(cliente as any).codice_agente && (cliente as any).agente ? " — " : ""}${(cliente as any).agente ?? ""}`
                     : null
                 }
               />

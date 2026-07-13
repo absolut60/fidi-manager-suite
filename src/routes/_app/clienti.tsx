@@ -154,6 +154,7 @@ function ClientiPage() {
   const [filtroLegale, setFiltroLegale] = useState<"tutti" | "in_legale" | "non_in_legale">("tutti");
   // Default: "giuridica" → mostra solo Imprese, esclude i Privati (persona_fisica)
   const [filtroTipoSoggetto, setFiltroTipoSoggetto] = useState<"tutti" | "fisica" | "giuridica">("giuridica");
+  const [filtroAgente, setFiltroAgente] = useState<string>("tutti");
   const [scadenziarioFiltro, setScadenziarioFiltro] = useState<string>("tutti");
   const [totaleRischioFiltro, setTotaleRischioFiltro] = useState<string>("tutti");
   const [fatturatoFiltro, setFatturatoFiltro] = useState<string>("tutti");
@@ -201,6 +202,15 @@ function ClientiPage() {
       const { data } = await supabase.from("stores").select("id, nome, codice").eq("attivo", true).order("nome");
       return data ?? [];
     },
+  });
+
+  const { data: agenti } = useQuery({
+    queryKey: ["agenti-list"],
+    queryFn: async () => {
+      const { data } = await supabase.from("agenti").select("codice, descrizione").order("descrizione");
+      return (data ?? []) as { codice: string; descrizione: string }[];
+    },
+    staleTime: 5 * 60_000,
   });
 
   // Aggregato scadenziario (una sola query, cached) per badge + filtro
@@ -423,7 +433,7 @@ function ClientiPage() {
   // Reset pagina ogni volta che cambia un filtro o l'ordinamento
   useEffect(() => {
     setPage(1);
-  }, [search, statoCliente, statoAttivita, storeFiltro, statoFido, semaforoFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, pageSize, advApplied, sortBy, sortDir]);
+  }, [search, statoCliente, statoAttivita, storeFiltro, statoFido, semaforoFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, pageSize, advApplied, sortBy, sortDir]);
 
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -463,6 +473,9 @@ function ClientiPage() {
     else if (filtroLegale === "non_in_legale") q = q.eq("in_gestione_legale", false);
     if (filtroTipoSoggetto === "fisica") q = q.eq("tipo_soggetto", "persona_fisica");
     else if (filtroTipoSoggetto === "giuridica") q = q.eq("tipo_soggetto", "azienda");
+    if (filtroAgente === "__none__") q = q.is("codice_agente", null);
+    else if (filtroAgente !== "tutti") q = q.eq("codice_agente", filtroAgente);
+
 
     // Fido residuo: fascia E range slider applicati insieme
     if (fidoFascia === "negativo") q = q.lt("fido_residuo", 0);
@@ -517,7 +530,7 @@ function ClientiPage() {
   const scadReady = scadenziarioFiltro === "tutti" || !!scadenziarioMap;
 
   const { data: clientiResp, isLoading } = useQuery({
-    queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize, advApplied, sortBy, sortDir, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
+    queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize, advApplied, sortBy, sortDir, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
     queryFn: async () => {
       const built = buildBaseQuery("*, stores(nome, codice)", "exact");
       if ("empty" in built) return { rows: [], count: 0 };
@@ -567,6 +580,7 @@ function ClientiPage() {
     (filtroAssic !== "tutti" ? 1 : 0) +
     (filtroLegale !== "tutti" ? 1 : 0) +
     (filtroTipoSoggetto !== "giuridica" ? 1 : 0) +
+    (filtroAgente !== "tutti" ? 1 : 0) +
     (scadenziarioFiltro !== "tutti" ? 1 : 0) +
     (totaleRischioFiltro !== "tutti" ? 1 : 0) +
     (aScadereFiltro !== "tutti" ? 1 : 0) +
@@ -599,6 +613,7 @@ function ClientiPage() {
     setFiltroAssic("tutti");
     setFiltroLegale("tutti");
     setFiltroTipoSoggetto("giuridica");
+    setFiltroAgente("tutti");
     setScadenziarioFiltro("tutti");
     setTotaleRischioFiltro("tutti");
     setAScadereFiltro("tutti");
@@ -875,6 +890,19 @@ function ClientiPage() {
     </Select>
   );
 
+  const AgenteSelect = (
+    <Select value={filtroAgente} onValueChange={setFiltroAgente}>
+      <SelectTrigger className="w-full"><SelectValue placeholder="Agente" /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="tutti">Tutti gli agenti</SelectItem>
+        <SelectItem value="__none__">Senza agente</SelectItem>
+        {(agenti ?? []).map((a) => (
+          <SelectItem key={a.codice} value={a.codice}>{a.descrizione}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+
   // === Chip filtri attivi ===
   type Chip = { key: string; label: string; onRemove: () => void };
   const activeChips: Chip[] = [];
@@ -907,6 +935,10 @@ function ClientiPage() {
   if (filtroLegale !== "tutti") activeChips.push({ key: "legale", label: filtroLegale === "in_legale" ? "In gestione legale" : "Non in gestione legale", onRemove: () => setFiltroLegale("tutti") });
   if (filtroAssic !== "tutti") activeChips.push({ key: "assic", label: filtroAssic === "assicurati" ? "Assicurati" : "Non assicurati", onRemove: () => setFiltroAssic("tutti") });
   if (filtroTipoSoggetto !== "giuridica") activeChips.push({ key: "tipo", label: filtroTipoSoggetto === "fisica" ? "Tipo: Solo Privati" : "Tipo: Tutti (privati+imprese)", onRemove: () => setFiltroTipoSoggetto("giuridica") });
+  if (filtroAgente !== "tutti") {
+    const desc = filtroAgente === "__none__" ? "Senza agente" : ((agenti ?? []).find((a) => a.codice === filtroAgente)?.descrizione ?? filtroAgente);
+    activeChips.push({ key: "agente", label: `Agente: ${desc}`, onRemove: () => setFiltroAgente("tutti") });
+  }
   if (sliderCommitted[0] !== FIDO_RANGE_MIN || sliderCommitted[1] !== FIDO_RANGE_MAX) {
     activeChips.push({ key: "slider", label: `Fido slider: ${fmtEuro(sliderCommitted[0])} → ${fmtEuro(sliderCommitted[1])}`, onRemove: () => { setSliderDisplay([FIDO_RANGE_MIN, FIDO_RANGE_MAX]); setSliderCommitted([FIDO_RANGE_MIN, FIDO_RANGE_MAX]); } });
   }
@@ -960,6 +992,7 @@ function ClientiPage() {
           {StatoFidoPopover}
           <div className="border-t pt-3 grid grid-cols-1 gap-3">
             {TipoSoggettoSelect}
+            {AgenteSelect}
             {FidoFasciaSelect}
             {TotaleRischioSelect}
             {FatturatoSelect}
@@ -987,8 +1020,9 @@ function ClientiPage() {
           {StatoFidoPopover}
         </div>
         {/* Livello 2 — filtri secondari (più leggeri) */}
-        <div className="grid grid-cols-2 lg:grid-cols-6 gap-2 opacity-90">
+        <div className="grid grid-cols-2 lg:grid-cols-7 gap-2 opacity-90">
           {TipoSoggettoSelect}
+          {AgenteSelect}
           {FidoFasciaSelect}
           {TotaleRischioSelect}
           {FatturatoSelect}
