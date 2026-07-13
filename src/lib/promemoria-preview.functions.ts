@@ -61,6 +61,11 @@ export const previewPromemoriaEmail = createServerFn({ method: "GET" })
     const escludiLegale = (cfg.get("promemoria_scadenza_escludi_legale") ?? "true") !== "false";
     const escludiBloccati = (cfg.get("promemoria_scadenza_escludi_bloccati") ?? "false") === "true";
     const escludiBos = (cfg.get("promemoria_scadenza_escludi_bos") ?? "true") !== "false";
+    const includiBonifici = (cfg.get("promemoria_scadenza_includi_bonifici") ?? "true") !== "false";
+    const includiRiba = (cfg.get("promemoria_scadenza_includi_riba") ?? "true") !== "false";
+    if (!includiBonifici && !includiRiba) {
+      return { ok: false, reason: "nessun_metodo_incluso" };
+    }
     const operatoreId = cfg.get("promemoria_scadenza_operatore_id") ?? "";
 
     // Mittente: se non configurato, mostra un fallback ma indica il problema
