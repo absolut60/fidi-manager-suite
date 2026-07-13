@@ -23,6 +23,7 @@ import {
   type TipoRichiesta, type StatoRichiesta,
 } from "@/lib/fidi";
 import { useConfig } from "@/hooks/use-config";
+import { useAuth } from "@/hooks/use-auth";
 
 const STATI_IN_CORSO: StatoRichiesta[] = ["bozza", "in_approvazione", "in_attesa_liv1", "in_attesa_liv2", "in_attesa_liv3", "integrazioni_richieste"];
 const STATI_MODIFICABILI: StatoRichiesta[] = ["bozza", "integrazioni_richieste"];
@@ -41,6 +42,8 @@ export function ClienteStoricoFidoTab({ clienteId }: { clienteId: string }) {
   const qc = useQueryClient();
   const [openNew, setOpenNew] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
+  const { hasRole } = useAuth();
+  const isAgente = hasRole("agente");
 
   const { data: richieste, isLoading } = useQuery({
     queryKey: ["richieste-cliente", clienteId],
@@ -110,7 +113,7 @@ export function ClienteStoricoFidoTab({ clienteId }: { clienteId: string }) {
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="font-semibold text-base">Richieste in corso</h3>
-          {inCorso.length > 0 && (
+          {inCorso.length > 0 && !isAgente && (
             <Button size="sm" className="gap-1.5" onClick={() => setOpenNew(true)}>
               <Plus className="size-4" /> Nuova richiesta fido
             </Button>
@@ -121,9 +124,11 @@ export function ClienteStoricoFidoTab({ clienteId }: { clienteId: string }) {
           <Card className="p-8 text-center">
             <FileText className="size-8 mx-auto text-muted-foreground mb-2" />
             <p className="font-medium text-sm">Nessuna richiesta in corso</p>
-            <Button size="sm" className="gap-1.5 mt-3" onClick={() => setOpenNew(true)}>
-              <Plus className="size-4" /> Nuova richiesta fido
-            </Button>
+            {!isAgente && (
+              <Button size="sm" className="gap-1.5 mt-3" onClick={() => setOpenNew(true)}>
+                <Plus className="size-4" /> Nuova richiesta fido
+              </Button>
+            )}
           </Card>
         ) : (
           <div className="space-y-2">
@@ -147,7 +152,7 @@ export function ClienteStoricoFidoTab({ clienteId }: { clienteId: string }) {
                     </p>
                     {r.motivazione && <p className="text-sm text-muted-foreground">{r.motivazione}</p>}
                   </div>
-                  {STATI_MODIFICABILI.includes(r.stato as StatoRichiesta) && (
+                  {STATI_MODIFICABILI.includes(r.stato as StatoRichiesta) && !isAgente && (
                     <div className="flex gap-1.5 shrink-0">
                       <Button size="sm" variant="outline" className="gap-1" onClick={() => setEditing(r)}>
                         <Pencil className="size-3.5" /> Modifica

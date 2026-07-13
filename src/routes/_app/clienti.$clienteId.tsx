@@ -188,8 +188,9 @@ function ClienteDetail() {
   const { edit, tab, insolutiTab, from } = Route.useSearch();
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const { role } = useAuth();
+  const { role, hasRole } = useAuth();
   const isAdmin = role === "amministratore";
+  const isAgente = hasRole("agente");
   const [openNew, setOpenNew] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openDisattiva, setOpenDisattiva] = useState(false);
@@ -366,21 +367,23 @@ function ClienteDetail() {
               onOpenChange={setOpenSollecito}
               clienteId={clienteId}
             />
-            <Dialog open={openEdit} onOpenChange={setOpenEdit}>
-              <DialogTrigger asChild>
-                <Button size="sm" variant="outline" className="gap-1.5">
-                  <Pencil className="size-4" /> Modifica
-                </Button>
-              </DialogTrigger>
-              <EditClienteDialog
-                key={cliente.id}
-                cliente={cliente}
-                onClose={() => setOpenEdit(false)}
-                onSaved={() => qc.invalidateQueries({ queryKey: ["cliente", clienteId] })}
-              />
-            </Dialog>
+            {!isAgente && (
+              <Dialog open={openEdit} onOpenChange={setOpenEdit}>
+                <DialogTrigger asChild>
+                  <Button size="sm" variant="outline" className="gap-1.5">
+                    <Pencil className="size-4" /> Modifica
+                  </Button>
+                </DialogTrigger>
+                <EditClienteDialog
+                  key={cliente.id}
+                  cliente={cliente}
+                  onClose={() => setOpenEdit(false)}
+                  onSaved={() => qc.invalidateQueries({ queryKey: ["cliente", clienteId] })}
+                />
+              </Dialog>
+            )}
 
-            {cliente.attivo && (
+            {!isAgente && cliente.attivo && (
               <Dialog open={openDisattiva} onOpenChange={setOpenDisattiva}>
                 <DialogTrigger asChild>
                   <Button size="sm" variant="outline" className="gap-1.5">

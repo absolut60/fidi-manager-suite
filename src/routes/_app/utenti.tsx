@@ -37,6 +37,7 @@ const ORDINE_RUOLI: AppRole[] = [
   "approvatore_liv2",
   "approvatore_liv1",
   "store_manager",
+  "agente",
 ];
 
 const TUTTI_RUOLI: AppRole[] = [
@@ -47,6 +48,7 @@ const TUTTI_RUOLI: AppRole[] = [
   "approvatore_liv1",
   "approvatore_liv2",
   "approvatore_liv3",
+  "agente",
 ];
 
 type UserRow = {
@@ -55,6 +57,7 @@ type UserRow = {
   cognome: string | null;
   email: string | null;
   store_id: string | null;
+  codice_agente: string | null;
   attivo: boolean;
   ruoli: AppRole[];
   store_nome: string | null;
@@ -197,6 +200,17 @@ function useStores() {
   });
 }
 
+function useAgenti() {
+  return useQuery({
+    queryKey: ["agenti", "all"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("agenti").select("codice, descrizione").order("descrizione");
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
 function EditUtenteDialog({ utente, onClose }: { utente: UserRow; onClose: () => void }) {
   const qc = useQueryClient();
   const { role } = useAuth();
@@ -204,20 +218,25 @@ function EditUtenteDialog({ utente, onClose }: { utente: UserRow; onClose: () =>
   const [cognome, setCognome] = useState(utente.cognome ?? "");
   const [ruoli, setRuoli] = useState<AppRole[]>(utente.ruoli.length ? utente.ruoli : ["store_manager"]);
   const [storeId, setStoreId] = useState<string>(utente.store_id ?? "_none");
+  const [codiceAgente, setCodiceAgente] = useState<string>(utente.codice_agente ?? "_none");
   const [attivo, setAttivo] = useState(utente.attivo);
   const { data: stores } = useStores();
+  const { data: agenti } = useAgenti();
   const fn = useServerFn(updateUtenteRuoli);
 
   const richiedeStore = ruoli.includes("store_manager");
+  const richiedeAgente = ruoli.includes("agente");
 
   const mutation = useMutation({
     mutationFn: async () => {
       if (ruoli.length === 0) throw new Error("Seleziona almeno un ruolo");
       if (richiedeStore && storeId === "_none") throw new Error("Il ruolo Store Manager richiede un punto vendita");
+      if (richiedeAgente && codiceAgente === "_none") throw new Error("Il ruolo Agente richiede un agente collegato");
       await fn({ data: {
         userId: utente.id,
         ruoli,
         storeId: storeId === "_none" ? null : storeId,
+        codiceAgente: richiedeAgente && codiceAgente !== "_none" ? codiceAgente : null,
         attivo,
         nome: nome.trim(),
         cognome: cognome.trim(),
@@ -298,6 +317,20 @@ function EditUtenteDialog({ utente, onClose }: { utente: UserRow; onClose: () =>
             </SelectContent>
           </Select>
         </div>
+        {richiedeAgente && (
+          <div className="space-y-1.5">
+            <Label>Agente collegato <span className="text-destructive">*</span></Label>
+            <Select value={codiceAgente} onValueChange={setCodiceAgente}>
+              <SelectTrigger><SelectValue placeholder="Seleziona un agente..." /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_none">— Nessuno —</SelectItem>
+                {agenti?.map((a) => (
+                  <SelectItem key={a.codice} value={a.codice}>{a.codice} — {a.descrizione}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         <label className="flex items-center gap-2 text-sm">
           <Checkbox checked={attivo} onCheckedChange={(c) => setAttivo(c === true)} />
           Utente attivo
@@ -357,15 +390,18 @@ function NewUtenteDialog({ onClose }: { onClose: () => void }) {
   const [cognome, setCognome] = useState("");
   const [ruoli, setRuoli] = useState<AppRole[]>(["store_manager"]);
   const [storeId, setStoreId] = useState<string>("_none");
+  const [codiceAgente, setCodiceAgente] = useState<string>("_none");
   const [attivo, setAttivo] = useState(true);
   const [createdUserId, setCreatedUserId] = useState<string | null>(null);
   const [inviato, setInviato] = useState(false);
   const [inviando, setInviando] = useState(false);
   const { data: stores } = useStores();
+  const { data: agenti } = useAgenti();
   const fn = useServerFn(creaUtente);
   const fnInviaCred = useServerFn(inviaCredenziali);
 
   const richiedeStore = ruoli.includes("store_manager");
+  const richiedeAgente = ruoli.includes("agente");
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -373,6 +409,7 @@ function NewUtenteDialog({ onClose }: { onClose: () => void }) {
       if (password.length < 8) throw new Error("Password minimo 8 caratteri");
       if (ruoli.length === 0) throw new Error("Seleziona almeno un ruolo");
       if (richiedeStore && storeId === "_none") throw new Error("Il ruolo Store Manager richiede un punto vendita");
+      if (richiedeAgente && codiceAgente === "_none") throw new Error("Il ruolo Agente richiede un agente collegato");
       const res = await fn({ data: {
         email: email.trim(),
         password,
@@ -380,6 +417,7 @@ function NewUtenteDialog({ onClose }: { onClose: () => void }) {
         cognome: cognome.trim() || undefined,
         ruoli,
         storeId: storeId === "_none" ? null : storeId,
+        codiceAgente: richiedeAgente && codiceAgente !== "_none" ? codiceAgente : null,
         attivo,
       }});
       return res;
@@ -493,6 +531,20 @@ function NewUtenteDialog({ onClose }: { onClose: () => void }) {
             </SelectContent>
           </Select>
         </div>
+        {richiedeAgente && (
+          <div className="space-y-1.5">
+            <Label>Agente collegato <span className="text-destructive">*</span></Label>
+            <Select value={codiceAgente} onValueChange={setCodiceAgente}>
+              <SelectTrigger><SelectValue placeholder="Seleziona un agente..." /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_none">— Nessuno —</SelectItem>
+                {agenti?.map((a) => (
+                  <SelectItem key={a.codice} value={a.codice}>{a.codice} — {a.descrizione}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         <label className="flex items-center gap-2 text-sm">
           <Checkbox checked={attivo} onCheckedChange={(c) => setAttivo(c === true)} />
           Utente attivo

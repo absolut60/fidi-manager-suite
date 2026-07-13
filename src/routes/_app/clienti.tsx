@@ -138,8 +138,9 @@ function ClientiPage() {
   }, [searchInput]);
   const [statoCliente, setStatoCliente] = useState<"attivi" | "disattivati" | "tutti">("attivi");
   const [statoAttivita, setStatoAttivita] = useState<"tutti" | "attivi" | "non_attivi">("attivi");
-  const { role: _roleEarly, profilo: _profiloEarly } = useAuth();
+  const { role: _roleEarly, profilo: _profiloEarly, hasRole: _hasRoleEarly } = useAuth();
   const isStoreManager = _roleEarly === "store_manager";
+  const isAgente = _hasRoleEarly("agente");
   const config = useConfig();
   const isConfigReady = useConfigReady();
   const myStoreId = _profiloEarly?.store_id ?? null;
@@ -1222,18 +1223,20 @@ function ClientiPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-8">
-                    <Checkbox
-                      checked={clienti.length > 0 && clienti.every((c: any) => selectedIds.has(c.id))}
-                      onCheckedChange={async (v) => {
-                        if (v) {
-                          await selezionaTuttiFiltrati();
-                        } else {
-                          clearSelection();
-                        }
-                      }}
-                    />
-                  </TableHead>
+                  {!isAgente && (
+                    <TableHead className="w-8">
+                      <Checkbox
+                        checked={clienti.length > 0 && clienti.every((c: any) => selectedIds.has(c.id))}
+                        onCheckedChange={async (v) => {
+                          if (v) {
+                            await selezionaTuttiFiltrati();
+                          } else {
+                            clearSelection();
+                          }
+                        }}
+                      />
+                    </TableHead>
+                  )}
                   <TableHead className="w-8"></TableHead>
                   <TableHead><SortHeader col="ragione_sociale" label="Ragione sociale" /></TableHead>
                   <TableHead><SortHeader col="codice_gestionale" label="Cod. gest." /></TableHead>
@@ -1264,12 +1267,14 @@ function ClientiPage() {
                       className={`cursor-pointer hover:bg-muted/50 ${isBlocked ? "bg-[#FEF2F2] dark:bg-destructive/10 border-l-[3px] border-l-[#EF4444] hover:bg-[#FEE2E2] dark:hover:bg-destructive/15" : (c as { in_gestione_legale?: boolean }).in_gestione_legale ? "bg-amber-50 dark:bg-amber-500/10 border-l-[3px] border-l-amber-500 hover:bg-amber-100 dark:hover:bg-amber-500/15" : !isClienteAttivo((c as any).ultima_data_fatturazione, (c as any).doc_da_fatturare, config) ? "bg-muted/40 text-muted-foreground" : ""}`}
                      onClick={() => navigate({ to: "/clienti/$clienteId", params: { clienteId: c.id } })}
                    >
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <Checkbox
-                        checked={selectedIds.has(c.id)}
-                        onCheckedChange={() => toggleSelect(c)}
-                      />
-                    </TableCell>
+                    {!isAgente && (
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={selectedIds.has(c.id)}
+                          onCheckedChange={() => toggleSelect(c)}
+                        />
+                      </TableCell>
+                    )}
                     <TableCell>
                       <span
                         className={`inline-block size-2.5 rounded-full ${SEMAFORO_DOT[sem]}`}
@@ -1434,7 +1439,7 @@ function ClientiPage() {
       </Card>
 
       {/* Barra azione selezione */}
-      {selectedIds.size > 0 && (
+      {!isAgente && selectedIds.size > 0 && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 bg-background border shadow-lg rounded-lg px-4 py-3 flex flex-wrap items-center gap-3">
           <div className="flex flex-col">
             <span className="text-sm font-medium">{selectedIds.size} clienti selezionati</span>
