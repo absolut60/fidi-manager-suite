@@ -14,7 +14,18 @@ const RUOLI_VALIDI = [
   "amministratore",
   "amministrazione",
   "direzione",
+  "agente",
 ] as const;
+
+async function assertAgenteEsiste(codice: string) {
+  const { data, error } = await supabaseAdmin
+    .from("agenti")
+    .select("codice")
+    .eq("codice", codice)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error(`Agente con codice "${codice}" non trovato`);
+}
 
 async function assertAdmin(userId: string) {
   const { data, error } = await supabaseAdmin
