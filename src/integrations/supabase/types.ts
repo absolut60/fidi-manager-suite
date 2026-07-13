@@ -1801,6 +1801,97 @@ export type Database = {
           },
         ]
       }
+      promemoria_scadenza_log: {
+        Row: {
+          cliente_id: string
+          created_at: string
+          data_esecuzione: string
+          email_destinatario: string | null
+          errore: string | null
+          esito: string
+          giorni_anticipo: number
+          id: string
+          importo_totale: number | null
+          num_scadenze: number
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string
+          data_esecuzione: string
+          email_destinatario?: string | null
+          errore?: string | null
+          esito: string
+          giorni_anticipo: number
+          id?: string
+          importo_totale?: number | null
+          num_scadenze?: number
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string
+          data_esecuzione?: string
+          email_destinatario?: string | null
+          errore?: string | null
+          esito?: string
+          giorni_anticipo?: number
+          id?: string
+          importo_totale?: number | null
+          num_scadenze?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promemoria_scadenza_log_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promemoria_scadenza_log_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti_con_rischio"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promemoria_scadenza_log_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+        ]
+      }
+      promemoria_scadenza_log_scadenze: {
+        Row: {
+          log_id: string
+          scadenza_id: string
+        }
+        Insert: {
+          log_id: string
+          scadenza_id: string
+        }
+        Update: {
+          log_id?: string
+          scadenza_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promemoria_scadenza_log_scadenze_log_id_fkey"
+            columns: ["log_id"]
+            isOneToOne: false
+            referencedRelation: "promemoria_scadenza_log"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promemoria_scadenza_log_scadenze_scadenza_id_fkey"
+            columns: ["scadenza_id"]
+            isOneToOne: false
+            referencedRelation: "scadenze"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reminder: {
         Row: {
           cliente_id: string | null
@@ -2066,6 +2157,7 @@ export type Database = {
           key_documento: string | null
           key_tipo_effetto: number | null
           numero_documento: string | null
+          promemoria_scadenza_inviato_il: string | null
           sede: number | null
           sollecitato: boolean | null
           stato_contabile: string | null
@@ -2105,6 +2197,7 @@ export type Database = {
           key_documento?: string | null
           key_tipo_effetto?: number | null
           numero_documento?: string | null
+          promemoria_scadenza_inviato_il?: string | null
           sede?: number | null
           sollecitato?: boolean | null
           stato_contabile?: string | null
@@ -2144,6 +2237,7 @@ export type Database = {
           key_documento?: string | null
           key_tipo_effetto?: number | null
           numero_documento?: string | null
+          promemoria_scadenza_inviato_il?: string | null
           sede?: number | null
           sollecitato?: boolean | null
           stato_contabile?: string | null
