@@ -704,6 +704,8 @@ function PromemoriaScadenzaCard() {
         supabase.from("configurazioni").update({ valore: escludiLegale ? "true" : "false" }).eq("chiave", "promemoria_scadenza_escludi_legale"),
         supabase.from("configurazioni").update({ valore: escludiBloccati ? "true" : "false" }).eq("chiave", "promemoria_scadenza_escludi_bloccati"),
         supabase.from("configurazioni").update({ valore: escludiBos ? "true" : "false" }).eq("chiave", "promemoria_scadenza_escludi_bos"),
+        supabase.from("configurazioni").update({ valore: includiBonifici ? "true" : "false" }).eq("chiave", "promemoria_scadenza_includi_bonifici"),
+        supabase.from("configurazioni").update({ valore: includiRiba ? "true" : "false" }).eq("chiave", "promemoria_scadenza_includi_riba"),
         supabase.from("configurazioni").update({ valore: operatoreId ?? "" }).eq("chiave", "promemoria_scadenza_operatore_id"),
       ];
       const results = await Promise.all(updates);
