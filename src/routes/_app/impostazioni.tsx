@@ -21,6 +21,10 @@ import {
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import { BellRing } from "lucide-react";
+
 
 export const Route = createFileRoute("/_app/impostazioni")({
   component: ImpostazioniPage,
