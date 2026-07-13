@@ -52,6 +52,8 @@ export const previewPromemoriaEmail = createServerFn({ method: "GET" })
         "promemoria_scadenza_escludi_legale",
         "promemoria_scadenza_escludi_bloccati",
         "promemoria_scadenza_escludi_bos",
+        "promemoria_scadenza_includi_bonifici",
+        "promemoria_scadenza_includi_riba",
         "promemoria_scadenza_operatore_id",
       ]);
     const cfg = new Map(((cfgRows ?? []) as { chiave: string; valore: string }[]).map((r) => [r.chiave, (r.valore ?? "").trim()]));
