@@ -25,6 +25,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   CalendarClock,
   ChevronDown,
   ChevronUp,
@@ -35,7 +38,11 @@ import {
   Send,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { InvioMassivoDialog } from "@/components/invio-massivo-dialog";
+
+type SortKey = "ragione_sociale" | "store_nome" | "n_scadenze" | "totale_a_scadere" | "prima_scadenza";
+type SortDir = "asc" | "desc";
 
 export const Route = createFileRoute("/_app/recupero-crediti-promemoria")({
   component: PromemoriaScadenzaPage,
@@ -118,6 +125,17 @@ function PromemoriaScadenzaPage() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [selezionati, setSelezionati] = useState<Set<string>>(new Set());
   const [invioOpen, setInvioOpen] = useState(false);
+  const [sortKey, setSortKey] = useState<SortKey>("ragione_sociale");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  function toggleSort(k: SortKey) {
+    if (sortKey === k) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(k);
+      setSortDir("asc");
+    }
+  }
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDeb(search.trim()), 300);
@@ -168,7 +186,21 @@ function PromemoriaScadenzaPage() {
     },
   });
 
-  const rows = aggQuery.data ?? [];
+  const rowsRaw = aggQuery.data ?? [];
+  const rows = useMemo(() => {
+    const arr = [...rowsRaw];
+    const dir = sortDir === "asc" ? 1 : -1;
+    arr.sort((a, b) => {
+      const av = a[sortKey];
+      const bv = b[sortKey];
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      if (typeof av === "number" && typeof bv === "number") return (av - bv) * dir;
+      return String(av).localeCompare(String(bv), "it", { sensitivity: "base" }) * dir;
+    });
+    return arr;
+  }, [rowsRaw, sortKey, sortDir]);
   const totClienti = rows.length;
   const totImporto = rows.reduce((s, r) => s + Number(r.totale_a_scadere ?? 0), 0);
   const totScadenze = rows.reduce((s, r) => s + (r.n_scadenze ?? 0), 0);
@@ -212,6 +244,15 @@ function PromemoriaScadenzaPage() {
           <Link to="/recupero-crediti">Torna a Recupero Crediti</Link>
         </Button>
       </div>
+
+      <Tabs defaultValue="seleziona" className="space-y-6">
+        <TabsList className="flex-wrap h-auto">
+          <TabsTrigger value="seleziona">Seleziona per invio</TabsTrigger>
+          <TabsTrigger value="automatici">Invii automatici</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="seleziona" className="space-y-6 mt-0">
+
 
       {/* Filtri */}
       <Card className="p-4 space-y-4">
@@ -344,11 +385,11 @@ function PromemoriaScadenzaPage() {
                   />
                 </TableHead>
                 <TableHead className="w-10" />
-                <TableHead>Cliente</TableHead>
-                <TableHead>Store</TableHead>
-                <TableHead className="text-center">N. scadenze</TableHead>
-                <TableHead className="text-right">Totale a scadere</TableHead>
-                <TableHead>Prima scadenza</TableHead>
+                <SortableHead label="Cliente" k="ragione_sociale" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                <SortableHead label="Store" k="store_nome" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                <SortableHead label="N. scadenze" k="n_scadenze" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} align="center" />
+                <SortableHead label="Totale a scadere" k="totale_a_scadere" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} align="right" />
+                <SortableHead label="Prima scadenza" k="prima_scadenza" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
                 <TableHead>Email / PEC</TableHead>
                 <TableHead className="w-10" />
               </TableRow>
@@ -442,8 +483,12 @@ function PromemoriaScadenzaPage() {
           </Table>
         </div>
       </Card>
+        </TabsContent>
 
-      <InviiAutomaticiSection />
+        <TabsContent value="automatici" className="space-y-6 mt-0">
+          <InviiAutomaticiSection />
+        </TabsContent>
+      </Tabs>
 
       <InvioMassivoDialog
         open={invioOpen}
@@ -457,7 +502,43 @@ function PromemoriaScadenzaPage() {
   );
 }
 
+function SortableHead({
+  label, k, sortKey, sortDir, onSort, align,
+}: {
+  label: string;
+  k: SortKey;
+  sortKey: SortKey;
+  sortDir: SortDir;
+  onSort: (k: SortKey) => void;
+  align?: "left" | "center" | "right";
+}) {
+  const active = sortKey === k;
+  const alignCls = align === "right" ? "text-right" : align === "center" ? "text-center" : "";
+  const justifyCls = align === "right" ? "justify-end" : align === "center" ? "justify-center" : "justify-start";
+  return (
+    <TableHead className={alignCls}>
+      <button
+        type="button"
+        onClick={() => onSort(k)}
+        className={cn(
+          "inline-flex items-center gap-1 w-full select-none hover:text-foreground transition-colors",
+          justifyCls,
+          active ? "text-foreground font-medium" : "text-muted-foreground"
+        )}
+      >
+        <span>{label}</span>
+        {active ? (
+          sortDir === "asc" ? <ArrowUp className="size-3.5" /> : <ArrowDown className="size-3.5" />
+        ) : (
+          <ArrowUpDown className="size-3.5 opacity-40" />
+        )}
+      </button>
+    </TableHead>
+  );
+}
+
 // ==================== Storico invii automatici ====================
+
 
 type PromLogRow = {
   id: string;
