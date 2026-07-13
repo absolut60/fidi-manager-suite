@@ -14,7 +14,7 @@ export type Profilo = {
   attivo: boolean;
 };
 
-const ORDINE_RUOLI: AppRole[] = ["amministratore", "approvatore_liv3", "approvatore_liv2", "approvatore_liv1", "store_manager"];
+const ORDINE_RUOLI: AppRole[] = ["amministratore", "approvatore_liv3", "approvatore_liv2", "approvatore_liv1", "store_manager", "agente"];
 
 type AuthContextValue = {
   session: Session | null;
