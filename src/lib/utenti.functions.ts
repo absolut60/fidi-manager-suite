@@ -197,6 +197,20 @@ export const inviaCredenziali = createServerFn({ method: "POST" })
   </table>
 </body></html>`;
 
+    // [DIAG TEMPORANEO] Presenza variabili nel runtime server function (mai i valori).
+    console.log("email env presence [inviaCredenziali]", {
+      process_INTERNAL_EMAIL_SECRET: !!process.env.INTERNAL_EMAIL_SECRET,
+      process_SERVICE_ROLE: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+      process_URL: !!process.env.SUPABASE_URL,
+      process_APP_URL: !!process.env.APP_URL,
+    });
+    console.log(
+      "email env keys [inviaCredenziali]",
+      Object.keys(process.env).filter((k) =>
+        /SECRET|SMTP|SUPABASE|APP_URL|INNGEST/i.test(k),
+      ),
+    );
+
     const { error: eSend } = await supabaseAdmin.functions.invoke("send-email", {
       body: {
         to: email,
