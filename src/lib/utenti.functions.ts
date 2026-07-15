@@ -197,31 +197,36 @@ export const inviaCredenziali = createServerFn({ method: "POST" })
   </table>
 </body></html>`;
 
-    // [DIAG TEMPORANEO] Presenza variabili nel runtime server function (mai i valori).
-    console.log("email env presence [inviaCredenziali]", {
-      process_INTERNAL_EMAIL_SECRET: !!process.env.INTERNAL_EMAIL_SECRET,
-      process_SERVICE_ROLE: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-      process_URL: !!process.env.SUPABASE_URL,
-      process_APP_URL: !!process.env.APP_URL,
-    });
-    console.log(
-      "email env keys [inviaCredenziali]",
-      Object.keys(process.env).filter((k) =>
-        /SECRET|SMTP|SUPABASE|APP_URL|INNGEST/i.test(k),
-      ),
-    );
+    const SUPABASE_URL = process.env.SUPABASE_URL;
+    const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const INTERNAL_SECRET = process.env.INTERNAL_EMAIL_SECRET;
+    if (!INTERNAL_SECRET) {
+      throw new Error("Configurazione email server incompleta: manca INTERNAL_EMAIL_SECRET");
+    }
+    if (!SUPABASE_URL || !SERVICE_ROLE) {
+      throw new Error(
+        `Configurazione email server incompleta: manca ${!SUPABASE_URL ? "SUPABASE_URL" : "SUPABASE_SERVICE_ROLE_KEY"}`,
+      );
+    }
 
-    const { error: eSend } = await supabaseAdmin.functions.invoke("send-email", {
-      body: {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/send-email`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: SERVICE_ROLE,
+        Authorization: `Bearer ${SERVICE_ROLE}`,
+        "x-internal-secret": INTERNAL_SECRET,
+      },
+      body: JSON.stringify({
         to: email,
         subject: "Le tue credenziali di accesso — FidiManager MADE",
         html,
-      },
-      headers: {
-        "x-internal-secret": process.env.INTERNAL_EMAIL_SECRET ?? "",
-      },
+      }),
     });
-    if (eSend) throw new Error(eSend.message);
+    if (!res.ok) {
+      const bodyTxt = (await res.text()).slice(0, 400);
+      throw new Error(`Invio email fallito [HTTP ${res.status}]: ${bodyTxt}`);
+    }
 
     return { ok: true };
   });
