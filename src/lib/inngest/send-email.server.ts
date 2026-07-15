@@ -19,20 +19,6 @@ export async function sendEmailViaEdge(payload: {
   // Reply-To: quando l'utente risponde alla mail arriva a questa casella.
   replyTo?: string;
 }): Promise<{ ok: boolean; err?: string }> {
-  // [DIAG TEMPORANEO] Presenza variabili nel runtime server (mai i valori).
-  console.log("email env presence [sendEmailViaEdge]", {
-    process_INTERNAL_EMAIL_SECRET: !!process.env.INTERNAL_EMAIL_SECRET,
-    process_SERVICE_ROLE: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-    process_URL: !!process.env.SUPABASE_URL,
-    process_APP_URL: !!process.env.APP_URL,
-  });
-  console.log(
-    "email env keys [sendEmailViaEdge]",
-    Object.keys(process.env).filter((k) =>
-      /SECRET|SMTP|SUPABASE|APP_URL|INNGEST/i.test(k),
-    ),
-  );
-
   const SUPABASE_URL = process.env.SUPABASE_URL;
   const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const INTERNAL_SECRET = process.env.INTERNAL_EMAIL_SECRET;
