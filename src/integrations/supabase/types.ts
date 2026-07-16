@@ -1250,6 +1250,24 @@ export type Database = {
           },
         ]
       }
+      fornitori: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+        }
+        Relationships: []
+      }
       importazioni: {
         Row: {
           chunks_completati: number | null
@@ -2125,6 +2143,245 @@ export type Database = {
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      richieste_interne: {
+        Row: {
+          admin_at: string | null
+          admin_by_name: string | null
+          admin_note: string | null
+          admin_status: string | null
+          amount: number | null
+          archived: boolean
+          archived_at: string | null
+          archived_by_name: string | null
+          created_at: string
+          description: string | null
+          dir_action: string | null
+          dir_approver_id: string | null
+          dir_approver_name: string | null
+          dir_at: string | null
+          dir_note: string | null
+          fornitore: string | null
+          gestionale_ref: string | null
+          gestionale_sent_at: string | null
+          id: string
+          requester_id: string
+          requester_name: string
+          resp_action: string | null
+          resp_approver_id: string | null
+          resp_approver_name: string | null
+          resp_at: string | null
+          resp_note: string | null
+          sede_id: string | null
+          sede_name: string | null
+          sent_to_gestionale: boolean
+          status: string
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          admin_at?: string | null
+          admin_by_name?: string | null
+          admin_note?: string | null
+          admin_status?: string | null
+          amount?: number | null
+          archived?: boolean
+          archived_at?: string | null
+          archived_by_name?: string | null
+          created_at?: string
+          description?: string | null
+          dir_action?: string | null
+          dir_approver_id?: string | null
+          dir_approver_name?: string | null
+          dir_at?: string | null
+          dir_note?: string | null
+          fornitore?: string | null
+          gestionale_ref?: string | null
+          gestionale_sent_at?: string | null
+          id?: string
+          requester_id: string
+          requester_name: string
+          resp_action?: string | null
+          resp_approver_id?: string | null
+          resp_approver_name?: string | null
+          resp_at?: string | null
+          resp_note?: string | null
+          sede_id?: string | null
+          sede_name?: string | null
+          sent_to_gestionale?: boolean
+          status?: string
+          title: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          admin_at?: string | null
+          admin_by_name?: string | null
+          admin_note?: string | null
+          admin_status?: string | null
+          amount?: number | null
+          archived?: boolean
+          archived_at?: string | null
+          archived_by_name?: string | null
+          created_at?: string
+          description?: string | null
+          dir_action?: string | null
+          dir_approver_id?: string | null
+          dir_approver_name?: string | null
+          dir_at?: string | null
+          dir_note?: string | null
+          fornitore?: string | null
+          gestionale_ref?: string | null
+          gestionale_sent_at?: string | null
+          id?: string
+          requester_id?: string
+          requester_name?: string
+          resp_action?: string | null
+          resp_approver_id?: string | null
+          resp_approver_name?: string | null
+          resp_at?: string | null
+          resp_note?: string | null
+          sede_id?: string | null
+          sede_name?: string | null
+          sent_to_gestionale?: boolean
+          status?: string
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "richieste_interne_dir_approver_id_fkey"
+            columns: ["dir_approver_id"]
+            isOneToOne: false
+            referencedRelation: "profili"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "richieste_interne_requester_id_fkey"
+            columns: ["requester_id"]
+            isOneToOne: false
+            referencedRelation: "profili"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "richieste_interne_resp_approver_id_fkey"
+            columns: ["resp_approver_id"]
+            isOneToOne: false
+            referencedRelation: "profili"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "richieste_interne_sede_id_fkey"
+            columns: ["sede_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      richieste_interne_allegati: {
+        Row: {
+          caricato_da: string | null
+          created_at: string
+          dimensione_bytes: number | null
+          id: string
+          mime_type: string | null
+          nome_file: string
+          request_id: string
+          storage_path: string
+        }
+        Insert: {
+          caricato_da?: string | null
+          created_at?: string
+          dimensione_bytes?: number | null
+          id?: string
+          mime_type?: string | null
+          nome_file: string
+          request_id: string
+          storage_path: string
+        }
+        Update: {
+          caricato_da?: string | null
+          created_at?: string
+          dimensione_bytes?: number | null
+          id?: string
+          mime_type?: string | null
+          nome_file?: string
+          request_id?: string
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "richieste_interne_allegati_caricato_da_fkey"
+            columns: ["caricato_da"]
+            isOneToOne: false
+            referencedRelation: "profili"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "richieste_interne_allegati_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "richieste_interne"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      richieste_interne_messaggi: {
+        Row: {
+          created_at: string
+          destinatario: string
+          id: string
+          letto_da: string[]
+          mittente_id: string | null
+          mittente_name: string
+          mittente_ruolo: string
+          request_id: string
+          testo: string
+          tipo: string
+        }
+        Insert: {
+          created_at?: string
+          destinatario: string
+          id?: string
+          letto_da?: string[]
+          mittente_id?: string | null
+          mittente_name: string
+          mittente_ruolo: string
+          request_id: string
+          testo: string
+          tipo?: string
+        }
+        Update: {
+          created_at?: string
+          destinatario?: string
+          id?: string
+          letto_da?: string[]
+          mittente_id?: string | null
+          mittente_name?: string
+          mittente_ruolo?: string
+          request_id?: string
+          testo?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "richieste_interne_messaggi_mittente_id_fkey"
+            columns: ["mittente_id"]
+            isOneToOne: false
+            referencedRelation: "profili"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "richieste_interne_messaggi_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "richieste_interne"
             referencedColumns: ["id"]
           },
         ]
@@ -3730,6 +3987,10 @@ export type Database = {
         Args: { _id: string }
         Returns: boolean
       }
+      user_can_access_richiesta_interna: {
+        Args: { _richiesta_id: string }
+        Returns: boolean
+      }
       user_can_write_cliente: {
         Args: { _cliente_id: string }
         Returns: boolean
@@ -3745,6 +4006,11 @@ export type Database = {
         | "amministrazione"
         | "direzione"
         | "agente"
+        | "richiedente"
+        | "approvatore_richieste_liv1"
+        | "approvatore_richieste_liv2"
+        | "gestore_richieste"
+        | "esecutore_richieste"
       esito_approvazione: "approvata" | "rifiutata"
       stato_importazione:
         | "in_elaborazione"
@@ -3960,6 +4226,11 @@ export const Constants = {
         "amministrazione",
         "direzione",
         "agente",
+        "richiedente",
+        "approvatore_richieste_liv1",
+        "approvatore_richieste_liv2",
+        "gestore_richieste",
+        "esecutore_richieste",
       ],
       esito_approvazione: ["approvata", "rifiutata"],
       stato_importazione: [
