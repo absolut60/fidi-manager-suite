@@ -37,12 +37,19 @@ import { toast } from "sonner";
 
 type NavGroupKey = "generale" | "fidi" | "incassi" | "recupero" | "strumenti" | "admin" | "richieste_interne";
 
+// Per le voci del gruppo "richieste_interne": scope di visibilità aggiuntivo.
+// - "all"    → dashboard/mie: chiunque abbia un ruolo richieste_* o admin
+// - "manage" → tutte/archivio: liv1, liv2, gestore, esecutore, admin
+// - "approve"→ da approvare: liv1, liv2, admin
+type RichiesteScope = "all" | "manage" | "approve";
+
 type NavItem = {
   to: string;
   label: string;
   icon: typeof LayoutDashboard;
   roles?: Array<"admin" | "approvatore" | "store_manager" | "amministrazione">;
   group: NavGroupKey;
+  richiesteScope?: RichiesteScope;
 };
 
 const NAV: NavItem[] = [
