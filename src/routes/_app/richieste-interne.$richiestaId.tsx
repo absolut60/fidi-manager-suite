@@ -95,24 +95,25 @@ function DettaglioRichiesta() {
     if (!dialog || !r) return;
     setSaving(true);
     const now = new Date().toISOString();
-    const patch: Record<string, any> = {};
-    if (dialog.level === 1) {
-      patch.resp_action = dialog.action;
-      patch.resp_approver_id = uid;
-      patch.resp_approver_name = fullName;
-      patch.resp_note = note.trim() || null;
-      patch.resp_at = now;
-      patch.status =
-        dialog.action === "approved" ? "resp_approved" :
-        dialog.action === "forwarded" ? "forwarded" : "rejected";
-    } else {
-      patch.dir_action = dialog.action;
-      patch.dir_approver_id = uid;
-      patch.dir_approver_name = fullName;
-      patch.dir_note = note.trim() || null;
-      patch.dir_at = now;
-      patch.status = dialog.action === "approved" ? "approved" : "rejected";
-    }
+    const patch = dialog.level === 1
+      ? {
+          resp_action: dialog.action,
+          resp_approver_id: uid,
+          resp_approver_name: fullName,
+          resp_note: note.trim() || null,
+          resp_at: now,
+          status:
+            dialog.action === "approved" ? "resp_approved" :
+            dialog.action === "forwarded" ? "forwarded" : "rejected",
+        }
+      : {
+          dir_action: dialog.action,
+          dir_approver_id: uid,
+          dir_approver_name: fullName,
+          dir_note: note.trim() || null,
+          dir_at: now,
+          status: dialog.action === "approved" ? "approved" : "rejected",
+        };
     const { error } = await supabase.from("richieste_interne").update(patch).eq("id", r.id);
     setSaving(false);
     if (error) {
