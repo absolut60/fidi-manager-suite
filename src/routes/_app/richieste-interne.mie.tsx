@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowDown, ArrowUp, ArrowUpDown, Paperclip, Search } from "lucide-react";
+import { NuovaRichiestaDialog } from "@/components/richieste-interne/nuova-richiesta-dialog";
 
 export const Route = createFileRoute("/_app/richieste-interne/mie")({
   component: MieRichieste,
