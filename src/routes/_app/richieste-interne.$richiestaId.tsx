@@ -251,7 +251,37 @@ function DettaglioRichiesta() {
             {r.sede_name && (<><span>·</span><span className="inline-flex items-center gap-1"><MapPin className="size-3" />{r.sede_name}</span></>)}
           </div>
         </div>
-        <Badge variant="outline" className="text-sm">{STATUS_LABEL[r.status] ?? r.status}</Badge>
+        <div className="flex flex-col items-end gap-2">
+          <div className="flex flex-wrap gap-2 justify-end">
+            <Badge variant="outline" className="text-sm">{STATUS_LABEL[r.status] ?? r.status}</Badge>
+            {(r.status === "resp_approved" || r.status === "approved") && (
+              <Badge variant="outline" className="text-sm">{ADMIN_LABEL[r.admin_status ?? "da_gestire"]}</Badge>
+            )}
+            {r.archived && <Badge variant="secondary" className="text-sm">📦 Archiviata</Badge>}
+          </div>
+          <div className="flex flex-wrap gap-2 justify-end">
+            {canGestisci && (
+              <Button size="sm" variant="outline" onClick={() => setGestOpen(true)}>
+                <Wrench className="size-4 mr-1" />Gestisci
+              </Button>
+            )}
+            {canManage && !r.archived && (
+              <Button size="sm" variant="outline" onClick={archivia} disabled={archiving}>
+                <Archive className="size-4 mr-1" />Archivia
+              </Button>
+            )}
+            {canManage && r.archived && (
+              <Button size="sm" variant="outline" onClick={ripristina} disabled={archiving}>
+                <ArchiveRestore className="size-4 mr-1" />Ripristina
+              </Button>
+            )}
+            {canDelete && (
+              <Button size="sm" variant="destructive" onClick={() => setConfirmDelete("one")}>
+                <Trash2 className="size-4 mr-1" />Elimina
+              </Button>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
