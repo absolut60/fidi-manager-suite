@@ -15,6 +15,7 @@ const SELECT =
 function ApprovaRichieste() {
   const { roles } = useAuth();
   const userRoles = roles as string[];
+  const unreadIds = useRichiesteNonLette();
   const isLiv1 = userRoles.includes("approvatore_richieste_liv1");
   const isLiv2 = userRoles.includes("approvatore_richieste_liv2");
 
