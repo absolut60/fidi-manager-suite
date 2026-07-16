@@ -328,9 +328,9 @@ export const migrazioneRichiesteDati = createServerFn({ method: "POST" })
     // Set of request IDs migrated → filtro per messaggi/allegati
     const validReqIds = new Set(reqRows.map((r) => r.id as string));
 
-    // C) MESSAGGI
-    const { data: msgSrc, error: eM } = await src.from("messages").select("*");
-    if (eM) throw new Error(`messages src: ${eM.message}`);
+    // C) MESSAGGI (tabella sorgente: messaggi_richiesta)
+    const { data: msgSrc, error: eM } = await src.from("messaggi_richiesta").select("*");
+    if (eM) throw new Error(`messaggi_richiesta src: ${eM.message}`);
     let msgSkipped = 0;
     const msgRows: Record<string, unknown>[] = [];
     for (const m of (msgSrc ?? []) as Record<string, unknown>[]) {
