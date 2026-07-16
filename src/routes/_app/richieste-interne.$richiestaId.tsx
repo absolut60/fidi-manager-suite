@@ -10,10 +10,11 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Archive, ArchiveRestore, Download, File as FileIcon, FileImage, FileText, Loader2, MapPin, Paperclip, Trash2, Upload, Wrench } from "lucide-react";
+import { ArrowLeft, Archive, ArchiveRestore, Download, File as FileIcon, FileImage, FileText, Loader2, MapPin, Paperclip, Pencil, Trash2, Upload, Wrench } from "lucide-react";
 import { toast } from "sonner";
 import { ChatMessaggi } from "@/components/richieste-interne/chat-messaggi";
 import { GestisciDialog, type GestisciTarget } from "@/components/richieste-interne/gestisci-dialog";
+import { NuovaRichiestaDialog } from "@/components/richieste-interne/nuova-richiesta-dialog";
 import { ADMIN_LABEL } from "@/components/richieste-interne/richieste-table";
 import { notifyRichiestaEvento } from "@/lib/richieste-email.functions";
 
