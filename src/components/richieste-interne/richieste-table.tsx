@@ -73,6 +73,9 @@ export function RichiesteTable({
   defaultSortKey = "created_at",
   emptyLabel = "Nessuna richiesta",
   unreadIds,
+  onGestisci,
+  onRipristina,
+  gestisciLabel = "Gestisci",
 }: {
   rows: RichiestaRow[] | undefined;
   isLoading: boolean;
@@ -81,6 +84,9 @@ export function RichiesteTable({
   defaultSortKey?: SortKey;
   emptyLabel?: string;
   unreadIds?: Set<string>;
+  onGestisci?: (r: RichiestaRow) => void;
+  onRipristina?: (r: RichiestaRow) => void;
+  gestisciLabel?: string;
 }) {
   const navigate = useNavigate();
   const openDetail = (id: string) => navigate({ to: "/richieste-interne/$richiestaId", params: { richiestaId: id } });
