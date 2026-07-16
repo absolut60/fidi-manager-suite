@@ -40,8 +40,10 @@ import { Route as AppAssicurazioniRouteImport } from './routes/_app/assicurazion
 import { Route as AppApprovazioniRouteImport } from './routes/_app/approvazioni'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
+import { Route as AppRichiesteInterneIndexRouteImport } from './routes/_app/richieste-interne.index'
 import { Route as ApiPublicInngestRouteImport } from './routes/api/public/inngest'
 import { Route as AppRichiesteRichiestaIdRouteImport } from './routes/_app/richieste.$richiestaId'
+import { Route as AppRichiesteInterneMieRouteImport } from './routes/_app/richieste-interne.mie'
 import { Route as AppClientiClienteIdRouteImport } from './routes/_app/clienti.$clienteId'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
@@ -208,6 +210,12 @@ const Char91DotmcpChar93ListToolsRoute =
     path: '/.mcp/list-tools',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AppRichiesteInterneIndexRoute =
+  AppRichiesteInterneIndexRouteImport.update({
+    id: '/richieste-interne/',
+    path: '/richieste-interne/',
+    getParentRoute: () => AppRoute,
+  } as any)
 const ApiPublicInngestRoute = ApiPublicInngestRouteImport.update({
   id: '/api/public/inngest',
   path: '/api/public/inngest',
@@ -217,6 +225,11 @@ const AppRichiesteRichiestaIdRoute = AppRichiesteRichiestaIdRouteImport.update({
   id: '/$richiestaId',
   path: '/$richiestaId',
   getParentRoute: () => AppRichiesteRoute,
+} as any)
+const AppRichiesteInterneMieRoute = AppRichiesteInterneMieRouteImport.update({
+  id: '/richieste-interne/mie',
+  path: '/richieste-interne/mie',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppClientiClienteIdRoute = AppClientiClienteIdRouteImport.update({
   id: '/$clienteId',
@@ -281,8 +294,10 @@ export interface FileRoutesByFullPath {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
+  '/richieste-interne/mie': typeof AppRichiesteInterneMieRoute
   '/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
   '/api/public/inngest': typeof ApiPublicInngestRoute
+  '/richieste-interne/': typeof AppRichiesteInterneIndexRoute
   '/api/public/hooks/check-reminder-ritardi': typeof ApiPublicHooksCheckReminderRitardiRoute
   '/api/public/hooks/check-scadenze': typeof ApiPublicHooksCheckScadenzeRoute
 }
@@ -320,8 +335,10 @@ export interface FileRoutesByTo {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
+  '/richieste-interne/mie': typeof AppRichiesteInterneMieRoute
   '/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
   '/api/public/inngest': typeof ApiPublicInngestRoute
+  '/richieste-interne': typeof AppRichiesteInterneIndexRoute
   '/api/public/hooks/check-reminder-ritardi': typeof ApiPublicHooksCheckReminderRitardiRoute
   '/api/public/hooks/check-scadenze': typeof ApiPublicHooksCheckScadenzeRoute
 }
@@ -361,8 +378,10 @@ export interface FileRoutesById {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_app/clienti/$clienteId': typeof AppClientiClienteIdRoute
+  '/_app/richieste-interne/mie': typeof AppRichiesteInterneMieRoute
   '/_app/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
   '/api/public/inngest': typeof ApiPublicInngestRoute
+  '/_app/richieste-interne/': typeof AppRichiesteInterneIndexRoute
   '/api/public/hooks/check-reminder-ritardi': typeof ApiPublicHooksCheckReminderRitardiRoute
   '/api/public/hooks/check-scadenze': typeof ApiPublicHooksCheckScadenzeRoute
 }
@@ -402,8 +421,10 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/clienti/$clienteId'
+    | '/richieste-interne/mie'
     | '/richieste/$richiestaId'
     | '/api/public/inngest'
+    | '/richieste-interne/'
     | '/api/public/hooks/check-reminder-ritardi'
     | '/api/public/hooks/check-scadenze'
   fileRoutesByTo: FileRoutesByTo
@@ -441,8 +462,10 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/clienti/$clienteId'
+    | '/richieste-interne/mie'
     | '/richieste/$richiestaId'
     | '/api/public/inngest'
+    | '/richieste-interne'
     | '/api/public/hooks/check-reminder-ritardi'
     | '/api/public/hooks/check-scadenze'
   id:
@@ -481,8 +504,10 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/_app/clienti/$clienteId'
+    | '/_app/richieste-interne/mie'
     | '/_app/richieste/$richiestaId'
     | '/api/public/inngest'
+    | '/_app/richieste-interne/'
     | '/api/public/hooks/check-reminder-ritardi'
     | '/api/public/hooks/check-scadenze'
   fileRoutesById: FileRoutesById
@@ -721,6 +746,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/richieste-interne/': {
+      id: '/_app/richieste-interne/'
+      path: '/richieste-interne'
+      fullPath: '/richieste-interne/'
+      preLoaderRoute: typeof AppRichiesteInterneIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/api/public/inngest': {
       id: '/api/public/inngest'
       path: '/api/public/inngest'
@@ -734,6 +766,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/richieste/$richiestaId'
       preLoaderRoute: typeof AppRichiesteRichiestaIdRouteImport
       parentRoute: typeof AppRichiesteRoute
+    }
+    '/_app/richieste-interne/mie': {
+      id: '/_app/richieste-interne/mie'
+      path: '/richieste-interne/mie'
+      fullPath: '/richieste-interne/mie'
+      preLoaderRoute: typeof AppRichiesteInterneMieRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/clienti/$clienteId': {
       id: '/_app/clienti/$clienteId'
@@ -822,6 +861,8 @@ interface AppRouteChildren {
   AppTemplateLetteraRoute: typeof AppTemplateLetteraRoute
   AppUtentiRoute: typeof AppUtentiRoute
   AppWhatsappRoute: typeof AppWhatsappRoute
+  AppRichiesteInterneMieRoute: typeof AppRichiesteInterneMieRoute
+  AppRichiesteInterneIndexRoute: typeof AppRichiesteInterneIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -849,6 +890,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppTemplateLetteraRoute: AppTemplateLetteraRoute,
   AppUtentiRoute: AppUtentiRoute,
   AppWhatsappRoute: AppWhatsappRoute,
+  AppRichiesteInterneMieRoute: AppRichiesteInterneMieRoute,
+  AppRichiesteInterneIndexRoute: AppRichiesteInterneIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
