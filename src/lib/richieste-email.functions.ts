@@ -93,22 +93,33 @@ export const notifyRichiestaEvento = createServerFn({ method: "POST" })
 
 
       async function emailsFromRole(role: string): Promise<string[]> {
-        const { data: rows } = await supabaseAdmin
+        // NB: user_roles.user_id -> auth.users(id), NON esiste FK verso profili,
+        // quindi PostgREST NON risolve `profili!inner(...)` (join sempre null).
+        // Facciamo due query: prima gli user_id per ruolo, poi i profili attivi.
+        const { data: rows, error: eR } = await supabaseAdmin
           .from("user_roles")
-          .select("user_id, profili!inner(email, attivo)")
+          .select("user_id")
           .eq("role", role as never);
-        return (rows ?? [])
-          .filter(
-            (x) =>
-              // @ts-expect-error - shape from PostgREST
-              x.profili?.attivo === true && typeof x.profili?.email === "string",
-          )
-          .map(
-            (x) =>
-              // @ts-expect-error - shape from PostgREST
-              x.profili.email as string,
-          );
+        if (eR) {
+          console.error(`[emailsFromRole:${role}] errore user_roles:`, eR.message);
+          return [];
+        }
+        const ids = Array.from(new Set((rows ?? []).map((r) => r.user_id).filter(Boolean)));
+        if (ids.length === 0) return [];
+        const { data: profs, error: eP } = await supabaseAdmin
+          .from("profili")
+          .select("id, email, attivo")
+          .in("id", ids)
+          .eq("attivo", true);
+        if (eP) {
+          console.error(`[emailsFromRole:${role}] errore profili:`, eP.message);
+          return [];
+        }
+        return (profs ?? [])
+          .map((p) => (typeof p.email === "string" ? p.email : null))
+          .filter((e): e is string => !!e && e.includes("@"));
       }
+
 
       async function requesterEmail(): Promise<string | null> {
         if (!req.requester_id) return null;
@@ -165,9 +176,22 @@ export const notifyRichiestaEvento = createServerFn({ method: "POST" })
       }
 
       // Escludi sempre il mittente
+      const totalePrimaExclude = to.size;
       if (data.actor.email) to.delete(data.actor.email.toLowerCase());
 
-      if (to.size === 0) return { ok: true, sent: 0 };
+      if (to.size === 0) {
+        if (totalePrimaExclude === 0) {
+          console.warn(
+            `[notifyRichiestaEvento][${data.event}] NESSUN DESTINATARIO risolto (richiesta ${data.richiestaId}, dest=${data.extra?.dest ?? "-"}). Verificare ruoli/profili attivi.`,
+          );
+        } else {
+          console.info(
+            `[notifyRichiestaEvento][${data.event}] Unico destinatario era il mittente (${data.actor.email}); nessun invio.`,
+          );
+        }
+        return { ok: true, sent: 0 };
+      }
+
 
       // 4) Rendering
       const appUrl =
