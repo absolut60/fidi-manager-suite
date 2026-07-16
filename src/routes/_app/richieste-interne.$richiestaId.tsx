@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { ArrowLeft, Download, File as FileIcon, FileImage, FileText, Loader2, MapPin, Paperclip, Upload } from "lucide-react";
 import { toast } from "sonner";
+import { ChatMessaggi } from "@/components/richieste-interne/chat-messaggi";
 
 export const Route = createFileRoute("/_app/richieste-interne/$richiestaId")({
   component: DettaglioRichiesta,
@@ -261,6 +262,8 @@ function DettaglioRichiesta() {
               )}
             </CardContent>
           </Card>
+
+          <ChatMessaggi richiestaId={r.id} disabled={r.archived} />
 
           {(canLiv1 || canLiv2) && (
             <Card>
