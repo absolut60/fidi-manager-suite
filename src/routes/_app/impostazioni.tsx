@@ -5,6 +5,7 @@ import { z } from "zod";
 import { Plus, Building2, Pencil, Trash2, Sliders, Save, Mail, AlertTriangle } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { getCleanupRecuperoCounts, eseguiCleanupRecupero } from "@/lib/cleanup-recupero.functions";
+import { migrazioneRichiesteCreaUtenti } from "@/lib/migrazione-richieste.functions";
 import { previewPromemoriaEmail } from "@/lib/promemoria-preview.functions";
 import { sendEmail, buildEmailTemplate } from "@/lib/send-email";
 import { toast } from "sonner";
@@ -103,6 +104,10 @@ function ImpostazioniPage() {
       <ConfigurazioniCard />
 
       <PromemoriaScadenzaCard />
+
+      <MigrazioneRichiesteCard />
+
+
 
 
       <Card className="p-4 sm:p-5">
@@ -897,5 +902,67 @@ function PromemoriaScadenzaCard() {
     </Card>
   );
 }
+
+function MigrazioneRichiesteCard() {
+  const run = useServerFn(migrazioneRichiesteCreaUtenti);
+  const [running, setRunning] = useState(false);
+  const [result, setResult] = useState<Awaited<ReturnType<typeof migrazioneRichiesteCreaUtenti>> | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function esegui() {
+    setRunning(true);
+    setError(null);
+    setResult(null);
+    try {
+      const r = await run();
+      setResult(r);
+      toast.success(`Migrazione completata: ${r.mappateConDestinazione}/${r.totaleAttese} mappati`);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setRunning(false);
+    }
+  }
+
+  return (
+    <Card className="p-4 sm:p-5 border-dashed">
+      <h2 className="font-semibold mb-1 flex items-center gap-2">
+        <AlertTriangle className="size-4" /> Migrazione Richieste MADE — Strato 2
+      </h2>
+      <p className="text-xs text-muted-foreground mb-3">
+        Crea i 16 nuovi utenti (attivo=false) e aggiunge i ruoli Richieste ai 5 utenti esistenti.
+        Aggiorna la tabella <code>migrazione_richieste_utenti</code> con gli UUID di destinazione.
+        Idempotente: sicuro da rilanciare.
+      </p>
+      <Button size="sm" onClick={esegui} disabled={running}>
+        {running ? "Esecuzione…" : "Esegui migrazione utenti"}
+      </Button>
+      {error && (
+        <div className="mt-3 text-xs text-destructive whitespace-pre-wrap break-all">{error}</div>
+      )}
+      {result && (
+        <div className="mt-3 text-xs space-y-1">
+          <div className="font-medium">
+            Mappati con destinazione: {result.mappateConDestinazione} / {result.totaleAttese}
+          </div>
+          <details>
+            <summary className="cursor-pointer text-muted-foreground">Log dettagliato ({result.log.length})</summary>
+            <ul className="mt-2 space-y-0.5 font-mono text-[11px] max-h-64 overflow-auto">
+              {result.log.map((l, i) => (
+                <li key={i}>
+                  <span className="text-muted-foreground">{l.email}:</span> {l.azione}
+                  {l.userId ? ` (${l.userId})` : ""}
+                </li>
+              ))}
+            </ul>
+          </details>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 
 
