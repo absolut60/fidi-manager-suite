@@ -150,7 +150,7 @@ function MieRichieste() {
               const nAll = r.richieste_interne_allegati?.length ?? 0;
               const showAdmin = (r.status === "resp_approved" || r.status === "approved") && r.admin_status && r.admin_status !== "da_gestire";
               return (
-                <TableRow key={r.id} className="cursor-pointer">
+                <TableRow key={r.id} className="cursor-pointer hover:bg-muted/50" onClick={() => openDetail(r.id)}>
                   <TableCell>
                     <div className="font-semibold">{r.title}</div>
                     {r.description && (
