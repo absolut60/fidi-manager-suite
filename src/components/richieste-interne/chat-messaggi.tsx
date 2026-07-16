@@ -110,26 +110,16 @@ export function ChatMessaggi({ richiestaId, disabled }: { richiestaId: string; d
       toast.error("Errore invio: " + error.message);
       return;
     }
-    // Strato 5: notifica email (mappa il tipo del messaggio all'evento)
-    const event =
-      tipo === "sollecito"
-        ? ("sollecito" as const)
-        : tipo === "info_request"
-          ? ("info_request" as const)
-          : ("messaggio_interno" as const);
+    // Strato 5: notifica email (UI attuale invia solo messaggi 'messaggio')
     void notifyRichiestaEvento({
       data: {
-        event,
+        event: "messaggio_interno",
         richiestaId,
         actor: { id: uid, nome: fullName, email: user?.email ?? null },
-        extra: {
-          by: fullName,
-          dest: destinatario,
-          nota: event === "sollecito" ? t : null,
-          testo: event === "sollecito" ? null : t,
-        },
+        extra: { by: fullName, dest: destinatario, testo: t },
       },
-    }).catch((e) => console.error(`[email ${event}] fallito:`, e));
+    }).catch((e) => console.error("[email messaggio_interno] fallito:", e));
+
 
     setTesto("");
     toast.success("Messaggio inviato");
