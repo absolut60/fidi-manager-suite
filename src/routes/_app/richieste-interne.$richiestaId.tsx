@@ -305,6 +305,11 @@ function DettaglioRichiesta() {
             {r.archived && <Badge variant="secondary" className="text-sm">📦 Archiviata</Badge>}
           </div>
           <div className="flex flex-wrap gap-2 justify-end">
+            {ownerCanEdit && (
+              <Button size="sm" variant="outline" onClick={() => setEditOpen(true)}>
+                <Pencil className="size-4 mr-1" />Modifica
+              </Button>
+            )}
             {canGestisci && (
               <Button size="sm" variant="outline" onClick={() => setGestOpen(true)}>
                 <Wrench className="size-4 mr-1" />Gestisci
@@ -320,7 +325,7 @@ function DettaglioRichiesta() {
                 <ArchiveRestore className="size-4 mr-1" />Ripristina
               </Button>
             )}
-            {canDelete && (
+            {(canDelete || ownerCanDelete) && (
               <Button size="sm" variant="destructive" onClick={() => setConfirmDelete("one")}>
                 <Trash2 className="size-4 mr-1" />Elimina
               </Button>
