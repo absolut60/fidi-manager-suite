@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { AlarmClock, Loader2, MessageSquare, Send } from "lucide-react";
 import { toast } from "sonner";
+import { notifyRichiestaEvento } from "@/lib/richieste-email.functions";
+
 
 type Msg = {
   id: string;
@@ -108,7 +110,17 @@ export function ChatMessaggi({ richiestaId, disabled }: { richiestaId: string; d
       toast.error("Errore invio: " + error.message);
       return;
     }
-    // TODO Strato 5: inviare email notifica messaggio (evento 'messaggio_interno')
+    // Strato 5: notifica email (UI attuale invia solo messaggi 'messaggio')
+    void notifyRichiestaEvento({
+      data: {
+        event: "messaggio_interno",
+        richiestaId,
+        actor: { id: uid, nome: fullName, email: user?.email ?? null },
+        extra: { by: fullName, dest: destinatario, testo: t },
+      },
+    }).catch((e) => console.error("[email messaggio_interno] fallito:", e));
+
+
     setTesto("");
     toast.success("Messaggio inviato");
     qc.invalidateQueries({ queryKey: ["richiesta-interna-messaggi", richiestaId] });
