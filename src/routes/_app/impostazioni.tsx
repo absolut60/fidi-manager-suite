@@ -1040,7 +1040,23 @@ function MigrazioneRichiesteCard() {
         <Button size="sm" variant="secondary" onClick={eseguiFile} disabled={fileRunning}>
           {fileRunning ? "Copia file…" : "Migra file (Strato 3)"}
         </Button>
+        <Button size="sm" variant="outline" onClick={eseguiTestEmail} disabled={emailTesting}>
+          {emailTesting ? "Test email…" : "Test notifica richiesta"}
+        </Button>
       </div>
+
+      {emailError && (
+        <div className="mt-3 text-xs text-destructive whitespace-pre-wrap break-all">Test email: {emailError}</div>
+      )}
+      {emailResult && (
+        <div className="mt-3 text-xs rounded border p-2 bg-muted/30">
+          <div className="font-medium mb-1">Risultato test notifica</div>
+          <pre className="font-mono text-[11px] whitespace-pre-wrap break-all max-h-80 overflow-auto">
+{JSON.stringify(emailResult, null, 2)}
+          </pre>
+        </div>
+      )}
+
 
       {error && (
         <div className="mt-3 text-xs text-destructive whitespace-pre-wrap break-all">{error}</div>
