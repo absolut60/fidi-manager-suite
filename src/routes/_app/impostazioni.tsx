@@ -5,7 +5,7 @@ import { z } from "zod";
 import { Plus, Building2, Pencil, Trash2, Sliders, Save, Mail, AlertTriangle } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { getCleanupRecuperoCounts, eseguiCleanupRecupero } from "@/lib/cleanup-recupero.functions";
-import { migrazioneRichiesteCreaUtenti } from "@/lib/migrazione-richieste.functions";
+import { migrazioneRichiesteCreaUtenti, migrazioneRichiesteDati, migrazioneRichiesteFile } from "@/lib/migrazione-richieste.functions";
 import { testConnessioneRichieste } from "@/lib/test-connessione-richieste.functions";
 import { previewPromemoriaEmail } from "@/lib/promemoria-preview.functions";
 import { sendEmail, buildEmailTemplate } from "@/lib/send-email";
@@ -907,12 +907,45 @@ function PromemoriaScadenzaCard() {
 function MigrazioneRichiesteCard() {
   const run = useServerFn(migrazioneRichiesteCreaUtenti);
   const testConn = useServerFn(testConnessioneRichieste);
+  const runDati = useServerFn(migrazioneRichiesteDati);
+  const runFile = useServerFn(migrazioneRichiesteFile);
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<Awaited<ReturnType<typeof migrazioneRichiesteCreaUtenti>> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<Awaited<ReturnType<typeof testConnessioneRichieste>> | null>(null);
   const [testError, setTestError] = useState<string | null>(null);
+  const [datiRunning, setDatiRunning] = useState(false);
+  const [datiResult, setDatiResult] = useState<Awaited<ReturnType<typeof migrazioneRichiesteDati>> | null>(null);
+  const [datiError, setDatiError] = useState<string | null>(null);
+  const [fileRunning, setFileRunning] = useState(false);
+  const [fileResult, setFileResult] = useState<Awaited<ReturnType<typeof migrazioneRichiesteFile>> | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
+
+  async function eseguiDati() {
+    setDatiRunning(true); setDatiError(null); setDatiResult(null);
+    try {
+      const r = await runDati();
+      setDatiResult(r);
+      toast.success(`Dati migrati: ${r.richiesteMigrate} richieste, ${r.messaggiMigrati} messaggi, ${r.allegatiMigrati} allegati`);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setDatiError(msg); toast.error(msg);
+    } finally { setDatiRunning(false); }
+  }
+
+  async function eseguiFile() {
+    setFileRunning(true); setFileError(null); setFileResult(null);
+    try {
+      const r = await runFile();
+      setFileResult(r);
+      toast.success(`File: ${r.copied} copiati, ${r.skipped} saltati, ${r.failed} falliti`);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setFileError(msg); toast.error(msg);
+    } finally { setFileRunning(false); }
+  }
+
 
   async function esegui() {
     setRunning(true);
@@ -965,7 +998,14 @@ function MigrazioneRichiesteCard() {
         <Button size="sm" variant="outline" onClick={eseguiTest} disabled={testing}>
           {testing ? "Test in corso…" : "Test connessione RICHIESTE"}
         </Button>
+        <Button size="sm" onClick={eseguiDati} disabled={datiRunning}>
+          {datiRunning ? "Migrazione dati…" : "Migra dati (Strato 3)"}
+        </Button>
+        <Button size="sm" variant="secondary" onClick={eseguiFile} disabled={fileRunning}>
+          {fileRunning ? "Copia file…" : "Migra file (Strato 3)"}
+        </Button>
       </div>
+
       {error && (
         <div className="mt-3 text-xs text-destructive whitespace-pre-wrap break-all">{error}</div>
       )}
@@ -1025,9 +1065,44 @@ function MigrazioneRichiesteCard() {
           )}
         </div>
       )}
+      {datiError && (
+        <div className="mt-3 text-xs text-destructive whitespace-pre-wrap break-all">Dati: {datiError}</div>
+      )}
+      {datiResult && (
+        <div className="mt-3 text-xs space-y-1 rounded border p-2 bg-muted/30">
+          <div className="font-medium">Migrazione dati</div>
+          <div>fornitori: {datiResult.fornitoriMigrati} · richieste: {datiResult.richiesteMigrate} (skipped {datiResult.richiesteSkipped}) · messaggi: {datiResult.messaggiMigrati} · allegati: {datiResult.allegatiMigrati}</div>
+          <div>UUID non mappati: {datiResult.unmappedUuids.length}{datiResult.unmappedUuids.length > 0 ? ` — ${datiResult.unmappedUuids.join(", ")}` : ""}</div>
+          <details>
+            <summary className="cursor-pointer text-muted-foreground">Log ({datiResult.log.length})</summary>
+            <ul className="mt-1 font-mono text-[11px] max-h-64 overflow-auto">
+              {datiResult.log.map((l, i) => <li key={i}>{l}</li>)}
+            </ul>
+          </details>
+        </div>
+      )}
+      {fileError && (
+        <div className="mt-3 text-xs text-destructive whitespace-pre-wrap break-all">File: {fileError}</div>
+      )}
+      {fileResult && (
+        <div className="mt-3 text-xs space-y-1 rounded border p-2 bg-muted/30">
+          <div className="font-medium">Migrazione file</div>
+          <div>copiati: {fileResult.copied} · saltati: {fileResult.skipped} · falliti: {fileResult.failed}</div>
+          {fileResult.errors.length > 0 && (
+            <details>
+              <summary className="cursor-pointer text-destructive">Errori ({fileResult.errors.length})</summary>
+              <ul className="mt-1 font-mono text-[11px] max-h-64 overflow-auto">
+                {fileResult.errors.map((e, i) => <li key={i}>{e.id}: {e.error}</li>)}
+              </ul>
+            </details>
+          )}
+        </div>
+      )}
     </Card>
   );
 }
+
+
 
 
 
