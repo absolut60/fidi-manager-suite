@@ -187,17 +187,26 @@ function RoleCheckboxes({ value, onChange }: { value: AppRole[]; onChange: (v: A
     if (checked) onChange(Array.from(new Set([...value, r])));
     else onChange(value.filter((x) => x !== r));
   };
+  const renderGroup = (titolo: string, ruoli: AppRole[]) => (
+    <div className="space-y-2">
+      <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{titolo}</div>
+      <div className="space-y-1.5 pl-1">
+        {ruoli.map((r) => (
+          <label key={r} className="flex items-center gap-2 text-sm cursor-pointer">
+            <Checkbox
+              checked={value.includes(r)}
+              onCheckedChange={(c) => toggle(r, c === true)}
+            />
+            {RUOLI_LABEL[r]}
+          </label>
+        ))}
+      </div>
+    </div>
+  );
   return (
-    <div className="space-y-2 rounded-md border p-3">
-      {TUTTI_RUOLI.map((r) => (
-        <label key={r} className="flex items-center gap-2 text-sm cursor-pointer">
-          <Checkbox
-            checked={value.includes(r)}
-            onCheckedChange={(c) => toggle(r, c === true)}
-          />
-          {RUOLI_LABEL[r]}
-        </label>
-      ))}
+    <div className="space-y-4 rounded-md border p-3">
+      {renderGroup("Credito", RUOLI_CREDITO)}
+      {renderGroup("Richieste interne", RUOLI_RICHIESTE)}
     </div>
   );
 }
