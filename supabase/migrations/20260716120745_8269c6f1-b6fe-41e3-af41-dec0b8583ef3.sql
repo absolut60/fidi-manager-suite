@@ -1,0 +1,1 @@
+ALTER TABLE public.richieste_interne ALTER COLUMN requester_id DROP NOT NULL;

@@ -2195,7 +2195,7 @@ export type Database = {
           gestionale_ref: string | null
           gestionale_sent_at: string | null
           id: string
-          requester_id: string
+          requester_id: string | null
           requester_name: string
           resp_action: string | null
           resp_approver_id: string | null
@@ -2230,7 +2230,7 @@ export type Database = {
           gestionale_ref?: string | null
           gestionale_sent_at?: string | null
           id?: string
-          requester_id: string
+          requester_id?: string | null
           requester_name: string
           resp_action?: string | null
           resp_approver_id?: string | null
@@ -2265,7 +2265,7 @@ export type Database = {
           gestionale_ref?: string | null
           gestionale_sent_at?: string | null
           id?: string
-          requester_id?: string
+          requester_id?: string | null
           requester_name?: string
           resp_action?: string | null
           resp_approver_id?: string | null
