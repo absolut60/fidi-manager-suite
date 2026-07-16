@@ -43,6 +43,7 @@ import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]
 import { Route as AppRichiesteInterneIndexRouteImport } from './routes/_app/richieste-interne.index'
 import { Route as ApiPublicInngestRouteImport } from './routes/api/public/inngest'
 import { Route as AppRichiesteRichiestaIdRouteImport } from './routes/_app/richieste.$richiestaId'
+import { Route as AppRichiesteInterneTutteRouteImport } from './routes/_app/richieste-interne.tutte'
 import { Route as AppRichiesteInterneMieRouteImport } from './routes/_app/richieste-interne.mie'
 import { Route as AppRichiesteInterneRichiestaIdRouteImport } from './routes/_app/richieste-interne.$richiestaId'
 import { Route as AppClientiClienteIdRouteImport } from './routes/_app/clienti.$clienteId'
@@ -227,6 +228,12 @@ const AppRichiesteRichiestaIdRoute = AppRichiesteRichiestaIdRouteImport.update({
   path: '/$richiestaId',
   getParentRoute: () => AppRichiesteRoute,
 } as any)
+const AppRichiesteInterneTutteRoute =
+  AppRichiesteInterneTutteRouteImport.update({
+    id: '/richieste-interne/tutte',
+    path: '/richieste-interne/tutte',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppRichiesteInterneMieRoute = AppRichiesteInterneMieRouteImport.update({
   id: '/richieste-interne/mie',
   path: '/richieste-interne/mie',
@@ -303,6 +310,7 @@ export interface FileRoutesByFullPath {
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
   '/richieste-interne/$richiestaId': typeof AppRichiesteInterneRichiestaIdRoute
   '/richieste-interne/mie': typeof AppRichiesteInterneMieRoute
+  '/richieste-interne/tutte': typeof AppRichiesteInterneTutteRoute
   '/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
   '/api/public/inngest': typeof ApiPublicInngestRoute
   '/richieste-interne/': typeof AppRichiesteInterneIndexRoute
@@ -345,6 +353,7 @@ export interface FileRoutesByTo {
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
   '/richieste-interne/$richiestaId': typeof AppRichiesteInterneRichiestaIdRoute
   '/richieste-interne/mie': typeof AppRichiesteInterneMieRoute
+  '/richieste-interne/tutte': typeof AppRichiesteInterneTutteRoute
   '/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
   '/api/public/inngest': typeof ApiPublicInngestRoute
   '/richieste-interne': typeof AppRichiesteInterneIndexRoute
@@ -389,6 +398,7 @@ export interface FileRoutesById {
   '/_app/clienti/$clienteId': typeof AppClientiClienteIdRoute
   '/_app/richieste-interne/$richiestaId': typeof AppRichiesteInterneRichiestaIdRoute
   '/_app/richieste-interne/mie': typeof AppRichiesteInterneMieRoute
+  '/_app/richieste-interne/tutte': typeof AppRichiesteInterneTutteRoute
   '/_app/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
   '/api/public/inngest': typeof ApiPublicInngestRoute
   '/_app/richieste-interne/': typeof AppRichiesteInterneIndexRoute
@@ -433,6 +443,7 @@ export interface FileRouteTypes {
     | '/clienti/$clienteId'
     | '/richieste-interne/$richiestaId'
     | '/richieste-interne/mie'
+    | '/richieste-interne/tutte'
     | '/richieste/$richiestaId'
     | '/api/public/inngest'
     | '/richieste-interne/'
@@ -475,6 +486,7 @@ export interface FileRouteTypes {
     | '/clienti/$clienteId'
     | '/richieste-interne/$richiestaId'
     | '/richieste-interne/mie'
+    | '/richieste-interne/tutte'
     | '/richieste/$richiestaId'
     | '/api/public/inngest'
     | '/richieste-interne'
@@ -518,6 +530,7 @@ export interface FileRouteTypes {
     | '/_app/clienti/$clienteId'
     | '/_app/richieste-interne/$richiestaId'
     | '/_app/richieste-interne/mie'
+    | '/_app/richieste-interne/tutte'
     | '/_app/richieste/$richiestaId'
     | '/api/public/inngest'
     | '/_app/richieste-interne/'
@@ -780,6 +793,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRichiesteRichiestaIdRouteImport
       parentRoute: typeof AppRichiesteRoute
     }
+    '/_app/richieste-interne/tutte': {
+      id: '/_app/richieste-interne/tutte'
+      path: '/richieste-interne/tutte'
+      fullPath: '/richieste-interne/tutte'
+      preLoaderRoute: typeof AppRichiesteInterneTutteRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/richieste-interne/mie': {
       id: '/_app/richieste-interne/mie'
       path: '/richieste-interne/mie'
@@ -883,6 +903,7 @@ interface AppRouteChildren {
   AppWhatsappRoute: typeof AppWhatsappRoute
   AppRichiesteInterneRichiestaIdRoute: typeof AppRichiesteInterneRichiestaIdRoute
   AppRichiesteInterneMieRoute: typeof AppRichiesteInterneMieRoute
+  AppRichiesteInterneTutteRoute: typeof AppRichiesteInterneTutteRoute
   AppRichiesteInterneIndexRoute: typeof AppRichiesteInterneIndexRoute
 }
 
@@ -913,6 +934,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppWhatsappRoute: AppWhatsappRoute,
   AppRichiesteInterneRichiestaIdRoute: AppRichiesteInterneRichiestaIdRoute,
   AppRichiesteInterneMieRoute: AppRichiesteInterneMieRoute,
+  AppRichiesteInterneTutteRoute: AppRichiesteInterneTutteRoute,
   AppRichiesteInterneIndexRoute: AppRichiesteInterneIndexRoute,
 }
 
