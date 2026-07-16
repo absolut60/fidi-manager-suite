@@ -998,7 +998,14 @@ function MigrazioneRichiesteCard() {
         <Button size="sm" variant="outline" onClick={eseguiTest} disabled={testing}>
           {testing ? "Test in corso…" : "Test connessione RICHIESTE"}
         </Button>
+        <Button size="sm" onClick={eseguiDati} disabled={datiRunning}>
+          {datiRunning ? "Migrazione dati…" : "Migra dati (Strato 3)"}
+        </Button>
+        <Button size="sm" variant="secondary" onClick={eseguiFile} disabled={fileRunning}>
+          {fileRunning ? "Copia file…" : "Migra file (Strato 3)"}
+        </Button>
       </div>
+
       {error && (
         <div className="mt-3 text-xs text-destructive whitespace-pre-wrap break-all">{error}</div>
       )}
