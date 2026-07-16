@@ -43,6 +43,8 @@ const fmtData = (v: string) => new Date(v).toLocaleDateString("it-IT");
 function MieRichieste() {
   const { user } = useAuth();
   const uid = user?.id ?? "";
+  const navigate = useNavigate();
+  const openDetail = (id: string) => navigate({ to: "/richieste-interne/$richiestaId", params: { richiestaId: id } });
   const [filtro, setFiltro] = useState<FiltroStato>("tutte");
   const [q, setQ] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("updated_at");
