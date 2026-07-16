@@ -152,4 +152,9 @@ export const RUOLI_LABEL: Record<AppRole, string> = {
   amministrazione: "Amministrazione",
   direzione: "Direzione",
   agente: "Agente",
+  richiedente: "Richiedente",
+  approvatore_richieste_liv1: "Approvatore Richieste Liv.1",
+  approvatore_richieste_liv2: "Approvatore Richieste Liv.2",
+  gestore_richieste: "Gestore Richieste",
+  esecutore_richieste: "Esecutore Richieste",
 };
