@@ -264,19 +264,17 @@ export const migrazioneRichiesteDati = createServerFn({ method: "POST" })
     }
     log.push(`fornitori migrati: ${fornRows.length} (esclusi ${(fornSrc?.length ?? 0) - fornRows.length})`);
 
-    // B) RICHIESTE
+    // B) RICHIESTE — migra TUTTE le righe. Se un uuid utente non è mappato,
+    // metto NULL sulla FK e conservo il *_name testuale (loggando il caso).
     const { data: reqSrc, error: eR } = await src.from("requests").select("*");
     if (eR) throw new Error(`requests src: ${eR.message}`);
-    let reqSkipped = 0;
     const reqRows: Record<string, unknown>[] = [];
     for (const r of (reqSrc ?? []) as Record<string, unknown>[]) {
       const requesterOrig = r.requester_id as string | null;
       const requesterDest = mapUuid(userMap, requesterOrig);
-      if (!requesterDest) {
-        if (requesterOrig) unmapped.add(requesterOrig);
-        reqSkipped++;
-        log.push(`SKIP richiesta ${r.id} — requester_id non mappato (${requesterOrig})`);
-        continue;
+      if (requesterOrig && !requesterDest) {
+        unmapped.add(requesterOrig);
+        log.push(`richiesta ${r.id} — requester_id non mappato (${requesterOrig}), FK=NULL, requester_name conservato="${r.requester_name}"`);
       }
       const respOrig = r.resp_approver_id as string | null;
       const respDest = mapUuid(userMap, respOrig);
@@ -325,14 +323,14 @@ export const migrazioneRichiesteDati = createServerFn({ method: "POST" })
       const { error } = await supabaseAdmin.from("richieste_interne").upsert(reqRows as never, { onConflict: "id" });
       if (error) throw new Error(`richieste upsert: ${error.message}`);
     }
-    log.push(`richieste migrate: ${reqRows.length} (skipped ${reqSkipped})`);
+    log.push(`richieste migrate: ${reqRows.length} (totale sorgente: ${reqSrc?.length ?? 0})`);
 
     // Set of request IDs migrated → filtro per messaggi/allegati
     const validReqIds = new Set(reqRows.map((r) => r.id as string));
 
-    // C) MESSAGGI
-    const { data: msgSrc, error: eM } = await src.from("messages").select("*");
-    if (eM) throw new Error(`messages src: ${eM.message}`);
+    // C) MESSAGGI (tabella sorgente: messaggi_richiesta)
+    const { data: msgSrc, error: eM } = await src.from("messaggi_richiesta").select("*");
+    if (eM) throw new Error(`messaggi_richiesta src: ${eM.message}`);
     let msgSkipped = 0;
     const msgRows: Record<string, unknown>[] = [];
     for (const m of (msgSrc ?? []) as Record<string, unknown>[]) {
@@ -398,7 +396,7 @@ export const migrazioneRichiesteDati = createServerFn({ method: "POST" })
       ok: true,
       fornitoriMigrati: fornRows.length,
       richiesteMigrate: reqRows.length,
-      richiesteSkipped: reqSkipped,
+      richiesteSorgente: reqSrc?.length ?? 0,
       messaggiMigrati: msgRows.length,
       allegatiMigrati: attRows.length,
       unmappedUuids: Array.from(unmapped),
