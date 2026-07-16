@@ -241,7 +241,7 @@ function DettaglioRichiesta() {
     e.target.value = "";
     if (!file || !r) return;
     setUploading(true);
-    const path = `${r.id}/${Date.now()}_${file.name}`;
+    const path = `${r.id}/${Date.now()}_${sanitizeFileName(file.name)}`;
     const { error: upErr } = await supabase.storage
       .from("richieste-allegati")
       .upload(path, file, { contentType: file.type || undefined });
