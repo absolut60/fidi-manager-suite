@@ -6,6 +6,7 @@ import { Plus, Building2, Pencil, Trash2, Sliders, Save, Mail, AlertTriangle } f
 import { useServerFn } from "@tanstack/react-start";
 import { getCleanupRecuperoCounts, eseguiCleanupRecupero } from "@/lib/cleanup-recupero.functions";
 import { migrazioneRichiesteCreaUtenti, migrazioneRichiesteDati, migrazioneRichiesteFile } from "@/lib/migrazione-richieste.functions";
+import { notifyRichiestaEvento } from "@/lib/richieste-email.functions";
 import { testConnessioneRichieste } from "@/lib/test-connessione-richieste.functions";
 import { previewPromemoriaEmail } from "@/lib/promemoria-preview.functions";
 import { sendEmail, buildEmailTemplate } from "@/lib/send-email";
