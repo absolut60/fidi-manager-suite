@@ -38,9 +38,14 @@ const ORDINE_RUOLI: AppRole[] = [
   "approvatore_liv1",
   "store_manager",
   "agente",
+  "approvatore_richieste_liv2",
+  "approvatore_richieste_liv1",
+  "gestore_richieste",
+  "esecutore_richieste",
+  "richiedente",
 ];
 
-const TUTTI_RUOLI: AppRole[] = [
+const RUOLI_CREDITO: AppRole[] = [
   "amministratore",
   "direzione",
   "amministrazione",
@@ -49,6 +54,14 @@ const TUTTI_RUOLI: AppRole[] = [
   "approvatore_liv2",
   "approvatore_liv3",
   "agente",
+];
+
+const RUOLI_RICHIESTE: AppRole[] = [
+  "richiedente",
+  "approvatore_richieste_liv1",
+  "approvatore_richieste_liv2",
+  "gestore_richieste",
+  "esecutore_richieste",
 ];
 
 type UserRow = {
