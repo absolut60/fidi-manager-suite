@@ -155,7 +155,15 @@ export function NuovaRichiestaDialog({ trigger }: { trigger?: React.ReactNode })
         if (aErr) { failed++; console.error("Insert allegato fallita:", aErr.message); }
       }
 
-      // TODO Strato 5: inviare evento 'new_request' agli approvatori (email).
+      // Strato 5: notifica agli approvatori Liv.1 (non blocca in caso di errore)
+      void notifyRichiestaEvento({
+        data: {
+          event: "new_request",
+          richiestaId,
+          actor: { id: user.id, nome: requesterName, email: user.email ?? null },
+        },
+      }).catch((e) => console.error("[email new_request] fallito:", e));
+
 
       if (failed > 0) toast.warning(`Richiesta creata. ${failed} allegato/i non caricato/i.`);
       else toast.success("Richiesta creata");
