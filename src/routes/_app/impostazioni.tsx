@@ -922,6 +922,41 @@ function MigrazioneRichiesteCard() {
   const [fileRunning, setFileRunning] = useState(false);
   const [fileResult, setFileResult] = useState<Awaited<ReturnType<typeof migrazioneRichiesteFile>> | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
+  const notify = useServerFn(notifyRichiestaEvento);
+  const { user, profilo } = useAuth();
+  const [emailTesting, setEmailTesting] = useState(false);
+  const [emailResult, setEmailResult] = useState<Awaited<ReturnType<typeof notifyRichiestaEvento>> | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
+
+  async function eseguiTestEmail() {
+    setEmailTesting(true); setEmailError(null); setEmailResult(null);
+    try {
+      const { data: last, error } = await supabase
+        .from("richieste_interne")
+        .select("id")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      if (!last) throw new Error("Nessuna richiesta esistente");
+      const fullName = [profilo?.nome, profilo?.cognome].filter(Boolean).join(" ").trim() || (user?.email ?? "Test");
+      const res = await notify({
+        data: {
+          event: "new_request",
+          richiestaId: last.id,
+          actor: { id: user?.id ?? null, nome: fullName, email: user?.email ?? null },
+        },
+      });
+      setEmailResult(res);
+      if (res.ok && res.sent > 0) toast.success(`Test OK: ${res.sent} email inviate`);
+      else if (res.ok) toast.info(res.debug?.motivoZero ?? "Nessun destinatario");
+      else toast.warning(`Errore: ${res.err ?? "?"}`);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setEmailError(msg); toast.error(msg);
+    } finally { setEmailTesting(false); }
+  }
+
 
   async function eseguiDati() {
     setDatiRunning(true); setDatiError(null); setDatiResult(null);
