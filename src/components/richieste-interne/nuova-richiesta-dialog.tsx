@@ -12,6 +12,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Plus, Paperclip, X, ChevronsUpDown } from "lucide-react";
+import { notifyRichiestaEvento } from "@/lib/richieste-email.functions";
+
 
 type Tipo = "preventivo" | "attivita" | "acquisto";
 
