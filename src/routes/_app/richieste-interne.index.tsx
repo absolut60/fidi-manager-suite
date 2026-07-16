@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Inbox, Hourglass, CheckCircle2, XCircle, ClipboardList, Wrench } from "lucide-react";
+import { NuovaRichiestaDialog } from "@/components/richieste-interne/nuova-richiesta-dialog";
 
 export const Route = createFileRoute("/_app/richieste-interne/")({
   component: DashboardRichiesteInterne,
