@@ -41,7 +41,7 @@ type NavGroupKey = "generale" | "fidi" | "incassi" | "recupero" | "strumenti" | 
 // - "all"    → dashboard/mie: chiunque abbia un ruolo richieste_* o admin
 // - "manage" → tutte/archivio: liv1, liv2, gestore, esecutore, admin
 // - "approve"→ da approvare: liv1, liv2, admin
-type RichiesteScope = "all" | "manage" | "approve";
+type RichiesteScope = "all" | "manage" | "approve" | "gestione";
 
 type NavItem = {
   to: string;
