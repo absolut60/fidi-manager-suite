@@ -199,20 +199,27 @@ export const notifyRichiestaEvento = createServerFn({ method: "POST" })
 
       // Escludi sempre il mittente
       const totalePrimaExclude = to.size;
-      if (data.actor.email) to.delete(data.actor.email.toLowerCase());
+      debug.destinatariRisolti = totalePrimaExclude;
+      if (data.actor.email && to.has(data.actor.email.toLowerCase())) {
+        to.delete(data.actor.email.toLowerCase());
+        debug.mittenteEscluso = true;
+      }
+      debug.destinatariFinali = to.size;
 
       if (to.size === 0) {
         if (totalePrimaExclude === 0) {
+          debug.motivoZero = `Nessun utente attivo con ruolo per evento '${data.event}' (dest=${data.extra?.dest ?? "-"})`;
           console.warn(
-            `[notifyRichiestaEvento][${data.event}] NESSUN DESTINATARIO risolto (richiesta ${data.richiestaId}, dest=${data.extra?.dest ?? "-"}). Verificare ruoli/profili attivi.`,
+            `[notifyRichiestaEvento][${data.event}] NESSUN DESTINATARIO risolto (richiesta ${data.richiestaId}). ${debug.motivoZero}`,
           );
         } else {
-          console.info(
-            `[notifyRichiestaEvento][${data.event}] Unico destinatario era il mittente (${data.actor.email}); nessun invio.`,
-          );
+          debug.motivoZero = `Unico destinatario era il mittente (${data.actor.email})`;
+          console.info(`[notifyRichiestaEvento][${data.event}] ${debug.motivoZero}`);
         }
-        return { ok: true, sent: 0 };
+        return { ok: true, sent: 0, debug };
       }
+
+      debug.destinatari = Array.from(to);
 
 
       // 4) Rendering
@@ -267,12 +274,14 @@ export const notifyRichiestaEvento = createServerFn({ method: "POST" })
       return {
         ok: sent > 0 || to.size === 0,
         sent,
-        err: errors.length ? errors[0] : undefined,
+        err: errors.length ? errors.join(" | ") : undefined,
+        debug,
       };
     } catch (e) {
       // Non bloccare mai il chiamante
       const msg = e instanceof Error ? e.message : String(e);
       console.error("[notifyRichiestaEvento] errore:", msg);
-      return { ok: false, sent: 0, err: msg };
+      return { ok: false, sent: 0, err: msg, debug };
     }
+
   });
