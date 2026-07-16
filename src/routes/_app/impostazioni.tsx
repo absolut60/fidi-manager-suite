@@ -1071,7 +1071,7 @@ function MigrazioneRichiesteCard() {
       {datiResult && (
         <div className="mt-3 text-xs space-y-1 rounded border p-2 bg-muted/30">
           <div className="font-medium">Migrazione dati</div>
-          <div>fornitori: {datiResult.fornitoriMigrati} · richieste: {datiResult.richiesteMigrate} (skipped {datiResult.richiesteSkipped}) · messaggi: {datiResult.messaggiMigrati} · allegati: {datiResult.allegatiMigrati}</div>
+          <div>fornitori: {datiResult.fornitoriMigrati} · richieste: {datiResult.richiesteMigrate}/{datiResult.richiesteSorgente} · messaggi: {datiResult.messaggiMigrati} · allegati: {datiResult.allegatiMigrati}</div>
           <div>UUID non mappati: {datiResult.unmappedUuids.length}{datiResult.unmappedUuids.length > 0 ? ` — ${datiResult.unmappedUuids.join(", ")}` : ""}</div>
           <details>
             <summary className="cursor-pointer text-muted-foreground">Log ({datiResult.log.length})</summary>
