@@ -65,8 +65,6 @@ export const notifyRichiestaEvento = createServerFn({ method: "POST" })
       if (!r) throw new Error("Richiesta non trovata");
       const req = r;
 
-      // rimuovo warning unused
-      void actorIdUnused;
 
 
       // 2) Sede della richiesta (fallback amministrativa)
