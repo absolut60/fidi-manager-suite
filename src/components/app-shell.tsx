@@ -130,12 +130,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isEsecutoreRich = hasUserRole("esecutore_richieste");
   const canApproveRich = isAdmin || isApprovatoreRichLiv1 || isApprovatoreRichLiv2;
   const canManageRich = isAdmin || isApprovatoreRichLiv1 || isApprovatoreRichLiv2 || isGestoreRich || isEsecutoreRich;
+  const canGestioneRich = isAdmin || isGestoreRich || isEsecutoreRich;
 
   const visibleNav = NAV.filter((item) => {
     if (item.group === "richieste_interne") {
       if (!canSeeRichiesteInterne) return false;
       if (item.richiesteScope === "approve") return canApproveRich;
       if (item.richiesteScope === "manage") return canManageRich;
+      if (item.richiesteScope === "gestione") return canGestioneRich;
       return true; // "all"
     }
     if (isOnlyAgente) return AGENTE_WHITELIST.has(item.to);
