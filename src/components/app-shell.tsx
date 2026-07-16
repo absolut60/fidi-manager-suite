@@ -66,6 +66,9 @@ const NAV: NavItem[] = [
   { to: "/recupero-crediti-campagne", label: "Invii massivi", icon: Megaphone, roles: ["admin", "approvatore", "store_manager"], group: "recupero" },
   { to: "/legali", label: "Pratiche Legali", icon: Gavel, roles: ["admin", "approvatore", "store_manager"], group: "recupero" },
   { to: "/recupero-crediti-andamento", label: "Andamento / Storico", icon: TrendingUp, roles: ["admin", "approvatore", "store_manager"], group: "recupero" },
+  // RICHIESTE INTERNE (gate applicato a livello di gruppo, non per singola voce)
+  { to: "/richieste-interne", label: "Richieste — Dashboard", icon: LayoutDashboard, group: "richieste_interne" },
+  { to: "/richieste-interne/mie", label: "Le mie richieste", icon: FileText, group: "richieste_interne" },
   // STRUMENTI
   { to: "/import-export", label: "Import / Export", icon: FileSpreadsheet, roles: ["admin", "amministrazione"], group: "strumenti" },
   { to: "/whatsapp", label: "WhatsApp", icon: MessageCircle, roles: ["admin"], group: "strumenti" },
