@@ -1,9 +1,8 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   LayoutDashboard,
   FileText,
-  Building2,
   Users,
   CheckCheck,
   FileSpreadsheet,
@@ -20,14 +19,20 @@ import {
   FileSignature,
   CalendarClock,
   ClipboardCheck,
+  ClipboardList,
   HandCoins,
   TrendingUp,
   LineChart,
   Mail,
   Megaphone,
+  CreditCard,
+  Banknote,
+  AlertTriangle,
+  Wrench,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { LOGO_MADE_BASE64 } from "@/lib/logo-made-base64";
 import { LOGO_MADE_SIDEBAR_BASE64 } from "@/lib/logo-made-sidebar-base64";
 import { useAuth, RUOLI_LABEL } from "@/hooks/use-auth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -35,12 +40,15 @@ import { Button } from "@/components/ui/button";
 import { NotificationsBell } from "@/components/notifications-bell";
 import { toast } from "sonner";
 
-type NavGroupKey = "generale" | "fidi" | "incassi" | "recupero" | "strumenti" | "admin" | "richieste_interne";
+type NavGroupKey =
+  | "generale"
+  | "fidi"
+  | "incassi"
+  | "recupero"
+  | "strumenti"
+  | "admin"
+  | "richieste_interne";
 
-// Per le voci del gruppo "richieste_interne": scope di visibilità aggiuntivo.
-// - "all"    → dashboard/mie: chiunque abbia un ruolo richieste_* o admin
-// - "manage" → tutte/archivio: liv1, liv2, gestore, esecutore, admin
-// - "approve"→ da approvare: liv1, liv2, admin
 type RichiesteScope = "all" | "manage" | "approve" | "gestione";
 
 type NavItem = {
@@ -50,6 +58,7 @@ type NavItem = {
   roles?: Array<"admin" | "approvatore" | "store_manager" | "amministrazione">;
   group: NavGroupKey;
   richiesteScope?: RichiesteScope;
+  exact?: boolean;
 };
 
 const NAV: NavItem[] = [
@@ -73,8 +82,8 @@ const NAV: NavItem[] = [
   { to: "/recupero-crediti-campagne", label: "Invii massivi", icon: Megaphone, roles: ["admin", "approvatore", "store_manager"], group: "recupero" },
   { to: "/legali", label: "Pratiche Legali", icon: Gavel, roles: ["admin", "approvatore", "store_manager"], group: "recupero" },
   { to: "/recupero-crediti-andamento", label: "Andamento / Storico", icon: TrendingUp, roles: ["admin", "approvatore", "store_manager"], group: "recupero" },
-  // RICHIESTE INTERNE (visibilità: gate di gruppo + scope per voce)
-  { to: "/richieste-interne", label: "Richieste — Dashboard", icon: LayoutDashboard, group: "richieste_interne", richiesteScope: "all" },
+  // RICHIESTE INTERNE
+  { to: "/richieste-interne", label: "Richieste — Dashboard", icon: LayoutDashboard, group: "richieste_interne", richiesteScope: "all", exact: true },
   { to: "/richieste-interne/mie", label: "Le mie richieste", icon: FileText, group: "richieste_interne", richiesteScope: "all" },
   { to: "/richieste-interne/approva", label: "Da approvare", icon: CheckCheck, group: "richieste_interne", richiesteScope: "approve" },
   { to: "/richieste-interne/gestione", label: "Gestione", icon: ClipboardCheck, group: "richieste_interne", richiesteScope: "gestione" },
@@ -92,25 +101,49 @@ const NAV: NavItem[] = [
   { to: "/audit", label: "Audit log", icon: ScrollText, roles: ["admin"], group: "admin" },
 ];
 
+// Colori per blocco (bar = 3px verticale a sx della voce, label = titolo header)
+type GroupStyle = { bar: string; label: string; icon: typeof LayoutDashboard };
+const GROUP_STYLES: Record<Exclude<NavGroupKey, "generale">, GroupStyle> = {
+  fidi:               { bar: "#7f77dd", label: "#a8a2e8", icon: CreditCard },
+  incassi:            { bar: "#1d9e75", label: "#5dcaa5", icon: Banknote },
+  recupero:           { bar: "#d85a30", label: "#f0997b", icon: AlertTriangle },
+  richieste_interne:  { bar: "#378add", label: "#85b7eb", icon: ClipboardList },
+  strumenti:          { bar: "#888780", label: "#b4b2a9", icon: Wrench },
+  admin:              { bar: "#888780", label: "#b4b2a9", icon: Settings },
+};
+
+const GROUP_LABELS: Record<Exclude<NavGroupKey, "generale">, string> = {
+  fidi: "Fidi",
+  incassi: "Incassi",
+  recupero: "Recupero crediti",
+  richieste_interne: "Richieste interne",
+  strumenti: "Strumenti",
+  admin: "Amministrazione",
+};
+
+const OPEN_STORAGE_KEY = "fidimanager.menu.blocchi.aperti";
+
+function isItemActive(item: NavItem, currentPath: string) {
+  if (item.exact) return currentPath === item.to;
+  return currentPath === item.to || currentPath.startsWith(item.to + "/");
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { profilo, role, roles } = useAuth();
   const navigate = useNavigate();
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
 
-  // I ruoli sono multi-riga in user_roles: il menu deve controllare l'appartenenza
-  // all'array completo, non solo il ruolo principale calcolato per priorità.
   const userRoles = roles as string[];
-  const hasUserRole = (requiredRole: string) => userRoles.includes(requiredRole);
+  const hasUserRole = (r: string) => userRoles.includes(r);
   const isAdmin = hasUserRole("amministratore");
   const isApprovatore = userRoles.some((r) => r.startsWith("approvatore_liv"));
   const isStoreManager = hasUserRole("store_manager");
   const isAmministrazione = hasUserRole("amministrazione");
   const isAgente = hasUserRole("agente");
-  // Un utente è "solo agente" se ha il ruolo agente e nessuno degli altri ruoli operativi.
-  const isOnlyAgente = isAgente && !isAdmin && !isApprovatore && !isStoreManager && !isAmministrazione && !hasUserRole("direzione");
+  const isOnlyAgente =
+    isAgente && !isAdmin && !isApprovatore && !isStoreManager && !isAmministrazione && !hasUserRole("direzione");
 
-  // Whitelist voci di menu per l'agente puro (vede solo ciò che è pertinente).
   const AGENTE_WHITELIST = new Set<string>([
     "/clienti",
     "/contatti",
@@ -121,7 +154,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     "/piani-rientro",
   ]);
 
-  const RICHIESTE_ROLES = ["richiedente", "approvatore_richieste_liv1", "approvatore_richieste_liv2", "gestore_richieste", "esecutore_richieste"];
+  const RICHIESTE_ROLES = [
+    "richiedente",
+    "approvatore_richieste_liv1",
+    "approvatore_richieste_liv2",
+    "gestore_richieste",
+    "esecutore_richieste",
+  ];
   const hasAnyRichiesteRole = RICHIESTE_ROLES.some((r) => hasUserRole(r));
   const canSeeRichiesteInterne = isAdmin || hasAnyRichiesteRole;
   const isApprovatoreRichLiv1 = hasUserRole("approvatore_richieste_liv1");
@@ -138,7 +177,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       if (item.richiesteScope === "approve") return canApproveRich;
       if (item.richiesteScope === "manage") return canManageRich;
       if (item.richiesteScope === "gestione") return canGestioneRich;
-      return true; // "all"
+      return true;
     }
     if (isOnlyAgente) return AGENTE_WHITELIST.has(item.to);
     if (!item.roles) return true;
@@ -149,15 +188,68 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return false;
   });
 
-  const grouped: Array<{ key: NavGroupKey; label?: string; items: NavItem[] }> = [
-    { key: "generale", items: visibleNav.filter((i) => i.group === "generale") },
-    { key: "fidi", label: "Fidi", items: visibleNav.filter((i) => i.group === "fidi") },
-    { key: "incassi", label: "Incassi", items: visibleNav.filter((i) => i.group === "incassi") },
-    { key: "recupero", label: "Recupero crediti", items: visibleNav.filter((i) => i.group === "recupero") },
-    { key: "richieste_interne", label: "Richieste interne", items: visibleNav.filter((i) => i.group === "richieste_interne") },
-    { key: "strumenti", label: "Strumenti", items: visibleNav.filter((i) => i.group === "strumenti") },
-    { key: "admin", label: "Amministrazione", items: visibleNav.filter((i) => i.group === "admin") },
+  const generaleItems = visibleNav.filter((i) => i.group === "generale");
+  const blocchiKeys: Array<Exclude<NavGroupKey, "generale">> = [
+    "fidi",
+    "incassi",
+    "recupero",
+    "richieste_interne",
+    "strumenti",
+    "admin",
   ];
+  const blocchi = blocchiKeys
+    .map((key) => ({ key, items: visibleNav.filter((i) => i.group === key) }))
+    .filter((b) => b.items.length > 0);
+
+  // Blocco che contiene la rotta corrente (sempre aperto)
+  const activeGroup = useMemo<Exclude<NavGroupKey, "generale"> | null>(() => {
+    for (const b of blocchi) {
+      if (b.items.some((it) => isItemActive(it, currentPath))) {
+        return b.key;
+      }
+    }
+    return null;
+  }, [blocchi, currentPath]);
+
+  // Stato aperto/chiuso: primo render = solo activeGroup (deterministico SSR),
+  // dopo il mount applichiamo lo stato salvato.
+  const [openBlocks, setOpenBlocks] = useState<Set<string>>(() => {
+    return new Set(activeGroup ? [activeGroup] : []);
+  });
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(OPEN_STORAGE_KEY);
+      if (raw) {
+        const arr = JSON.parse(raw) as string[];
+        setOpenBlocks(new Set(arr));
+      }
+    } catch {
+      // ignore
+    }
+    setHydrated(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persisti quando cambia (solo dopo hydration)
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      localStorage.setItem(OPEN_STORAGE_KEY, JSON.stringify(Array.from(openBlocks)));
+    } catch {
+      // ignore
+    }
+  }, [openBlocks, hydrated]);
+
+  function toggleBlock(key: string) {
+    setOpenBlocks((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -181,18 +273,61 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
-        {grouped.map((g) =>
-          g.items.length === 0 ? null : (
-            <NavGroup
-              key={g.key}
-              label={g.label}
-              items={g.items}
-              currentPath={currentPath}
-              onNav={() => setMobileOpen(false)}
-            />
-          )
+      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-4">
+        {generaleItems.length > 0 && (
+          <ul className="space-y-0.5">
+            {generaleItems.map((item) => (
+              <NavItemRow
+                key={item.to}
+                item={item}
+                active={isItemActive(item, currentPath)}
+                onNav={() => setMobileOpen(false)}
+              />
+            ))}
+          </ul>
         )}
+
+        {blocchi.map((b) => {
+          const style = GROUP_STYLES[b.key];
+          // activeGroup forza sempre aperto, anche se l'utente ha chiuso
+          const isOpen = openBlocks.has(b.key) || activeGroup === b.key;
+          const HeaderIcon = style.icon;
+          return (
+            <div key={b.key}>
+              <button
+                type="button"
+                onClick={() => toggleBlock(b.key)}
+                className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-sidebar-accent/40 transition-colors group"
+              >
+                <HeaderIcon className="size-3.5 shrink-0" style={{ color: style.label }} />
+                <span
+                  className="flex-1 text-left text-[11px] font-semibold tracking-wider uppercase truncate"
+                  style={{ color: style.label }}
+                >
+                  {GROUP_LABELS[b.key]}
+                </span>
+                {isOpen ? (
+                  <ChevronDown className="size-3.5" style={{ color: style.label }} />
+                ) : (
+                  <ChevronRight className="size-3.5" style={{ color: style.label }} />
+                )}
+              </button>
+              {isOpen && (
+                <ul className="mt-1 space-y-0.5">
+                  {b.items.map((item) => (
+                    <NavItemRow
+                      key={item.to}
+                      item={item}
+                      active={isItemActive(item, currentPath)}
+                      onNav={() => setMobileOpen(false)}
+                      barColor={style.bar}
+                    />
+                  ))}
+                </ul>
+              )}
+            </div>
+          );
+        })}
       </nav>
 
       <div className="border-t border-sidebar-border p-3">
@@ -225,7 +360,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen flex w-full bg-background">
-      {/* Mobile header */}
       <header className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-primary text-primary-foreground flex items-center justify-between px-4 z-40 border-b border-sidebar-border">
         <div className="flex items-center gap-2">
           <img
@@ -245,18 +379,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </Button>
       </header>
 
-      {/* Desktop sidebar */}
       <aside className="hidden lg:flex w-64 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border fixed inset-y-0 left-0 z-30">
         <SidebarContent />
       </aside>
 
-      {/* Mobile sidebar overlay */}
       {mobileOpen && (
         <>
-          <div
-            className="lg:hidden fixed inset-0 bg-black/50 z-40"
-            onClick={() => setMobileOpen(false)}
-          />
+          <div className="lg:hidden fixed inset-0 bg-black/50 z-40" onClick={() => setMobileOpen(false)} />
           <aside className="lg:hidden fixed inset-y-0 left-0 top-14 w-72 bg-sidebar text-sidebar-foreground flex flex-col z-50 border-r border-sidebar-border">
             <SidebarContent />
           </aside>
@@ -270,46 +399,40 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-function NavGroup({
-  label,
-  items,
-  currentPath,
+function NavItemRow({
+  item,
+  active,
   onNav,
+  barColor,
 }: {
-  label?: string;
-  items: NavItem[];
-  currentPath: string;
+  item: NavItem;
+  active: boolean;
   onNav: () => void;
+  barColor?: string;
 }) {
+  const Icon = item.icon;
   return (
-    <div>
-      {label && (
-        <div className="px-3 mb-2 text-[10px] font-semibold tracking-wider uppercase text-sidebar-foreground/50">
-          {label}
-        </div>
-      )}
-      <ul className="space-y-0.5">
-        {items.map((item) => {
-          const Icon = item.icon;
-          const active = currentPath === item.to || currentPath.startsWith(item.to + "/");
-          return (
-            <li key={item.to}>
-              <Link
-                to={item.to}
-                onClick={onNav}
-                className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
-                  active
-                    ? "bg-accent text-accent-foreground font-medium"
-                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                }`}
-              >
-                <Icon className="size-4 shrink-0" />
-                <span className="truncate">{item.label}</span>
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
+    <li>
+      <Link
+        to={item.to}
+        onClick={onNav}
+        activeOptions={item.exact ? { exact: true } : undefined}
+        className={`relative flex items-center gap-3 pl-4 pr-3 py-2 rounded-md text-sm transition-colors ${
+          active
+            ? "bg-accent text-accent-foreground font-medium"
+            : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+        }`}
+      >
+        {barColor && (
+          <span
+            aria-hidden
+            className="absolute left-1 top-1.5 bottom-1.5 rounded-full"
+            style={{ width: 3, backgroundColor: barColor }}
+          />
+        )}
+        <Icon className="size-4 shrink-0" />
+        <span className="truncate">{item.label}</span>
+      </Link>
+    </li>
   );
 }
