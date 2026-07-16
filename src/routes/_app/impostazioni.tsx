@@ -6,6 +6,7 @@ import { Plus, Building2, Pencil, Trash2, Sliders, Save, Mail, AlertTriangle } f
 import { useServerFn } from "@tanstack/react-start";
 import { getCleanupRecuperoCounts, eseguiCleanupRecupero } from "@/lib/cleanup-recupero.functions";
 import { migrazioneRichiesteCreaUtenti, migrazioneRichiesteDati, migrazioneRichiesteFile } from "@/lib/migrazione-richieste.functions";
+import { notifyRichiestaEvento } from "@/lib/richieste-email.functions";
 import { testConnessioneRichieste } from "@/lib/test-connessione-richieste.functions";
 import { previewPromemoriaEmail } from "@/lib/promemoria-preview.functions";
 import { sendEmail, buildEmailTemplate } from "@/lib/send-email";
@@ -921,6 +922,41 @@ function MigrazioneRichiesteCard() {
   const [fileRunning, setFileRunning] = useState(false);
   const [fileResult, setFileResult] = useState<Awaited<ReturnType<typeof migrazioneRichiesteFile>> | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
+  const notify = useServerFn(notifyRichiestaEvento);
+  const { user, profilo } = useAuth();
+  const [emailTesting, setEmailTesting] = useState(false);
+  const [emailResult, setEmailResult] = useState<Awaited<ReturnType<typeof notifyRichiestaEvento>> | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
+
+  async function eseguiTestEmail() {
+    setEmailTesting(true); setEmailError(null); setEmailResult(null);
+    try {
+      const { data: last, error } = await supabase
+        .from("richieste_interne")
+        .select("id")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      if (!last) throw new Error("Nessuna richiesta esistente");
+      const fullName = [profilo?.nome, profilo?.cognome].filter(Boolean).join(" ").trim() || (user?.email ?? "Test");
+      const res = await notify({
+        data: {
+          event: "new_request",
+          richiestaId: last.id,
+          actor: { id: user?.id ?? null, nome: fullName, email: user?.email ?? null },
+        },
+      });
+      setEmailResult(res);
+      if (res.ok && res.sent > 0) toast.success(`Test OK: ${res.sent} email inviate`);
+      else if (res.ok) toast.info(res.debug?.motivoZero ?? "Nessun destinatario");
+      else toast.warning(`Errore: ${res.err ?? "?"}`);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setEmailError(msg); toast.error(msg);
+    } finally { setEmailTesting(false); }
+  }
+
 
   async function eseguiDati() {
     setDatiRunning(true); setDatiError(null); setDatiResult(null);
@@ -1004,7 +1040,23 @@ function MigrazioneRichiesteCard() {
         <Button size="sm" variant="secondary" onClick={eseguiFile} disabled={fileRunning}>
           {fileRunning ? "Copia file…" : "Migra file (Strato 3)"}
         </Button>
+        <Button size="sm" variant="outline" onClick={eseguiTestEmail} disabled={emailTesting}>
+          {emailTesting ? "Test email…" : "Test notifica richiesta"}
+        </Button>
       </div>
+
+      {emailError && (
+        <div className="mt-3 text-xs text-destructive whitespace-pre-wrap break-all">Test email: {emailError}</div>
+      )}
+      {emailResult && (
+        <div className="mt-3 text-xs rounded border p-2 bg-muted/30">
+          <div className="font-medium mb-1">Risultato test notifica</div>
+          <pre className="font-mono text-[11px] whitespace-pre-wrap break-all max-h-80 overflow-auto">
+{JSON.stringify(emailResult, null, 2)}
+          </pre>
+        </div>
+      )}
+
 
       {error && (
         <div className="mt-3 text-xs text-destructive whitespace-pre-wrap break-all">{error}</div>

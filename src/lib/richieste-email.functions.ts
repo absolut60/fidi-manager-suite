@@ -44,7 +44,29 @@ const InputSchema = z.object({
 export const notifyRichiestaEvento = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: z.input<typeof InputSchema>) => InputSchema.parse(d))
-  .handler(async ({ data }): Promise<{ ok: boolean; sent: number; err?: string }> => {
+  .handler(async ({ data }): Promise<{
+    ok: boolean;
+    sent: number;
+    err?: string;
+    debug: {
+      event: string;
+      richiestaId: string;
+      destinatariRisolti: number;
+      destinatariFinali: number;
+      mittenteEscluso: boolean;
+      motivoZero?: string;
+      destinatari?: string[];
+    };
+  }> => {
+    const debug = {
+      event: data.event,
+      richiestaId: data.richiestaId,
+      destinatariRisolti: 0,
+      destinatariFinali: 0,
+      mittenteEscluso: false,
+      motivoZero: undefined as string | undefined,
+      destinatari: undefined as string[] | undefined,
+    };
     try {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { sendEmailViaEdge } = await import("@/lib/inngest/send-email.server");
@@ -177,20 +199,27 @@ export const notifyRichiestaEvento = createServerFn({ method: "POST" })
 
       // Escludi sempre il mittente
       const totalePrimaExclude = to.size;
-      if (data.actor.email) to.delete(data.actor.email.toLowerCase());
+      debug.destinatariRisolti = totalePrimaExclude;
+      if (data.actor.email && to.has(data.actor.email.toLowerCase())) {
+        to.delete(data.actor.email.toLowerCase());
+        debug.mittenteEscluso = true;
+      }
+      debug.destinatariFinali = to.size;
 
       if (to.size === 0) {
         if (totalePrimaExclude === 0) {
+          debug.motivoZero = `Nessun utente attivo con ruolo per evento '${data.event}' (dest=${data.extra?.dest ?? "-"})`;
           console.warn(
-            `[notifyRichiestaEvento][${data.event}] NESSUN DESTINATARIO risolto (richiesta ${data.richiestaId}, dest=${data.extra?.dest ?? "-"}). Verificare ruoli/profili attivi.`,
+            `[notifyRichiestaEvento][${data.event}] NESSUN DESTINATARIO risolto (richiesta ${data.richiestaId}). ${debug.motivoZero}`,
           );
         } else {
-          console.info(
-            `[notifyRichiestaEvento][${data.event}] Unico destinatario era il mittente (${data.actor.email}); nessun invio.`,
-          );
+          debug.motivoZero = `Unico destinatario era il mittente (${data.actor.email})`;
+          console.info(`[notifyRichiestaEvento][${data.event}] ${debug.motivoZero}`);
         }
-        return { ok: true, sent: 0 };
+        return { ok: true, sent: 0, debug };
       }
+
+      debug.destinatari = Array.from(to);
 
 
       // 4) Rendering
@@ -245,12 +274,14 @@ export const notifyRichiestaEvento = createServerFn({ method: "POST" })
       return {
         ok: sent > 0 || to.size === 0,
         sent,
-        err: errors.length ? errors[0] : undefined,
+        err: errors.length ? errors.join(" | ") : undefined,
+        debug,
       };
     } catch (e) {
       // Non bloccare mai il chiamante
       const msg = e instanceof Error ? e.message : String(e);
       console.error("[notifyRichiestaEvento] errore:", msg);
-      return { ok: false, sent: 0, err: msg };
+      return { ok: false, sent: 0, err: msg, debug };
     }
+
   });

@@ -156,13 +156,26 @@ export function NuovaRichiestaDialog({ trigger }: { trigger?: React.ReactNode })
       }
 
       // Strato 5: notifica agli approvatori Liv.1 (non blocca in caso di errore)
-      void notifyRichiestaEvento({
-        data: {
-          event: "new_request",
-          richiestaId,
-          actor: { id: user.id, nome: requesterName, email: user.email ?? null },
-        },
-      }).catch((e) => console.error("[email new_request] fallito:", e));
+      try {
+        const res = await notifyRichiestaEvento({
+          data: {
+            event: "new_request",
+            richiestaId,
+            actor: { id: user.id, nome: requesterName, email: user.email ?? null },
+          },
+        });
+        if (!res.ok) {
+          toast.warning(`Notifica non inviata: ${res.err ?? "errore sconosciuto"}`);
+        } else if (res.sent === 0) {
+          toast.info(res.debug?.motivoZero ?? "Nessun destinatario da notificare");
+        } else {
+          toast.success(`Notifica inviata a ${res.sent} destinatari`);
+        }
+      } catch (e) {
+        console.error("[email new_request] fallito:", e);
+        toast.warning(`Notifica non inviata: ${e instanceof Error ? e.message : String(e)}`);
+      }
+
 
 
       if (failed > 0) toast.warning(`Richiesta creata. ${failed} allegato/i non caricato/i.`);
