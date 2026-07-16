@@ -10,9 +10,12 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Download, File as FileIcon, FileImage, FileText, Loader2, MapPin, Paperclip, Upload } from "lucide-react";
+import { ArrowLeft, Archive, ArchiveRestore, Download, File as FileIcon, FileImage, FileText, Loader2, MapPin, Paperclip, Trash2, Upload, Wrench } from "lucide-react";
 import { toast } from "sonner";
 import { ChatMessaggi } from "@/components/richieste-interne/chat-messaggi";
+import { GestisciDialog, type GestisciTarget } from "@/components/richieste-interne/gestisci-dialog";
+import { ADMIN_LABEL } from "@/components/richieste-interne/richieste-table";
+import { Badge as BadgeUI } from "@/components/ui/badge";
 
 export const Route = createFileRoute("/_app/richieste-interne/$richiestaId")({
   component: DettaglioRichiesta,
