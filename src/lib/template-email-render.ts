@@ -393,7 +393,7 @@ export function wrapEmailHtml(
   corpoRenderizzato: string,
   datiSede: DatiSede | null | undefined,
   datiMittente: DatiMittente,
-  opts?: { useCid?: boolean; tipo?: TipoTemplate | null; senzaBande?: boolean },
+  opts?: { useCid?: boolean; tipo?: TipoTemplate | null; senzaBande?: boolean; sottotitolo?: string },
 ): string {
   const sedeBlock = formatSedeBlock(datiSede);
 
@@ -451,7 +451,7 @@ export function wrapEmailHtml(
             </td>
             <td align="right" style="vertical-align:middle;color:#ffffff;font-size:11px;font-family:Arial,Helvetica,sans-serif;">
               <div style="opacity:.85;">Gruppo MADE</div>
-              <div style="opacity:.6;font-size:10px;">Amministrazione &amp; Crediti</div>
+              <div style="opacity:.6;font-size:10px;">${escapeHtml(opts?.sottotitolo ?? "Amministrazione & Crediti")}</div>
             </td>
           </tr></table>
         </td>
