@@ -369,7 +369,7 @@ function DettaglioRichiesta() {
             </CardContent>
           </Card>
 
-          <ChatMessaggi richiestaId={r.id} disabled={r.archived} />
+          <ChatMessaggi richiestaId={r.id} disabled={r.archived} status={r.status} archived={r.archived} />
 
           {(canLiv1 || canLiv2) && (
             <Card>
