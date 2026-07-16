@@ -1065,9 +1065,44 @@ function MigrazioneRichiesteCard() {
           )}
         </div>
       )}
+      {datiError && (
+        <div className="mt-3 text-xs text-destructive whitespace-pre-wrap break-all">Dati: {datiError}</div>
+      )}
+      {datiResult && (
+        <div className="mt-3 text-xs space-y-1 rounded border p-2 bg-muted/30">
+          <div className="font-medium">Migrazione dati</div>
+          <div>fornitori: {datiResult.fornitoriMigrati} · richieste: {datiResult.richiesteMigrate} (skipped {datiResult.richiesteSkipped}) · messaggi: {datiResult.messaggiMigrati} · allegati: {datiResult.allegatiMigrati}</div>
+          <div>UUID non mappati: {datiResult.unmappedUuids.length}{datiResult.unmappedUuids.length > 0 ? ` — ${datiResult.unmappedUuids.join(", ")}` : ""}</div>
+          <details>
+            <summary className="cursor-pointer text-muted-foreground">Log ({datiResult.log.length})</summary>
+            <ul className="mt-1 font-mono text-[11px] max-h-64 overflow-auto">
+              {datiResult.log.map((l, i) => <li key={i}>{l}</li>)}
+            </ul>
+          </details>
+        </div>
+      )}
+      {fileError && (
+        <div className="mt-3 text-xs text-destructive whitespace-pre-wrap break-all">File: {fileError}</div>
+      )}
+      {fileResult && (
+        <div className="mt-3 text-xs space-y-1 rounded border p-2 bg-muted/30">
+          <div className="font-medium">Migrazione file</div>
+          <div>copiati: {fileResult.copied} · saltati: {fileResult.skipped} · falliti: {fileResult.failed}</div>
+          {fileResult.errors.length > 0 && (
+            <details>
+              <summary className="cursor-pointer text-destructive">Errori ({fileResult.errors.length})</summary>
+              <ul className="mt-1 font-mono text-[11px] max-h-64 overflow-auto">
+                {fileResult.errors.map((e, i) => <li key={i}>{e.id}: {e.error}</li>)}
+              </ul>
+            </details>
+          )}
+        </div>
+      )}
     </Card>
   );
 }
+
+
 
 
 
