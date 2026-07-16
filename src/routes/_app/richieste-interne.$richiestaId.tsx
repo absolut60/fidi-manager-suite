@@ -499,6 +499,23 @@ function DettaglioRichiesta() {
         onSaved={refresh}
       />
 
+      {ownerCanEdit && r && (
+        <NuovaRichiestaDialog
+          mode="edit"
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          initial={{
+            id: r.id,
+            title: r.title,
+            type: r.type as "preventivo" | "attivita" | "acquisto",
+            amount: r.amount,
+            fornitore: r.fornitore ?? null,
+            sede_id: r.sede_id ?? null,
+            description: r.description ?? null,
+          }}
+        />
+      )}
+
       {/* Doppia conferma eliminazione */}
       <Dialog open={!!confirmDelete} onOpenChange={(o) => { if (!o) setConfirmDelete(null); }}>
         <DialogContent>
