@@ -289,27 +289,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         {blocchi.map((b) => {
           const style = GROUP_STYLES[b.key];
-          // activeGroup forza sempre aperto, anche se l'utente ha chiuso
-          const isOpen = openBlocks.has(b.key) || activeGroup === b.key;
+          const isOpen = openBlocks.has(b.key);
           const HeaderIcon = style.icon;
           return (
             <div key={b.key}>
               <button
                 type="button"
                 onClick={() => toggleBlock(b.key)}
-                className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-sidebar-accent/40 transition-colors group"
+                className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-sidebar-accent/40 transition-colors group text-sidebar-foreground"
               >
-                <HeaderIcon className="size-3.5 shrink-0" style={{ color: style.label }} />
-                <span
-                  className="flex-1 text-left text-[11px] font-semibold tracking-wider uppercase truncate"
-                  style={{ color: style.label }}
-                >
+                <HeaderIcon className="size-3.5 shrink-0" />
+                <span className="flex-1 text-left text-[11px] font-semibold tracking-wider uppercase truncate">
                   {GROUP_LABELS[b.key]}
                 </span>
                 {isOpen ? (
-                  <ChevronDown className="size-3.5" style={{ color: style.label }} />
+                  <ChevronDown className="size-3.5" />
                 ) : (
-                  <ChevronRight className="size-3.5" style={{ color: style.label }} />
+                  <ChevronRight className="size-3.5" />
                 )}
               </button>
               {isOpen && (
