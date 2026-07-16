@@ -86,14 +86,61 @@ function DettaglioRichiesta() {
     },
   });
 
-  const refresh = () => qc.invalidateQueries({ queryKey: ["richiesta-interna", richiestaId] });
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ["richiesta-interna", richiestaId] });
+    qc.invalidateQueries({ queryKey: ["richieste-interne"] });
+  };
 
   const canLiv1 = hasRole("approvatore_richieste_liv1") && r?.status === "pending";
   const canLiv2 = hasRole("approvatore_richieste_liv2") && r?.status === "forwarded";
+  const canManage = hasRole("amministratore") || hasRole("gestore_richieste") || hasRole("esecutore_richieste");
+  const canGestisci = canManage && r && !r.archived && (r.status === "resp_approved" || r.status === "approved");
+  const canDelete = hasRole("amministratore");
 
   const [dialog, setDialog] = useState<null | { level: 1 | 2; action: "approved" | "forwarded" | "rejected" }>(null);
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
+  const [gestOpen, setGestOpen] = useState(false);
+  const [archiving, setArchiving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<null | "one" | "two">(null);
+
+  async function archivia() {
+    if (!r) return;
+    if (!confirm(`Archiviare la richiesta "${r.title}"?`)) return;
+    setArchiving(true);
+    const { error } = await supabase
+      .from("richieste_interne")
+      .update({ archived: true, archived_at: new Date().toISOString(), archived_by_name: fullName })
+      .eq("id", r.id);
+    setArchiving(false);
+    if (error) { toast.error("Errore: " + error.message); return; }
+    toast.success("Richiesta archiviata");
+    refresh();
+    router.history.back();
+  }
+
+  async function ripristina() {
+    if (!r) return;
+    setArchiving(true);
+    const { error } = await supabase
+      .from("richieste_interne")
+      .update({ archived: false, archived_at: null, archived_by_name: null })
+      .eq("id", r.id);
+    setArchiving(false);
+    if (error) { toast.error("Errore: " + error.message); return; }
+    toast.success("Richiesta ripristinata");
+    refresh();
+  }
+
+  async function elimina() {
+    if (!r) return;
+    const { error } = await supabase.from("richieste_interne").delete().eq("id", r.id);
+    if (error) { toast.error("Errore: " + error.message); return; }
+    toast.success("Richiesta eliminata");
+    qc.invalidateQueries({ queryKey: ["richieste-interne"] });
+    router.history.back();
+  }
+
 
   async function submitDecision() {
     if (!dialog || !r) return;
