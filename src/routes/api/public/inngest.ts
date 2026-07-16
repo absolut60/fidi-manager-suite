@@ -17,6 +17,7 @@ import { snapshotMensile } from "@/lib/inngest/snapshot.server";
 import { remindRatePianoRientro } from "@/lib/inngest/piano-rientro-reminder.server";
 import { promemoriaScadenzaAutomatico } from "@/lib/inngest/promemoria-scadenza.server";
 import { promemoriaScadenzaRetention } from "@/lib/inngest/promemoria-scadenza-retention.server";
+import { inviaEmailRichiesta } from "@/lib/inngest/richieste-email.server";
 
 
 
@@ -37,6 +38,7 @@ const handler = serve({
     remindRatePianoRientro,
     promemoriaScadenzaAutomatico,
     promemoriaScadenzaRetention,
+    inviaEmailRichiesta,
 
 
 

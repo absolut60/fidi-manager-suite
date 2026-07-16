@@ -155,7 +155,7 @@ export function NuovaRichiestaDialog({ trigger }: { trigger?: React.ReactNode })
         if (aErr) { failed++; console.error("Insert allegato fallita:", aErr.message); }
       }
 
-      // Strato 5: notifica agli approvatori Liv.1 (non blocca in caso di errore)
+      // Strato 5: accoda notifica su Inngest (non blocca mai l'azione)
       try {
         const res = await notifyRichiestaEvento({
           data: {
@@ -165,15 +165,10 @@ export function NuovaRichiestaDialog({ trigger }: { trigger?: React.ReactNode })
           },
         });
         if (!res.ok) {
-          toast.warning(`Notifica non inviata: ${res.err ?? "errore sconosciuto"}`);
-        } else if (res.sent === 0) {
-          toast.info(res.debug?.motivoZero ?? "Nessun destinatario da notificare");
-        } else {
-          toast.success(`Notifica inviata a ${res.sent} destinatari`);
+          console.warn("[notifica new_request] enqueue fallito:", res.err);
         }
       } catch (e) {
         console.error("[email new_request] fallito:", e);
-        toast.warning(`Notifica non inviata: ${e instanceof Error ? e.message : String(e)}`);
       }
 
 

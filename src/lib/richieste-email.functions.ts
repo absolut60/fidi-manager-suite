@@ -1,15 +1,15 @@
-// Server function: notifica per email un evento delle Richieste interne.
-// Chiamata dai callsite client (submitDecision, nuova-richiesta-dialog,
-// chat-messaggi). Non deve MAI bloccare l'azione: gli errori sono loggati
-// e il chiamante prosegue.
+// Dispatcher: accoda l'invio email notifica su Inngest ("richieste/notifica").
+// Tutta la logica (risoluzione destinatari, rendering, invio SMTP) vive nel
+// job `inviaEmailRichiesta` (src/lib/inngest/richieste-email.server.ts) —
+// fonte unica. Qui validiamo l'input e ritorniamo subito.
 //
 // Autorizzazione: richiede sessione utente (requireSupabaseAuth).
-// L'invio email attraversa la edge `send-email` col binario server
-// (`x-internal-secret`), tramite sendEmailViaEdge.
+// Il chiamante NON deve MAI bloccare l'azione principale sull'esito.
 
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { sendInngestEvent } from "@/lib/inngest/client";
 
 const EVENTS = [
   "new_request",
@@ -44,244 +44,18 @@ const InputSchema = z.object({
 export const notifyRichiestaEvento = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: z.input<typeof InputSchema>) => InputSchema.parse(d))
-  .handler(async ({ data }): Promise<{
-    ok: boolean;
-    sent: number;
-    err?: string;
-    debug: {
-      event: string;
-      richiestaId: string;
-      destinatariRisolti: number;
-      destinatariFinali: number;
-      mittenteEscluso: boolean;
-      motivoZero?: string;
-      destinatari?: string[];
-    };
-  }> => {
-    const debug = {
-      event: data.event,
-      richiestaId: data.richiestaId,
-      destinatariRisolti: 0,
-      destinatariFinali: 0,
-      mittenteEscluso: false,
-      motivoZero: undefined as string | undefined,
-      destinatari: undefined as string[] | undefined,
-    };
+  .handler(async ({ data }): Promise<{ ok: boolean; queued: boolean; err?: string }> => {
     try {
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const { sendEmailViaEdge } = await import("@/lib/inngest/send-email.server");
-      const { buildRichiestaEmail } = await import("@/lib/richieste-email-render");
-      const { SEDE_FALLBACK } = await import("@/lib/template-email-render");
-      type DatiSede = import("@/lib/template-email-render").DatiSede;
-
-
-      // 1) Carica richiesta
-      const { data: r, error: eR } = await supabaseAdmin
-        .from("richieste_interne")
-        .select(
-          "id, title, type, description, amount, fornitore, requester_id, requester_name, sede_id, sede_name, resp_approver_name, dir_approver_name, resp_note, dir_note",
-        )
-        .eq("id", data.richiestaId)
-        .maybeSingle();
-      if (eR) throw new Error(eR.message);
-      if (!r) throw new Error("Richiesta non trovata");
-      const req = r;
-
-
-
-      // 2) Sede della richiesta (fallback amministrativa)
-      let sede: DatiSede | null = null;
-      if (r.sede_id) {
-        const { data: s } = await supabaseAdmin
-          .from("stores")
-          .select("nome, insegna, indirizzo, cap, citta, provincia, telefono")
-          .eq("id", r.sede_id)
-          .maybeSingle();
-        if (s) {
-          sede = {
-            nome: s.nome ?? null,
-            insegna: s.insegna ?? null,
-            indirizzo: s.indirizzo ?? null,
-            cap: s.cap ?? null,
-            citta: s.citta ?? null,
-            provincia: s.provincia ?? null,
-            telefono: s.telefono ?? null,
-          };
-        }
-      }
-      const sedeDati = sede ?? SEDE_FALLBACK;
-
-      // 3) Risoluzione destinatari
-
-
-      async function emailsFromRole(role: string): Promise<string[]> {
-        // NB: user_roles.user_id -> auth.users(id), NON esiste FK verso profili,
-        // quindi PostgREST NON risolve `profili!inner(...)` (join sempre null).
-        // Facciamo due query: prima gli user_id per ruolo, poi i profili attivi.
-        const { data: rows, error: eR } = await supabaseAdmin
-          .from("user_roles")
-          .select("user_id")
-          .eq("role", role as never);
-        if (eR) {
-          console.error(`[emailsFromRole:${role}] errore user_roles:`, eR.message);
-          return [];
-        }
-        const ids = Array.from(new Set((rows ?? []).map((r) => r.user_id).filter(Boolean)));
-        if (ids.length === 0) return [];
-        const { data: profs, error: eP } = await supabaseAdmin
-          .from("profili")
-          .select("id, email, attivo")
-          .in("id", ids)
-          .eq("attivo", true);
-        if (eP) {
-          console.error(`[emailsFromRole:${role}] errore profili:`, eP.message);
-          return [];
-        }
-        return (profs ?? [])
-          .map((p) => (typeof p.email === "string" ? p.email : null))
-          .filter((e): e is string => !!e && e.includes("@"));
-      }
-
-
-      async function requesterEmail(): Promise<string | null> {
-        if (!req.requester_id) return null;
-        const { data: p } = await supabaseAdmin
-          .from("profili")
-          .select("email, attivo")
-          .eq("id", req.requester_id)
-          .maybeSingle();
-        if (!p || p.attivo !== true) return null;
-        return typeof p.email === "string" ? p.email : null;
-      }
-
-      const to = new Set<string>();
-      const push = (arr: (string | null | undefined)[]) => {
-        for (const x of arr) if (x && x.includes("@")) to.add(x.toLowerCase());
-      };
-
-      switch (data.event) {
-        case "new_request":
-          push(await emailsFromRole("approvatore_richieste_liv1"));
-          break;
-        case "resp_approved":
-        case "resp_rejected":
-        case "dir_approved":
-        case "dir_rejected":
-          push([await requesterEmail()]);
-          break;
-        case "resp_forwarded":
-          push(await emailsFromRole("approvatore_richieste_liv2"));
-          push([await requesterEmail()]);
-          break;
-        case "sollecito":
-        case "info_request":
-        case "messaggio_interno": {
-          const dest = data.extra?.dest ?? "tutti";
-          if (dest === "richiedente") push([await requesterEmail()]);
-          else if (dest === "resp_generale")
-            push(await emailsFromRole("approvatore_richieste_liv1"));
-          else if (dest === "direzione")
-            push(await emailsFromRole("approvatore_richieste_liv2"));
-          else if (dest === "amministrativo") {
-            push(await emailsFromRole("gestore_richieste"));
-            push(await emailsFromRole("esecutore_richieste"));
-          } else {
-            // tutti
-            push([await requesterEmail()]);
-            push(await emailsFromRole("approvatore_richieste_liv1"));
-            push(await emailsFromRole("approvatore_richieste_liv2"));
-            push(await emailsFromRole("gestore_richieste"));
-            push(await emailsFromRole("esecutore_richieste"));
-          }
-          break;
-        }
-      }
-
-      // Escludi sempre il mittente
-      const totalePrimaExclude = to.size;
-      debug.destinatariRisolti = totalePrimaExclude;
-      if (data.actor.email && to.has(data.actor.email.toLowerCase())) {
-        to.delete(data.actor.email.toLowerCase());
-        debug.mittenteEscluso = true;
-      }
-      debug.destinatariFinali = to.size;
-
-      if (to.size === 0) {
-        if (totalePrimaExclude === 0) {
-          debug.motivoZero = `Nessun utente attivo con ruolo per evento '${data.event}' (dest=${data.extra?.dest ?? "-"})`;
-          console.warn(
-            `[notifyRichiestaEvento][${data.event}] NESSUN DESTINATARIO risolto (richiesta ${data.richiestaId}). ${debug.motivoZero}`,
-          );
-        } else {
-          debug.motivoZero = `Unico destinatario era il mittente (${data.actor.email})`;
-          console.info(`[notifyRichiestaEvento][${data.event}] ${debug.motivoZero}`);
-        }
-        return { ok: true, sent: 0, debug };
-      }
-
-      debug.destinatari = Array.from(to);
-
-
-      // 4) Rendering
-      const appUrl =
-        process.env.VITE_APP_URL ?? "https://fidi-manager-suite.lovable.app";
-      const mittenteNome = data.actor.nome?.trim() || "FidiManager MADE";
-      const { oggetto, html } = buildRichiestaEmail({
+      await sendInngestEvent("richieste/notifica", {
         event: data.event,
-        richiesta: {
-          id: r.id,
-          title: r.title,
-          type: r.type,
-          description: r.description,
-          amount: r.amount,
-          fornitore: r.fornitore,
-          requester_name: r.requester_name,
-          sede_name: r.sede_name,
-          resp_approver_name: r.resp_approver_name,
-          dir_approver_name: r.dir_approver_name,
-          resp_note: r.resp_note,
-          dir_note: r.dir_note,
-        },
-        sede: sedeDati,
-        mittente: { nome: mittenteNome, email: data.actor.email ?? null },
+        richiestaId: data.richiestaId,
+        actor: data.actor,
         extra: data.extra,
-        appUrl,
-        useCid: true,
       });
-
-      // 5) Invio (uno per destinatario per privacy)
-      let sent = 0;
-      const errors: string[] = [];
-      for (const dest of to) {
-        const res = await sendEmailViaEdge({
-          to: dest,
-          subject: oggetto,
-          html,
-          inlineLogo: true,
-          fromName: mittenteNome,
-          replyTo: data.actor.email ?? undefined,
-        });
-        if (res.ok) sent++;
-        else errors.push(`${dest}: ${res.err ?? "?"}`);
-      }
-
-      if (errors.length) {
-        console.error(
-          `[notifyRichiestaEvento][${data.event}] ${errors.length}/${to.size} falliti:`,
-          errors.slice(0, 5).join(" | "),
-        );
-      }
-      return {
-        ok: sent > 0 || to.size === 0,
-        sent,
-        err: errors.length ? errors.join(" | ") : undefined,
-        debug,
-      };
+      return { ok: true, queued: true };
     } catch (e) {
-      // Non bloccare mai il chiamante
       const msg = e instanceof Error ? e.message : String(e);
-      console.error("[notifyRichiestaEvento] errore:", msg);
-      return { ok: false, sent: 0, err: msg, debug };
+      console.error("[notifyRichiestaEvento] enqueue fallito:", msg);
+      return { ok: false, queued: false, err: msg };
     }
-
   });
