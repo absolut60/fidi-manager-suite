@@ -64,7 +64,7 @@ function DettaglioRichiesta() {
   const { richiestaId } = Route.useParams();
   const { user, profilo, hasRole } = useAuth();
   const router = useRouter();
-  const navigate = useNavigate();
+  
   const qc = useQueryClient();
   const uid = user?.id ?? "";
   const fullName = [profilo?.nome, profilo?.cognome].filter(Boolean).join(" ").trim() || (user?.email ?? "");
