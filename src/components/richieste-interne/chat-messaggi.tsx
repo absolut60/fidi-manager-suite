@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { AlarmClock, Loader2, MessageSquare, Send } from "lucide-react";
 import { toast } from "sonner";
+import { notifyRichiestaEvento } from "@/lib/richieste-email.functions";
+
 
 type Msg = {
   id: string;
