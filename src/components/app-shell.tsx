@@ -101,15 +101,15 @@ const NAV: NavItem[] = [
   { to: "/audit", label: "Audit log", icon: ScrollText, roles: ["admin"], group: "admin" },
 ];
 
-// Colori per blocco (bar = 3px verticale a sx della voce, label = titolo header)
-type GroupStyle = { bar: string; label: string; icon: typeof LayoutDashboard };
+// Colori per blocco (bar = 3px verticale a sx della voce, icon = icona header)
+type GroupStyle = { bar: string; icon: typeof LayoutDashboard };
 const GROUP_STYLES: Record<Exclude<NavGroupKey, "generale">, GroupStyle> = {
-  fidi:               { bar: "#7f77dd", label: "#a8a2e8", icon: CreditCard },
-  incassi:            { bar: "#1d9e75", label: "#5dcaa5", icon: Banknote },
-  recupero:           { bar: "#d85a30", label: "#f0997b", icon: AlertTriangle },
-  richieste_interne:  { bar: "#378add", label: "#85b7eb", icon: ClipboardList },
-  strumenti:          { bar: "#888780", label: "#b4b2a9", icon: Wrench },
-  admin:              { bar: "#888780", label: "#b4b2a9", icon: Settings },
+  fidi:               { bar: "#7f77dd", icon: CreditCard },
+  incassi:            { bar: "#1d9e75", icon: Banknote },
+  recupero:           { bar: "#d85a30", icon: AlertTriangle },
+  richieste_interne:  { bar: "#378add", icon: ClipboardList },
+  strumenti:          { bar: "#888780", icon: Wrench },
+  admin:              { bar: "#888780", icon: Settings },
 };
 
 const GROUP_LABELS: Record<Exclude<NavGroupKey, "generale">, string> = {
@@ -289,27 +289,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         {blocchi.map((b) => {
           const style = GROUP_STYLES[b.key];
-          // activeGroup forza sempre aperto, anche se l'utente ha chiuso
-          const isOpen = openBlocks.has(b.key) || activeGroup === b.key;
+          const isOpen = openBlocks.has(b.key);
           const HeaderIcon = style.icon;
           return (
             <div key={b.key}>
               <button
                 type="button"
                 onClick={() => toggleBlock(b.key)}
-                className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-sidebar-accent/40 transition-colors group"
+                className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-sidebar-accent/40 transition-colors group text-sidebar-foreground"
               >
-                <HeaderIcon className="size-3.5 shrink-0" style={{ color: style.label }} />
-                <span
-                  className="flex-1 text-left text-[11px] font-semibold tracking-wider uppercase truncate"
-                  style={{ color: style.label }}
-                >
+                <HeaderIcon className="size-3.5 shrink-0" />
+                <span className="flex-1 text-left text-[11px] font-semibold tracking-wider uppercase truncate">
                   {GROUP_LABELS[b.key]}
                 </span>
                 {isOpen ? (
-                  <ChevronDown className="size-3.5" style={{ color: style.label }} />
+                  <ChevronDown className="size-3.5" />
                 ) : (
-                  <ChevronRight className="size-3.5" style={{ color: style.label }} />
+                  <ChevronRight className="size-3.5" />
                 )}
               </button>
               {isOpen && (
