@@ -123,9 +123,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const RICHIESTE_ROLES = ["richiedente", "approvatore_richieste_liv1", "approvatore_richieste_liv2", "gestore_richieste", "esecutore_richieste"];
   const hasAnyRichiesteRole = RICHIESTE_ROLES.some((r) => hasUserRole(r));
   const canSeeRichiesteInterne = isAdmin || hasAnyRichiesteRole;
+  const isApprovatoreRichLiv1 = hasUserRole("approvatore_richieste_liv1");
+  const isApprovatoreRichLiv2 = hasUserRole("approvatore_richieste_liv2");
+  const isGestoreRich = hasUserRole("gestore_richieste");
+  const isEsecutoreRich = hasUserRole("esecutore_richieste");
+  const canApproveRich = isAdmin || isApprovatoreRichLiv1 || isApprovatoreRichLiv2;
+  const canManageRich = isAdmin || isApprovatoreRichLiv1 || isApprovatoreRichLiv2 || isGestoreRich || isEsecutoreRich;
 
   const visibleNav = NAV.filter((item) => {
-    if (item.group === "richieste_interne") return canSeeRichiesteInterne;
+    if (item.group === "richieste_interne") {
+      if (!canSeeRichiesteInterne) return false;
+      if (item.richiesteScope === "approve") return canApproveRich;
+      if (item.richiesteScope === "manage") return canManageRich;
+      return true; // "all"
+    }
     if (isOnlyAgente) return AGENTE_WHITELIST.has(item.to);
     if (!item.roles) return true;
     if (item.roles.includes("admin") && isAdmin) return true;
