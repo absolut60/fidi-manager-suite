@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -43,6 +43,8 @@ const fmtData = (v: string) => new Date(v).toLocaleDateString("it-IT");
 function MieRichieste() {
   const { user } = useAuth();
   const uid = user?.id ?? "";
+  const navigate = useNavigate();
+  const openDetail = (id: string) => navigate({ to: "/richieste-interne/$richiestaId", params: { richiestaId: id } });
   const [filtro, setFiltro] = useState<FiltroStato>("tutte");
   const [q, setQ] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("updated_at");
@@ -148,7 +150,7 @@ function MieRichieste() {
               const nAll = r.richieste_interne_allegati?.length ?? 0;
               const showAdmin = (r.status === "resp_approved" || r.status === "approved") && r.admin_status && r.admin_status !== "da_gestire";
               return (
-                <TableRow key={r.id} className="cursor-pointer">
+                <TableRow key={r.id} className="cursor-pointer hover:bg-muted/50" onClick={() => openDetail(r.id)}>
                   <TableCell>
                     <div className="font-semibold">{r.title}</div>
                     {r.description && (
@@ -168,7 +170,7 @@ function MieRichieste() {
                     </div>
                   </TableCell>
                   <TableCell>{fmtData(r.updated_at)}</TableCell>
-                  <TableCell><Button size="sm" variant="ghost" disabled>Apri</Button></TableCell>
+                  <TableCell><Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); openDetail(r.id); }}>Apri</Button></TableCell>
                 </TableRow>
               );
             })}
