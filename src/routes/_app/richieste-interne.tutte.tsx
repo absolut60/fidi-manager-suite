@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { RichiesteTable, type RichiestaRow } from "@/components/richieste-interne/richieste-table";
+import { useRichiesteNonLette } from "@/hooks/use-richieste-non-lette";
 
 export const Route = createFileRoute("/_app/richieste-interne/tutte")({
   component: TutteRichieste,
@@ -24,13 +25,15 @@ function TutteRichieste() {
     },
   });
 
+  const unreadIds = useRichiesteNonLette();
+
   return (
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-semibold">Tutte le richieste</h1>
         <p className="text-sm text-muted-foreground">Elenco completo (esclusi archivi)</p>
       </div>
-      <RichiesteTable rows={data} isLoading={isLoading} />
+      <RichiesteTable rows={data} isLoading={isLoading} unreadIds={unreadIds} />
     </div>
   );
 }

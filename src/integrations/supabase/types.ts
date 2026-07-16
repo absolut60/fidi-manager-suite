@@ -3711,6 +3711,7 @@ export type Database = {
           ultima_fatta_tipo: string
         }[]
       }
+      get_richieste_con_messaggi_non_letti: { Args: never; Returns: string[] }
       get_scadenziario_ids:
         | {
             Args: {
@@ -3958,6 +3959,7 @@ export type Database = {
         Args: { _richiesta_id: string }
         Returns: undefined
       }
+      marca_messaggi_letti: { Args: { _richiesta_id: string }; Returns: number }
       processa_richiesta_fido: {
         Args: {
           _esito: string

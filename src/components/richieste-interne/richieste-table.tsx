@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowDown, ArrowUp, ArrowUpDown, Paperclip, Search } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, MessageSquare, Paperclip, Search } from "lucide-react";
 
 export const STATUS_LABEL: Record<string, string> = {
   pending: "⏳ Att. Resp. Gen.",
@@ -69,6 +69,7 @@ export function RichiesteTable({
   showArchivedColumns = false,
   defaultSortKey = "created_at",
   emptyLabel = "Nessuna richiesta",
+  unreadIds,
 }: {
   rows: RichiestaRow[] | undefined;
   isLoading: boolean;
@@ -76,6 +77,7 @@ export function RichiesteTable({
   showArchivedColumns?: boolean;
   defaultSortKey?: SortKey;
   emptyLabel?: string;
+  unreadIds?: Set<string>;
 }) {
   const navigate = useNavigate();
   const openDetail = (id: string) => navigate({ to: "/richieste-interne/$richiestaId", params: { richiestaId: id } });
@@ -183,7 +185,10 @@ export function RichiesteTable({
               return (
                 <TableRow key={r.id} className="cursor-pointer hover:bg-muted/50" onClick={() => openDetail(r.id)}>
                   <TableCell>
-                    <div className="font-semibold">{r.title}</div>
+                    <div className={`flex items-center gap-1.5 ${unreadIds?.has(r.id) ? "font-bold text-primary" : "font-semibold"}`}>
+                      {unreadIds?.has(r.id) && <MessageSquare className="size-3.5 text-primary shrink-0" aria-label="Messaggi non letti" />}
+                      <span>{r.title}</span>
+                    </div>
                     {r.description && (
                       <div className="text-xs text-muted-foreground truncate max-w-[380px]">
                         {r.description.slice(0, 60)}{r.description.length > 60 ? "…" : ""}
