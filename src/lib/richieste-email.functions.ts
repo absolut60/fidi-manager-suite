@@ -176,9 +176,22 @@ export const notifyRichiestaEvento = createServerFn({ method: "POST" })
       }
 
       // Escludi sempre il mittente
+      const totalePrimaExclude = to.size;
       if (data.actor.email) to.delete(data.actor.email.toLowerCase());
 
-      if (to.size === 0) return { ok: true, sent: 0 };
+      if (to.size === 0) {
+        if (totalePrimaExclude === 0) {
+          console.warn(
+            `[notifyRichiestaEvento][${data.event}] NESSUN DESTINATARIO risolto (richiesta ${data.richiestaId}, dest=${data.extra?.dest ?? "-"}). Verificare ruoli/profili attivi.`,
+          );
+        } else {
+          console.info(
+            `[notifyRichiestaEvento][${data.event}] Unico destinatario era il mittente (${data.actor.email}); nessun invio.`,
+          );
+        }
+        return { ok: true, sent: 0 };
+      }
+
 
       // 4) Rendering
       const appUrl =
