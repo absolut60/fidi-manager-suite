@@ -99,6 +99,10 @@ function DettaglioRichiesta() {
   const canManage = hasRole("amministratore") || hasRole("gestore_richieste") || hasRole("esecutore_richieste");
   const canGestisci = canManage && r && !r.archived && (r.status === "resp_approved" || r.status === "approved");
   const canDelete = hasRole("amministratore");
+  const isOwner = !!r && r.requester_id === uid;
+  const ownerCanEdit = !!r && isOwner && r.status === "pending" && !r.archived;
+  const ownerCanDelete = ownerCanEdit;
+  const [editOpen, setEditOpen] = useState(false);
 
   const [dialog, setDialog] = useState<null | { level: 1 | 2; action: "approved" | "forwarded" | "rejected" }>(null);
   const [note, setNote] = useState("");
