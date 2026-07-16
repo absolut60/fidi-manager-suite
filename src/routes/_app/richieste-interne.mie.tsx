@@ -170,7 +170,7 @@ function MieRichieste() {
                     </div>
                   </TableCell>
                   <TableCell>{fmtData(r.updated_at)}</TableCell>
-                  <TableCell><Button size="sm" variant="ghost" disabled>Apri</Button></TableCell>
+                  <TableCell><Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); openDetail(r.id); }}>Apri</Button></TableCell>
                 </TableRow>
               );
             })}
