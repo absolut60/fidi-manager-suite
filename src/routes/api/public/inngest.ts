@@ -38,6 +38,7 @@ const handler = serve({
     remindRatePianoRientro,
     promemoriaScadenzaAutomatico,
     promemoriaScadenzaRetention,
+    inviaEmailRichiesta,
 
 
 
