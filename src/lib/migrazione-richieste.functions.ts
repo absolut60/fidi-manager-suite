@@ -322,7 +322,7 @@ export const migrazioneRichiesteDati = createServerFn({ method: "POST" })
       });
     }
     if (reqRows.length > 0) {
-      const { error } = await supabaseAdmin.from("richieste_interne").upsert(reqRows, { onConflict: "id" });
+      const { error } = await supabaseAdmin.from("richieste_interne").upsert(reqRows as never, { onConflict: "id" });
       if (error) throw new Error(`richieste upsert: ${error.message}`);
     }
     log.push(`richieste migrate: ${reqRows.length} (skipped ${reqSkipped})`);
@@ -361,7 +361,7 @@ export const migrazioneRichiesteDati = createServerFn({ method: "POST" })
       });
     }
     if (msgRows.length > 0) {
-      const { error } = await supabaseAdmin.from("richieste_interne_messaggi").upsert(msgRows, { onConflict: "id" });
+      const { error } = await supabaseAdmin.from("richieste_interne_messaggi").upsert(msgRows as never, { onConflict: "id" });
       if (error) throw new Error(`messaggi upsert: ${error.message}`);
     }
     log.push(`messaggi migrati: ${msgRows.length} (skipped ${msgSkipped})`);
@@ -389,7 +389,7 @@ export const migrazioneRichiesteDati = createServerFn({ method: "POST" })
       });
     }
     if (attRows.length > 0) {
-      const { error } = await supabaseAdmin.from("richieste_interne_allegati").upsert(attRows, { onConflict: "id" });
+      const { error } = await supabaseAdmin.from("richieste_interne_allegati").upsert(attRows as never, { onConflict: "id" });
       if (error) throw new Error(`allegati upsert: ${error.message}`);
     }
     log.push(`allegati (righe) migrati: ${attRows.length} (skipped ${attSkipped})`);
