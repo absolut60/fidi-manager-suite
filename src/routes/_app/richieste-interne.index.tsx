@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Inbox, Hourglass, CheckCircle2, XCircle, ClipboardList, Wrench } from "lucide-react";
+import { NuovaRichiestaDialog } from "@/components/richieste-interne/nuova-richiesta-dialog";
 
 export const Route = createFileRoute("/_app/richieste-interne/")({
   component: DashboardRichiesteInterne,
@@ -44,9 +45,12 @@ function DashboardRichiesteInterne() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Richieste interne</h1>
-        <p className="text-sm text-muted-foreground">Dashboard delle richieste MADE</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">Richieste interne</h1>
+          <p className="text-sm text-muted-foreground">Dashboard delle richieste MADE</p>
+        </div>
+        {(isRichiedente || isAdmin) && <NuovaRichiestaDialog />}
       </div>
 
       {(isRichiedente || isAdmin) && (

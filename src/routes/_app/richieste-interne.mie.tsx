@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowDown, ArrowUp, ArrowUpDown, Paperclip, Search } from "lucide-react";
+import { NuovaRichiestaDialog } from "@/components/richieste-interne/nuova-richiesta-dialog";
 
 export const Route = createFileRoute("/_app/richieste-interne/mie")({
   component: MieRichieste,
@@ -109,9 +110,12 @@ function MieRichieste() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold">Le mie richieste</h1>
-        <p className="text-sm text-muted-foreground">Richieste che hai creato</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">Le mie richieste</h1>
+          <p className="text-sm text-muted-foreground">Richieste che hai creato</p>
+        </div>
+        <NuovaRichiestaDialog />
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
