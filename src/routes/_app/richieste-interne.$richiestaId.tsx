@@ -10,10 +10,11 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Archive, ArchiveRestore, Download, File as FileIcon, FileImage, FileText, Loader2, MapPin, Paperclip, Trash2, Upload, Wrench } from "lucide-react";
+import { ArrowLeft, Archive, ArchiveRestore, Download, File as FileIcon, FileImage, FileText, Loader2, MapPin, Paperclip, Pencil, Trash2, Upload, Wrench } from "lucide-react";
 import { toast } from "sonner";
 import { ChatMessaggi } from "@/components/richieste-interne/chat-messaggi";
 import { GestisciDialog, type GestisciTarget } from "@/components/richieste-interne/gestisci-dialog";
+import { NuovaRichiestaDialog } from "@/components/richieste-interne/nuova-richiesta-dialog";
 import { ADMIN_LABEL } from "@/components/richieste-interne/richieste-table";
 import { notifyRichiestaEvento } from "@/lib/richieste-email.functions";
 
@@ -98,6 +99,10 @@ function DettaglioRichiesta() {
   const canManage = hasRole("amministratore") || hasRole("gestore_richieste") || hasRole("esecutore_richieste");
   const canGestisci = canManage && r && !r.archived && (r.status === "resp_approved" || r.status === "approved");
   const canDelete = hasRole("amministratore");
+  const isOwner = !!r && r.requester_id === uid;
+  const ownerCanEdit = !!r && isOwner && r.status === "pending" && !r.archived;
+  const ownerCanDelete = ownerCanEdit;
+  const [editOpen, setEditOpen] = useState(false);
 
   const [dialog, setDialog] = useState<null | { level: 1 | 2; action: "approved" | "forwarded" | "rejected" }>(null);
   const [note, setNote] = useState("");
@@ -136,6 +141,20 @@ function DettaglioRichiesta() {
 
   async function elimina() {
     if (!r) return;
+    // Rimuovi prima i file dal bucket (per non lasciare orfani).
+    try {
+      const { data: allegati } = await supabase
+        .from("richieste_interne_allegati")
+        .select("storage_path")
+        .eq("request_id", r.id);
+      const paths = (allegati ?? []).map((a) => a.storage_path).filter(Boolean) as string[];
+      if (paths.length > 0) {
+        const { error: rmErr } = await supabase.storage.from("richieste-allegati").remove(paths);
+        if (rmErr) console.warn("Rimozione file bucket fallita:", rmErr.message);
+      }
+    } catch (e) {
+      console.warn("Cleanup bucket fallito:", e);
+    }
     const { error } = await supabase.from("richieste_interne").delete().eq("id", r.id);
     if (error) { toast.error("Errore: " + error.message); return; }
     toast.success("Richiesta eliminata");
@@ -286,6 +305,11 @@ function DettaglioRichiesta() {
             {r.archived && <Badge variant="secondary" className="text-sm">📦 Archiviata</Badge>}
           </div>
           <div className="flex flex-wrap gap-2 justify-end">
+            {ownerCanEdit && (
+              <Button size="sm" variant="outline" onClick={() => setEditOpen(true)}>
+                <Pencil className="size-4 mr-1" />Modifica
+              </Button>
+            )}
             {canGestisci && (
               <Button size="sm" variant="outline" onClick={() => setGestOpen(true)}>
                 <Wrench className="size-4 mr-1" />Gestisci
@@ -301,7 +325,7 @@ function DettaglioRichiesta() {
                 <ArchiveRestore className="size-4 mr-1" />Ripristina
               </Button>
             )}
-            {canDelete && (
+            {(canDelete || ownerCanDelete) && (
               <Button size="sm" variant="destructive" onClick={() => setConfirmDelete("one")}>
                 <Trash2 className="size-4 mr-1" />Elimina
               </Button>
@@ -474,6 +498,23 @@ function DettaglioRichiesta() {
         onOpenChange={setGestOpen}
         onSaved={refresh}
       />
+
+      {ownerCanEdit && r && (
+        <NuovaRichiestaDialog
+          mode="edit"
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          initial={{
+            id: r.id,
+            title: r.title,
+            type: r.type as "preventivo" | "attivita" | "acquisto",
+            amount: r.amount,
+            fornitore: r.fornitore ?? null,
+            sede_id: r.sede_id ?? null,
+            description: r.description ?? null,
+          }}
+        />
+      )}
 
       {/* Doppia conferma eliminazione */}
       <Dialog open={!!confirmDelete} onOpenChange={(o) => { if (!o) setConfirmDelete(null); }}>

@@ -39,11 +39,44 @@ function parseImporto(v: string): number | null {
   const n = Number(s);
   return Number.isFinite(n) ? n : null;
 }
+function formatImporto(n: number | null | undefined): string {
+  if (n == null) return "";
+  return String(n).replace(".", ",");
+}
 
-export function NuovaRichiestaDialog({ trigger }: { trigger?: React.ReactNode }) {
+export type RichiestaEditInitial = {
+  id: string;
+  title: string;
+  type: Tipo;
+  amount: number | null;
+  fornitore: string | null;
+  sede_id: string | null;
+  description: string | null;
+};
+
+export function NuovaRichiestaDialog({
+  trigger,
+  mode = "create",
+  initial,
+  open: openProp,
+  onOpenChange,
+}: {
+  trigger?: React.ReactNode;
+  mode?: "create" | "edit";
+  initial?: RichiestaEditInitial;
+  open?: boolean;
+  onOpenChange?: (v: boolean) => void;
+}) {
+  const isEdit = mode === "edit";
   const { user, profilo } = useAuth();
   const qc = useQueryClient();
-  const [open, setOpen] = useState(false);
+
+  const [openInternal, setOpenInternal] = useState(false);
+  const open = openProp ?? openInternal;
+  const setOpen = (v: boolean) => {
+    if (onOpenChange) onOpenChange(v);
+    else setOpenInternal(v);
+  };
   const [saving, setSaving] = useState(false);
 
   const [title, setTitle] = useState("");
@@ -76,9 +109,23 @@ export function NuovaRichiestaDialog({ trigger }: { trigger?: React.ReactNode })
   });
 
   const sedeCorrenteId = profilo?.store_id ?? "";
+
+  // Prefill / reset when dialog opens
   useEffect(() => {
-    if (open && !sedeId && sedeCorrenteId) setSedeId(sedeCorrenteId);
-  }, [open, sedeCorrenteId, sedeId]);
+    if (!open) return;
+    if (isEdit && initial) {
+      setTitle(initial.title ?? "");
+      setTipo((initial.type as Tipo) ?? "acquisto");
+      setImporto(formatImporto(initial.amount));
+      setDescrizione(initial.description ?? "");
+      setSedeId(initial.sede_id ?? "");
+      setFornitore(initial.fornitore ?? "");
+      setFiles([]);
+    } else if (!isEdit) {
+      if (!sedeId && sedeCorrenteId) setSedeId(sedeCorrenteId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, isEdit, initial?.id]);
 
   function reset() {
     setTitle(""); setTipo("acquisto"); setImporto(""); setDescrizione("");
@@ -99,12 +146,43 @@ export function NuovaRichiestaDialog({ trigger }: { trigger?: React.ReactNode })
 
     setSaving(true);
     try {
-      const requesterName =
-        [profilo?.nome, profilo?.cognome].filter(Boolean).join(" ").trim() ||
-        profilo?.email || user.email || "Utente";
       const sedeName = sedi?.find((s) => s.id === sedeId)?.nome ?? null;
       const amount = parseImporto(importo);
       const fornitoreTrim = fornitore.trim();
+
+      if (isEdit && initial) {
+        const { error: updErr } = await supabase
+          .from("richieste_interne")
+          .update({
+            title: title.trim(),
+            type: tipo,
+            description: descrizione.trim() || null,
+            amount,
+            fornitore: fornitoreTrim || null,
+            sede_id: sedeId || null,
+            sede_name: sedeName,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", initial.id);
+        if (updErr) throw updErr;
+
+        if (fornitoreTrim.length > 1) {
+          const { error: fErr } = await supabase
+            .from("fornitori")
+            .upsert({ nome: fornitoreTrim }, { onConflict: "nome", ignoreDuplicates: true });
+          if (fErr) console.warn("Upsert fornitore fallito:", fErr.message);
+        }
+
+        toast.success("Richiesta aggiornata");
+        qc.invalidateQueries({ queryKey: ["richieste-interne"] });
+        qc.invalidateQueries({ queryKey: ["richiesta-interna", initial.id] });
+        setOpen(false);
+        return;
+      }
+
+      const requesterName =
+        [profilo?.nome, profilo?.cognome].filter(Boolean).join(" ").trim() ||
+        profilo?.email || user.email || "Utente";
 
       const { data: inserted, error: insErr } = await supabase
         .from("richieste_interne")
@@ -125,7 +203,6 @@ export function NuovaRichiestaDialog({ trigger }: { trigger?: React.ReactNode })
       if (insErr || !inserted) throw insErr ?? new Error("Insert fallita");
       const richiestaId = inserted.id;
 
-      // Upsert fornitore lookup (auto-apprendimento)
       if (fornitoreTrim.length > 1) {
         const { error: fErr } = await supabase
           .from("fornitori")
@@ -133,7 +210,6 @@ export function NuovaRichiestaDialog({ trigger }: { trigger?: React.ReactNode })
         if (fErr) console.warn("Upsert fornitore fallito:", fErr.message);
       }
 
-      // Upload allegati (non bloccare la richiesta se un file fallisce)
       let failed = 0;
       for (const f of files) {
         const ts = Date.now();
@@ -155,7 +231,6 @@ export function NuovaRichiestaDialog({ trigger }: { trigger?: React.ReactNode })
         if (aErr) { failed++; console.error("Insert allegato fallita:", aErr.message); }
       }
 
-      // Strato 5: accoda notifica su Inngest (non blocca mai l'azione)
       try {
         const res = await notifyRichiestaEvento({
           data: {
@@ -170,8 +245,6 @@ export function NuovaRichiestaDialog({ trigger }: { trigger?: React.ReactNode })
       } catch (e) {
         console.error("[email new_request] fallito:", e);
       }
-
-
 
       if (failed > 0) toast.warning(`Richiesta creata. ${failed} allegato/i non caricato/i.`);
       else toast.success("Richiesta creata");
@@ -188,14 +261,16 @@ export function NuovaRichiestaDialog({ trigger }: { trigger?: React.ReactNode })
   }
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
-      <DialogTrigger asChild>
-        {trigger ?? (
-          <Button><Plus className="size-4 mr-1" />Nuova richiesta</Button>
-        )}
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v && !isEdit) reset(); }}>
+      {!isEdit && (
+        <DialogTrigger asChild>
+          {trigger ?? (
+            <Button><Plus className="size-4 mr-1" />Nuova richiesta</Button>
+          )}
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>Nuova richiesta interna</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{isEdit ? "Modifica richiesta" : "Nuova richiesta interna"}</DialogTitle></DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-1.5">
@@ -288,40 +363,47 @@ export function NuovaRichiestaDialog({ trigger }: { trigger?: React.ReactNode })
               placeholder="Descrizione..." rows={4} maxLength={5000} />
           </div>
 
-          <div className="space-y-1.5">
-            <Label>Allegati</Label>
-            <div className="flex items-center gap-2">
-              <Input id="rq-files" type="file" multiple
-                onChange={(e) => {
-                  const list = Array.from(e.target.files ?? []);
-                  setFiles((prev) => [...prev, ...list]);
-                  e.currentTarget.value = "";
-                }} />
+          {!isEdit && (
+            <div className="space-y-1.5">
+              <Label>Allegati</Label>
+              <div className="flex items-center gap-2">
+                <Input id="rq-files" type="file" multiple
+                  onChange={(e) => {
+                    const list = Array.from(e.target.files ?? []);
+                    setFiles((prev) => [...prev, ...list]);
+                    e.currentTarget.value = "";
+                  }} />
+              </div>
+              {files.length > 0 && (
+                <ul className="space-y-1 mt-2">
+                  {files.map((f, i) => (
+                    <li key={i} className="flex items-center justify-between text-sm border rounded px-2 py-1">
+                      <span className="inline-flex items-center gap-2 truncate">
+                        <Paperclip className="size-3 shrink-0" />
+                        <span className="truncate">{f.name}</span>
+                        <span className="text-muted-foreground shrink-0">({fmtSize(f.size)})</span>
+                      </span>
+                      <button type="button" onClick={() => setFiles((prev) => prev.filter((_, k) => k !== i))}
+                        className="text-muted-foreground hover:text-destructive" aria-label="Rimuovi">
+                        <X className="size-4" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
-            {files.length > 0 && (
-              <ul className="space-y-1 mt-2">
-                {files.map((f, i) => (
-                  <li key={i} className="flex items-center justify-between text-sm border rounded px-2 py-1">
-                    <span className="inline-flex items-center gap-2 truncate">
-                      <Paperclip className="size-3 shrink-0" />
-                      <span className="truncate">{f.name}</span>
-                      <span className="text-muted-foreground shrink-0">({fmtSize(f.size)})</span>
-                    </span>
-                    <button type="button" onClick={() => setFiles((prev) => prev.filter((_, k) => k !== i))}
-                      className="text-muted-foreground hover:text-destructive" aria-label="Rimuovi">
-                      <X className="size-4" />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          )}
+          {isEdit && (
+            <p className="text-xs text-muted-foreground">
+              Gli allegati si gestiscono dalla sezione "Allegati" della richiesta.
+            </p>
+          )}
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>Annulla</Button>
           <Button onClick={onSubmit} disabled={saving || !title.trim()}>
-            {saving ? "Salvataggio…" : "Crea richiesta"}
+            {saving ? "Salvataggio…" : isEdit ? "Salva modifiche" : "Crea richiesta"}
           </Button>
         </DialogFooter>
       </DialogContent>
