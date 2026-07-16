@@ -49,9 +49,9 @@ export const notifyRichiestaEvento = createServerFn({ method: "POST" })
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { sendEmailViaEdge } = await import("@/lib/inngest/send-email.server");
       const { buildRichiestaEmail } = await import("@/lib/richieste-email-render");
-      const { SEDE_FALLBACK, type DatiSede } = await import(
-        "@/lib/template-email-render"
-      );
+      const { SEDE_FALLBACK } = await import("@/lib/template-email-render");
+      type DatiSede = import("@/lib/template-email-render").DatiSede;
+
 
       // 1) Carica richiesta
       const { data: r, error: eR } = await supabaseAdmin
