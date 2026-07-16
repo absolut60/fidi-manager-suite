@@ -90,7 +90,7 @@ export const notifyRichiestaEvento = createServerFn({ method: "POST" })
       const sedeDati = sede ?? SEDE_FALLBACK;
 
       // 3) Risoluzione destinatari
-      const actorId = data.actor.id ?? null;
+
 
       async function emailsFromRole(role: string): Promise<string[]> {
         const { data: rows } = await supabaseAdmin
