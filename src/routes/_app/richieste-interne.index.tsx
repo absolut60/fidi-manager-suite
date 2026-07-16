@@ -45,9 +45,12 @@ function DashboardRichiesteInterne() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Richieste interne</h1>
-        <p className="text-sm text-muted-foreground">Dashboard delle richieste MADE</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">Richieste interne</h1>
+          <p className="text-sm text-muted-foreground">Dashboard delle richieste MADE</p>
+        </div>
+        {(isRichiedente || isAdmin) && <NuovaRichiestaDialog />}
       </div>
 
       {(isRichiedente || isAdmin) && (
