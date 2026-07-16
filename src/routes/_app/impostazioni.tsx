@@ -948,9 +948,8 @@ function MigrazioneRichiesteCard() {
         },
       });
       setEmailResult(res);
-      if (res.ok && res.sent > 0) toast.success(`Test OK: ${res.sent} email inviate`);
-      else if (res.ok) toast.info(res.debug?.motivoZero ?? "Nessun destinatario");
-      else toast.warning(`Errore: ${res.err ?? "?"}`);
+      if (res.ok && res.queued) toast.success("Notifica accodata su Inngest");
+      else toast.warning(`Errore accodamento: ${res.err ?? "?"}`);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setEmailError(msg); toast.error(msg);
