@@ -37,12 +37,19 @@ import { toast } from "sonner";
 
 type NavGroupKey = "generale" | "fidi" | "incassi" | "recupero" | "strumenti" | "admin" | "richieste_interne";
 
+// Per le voci del gruppo "richieste_interne": scope di visibilità aggiuntivo.
+// - "all"    → dashboard/mie: chiunque abbia un ruolo richieste_* o admin
+// - "manage" → tutte/archivio: liv1, liv2, gestore, esecutore, admin
+// - "approve"→ da approvare: liv1, liv2, admin
+type RichiesteScope = "all" | "manage" | "approve";
+
 type NavItem = {
   to: string;
   label: string;
   icon: typeof LayoutDashboard;
   roles?: Array<"admin" | "approvatore" | "store_manager" | "amministrazione">;
   group: NavGroupKey;
+  richiesteScope?: RichiesteScope;
 };
 
 const NAV: NavItem[] = [
@@ -66,9 +73,12 @@ const NAV: NavItem[] = [
   { to: "/recupero-crediti-campagne", label: "Invii massivi", icon: Megaphone, roles: ["admin", "approvatore", "store_manager"], group: "recupero" },
   { to: "/legali", label: "Pratiche Legali", icon: Gavel, roles: ["admin", "approvatore", "store_manager"], group: "recupero" },
   { to: "/recupero-crediti-andamento", label: "Andamento / Storico", icon: TrendingUp, roles: ["admin", "approvatore", "store_manager"], group: "recupero" },
-  // RICHIESTE INTERNE (gate applicato a livello di gruppo, non per singola voce)
-  { to: "/richieste-interne", label: "Richieste — Dashboard", icon: LayoutDashboard, group: "richieste_interne" },
-  { to: "/richieste-interne/mie", label: "Le mie richieste", icon: FileText, group: "richieste_interne" },
+  // RICHIESTE INTERNE (visibilità: gate di gruppo + scope per voce)
+  { to: "/richieste-interne", label: "Richieste — Dashboard", icon: LayoutDashboard, group: "richieste_interne", richiesteScope: "all" },
+  { to: "/richieste-interne/mie", label: "Le mie richieste", icon: FileText, group: "richieste_interne", richiesteScope: "all" },
+  { to: "/richieste-interne/approva", label: "Da approvare", icon: CheckCheck, group: "richieste_interne", richiesteScope: "approve" },
+  { to: "/richieste-interne/tutte", label: "Tutte le richieste", icon: FileSpreadsheet, group: "richieste_interne", richiesteScope: "manage" },
+  { to: "/richieste-interne/archivio", label: "Archivio", icon: ScrollText, group: "richieste_interne", richiesteScope: "manage" },
   // STRUMENTI
   { to: "/import-export", label: "Import / Export", icon: FileSpreadsheet, roles: ["admin", "amministrazione"], group: "strumenti" },
   { to: "/whatsapp", label: "WhatsApp", icon: MessageCircle, roles: ["admin"], group: "strumenti" },
@@ -113,9 +123,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const RICHIESTE_ROLES = ["richiedente", "approvatore_richieste_liv1", "approvatore_richieste_liv2", "gestore_richieste", "esecutore_richieste"];
   const hasAnyRichiesteRole = RICHIESTE_ROLES.some((r) => hasUserRole(r));
   const canSeeRichiesteInterne = isAdmin || hasAnyRichiesteRole;
+  const isApprovatoreRichLiv1 = hasUserRole("approvatore_richieste_liv1");
+  const isApprovatoreRichLiv2 = hasUserRole("approvatore_richieste_liv2");
+  const isGestoreRich = hasUserRole("gestore_richieste");
+  const isEsecutoreRich = hasUserRole("esecutore_richieste");
+  const canApproveRich = isAdmin || isApprovatoreRichLiv1 || isApprovatoreRichLiv2;
+  const canManageRich = isAdmin || isApprovatoreRichLiv1 || isApprovatoreRichLiv2 || isGestoreRich || isEsecutoreRich;
 
   const visibleNav = NAV.filter((item) => {
-    if (item.group === "richieste_interne") return canSeeRichiesteInterne;
+    if (item.group === "richieste_interne") {
+      if (!canSeeRichiesteInterne) return false;
+      if (item.richiesteScope === "approve") return canApproveRich;
+      if (item.richiesteScope === "manage") return canManageRich;
+      return true; // "all"
+    }
     if (isOnlyAgente) return AGENTE_WHITELIST.has(item.to);
     if (!item.roles) return true;
     if (item.roles.includes("admin") && isAdmin) return true;
