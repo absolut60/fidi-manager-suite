@@ -38,6 +38,9 @@ export type RichiestaRow = {
   amount: number | null;
   status: string;
   admin_status: string | null;
+  admin_note?: string | null;
+  sent_to_gestionale?: boolean | null;
+  gestionale_ref?: string | null;
   created_at: string;
   archived_by_name?: string | null;
   archived_at?: string | null;
