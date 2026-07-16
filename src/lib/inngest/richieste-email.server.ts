@@ -55,8 +55,8 @@ export const inviaEmailRichiesta = inngest.createFunction(
     id: "richieste-invia-email",
     name: "Richieste interne: invio email notifica",
     retries: 3,
+    triggers: [{ event: "richieste/notifica" }],
   },
-  { event: "richieste/notifica" },
   async ({ event, step, logger }) => {
     const data = event.data as NotificaPayload;
 
