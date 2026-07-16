@@ -105,6 +105,10 @@ function ImpostazioniPage() {
 
       <PromemoriaScadenzaCard />
 
+      <MigrazioneRichiesteCard />
+
+
+
 
       <Card className="p-4 sm:p-5">
         <h2 className="font-semibold mb-3 flex items-center gap-2">
