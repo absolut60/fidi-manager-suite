@@ -173,7 +173,25 @@ function DettaglioRichiesta() {
       toast.error("Errore: " + error.message);
       return;
     }
-    // TODO Strato 5: inviare email di notifica (richiedente + eventuale Direzione)
+    // Strato 5: notifica email (non blocca)
+    const event =
+      dialog.level === 1
+        ? dialog.action === "approved"
+          ? "resp_approved"
+          : dialog.action === "forwarded"
+            ? "resp_forwarded"
+            : "resp_rejected"
+        : dialog.action === "approved"
+          ? "dir_approved"
+          : "dir_rejected";
+    void notifyRichiestaEvento({
+      data: {
+        event,
+        richiestaId: r.id,
+        actor: { id: uid, nome: fullName, email: user?.email ?? null },
+      },
+    }).catch((e) => console.error(`[email ${event}] fallito:`, e));
+
     toast.success("Decisione registrata");
     setDialog(null);
     setNote("");
