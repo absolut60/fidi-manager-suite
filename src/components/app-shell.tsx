@@ -35,7 +35,7 @@ import { Button } from "@/components/ui/button";
 import { NotificationsBell } from "@/components/notifications-bell";
 import { toast } from "sonner";
 
-type NavGroupKey = "generale" | "fidi" | "incassi" | "recupero" | "strumenti" | "admin";
+type NavGroupKey = "generale" | "fidi" | "incassi" | "recupero" | "strumenti" | "admin" | "richieste_interne";
 
 type NavItem = {
   to: string;
