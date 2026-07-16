@@ -63,6 +63,11 @@ export const notifyRichiestaEvento = createServerFn({ method: "POST" })
         .maybeSingle();
       if (eR) throw new Error(eR.message);
       if (!r) throw new Error("Richiesta non trovata");
+      const req = r;
+
+      // rimuovo warning unused
+      void actorIdUnused;
+
 
       // 2) Sede della richiesta (fallback amministrativa)
       let sede: DatiSede | null = null;
