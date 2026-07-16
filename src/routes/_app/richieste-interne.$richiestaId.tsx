@@ -141,6 +141,20 @@ function DettaglioRichiesta() {
 
   async function elimina() {
     if (!r) return;
+    // Rimuovi prima i file dal bucket (per non lasciare orfani).
+    try {
+      const { data: allegati } = await supabase
+        .from("richieste_interne_allegati")
+        .select("storage_path")
+        .eq("request_id", r.id);
+      const paths = (allegati ?? []).map((a) => a.storage_path).filter(Boolean) as string[];
+      if (paths.length > 0) {
+        const { error: rmErr } = await supabase.storage.from("richieste-allegati").remove(paths);
+        if (rmErr) console.warn("Rimozione file bucket fallita:", rmErr.message);
+      }
+    } catch (e) {
+      console.warn("Cleanup bucket fallito:", e);
+    }
     const { error } = await supabase.from("richieste_interne").delete().eq("id", r.id);
     if (error) { toast.error("Errore: " + error.message); return; }
     toast.success("Richiesta eliminata");
