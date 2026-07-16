@@ -434,6 +434,44 @@ function DettaglioRichiesta() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <GestisciDialog
+        open={gestOpen}
+        target={r ? {
+          id: r.id,
+          title: r.title,
+          admin_status: r.admin_status,
+          admin_note: r.admin_note ?? null,
+          sent_to_gestionale: r.sent_to_gestionale ?? false,
+          gestionale_ref: r.gestionale_ref ?? null,
+        } as GestisciTarget : null}
+        onOpenChange={setGestOpen}
+        onSaved={refresh}
+      />
+
+      {/* Doppia conferma eliminazione */}
+      <Dialog open={!!confirmDelete} onOpenChange={(o) => { if (!o) setConfirmDelete(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Elimina definitivamente</DialogTitle>
+            <DialogDescription>
+              {confirmDelete === "one"
+                ? `Vuoi eliminare la richiesta "${r?.title}"? L'operazione è irreversibile.`
+                : `Conferma finale: eliminare "${r?.title}" e tutti i suoi dati?`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setConfirmDelete(null)}>Annulla</Button>
+            {confirmDelete === "one" ? (
+              <Button variant="destructive" onClick={() => setConfirmDelete("two")}>Continua</Button>
+            ) : (
+              <Button variant="destructive" onClick={async () => { setConfirmDelete(null); await elimina(); }}>
+                Elimina definitivamente
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
