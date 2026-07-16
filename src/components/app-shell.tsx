@@ -110,7 +110,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     "/piani-rientro",
   ]);
 
+  const RICHIESTE_ROLES = ["richiedente", "approvatore_richieste_liv1", "approvatore_richieste_liv2", "gestore_richieste", "esecutore_richieste"];
+  const hasAnyRichiesteRole = RICHIESTE_ROLES.some((r) => hasUserRole(r));
+  const canSeeRichiesteInterne = isAdmin || hasAnyRichiesteRole;
+
   const visibleNav = NAV.filter((item) => {
+    if (item.group === "richieste_interne") return canSeeRichiesteInterne;
     if (isOnlyAgente) return AGENTE_WHITELIST.has(item.to);
     if (!item.roles) return true;
     if (item.roles.includes("admin") && isAdmin) return true;
@@ -125,6 +130,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     { key: "fidi", label: "Fidi", items: visibleNav.filter((i) => i.group === "fidi") },
     { key: "incassi", label: "Incassi", items: visibleNav.filter((i) => i.group === "incassi") },
     { key: "recupero", label: "Recupero crediti", items: visibleNav.filter((i) => i.group === "recupero") },
+    { key: "richieste_interne", label: "Richieste interne", items: visibleNav.filter((i) => i.group === "richieste_interne") },
     { key: "strumenti", label: "Strumenti", items: visibleNav.filter((i) => i.group === "strumenti") },
     { key: "admin", label: "Amministrazione", items: visibleNav.filter((i) => i.group === "admin") },
   ];
