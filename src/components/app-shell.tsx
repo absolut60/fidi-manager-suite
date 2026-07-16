@@ -41,7 +41,7 @@ type NavGroupKey = "generale" | "fidi" | "incassi" | "recupero" | "strumenti" | 
 // - "all"    → dashboard/mie: chiunque abbia un ruolo richieste_* o admin
 // - "manage" → tutte/archivio: liv1, liv2, gestore, esecutore, admin
 // - "approve"→ da approvare: liv1, liv2, admin
-type RichiesteScope = "all" | "manage" | "approve";
+type RichiesteScope = "all" | "manage" | "approve" | "gestione";
 
 type NavItem = {
   to: string;
@@ -77,6 +77,7 @@ const NAV: NavItem[] = [
   { to: "/richieste-interne", label: "Richieste — Dashboard", icon: LayoutDashboard, group: "richieste_interne", richiesteScope: "all" },
   { to: "/richieste-interne/mie", label: "Le mie richieste", icon: FileText, group: "richieste_interne", richiesteScope: "all" },
   { to: "/richieste-interne/approva", label: "Da approvare", icon: CheckCheck, group: "richieste_interne", richiesteScope: "approve" },
+  { to: "/richieste-interne/gestione", label: "Gestione", icon: ClipboardCheck, group: "richieste_interne", richiesteScope: "gestione" },
   { to: "/richieste-interne/tutte", label: "Tutte le richieste", icon: FileSpreadsheet, group: "richieste_interne", richiesteScope: "manage" },
   { to: "/richieste-interne/archivio", label: "Archivio", icon: ScrollText, group: "richieste_interne", richiesteScope: "manage" },
   // STRUMENTI
@@ -129,12 +130,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isEsecutoreRich = hasUserRole("esecutore_richieste");
   const canApproveRich = isAdmin || isApprovatoreRichLiv1 || isApprovatoreRichLiv2;
   const canManageRich = isAdmin || isApprovatoreRichLiv1 || isApprovatoreRichLiv2 || isGestoreRich || isEsecutoreRich;
+  const canGestioneRich = isAdmin || isGestoreRich || isEsecutoreRich;
 
   const visibleNav = NAV.filter((item) => {
     if (item.group === "richieste_interne") {
       if (!canSeeRichiesteInterne) return false;
       if (item.richiesteScope === "approve") return canApproveRich;
       if (item.richiesteScope === "manage") return canManageRich;
+      if (item.richiesteScope === "gestione") return canGestioneRich;
       return true; // "all"
     }
     if (isOnlyAgente) return AGENTE_WHITELIST.has(item.to);

@@ -38,6 +38,9 @@ export type RichiestaRow = {
   amount: number | null;
   status: string;
   admin_status: string | null;
+  admin_note?: string | null;
+  sent_to_gestionale?: boolean | null;
+  gestionale_ref?: string | null;
   created_at: string;
   archived_by_name?: string | null;
   archived_at?: string | null;
@@ -70,6 +73,9 @@ export function RichiesteTable({
   defaultSortKey = "created_at",
   emptyLabel = "Nessuna richiesta",
   unreadIds,
+  onGestisci,
+  onRipristina,
+  gestisciLabel = "Gestisci",
 }: {
   rows: RichiestaRow[] | undefined;
   isLoading: boolean;
@@ -78,6 +84,9 @@ export function RichiesteTable({
   defaultSortKey?: SortKey;
   emptyLabel?: string;
   unreadIds?: Set<string>;
+  onGestisci?: (r: RichiestaRow) => void;
+  onRipristina?: (r: RichiestaRow) => void;
+  gestisciLabel?: string;
 }) {
   const navigate = useNavigate();
   const openDetail = (id: string) => navigate({ to: "/richieste-interne/$richiestaId", params: { richiestaId: id } });
@@ -214,8 +223,16 @@ export function RichiesteTable({
                       <TableCell>{fmtData(r.archived_at)}</TableCell>
                     </>
                   )}
-                  <TableCell>
-                    <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); openDetail(r.id); }}>Apri</Button>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center gap-1 justify-end">
+                      {onGestisci && (
+                        <Button size="sm" variant="outline" onClick={() => onGestisci(r)}>{gestisciLabel}</Button>
+                      )}
+                      {onRipristina && (
+                        <Button size="sm" variant="outline" onClick={() => onRipristina(r)}>↩ Ripristina</Button>
+                      )}
+                      <Button size="sm" variant="ghost" onClick={() => openDetail(r.id)}>Apri</Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               );

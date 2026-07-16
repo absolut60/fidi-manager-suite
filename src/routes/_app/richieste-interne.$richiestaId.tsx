@@ -10,9 +10,12 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Download, File as FileIcon, FileImage, FileText, Loader2, MapPin, Paperclip, Upload } from "lucide-react";
+import { ArrowLeft, Archive, ArchiveRestore, Download, File as FileIcon, FileImage, FileText, Loader2, MapPin, Paperclip, Trash2, Upload, Wrench } from "lucide-react";
 import { toast } from "sonner";
 import { ChatMessaggi } from "@/components/richieste-interne/chat-messaggi";
+import { GestisciDialog, type GestisciTarget } from "@/components/richieste-interne/gestisci-dialog";
+import { ADMIN_LABEL } from "@/components/richieste-interne/richieste-table";
+
 
 export const Route = createFileRoute("/_app/richieste-interne/$richiestaId")({
   component: DettaglioRichiesta,
@@ -83,14 +86,61 @@ function DettaglioRichiesta() {
     },
   });
 
-  const refresh = () => qc.invalidateQueries({ queryKey: ["richiesta-interna", richiestaId] });
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ["richiesta-interna", richiestaId] });
+    qc.invalidateQueries({ queryKey: ["richieste-interne"] });
+  };
 
   const canLiv1 = hasRole("approvatore_richieste_liv1") && r?.status === "pending";
   const canLiv2 = hasRole("approvatore_richieste_liv2") && r?.status === "forwarded";
+  const canManage = hasRole("amministratore") || hasRole("gestore_richieste") || hasRole("esecutore_richieste");
+  const canGestisci = canManage && r && !r.archived && (r.status === "resp_approved" || r.status === "approved");
+  const canDelete = hasRole("amministratore");
 
   const [dialog, setDialog] = useState<null | { level: 1 | 2; action: "approved" | "forwarded" | "rejected" }>(null);
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
+  const [gestOpen, setGestOpen] = useState(false);
+  const [archiving, setArchiving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<null | "one" | "two">(null);
+
+  async function archivia() {
+    if (!r) return;
+    if (!confirm(`Archiviare la richiesta "${r.title}"?`)) return;
+    setArchiving(true);
+    const { error } = await supabase
+      .from("richieste_interne")
+      .update({ archived: true, archived_at: new Date().toISOString(), archived_by_name: fullName })
+      .eq("id", r.id);
+    setArchiving(false);
+    if (error) { toast.error("Errore: " + error.message); return; }
+    toast.success("Richiesta archiviata");
+    refresh();
+    router.history.back();
+  }
+
+  async function ripristina() {
+    if (!r) return;
+    setArchiving(true);
+    const { error } = await supabase
+      .from("richieste_interne")
+      .update({ archived: false, archived_at: null, archived_by_name: null })
+      .eq("id", r.id);
+    setArchiving(false);
+    if (error) { toast.error("Errore: " + error.message); return; }
+    toast.success("Richiesta ripristinata");
+    refresh();
+  }
+
+  async function elimina() {
+    if (!r) return;
+    const { error } = await supabase.from("richieste_interne").delete().eq("id", r.id);
+    if (error) { toast.error("Errore: " + error.message); return; }
+    toast.success("Richiesta eliminata");
+    qc.invalidateQueries({ queryKey: ["richieste-interne"] });
+    router.history.back();
+  }
+
 
   async function submitDecision() {
     if (!dialog || !r) return;
@@ -201,7 +251,37 @@ function DettaglioRichiesta() {
             {r.sede_name && (<><span>·</span><span className="inline-flex items-center gap-1"><MapPin className="size-3" />{r.sede_name}</span></>)}
           </div>
         </div>
-        <Badge variant="outline" className="text-sm">{STATUS_LABEL[r.status] ?? r.status}</Badge>
+        <div className="flex flex-col items-end gap-2">
+          <div className="flex flex-wrap gap-2 justify-end">
+            <Badge variant="outline" className="text-sm">{STATUS_LABEL[r.status] ?? r.status}</Badge>
+            {(r.status === "resp_approved" || r.status === "approved") && (
+              <Badge variant="outline" className="text-sm">{ADMIN_LABEL[r.admin_status ?? "da_gestire"]}</Badge>
+            )}
+            {r.archived && <Badge variant="secondary" className="text-sm">📦 Archiviata</Badge>}
+          </div>
+          <div className="flex flex-wrap gap-2 justify-end">
+            {canGestisci && (
+              <Button size="sm" variant="outline" onClick={() => setGestOpen(true)}>
+                <Wrench className="size-4 mr-1" />Gestisci
+              </Button>
+            )}
+            {canManage && !r.archived && (
+              <Button size="sm" variant="outline" onClick={archivia} disabled={archiving}>
+                <Archive className="size-4 mr-1" />Archivia
+              </Button>
+            )}
+            {canManage && r.archived && (
+              <Button size="sm" variant="outline" onClick={ripristina} disabled={archiving}>
+                <ArchiveRestore className="size-4 mr-1" />Ripristina
+              </Button>
+            )}
+            {canDelete && (
+              <Button size="sm" variant="destructive" onClick={() => setConfirmDelete("one")}>
+                <Trash2 className="size-4 mr-1" />Elimina
+              </Button>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -351,6 +431,44 @@ function DettaglioRichiesta() {
               {saving && <Loader2 className="size-4 mr-1 animate-spin" />}
               Conferma
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <GestisciDialog
+        open={gestOpen}
+        target={r ? {
+          id: r.id,
+          title: r.title,
+          admin_status: r.admin_status,
+          admin_note: r.admin_note ?? null,
+          sent_to_gestionale: r.sent_to_gestionale ?? false,
+          gestionale_ref: r.gestionale_ref ?? null,
+        } as GestisciTarget : null}
+        onOpenChange={setGestOpen}
+        onSaved={refresh}
+      />
+
+      {/* Doppia conferma eliminazione */}
+      <Dialog open={!!confirmDelete} onOpenChange={(o) => { if (!o) setConfirmDelete(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Elimina definitivamente</DialogTitle>
+            <DialogDescription>
+              {confirmDelete === "one"
+                ? `Vuoi eliminare la richiesta "${r?.title}"? L'operazione è irreversibile.`
+                : `Conferma finale: eliminare "${r?.title}" e tutti i suoi dati?`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setConfirmDelete(null)}>Annulla</Button>
+            {confirmDelete === "one" ? (
+              <Button variant="destructive" onClick={() => setConfirmDelete("two")}>Continua</Button>
+            ) : (
+              <Button variant="destructive" onClick={async () => { setConfirmDelete(null); await elimina(); }}>
+                Elimina definitivamente
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
