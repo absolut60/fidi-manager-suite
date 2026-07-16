@@ -1412,6 +1412,33 @@ export type Database = {
           },
         ]
       }
+      migrazione_richieste_utenti: {
+        Row: {
+          created_at: string
+          email: string
+          note: string | null
+          updated_at: string
+          uuid_destinazione: string | null
+          uuid_origine: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          note?: string | null
+          updated_at?: string
+          uuid_destinazione?: string | null
+          uuid_origine: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          note?: string | null
+          updated_at?: string
+          uuid_destinazione?: string | null
+          uuid_origine?: string
+        }
+        Relationships: []
+      }
       note_legali_gestionali: {
         Row: {
           categoria: string | null
