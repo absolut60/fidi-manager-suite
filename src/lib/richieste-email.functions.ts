@@ -111,11 +111,11 @@ export const notifyRichiestaEvento = createServerFn({ method: "POST" })
       }
 
       async function requesterEmail(): Promise<string | null> {
-        if (!r.requester_id) return null;
+        if (!req.requester_id) return null;
         const { data: p } = await supabaseAdmin
           .from("profili")
           .select("email, attivo")
-          .eq("id", r.requester_id)
+          .eq("id", req.requester_id)
           .maybeSingle();
         if (!p || p.attivo !== true) return null;
         return typeof p.email === "string" ? p.email : null;
