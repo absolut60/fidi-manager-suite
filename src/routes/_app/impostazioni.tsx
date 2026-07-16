@@ -907,12 +907,45 @@ function PromemoriaScadenzaCard() {
 function MigrazioneRichiesteCard() {
   const run = useServerFn(migrazioneRichiesteCreaUtenti);
   const testConn = useServerFn(testConnessioneRichieste);
+  const runDati = useServerFn(migrazioneRichiesteDati);
+  const runFile = useServerFn(migrazioneRichiesteFile);
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<Awaited<ReturnType<typeof migrazioneRichiesteCreaUtenti>> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<Awaited<ReturnType<typeof testConnessioneRichieste>> | null>(null);
   const [testError, setTestError] = useState<string | null>(null);
+  const [datiRunning, setDatiRunning] = useState(false);
+  const [datiResult, setDatiResult] = useState<Awaited<ReturnType<typeof migrazioneRichiesteDati>> | null>(null);
+  const [datiError, setDatiError] = useState<string | null>(null);
+  const [fileRunning, setFileRunning] = useState(false);
+  const [fileResult, setFileResult] = useState<Awaited<ReturnType<typeof migrazioneRichiesteFile>> | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
+
+  async function eseguiDati() {
+    setDatiRunning(true); setDatiError(null); setDatiResult(null);
+    try {
+      const r = await runDati();
+      setDatiResult(r);
+      toast.success(`Dati migrati: ${r.richiesteMigrate} richieste, ${r.messaggiMigrati} messaggi, ${r.allegatiMigrati} allegati`);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setDatiError(msg); toast.error(msg);
+    } finally { setDatiRunning(false); }
+  }
+
+  async function eseguiFile() {
+    setFileRunning(true); setFileError(null); setFileResult(null);
+    try {
+      const r = await runFile();
+      setFileResult(r);
+      toast.success(`File: ${r.copied} copiati, ${r.skipped} saltati, ${r.failed} falliti`);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setFileError(msg); toast.error(msg);
+    } finally { setFileRunning(false); }
+  }
+
 
   async function esegui() {
     setRunning(true);
