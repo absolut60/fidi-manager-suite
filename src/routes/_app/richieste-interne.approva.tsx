@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { RichiesteTable, type RichiestaRow } from "@/components/richieste-interne/richieste-table";
+import { useRichiesteNonLette } from "@/hooks/use-richieste-non-lette";
 
 export const Route = createFileRoute("/_app/richieste-interne/approva")({
   component: ApprovaRichieste,
@@ -59,7 +60,7 @@ function ApprovaRichieste() {
           <span className="font-semibold text-foreground">{data?.length ?? 0}</span> in attesa
         </div>
       </div>
-      <RichiesteTable rows={data} isLoading={isLoading} showAdminBadge={false} emptyLabel="Nessuna richiesta da approvare" />
+      <RichiesteTable rows={data} isLoading={isLoading} showAdminBadge={false} emptyLabel="Nessuna richiesta da approvare" unreadIds={unreadIds} />
     </div>
   );
 }
