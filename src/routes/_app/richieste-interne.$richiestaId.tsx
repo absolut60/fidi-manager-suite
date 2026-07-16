@@ -17,6 +17,7 @@ import { GestisciDialog, type GestisciTarget } from "@/components/richieste-inte
 import { NuovaRichiestaDialog } from "@/components/richieste-interne/nuova-richiesta-dialog";
 import { ADMIN_LABEL } from "@/components/richieste-interne/richieste-table";
 import { notifyRichiestaEvento } from "@/lib/richieste-email.functions";
+import { sanitizeFileName } from "@/components/richieste-interne/utils";
 
 
 
