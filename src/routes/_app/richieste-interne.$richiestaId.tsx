@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { ChatMessaggi } from "@/components/richieste-interne/chat-messaggi";
 import { GestisciDialog, type GestisciTarget } from "@/components/richieste-interne/gestisci-dialog";
 import { ADMIN_LABEL } from "@/components/richieste-interne/richieste-table";
-import { Badge as BadgeUI } from "@/components/ui/badge";
+
 
 export const Route = createFileRoute("/_app/richieste-interne/$richiestaId")({
   component: DettaglioRichiesta,
