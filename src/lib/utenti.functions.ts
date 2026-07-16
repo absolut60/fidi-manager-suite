@@ -15,6 +15,11 @@ const RUOLI_VALIDI = [
   "amministrazione",
   "direzione",
   "agente",
+  "richiedente",
+  "approvatore_richieste_liv1",
+  "approvatore_richieste_liv2",
+  "gestore_richieste",
+  "esecutore_richieste",
 ] as const;
 
 async function assertAgenteEsiste(codice: string) {
