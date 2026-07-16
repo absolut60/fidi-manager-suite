@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Plus, Paperclip, X, ChevronsUpDown } from "lucide-react";
 import { notifyRichiestaEvento } from "@/lib/richieste-email.functions";
+import { RICHIESTE_ALLEGATI_BUCKET as BUCKET, sanitizeFileName } from "@/components/richieste-interne/utils";
 
 
 type Tipo = "preventivo" | "attivita" | "acquisto";
@@ -22,12 +23,6 @@ const TIPI: Array<{ value: Tipo; label: string }> = [
   { value: "attivita", label: "Richiesta attività" },
   { value: "acquisto", label: "Acquisto materiali/servizi" },
 ];
-
-const BUCKET = "richieste-allegati";
-
-function sanitizeFileName(name: string) {
-  return name.replace(/[^a-zA-Z0-9._-]/g, "_");
-}
 function fmtSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;

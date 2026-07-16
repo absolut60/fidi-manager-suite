@@ -17,6 +17,7 @@ import { GestisciDialog, type GestisciTarget } from "@/components/richieste-inte
 import { NuovaRichiestaDialog } from "@/components/richieste-interne/nuova-richiesta-dialog";
 import { ADMIN_LABEL } from "@/components/richieste-interne/richieste-table";
 import { notifyRichiestaEvento } from "@/lib/richieste-email.functions";
+import { sanitizeFileName } from "@/components/richieste-interne/utils";
 
 
 
@@ -240,7 +241,7 @@ function DettaglioRichiesta() {
     e.target.value = "";
     if (!file || !r) return;
     setUploading(true);
-    const path = `${r.id}/${Date.now()}_${file.name}`;
+    const path = `${r.id}/${Date.now()}_${sanitizeFileName(file.name)}`;
     const { error: upErr } = await supabase.storage
       .from("richieste-allegati")
       .upload(path, file, { contentType: file.type || undefined });
