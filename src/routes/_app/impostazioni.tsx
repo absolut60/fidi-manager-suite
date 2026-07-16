@@ -6,6 +6,7 @@ import { Plus, Building2, Pencil, Trash2, Sliders, Save, Mail, AlertTriangle } f
 import { useServerFn } from "@tanstack/react-start";
 import { getCleanupRecuperoCounts, eseguiCleanupRecupero } from "@/lib/cleanup-recupero.functions";
 import { migrazioneRichiesteCreaUtenti } from "@/lib/migrazione-richieste.functions";
+import { testConnessioneRichieste } from "@/lib/test-connessione-richieste.functions";
 import { previewPromemoriaEmail } from "@/lib/promemoria-preview.functions";
 import { sendEmail, buildEmailTemplate } from "@/lib/send-email";
 import { toast } from "sonner";
@@ -905,9 +906,13 @@ function PromemoriaScadenzaCard() {
 
 function MigrazioneRichiesteCard() {
   const run = useServerFn(migrazioneRichiesteCreaUtenti);
+  const testConn = useServerFn(testConnessioneRichieste);
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<Awaited<ReturnType<typeof migrazioneRichiesteCreaUtenti>> | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<Awaited<ReturnType<typeof testConnessioneRichieste>> | null>(null);
+  const [testError, setTestError] = useState<string | null>(null);
 
   async function esegui() {
     setRunning(true);
@@ -926,6 +931,23 @@ function MigrazioneRichiesteCard() {
     }
   }
 
+  async function eseguiTest() {
+    setTesting(true);
+    setTestError(null);
+    setTestResult(null);
+    try {
+      const r = await testConn();
+      setTestResult(r);
+      toast.success("Test connessione completato");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setTestError(msg);
+      toast.error(msg);
+    } finally {
+      setTesting(false);
+    }
+  }
+
   return (
     <Card className="p-4 sm:p-5 border-dashed">
       <h2 className="font-semibold mb-1 flex items-center gap-2">
@@ -936,9 +958,14 @@ function MigrazioneRichiesteCard() {
         Aggiorna la tabella <code>migrazione_richieste_utenti</code> con gli UUID di destinazione.
         Idempotente: sicuro da rilanciare.
       </p>
-      <Button size="sm" onClick={esegui} disabled={running}>
-        {running ? "Esecuzione…" : "Esegui migrazione utenti"}
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" onClick={esegui} disabled={running}>
+          {running ? "Esecuzione…" : "Esegui migrazione utenti"}
+        </Button>
+        <Button size="sm" variant="outline" onClick={eseguiTest} disabled={testing}>
+          {testing ? "Test in corso…" : "Test connessione RICHIESTE"}
+        </Button>
+      </div>
       {error && (
         <div className="mt-3 text-xs text-destructive whitespace-pre-wrap break-all">{error}</div>
       )}
@@ -958,6 +985,44 @@ function MigrazioneRichiesteCard() {
               ))}
             </ul>
           </details>
+        </div>
+      )}
+      {testError && (
+        <div className="mt-3 text-xs text-destructive whitespace-pre-wrap break-all">
+          Test fallito: {testError}
+        </div>
+      )}
+      {testResult && (
+        <div className="mt-3 text-xs space-y-1 rounded border p-2 bg-muted/30">
+          <div className="font-medium">Risultato test connessione RICHIESTE</div>
+          <div>
+            <span className="text-muted-foreground">requests:</span>{" "}
+            {testResult.requestsError
+              ? <span className="text-destructive">errore — {testResult.requestsError}</span>
+              : <>{testResult.requestsCount} {testResult.requestsCount === 29 ? "✓" : "(atteso 29)"}</>}
+          </div>
+          <div>
+            <span className="text-muted-foreground">attachments:</span>{" "}
+            {testResult.attachmentsError
+              ? <span className="text-destructive">errore — {testResult.attachmentsError}</span>
+              : <>{testResult.attachmentsCount} {testResult.attachmentsCount === 57 ? "✓" : "(atteso 57)"}</>}
+          </div>
+          <div>
+            <span className="text-muted-foreground">storage richieste-allegati (cartelle radice):</span>{" "}
+            {testResult.storageError
+              ? <span className="text-destructive">errore — {testResult.storageError}</span>
+              : <>{testResult.storageFolders}</>}
+          </div>
+          {testResult.storageEntries && testResult.storageEntries.length > 0 && (
+            <details>
+              <summary className="cursor-pointer text-muted-foreground">
+                Entries radice ({testResult.storageEntries.length})
+              </summary>
+              <ul className="mt-1 font-mono text-[11px] max-h-40 overflow-auto">
+                {testResult.storageEntries.map((n, i) => <li key={i}>{n}</li>)}
+              </ul>
+            </details>
+          )}
         </div>
       )}
     </Card>
