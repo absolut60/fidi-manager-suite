@@ -260,6 +260,7 @@ export function buildRichiestaEmail(
   const html = wrapEmailHtml(corpo, input.sede, input.mittente, {
     useCid: input.useCid,
     senzaBande: true,
+    sottotitolo: "Richieste interne",
   });
   return { oggetto: buildOggetto(input.event, input.richiesta.title, input.richiesta.id), html };
 }
