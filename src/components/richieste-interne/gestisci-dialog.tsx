@@ -59,19 +59,24 @@ export function GestisciDialog({
     if (!target) return;
     setSaving(true);
     const now = new Date().toISOString();
-    const patch: Record<string, unknown> = {
+    const patch: {
+      admin_status: string;
+      admin_note: string | null;
+      admin_at: string;
+      admin_by_name: string;
+      sent_to_gestionale: boolean;
+      gestionale_ref: string | null;
+      gestionale_sent_at?: string | null;
+    } = {
       admin_status: status,
       admin_note: note.trim() || null,
       admin_at: now,
       admin_by_name: fullName,
       sent_to_gestionale: sentGest,
       gestionale_ref: sentGest ? (gestRef.trim() || null) : null,
-      gestionale_sent_at: sentGest
-        ? (target.sent_to_gestionale ? undefined : now)
-        : null,
     };
-    // Remove undefined so PostgREST doesn't touch gestionale_sent_at when already set
-    if (patch.gestionale_sent_at === undefined) delete patch.gestionale_sent_at;
+    if (!sentGest) patch.gestionale_sent_at = null;
+    else if (!target.sent_to_gestionale) patch.gestionale_sent_at = now;
 
     const { error } = await supabase
       .from("richieste_interne")
