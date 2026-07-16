@@ -223,8 +223,16 @@ export function RichiesteTable({
                       <TableCell>{fmtData(r.archived_at)}</TableCell>
                     </>
                   )}
-                  <TableCell>
-                    <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); openDetail(r.id); }}>Apri</Button>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center gap-1 justify-end">
+                      {onGestisci && (
+                        <Button size="sm" variant="outline" onClick={() => onGestisci(r)}>{gestisciLabel}</Button>
+                      )}
+                      {onRipristina && (
+                        <Button size="sm" variant="outline" onClick={() => onRipristina(r)}>↩ Ripristina</Button>
+                      )}
+                      <Button size="sm" variant="ghost" onClick={() => openDetail(r.id)}>Apri</Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               );
