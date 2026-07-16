@@ -396,7 +396,7 @@ export const migrazioneRichiesteDati = createServerFn({ method: "POST" })
       ok: true,
       fornitoriMigrati: fornRows.length,
       richiesteMigrate: reqRows.length,
-      richiesteSkipped: reqSkipped,
+      richiesteSorgente: reqSrc?.length ?? 0,
       messaggiMigrati: msgRows.length,
       allegatiMigrati: attRows.length,
       unmappedUuids: Array.from(unmapped),
