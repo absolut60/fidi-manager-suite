@@ -184,13 +184,22 @@ function DettaglioRichiesta() {
         : dialog.action === "approved"
           ? "dir_approved"
           : "dir_rejected";
-    void notifyRichiestaEvento({
-      data: {
-        event,
-        richiestaId: r.id,
-        actor: { id: uid, nome: fullName, email: user?.email ?? null },
-      },
-    }).catch((e) => console.error(`[email ${event}] fallito:`, e));
+    try {
+      const res = await notifyRichiestaEvento({
+        data: {
+          event,
+          richiestaId: r.id,
+          actor: { id: uid, nome: fullName, email: user?.email ?? null },
+        },
+      });
+      if (!res.ok) toast.warning(`Notifica non inviata: ${res.err ?? "errore sconosciuto"}`);
+      else if (res.sent === 0) toast.info(res.debug?.motivoZero ?? "Nessun destinatario da notificare");
+      else toast.success(`Notifica inviata a ${res.sent} destinatari`);
+    } catch (e) {
+      console.error(`[email ${event}] fallito:`, e);
+      toast.warning(`Notifica non inviata: ${e instanceof Error ? e.message : String(e)}`);
+    }
+
 
     toast.success("Decisione registrata");
     setDialog(null);
