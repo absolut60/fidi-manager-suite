@@ -44,7 +44,29 @@ const InputSchema = z.object({
 export const notifyRichiestaEvento = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: z.input<typeof InputSchema>) => InputSchema.parse(d))
-  .handler(async ({ data }): Promise<{ ok: boolean; sent: number; err?: string }> => {
+  .handler(async ({ data }): Promise<{
+    ok: boolean;
+    sent: number;
+    err?: string;
+    debug: {
+      event: string;
+      richiestaId: string;
+      destinatariRisolti: number;
+      destinatariFinali: number;
+      mittenteEscluso: boolean;
+      motivoZero?: string;
+      destinatari?: string[];
+    };
+  }> => {
+    const debug = {
+      event: data.event,
+      richiestaId: data.richiestaId,
+      destinatariRisolti: 0,
+      destinatariFinali: 0,
+      mittenteEscluso: false,
+      motivoZero: undefined as string | undefined,
+      destinatari: undefined as string[] | undefined,
+    };
     try {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { sendEmailViaEdge } = await import("@/lib/inngest/send-email.server");
