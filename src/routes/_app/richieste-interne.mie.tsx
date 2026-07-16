@@ -7,8 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowDown, ArrowUp, ArrowUpDown, Paperclip, Search } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, MessageSquare, Paperclip, Search } from "lucide-react";
 import { NuovaRichiestaDialog } from "@/components/richieste-interne/nuova-richiesta-dialog";
+import { useRichiesteNonLette } from "@/hooks/use-richieste-non-lette";
 
 export const Route = createFileRoute("/_app/richieste-interne/mie")({
   component: MieRichieste,
@@ -46,6 +47,7 @@ function MieRichieste() {
   const uid = user?.id ?? "";
   const navigate = useNavigate();
   const openDetail = (id: string) => navigate({ to: "/richieste-interne/$richiestaId", params: { richiestaId: id } });
+  const unreadIds = useRichiesteNonLette();
   const [filtro, setFiltro] = useState<FiltroStato>("tutte");
   const [q, setQ] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("updated_at");
@@ -156,7 +158,10 @@ function MieRichieste() {
               return (
                 <TableRow key={r.id} className="cursor-pointer hover:bg-muted/50" onClick={() => openDetail(r.id)}>
                   <TableCell>
-                    <div className="font-semibold">{r.title}</div>
+                    <div className={`flex items-center gap-1.5 ${unreadIds.has(r.id) ? "font-bold text-primary" : "font-semibold"}`}>
+                      {unreadIds.has(r.id) && <MessageSquare className="size-3.5 text-primary shrink-0" aria-label="Messaggi non letti" />}
+                      <span>{r.title}</span>
+                    </div>
                     {r.description && (
                       <div className="text-xs text-muted-foreground truncate max-w-[420px]">
                         {r.description.slice(0, 60)}{r.description.length > 60 ? "…" : ""}
