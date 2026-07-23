@@ -522,7 +522,13 @@ function ClientiPage() {
       );
     }
 
-    q = q.order(sortBy, { ascending: sortDir === "asc", nullsFirst: false });
+    // sortBy "scaduto"/"a_scadere" sono colonne virtuali (da scadenziarioMap):
+    // non esistono su clienti, quindi qui usiamo un order neutro (ragione_sociale)
+    // e l'ordinamento vero viene applicato dopo in memoria sugli id filtrati.
+    const isVirtualOrder = sortBy === "scaduto" || sortBy === "a_scadere";
+    const orderCol = isVirtualOrder ? "ragione_sociale" : sortBy;
+    const orderAsc = isVirtualOrder ? true : sortDir === "asc";
+    q = q.order(orderCol, { ascending: orderAsc, nullsFirst: false });
     return { q };
   }
 
