@@ -1293,10 +1293,10 @@ function ClientiPage() {
                   <TableHead>Punto vendita</TableHead>
                   <TableHead className="text-right"><SortHeader col="fido_gestionale" label="Fido attuale" align="right" /></TableHead>
                   <TableHead className="text-right"><SortHeader col="fido_residuo" label="Fido residuo" align="right" /></TableHead>
-                  <TableHead className="whitespace-nowrap">Scaduto</TableHead>
-                  <TableHead className="whitespace-nowrap">A scadere</TableHead>
-                  <TableHead>Privacy</TableHead>
-                  <TableHead>Assic.</TableHead>
+                  <TableHead className="whitespace-nowrap"><SortHeader col="scaduto" label="Scaduto" /></TableHead>
+                  <TableHead className="whitespace-nowrap"><SortHeader col="a_scadere" label="A scadere" /></TableHead>
+                  <TableHead><SortHeader col="privacy_firmata" label="Privacy" /></TableHead>
+                  <TableHead><SortHeader col="assicurazione_attiva" label="Assic." /></TableHead>
                   <TableHead>Stato</TableHead>
 
                   <TableHead className="w-12"></TableHead>
