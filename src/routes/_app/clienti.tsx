@@ -535,17 +535,59 @@ function ClientiPage() {
 
   const classifReady = (semaforoFiltro === "tutti" && statoFido.size === 0) || !!classifList;
   const scadReady = scadenziarioFiltro === "tutti" || !!scadenziarioMap;
+  const isVirtualSort = sortBy === "scaduto" || sortBy === "a_scadere";
+  // Ordinamento virtuale su Scaduto/A scadere richiede scadenziarioMap completa.
+  const virtualSortReady = !isVirtualSort || !!scadenziarioMap;
 
   const { data: clientiResp, isLoading } = useQuery({
     queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize, advApplied, sortBy, sortDir, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
     queryFn: async () => {
+      // Ramo ordinamento virtuale (Scaduto / A scadere): PostgREST non puo'
+      // ordinare su un valore che non e' nella query. Prendiamo tutti gli id
+      // che passano i filtri, li ordiniamo in memoria via scadenziarioMap
+      // (clienti senza scadenze = 0), poi carichiamo solo la finestra pagina.
+      if (isVirtualSort) {
+        const builtIds = buildBaseQuery("id", undefined);
+        if ("empty" in builtIds) return { rows: [], count: 0 };
+        const allIds: string[] = [];
+        let off = 0;
+        const size = 1000;
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          const { data, error } = await builtIds.q.range(off, off + size - 1);
+          if (error) throw error;
+          const batch = (data ?? []) as Array<{ id: string }>;
+          for (const r of batch) allIds.push(r.id);
+          if (batch.length < size) break;
+          off += size;
+        }
+        const key = sortBy === "scaduto" ? "totale_scaduto" : "totale_a_scadere";
+        const dir = sortDir === "asc" ? 1 : -1;
+        const sortedIds = [...allIds].sort((a, b) => {
+          const va = scadenziarioMap?.get(a)?.[key] ?? 0;
+          const vb = scadenziarioMap?.get(b)?.[key] ?? 0;
+          if (va === vb) return 0;
+          return va < vb ? -1 * dir : 1 * dir;
+        });
+        const pageIds = sortedIds.slice(from, to + 1);
+        if (pageIds.length === 0) return { rows: [], count: sortedIds.length };
+        const { data, error } = await supabase
+          .from("clienti")
+          .select("*, stores(nome, codice)")
+          .in("id", pageIds);
+        if (error) throw error;
+        const byId = new Map<string, any>((data ?? []).map((r: any) => [r.id, r]));
+        const rows = pageIds.map((id) => byId.get(id)).filter(Boolean);
+        return { rows, count: sortedIds.length };
+      }
+
       const built = buildBaseQuery("*, stores(nome, codice)", "exact");
       if ("empty" in built) return { rows: [], count: 0 };
       const { data, error, count } = await built.q.range(from, to);
       if (error) throw error;
       return { rows: data ?? [], count: count ?? (data?.length ?? 0) };
     },
-    enabled: isListRoute && scadReady && classifReady && isConfigReady,
+    enabled: isListRoute && scadReady && classifReady && isConfigReady && virtualSortReady,
   });
   const clienti = (clientiResp?.rows ?? []) as any[];
   const totaleClienti = clientiResp?.count ?? 0;
