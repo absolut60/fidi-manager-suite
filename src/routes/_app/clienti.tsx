@@ -556,7 +556,7 @@ function ClientiPage() {
         while (true) {
           const { data, error } = await builtIds.q.range(off, off + size - 1);
           if (error) throw error;
-          const batch = (data ?? []) as Array<{ id: string }>;
+          const batch = ((data ?? []) as unknown) as Array<{ id: string }>;
           for (const r of batch) allIds.push(r.id);
           if (batch.length < size) break;
           off += size;
