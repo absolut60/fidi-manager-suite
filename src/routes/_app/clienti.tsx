@@ -547,20 +547,22 @@ function ClientiPage() {
       // che passano i filtri, li ordiniamo in memoria via scadenziarioMap
       // (clienti senza scadenze = 0), poi carichiamo solo la finestra pagina.
       if (isVirtualSort) {
-        const builtIds = buildBaseQuery("id", undefined);
-        if ("empty" in builtIds) return { rows: [], count: 0 };
         const allIds: string[] = [];
         let off = 0;
         const size = 1000;
         // eslint-disable-next-line no-constant-condition
         while (true) {
-          const { data, error } = await builtIds.q.range(off, off + size - 1);
+          const built = buildBaseQuery("id", undefined);
+          if ("empty" in built) break;
+          const { data, error } = await built.q.range(off, off + size - 1);
           if (error) throw error;
           const batch = ((data ?? []) as unknown) as Array<{ id: string }>;
           for (const r of batch) allIds.push(r.id);
           if (batch.length < size) break;
           off += size;
+          if (off > 50000) break; // guardia
         }
+
         const key = sortBy === "scaduto" ? "totale_scaduto" : "totale_a_scadere";
         const dir = sortDir === "asc" ? 1 : -1;
         const sortedIds = [...allIds].sort((a, b) => {
