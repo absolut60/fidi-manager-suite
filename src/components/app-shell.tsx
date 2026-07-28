@@ -202,6 +202,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     "incassi",
     "recupero",
     "richieste_interne",
+    "marketing",
     "strumenti",
     "admin",
   ];
