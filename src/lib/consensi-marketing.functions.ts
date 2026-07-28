@@ -180,9 +180,8 @@ export const salvaConsensiMarketing = createServerFn({ method: "POST" })
         _tipo_consenso: tipo,
         _valore: data.consensi[tipo],
         _origine: "link_pubblico",
-        _operatore_id: null,
         _prova_path: pdfPath,
-        _ip: ip,
+        ...(ip ? { _ip: ip } : {}),
         _note: `Firmato via link pubblico da "${data.firmaNomeDichiarato}"`,
       });
       if (eReg) throw new Error(`registra_consenso(${tipo}): ${eReg.message}`);
