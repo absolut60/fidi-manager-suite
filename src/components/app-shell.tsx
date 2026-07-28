@@ -110,6 +110,7 @@ const GROUP_STYLES: Record<Exclude<NavGroupKey, "generale">, GroupStyle> = {
   incassi:            { bar: "#1d9e75", icon: Banknote },
   recupero:           { bar: "#d85a30", icon: AlertTriangle },
   richieste_interne:  { bar: "#378add", icon: ClipboardList },
+  marketing:          { bar: "#c94f8f", icon: Sparkles },
   strumenti:          { bar: "#888780", icon: Wrench },
   admin:              { bar: "#888780", icon: Settings },
 };
@@ -119,6 +120,7 @@ const GROUP_LABELS: Record<Exclude<NavGroupKey, "generale">, string> = {
   incassi: "Incassi",
   recupero: "Recupero crediti",
   richieste_interne: "Richieste interne",
+  marketing: "Marketing",
   strumenti: "Strumenti",
   admin: "Amministrazione",
 };
