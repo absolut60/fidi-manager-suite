@@ -14,6 +14,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as FirmaPrivacyTokenRouteImport } from './routes/firma-privacy.$token'
+import { Route as ConsensiTokenRouteImport } from './routes/consensi.$token'
 import { Route as AppWhatsappRouteImport } from './routes/_app/whatsapp'
 import { Route as AppUtentiRouteImport } from './routes/_app/utenti'
 import { Route as AppTemplateLetteraRouteImport } from './routes/_app/template-lettera'
@@ -78,6 +79,11 @@ const IndexRoute = IndexRouteImport.update({
 const FirmaPrivacyTokenRoute = FirmaPrivacyTokenRouteImport.update({
   id: '/firma-privacy/$token',
   path: '/firma-privacy/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConsensiTokenRoute = ConsensiTokenRouteImport.update({
+  id: '/consensi/$token',
+  path: '/consensi/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppWhatsappRoute = AppWhatsappRouteImport.update({
@@ -331,6 +337,7 @@ export interface FileRoutesByFullPath {
   '/template-lettera': typeof AppTemplateLetteraRoute
   '/utenti': typeof AppUtentiRoute
   '/whatsapp': typeof AppWhatsappRoute
+  '/consensi/$token': typeof ConsensiTokenRoute
   '/firma-privacy/$token': typeof FirmaPrivacyTokenRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -378,6 +385,7 @@ export interface FileRoutesByTo {
   '/template-lettera': typeof AppTemplateLetteraRoute
   '/utenti': typeof AppUtentiRoute
   '/whatsapp': typeof AppWhatsappRoute
+  '/consensi/$token': typeof ConsensiTokenRoute
   '/firma-privacy/$token': typeof FirmaPrivacyTokenRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -427,6 +435,7 @@ export interface FileRoutesById {
   '/_app/template-lettera': typeof AppTemplateLetteraRoute
   '/_app/utenti': typeof AppUtentiRoute
   '/_app/whatsapp': typeof AppWhatsappRoute
+  '/consensi/$token': typeof ConsensiTokenRoute
   '/firma-privacy/$token': typeof FirmaPrivacyTokenRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -476,6 +485,7 @@ export interface FileRouteTypes {
     | '/template-lettera'
     | '/utenti'
     | '/whatsapp'
+    | '/consensi/$token'
     | '/firma-privacy/$token'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
@@ -523,6 +533,7 @@ export interface FileRouteTypes {
     | '/template-lettera'
     | '/utenti'
     | '/whatsapp'
+    | '/consensi/$token'
     | '/firma-privacy/$token'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
@@ -571,6 +582,7 @@ export interface FileRouteTypes {
     | '/_app/template-lettera'
     | '/_app/utenti'
     | '/_app/whatsapp'
+    | '/consensi/$token'
     | '/firma-privacy/$token'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
@@ -596,6 +608,7 @@ export interface RootRouteChildren {
   McpRoute: typeof McpRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  ConsensiTokenRoute: typeof ConsensiTokenRoute
   FirmaPrivacyTokenRoute: typeof FirmaPrivacyTokenRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -639,6 +652,13 @@ declare module '@tanstack/react-router' {
       path: '/firma-privacy/$token'
       fullPath: '/firma-privacy/$token'
       preLoaderRoute: typeof FirmaPrivacyTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/consensi/$token': {
+      id: '/consensi/$token'
+      path: '/consensi/$token'
+      fullPath: '/consensi/$token'
+      preLoaderRoute: typeof ConsensiTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/whatsapp': {
@@ -1035,6 +1055,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
+  ConsensiTokenRoute: ConsensiTokenRoute,
   FirmaPrivacyTokenRoute: FirmaPrivacyTokenRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
