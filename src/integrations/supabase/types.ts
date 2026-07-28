@@ -4113,6 +4113,20 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      registra_consensi_batch: {
+        Args: {
+          _contatto_id: string
+          _ip?: string
+          _marketing_diretto: boolean
+          _marketing_media: boolean
+          _note?: string
+          _operatore_id?: string
+          _origine: string
+          _profilazione: boolean
+          _prova_path?: string
+        }
+        Returns: undefined
+      }
       registra_consenso: {
         Args: {
           _contatto_id: string
