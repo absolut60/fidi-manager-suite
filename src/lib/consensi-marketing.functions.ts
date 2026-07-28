@@ -4,7 +4,7 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { generaPdfConsensiMarketing } from "./consensi-pdf";
-import type { TipoConsenso } from "./consensi-testi";
+
 
 
 
