@@ -57,7 +57,7 @@ type NavItem = {
   to: string;
   label: string;
   icon: typeof LayoutDashboard;
-  roles?: Array<"admin" | "approvatore" | "store_manager" | "amministrazione">;
+  roles?: Array<"admin" | "approvatore" | "store_manager" | "amministrazione" | "direzione">;
   group: NavGroupKey;
   richiesteScope?: RichiesteScope;
   exact?: boolean;
