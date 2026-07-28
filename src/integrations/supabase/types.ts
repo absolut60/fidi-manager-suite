@@ -2565,6 +2565,36 @@ export type Database = {
           },
         ]
       }
+      segmenti_marketing: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          descrizione: string | null
+          filtri: Json
+          id: string
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          descrizione?: string | null
+          filtri: Json
+          id?: string
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          descrizione?: string | null
+          filtri?: Json
+          id?: string
+          nome?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       snapshot_scaduto: {
         Row: {
           created_at: string
