@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 import { RuoloSelect } from "@/components/ruolo-select";
+import { INFORMATIVA_FULL, CONSENSO_TESTI } from "@/lib/consensi-testi";
 
 export type ClienteInfoWizard = {
   id: string;
