@@ -4,9 +4,9 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { generaPdfConsensiMarketing } from "./consensi-pdf";
-import type { TipoConsenso } from "./consensi-testi";
 
-const TIPI: TipoConsenso[] = ["marketing_diretto", "marketing_media", "profilazione"];
+
+
 
 /**
  * Genera un token dedicato per il link di raccolta consensi marketing.
@@ -172,20 +172,19 @@ export const salvaConsensiMarketing = createServerFn({ method: "POST" })
       .update({ firma_nome_dichiarato: data.firmaNomeDichiarato })
       .eq("id", ct.id);
 
-    // 3) Registra i tre consensi tramite la funzione SECURITY DEFINER
+    // 3) Registra i tre consensi in un'unica transazione atomica
     //    (aggiorna anche i flag di stato attuale sul contatto)
-    for (const tipo of TIPI) {
-      const { error: eReg } = await supabaseAdmin.rpc("registra_consenso", {
-        _contatto_id: ct.id,
-        _tipo_consenso: tipo,
-        _valore: data.consensi[tipo],
-        _origine: "link_pubblico",
-        _prova_path: pdfPath,
-        ...(ip ? { _ip: ip } : {}),
-        _note: `Firmato via link pubblico da "${data.firmaNomeDichiarato}"`,
-      });
-      if (eReg) throw new Error(`registra_consenso(${tipo}): ${eReg.message}`);
-    }
+    const { error: eReg } = await supabaseAdmin.rpc("registra_consensi_batch", {
+      _contatto_id: ct.id,
+      _marketing_diretto: data.consensi.marketing_diretto,
+      _marketing_media: data.consensi.marketing_media,
+      _profilazione: data.consensi.profilazione,
+      _origine: "link_pubblico",
+      _prova_path: pdfPath,
+      ...(ip ? { _ip: ip } : {}),
+      _note: `Firmato via link pubblico da "${data.firmaNomeDichiarato}"`,
+    });
+    if (eReg) throw new Error(`registra_consensi_batch: ${eReg.message}`);
 
     // 4) Consuma il token consensi (senza toccare la privacy-base)
     await supabaseAdmin
