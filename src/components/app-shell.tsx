@@ -146,6 +146,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isApprovatore = userRoles.some((r) => r.startsWith("approvatore_liv"));
   const isStoreManager = hasUserRole("store_manager");
   const isAmministrazione = hasUserRole("amministrazione");
+  const isDirezione = hasUserRole("direzione");
   const isAgente = hasUserRole("agente");
   const isOnlyAgente =
     isAgente && !isAdmin && !isApprovatore && !isStoreManager && !isAmministrazione && !hasUserRole("direzione");
