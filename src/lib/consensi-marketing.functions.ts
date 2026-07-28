@@ -6,7 +6,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { generaPdfConsensiMarketing } from "./consensi-pdf";
 import type { TipoConsenso } from "./consensi-testi";
 
-const TIPI: TipoConsenso[] = ["marketing_diretto", "marketing_media", "profilazione"];
+
 
 /**
  * Genera un token dedicato per il link di raccolta consensi marketing.
