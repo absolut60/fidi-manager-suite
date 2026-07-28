@@ -49,6 +49,7 @@ import { Route as AppRichiesteInterneGestioneRouteImport } from './routes/_app/r
 import { Route as AppRichiesteInterneArchivioRouteImport } from './routes/_app/richieste-interne.archivio'
 import { Route as AppRichiesteInterneApprovaRouteImport } from './routes/_app/richieste-interne.approva'
 import { Route as AppRichiesteInterneRichiestaIdRouteImport } from './routes/_app/richieste-interne.$richiestaId'
+import { Route as AppMarketingSegmentiRouteImport } from './routes/_app/marketing.segmenti'
 import { Route as AppClientiClienteIdRouteImport } from './routes/_app/clienti.$clienteId'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
@@ -266,6 +267,11 @@ const AppRichiesteInterneRichiestaIdRoute =
     path: '/richieste-interne/$richiestaId',
     getParentRoute: () => AppRoute,
   } as any)
+const AppMarketingSegmentiRoute = AppMarketingSegmentiRouteImport.update({
+  id: '/marketing/segmenti',
+  path: '/marketing/segmenti',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppClientiClienteIdRoute = AppClientiClienteIdRouteImport.update({
   id: '/$clienteId',
   path: '/$clienteId',
@@ -329,6 +335,7 @@ export interface FileRoutesByFullPath {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
+  '/marketing/segmenti': typeof AppMarketingSegmentiRoute
   '/richieste-interne/$richiestaId': typeof AppRichiesteInterneRichiestaIdRoute
   '/richieste-interne/approva': typeof AppRichiesteInterneApprovaRoute
   '/richieste-interne/archivio': typeof AppRichiesteInterneArchivioRoute
@@ -375,6 +382,7 @@ export interface FileRoutesByTo {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
+  '/marketing/segmenti': typeof AppMarketingSegmentiRoute
   '/richieste-interne/$richiestaId': typeof AppRichiesteInterneRichiestaIdRoute
   '/richieste-interne/approva': typeof AppRichiesteInterneApprovaRoute
   '/richieste-interne/archivio': typeof AppRichiesteInterneArchivioRoute
@@ -423,6 +431,7 @@ export interface FileRoutesById {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_app/clienti/$clienteId': typeof AppClientiClienteIdRoute
+  '/_app/marketing/segmenti': typeof AppMarketingSegmentiRoute
   '/_app/richieste-interne/$richiestaId': typeof AppRichiesteInterneRichiestaIdRoute
   '/_app/richieste-interne/approva': typeof AppRichiesteInterneApprovaRoute
   '/_app/richieste-interne/archivio': typeof AppRichiesteInterneArchivioRoute
@@ -471,6 +480,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/clienti/$clienteId'
+    | '/marketing/segmenti'
     | '/richieste-interne/$richiestaId'
     | '/richieste-interne/approva'
     | '/richieste-interne/archivio'
@@ -517,6 +527,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/clienti/$clienteId'
+    | '/marketing/segmenti'
     | '/richieste-interne/$richiestaId'
     | '/richieste-interne/approva'
     | '/richieste-interne/archivio'
@@ -564,6 +575,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/_app/clienti/$clienteId'
+    | '/_app/marketing/segmenti'
     | '/_app/richieste-interne/$richiestaId'
     | '/_app/richieste-interne/approva'
     | '/_app/richieste-interne/archivio'
@@ -874,6 +886,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRichiesteInterneRichiestaIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/marketing/segmenti': {
+      id: '/_app/marketing/segmenti'
+      path: '/marketing/segmenti'
+      fullPath: '/marketing/segmenti'
+      preLoaderRoute: typeof AppMarketingSegmentiRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/clienti/$clienteId': {
       id: '/_app/clienti/$clienteId'
       path: '/$clienteId'
@@ -961,6 +980,7 @@ interface AppRouteChildren {
   AppTemplateLetteraRoute: typeof AppTemplateLetteraRoute
   AppUtentiRoute: typeof AppUtentiRoute
   AppWhatsappRoute: typeof AppWhatsappRoute
+  AppMarketingSegmentiRoute: typeof AppMarketingSegmentiRoute
   AppRichiesteInterneRichiestaIdRoute: typeof AppRichiesteInterneRichiestaIdRoute
   AppRichiesteInterneApprovaRoute: typeof AppRichiesteInterneApprovaRoute
   AppRichiesteInterneArchivioRoute: typeof AppRichiesteInterneArchivioRoute
@@ -995,6 +1015,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppTemplateLetteraRoute: AppTemplateLetteraRoute,
   AppUtentiRoute: AppUtentiRoute,
   AppWhatsappRoute: AppWhatsappRoute,
+  AppMarketingSegmentiRoute: AppMarketingSegmentiRoute,
   AppRichiesteInterneRichiestaIdRoute: AppRichiesteInterneRichiestaIdRoute,
   AppRichiesteInterneApprovaRoute: AppRichiesteInterneApprovaRoute,
   AppRichiesteInterneArchivioRoute: AppRichiesteInterneArchivioRoute,

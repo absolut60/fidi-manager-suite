@@ -31,6 +31,7 @@ import {
   Wrench,
   ChevronDown,
   ChevronRight,
+  Sparkles,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { LOGO_MADE_SIDEBAR_BASE64 } from "@/lib/logo-made-sidebar-base64";
@@ -47,7 +48,8 @@ type NavGroupKey =
   | "recupero"
   | "strumenti"
   | "admin"
-  | "richieste_interne";
+  | "richieste_interne"
+  | "marketing";
 
 type RichiesteScope = "all" | "manage" | "approve" | "gestione";
 
@@ -55,7 +57,7 @@ type NavItem = {
   to: string;
   label: string;
   icon: typeof LayoutDashboard;
-  roles?: Array<"admin" | "approvatore" | "store_manager" | "amministrazione">;
+  roles?: Array<"admin" | "approvatore" | "store_manager" | "amministrazione" | "direzione">;
   group: NavGroupKey;
   richiesteScope?: RichiesteScope;
   exact?: boolean;
@@ -89,6 +91,8 @@ const NAV: NavItem[] = [
   { to: "/richieste-interne/gestione", label: "Gestione", icon: ClipboardCheck, group: "richieste_interne", richiesteScope: "gestione" },
   { to: "/richieste-interne/tutte", label: "Tutte le richieste", icon: FileSpreadsheet, group: "richieste_interne", richiesteScope: "manage" },
   { to: "/richieste-interne/archivio", label: "Archivio", icon: ScrollText, group: "richieste_interne", richiesteScope: "manage" },
+  // MARKETING
+  { to: "/marketing/segmenti", label: "Segmenti", icon: Sparkles, roles: ["admin", "amministrazione", "direzione"], group: "marketing" },
   // STRUMENTI
   { to: "/import-export", label: "Import / Export", icon: FileSpreadsheet, roles: ["admin", "amministrazione"], group: "strumenti" },
   { to: "/whatsapp", label: "WhatsApp", icon: MessageCircle, roles: ["admin"], group: "strumenti" },
@@ -108,6 +112,7 @@ const GROUP_STYLES: Record<Exclude<NavGroupKey, "generale">, GroupStyle> = {
   incassi:            { bar: "#1d9e75", icon: Banknote },
   recupero:           { bar: "#d85a30", icon: AlertTriangle },
   richieste_interne:  { bar: "#378add", icon: ClipboardList },
+  marketing:          { bar: "#c94f8f", icon: Sparkles },
   strumenti:          { bar: "#888780", icon: Wrench },
   admin:              { bar: "#888780", icon: Settings },
 };
@@ -117,6 +122,7 @@ const GROUP_LABELS: Record<Exclude<NavGroupKey, "generale">, string> = {
   incassi: "Incassi",
   recupero: "Recupero crediti",
   richieste_interne: "Richieste interne",
+  marketing: "Marketing",
   strumenti: "Strumenti",
   admin: "Amministrazione",
 };
@@ -140,6 +146,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isApprovatore = userRoles.some((r) => r.startsWith("approvatore_liv"));
   const isStoreManager = hasUserRole("store_manager");
   const isAmministrazione = hasUserRole("amministrazione");
+  const isDirezione = hasUserRole("direzione");
   const isAgente = hasUserRole("agente");
   const isOnlyAgente =
     isAgente && !isAdmin && !isApprovatore && !isStoreManager && !isAmministrazione && !hasUserRole("direzione");
@@ -185,6 +192,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (item.roles.includes("approvatore") && (isAdmin || isApprovatore)) return true;
     if (item.roles.includes("store_manager") && (isAdmin || isApprovatore || isStoreManager)) return true;
     if (item.roles.includes("amministrazione") && isAmministrazione) return true;
+    if (item.roles.includes("direzione") && isDirezione) return true;
     return false;
   });
 
@@ -194,6 +202,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     "incassi",
     "recupero",
     "richieste_interne",
+    "marketing",
     "strumenti",
     "admin",
   ];
