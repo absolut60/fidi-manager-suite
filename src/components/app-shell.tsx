@@ -48,7 +48,8 @@ type NavGroupKey =
   | "recupero"
   | "strumenti"
   | "admin"
-  | "richieste_interne";
+  | "richieste_interne"
+  | "marketing";
 
 type RichiesteScope = "all" | "manage" | "approve" | "gestione";
 
