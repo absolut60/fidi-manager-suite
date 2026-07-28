@@ -91,6 +91,8 @@ const NAV: NavItem[] = [
   { to: "/richieste-interne/gestione", label: "Gestione", icon: ClipboardCheck, group: "richieste_interne", richiesteScope: "gestione" },
   { to: "/richieste-interne/tutte", label: "Tutte le richieste", icon: FileSpreadsheet, group: "richieste_interne", richiesteScope: "manage" },
   { to: "/richieste-interne/archivio", label: "Archivio", icon: ScrollText, group: "richieste_interne", richiesteScope: "manage" },
+  // MARKETING
+  { to: "/marketing/segmenti", label: "Segmenti", icon: Sparkles, roles: ["admin", "amministrazione"], group: "marketing" },
   // STRUMENTI
   { to: "/import-export", label: "Import / Export", icon: FileSpreadsheet, roles: ["admin", "amministrazione"], group: "strumenti" },
   { to: "/whatsapp", label: "WhatsApp", icon: MessageCircle, roles: ["admin"], group: "strumenti" },
