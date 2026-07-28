@@ -33,6 +33,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useConfig, useConfigReady, isClienteAttivo } from "@/hooks/use-config";
 import { CondizionePagamentoSelect } from "@/components/condizione-pagamento-select";
 import { CategoriaSelect } from "@/components/categoria-select";
+import { INFORMATIVA_FULL, CONSENSO_TESTI } from "@/lib/consensi-testi";
 
 export const Route = createFileRoute("/_app/clienti")({
   component: ClientiPage,
