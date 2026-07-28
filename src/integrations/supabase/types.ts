@@ -1171,6 +1171,8 @@ export type Database = {
           cliente_id: string
           codice_fiscale: string | null
           cognome: string | null
+          consensi_token: string | null
+          consensi_token_expires_at: string | null
           consenso_marketing_diretto: boolean
           consenso_marketing_media: boolean
           consenso_profilazione: boolean
@@ -1178,6 +1180,7 @@ export type Database = {
           data_firma: string | null
           data_nascita: string | null
           email: string | null
+          firma_nome_dichiarato: string | null
           firma_url: string | null
           id: string
           luogo_nascita: string | null
@@ -1200,6 +1203,8 @@ export type Database = {
           cliente_id: string
           codice_fiscale?: string | null
           cognome?: string | null
+          consensi_token?: string | null
+          consensi_token_expires_at?: string | null
           consenso_marketing_diretto?: boolean
           consenso_marketing_media?: boolean
           consenso_profilazione?: boolean
@@ -1207,6 +1212,7 @@ export type Database = {
           data_firma?: string | null
           data_nascita?: string | null
           email?: string | null
+          firma_nome_dichiarato?: string | null
           firma_url?: string | null
           id?: string
           luogo_nascita?: string | null
@@ -1229,6 +1235,8 @@ export type Database = {
           cliente_id?: string
           codice_fiscale?: string | null
           cognome?: string | null
+          consensi_token?: string | null
+          consensi_token_expires_at?: string | null
           consenso_marketing_diretto?: boolean
           consenso_marketing_media?: boolean
           consenso_profilazione?: boolean
@@ -1236,6 +1244,7 @@ export type Database = {
           data_firma?: string | null
           data_nascita?: string | null
           email?: string | null
+          firma_nome_dichiarato?: string | null
           firma_url?: string | null
           id?: string
           luogo_nascita?: string | null
