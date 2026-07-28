@@ -1094,6 +1094,77 @@ export type Database = {
         }
         Relationships: []
       }
+      consensi_log: {
+        Row: {
+          cliente_id: string | null
+          contatto_id: string
+          created_at: string
+          id: string
+          ip_address: string | null
+          note: string | null
+          operatore_id: string | null
+          origine: string
+          prova_path: string | null
+          tipo_consenso: string
+          valore: boolean
+        }
+        Insert: {
+          cliente_id?: string | null
+          contatto_id: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          note?: string | null
+          operatore_id?: string | null
+          origine: string
+          prova_path?: string | null
+          tipo_consenso: string
+          valore: boolean
+        }
+        Update: {
+          cliente_id?: string | null
+          contatto_id?: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          note?: string | null
+          operatore_id?: string | null
+          origine?: string
+          prova_path?: string | null
+          tipo_consenso?: string
+          valore?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consensi_log_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consensi_log_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti_con_rischio"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consensi_log_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "consensi_log_contatto_id_fkey"
+            columns: ["contatto_id"]
+            isOneToOne: false
+            referencedRelation: "contatti"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contatti: {
         Row: {
           cellulare: string | null
@@ -4032,6 +4103,19 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      registra_consenso: {
+        Args: {
+          _contatto_id: string
+          _ip?: string
+          _note?: string
+          _operatore_id?: string
+          _origine: string
+          _prova_path?: string
+          _tipo_consenso: string
+          _valore: boolean
+        }
+        Returns: string
       }
       rimuovi_orfani_scadenze: {
         Args: { _importazione_id: string }
