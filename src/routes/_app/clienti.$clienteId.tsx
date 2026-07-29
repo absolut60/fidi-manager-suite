@@ -1260,9 +1260,9 @@ function ContattoCard({
       <div className="mt-3 pt-3 border-t">
         <p className="text-xs font-medium text-muted-foreground mb-2">Consensi privacy</p>
         <div className="flex flex-wrap gap-1.5">
-          <ConsensoBadge ok={!!contatto.consenso_profilazione} label="Profilazione" />
-          <ConsensoBadge ok={!!contatto.consenso_marketing_media} label="Marketing" />
-          <ConsensoBadge ok={!!contatto.consenso_marketing_diretto} label="WhatsApp" />
+          <ConsensoBadge ok={!!contatto.consenso_profilazione} label={CONSENSO_LABEL.profilazione} />
+          <ConsensoBadge ok={!!contatto.consenso_marketing_media} label={CONSENSO_LABEL.marketing_media} />
+          <ConsensoBadge ok={!!contatto.consenso_marketing_diretto} label={CONSENSO_LABEL.marketing_diretto} />
         </div>
         {contatto.data_firma && (
           <p className="text-xs text-muted-foreground mt-2">
