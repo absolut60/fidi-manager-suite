@@ -539,6 +539,8 @@ function ClienteDetail() {
             </Dialog>
           </div>
 
+          <LinkFirmaPrivacy clienteId={cliente.id} />
+
           {loadingContatti ? (
             <div className="space-y-2">
               {Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-24 w-full" />)}
