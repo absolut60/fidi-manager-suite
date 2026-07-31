@@ -52,6 +52,7 @@ import { Route as AppRichiesteInterneArchivioRouteImport } from './routes/_app/r
 import { Route as AppRichiesteInterneApprovaRouteImport } from './routes/_app/richieste-interne.approva'
 import { Route as AppRichiesteInterneRichiestaIdRouteImport } from './routes/_app/richieste-interne.$richiestaId'
 import { Route as AppMarketingSegmentiRouteImport } from './routes/_app/marketing.segmenti'
+import { Route as AppMarketingCampagneRouteImport } from './routes/_app/marketing.campagne'
 import { Route as AppClientiClienteIdRouteImport } from './routes/_app/clienti.$clienteId'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
@@ -284,6 +285,11 @@ const AppMarketingSegmentiRoute = AppMarketingSegmentiRouteImport.update({
   path: '/marketing/segmenti',
   getParentRoute: () => AppRoute,
 } as any)
+const AppMarketingCampagneRoute = AppMarketingCampagneRouteImport.update({
+  id: '/marketing/campagne',
+  path: '/marketing/campagne',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppClientiClienteIdRoute = AppClientiClienteIdRouteImport.update({
   id: '/$clienteId',
   path: '/$clienteId',
@@ -349,6 +355,7 @@ export interface FileRoutesByFullPath {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
+  '/marketing/campagne': typeof AppMarketingCampagneRoute
   '/marketing/segmenti': typeof AppMarketingSegmentiRoute
   '/richieste-interne/$richiestaId': typeof AppRichiesteInterneRichiestaIdRoute
   '/richieste-interne/approva': typeof AppRichiesteInterneApprovaRoute
@@ -398,6 +405,7 @@ export interface FileRoutesByTo {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
+  '/marketing/campagne': typeof AppMarketingCampagneRoute
   '/marketing/segmenti': typeof AppMarketingSegmentiRoute
   '/richieste-interne/$richiestaId': typeof AppRichiesteInterneRichiestaIdRoute
   '/richieste-interne/approva': typeof AppRichiesteInterneApprovaRoute
@@ -449,6 +457,7 @@ export interface FileRoutesById {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_app/clienti/$clienteId': typeof AppClientiClienteIdRoute
+  '/_app/marketing/campagne': typeof AppMarketingCampagneRoute
   '/_app/marketing/segmenti': typeof AppMarketingSegmentiRoute
   '/_app/richieste-interne/$richiestaId': typeof AppRichiesteInterneRichiestaIdRoute
   '/_app/richieste-interne/approva': typeof AppRichiesteInterneApprovaRoute
@@ -500,6 +509,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/clienti/$clienteId'
+    | '/marketing/campagne'
     | '/marketing/segmenti'
     | '/richieste-interne/$richiestaId'
     | '/richieste-interne/approva'
@@ -549,6 +559,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/clienti/$clienteId'
+    | '/marketing/campagne'
     | '/marketing/segmenti'
     | '/richieste-interne/$richiestaId'
     | '/richieste-interne/approva'
@@ -599,6 +610,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/_app/clienti/$clienteId'
+    | '/_app/marketing/campagne'
     | '/_app/marketing/segmenti'
     | '/_app/richieste-interne/$richiestaId'
     | '/_app/richieste-interne/approva'
@@ -933,6 +945,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppMarketingSegmentiRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/marketing/campagne': {
+      id: '/_app/marketing/campagne'
+      path: '/marketing/campagne'
+      fullPath: '/marketing/campagne'
+      preLoaderRoute: typeof AppMarketingCampagneRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/clienti/$clienteId': {
       id: '/_app/clienti/$clienteId'
       path: '/$clienteId'
@@ -1020,6 +1039,7 @@ interface AppRouteChildren {
   AppTemplateLetteraRoute: typeof AppTemplateLetteraRoute
   AppUtentiRoute: typeof AppUtentiRoute
   AppWhatsappRoute: typeof AppWhatsappRoute
+  AppMarketingCampagneRoute: typeof AppMarketingCampagneRoute
   AppMarketingSegmentiRoute: typeof AppMarketingSegmentiRoute
   AppRichiesteInterneRichiestaIdRoute: typeof AppRichiesteInterneRichiestaIdRoute
   AppRichiesteInterneApprovaRoute: typeof AppRichiesteInterneApprovaRoute
@@ -1055,6 +1075,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppTemplateLetteraRoute: AppTemplateLetteraRoute,
   AppUtentiRoute: AppUtentiRoute,
   AppWhatsappRoute: AppWhatsappRoute,
+  AppMarketingCampagneRoute: AppMarketingCampagneRoute,
   AppMarketingSegmentiRoute: AppMarketingSegmentiRoute,
   AppRichiesteInterneRichiestaIdRoute: AppRichiesteInterneRichiestaIdRoute,
   AppRichiesteInterneApprovaRoute: AppRichiesteInterneApprovaRoute,
