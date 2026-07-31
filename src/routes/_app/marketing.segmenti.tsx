@@ -407,24 +407,29 @@ function MarketingSegmentiPage() {
   async function selezionaTutti() {
     setCaricamentoTutti(true);
     try {
-      const built = buildQuery("id", undefined);
-      if ("empty" in built) {
-        setSelezionati(new Set());
-        return;
-      }
       const ids: string[] = [];
-      let off = 0;
-      const size = 1000;
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        const rebuilt = buildQuery("id", undefined);
-        if ("empty" in rebuilt) break;
-        const { data, error } = await rebuilt.q.range(off, off + size - 1);
-        if (error) throw error;
-        const batch = (data ?? []) as unknown as Array<{ id: string }>;
-        ids.push(...batch.map((b) => b.id));
-        if (batch.length < size) break;
-        off += size;
+      if (includeIds && includeIds.length > CHUNK_IDS) {
+        for (const part of chunkArray(includeIds, CHUNK_IDS)) {
+          const b = buildQuery("id", undefined, part);
+          if ("empty" in b) continue;
+          const { data, error } = await b.q.range(0, 9999);
+          if (error) throw error;
+          ids.push(...((data ?? []) as unknown as Array<{ id: string }>).map((b2) => b2.id));
+        }
+      } else {
+        let off = 0;
+        const size = 1000;
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          const rebuilt = buildQuery("id", undefined);
+          if ("empty" in rebuilt) break;
+          const { data, error } = await rebuilt.q.range(off, off + size - 1);
+          if (error) throw error;
+          const batch = (data ?? []) as unknown as Array<{ id: string }>;
+          ids.push(...batch.map((b) => b.id));
+          if (batch.length < size) break;
+          off += size;
+        }
       }
       setSelezionati(new Set(ids));
       setContattiEsclusi(new Set());
@@ -558,32 +563,76 @@ function MarketingSegmentiPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("segmenti_marketing")
-        .select("id, nome, descrizione, filtri, created_at")
+        .select("id, nome, descrizione, filtri, tipo, created_at")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as Array<{
         id: string; nome: string; descrizione: string | null;
-        filtri: Filtri; created_at: string;
+        filtri: Filtri; tipo: string | null; created_at: string;
       }>;
+    },
+  });
+
+  // Conteggio clienti congelati per segmento statico (query aggregata unica)
+  const { data: conteggiStatici } = useQuery({
+    queryKey: ["segmenti-marketing-conteggi"],
+    enabled: canSee,
+    queryFn: async () => {
+      const map = new Map<string, number>();
+      let off = 0;
+      const size = 1000;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await supabase
+          .from("segmenti_marketing_clienti")
+          .select("segmento_id")
+          .range(off, off + size - 1);
+        if (error) throw error;
+        const batch = (data ?? []) as Array<{ segmento_id: string }>;
+        for (const r of batch) map.set(r.segmento_id, (map.get(r.segmento_id) ?? 0) + 1);
+        if (batch.length < size) break;
+        off += size;
+      }
+      return map;
     },
   });
 
   const salvaSegmento = useMutation({
     mutationFn: async () => {
       if (!nome.trim()) throw new Error("Il nome del segmento è obbligatorio");
-      const { error } = await supabase.from("segmenti_marketing").insert({
-        nome: nome.trim(),
-        descrizione: descrizione.trim() || null,
-        filtri: filtri as any,
-      });
+      const statico = tipoSalvataggio === "statico";
+      if (statico && selezionati.size === 0) {
+        throw new Error("Seleziona prima dei clienti nell'elenco");
+      }
+      const { data, error } = await supabase
+        .from("segmenti_marketing")
+        .insert({
+          nome: nome.trim(),
+          descrizione: descrizione.trim() || null,
+          filtri: filtri as any,
+          tipo: statico ? "statico" : "dinamico",
+        })
+        .select("id")
+        .single();
       if (error) throw error;
+      if (statico) {
+        const ids = Array.from(selezionati);
+        for (const part of chunkArray(ids, 500)) {
+          const { error: e2 } = await supabase
+            .from("segmenti_marketing_clienti")
+            .insert(part.map((cid) => ({ segmento_id: data.id, cliente_id: cid })));
+          if (e2) throw e2;
+        }
+      }
     },
     onSuccess: () => {
       toast.success("Segmento salvato");
       setSaveOpen(false);
       setNome("");
       setDescrizione("");
+      setTipoSalvataggio("dinamico");
       qc.invalidateQueries({ queryKey: ["segmenti-marketing"] });
+      qc.invalidateQueries({ queryKey: ["segmenti-marketing-conteggi"] });
     },
     onError: (e: any) => toast.error(e?.message ?? "Errore nel salvataggio"),
   });
