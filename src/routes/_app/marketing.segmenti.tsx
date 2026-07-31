@@ -120,6 +120,7 @@ function MarketingSegmentiPage() {
 
   const [filtri, setFiltri] = useState<Filtri>(FILTRI_DEFAULT);
   const [saveOpen, setSaveOpen] = useState(false);
+  const [tab, setTab] = useState("costruisci");
   const [nome, setNome] = useState("");
   const [descrizione, setDescrizione] = useState("");
 
