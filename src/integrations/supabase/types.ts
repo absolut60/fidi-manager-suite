@@ -1191,6 +1191,7 @@ export type Database = {
           privacy_firmata: boolean
           privacy_token: string | null
           privacy_token_expires_at: string | null
+          recesso_token: string | null
           residenza: string | null
           ruolo: string | null
           telefono: string | null
@@ -1223,6 +1224,7 @@ export type Database = {
           privacy_firmata?: boolean
           privacy_token?: string | null
           privacy_token_expires_at?: string | null
+          recesso_token?: string | null
           residenza?: string | null
           ruolo?: string | null
           telefono?: string | null
@@ -1255,6 +1257,7 @@ export type Database = {
           privacy_firmata?: boolean
           privacy_token?: string | null
           privacy_token_expires_at?: string | null
+          recesso_token?: string | null
           residenza?: string | null
           ruolo?: string | null
           telefono?: string | null
@@ -4139,6 +4142,18 @@ export type Database = {
           _valore: boolean
         }
         Returns: string
+      }
+      revoca_consensi_batch: {
+        Args: {
+          _contatto_id: string
+          _ip?: string
+          _marketing_diretto?: boolean
+          _marketing_media?: boolean
+          _note?: string
+          _origine?: string
+          _profilazione?: boolean
+        }
+        Returns: number
       }
       rimuovi_orfani_scadenze: {
         Args: { _importazione_id: string }

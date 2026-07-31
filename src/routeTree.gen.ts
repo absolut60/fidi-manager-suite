@@ -13,6 +13,7 @@ import { Route as McpRouteImport } from './routes/mcp'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as RecessoTokenRouteImport } from './routes/recesso.$token'
 import { Route as FirmaPrivacyTokenRouteImport } from './routes/firma-privacy.$token'
 import { Route as ConsensiTokenRouteImport } from './routes/consensi.$token'
 import { Route as AppWhatsappRouteImport } from './routes/_app/whatsapp'
@@ -74,6 +75,11 @@ const AppRoute = AppRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RecessoTokenRoute = RecessoTokenRouteImport.update({
+  id: '/recesso/$token',
+  path: '/recesso/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FirmaPrivacyTokenRoute = FirmaPrivacyTokenRouteImport.update({
@@ -339,6 +345,7 @@ export interface FileRoutesByFullPath {
   '/whatsapp': typeof AppWhatsappRoute
   '/consensi/$token': typeof ConsensiTokenRoute
   '/firma-privacy/$token': typeof FirmaPrivacyTokenRoute
+  '/recesso/$token': typeof RecessoTokenRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
@@ -387,6 +394,7 @@ export interface FileRoutesByTo {
   '/whatsapp': typeof AppWhatsappRoute
   '/consensi/$token': typeof ConsensiTokenRoute
   '/firma-privacy/$token': typeof FirmaPrivacyTokenRoute
+  '/recesso/$token': typeof RecessoTokenRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
@@ -437,6 +445,7 @@ export interface FileRoutesById {
   '/_app/whatsapp': typeof AppWhatsappRoute
   '/consensi/$token': typeof ConsensiTokenRoute
   '/firma-privacy/$token': typeof FirmaPrivacyTokenRoute
+  '/recesso/$token': typeof RecessoTokenRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_app/clienti/$clienteId': typeof AppClientiClienteIdRoute
@@ -487,6 +496,7 @@ export interface FileRouteTypes {
     | '/whatsapp'
     | '/consensi/$token'
     | '/firma-privacy/$token'
+    | '/recesso/$token'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/clienti/$clienteId'
@@ -535,6 +545,7 @@ export interface FileRouteTypes {
     | '/whatsapp'
     | '/consensi/$token'
     | '/firma-privacy/$token'
+    | '/recesso/$token'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/clienti/$clienteId'
@@ -584,6 +595,7 @@ export interface FileRouteTypes {
     | '/_app/whatsapp'
     | '/consensi/$token'
     | '/firma-privacy/$token'
+    | '/recesso/$token'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/_app/clienti/$clienteId'
@@ -610,6 +622,7 @@ export interface RootRouteChildren {
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   ConsensiTokenRoute: typeof ConsensiTokenRoute
   FirmaPrivacyTokenRoute: typeof FirmaPrivacyTokenRoute
+  RecessoTokenRoute: typeof RecessoTokenRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiPublicInngestRoute: typeof ApiPublicInngestRoute
@@ -645,6 +658,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/recesso/$token': {
+      id: '/recesso/$token'
+      path: '/recesso/$token'
+      fullPath: '/recesso/$token'
+      preLoaderRoute: typeof RecessoTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/firma-privacy/$token': {
@@ -1057,6 +1077,7 @@ const rootRouteChildren: RootRouteChildren = {
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   ConsensiTokenRoute: ConsensiTokenRoute,
   FirmaPrivacyTokenRoute: FirmaPrivacyTokenRoute,
+  RecessoTokenRoute: RecessoTokenRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiPublicInngestRoute: ApiPublicInngestRoute,
