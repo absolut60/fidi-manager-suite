@@ -423,3 +423,118 @@ function EditorCampagna({
     </Dialog>
   );
 }
+
+type DestinatarioRiga = {
+  id: string;
+  email: string;
+  tipo_destinatario: string;
+  nome_riferimento: string | null;
+  cliente_id: string | null;
+  aggiunto_il: string;
+  clienti: { ragione_sociale: string } | null;
+};
+
+function DestinatariCampagnaDialog({
+  campagna, onClose,
+}: { campagna: Campagna; onClose: () => void }) {
+  const qc = useQueryClient();
+
+  const { data: righe, isLoading } = useQuery({
+    queryKey: ["campagne-email-destinatari", campagna.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("campagne_email_destinatari")
+        .select("id, email, tipo_destinatario, nome_riferimento, cliente_id, aggiunto_il, clienti(ragione_sociale)")
+        .eq("campagna_id", campagna.id)
+        .order("aggiunto_il", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as unknown as DestinatarioRiga[];
+    },
+  });
+
+  const rimuovi = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("campagne_email_destinatari").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Destinatario rimosso");
+      qc.invalidateQueries({ queryKey: ["campagne-email-destinatari"] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Errore rimozione destinatario"),
+  });
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Destinatari — {campagna.nome}</DialogTitle>
+          <DialogDescription>
+            Elenco degli indirizzi aggiunti finora alla campagna. Nessun invio è stato effettuato.
+          </DialogDescription>
+        </DialogHeader>
+
+        {isLoading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+          </div>
+        ) : !righe?.length ? (
+          <div className="p-8 text-center text-sm text-muted-foreground">
+            Nessun destinatario. Aggiungili dalla pagina Segmenti.
+          </div>
+        ) : (
+          <>
+            <div className="text-sm text-muted-foreground">
+              {righe.length.toLocaleString("it-IT")} destinatari
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Riferimento</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Aggiunto il</TableHead>
+                  <TableHead className="w-10" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {righe.map((r) => (
+                  <TableRow key={r.id}>
+                    <TableCell className="font-medium">{r.email}</TableCell>
+                    <TableCell>
+                      <Badge variant={r.tipo_destinatario === "aziendale" ? "secondary" : "outline"}>
+                        {r.tipo_destinatario === "aziendale" ? "Aziendale" : "Contatto"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{r.nome_riferimento || "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {r.clienti?.ragione_sociale || "—"}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{fmtDate(r.aggiunto_il)}</TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Rimuovi dalla campagna"
+                        onClick={() => rimuovi.mutate(r.id)}
+                        disabled={rimuovi.isPending}
+                      >
+                        <X className="size-4 text-destructive" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </>
+        )}
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Chiudi</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
