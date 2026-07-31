@@ -471,6 +471,39 @@ export type Database = {
           },
         ]
       }
+      campagne_email_marketing: {
+        Row: {
+          corpo_html: string
+          created_at: string
+          created_by: string | null
+          id: string
+          nome: string
+          oggetto: string
+          stato: string
+          updated_at: string
+        }
+        Insert: {
+          corpo_html?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          nome: string
+          oggetto: string
+          stato?: string
+          updated_at?: string
+        }
+        Update: {
+          corpo_html?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          nome?: string
+          oggetto?: string
+          stato?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       campagne_sollecito: {
         Row: {
           completata_at: string | null
