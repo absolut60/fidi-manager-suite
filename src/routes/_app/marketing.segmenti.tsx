@@ -37,6 +37,14 @@ const MARKETING_ROLES = new Set(["amministratore", "amministrazione", "direzione
 // Stato filtri — stessi nomi/valori usati nella pagina Clienti (fonte unica),
 // serializzabile su segmenti_marketing.filtri (jsonb).
 type SemaforoValue = "tutti" | "rosso" | "arancione" | "giallo" | "verde";
+type ConsensoFiltro = "tutti" | "marketing_diretto" | "marketing_media" | "profilazione";
+
+const CONSENSO_COLONNA: Record<Exclude<ConsensoFiltro, "tutti">, string> = {
+  marketing_diretto: "consenso_marketing_diretto",
+  marketing_media: "consenso_marketing_media",
+  profilazione: "consenso_profilazione",
+};
+
 type Filtri = {
   storeFiltro: string;                 // "tutti" | store_id
   filtroAgente: string;                // "tutti" | "__none__" | codice_agente
@@ -46,6 +54,7 @@ type Filtri = {
   filtroBlocco: "tutti" | "bloccati" | "non_bloccati";
   filtroTipoSoggetto: "tutti" | "fisica" | "giuridica";
   fatturato: "tutti" | "nessuno" | "0_10k" | "10k_50k" | "50k_100k" | "oltre_100k";
+  filtroConsenso: ConsensoFiltro;      // almeno un contatto con quel consenso attivo
   citta: string;
   provincia: string;
 };
@@ -59,9 +68,28 @@ const FILTRI_DEFAULT: Filtri = {
   filtroBlocco: "tutti",
   filtroTipoSoggetto: "giuridica",
   fatturato: "tutti",
+  filtroConsenso: "tutti",
   citta: "",
   provincia: "",
 };
+
+type ContattoRiga = {
+  id: string;
+  cliente_id: string;
+  nome: string;
+  cognome: string | null;
+  email: string | null;
+  consenso_marketing_diretto: boolean;
+  consenso_marketing_media: boolean;
+  consenso_profilazione: boolean;
+};
+
+const CHUNK = 200;
+function chunkArray<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
 
 function calcSemaforo(c: {
   fido_residuo?: number | null;
