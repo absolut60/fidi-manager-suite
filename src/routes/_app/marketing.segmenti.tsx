@@ -120,7 +120,7 @@ function MarketingSegmentiPage() {
 
   const [filtri, setFiltri] = useState<Filtri>(FILTRI_DEFAULT);
   const [saveOpen, setSaveOpen] = useState(false);
-  const [tab, setTab] = useState("costruisci");
+  const [tab, setTab] = useState("elenco");
   const [nome, setNome] = useState("");
   const [descrizione, setDescrizione] = useState("");
 
@@ -568,7 +568,7 @@ function MarketingSegmentiPage() {
   function caricaSegmento(f: Filtri) {
     // Merge con i default per essere robusti a salvataggi vecchi/parziali
     setFiltri({ ...FILTRI_DEFAULT, ...f });
-    setTab("costruisci");
+    setTab("elenco");
     toast.info("Filtri del segmento caricati");
   }
 
