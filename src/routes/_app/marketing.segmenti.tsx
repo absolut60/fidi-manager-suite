@@ -27,6 +27,10 @@ import {
 import { isEmailValida } from "@/lib/email-validazione";
 import { CONSENSO_LABEL } from "@/lib/consensi-testi";
 import { MACROCATEGORIE, CATEGORIE } from "@/lib/macrocategorie";
+import {
+  aggiungiDestinatariCampagna,
+  type DestinatarioCampagnaInput,
+} from "@/lib/campagne-destinatari";
 
 export const Route = createFileRoute("/_app/marketing/segmenti")({
   component: MarketingSegmentiPage,
@@ -106,7 +110,7 @@ function calcSemaforo(c: {
 }
 
 function MarketingSegmentiPage() {
-  const { roles, loading } = useAuth();
+  const { roles, loading, user } = useAuth();
   const qc = useQueryClient();
   const canSee = useMemo(
     () => (roles as string[]).some((r) => MARKETING_ROLES.has(r)),
@@ -393,10 +397,11 @@ function MarketingSegmentiPage() {
     staleTime: 30_000,
     queryFn: async () => {
       const aziendali = new Map<string, string | null>();
+      const ragioniSociali = new Map<string, string>();
       const contatti: ContattoRiga[] = [];
       for (const part of chunkArray(selezionatiIds, CHUNK)) {
         const [{ data: cli, error: e1 }, { data: cont, error: e2 }] = await Promise.all([
-          supabase.from("clienti").select("id, email").in("id", part),
+          supabase.from("clienti").select("id, email, ragione_sociale").in("id", part),
           supabase
             .from("contatti")
             .select("id, cliente_id, nome, cognome, email, consenso_marketing_diretto, consenso_marketing_media, consenso_profilazione")
@@ -404,10 +409,13 @@ function MarketingSegmentiPage() {
         ]);
         if (e1) throw e1;
         if (e2) throw e2;
-        for (const c of (cli ?? []) as Array<{ id: string; email: string | null }>) aziendali.set(c.id, c.email);
+        for (const c of (cli ?? []) as Array<{ id: string; email: string | null; ragione_sociale: string }>) {
+          aziendali.set(c.id, c.email);
+          ragioniSociali.set(c.id, c.ragione_sociale);
+        }
         contatti.push(...((cont ?? []) as ContattoRiga[]));
       }
-      return { aziendali, contatti };
+      return { aziendali, ragioniSociali, contatti };
     },
   });
 
@@ -422,6 +430,48 @@ function MarketingSegmentiPage() {
     }
     return n;
   }, [destinatariRaw, aziendaliEsclusi, contattiEsclusi]);
+
+  // === Aggiunta destinatari alla campagna (carrello persistente, nessun invio) ===
+  const aggiungiDestinatari = useMutation({
+    mutationFn: async () => {
+      if (!campagnaId) throw new Error("Scegli prima una campagna");
+      if (!destinatariRaw) throw new Error("Destinatari non ancora caricati");
+      const lista: DestinatarioCampagnaInput[] = [];
+      for (const [id, email] of destinatariRaw.aziendali) {
+        if (aziendaliEsclusi.has(id) || !isEmailValida(email)) continue;
+        lista.push({
+          cliente_id: id,
+          contatto_id: null,
+          tipo_destinatario: "aziendale",
+          email: email as string,
+          nome_riferimento: destinatariRaw.ragioniSociali.get(id) ?? null,
+        });
+      }
+      for (const c of destinatariRaw.contatti) {
+        if (contattiEsclusi.has(c.id) || !isEmailValida(c.email)) continue;
+        lista.push({
+          cliente_id: c.cliente_id,
+          contatto_id: c.id,
+          tipo_destinatario: "contatto",
+          email: c.email as string,
+          nome_riferimento: [c.nome, c.cognome].filter(Boolean).join(" ") || null,
+        });
+      }
+      if (lista.length === 0) throw new Error("Nessun destinatario valido selezionato");
+      return aggiungiDestinatariCampagna(campagnaId, lista, user?.id ?? null);
+    },
+    onSuccess: (r) => {
+      toast.success(
+        `Aggiunti ${r.aggiunti} nuovi destinatari, ${r.saltati} già presenti saltati` +
+          (r.scartati ? `, ${r.scartati} scartati (email non valida)` : ""),
+      );
+      setSelezionati(new Set());
+      setContattiEsclusi(new Set());
+      setAziendaliEsclusi(new Set());
+      qc.invalidateQueries({ queryKey: ["campagne-email-destinatari"] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Errore aggiunta destinatari"),
+  });
 
   // === Campagne disponibili (solo scelta, nessun invio in questo strato) ===
   const { data: campagne } = useQuery({
@@ -724,15 +774,23 @@ function MarketingSegmentiPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Button disabled title="Invio in arrivo nel prossimo aggiornamento">
-              <Send className="size-4 mr-2" /> Invia campagna
+            <Button
+              onClick={() => aggiungiDestinatari.mutate()}
+              disabled={!campagnaId || totaleDestinatari === 0 || aggiungiDestinatari.isPending}
+              title={!campagnaId ? "Scegli prima una campagna" : "Aggiungi i destinatari selezionati alla campagna"}
+            >
+              {aggiungiDestinatari.isPending
+                ? <Loader2 className="size-4 mr-2 animate-spin" />
+                : <Send className="size-4 mr-2" />}
+              Aggiungi alla campagna
             </Button>
             <Button variant="ghost" size="sm" onClick={() => setSelezionati(new Set())}>
               Azzera selezione
             </Button>
           </div>
           <div className="w-full text-xs text-muted-foreground">
-            Invio in arrivo nel prossimo aggiornamento.
+            I destinatari vengono salvati nella campagna (senza doppioni) e puoi aggiungerne altri in più tranche.
+            Invio: disponibile prossimamente.
           </div>
         </Card>
       )}
