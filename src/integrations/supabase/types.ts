@@ -471,6 +471,81 @@ export type Database = {
           },
         ]
       }
+      campagne_email_destinatari: {
+        Row: {
+          aggiunto_da: string | null
+          aggiunto_il: string
+          campagna_id: string
+          cliente_id: string | null
+          contatto_id: string | null
+          email: string
+          id: string
+          nome_riferimento: string | null
+          stato_invio: string
+          tipo_destinatario: string
+        }
+        Insert: {
+          aggiunto_da?: string | null
+          aggiunto_il?: string
+          campagna_id: string
+          cliente_id?: string | null
+          contatto_id?: string | null
+          email: string
+          id?: string
+          nome_riferimento?: string | null
+          stato_invio?: string
+          tipo_destinatario: string
+        }
+        Update: {
+          aggiunto_da?: string | null
+          aggiunto_il?: string
+          campagna_id?: string
+          cliente_id?: string | null
+          contatto_id?: string | null
+          email?: string
+          id?: string
+          nome_riferimento?: string | null
+          stato_invio?: string
+          tipo_destinatario?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campagne_email_destinatari_campagna_id_fkey"
+            columns: ["campagna_id"]
+            isOneToOne: false
+            referencedRelation: "campagne_email_marketing"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campagne_email_destinatari_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campagne_email_destinatari_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti_con_rischio"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campagne_email_destinatari_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "campagne_email_destinatari_contatto_id_fkey"
+            columns: ["contatto_id"]
+            isOneToOne: false
+            referencedRelation: "contatti"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campagne_email_marketing: {
         Row: {
           corpo_html: string
