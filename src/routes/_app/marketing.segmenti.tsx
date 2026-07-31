@@ -338,12 +338,18 @@ function MarketingSegmentiPage() {
   const [caricamentoTutti, setCaricamentoTutti] = useState(false);
   const [campagnaId, setCampagnaId] = useState<string | undefined>(undefined);
 
-  // Reset selezione quando cambiano i filtri
+  // Reset selezione e pagina quando cambiano i filtri (NON al cambio pagina)
   useEffect(() => {
     setSelezionati(new Set());
     setContattiEsclusi(new Set());
     setAziendaliEsclusi(new Set());
+    setPagina(1);
   }, [filtri]);
+
+  function vaiAPagina(p: number) {
+    setPagina(Math.min(Math.max(1, p), totalePagine));
+    setEspansi(new Set());
+  }
 
   function toggleCliente(id: string, on: boolean) {
     setSelezionati((p) => {
