@@ -659,6 +659,21 @@ function MarketingSegmentiPage() {
             </Select>
           </div>
           <div>
+            <Label className="text-xs">Consenso marketing</Label>
+            <Select
+              value={filtri.filtroConsenso}
+              onValueChange={(v) => setFiltri((p) => ({ ...p, filtroConsenso: v as ConsensoFiltro }))}
+            >
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="tutti">Tutti</SelectItem>
+                <SelectItem value="marketing_diretto">Con {CONSENSO_LABEL.marketing_diretto}</SelectItem>
+                <SelectItem value="marketing_media">Con {CONSENSO_LABEL.marketing_media}</SelectItem>
+                <SelectItem value="profilazione">Con {CONSENSO_LABEL.profilazione}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
             <Label className="text-xs">Città</Label>
             <Input value={filtri.citta} onChange={(e) => setFiltri((p) => ({ ...p, citta: e.target.value }))} placeholder="Es. Milano" />
           </div>
