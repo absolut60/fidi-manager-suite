@@ -212,6 +212,7 @@ function MarketingCampagnePage() {
                 <TableHead>Nome</TableHead>
                 <TableHead>Oggetto</TableHead>
                 <TableHead>Stato</TableHead>
+                <TableHead className="text-center">Destinatari</TableHead>
                 <TableHead>Aggiornata</TableHead>
                 <TableHead className="text-right">Azioni</TableHead>
               </TableRow>
@@ -222,8 +223,22 @@ function MarketingCampagnePage() {
                   <TableCell className="font-medium">{c.nome}</TableCell>
                   <TableCell className="text-muted-foreground">{c.oggetto || "—"}</TableCell>
                   <TableCell>{statoBadge(c.stato)}</TableCell>
+                  <TableCell className="text-center">
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 text-sm hover:underline"
+                      onClick={() => setDestinatariDi(c)}
+                      title="Vedi destinatari"
+                    >
+                      <Users className="size-4" />
+                      {(conteggi?.get(c.id) ?? 0).toLocaleString("it-IT")}
+                    </button>
+                  </TableCell>
                   <TableCell className="text-muted-foreground">{fmtDate(c.updated_at)}</TableCell>
                   <TableCell className="text-right space-x-1">
+                    <Button variant="ghost" size="icon" onClick={() => setDestinatariDi(c)} title="Destinatari">
+                      <Users className="size-4" />
+                    </Button>
                     <Button variant="ghost" size="icon" onClick={() => setEditing(c)} title="Modifica">
                       <Pencil className="size-4" />
                     </Button>
@@ -234,6 +249,7 @@ function MarketingCampagnePage() {
                       <Trash2 className="size-4 text-destructive" />
                     </Button>
                   </TableCell>
+
                 </TableRow>
               ))}
             </TableBody>
