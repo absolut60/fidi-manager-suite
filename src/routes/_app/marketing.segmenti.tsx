@@ -63,6 +63,8 @@ type Filtri = {
   citta: string;
   provincia: string;
 };
+const TAB_ELENCO = "elenco";
+const TAB_SALVATI = "salvati";
 
 const FILTRI_DEFAULT: Filtri = {
   storeFiltro: "tutti",
