@@ -31,6 +31,7 @@ import { ClienteInsolutiTab } from "@/components/cliente-insoluti-tab";
 import { ClienteAttivitaRecuperoTab } from "@/components/cliente-attivita-recupero-tab";
 import { AllegatiSection } from "@/components/allegati-section";
 import { ClienteFatturato } from "@/components/cliente-fatturato";
+import { ClienteMarketingTab } from "@/components/cliente-marketing-tab";
 import { formatEuro } from "@/lib/fidi";
 import { CONSENSO_LABEL } from "@/lib/consensi-testi";
 import { classificaScadenza, sommaScadutoCliente, contributoScaduto } from "@/lib/scadenze";
@@ -43,7 +44,7 @@ import { CategoriaSelect } from "@/components/categoria-select";
 
 
 
-const TAB_VALUES = ["riepilogo", "anagrafica", "contatti", "cantieri", "storico", "insoluti", "attivita", "allegati", "privacy"] as const;
+const TAB_VALUES = ["riepilogo", "anagrafica", "contatti", "marketing", "cantieri", "storico", "insoluti", "attivita", "allegati", "privacy"] as const;
 const INSOLUTI_SUB_VALUES = ["riepilogo", "scadenziario", "solleciti", "piani", "legali", "assicurazioni"] as const;
 
 export const Route = createFileRoute("/_app/clienti/$clienteId")({
@@ -434,6 +435,7 @@ function ClienteDetail() {
           <TabsTrigger value="riepilogo">Riepilogo</TabsTrigger>
           <TabsTrigger value="anagrafica">Anagrafica</TabsTrigger>
           <TabsTrigger value="contatti">Contatti ({contatti?.length ?? 0})</TabsTrigger>
+          <TabsTrigger value="marketing">Marketing</TabsTrigger>
           <TabsTrigger value="cantieri">Cantieri</TabsTrigger>
           <TabsTrigger value="storico">Fido</TabsTrigger>
           <TabsTrigger value="insoluti">Dati Rischio</TabsTrigger>
@@ -563,6 +565,10 @@ function ClienteDetail() {
               ))}
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="marketing" className="space-y-4">
+          <ClienteMarketingTab clienteId={clienteId} cliente={cliente as any} />
         </TabsContent>
 
 
