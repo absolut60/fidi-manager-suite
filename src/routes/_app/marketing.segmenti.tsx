@@ -284,15 +284,16 @@ function MarketingSegmentiPage() {
   const fatturatoReady = filtri.fatturato === "tutti" || !!fatturatoIds;
   const consensoReady = filtri.filtroConsenso === "tutti" || !!consensoIds;
 
-  // === Conteggio segmento + lista (limitata a 100 per l'anteprima) ===
-  const PREVIEW_LIMIT = 100;
+  // === Conteggio segmento + lista paginata (100 per pagina) ===
+  const PAGE_SIZE = 100;
+  const [pagina, setPagina] = useState(1);
   const { data: segmento, isLoading } = useQuery({
-    queryKey: ["marketing-segmento", filtri, includeIds?.length ?? null],
+    queryKey: ["marketing-segmento", filtri, includeIds?.length ?? null, pagina],
     enabled: canSee && classifReady && fatturatoReady && consensoReady,
     queryFn: async () => {
       const built = buildQuery("id, ragione_sociale, email, citta, provincia, categoria, agente, codice_agente", "exact");
       if ("empty" in built) return { rows: [] as any[], count: 0 };
-      const { data, error, count } = await built.q.range(0, PREVIEW_LIMIT - 1);
+      const { data, error, count } = await built.q.range((pagina - 1) * PAGE_SIZE, pagina * PAGE_SIZE - 1);
       if (error) throw error;
       return { rows: (data ?? []) as any[], count: count ?? 0 };
     },
@@ -300,6 +301,9 @@ function MarketingSegmentiPage() {
 
   const rows = segmento?.rows ?? [];
   const totale = segmento?.count ?? 0;
+  const totalePagine = Math.max(1, Math.ceil(totale / PAGE_SIZE));
+  const daRiga = totale === 0 ? 0 : (pagina - 1) * PAGE_SIZE + 1;
+  const aRiga = Math.min(pagina * PAGE_SIZE, totale);
 
   // === Contatti dei clienti visibili (righe espandibili + indicatore email) ===
   const rowsKey = rows.map((r) => r.id).sort().join(",");
