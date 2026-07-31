@@ -120,7 +120,7 @@ function MarketingSegmentiPage() {
 
   const [filtri, setFiltri] = useState<Filtri>(FILTRI_DEFAULT);
   const [saveOpen, setSaveOpen] = useState(false);
-  const [tab, setTab] = useState("elenco");
+  const [tab, setTab] = useState(TAB_ELENCO);
   const [nome, setNome] = useState("");
   const [descrizione, setDescrizione] = useState("");
 
@@ -565,10 +565,23 @@ function MarketingSegmentiPage() {
     onError: (e: any) => toast.error(e?.message ?? "Errore nell'eliminazione"),
   });
 
-  function caricaSegmento(f: Filtri) {
+  function caricaSegmento(f: Filtri | string | null) {
+    // jsonb può arrivare come stringa in alcuni casi: parse difensivo
+    let parsed: Partial<Filtri> = {};
+    if (typeof f === "string") {
+      try {
+        parsed = JSON.parse(f) as Partial<Filtri>;
+      } catch {
+        toast.error("Filtri del segmento non validi");
+        return;
+      }
+    } else if (f && typeof f === "object") {
+      parsed = f;
+    }
     // Merge con i default per essere robusti a salvataggi vecchi/parziali
-    setFiltri({ ...FILTRI_DEFAULT, ...f });
-    setTab("elenco");
+    setFiltri({ ...FILTRI_DEFAULT, ...parsed });
+    setPagina(1);
+    setTab(TAB_ELENCO);
     toast.info("Filtri del segmento caricati");
   }
 
