@@ -1,5 +1,5 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Sparkles, Save, Users, Mail, MailX, Trash2, RefreshCw,
@@ -91,7 +91,11 @@ type ContattoRiga = {
   consenso_profilazione: boolean;
 };
 
+type ListaStatica = { id: string; nome: string; ids: string[] };
+
 const CHUNK = 200;
+// Limite oltre il quale la lista di id viene interrogata a blocchi (limiti URL/PostgREST)
+const CHUNK_IDS = 400;
 function chunkArray<T>(arr: T[], size: number): T[][] {
   const out: T[][] = [];
   for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
@@ -125,6 +129,10 @@ function MarketingSegmentiPage() {
   const [tab, setTab] = useState(TAB_ELENCO);
   const [nome, setNome] = useState("");
   const [descrizione, setDescrizione] = useState("");
+  const [tipoSalvataggio, setTipoSalvataggio] = useState<"dinamico" | "statico">("dinamico");
+  const [listaStatica, setListaStatica] = useState<ListaStatica | null>(null);
+  // Evita che il reset-selezione legato al cambio filtri cancelli la lista appena caricata
+  const skipResetSelezione = useRef(false);
 
   // === Lookup ===
   const { data: stores } = useQuery({
@@ -249,19 +257,20 @@ function MarketingSegmentiPage() {
     },
   });
 
-  // Intersezione id-filter set (semaforo ∩ fatturato ∩ consenso)
+  // Intersezione id-filter set (semaforo ∩ fatturato ∩ consenso ∩ lista statica)
   const includeIds = useMemo<string[] | null>(() => {
     const sources: string[][] = [];
     if (semaforoIds) sources.push(semaforoIds);
     if (fatturatoIds) sources.push(fatturatoIds);
     if (consensoIds) sources.push(consensoIds);
+    if (listaStatica) sources.push(listaStatica.ids);
     if (sources.length === 0) return null;
     const sets = sources.map((s) => new Set(s));
     return sources[0].filter((id) => sets.every((s) => s.has(id)));
-  }, [semaforoIds, fatturatoIds, consensoIds]);
+  }, [semaforoIds, fatturatoIds, consensoIds, listaStatica]);
 
   // === Query builder — allineato a src/routes/_app/clienti.tsx (fonte unica) ===
-  function buildQuery(select: string, count: "exact" | undefined) {
+  function buildQuery(select: string, count: "exact" | undefined, idsSubset?: string[]) {
     let q = supabase.from("clienti").select(select, count ? { count } : undefined);
     // Solo clienti anagraficamente attivi (default coerente con clienti.tsx)
     q = q.eq("attivo", true);
@@ -278,7 +287,7 @@ function MarketingSegmentiPage() {
     if (filtri.provincia.trim()) q = q.ilike("provincia", `%${filtri.provincia.trim()}%`);
     if (includeIds) {
       if (includeIds.length === 0) return { empty: true as const };
-      q = q.in("id", includeIds);
+      q = q.in("id", idsSubset ?? includeIds);
     }
     q = q.order("ragione_sociale", { ascending: true, nullsFirst: false });
     return { q };
@@ -291,11 +300,30 @@ function MarketingSegmentiPage() {
   // === Conteggio segmento + lista paginata (100 per pagina) ===
   const PAGE_SIZE = 100;
   const [pagina, setPagina] = useState(1);
+  const SELECT_LISTA = "id, ragione_sociale, email, citta, provincia, categoria, agente, codice_agente";
   const { data: segmento, isLoading } = useQuery({
-    queryKey: ["marketing-segmento", filtri, includeIds?.length ?? null, pagina],
+    queryKey: ["marketing-segmento", filtri, includeIds?.length ?? null, listaStatica?.id ?? null, pagina],
     enabled: canSee && classifReady && fatturatoReady && consensoReady,
     queryFn: async () => {
-      const built = buildQuery("id, ragione_sociale, email, citta, provincia, categoria, agente, codice_agente", "exact");
+      // Liste id molto lunghe: interroga a blocchi e pagina in memoria
+      if (includeIds && includeIds.length > CHUNK_IDS) {
+        const all: any[] = [];
+        for (const part of chunkArray(includeIds, CHUNK_IDS)) {
+          const b = buildQuery(SELECT_LISTA, undefined, part);
+          if ("empty" in b) continue;
+          const { data, error } = await b.q.range(0, 9999);
+          if (error) throw error;
+          all.push(...((data ?? []) as any[]));
+        }
+        all.sort((a, b) =>
+          String(a.ragione_sociale ?? "").localeCompare(String(b.ragione_sociale ?? ""), "it"),
+        );
+        return {
+          rows: all.slice((pagina - 1) * PAGE_SIZE, pagina * PAGE_SIZE),
+          count: all.length,
+        };
+      }
+      const built = buildQuery(SELECT_LISTA, "exact");
       if ("empty" in built) return { rows: [] as any[], count: 0 };
       const { data, error, count } = await built.q.range((pagina - 1) * PAGE_SIZE, pagina * PAGE_SIZE - 1);
       if (error) throw error;
@@ -342,8 +370,13 @@ function MarketingSegmentiPage() {
   const [caricamentoTutti, setCaricamentoTutti] = useState(false);
   const [campagnaId, setCampagnaId] = useState<string | undefined>(undefined);
 
-  // Reset selezione e pagina quando cambiano i filtri (NON al cambio pagina)
+  // Reset selezione e pagina quando cambiano i filtri (NON al cambio pagina).
+  // Saltato quando il cambio filtri deriva dal caricamento di una lista statica.
   useEffect(() => {
+    if (skipResetSelezione.current) {
+      skipResetSelezione.current = false;
+      return;
+    }
     setSelezionati(new Set());
     setContattiEsclusi(new Set());
     setAziendaliEsclusi(new Set());
@@ -374,24 +407,29 @@ function MarketingSegmentiPage() {
   async function selezionaTutti() {
     setCaricamentoTutti(true);
     try {
-      const built = buildQuery("id", undefined);
-      if ("empty" in built) {
-        setSelezionati(new Set());
-        return;
-      }
       const ids: string[] = [];
-      let off = 0;
-      const size = 1000;
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        const rebuilt = buildQuery("id", undefined);
-        if ("empty" in rebuilt) break;
-        const { data, error } = await rebuilt.q.range(off, off + size - 1);
-        if (error) throw error;
-        const batch = (data ?? []) as unknown as Array<{ id: string }>;
-        ids.push(...batch.map((b) => b.id));
-        if (batch.length < size) break;
-        off += size;
+      if (includeIds && includeIds.length > CHUNK_IDS) {
+        for (const part of chunkArray(includeIds, CHUNK_IDS)) {
+          const b = buildQuery("id", undefined, part);
+          if ("empty" in b) continue;
+          const { data, error } = await b.q.range(0, 9999);
+          if (error) throw error;
+          ids.push(...((data ?? []) as unknown as Array<{ id: string }>).map((b2) => b2.id));
+        }
+      } else {
+        let off = 0;
+        const size = 1000;
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          const rebuilt = buildQuery("id", undefined);
+          if ("empty" in rebuilt) break;
+          const { data, error } = await rebuilt.q.range(off, off + size - 1);
+          if (error) throw error;
+          const batch = (data ?? []) as unknown as Array<{ id: string }>;
+          ids.push(...batch.map((b) => b.id));
+          if (batch.length < size) break;
+          off += size;
+        }
       }
       setSelezionati(new Set(ids));
       setContattiEsclusi(new Set());
@@ -525,32 +563,76 @@ function MarketingSegmentiPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("segmenti_marketing")
-        .select("id, nome, descrizione, filtri, created_at")
+        .select("id, nome, descrizione, filtri, tipo, created_at")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as Array<{
         id: string; nome: string; descrizione: string | null;
-        filtri: Filtri; created_at: string;
+        filtri: Filtri; tipo: string | null; created_at: string;
       }>;
+    },
+  });
+
+  // Conteggio clienti congelati per segmento statico (query aggregata unica)
+  const { data: conteggiStatici } = useQuery({
+    queryKey: ["segmenti-marketing-conteggi"],
+    enabled: canSee,
+    queryFn: async () => {
+      const map = new Map<string, number>();
+      let off = 0;
+      const size = 1000;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await supabase
+          .from("segmenti_marketing_clienti")
+          .select("segmento_id")
+          .range(off, off + size - 1);
+        if (error) throw error;
+        const batch = (data ?? []) as Array<{ segmento_id: string }>;
+        for (const r of batch) map.set(r.segmento_id, (map.get(r.segmento_id) ?? 0) + 1);
+        if (batch.length < size) break;
+        off += size;
+      }
+      return map;
     },
   });
 
   const salvaSegmento = useMutation({
     mutationFn: async () => {
       if (!nome.trim()) throw new Error("Il nome del segmento è obbligatorio");
-      const { error } = await supabase.from("segmenti_marketing").insert({
-        nome: nome.trim(),
-        descrizione: descrizione.trim() || null,
-        filtri: filtri as any,
-      });
+      const statico = tipoSalvataggio === "statico";
+      if (statico && selezionati.size === 0) {
+        throw new Error("Seleziona prima dei clienti nell'elenco");
+      }
+      const { data, error } = await supabase
+        .from("segmenti_marketing")
+        .insert({
+          nome: nome.trim(),
+          descrizione: descrizione.trim() || null,
+          filtri: filtri as any,
+          tipo: statico ? "statico" : "dinamico",
+        })
+        .select("id")
+        .single();
       if (error) throw error;
+      if (statico) {
+        const ids = Array.from(selezionati);
+        for (const part of chunkArray(ids, 500)) {
+          const { error: e2 } = await supabase
+            .from("segmenti_marketing_clienti")
+            .insert(part.map((cid) => ({ segmento_id: data.id, cliente_id: cid })));
+          if (e2) throw e2;
+        }
+      }
     },
     onSuccess: () => {
       toast.success("Segmento salvato");
       setSaveOpen(false);
       setNome("");
       setDescrizione("");
+      setTipoSalvataggio("dinamico");
       qc.invalidateQueries({ queryKey: ["segmenti-marketing"] });
+      qc.invalidateQueries({ queryKey: ["segmenti-marketing-conteggi"] });
     },
     onError: (e: any) => toast.error(e?.message ?? "Errore nel salvataggio"),
   });
@@ -559,10 +641,13 @@ function MarketingSegmentiPage() {
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("segmenti_marketing").delete().eq("id", id);
       if (error) throw error;
+      return id;
     },
-    onSuccess: () => {
+    onSuccess: (id) => {
       toast.success("Segmento eliminato");
+      setListaStatica((p) => (p && p.id === id ? null : p));
       qc.invalidateQueries({ queryKey: ["segmenti-marketing"] });
+      qc.invalidateQueries({ queryKey: ["segmenti-marketing-conteggi"] });
     },
     onError: (e: any) => toast.error(e?.message ?? "Errore nell'eliminazione"),
   });
@@ -581,15 +666,60 @@ function MarketingSegmentiPage() {
       parsed = f;
     }
     // Merge con i default per essere robusti a salvataggi vecchi/parziali
+    setListaStatica(null);
     setFiltri({ ...FILTRI_DEFAULT, ...parsed });
     setPagina(1);
     setTab(TAB_ELENCO);
     toast.info("Filtri del segmento caricati");
   }
 
-  useEffect(() => {
-    // no-op — reset esplicito solo da bottone
-  }, []);
+  const [caricamentoLista, setCaricamentoLista] = useState(false);
+
+  async function caricaListaStatica(s: { id: string; nome: string }) {
+    setCaricamentoLista(true);
+    try {
+      const ids: string[] = [];
+      let off = 0;
+      const size = 1000;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await supabase
+          .from("segmenti_marketing_clienti")
+          .select("cliente_id")
+          .eq("segmento_id", s.id)
+          .range(off, off + size - 1);
+        if (error) throw error;
+        const batch = (data ?? []) as Array<{ cliente_id: string }>;
+        ids.push(...batch.map((r) => r.cliente_id));
+        if (batch.length < size) break;
+        off += size;
+      }
+      // Filtri neutri: la lista deve mostrare esattamente i clienti congelati.
+      // Il reset-selezione legato al cambio filtri va saltato.
+      skipResetSelezione.current = true;
+      setFiltri({ ...FILTRI_DEFAULT, filtroTipoSoggetto: "tutti" });
+      setListaStatica({ id: s.id, nome: s.nome, ids });
+      setSelezionati(new Set(ids));
+      setContattiEsclusi(new Set());
+      setAziendaliEsclusi(new Set());
+      setPagina(1);
+      setTab(TAB_ELENCO);
+      toast.info(`Lista "${s.nome}" caricata — ${ids.length} clienti`);
+    } catch (e: any) {
+      skipResetSelezione.current = false;
+      toast.error(e?.message ?? "Errore nel caricamento della lista");
+    } finally {
+      setCaricamentoLista(false);
+    }
+  }
+
+  function esciDallaLista() {
+    setListaStatica(null);
+    setSelezionati(new Set());
+    setContattiEsclusi(new Set());
+    setAziendaliEsclusi(new Set());
+    setPagina(1);
+  }
 
   if (loading) {
     return <div className="p-6 text-muted-foreground">Caricamento...</div>;
@@ -612,7 +742,13 @@ function MarketingSegmentiPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => setFiltri(FILTRI_DEFAULT)}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setListaStatica(null);
+              setFiltri(FILTRI_DEFAULT);
+            }}
+          >
             <RefreshCw className="size-4 mr-2" /> Azzera filtri
           </Button>
           <Dialog open={saveOpen} onOpenChange={setSaveOpen}>
@@ -625,7 +761,7 @@ function MarketingSegmentiPage() {
               <DialogHeader>
                 <DialogTitle>Salva segmento</DialogTitle>
                 <DialogDescription>
-                  Verranno salvati i criteri correnti; il segmento resta aggiornato al variare dell'anagrafica.
+                  Scegli se salvare i criteri (dinamico) oppure congelare i clienti selezionati (lista statica).
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-3">
@@ -636,6 +772,50 @@ function MarketingSegmentiPage() {
                 <div>
                   <Label>Descrizione</Label>
                   <Textarea value={descrizione} onChange={(e) => setDescrizione(e.target.value)} rows={3} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Tipo di segmento</Label>
+                  <label className="flex items-start gap-3 rounded-md border border-border p-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      className="mt-1"
+                      name="tipo-segmento"
+                      checked={tipoSalvataggio === "dinamico"}
+                      onChange={() => setTipoSalvataggio("dinamico")}
+                    />
+                    <span>
+                      <span className="text-sm font-medium block">Criteri dinamici</span>
+                      <span className="text-xs text-muted-foreground">
+                        Il segmento resta sempre aggiornato: include i nuovi clienti che soddisfano i criteri.
+                      </span>
+                    </span>
+                  </label>
+                  <label
+                    className={`flex items-start gap-3 rounded-md border border-border p-3 ${
+                      selezionati.size > 0 ? "cursor-pointer" : "opacity-60 cursor-not-allowed"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      className="mt-1"
+                      name="tipo-segmento"
+                      disabled={selezionati.size === 0}
+                      checked={tipoSalvataggio === "statico"}
+                      onChange={() => setTipoSalvataggio("statico")}
+                    />
+                    <span>
+                      <span className="text-sm font-medium block">
+                        {selezionati.size > 0
+                          ? `Lista statica (${selezionati.size.toLocaleString("it-IT")} clienti selezionati)`
+                          : "Lista statica dei clienti selezionati"}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {selezionati.size > 0
+                          ? "Congela esattamente i clienti selezionati ora; non cambierà nel tempo."
+                          : "Seleziona prima dei clienti nell'elenco"}
+                      </span>
+                    </span>
+                  </label>
                 </div>
               </div>
               <DialogFooter>
@@ -880,6 +1060,18 @@ function MarketingSegmentiPage() {
         </TabsList>
 
         <TabsContent value={TAB_ELENCO} className="space-y-6">
+      {listaStatica && (
+        <Card className="p-4 border-[#c94f8f] bg-[#c94f8f]/5 flex items-center justify-between gap-3 flex-wrap">
+          <div className="text-sm">
+            Stai visualizzando la lista statica{" "}
+            <span className="font-semibold">«{listaStatica.nome}»</span> —{" "}
+            <span className="font-semibold">{listaStatica.ids.length.toLocaleString("it-IT")}</span> clienti
+          </div>
+          <Button size="sm" variant="outline" onClick={esciDallaLista}>
+            Esci dalla lista
+          </Button>
+        </Card>
+      )}
       {/* Lista */}
       <Card>
         <Table>
@@ -1065,11 +1257,24 @@ function MarketingSegmentiPage() {
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {(segmentiSalvati ?? []).map((s) => (
+              {(segmentiSalvati ?? []).map((s) => {
+                const statico = s.tipo === "statico";
+                const nClienti = conteggiStatici?.get(s.id) ?? 0;
+                return (
                 <Card key={s.id} className="p-4 space-y-2">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <div className="font-medium truncate">{s.nome}</div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge variant={statico ? "secondary" : "outline"}>
+                          {statico ? "Statico" : "Dinamico"}
+                        </Badge>
+                        {statico && (
+                          <span className="text-xs text-muted-foreground">
+                            {nClienti.toLocaleString("it-IT")} client{nClienti === 1 ? "e" : "i"}
+                          </span>
+                        )}
+                      </div>
                       {s.descrizione && (
                         <div className="text-xs text-muted-foreground line-clamp-2 mt-1">{s.descrizione}</div>
                       )}
@@ -1087,11 +1292,18 @@ function MarketingSegmentiPage() {
                       <Trash2 className="size-4 text-muted-foreground" />
                     </Button>
                   </div>
-                  <Button size="sm" variant="outline" className="w-full" onClick={() => caricaSegmento(s.filtri)}>
-                    Carica filtri
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full"
+                    disabled={caricamentoLista}
+                    onClick={() => (statico ? void caricaListaStatica(s) : caricaSegmento(s.filtri))}
+                  >
+                    {statico ? "Carica lista" : "Carica filtri"}
                   </Button>
                 </Card>
-              ))}
+                );
+              })}
             </div>
           )}
         </TabsContent>
