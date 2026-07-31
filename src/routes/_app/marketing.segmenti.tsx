@@ -768,9 +768,10 @@ function MarketingSegmentiPage() {
               client{totale === 1 ? "e" : "i"} corrispondono a questi filtri
             </span>
           </div>
-          {rows.length < totale && (
+          {totale > 0 && (
             <div className="text-xs text-muted-foreground">
-              Anteprima dei primi {rows.length} risultati
+              Mostrati {daRiga.toLocaleString("it-IT")}–{aRiga.toLocaleString("it-IT")} di{" "}
+              {totale.toLocaleString("it-IT")} · Pagina {pagina} di {totalePagine}
             </div>
           )}
         </div>
