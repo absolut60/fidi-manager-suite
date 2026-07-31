@@ -43,7 +43,7 @@ import { CategoriaSelect } from "@/components/categoria-select";
 
 
 
-const TAB_VALUES = ["riepilogo", "anagrafica", "contatti", "cantieri", "storico", "insoluti", "attivita", "allegati", "privacy"] as const;
+const TAB_VALUES = ["riepilogo", "anagrafica", "contatti", "marketing", "cantieri", "storico", "insoluti", "attivita", "allegati", "privacy"] as const;
 const INSOLUTI_SUB_VALUES = ["riepilogo", "scadenziario", "solleciti", "piani", "legali", "assicurazioni"] as const;
 
 export const Route = createFileRoute("/_app/clienti/$clienteId")({
