@@ -1,7 +1,10 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Sparkles, Save, Users, Mail, MailX, Trash2, RefreshCw } from "lucide-react";
+import {
+  Sparkles, Save, Users, Mail, MailX, Trash2, RefreshCw,
+  ChevronRight, ChevronDown, Send, Loader2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -11,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -21,6 +25,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { isEmailValida } from "@/lib/email-validazione";
+import { CONSENSO_LABEL } from "@/lib/consensi-testi";
 import { MACROCATEGORIE, CATEGORIE } from "@/lib/macrocategorie";
 
 export const Route = createFileRoute("/_app/marketing/segmenti")({
@@ -32,6 +37,14 @@ const MARKETING_ROLES = new Set(["amministratore", "amministrazione", "direzione
 // Stato filtri — stessi nomi/valori usati nella pagina Clienti (fonte unica),
 // serializzabile su segmenti_marketing.filtri (jsonb).
 type SemaforoValue = "tutti" | "rosso" | "arancione" | "giallo" | "verde";
+type ConsensoFiltro = "tutti" | "marketing_diretto" | "marketing_media" | "profilazione";
+
+const CONSENSO_COLONNA: Record<Exclude<ConsensoFiltro, "tutti">, string> = {
+  marketing_diretto: "consenso_marketing_diretto",
+  marketing_media: "consenso_marketing_media",
+  profilazione: "consenso_profilazione",
+};
+
 type Filtri = {
   storeFiltro: string;                 // "tutti" | store_id
   filtroAgente: string;                // "tutti" | "__none__" | codice_agente
@@ -41,6 +54,7 @@ type Filtri = {
   filtroBlocco: "tutti" | "bloccati" | "non_bloccati";
   filtroTipoSoggetto: "tutti" | "fisica" | "giuridica";
   fatturato: "tutti" | "nessuno" | "0_10k" | "10k_50k" | "50k_100k" | "oltre_100k";
+  filtroConsenso: ConsensoFiltro;      // almeno un contatto con quel consenso attivo
   citta: string;
   provincia: string;
 };
@@ -54,9 +68,28 @@ const FILTRI_DEFAULT: Filtri = {
   filtroBlocco: "tutti",
   filtroTipoSoggetto: "giuridica",
   fatturato: "tutti",
+  filtroConsenso: "tutti",
   citta: "",
   provincia: "",
 };
+
+type ContattoRiga = {
+  id: string;
+  cliente_id: string;
+  nome: string;
+  cognome: string | null;
+  email: string | null;
+  consenso_marketing_diretto: boolean;
+  consenso_marketing_media: boolean;
+  consenso_profilazione: boolean;
+};
+
+const CHUNK = 200;
+function chunkArray<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
 
 function calcSemaforo(c: {
   fido_residuo?: number | null;
@@ -181,15 +214,43 @@ function MarketingSegmentiPage() {
     },
   });
 
-  // Intersezione id-filter set (semaforo ∩ fatturato)
+  // === Filtro consenso: clienti con ALMENO UN contatto col consenso attivo ===
+  const { data: consensoIds } = useQuery({
+    queryKey: ["consenso-ids-marketing", filtri.filtroConsenso],
+    enabled: canSee && filtri.filtroConsenso !== "tutti",
+    staleTime: 60_000,
+    queryFn: async () => {
+      const col = CONSENSO_COLONNA[filtri.filtroConsenso as Exclude<ConsensoFiltro, "tutti">];
+      const ids = new Set<string>();
+      let off = 0;
+      const size = 1000;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await supabase
+          .from("contatti")
+          .select("cliente_id")
+          .eq(col as any, true)
+          .range(off, off + size - 1);
+        if (error) throw error;
+        const batch = (data ?? []) as Array<{ cliente_id: string }>;
+        for (const r of batch) if (r.cliente_id) ids.add(r.cliente_id);
+        if (batch.length < size) break;
+        off += size;
+      }
+      return Array.from(ids);
+    },
+  });
+
+  // Intersezione id-filter set (semaforo ∩ fatturato ∩ consenso)
   const includeIds = useMemo<string[] | null>(() => {
     const sources: string[][] = [];
     if (semaforoIds) sources.push(semaforoIds);
     if (fatturatoIds) sources.push(fatturatoIds);
+    if (consensoIds) sources.push(consensoIds);
     if (sources.length === 0) return null;
     const sets = sources.map((s) => new Set(s));
     return sources[0].filter((id) => sets.every((s) => s.has(id)));
-  }, [semaforoIds, fatturatoIds]);
+  }, [semaforoIds, fatturatoIds, consensoIds]);
 
   // === Query builder — allineato a src/routes/_app/clienti.tsx (fonte unica) ===
   function buildQuery(select: string, count: "exact" | undefined) {
@@ -217,14 +278,15 @@ function MarketingSegmentiPage() {
 
   const classifReady = filtri.semaforo === "tutti" || !!classifList;
   const fatturatoReady = filtri.fatturato === "tutti" || !!fatturatoIds;
+  const consensoReady = filtri.filtroConsenso === "tutti" || !!consensoIds;
 
   // === Conteggio segmento + lista (limitata a 100 per l'anteprima) ===
   const PREVIEW_LIMIT = 100;
   const { data: segmento, isLoading } = useQuery({
     queryKey: ["marketing-segmento", filtri, includeIds?.length ?? null],
-    enabled: canSee && classifReady && fatturatoReady,
+    enabled: canSee && classifReady && fatturatoReady && consensoReady,
     queryFn: async () => {
-      const built = buildQuery("id, ragione_sociale, citta, provincia, categoria, agente, codice_agente", "exact");
+      const built = buildQuery("id, ragione_sociale, email, citta, provincia, categoria, agente, codice_agente", "exact");
       if ("empty" in built) return { rows: [] as any[], count: 0 };
       const { data, error, count } = await built.q.range(0, PREVIEW_LIMIT - 1);
       if (error) throw error;
@@ -235,26 +297,148 @@ function MarketingSegmentiPage() {
   const rows = segmento?.rows ?? [];
   const totale = segmento?.count ?? 0;
 
-  // === Indicatore email valida su contatti (per la finestra pagina) ===
-  const { data: emailValidaMap } = useQuery({
-    queryKey: ["marketing-email-map", rows.map((r) => r.id).sort().join(",")],
+  // === Contatti dei clienti visibili (righe espandibili + indicatore email) ===
+  const rowsKey = rows.map((r) => r.id).sort().join(",");
+  const { data: contattiMap } = useQuery({
+    queryKey: ["marketing-contatti-map", rowsKey],
     enabled: rows.length > 0,
     staleTime: 60_000,
     queryFn: async () => {
       const ids = rows.map((r) => r.id);
-      const { data, error } = await supabase
-        .from("contatti")
-        .select("cliente_id, email")
-        .in("cliente_id", ids);
-      if (error) throw error;
-      const map = new Map<string, boolean>();
-      for (const c of (data ?? []) as Array<{ cliente_id: string; email: string | null }>) {
-        if (map.get(c.cliente_id)) continue;
-        if (isEmailValida(c.email)) map.set(c.cliente_id, true);
+      const map = new Map<string, ContattoRiga[]>();
+      for (const part of chunkArray(ids, CHUNK)) {
+        const { data, error } = await supabase
+          .from("contatti")
+          .select("id, cliente_id, nome, cognome, email, consenso_marketing_diretto, consenso_marketing_media, consenso_profilazione")
+          .in("cliente_id", part);
+        if (error) throw error;
+        for (const c of (data ?? []) as ContattoRiga[]) {
+          const arr = map.get(c.cliente_id) ?? [];
+          arr.push(c);
+          map.set(c.cliente_id, arr);
+        }
       }
       return map;
     },
   });
+
+  // === Selezione destinatari ===
+  const [selezionati, setSelezionati] = useState<Set<string>>(new Set());
+  const [espansi, setEspansi] = useState<Set<string>>(new Set());
+  const [contattiEsclusi, setContattiEsclusi] = useState<Set<string>>(new Set());
+  const [aziendaliEsclusi, setAziendaliEsclusi] = useState<Set<string>>(new Set());
+  const [caricamentoTutti, setCaricamentoTutti] = useState(false);
+  const [campagnaId, setCampagnaId] = useState<string>("");
+
+  // Reset selezione quando cambiano i filtri
+  useEffect(() => {
+    setSelezionati(new Set());
+    setContattiEsclusi(new Set());
+    setAziendaliEsclusi(new Set());
+  }, [filtri]);
+
+  function toggleCliente(id: string, on: boolean) {
+    setSelezionati((p) => {
+      const n = new Set(p);
+      if (on) n.add(id); else n.delete(id);
+      return n;
+    });
+  }
+
+  function toggleEspanso(id: string) {
+    setEspansi((p) => {
+      const n = new Set(p);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+  }
+
+  async function selezionaTutti() {
+    setCaricamentoTutti(true);
+    try {
+      const built = buildQuery("id", undefined);
+      if ("empty" in built) {
+        setSelezionati(new Set());
+        return;
+      }
+      const ids: string[] = [];
+      let off = 0;
+      const size = 1000;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const rebuilt = buildQuery("id", undefined);
+        if ("empty" in rebuilt) break;
+        const { data, error } = await rebuilt.q.range(off, off + size - 1);
+        if (error) throw error;
+        const batch = (data ?? []) as unknown as Array<{ id: string }>;
+        ids.push(...batch.map((b) => b.id));
+        if (batch.length < size) break;
+        off += size;
+      }
+      setSelezionati(new Set(ids));
+      setContattiEsclusi(new Set());
+      setAziendaliEsclusi(new Set());
+    } catch (e: any) {
+      toast.error(e?.message ?? "Errore nel caricamento dell'intero segmento");
+    } finally {
+      setCaricamentoTutti(false);
+    }
+  }
+
+  // Contatti + email aziendali dei clienti SELEZIONATI (per il conteggio destinatari)
+  const selezionatiIds = useMemo(() => Array.from(selezionati).sort(), [selezionati]);
+  const { data: destinatariRaw } = useQuery({
+    queryKey: ["marketing-destinatari", selezionatiIds.length, selezionatiIds.join(",").slice(0, 2000)],
+    enabled: selezionatiIds.length > 0,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const aziendali = new Map<string, string | null>();
+      const contatti: ContattoRiga[] = [];
+      for (const part of chunkArray(selezionatiIds, CHUNK)) {
+        const [{ data: cli, error: e1 }, { data: cont, error: e2 }] = await Promise.all([
+          supabase.from("clienti").select("id, email").in("id", part),
+          supabase
+            .from("contatti")
+            .select("id, cliente_id, nome, cognome, email, consenso_marketing_diretto, consenso_marketing_media, consenso_profilazione")
+            .in("cliente_id", part),
+        ]);
+        if (e1) throw e1;
+        if (e2) throw e2;
+        for (const c of (cli ?? []) as Array<{ id: string; email: string | null }>) aziendali.set(c.id, c.email);
+        contatti.push(...((cont ?? []) as ContattoRiga[]));
+      }
+      return { aziendali, contatti };
+    },
+  });
+
+  const totaleDestinatari = useMemo(() => {
+    if (!destinatariRaw) return 0;
+    let n = 0;
+    for (const [id, email] of destinatariRaw.aziendali) {
+      if (!aziendaliEsclusi.has(id) && isEmailValida(email)) n += 1;
+    }
+    for (const c of destinatariRaw.contatti) {
+      if (!contattiEsclusi.has(c.id) && isEmailValida(c.email)) n += 1;
+    }
+    return n;
+  }, [destinatariRaw, aziendaliEsclusi, contattiEsclusi]);
+
+  // === Campagne disponibili (solo scelta, nessun invio in questo strato) ===
+  const { data: campagne } = useQuery({
+    queryKey: ["campagne-email-marketing", "selector"],
+    enabled: canSee,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("campagne_email_marketing")
+        .select("id, nome, stato, oggetto")
+        .order("updated_at", { ascending: false });
+      if (error) throw error;
+      const list = (data ?? []) as Array<{ id: string; nome: string; stato: string; oggetto: string }>;
+      const peso = (s: string) => (s === "pronta" ? 0 : s === "bozza" ? 1 : 2);
+      return [...list].sort((a, b) => peso(a.stato) - peso(b.stato));
+    },
+  });
+
 
   // === Segmenti salvati ===
   const { data: segmentiSalvati } = useQuery({
@@ -475,6 +659,21 @@ function MarketingSegmentiPage() {
             </Select>
           </div>
           <div>
+            <Label className="text-xs">Consenso marketing</Label>
+            <Select
+              value={filtri.filtroConsenso}
+              onValueChange={(v) => setFiltri((p) => ({ ...p, filtroConsenso: v as ConsensoFiltro }))}
+            >
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="tutti">Tutti</SelectItem>
+                <SelectItem value="marketing_diretto">Con {CONSENSO_LABEL.marketing_diretto}</SelectItem>
+                <SelectItem value="marketing_media">Con {CONSENSO_LABEL.marketing_media}</SelectItem>
+                <SelectItem value="profilazione">Con {CONSENSO_LABEL.profilazione}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
             <Label className="text-xs">Città</Label>
             <Input value={filtri.citta} onChange={(e) => setFiltri((p) => ({ ...p, citta: e.target.value }))} placeholder="Es. Milano" />
           </div>
@@ -503,11 +702,57 @@ function MarketingSegmentiPage() {
         </div>
       </Card>
 
+      {/* Barra selezione destinatari */}
+      {selezionati.size > 0 && (
+        <Card className="p-4 flex flex-wrap items-center gap-3 border-[#c94f8f]/40 bg-[#c94f8f]/5">
+          <div className="text-sm">
+            <span className="font-semibold">{selezionati.size.toLocaleString("it-IT")}</span> client
+            {selezionati.size === 1 ? "e" : "i"} selezionat{selezionati.size === 1 ? "o" : "i"} —{" "}
+            <span className="font-semibold">{totaleDestinatari.toLocaleString("it-IT")}</span> destinatari totali
+            <span className="text-muted-foreground"> (email aziendali + contatti)</span>
+          </div>
+          <div className="flex items-center gap-2 ml-auto">
+            <Select value={campagnaId} onValueChange={setCampagnaId}>
+              <SelectTrigger className="w-[260px]">
+                <SelectValue placeholder="Scegli campagna" />
+              </SelectTrigger>
+              <SelectContent>
+                {(campagne ?? []).map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.stato === "pronta" ? "✅ " : "✏️ "}{c.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button disabled title="Invio in arrivo nel prossimo aggiornamento">
+              <Send className="size-4 mr-2" /> Invia campagna
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setSelezionati(new Set())}>
+              Azzera selezione
+            </Button>
+          </div>
+          <div className="w-full text-xs text-muted-foreground">
+            Invio in arrivo nel prossimo aggiornamento.
+          </div>
+        </Card>
+      )}
+
       {/* Lista */}
       <Card>
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10">
+                <Checkbox
+                  checked={selezionati.size > 0 && selezionati.size >= totale}
+                  onCheckedChange={(v) => {
+                    if (v) void selezionaTutti();
+                    else setSelezionati(new Set());
+                  }}
+                  aria-label="Seleziona tutto il segmento"
+                />
+              </TableHead>
+              <TableHead className="w-8" />
               <TableHead>Ragione sociale</TableHead>
               <TableHead>Città / Prov.</TableHead>
               <TableHead>Agente</TableHead>
@@ -516,39 +761,134 @@ function MarketingSegmentiPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading && (
-              <TableRow><TableCell colSpan={5} className="text-muted-foreground text-center py-6">Caricamento...</TableCell></TableRow>
+            {(isLoading || caricamentoTutti) && (
+              <TableRow><TableCell colSpan={7} className="text-muted-foreground text-center py-6">
+                {caricamentoTutti ? (
+                  <span className="inline-flex items-center gap-2"><Loader2 className="size-4 animate-spin" /> Selezione dell'intero segmento…</span>
+                ) : "Caricamento..."}
+              </TableCell></TableRow>
             )}
-            {!isLoading && rows.length === 0 && (
-              <TableRow><TableCell colSpan={5} className="text-muted-foreground text-center py-6">Nessun cliente corrisponde ai filtri</TableCell></TableRow>
+            {!isLoading && !caricamentoTutti && rows.length === 0 && (
+              <TableRow><TableCell colSpan={7} className="text-muted-foreground text-center py-6">Nessun cliente corrisponde ai filtri</TableCell></TableRow>
             )}
-            {rows.map((c: any) => {
-              const hasEmail = !!emailValidaMap?.get(c.id);
+            {!caricamentoTutti && rows.map((c: any) => {
+              const contatti = contattiMap?.get(c.id) ?? [];
+              const hasEmail = isEmailValida(c.email) || contatti.some((k) => isEmailValida(k.email));
+              const isSel = selezionati.has(c.id);
+              const isOpen = espansi.has(c.id);
               return (
-                <TableRow key={c.id}>
-                  <TableCell className="font-medium">{c.ragione_sociale}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {[c.citta, c.provincia].filter(Boolean).join(" — ") || "—"}
-                  </TableCell>
-                  <TableCell className="text-sm">{c.agente || (c.codice_agente ? c.codice_agente : "—")}</TableCell>
-                  <TableCell className="text-sm">{c.categoria || "—"}</TableCell>
-                  <TableCell className="text-center">
-                    {hasEmail ? (
-                      <Badge variant="outline" className="border-success text-success gap-1">
-                        <Mail className="size-3" /> Sì
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-muted-foreground gap-1">
-                        <MailX className="size-3" /> No
-                      </Badge>
-                    )}
-                  </TableCell>
-                </TableRow>
+                <Fragment key={c.id}>
+                  <TableRow>
+                    <TableCell>
+                      <Checkbox
+                        checked={isSel}
+                        onCheckedChange={(v) => toggleCliente(c.id, !!v)}
+                        aria-label={`Seleziona ${c.ragione_sociale}`}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <button
+                        type="button"
+                        onClick={() => toggleEspanso(c.id)}
+                        className="text-muted-foreground hover:text-foreground"
+                        aria-label={isOpen ? "Comprimi" : "Espandi"}
+                      >
+                        {isOpen ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
+                      </button>
+                    </TableCell>
+                    <TableCell className="font-medium cursor-pointer" onClick={() => toggleEspanso(c.id)}>
+                      {c.ragione_sociale}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {[c.citta, c.provincia].filter(Boolean).join(" — ") || "—"}
+                    </TableCell>
+                    <TableCell className="text-sm">{c.agente || (c.codice_agente ? c.codice_agente : "—")}</TableCell>
+                    <TableCell className="text-sm">{c.categoria || "—"}</TableCell>
+                    <TableCell className="text-center">
+                      {hasEmail ? (
+                        <Badge variant="outline" className="border-success text-success gap-1">
+                          <Mail className="size-3" /> Sì
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-muted-foreground gap-1">
+                          <MailX className="size-3" /> No
+                        </Badge>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                  {isOpen && (
+                    <TableRow key={`${c.id}-exp`} className="bg-muted/30 hover:bg-muted/30">
+                      <TableCell />
+                      <TableCell colSpan={6} className="py-3">
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 text-sm">
+                            <Checkbox
+                              checked={isSel && !aziendaliEsclusi.has(c.id)}
+                              disabled={!isSel || !isEmailValida(c.email)}
+                              onCheckedChange={(v) =>
+                                setAziendaliEsclusi((p) => {
+                                  const n = new Set(p);
+                                  if (v) n.delete(c.id); else n.add(c.id);
+                                  return n;
+                                })
+                              }
+                              aria-label="Email aziendale"
+                            />
+                            <span className="font-medium">Email aziendale:</span>
+                            <span className="text-muted-foreground">{c.email || "—"}</span>
+                            {isEmailValida(c.email) ? (
+                              <Badge variant="outline" className="border-success text-success">valida</Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-muted-foreground">non valida</Badge>
+                            )}
+                          </div>
+                          <div className="space-y-2">
+                            <div className="text-xs font-medium text-muted-foreground uppercase">Contatti</div>
+                            {contatti.length === 0 && (
+                              <div className="text-sm text-muted-foreground">Nessun contatto registrato</div>
+                            )}
+                            {contatti.map((k) => (
+                              <div key={k.id} className="flex flex-wrap items-center gap-2 text-sm">
+                                <Checkbox
+                                  checked={isSel && !contattiEsclusi.has(k.id)}
+                                  disabled={!isSel || !isEmailValida(k.email)}
+                                  onCheckedChange={(v) =>
+                                    setContattiEsclusi((p) => {
+                                      const n = new Set(p);
+                                      if (v) n.delete(k.id); else n.add(k.id);
+                                      return n;
+                                    })
+                                  }
+                                  aria-label={`Contatto ${k.nome}`}
+                                />
+                                <span className="font-medium">{[k.nome, k.cognome].filter(Boolean).join(" ")}</span>
+                                <span className="text-muted-foreground">{k.email || "—"}</span>
+                                {!isEmailValida(k.email) && (
+                                  <Badge variant="outline" className="text-muted-foreground">email non valida</Badge>
+                                )}
+                                {k.consenso_marketing_diretto && (
+                                  <Badge variant="outline" className="border-success text-success">{CONSENSO_LABEL.marketing_diretto}</Badge>
+                                )}
+                                {k.consenso_marketing_media && (
+                                  <Badge variant="outline" className="border-success text-success">{CONSENSO_LABEL.marketing_media}</Badge>
+                                )}
+                                {k.consenso_profilazione && (
+                                  <Badge variant="outline" className="border-success text-success">{CONSENSO_LABEL.profilazione}</Badge>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </Fragment>
               );
             })}
           </TableBody>
         </Table>
       </Card>
+
 
       {/* Segmenti salvati */}
       <div>
