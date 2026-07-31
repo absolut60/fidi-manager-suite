@@ -641,10 +641,13 @@ function MarketingSegmentiPage() {
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("segmenti_marketing").delete().eq("id", id);
       if (error) throw error;
+      return id;
     },
-    onSuccess: () => {
+    onSuccess: (id) => {
       toast.success("Segmento eliminato");
+      setListaStatica((p) => (p && p.id === id ? null : p));
       qc.invalidateQueries({ queryKey: ["segmenti-marketing"] });
+      qc.invalidateQueries({ queryKey: ["segmenti-marketing-conteggi"] });
     },
     onError: (e: any) => toast.error(e?.message ?? "Errore nell'eliminazione"),
   });
@@ -663,15 +666,60 @@ function MarketingSegmentiPage() {
       parsed = f;
     }
     // Merge con i default per essere robusti a salvataggi vecchi/parziali
+    setListaStatica(null);
     setFiltri({ ...FILTRI_DEFAULT, ...parsed });
     setPagina(1);
     setTab(TAB_ELENCO);
     toast.info("Filtri del segmento caricati");
   }
 
-  useEffect(() => {
-    // no-op — reset esplicito solo da bottone
-  }, []);
+  const [caricamentoLista, setCaricamentoLista] = useState(false);
+
+  async function caricaListaStatica(s: { id: string; nome: string }) {
+    setCaricamentoLista(true);
+    try {
+      const ids: string[] = [];
+      let off = 0;
+      const size = 1000;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await supabase
+          .from("segmenti_marketing_clienti")
+          .select("cliente_id")
+          .eq("segmento_id", s.id)
+          .range(off, off + size - 1);
+        if (error) throw error;
+        const batch = (data ?? []) as Array<{ cliente_id: string }>;
+        ids.push(...batch.map((r) => r.cliente_id));
+        if (batch.length < size) break;
+        off += size;
+      }
+      // Filtri neutri: la lista deve mostrare esattamente i clienti congelati.
+      // Il reset-selezione legato al cambio filtri va saltato.
+      skipResetSelezione.current = true;
+      setFiltri({ ...FILTRI_DEFAULT, filtroTipoSoggetto: "tutti" });
+      setListaStatica({ id: s.id, nome: s.nome, ids });
+      setSelezionati(new Set(ids));
+      setContattiEsclusi(new Set());
+      setAziendaliEsclusi(new Set());
+      setPagina(1);
+      setTab(TAB_ELENCO);
+      toast.info(`Lista "${s.nome}" caricata — ${ids.length} clienti`);
+    } catch (e: any) {
+      skipResetSelezione.current = false;
+      toast.error(e?.message ?? "Errore nel caricamento della lista");
+    } finally {
+      setCaricamentoLista(false);
+    }
+  }
+
+  function esciDallaLista() {
+    setListaStatica(null);
+    setSelezionati(new Set());
+    setContattiEsclusi(new Set());
+    setAziendaliEsclusi(new Set());
+    setPagina(1);
+  }
 
   if (loading) {
     return <div className="p-6 text-muted-foreground">Caricamento...</div>;
