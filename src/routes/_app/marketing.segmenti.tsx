@@ -501,8 +501,6 @@ function MarketingSegmentiPage() {
         .from("campagne_email_marketing")
         .select("id, nome, stato, oggetto")
         .order("updated_at", { ascending: false });
-      // eslint-disable-next-line no-console
-      console.log("[segmenti] query campagne →", { rows: data?.length ?? 0, data, error });
       if (error) throw error;
       const list = (data ?? []) as Array<{ id: string; nome: string; stato: string; oggetto: string }>;
       const peso = (s: string) => (s === "pronta" ? 0 : s === "bozza" ? 1 : 2);
@@ -514,15 +512,6 @@ function MarketingSegmentiPage() {
   // lo stato "nessuna campagna": si distingue caricamento da lista vuota.
   const campagneLoading = campagneQuery.isPending;
   const campagneError = campagneQuery.error;
-
-  // eslint-disable-next-line no-console
-  console.log("[segmenti] stato campagne", {
-    canSee,
-    status: campagneQuery.status,
-    fetchStatus: campagneQuery.fetchStatus,
-    count: campagne?.length ?? null,
-    error: (campagneError as any)?.message ?? null,
-  });
 
 
   // === Segmenti salvati ===
