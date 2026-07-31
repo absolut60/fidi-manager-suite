@@ -994,6 +994,31 @@ function MarketingSegmentiPage() {
             })}
           </TableBody>
         </Table>
+        {totale > PAGE_SIZE && (
+          <div className="flex flex-wrap items-center gap-2 border-t p-3">
+            <div className="text-xs text-muted-foreground">
+              Mostrati {daRiga.toLocaleString("it-IT")}–{aRiga.toLocaleString("it-IT")} di{" "}
+              {totale.toLocaleString("it-IT")}
+            </div>
+            <div className="ml-auto flex items-center gap-2">
+              <Button variant="outline" size="sm" disabled={pagina <= 1} onClick={() => vaiAPagina(1)}>
+                Prima
+              </Button>
+              <Button variant="outline" size="sm" disabled={pagina <= 1} onClick={() => vaiAPagina(pagina - 1)}>
+                Precedente
+              </Button>
+              <span className="text-sm">
+                Pagina {pagina} di {totalePagine}
+              </span>
+              <Button variant="outline" size="sm" disabled={pagina >= totalePagine} onClick={() => vaiAPagina(pagina + 1)}>
+                Successiva
+              </Button>
+              <Button variant="outline" size="sm" disabled={pagina >= totalePagine} onClick={() => vaiAPagina(totalePagine)}>
+                Ultima
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
 
 
