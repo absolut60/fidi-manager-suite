@@ -2764,6 +2764,7 @@ export type Database = {
           filtri: Json
           id: string
           nome: string
+          tipo: string
           updated_at: string
         }
         Insert: {
@@ -2773,6 +2774,7 @@ export type Database = {
           filtri: Json
           id?: string
           nome: string
+          tipo?: string
           updated_at?: string
         }
         Update: {
@@ -2782,9 +2784,57 @@ export type Database = {
           filtri?: Json
           id?: string
           nome?: string
+          tipo?: string
           updated_at?: string
         }
         Relationships: []
+      }
+      segmenti_marketing_clienti: {
+        Row: {
+          cliente_id: string
+          created_at: string
+          segmento_id: string
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string
+          segmento_id: string
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string
+          segmento_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "segmenti_marketing_clienti_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "segmenti_marketing_clienti_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti_con_rischio"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "segmenti_marketing_clienti_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "segmenti_marketing_clienti_segmento_id_fkey"
+            columns: ["segmento_id"]
+            isOneToOne: false
+            referencedRelation: "segmenti_marketing"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       snapshot_scaduto: {
         Row: {
