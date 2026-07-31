@@ -27,6 +27,10 @@ import {
 import { isEmailValida } from "@/lib/email-validazione";
 import { CONSENSO_LABEL } from "@/lib/consensi-testi";
 import { MACROCATEGORIE, CATEGORIE } from "@/lib/macrocategorie";
+import {
+  aggiungiDestinatariCampagna,
+  type DestinatarioCampagnaInput,
+} from "@/lib/campagne-destinatari";
 
 export const Route = createFileRoute("/_app/marketing/segmenti")({
   component: MarketingSegmentiPage,
