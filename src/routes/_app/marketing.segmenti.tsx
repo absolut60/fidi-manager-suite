@@ -742,7 +742,13 @@ function MarketingSegmentiPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => setFiltri(FILTRI_DEFAULT)}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setListaStatica(null);
+              setFiltri(FILTRI_DEFAULT);
+            }}
+          >
             <RefreshCw className="size-4 mr-2" /> Azzera filtri
           </Button>
           <Dialog open={saveOpen} onOpenChange={setSaveOpen}>
@@ -755,7 +761,7 @@ function MarketingSegmentiPage() {
               <DialogHeader>
                 <DialogTitle>Salva segmento</DialogTitle>
                 <DialogDescription>
-                  Verranno salvati i criteri correnti; il segmento resta aggiornato al variare dell'anagrafica.
+                  Scegli se salvare i criteri (dinamico) oppure congelare i clienti selezionati (lista statica).
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-3">
@@ -766,6 +772,50 @@ function MarketingSegmentiPage() {
                 <div>
                   <Label>Descrizione</Label>
                   <Textarea value={descrizione} onChange={(e) => setDescrizione(e.target.value)} rows={3} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Tipo di segmento</Label>
+                  <label className="flex items-start gap-3 rounded-md border border-border p-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      className="mt-1"
+                      name="tipo-segmento"
+                      checked={tipoSalvataggio === "dinamico"}
+                      onChange={() => setTipoSalvataggio("dinamico")}
+                    />
+                    <span>
+                      <span className="text-sm font-medium block">Criteri dinamici</span>
+                      <span className="text-xs text-muted-foreground">
+                        Il segmento resta sempre aggiornato: include i nuovi clienti che soddisfano i criteri.
+                      </span>
+                    </span>
+                  </label>
+                  <label
+                    className={`flex items-start gap-3 rounded-md border border-border p-3 ${
+                      selezionati.size > 0 ? "cursor-pointer" : "opacity-60 cursor-not-allowed"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      className="mt-1"
+                      name="tipo-segmento"
+                      disabled={selezionati.size === 0}
+                      checked={tipoSalvataggio === "statico"}
+                      onChange={() => setTipoSalvataggio("statico")}
+                    />
+                    <span>
+                      <span className="text-sm font-medium block">
+                        {selezionati.size > 0
+                          ? `Lista statica (${selezionati.size.toLocaleString("it-IT")} clienti selezionati)`
+                          : "Lista statica dei clienti selezionati"}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {selezionati.size > 0
+                          ? "Congela esattamente i clienti selezionati ora; non cambierà nel tempo."
+                          : "Seleziona prima dei clienti nell'elenco"}
+                      </span>
+                    </span>
+                  </label>
                 </div>
               </div>
               <DialogFooter>
