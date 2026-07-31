@@ -434,6 +434,7 @@ function ClienteDetail() {
           <TabsTrigger value="riepilogo">Riepilogo</TabsTrigger>
           <TabsTrigger value="anagrafica">Anagrafica</TabsTrigger>
           <TabsTrigger value="contatti">Contatti ({contatti?.length ?? 0})</TabsTrigger>
+          <TabsTrigger value="marketing">Marketing</TabsTrigger>
           <TabsTrigger value="cantieri">Cantieri</TabsTrigger>
           <TabsTrigger value="storico">Fido</TabsTrigger>
           <TabsTrigger value="insoluti">Dati Rischio</TabsTrigger>
