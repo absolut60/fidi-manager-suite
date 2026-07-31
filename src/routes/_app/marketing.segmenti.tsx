@@ -473,7 +473,12 @@ function MarketingSegmentiPage() {
       qc.invalidateQueries({ queryKey: ["campagne-email-destinatari"] });
 
     },
-    onError: (e: any) => toast.error(e?.message ?? "Errore aggiunta destinatari"),
+    onError: (e: any) => {
+      // eslint-disable-next-line no-console
+      console.error("[segmenti] errore aggiunta destinatari", e);
+      const dettagli = [e?.message, e?.details, e?.hint, e?.code].filter(Boolean).join(" — ");
+      toast.error(dettagli || "Errore aggiunta destinatari", { duration: 10000 });
+    },
   });
 
   // === Campagne disponibili (solo scelta, nessun invio in questo strato) ===
