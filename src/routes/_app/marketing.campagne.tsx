@@ -265,6 +265,15 @@ function MarketingCampagnePage() {
         />
       )}
 
+      {destinatariDi && (
+        <DestinatariCampagnaDialog
+          campagna={destinatariDi}
+          onClose={() => setDestinatariDi(null)}
+        />
+      )}
+
+
+
       <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
