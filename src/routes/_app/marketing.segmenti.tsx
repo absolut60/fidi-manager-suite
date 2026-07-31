@@ -24,6 +24,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { isEmailValida } from "@/lib/email-validazione";
 import { CONSENSO_LABEL } from "@/lib/consensi-testi";
 import { MACROCATEGORIE, CATEGORIE } from "@/lib/macrocategorie";
@@ -119,6 +120,7 @@ function MarketingSegmentiPage() {
 
   const [filtri, setFiltri] = useState<Filtri>(FILTRI_DEFAULT);
   const [saveOpen, setSaveOpen] = useState(false);
+  const [tab, setTab] = useState("costruisci");
   const [nome, setNome] = useState("");
   const [descrizione, setDescrizione] = useState("");
 
@@ -566,6 +568,7 @@ function MarketingSegmentiPage() {
   function caricaSegmento(f: Filtri) {
     // Merge con i default per essere robusti a salvataggi vecchi/parziali
     setFiltri({ ...FILTRI_DEFAULT, ...f });
+    setTab("costruisci");
     toast.info("Filtri del segmento caricati");
   }
 
@@ -631,6 +634,15 @@ function MarketingSegmentiPage() {
         </div>
       </div>
 
+      <Tabs value={tab} onValueChange={setTab} className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="costruisci">Costruisci segmento</TabsTrigger>
+          <TabsTrigger value="salvati">
+            Segmenti salvati ({(segmentiSalvati ?? []).length})
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="costruisci" className="space-y-6">
       {/* Filtri */}
       <Card className="p-4">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -1022,43 +1034,46 @@ function MarketingSegmentiPage() {
       </Card>
 
 
-      {/* Segmenti salvati */}
-      <div>
-        <h2 className="text-lg font-semibold mb-2">Segmenti salvati</h2>
-        {(segmentiSalvati ?? []).length === 0 ? (
-          <div className="text-sm text-muted-foreground">Nessun segmento salvato.</div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {(segmentiSalvati ?? []).map((s) => (
-              <Card key={s.id} className="p-4 space-y-2">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="font-medium truncate">{s.nome}</div>
-                    {s.descrizione && (
-                      <div className="text-xs text-muted-foreground line-clamp-2 mt-1">{s.descrizione}</div>
-                    )}
+        </TabsContent>
+
+        <TabsContent value="salvati" className="space-y-6">
+          {(segmentiSalvati ?? []).length === 0 ? (
+            <Card className="p-6 text-sm text-muted-foreground">
+              Nessun segmento salvato. Imposta dei filtri e usa «Salva segmento» per crearne uno.
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {(segmentiSalvati ?? []).map((s) => (
+                <Card key={s.id} className="p-4 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">{s.nome}</div>
+                      {s.descrizione && (
+                        <div className="text-xs text-muted-foreground line-clamp-2 mt-1">{s.descrizione}</div>
+                      )}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        if (confirm(`Eliminare il segmento "${s.nome}"?`)) {
+                          eliminaSegmento.mutate(s.id);
+                        }
+                      }}
+                      aria-label="Elimina segmento"
+                    >
+                      <Trash2 className="size-4 text-muted-foreground" />
+                    </Button>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      if (confirm(`Eliminare il segmento "${s.nome}"?`)) {
-                        eliminaSegmento.mutate(s.id);
-                      }
-                    }}
-                    aria-label="Elimina segmento"
-                  >
-                    <Trash2 className="size-4 text-muted-foreground" />
+                  <Button size="sm" variant="outline" className="w-full" onClick={() => caricaSegmento(s.filtri)}>
+                    Carica filtri
                   </Button>
-                </div>
-                <Button size="sm" variant="outline" className="w-full" onClick={() => caricaSegmento(s.filtri)}>
-                  Carica filtri
-                </Button>
-              </Card>
-            ))}
-          </div>
-        )}
-      </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
