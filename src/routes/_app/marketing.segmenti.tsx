@@ -1060,6 +1060,18 @@ function MarketingSegmentiPage() {
         </TabsList>
 
         <TabsContent value={TAB_ELENCO} className="space-y-6">
+      {listaStatica && (
+        <Card className="p-4 border-[#c94f8f] bg-[#c94f8f]/5 flex items-center justify-between gap-3 flex-wrap">
+          <div className="text-sm">
+            Stai visualizzando la lista statica{" "}
+            <span className="font-semibold">«{listaStatica.nome}»</span> —{" "}
+            <span className="font-semibold">{listaStatica.ids.length.toLocaleString("it-IT")}</span> clienti
+          </div>
+          <Button size="sm" variant="outline" onClick={esciDallaLista}>
+            Esci dalla lista
+          </Button>
+        </Card>
+      )}
       {/* Lista */}
       <Card>
         <Table>
@@ -1245,11 +1257,24 @@ function MarketingSegmentiPage() {
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {(segmentiSalvati ?? []).map((s) => (
+              {(segmentiSalvati ?? []).map((s) => {
+                const statico = s.tipo === "statico";
+                const nClienti = conteggiStatici?.get(s.id) ?? 0;
+                return (
                 <Card key={s.id} className="p-4 space-y-2">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <div className="font-medium truncate">{s.nome}</div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge variant={statico ? "secondary" : "outline"}>
+                          {statico ? "Statico" : "Dinamico"}
+                        </Badge>
+                        {statico && (
+                          <span className="text-xs text-muted-foreground">
+                            {nClienti.toLocaleString("it-IT")} client{nClienti === 1 ? "e" : "i"}
+                          </span>
+                        )}
+                      </div>
                       {s.descrizione && (
                         <div className="text-xs text-muted-foreground line-clamp-2 mt-1">{s.descrizione}</div>
                       )}
@@ -1267,11 +1292,18 @@ function MarketingSegmentiPage() {
                       <Trash2 className="size-4 text-muted-foreground" />
                     </Button>
                   </div>
-                  <Button size="sm" variant="outline" className="w-full" onClick={() => caricaSegmento(s.filtri)}>
-                    Carica filtri
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full"
+                    disabled={caricamentoLista}
+                    onClick={() => (statico ? void caricaListaStatica(s) : caricaSegmento(s.filtri))}
+                  >
+                    {statico ? "Carica lista" : "Carica filtri"}
                   </Button>
                 </Card>
-              ))}
+                );
+              })}
             </div>
           )}
         </TabsContent>
