@@ -805,6 +805,16 @@ function MarketingSegmentiPage() {
               Azzera selezione
             </Button>
           </div>
+          {campagneError ? (
+            <div className="w-full text-xs text-destructive">
+              Impossibile caricare le campagne
+              {(campagneError as any)?.message ? `: ${(campagneError as any).message}` : ""}
+            </div>
+          ) : !campagneLoading && !(campagne ?? []).length ? (
+            <div className="w-full text-xs text-destructive">
+              Nessuna campagna disponibile: creane una nella pagina «Campagne email».
+            </div>
+          ) : null}
           <div className="w-full text-xs text-muted-foreground">
             I destinatari vengono salvati nella campagna (senza doppioni) e puoi aggiungerne altri in più tranche.
             Invio: disponibile prossimamente.
