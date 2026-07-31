@@ -1,5 +1,5 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Sparkles, Save, Users, Mail, MailX, Trash2, RefreshCw,
@@ -91,7 +91,11 @@ type ContattoRiga = {
   consenso_profilazione: boolean;
 };
 
+type ListaStatica = { id: string; nome: string; ids: string[] };
+
 const CHUNK = 200;
+// Limite oltre il quale la lista di id viene interrogata a blocchi (limiti URL/PostgREST)
+const CHUNK_IDS = 400;
 function chunkArray<T>(arr: T[], size: number): T[][] {
   const out: T[][] = [];
   for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
@@ -125,6 +129,10 @@ function MarketingSegmentiPage() {
   const [tab, setTab] = useState(TAB_ELENCO);
   const [nome, setNome] = useState("");
   const [descrizione, setDescrizione] = useState("");
+  const [tipoSalvataggio, setTipoSalvataggio] = useState<"dinamico" | "statico">("dinamico");
+  const [listaStatica, setListaStatica] = useState<ListaStatica | null>(null);
+  // Evita che il reset-selezione legato al cambio filtri cancelli la lista appena caricata
+  const skipResetSelezione = useRef(false);
 
   // === Lookup ===
   const { data: stores } = useQuery({
@@ -249,19 +257,20 @@ function MarketingSegmentiPage() {
     },
   });
 
-  // Intersezione id-filter set (semaforo ∩ fatturato ∩ consenso)
+  // Intersezione id-filter set (semaforo ∩ fatturato ∩ consenso ∩ lista statica)
   const includeIds = useMemo<string[] | null>(() => {
     const sources: string[][] = [];
     if (semaforoIds) sources.push(semaforoIds);
     if (fatturatoIds) sources.push(fatturatoIds);
     if (consensoIds) sources.push(consensoIds);
+    if (listaStatica) sources.push(listaStatica.ids);
     if (sources.length === 0) return null;
     const sets = sources.map((s) => new Set(s));
     return sources[0].filter((id) => sets.every((s) => s.has(id)));
-  }, [semaforoIds, fatturatoIds, consensoIds]);
+  }, [semaforoIds, fatturatoIds, consensoIds, listaStatica]);
 
   // === Query builder — allineato a src/routes/_app/clienti.tsx (fonte unica) ===
-  function buildQuery(select: string, count: "exact" | undefined) {
+  function buildQuery(select: string, count: "exact" | undefined, idsSubset?: string[]) {
     let q = supabase.from("clienti").select(select, count ? { count } : undefined);
     // Solo clienti anagraficamente attivi (default coerente con clienti.tsx)
     q = q.eq("attivo", true);
@@ -278,7 +287,7 @@ function MarketingSegmentiPage() {
     if (filtri.provincia.trim()) q = q.ilike("provincia", `%${filtri.provincia.trim()}%`);
     if (includeIds) {
       if (includeIds.length === 0) return { empty: true as const };
-      q = q.in("id", includeIds);
+      q = q.in("id", idsSubset ?? includeIds);
     }
     q = q.order("ragione_sociale", { ascending: true, nullsFirst: false });
     return { q };
@@ -291,11 +300,30 @@ function MarketingSegmentiPage() {
   // === Conteggio segmento + lista paginata (100 per pagina) ===
   const PAGE_SIZE = 100;
   const [pagina, setPagina] = useState(1);
+  const SELECT_LISTA = "id, ragione_sociale, email, citta, provincia, categoria, agente, codice_agente";
   const { data: segmento, isLoading } = useQuery({
-    queryKey: ["marketing-segmento", filtri, includeIds?.length ?? null, pagina],
+    queryKey: ["marketing-segmento", filtri, includeIds?.length ?? null, listaStatica?.id ?? null, pagina],
     enabled: canSee && classifReady && fatturatoReady && consensoReady,
     queryFn: async () => {
-      const built = buildQuery("id, ragione_sociale, email, citta, provincia, categoria, agente, codice_agente", "exact");
+      // Liste id molto lunghe: interroga a blocchi e pagina in memoria
+      if (includeIds && includeIds.length > CHUNK_IDS) {
+        const all: any[] = [];
+        for (const part of chunkArray(includeIds, CHUNK_IDS)) {
+          const b = buildQuery(SELECT_LISTA, undefined, part);
+          if ("empty" in b) continue;
+          const { data, error } = await b.q.range(0, 9999);
+          if (error) throw error;
+          all.push(...((data ?? []) as any[]));
+        }
+        all.sort((a, b) =>
+          String(a.ragione_sociale ?? "").localeCompare(String(b.ragione_sociale ?? ""), "it"),
+        );
+        return {
+          rows: all.slice((pagina - 1) * PAGE_SIZE, pagina * PAGE_SIZE),
+          count: all.length,
+        };
+      }
+      const built = buildQuery(SELECT_LISTA, "exact");
       if ("empty" in built) return { rows: [] as any[], count: 0 };
       const { data, error, count } = await built.q.range((pagina - 1) * PAGE_SIZE, pagina * PAGE_SIZE - 1);
       if (error) throw error;
@@ -342,8 +370,13 @@ function MarketingSegmentiPage() {
   const [caricamentoTutti, setCaricamentoTutti] = useState(false);
   const [campagnaId, setCampagnaId] = useState<string | undefined>(undefined);
 
-  // Reset selezione e pagina quando cambiano i filtri (NON al cambio pagina)
+  // Reset selezione e pagina quando cambiano i filtri (NON al cambio pagina).
+  // Saltato quando il cambio filtri deriva dal caricamento di una lista statica.
   useEffect(() => {
+    if (skipResetSelezione.current) {
+      skipResetSelezione.current = false;
+      return;
+    }
     setSelezionati(new Set());
     setContattiEsclusi(new Set());
     setAziendaliEsclusi(new Set());
