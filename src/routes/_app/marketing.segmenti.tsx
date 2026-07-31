@@ -110,7 +110,7 @@ function calcSemaforo(c: {
 }
 
 function MarketingSegmentiPage() {
-  const { roles, loading } = useAuth();
+  const { roles, loading, user } = useAuth();
   const qc = useQueryClient();
   const canSee = useMemo(
     () => (roles as string[]).some((r) => MARKETING_ROLES.has(r)),
