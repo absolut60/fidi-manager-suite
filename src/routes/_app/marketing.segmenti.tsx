@@ -332,7 +332,7 @@ function MarketingSegmentiPage() {
   const [contattiEsclusi, setContattiEsclusi] = useState<Set<string>>(new Set());
   const [aziendaliEsclusi, setAziendaliEsclusi] = useState<Set<string>>(new Set());
   const [caricamentoTutti, setCaricamentoTutti] = useState(false);
-  const [campagnaId, setCampagnaId] = useState<string>("__nessuna__");
+  const [campagnaId, setCampagnaId] = useState<string | undefined>(undefined);
 
   // Reset selezione quando cambiano i filtri
   useEffect(() => {
@@ -434,7 +434,7 @@ function MarketingSegmentiPage() {
   // === Aggiunta destinatari alla campagna (carrello persistente, nessun invio) ===
   const aggiungiDestinatari = useMutation({
     mutationFn: async () => {
-      if (campagnaId === "__nessuna__") throw new Error("Scegli prima una campagna");
+      if (!campagnaId) throw new Error("Scegli prima una campagna");
       if (!destinatariRaw) throw new Error("Destinatari non ancora caricati");
 
       const lista: DestinatarioCampagnaInput[] = [];
@@ -469,7 +469,7 @@ function MarketingSegmentiPage() {
       setSelezionati(new Set());
       setContattiEsclusi(new Set());
       setAziendaliEsclusi(new Set());
-      setCampagnaId("__nessuna__");
+      setCampagnaId(undefined);
       qc.invalidateQueries({ queryKey: ["campagne-email-destinatari"] });
 
     },
@@ -477,7 +477,7 @@ function MarketingSegmentiPage() {
   });
 
   // === Campagne disponibili (solo scelta, nessun invio in questo strato) ===
-  const { data: campagne } = useQuery({
+  const { data: campagne, isLoading: campagneLoading, error: campagneError } = useQuery({
     queryKey: ["campagne-email-marketing", "selector"],
     enabled: canSee,
     queryFn: async () => {
@@ -770,17 +770,30 @@ function MarketingSegmentiPage() {
                 <SelectValue placeholder="Scegli campagna" />
               </SelectTrigger>
               <SelectContent>
-                {(campagne ?? []).map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.stato === "pronta" ? "✅ " : "✏️ "}{c.nome}
-                  </SelectItem>
-                ))}
+                {campagneLoading ? (
+                  <div className="px-2 py-1.5 text-sm text-muted-foreground">Caricamento campagne…</div>
+                ) : campagneError ? (
+                  <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                    Errore nel caricamento delle campagne
+                    {(campagneError as any)?.message ? ` — ${(campagneError as any).message}` : ""}
+                  </div>
+                ) : !(campagne ?? []).length ? (
+                  <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                    Nessuna campagna disponibile — creane una in Campagne email
+                  </div>
+                ) : (
+                  (campagne ?? []).map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.stato === "pronta" ? "✅ " : "✏️ "}{c.nome}
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
             <Button
               onClick={() => aggiungiDestinatari.mutate()}
-              disabled={campagnaId === "__nessuna__" || totaleDestinatari === 0 || aggiungiDestinatari.isPending}
-              title={campagnaId === "__nessuna__" ? "Scegli prima una campagna" : "Aggiungi i destinatari selezionati alla campagna"}
+              disabled={!campagnaId || totaleDestinatari === 0 || aggiungiDestinatari.isPending}
+              title={!campagnaId ? "Scegli prima una campagna" : "Aggiungi i destinatari selezionati alla campagna"}
             >
 
               {aggiungiDestinatari.isPending
