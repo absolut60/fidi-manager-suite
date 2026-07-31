@@ -774,15 +774,23 @@ function MarketingSegmentiPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Button disabled title="Invio in arrivo nel prossimo aggiornamento">
-              <Send className="size-4 mr-2" /> Invia campagna
+            <Button
+              onClick={() => aggiungiDestinatari.mutate()}
+              disabled={!campagnaId || totaleDestinatari === 0 || aggiungiDestinatari.isPending}
+              title={!campagnaId ? "Scegli prima una campagna" : "Aggiungi i destinatari selezionati alla campagna"}
+            >
+              {aggiungiDestinatari.isPending
+                ? <Loader2 className="size-4 mr-2 animate-spin" />
+                : <Send className="size-4 mr-2" />}
+              Aggiungi alla campagna
             </Button>
             <Button variant="ghost" size="sm" onClick={() => setSelezionati(new Set())}>
               Azzera selezione
             </Button>
           </div>
           <div className="w-full text-xs text-muted-foreground">
-            Invio in arrivo nel prossimo aggiornamento.
+            I destinatari vengono salvati nella campagna (senza doppioni) e puoi aggiungerne altri in più tranche.
+            Invio: disponibile prossimamente.
           </div>
         </Card>
       )}
