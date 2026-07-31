@@ -284,15 +284,16 @@ function MarketingSegmentiPage() {
   const fatturatoReady = filtri.fatturato === "tutti" || !!fatturatoIds;
   const consensoReady = filtri.filtroConsenso === "tutti" || !!consensoIds;
 
-  // === Conteggio segmento + lista (limitata a 100 per l'anteprima) ===
-  const PREVIEW_LIMIT = 100;
+  // === Conteggio segmento + lista paginata (100 per pagina) ===
+  const PAGE_SIZE = 100;
+  const [pagina, setPagina] = useState(1);
   const { data: segmento, isLoading } = useQuery({
-    queryKey: ["marketing-segmento", filtri, includeIds?.length ?? null],
+    queryKey: ["marketing-segmento", filtri, includeIds?.length ?? null, pagina],
     enabled: canSee && classifReady && fatturatoReady && consensoReady,
     queryFn: async () => {
       const built = buildQuery("id, ragione_sociale, email, citta, provincia, categoria, agente, codice_agente", "exact");
       if ("empty" in built) return { rows: [] as any[], count: 0 };
-      const { data, error, count } = await built.q.range(0, PREVIEW_LIMIT - 1);
+      const { data, error, count } = await built.q.range((pagina - 1) * PAGE_SIZE, pagina * PAGE_SIZE - 1);
       if (error) throw error;
       return { rows: (data ?? []) as any[], count: count ?? 0 };
     },
@@ -300,6 +301,9 @@ function MarketingSegmentiPage() {
 
   const rows = segmento?.rows ?? [];
   const totale = segmento?.count ?? 0;
+  const totalePagine = Math.max(1, Math.ceil(totale / PAGE_SIZE));
+  const daRiga = totale === 0 ? 0 : (pagina - 1) * PAGE_SIZE + 1;
+  const aRiga = Math.min(pagina * PAGE_SIZE, totale);
 
   // === Contatti dei clienti visibili (righe espandibili + indicatore email) ===
   const rowsKey = rows.map((r) => r.id).sort().join(",");
@@ -334,12 +338,18 @@ function MarketingSegmentiPage() {
   const [caricamentoTutti, setCaricamentoTutti] = useState(false);
   const [campagnaId, setCampagnaId] = useState<string | undefined>(undefined);
 
-  // Reset selezione quando cambiano i filtri
+  // Reset selezione e pagina quando cambiano i filtri (NON al cambio pagina)
   useEffect(() => {
     setSelezionati(new Set());
     setContattiEsclusi(new Set());
     setAziendaliEsclusi(new Set());
+    setPagina(1);
   }, [filtri]);
+
+  function vaiAPagina(p: number) {
+    setPagina(Math.min(Math.max(1, p), totalePagine));
+    setEspansi(new Set());
+  }
 
   function toggleCliente(id: string, on: boolean) {
     setSelezionati((p) => {
@@ -491,8 +501,6 @@ function MarketingSegmentiPage() {
         .from("campagne_email_marketing")
         .select("id, nome, stato, oggetto")
         .order("updated_at", { ascending: false });
-      // eslint-disable-next-line no-console
-      console.log("[segmenti] query campagne →", { rows: data?.length ?? 0, data, error });
       if (error) throw error;
       const list = (data ?? []) as Array<{ id: string; nome: string; stato: string; oggetto: string }>;
       const peso = (s: string) => (s === "pronta" ? 0 : s === "bozza" ? 1 : 2);
@@ -504,15 +512,6 @@ function MarketingSegmentiPage() {
   // lo stato "nessuna campagna": si distingue caricamento da lista vuota.
   const campagneLoading = campagneQuery.isPending;
   const campagneError = campagneQuery.error;
-
-  // eslint-disable-next-line no-console
-  console.log("[segmenti] stato campagne", {
-    canSee,
-    status: campagneQuery.status,
-    fetchStatus: campagneQuery.fetchStatus,
-    count: campagne?.length ?? null,
-    error: (campagneError as any)?.message ?? null,
-  });
 
 
   // === Segmenti salvati ===
@@ -769,9 +768,10 @@ function MarketingSegmentiPage() {
               client{totale === 1 ? "e" : "i"} corrispondono a questi filtri
             </span>
           </div>
-          {rows.length < totale && (
+          {totale > 0 && (
             <div className="text-xs text-muted-foreground">
-              Anteprima dei primi {rows.length} risultati
+              Mostrati {daRiga.toLocaleString("it-IT")}–{aRiga.toLocaleString("it-IT")} di{" "}
+              {totale.toLocaleString("it-IT")} · Pagina {pagina} di {totalePagine}
             </div>
           )}
         </div>
@@ -826,18 +826,6 @@ function MarketingSegmentiPage() {
             <Button variant="ghost" size="sm" onClick={() => setSelezionati(new Set())}>
               Azzera selezione
             </Button>
-          </div>
-          <div className="w-full text-xs text-muted-foreground">
-            Diagnostica campagne: {campagne?.length ?? 0} ricevute · stato {campagneQuery.status}/{campagneQuery.fetchStatus}
-            {campagneError ? ` · errore: ${(campagneError as any)?.message ?? "sconosciuto"}` : ""}
-            {" · "}
-            <button
-              type="button"
-              className="underline"
-              onClick={() => campagneQuery.refetch()}
-            >
-              Ricarica elenco
-            </button>
           </div>
           {campagneError ? (
             <div className="w-full text-xs text-destructive">
@@ -1006,6 +994,31 @@ function MarketingSegmentiPage() {
             })}
           </TableBody>
         </Table>
+        {totale > PAGE_SIZE && (
+          <div className="flex flex-wrap items-center gap-2 border-t p-3">
+            <div className="text-xs text-muted-foreground">
+              Mostrati {daRiga.toLocaleString("it-IT")}–{aRiga.toLocaleString("it-IT")} di{" "}
+              {totale.toLocaleString("it-IT")}
+            </div>
+            <div className="ml-auto flex items-center gap-2">
+              <Button variant="outline" size="sm" disabled={pagina <= 1} onClick={() => vaiAPagina(1)}>
+                Prima
+              </Button>
+              <Button variant="outline" size="sm" disabled={pagina <= 1} onClick={() => vaiAPagina(pagina - 1)}>
+                Precedente
+              </Button>
+              <span className="text-sm">
+                Pagina {pagina} di {totalePagine}
+              </span>
+              <Button variant="outline" size="sm" disabled={pagina >= totalePagine} onClick={() => vaiAPagina(pagina + 1)}>
+                Successiva
+              </Button>
+              <Button variant="outline" size="sm" disabled={pagina >= totalePagine} onClick={() => vaiAPagina(totalePagine)}>
+                Ultima
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
 
 
