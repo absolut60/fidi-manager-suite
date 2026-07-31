@@ -120,7 +120,7 @@ function MarketingSegmentiPage() {
 
   const [filtri, setFiltri] = useState<Filtri>(FILTRI_DEFAULT);
   const [saveOpen, setSaveOpen] = useState(false);
-  const [tab, setTab] = useState("costruisci");
+  const [tab, setTab] = useState("elenco");
   const [nome, setNome] = useState("");
   const [descrizione, setDescrizione] = useState("");
 
@@ -568,7 +568,7 @@ function MarketingSegmentiPage() {
   function caricaSegmento(f: Filtri) {
     // Merge con i default per essere robusti a salvataggi vecchi/parziali
     setFiltri({ ...FILTRI_DEFAULT, ...f });
-    setTab("costruisci");
+    setTab("elenco");
     toast.info("Filtri del segmento caricati");
   }
 
@@ -634,15 +634,6 @@ function MarketingSegmentiPage() {
         </div>
       </div>
 
-      <Tabs value={tab} onValueChange={setTab} className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="costruisci">Costruisci segmento</TabsTrigger>
-          <TabsTrigger value="salvati">
-            Segmenti salvati ({(segmentiSalvati ?? []).length})
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="costruisci" className="space-y-6">
       {/* Filtri */}
       <Card className="p-4">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -856,6 +847,24 @@ function MarketingSegmentiPage() {
         </Card>
       )}
 
+      {/* Tabs ben evidenti sopra il blocco dinamico */}
+      <Tabs value={tab} onValueChange={setTab} className="space-y-4">
+        <TabsList className="h-auto w-auto gap-1 border border-border bg-muted/40 p-1.5 mt-2 mb-4 rounded-lg">
+          <TabsTrigger
+            value="elenco"
+            className="px-5 py-2.5 text-base font-medium text-muted-foreground data-[state=active]:bg-[#c94f8f]/10 data-[state=active]:text-[#c94f8f] data-[state=active]:border-b-2 data-[state=active]:border-[#c94f8f] data-[state=active]:rounded-b-none"
+          >
+            Elenco clienti
+          </TabsTrigger>
+          <TabsTrigger
+            value="salvati"
+            className="px-5 py-2.5 text-base font-medium text-muted-foreground data-[state=active]:bg-[#c94f8f]/10 data-[state=active]:text-[#c94f8f] data-[state=active]:border-b-2 data-[state=active]:border-[#c94f8f] data-[state=active]:rounded-b-none"
+          >
+            Segmenti salvati ({(segmentiSalvati ?? []).length})
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="elenco" className="space-y-6">
       {/* Lista */}
       <Card>
         <Table>
@@ -1032,8 +1041,6 @@ function MarketingSegmentiPage() {
           </div>
         )}
       </Card>
-
-
         </TabsContent>
 
         <TabsContent value="salvati" className="space-y-6">
