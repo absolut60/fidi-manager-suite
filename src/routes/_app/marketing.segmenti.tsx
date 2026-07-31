@@ -1,5 +1,5 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Sparkles, Save, Users, Mail, MailX, Trash2, RefreshCw,
@@ -777,8 +777,8 @@ function MarketingSegmentiPage() {
               const isSel = selezionati.has(c.id);
               const isOpen = espansi.has(c.id);
               return (
-                <>
-                  <TableRow key={c.id}>
+                <Fragment key={c.id}>
+                  <TableRow>
                     <TableCell>
                       <Checkbox
                         checked={isSel}
@@ -882,7 +882,7 @@ function MarketingSegmentiPage() {
                       </TableCell>
                     </TableRow>
                   )}
-                </>
+                </Fragment>
               );
             })}
           </TableBody>
