@@ -702,11 +702,57 @@ function MarketingSegmentiPage() {
         </div>
       </Card>
 
+      {/* Barra selezione destinatari */}
+      {selezionati.size > 0 && (
+        <Card className="p-4 flex flex-wrap items-center gap-3 border-[#c94f8f]/40 bg-[#c94f8f]/5">
+          <div className="text-sm">
+            <span className="font-semibold">{selezionati.size.toLocaleString("it-IT")}</span> client
+            {selezionati.size === 1 ? "e" : "i"} selezionat{selezionati.size === 1 ? "o" : "i"} —{" "}
+            <span className="font-semibold">{totaleDestinatari.toLocaleString("it-IT")}</span> destinatari totali
+            <span className="text-muted-foreground"> (email aziendali + contatti)</span>
+          </div>
+          <div className="flex items-center gap-2 ml-auto">
+            <Select value={campagnaId} onValueChange={setCampagnaId}>
+              <SelectTrigger className="w-[260px]">
+                <SelectValue placeholder="Scegli campagna" />
+              </SelectTrigger>
+              <SelectContent>
+                {(campagne ?? []).map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.stato === "pronta" ? "✅ " : "✏️ "}{c.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button disabled title="Invio in arrivo nel prossimo aggiornamento">
+              <Send className="size-4 mr-2" /> Invia campagna
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setSelezionati(new Set())}>
+              Azzera selezione
+            </Button>
+          </div>
+          <div className="w-full text-xs text-muted-foreground">
+            Invio in arrivo nel prossimo aggiornamento.
+          </div>
+        </Card>
+      )}
+
       {/* Lista */}
       <Card>
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10">
+                <Checkbox
+                  checked={selezionati.size > 0 && selezionati.size >= totale}
+                  onCheckedChange={(v) => {
+                    if (v) void selezionaTutti();
+                    else setSelezionati(new Set());
+                  }}
+                  aria-label="Seleziona tutto il segmento"
+                />
+              </TableHead>
+              <TableHead className="w-8" />
               <TableHead>Ragione sociale</TableHead>
               <TableHead>Città / Prov.</TableHead>
               <TableHead>Agente</TableHead>
@@ -715,39 +761,134 @@ function MarketingSegmentiPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading && (
-              <TableRow><TableCell colSpan={5} className="text-muted-foreground text-center py-6">Caricamento...</TableCell></TableRow>
+            {(isLoading || caricamentoTutti) && (
+              <TableRow><TableCell colSpan={7} className="text-muted-foreground text-center py-6">
+                {caricamentoTutti ? (
+                  <span className="inline-flex items-center gap-2"><Loader2 className="size-4 animate-spin" /> Selezione dell'intero segmento…</span>
+                ) : "Caricamento..."}
+              </TableCell></TableRow>
             )}
-            {!isLoading && rows.length === 0 && (
-              <TableRow><TableCell colSpan={5} className="text-muted-foreground text-center py-6">Nessun cliente corrisponde ai filtri</TableCell></TableRow>
+            {!isLoading && !caricamentoTutti && rows.length === 0 && (
+              <TableRow><TableCell colSpan={7} className="text-muted-foreground text-center py-6">Nessun cliente corrisponde ai filtri</TableCell></TableRow>
             )}
-            {rows.map((c: any) => {
-              const hasEmail = !!emailValidaMap?.get(c.id);
+            {!caricamentoTutti && rows.map((c: any) => {
+              const contatti = contattiMap?.get(c.id) ?? [];
+              const hasEmail = isEmailValida(c.email) || contatti.some((k) => isEmailValida(k.email));
+              const isSel = selezionati.has(c.id);
+              const isOpen = espansi.has(c.id);
               return (
-                <TableRow key={c.id}>
-                  <TableCell className="font-medium">{c.ragione_sociale}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {[c.citta, c.provincia].filter(Boolean).join(" — ") || "—"}
-                  </TableCell>
-                  <TableCell className="text-sm">{c.agente || (c.codice_agente ? c.codice_agente : "—")}</TableCell>
-                  <TableCell className="text-sm">{c.categoria || "—"}</TableCell>
-                  <TableCell className="text-center">
-                    {hasEmail ? (
-                      <Badge variant="outline" className="border-success text-success gap-1">
-                        <Mail className="size-3" /> Sì
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-muted-foreground gap-1">
-                        <MailX className="size-3" /> No
-                      </Badge>
-                    )}
-                  </TableCell>
-                </TableRow>
+                <>
+                  <TableRow key={c.id}>
+                    <TableCell>
+                      <Checkbox
+                        checked={isSel}
+                        onCheckedChange={(v) => toggleCliente(c.id, !!v)}
+                        aria-label={`Seleziona ${c.ragione_sociale}`}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <button
+                        type="button"
+                        onClick={() => toggleEspanso(c.id)}
+                        className="text-muted-foreground hover:text-foreground"
+                        aria-label={isOpen ? "Comprimi" : "Espandi"}
+                      >
+                        {isOpen ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
+                      </button>
+                    </TableCell>
+                    <TableCell className="font-medium cursor-pointer" onClick={() => toggleEspanso(c.id)}>
+                      {c.ragione_sociale}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {[c.citta, c.provincia].filter(Boolean).join(" — ") || "—"}
+                    </TableCell>
+                    <TableCell className="text-sm">{c.agente || (c.codice_agente ? c.codice_agente : "—")}</TableCell>
+                    <TableCell className="text-sm">{c.categoria || "—"}</TableCell>
+                    <TableCell className="text-center">
+                      {hasEmail ? (
+                        <Badge variant="outline" className="border-success text-success gap-1">
+                          <Mail className="size-3" /> Sì
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-muted-foreground gap-1">
+                          <MailX className="size-3" /> No
+                        </Badge>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                  {isOpen && (
+                    <TableRow key={`${c.id}-exp`} className="bg-muted/30 hover:bg-muted/30">
+                      <TableCell />
+                      <TableCell colSpan={6} className="py-3">
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 text-sm">
+                            <Checkbox
+                              checked={isSel && !aziendaliEsclusi.has(c.id)}
+                              disabled={!isSel || !isEmailValida(c.email)}
+                              onCheckedChange={(v) =>
+                                setAziendaliEsclusi((p) => {
+                                  const n = new Set(p);
+                                  if (v) n.delete(c.id); else n.add(c.id);
+                                  return n;
+                                })
+                              }
+                              aria-label="Email aziendale"
+                            />
+                            <span className="font-medium">Email aziendale:</span>
+                            <span className="text-muted-foreground">{c.email || "—"}</span>
+                            {isEmailValida(c.email) ? (
+                              <Badge variant="outline" className="border-success text-success">valida</Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-muted-foreground">non valida</Badge>
+                            )}
+                          </div>
+                          <div className="space-y-2">
+                            <div className="text-xs font-medium text-muted-foreground uppercase">Contatti</div>
+                            {contatti.length === 0 && (
+                              <div className="text-sm text-muted-foreground">Nessun contatto registrato</div>
+                            )}
+                            {contatti.map((k) => (
+                              <div key={k.id} className="flex flex-wrap items-center gap-2 text-sm">
+                                <Checkbox
+                                  checked={isSel && !contattiEsclusi.has(k.id)}
+                                  disabled={!isSel || !isEmailValida(k.email)}
+                                  onCheckedChange={(v) =>
+                                    setContattiEsclusi((p) => {
+                                      const n = new Set(p);
+                                      if (v) n.delete(k.id); else n.add(k.id);
+                                      return n;
+                                    })
+                                  }
+                                  aria-label={`Contatto ${k.nome}`}
+                                />
+                                <span className="font-medium">{[k.nome, k.cognome].filter(Boolean).join(" ")}</span>
+                                <span className="text-muted-foreground">{k.email || "—"}</span>
+                                {!isEmailValida(k.email) && (
+                                  <Badge variant="outline" className="text-muted-foreground">email non valida</Badge>
+                                )}
+                                {k.consenso_marketing_diretto && (
+                                  <Badge variant="outline" className="border-success text-success">{CONSENSO_LABEL.marketing_diretto}</Badge>
+                                )}
+                                {k.consenso_marketing_media && (
+                                  <Badge variant="outline" className="border-success text-success">{CONSENSO_LABEL.marketing_media}</Badge>
+                                )}
+                                {k.consenso_profilazione && (
+                                  <Badge variant="outline" className="border-success text-success">{CONSENSO_LABEL.profilazione}</Badge>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </>
               );
             })}
           </TableBody>
         </Table>
       </Card>
+
 
       {/* Segmenti salvati */}
       <div>
