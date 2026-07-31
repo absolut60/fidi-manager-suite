@@ -214,15 +214,43 @@ function MarketingSegmentiPage() {
     },
   });
 
-  // Intersezione id-filter set (semaforo ∩ fatturato)
+  // === Filtro consenso: clienti con ALMENO UN contatto col consenso attivo ===
+  const { data: consensoIds } = useQuery({
+    queryKey: ["consenso-ids-marketing", filtri.filtroConsenso],
+    enabled: canSee && filtri.filtroConsenso !== "tutti",
+    staleTime: 60_000,
+    queryFn: async () => {
+      const col = CONSENSO_COLONNA[filtri.filtroConsenso as Exclude<ConsensoFiltro, "tutti">];
+      const ids = new Set<string>();
+      let off = 0;
+      const size = 1000;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await supabase
+          .from("contatti")
+          .select("cliente_id")
+          .eq(col as any, true)
+          .range(off, off + size - 1);
+        if (error) throw error;
+        const batch = (data ?? []) as Array<{ cliente_id: string }>;
+        for (const r of batch) if (r.cliente_id) ids.add(r.cliente_id);
+        if (batch.length < size) break;
+        off += size;
+      }
+      return Array.from(ids);
+    },
+  });
+
+  // Intersezione id-filter set (semaforo ∩ fatturato ∩ consenso)
   const includeIds = useMemo<string[] | null>(() => {
     const sources: string[][] = [];
     if (semaforoIds) sources.push(semaforoIds);
     if (fatturatoIds) sources.push(fatturatoIds);
+    if (consensoIds) sources.push(consensoIds);
     if (sources.length === 0) return null;
     const sets = sources.map((s) => new Set(s));
     return sources[0].filter((id) => sets.every((s) => s.has(id)));
-  }, [semaforoIds, fatturatoIds]);
+  }, [semaforoIds, fatturatoIds, consensoIds]);
 
   // === Query builder — allineato a src/routes/_app/clienti.tsx (fonte unica) ===
   function buildQuery(select: string, count: "exact" | undefined) {
@@ -250,14 +278,15 @@ function MarketingSegmentiPage() {
 
   const classifReady = filtri.semaforo === "tutti" || !!classifList;
   const fatturatoReady = filtri.fatturato === "tutti" || !!fatturatoIds;
+  const consensoReady = filtri.filtroConsenso === "tutti" || !!consensoIds;
 
   // === Conteggio segmento + lista (limitata a 100 per l'anteprima) ===
   const PREVIEW_LIMIT = 100;
   const { data: segmento, isLoading } = useQuery({
     queryKey: ["marketing-segmento", filtri, includeIds?.length ?? null],
-    enabled: canSee && classifReady && fatturatoReady,
+    enabled: canSee && classifReady && fatturatoReady && consensoReady,
     queryFn: async () => {
-      const built = buildQuery("id, ragione_sociale, citta, provincia, categoria, agente, codice_agente", "exact");
+      const built = buildQuery("id, ragione_sociale, email, citta, provincia, categoria, agente, codice_agente", "exact");
       if ("empty" in built) return { rows: [] as any[], count: 0 };
       const { data, error, count } = await built.q.range(0, PREVIEW_LIMIT - 1);
       if (error) throw error;
@@ -268,26 +297,148 @@ function MarketingSegmentiPage() {
   const rows = segmento?.rows ?? [];
   const totale = segmento?.count ?? 0;
 
-  // === Indicatore email valida su contatti (per la finestra pagina) ===
-  const { data: emailValidaMap } = useQuery({
-    queryKey: ["marketing-email-map", rows.map((r) => r.id).sort().join(",")],
+  // === Contatti dei clienti visibili (righe espandibili + indicatore email) ===
+  const rowsKey = rows.map((r) => r.id).sort().join(",");
+  const { data: contattiMap } = useQuery({
+    queryKey: ["marketing-contatti-map", rowsKey],
     enabled: rows.length > 0,
     staleTime: 60_000,
     queryFn: async () => {
       const ids = rows.map((r) => r.id);
-      const { data, error } = await supabase
-        .from("contatti")
-        .select("cliente_id, email")
-        .in("cliente_id", ids);
-      if (error) throw error;
-      const map = new Map<string, boolean>();
-      for (const c of (data ?? []) as Array<{ cliente_id: string; email: string | null }>) {
-        if (map.get(c.cliente_id)) continue;
-        if (isEmailValida(c.email)) map.set(c.cliente_id, true);
+      const map = new Map<string, ContattoRiga[]>();
+      for (const part of chunkArray(ids, CHUNK)) {
+        const { data, error } = await supabase
+          .from("contatti")
+          .select("id, cliente_id, nome, cognome, email, consenso_marketing_diretto, consenso_marketing_media, consenso_profilazione")
+          .in("cliente_id", part);
+        if (error) throw error;
+        for (const c of (data ?? []) as ContattoRiga[]) {
+          const arr = map.get(c.cliente_id) ?? [];
+          arr.push(c);
+          map.set(c.cliente_id, arr);
+        }
       }
       return map;
     },
   });
+
+  // === Selezione destinatari ===
+  const [selezionati, setSelezionati] = useState<Set<string>>(new Set());
+  const [espansi, setEspansi] = useState<Set<string>>(new Set());
+  const [contattiEsclusi, setContattiEsclusi] = useState<Set<string>>(new Set());
+  const [aziendaliEsclusi, setAziendaliEsclusi] = useState<Set<string>>(new Set());
+  const [caricamentoTutti, setCaricamentoTutti] = useState(false);
+  const [campagnaId, setCampagnaId] = useState<string>("");
+
+  // Reset selezione quando cambiano i filtri
+  useEffect(() => {
+    setSelezionati(new Set());
+    setContattiEsclusi(new Set());
+    setAziendaliEsclusi(new Set());
+  }, [filtri]);
+
+  function toggleCliente(id: string, on: boolean) {
+    setSelezionati((p) => {
+      const n = new Set(p);
+      if (on) n.add(id); else n.delete(id);
+      return n;
+    });
+  }
+
+  function toggleEspanso(id: string) {
+    setEspansi((p) => {
+      const n = new Set(p);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+  }
+
+  async function selezionaTutti() {
+    setCaricamentoTutti(true);
+    try {
+      const built = buildQuery("id", undefined);
+      if ("empty" in built) {
+        setSelezionati(new Set());
+        return;
+      }
+      const ids: string[] = [];
+      let off = 0;
+      const size = 1000;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const rebuilt = buildQuery("id", undefined);
+        if ("empty" in rebuilt) break;
+        const { data, error } = await rebuilt.q.range(off, off + size - 1);
+        if (error) throw error;
+        const batch = (data ?? []) as unknown as Array<{ id: string }>;
+        ids.push(...batch.map((b) => b.id));
+        if (batch.length < size) break;
+        off += size;
+      }
+      setSelezionati(new Set(ids));
+      setContattiEsclusi(new Set());
+      setAziendaliEsclusi(new Set());
+    } catch (e: any) {
+      toast.error(e?.message ?? "Errore nel caricamento dell'intero segmento");
+    } finally {
+      setCaricamentoTutti(false);
+    }
+  }
+
+  // Contatti + email aziendali dei clienti SELEZIONATI (per il conteggio destinatari)
+  const selezionatiIds = useMemo(() => Array.from(selezionati).sort(), [selezionati]);
+  const { data: destinatariRaw } = useQuery({
+    queryKey: ["marketing-destinatari", selezionatiIds.length, selezionatiIds.join(",").slice(0, 2000)],
+    enabled: selezionatiIds.length > 0,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const aziendali = new Map<string, string | null>();
+      const contatti: ContattoRiga[] = [];
+      for (const part of chunkArray(selezionatiIds, CHUNK)) {
+        const [{ data: cli, error: e1 }, { data: cont, error: e2 }] = await Promise.all([
+          supabase.from("clienti").select("id, email").in("id", part),
+          supabase
+            .from("contatti")
+            .select("id, cliente_id, nome, cognome, email, consenso_marketing_diretto, consenso_marketing_media, consenso_profilazione")
+            .in("cliente_id", part),
+        ]);
+        if (e1) throw e1;
+        if (e2) throw e2;
+        for (const c of (cli ?? []) as Array<{ id: string; email: string | null }>) aziendali.set(c.id, c.email);
+        contatti.push(...((cont ?? []) as ContattoRiga[]));
+      }
+      return { aziendali, contatti };
+    },
+  });
+
+  const totaleDestinatari = useMemo(() => {
+    if (!destinatariRaw) return 0;
+    let n = 0;
+    for (const [id, email] of destinatariRaw.aziendali) {
+      if (!aziendaliEsclusi.has(id) && isEmailValida(email)) n += 1;
+    }
+    for (const c of destinatariRaw.contatti) {
+      if (!contattiEsclusi.has(c.id) && isEmailValida(c.email)) n += 1;
+    }
+    return n;
+  }, [destinatariRaw, aziendaliEsclusi, contattiEsclusi]);
+
+  // === Campagne disponibili (solo scelta, nessun invio in questo strato) ===
+  const { data: campagne } = useQuery({
+    queryKey: ["campagne-email-marketing", "selector"],
+    enabled: canSee,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("campagne_email_marketing")
+        .select("id, nome, stato, oggetto")
+        .order("updated_at", { ascending: false });
+      if (error) throw error;
+      const list = (data ?? []) as Array<{ id: string; nome: string; stato: string; oggetto: string }>;
+      const peso = (s: string) => (s === "pronta" ? 0 : s === "bozza" ? 1 : 2);
+      return [...list].sort((a, b) => peso(a.stato) - peso(b.stato));
+    },
+  });
+
 
   // === Segmenti salvati ===
   const { data: segmentiSalvati } = useQuery({
