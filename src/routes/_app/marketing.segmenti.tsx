@@ -822,6 +822,18 @@ function MarketingSegmentiPage() {
               Azzera selezione
             </Button>
           </div>
+          <div className="w-full text-xs text-muted-foreground">
+            Diagnostica campagne: {campagne?.length ?? 0} ricevute · stato {campagneQuery.status}/{campagneQuery.fetchStatus}
+            {campagneError ? ` · errore: ${(campagneError as any)?.message ?? "sconosciuto"}` : ""}
+            {" · "}
+            <button
+              type="button"
+              className="underline"
+              onClick={() => campagneQuery.refetch()}
+            >
+              Ricarica elenco
+            </button>
+          </div>
           {campagneError ? (
             <div className="w-full text-xs text-destructive">
               Impossibile caricare le campagne
