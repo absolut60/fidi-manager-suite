@@ -332,7 +332,7 @@ function MarketingSegmentiPage() {
   const [contattiEsclusi, setContattiEsclusi] = useState<Set<string>>(new Set());
   const [aziendaliEsclusi, setAziendaliEsclusi] = useState<Set<string>>(new Set());
   const [caricamentoTutti, setCaricamentoTutti] = useState(false);
-  const [campagnaId, setCampagnaId] = useState<string>("");
+  const [campagnaId, setCampagnaId] = useState<string>("__nessuna__");
 
   // Reset selezione quando cambiano i filtri
   useEffect(() => {
@@ -434,8 +434,9 @@ function MarketingSegmentiPage() {
   // === Aggiunta destinatari alla campagna (carrello persistente, nessun invio) ===
   const aggiungiDestinatari = useMutation({
     mutationFn: async () => {
-      if (!campagnaId) throw new Error("Scegli prima una campagna");
+      if (campagnaId === "__nessuna__") throw new Error("Scegli prima una campagna");
       if (!destinatariRaw) throw new Error("Destinatari non ancora caricati");
+
       const lista: DestinatarioCampagnaInput[] = [];
       for (const [id, email] of destinatariRaw.aziendali) {
         if (aziendaliEsclusi.has(id) || !isEmailValida(email)) continue;
@@ -468,7 +469,9 @@ function MarketingSegmentiPage() {
       setSelezionati(new Set());
       setContattiEsclusi(new Set());
       setAziendaliEsclusi(new Set());
+      setCampagnaId("__nessuna__");
       qc.invalidateQueries({ queryKey: ["campagne-email-destinatari"] });
+
     },
     onError: (e: any) => toast.error(e?.message ?? "Errore aggiunta destinatari"),
   });
@@ -776,9 +779,10 @@ function MarketingSegmentiPage() {
             </Select>
             <Button
               onClick={() => aggiungiDestinatari.mutate()}
-              disabled={!campagnaId || totaleDestinatari === 0 || aggiungiDestinatari.isPending}
-              title={!campagnaId ? "Scegli prima una campagna" : "Aggiungi i destinatari selezionati alla campagna"}
+              disabled={campagnaId === "__nessuna__" || totaleDestinatari === 0 || aggiungiDestinatari.isPending}
+              title={campagnaId === "__nessuna__" ? "Scegli prima una campagna" : "Aggiungi i destinatari selezionati alla campagna"}
             >
+
               {aggiungiDestinatari.isPending
                 ? <Loader2 className="size-4 mr-2 animate-spin" />
                 : <Send className="size-4 mr-2" />}
