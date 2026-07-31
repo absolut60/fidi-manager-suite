@@ -31,6 +31,7 @@ import { ClienteInsolutiTab } from "@/components/cliente-insoluti-tab";
 import { ClienteAttivitaRecuperoTab } from "@/components/cliente-attivita-recupero-tab";
 import { AllegatiSection } from "@/components/allegati-section";
 import { ClienteFatturato } from "@/components/cliente-fatturato";
+import { ClienteMarketingTab } from "@/components/cliente-marketing-tab";
 import { formatEuro } from "@/lib/fidi";
 import { CONSENSO_LABEL } from "@/lib/consensi-testi";
 import { classificaScadenza, sommaScadutoCliente, contributoScaduto } from "@/lib/scadenze";
