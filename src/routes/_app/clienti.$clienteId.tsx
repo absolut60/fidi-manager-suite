@@ -566,6 +566,10 @@ function ClienteDetail() {
           )}
         </TabsContent>
 
+        <TabsContent value="marketing" className="space-y-4">
+          <ClienteMarketingTab clienteId={clienteId} cliente={cliente as any} />
+        </TabsContent>
+
 
         <TabsContent value="cantieri">
           <ClienteCantieriTab clienteId={clienteId} />
