@@ -1,7 +1,10 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Sparkles, Save, Users, Mail, MailX, Trash2, RefreshCw } from "lucide-react";
+import {
+  Sparkles, Save, Users, Mail, MailX, Trash2, RefreshCw,
+  ChevronRight, ChevronDown, Send, Loader2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -11,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -21,6 +25,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { isEmailValida } from "@/lib/email-validazione";
+import { CONSENSO_LABEL } from "@/lib/consensi-testi";
 import { MACROCATEGORIE, CATEGORIE } from "@/lib/macrocategorie";
 
 export const Route = createFileRoute("/_app/marketing/segmenti")({
