@@ -89,8 +89,25 @@ function MarketingCampagnePage() {
   const qc = useQueryClient();
   const [editing, setEditing] = useState<Campagna | null>(null);
   const [deleting, setDeleting] = useState<Campagna | null>(null);
+  const [destinatariDi, setDestinatariDi] = useState<Campagna | null>(null);
 
   const canSee = useMemo(() => (roles as string[]).some((r) => MARKETING_ROLES.has(r)), [roles]);
+
+  const { data: conteggi } = useQuery({
+    queryKey: ["campagne-email-destinatari", "conteggi"],
+    enabled: canSee,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("campagne_email_destinatari")
+        .select("campagna_id");
+      if (error) throw error;
+      const map = new Map<string, number>();
+      for (const r of (data ?? []) as Array<{ campagna_id: string }>) {
+        map.set(r.campagna_id, (map.get(r.campagna_id) ?? 0) + 1);
+      }
+      return map;
+    },
+  });
 
   const { data: campagne, isLoading } = useQuery({
     queryKey: ["campagne_email_marketing"],
