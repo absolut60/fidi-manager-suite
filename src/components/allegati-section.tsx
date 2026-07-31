@@ -25,7 +25,8 @@ export type AllegatoEntitaTipo =
   | "pratica_legale"
   | "azione_recupero"
   | "richiesta_fido"
-  | "piano_rientro";
+  | "piano_rientro"
+  | "campagna_email";
 
 export const ALLEGATI_BUCKET = "allegati";
 export const ALLEGATI_MAX_BYTES = 20 * 1024 * 1024; // 20 MB
@@ -59,7 +60,7 @@ type AllegatoRow = {
 type Props = {
   entitaTipo: AllegatoEntitaTipo;
   entitaId: string;
-  clienteId: string;
+  clienteId?: string | null;
   canEdit?: boolean;
   title?: string;
   compact?: boolean;
@@ -105,7 +106,7 @@ export async function uploadAllegatoFile(params: {
   descrizione?: string | null;
   entitaTipo: AllegatoEntitaTipo;
   entitaId: string;
-  clienteId: string;
+  clienteId?: string | null;
   userId: string | null | undefined;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
   const { file, descrizione, entitaTipo, entitaId, clienteId, userId } = params;
@@ -119,7 +120,7 @@ export async function uploadAllegatoFile(params: {
     const { error: eIns } = await supabase.from("allegati").insert({
       entita_tipo: entitaTipo,
       entita_id: entitaId,
-      cliente_id: clienteId,
+      cliente_id: clienteId ?? null,
       nome_file: file.name,
       storage_path: path,
       mime_type: file.type || null,
@@ -313,7 +314,7 @@ function UploadDialog({
   onOpenChange: (o: boolean) => void;
   entitaTipo: AllegatoEntitaTipo;
   entitaId: string;
-  clienteId: string;
+  clienteId?: string | null;
   userId: string | undefined;
   onUploaded: () => void;
 }) {
@@ -362,7 +363,7 @@ function UploadDialog({
       const { error: eIns } = await supabase.from("allegati").insert({
         entita_tipo: entitaTipo,
         entita_id: entitaId,
-        cliente_id: clienteId,
+        cliente_id: clienteId ?? null,
         nome_file: file.name,
         storage_path: path,
         mime_type: file.type || null,
