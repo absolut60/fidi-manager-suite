@@ -393,10 +393,11 @@ function MarketingSegmentiPage() {
     staleTime: 30_000,
     queryFn: async () => {
       const aziendali = new Map<string, string | null>();
+      const ragioniSociali = new Map<string, string>();
       const contatti: ContattoRiga[] = [];
       for (const part of chunkArray(selezionatiIds, CHUNK)) {
         const [{ data: cli, error: e1 }, { data: cont, error: e2 }] = await Promise.all([
-          supabase.from("clienti").select("id, email").in("id", part),
+          supabase.from("clienti").select("id, email, ragione_sociale").in("id", part),
           supabase
             .from("contatti")
             .select("id, cliente_id, nome, cognome, email, consenso_marketing_diretto, consenso_marketing_media, consenso_profilazione")
@@ -404,10 +405,13 @@ function MarketingSegmentiPage() {
         ]);
         if (e1) throw e1;
         if (e2) throw e2;
-        for (const c of (cli ?? []) as Array<{ id: string; email: string | null }>) aziendali.set(c.id, c.email);
+        for (const c of (cli ?? []) as Array<{ id: string; email: string | null; ragione_sociale: string }>) {
+          aziendali.set(c.id, c.email);
+          ragioniSociali.set(c.id, c.ragione_sociale);
+        }
         contatti.push(...((cont ?? []) as ContattoRiga[]));
       }
-      return { aziendali, contatti };
+      return { aziendali, ragioniSociali, contatti };
     },
   });
 
