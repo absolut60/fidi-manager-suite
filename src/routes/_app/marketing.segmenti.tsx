@@ -866,20 +866,20 @@ function MarketingSegmentiPage() {
       <Tabs value={tab} onValueChange={setTab} className="space-y-4">
         <TabsList className="h-auto w-auto gap-1 border border-border bg-muted/40 p-1.5 mt-2 mb-4 rounded-lg">
           <TabsTrigger
-            value="elenco"
+            value={TAB_ELENCO}
             className="px-5 py-2.5 text-base font-medium text-muted-foreground data-[state=active]:bg-[#c94f8f]/10 data-[state=active]:text-[#c94f8f] data-[state=active]:border-b-2 data-[state=active]:border-[#c94f8f] data-[state=active]:rounded-b-none"
           >
             Elenco clienti
           </TabsTrigger>
           <TabsTrigger
-            value="salvati"
+            value={TAB_SALVATI}
             className="px-5 py-2.5 text-base font-medium text-muted-foreground data-[state=active]:bg-[#c94f8f]/10 data-[state=active]:text-[#c94f8f] data-[state=active]:border-b-2 data-[state=active]:border-[#c94f8f] data-[state=active]:rounded-b-none"
           >
             Segmenti salvati ({(segmentiSalvati ?? []).length})
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="elenco" className="space-y-6">
+        <TabsContent value={TAB_ELENCO} className="space-y-6">
       {/* Lista */}
       <Card>
         <Table>
@@ -1058,7 +1058,7 @@ function MarketingSegmentiPage() {
       </Card>
         </TabsContent>
 
-        <TabsContent value="salvati" className="space-y-6">
+        <TabsContent value={TAB_SALVATI} className="space-y-6">
           {(segmentiSalvati ?? []).length === 0 ? (
             <Card className="p-6 text-sm text-muted-foreground">
               Nessun segmento salvato. Imposta dei filtri e usa «Salva segmento» per crearne uno.
