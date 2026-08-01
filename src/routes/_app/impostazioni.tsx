@@ -9,7 +9,7 @@ import { migrazioneRichiesteCreaUtenti, migrazioneRichiesteDati, migrazioneRichi
 import { notifyRichiestaEvento } from "@/lib/richieste-email.functions";
 import { testConnessioneRichieste } from "@/lib/test-connessione-richieste.functions";
 import { previewPromemoriaEmail } from "@/lib/promemoria-preview.functions";
-import { sendEmail, buildEmailTemplate } from "@/lib/send-email";
+import { sendEmailDetailed, buildEmailTemplate } from "@/lib/send-email";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -64,6 +64,7 @@ function ImpostazioniPage() {
   const [testEmailTo, setTestEmailTo] = useState("a.giani@gruppomade.com");
   const [testEmailSending, setTestEmailSending] = useState(false);
   const [testEmailResult, setTestEmailResult] = useState<"ok" | "error" | null>(null);
+  const [testEmailErr, setTestEmailErr] = useState<string | null>(null);
 
   const { data: stores, isLoading } = useQuery({
     queryKey: ["stores", "all"],
