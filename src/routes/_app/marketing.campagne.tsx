@@ -121,37 +121,62 @@ function MarketingCampagnePage() {
   const [editing, setEditing] = useState<Campagna | null>(null);
   const [deleting, setDeleting] = useState<Campagna | null>(null);
   const [destinatariDi, setDestinatariDi] = useState<Campagna | null>(null);
+  const [inviando, setInviando] = useState<Campagna | null>(null);
+  const [provaDi, setProvaDi] = useState<Campagna | null>(null);
 
   const canSee = useMemo(() => (roles as string[]).some((r) => MARKETING_ROLES.has(r)), [roles]);
-
-  const { data: conteggi } = useQuery({
-    queryKey: ["campagne-email-destinatari", "conteggi"],
-    enabled: canSee,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("campagne_email_destinatari")
-        .select("campagna_id");
-      if (error) throw error;
-      const map = new Map<string, number>();
-      for (const r of (data ?? []) as Array<{ campagna_id: string }>) {
-        map.set(r.campagna_id, (map.get(r.campagna_id) ?? 0) + 1);
-      }
-      return map;
-    },
-  });
 
   const { data: campagne, isLoading } = useQuery({
     queryKey: ["campagne_email_marketing"],
     enabled: canSee,
+    refetchInterval: (q) => {
+      const d = q.state.data as Campagna[] | undefined;
+      return d?.some((c) => c.stato === "in_corso") ? 5000 : false;
+    },
     queryFn: async () => {
       const { data, error } = await supabase
         .from("campagne_email_marketing")
-        .select("id, nome, oggetto, corpo_html, stato, created_at, updated_at")
+        .select("id, nome, oggetto, corpo_html, stato, created_at, updated_at, inviati, falliti, saltati, inviata_at, note")
         .order("updated_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as Campagna[];
     },
   });
+
+  const inCorso = !!campagne?.some((c) => c.stato === "in_corso");
+
+  const { data: conteggi } = useQuery({
+    queryKey: ["campagne-email-destinatari", "conteggi"],
+    enabled: canSee,
+    refetchInterval: inCorso ? 5000 : false,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("campagne_email_destinatari")
+        .select("campagna_id, stato_invio");
+      if (error) throw error;
+      const map = new Map<string, ConteggiCampagna>();
+      for (const r of (data ?? []) as Array<{ campagna_id: string; stato_invio: string }>) {
+        const cur = map.get(r.campagna_id) ?? { totale: 0, da_inviare: 0, inviato: 0, fallito: 0, saltato: 0 };
+        cur.totale += 1;
+        if (r.stato_invio === "inviato") cur.inviato += 1;
+        else if (r.stato_invio === "fallito") cur.fallito += 1;
+        else if (r.stato_invio === "da_inviare") cur.da_inviare += 1;
+        else cur.saltato += 1;
+        map.set(r.campagna_id, cur);
+      }
+      return map;
+    },
+  });
+
+  const annulla = useMutation({
+    mutationFn: async (c: Campagna) => annullaInvioCampagnaMarketing({ data: { campagnaId: c.id } }),
+    onSuccess: () => {
+      toast.success("Invio annullato: il job si fermerà a breve");
+      qc.invalidateQueries({ queryKey: ["campagne_email_marketing"] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Errore annullamento"),
+  });
+
 
   const crea = useMutation({
     mutationFn: async () => {
