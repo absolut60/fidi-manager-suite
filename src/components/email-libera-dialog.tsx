@@ -219,6 +219,7 @@ export function EmailLiberaDialog({ open, onOpenChange, clienteId, onSent }: Pro
           email_oggetto: rendered.oggetto,
           email_corpo_html: rendered.corpo,
           email_destinatario: dest,
+          email_message_id: esito.messageId ?? null,
         })
         .select("id")
         .single();

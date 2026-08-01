@@ -402,6 +402,7 @@ export const invioMassivoSolleciti = inngest.createFunction(
                 email_oggetto: rendered.oggetto,
                 email_corpo_html: htmlCompleto,
                 email_destinatario: d.indirizzo_usato,
+                email_message_id: sendRes.messageId ?? null,
                 livello_sollecito: livelloSollecitoFromTipo(tpl.tipo),
               })
               .select("id")
@@ -421,6 +422,7 @@ export const invioMassivoSolleciti = inngest.createFunction(
                 azione_id: azione?.id ?? null,
                 importo_riferimento: totaleRif,
                 inviato_at: new Date().toISOString(),
+                message_id: sendRes.messageId ?? null,
               })
               .eq("id", d.id);
             inviati += 1;

@@ -324,6 +324,7 @@ export const invioCampagnaMarketing = inngest.createFunction(
                 stato_invio: "inviato",
                 inviato_at: new Date().toISOString(),
                 errore: null,
+                message_id: sendRes.messageId ?? null,
               } as never)
               .eq("id", d.id);
             inviati += 1;
