@@ -434,18 +434,24 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
               <TableHead>Tipo</TableHead>
               <TableHead>Stato</TableHead>
               <TableHead>Inviato il</TableHead>
+              <TableHead className="text-right">Clic</TableHead>
+              <TableHead>Ultimo clic</TableHead>
               <TableHead>Note errore</TableHead>
               <TableHead></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={7}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
+              <TableRow><TableCell colSpan={9}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
             ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">Nessun destinatario</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-6">Nessun destinatario</TableCell></TableRow>
             ) : (
-              filtered.map((r) => (
-                <TableRow key={r.id}>
+              filtered.map((r) => {
+                const clic = r.num_clic ?? 0;
+                const espanso = expanded === r.id;
+                return (
+                <Fragment key={r.id}>
+                <TableRow>
                   <TableCell className="font-medium">{r.nome_riferimento ?? "—"}</TableCell>
                   <TableCell className="font-mono text-xs">{r.email}</TableCell>
                   <TableCell>
@@ -455,6 +461,21 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
                   </TableCell>
                   <TableCell>{statoLabel(r.stato_invio)}</TableCell>
                   <TableCell className="whitespace-nowrap text-sm">{fmtDateTime(r.inviato_at)}</TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {clic > 0 ? (
+                      <button
+                        type="button"
+                        className="font-semibold hover:underline"
+                        style={{ color: "#c94f8f" }}
+                        onClick={() => setExpanded(espanso ? null : r.id)}
+                      >
+                        {clic}
+                      </button>
+                    ) : (
+                      <span className="text-muted-foreground">0</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap text-sm">{fmtDateTime(r.ultimo_clic_at)}</TableCell>
                   <TableCell className="text-xs text-destructive max-w-[280px] truncate">{r.errore ?? ""}</TableCell>
                   <TableCell>
                     {r.cliente_id && (
@@ -468,7 +489,16 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
                     )}
                   </TableCell>
                 </TableRow>
-              ))
+                {espanso && (
+                  <TableRow>
+                    <TableCell colSpan={9} className="bg-muted/40">
+                      <ClicDestinatario destinatarioId={r.id} />
+                    </TableCell>
+                  </TableRow>
+                )}
+                </Fragment>
+                );
+              })
             )}
           </TableBody>
         </Table>
