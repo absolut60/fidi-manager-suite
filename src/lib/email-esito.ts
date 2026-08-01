@@ -12,13 +12,19 @@
 export interface EsitoEmail {
   ok: boolean;
   err?: string;
+  /**
+   * Identificativo assegnato dal server di posta al momento dell'accettazione
+   * del messaggio (prova di ACCETTAZIONE, non di consegna in casella).
+   * Se i destinatari sono più di uno, i message-id sono uniti da ", ".
+   */
+  messageId?: string;
 }
 
 export interface CorpoRispostaEmail {
   ok?: boolean;
   error?: string;
   message?: string;
-  results?: Array<{ email?: string; ok?: boolean; err?: string }>;
+  results?: Array<{ email?: string; ok?: boolean; err?: string; messageId?: string }>;
 }
 
 /** Interpreta status + corpo (già parsato o testo grezzo) della edge send-email. */
