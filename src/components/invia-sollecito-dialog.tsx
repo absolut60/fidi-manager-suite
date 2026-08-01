@@ -191,7 +191,7 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
         email: user?.email ?? null,
       }, { useCid: true, tipo: selectedTemplate.tipo });
 
-      const ok = await sendEmail({
+      const esito = await sendEmailDetailed({
         to: dest,
         subject: rendered.oggetto,
         html: htmlPerEmail,
@@ -200,8 +200,9 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
         inlineLogo: true,
       });
 
-      if (!ok) {
-        toast.error("Invio fallito. Riprova o verifica l'indirizzo.");
+      // Nessuna azione_recupero viene registrata se l'invio è fallito.
+      if (!esito.ok) {
+        toast.error(`Invio fallito: ${esito.err ?? "errore sconosciuto"}`, { duration: 12000 });
         setSending(false);
         return;
       }
