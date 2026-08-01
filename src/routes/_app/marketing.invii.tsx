@@ -304,6 +304,36 @@ type DestRow = {
   stato_invio: string;
   errore: string | null;
   inviato_at: string | null;
+  num_clic: number | null;
+  ultimo_clic_at: string | null;
+};
+
+/** Elenco dei clic di un destinatario (riga espansa). */
+function ClicDestinatario({ destinatarioId }: { destinatarioId: string }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["campagna-marketing-clic", destinatarioId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("campagne_email_clic")
+        .select("id, url_destinazione, created_at")
+        .eq("destinatario_id", destinatarioId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as unknown as { id: string; url_destinazione: string; created_at: string }[];
+    },
+  });
+  if (isLoading) return <Skeleton className="h-6 w-full" />;
+  if (!data || data.length === 0) return <div className="text-xs text-muted-foreground">Nessun clic registrato</div>;
+  return (
+    <ul className="space-y-1">
+      {data.map((c) => (
+        <li key={c.id} className="text-xs flex gap-2">
+          <span className="text-muted-foreground whitespace-nowrap">{fmtDateTime(c.created_at)}</span>
+          <span className="font-mono truncate">{c.url_destinazione}</span>
+        </li>
+      ))}
+    </ul>
+  );
 };
 
 function statoLabel(s: string) {
