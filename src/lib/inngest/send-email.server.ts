@@ -50,9 +50,38 @@ export async function sendEmailViaEdge(payload: {
       body: JSON.stringify(payload),
     });
     const txt = await res.text();
-    if (!res.ok) return { ok: false, err: `HTTP ${res.status}: ${txt.slice(0, 300)}` };
-    return { ok: true };
+
+    // Il corpo è la fonte di verità: la edge risponde 207 (2xx!) quando
+    // almeno un destinatario fallisce. Fidarsi solo di res.ok maschererebbe
+    // errori SMTP reali (es. "535 Incorrect authentication data").
+    let body: unknown = null;
+    try {
+      body = txt ? JSON.parse(txt) : null;
+    } catch {
+      body = null;
+    }
+
+    const b = (body ?? {}) as {
+      ok?: boolean;
+      error?: string;
+      message?: string;
+      results?: Array<{ email?: string; ok?: boolean; err?: string }>;
+    };
+    const results = Array.isArray(b.results) ? b.results : [];
+    const primoFallito = results.find((r) => r?.ok === false);
+
+    const successo = res.status === 200 && b.ok === true && !primoFallito;
+    if (successo) return { ok: true };
+
+    const err =
+      primoFallito?.err ??
+      b.error ??
+      b.message ??
+      `HTTP ${res.status}: ${txt.slice(0, 300)}`;
+    const dest = primoFallito?.email ? ` (${primoFallito.email})` : "";
+    return { ok: false, err: `${String(err).slice(0, 400)}${dest}` };
   } catch (e) {
     return { ok: false, err: e instanceof Error ? e.message : String(e) };
   }
 }
+
