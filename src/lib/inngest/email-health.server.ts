@@ -124,21 +124,21 @@ export async function raccogliStatoCanaleEmail(): Promise<{
 
   const { data: mkt } = await supabaseAdmin
     .from("campagne_email_destinatari")
-    .select("stato_invio, errore, inviato_at, created_at")
-    .gte("created_at", from7)
-    .order("created_at", { ascending: false });
+    .select("stato_invio, errore, inviato_at, aggiunto_il")
+    .gte("aggiunto_il", from7)
+    .order("aggiunto_il", { ascending: false });
   registra(
     "Campagne marketing",
     ((mkt ?? []) as Array<{
       stato_invio: string;
       errore: string | null;
       inviato_at: string | null;
-      created_at: string;
+      aggiunto_il: string;
     }>)
       .filter((r) => r.stato_invio === "inviato" || r.stato_invio === "fallito")
       .map((r) => ({
         ok: r.stato_invio === "inviato",
-        at: r.inviato_at ?? r.created_at,
+        at: r.inviato_at ?? r.aggiunto_il,
         errore: r.errore,
       })),
   );
