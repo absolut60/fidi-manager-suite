@@ -208,6 +208,10 @@ function InviiMarketingPage() {
                     <TableCell className="text-right text-emerald-600 cursor-pointer" onClick={apri}>{c.inviati}</TableCell>
                     <TableCell className="text-right text-amber-600 cursor-pointer" onClick={apri}>{c.saltati}</TableCell>
                     <TableCell className="text-right text-destructive cursor-pointer" onClick={apri}>{c.falliti}</TableCell>
+                    <TableCell className="text-right font-medium cursor-pointer" onClick={apri} style={{ color: c.clic_unici > 0 ? "#c94f8f" : undefined }}>{c.clic_unici ?? 0}</TableCell>
+                    <TableCell className="text-right text-sm tabular-nums cursor-pointer" onClick={apri}>
+                      {c.inviati > 0 ? `${Math.round(((c.clic_unici ?? 0) / c.inviati) * 1000) / 10}%` : "—"}
+                    </TableCell>
                     <TableCell className="cursor-pointer" onClick={apri}>
                       <div className="flex items-center gap-2">
                         <Progress value={pct} className="h-2" />
