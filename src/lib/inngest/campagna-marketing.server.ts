@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { isEmailValida } from "@/lib/email-validazione";
 import { sendEmailViaEdge } from "./send-email.server";
 import { buildEmailCampagna } from "@/lib/campagna-marketing-email";
+import { riscriviLinkTracciati } from "@/lib/tracking-clic";
 import type { DatiSede } from "@/lib/template-email-render";
 
 type EventData = { campagna_id: string };
