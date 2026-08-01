@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { isEmailValida } from "@/lib/email-validazione";
 import { sendEmailViaEdge } from "./send-email.server";
 import { buildEmailCampagna } from "@/lib/campagna-marketing-email";
+import { riscriviLinkTracciati } from "@/lib/tracking-clic";
 import type { DatiSede } from "@/lib/template-email-render";
 
 type EventData = { campagna_id: string };
@@ -23,6 +24,24 @@ async function getConfigInt(chiave: string, fallback: number): Promise<number> {
     .maybeSingle();
   const v = parseFloat(String(data?.valore ?? ""));
   return Number.isFinite(v) && v > 0 ? Math.floor(v) : fallback;
+}
+
+/** Token di tracciamento clic del destinatario (idempotente). */
+async function trackingTokenDestinatario(destinatarioId: string): Promise<string | null> {
+  const { data } = await supabaseAdmin
+    .from("campagne_email_destinatari")
+    .select("tracking_token")
+    .eq("id", destinatarioId)
+    .maybeSingle();
+  const existing = (data as { tracking_token?: string | null } | null)?.tracking_token;
+  if (existing) return existing;
+  const token = crypto.randomUUID().replace(/-/g, "");
+  const { error } = await supabaseAdmin
+    .from("campagne_email_destinatari")
+    .update({ tracking_token: token } as never)
+    .eq("id", destinatarioId);
+  if (error) return null;
+  return token;
 }
 
 /** Token di recesso idempotente del contatto (riusa quello esistente). */
@@ -274,10 +293,16 @@ export const invioCampagnaMarketing = inngest.createFunction(
               useCid: true,
             });
 
+            // Tracciamento clic: riscrittura dei link (il link di recesso è escluso dal modulo).
+            const trackingToken = await trackingTokenDestinatario(d.id as string);
+            const htmlFinale = trackingToken
+              ? riscriviLinkTracciati(html, trackingToken, appUrl())
+              : html;
+
             const sendRes = await sendEmailViaEdge({
               to: d.email as string,
               subject: oggetto,
-              html,
+              html: htmlFinale,
               fromName: "MADE Distribuzione",
               replyTo: cfg.emailOperatore ?? undefined,
               inlineLogo: true,

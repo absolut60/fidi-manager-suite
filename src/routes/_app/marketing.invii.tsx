@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -46,6 +46,8 @@ type CampagnaRow = {
   inviati: number;
   saltati: number;
   falliti: number;
+  clic_unici: number;
+  clic_totali: number;
   note: string | null;
   operatore_id: string | null;
   created_at: string;
@@ -111,7 +113,7 @@ function InviiMarketingPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("campagne_email_marketing")
-        .select("id, nome, oggetto, stato, inviati, saltati, falliti, note, operatore_id, created_at, inviata_at")
+        .select("id, nome, oggetto, stato, inviati, saltati, falliti, clic_unici, clic_totali, note, operatore_id, created_at, inviata_at")
         .order("created_at", { ascending: false })
         .limit(100);
       if (error) throw error;
@@ -172,6 +174,8 @@ function InviiMarketingPage() {
               <TableHead className="text-right">Inviati</TableHead>
               <TableHead className="text-right">Saltati</TableHead>
               <TableHead className="text-right">Falliti</TableHead>
+              <TableHead className="text-right">Clic unici</TableHead>
+              <TableHead className="text-right">Tasso clic</TableHead>
               <TableHead className="min-w-[180px]">Avanzamento</TableHead>
               <TableHead className="w-[60px]"></TableHead>
               <TableHead className="w-[40px]"></TableHead>
@@ -180,10 +184,10 @@ function InviiMarketingPage() {
           <TableBody>
             {isLoading ? (
               Array.from({ length: 3 }).map((_, i) => (
-                <TableRow key={i}><TableCell colSpan={12}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
+                <TableRow key={i}><TableCell colSpan={14}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
               ))
             ) : !campagne || campagne.length === 0 ? (
-              <TableRow><TableCell colSpan={12} className="text-center text-muted-foreground py-8">
+              <TableRow><TableCell colSpan={14} className="text-center text-muted-foreground py-8">
                 Nessuna campagna ancora avviata.
               </TableCell></TableRow>
             ) : (
@@ -204,6 +208,10 @@ function InviiMarketingPage() {
                     <TableCell className="text-right text-emerald-600 cursor-pointer" onClick={apri}>{c.inviati}</TableCell>
                     <TableCell className="text-right text-amber-600 cursor-pointer" onClick={apri}>{c.saltati}</TableCell>
                     <TableCell className="text-right text-destructive cursor-pointer" onClick={apri}>{c.falliti}</TableCell>
+                    <TableCell className="text-right font-medium cursor-pointer" onClick={apri} style={{ color: c.clic_unici > 0 ? "#c94f8f" : undefined }}>{c.clic_unici ?? 0}</TableCell>
+                    <TableCell className="text-right text-sm tabular-nums cursor-pointer" onClick={apri}>
+                      {c.inviati > 0 ? `${Math.round(((c.clic_unici ?? 0) / c.inviati) * 1000) / 10}%` : "—"}
+                    </TableCell>
                     <TableCell className="cursor-pointer" onClick={apri}>
                       <div className="flex items-center gap-2">
                         <Progress value={pct} className="h-2" />
@@ -296,6 +304,36 @@ type DestRow = {
   stato_invio: string;
   errore: string | null;
   inviato_at: string | null;
+  num_clic: number | null;
+  ultimo_clic_at: string | null;
+};
+
+/** Elenco dei clic di un destinatario (riga espansa). */
+function ClicDestinatario({ destinatarioId }: { destinatarioId: string }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["campagna-marketing-clic", destinatarioId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("campagne_email_clic")
+        .select("id, url_destinazione, created_at")
+        .eq("destinatario_id", destinatarioId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as unknown as { id: string; url_destinazione: string; created_at: string }[];
+    },
+  });
+  if (isLoading) return <Skeleton className="h-6 w-full" />;
+  if (!data || data.length === 0) return <div className="text-xs text-muted-foreground">Nessun clic registrato</div>;
+  return (
+    <ul className="space-y-1">
+      {data.map((c) => (
+        <li key={c.id} className="text-xs flex gap-2">
+          <span className="text-muted-foreground whitespace-nowrap">{fmtDateTime(c.created_at)}</span>
+          <span className="font-mono truncate">{c.url_destinazione}</span>
+        </li>
+      ))}
+    </ul>
+  );
 };
 
 function statoLabel(s: string) {
@@ -312,13 +350,14 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
   const riprova = useServerFn(riprovaCampagnaMarketingFalliti);
   const [statoFilter, setStatoFilter] = useState<string>("tutti");
   const [retrying, setRetrying] = useState(false);
+  const [expanded, setExpanded] = useState<string | null>(null);
 
   const { data: rows, isLoading } = useQuery({
     queryKey: ["campagna-marketing-destinatari", campagnaId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("campagne_email_destinatari")
-        .select("id, cliente_id, email, nome_riferimento, tipo_destinatario, stato_invio, errore, inviato_at")
+        .select("id, cliente_id, email, nome_riferimento, tipo_destinatario, stato_invio, errore, inviato_at, num_clic, ultimo_clic_at")
         .eq("campagna_id", campagnaId)
         .order("stato_invio", { ascending: true })
         .order("inviato_at", { ascending: false, nullsFirst: false });
@@ -331,6 +370,7 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
   const filtered = useMemo(() => {
     if (!rows) return [];
     if (statoFilter === "tutti") return rows;
+    if (statoFilter === "__ha_cliccato__") return rows.filter((r) => (r.num_clic ?? 0) > 0);
     return rows.filter((r) => r.stato_invio === statoFilter);
   }, [rows, statoFilter]);
 
@@ -369,6 +409,7 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
               <SelectItem value="fallito">Falliti</SelectItem>
               <SelectItem value="da_inviare">In coda</SelectItem>
               <SelectItem value="saltato">Saltati</SelectItem>
+              <SelectItem value="__ha_cliccato__">Ha cliccato</SelectItem>
             </SelectContent>
           </Select>
           <div className="text-sm text-muted-foreground">{filtered.length} righe</div>
@@ -394,18 +435,24 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
               <TableHead>Tipo</TableHead>
               <TableHead>Stato</TableHead>
               <TableHead>Inviato il</TableHead>
+              <TableHead className="text-right">Clic</TableHead>
+              <TableHead>Ultimo clic</TableHead>
               <TableHead>Note errore</TableHead>
               <TableHead></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={7}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
+              <TableRow><TableCell colSpan={9}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
             ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">Nessun destinatario</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-6">Nessun destinatario</TableCell></TableRow>
             ) : (
-              filtered.map((r) => (
-                <TableRow key={r.id}>
+              filtered.map((r) => {
+                const clic = r.num_clic ?? 0;
+                const espanso = expanded === r.id;
+                return (
+                <Fragment key={r.id}>
+                <TableRow>
                   <TableCell className="font-medium">{r.nome_riferimento ?? "—"}</TableCell>
                   <TableCell className="font-mono text-xs">{r.email}</TableCell>
                   <TableCell>
@@ -415,6 +462,21 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
                   </TableCell>
                   <TableCell>{statoLabel(r.stato_invio)}</TableCell>
                   <TableCell className="whitespace-nowrap text-sm">{fmtDateTime(r.inviato_at)}</TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {clic > 0 ? (
+                      <button
+                        type="button"
+                        className="font-semibold hover:underline"
+                        style={{ color: "#c94f8f" }}
+                        onClick={() => setExpanded(espanso ? null : r.id)}
+                      >
+                        {clic}
+                      </button>
+                    ) : (
+                      <span className="text-muted-foreground">0</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap text-sm">{fmtDateTime(r.ultimo_clic_at)}</TableCell>
                   <TableCell className="text-xs text-destructive max-w-[280px] truncate">{r.errore ?? ""}</TableCell>
                   <TableCell>
                     {r.cliente_id && (
@@ -428,7 +490,16 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
                     )}
                   </TableCell>
                 </TableRow>
-              ))
+                {espanso && (
+                  <TableRow>
+                    <TableCell colSpan={9} className="bg-muted/40">
+                      <ClicDestinatario destinatarioId={r.id} />
+                    </TableCell>
+                  </TableRow>
+                )}
+                </Fragment>
+                );
+              })
             )}
           </TableBody>
         </Table>

@@ -471,6 +471,51 @@ export type Database = {
           },
         ]
       }
+      campagne_email_clic: {
+        Row: {
+          campagna_id: string
+          created_at: string
+          destinatario_id: string
+          id: string
+          ip_address: string | null
+          url_destinazione: string
+          user_agent: string | null
+        }
+        Insert: {
+          campagna_id: string
+          created_at?: string
+          destinatario_id: string
+          id?: string
+          ip_address?: string | null
+          url_destinazione: string
+          user_agent?: string | null
+        }
+        Update: {
+          campagna_id?: string
+          created_at?: string
+          destinatario_id?: string
+          id?: string
+          ip_address?: string | null
+          url_destinazione?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campagne_email_clic_campagna_id_fkey"
+            columns: ["campagna_id"]
+            isOneToOne: false
+            referencedRelation: "campagne_email_marketing"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campagne_email_clic_destinatario_id_fkey"
+            columns: ["destinatario_id"]
+            isOneToOne: false
+            referencedRelation: "campagne_email_destinatari"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campagne_email_destinatari: {
         Row: {
           aggiunto_da: string | null
@@ -483,8 +528,12 @@ export type Database = {
           id: string
           inviato_at: string | null
           nome_riferimento: string | null
+          num_clic: number
+          primo_clic_at: string | null
           stato_invio: string
           tipo_destinatario: string
+          tracking_token: string | null
+          ultimo_clic_at: string | null
         }
         Insert: {
           aggiunto_da?: string | null
@@ -497,8 +546,12 @@ export type Database = {
           id?: string
           inviato_at?: string | null
           nome_riferimento?: string | null
+          num_clic?: number
+          primo_clic_at?: string | null
           stato_invio?: string
           tipo_destinatario: string
+          tracking_token?: string | null
+          ultimo_clic_at?: string | null
         }
         Update: {
           aggiunto_da?: string | null
@@ -511,8 +564,12 @@ export type Database = {
           id?: string
           inviato_at?: string | null
           nome_riferimento?: string | null
+          num_clic?: number
+          primo_clic_at?: string | null
           stato_invio?: string
           tipo_destinatario?: string
+          tracking_token?: string | null
+          ultimo_clic_at?: string | null
         }
         Relationships: [
           {
@@ -554,6 +611,8 @@ export type Database = {
       }
       campagne_email_marketing: {
         Row: {
+          clic_totali: number
+          clic_unici: number
           corpo_html: string
           created_at: string
           created_by: string | null
@@ -570,6 +629,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          clic_totali?: number
+          clic_unici?: number
           corpo_html?: string
           created_at?: string
           created_by?: string | null
@@ -586,6 +647,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          clic_totali?: number
+          clic_unici?: number
           corpo_html?: string
           created_at?: string
           created_by?: string | null
@@ -4297,6 +4360,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      registra_clic_campagna: {
+        Args: { _ip?: string; _token: string; _ua?: string; _url: string }
+        Returns: boolean
       }
       registra_consensi_batch: {
         Args: {
