@@ -86,6 +86,40 @@ export const annullaInvioCampagnaMarketing = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/** Rimette in coda i destinatari falliti e riemette l'evento di invio. */
+export const riprovaCampagnaMarketingFalliti = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => z.object({ campagnaId: z.string().uuid() }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertRuoloMarketing(supabase, userId);
+
+    const { data: righe, error } = await supabase
+      .from("campagne_email_destinatari")
+      .select("id")
+      .eq("campagna_id", data.campagnaId)
+      .eq("stato_invio", "fallito");
+    if (error) throw new Error(error.message);
+    const ids = ((righe ?? []) as Array<{ id: string }>).map((r) => r.id);
+    if (ids.length === 0) return { ok: true, riprovati: 0 };
+
+    const { error: eUpd } = await supabase
+      .from("campagne_email_destinatari")
+      .update({ stato_invio: "da_inviare", errore: null, inviato_at: null } as never)
+      .in("id", ids);
+    if (eUpd) throw new Error(eUpd.message);
+
+    await supabase
+      .from("campagne_email_marketing")
+      .update({ stato: "in_corso", operatore_id: userId, note: null } as never)
+      .eq("id", data.campagnaId);
+
+    await inviaEventoInngest("campagna-marketing/invio.requested", { campagna_id: data.campagnaId });
+    return { ok: true, riprovati: ids.length };
+  });
+
+
+
 /** Invio di prova: stessa pipeline dell'invio reale, nessuna scrittura di stato. */
 export const inviaEmailProvaCampagna = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
