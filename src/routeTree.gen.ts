@@ -52,6 +52,7 @@ import { Route as AppRichiesteInterneArchivioRouteImport } from './routes/_app/r
 import { Route as AppRichiesteInterneApprovaRouteImport } from './routes/_app/richieste-interne.approva'
 import { Route as AppRichiesteInterneRichiestaIdRouteImport } from './routes/_app/richieste-interne.$richiestaId'
 import { Route as AppMarketingSegmentiRouteImport } from './routes/_app/marketing.segmenti'
+import { Route as AppMarketingInviiRouteImport } from './routes/_app/marketing.invii'
 import { Route as AppMarketingCampagneRouteImport } from './routes/_app/marketing.campagne'
 import { Route as AppClientiClienteIdRouteImport } from './routes/_app/clienti.$clienteId'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
@@ -285,6 +286,11 @@ const AppMarketingSegmentiRoute = AppMarketingSegmentiRouteImport.update({
   path: '/marketing/segmenti',
   getParentRoute: () => AppRoute,
 } as any)
+const AppMarketingInviiRoute = AppMarketingInviiRouteImport.update({
+  id: '/marketing/invii',
+  path: '/marketing/invii',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppMarketingCampagneRoute = AppMarketingCampagneRouteImport.update({
   id: '/marketing/campagne',
   path: '/marketing/campagne',
@@ -356,6 +362,7 @@ export interface FileRoutesByFullPath {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
   '/marketing/campagne': typeof AppMarketingCampagneRoute
+  '/marketing/invii': typeof AppMarketingInviiRoute
   '/marketing/segmenti': typeof AppMarketingSegmentiRoute
   '/richieste-interne/$richiestaId': typeof AppRichiesteInterneRichiestaIdRoute
   '/richieste-interne/approva': typeof AppRichiesteInterneApprovaRoute
@@ -406,6 +413,7 @@ export interface FileRoutesByTo {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
   '/marketing/campagne': typeof AppMarketingCampagneRoute
+  '/marketing/invii': typeof AppMarketingInviiRoute
   '/marketing/segmenti': typeof AppMarketingSegmentiRoute
   '/richieste-interne/$richiestaId': typeof AppRichiesteInterneRichiestaIdRoute
   '/richieste-interne/approva': typeof AppRichiesteInterneApprovaRoute
@@ -458,6 +466,7 @@ export interface FileRoutesById {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_app/clienti/$clienteId': typeof AppClientiClienteIdRoute
   '/_app/marketing/campagne': typeof AppMarketingCampagneRoute
+  '/_app/marketing/invii': typeof AppMarketingInviiRoute
   '/_app/marketing/segmenti': typeof AppMarketingSegmentiRoute
   '/_app/richieste-interne/$richiestaId': typeof AppRichiesteInterneRichiestaIdRoute
   '/_app/richieste-interne/approva': typeof AppRichiesteInterneApprovaRoute
@@ -510,6 +519,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/clienti/$clienteId'
     | '/marketing/campagne'
+    | '/marketing/invii'
     | '/marketing/segmenti'
     | '/richieste-interne/$richiestaId'
     | '/richieste-interne/approva'
@@ -560,6 +570,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/clienti/$clienteId'
     | '/marketing/campagne'
+    | '/marketing/invii'
     | '/marketing/segmenti'
     | '/richieste-interne/$richiestaId'
     | '/richieste-interne/approva'
@@ -611,6 +622,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/_app/clienti/$clienteId'
     | '/_app/marketing/campagne'
+    | '/_app/marketing/invii'
     | '/_app/marketing/segmenti'
     | '/_app/richieste-interne/$richiestaId'
     | '/_app/richieste-interne/approva'
@@ -945,6 +957,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppMarketingSegmentiRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/marketing/invii': {
+      id: '/_app/marketing/invii'
+      path: '/marketing/invii'
+      fullPath: '/marketing/invii'
+      preLoaderRoute: typeof AppMarketingInviiRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/marketing/campagne': {
       id: '/_app/marketing/campagne'
       path: '/marketing/campagne'
@@ -1040,6 +1059,7 @@ interface AppRouteChildren {
   AppUtentiRoute: typeof AppUtentiRoute
   AppWhatsappRoute: typeof AppWhatsappRoute
   AppMarketingCampagneRoute: typeof AppMarketingCampagneRoute
+  AppMarketingInviiRoute: typeof AppMarketingInviiRoute
   AppMarketingSegmentiRoute: typeof AppMarketingSegmentiRoute
   AppRichiesteInterneRichiestaIdRoute: typeof AppRichiesteInterneRichiestaIdRoute
   AppRichiesteInterneApprovaRoute: typeof AppRichiesteInterneApprovaRoute
@@ -1076,6 +1096,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppUtentiRoute: AppUtentiRoute,
   AppWhatsappRoute: AppWhatsappRoute,
   AppMarketingCampagneRoute: AppMarketingCampagneRoute,
+  AppMarketingInviiRoute: AppMarketingInviiRoute,
   AppMarketingSegmentiRoute: AppMarketingSegmentiRoute,
   AppRichiesteInterneRichiestaIdRoute: AppRichiesteInterneRichiestaIdRoute,
   AppRichiesteInterneApprovaRoute: AppRichiesteInterneApprovaRoute,
