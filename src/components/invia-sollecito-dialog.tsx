@@ -213,6 +213,7 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
         email_oggetto: rendered.oggetto,
         email_corpo_html: rendered.corpo,
         email_destinatario: dest,
+        email_message_id: esito.messageId ?? null,
       };
 
       if (azioneEsistenteId) {

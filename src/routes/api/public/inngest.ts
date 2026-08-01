@@ -19,6 +19,7 @@ import { promemoriaScadenzaAutomatico } from "@/lib/inngest/promemoria-scadenza.
 import { promemoriaScadenzaRetention } from "@/lib/inngest/promemoria-scadenza-retention.server";
 import { inviaEmailRichiesta } from "@/lib/inngest/richieste-email.server";
 import { invioCampagnaMarketing } from "@/lib/inngest/campagna-marketing.server";
+import { emailHealthCheck } from "@/lib/inngest/email-health.server";
 
 
 
@@ -42,6 +43,7 @@ const handler = serve({
     promemoriaScadenzaRetention,
     inviaEmailRichiesta,
     invioCampagnaMarketing,
+    emailHealthCheck,
 
 
 

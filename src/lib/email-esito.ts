@@ -12,13 +12,19 @@
 export interface EsitoEmail {
   ok: boolean;
   err?: string;
+  /**
+   * Identificativo assegnato dal server di posta al momento dell'accettazione
+   * del messaggio (prova di ACCETTAZIONE, non di consegna in casella).
+   * Se i destinatari sono più di uno, i message-id sono uniti da ", ".
+   */
+  messageId?: string;
 }
 
 export interface CorpoRispostaEmail {
   ok?: boolean;
   error?: string;
   message?: string;
-  results?: Array<{ email?: string; ok?: boolean; err?: string }>;
+  results?: Array<{ email?: string; ok?: boolean; err?: string; messageId?: string }>;
 }
 
 /** Interpreta status + corpo (già parsato o testo grezzo) della edge send-email. */
@@ -40,7 +46,12 @@ export function valutaEsitoEmail(
   const results = Array.isArray(b.results) ? b.results : [];
   const primoFallito = results.find((r) => r?.ok === false);
 
-  if (status === 200 && b.ok === true && !primoFallito) return { ok: true };
+  if (status === 200 && b.ok === true && !primoFallito) {
+    const ids = results
+      .map((r) => (r?.messageId ? String(r.messageId).trim() : ""))
+      .filter((s) => s.length > 0);
+    return ids.length ? { ok: true, messageId: ids.join(", ") } : { ok: true };
+  }
 
   const err =
     primoFallito?.err ??

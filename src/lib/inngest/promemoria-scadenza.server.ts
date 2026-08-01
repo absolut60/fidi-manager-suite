@@ -247,6 +247,7 @@ export const promemoriaScadenzaAutomatico = inngest.createFunction(
           importo_totale: importoTotale,
           esito: "inviato",
           email_html: htmlArchivio,
+          message_id: res.messageId ?? null,
         });
         // Idempotenza: la marca resta ESCLUSIVAMENTE nel ramo di invio ok.
         const nowIso = new Date().toISOString();
