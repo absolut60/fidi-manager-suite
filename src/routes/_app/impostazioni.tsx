@@ -9,6 +9,7 @@ import { migrazioneRichiesteCreaUtenti, migrazioneRichiesteDati, migrazioneRichi
 import { notifyRichiestaEvento } from "@/lib/richieste-email.functions";
 import { testConnessioneRichieste } from "@/lib/test-connessione-richieste.functions";
 import { previewPromemoriaEmail } from "@/lib/promemoria-preview.functions";
+import { getStatoCanaleEmail } from "@/lib/email-health.functions";
 import { sendEmailDetailed, buildEmailTemplate } from "@/lib/send-email";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -201,8 +202,78 @@ function ImpostazioniPage() {
         )}
       </Card>
 
+      <StatoCanaleEmailCard />
+
       <ManutenzioneCard />
     </div>
+  );
+}
+
+function StatoCanaleEmailCard() {
+  const fetchStato = useServerFn(getStatoCanaleEmail);
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["stato-canale-email"],
+    queryFn: () => fetchStato(),
+    staleTime: 60_000,
+  });
+
+  const fmt = (v: string | null) =>
+    v ? new Date(v).toLocaleString("it-IT", { dateStyle: "short", timeStyle: "short" }) : "—";
+
+  return (
+    <Card className="p-4 sm:p-5">
+      <h2 className="font-semibold mb-1 flex items-center gap-2">
+        <Mail className="size-4" /> Stato canale email
+      </h2>
+      <p className="text-xs text-muted-foreground mb-3">
+        Ultimi 7 giorni. Un invio &quot;riuscito&quot; significa accettato dal server di posta,
+        non necessariamente consegnato nella casella del destinatario.
+      </p>
+      {isLoading ? (
+        <Skeleton className="h-24 w-full" />
+      ) : error ? (
+        <p className="text-sm text-destructive">Impossibile leggere lo stato: {(error as Error).message}</p>
+      ) : (
+        <>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Canale</TableHead>
+                <TableHead className="text-right">Riusciti</TableHead>
+                <TableHead className="text-right">Falliti</TableHead>
+                <TableHead>Ultimo invio riuscito</TableHead>
+                <TableHead>Ultimo errore</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {(data?.canali ?? []).map((c) => (
+                <TableRow key={c.canale}>
+                  <TableCell className="font-medium">{c.canale}</TableCell>
+                  <TableCell className="text-right tabular-nums">{c.riusciti_7g}</TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {c.falliti_7g > 0 ? (
+                      <span className="font-semibold text-destructive">{c.falliti_7g}</span>
+                    ) : (
+                      0
+                    )}
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap text-sm">{fmt(c.ultimo_successo)}</TableCell>
+                  <TableCell className="max-w-[280px] truncate text-xs text-destructive" title={c.ultimo_errore ?? ""}>
+                    {c.ultimo_errore ?? ""}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          {(data?.canali ?? []).every((c) => c.riusciti_7g === 0) && (
+            <p className="mt-3 flex items-center gap-2 text-sm text-destructive">
+              <AlertTriangle className="size-4" /> Nessun invio riuscito negli ultimi 7 giorni: il canale email
+              potrebbe essere fermo.
+            </p>
+          )}
+        </>
+      )}
+    </Card>
   );
 }
 
