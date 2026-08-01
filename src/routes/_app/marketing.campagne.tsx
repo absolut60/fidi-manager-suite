@@ -547,6 +547,9 @@ type DestinatarioRiga = {
   nome_riferimento: string | null;
   cliente_id: string | null;
   aggiunto_il: string;
+  stato_invio: string;
+  inviato_at: string | null;
+  errore: string | null;
   clienti: { ragione_sociale: string } | null;
 };
 
@@ -557,16 +560,18 @@ function DestinatariCampagnaDialog({
 
   const { data: righe, isLoading } = useQuery({
     queryKey: ["campagne-email-destinatari", campagna.id],
+    refetchInterval: campagna.stato === "in_corso" ? 5000 : false,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("campagne_email_destinatari")
-        .select("id, email, tipo_destinatario, nome_riferimento, cliente_id, aggiunto_il, clienti(ragione_sociale)")
+        .select("id, email, tipo_destinatario, nome_riferimento, cliente_id, aggiunto_il, stato_invio, inviato_at, errore, clienti(ragione_sociale)")
         .eq("campagna_id", campagna.id)
         .order("aggiunto_il", { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as DestinatarioRiga[];
     },
   });
+
 
   const rimuovi = useMutation({
     mutationFn: async (id: string) => {
