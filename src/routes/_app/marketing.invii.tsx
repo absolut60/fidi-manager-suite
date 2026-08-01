@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -350,6 +350,7 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
   const riprova = useServerFn(riprovaCampagnaMarketingFalliti);
   const [statoFilter, setStatoFilter] = useState<string>("tutti");
   const [retrying, setRetrying] = useState(false);
+  const [expanded, setExpanded] = useState<string | null>(null);
 
   const { data: rows, isLoading } = useQuery({
     queryKey: ["campagna-marketing-destinatari", campagnaId],
