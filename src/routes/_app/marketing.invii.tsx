@@ -356,7 +356,7 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
     queryFn: async () => {
       const { data, error } = await supabase
         .from("campagne_email_destinatari")
-        .select("id, cliente_id, email, nome_riferimento, tipo_destinatario, stato_invio, errore, inviato_at")
+        .select("id, cliente_id, email, nome_riferimento, tipo_destinatario, stato_invio, errore, inviato_at, num_clic, ultimo_clic_at")
         .eq("campagna_id", campagnaId)
         .order("stato_invio", { ascending: true })
         .order("inviato_at", { ascending: false, nullsFirst: false });
@@ -369,6 +369,7 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
   const filtered = useMemo(() => {
     if (!rows) return [];
     if (statoFilter === "tutti") return rows;
+    if (statoFilter === "__ha_cliccato__") return rows.filter((r) => (r.num_clic ?? 0) > 0);
     return rows.filter((r) => r.stato_invio === statoFilter);
   }, [rows, statoFilter]);
 
@@ -407,6 +408,7 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
               <SelectItem value="fallito">Falliti</SelectItem>
               <SelectItem value="da_inviare">In coda</SelectItem>
               <SelectItem value="saltato">Saltati</SelectItem>
+              <SelectItem value="__ha_cliccato__">Ha cliccato</SelectItem>
             </SelectContent>
           </Select>
           <div className="text-sm text-muted-foreground">{filtered.length} righe</div>
