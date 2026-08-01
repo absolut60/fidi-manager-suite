@@ -369,6 +369,25 @@ function MarketingCampagnePage() {
         />
       )}
 
+      {inviando && (
+        <ConfermaInvioDialog
+          campagna={inviando}
+          daInviare={conteggi?.get(inviando.id)?.da_inviare ?? 0}
+          onClose={() => setInviando(null)}
+          onDone={() => {
+            qc.invalidateQueries({ queryKey: ["campagne_email_marketing"] });
+            qc.invalidateQueries({ queryKey: ["campagne-email-destinatari"] });
+          }}
+        />
+      )}
+
+      {provaDi && (
+        <InviaProvaDialog
+          campagna={provaDi}
+          emailDefault={user?.email ?? ""}
+          onClose={() => setProvaDi(null)}
+        />
+      )}
 
 
       <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
