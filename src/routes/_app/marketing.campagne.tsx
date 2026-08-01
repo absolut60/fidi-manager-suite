@@ -243,7 +243,7 @@ function MarketingCampagnePage() {
             <Mail className="size-6" /> Campagne email
           </h1>
           <p className="text-sm text-muted-foreground">
-            Componi, salva e visualizza in anteprima le email di campagna. In questa fase non è previsto alcun invio.
+            Componi, prova e invia le email di campagna ai destinatari raccolti dai segmenti.
           </p>
         </div>
         <Button onClick={() => crea.mutate()} disabled={crea.isPending}>
@@ -269,16 +269,26 @@ function MarketingCampagnePage() {
                 <TableHead>Oggetto</TableHead>
                 <TableHead>Stato</TableHead>
                 <TableHead className="text-center">Destinatari</TableHead>
+                <TableHead>Avanzamento</TableHead>
                 <TableHead>Aggiornata</TableHead>
                 <TableHead className="text-right">Azioni</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {campagne.map((c) => (
+              {campagne.map((c) => {
+                const k = conteggi?.get(c.id);
+                const daInviare = k?.da_inviare ?? 0;
+                const totale = k?.totale ?? 0;
+                return (
                 <TableRow key={c.id}>
                   <TableCell className="font-medium">{c.nome}</TableCell>
                   <TableCell className="text-muted-foreground">{c.oggetto || "—"}</TableCell>
-                  <TableCell>{statoBadge(c.stato)}</TableCell>
+                  <TableCell>
+                    {statoBadge(c.stato)}
+                    {c.note && (
+                      <div className="text-xs text-destructive mt-1 max-w-[220px]">{c.note}</div>
+                    )}
+                  </TableCell>
                   <TableCell className="text-center">
                     <button
                       type="button"
@@ -287,11 +297,40 @@ function MarketingCampagnePage() {
                       title="Vedi destinatari"
                     >
                       <Users className="size-4" />
-                      {(conteggi?.get(c.id) ?? 0).toLocaleString("it-IT")}
+                      {totale.toLocaleString("it-IT")}
                     </button>
                   </TableCell>
+                  <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                    {c.stato === "in_corso" ? (
+                      <span className="font-medium text-amber-600">
+                        {(k?.inviato ?? 0).toLocaleString("it-IT")} / {totale.toLocaleString("it-IT")} inviate…
+                      </span>
+                    ) : (
+                      <>
+                        Da inviare {daInviare} · Inviate {k?.inviato ?? 0} · Fallite {k?.fallito ?? 0} · Saltate {k?.saltato ?? 0}
+                      </>
+                    )}
+                  </TableCell>
                   <TableCell className="text-muted-foreground">{fmtDate(c.updated_at)}</TableCell>
-                  <TableCell className="text-right space-x-1">
+                  <TableCell className="text-right space-x-1 whitespace-nowrap">
+                    {c.stato === "in_corso" ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => annulla.mutate(c)}
+                        disabled={annulla.isPending}
+                        title="Annulla invio"
+                      >
+                        <StopCircle className="size-4 mr-1" /> Annulla invio
+                      </Button>
+                    ) : daInviare > 0 ? (
+                      <Button size="sm" onClick={() => setInviando(c)} title="Invia campagna">
+                        <Send className="size-4 mr-1" /> Invia campagna
+                      </Button>
+                    ) : null}
+                    <Button variant="ghost" size="icon" onClick={() => setProvaDi(c)} title="Invia email di prova">
+                      <FlaskConical className="size-4" />
+                    </Button>
                     <Button variant="ghost" size="icon" onClick={() => setDestinatariDi(c)} title="Destinatari">
                       <Users className="size-4" />
                     </Button>
@@ -307,7 +346,9 @@ function MarketingCampagnePage() {
                   </TableCell>
 
                 </TableRow>
-              ))}
+                );
+              })}
+
             </TableBody>
           </Table>
         )}
