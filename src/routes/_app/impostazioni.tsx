@@ -173,7 +173,7 @@ function ImpostazioniPage() {
             onClick={async () => {
               setTestEmailSending(true);
               setTestEmailResult(null);
-              const ok = await sendEmail({
+              const esito = await sendEmailDetailed({
                 to: testEmailTo,
                 subject: "✅ Test FidiManager — Email funzionante",
                 html: buildEmailTemplate({
@@ -184,7 +184,8 @@ function ImpostazioniPage() {
                   ctaUrl: window.location.origin,
                 }),
               });
-              setTestEmailResult(ok ? "ok" : "error");
+              setTestEmailResult(esito.ok ? "ok" : "error");
+              setTestEmailErr(esito.ok ? null : (esito.err ?? "errore sconosciuto"));
               setTestEmailSending(false);
             }}
           >
@@ -195,7 +196,7 @@ function ImpostazioniPage() {
           <p className="text-sm text-green-600 mt-3">✅ Email inviata con successo!</p>
         )}
         {testEmailResult === "error" && (
-          <p className="text-sm text-destructive mt-3">❌ Errore invio — controlla i secrets SMTP su Supabase</p>
+          <p className="text-sm text-destructive mt-3 break-words">❌ Errore invio: {testEmailErr}</p>
         )}
       </Card>
 
