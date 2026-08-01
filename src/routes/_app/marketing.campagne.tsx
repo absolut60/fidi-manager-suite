@@ -614,26 +614,35 @@ function DestinatariCampagnaDialog({
                 <TableRow>
                   <TableHead>Email</TableHead>
                   <TableHead>Tipo</TableHead>
-                  <TableHead>Riferimento</TableHead>
+                  <TableHead>Stato invio</TableHead>
+                  <TableHead>Inviata il</TableHead>
                   <TableHead>Cliente</TableHead>
-                  <TableHead>Aggiunto il</TableHead>
+                  <TableHead>Errore</TableHead>
                   <TableHead className="w-10" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {righe.map((r) => (
                   <TableRow key={r.id}>
-                    <TableCell className="font-medium">{r.email}</TableCell>
+                    <TableCell className="font-medium">
+                      {r.email}
+                      {r.nome_riferimento && (
+                        <div className="text-xs text-muted-foreground">{r.nome_riferimento}</div>
+                      )}
+                    </TableCell>
                     <TableCell>
                       <Badge variant={r.tipo_destinatario === "aziendale" ? "secondary" : "outline"}>
                         {r.tipo_destinatario === "aziendale" ? "Aziendale" : "Contatto"}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{r.nome_riferimento || "—"}</TableCell>
+                    <TableCell>{statoInvioBadge(r.stato_invio)}</TableCell>
+                    <TableCell className="text-muted-foreground text-xs">{fmtDateTime(r.inviato_at)}</TableCell>
                     <TableCell className="text-muted-foreground">
                       {r.clienti?.ragione_sociale || "—"}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{fmtDate(r.aggiunto_il)}</TableCell>
+                    <TableCell className="text-xs text-destructive max-w-[220px] break-words">
+                      {r.errore || "—"}
+                    </TableCell>
                     <TableCell>
                       <Button
                         variant="ghost"
@@ -659,3 +668,100 @@ function DestinatariCampagnaDialog({
     </Dialog>
   );
 }
+
+/** Conferma esplicita dell'invio: richiede di digitare INVIA. */
+function ConfermaInvioDialog({
+  campagna, daInviare, onClose, onDone,
+}: { campagna: Campagna; daInviare: number; onClose: () => void; onDone: () => void }) {
+  const [conferma, setConferma] = useState("");
+
+  const avvia = useMutation({
+    mutationFn: async () => avviaInvioCampagnaMarketing({ data: { campagnaId: campagna.id } }),
+    onSuccess: (r: any) => {
+      toast.success(`Invio avviato per ${r?.totale ?? daInviare} destinatari`);
+      onDone();
+      onClose();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Errore avvio invio"),
+  });
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Confermi l'invio della campagna?</DialogTitle>
+          <DialogDescription>
+            L'invio è definitivo e parte immediatamente in background.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-2 text-sm">
+          <div><span className="text-muted-foreground">Campagna:</span> <strong>{campagna.nome}</strong></div>
+          <div><span className="text-muted-foreground">Oggetto:</span> {campagna.oggetto || "—"}</div>
+          <div className="text-base">
+            Riceveranno l'email <strong>{daInviare.toLocaleString("it-IT")}</strong> destinatari.
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Digita <span className="font-mono font-semibold">INVIA</span> per confermare</Label>
+          <Input value={conferma} onChange={(e) => setConferma(e.target.value)} placeholder="INVIA" />
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Annulla</Button>
+          <Button
+            onClick={() => avvia.mutate()}
+            disabled={conferma.trim().toUpperCase() !== "INVIA" || avvia.isPending || daInviare === 0}
+          >
+            <Send className="size-4 mr-2" /> Invia ora
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Invio di prova a un singolo indirizzo: nessuna scrittura di stato. */
+function InviaProvaDialog({
+  campagna, emailDefault, onClose,
+}: { campagna: Campagna; emailDefault: string; onClose: () => void }) {
+  const [dest, setDest] = useState(emailDefault);
+
+  const prova = useMutation({
+    mutationFn: async () =>
+      inviaEmailProvaCampagna({ data: { campagnaId: campagna.id, destinatario: dest.trim() } }),
+    onSuccess: () => {
+      toast.success(`Email di prova inviata a ${dest.trim()}`);
+      onClose();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Errore invio di prova"),
+  });
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Invia email di prova</DialogTitle>
+          <DialogDescription>
+            Stessa composizione dell'invio reale (allegati e footer di recesso inclusi), con dati di
+            esempio. Non modifica la campagna né i destinatari.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-2">
+          <Label>Indirizzo destinatario</Label>
+          <Input value={dest} onChange={(e) => setDest(e.target.value)} placeholder="nome@azienda.it" />
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Annulla</Button>
+          <Button onClick={() => prova.mutate()} disabled={!dest.trim() || prova.isPending}>
+            <FlaskConical className="size-4 mr-2" /> Invia prova
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
