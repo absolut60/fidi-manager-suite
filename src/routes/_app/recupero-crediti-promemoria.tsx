@@ -537,6 +537,8 @@ function SortableHead({
   );
 }
 
+import { MessageIdCell } from "@/components/message-id-cell";
+
 // ==================== Storico invii automatici ====================
 
 
@@ -551,6 +553,7 @@ type PromLogRow = {
   esito: string;
   errore: string | null;
   email_html: string | null;
+  message_id: string | null;
   created_at: string;
   cliente: { ragione_sociale: string | null } | null;
 };
@@ -582,7 +585,7 @@ function InviiAutomaticiSection() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("promemoria_scadenza_log")
-        .select("id, cliente_id, email_destinatario, data_esecuzione, giorni_anticipo, num_scadenze, importo_totale, esito, errore, email_html, created_at, cliente:clienti(ragione_sociale)")
+        .select("id, cliente_id, email_destinatario, data_esecuzione, giorni_anticipo, num_scadenze, importo_totale, esito, errore, email_html, message_id, created_at, cliente:clienti(ragione_sociale)")
         .gte("created_at", trentaGiorniFa)
         .order("created_at", { ascending: false })
         .limit(200);
@@ -727,6 +730,10 @@ function LogDettaglio({ row }: { row: PromLogRow }) {
       </div>
       <div className="space-y-2">
         <div className="text-xs uppercase tracking-wider text-muted-foreground">
+          Message-ID (prova di accettazione)
+        </div>
+        <MessageIdCell messageId={row.message_id} className="max-w-full" />
+        <div className="pt-2 text-xs uppercase tracking-wider text-muted-foreground">
           Scadenze incluse ({row.num_scadenze})
         </div>
         <LogScadenzeIncluse logId={row.id} numScadenze={row.num_scadenze} />

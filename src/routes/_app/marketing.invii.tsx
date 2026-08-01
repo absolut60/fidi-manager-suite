@@ -295,6 +295,8 @@ function InviiMarketingPage() {
   );
 }
 
+import { MessageIdCell } from "@/components/message-id-cell";
+
 type DestRow = {
   id: string;
   cliente_id: string | null;
@@ -306,6 +308,7 @@ type DestRow = {
   inviato_at: string | null;
   num_clic: number | null;
   ultimo_clic_at: string | null;
+  message_id: string | null;
 };
 
 /** Elenco dei clic di un destinatario (riga espansa). */
@@ -357,7 +360,7 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
     queryFn: async () => {
       const { data, error } = await supabase
         .from("campagne_email_destinatari")
-        .select("id, cliente_id, email, nome_riferimento, tipo_destinatario, stato_invio, errore, inviato_at, num_clic, ultimo_clic_at")
+        .select("id, cliente_id, email, nome_riferimento, tipo_destinatario, stato_invio, errore, inviato_at, num_clic, ultimo_clic_at, message_id")
         .eq("campagna_id", campagnaId)
         .order("stato_invio", { ascending: true })
         .order("inviato_at", { ascending: false, nullsFirst: false });
@@ -435,6 +438,7 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
               <TableHead>Tipo</TableHead>
               <TableHead>Stato</TableHead>
               <TableHead>Inviato il</TableHead>
+              <TableHead>Message-ID</TableHead>
               <TableHead className="text-right">Clic</TableHead>
               <TableHead>Ultimo clic</TableHead>
               <TableHead>Note errore</TableHead>
@@ -443,9 +447,9 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={9}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
+              <TableRow><TableCell colSpan={10}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
             ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-6">Nessun destinatario</TableCell></TableRow>
+              <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-6">Nessun destinatario</TableCell></TableRow>
             ) : (
               filtered.map((r) => {
                 const clic = r.num_clic ?? 0;
@@ -462,6 +466,7 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
                   </TableCell>
                   <TableCell>{statoLabel(r.stato_invio)}</TableCell>
                   <TableCell className="whitespace-nowrap text-sm">{fmtDateTime(r.inviato_at)}</TableCell>
+                  <TableCell><MessageIdCell messageId={r.message_id} /></TableCell>
                   <TableCell className="text-right tabular-nums">
                     {clic > 0 ? (
                       <button
@@ -492,7 +497,7 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
                 </TableRow>
                 {espanso && (
                   <TableRow>
-                    <TableCell colSpan={9} className="bg-muted/40">
+                    <TableCell colSpan={10} className="bg-muted/40">
                       <ClicDestinatario destinatarioId={r.id} />
                     </TableCell>
                   </TableRow>

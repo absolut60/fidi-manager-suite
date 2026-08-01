@@ -283,6 +283,8 @@ function CampagnePage() {
 }
 
 
+import { MessageIdCell } from "@/components/message-id-cell";
+
 type DestRow = {
   id: string;
   cliente_id: string;
@@ -291,6 +293,7 @@ type DestRow = {
   errore: string | null;
   azione_id: string | null;
   inviato_at: string | null;
+  message_id: string | null;
   cliente: { ragione_sociale: string | null } | null;
 };
 
@@ -319,7 +322,7 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
       const { data, error } = await supabase
         .from("campagne_sollecito_destinatari")
         .select(`
-          id, cliente_id, indirizzo_usato, stato, errore, azione_id, inviato_at,
+          id, cliente_id, indirizzo_usato, stato, errore, azione_id, inviato_at, message_id,
           cliente:clienti(ragione_sociale)
         `)
         .eq("campagna_id", campagnaId)
@@ -405,15 +408,16 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
               <TableHead>Indirizzo usato</TableHead>
               <TableHead>Stato</TableHead>
               <TableHead>Inviato il</TableHead>
+              <TableHead>Message-ID</TableHead>
               <TableHead>Note errore</TableHead>
               <TableHead></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={6}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
+              <TableRow><TableCell colSpan={7}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
             ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">Nessun destinatario</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">Nessun destinatario</TableCell></TableRow>
             ) : (
               filtered.map((r) => (
                 <TableRow key={r.id}>
@@ -421,6 +425,7 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
                   <TableCell className="font-mono text-xs">{r.indirizzo_usato ?? "—"}</TableCell>
                   <TableCell>{statoLabel(r.stato)}</TableCell>
                   <TableCell className="whitespace-nowrap text-sm">{fmtDateTime(r.inviato_at)}</TableCell>
+                  <TableCell><MessageIdCell messageId={r.message_id} /></TableCell>
                   <TableCell className="text-xs text-destructive max-w-[280px] truncate">{r.errore ?? ""}</TableCell>
                   <TableCell>
                     <Link
