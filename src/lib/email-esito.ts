@@ -46,7 +46,12 @@ export function valutaEsitoEmail(
   const results = Array.isArray(b.results) ? b.results : [];
   const primoFallito = results.find((r) => r?.ok === false);
 
-  if (status === 200 && b.ok === true && !primoFallito) return { ok: true };
+  if (status === 200 && b.ok === true && !primoFallito) {
+    const ids = results
+      .map((r) => (r?.messageId ? String(r.messageId).trim() : ""))
+      .filter((s) => s.length > 0);
+    return ids.length ? { ok: true, messageId: ids.join(", ") } : { ok: true };
+  }
 
   const err =
     primoFallito?.err ??
