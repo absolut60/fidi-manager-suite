@@ -46,6 +46,8 @@ type CampagnaRow = {
   inviati: number;
   saltati: number;
   falliti: number;
+  clic_unici: number;
+  clic_totali: number;
   note: string | null;
   operatore_id: string | null;
   created_at: string;
@@ -111,7 +113,7 @@ function InviiMarketingPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("campagne_email_marketing")
-        .select("id, nome, oggetto, stato, inviati, saltati, falliti, note, operatore_id, created_at, inviata_at")
+        .select("id, nome, oggetto, stato, inviati, saltati, falliti, clic_unici, clic_totali, note, operatore_id, created_at, inviata_at")
         .order("created_at", { ascending: false })
         .limit(100);
       if (error) throw error;
@@ -172,6 +174,8 @@ function InviiMarketingPage() {
               <TableHead className="text-right">Inviati</TableHead>
               <TableHead className="text-right">Saltati</TableHead>
               <TableHead className="text-right">Falliti</TableHead>
+              <TableHead className="text-right">Clic unici</TableHead>
+              <TableHead className="text-right">Tasso clic</TableHead>
               <TableHead className="min-w-[180px]">Avanzamento</TableHead>
               <TableHead className="w-[60px]"></TableHead>
               <TableHead className="w-[40px]"></TableHead>
