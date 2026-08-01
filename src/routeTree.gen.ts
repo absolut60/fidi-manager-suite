@@ -14,6 +14,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as RecessoTokenRouteImport } from './routes/recesso.$token'
+import { Route as RTokenRouteImport } from './routes/r.$token'
 import { Route as FirmaPrivacyTokenRouteImport } from './routes/firma-privacy.$token'
 import { Route as ConsensiTokenRouteImport } from './routes/consensi.$token'
 import { Route as AppWhatsappRouteImport } from './routes/_app/whatsapp'
@@ -82,6 +83,11 @@ const IndexRoute = IndexRouteImport.update({
 const RecessoTokenRoute = RecessoTokenRouteImport.update({
   id: '/recesso/$token',
   path: '/recesso/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RTokenRoute = RTokenRouteImport.update({
+  id: '/r/$token',
+  path: '/r/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FirmaPrivacyTokenRoute = FirmaPrivacyTokenRouteImport.update({
@@ -357,6 +363,7 @@ export interface FileRoutesByFullPath {
   '/whatsapp': typeof AppWhatsappRoute
   '/consensi/$token': typeof ConsensiTokenRoute
   '/firma-privacy/$token': typeof FirmaPrivacyTokenRoute
+  '/r/$token': typeof RTokenRoute
   '/recesso/$token': typeof RecessoTokenRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -408,6 +415,7 @@ export interface FileRoutesByTo {
   '/whatsapp': typeof AppWhatsappRoute
   '/consensi/$token': typeof ConsensiTokenRoute
   '/firma-privacy/$token': typeof FirmaPrivacyTokenRoute
+  '/r/$token': typeof RTokenRoute
   '/recesso/$token': typeof RecessoTokenRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -461,6 +469,7 @@ export interface FileRoutesById {
   '/_app/whatsapp': typeof AppWhatsappRoute
   '/consensi/$token': typeof ConsensiTokenRoute
   '/firma-privacy/$token': typeof FirmaPrivacyTokenRoute
+  '/r/$token': typeof RTokenRoute
   '/recesso/$token': typeof RecessoTokenRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -514,6 +523,7 @@ export interface FileRouteTypes {
     | '/whatsapp'
     | '/consensi/$token'
     | '/firma-privacy/$token'
+    | '/r/$token'
     | '/recesso/$token'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
@@ -565,6 +575,7 @@ export interface FileRouteTypes {
     | '/whatsapp'
     | '/consensi/$token'
     | '/firma-privacy/$token'
+    | '/r/$token'
     | '/recesso/$token'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
@@ -617,6 +628,7 @@ export interface FileRouteTypes {
     | '/_app/whatsapp'
     | '/consensi/$token'
     | '/firma-privacy/$token'
+    | '/r/$token'
     | '/recesso/$token'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
@@ -646,6 +658,7 @@ export interface RootRouteChildren {
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   ConsensiTokenRoute: typeof ConsensiTokenRoute
   FirmaPrivacyTokenRoute: typeof FirmaPrivacyTokenRoute
+  RTokenRoute: typeof RTokenRoute
   RecessoTokenRoute: typeof RecessoTokenRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -689,6 +702,13 @@ declare module '@tanstack/react-router' {
       path: '/recesso/$token'
       fullPath: '/recesso/$token'
       preLoaderRoute: typeof RecessoTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/r/$token': {
+      id: '/r/$token'
+      path: '/r/$token'
+      fullPath: '/r/$token'
+      preLoaderRoute: typeof RTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/firma-privacy/$token': {
@@ -1119,6 +1139,7 @@ const rootRouteChildren: RootRouteChildren = {
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   ConsensiTokenRoute: ConsensiTokenRoute,
   FirmaPrivacyTokenRoute: FirmaPrivacyTokenRoute,
+  RTokenRoute: RTokenRoute,
   RecessoTokenRoute: RecessoTokenRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
