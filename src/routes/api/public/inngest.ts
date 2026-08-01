@@ -41,6 +41,8 @@ const handler = serve({
     promemoriaScadenzaAutomatico,
     promemoriaScadenzaRetention,
     inviaEmailRichiesta,
+    invioCampagnaMarketing,
+
 
 
 
