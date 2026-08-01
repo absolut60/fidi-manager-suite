@@ -235,10 +235,10 @@ export const invioCampagnaMarketing = inngest.createFunction(
               if (codAg) {
                 const { data: ag } = await supabaseAdmin
                   .from("agenti")
-                  .select("nome")
+                  .select("descrizione")
                   .eq("codice", codAg)
                   .maybeSingle();
-                agente = (ag as { nome?: string | null } | null)?.nome ?? codAg;
+                agente = (ag as { descrizione?: string | null } | null)?.descrizione ?? codAg;
               }
               const storeId = (cli as { store_id?: string | null } | null)?.store_id ?? null;
               if (storeId) {
