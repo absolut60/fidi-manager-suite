@@ -7,7 +7,7 @@
 // Il fetch include comunque `Authorization: Bearer <service_role>` per
 // superare il gateway della edge function (richiede un JWT valido); la vera
 // autorizzazione applicativa la fa il secret interno.
-import { valutaEsitoEmail } from "@/lib/email-esito";
+import { valutaEsitoEmail, type EsitoEmail } from "@/lib/email-esito";
 
 export async function sendEmailViaEdge(payload: {
   to: string;
