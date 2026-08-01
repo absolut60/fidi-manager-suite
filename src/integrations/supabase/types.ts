@@ -361,6 +361,7 @@ export type Database = {
           email_corpo_html: string | null
           email_destinatario: string | null
           email_log_id: string | null
+          email_message_id: string | null
           email_oggetto: string | null
           esito: string
           id: string
@@ -380,6 +381,7 @@ export type Database = {
           email_corpo_html?: string | null
           email_destinatario?: string | null
           email_log_id?: string | null
+          email_message_id?: string | null
           email_oggetto?: string | null
           esito?: string
           id?: string
@@ -399,6 +401,7 @@ export type Database = {
           email_corpo_html?: string | null
           email_destinatario?: string | null
           email_log_id?: string | null
+          email_message_id?: string | null
           email_oggetto?: string | null
           esito?: string
           id?: string
@@ -527,6 +530,7 @@ export type Database = {
           errore: string | null
           id: string
           inviato_at: string | null
+          message_id: string | null
           nome_riferimento: string | null
           num_clic: number
           primo_clic_at: string | null
@@ -545,6 +549,7 @@ export type Database = {
           errore?: string | null
           id?: string
           inviato_at?: string | null
+          message_id?: string | null
           nome_riferimento?: string | null
           num_clic?: number
           primo_clic_at?: string | null
@@ -563,6 +568,7 @@ export type Database = {
           errore?: string | null
           id?: string
           inviato_at?: string | null
+          message_id?: string | null
           nome_riferimento?: string | null
           num_clic?: number
           primo_clic_at?: string | null
@@ -739,6 +745,7 @@ export type Database = {
           importo_riferimento: number | null
           indirizzo_usato: string | null
           inviato_at: string | null
+          message_id: string | null
           stato: string
         }
         Insert: {
@@ -751,6 +758,7 @@ export type Database = {
           importo_riferimento?: number | null
           indirizzo_usato?: string | null
           inviato_at?: string | null
+          message_id?: string | null
           stato?: string
         }
         Update: {
@@ -763,6 +771,7 @@ export type Database = {
           importo_riferimento?: number | null
           indirizzo_usato?: string | null
           inviato_at?: string | null
+          message_id?: string | null
           stato?: string
         }
         Relationships: [
@@ -2136,6 +2145,7 @@ export type Database = {
           giorni_anticipo: number
           id: string
           importo_totale: number | null
+          message_id: string | null
           num_scadenze: number
         }
         Insert: {
@@ -2149,6 +2159,7 @@ export type Database = {
           giorni_anticipo: number
           id?: string
           importo_totale?: number | null
+          message_id?: string | null
           num_scadenze?: number
         }
         Update: {
@@ -2162,6 +2173,7 @@ export type Database = {
           giorni_anticipo?: number
           id?: string
           importo_totale?: number | null
+          message_id?: string | null
           num_scadenze?: number
         }
         Relationships: [
