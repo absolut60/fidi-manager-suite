@@ -293,10 +293,16 @@ export const invioCampagnaMarketing = inngest.createFunction(
               useCid: true,
             });
 
+            // Tracciamento clic: riscrittura dei link (il link di recesso è escluso dal modulo).
+            const trackingToken = await trackingTokenDestinatario(d.id as string);
+            const htmlFinale = trackingToken
+              ? riscriviLinkTracciati(html, trackingToken, appUrl())
+              : html;
+
             const sendRes = await sendEmailViaEdge({
               to: d.email as string,
               subject: oggetto,
-              html,
+              html: htmlFinale,
               fromName: "MADE Distribuzione",
               replyTo: cfg.emailOperatore ?? undefined,
               inlineLogo: true,
