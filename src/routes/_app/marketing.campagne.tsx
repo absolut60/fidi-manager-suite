@@ -23,7 +23,12 @@ import {
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { AllegatiSection } from "@/components/allegati-section";
-import { renderTemplate, wrapEmailHtml } from "@/lib/template-email-render";
+import {
+  buildEmailCampagna, DATI_ESEMPIO, PLACEHOLDER_MARKETING,
+} from "@/lib/campagna-marketing-email";
+import {
+  avviaInvioCampagnaMarketing, annullaInvioCampagnaMarketing, inviaEmailProvaCampagna,
+} from "@/lib/campagna-marketing.functions";
 
 export const Route = createFileRoute("/_app/marketing/campagne")({
   component: MarketingCampagnePage,
@@ -39,50 +44,76 @@ type Campagna = {
   stato: string;
   created_at: string;
   updated_at: string;
+  inviati: number;
+  falliti: number;
+  saltati: number;
+  inviata_at: string | null;
+  note: string | null;
 };
 
-// Placeholder disponibili per le campagne marketing. {{ragione_sociale}} è
-// gestito dal motore condiviso (renderTemplate); gli altri sono campi cliente
-// sostituiti prima di passare dal motore.
-const PLACEHOLDER_MARKETING: { key: string; descr: string; esempio: string }[] = [
-  { key: "ragione_sociale", descr: "Denominazione del cliente", esempio: "Cliente di Esempio S.r.l." },
-  { key: "citta", descr: "Città del cliente", esempio: "Milano" },
-  { key: "agente", descr: "Agente assegnato al cliente", esempio: "Mario Rossi" },
-  { key: "categoria", descr: "Categoria merceologica del cliente", esempio: "Edilizia" },
-];
+type ConteggiCampagna = {
+  totale: number;
+  da_inviare: number;
+  inviato: number;
+  fallito: number;
+  saltato: number;
+};
 
 function statoBadge(stato: string) {
-  return stato === "pronta"
-    ? <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">Pronta</Badge>
-    : <Badge variant="secondary">Bozza</Badge>;
+  switch (stato) {
+    case "pronta":
+      return <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">Pronta</Badge>;
+    case "in_corso":
+      return <Badge className="bg-amber-500 text-white hover:bg-amber-500">Invio in corso</Badge>;
+    case "completata":
+      return <Badge className="bg-sky-600 text-white hover:bg-sky-600">Completata</Badge>;
+    case "completata_con_errori":
+      return <Badge variant="destructive">Completata con errori</Badge>;
+    case "annullata":
+      return <Badge variant="outline">Annullata</Badge>;
+    default:
+      return <Badge variant="secondary">Bozza</Badge>;
+  }
 }
 
-function fmtDate(s: string) {
+function statoInvioBadge(s: string) {
+  switch (s) {
+    case "inviato":
+      return <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">Inviato</Badge>;
+    case "fallito":
+      return <Badge variant="destructive">Fallito</Badge>;
+    case "email_non_valida":
+      return <Badge variant="destructive">Email non valida</Badge>;
+    case "saltato":
+      return <Badge variant="outline">Saltato</Badge>;
+    default:
+      return <Badge variant="secondary">Da inviare</Badge>;
+  }
+}
+
+function fmtDate(s: string | null) {
+  if (!s) return "—";
   try { return new Date(s).toLocaleDateString("it-IT"); } catch { return s; }
 }
 
-/** Anteprima: stessa pipeline dell'invio reale (renderTemplate + wrapEmailHtml). */
-function buildAnteprima(oggetto: string, corpo: string): { oggetto: string; html: string } {
-  const sostituisci = (t: string) =>
-    PLACEHOLDER_MARKETING.filter((p) => p.key !== "ragione_sociale").reduce(
-      (acc, p) => acc.replace(new RegExp(`\\{\\{\\s*${p.key}\\s*\\}\\}`, "gi"), p.esempio),
-      t ?? "",
-    );
-  const reso = renderTemplate(
-    { oggetto: sostituisci(oggetto), corpo: sostituisci(corpo) },
-    { ragione_sociale: "Cliente di Esempio S.r.l.", scadenze: [], nome_operatore: "Ufficio Marketing" },
-    { tipo: "libero" },
-  );
-  return {
-    oggetto: reso.oggetto,
-    html: wrapEmailHtml(
-      reso.corpo,
-      null,
-      { nome: "Ufficio Marketing MADE" },
-      { tipo: "libero", senzaBande: true, sottotitolo: "Comunicazione commerciale" },
-    ),
-  };
+function fmtDateTime(s: string | null) {
+  if (!s) return "—";
+  try { return new Date(s).toLocaleString("it-IT"); } catch { return s; }
 }
+
+/** Anteprima: stessa pipeline dell'invio reale (con footer di recesso). */
+function buildAnteprima(oggetto: string, corpo: string): { oggetto: string; html: string } {
+  return buildEmailCampagna({
+    oggetto,
+    corpo,
+    dati: DATI_ESEMPIO,
+    sede: null,
+    mittente: { nome: "Ufficio Marketing MADE" },
+    linkRecesso: "#",
+    useCid: false,
+  });
+}
+
 
 function MarketingCampagnePage() {
   const { roles, user, loading } = useAuth();
