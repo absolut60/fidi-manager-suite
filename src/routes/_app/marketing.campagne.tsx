@@ -1,7 +1,7 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Mail, Plus, Pencil, Trash2, Copy, Save, CheckCircle2, Users, X } from "lucide-react";
+import { Mail, Plus, Pencil, Trash2, Copy, Save, CheckCircle2, Users, X, Send, StopCircle, FlaskConical } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -23,7 +23,12 @@ import {
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { AllegatiSection } from "@/components/allegati-section";
-import { renderTemplate, wrapEmailHtml } from "@/lib/template-email-render";
+import {
+  buildEmailCampagna, DATI_ESEMPIO, PLACEHOLDER_MARKETING,
+} from "@/lib/campagna-marketing-email";
+import {
+  avviaInvioCampagnaMarketing, annullaInvioCampagnaMarketing, inviaEmailProvaCampagna,
+} from "@/lib/campagna-marketing.functions";
 
 export const Route = createFileRoute("/_app/marketing/campagne")({
   component: MarketingCampagnePage,
@@ -39,50 +44,76 @@ type Campagna = {
   stato: string;
   created_at: string;
   updated_at: string;
+  inviati: number;
+  falliti: number;
+  saltati: number;
+  inviata_at: string | null;
+  note: string | null;
 };
 
-// Placeholder disponibili per le campagne marketing. {{ragione_sociale}} è
-// gestito dal motore condiviso (renderTemplate); gli altri sono campi cliente
-// sostituiti prima di passare dal motore.
-const PLACEHOLDER_MARKETING: { key: string; descr: string; esempio: string }[] = [
-  { key: "ragione_sociale", descr: "Denominazione del cliente", esempio: "Cliente di Esempio S.r.l." },
-  { key: "citta", descr: "Città del cliente", esempio: "Milano" },
-  { key: "agente", descr: "Agente assegnato al cliente", esempio: "Mario Rossi" },
-  { key: "categoria", descr: "Categoria merceologica del cliente", esempio: "Edilizia" },
-];
+type ConteggiCampagna = {
+  totale: number;
+  da_inviare: number;
+  inviato: number;
+  fallito: number;
+  saltato: number;
+};
 
 function statoBadge(stato: string) {
-  return stato === "pronta"
-    ? <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">Pronta</Badge>
-    : <Badge variant="secondary">Bozza</Badge>;
+  switch (stato) {
+    case "pronta":
+      return <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">Pronta</Badge>;
+    case "in_corso":
+      return <Badge className="bg-amber-500 text-white hover:bg-amber-500">Invio in corso</Badge>;
+    case "completata":
+      return <Badge className="bg-sky-600 text-white hover:bg-sky-600">Completata</Badge>;
+    case "completata_con_errori":
+      return <Badge variant="destructive">Completata con errori</Badge>;
+    case "annullata":
+      return <Badge variant="outline">Annullata</Badge>;
+    default:
+      return <Badge variant="secondary">Bozza</Badge>;
+  }
 }
 
-function fmtDate(s: string) {
+function statoInvioBadge(s: string) {
+  switch (s) {
+    case "inviato":
+      return <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">Inviato</Badge>;
+    case "fallito":
+      return <Badge variant="destructive">Fallito</Badge>;
+    case "email_non_valida":
+      return <Badge variant="destructive">Email non valida</Badge>;
+    case "saltato":
+      return <Badge variant="outline">Saltato</Badge>;
+    default:
+      return <Badge variant="secondary">Da inviare</Badge>;
+  }
+}
+
+function fmtDate(s: string | null) {
+  if (!s) return "—";
   try { return new Date(s).toLocaleDateString("it-IT"); } catch { return s; }
 }
 
-/** Anteprima: stessa pipeline dell'invio reale (renderTemplate + wrapEmailHtml). */
-function buildAnteprima(oggetto: string, corpo: string): { oggetto: string; html: string } {
-  const sostituisci = (t: string) =>
-    PLACEHOLDER_MARKETING.filter((p) => p.key !== "ragione_sociale").reduce(
-      (acc, p) => acc.replace(new RegExp(`\\{\\{\\s*${p.key}\\s*\\}\\}`, "gi"), p.esempio),
-      t ?? "",
-    );
-  const reso = renderTemplate(
-    { oggetto: sostituisci(oggetto), corpo: sostituisci(corpo) },
-    { ragione_sociale: "Cliente di Esempio S.r.l.", scadenze: [], nome_operatore: "Ufficio Marketing" },
-    { tipo: "libero" },
-  );
-  return {
-    oggetto: reso.oggetto,
-    html: wrapEmailHtml(
-      reso.corpo,
-      null,
-      { nome: "Ufficio Marketing MADE" },
-      { tipo: "libero", senzaBande: true, sottotitolo: "Comunicazione commerciale" },
-    ),
-  };
+function fmtDateTime(s: string | null) {
+  if (!s) return "—";
+  try { return new Date(s).toLocaleString("it-IT"); } catch { return s; }
 }
+
+/** Anteprima: stessa pipeline dell'invio reale (con footer di recesso). */
+function buildAnteprima(oggetto: string, corpo: string): { oggetto: string; html: string } {
+  return buildEmailCampagna({
+    oggetto,
+    corpo,
+    dati: DATI_ESEMPIO,
+    sede: null,
+    mittente: { nome: "Ufficio Marketing MADE" },
+    linkRecesso: "#",
+    useCid: false,
+  });
+}
+
 
 function MarketingCampagnePage() {
   const { roles, user, loading } = useAuth();
@@ -90,37 +121,62 @@ function MarketingCampagnePage() {
   const [editing, setEditing] = useState<Campagna | null>(null);
   const [deleting, setDeleting] = useState<Campagna | null>(null);
   const [destinatariDi, setDestinatariDi] = useState<Campagna | null>(null);
+  const [inviando, setInviando] = useState<Campagna | null>(null);
+  const [provaDi, setProvaDi] = useState<Campagna | null>(null);
 
   const canSee = useMemo(() => (roles as string[]).some((r) => MARKETING_ROLES.has(r)), [roles]);
-
-  const { data: conteggi } = useQuery({
-    queryKey: ["campagne-email-destinatari", "conteggi"],
-    enabled: canSee,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("campagne_email_destinatari")
-        .select("campagna_id");
-      if (error) throw error;
-      const map = new Map<string, number>();
-      for (const r of (data ?? []) as Array<{ campagna_id: string }>) {
-        map.set(r.campagna_id, (map.get(r.campagna_id) ?? 0) + 1);
-      }
-      return map;
-    },
-  });
 
   const { data: campagne, isLoading } = useQuery({
     queryKey: ["campagne_email_marketing"],
     enabled: canSee,
+    refetchInterval: (q) => {
+      const d = q.state.data as Campagna[] | undefined;
+      return d?.some((c) => c.stato === "in_corso") ? 5000 : false;
+    },
     queryFn: async () => {
       const { data, error } = await supabase
         .from("campagne_email_marketing")
-        .select("id, nome, oggetto, corpo_html, stato, created_at, updated_at")
+        .select("id, nome, oggetto, corpo_html, stato, created_at, updated_at, inviati, falliti, saltati, inviata_at, note")
         .order("updated_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as Campagna[];
     },
   });
+
+  const inCorso = !!campagne?.some((c) => c.stato === "in_corso");
+
+  const { data: conteggi } = useQuery({
+    queryKey: ["campagne-email-destinatari", "conteggi"],
+    enabled: canSee,
+    refetchInterval: inCorso ? 5000 : false,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("campagne_email_destinatari")
+        .select("campagna_id, stato_invio");
+      if (error) throw error;
+      const map = new Map<string, ConteggiCampagna>();
+      for (const r of (data ?? []) as Array<{ campagna_id: string; stato_invio: string }>) {
+        const cur = map.get(r.campagna_id) ?? { totale: 0, da_inviare: 0, inviato: 0, fallito: 0, saltato: 0 };
+        cur.totale += 1;
+        if (r.stato_invio === "inviato") cur.inviato += 1;
+        else if (r.stato_invio === "fallito") cur.fallito += 1;
+        else if (r.stato_invio === "da_inviare") cur.da_inviare += 1;
+        else cur.saltato += 1;
+        map.set(r.campagna_id, cur);
+      }
+      return map;
+    },
+  });
+
+  const annulla = useMutation({
+    mutationFn: async (c: Campagna) => annullaInvioCampagnaMarketing({ data: { campagnaId: c.id } }),
+    onSuccess: () => {
+      toast.success("Invio annullato: il job si fermerà a breve");
+      qc.invalidateQueries({ queryKey: ["campagne_email_marketing"] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Errore annullamento"),
+  });
+
 
   const crea = useMutation({
     mutationFn: async () => {
@@ -187,7 +243,7 @@ function MarketingCampagnePage() {
             <Mail className="size-6" /> Campagne email
           </h1>
           <p className="text-sm text-muted-foreground">
-            Componi, salva e visualizza in anteprima le email di campagna. In questa fase non è previsto alcun invio.
+            Componi, prova e invia le email di campagna ai destinatari raccolti dai segmenti.
           </p>
         </div>
         <Button onClick={() => crea.mutate()} disabled={crea.isPending}>
@@ -213,16 +269,26 @@ function MarketingCampagnePage() {
                 <TableHead>Oggetto</TableHead>
                 <TableHead>Stato</TableHead>
                 <TableHead className="text-center">Destinatari</TableHead>
+                <TableHead>Avanzamento</TableHead>
                 <TableHead>Aggiornata</TableHead>
                 <TableHead className="text-right">Azioni</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {campagne.map((c) => (
+              {campagne.map((c) => {
+                const k = conteggi?.get(c.id);
+                const daInviare = k?.da_inviare ?? 0;
+                const totale = k?.totale ?? 0;
+                return (
                 <TableRow key={c.id}>
                   <TableCell className="font-medium">{c.nome}</TableCell>
                   <TableCell className="text-muted-foreground">{c.oggetto || "—"}</TableCell>
-                  <TableCell>{statoBadge(c.stato)}</TableCell>
+                  <TableCell>
+                    {statoBadge(c.stato)}
+                    {c.note && (
+                      <div className="text-xs text-destructive mt-1 max-w-[220px]">{c.note}</div>
+                    )}
+                  </TableCell>
                   <TableCell className="text-center">
                     <button
                       type="button"
@@ -231,11 +297,40 @@ function MarketingCampagnePage() {
                       title="Vedi destinatari"
                     >
                       <Users className="size-4" />
-                      {(conteggi?.get(c.id) ?? 0).toLocaleString("it-IT")}
+                      {totale.toLocaleString("it-IT")}
                     </button>
                   </TableCell>
+                  <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                    {c.stato === "in_corso" ? (
+                      <span className="font-medium text-amber-600">
+                        {(k?.inviato ?? 0).toLocaleString("it-IT")} / {totale.toLocaleString("it-IT")} inviate…
+                      </span>
+                    ) : (
+                      <>
+                        Da inviare {daInviare} · Inviate {k?.inviato ?? 0} · Fallite {k?.fallito ?? 0} · Saltate {k?.saltato ?? 0}
+                      </>
+                    )}
+                  </TableCell>
                   <TableCell className="text-muted-foreground">{fmtDate(c.updated_at)}</TableCell>
-                  <TableCell className="text-right space-x-1">
+                  <TableCell className="text-right space-x-1 whitespace-nowrap">
+                    {c.stato === "in_corso" ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => annulla.mutate(c)}
+                        disabled={annulla.isPending}
+                        title="Annulla invio"
+                      >
+                        <StopCircle className="size-4 mr-1" /> Annulla invio
+                      </Button>
+                    ) : daInviare > 0 ? (
+                      <Button size="sm" onClick={() => setInviando(c)} title="Invia campagna">
+                        <Send className="size-4 mr-1" /> Invia campagna
+                      </Button>
+                    ) : null}
+                    <Button variant="ghost" size="icon" onClick={() => setProvaDi(c)} title="Invia email di prova">
+                      <FlaskConical className="size-4" />
+                    </Button>
                     <Button variant="ghost" size="icon" onClick={() => setDestinatariDi(c)} title="Destinatari">
                       <Users className="size-4" />
                     </Button>
@@ -251,7 +346,9 @@ function MarketingCampagnePage() {
                   </TableCell>
 
                 </TableRow>
-              ))}
+                );
+              })}
+
             </TableBody>
           </Table>
         )}
@@ -272,6 +369,25 @@ function MarketingCampagnePage() {
         />
       )}
 
+      {inviando && (
+        <ConfermaInvioDialog
+          campagna={inviando}
+          daInviare={conteggi?.get(inviando.id)?.da_inviare ?? 0}
+          onClose={() => setInviando(null)}
+          onDone={() => {
+            qc.invalidateQueries({ queryKey: ["campagne_email_marketing"] });
+            qc.invalidateQueries({ queryKey: ["campagne-email-destinatari"] });
+          }}
+        />
+      )}
+
+      {provaDi && (
+        <InviaProvaDialog
+          campagna={provaDi}
+          emailDefault={user?.email ?? ""}
+          onClose={() => setProvaDi(null)}
+        />
+      )}
 
 
       <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
@@ -431,6 +547,9 @@ type DestinatarioRiga = {
   nome_riferimento: string | null;
   cliente_id: string | null;
   aggiunto_il: string;
+  stato_invio: string;
+  inviato_at: string | null;
+  errore: string | null;
   clienti: { ragione_sociale: string } | null;
 };
 
@@ -441,16 +560,18 @@ function DestinatariCampagnaDialog({
 
   const { data: righe, isLoading } = useQuery({
     queryKey: ["campagne-email-destinatari", campagna.id],
+    refetchInterval: campagna.stato === "in_corso" ? 5000 : false,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("campagne_email_destinatari")
-        .select("id, email, tipo_destinatario, nome_riferimento, cliente_id, aggiunto_il, clienti(ragione_sociale)")
+        .select("id, email, tipo_destinatario, nome_riferimento, cliente_id, aggiunto_il, stato_invio, inviato_at, errore, clienti(ragione_sociale)")
         .eq("campagna_id", campagna.id)
         .order("aggiunto_il", { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as DestinatarioRiga[];
     },
   });
+
 
   const rimuovi = useMutation({
     mutationFn: async (id: string) => {
@@ -493,26 +614,35 @@ function DestinatariCampagnaDialog({
                 <TableRow>
                   <TableHead>Email</TableHead>
                   <TableHead>Tipo</TableHead>
-                  <TableHead>Riferimento</TableHead>
+                  <TableHead>Stato invio</TableHead>
+                  <TableHead>Inviata il</TableHead>
                   <TableHead>Cliente</TableHead>
-                  <TableHead>Aggiunto il</TableHead>
+                  <TableHead>Errore</TableHead>
                   <TableHead className="w-10" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {righe.map((r) => (
                   <TableRow key={r.id}>
-                    <TableCell className="font-medium">{r.email}</TableCell>
+                    <TableCell className="font-medium">
+                      {r.email}
+                      {r.nome_riferimento && (
+                        <div className="text-xs text-muted-foreground">{r.nome_riferimento}</div>
+                      )}
+                    </TableCell>
                     <TableCell>
                       <Badge variant={r.tipo_destinatario === "aziendale" ? "secondary" : "outline"}>
                         {r.tipo_destinatario === "aziendale" ? "Aziendale" : "Contatto"}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{r.nome_riferimento || "—"}</TableCell>
+                    <TableCell>{statoInvioBadge(r.stato_invio)}</TableCell>
+                    <TableCell className="text-muted-foreground text-xs">{fmtDateTime(r.inviato_at)}</TableCell>
                     <TableCell className="text-muted-foreground">
                       {r.clienti?.ragione_sociale || "—"}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{fmtDate(r.aggiunto_il)}</TableCell>
+                    <TableCell className="text-xs text-destructive max-w-[220px] break-words">
+                      {r.errore || "—"}
+                    </TableCell>
                     <TableCell>
                       <Button
                         variant="ghost"
@@ -538,3 +668,100 @@ function DestinatariCampagnaDialog({
     </Dialog>
   );
 }
+
+/** Conferma esplicita dell'invio: richiede di digitare INVIA. */
+function ConfermaInvioDialog({
+  campagna, daInviare, onClose, onDone,
+}: { campagna: Campagna; daInviare: number; onClose: () => void; onDone: () => void }) {
+  const [conferma, setConferma] = useState("");
+
+  const avvia = useMutation({
+    mutationFn: async () => avviaInvioCampagnaMarketing({ data: { campagnaId: campagna.id } }),
+    onSuccess: (r: any) => {
+      toast.success(`Invio avviato per ${r?.totale ?? daInviare} destinatari`);
+      onDone();
+      onClose();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Errore avvio invio"),
+  });
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Confermi l'invio della campagna?</DialogTitle>
+          <DialogDescription>
+            L'invio è definitivo e parte immediatamente in background.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-2 text-sm">
+          <div><span className="text-muted-foreground">Campagna:</span> <strong>{campagna.nome}</strong></div>
+          <div><span className="text-muted-foreground">Oggetto:</span> {campagna.oggetto || "—"}</div>
+          <div className="text-base">
+            Riceveranno l'email <strong>{daInviare.toLocaleString("it-IT")}</strong> destinatari.
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Digita <span className="font-mono font-semibold">INVIA</span> per confermare</Label>
+          <Input value={conferma} onChange={(e) => setConferma(e.target.value)} placeholder="INVIA" />
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Annulla</Button>
+          <Button
+            onClick={() => avvia.mutate()}
+            disabled={conferma.trim().toUpperCase() !== "INVIA" || avvia.isPending || daInviare === 0}
+          >
+            <Send className="size-4 mr-2" /> Invia ora
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Invio di prova a un singolo indirizzo: nessuna scrittura di stato. */
+function InviaProvaDialog({
+  campagna, emailDefault, onClose,
+}: { campagna: Campagna; emailDefault: string; onClose: () => void }) {
+  const [dest, setDest] = useState(emailDefault);
+
+  const prova = useMutation({
+    mutationFn: async () =>
+      inviaEmailProvaCampagna({ data: { campagnaId: campagna.id, destinatario: dest.trim() } }),
+    onSuccess: () => {
+      toast.success(`Email di prova inviata a ${dest.trim()}`);
+      onClose();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Errore invio di prova"),
+  });
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Invia email di prova</DialogTitle>
+          <DialogDescription>
+            Stessa composizione dell'invio reale (allegati e footer di recesso inclusi), con dati di
+            esempio. Non modifica la campagna né i destinatari.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-2">
+          <Label>Indirizzo destinatario</Label>
+          <Input value={dest} onChange={(e) => setDest(e.target.value)} placeholder="nome@azienda.it" />
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Annulla</Button>
+          <Button onClick={() => prova.mutate()} disabled={!dest.trim() || prova.isPending}>
+            <FlaskConical className="size-4 mr-2" /> Invia prova
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+

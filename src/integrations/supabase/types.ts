@@ -479,7 +479,9 @@ export type Database = {
           cliente_id: string | null
           contatto_id: string | null
           email: string
+          errore: string | null
           id: string
+          inviato_at: string | null
           nome_riferimento: string | null
           stato_invio: string
           tipo_destinatario: string
@@ -491,7 +493,9 @@ export type Database = {
           cliente_id?: string | null
           contatto_id?: string | null
           email: string
+          errore?: string | null
           id?: string
+          inviato_at?: string | null
           nome_riferimento?: string | null
           stato_invio?: string
           tipo_destinatario: string
@@ -503,7 +507,9 @@ export type Database = {
           cliente_id?: string | null
           contatto_id?: string | null
           email?: string
+          errore?: string | null
           id?: string
+          inviato_at?: string | null
           nome_riferimento?: string | null
           stato_invio?: string
           tipo_destinatario?: string
@@ -551,9 +557,15 @@ export type Database = {
           corpo_html: string
           created_at: string
           created_by: string | null
+          falliti: number
           id: string
+          inviata_at: string | null
+          inviati: number
           nome: string
+          note: string | null
           oggetto: string
+          operatore_id: string | null
+          saltati: number
           stato: string
           updated_at: string
         }
@@ -561,9 +573,15 @@ export type Database = {
           corpo_html?: string
           created_at?: string
           created_by?: string | null
+          falliti?: number
           id?: string
+          inviata_at?: string | null
+          inviati?: number
           nome: string
+          note?: string | null
           oggetto: string
+          operatore_id?: string | null
+          saltati?: number
           stato?: string
           updated_at?: string
         }
@@ -571,9 +589,15 @@ export type Database = {
           corpo_html?: string
           created_at?: string
           created_by?: string | null
+          falliti?: number
           id?: string
+          inviata_at?: string | null
+          inviati?: number
           nome?: string
+          note?: string | null
           oggetto?: string
+          operatore_id?: string | null
+          saltati?: number
           stato?: string
           updated_at?: string
         }

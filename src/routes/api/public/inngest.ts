@@ -18,6 +18,8 @@ import { remindRatePianoRientro } from "@/lib/inngest/piano-rientro-reminder.ser
 import { promemoriaScadenzaAutomatico } from "@/lib/inngest/promemoria-scadenza.server";
 import { promemoriaScadenzaRetention } from "@/lib/inngest/promemoria-scadenza-retention.server";
 import { inviaEmailRichiesta } from "@/lib/inngest/richieste-email.server";
+import { invioCampagnaMarketing } from "@/lib/inngest/campagna-marketing.server";
+
 
 
 
@@ -39,6 +41,8 @@ const handler = serve({
     promemoriaScadenzaAutomatico,
     promemoriaScadenzaRetention,
     inviaEmailRichiesta,
+    invioCampagnaMarketing,
+
 
 
 
