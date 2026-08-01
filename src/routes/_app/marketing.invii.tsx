@@ -184,10 +184,10 @@ function InviiMarketingPage() {
           <TableBody>
             {isLoading ? (
               Array.from({ length: 3 }).map((_, i) => (
-                <TableRow key={i}><TableCell colSpan={12}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
+                <TableRow key={i}><TableCell colSpan={14}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
               ))
             ) : !campagne || campagne.length === 0 ? (
-              <TableRow><TableCell colSpan={12} className="text-center text-muted-foreground py-8">
+              <TableRow><TableCell colSpan={14} className="text-center text-muted-foreground py-8">
                 Nessuna campagna ancora avviata.
               </TableCell></TableRow>
             ) : (
