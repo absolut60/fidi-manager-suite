@@ -4,7 +4,7 @@ import { Mail, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { sendEmail } from "@/lib/send-email";
+import { sendEmailDetailed } from "@/lib/send-email";
 import {
   caricaDatiCliente,
   caricaSedeCliente,
@@ -185,7 +185,7 @@ export function EmailLiberaDialog({ open, onOpenChange, clienteId, onSent }: Pro
         email: user?.email ?? null,
       }, { useCid: true, senzaBande: true });
 
-      const ok = await sendEmail({
+      const esito = await sendEmailDetailed({
         to: dest,
         subject: baseRender.oggetto,
         html: htmlPerEmail,
@@ -194,8 +194,9 @@ export function EmailLiberaDialog({ open, onOpenChange, clienteId, onSent }: Pro
         inlineLogo: true,
       });
 
-      if (!ok) {
-        toast.error("Invio fallito. Riprova o verifica l'indirizzo.");
+      // Nessuna azione_recupero viene registrata se l'invio è fallito.
+      if (!esito.ok) {
+        toast.error(`Invio fallito: ${esito.err ?? "errore sconosciuto"}`, { duration: 12000 });
         setSending(false);
         return;
       }

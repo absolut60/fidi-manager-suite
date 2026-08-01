@@ -7,6 +7,8 @@
 // Il fetch include comunque `Authorization: Bearer <service_role>` per
 // superare il gateway della edge function (richiede un JWT valido); la vera
 // autorizzazione applicativa la fa il secret interno.
+import { valutaEsitoEmail } from "@/lib/email-esito";
+
 export async function sendEmailViaEdge(payload: {
   to: string;
   subject: string;
@@ -52,34 +54,9 @@ export async function sendEmailViaEdge(payload: {
     const txt = await res.text();
 
     // Il corpo è la fonte di verità: la edge risponde 207 (2xx!) quando
-    // almeno un destinatario fallisce. Fidarsi solo di res.ok maschererebbe
-    // errori SMTP reali (es. "535 Incorrect authentication data").
-    let body: unknown = null;
-    try {
-      body = txt ? JSON.parse(txt) : null;
-    } catch {
-      body = null;
-    }
-
-    const b = (body ?? {}) as {
-      ok?: boolean;
-      error?: string;
-      message?: string;
-      results?: Array<{ email?: string; ok?: boolean; err?: string }>;
-    };
-    const results = Array.isArray(b.results) ? b.results : [];
-    const primoFallito = results.find((r) => r?.ok === false);
-
-    const successo = res.status === 200 && b.ok === true && !primoFallito;
-    if (successo) return { ok: true };
-
-    const err =
-      primoFallito?.err ??
-      b.error ??
-      b.message ??
-      `HTTP ${res.status}: ${txt.slice(0, 300)}`;
-    const dest = primoFallito?.email ? ` (${primoFallito.email})` : "";
-    return { ok: false, err: `${String(err).slice(0, 400)}${dest}` };
+    // almeno un destinatario fallisce. Valutazione centralizzata condivisa
+    // con tutti gli altri canali di invio.
+    return valutaEsitoEmail(res.status, null, txt);
   } catch (e) {
     return { ok: false, err: e instanceof Error ? e.message : String(e) };
   }

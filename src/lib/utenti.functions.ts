@@ -1,3 +1,4 @@
+import { valutaEsitoEmail } from "@/lib/email-esito";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
@@ -228,9 +229,10 @@ export const inviaCredenziali = createServerFn({ method: "POST" })
         html,
       }),
     });
-    if (!res.ok) {
-      const bodyTxt = (await res.text()).slice(0, 400);
-      throw new Error(`Invio email fallito [HTTP ${res.status}]: ${bodyTxt}`);
+    const bodyTxt = await res.text();
+    const esito = valutaEsitoEmail(res.status, null, bodyTxt);
+    if (!esito.ok) {
+      throw new Error(`Invio email fallito: ${esito.err}`);
     }
 
     return { ok: true };
