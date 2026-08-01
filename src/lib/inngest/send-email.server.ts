@@ -18,7 +18,10 @@ export async function sendEmailViaEdge(payload: {
   fromName?: string;
   // Reply-To: quando l'utente risponde alla mail arriva a questa casella.
   replyTo?: string;
+  // Allegati (contenuto base64) — supportati dalla edge function `send-email`.
+  attachments?: { filename: string; content: string; contentType: string }[];
 }): Promise<{ ok: boolean; err?: string }> {
+
   const SUPABASE_URL = process.env.SUPABASE_URL;
   const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const INTERNAL_SECRET = process.env.INTERNAL_EMAIL_SECRET;
