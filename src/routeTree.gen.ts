@@ -46,6 +46,7 @@ import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } fr
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as AppRichiesteInterneIndexRouteImport } from './routes/_app/richieste-interne.index'
 import { Route as AppLeadIndexRouteImport } from './routes/_app/lead.index'
+import { Route as AppEventiIndexRouteImport } from './routes/_app/eventi.index'
 import { Route as ApiPublicInngestRouteImport } from './routes/api/public/inngest'
 import { Route as AppRichiesteRichiestaIdRouteImport } from './routes/_app/richieste.$richiestaId'
 import { Route as AppRichiesteInterneTutteRouteImport } from './routes/_app/richieste-interne.tutte'
@@ -256,6 +257,11 @@ const AppLeadIndexRoute = AppLeadIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppLeadRoute,
 } as any)
+const AppEventiIndexRoute = AppEventiIndexRouteImport.update({
+  id: '/eventi/',
+  path: '/eventi/',
+  getParentRoute: () => AppRoute,
+} as any)
 const ApiPublicInngestRoute = ApiPublicInngestRouteImport.update({
   id: '/api/public/inngest',
   path: '/api/public/inngest',
@@ -405,6 +411,7 @@ export interface FileRoutesByFullPath {
   '/richieste-interne/tutte': typeof AppRichiesteInterneTutteRoute
   '/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
   '/api/public/inngest': typeof ApiPublicInngestRoute
+  '/eventi/': typeof AppEventiIndexRoute
   '/lead/': typeof AppLeadIndexRoute
   '/richieste-interne/': typeof AppRichiesteInterneIndexRoute
   '/api/public/email-img/$': typeof ApiPublicEmailImgSplatRoute
@@ -460,6 +467,7 @@ export interface FileRoutesByTo {
   '/richieste-interne/tutte': typeof AppRichiesteInterneTutteRoute
   '/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
   '/api/public/inngest': typeof ApiPublicInngestRoute
+  '/eventi': typeof AppEventiIndexRoute
   '/lead': typeof AppLeadIndexRoute
   '/richieste-interne': typeof AppRichiesteInterneIndexRoute
   '/api/public/email-img/$': typeof ApiPublicEmailImgSplatRoute
@@ -518,6 +526,7 @@ export interface FileRoutesById {
   '/_app/richieste-interne/tutte': typeof AppRichiesteInterneTutteRoute
   '/_app/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
   '/api/public/inngest': typeof ApiPublicInngestRoute
+  '/_app/eventi/': typeof AppEventiIndexRoute
   '/_app/lead/': typeof AppLeadIndexRoute
   '/_app/richieste-interne/': typeof AppRichiesteInterneIndexRoute
   '/api/public/email-img/$': typeof ApiPublicEmailImgSplatRoute
@@ -576,6 +585,7 @@ export interface FileRouteTypes {
     | '/richieste-interne/tutte'
     | '/richieste/$richiestaId'
     | '/api/public/inngest'
+    | '/eventi/'
     | '/lead/'
     | '/richieste-interne/'
     | '/api/public/email-img/$'
@@ -631,6 +641,7 @@ export interface FileRouteTypes {
     | '/richieste-interne/tutte'
     | '/richieste/$richiestaId'
     | '/api/public/inngest'
+    | '/eventi'
     | '/lead'
     | '/richieste-interne'
     | '/api/public/email-img/$'
@@ -688,6 +699,7 @@ export interface FileRouteTypes {
     | '/_app/richieste-interne/tutte'
     | '/_app/richieste/$richiestaId'
     | '/api/public/inngest'
+    | '/_app/eventi/'
     | '/_app/lead/'
     | '/_app/richieste-interne/'
     | '/api/public/email-img/$'
@@ -975,6 +987,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppLeadIndexRouteImport
       parentRoute: typeof AppLeadRoute
     }
+    '/_app/eventi/': {
+      id: '/_app/eventi/'
+      path: '/eventi'
+      fullPath: '/eventi/'
+      preLoaderRoute: typeof AppEventiIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/api/public/inngest': {
       id: '/api/public/inngest'
       path: '/api/public/inngest'
@@ -1176,6 +1195,7 @@ interface AppRouteChildren {
   AppRichiesteInterneGestioneRoute: typeof AppRichiesteInterneGestioneRoute
   AppRichiesteInterneMieRoute: typeof AppRichiesteInterneMieRoute
   AppRichiesteInterneTutteRoute: typeof AppRichiesteInterneTutteRoute
+  AppEventiIndexRoute: typeof AppEventiIndexRoute
   AppRichiesteInterneIndexRoute: typeof AppRichiesteInterneIndexRoute
 }
 
@@ -1214,6 +1234,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppRichiesteInterneGestioneRoute: AppRichiesteInterneGestioneRoute,
   AppRichiesteInterneMieRoute: AppRichiesteInterneMieRoute,
   AppRichiesteInterneTutteRoute: AppRichiesteInterneTutteRoute,
+  AppEventiIndexRoute: AppEventiIndexRoute,
   AppRichiesteInterneIndexRoute: AppRichiesteInterneIndexRoute,
 }
 
