@@ -4150,6 +4150,33 @@ export type Database = {
       calcola_scaduto: { Args: { _ant: number; _ssa: number }; Returns: number }
       can_access_lead: { Args: { _user_id: string }; Returns: boolean }
       can_manage_email_assets: { Args: never; Returns: boolean }
+      crea_partecipante_da_nuovo_soggetto: {
+        Args: {
+          _cap?: string
+          _cellulare?: string
+          _citta?: string
+          _codice_fiscale?: string
+          _cognome?: string
+          _crea_contatto?: boolean
+          _email?: string
+          _evento_id: string
+          _fonte_dettaglio?: string
+          _indirizzo?: string
+          _nome?: string
+          _note?: string
+          _partita_iva?: string
+          _provincia?: string
+          _ragione_sociale?: string
+          _stato: Database["public"]["Enums"]["eventi_partecipante_stato"]
+          _telefono?: string
+          _tipo_soggetto: string
+        }
+        Returns: {
+          contatto_id: string
+          lead_id: string
+          partecipante_id: string
+        }[]
+      }
       effective_store_filter: { Args: { _requested: string }; Returns: string }
       fn_email_valida: { Args: { _raw: string }; Returns: boolean }
       fn_telefono_valido: { Args: { _raw: string }; Returns: boolean }
