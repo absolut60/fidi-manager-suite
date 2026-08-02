@@ -211,7 +211,7 @@ function EventoDettaglioPage() {
     onError: (e: Error) => toast.error("Errore nell'eliminazione", { description: e.message }),
   });
 
-  const nomeValido = campi.ragione_sociale.trim() || campi.nome.trim() || campi.cognome.trim();
+
 
   if (authLoading || isLoading) return <Skeleton className="h-40 w-full" />;
 
