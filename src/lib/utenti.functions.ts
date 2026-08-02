@@ -16,6 +16,7 @@ const RUOLI_VALIDI = [
   "amministrazione",
   "direzione",
   "agente",
+  "marketing",
   "richiedente",
   "approvatore_richieste_liv1",
   "approvatore_richieste_liv2",
@@ -62,7 +63,7 @@ export const creaUtente = createServerFn({ method: "POST" })
       password: z.string().min(8, "Password minimo 8 caratteri").max(100),
       nome: z.string().max(100).optional(),
       cognome: z.string().max(100).optional(),
-      ruoli: z.array(z.enum(RUOLI_VALIDI)).min(1).max(13),
+      ruoli: z.array(z.enum(RUOLI_VALIDI)).min(1).max(14),
       storeId: z.string().uuid().nullable().optional(),
       codiceAgente: z.string().max(50).nullable().optional(),
       attivo: z.boolean().optional().default(true),
@@ -252,7 +253,7 @@ export const updateUtenteRuoli = createServerFn({ method: "POST" })
   }) =>
     z.object({
       userId: z.string().uuid(),
-      ruoli: z.array(z.enum(RUOLI_VALIDI)).min(1).max(13),
+      ruoli: z.array(z.enum(RUOLI_VALIDI)).min(1).max(14),
       storeId: z.string().uuid().nullable().optional(),
       codiceAgente: z.string().max(50).nullable().optional(),
       attivo: z.boolean(),

@@ -1,4 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useAuth } from "@/hooks/use-auth";
+import { puoAccedereMarketing } from "@/lib/ruoli-marketing";
 import { Fragment, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -72,6 +74,8 @@ function StatoBadge({ s }: { s: string }) {
 }
 
 function InviiMarketingPage() {
+  const { roles, loading: authLoading } = useAuth();
+  const canSee = useMemo(() => puoAccedereMarketing(roles as string[]), [roles]);
   const qc = useQueryClient();
   const annulla = useServerFn(annullaInvioCampagnaMarketing);
   const [openDettaglio, setOpenDettaglio] = useState<string | null>(null);
@@ -150,6 +154,17 @@ function InviiMarketingPage() {
       return rows?.some((r) => r.stato === "in_corso") ? 10_000 : false;
     },
   });
+
+  if (authLoading) return <div className="p-6 text-muted-foreground">Caricamento...</div>;
+  if (!canSee)
+    return (
+      <Card className="p-8 text-center">
+        <p className="font-medium">Accesso riservato</p>
+        <p className="text-sm text-muted-foreground mt-1">
+          Questa sezione è riservata ai ruoli Marketing, Amministrazione, Direzione e Amministratore.
+        </p>
+      </Card>
+    );
 
   return (
     <div className="space-y-6">

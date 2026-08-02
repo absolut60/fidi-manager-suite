@@ -14,7 +14,7 @@ export type Profilo = {
   attivo: boolean;
 };
 
-const ORDINE_RUOLI: AppRole[] = ["amministratore", "approvatore_liv3", "approvatore_liv2", "approvatore_liv1", "store_manager", "agente", "approvatore_richieste_liv2", "approvatore_richieste_liv1", "gestore_richieste", "esecutore_richieste", "richiedente"];
+const ORDINE_RUOLI: AppRole[] = ["amministratore", "approvatore_liv3", "approvatore_liv2", "approvatore_liv1", "store_manager", "marketing", "agente", "approvatore_richieste_liv2", "approvatore_richieste_liv1", "gestore_richieste", "esecutore_richieste", "richiedente"];
 
 type AuthContextValue = {
   session: Session | null;
@@ -152,6 +152,7 @@ export const RUOLI_LABEL: Record<AppRole, string> = {
   amministrazione: "Amministrazione",
   direzione: "Direzione",
   agente: "Agente",
+  marketing: "Marketing",
   richiedente: "Richiedente",
   approvatore_richieste_liv1: "Approvatore Richieste Liv.1",
   approvatore_richieste_liv2: "Approvatore Richieste Liv.2",

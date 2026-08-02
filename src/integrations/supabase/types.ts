@@ -4453,6 +4453,7 @@ export type Database = {
         | "approvatore_richieste_liv2"
         | "gestore_richieste"
         | "esecutore_richieste"
+        | "marketing"
       esito_approvazione: "approvata" | "rifiutata"
       stato_importazione:
         | "in_elaborazione"
@@ -4673,6 +4674,7 @@ export const Constants = {
         "approvatore_richieste_liv2",
         "gestore_richieste",
         "esecutore_richieste",
+        "marketing",
       ],
       esito_approvazione: ["approvata", "rifiutata"],
       stato_importazione: [
