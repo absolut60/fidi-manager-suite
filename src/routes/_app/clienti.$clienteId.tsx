@@ -336,6 +336,7 @@ function ClienteDetail() {
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {(cliente as any).bloccato && (
                   <Link
+                    from="/_app/clienti/$clienteId"
                     to="/clienti/$clienteId"
                     params={{ clienteId }}
                     search={(prev) => ({ ...prev, tab: "storico" as const })}
