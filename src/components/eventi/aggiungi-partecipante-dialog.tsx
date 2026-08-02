@@ -144,61 +144,32 @@ export function AggiungiPartecipanteDialog({
         return { contattoId: null as string | null };
       }
 
-      const isPF = campi.tipo_soggetto === "persona_fisica";
-      const { id: leadId } = await creaLead({
-        tipo_soggetto: campi.tipo_soggetto,
-        ragione_sociale: isPF ? null : campi.ragione_sociale,
-        nome: campi.nome,
-        cognome: campi.cognome,
-        partita_iva: campi.partita_iva,
-        codice_fiscale: campi.codice_fiscale,
-        email: campi.email,
-        telefono: campi.telefono,
-        cellulare: campi.cellulare,
-        indirizzo: campi.indirizzo,
-        citta: campi.citta,
-        cap: campi.cap,
-        provincia: campi.provincia,
-        fonte: "evento",
-        fonte_dettaglio: nomeEvento,
-        tipo_lead: "potenziale_cliente",
-        note: campi.note,
-        createdBy: user?.id ?? null,
-        notaStorico: `Lead creato dall'evento "${nomeEvento}"`,
-      });
-
-      let contattoId: string | null = null;
-      if (campi.nome.trim()) {
-        const c = await creaContattoPersona({
-          lead_id: leadId,
-          nome: campi.nome,
-          cognome: campi.cognome,
-          email: campi.email,
-          telefono: campi.telefono,
-          cellulare: campi.cellulare,
-          codice_fiscale: campi.codice_fiscale,
-          ruolo: isPF ? null : "Referente",
-        });
-        contattoId = c.id;
-      }
-
-      const { error } = await supabase.from("eventi_partecipanti").insert({
-        evento_id: eventoId,
-        stato,
-        lead_id: leadId,
-        contatto_id: contattoId,
-        ragione_sociale: isPF ? null : campi.ragione_sociale.trim() || null,
-        nome: campi.nome.trim() || null,
-        cognome: campi.cognome.trim() || null,
-        partita_iva: campi.partita_iva.trim() || null,
-        codice_fiscale: campi.codice_fiscale.trim() || null,
-        email: campi.email.trim() || null,
-        telefono: campi.telefono.trim() || null,
-        note: campi.note.trim() || null,
+      // Creazione atomica lato DB: lead + storico + contatto + partecipante
+      // in un'unica transazione (nessun lead orfano in caso di errore).
+      const { data, error } = await supabase.rpc("crea_partecipante_da_nuovo_soggetto", {
+        _evento_id: eventoId,
+        _stato: stato,
+        _tipo_soggetto: campi.tipo_soggetto,
+        _ragione_sociale: campi.ragione_sociale,
+        _nome: campi.nome,
+        _cognome: campi.cognome,
+        _partita_iva: campi.partita_iva,
+        _codice_fiscale: campi.codice_fiscale,
+        _email: campi.email,
+        _telefono: campi.telefono,
+        _cellulare: campi.cellulare,
+        _indirizzo: campi.indirizzo,
+        _citta: campi.citta,
+        _cap: campi.cap,
+        _provincia: campi.provincia,
+        _note: campi.note,
+        _fonte_dettaglio: nomeEvento,
+        _crea_contatto: campi.nome.trim().length > 0,
       });
       if (error) throw error;
 
-      return { contattoId };
+      const riga = Array.isArray(data) ? data[0] : data;
+      return { contattoId: (riga?.contatto_id as string | null) ?? null };
     },
     onSuccess: ({ contattoId }) => {
       queryClient.invalidateQueries({ queryKey: ["evento-partecipanti", eventoId] });
