@@ -44,7 +44,7 @@ export const getContattoPerFirma = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const { data: ct, error } = await supabaseAdmin
       .from("contatti")
-      .select("id, cliente_id, nome, cognome, email, privacy_firmata, privacy_token_expires_at")
+      .select("id, cliente_id, lead_id, nome, cognome, email, privacy_firmata, privacy_token_expires_at")
       .eq("privacy_token", data.token)
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -54,12 +54,7 @@ export const getContattoPerFirma = createServerFn({ method: "GET" })
       throw new Error("Link scaduto. Chiedi al punto vendita di generarne uno nuovo.");
     }
 
-    const { data: cli, error: e2 } = await supabaseAdmin
-      .from("clienti")
-      .select("ragione_sociale, partita_iva, codice_fiscale, indirizzo, citta")
-      .eq("id", ct.cliente_id ?? "00000000-0000-0000-0000-000000000000")
-      .maybeSingle();
-    if (e2) throw new Error(e2.message);
+    const soggetto = await risolviIntestazioneSoggetto(ct);
 
     return {
       contatto: {
@@ -69,11 +64,11 @@ export const getContattoPerFirma = createServerFn({ method: "GET" })
         email: ct.email,
       },
       cliente: {
-        ragione_sociale: cli?.ragione_sociale ?? "",
-        partita_iva: cli?.partita_iva ?? null,
-        codice_fiscale: cli?.codice_fiscale ?? null,
-        indirizzo: cli?.indirizzo ?? null,
-        citta: cli?.citta ?? null,
+        ragione_sociale: soggetto.ragione_sociale,
+        partita_iva: soggetto.partita_iva,
+        codice_fiscale: soggetto.codice_fiscale,
+        indirizzo: soggetto.indirizzo,
+        citta: soggetto.citta,
       },
     };
   });
