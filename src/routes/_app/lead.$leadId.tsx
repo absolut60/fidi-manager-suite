@@ -433,12 +433,15 @@ function LeadDettaglioPage() {
                 <Label className="text-xs">Nota prossima azione</Label>
                 <Textarea rows={2} value={f.prossima_azione_nota} maxLength={1000} onChange={(e) => set("prossima_azione_nota", e.target.value)} />
               </div>
-              {f.stato === "perso" && (
+              {lead.stato === "perso" && (
                 <div className="sm:col-span-2 lg:col-span-3">
                   <Label className="text-xs">Motivo perdita</Label>
-                  <Textarea rows={2} value={f.motivo_perdita} maxLength={1000} onChange={(e) => set("motivo_perdita", e.target.value)} />
+                  <p className="text-sm mt-1 rounded-md border bg-muted/40 px-3 py-2">
+                    {lead.motivo_perdita || "—"}
+                  </p>
                 </div>
               )}
+
               <div className="sm:col-span-2 lg:col-span-3">
                 <Label className="text-xs">Note</Label>
                 <Textarea rows={3} value={f.note} maxLength={2000} onChange={(e) => set("note", e.target.value)} />
