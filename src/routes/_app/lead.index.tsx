@@ -232,7 +232,8 @@ function LeadListaPage() {
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Lead</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Potenziali clienti e richieste in ingresso
+            I lead sono contatti potenziali non ancora clienti. Quando un lead è pronto, potrà essere
+            convertito in cliente.
           </p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
