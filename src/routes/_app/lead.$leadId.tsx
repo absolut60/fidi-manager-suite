@@ -20,12 +20,13 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { LeadContattiTab, LeadCantieriTab } from "@/components/lead/lead-relazioni-tabs";
+import { LeadAzioniStato } from "@/components/lead/lead-azioni-stato";
 import {
-  LEAD_STATI, LEAD_STATO_LABEL, LEAD_STATO_CLASS, LEAD_TIPI, LEAD_TIPO_LABEL,
+  LEAD_STATO_LABEL, LEAD_STATO_CLASS, LEAD_TIPI, LEAD_TIPO_LABEL,
   LEAD_FONTI, LEAD_FONTE_LABEL, LEAD_PRIORITA, LEAD_PRIORITA_LABEL, LEAD_PRIORITA_CLASS,
   LEAD_RICHIESTA_STATO_LABEL, LEAD_RICHIESTA_TIPO_LABEL,
   nomeLead, formatData, puoAccedereLead,
-  type LeadStato, type LeadTipo, type LeadFonte, type LeadPriorita,
+  type LeadTipo, type LeadFonte, type LeadPriorita,
   type LeadRichiestaStato, type LeadRichiestaTipo,
 } from "@/lib/lead-costanti";
 
@@ -51,16 +52,13 @@ type Form = {
   provincia: string;
   fonte: LeadFonte;
   fonte_dettaglio: string;
-  stato: LeadStato;
   tipo_lead: LeadTipo;
   priorita: LeadPriorita;
   store_id: string;
   agente_codice: string;
-  assegnato_a: string;
   prossima_azione_il: string;
   prossima_azione_tipo: string;
   prossima_azione_nota: string;
-  motivo_perdita: string;
   note: string;
 };
 
@@ -132,16 +130,13 @@ function LeadDettaglioPage() {
       provincia: lead.provincia ?? "",
       fonte: lead.fonte,
       fonte_dettaglio: lead.fonte_dettaglio ?? "",
-      stato: lead.stato,
       tipo_lead: lead.tipo_lead,
       priorita: lead.priorita,
       store_id: lead.store_id ?? "",
       agente_codice: lead.agente_codice ?? "",
-      assegnato_a: lead.assegnato_a ?? "",
       prossima_azione_il: lead.prossima_azione_il ?? "",
       prossima_azione_tipo: lead.prossima_azione_tipo ?? "",
       prossima_azione_nota: lead.prossima_azione_nota ?? "",
-      motivo_perdita: lead.motivo_perdita ?? "",
       note: lead.note ?? "",
     });
   }, [lead]);
@@ -149,7 +144,6 @@ function LeadDettaglioPage() {
   const saveMut = useMutation({
     mutationFn: async () => {
       if (!f || !lead) return;
-      const statoCambiato = f.stato !== lead.stato;
       const payload = {
         tipo_soggetto: f.tipo_soggetto || null,
         ragione_sociale: f.ragione_sociale.trim() || null,
@@ -166,33 +160,19 @@ function LeadDettaglioPage() {
         provincia: f.provincia.trim() || null,
         fonte: f.fonte,
         fonte_dettaglio: f.fonte_dettaglio.trim() || null,
-        stato: f.stato,
         tipo_lead: f.tipo_lead,
         priorita: f.priorita,
         store_id: f.store_id || null,
         agente_codice: f.agente_codice || null,
-        assegnato_a: f.assegnato_a || null,
-        assegnato_il: f.assegnato_a && f.assegnato_a !== (lead.assegnato_a ?? "")
-          ? new Date().toISOString()
-          : lead.assegnato_il,
         prossima_azione_il: f.prossima_azione_il || null,
         prossima_azione_tipo: f.prossima_azione_tipo.trim() || null,
         prossima_azione_nota: f.prossima_azione_nota.trim() || null,
-        motivo_perdita: f.motivo_perdita.trim() || null,
         note: f.note.trim() || null,
       };
       const { error } = await supabase.from("lead").update(payload).eq("id", leadId);
       if (error) throw error;
-      if (statoCambiato) {
-        await supabase.from("lead_storico").insert({
-          lead_id: leadId,
-          stato_da: lead.stato,
-          stato_a: f.stato,
-          operatore_id: user?.id ?? null,
-          nota: "Cambio stato da scheda lead",
-        });
-      }
     },
+
     onSuccess: () => {
       toast.success("Lead aggiornato");
       qc.invalidateQueries({ queryKey: ["lead", leadId] });
@@ -305,6 +285,17 @@ function LeadDettaglioPage() {
         </div>
       </div>
 
+      <Card className="p-3">
+        <LeadAzioniStato
+          leadId={leadId}
+          stato={lead.stato}
+          assegnatoA={lead.assegnato_a}
+          profili={profili ?? []}
+          operatoreId={user?.id ?? null}
+        />
+      </Card>
+
+
       <Tabs defaultValue="anagrafica">
         <TabsList>
           <TabsTrigger value="anagrafica">Anagrafica</TabsTrigger>
@@ -347,13 +338,12 @@ function LeadDettaglioPage() {
 
               <div>
                 <Label className="text-xs">Stato</Label>
-                <Select value={f.stato} onValueChange={(v) => set("stato", v as LeadStato)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {LEAD_STATI.map((s) => <SelectItem key={s} value={s}>{LEAD_STATO_LABEL[s]}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <p className="text-sm mt-1 rounded-md border bg-muted/40 px-3 py-2">
+                  {LEAD_STATO_LABEL[lead.stato]}
+                  <span className="text-xs text-muted-foreground ml-2">(dalla barra azioni)</span>
+                </p>
               </div>
+
               <div>
                 <Label className="text-xs">Tipo lead</Label>
                 <Select value={f.tipo_lead} onValueChange={(v) => set("tipo_lead", v as LeadTipo)}>
@@ -409,18 +399,12 @@ function LeadDettaglioPage() {
               </div>
               <div>
                 <Label className="text-xs">Assegnato a</Label>
-                <Select value={f.assegnato_a || NESSUNO} onValueChange={(v) => set("assegnato_a", v === NESSUNO ? "" : v)}>
-                  <SelectTrigger><SelectValue placeholder="Nessuno" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NESSUNO}>Nessuno</SelectItem>
-                    {(profili ?? []).map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {`${p.nome ?? ""} ${p.cognome ?? ""}`.trim() || p.id}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <p className="text-sm mt-1 rounded-md border bg-muted/40 px-3 py-2">
+                  {nomeProfilo(lead.assegnato_a)}
+                  <span className="text-xs text-muted-foreground ml-2">(dalla barra azioni)</span>
+                </p>
               </div>
+
               <div>
                 <Label className="text-xs">Prossima azione il</Label>
                 <Input type="date" value={f.prossima_azione_il} onChange={(e) => set("prossima_azione_il", e.target.value)} />
@@ -433,12 +417,15 @@ function LeadDettaglioPage() {
                 <Label className="text-xs">Nota prossima azione</Label>
                 <Textarea rows={2} value={f.prossima_azione_nota} maxLength={1000} onChange={(e) => set("prossima_azione_nota", e.target.value)} />
               </div>
-              {f.stato === "perso" && (
+              {lead.stato === "perso" && (
                 <div className="sm:col-span-2 lg:col-span-3">
                   <Label className="text-xs">Motivo perdita</Label>
-                  <Textarea rows={2} value={f.motivo_perdita} maxLength={1000} onChange={(e) => set("motivo_perdita", e.target.value)} />
+                  <p className="text-sm mt-1 rounded-md border bg-muted/40 px-3 py-2">
+                    {lead.motivo_perdita || "—"}
+                  </p>
                 </div>
               )}
+
               <div className="sm:col-span-2 lg:col-span-3">
                 <Label className="text-xs">Note</Label>
                 <Textarea rows={3} value={f.note} maxLength={2000} onChange={(e) => set("note", e.target.value)} />

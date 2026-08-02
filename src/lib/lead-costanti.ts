@@ -46,6 +46,28 @@ export const LEAD_STATO_CLASS: Record<LeadStato, string> = {
   perso: "bg-destructive/15 text-destructive",
 };
 
+/**
+ * Macchina a stati del lead: unica fonte di verità per le transizioni ammesse.
+ * "convertito" non è raggiungibile dalla UI (strato dedicato successivo).
+ */
+export const TRANSIZIONI_AMMESSE: Record<LeadStato, LeadStato[]> = {
+  nuovo: ["assegnato", "in_lavorazione", "perso"],
+  assegnato: ["in_lavorazione", "qualificato", "perso"],
+  in_lavorazione: ["qualificato", "perso"],
+  qualificato: ["perso"],
+  convertito: [],
+  perso: ["nuovo"],
+};
+
+export function transizioniDa(stato: LeadStato): LeadStato[] {
+  return TRANSIZIONI_AMMESSE[stato] ?? [];
+}
+
+export function transizioneAmmessa(da: LeadStato, a: LeadStato): boolean {
+  return transizioniDa(da).includes(a);
+}
+
+
 export const LEAD_TIPI: LeadTipo[] = ["potenziale_cliente", "richiesta_specifica"];
 export const LEAD_TIPO_LABEL: Record<LeadTipo, string> = {
   potenziale_cliente: "Potenziale cliente",
