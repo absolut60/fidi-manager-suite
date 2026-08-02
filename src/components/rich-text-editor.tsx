@@ -1,0 +1,250 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Bold, Italic, Underline, List, ListOrdered, AlignLeft, AlignCenter, AlignRight,
+  Link2, Link2Off, Image as ImageIcon, Undo2, Redo2, RemoveFormatting, Loader2,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+
+/**
+ * Editor rich-text minimale basato su contentEditable + document.execCommand.
+ * Produce HTML compatibile con i client di posta: tag semplici e stili inline.
+ */
+
+const COLORI: { label: string; value: string }[] = [
+  { label: "Nero", value: "#1e293b" },
+  { label: "Grigio", value: "#64748b" },
+  { label: "Magenta", value: "#c94f8f" },
+  { label: "Blu", value: "#1d4ed8" },
+  { label: "Verde", value: "#15803d" },
+  { label: "Rosso", value: "#b91c1c" },
+];
+
+function cmd(name: string, value?: string, useCss = false) {
+  try {
+    document.execCommand("styleWithCSS", false, useCss ? "true" : "false");
+    document.execCommand(name, false, value);
+  } catch {
+    /* no-op */
+  }
+}
+
+/** Rimuove classi/attributi non email-safe dall'HTML prodotto o incollato. */
+export function pulisciHtmlEmail(html: string): string {
+  if (typeof document === "undefined") return html;
+  const doc = document.implementation.createHTMLDocument("");
+  doc.body.innerHTML = html;
+  doc.body.querySelectorAll("script,style,meta,link,iframe,object,embed").forEach((n) => n.remove());
+  doc.body.querySelectorAll<HTMLElement>("*").forEach((el) => {
+    el.removeAttribute("class");
+    el.removeAttribute("id");
+    for (const attr of Array.from(el.attributes)) {
+      if (/^on/i.test(attr.name) || attr.name.startsWith("data-")) el.removeAttribute(attr.name);
+    }
+    if (el.tagName === "IMG") {
+      const img = el as HTMLImageElement;
+      const style = img.getAttribute("style") ?? "";
+      if (!/max-width/.test(style)) img.setAttribute("style", `${style};max-width:100%;height:auto;`.replace(/^;/, ""));
+    }
+  });
+  return doc.body.innerHTML;
+}
+
+export function RichTextEditor({
+  value, onChange, onUploadImage, minHeight = 320,
+}: {
+  value: string;
+  onChange: (html: string) => void;
+  onUploadImage: (file: File) => Promise<string>;
+  minHeight?: number;
+}) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const lastHtml = useRef(value);
+
+  // Sincronizza il valore esterno solo quando differisce da quanto scritto qui
+  // (evita di resettare il cursore ad ogni battuta).
+  useEffect(() => {
+    if (!ref.current) return;
+    if (value !== lastHtml.current) {
+      ref.current.innerHTML = value ?? "";
+      lastHtml.current = value;
+    }
+  }, [value]);
+
+  const emit = useCallback(() => {
+    if (!ref.current) return;
+    const html = ref.current.innerHTML;
+    lastHtml.current = html;
+    onChange(html);
+  }, [onChange]);
+
+  const focusEditor = () => ref.current?.focus();
+
+  const insertHtml = useCallback((html: string) => {
+    focusEditor();
+    document.execCommand("insertHTML", false, html);
+    emit();
+  }, [emit]);
+
+  const caricaEInserisci = useCallback(async (file: File) => {
+    if (!file.type.startsWith("image/")) return;
+    setUploading(true);
+    try {
+      const url = await onUploadImage(file);
+      insertHtml(
+        `<img src="${url}" alt="" style="width:100%;max-width:560px;height:auto;display:block;" />`,
+      );
+    } catch (e: any) {
+      // eslint-disable-next-line no-alert
+      alert(e?.message ?? "Errore nel caricamento dell'immagine");
+    } finally {
+      setUploading(false);
+    }
+  }, [insertHtml, onUploadImage]);
+
+  const onPaste = useCallback((e: React.ClipboardEvent<HTMLDivElement>) => {
+    const items = Array.from(e.clipboardData?.items ?? []);
+    const imgItem = items.find((i) => i.type.startsWith("image/"));
+    if (imgItem) {
+      const file = imgItem.getAsFile();
+      if (file) {
+        e.preventDefault();
+        void caricaEInserisci(file);
+        return;
+      }
+    }
+    const html = e.clipboardData?.getData("text/html");
+    if (html) {
+      e.preventDefault();
+      insertHtml(pulisciHtmlEmail(html));
+    }
+  }, [caricaEInserisci, insertHtml]);
+
+  const onDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    const file = Array.from(e.dataTransfer?.files ?? []).find((f) => f.type.startsWith("image/"));
+    if (file) {
+      e.preventDefault();
+      void caricaEInserisci(file);
+    }
+  }, [caricaEInserisci]);
+
+  const applica = (fn: () => void) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    focusEditor();
+    fn();
+    emit();
+  };
+
+  const inserisciLink = () => {
+    const url = window.prompt("Indirizzo del link (https://...)");
+    if (!url) return;
+    cmd("createLink", url);
+  };
+
+  const btn = "h-8 w-8 p-0";
+
+  return (
+    <div className="rounded-md border bg-background">
+      <div className="flex flex-wrap items-center gap-1 border-b p-1">
+        <Button type="button" variant="ghost" size="sm" className={btn} title="Grassetto" onMouseDown={applica(() => cmd("bold"))}><Bold className="size-4" /></Button>
+        <Button type="button" variant="ghost" size="sm" className={btn} title="Corsivo" onMouseDown={applica(() => cmd("italic"))}><Italic className="size-4" /></Button>
+        <Button type="button" variant="ghost" size="sm" className={btn} title="Sottolineato" onMouseDown={applica(() => cmd("underline"))}><Underline className="size-4" /></Button>
+        <Separator orientation="vertical" className="mx-1 h-6" />
+
+        <Select onValueChange={(v) => { focusEditor(); cmd("formatBlock", v); emit(); }}>
+          <SelectTrigger className="h-8 w-[130px] text-xs"><SelectValue placeholder="Testo" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="p">Paragrafo</SelectItem>
+            <SelectItem value="h2">Titolo grande</SelectItem>
+            <SelectItem value="h3">Titolo piccolo</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select onValueChange={(v) => { focusEditor(); cmd("foreColor", v, true); emit(); }}>
+          <SelectTrigger className="h-8 w-[110px] text-xs"><SelectValue placeholder="Colore" /></SelectTrigger>
+          <SelectContent>
+            {COLORI.map((c) => (
+              <SelectItem key={c.value} value={c.value}>
+                <span className="inline-flex items-center gap-2">
+                  <span className="inline-block size-3 rounded-full border" style={{ background: c.value }} />
+                  {c.label}
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Separator orientation="vertical" className="mx-1 h-6" />
+        <Button type="button" variant="ghost" size="sm" className={btn} title="Elenco puntato" onMouseDown={applica(() => cmd("insertUnorderedList"))}><List className="size-4" /></Button>
+        <Button type="button" variant="ghost" size="sm" className={btn} title="Elenco numerato" onMouseDown={applica(() => cmd("insertOrderedList"))}><ListOrdered className="size-4" /></Button>
+        <Separator orientation="vertical" className="mx-1 h-6" />
+        <Button type="button" variant="ghost" size="sm" className={btn} title="Allinea a sinistra" onMouseDown={applica(() => cmd("justifyLeft", undefined, true))}><AlignLeft className="size-4" /></Button>
+        <Button type="button" variant="ghost" size="sm" className={btn} title="Centra" onMouseDown={applica(() => cmd("justifyCenter", undefined, true))}><AlignCenter className="size-4" /></Button>
+        <Button type="button" variant="ghost" size="sm" className={btn} title="Allinea a destra" onMouseDown={applica(() => cmd("justifyRight", undefined, true))}><AlignRight className="size-4" /></Button>
+        <Separator orientation="vertical" className="mx-1 h-6" />
+        <Button type="button" variant="ghost" size="sm" className={btn} title="Inserisci link" onMouseDown={applica(inserisciLink)}><Link2 className="size-4" /></Button>
+        <Button type="button" variant="ghost" size="sm" className={btn} title="Rimuovi link" onMouseDown={applica(() => cmd("unlink"))}><Link2Off className="size-4" /></Button>
+        <Button
+          type="button" variant="ghost" size="sm" className={btn} title="Inserisci immagine"
+          disabled={uploading}
+          onMouseDown={(e) => { e.preventDefault(); fileRef.current?.click(); }}
+        >
+          {uploading ? <Loader2 className="size-4 animate-spin" /> : <ImageIcon className="size-4" />}
+        </Button>
+        <Separator orientation="vertical" className="mx-1 h-6" />
+        <Button type="button" variant="ghost" size="sm" className={btn} title="Annulla" onMouseDown={applica(() => cmd("undo"))}><Undo2 className="size-4" /></Button>
+        <Button type="button" variant="ghost" size="sm" className={btn} title="Ripristina" onMouseDown={applica(() => cmd("redo"))}><Redo2 className="size-4" /></Button>
+        <Button type="button" variant="ghost" size="sm" className={btn} title="Rimuovi formattazione" onMouseDown={applica(() => cmd("removeFormat"))}><RemoveFormatting className="size-4" /></Button>
+
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            e.target.value = "";
+            if (f) void caricaEInserisci(f);
+          }}
+        />
+      </div>
+
+      <div
+        ref={ref}
+        contentEditable
+        suppressContentEditableWarning
+        role="textbox"
+        aria-multiline="true"
+        aria-label="Corpo email"
+        className="prose prose-sm max-w-none overflow-y-auto p-3 text-sm outline-none"
+        style={{ minHeight, maxHeight: 460 }}
+        onInput={emit}
+        onBlur={emit}
+        onPaste={onPaste}
+        onDrop={onDrop}
+        onDragOver={(e) => e.preventDefault()}
+      />
+
+      {uploading && (
+        <div className="flex items-center gap-2 border-t px-3 py-1.5 text-xs text-muted-foreground">
+          <Loader2 className="size-3 animate-spin" /> Caricamento immagine in corso…
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Inserisce testo semplice (es. placeholder) nel punto del cursore dell'editor. */
+export function inserisciTestoNellEditor(container: HTMLElement | null, testo: string): boolean {
+  if (!container) return false;
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0 || !container.contains(sel.anchorNode)) return false;
+  container.focus();
+  document.execCommand("insertText", false, testo);
+  return true;
+}
