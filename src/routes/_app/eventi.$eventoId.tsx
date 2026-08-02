@@ -66,10 +66,8 @@ type PartecipanteRow = {
   contatto: { id: string; nome: string | null; cognome: string | null } | null;
 };
 
-const CAMPI_VUOTI = {
-  ragione_sociale: "", nome: "", cognome: "", partita_iva: "",
-  codice_fiscale: "", email: "", telefono: "", note: "",
-};
+
+
 
 function EventoDettaglioPage() {
   const { eventoId } = Route.useParams();
