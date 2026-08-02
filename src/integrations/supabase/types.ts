@@ -859,7 +859,7 @@ export type Database = {
           attivo: boolean
           cap: string | null
           citta: string | null
-          cliente_id: string
+          cliente_id: string | null
           created_at: string
           created_by: string | null
           data_fine_prevista: string | null
@@ -878,7 +878,7 @@ export type Database = {
           attivo?: boolean
           cap?: string | null
           citta?: string | null
-          cliente_id: string
+          cliente_id?: string | null
           created_at?: string
           created_by?: string | null
           data_fine_prevista?: string | null
@@ -897,7 +897,7 @@ export type Database = {
           attivo?: boolean
           cap?: string | null
           citta?: string | null
-          cliente_id?: string
+          cliente_id?: string | null
           created_at?: string
           created_by?: string | null
           data_fine_prevista?: string | null
@@ -1382,7 +1382,7 @@ export type Database = {
       contatti: {
         Row: {
           cellulare: string | null
-          cliente_id: string
+          cliente_id: string | null
           codice_fiscale: string | null
           cognome: string | null
           consensi_token: string | null
@@ -1416,7 +1416,7 @@ export type Database = {
         }
         Insert: {
           cellulare?: string | null
-          cliente_id: string
+          cliente_id?: string | null
           codice_fiscale?: string | null
           cognome?: string | null
           consensi_token?: string | null
@@ -1450,7 +1450,7 @@ export type Database = {
         }
         Update: {
           cellulare?: string | null
-          cliente_id?: string
+          cliente_id?: string | null
           codice_fiscale?: string | null
           cognome?: string | null
           consensi_token?: string | null

@@ -173,14 +173,18 @@ export function NuovoLeadDialog({ onClose }: { onClose: () => void }) {
             {duplicati.map((d) => (
               <li key={`${d.entita}-${d.id}-${d.campo}`} className="text-xs">
                 Esiste già{" "}
-                {d.entita === "lead" ? (
+                {d.entita === "lead" && d.linkId ? (
                   <Link to="/lead/$leadId" params={{ leadId: d.linkId }} className="underline font-medium">
                     Lead {d.etichetta}
                   </Link>
-                ) : (
+                ) : d.linkId ? (
                   <Link to="/clienti/$clienteId" params={{ clienteId: d.linkId }} className="underline font-medium">
                     {d.entita === "cliente" ? "Cliente" : "Contatto"} {d.etichetta}
                   </Link>
+                ) : (
+                  <span className="font-medium">
+                    {d.entita === "cliente" ? "Cliente" : "Contatto"} {d.etichetta}
+                  </span>
                 )}{" "}
                 con questa {DEDUP_CAMPO_LABEL[d.campo]}. Puoi comunque procedere.
               </li>

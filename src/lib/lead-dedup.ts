@@ -23,8 +23,8 @@ export function normalizzaEmail(v?: string | null): string {
 export type DedupMatch = {
   entita: "lead" | "cliente" | "contatto";
   id: string;
-  /** id da usare per il link (per i contatti è il cliente_id) */
-  linkId: string;
+  /** id da usare per il link (per i contatti è il cliente_id, null se il contatto appartiene solo a un lead) */
+  linkId: string | null;
   etichetta: string;
   campo: "partita_iva" | "codice_fiscale" | "email";
   valore: string;
@@ -88,7 +88,7 @@ export async function cercaDuplicati(input: DedupInput): Promise<DedupMatch[]> {
   const controlla = (
     entita: DedupMatch["entita"],
     id: string,
-    linkId: string,
+    linkId: string | null,
     etichetta: string,
     row: { partita_iva?: string | null; codice_fiscale?: string | null; email?: string | null },
   ) => {
