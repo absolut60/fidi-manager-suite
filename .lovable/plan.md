@@ -1,77 +1,53 @@
-# Diagnosi — ciclo consensi GDPR riusabile per i contatti LEAD
+# Diagnosi — firma privacy-base su contatto lead-only
 
-## 1) Token di raccolta consensi
+Verifica sul percorso `generaTokenFirmaPrivacy` → `/firma-privacy/$token` → `firmaPrivacyConToken`.
 
-Sono **colonne sulla tabella `contatti`** (nessuna tabella token dedicata):
+## 1) `firmaPrivacyConToken` — nessuna rottura tecnica, ma intestazione vuota
 
-| Colonna | Tipo | Uso |
-|---|---|---|
-| `privacy_token` / `privacy_token_expires_at` | uuid / timestamptz | firma privacy base (monouso) |
-| `consensi_token` / `consensi_token_expires_at` | uuid / timestamptz | raccolta consensi marketing (rigenerabile) |
-| `recesso_token` | uuid | link di recesso duraturo, senza scadenza |
-| `privacy_firmata`, `data_firma`, `firma_url`, `firma_nome_dichiarato`, `pdf_privacy_path`, `pdf_privacy_url` | — | esiti firma |
-| `consenso_marketing_diretto`, `consenso_marketing_media`, `consenso_profilazione` | boolean NOT NULL default false | stato attuale |
-
-Generazione: **server function TS**, non SQL. `crypto.randomUUID()` + scadenza calcolata in JS, scritta con `supabaseAdmin`.
-
-## 2) Generazione link consenso
-
-Componente `LinkFirmaPrivacy({ clienteId })` in `src/routes/_app/clienti.$clienteId.tsx` (~riga 1533). Carica i contatti del cliente con `.eq("cliente_id", clienteId)`, poi:
+Punti reali dove tocca `cliente_id` (`src/lib/firma-privacy.functions.ts`, righe 103-107 e 127-136):
 
 ```ts
-const { generaTokenConsensiMarketing } = await import("@/lib/consensi-marketing.functions");
-const res = await generaTokenConsensiMarketing({ data: { contattoId: selezionato, giorniValidita: 30 } });
-const url = `${window.location.origin}/consensi/${res.token}`;
+const { data: cli } = await supabaseAdmin
+  .from("clienti")
+  .select("ragione_sociale, partita_iva, codice_fiscale, indirizzo, citta")
+  .eq("id", ct.cliente_id ?? "00000000-0000-0000-0000-000000000000")
+  .maybeSingle();
 ```
 
-Stesso schema per la privacy base (`generaTokenFirmaPrivacy` → `/firma-privacy/${token}`).
+- La query è già null-safe (UUID fittizio, `maybeSingle`, errore non propagato) → con un lead restituisce `null`, non lancia.
+- Il PDF viene però generato con `ragioneSociale: "${cli?.ragione_sociale ?? ""} — firma di {nome}"`, `partitaIva/codiceFiscale/indirizzo/citta` undefined → **prova GDPR senza intestazione del soggetto**, esattamente il difetto già corretto per i consensi.
+- L'`UPDATE` finale è solo su `contatti` (`privacy_firmata`, `data_firma`, `firma_url`, `pdf_privacy_*`, azzeramento token) — **nessun UPDATE diretto su `clienti`**, quindi nessuna scrittura che salti la guardia.
+- Upload firma PNG e PDF su `contatti/{id}/...`: path basato sul contatto, indipendente dal cliente. OK per i lead.
 
-`generaTokenConsensiMarketing` (`.middleware([requireSupabaseAuth])`) verifica prima l'accessibilità del contatto con il client utente (RLS), poi scrive il token con `supabaseAdmin`.
+## 2) `getContattoPerFirma` — stessa lettura, stesso esito
 
-## 3) Route pubblica `/consensi/$token`
+Righe 56-76: legge l'intestazione da `clienti` con lo stesso fallback UUID fittizio. Con un lead ritorna `ragione_sociale: ""` e P.IVA/indirizzo `null`. La pagina pubblica `src/routes/firma-privacy.$token.tsx` renderizza il blocco "Stai firmando per" solo `cliente && contatto`: l'oggetto esiste sempre, quindi la card si mostra ma con **titolo vuoto**.
 
-`src/routes/consensi.$token.tsx` — pubblica, `noindex`. Usa `useServerFn` su:
+## 3) Nessuna funzione SQL nel percorso
 
-- `getContattoPerConsensi({ token })` — legge `contatti` per `consensi_token`, controlla scadenza, poi legge `clienti` per intestazione. Ritorna `{ contatto, cliente, statoAttuale }`.
-- `salvaConsensiMarketing({ token, firmaDataUrl, firmaNomeDichiarato, consensi })` — genera PDF (`generaPdfConsensiMarketing` da `src/lib/consensi-pdf.ts`), carica su storage `documenti-privacy` in `contatti/{id}/consensi-{ts}.pdf`, aggiorna `firma_nome_dichiarato`, chiama la RPC e infine azzera il token.
+`/firma-privacy/$token` usa solo le due server function TS con `supabaseAdmin`. Non esiste alcuna RPC tipo `firma_privacy`; nessun controllo di esistenza basato su `cliente_id NOT NULL` come quello che bloccava `registra_consenso` / `registra_consensi_batch`. **Il fix "esistenza" non serve qui.**
 
-`src/lib/consensi-testi.ts` esporta: `INFORMATIVA_FULL`, `CONSENSO_TESTI`, `CONSENSO_LABEL`, `type TipoConsenso` (`marketing_diretto | marketing_media | profilazione`).
+## 4) Trigger — già coperto
 
-`src/lib/recesso-consensi.functions.ts` esporta: `generaTokenRecesso`, `getContattoPerRecesso`, `revocaConsensi`.
-`src/lib/firma-privacy.functions.ts` esporta: `generaTokenFirmaPrivacy`, `getContattoPerFirma`, `firmaPrivacyConToken`.
+Su `contatti` esistono due trigger:
+- `contatti_updated_at` (BEFORE UPDATE) — irrilevante.
+- `trg_ricalcola_privacy_cliente` AFTER INSERT/DELETE/UPDATE OF `privacy_firmata` → `ricalcola_privacy_cliente()`, che ha già la guardia:
+  ```sql
+  _cliente_id := COALESCE(NEW.cliente_id, OLD.cliente_id);
+  IF _cliente_id IS NULL THEN RETURN COALESCE(NEW, OLD); END IF;
+  ```
+  Con un contatto lead-only esce subito: nessun `UPDATE clienti`. E `firmaPrivacyConToken` non fa alcun update diretto su `clienti` che possa aggirarla.
 
-## 4) `consensi_log` e funzioni SQL
+## Conclusione
 
-Colonne: `id`, `contatto_id` (NOT NULL), `cliente_id` (**NULLABLE**), `tipo_consenso`, `valore`, `origine`, `operatore_id`, `prova_path`, `ip_address`, `note`, `created_at`. Nessun `lead_id`. Nessun trigger sulla tabella.
+La firma privacy-base su un contatto lead-only **non si rompe**: il flusso completa, il PDF viene caricato, il contatto aggiornato, il trigger esce pulito. L'unico difetto è **l'intestazione del soggetto vuota** nella pagina pubblica e nel PDF di prova — inaccettabile come documento GDPR, dato che il pannello `LinkFirmaPrivacy` è già esposto sulla scheda lead (`leadId`) e quindi il caso è raggiungibile in produzione.
 
-RLS: SELECT e INSERT solo per `amministratore / direzione / amministrazione / marketing` (nessun uso di `user_can_access_cliente`) — quindi **la RLS non è un ostacolo per i lead**.
+## Intervento proposto (da approvare, nulla è stato applicato)
 
-`registra_consensi_batch(_contatto_id, _marketing_diretto, _marketing_media, _profilazione, _origine, _operatore_id, _prova_path, _ip, _note)` — SECURITY DEFINER: inserisce 3 righe in `consensi_log` e aggiorna i 3 flag sul contatto. Origini ammesse: `link_pubblico, operatore, recesso_link, import`.
+Un solo tipo di adattamento, il più leggero:
 
-`registra_consenso(_contatto_id, _tipo_consenso, _valore, _origine, _operatore_id, _prova_path, _ip, _note)` — una riga di log + aggiornamento del singolo flag. `revoca_consensi_batch(...)` chiama `registra_consenso` con `valore=false`.
+1. In `getContattoPerFirma` e `firmaPrivacyConToken`, selezionare anche `lead_id` dal contatto e sostituire le due letture dirette da `clienti` con `risolviIntestazioneSoggetto()` già esistente in `src/lib/intestazione-soggetto.server.ts` (stesso risolutore usato dai consensi).
+2. Alimentare con il risultato sia il payload della pagina pubblica sia `generaPdfPrivacy` (`ragioneSociale`, `partitaIva`, `codiceFiscale`, `indirizzo`, `citta`).
+3. Nessuna migrazione DB, nessuna nuova policy, nessuna modifica a trigger, RPC, `user_can_access_cliente` o al ciclo cliente esistente.
 
-Il log è legato a **`contatto_id`**; `cliente_id` è derivato dal contatto ed è denormalizzato.
-
-## 5) PUNTO CHIAVE — i contatti lead-only (cliente_id NULL) ROMPONO il ciclo
-
-Il consenso del lead **non funziona già**: serve un adattamento. Blocco reale, in ordine di gravità:
-
-1. **BLOCCANTE — le funzioni SQL alzano eccezione.** Entrambe usano `cliente_id` come test di esistenza del contatto:
-   ```sql
-   SELECT cliente_id INTO v_cliente_id FROM public.contatti WHERE id = _contatto_id;
-   IF v_cliente_id IS NULL THEN RAISE EXCEPTION 'Contatto % non trovato', _contatto_id; END IF;
-   ```
-   Con un contatto lead-only la SELECT trova la riga ma restituisce NULL → `RAISE EXCEPTION`. Vale per `registra_consensi_batch`, `registra_consenso` e quindi anche per `revoca_consensi_batch` (recesso). Il salvataggio pubblico fallirebbe **dopo** aver già caricato il PDF su storage.
-2. **NON bloccante ma sbagliato in output — intestazione vuota.** `getContattoPerConsensi`, `salvaConsensiMarketing` e `getContattoPerRecesso` fanno `.eq("id", ct.cliente_id ?? "0000...0000")` su `clienti`: con un lead nessuna riga, quindi `ragione_sociale: ""`, P.IVA/indirizzo nulli. La pagina pubblica e il **PDF di prova** uscirebbero senza intestazione del soggetto — inaccettabile come prova GDPR.
-3. **Schema OK.** `consensi_log.cliente_id` è già nullable e non c'è trigger; `ricalcola_privacy_cliente` (su `contatti`) ha già la guardia di uscita per `cliente_id` NULL. Le policy di `consensi_log` sono per ruolo, e i ruoli lead (`marketing/amministrazione/direzione/amministratore`) coincidono esattamente con quelli ammessi.
-4. **UI mancante.** `LinkFirmaPrivacy` è vincolato a `clienteId` e carica i contatti con `.eq("cliente_id", clienteId)`: non esiste alcun punto di generazione link nella scheda lead.
-
-Conclusione: token, route pubblica, PDF, storage e RLS sono **riusabili così come sono**; servono tre adattamenti mirati (funzioni SQL, risoluzione intestazione soggetto, UI lead).
-
-## Adattamento proposto per lo Strato 3 (da approvare, nulla è stato applicato)
-
-1. **SQL** — sostituire il test di esistenza in `registra_consenso` e `registra_consensi_batch`: recuperare `cliente_id` **e** `lead_id` con un solo SELECT e alzare eccezione solo se la riga non esiste (`NOT FOUND`), non se `cliente_id` è NULL. Aggiungere a `consensi_log` una colonna `lead_id uuid` (nullable, FK a `lead`) valorizzata dalle stesse funzioni, così la prova resta tracciabile lato lead. Nessuna modifica alle policy esistenti.
-2. **Server functions** — introdurre un risolutore unico "intestazione soggetto" che, se `cliente_id` è NULL e `lead_id` è valorizzato, legge da `lead` (`ragione_sociale`/nome+cognome, `partita_iva`, `codice_fiscale`, `indirizzo`, `citta`) e alimenta pagina pubblica e PDF. Riusato da `getContattoPerConsensi`, `salvaConsensiMarketing` e `getContattoPerRecesso`.
-3. **UI lead** — riusare lo stesso pannello "genera link" nella scheda lead, parametrizzato su `leadId` invece che `clienteId` (elenco contatti filtrato per `lead_id`), senza duplicare la logica dei token.
-
-Nessuna modifica a `user_can_access_cliente`, alle policy di `contatti`, o al ciclo cliente esistente.
+Opzionale, coerenza con quanto fatto per i consensi: spostare l'upload del PDF dopo l'update del contatto (oggi un fallimento dell'update lascerebbe PDF e firma orfani su storage). Da confermare se includerlo.
