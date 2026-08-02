@@ -173,9 +173,21 @@ export function NuovoLeadDialog({ onClose }: { onClose: () => void }) {
       <DialogHeader>
         <DialogTitle>Nuovo lead</DialogTitle>
         <DialogDescription>
+          Un lead è un potenziale cliente o una richiesta in ingresso, non ancora un cliente attivo:
+          diventerà cliente con la conversione.
+        </DialogDescription>
+        <DialogDescription>
           Inserimento rapido. Serve almeno la ragione sociale oppure nome e cognome.
         </DialogDescription>
       </DialogHeader>
+
+      <Alert>
+        <Info className="size-4" />
+        <AlertDescription>
+          Privacy e consensi marketing si raccolgono dopo, sul contatto-persona: dalla scheda del lead,
+          tab <span className="font-medium">Contatti</span>.
+        </AlertDescription>
+      </Alert>
 
       {duplicati.length > 0 && (
         <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
