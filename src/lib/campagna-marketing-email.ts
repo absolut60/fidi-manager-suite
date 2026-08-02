@@ -47,6 +47,21 @@ export function footerRecessoHtml(linkRecesso: string | null): string {
 }
 
 /**
+ * Rende assolute le immagini servite dalla route pubblica.
+ * Nel corpo salvato le immagini restano SEMPRE relative
+ * (`/api/public/email-img/...`): così lo stesso corpo funziona in anteprima
+ * (origin corrente) e nell'email reale (dominio pubblico passato dal job).
+ * Vengono normalizzati anche eventuali URL assoluti storici con origin diverso.
+ */
+export function assolutizzaImmaginiEmail(html: string, baseUrl: string | null | undefined): string {
+  if (!baseUrl) return html;
+  const base = baseUrl.replace(/\/+$/, "");
+  return (html ?? "")
+    .replace(/https?:\/\/[^"'\s)]+?(\/api\/public\/email-img\/)/g, `${base}$1`)
+    .replace(/(src\s*=\s*["'])\/api\/public\/email-img\//g, `$1${base}/api/public/email-img/`);
+}
+
+/**
  * Compone oggetto + HTML completo di un'email di campagna marketing.
  * Stessa pipeline per anteprima, invio di prova e invio reale.
  */
@@ -58,7 +73,10 @@ export function buildEmailCampagna(params: {
   mittente?: { nome: string; email?: string | null };
   linkRecesso: string | null;
   useCid: boolean;
+  /** Base assoluta per le immagini della route pubblica (anteprima o invio). */
+  baseUrl?: string | null;
 }): { oggetto: string; html: string } {
+
   const mittente = params.mittente ?? { nome: "Ufficio Marketing MADE" };
   const reso = renderTemplate(
     {
