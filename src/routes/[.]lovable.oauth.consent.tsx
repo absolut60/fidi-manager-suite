@@ -1,5 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useState } from "react";
+import { z } from "zod";
+import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -28,11 +30,13 @@ function oauthApi(): OAuthApi {
   return a.oauth;
 }
 
+const consentSearchSchema = z.object({
+  authorization_id: fallback(z.string().optional(), undefined),
+});
+
 export const Route = createFileRoute("/.lovable/oauth/consent")({
   ssr: false,
-  validateSearch: (s: Record<string, unknown>) => ({
-    authorization_id: typeof s.authorization_id === "string" ? s.authorization_id : "",
-  }),
+  validateSearch: zodValidator(consentSearchSchema),
   beforeLoad: async ({ search, location }) => {
     if (!search.authorization_id) throw new Error("Missing authorization_id");
     const { data } = await supabase.auth.getSession();
@@ -71,8 +75,8 @@ function Consent() {
     setError(null);
     const api = oauthApi();
     const { data, error } = approve
-      ? await api.approveAuthorization(authorization_id)
-      : await api.denyAuthorization(authorization_id);
+      ? await api.approveAuthorization(authorization_id!)
+      : await api.denyAuthorization(authorization_id!);
     if (error) {
       setBusy(false);
       setError(error.message);

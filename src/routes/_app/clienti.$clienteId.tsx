@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
+import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { ArrowLeft, Plus, Mail, Phone, Smartphone, Star, Trash2, FileCheck2, FileX2, Download, Pencil, Link as LinkIcon, Copy, EyeOff, AlertTriangle, MessageCircle, Send } from "lucide-react";
 import { InviaSollecitoDialog } from "@/components/invia-sollecito-dialog";
 import { SignaturePad, getCanvasDataURL } from "@/components/signature-pad";
@@ -47,13 +48,15 @@ import { CategoriaSelect } from "@/components/categoria-select";
 const TAB_VALUES = ["riepilogo", "anagrafica", "contatti", "marketing", "cantieri", "storico", "insoluti", "attivita", "allegati", "privacy"] as const;
 const INSOLUTI_SUB_VALUES = ["riepilogo", "scadenziario", "solleciti", "piani", "legali", "assicurazioni"] as const;
 
+const clienteSearchSchema = z.object({
+  edit: fallback(z.union([z.literal(1), z.literal("1")]).optional(), undefined),
+  tab: fallback(z.enum(TAB_VALUES).optional(), undefined),
+  insolutiTab: fallback(z.enum(INSOLUTI_SUB_VALUES).optional(), undefined),
+  from: fallback(z.literal("approvazioni").optional(), undefined),
+});
+
 export const Route = createFileRoute("/_app/clienti/$clienteId")({
-  validateSearch: (s: Record<string, unknown>) => ({
-    edit: s.edit === 1 || s.edit === "1" ? 1 : undefined,
-    tab: typeof s.tab === "string" && (TAB_VALUES as readonly string[]).includes(s.tab) ? s.tab as typeof TAB_VALUES[number] : undefined,
-    insolutiTab: typeof s.insolutiTab === "string" && (INSOLUTI_SUB_VALUES as readonly string[]).includes(s.insolutiTab) ? s.insolutiTab as typeof INSOLUTI_SUB_VALUES[number] : undefined,
-    from: s.from === "approvazioni" ? ("approvazioni" as const) : undefined,
-  }),
+  validateSearch: zodValidator(clienteSearchSchema),
   component: ClienteDetail,
 });
 
@@ -200,7 +203,7 @@ function ClienteDetail() {
   const [openElimina, setOpenElimina] = useState(false);
 
   useEffect(() => {
-    if (edit === 1) setOpenEdit(true);
+    if (edit === 1 || edit === "1") setOpenEdit(true);
   }, [edit]);
 
   const disattivaMut = useMutation({
@@ -330,9 +333,9 @@ function ClienteDetail() {
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {(cliente as any).bloccato && (
                   <Link
-                    to="/clienti/$clienteId"
-                    params={{ clienteId }}
-                    search={{ tab: "storico" }}
+                    from="/clienti/$clienteId"
+                    to="."
+                    search={(prev) => ({ ...prev, tab: "storico" as const })}
                     className="inline-flex items-center gap-1 rounded-md bg-destructive/15 text-destructive border border-destructive/30 px-2 py-0.5 text-xs font-medium hover:bg-destructive/25 transition-colors cursor-pointer"
                   >
                     <AlertTriangle className="size-3" /> Cliente bloccato

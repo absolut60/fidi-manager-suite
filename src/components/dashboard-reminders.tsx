@@ -53,12 +53,11 @@ export function DashboardReminders() {
         </div>
       ) : (
         <ul className="divide-y">
-          {data.map((r) => (
-            <li key={r.id} className="py-2.5">
-              <Link
-                to={r.cliente_id ? `/clienti/${r.cliente_id}` : "/dashboard"}
-                className="flex items-center justify-between gap-3 hover:bg-muted/40 -mx-2 px-2 py-1 rounded"
-              >
+          {data.map((r) => {
+            const linkClass =
+              "flex items-center justify-between gap-3 hover:bg-muted/40 -mx-2 px-2 py-1 rounded";
+            const contenuto = (
+              <>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium truncate">{r.titolo}</p>
                   {r.clienti?.ragione_sociale && (
@@ -74,10 +73,28 @@ export function DashboardReminders() {
                   </Badge>
                 </div>
                 <ChevronRight className="size-4 text-muted-foreground shrink-0" />
-              </Link>
-            </li>
-          ))}
+              </>
+            );
+            return (
+              <li key={r.id} className="py-2.5">
+                {r.cliente_id ? (
+                  <Link
+                    to="/clienti/$clienteId"
+                    params={{ clienteId: r.cliente_id }}
+                    className={linkClass}
+                  >
+                    {contenuto}
+                  </Link>
+                ) : (
+                  <Link to="/dashboard" className={linkClass}>
+                    {contenuto}
+                  </Link>
+                )}
+              </li>
+            );
+          })}
         </ul>
+
       )}
     </Card>
   );
