@@ -59,6 +59,7 @@ import { Route as AppMarketingSegmentiRouteImport } from './routes/_app/marketin
 import { Route as AppMarketingInviiRouteImport } from './routes/_app/marketing.invii'
 import { Route as AppMarketingCampagneRouteImport } from './routes/_app/marketing.campagne'
 import { Route as AppLeadLeadIdRouteImport } from './routes/_app/lead.$leadId'
+import { Route as AppEventiEventoIdRouteImport } from './routes/_app/eventi.$eventoId'
 import { Route as AppClientiClienteIdRouteImport } from './routes/_app/clienti.$clienteId'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
@@ -327,6 +328,11 @@ const AppLeadLeadIdRoute = AppLeadLeadIdRouteImport.update({
   path: '/$leadId',
   getParentRoute: () => AppLeadRoute,
 } as any)
+const AppEventiEventoIdRoute = AppEventiEventoIdRouteImport.update({
+  id: '/eventi/$eventoId',
+  path: '/eventi/$eventoId',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppClientiClienteIdRoute = AppClientiClienteIdRouteImport.update({
   id: '/$clienteId',
   path: '/$clienteId',
@@ -399,6 +405,7 @@ export interface FileRoutesByFullPath {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
+  '/eventi/$eventoId': typeof AppEventiEventoIdRoute
   '/lead/$leadId': typeof AppLeadLeadIdRoute
   '/marketing/campagne': typeof AppMarketingCampagneRoute
   '/marketing/invii': typeof AppMarketingInviiRoute
@@ -455,6 +462,7 @@ export interface FileRoutesByTo {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
+  '/eventi/$eventoId': typeof AppEventiEventoIdRoute
   '/lead/$leadId': typeof AppLeadLeadIdRoute
   '/marketing/campagne': typeof AppMarketingCampagneRoute
   '/marketing/invii': typeof AppMarketingInviiRoute
@@ -514,6 +522,7 @@ export interface FileRoutesById {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_app/clienti/$clienteId': typeof AppClientiClienteIdRoute
+  '/_app/eventi/$eventoId': typeof AppEventiEventoIdRoute
   '/_app/lead/$leadId': typeof AppLeadLeadIdRoute
   '/_app/marketing/campagne': typeof AppMarketingCampagneRoute
   '/_app/marketing/invii': typeof AppMarketingInviiRoute
@@ -573,6 +582,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/clienti/$clienteId'
+    | '/eventi/$eventoId'
     | '/lead/$leadId'
     | '/marketing/campagne'
     | '/marketing/invii'
@@ -629,6 +639,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/clienti/$clienteId'
+    | '/eventi/$eventoId'
     | '/lead/$leadId'
     | '/marketing/campagne'
     | '/marketing/invii'
@@ -687,6 +698,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/_app/clienti/$clienteId'
+    | '/_app/eventi/$eventoId'
     | '/_app/lead/$leadId'
     | '/_app/marketing/campagne'
     | '/_app/marketing/invii'
@@ -1078,6 +1090,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppLeadLeadIdRouteImport
       parentRoute: typeof AppLeadRoute
     }
+    '/_app/eventi/$eventoId': {
+      id: '/_app/eventi/$eventoId'
+      path: '/eventi/$eventoId'
+      fullPath: '/eventi/$eventoId'
+      preLoaderRoute: typeof AppEventiEventoIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/clienti/$clienteId': {
       id: '/_app/clienti/$clienteId'
       path: '/$clienteId'
@@ -1186,6 +1205,7 @@ interface AppRouteChildren {
   AppTemplateLetteraRoute: typeof AppTemplateLetteraRoute
   AppUtentiRoute: typeof AppUtentiRoute
   AppWhatsappRoute: typeof AppWhatsappRoute
+  AppEventiEventoIdRoute: typeof AppEventiEventoIdRoute
   AppMarketingCampagneRoute: typeof AppMarketingCampagneRoute
   AppMarketingInviiRoute: typeof AppMarketingInviiRoute
   AppMarketingSegmentiRoute: typeof AppMarketingSegmentiRoute
@@ -1225,6 +1245,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppTemplateLetteraRoute: AppTemplateLetteraRoute,
   AppUtentiRoute: AppUtentiRoute,
   AppWhatsappRoute: AppWhatsappRoute,
+  AppEventiEventoIdRoute: AppEventiEventoIdRoute,
   AppMarketingCampagneRoute: AppMarketingCampagneRoute,
   AppMarketingInviiRoute: AppMarketingInviiRoute,
   AppMarketingSegmentiRoute: AppMarketingSegmentiRoute,

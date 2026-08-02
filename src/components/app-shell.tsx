@@ -19,6 +19,7 @@ import {
   Gavel,
   FileSignature,
   CalendarClock,
+  CalendarDays,
   ClipboardCheck,
   ClipboardList,
   HandCoins,
@@ -70,6 +71,7 @@ const NAV: NavItem[] = [
   { to: "/clienti", label: "Clienti", icon: Building, group: "generale" },
   { to: "/contatti", label: "Contatti", icon: Users, group: "generale" },
   { to: "/lead", label: "Lead", icon: UserPlus, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "generale" },
+  { to: "/eventi", label: "Eventi", icon: CalendarDays, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "generale" },
   // FIDI
   { to: "/richieste", label: "Richieste fido", icon: FileText, group: "fidi" },
   { to: "/approvazioni", label: "Approvazioni", icon: CheckCheck, roles: ["admin", "approvatore"], group: "fidi" },
