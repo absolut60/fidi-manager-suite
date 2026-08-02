@@ -318,82 +318,8 @@ function EventoDettaglioPage() {
               Prima dell'evento la lista degli attesi, durante e dopo il censimento di chi si presenta.
             </p>
           </div>
-          <Dialog open={openNuovo} onOpenChange={setOpenNuovo}>
-            <DialogTrigger asChild>
-              <Button className="gap-1.5"><Plus className="size-4" /> Aggiungi partecipante</Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-lg">
-              <DialogHeader><DialogTitle>Nuovo partecipante</DialogTitle></DialogHeader>
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="p-rs">Ragione sociale</Label>
-                  <Input id="p-rs" value={campi.ragione_sociale}
-                    onChange={(e) => setCampi({ ...campi, ragione_sociale: e.target.value })} />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="p-nome">Nome</Label>
-                    <Input id="p-nome" value={campi.nome}
-                      onChange={(e) => setCampi({ ...campi, nome: e.target.value })} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="p-cognome">Cognome</Label>
-                    <Input id="p-cognome" value={campi.cognome}
-                      onChange={(e) => setCampi({ ...campi, cognome: e.target.value })} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="p-piva">Partita IVA</Label>
-                    <Input id="p-piva" value={campi.partita_iva}
-                      onChange={(e) => setCampi({ ...campi, partita_iva: e.target.value })} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="p-cf">Codice fiscale</Label>
-                    <Input id="p-cf" value={campi.codice_fiscale}
-                      onChange={(e) => setCampi({ ...campi, codice_fiscale: e.target.value })} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="p-email">Email</Label>
-                    <Input id="p-email" type="email" value={campi.email}
-                      onChange={(e) => setCampi({ ...campi, email: e.target.value })} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="p-tel">Telefono</Label>
-                    <Input id="p-tel" value={campi.telefono}
-                      onChange={(e) => setCampi({ ...campi, telefono: e.target.value })} />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Stato</Label>
-                  <Select value={statoNuovo} onValueChange={(v) => setStatoNuovo(v as EventiPartecipanteStato)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {EVENTI_PARTECIPANTE_STATI.map((s) => (
-                        <SelectItem key={s} value={s}>{EVENTI_PARTECIPANTE_STATO_LABEL[s]}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="p-note">Note</Label>
-                  <Textarea id="p-note" rows={2} value={campi.note}
-                    onChange={(e) => setCampi({ ...campi, note: e.target.value })} />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setOpenNuovo(false)}>Annulla</Button>
-                <Button
-                  disabled={!nomeValido || aggiungiPartecipante.isPending}
-                  onClick={() => aggiungiPartecipante.mutate()}
-                >
-                  Aggiungi
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <AggiungiPartecipanteDialog eventoId={eventoId} nomeEvento={evento.nome} />
+
         </div>
 
         <Table>
