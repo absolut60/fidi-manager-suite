@@ -68,21 +68,20 @@ export function LeadContattiTab({ leadId, clienteId }: { leadId: string; cliente
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
-        {!clienteId && (
-          <p className="text-xs text-muted-foreground">
-            Per aggiungere contatti il lead deve essere collegato a un cliente (conversione).
-          </p>
-        )}
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button size="sm" className="gap-1.5 ml-auto" disabled={!clienteId}>
+            <Button size="sm" className="gap-1.5 ml-auto">
               <Plus className="size-4" /> Nuovo contatto
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Nuovo contatto</DialogTitle>
-              <DialogDescription>Il contatto viene collegato al lead e al cliente associato.</DialogDescription>
+              <DialogDescription>
+                {clienteId
+                  ? "Il contatto viene collegato al lead e al cliente associato."
+                  : "Il contatto appartiene al lead; verrà collegato al cliente alla conversione."}
+              </DialogDescription>
             </DialogHeader>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div><Label className="text-xs">Nome *</Label><Input value={nome} maxLength={100} onChange={(e) => setNome(e.target.value)} /></div>
