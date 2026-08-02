@@ -21,6 +21,23 @@ import {
  * `cliente_id` e `lead_id`. Le righe lead-only sono governate dai permessi lead.
  */
 
+/** Fonte unica dei contatti di un lead: queryKey ["lead-contatti", leadId]. */
+export function useLeadContatti(leadId: string, enabled = true) {
+  return useQuery({
+    queryKey: ["lead-contatti", leadId],
+    enabled,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("contatti")
+        .select("id, cliente_id, nome, cognome, email, telefono, cellulare, ruolo")
+        .eq("lead_id", leadId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
 export function LeadContattiTab({ leadId, clienteId }: { leadId: string; clienteId: string | null }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
