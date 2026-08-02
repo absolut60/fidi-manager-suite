@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Plus, Trash2, Construction, MapPin, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { creaContattoPersona } from "@/lib/contatto-crea";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -51,16 +52,15 @@ export function LeadContattiTab({ leadId, clienteId }: { leadId: string; cliente
 
   const addMut = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("contatti").insert({
+      await creaContattoPersona({
         cliente_id: clienteId,
         lead_id: leadId,
-        nome: nome.trim(),
-        cognome: cognome.trim() || null,
-        email: email.trim() || null,
-        telefono: telefono.trim() || null,
-        ruolo: ruolo.trim() || null,
+        nome,
+        cognome,
+        email,
+        telefono,
+        ruolo,
       });
-      if (error) throw error;
     },
     onSuccess: () => {
       toast.success("Contatto aggiunto");
