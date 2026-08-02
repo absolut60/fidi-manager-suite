@@ -21,6 +21,7 @@ import {
   LEAD_TIPI, LEAD_TIPO_LABEL,
   type LeadFonte, type LeadPriorita, type LeadTipo,
 } from "@/lib/lead-costanti";
+import { creaLead } from "@/lib/lead-crea";
 import { cercaDuplicati, DEDUP_CAMPO_LABEL, type DedupMatch } from "@/lib/lead-dedup";
 
 type Form = {
@@ -111,44 +112,32 @@ export function NuovoLeadDialog({ onClose }: { onClose: () => void }) {
     f.ragione_sociale.trim().length > 0 || (f.nome.trim().length > 0 && f.cognome.trim().length > 0);
 
   const mut = useMutation({
-    mutationFn: async () => {
-      const payload = {
+    mutationFn: () =>
+      creaLead({
         tipo_soggetto: f.tipo_soggetto,
-        ragione_sociale: f.ragione_sociale.trim() || null,
-        nome: f.nome.trim() || null,
-        cognome: f.cognome.trim() || null,
-        partita_iva: f.partita_iva.trim() || null,
-        codice_fiscale: f.codice_fiscale.trim() || null,
-        email: f.email.trim() || null,
-        telefono: f.telefono.trim() || null,
-        cellulare: f.cellulare.trim() || null,
-        indirizzo: f.indirizzo.trim() || null,
-        citta: f.citta.trim() || null,
-        cap: f.cap.trim() || null,
-        provincia: f.provincia.trim() || null,
+        ragione_sociale: f.ragione_sociale,
+        nome: f.nome,
+        cognome: f.cognome,
+        partita_iva: f.partita_iva,
+        codice_fiscale: f.codice_fiscale,
+        email: f.email,
+        telefono: f.telefono,
+        cellulare: f.cellulare,
+        indirizzo: f.indirizzo,
+        citta: f.citta,
+        cap: f.cap,
+        provincia: f.provincia,
         fonte: f.fonte,
-        fonte_dettaglio: f.fonte_dettaglio.trim() || null,
+        fonte_dettaglio: f.fonte_dettaglio,
         tipo_lead: f.tipo_lead,
         priorita: f.priorita,
-        store_id: f.store_id || null,
-        agente_codice: f.agente_codice || null,
-        note: f.note.trim() || null,
-        stato: "nuovo" as const,
-        created_by: user?.id ?? null,
-      };
-      const { data, error } = await supabase.from("lead").insert(payload).select("id").single();
-      if (error) throw error;
-      if (data) {
-        await supabase.from("lead_storico").insert({
-          lead_id: data.id,
-          stato_da: null,
-          stato_a: "nuovo",
-          operatore_id: user?.id ?? null,
-          nota: "Lead creato manualmente",
-        });
-      }
-      return data;
-    },
+        store_id: f.store_id,
+        agente_codice: f.agente_codice,
+        note: f.note,
+        createdBy: user?.id ?? null,
+        notaStorico: "Lead creato manualmente",
+      }),
+
     onSuccess: (data) => {
       toast.success("Lead creato", {
         description:
