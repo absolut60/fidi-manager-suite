@@ -210,6 +210,7 @@ function RoleCheckboxes({ value, onChange }: { value: AppRole[]; onChange: (v: A
     <div className="space-y-4 rounded-md border p-3">
       {renderGroup("Credito", RUOLI_CREDITO)}
       {renderGroup("Richieste interne", RUOLI_RICHIESTE)}
+      {renderGroup("Marketing", RUOLI_MARKETING)}
     </div>
   );
 }
