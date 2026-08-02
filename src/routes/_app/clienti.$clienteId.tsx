@@ -49,10 +49,7 @@ const TAB_VALUES = ["riepilogo", "anagrafica", "contatti", "marketing", "cantier
 const INSOLUTI_SUB_VALUES = ["riepilogo", "scadenziario", "solleciti", "piani", "legali", "assicurazioni"] as const;
 
 const clienteSearchSchema = z.object({
-  edit: fallback(
-    z.union([z.literal(1), z.literal("1")]).transform(() => 1 as const).optional(),
-    undefined,
-  ),
+  edit: fallback(z.union([z.literal(1), z.literal("1")]).optional(), undefined),
   tab: fallback(z.enum(TAB_VALUES).optional(), undefined),
   insolutiTab: fallback(z.enum(INSOLUTI_SUB_VALUES).optional(), undefined),
   from: fallback(z.literal("approvazioni").optional(), undefined),
@@ -206,7 +203,7 @@ function ClienteDetail() {
   const [openElimina, setOpenElimina] = useState(false);
 
   useEffect(() => {
-    if (edit === 1) setOpenEdit(true);
+    if (edit === 1 || edit === "1") setOpenEdit(true);
   }, [edit]);
 
   const disattivaMut = useMutation({
