@@ -291,6 +291,7 @@ export const invioCampagnaMarketing = inngest.createFunction(
               mittente: { nome: cfg.nomeOperatore, email: cfg.emailOperatore },
               linkRecesso,
               useCid: true,
+              baseUrl: appUrl(),
             });
 
             // Tracciamento clic: riscrittura dei link (il link di recesso è escluso dal modulo).
