@@ -15,10 +15,12 @@ function safeNext(next: unknown): string {
   return next;
 }
 
+const loginSearchSchema = z.object({
+  next: fallback(z.string().optional(), undefined),
+});
+
 export const Route = createFileRoute("/login")({
-  validateSearch: (s: Record<string, unknown>) => ({
-    next: typeof s.next === "string" ? s.next : undefined,
-  }),
+  validateSearch: zodValidator(loginSearchSchema),
   component: LoginPage,
 });
 
