@@ -59,6 +59,7 @@ const NESSUNO = "__none__";
 
 export function NuovoLeadDialog({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [f, setF] = useState<Form>(EMPTY);
   const [duplicati, setDuplicati] = useState<DedupMatch[]>([]);
