@@ -1,80 +1,39 @@
-# Correzione Strato 1 — contatti/cantieri propri del lead
+# Diagnosi — elenco utenti assegnabili nel modulo Lead
 
-## Diagnosi (sola lettura, già eseguita)
+## 1. Policy RLS reale su `profili`
 
-**1. Dati esistenti**
+Tre policy, tutte su ruolo `authenticated`:
 
-| tabella | righe totali | righe con cliente_id NULL |
-|---|---|---|
-| contatti | 7 | 0 |
-| cantieri | 0 | 0 |
-| lead | 0 | — |
+- **SELECT** — "Utenti vedono il proprio profilo"
+  `USING ((auth.uid() = id) OR has_role(auth.uid(), 'amministratore'))`
+- **INSERT** — "Admin inserisce profili"
+  `WITH CHECK (has_role(auth.uid(),'amministratore') OR (auth.uid() = id AND store_id IS NULL))`
+- **UPDATE** — "Utenti aggiornano il proprio profilo"
+  `USING (auth.uid() = id OR has_role(auth.uid(),'amministratore'))`
 
-Nessun dato da bonificare: la migrazione è sicura e il CHECK constraint passa subito su tutte le righe attuali.
+**Conclusione: il sospetto è confermato.** In lettura vede tutti i profili solo l'amministratore. Per marketing, amministrazione e direzione (ruoli con accesso ai lead) la query `profili.select("id,nome,cognome")` ritorna **una sola riga: la propria**.
 
-**2. Trigger e funzioni**
+Impatto concreto nel modulo lead:
+- `/lead` — il filtro "Assegnatario" contiene solo sé stessi (più "Tutti"/"Non assegnati"), e la colonna "Assegnato a" mostra `—` per ogni lead assegnato a un altro utente (`nomeProfilo` non trova la riga).
+- `/lead/$leadId` — stesso problema su selettore e visualizzazione assegnatario.
+- Nessun errore visibile: la RLS non lancia, filtra e basta. Bug silenzioso.
 
-- `contatti`: due trigger — `contatti_updated_at` (`update_updated_at`, indifferente a cliente_id) e `trg_ricalcola_privacy_cliente` (`ricalcola_privacy_cliente`).
-- `cantieri`: solo `trg_cantieri_updated_at`, indifferente a cliente_id.
-- `fn_normalizza_contatti` **non è un trigger di `contatti`**: usa `NEW.id` come `cliente_id` e `NEW.ragione_sociale`, quindi è agganciata a `clienti`. Nessun impatto.
+## 2. Pattern esistenti nel progetto
 
-`ricalcola_privacy_cliente` fa:
-```
-_cliente_id := COALESCE(NEW.cliente_id, OLD.cliente_id);
-SELECT EXISTS(... FROM contatti WHERE cliente_id = _cliente_id AND privacy_firmata) INTO _ha_firmato;
-UPDATE clienti SET privacy_firmata = _ha_firmato WHERE id = _cliente_id;
-```
-Con cliente_id NULL **non va in errore**: `cliente_id = NULL` è NULL → EXISTS false, e `WHERE id = NULL` aggiorna 0 righe. È però lavoro inutile a ogni scrittura di contatto-lead, e resta fragile. Va aggiunta una guardia `IF _cliente_id IS NULL THEN RETURN COALESCE(NEW, OLD); END IF;` (punto non presente nel tuo piano).
+Non esiste alcuna RPC o vista dedicata all'elenco utenti: nessuna funzione tipo `get_utenti_assegnabili`, e le uniche funzioni SQL che citano `profili` sono `handle_new_user`, `effective_store_filter`, `user_can_access_cliente`, `user_can_write_cliente`, `user_can_access_richiesta_interna` (tutte security definer, uso interno).
 
-**3. RLS attuale**
+Come fanno le altre parti:
 
-`contatti`
-- SELECT: `user_can_access_cliente(cliente_id) OR has_role(marketing)`
-- INSERT (check): `user_can_write_cliente(cliente_id) OR (agente AND user_can_access_cliente(cliente_id)) OR (marketing AND cliente_id IS NOT NULL)`
-- UPDATE (using): `user_can_write_cliente(...) OR (agente AND ...) OR has_role(marketing)`; check come l'insert
-- DELETE: solo `amministratore`
+- **`/utenti`** (`src/routes/_app/utenti.tsx`): legge `profili.select("*")` direttamente — funziona solo perché la pagina è riservata agli amministratori.
+- **Gestione utenti** (`src/lib/utenti.functions.ts`): server function con `requireSupabaseAuth` + `assertAdmin(userId)` + `supabaseAdmin` (service role, bypassa RLS). È l'unico punto che legge/scrive profili di altri in modo affidabile.
+- **Recupero crediti** (`src/routes/_app/recupero-crediti.tsx:240`): filtro "Operatore" popolato leggendo `profili` dal client — **stesso identico bug**, degradato in silenzio (c'è persino un `console.warn` e un `return []` sul fallimento). Non è un pattern da replicare.
+- **Richieste fido** (`src/lib/richieste-fido-data.ts`): join embedded `profili!fk(nome,cognome,email)` per richiedente/approvatore — anch'essi soggetti alla RLS, quindi il nome risulta nullo per i non-admin.
+- **Richieste interne**: aggira il problema con **denormalizzazione** — colonne testuali `requester_name`, `sede_name`, `archived_by_name` salvate sulla riga; nessuna lettura di `profili` per la lista. Non ha un vero selettore di assegnatario.
 
-`cantieri`
-- SELECT: **non usa** `user_can_access_cliente`, ma una sottoquery inline `cliente_id IN (SELECT ... FROM clienti ...)`
-- INSERT/UPDATE: `user_can_write_cliente(cliente_id)`
-- DELETE: solo `amministratore`
+## Opzioni di correzione (da decidere, non ancora applicate)
 
-Conferma del punto delicato che sollevavi: sia `user_can_access_cliente` sia `user_can_write_cliente` iniziano con `_cliente_id IS NOT NULL AND (...)`, quindi con NULL restituiscono **false** (non NULL). Anche la sottoquery inline di `cantieri` con NULL non matcha nulla. Quindi oggi una riga con `cliente_id IS NULL` sarebbe **invisibile e non scrivibile da chiunque**, tranne il caso `has_role(marketing)` in SELECT/UPDATE-using di `contatti` che è incondizionato.
+1. **RPC dedicata `get_utenti_assegnabili()`** — `SECURITY DEFINER`, `STABLE`, ritorna `id, nome, cognome` dei soli profili `attivo = true`, con guardia interna sui ruoli abilitati (admin, amministrazione, direzione, marketing, e chi accede ai lead). Nessun dato sensibile esposto oltre al nominativo. Additiva, non tocca le policy esistenti. È l'opzione consigliata: risolve anche il filtro Operatore di recupero crediti e i join dei fidi se in futuro li si vuole allineare.
+2. **Nuova policy SELECT su `profili`** che espone nome/cognome a tutti gli autenticati — più semplice ma allarga la visibilità su TUTTE le colonne della tabella (email, store_id, codice_agente): sconsigliata.
+3. **Denormalizzazione** del nome assegnatario su `lead` — coerente con richieste interne ma introduce dati che si disallineano nel tempo.
 
-Due conseguenze non coperte dal tuo punto B:
-- Il ramo marketing in INSERT/UPDATE-check di `contatti` ha `cliente_id IS NOT NULL`, che **bloccherebbe** un utente marketing nell'inserire contatti di lead. Va esteso.
-- Il DELETE su entrambe è solo amministratore: chi gestisce i lead non potrebbe cancellare un contatto/cantiere di lead che ha appena creato. Propongo di estenderlo alle sole righe lead-only.
-
-## Piano da applicare (dopo tua conferma)
-
-### A) Schema
-- `contatti.cliente_id` e `cantieri.cliente_id` → DROP NOT NULL.
-- CHECK `contatti_cliente_o_lead_chk` e `cantieri_cliente_o_lead_chk`: `(cliente_id IS NOT NULL OR lead_id IS NOT NULL)`.
-- Indici parziali su `lead_id WHERE cliente_id IS NULL` per le query della scheda lead.
-
-### B) RLS — rami OR isolati
-Nessuna modifica a `user_can_access_cliente`, `user_can_write_cliente` o `can_access_lead`. Su ogni policy di `contatti` e `cantieri` si aggiunge in coda:
-
-```
-OR (cliente_id IS NULL AND lead_id IS NOT NULL AND can_access_lead(auth.uid()))
-```
-
-- SELECT, INSERT-check, UPDATE-using/check, DELETE su entrambe le tabelle.
-- Nel check di INSERT/UPDATE di `contatti` il ramo marketing resta `cliente_id IS NOT NULL`: i contatti-lead passano dal nuovo ramo, che copre già marketing (è tra i ruoli di `can_access_lead`).
-- Le righe con `cliente_id` valorizzato non sono toccate: il nuovo ramo è falso per costruzione su quelle righe, quindi visibilità e scrittura restano identiche. Nessuna regressione possibile sui clienti esistenti.
-
-### C) Funzione trigger
-`ricalcola_privacy_cliente`: uscita anticipata quando `_cliente_id IS NULL`.
-
-### D) Codice
-In `src/components/lead/lead-relazioni-tabs.tsx` (`LeadContattiTab`, `LeadCantieriTab`):
-- rimuovere la disabilitazione dei pulsanti "Nuovo contatto" / "Nuovo cantiere" e i messaggi "il lead deve essere collegato a un cliente";
-- insert con `cliente_id: null, lead_id: leadId`;
-- la lista carica per `lead_id` oltre che per `cliente_id`.
-
-Verifico inoltre gli altri punti che scrivono su `contatti`/`cantieri` (wizard nuovo contatto, tab cliente) perché non presuppongano un `cliente_id` sempre presente.
-
-### Verifica finale
-- typecheck pulito;
-- query di controllo che confronta, per un ruolo store_manager e per un agente, l'insieme delle righe `contatti`/`cantieri` con `cliente_id` valorizzato visibili prima e dopo — devono coincidere;
-- prova pratica: creazione di un contatto e di un cantiere da una scheda lead senza cliente collegato.
+Nessuna modifica applicata: questa è solo la diagnosi richiesta.
