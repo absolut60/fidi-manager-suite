@@ -1567,6 +1567,139 @@ export type Database = {
           },
         ]
       }
+      eventi: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          data_evento: string | null
+          id: string
+          luogo: string | null
+          nome: string
+          note: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          data_evento?: string | null
+          id?: string
+          luogo?: string | null
+          nome: string
+          note?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          data_evento?: string | null
+          id?: string
+          luogo?: string | null
+          nome?: string
+          note?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      eventi_partecipanti: {
+        Row: {
+          cliente_id: string | null
+          codice_fiscale: string | null
+          cognome: string | null
+          contatto_id: string | null
+          created_at: string
+          email: string | null
+          evento_id: string
+          id: string
+          lead_id: string | null
+          nome: string | null
+          note: string | null
+          partita_iva: string | null
+          ragione_sociale: string | null
+          stato: Database["public"]["Enums"]["eventi_partecipante_stato"]
+          telefono: string | null
+          updated_at: string
+        }
+        Insert: {
+          cliente_id?: string | null
+          codice_fiscale?: string | null
+          cognome?: string | null
+          contatto_id?: string | null
+          created_at?: string
+          email?: string | null
+          evento_id: string
+          id?: string
+          lead_id?: string | null
+          nome?: string | null
+          note?: string | null
+          partita_iva?: string | null
+          ragione_sociale?: string | null
+          stato?: Database["public"]["Enums"]["eventi_partecipante_stato"]
+          telefono?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cliente_id?: string | null
+          codice_fiscale?: string | null
+          cognome?: string | null
+          contatto_id?: string | null
+          created_at?: string
+          email?: string | null
+          evento_id?: string
+          id?: string
+          lead_id?: string | null
+          nome?: string | null
+          note?: string | null
+          partita_iva?: string | null
+          ragione_sociale?: string | null
+          stato?: Database["public"]["Enums"]["eventi_partecipante_stato"]
+          telefono?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "eventi_partecipanti_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "eventi_partecipanti_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti_con_rischio"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "eventi_partecipanti_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "eventi_partecipanti_contatto_id_fkey"
+            columns: ["contatto_id"]
+            isOneToOne: false
+            referencedRelation: "contatti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "eventi_partecipanti_evento_id_fkey"
+            columns: ["evento_id"]
+            isOneToOne: false
+            referencedRelation: "eventi"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "eventi_partecipanti_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "lead"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fornitori: {
         Row: {
           created_at: string
@@ -4729,6 +4862,11 @@ export type Database = {
         | "esecutore_richieste"
         | "marketing"
       esito_approvazione: "approvata" | "rifiutata"
+      eventi_partecipante_stato:
+        | "atteso"
+        | "confermato"
+        | "presentato"
+        | "no_show"
       lead_fonte: "web" | "hubspot" | "manuale" | "fiera" | "evento" | "altro"
       lead_priorita: "alta" | "media" | "bassa"
       lead_richiesta_stato: "aperta" | "in_lavorazione" | "evasa" | "respinta"
@@ -4967,6 +5105,12 @@ export const Constants = {
         "marketing",
       ],
       esito_approvazione: ["approvata", "rifiutata"],
+      eventi_partecipante_stato: [
+        "atteso",
+        "confermato",
+        "presentato",
+        "no_show",
+      ],
       lead_fonte: ["web", "hubspot", "manuale", "fiera", "evento", "altro"],
       lead_priorita: ["alta", "media", "bassa"],
       lead_richiesta_stato: ["aperta", "in_lavorazione", "evasa", "respinta"],
