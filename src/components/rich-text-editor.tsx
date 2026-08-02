@@ -386,7 +386,7 @@ export function RichTextEditor({
         </div>
       )}
 
-      <div className="relative">
+      <div className="relative" ref={wrapRef}>
         <div
           ref={ref}
           contentEditable
