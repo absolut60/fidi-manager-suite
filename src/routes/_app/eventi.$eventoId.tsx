@@ -159,34 +159,8 @@ function EventoDettaglioPage() {
     onError: (e: Error) => toast.error("Errore nell'eliminazione", { description: e.message }),
   });
 
-  const aggiungiPartecipante = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.from("eventi_partecipanti").insert({
-        evento_id: eventoId,
-        stato: statoNuovo,
-        ragione_sociale: campi.ragione_sociale.trim() || null,
-        nome: campi.nome.trim() || null,
-        cognome: campi.cognome.trim() || null,
-        partita_iva: campi.partita_iva.trim() || null,
-        codice_fiscale: campi.codice_fiscale.trim() || null,
-        email: campi.email.trim() || null,
-        telefono: campi.telefono.trim() || null,
-        note: campi.note.trim() || null,
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["evento-partecipanti", eventoId] });
-      queryClient.invalidateQueries({ queryKey: ["eventi-lista"] });
-      setOpenNuovo(false);
-      setCampi({ ...CAMPI_VUOTI });
-      setStatoNuovo("atteso");
-      toast.success("Partecipante aggiunto");
-    },
-    onError: (e: Error) => toast.error("Errore nell'inserimento", { description: e.message }),
-  });
-
   const cambiaStato = useMutation({
+
     mutationFn: async ({ id, stato }: { id: string; stato: EventiPartecipanteStato }) => {
       const { error } = await supabase.from("eventi_partecipanti").update({ stato }).eq("id", id);
       if (error) throw error;
