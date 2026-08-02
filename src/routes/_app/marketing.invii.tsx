@@ -155,6 +155,17 @@ function InviiMarketingPage() {
     },
   });
 
+  if (authLoading) return <div className="p-6 text-muted-foreground">Caricamento...</div>;
+  if (!canSee)
+    return (
+      <Card className="p-8 text-center">
+        <p className="font-medium">Accesso riservato</p>
+        <p className="text-sm text-muted-foreground mt-1">
+          Questa sezione è riservata ai ruoli Marketing, Amministrazione, Direzione e Amministratore.
+        </p>
+      </Card>
+    );
+
   return (
     <div className="space-y-6">
       <header className="flex items-center gap-3">
