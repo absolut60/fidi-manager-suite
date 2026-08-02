@@ -2,7 +2,8 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowLeft, Save, Trash2, Loader2, ScrollText } from "lucide-react";
+import { ArrowLeft, Save, Trash2, Loader2, ScrollText, Info } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -211,6 +212,23 @@ function LeadDettaglioPage() {
       return data ?? [];
     },
   });
+
+  const { data: contattiLead } = useQuery({
+    queryKey: ["lead-contatti", leadId],
+    enabled: canSee,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("contatti")
+        .select("id, cliente_id, nome, cognome, email, telefono, cellulare, ruolo")
+        .eq("lead_id", leadId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const haContatti = (contattiLead?.length ?? 0) > 0;
+
+
 
   if (authLoading) return <Skeleton className="h-40 w-full" />;
 
@@ -422,8 +440,22 @@ function LeadDettaglioPage() {
 
         <TabsContent value="contatti" className="mt-4 space-y-4">
           <LeadContattiTab leadId={leadId} clienteId={lead.cliente_id} />
-          <LinkFirmaPrivacy leadId={leadId} />
+
+          <div className="space-y-2">
+            <h2 className="text-sm font-semibold tracking-tight">Raccolta consensi GDPR</h2>
+            {!haContatti && (
+              <Alert>
+                <Info className="size-4" />
+                <AlertDescription>
+                  Aggiungi un contatto-persona per poter raccogliere la firma privacy e i consensi
+                  marketing (GDPR). La privacy si firma sulla persona fisica, non sull'azienda.
+                </AlertDescription>
+              </Alert>
+            )}
+            <LinkFirmaPrivacy leadId={leadId} />
+          </div>
         </TabsContent>
+
 
 
         <TabsContent value="cantieri" className="mt-4">

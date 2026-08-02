@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { AlertTriangle, Loader2 } from "lucide-react";
+import { AlertTriangle, Info, Loader2 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -59,6 +60,7 @@ const NESSUNO = "__none__";
 
 export function NuovoLeadDialog({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [f, setF] = useState<Form>(EMPTY);
   const [duplicati, setDuplicati] = useState<DedupMatch[]>([]);
@@ -147,8 +149,20 @@ export function NuovoLeadDialog({ onClose }: { onClose: () => void }) {
       }
       return data;
     },
-    onSuccess: () => {
-      toast.success("Lead creato");
+    onSuccess: (data) => {
+      toast.success("Lead creato", {
+        description:
+          "Prossimo passo: aggiungi un contatto-persona nella scheda del lead per raccogliere privacy e consensi marketing.",
+        duration: 8000,
+        ...(data?.id
+          ? {
+              action: {
+                label: "Vai al lead",
+                onClick: () => navigate({ to: "/lead/$leadId", params: { leadId: data.id } }),
+              },
+            }
+          : {}),
+      });
       qc.invalidateQueries({ queryKey: ["lead-lista"] });
       onClose();
     },
@@ -160,9 +174,21 @@ export function NuovoLeadDialog({ onClose }: { onClose: () => void }) {
       <DialogHeader>
         <DialogTitle>Nuovo lead</DialogTitle>
         <DialogDescription>
+          Un lead è un potenziale cliente o una richiesta in ingresso, non ancora un cliente attivo:
+          diventerà cliente con la conversione.
+        </DialogDescription>
+        <DialogDescription>
           Inserimento rapido. Serve almeno la ragione sociale oppure nome e cognome.
         </DialogDescription>
       </DialogHeader>
+
+      <Alert>
+        <Info className="size-4" />
+        <AlertDescription>
+          Privacy e consensi marketing si raccolgono dopo, sul contatto-persona: dalla scheda del lead,
+          tab <span className="font-medium">Contatti</span>.
+        </AlertDescription>
+      </Alert>
 
       {duplicati.length > 0 && (
         <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">

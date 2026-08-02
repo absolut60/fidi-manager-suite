@@ -1135,6 +1135,9 @@ function ClientiPage() {
           <p className="text-sm text-muted-foreground mt-1">
             Anagrafica dei clienti dei punti vendita
           </p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Per un potenziale cliente non ancora attivo, usa i Lead.
+          </p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
