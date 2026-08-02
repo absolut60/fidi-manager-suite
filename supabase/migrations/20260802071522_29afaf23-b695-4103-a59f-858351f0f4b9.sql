@@ -1,0 +1,4 @@
+CREATE POLICY "email_assets_campagne_select" ON storage.objects FOR SELECT TO authenticated USING (bucket_id = 'email-assets');
+CREATE POLICY "email_assets_campagne_insert" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'email-assets' AND (storage.foldername(name))[1] = 'campagne');
+CREATE POLICY "email_assets_campagne_update" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'email-assets' AND (storage.foldername(name))[1] = 'campagne') WITH CHECK (bucket_id = 'email-assets' AND (storage.foldername(name))[1] = 'campagne');
+CREATE POLICY "email_assets_campagne_delete" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'email-assets' AND (storage.foldername(name))[1] = 'campagne');
