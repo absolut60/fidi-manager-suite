@@ -3,7 +3,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Copy, Link2, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,8 +17,6 @@ import {
 } from "@/components/ui/select";
 import { SoggettoCombobox, type SoggettoSelezionato } from "@/components/soggetto-combobox";
 import { cercaDuplicati, type DedupMatch } from "@/lib/lead-dedup";
-import { creaLead } from "@/lib/lead-crea";
-import { creaContattoPersona } from "@/lib/contatto-crea";
 import {
   EVENTI_PARTECIPANTE_STATI, EVENTI_PARTECIPANTE_STATO_LABEL,
   type EventiPartecipanteStato,
@@ -57,7 +54,6 @@ export function AggiungiPartecipanteDialog({
   nomeEvento: string;
 }) {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
 
   const [open, setOpen] = useState(false);
   const [modo, setModo] = useState<"collega" | "nuovo">("collega");
