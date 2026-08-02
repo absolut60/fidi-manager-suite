@@ -155,7 +155,6 @@ export function LeadCantieriTab({ leadId, clienteId }: { leadId: string; cliente
 
   const addMut = useMutation({
     mutationFn: async () => {
-      if (!clienteId) throw new Error("Lead non collegato a un cliente");
       const { error } = await supabase.from("cantieri").insert({
         cliente_id: clienteId,
         lead_id: leadId,
@@ -175,13 +174,17 @@ export function LeadCantieriTab({ leadId, clienteId }: { leadId: string; cliente
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // Righe lead-only: non possono restare senza cliente né lead → si eliminano.
+  // Righe già collegate a un cliente: si scollega soltanto il lead.
   const delMut = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("cantieri").update({ lead_id: null }).eq("id", id);
+    mutationFn: async (c: { id: string; cliente_id: string | null }) => {
+      const { error } = c.cliente_id
+        ? await supabase.from("cantieri").update({ lead_id: null }).eq("id", c.id)
+        : await supabase.from("cantieri").delete().eq("id", c.id);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Collegamento rimosso");
+      toast.success("Cantiere rimosso dal lead");
       qc.invalidateQueries({ queryKey: ["lead-cantieri", leadId] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -190,21 +193,20 @@ export function LeadCantieriTab({ leadId, clienteId }: { leadId: string; cliente
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
-        {!clienteId && (
-          <p className="text-xs text-muted-foreground">
-            Per aggiungere cantieri il lead deve essere collegato a un cliente (conversione).
-          </p>
-        )}
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button size="sm" className="gap-1.5 ml-auto" disabled={!clienteId}>
+            <Button size="sm" className="gap-1.5 ml-auto">
               <Plus className="size-4" /> Nuovo cantiere
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Nuovo cantiere</DialogTitle>
-              <DialogDescription>Il cantiere viene collegato al lead e al cliente associato.</DialogDescription>
+              <DialogDescription>
+                {clienteId
+                  ? "Il cantiere viene collegato al lead e al cliente associato."
+                  : "Il cantiere appartiene al lead; verrà collegato al cliente alla conversione."}
+              </DialogDescription>
             </DialogHeader>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="sm:col-span-2"><Label className="text-xs">Nome *</Label><Input value={nome} maxLength={200} onChange={(e) => setNome(e.target.value)} /></div>
