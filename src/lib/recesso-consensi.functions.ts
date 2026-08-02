@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { risolviIntestazioneSoggetto } from "./intestazione-soggetto.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { CONSENSO_LABEL, type TipoConsenso } from "./consensi-testi";
 
@@ -58,18 +59,14 @@ export const getContattoPerRecesso = createServerFn({ method: "GET" })
     const { data: ct, error } = await supabaseAdmin
       .from("contatti")
       .select(
-        "id, cliente_id, nome, cognome, email, consenso_profilazione, consenso_marketing_media, consenso_marketing_diretto"
+        "id, cliente_id, lead_id, nome, cognome, email, consenso_profilazione, consenso_marketing_media, consenso_marketing_diretto"
       )
       .eq("recesso_token", data.token)
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!ct) throw new Error("Link non valido");
 
-    const { data: cli } = await supabaseAdmin
-      .from("clienti")
-      .select("ragione_sociale, partita_iva, indirizzo, citta")
-      .eq("id", ct.cliente_id ?? "00000000-0000-0000-0000-000000000000")
-      .maybeSingle();
+    const soggetto = await risolviIntestazioneSoggetto(ct);
 
     return {
       contatto: {
@@ -79,10 +76,10 @@ export const getContattoPerRecesso = createServerFn({ method: "GET" })
         email: ct.email,
       },
       cliente: {
-        ragione_sociale: cli?.ragione_sociale ?? "",
-        partita_iva: cli?.partita_iva ?? null,
-        indirizzo: cli?.indirizzo ?? null,
-        citta: cli?.citta ?? null,
+        ragione_sociale: soggetto.ragione_sociale,
+        partita_iva: soggetto.partita_iva,
+        indirizzo: soggetto.indirizzo,
+        citta: soggetto.citta,
       },
       statoAttuale: {
         profilazione: !!ct.consenso_profilazione,
@@ -115,7 +112,7 @@ export const revocaConsensi = createServerFn({ method: "POST" })
 
     const { data: ct, error } = await supabaseAdmin
       .from("contatti")
-      .select("id, cliente_id, nome, cognome, email")
+      .select("id, cliente_id, lead_id, nome, cognome, email")
       .eq("recesso_token", data.token)
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -134,11 +131,7 @@ export const revocaConsensi = createServerFn({ method: "POST" })
 
     // Notifica amministrazione (non blocca la revoca in caso di errore invio)
     try {
-      const { data: cli } = await supabaseAdmin
-        .from("clienti")
-        .select("ragione_sociale")
-        .eq("id", ct.cliente_id ?? "00000000-0000-0000-0000-000000000000")
-        .maybeSingle();
+      const soggetto = await risolviIntestazioneSoggetto(ct);
 
       const conf = async (chiave: string) => {
         const { data: r } = await supabaseAdmin
@@ -159,14 +152,14 @@ export const revocaConsensi = createServerFn({ method: "POST" })
         const lista = tipi.map((t) => `<li>${CONSENSO_LABEL[t]}</li>`).join("");
         await sendEmailViaEdge({
           to: dest,
-          subject: `Revoca consensi marketing — ${cli?.ragione_sociale ?? ""}`,
+          subject: `Revoca consensi marketing — ${soggetto.ragione_sociale}`,
           fromName: "FidiManager",
           html: `<!doctype html><html><body style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;line-height:1.5;">
 <div style="max-width:640px;margin:0 auto;padding:16px 20px;">
 <h2 style="font-size:18px;">Revoca consensi marketing</h2>
 <p>Un interessato ha revocato uno o più consensi tramite il link pubblico di recesso.</p>
 <ul>
-  <li><strong>Cliente:</strong> ${cli?.ragione_sociale ?? "—"}</li>
+  <li><strong>${soggetto.origine === "lead" ? "Lead" : "Cliente"}:</strong> ${soggetto.ragione_sociale || "—"}</li>
   <li><strong>Contatto:</strong> ${nome || "—"}${ct.email ? ` (${ct.email})` : ""}</li>
   <li><strong>Data/ora:</strong> ${quando}</li>
 </ul>
