@@ -409,18 +409,12 @@ function LeadDettaglioPage() {
               </div>
               <div>
                 <Label className="text-xs">Assegnato a</Label>
-                <Select value={f.assegnato_a || NESSUNO} onValueChange={(v) => set("assegnato_a", v === NESSUNO ? "" : v)}>
-                  <SelectTrigger><SelectValue placeholder="Nessuno" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NESSUNO}>Nessuno</SelectItem>
-                    {(profili ?? []).map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {`${p.nome ?? ""} ${p.cognome ?? ""}`.trim() || p.id}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <p className="text-sm mt-1 rounded-md border bg-muted/40 px-3 py-2">
+                  {nomeProfilo(lead.assegnato_a)}
+                  <span className="text-xs text-muted-foreground ml-2">(dalla barra azioni)</span>
+                </p>
               </div>
+
               <div>
                 <Label className="text-xs">Prossima azione il</Label>
                 <Input type="date" value={f.prossima_azione_il} onChange={(e) => set("prossima_azione_il", e.target.value)} />
