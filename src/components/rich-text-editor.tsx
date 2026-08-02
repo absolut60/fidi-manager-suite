@@ -54,14 +54,16 @@ export function pulisciHtmlEmail(html: string): string {
 }
 
 export function RichTextEditor({
-  value, onChange, onUploadImage, minHeight = 320,
+  value, onChange, onUploadImage, minHeight = 320, editorRef,
 }: {
   value: string;
   onChange: (html: string) => void;
   onUploadImage: (file: File) => Promise<string>;
   minHeight?: number;
+  editorRef?: React.MutableRefObject<HTMLDivElement | null>;
 }) {
-  const ref = useRef<HTMLDivElement | null>(null);
+  const innerRef = useRef<HTMLDivElement | null>(null);
+  const ref = editorRef ?? innerRef;
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const lastHtml = useRef(value);
