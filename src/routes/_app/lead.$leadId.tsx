@@ -52,16 +52,13 @@ type Form = {
   provincia: string;
   fonte: LeadFonte;
   fonte_dettaglio: string;
-  stato: LeadStato;
   tipo_lead: LeadTipo;
   priorita: LeadPriorita;
   store_id: string;
   agente_codice: string;
-  assegnato_a: string;
   prossima_azione_il: string;
   prossima_azione_tipo: string;
   prossima_azione_nota: string;
-  motivo_perdita: string;
   note: string;
 };
 
@@ -133,16 +130,13 @@ function LeadDettaglioPage() {
       provincia: lead.provincia ?? "",
       fonte: lead.fonte,
       fonte_dettaglio: lead.fonte_dettaglio ?? "",
-      stato: lead.stato,
       tipo_lead: lead.tipo_lead,
       priorita: lead.priorita,
       store_id: lead.store_id ?? "",
       agente_codice: lead.agente_codice ?? "",
-      assegnato_a: lead.assegnato_a ?? "",
       prossima_azione_il: lead.prossima_azione_il ?? "",
       prossima_azione_tipo: lead.prossima_azione_tipo ?? "",
       prossima_azione_nota: lead.prossima_azione_nota ?? "",
-      motivo_perdita: lead.motivo_perdita ?? "",
       note: lead.note ?? "",
     });
   }, [lead]);
