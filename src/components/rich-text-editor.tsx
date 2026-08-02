@@ -363,25 +363,13 @@ export function RichTextEditor({
       </div>
 
       {imgSel && (
-        <div className="flex flex-wrap items-center gap-1.5 border-b bg-muted/40 p-1.5 text-xs">
+        <div
+          contentEditable={false}
+          onKeyDown={(e) => e.stopPropagation()}
+          onKeyUp={(e) => e.stopPropagation()}
+          className="flex flex-wrap items-center gap-1.5 border-b bg-muted/40 p-1.5 text-xs"
+        >
           <span className="px-1 font-medium text-muted-foreground">Immagine:</span>
-          {[25, 50, 75, 100].map((p) => (
-            <Button key={p} type="button" size="sm" variant="outline" className="h-7 px-2"
-              onMouseDown={(e) => { e.preventDefault(); applicaLarghezzaPercentuale(p); }}>
-              {p}%
-            </Button>
-          ))}
-          <span className="ml-1 text-muted-foreground">px</span>
-          <input
-            type="number" min={40} max={LARGHEZZA_CORPO} value={larghezzaPx}
-            onChange={(e) => {
-              const v = Number(e.target.value);
-              setLarghezzaPx(v);
-              if (Number.isFinite(v) && v >= 40) applicaLarghezzaPixel(v);
-            }}
-            className="h-7 w-20 rounded-md border bg-background px-2"
-          />
-          <Separator orientation="vertical" className="mx-1 h-6" />
           <Button type="button" size="sm" variant="outline" className="h-7 w-7 p-0" title="Allinea a sinistra"
             onMouseDown={(e) => { e.preventDefault(); applicaAllineamento("left"); }}><AlignLeft className="size-3.5" /></Button>
           <Button type="button" size="sm" variant="outline" className="h-7 w-7 p-0" title="Centra"
@@ -397,6 +385,7 @@ export function RichTextEditor({
             onMouseDown={(e) => { e.preventDefault(); deselezionaImmagine(); }}>
             Chiudi
           </Button>
+          <span className="ml-auto px-1 text-muted-foreground">Trascina le maniglie per ridimensionare</span>
         </div>
       )}
 
@@ -433,15 +422,27 @@ export function RichTextEditor({
               outline: "2px solid #c94f8f", outlineOffset: 1,
             }}
           >
-            <div
-              className="pointer-events-auto absolute size-3 cursor-nwse-resize rounded-sm border border-white"
-              style={{ right: -6, bottom: -6, background: "#c94f8f" }}
-              onPointerDown={iniziaTrascinamento}
-              title="Trascina per ridimensionare"
-            />
+            {MANIGLIE.map((m) => (
+              <div
+                key={m.dir}
+                className="pointer-events-auto absolute rounded-[2px] border border-white shadow"
+                style={{ ...m.pos, width: 10, height: 10, background: "#c94f8f", cursor: m.cursor, touchAction: "none" }}
+                onPointerDown={iniziaTrascinamento(m.dir)}
+                title="Trascina per ridimensionare"
+              />
+            ))}
+            {larghezzaDrag !== null && (
+              <div
+                className="absolute rounded px-1.5 py-0.5 text-[11px] font-medium text-white"
+                style={{ left: "50%", top: -24, transform: "translateX(-50%)", background: "#c94f8f" }}
+              >
+                {larghezzaDrag} px
+              </div>
+            )}
           </div>
         )}
       </div>
+
 
       {uploading && (
         <div className="flex items-center gap-2 border-t px-3 py-1.5 text-xs text-muted-foreground">
