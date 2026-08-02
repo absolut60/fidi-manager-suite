@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft, CalendarDays, Check, MapPin, Plus, Save, Trash2, UserX,
+  ArrowLeft, CalendarDays, Check, MapPin, Save, Trash2, UserX,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,22 +15,18 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
-} from "@/components/ui/dialog";
-import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { AggiungiPartecipanteDialog } from "@/components/eventi/aggiungi-partecipante-dialog";
 import { puoAccedereLead } from "@/lib/lead-costanti";
+
 import {
-  EVENTI_PARTECIPANTE_STATI, EVENTI_PARTECIPANTE_STATO_CLASS,
+  EVENTI_PARTECIPANTE_STATO_CLASS,
   EVENTI_PARTECIPANTE_STATO_LABEL, formatDataEvento, nomePartecipante,
   type EventiPartecipanteStato,
 } from "@/lib/eventi-costanti";
@@ -66,10 +62,8 @@ type PartecipanteRow = {
   contatto: { id: string; nome: string | null; cognome: string | null } | null;
 };
 
-const CAMPI_VUOTI = {
-  ragione_sociale: "", nome: "", cognome: "", partita_iva: "",
-  codice_fiscale: "", email: "", telefono: "", note: "",
-};
+
+
 
 function EventoDettaglioPage() {
   const { eventoId } = Route.useParams();
@@ -83,9 +77,8 @@ function EventoDettaglioPage() {
   const [luogo, setLuogo] = useState("");
   const [note, setNote] = useState("");
 
-  const [openNuovo, setOpenNuovo] = useState(false);
-  const [campi, setCampi] = useState({ ...CAMPI_VUOTI });
-  const [statoNuovo, setStatoNuovo] = useState<EventiPartecipanteStato>("atteso");
+
+
 
   const { data: evento, isLoading } = useQuery({
     queryKey: ["evento", eventoId],
@@ -159,34 +152,8 @@ function EventoDettaglioPage() {
     onError: (e: Error) => toast.error("Errore nell'eliminazione", { description: e.message }),
   });
 
-  const aggiungiPartecipante = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.from("eventi_partecipanti").insert({
-        evento_id: eventoId,
-        stato: statoNuovo,
-        ragione_sociale: campi.ragione_sociale.trim() || null,
-        nome: campi.nome.trim() || null,
-        cognome: campi.cognome.trim() || null,
-        partita_iva: campi.partita_iva.trim() || null,
-        codice_fiscale: campi.codice_fiscale.trim() || null,
-        email: campi.email.trim() || null,
-        telefono: campi.telefono.trim() || null,
-        note: campi.note.trim() || null,
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["evento-partecipanti", eventoId] });
-      queryClient.invalidateQueries({ queryKey: ["eventi-lista"] });
-      setOpenNuovo(false);
-      setCampi({ ...CAMPI_VUOTI });
-      setStatoNuovo("atteso");
-      toast.success("Partecipante aggiunto");
-    },
-    onError: (e: Error) => toast.error("Errore nell'inserimento", { description: e.message }),
-  });
-
   const cambiaStato = useMutation({
+
     mutationFn: async ({ id, stato }: { id: string; stato: EventiPartecipanteStato }) => {
       const { error } = await supabase.from("eventi_partecipanti").update({ stato }).eq("id", id);
       if (error) throw error;
@@ -211,7 +178,7 @@ function EventoDettaglioPage() {
     onError: (e: Error) => toast.error("Errore nell'eliminazione", { description: e.message }),
   });
 
-  const nomeValido = campi.ragione_sociale.trim() || campi.nome.trim() || campi.cognome.trim();
+
 
   if (authLoading || isLoading) return <Skeleton className="h-40 w-full" />;
 
@@ -318,82 +285,8 @@ function EventoDettaglioPage() {
               Prima dell'evento la lista degli attesi, durante e dopo il censimento di chi si presenta.
             </p>
           </div>
-          <Dialog open={openNuovo} onOpenChange={setOpenNuovo}>
-            <DialogTrigger asChild>
-              <Button className="gap-1.5"><Plus className="size-4" /> Aggiungi partecipante</Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-lg">
-              <DialogHeader><DialogTitle>Nuovo partecipante</DialogTitle></DialogHeader>
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="p-rs">Ragione sociale</Label>
-                  <Input id="p-rs" value={campi.ragione_sociale}
-                    onChange={(e) => setCampi({ ...campi, ragione_sociale: e.target.value })} />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="p-nome">Nome</Label>
-                    <Input id="p-nome" value={campi.nome}
-                      onChange={(e) => setCampi({ ...campi, nome: e.target.value })} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="p-cognome">Cognome</Label>
-                    <Input id="p-cognome" value={campi.cognome}
-                      onChange={(e) => setCampi({ ...campi, cognome: e.target.value })} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="p-piva">Partita IVA</Label>
-                    <Input id="p-piva" value={campi.partita_iva}
-                      onChange={(e) => setCampi({ ...campi, partita_iva: e.target.value })} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="p-cf">Codice fiscale</Label>
-                    <Input id="p-cf" value={campi.codice_fiscale}
-                      onChange={(e) => setCampi({ ...campi, codice_fiscale: e.target.value })} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="p-email">Email</Label>
-                    <Input id="p-email" type="email" value={campi.email}
-                      onChange={(e) => setCampi({ ...campi, email: e.target.value })} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="p-tel">Telefono</Label>
-                    <Input id="p-tel" value={campi.telefono}
-                      onChange={(e) => setCampi({ ...campi, telefono: e.target.value })} />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Stato</Label>
-                  <Select value={statoNuovo} onValueChange={(v) => setStatoNuovo(v as EventiPartecipanteStato)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {EVENTI_PARTECIPANTE_STATI.map((s) => (
-                        <SelectItem key={s} value={s}>{EVENTI_PARTECIPANTE_STATO_LABEL[s]}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="p-note">Note</Label>
-                  <Textarea id="p-note" rows={2} value={campi.note}
-                    onChange={(e) => setCampi({ ...campi, note: e.target.value })} />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setOpenNuovo(false)}>Annulla</Button>
-                <Button
-                  disabled={!nomeValido || aggiungiPartecipante.isPending}
-                  onClick={() => aggiungiPartecipante.mutate()}
-                >
-                  Aggiungi
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <AggiungiPartecipanteDialog eventoId={eventoId} nomeEvento={evento.nome} />
+
         </div>
 
         <Table>
