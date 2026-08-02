@@ -113,6 +113,8 @@ function buildAnteprima(oggetto: string, corpo: string): { oggetto: string; html
     mittente: { nome: "Ufficio Marketing MADE" },
     linkRecesso: "#",
     useCid: false,
+    // In anteprima le immagini vengono risolte sull'origin corrente.
+    baseUrl: typeof window !== "undefined" ? window.location.origin : null,
   });
 }
 
@@ -434,8 +436,9 @@ function EditorCampagna({
       .from("email-assets")
       .upload(path, file, { contentType: file.type, upsert: false });
     if (error) throw new Error(`Caricamento immagine fallito: ${error.message}`);
-    const base = (import.meta.env.VITE_APP_URL as string | undefined) ?? "https://fidi-manager-suite.lovable.app";
-    return `${base}/api/public/email-img/${path}`;
+    // URL RELATIVO: viene reso assoluto solo al momento dell'anteprima
+    // (origin corrente) o dell'invio (dominio pubblico dell'app).
+    return `/api/public/email-img/${path}`;
   };
 
   const anteprima = useMemo(() => buildAnteprima(oggetto, corpo), [oggetto, corpo]);

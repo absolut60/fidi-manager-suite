@@ -154,6 +154,7 @@ export const inviaEmailProvaCampagna = createServerFn({ method: "POST" })
       mittente: { nome: nomeOp, email: prof?.email ?? null },
       linkRecesso: `${appUrl}/recesso/00000000-0000-0000-0000-000000000000`,
       useCid: true,
+      baseUrl: appUrl,
     });
 
     // Allegati della campagna, come nell'invio reale.
