@@ -243,7 +243,12 @@ export function LeadCantieriTab({ leadId, clienteId }: { leadId: string; cliente
                 </div>
                 <Button
                   variant="ghost" size="icon"
-                  onClick={() => { if (confirm("Scollegare il cantiere dal lead?")) delMut.mutate(c.id); }}
+                  onClick={() => {
+                    const msg = c.cliente_id
+                      ? "Scollegare il cantiere dal lead?"
+                      : "Eliminare definitivamente questo cantiere del lead?";
+                    if (confirm(msg)) delMut.mutate({ id: c.id, cliente_id: c.cliente_id });
+                  }}
                   className="text-muted-foreground hover:text-destructive"
                 >
                   <Trash2 className="size-4" />
