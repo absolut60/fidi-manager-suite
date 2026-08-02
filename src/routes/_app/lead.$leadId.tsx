@@ -199,22 +199,6 @@ function LeadDettaglioPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const { data: richieste } = useQuery({
-    queryKey: ["lead-richieste", leadId],
-    enabled: canSee,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("lead_richieste")
-        .select("id, tipo, oggetto, descrizione, stato, importo_stimato, esito, created_at")
-        .eq("lead_id", leadId)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as {
-        id: string; tipo: LeadRichiestaTipo; oggetto: string | null; descrizione: string | null;
-        stato: LeadRichiestaStato; importo_stimato: number | null; esito: string | null; created_at: string;
-      }[];
-    },
-  });
 
   const { data: storico } = useQuery({
     queryKey: ["lead-storico", leadId],
