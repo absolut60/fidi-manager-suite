@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Bold, Italic, Underline, List, ListOrdered, AlignLeft, AlignCenter, AlignRight,
-  Link2, Link2Off, Image as ImageIcon, Undo2, Redo2, RemoveFormatting, Loader2,
+  Link2, Link2Off, Image as ImageIcon, Undo2, Redo2, RemoveFormatting, Loader2, Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
