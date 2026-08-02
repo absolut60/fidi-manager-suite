@@ -1,0 +1,124 @@
+import { supabase } from "@/integrations/supabase/client";
+
+/**
+ * Deduplica base "in ingresso" per il modulo Lead.
+ * Versione locale e isolata: sarà promossa a risolutore identità condiviso
+ * in uno strato successivo. Non modifica nulla, esegue solo ricerche.
+ */
+
+/** Placeholder anagrafici da ignorare sempre. */
+const PLACEHOLDER = new Set(["102730", "102729"]);
+
+export function normalizzaCodice(v?: string | null): string {
+  if (!v) return "";
+  const n = v.replace(/[\s.\-/]/g, "").toUpperCase();
+  return PLACEHOLDER.has(n) ? "" : n;
+}
+
+export function normalizzaEmail(v?: string | null): string {
+  if (!v) return "";
+  return v.trim().toLowerCase();
+}
+
+export type DedupMatch = {
+  entita: "lead" | "cliente" | "contatto";
+  id: string;
+  /** id da usare per il link (per i contatti è il cliente_id) */
+  linkId: string;
+  etichetta: string;
+  campo: "partita_iva" | "codice_fiscale" | "email";
+  valore: string;
+};
+
+export type DedupInput = {
+  partitaIva?: string | null;
+  codiceFiscale?: string | null;
+  email?: string | null;
+  /** id del lead corrente da escludere (in modifica) */
+  escludiLeadId?: string | null;
+};
+
+function nomeDa(r: { ragione_sociale?: string | null; nome?: string | null; cognome?: string | null }) {
+  if (r.ragione_sociale?.trim()) return r.ragione_sociale.trim();
+  const pf = `${r.nome ?? ""} ${r.cognome ?? ""}`.trim();
+  return pf || "(senza nome)";
+}
+
+/** Cerca corrispondenze normalizzate su lead, clienti e contatti. */
+export async function cercaDuplicati(input: DedupInput): Promise<DedupMatch[]> {
+  const piva = normalizzaCodice(input.partitaIva);
+  const cf = normalizzaCodice(input.codiceFiscale);
+  const email = normalizzaEmail(input.email);
+  if (!piva && !cf && !email) return [];
+
+  const out: DedupMatch[] = [];
+  const push = (m: DedupMatch) => {
+    if (!out.some((x) => x.entita === m.entita && x.id === m.id && x.campo === m.campo)) out.push(m);
+  };
+
+  const ors: string[] = [];
+  if (piva) ors.push(`partita_iva.ilike.%${piva}%`);
+  if (cf) ors.push(`codice_fiscale.ilike.%${cf}%`);
+  if (email) ors.push(`email.ilike.${email}`);
+  const filtro = ors.join(",");
+
+  const [leadRes, clientiRes, contattiRes] = await Promise.all([
+    supabase
+      .from("lead")
+      .select("id, ragione_sociale, nome, cognome, partita_iva, codice_fiscale, email")
+      .or(filtro)
+      .limit(20),
+    supabase
+      .from("clienti")
+      .select("id, ragione_sociale, partita_iva, codice_fiscale, email")
+      .or(filtro)
+      .limit(20),
+    supabase
+      .from("contatti")
+      .select("id, cliente_id, nome, cognome, codice_fiscale, email")
+      .or(
+        [
+          ...(cf ? [`codice_fiscale.ilike.%${cf}%`] : []),
+          ...(email ? [`email.ilike.${email}`] : []),
+        ].join(","),
+      )
+      .limit(20),
+  ]);
+
+  const controlla = (
+    entita: DedupMatch["entita"],
+    id: string,
+    linkId: string,
+    etichetta: string,
+    row: { partita_iva?: string | null; codice_fiscale?: string | null; email?: string | null },
+  ) => {
+    if (piva && normalizzaCodice(row.partita_iva) === piva) {
+      push({ entita, id, linkId, etichetta, campo: "partita_iva", valore: piva });
+    }
+    if (cf && normalizzaCodice(row.codice_fiscale) === cf) {
+      push({ entita, id, linkId, etichetta, campo: "codice_fiscale", valore: cf });
+    }
+    if (email && normalizzaEmail(row.email) === email) {
+      push({ entita, id, linkId, etichetta, campo: "email", valore: email });
+    }
+  };
+
+  for (const l of leadRes.data ?? []) {
+    if (input.escludiLeadId && l.id === input.escludiLeadId) continue;
+    controlla("lead", l.id, l.id, nomeDa(l), l);
+  }
+  for (const c of clientiRes.data ?? []) {
+    controlla("cliente", c.id, c.id, nomeDa(c), c);
+  }
+  for (const c of contattiRes.data ?? []) {
+    controlla("contatto", c.id, c.cliente_id, nomeDa(c), c);
+  }
+
+  return out;
+}
+
+export const DEDUP_CAMPO_LABEL: Record<DedupMatch["campo"], string> = {
+  partita_iva: "P.IVA",
+  codice_fiscale: "C.F.",
+  email: "email",
+};

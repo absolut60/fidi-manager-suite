@@ -31,6 +31,7 @@ import { Route as AppRecuperoCreditiRouteImport } from './routes/_app/recupero-c
 import { Route as AppPrivacyRouteImport } from './routes/_app/privacy'
 import { Route as AppPianiRientroRouteImport } from './routes/_app/piani-rientro'
 import { Route as AppLegaliRouteImport } from './routes/_app/legali'
+import { Route as AppLeadRouteImport } from './routes/_app/lead'
 import { Route as AppImpostazioniRouteImport } from './routes/_app/impostazioni'
 import { Route as AppImportExportRouteImport } from './routes/_app/import-export'
 import { Route as AppFidiProcessareRouteImport } from './routes/_app/fidi-processare'
@@ -44,6 +45,7 @@ import { Route as AppApprovazioniRouteImport } from './routes/_app/approvazioni'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as AppRichiesteInterneIndexRouteImport } from './routes/_app/richieste-interne.index'
+import { Route as AppLeadIndexRouteImport } from './routes/_app/lead.index'
 import { Route as ApiPublicInngestRouteImport } from './routes/api/public/inngest'
 import { Route as AppRichiesteRichiestaIdRouteImport } from './routes/_app/richieste.$richiestaId'
 import { Route as AppRichiesteInterneTutteRouteImport } from './routes/_app/richieste-interne.tutte'
@@ -55,6 +57,7 @@ import { Route as AppRichiesteInterneRichiestaIdRouteImport } from './routes/_ap
 import { Route as AppMarketingSegmentiRouteImport } from './routes/_app/marketing.segmenti'
 import { Route as AppMarketingInviiRouteImport } from './routes/_app/marketing.invii'
 import { Route as AppMarketingCampagneRouteImport } from './routes/_app/marketing.campagne'
+import { Route as AppLeadLeadIdRouteImport } from './routes/_app/lead.$leadId'
 import { Route as AppClientiClienteIdRouteImport } from './routes/_app/clienti.$clienteId'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
@@ -175,6 +178,11 @@ const AppLegaliRoute = AppLegaliRouteImport.update({
   path: '/legali',
   getParentRoute: () => AppRoute,
 } as any)
+const AppLeadRoute = AppLeadRouteImport.update({
+  id: '/lead',
+  path: '/lead',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppImpostazioniRoute = AppImpostazioniRouteImport.update({
   id: '/impostazioni',
   path: '/impostazioni',
@@ -243,6 +251,11 @@ const AppRichiesteInterneIndexRoute =
     path: '/richieste-interne/',
     getParentRoute: () => AppRoute,
   } as any)
+const AppLeadIndexRoute = AppLeadIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppLeadRoute,
+} as any)
 const ApiPublicInngestRoute = ApiPublicInngestRouteImport.update({
   id: '/api/public/inngest',
   path: '/api/public/inngest',
@@ -303,6 +316,11 @@ const AppMarketingCampagneRoute = AppMarketingCampagneRouteImport.update({
   path: '/marketing/campagne',
   getParentRoute: () => AppRoute,
 } as any)
+const AppLeadLeadIdRoute = AppLeadLeadIdRouteImport.update({
+  id: '/$leadId',
+  path: '/$leadId',
+  getParentRoute: () => AppLeadRoute,
+} as any)
 const AppClientiClienteIdRoute = AppClientiClienteIdRouteImport.update({
   id: '/$clienteId',
   path: '/$clienteId',
@@ -353,6 +371,7 @@ export interface FileRoutesByFullPath {
   '/fidi-processare': typeof AppFidiProcessareRoute
   '/import-export': typeof AppImportExportRoute
   '/impostazioni': typeof AppImpostazioniRoute
+  '/lead': typeof AppLeadRouteWithChildren
   '/legali': typeof AppLegaliRoute
   '/piani-rientro': typeof AppPianiRientroRoute
   '/privacy': typeof AppPrivacyRoute
@@ -374,6 +393,7 @@ export interface FileRoutesByFullPath {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
+  '/lead/$leadId': typeof AppLeadLeadIdRoute
   '/marketing/campagne': typeof AppMarketingCampagneRoute
   '/marketing/invii': typeof AppMarketingInviiRoute
   '/marketing/segmenti': typeof AppMarketingSegmentiRoute
@@ -385,6 +405,7 @@ export interface FileRoutesByFullPath {
   '/richieste-interne/tutte': typeof AppRichiesteInterneTutteRoute
   '/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
   '/api/public/inngest': typeof ApiPublicInngestRoute
+  '/lead/': typeof AppLeadIndexRoute
   '/richieste-interne/': typeof AppRichiesteInterneIndexRoute
   '/api/public/email-img/$': typeof ApiPublicEmailImgSplatRoute
   '/api/public/hooks/check-reminder-ritardi': typeof ApiPublicHooksCheckReminderRitardiRoute
@@ -427,6 +448,7 @@ export interface FileRoutesByTo {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
+  '/lead/$leadId': typeof AppLeadLeadIdRoute
   '/marketing/campagne': typeof AppMarketingCampagneRoute
   '/marketing/invii': typeof AppMarketingInviiRoute
   '/marketing/segmenti': typeof AppMarketingSegmentiRoute
@@ -438,6 +460,7 @@ export interface FileRoutesByTo {
   '/richieste-interne/tutte': typeof AppRichiesteInterneTutteRoute
   '/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
   '/api/public/inngest': typeof ApiPublicInngestRoute
+  '/lead': typeof AppLeadIndexRoute
   '/richieste-interne': typeof AppRichiesteInterneIndexRoute
   '/api/public/email-img/$': typeof ApiPublicEmailImgSplatRoute
   '/api/public/hooks/check-reminder-ritardi': typeof ApiPublicHooksCheckReminderRitardiRoute
@@ -461,6 +484,7 @@ export interface FileRoutesById {
   '/_app/fidi-processare': typeof AppFidiProcessareRoute
   '/_app/import-export': typeof AppImportExportRoute
   '/_app/impostazioni': typeof AppImpostazioniRoute
+  '/_app/lead': typeof AppLeadRouteWithChildren
   '/_app/legali': typeof AppLegaliRoute
   '/_app/piani-rientro': typeof AppPianiRientroRoute
   '/_app/privacy': typeof AppPrivacyRoute
@@ -482,6 +506,7 @@ export interface FileRoutesById {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_app/clienti/$clienteId': typeof AppClientiClienteIdRoute
+  '/_app/lead/$leadId': typeof AppLeadLeadIdRoute
   '/_app/marketing/campagne': typeof AppMarketingCampagneRoute
   '/_app/marketing/invii': typeof AppMarketingInviiRoute
   '/_app/marketing/segmenti': typeof AppMarketingSegmentiRoute
@@ -493,6 +518,7 @@ export interface FileRoutesById {
   '/_app/richieste-interne/tutte': typeof AppRichiesteInterneTutteRoute
   '/_app/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
   '/api/public/inngest': typeof ApiPublicInngestRoute
+  '/_app/lead/': typeof AppLeadIndexRoute
   '/_app/richieste-interne/': typeof AppRichiesteInterneIndexRoute
   '/api/public/email-img/$': typeof ApiPublicEmailImgSplatRoute
   '/api/public/hooks/check-reminder-ritardi': typeof ApiPublicHooksCheckReminderRitardiRoute
@@ -516,6 +542,7 @@ export interface FileRouteTypes {
     | '/fidi-processare'
     | '/import-export'
     | '/impostazioni'
+    | '/lead'
     | '/legali'
     | '/piani-rientro'
     | '/privacy'
@@ -537,6 +564,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/clienti/$clienteId'
+    | '/lead/$leadId'
     | '/marketing/campagne'
     | '/marketing/invii'
     | '/marketing/segmenti'
@@ -548,6 +576,7 @@ export interface FileRouteTypes {
     | '/richieste-interne/tutte'
     | '/richieste/$richiestaId'
     | '/api/public/inngest'
+    | '/lead/'
     | '/richieste-interne/'
     | '/api/public/email-img/$'
     | '/api/public/hooks/check-reminder-ritardi'
@@ -590,6 +619,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/clienti/$clienteId'
+    | '/lead/$leadId'
     | '/marketing/campagne'
     | '/marketing/invii'
     | '/marketing/segmenti'
@@ -601,6 +631,7 @@ export interface FileRouteTypes {
     | '/richieste-interne/tutte'
     | '/richieste/$richiestaId'
     | '/api/public/inngest'
+    | '/lead'
     | '/richieste-interne'
     | '/api/public/email-img/$'
     | '/api/public/hooks/check-reminder-ritardi'
@@ -623,6 +654,7 @@ export interface FileRouteTypes {
     | '/_app/fidi-processare'
     | '/_app/import-export'
     | '/_app/impostazioni'
+    | '/_app/lead'
     | '/_app/legali'
     | '/_app/piani-rientro'
     | '/_app/privacy'
@@ -644,6 +676,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/_app/clienti/$clienteId'
+    | '/_app/lead/$leadId'
     | '/_app/marketing/campagne'
     | '/_app/marketing/invii'
     | '/_app/marketing/segmenti'
@@ -655,6 +688,7 @@ export interface FileRouteTypes {
     | '/_app/richieste-interne/tutte'
     | '/_app/richieste/$richiestaId'
     | '/api/public/inngest'
+    | '/_app/lead/'
     | '/_app/richieste-interne/'
     | '/api/public/email-img/$'
     | '/api/public/hooks/check-reminder-ritardi'
@@ -836,6 +870,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppLegaliRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/lead': {
+      id: '/_app/lead'
+      path: '/lead'
+      fullPath: '/lead'
+      preLoaderRoute: typeof AppLeadRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/impostazioni': {
       id: '/_app/impostazioni'
       path: '/impostazioni'
@@ -927,6 +968,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRichiesteInterneIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/lead/': {
+      id: '/_app/lead/'
+      path: '/'
+      fullPath: '/lead/'
+      preLoaderRoute: typeof AppLeadIndexRouteImport
+      parentRoute: typeof AppLeadRoute
+    }
     '/api/public/inngest': {
       id: '/api/public/inngest'
       path: '/api/public/inngest'
@@ -1004,6 +1052,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppMarketingCampagneRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/lead/$leadId': {
+      id: '/_app/lead/$leadId'
+      path: '/$leadId'
+      fullPath: '/lead/$leadId'
+      preLoaderRoute: typeof AppLeadLeadIdRouteImport
+      parentRoute: typeof AppLeadRoute
+    }
     '/_app/clienti/$clienteId': {
       id: '/_app/clienti/$clienteId'
       path: '/$clienteId'
@@ -1061,6 +1116,19 @@ const AppClientiRouteWithChildren = AppClientiRoute._addFileChildren(
   AppClientiRouteChildren,
 )
 
+interface AppLeadRouteChildren {
+  AppLeadLeadIdRoute: typeof AppLeadLeadIdRoute
+  AppLeadIndexRoute: typeof AppLeadIndexRoute
+}
+
+const AppLeadRouteChildren: AppLeadRouteChildren = {
+  AppLeadLeadIdRoute: AppLeadLeadIdRoute,
+  AppLeadIndexRoute: AppLeadIndexRoute,
+}
+
+const AppLeadRouteWithChildren =
+  AppLeadRoute._addFileChildren(AppLeadRouteChildren)
+
 interface AppRichiesteRouteChildren {
   AppRichiesteRichiestaIdRoute: typeof AppRichiesteRichiestaIdRoute
 }
@@ -1084,6 +1152,7 @@ interface AppRouteChildren {
   AppFidiProcessareRoute: typeof AppFidiProcessareRoute
   AppImportExportRoute: typeof AppImportExportRoute
   AppImpostazioniRoute: typeof AppImpostazioniRoute
+  AppLeadRoute: typeof AppLeadRouteWithChildren
   AppLegaliRoute: typeof AppLegaliRoute
   AppPianiRientroRoute: typeof AppPianiRientroRoute
   AppPrivacyRoute: typeof AppPrivacyRoute
@@ -1121,6 +1190,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppFidiProcessareRoute: AppFidiProcessareRoute,
   AppImportExportRoute: AppImportExportRoute,
   AppImpostazioniRoute: AppImpostazioniRoute,
+  AppLeadRoute: AppLeadRouteWithChildren,
   AppLegaliRoute: AppLegaliRoute,
   AppPianiRientroRoute: AppPianiRientroRoute,
   AppPrivacyRoute: AppPrivacyRoute,
