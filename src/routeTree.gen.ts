@@ -46,6 +46,7 @@ import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } fr
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as AppRichiesteInterneIndexRouteImport } from './routes/_app/richieste-interne.index'
 import { Route as AppLeadIndexRouteImport } from './routes/_app/lead.index'
+import { Route as AppEventiIndexRouteImport } from './routes/_app/eventi.index'
 import { Route as ApiPublicInngestRouteImport } from './routes/api/public/inngest'
 import { Route as AppRichiesteRichiestaIdRouteImport } from './routes/_app/richieste.$richiestaId'
 import { Route as AppRichiesteInterneTutteRouteImport } from './routes/_app/richieste-interne.tutte'
@@ -58,6 +59,7 @@ import { Route as AppMarketingSegmentiRouteImport } from './routes/_app/marketin
 import { Route as AppMarketingInviiRouteImport } from './routes/_app/marketing.invii'
 import { Route as AppMarketingCampagneRouteImport } from './routes/_app/marketing.campagne'
 import { Route as AppLeadLeadIdRouteImport } from './routes/_app/lead.$leadId'
+import { Route as AppEventiEventoIdRouteImport } from './routes/_app/eventi.$eventoId'
 import { Route as AppClientiClienteIdRouteImport } from './routes/_app/clienti.$clienteId'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
@@ -256,6 +258,11 @@ const AppLeadIndexRoute = AppLeadIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppLeadRoute,
 } as any)
+const AppEventiIndexRoute = AppEventiIndexRouteImport.update({
+  id: '/eventi/',
+  path: '/eventi/',
+  getParentRoute: () => AppRoute,
+} as any)
 const ApiPublicInngestRoute = ApiPublicInngestRouteImport.update({
   id: '/api/public/inngest',
   path: '/api/public/inngest',
@@ -320,6 +327,11 @@ const AppLeadLeadIdRoute = AppLeadLeadIdRouteImport.update({
   id: '/$leadId',
   path: '/$leadId',
   getParentRoute: () => AppLeadRoute,
+} as any)
+const AppEventiEventoIdRoute = AppEventiEventoIdRouteImport.update({
+  id: '/eventi/$eventoId',
+  path: '/eventi/$eventoId',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppClientiClienteIdRoute = AppClientiClienteIdRouteImport.update({
   id: '/$clienteId',
@@ -393,6 +405,7 @@ export interface FileRoutesByFullPath {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
+  '/eventi/$eventoId': typeof AppEventiEventoIdRoute
   '/lead/$leadId': typeof AppLeadLeadIdRoute
   '/marketing/campagne': typeof AppMarketingCampagneRoute
   '/marketing/invii': typeof AppMarketingInviiRoute
@@ -405,6 +418,7 @@ export interface FileRoutesByFullPath {
   '/richieste-interne/tutte': typeof AppRichiesteInterneTutteRoute
   '/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
   '/api/public/inngest': typeof ApiPublicInngestRoute
+  '/eventi/': typeof AppEventiIndexRoute
   '/lead/': typeof AppLeadIndexRoute
   '/richieste-interne/': typeof AppRichiesteInterneIndexRoute
   '/api/public/email-img/$': typeof ApiPublicEmailImgSplatRoute
@@ -448,6 +462,7 @@ export interface FileRoutesByTo {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
+  '/eventi/$eventoId': typeof AppEventiEventoIdRoute
   '/lead/$leadId': typeof AppLeadLeadIdRoute
   '/marketing/campagne': typeof AppMarketingCampagneRoute
   '/marketing/invii': typeof AppMarketingInviiRoute
@@ -460,6 +475,7 @@ export interface FileRoutesByTo {
   '/richieste-interne/tutte': typeof AppRichiesteInterneTutteRoute
   '/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
   '/api/public/inngest': typeof ApiPublicInngestRoute
+  '/eventi': typeof AppEventiIndexRoute
   '/lead': typeof AppLeadIndexRoute
   '/richieste-interne': typeof AppRichiesteInterneIndexRoute
   '/api/public/email-img/$': typeof ApiPublicEmailImgSplatRoute
@@ -506,6 +522,7 @@ export interface FileRoutesById {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_app/clienti/$clienteId': typeof AppClientiClienteIdRoute
+  '/_app/eventi/$eventoId': typeof AppEventiEventoIdRoute
   '/_app/lead/$leadId': typeof AppLeadLeadIdRoute
   '/_app/marketing/campagne': typeof AppMarketingCampagneRoute
   '/_app/marketing/invii': typeof AppMarketingInviiRoute
@@ -518,6 +535,7 @@ export interface FileRoutesById {
   '/_app/richieste-interne/tutte': typeof AppRichiesteInterneTutteRoute
   '/_app/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
   '/api/public/inngest': typeof ApiPublicInngestRoute
+  '/_app/eventi/': typeof AppEventiIndexRoute
   '/_app/lead/': typeof AppLeadIndexRoute
   '/_app/richieste-interne/': typeof AppRichiesteInterneIndexRoute
   '/api/public/email-img/$': typeof ApiPublicEmailImgSplatRoute
@@ -564,6 +582,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/clienti/$clienteId'
+    | '/eventi/$eventoId'
     | '/lead/$leadId'
     | '/marketing/campagne'
     | '/marketing/invii'
@@ -576,6 +595,7 @@ export interface FileRouteTypes {
     | '/richieste-interne/tutte'
     | '/richieste/$richiestaId'
     | '/api/public/inngest'
+    | '/eventi/'
     | '/lead/'
     | '/richieste-interne/'
     | '/api/public/email-img/$'
@@ -619,6 +639,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/clienti/$clienteId'
+    | '/eventi/$eventoId'
     | '/lead/$leadId'
     | '/marketing/campagne'
     | '/marketing/invii'
@@ -631,6 +652,7 @@ export interface FileRouteTypes {
     | '/richieste-interne/tutte'
     | '/richieste/$richiestaId'
     | '/api/public/inngest'
+    | '/eventi'
     | '/lead'
     | '/richieste-interne'
     | '/api/public/email-img/$'
@@ -676,6 +698,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/_app/clienti/$clienteId'
+    | '/_app/eventi/$eventoId'
     | '/_app/lead/$leadId'
     | '/_app/marketing/campagne'
     | '/_app/marketing/invii'
@@ -688,6 +711,7 @@ export interface FileRouteTypes {
     | '/_app/richieste-interne/tutte'
     | '/_app/richieste/$richiestaId'
     | '/api/public/inngest'
+    | '/_app/eventi/'
     | '/_app/lead/'
     | '/_app/richieste-interne/'
     | '/api/public/email-img/$'
@@ -975,6 +999,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppLeadIndexRouteImport
       parentRoute: typeof AppLeadRoute
     }
+    '/_app/eventi/': {
+      id: '/_app/eventi/'
+      path: '/eventi'
+      fullPath: '/eventi/'
+      preLoaderRoute: typeof AppEventiIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/api/public/inngest': {
       id: '/api/public/inngest'
       path: '/api/public/inngest'
@@ -1058,6 +1089,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/lead/$leadId'
       preLoaderRoute: typeof AppLeadLeadIdRouteImport
       parentRoute: typeof AppLeadRoute
+    }
+    '/_app/eventi/$eventoId': {
+      id: '/_app/eventi/$eventoId'
+      path: '/eventi/$eventoId'
+      fullPath: '/eventi/$eventoId'
+      preLoaderRoute: typeof AppEventiEventoIdRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/clienti/$clienteId': {
       id: '/_app/clienti/$clienteId'
@@ -1167,6 +1205,7 @@ interface AppRouteChildren {
   AppTemplateLetteraRoute: typeof AppTemplateLetteraRoute
   AppUtentiRoute: typeof AppUtentiRoute
   AppWhatsappRoute: typeof AppWhatsappRoute
+  AppEventiEventoIdRoute: typeof AppEventiEventoIdRoute
   AppMarketingCampagneRoute: typeof AppMarketingCampagneRoute
   AppMarketingInviiRoute: typeof AppMarketingInviiRoute
   AppMarketingSegmentiRoute: typeof AppMarketingSegmentiRoute
@@ -1176,6 +1215,7 @@ interface AppRouteChildren {
   AppRichiesteInterneGestioneRoute: typeof AppRichiesteInterneGestioneRoute
   AppRichiesteInterneMieRoute: typeof AppRichiesteInterneMieRoute
   AppRichiesteInterneTutteRoute: typeof AppRichiesteInterneTutteRoute
+  AppEventiIndexRoute: typeof AppEventiIndexRoute
   AppRichiesteInterneIndexRoute: typeof AppRichiesteInterneIndexRoute
 }
 
@@ -1205,6 +1245,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppTemplateLetteraRoute: AppTemplateLetteraRoute,
   AppUtentiRoute: AppUtentiRoute,
   AppWhatsappRoute: AppWhatsappRoute,
+  AppEventiEventoIdRoute: AppEventiEventoIdRoute,
   AppMarketingCampagneRoute: AppMarketingCampagneRoute,
   AppMarketingInviiRoute: AppMarketingInviiRoute,
   AppMarketingSegmentiRoute: AppMarketingSegmentiRoute,
@@ -1214,6 +1255,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppRichiesteInterneGestioneRoute: AppRichiesteInterneGestioneRoute,
   AppRichiesteInterneMieRoute: AppRichiesteInterneMieRoute,
   AppRichiesteInterneTutteRoute: AppRichiesteInterneTutteRoute,
+  AppEventiIndexRoute: AppEventiIndexRoute,
   AppRichiesteInterneIndexRoute: AppRichiesteInterneIndexRoute,
 }
 
