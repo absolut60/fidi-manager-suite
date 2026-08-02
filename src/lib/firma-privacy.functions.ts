@@ -56,7 +56,7 @@ export const getContattoPerFirma = createServerFn({ method: "GET" })
     const { data: cli, error: e2 } = await supabaseAdmin
       .from("clienti")
       .select("ragione_sociale, partita_iva, codice_fiscale, indirizzo, citta")
-      .eq("id", ct.cliente_id)
+      .eq("id", ct.cliente_id ?? "00000000-0000-0000-0000-000000000000")
       .maybeSingle();
     if (e2) throw new Error(e2.message);
 
@@ -103,7 +103,7 @@ export const firmaPrivacyConToken = createServerFn({ method: "POST" })
     const { data: cli } = await supabaseAdmin
       .from("clienti")
       .select("ragione_sociale, partita_iva, codice_fiscale, indirizzo, citta")
-      .eq("id", ct.cliente_id)
+      .eq("id", ct.cliente_id ?? "00000000-0000-0000-0000-000000000000")
       .maybeSingle();
 
     const now = new Date();

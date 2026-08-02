@@ -68,7 +68,7 @@ export const getContattoPerRecesso = createServerFn({ method: "GET" })
     const { data: cli } = await supabaseAdmin
       .from("clienti")
       .select("ragione_sociale, partita_iva, indirizzo, citta")
-      .eq("id", ct.cliente_id)
+      .eq("id", ct.cliente_id ?? "00000000-0000-0000-0000-000000000000")
       .maybeSingle();
 
     return {
@@ -137,7 +137,7 @@ export const revocaConsensi = createServerFn({ method: "POST" })
       const { data: cli } = await supabaseAdmin
         .from("clienti")
         .select("ragione_sociale")
-        .eq("id", ct.cliente_id)
+        .eq("id", ct.cliente_id ?? "00000000-0000-0000-0000-000000000000")
         .maybeSingle();
 
       const conf = async (chiave: string) => {
