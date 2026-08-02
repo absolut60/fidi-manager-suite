@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowLeft, Save, Trash2, Loader2, ScrollText, FileText } from "lucide-react";
+import { ArrowLeft, Save, Trash2, Loader2, ScrollText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -22,14 +22,14 @@ import {
 import { LeadContattiTab, LeadCantieriTab } from "@/components/lead/lead-relazioni-tabs";
 import { LeadAzioniStato } from "@/components/lead/lead-azioni-stato";
 import { LinkFirmaPrivacy } from "@/components/link-firma-privacy";
+import { LeadRichiesteTab } from "@/components/lead/lead-richieste-tab";
+
 
 import {
   LEAD_STATO_LABEL, LEAD_STATO_CLASS, LEAD_TIPI, LEAD_TIPO_LABEL,
   LEAD_FONTI, LEAD_FONTE_LABEL, LEAD_PRIORITA, LEAD_PRIORITA_LABEL, LEAD_PRIORITA_CLASS,
-  LEAD_RICHIESTA_STATO_LABEL, LEAD_RICHIESTA_TIPO_LABEL,
   nomeLead, formatData, puoAccedereLead,
   type LeadTipo, type LeadFonte, type LeadPriorita,
-  type LeadRichiestaStato, type LeadRichiestaTipo,
 } from "@/lib/lead-costanti";
 
 export const Route = createFileRoute("/_app/lead/$leadId")({
@@ -197,22 +197,6 @@ function LeadDettaglioPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const { data: richieste } = useQuery({
-    queryKey: ["lead-richieste", leadId],
-    enabled: canSee,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("lead_richieste")
-        .select("id, tipo, oggetto, descrizione, stato, importo_stimato, esito, created_at")
-        .eq("lead_id", leadId)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as {
-        id: string; tipo: LeadRichiestaTipo; oggetto: string | null; descrizione: string | null;
-        stato: LeadRichiestaStato; importo_stimato: number | null; esito: string | null; created_at: string;
-      }[];
-    },
-  });
 
   const { data: storico } = useQuery({
     queryKey: ["lead-storico", leadId],
@@ -447,43 +431,9 @@ function LeadDettaglioPage() {
         </TabsContent>
 
         <TabsContent value="richieste" className="mt-4">
-          {(richieste ?? []).length === 0 ? (
-            <Card className="p-12 text-center">
-              <FileText className="size-8 mx-auto text-muted-foreground mb-2" />
-              <p className="font-medium text-sm">Nessuna richiesta</p>
-              <p className="text-xs text-muted-foreground mt-1">La gestione completa arriverà in uno strato successivo.</p>
-            </Card>
-          ) : (
-            <Card className="p-4">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Oggetto</TableHead>
-                    <TableHead>Stato</TableHead>
-                    <TableHead>Importo stimato</TableHead>
-                    <TableHead>Creata</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {(richieste ?? []).map((r) => (
-                    <TableRow key={r.id}>
-                      <TableCell className="text-xs">{LEAD_RICHIESTA_TIPO_LABEL[r.tipo]}</TableCell>
-                      <TableCell className="text-sm">{r.oggetto ?? "—"}</TableCell>
-                      <TableCell><Badge variant="outline">{LEAD_RICHIESTA_STATO_LABEL[r.stato]}</Badge></TableCell>
-                      <TableCell className="text-xs">
-                        {r.importo_stimato == null
-                          ? "—"
-                          : Number(r.importo_stimato).toLocaleString("it-IT", { style: "currency", currency: "EUR" })}
-                      </TableCell>
-                      <TableCell className="text-xs">{formatData(r.created_at)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Card>
-          )}
+          <LeadRichiesteTab leadId={leadId} />
         </TabsContent>
+
 
         <TabsContent value="storico" className="mt-4">
           {(storico ?? []).length === 0 ? (
