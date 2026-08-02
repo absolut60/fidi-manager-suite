@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft, CalendarDays, Check, MapPin, Plus, Save, Trash2, UserX,
+  ArrowLeft, CalendarDays, Check, MapPin, Save, Trash2, UserX,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,7 +26,7 @@ import { AggiungiPartecipanteDialog } from "@/components/eventi/aggiungi-parteci
 import { puoAccedereLead } from "@/lib/lead-costanti";
 
 import {
-  EVENTI_PARTECIPANTE_STATI, EVENTI_PARTECIPANTE_STATO_CLASS,
+  EVENTI_PARTECIPANTE_STATO_CLASS,
   EVENTI_PARTECIPANTE_STATO_LABEL, formatDataEvento, nomePartecipante,
   type EventiPartecipanteStato,
 } from "@/lib/eventi-costanti";
