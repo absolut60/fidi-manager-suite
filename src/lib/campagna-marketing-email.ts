@@ -87,7 +87,9 @@ export function buildEmailCampagna(params: {
     { tipo: "libero" },
   );
 
-  const corpoConFooter = reso.corpo + footerRecessoHtml(params.linkRecesso);
+  const corpoConFooter =
+    assolutizzaImmaginiEmail(reso.corpo, params.baseUrl) + footerRecessoHtml(params.linkRecesso);
+
 
   return {
     oggetto: reso.oggetto,
