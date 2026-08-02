@@ -447,43 +447,9 @@ function LeadDettaglioPage() {
         </TabsContent>
 
         <TabsContent value="richieste" className="mt-4">
-          {(richieste ?? []).length === 0 ? (
-            <Card className="p-12 text-center">
-              <FileText className="size-8 mx-auto text-muted-foreground mb-2" />
-              <p className="font-medium text-sm">Nessuna richiesta</p>
-              <p className="text-xs text-muted-foreground mt-1">La gestione completa arriverà in uno strato successivo.</p>
-            </Card>
-          ) : (
-            <Card className="p-4">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Oggetto</TableHead>
-                    <TableHead>Stato</TableHead>
-                    <TableHead>Importo stimato</TableHead>
-                    <TableHead>Creata</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {(richieste ?? []).map((r) => (
-                    <TableRow key={r.id}>
-                      <TableCell className="text-xs">{LEAD_RICHIESTA_TIPO_LABEL[r.tipo]}</TableCell>
-                      <TableCell className="text-sm">{r.oggetto ?? "—"}</TableCell>
-                      <TableCell><Badge variant="outline">{LEAD_RICHIESTA_STATO_LABEL[r.stato]}</Badge></TableCell>
-                      <TableCell className="text-xs">
-                        {r.importo_stimato == null
-                          ? "—"
-                          : Number(r.importo_stimato).toLocaleString("it-IT", { style: "currency", currency: "EUR" })}
-                      </TableCell>
-                      <TableCell className="text-xs">{formatData(r.created_at)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Card>
-          )}
+          <LeadRichiesteTab leadId={leadId} />
         </TabsContent>
+
 
         <TabsContent value="storico" className="mt-4">
           {(storico ?? []).length === 0 ? (
