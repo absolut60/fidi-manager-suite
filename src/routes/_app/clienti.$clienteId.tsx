@@ -335,7 +335,7 @@ function ClienteDetail() {
                   <Link
                     from="/clienti/$clienteId"
                     to="."
-                    search={(prev) => ({ ...prev, tab: "storico" as const })}
+                    search={(prev: Record<string, unknown>) => ({ ...prev, tab: "storico" as const })}
                     className="inline-flex items-center gap-1 rounded-md bg-destructive/15 text-destructive border border-destructive/30 px-2 py-0.5 text-xs font-medium hover:bg-destructive/25 transition-colors cursor-pointer"
                   >
                     <AlertTriangle className="size-3" /> Cliente bloccato

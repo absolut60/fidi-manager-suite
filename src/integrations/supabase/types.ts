@@ -3751,6 +3751,7 @@ export type Database = {
       bulk_update_clienti_bfa: { Args: { _payloads: Json }; Returns: number }
       calcola_livello_fido: { Args: { _importo: number }; Returns: number }
       calcola_scaduto: { Args: { _ant: number; _ssa: number }; Returns: number }
+      can_manage_email_assets: { Args: never; Returns: boolean }
       effective_store_filter: { Args: { _requested: string }; Returns: string }
       fn_email_valida: { Args: { _raw: string }; Returns: boolean }
       fn_telefono_valido: { Args: { _raw: string }; Returns: boolean }
