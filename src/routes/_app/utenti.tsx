@@ -37,6 +37,7 @@ const ORDINE_RUOLI: AppRole[] = [
   "approvatore_liv2",
   "approvatore_liv1",
   "store_manager",
+  "marketing",
   "agente",
   "approvatore_richieste_liv2",
   "approvatore_richieste_liv1",
@@ -63,6 +64,8 @@ const RUOLI_RICHIESTE: AppRole[] = [
   "gestore_richieste",
   "esecutore_richieste",
 ];
+
+const RUOLI_MARKETING: AppRole[] = ["marketing"];
 
 type UserRow = {
   id: string;
