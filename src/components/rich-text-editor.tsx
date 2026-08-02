@@ -26,6 +26,20 @@ const COLORI: { label: string; value: string }[] = [
 /** Larghezza tipica del corpo email in pixel: riferimento per le percentuali. */
 const LARGHEZZA_CORPO = 600;
 
+/** Direzioni delle 8 maniglie di ridimensionamento (stile Word). */
+type Maniglia = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
+
+const MANIGLIE: { dir: Maniglia; cursor: string; pos: React.CSSProperties }[] = [
+  { dir: "nw", cursor: "nwse-resize", pos: { left: -5, top: -5 } },
+  { dir: "n", cursor: "ns-resize", pos: { left: "calc(50% - 5px)", top: -5 } },
+  { dir: "ne", cursor: "nesw-resize", pos: { right: -5, top: -5 } },
+  { dir: "e", cursor: "ew-resize", pos: { right: -5, top: "calc(50% - 5px)" } },
+  { dir: "se", cursor: "nwse-resize", pos: { right: -5, bottom: -5 } },
+  { dir: "s", cursor: "ns-resize", pos: { left: "calc(50% - 5px)", bottom: -5 } },
+  { dir: "sw", cursor: "nesw-resize", pos: { left: -5, bottom: -5 } },
+  { dir: "w", cursor: "ew-resize", pos: { left: -5, top: "calc(50% - 5px)" } },
+];
+
 /** Legge lo style inline di un elemento come mappa proprietà -> valore. */
 function leggiStile(el: HTMLElement): Record<string, string> {
   const out: Record<string, string> = {};
