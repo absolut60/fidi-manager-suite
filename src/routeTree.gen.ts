@@ -60,6 +60,7 @@ import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as ApiPublicHooksCheckScadenzeRouteImport } from './routes/api/public/hooks/check-scadenze'
 import { Route as ApiPublicHooksCheckReminderRitardiRouteImport } from './routes/api/public/hooks/check-reminder-ritardi'
+import { Route as ApiPublicEmailImgSplatRouteImport } from './routes/api/public/email-img/$'
 
 const McpRoute = McpRouteImport.update({
   id: '/mcp',
@@ -330,6 +331,11 @@ const ApiPublicHooksCheckReminderRitardiRoute =
     path: '/api/public/hooks/check-reminder-ritardi',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicEmailImgSplatRoute = ApiPublicEmailImgSplatRouteImport.update({
+  id: '/api/public/email-img/$',
+  path: '/api/public/email-img/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -380,6 +386,7 @@ export interface FileRoutesByFullPath {
   '/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
   '/api/public/inngest': typeof ApiPublicInngestRoute
   '/richieste-interne/': typeof AppRichiesteInterneIndexRoute
+  '/api/public/email-img/$': typeof ApiPublicEmailImgSplatRoute
   '/api/public/hooks/check-reminder-ritardi': typeof ApiPublicHooksCheckReminderRitardiRoute
   '/api/public/hooks/check-scadenze': typeof ApiPublicHooksCheckScadenzeRoute
 }
@@ -432,6 +439,7 @@ export interface FileRoutesByTo {
   '/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
   '/api/public/inngest': typeof ApiPublicInngestRoute
   '/richieste-interne': typeof AppRichiesteInterneIndexRoute
+  '/api/public/email-img/$': typeof ApiPublicEmailImgSplatRoute
   '/api/public/hooks/check-reminder-ritardi': typeof ApiPublicHooksCheckReminderRitardiRoute
   '/api/public/hooks/check-scadenze': typeof ApiPublicHooksCheckScadenzeRoute
 }
@@ -486,6 +494,7 @@ export interface FileRoutesById {
   '/_app/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
   '/api/public/inngest': typeof ApiPublicInngestRoute
   '/_app/richieste-interne/': typeof AppRichiesteInterneIndexRoute
+  '/api/public/email-img/$': typeof ApiPublicEmailImgSplatRoute
   '/api/public/hooks/check-reminder-ritardi': typeof ApiPublicHooksCheckReminderRitardiRoute
   '/api/public/hooks/check-scadenze': typeof ApiPublicHooksCheckScadenzeRoute
 }
@@ -540,6 +549,7 @@ export interface FileRouteTypes {
     | '/richieste/$richiestaId'
     | '/api/public/inngest'
     | '/richieste-interne/'
+    | '/api/public/email-img/$'
     | '/api/public/hooks/check-reminder-ritardi'
     | '/api/public/hooks/check-scadenze'
   fileRoutesByTo: FileRoutesByTo
@@ -592,6 +602,7 @@ export interface FileRouteTypes {
     | '/richieste/$richiestaId'
     | '/api/public/inngest'
     | '/richieste-interne'
+    | '/api/public/email-img/$'
     | '/api/public/hooks/check-reminder-ritardi'
     | '/api/public/hooks/check-scadenze'
   id:
@@ -645,6 +656,7 @@ export interface FileRouteTypes {
     | '/_app/richieste/$richiestaId'
     | '/api/public/inngest'
     | '/_app/richieste-interne/'
+    | '/api/public/email-img/$'
     | '/api/public/hooks/check-reminder-ritardi'
     | '/api/public/hooks/check-scadenze'
   fileRoutesById: FileRoutesById
@@ -663,6 +675,7 @@ export interface RootRouteChildren {
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiPublicInngestRoute: typeof ApiPublicInngestRoute
+  ApiPublicEmailImgSplatRoute: typeof ApiPublicEmailImgSplatRoute
   ApiPublicHooksCheckReminderRitardiRoute: typeof ApiPublicHooksCheckReminderRitardiRoute
   ApiPublicHooksCheckScadenzeRoute: typeof ApiPublicHooksCheckScadenzeRoute
 }
@@ -1026,6 +1039,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksCheckReminderRitardiRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/email-img/$': {
+      id: '/api/public/email-img/$'
+      path: '/api/public/email-img/$'
+      fullPath: '/api/public/email-img/$'
+      preLoaderRoute: typeof ApiPublicEmailImgSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -1144,6 +1164,7 @@ const rootRouteChildren: RootRouteChildren = {
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiPublicInngestRoute: ApiPublicInngestRoute,
+  ApiPublicEmailImgSplatRoute: ApiPublicEmailImgSplatRoute,
   ApiPublicHooksCheckReminderRitardiRoute:
     ApiPublicHooksCheckReminderRitardiRoute,
   ApiPublicHooksCheckScadenzeRoute: ApiPublicHooksCheckScadenzeRoute,
