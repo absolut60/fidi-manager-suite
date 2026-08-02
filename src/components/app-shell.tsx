@@ -9,6 +9,7 @@ import {
   MessageCircle,
   Settings,
   UsersRound,
+  UserPlus,
   LogOut,
   Menu,
   X,
