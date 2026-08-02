@@ -23,6 +23,26 @@ const COLORI: { label: string; value: string }[] = [
   { label: "Rosso", value: "#b91c1c" },
 ];
 
+/** Larghezza tipica del corpo email in pixel: riferimento per le percentuali. */
+const LARGHEZZA_CORPO = 600;
+
+/** Legge lo style inline di un elemento come mappa proprietà -> valore. */
+function leggiStile(el: HTMLElement): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const p of (el.getAttribute("style") ?? "").split(";")) {
+    const i = p.indexOf(":");
+    if (i > 0) out[p.slice(0, i).trim().toLowerCase()] = p.slice(i + 1).trim();
+  }
+  return out;
+}
+
+function serializzaStile(stile: Record<string, string>): string {
+  return Object.entries(stile)
+    .filter(([, v]) => v !== "")
+    .map(([k, v]) => `${k}:${v}`)
+    .join(";") + ";";
+}
+
 function cmd(name: string, value?: string, useCss = false) {
   try {
     document.execCommand("styleWithCSS", false, useCss ? "true" : "false");
