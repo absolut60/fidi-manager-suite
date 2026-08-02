@@ -16,9 +16,9 @@ import {
 } from "@/components/ui/dialog";
 
 /**
- * Contatti e cantieri restano ancorati a un cliente (cliente_id NOT NULL a schema).
- * Finché il lead non è collegato a un cliente si può solo consultare l'eventuale
- * collegamento esistente; l'aggiunta è possibile dopo la conversione.
+ * Un lead può avere contatti e cantieri propri prima della conversione:
+ * `cliente_id` è nullable e il vincolo di schema richiede almeno uno fra
+ * `cliente_id` e `lead_id`. Le righe lead-only sono governate dai permessi lead.
  */
 
 export function LeadContattiTab({ leadId, clienteId }: { leadId: string; clienteId: string | null }) {
