@@ -28,11 +28,13 @@ function oauthApi(): OAuthApi {
   return a.oauth;
 }
 
+const consentSearchSchema = z.object({
+  authorization_id: fallback(z.string().optional(), undefined),
+});
+
 export const Route = createFileRoute("/.lovable/oauth/consent")({
   ssr: false,
-  validateSearch: (s: Record<string, unknown>) => ({
-    authorization_id: typeof s.authorization_id === "string" ? s.authorization_id : "",
-  }),
+  validateSearch: zodValidator(consentSearchSchema),
   beforeLoad: async ({ search, location }) => {
     if (!search.authorization_id) throw new Error("Missing authorization_id");
     const { data } = await supabase.auth.getSession();
