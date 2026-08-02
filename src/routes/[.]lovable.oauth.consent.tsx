@@ -1,5 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useState } from "react";
+import { z } from "zod";
+import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -73,8 +75,8 @@ function Consent() {
     setError(null);
     const api = oauthApi();
     const { data, error } = approve
-      ? await api.approveAuthorization(authorization_id)
-      : await api.denyAuthorization(authorization_id);
+      ? await api.approveAuthorization(authorization_id!)
+      : await api.denyAuthorization(authorization_id!);
     if (error) {
       setBusy(false);
       setError(error.message);
