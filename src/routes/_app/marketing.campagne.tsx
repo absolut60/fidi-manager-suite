@@ -416,7 +416,20 @@ function EditorCampagna({
   const [nome, setNome] = useState(campagna.nome);
   const [oggetto, setOggetto] = useState(campagna.oggetto);
   const [corpo, setCorpo] = useState(campagna.corpo_html);
+  const [modoHtml, setModoHtml] = useState(false);
   const corpoRef = useRef<HTMLTextAreaElement | null>(null);
+  const editorRef = useRef<HTMLDivElement | null>(null);
+
+  const uploadImmagine = async (file: File) => {
+    const ext = (file.name.split(".").pop() || "png").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const path = `campagne/${campagna.id}/${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage
+      .from("email-assets")
+      .upload(path, file, { contentType: file.type, upsert: false });
+    if (error) throw new Error(`Caricamento immagine fallito: ${error.message}`);
+    const base = (import.meta.env.VITE_APP_URL as string | undefined) ?? "https://fidi-manager-suite.lovable.app";
+    return `${base}/api/public/email-img/${path}`;
+  };
 
   const anteprima = useMemo(() => buildAnteprima(oggetto, corpo), [oggetto, corpo]);
 
@@ -426,7 +439,7 @@ function EditorCampagna({
       if (!oggetto.trim()) throw new Error("L'oggetto è obbligatorio");
       const { error } = await supabase
         .from("campagne_email_marketing")
-        .update({ nome: nome.trim(), oggetto: oggetto.trim(), corpo_html: corpo, stato })
+        .update({ nome: nome.trim(), oggetto: oggetto.trim(), corpo_html: pulisciHtmlEmail(corpo), stato })
         .eq("id", campagna.id);
       if (error) throw error;
       return stato;
@@ -440,8 +453,14 @@ function EditorCampagna({
   });
 
   const insertPlaceholder = (key: string) => {
-    const el = corpoRef.current;
     const token = `{{${key}}}`;
+    if (!modoHtml) {
+      if (inserisciTestoNellEditor(editorRef.current, token)) return;
+      // Nessun cursore attivo nell'editor: aggiungi in coda come paragrafo.
+      setCorpo((c) => `${c}${token}`);
+      return;
+    }
+    const el = corpoRef.current;
     if (!el) { setCorpo((c) => c + token); return; }
     const start = el.selectionStart ?? corpo.length;
     const end = el.selectionEnd ?? corpo.length;
