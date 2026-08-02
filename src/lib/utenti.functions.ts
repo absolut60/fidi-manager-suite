@@ -16,6 +16,7 @@ const RUOLI_VALIDI = [
   "amministrazione",
   "direzione",
   "agente",
+  "marketing",
   "richiedente",
   "approvatore_richieste_liv1",
   "approvatore_richieste_liv2",
