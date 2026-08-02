@@ -305,6 +305,17 @@ function LeadDettaglioPage() {
         </div>
       </div>
 
+      <Card className="p-3">
+        <LeadAzioniStato
+          leadId={leadId}
+          stato={lead.stato}
+          assegnatoA={lead.assegnato_a}
+          profili={profili ?? []}
+          operatoreId={user?.id ?? null}
+        />
+      </Card>
+
+
       <Tabs defaultValue="anagrafica">
         <TabsList>
           <TabsTrigger value="anagrafica">Anagrafica</TabsTrigger>
