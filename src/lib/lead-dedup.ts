@@ -23,8 +23,8 @@ export function normalizzaEmail(v?: string | null): string {
 export type DedupMatch = {
   entita: "lead" | "cliente" | "contatto";
   id: string;
-  /** id da usare per il link (per i contatti è il cliente_id) */
-  linkId: string;
+  /** id da usare per il link (per i contatti è il cliente_id, null se il contatto appartiene solo a un lead) */
+  linkId: string | null;
   etichetta: string;
   campo: "partita_iva" | "codice_fiscale" | "email";
   valore: string;
