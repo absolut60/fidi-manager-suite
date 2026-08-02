@@ -477,8 +477,8 @@ function LeadDettaglioPage() {
                   {(storico ?? []).map((s) => (
                     <TableRow key={s.id}>
                       <TableCell className="text-xs">{new Date(s.created_at).toLocaleString("it-IT")}</TableCell>
-                      <TableCell className="text-xs">{s.stato_da ?? "—"}</TableCell>
-                      <TableCell className="text-xs">{s.stato_a ?? "—"}</TableCell>
+                      <TableCell className="text-xs">{s.stato_da ? LEAD_STATO_LABEL[s.stato_da] : "—"}</TableCell>
+                      <TableCell className="text-xs">{s.stato_a ? LEAD_STATO_LABEL[s.stato_a] : "—"}</TableCell>
                       <TableCell className="text-xs">{nomeProfilo(s.operatore_id)}</TableCell>
                       <TableCell className="text-xs">{s.nota ?? "—"}</TableCell>
                     </TableRow>
