@@ -71,7 +71,6 @@ const NAV: NavItem[] = [
   { to: "/clienti", label: "Clienti", icon: Building, group: "generale" },
   { to: "/contatti", label: "Contatti", icon: Users, group: "generale" },
   { to: "/lead", label: "Lead", icon: UserPlus, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "generale" },
-  { to: "/eventi", label: "Eventi", icon: CalendarDays, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "generale" },
   // FIDI
   { to: "/richieste", label: "Richieste fido", icon: FileText, group: "fidi" },
   { to: "/approvazioni", label: "Approvazioni", icon: CheckCheck, roles: ["admin", "approvatore"], group: "fidi" },
@@ -96,6 +95,7 @@ const NAV: NavItem[] = [
   { to: "/richieste-interne/tutte", label: "Tutte le richieste", icon: FileSpreadsheet, group: "richieste_interne", richiesteScope: "manage" },
   { to: "/richieste-interne/archivio", label: "Archivio", icon: ScrollText, group: "richieste_interne", richiesteScope: "manage" },
   // MARKETING
+  { to: "/eventi", label: "Eventi", icon: CalendarDays, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "marketing" },
   { to: "/marketing/segmenti", label: "Segmenti", icon: Sparkles, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "marketing" },
  { to: "/marketing/campagne", label: "Campagne email", icon: Mail, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "marketing" },
  { to: "/marketing/invii", label: "Invii massivi", icon: Megaphone, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "marketing" },
