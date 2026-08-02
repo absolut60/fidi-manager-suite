@@ -83,9 +83,8 @@ function EventoDettaglioPage() {
   const [luogo, setLuogo] = useState("");
   const [note, setNote] = useState("");
 
-  const [openNuovo, setOpenNuovo] = useState(false);
-  const [campi, setCampi] = useState({ ...CAMPI_VUOTI });
-  const [statoNuovo, setStatoNuovo] = useState<EventiPartecipanteStato>("atteso");
+
+
 
   const { data: evento, isLoading } = useQuery({
     queryKey: ["evento", eventoId],
