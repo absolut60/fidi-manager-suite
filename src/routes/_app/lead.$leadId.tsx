@@ -213,19 +213,7 @@ function LeadDettaglioPage() {
     },
   });
 
-  const { data: contattiLead } = useQuery({
-    queryKey: ["lead-contatti", leadId],
-    enabled: canSee,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("contatti")
-        .select("id, cliente_id, nome, cognome, email, telefono, cellulare, ruolo")
-        .eq("lead_id", leadId)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
+  const { data: contattiLead } = useLeadContatti(leadId, canSee);
   const haContatti = (contattiLead?.length ?? 0) > 0;
 
 
