@@ -22,6 +22,8 @@ import {
 import { LeadContattiTab, LeadCantieriTab } from "@/components/lead/lead-relazioni-tabs";
 import { LeadAzioniStato } from "@/components/lead/lead-azioni-stato";
 import { LinkFirmaPrivacy } from "@/components/link-firma-privacy";
+import { LeadRichiesteTab } from "@/components/lead/lead-richieste-tab";
+
 
 import {
   LEAD_STATO_LABEL, LEAD_STATO_CLASS, LEAD_TIPI, LEAD_TIPO_LABEL,
