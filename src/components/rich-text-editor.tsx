@@ -64,8 +64,13 @@ export function RichTextEditor({
 }) {
   const innerRef = useRef<HTMLDivElement | null>(null);
   const ref = editorRef ?? innerRef;
+  const wrapRef = useRef<HTMLDivElement | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const imgSelRef = useRef<HTMLImageElement | null>(null);
+  const [imgSel, setImgSel] = useState<HTMLImageElement | null>(null);
+  const [riquadro, setRiquadro] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
+  const [larghezzaPx, setLarghezzaPx] = useState<number>(LARGHEZZA_CORPO);
   // Sentinella: garantisce che al primo effetto (montaggio, anche dopo il
   // passaggio da "Modifica HTML") l'innerHTML venga sempre inizializzato.
   const lastHtml = useRef<string>("\u0000__non_inizializzato__");
