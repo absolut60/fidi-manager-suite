@@ -150,7 +150,6 @@ function LeadDettaglioPage() {
   const saveMut = useMutation({
     mutationFn: async () => {
       if (!f || !lead) return;
-      const statoCambiato = f.stato !== lead.stato;
       const payload = {
         tipo_soggetto: f.tipo_soggetto || null,
         ragione_sociale: f.ragione_sociale.trim() || null,
@@ -167,33 +166,19 @@ function LeadDettaglioPage() {
         provincia: f.provincia.trim() || null,
         fonte: f.fonte,
         fonte_dettaglio: f.fonte_dettaglio.trim() || null,
-        stato: f.stato,
         tipo_lead: f.tipo_lead,
         priorita: f.priorita,
         store_id: f.store_id || null,
         agente_codice: f.agente_codice || null,
-        assegnato_a: f.assegnato_a || null,
-        assegnato_il: f.assegnato_a && f.assegnato_a !== (lead.assegnato_a ?? "")
-          ? new Date().toISOString()
-          : lead.assegnato_il,
         prossima_azione_il: f.prossima_azione_il || null,
         prossima_azione_tipo: f.prossima_azione_tipo.trim() || null,
         prossima_azione_nota: f.prossima_azione_nota.trim() || null,
-        motivo_perdita: f.motivo_perdita.trim() || null,
         note: f.note.trim() || null,
       };
       const { error } = await supabase.from("lead").update(payload).eq("id", leadId);
       if (error) throw error;
-      if (statoCambiato) {
-        await supabase.from("lead_storico").insert({
-          lead_id: leadId,
-          stato_da: lead.stato,
-          stato_a: f.stato,
-          operatore_id: user?.id ?? null,
-          nota: "Cambio stato da scheda lead",
-        });
-      }
     },
+
     onSuccess: () => {
       toast.success("Lead aggiornato");
       qc.invalidateQueries({ queryKey: ["lead", leadId] });
