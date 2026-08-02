@@ -66,7 +66,9 @@ export function RichTextEditor({
   const ref = editorRef ?? innerRef;
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
-  const lastHtml = useRef(value);
+  // Sentinella: garantisce che al primo effetto (montaggio, anche dopo il
+  // passaggio da "Modifica HTML") l'innerHTML venga sempre inizializzato.
+  const lastHtml = useRef<string>("\u0000__non_inizializzato__");
 
   // Sincronizza il valore esterno solo quando differisce da quanto scritto qui
   // (evita di resettare il cursore ad ogni battuta). Il caso stringa vuota è
@@ -81,6 +83,7 @@ export function RichTextEditor({
       lastHtml.current = next;
     }
   }, [value]);
+
 
   /**
    * Legge l'HTML corrente dal DOM e lo propaga a React.
