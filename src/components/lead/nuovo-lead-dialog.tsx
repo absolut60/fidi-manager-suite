@@ -147,8 +147,20 @@ export function NuovoLeadDialog({ onClose }: { onClose: () => void }) {
       }
       return data;
     },
-    onSuccess: () => {
-      toast.success("Lead creato");
+    onSuccess: (data) => {
+      toast.success("Lead creato", {
+        description:
+          "Prossimo passo: aggiungi un contatto-persona nella scheda del lead per raccogliere privacy e consensi marketing.",
+        duration: 8000,
+        ...(data?.id
+          ? {
+              action: {
+                label: "Vai al lead",
+                onClick: () => navigate({ to: "/lead/$leadId", params: { leadId: data.id } }),
+              },
+            }
+          : {}),
+      });
       qc.invalidateQueries({ queryKey: ["lead-lista"] });
       onClose();
     },
