@@ -347,13 +347,12 @@ function LeadDettaglioPage() {
 
               <div>
                 <Label className="text-xs">Stato</Label>
-                <Select value={f.stato} onValueChange={(v) => set("stato", v as LeadStato)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {LEAD_STATI.map((s) => <SelectItem key={s} value={s}>{LEAD_STATO_LABEL[s]}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <p className="text-sm mt-1 rounded-md border bg-muted/40 px-3 py-2">
+                  {LEAD_STATO_LABEL[lead.stato]}
+                  <span className="text-xs text-muted-foreground ml-2">(dalla barra azioni)</span>
+                </p>
               </div>
+
               <div>
                 <Label className="text-xs">Tipo lead</Label>
                 <Select value={f.tipo_lead} onValueChange={(v) => set("tipo_lead", v as LeadTipo)}>
