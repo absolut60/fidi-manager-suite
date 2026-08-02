@@ -20,12 +20,13 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { LeadContattiTab, LeadCantieriTab } from "@/components/lead/lead-relazioni-tabs";
+import { LeadAzioniStato } from "@/components/lead/lead-azioni-stato";
 import {
-  LEAD_STATI, LEAD_STATO_LABEL, LEAD_STATO_CLASS, LEAD_TIPI, LEAD_TIPO_LABEL,
+  LEAD_STATO_LABEL, LEAD_STATO_CLASS, LEAD_TIPI, LEAD_TIPO_LABEL,
   LEAD_FONTI, LEAD_FONTE_LABEL, LEAD_PRIORITA, LEAD_PRIORITA_LABEL, LEAD_PRIORITA_CLASS,
   LEAD_RICHIESTA_STATO_LABEL, LEAD_RICHIESTA_TIPO_LABEL,
   nomeLead, formatData, puoAccedereLead,
-  type LeadStato, type LeadTipo, type LeadFonte, type LeadPriorita,
+  type LeadTipo, type LeadFonte, type LeadPriorita,
   type LeadRichiestaStato, type LeadRichiestaTipo,
 } from "@/lib/lead-costanti";
 
