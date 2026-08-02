@@ -115,13 +115,15 @@ export function LeadContattiTab({ leadId, clienteId }: { leadId: string; cliente
                 {c.email && <div>{c.email}</div>}
                 {(c.telefono || c.cellulare) && <div>{c.telefono || c.cellulare}</div>}
               </div>
-              <Link
-                to="/clienti/$clienteId"
-                params={{ clienteId: c.cliente_id }}
-                className="text-xs underline mt-2 inline-block"
-              >
-                Vai al cliente
-              </Link>
+              {c.cliente_id && (
+                <Link
+                  to="/clienti/$clienteId"
+                  params={{ clienteId: c.cliente_id }}
+                  className="text-xs underline mt-2 inline-block"
+                >
+                  Vai al cliente
+                </Link>
+              )}
             </Card>
           ))}
         </div>
