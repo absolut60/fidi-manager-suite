@@ -90,7 +90,7 @@ export function RichTextEditor({
   const imgSelRef = useRef<HTMLImageElement | null>(null);
   const [imgSel, setImgSel] = useState<HTMLImageElement | null>(null);
   const [riquadro, setRiquadro] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
-  const [larghezzaPx, setLarghezzaPx] = useState<number>(LARGHEZZA_CORPO);
+  const [larghezzaDrag, setLarghezzaDrag] = useState<number | null>(null);
   // Sentinella: garantisce che al primo effetto (montaggio, anche dopo il
   // passaggio da "Modifica HTML") l'innerHTML venga sempre inizializzato.
   const lastHtml = useRef<string>("\u0000__non_inizializzato__");
