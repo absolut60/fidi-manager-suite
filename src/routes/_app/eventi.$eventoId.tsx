@@ -15,20 +15,16 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
-} from "@/components/ui/dialog";
-import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { AggiungiPartecipanteDialog } from "@/components/eventi/aggiungi-partecipante-dialog";
 import { puoAccedereLead } from "@/lib/lead-costanti";
+
 import {
   EVENTI_PARTECIPANTE_STATI, EVENTI_PARTECIPANTE_STATO_CLASS,
   EVENTI_PARTECIPANTE_STATO_LABEL, formatDataEvento, nomePartecipante,
