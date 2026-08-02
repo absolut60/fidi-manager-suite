@@ -434,9 +434,11 @@ function LeadDettaglioPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="contatti" className="mt-4">
+        <TabsContent value="contatti" className="mt-4 space-y-4">
           <LeadContattiTab leadId={leadId} clienteId={lead.cliente_id} />
+          <LinkFirmaPrivacy leadId={leadId} />
         </TabsContent>
+
 
         <TabsContent value="cantieri" className="mt-4">
           <LeadCantieriTab leadId={leadId} clienteId={lead.cliente_id} />
