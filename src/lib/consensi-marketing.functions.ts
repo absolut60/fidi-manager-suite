@@ -4,6 +4,7 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { generaPdfConsensiMarketing } from "./consensi-pdf";
+import { risolviIntestazioneSoggetto } from "./intestazione-soggetto.server";
 
 
 
@@ -50,7 +51,7 @@ export const getContattoPerConsensi = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const { data: ct, error } = await supabaseAdmin
       .from("contatti")
-      .select("id, cliente_id, nome, cognome, email, firma_nome_dichiarato, consenso_profilazione, consenso_marketing_media, consenso_marketing_diretto, consensi_token_expires_at")
+      .select("id, cliente_id, lead_id, nome, cognome, email, firma_nome_dichiarato, consenso_profilazione, consenso_marketing_media, consenso_marketing_diretto, consensi_token_expires_at")
       .eq("consensi_token", data.token)
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -59,12 +60,7 @@ export const getContattoPerConsensi = createServerFn({ method: "GET" })
       throw new Error("Link scaduto. Chiedi al punto vendita di generarne uno nuovo.");
     }
 
-    const { data: cli, error: e2 } = await supabaseAdmin
-      .from("clienti")
-      .select("ragione_sociale, partita_iva, codice_fiscale, indirizzo, citta")
-      .eq("id", ct.cliente_id ?? "00000000-0000-0000-0000-000000000000")
-      .maybeSingle();
-    if (e2) throw new Error(e2.message);
+    const soggetto = await risolviIntestazioneSoggetto(ct);
 
     return {
       contatto: {
@@ -75,11 +71,11 @@ export const getContattoPerConsensi = createServerFn({ method: "GET" })
         firma_nome_dichiarato: ct.firma_nome_dichiarato,
       },
       cliente: {
-        ragione_sociale: cli?.ragione_sociale ?? "",
-        partita_iva: cli?.partita_iva ?? null,
-        codice_fiscale: cli?.codice_fiscale ?? null,
-        indirizzo: cli?.indirizzo ?? null,
-        citta: cli?.citta ?? null,
+        ragione_sociale: soggetto.ragione_sociale,
+        partita_iva: soggetto.partita_iva,
+        codice_fiscale: soggetto.codice_fiscale,
+        indirizzo: soggetto.indirizzo,
+        citta: soggetto.citta,
       },
       statoAttuale: {
         profilazione: !!ct.consenso_profilazione,
@@ -129,7 +125,7 @@ export const salvaConsensiMarketing = createServerFn({ method: "POST" })
 
     const { data: ct, error } = await supabaseAdmin
       .from("contatti")
-      .select("id, cliente_id, nome, cognome, email, consensi_token_expires_at")
+      .select("id, cliente_id, lead_id, nome, cognome, email, consensi_token_expires_at")
       .eq("consensi_token", data.token)
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -138,21 +134,17 @@ export const salvaConsensiMarketing = createServerFn({ method: "POST" })
       throw new Error("Link scaduto");
     }
 
-    const { data: cli } = await supabaseAdmin
-      .from("clienti")
-      .select("ragione_sociale, partita_iva, codice_fiscale, indirizzo, citta")
-      .eq("id", ct.cliente_id ?? "00000000-0000-0000-0000-000000000000")
-      .maybeSingle();
+    const soggetto = await risolviIntestazioneSoggetto(ct);
 
     const now = new Date();
 
     // 1) Genera PDF di prova
     const pdfBytes = await generaPdfConsensiMarketing({
-      ragioneSociale: cli?.ragione_sociale ?? "",
-      partitaIva: cli?.partita_iva,
-      codiceFiscale: cli?.codice_fiscale,
-      indirizzo: cli?.indirizzo,
-      citta: cli?.citta,
+      ragioneSociale: soggetto.ragione_sociale,
+      partitaIva: soggetto.partita_iva,
+      codiceFiscale: soggetto.codice_fiscale,
+      indirizzo: soggetto.indirizzo,
+      citta: soggetto.citta,
       firmatarioNome: data.firmaNomeDichiarato,
       firmatarioEmail: ct.email,
       consensi: data.consensi,
@@ -184,7 +176,11 @@ export const salvaConsensiMarketing = createServerFn({ method: "POST" })
       ...(ip ? { _ip: ip } : {}),
       _note: `Firmato via link pubblico da "${data.firmaNomeDichiarato}"`,
     });
-    if (eReg) throw new Error(`registra_consensi_batch: ${eReg.message}`);
+    if (eReg) {
+      // Rollback: nessun PDF orfano su storage se la registrazione fallisce
+      await supabaseAdmin.storage.from("documenti-privacy").remove([pdfPath]);
+      throw new Error(`registra_consensi_batch: ${eReg.message}`);
+    }
 
     // 4) Consuma il token consensi (senza toccare la privacy-base)
     await supabaseAdmin

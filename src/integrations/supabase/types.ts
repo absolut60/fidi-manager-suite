@@ -1315,6 +1315,7 @@ export type Database = {
           created_at: string
           id: string
           ip_address: string | null
+          lead_id: string | null
           note: string | null
           operatore_id: string | null
           origine: string
@@ -1328,6 +1329,7 @@ export type Database = {
           created_at?: string
           id?: string
           ip_address?: string | null
+          lead_id?: string | null
           note?: string | null
           operatore_id?: string | null
           origine: string
@@ -1341,6 +1343,7 @@ export type Database = {
           created_at?: string
           id?: string
           ip_address?: string | null
+          lead_id?: string | null
           note?: string | null
           operatore_id?: string | null
           origine?: string
@@ -1375,6 +1378,13 @@ export type Database = {
             columns: ["contatto_id"]
             isOneToOne: false
             referencedRelation: "contatti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consensi_log_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "lead"
             referencedColumns: ["id"]
           },
         ]

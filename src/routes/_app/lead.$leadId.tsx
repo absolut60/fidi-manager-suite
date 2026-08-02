@@ -21,6 +21,8 @@ import {
 } from "@/components/ui/table";
 import { LeadContattiTab, LeadCantieriTab } from "@/components/lead/lead-relazioni-tabs";
 import { LeadAzioniStato } from "@/components/lead/lead-azioni-stato";
+import { LinkFirmaPrivacy } from "@/components/link-firma-privacy";
+
 import {
   LEAD_STATO_LABEL, LEAD_STATO_CLASS, LEAD_TIPI, LEAD_TIPO_LABEL,
   LEAD_FONTI, LEAD_FONTE_LABEL, LEAD_PRIORITA, LEAD_PRIORITA_LABEL, LEAD_PRIORITA_CLASS,
@@ -434,9 +436,11 @@ function LeadDettaglioPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="contatti" className="mt-4">
+        <TabsContent value="contatti" className="mt-4 space-y-4">
           <LeadContattiTab leadId={leadId} clienteId={lead.cliente_id} />
+          <LinkFirmaPrivacy leadId={leadId} />
         </TabsContent>
+
 
         <TabsContent value="cantieri" className="mt-4">
           <LeadCantieriTab leadId={leadId} clienteId={lead.cliente_id} />
