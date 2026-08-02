@@ -501,6 +501,7 @@ function EditorCampagna({
         onPointerDownOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
+        onFocusOutside={(e) => e.preventDefault()}
       >
         <DialogHeader>
           <DialogTitle>Editor campagna email</DialogTitle>
