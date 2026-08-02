@@ -88,7 +88,7 @@ export async function cercaDuplicati(input: DedupInput): Promise<DedupMatch[]> {
   const controlla = (
     entita: DedupMatch["entita"],
     id: string,
-    linkId: string,
+    linkId: string | null,
     etichetta: string,
     row: { partita_iva?: string | null; codice_fiscale?: string | null; email?: string | null },
   ) => {
