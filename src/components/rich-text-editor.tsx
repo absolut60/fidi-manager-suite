@@ -69,29 +69,52 @@ export function RichTextEditor({
   const lastHtml = useRef(value);
 
   // Sincronizza il valore esterno solo quando differisce da quanto scritto qui
-  // (evita di resettare il cursore ad ogni battuta).
+  // (evita di resettare il cursore ad ogni battuta). Il caso stringa vuota è
+  // gestito esplicitamente: se il corpo viene svuotato dall'esterno, l'editor
+  // deve svuotarsi davvero.
   useEffect(() => {
-    if (!ref.current) return;
-    if (value !== lastHtml.current) {
-      ref.current.innerHTML = value ?? "";
-      lastHtml.current = value;
+    const el = ref.current;
+    if (!el) return;
+    const next = value ?? "";
+    if (next !== lastHtml.current) {
+      el.innerHTML = next;
+      lastHtml.current = next;
     }
   }, [value]);
 
+  /**
+   * Legge l'HTML corrente dal DOM e lo propaga a React.
+   * Normalizza il "vuoto residuo" (<br>, <div><br></div>, &nbsp; lasciati dal
+   * browser dopo Ctrl+A + Canc o dopo un undo) in stringa vuota, così
+   * l'anteprima rispecchia sempre il contenuto reale.
+   */
   const emit = useCallback(() => {
-    if (!ref.current) return;
-    const html = ref.current.innerHTML;
+    const el = ref.current;
+    if (!el) return;
+    let html = el.innerHTML;
+    if (isEditorVuoto(el)) {
+      html = "";
+      if (el.innerHTML !== "") el.innerHTML = "";
+    }
+    if (html === lastHtml.current) return;
     lastHtml.current = html;
     onChange(html);
   }, [onChange]);
+
+  // execCommand aggiorna il DOM in modo asincrono rispetto al gestore
+  // dell'evento: rileggiamo l'innerHTML al frame successivo.
+  const emitSoon = useCallback(() => {
+    emit();
+    requestAnimationFrame(emit);
+  }, [emit]);
 
   const focusEditor = () => ref.current?.focus();
 
   const insertHtml = useCallback((html: string) => {
     focusEditor();
     document.execCommand("insertHTML", false, html);
-    emit();
-  }, [emit]);
+    emitSoon();
+  }, [emitSoon]);
 
   const caricaEInserisci = useCallback(async (file: File) => {
     if (!file.type.startsWith("image/")) return;
@@ -139,7 +162,7 @@ export function RichTextEditor({
     e.preventDefault();
     focusEditor();
     fn();
-    emit();
+    emitSoon();
   };
 
   const inserisciLink = () => {
@@ -158,7 +181,7 @@ export function RichTextEditor({
         <Button type="button" variant="ghost" size="sm" className={btn} title="Sottolineato" onMouseDown={applica(() => cmd("underline"))}><Underline className="size-4" /></Button>
         <Separator orientation="vertical" className="mx-1 h-6" />
 
-        <Select onValueChange={(v) => { focusEditor(); cmd("formatBlock", v); emit(); }}>
+        <Select onValueChange={(v) => { focusEditor(); cmd("formatBlock", v); emitSoon(); }}>
           <SelectTrigger className="h-8 w-[130px] text-xs"><SelectValue placeholder="Testo" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="p">Paragrafo</SelectItem>
@@ -167,7 +190,7 @@ export function RichTextEditor({
           </SelectContent>
         </Select>
 
-        <Select onValueChange={(v) => { focusEditor(); cmd("foreColor", v, true); emit(); }}>
+        <Select onValueChange={(v) => { focusEditor(); cmd("foreColor", v, true); emitSoon(); }}>
           <SelectTrigger className="h-8 w-[110px] text-xs"><SelectValue placeholder="Colore" /></SelectTrigger>
           <SelectContent>
             {COLORI.map((c) => (
@@ -226,6 +249,8 @@ export function RichTextEditor({
         className="prose prose-sm max-w-none overflow-y-auto p-3 text-sm outline-none"
         style={{ minHeight, maxHeight: 460 }}
         onInput={emit}
+        onKeyUp={emit}
+        onCut={emitSoon}
         onBlur={emit}
         onPaste={onPaste}
         onDrop={onDrop}
@@ -239,6 +264,12 @@ export function RichTextEditor({
       )}
     </div>
   );
+}
+
+/** True se l'editor non contiene nulla di significativo (solo <br>/spazi). */
+function isEditorVuoto(el: HTMLElement): boolean {
+  if (el.querySelector("img,hr,table,video,iframe")) return false;
+  return el.textContent?.replace(/\u00a0/g, " ").trim() === "";
 }
 
 /** Inserisce testo semplice (es. placeholder) nel punto del cursore dell'editor. */

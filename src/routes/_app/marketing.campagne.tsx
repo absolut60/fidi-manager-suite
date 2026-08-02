@@ -419,6 +419,11 @@ function EditorCampagna({
   const [oggetto, setOggetto] = useState(campagna.oggetto);
   const [corpo, setCorpo] = useState(campagna.corpo_html);
   const [modoHtml, setModoHtml] = useState(false);
+  // Valori salvati: servono a capire se ci sono modifiche pendenti.
+  const [salvato, setSalvato] = useState({
+    nome: campagna.nome, oggetto: campagna.oggetto, corpo: campagna.corpo_html,
+  });
+  const [confermaChiusura, setConfermaChiusura] = useState(false);
   const corpoRef = useRef<HTMLTextAreaElement | null>(null);
   const editorRef = useRef<HTMLDivElement | null>(null);
 
@@ -448,11 +453,23 @@ function EditorCampagna({
     },
     onSuccess: (stato) => {
       toast.success(stato === "pronta" ? "Campagna segnata come pronta" : "Campagna salvata");
+      setSalvato({ nome: nome.trim(), oggetto: oggetto.trim(), corpo });
       onSaved();
       if (stato === "pronta") onClose();
     },
     onError: (e: any) => toast.error(e.message ?? "Errore salvataggio"),
   });
+
+  const modifichePendenti =
+    nome.trim() !== salvato.nome.trim() ||
+    oggetto.trim() !== salvato.oggetto.trim() ||
+    corpo !== salvato.corpo;
+
+  /** La chiusura passa sempre da qui: con modifiche pendenti chiede conferma. */
+  const tentaChiusura = () => {
+    if (modifichePendenti) { setConfermaChiusura(true); return; }
+    onClose();
+  };
 
   const insertPlaceholder = (key: string) => {
     const token = `{{${key}}}`;
@@ -475,8 +492,13 @@ function EditorCampagna({
   };
 
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-6xl max-h-[92vh] overflow-y-auto">
+    <Dialog open onOpenChange={(o) => { if (!o) tentaChiusura(); }}>
+      <DialogContent
+        className="max-w-6xl max-h-[92vh] overflow-y-auto"
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>Editor campagna email</DialogTitle>
           <DialogDescription>
@@ -568,7 +590,7 @@ function EditorCampagna({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Chiudi</Button>
+          <Button variant="outline" onClick={tentaChiusura}>Chiudi</Button>
           <Button variant="secondary" onClick={() => salva.mutate("bozza")} disabled={salva.isPending}>
             <Save className="size-4 mr-2" /> Salva bozza
           </Button>
@@ -577,6 +599,23 @@ function EditorCampagna({
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      <AlertDialog open={confermaChiusura} onOpenChange={setConfermaChiusura}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Modifiche non salvate</AlertDialogTitle>
+            <AlertDialogDescription>
+              Ci sono modifiche non salvate. Chiudere senza salvare?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setConfermaChiusura(false); onClose(); }}>
+              Chiudi senza salvare
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
