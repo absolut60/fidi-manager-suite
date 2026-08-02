@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowLeft, Save, Trash2, Loader2, ScrollText, FileText } from "lucide-react";
+import { ArrowLeft, Save, Trash2, Loader2, ScrollText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -28,10 +28,8 @@ import { LeadRichiesteTab } from "@/components/lead/lead-richieste-tab";
 import {
   LEAD_STATO_LABEL, LEAD_STATO_CLASS, LEAD_TIPI, LEAD_TIPO_LABEL,
   LEAD_FONTI, LEAD_FONTE_LABEL, LEAD_PRIORITA, LEAD_PRIORITA_LABEL, LEAD_PRIORITA_CLASS,
-  LEAD_RICHIESTA_STATO_LABEL, LEAD_RICHIESTA_TIPO_LABEL,
   nomeLead, formatData, puoAccedereLead,
   type LeadTipo, type LeadFonte, type LeadPriorita,
-  type LeadRichiestaStato, type LeadRichiestaTipo,
 } from "@/lib/lead-costanti";
 
 export const Route = createFileRoute("/_app/lead/$leadId")({
