@@ -47,18 +47,7 @@ export function LeadContattiTab({ leadId, clienteId }: { leadId: string; cliente
   const [telefono, setTelefono] = useState("");
   const [ruolo, setRuolo] = useState("");
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["lead-contatti", leadId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("contatti")
-        .select("id, cliente_id, nome, cognome, email, telefono, cellulare, ruolo")
-        .eq("lead_id", leadId)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
+  const { data, isLoading } = useLeadContatti(leadId);
 
   const addMut = useMutation({
     mutationFn: async () => {
