@@ -212,7 +212,6 @@ export function RichTextEditor({
   const selezionaImmagine = useCallback((img: HTMLImageElement) => {
     imgSelRef.current = img;
     setImgSel(img);
-    setLarghezzaPx(Math.round(img.getBoundingClientRect().width) || LARGHEZZA_CORPO);
     requestAnimationFrame(aggiornaRiquadro);
   }, [aggiornaRiquadro]);
 
@@ -220,6 +219,7 @@ export function RichTextEditor({
     imgSelRef.current = null;
     setImgSel(null);
     setRiquadro(null);
+    setLarghezzaDrag(null);
   }, []);
 
   /** Scrive gli stili inline email-safe sull'immagine selezionata. */
@@ -234,17 +234,6 @@ export function RichTextEditor({
     requestAnimationFrame(aggiornaRiquadro);
   }, [emitSoon, aggiornaRiquadro]);
 
-  const applicaLarghezzaPercentuale = useCallback((p: number) => {
-    const px = Math.round((LARGHEZZA_CORPO * p) / 100);
-    setLarghezzaPx(px);
-    scriviStile({ width: `${p}%`, "max-width": `${px}px`, display: "block" });
-  }, [scriviStile]);
-
-  const applicaLarghezzaPixel = useCallback((px: number) => {
-    const v = Math.max(40, Math.min(LARGHEZZA_CORPO, Math.round(px)));
-    scriviStile({ width: `${v}px`, "max-width": `${v}px`, display: "block" });
-  }, [scriviStile]);
-
   const applicaAllineamento = useCallback((a: "left" | "center" | "right") => {
     const margine = a === "center" ? "0 auto" : a === "right" ? "0 0 0 auto" : "0 auto 0 0";
     scriviStile({ display: "block", margin: margine });
@@ -256,24 +245,49 @@ export function RichTextEditor({
     emitSoon();
   }, [deselezionaImmagine, emitSoon]);
 
-  const iniziaTrascinamento = useCallback((e: React.PointerEvent) => {
+  /**
+   * Trascinamento di una delle 8 maniglie. Le proporzioni sono sempre
+   * mantenute (email-safe): si calcola solo la larghezza.
+   */
+  const iniziaTrascinamento = useCallback((dir: Maniglia) => (e: React.PointerEvent) => {
     const img = imgSelRef.current;
     if (!img) return;
     e.preventDefault();
+    e.stopPropagation();
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    const r = img.getBoundingClientRect();
     const startX = e.clientX;
-    const startW = img.getBoundingClientRect().width;
+    const startY = e.clientY;
+    const startW = r.width;
+    const rapporto = r.height > 0 ? r.width / r.height : 1;
+    const segnoX = dir.includes("e") ? 1 : dir.includes("w") ? -1 : 0;
+    const segnoY = dir.includes("s") ? 1 : dir.includes("n") ? -1 : 0;
+
+    const calcola = (ev: PointerEvent) => {
+      const delta = segnoX !== 0
+        ? segnoX * (ev.clientX - startX)
+        : segnoY * (ev.clientY - startY) * rapporto;
+      return Math.max(40, Math.min(LARGHEZZA_CORPO, Math.round(startW + delta)));
+    };
+
     const onMove = (ev: PointerEvent) => {
-      const v = Math.max(40, Math.min(LARGHEZZA_CORPO, Math.round(startW + (ev.clientX - startX))));
-      setLarghezzaPx(v);
-      applicaLarghezzaPixel(v);
+      const v = calcola(ev);
+      setLarghezzaDrag(v);
+      // Durante il trascinamento tocchiamo solo il DOM, per fluidità.
+      const stile = { ...leggiStile(img), width: `${v}px`, "max-width": `${v}px`, height: "auto", display: "block" };
+      img.setAttribute("style", serializzaStile(stile));
+      aggiornaRiquadro();
     };
     const onUp = () => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
+      setLarghezzaDrag(null);
+      emitSoon();
+      requestAnimationFrame(aggiornaRiquadro);
     };
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
-  }, [applicaLarghezzaPixel]);
+  }, [aggiornaRiquadro, emitSoon]);
 
   // Se il contenuto cambia dall'esterno l'immagine selezionata può non esistere più.
   useEffect(() => {
