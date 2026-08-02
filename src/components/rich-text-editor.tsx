@@ -174,6 +174,87 @@ export function RichTextEditor({
     cmd("createLink", url);
   };
 
+  // ---- Selezione e ridimensionamento immagini ----------------------------
+  const aggiornaRiquadro = useCallback(() => {
+    const img = imgSelRef.current;
+    const wrap = wrapRef.current;
+    if (!img || !wrap) { setRiquadro(null); return; }
+    const r = img.getBoundingClientRect();
+    const w = wrap.getBoundingClientRect();
+    setRiquadro({ left: r.left - w.left, top: r.top - w.top, width: r.width, height: r.height });
+  }, []);
+
+  const selezionaImmagine = useCallback((img: HTMLImageElement) => {
+    imgSelRef.current = img;
+    setImgSel(img);
+    setLarghezzaPx(Math.round(img.getBoundingClientRect().width) || LARGHEZZA_CORPO);
+    requestAnimationFrame(aggiornaRiquadro);
+  }, [aggiornaRiquadro]);
+
+  const deselezionaImmagine = useCallback(() => {
+    imgSelRef.current = null;
+    setImgSel(null);
+    setRiquadro(null);
+  }, []);
+
+  /** Scrive gli stili inline email-safe sull'immagine selezionata. */
+  const scriviStile = useCallback((patch: Record<string, string>) => {
+    const img = imgSelRef.current;
+    if (!img) return;
+    const stile = { ...leggiStile(img), ...patch };
+    stile["max-width"] = stile["max-width"] || "100%";
+    stile["height"] = "auto";
+    img.setAttribute("style", serializzaStile(stile));
+    emitSoon();
+    requestAnimationFrame(aggiornaRiquadro);
+  }, [emitSoon, aggiornaRiquadro]);
+
+  const applicaLarghezzaPercentuale = useCallback((p: number) => {
+    const px = Math.round((LARGHEZZA_CORPO * p) / 100);
+    setLarghezzaPx(px);
+    scriviStile({ width: `${p}%`, "max-width": `${px}px`, display: "block" });
+  }, [scriviStile]);
+
+  const applicaLarghezzaPixel = useCallback((px: number) => {
+    const v = Math.max(40, Math.min(LARGHEZZA_CORPO, Math.round(px)));
+    scriviStile({ width: `${v}px`, "max-width": `${v}px`, display: "block" });
+  }, [scriviStile]);
+
+  const applicaAllineamento = useCallback((a: "left" | "center" | "right") => {
+    const margine = a === "center" ? "0 auto" : a === "right" ? "0 0 0 auto" : "0 auto 0 0";
+    scriviStile({ display: "block", margin: margine });
+  }, [scriviStile]);
+
+  const rimuoviImmagine = useCallback(() => {
+    imgSelRef.current?.remove();
+    deselezionaImmagine();
+    emitSoon();
+  }, [deselezionaImmagine, emitSoon]);
+
+  const iniziaTrascinamento = useCallback((e: React.PointerEvent) => {
+    const img = imgSelRef.current;
+    if (!img) return;
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = img.getBoundingClientRect().width;
+    const onMove = (ev: PointerEvent) => {
+      const v = Math.max(40, Math.min(LARGHEZZA_CORPO, Math.round(startW + (ev.clientX - startX))));
+      setLarghezzaPx(v);
+      applicaLarghezzaPixel(v);
+    };
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  }, [applicaLarghezzaPixel]);
+
+  // Se il contenuto cambia dall'esterno l'immagine selezionata può non esistere più.
+  useEffect(() => {
+    if (imgSelRef.current && !imgSelRef.current.isConnected) deselezionaImmagine();
+  }, [value, deselezionaImmagine]);
+
   const btn = "h-8 w-8 p-0";
 
   return (
