@@ -21,6 +21,7 @@ import {
   LEAD_TIPI, LEAD_TIPO_LABEL,
   type LeadFonte, type LeadPriorita, type LeadTipo,
 } from "@/lib/lead-costanti";
+import { creaLead } from "@/lib/lead-crea";
 import { cercaDuplicati, DEDUP_CAMPO_LABEL, type DedupMatch } from "@/lib/lead-dedup";
 
 type Form = {
