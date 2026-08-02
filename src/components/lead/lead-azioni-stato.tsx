@@ -54,7 +54,13 @@ export function LeadAzioniStato({
     motivoPerdita?: string | null;
     nota: string;
   }) => {
-    const patch: Record<string, unknown> = {};
+    const patch: {
+      stato?: LeadStato;
+      assegnato_a?: string | null;
+      assegnato_il?: string | null;
+      motivo_perdita?: string | null;
+    } = {};
+
     if (opts.nuovoStato) patch.stato = opts.nuovoStato;
     if (opts.assegnatoA !== undefined) {
       patch.assegnato_a = opts.assegnatoA;
