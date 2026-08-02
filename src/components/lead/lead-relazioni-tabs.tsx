@@ -45,7 +45,6 @@ export function LeadContattiTab({ leadId, clienteId }: { leadId: string; cliente
 
   const addMut = useMutation({
     mutationFn: async () => {
-      if (!clienteId) throw new Error("Lead non collegato a un cliente");
       const { error } = await supabase.from("contatti").insert({
         cliente_id: clienteId,
         lead_id: leadId,
