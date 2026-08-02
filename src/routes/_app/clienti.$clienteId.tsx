@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
+import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { ArrowLeft, Plus, Mail, Phone, Smartphone, Star, Trash2, FileCheck2, FileX2, Download, Pencil, Link as LinkIcon, Copy, EyeOff, AlertTriangle, MessageCircle, Send } from "lucide-react";
 import { InviaSollecitoDialog } from "@/components/invia-sollecito-dialog";
 import { SignaturePad, getCanvasDataURL } from "@/components/signature-pad";
@@ -337,7 +338,7 @@ function ClienteDetail() {
                   <Link
                     to="/clienti/$clienteId"
                     params={{ clienteId }}
-                    search={{ tab: "storico" }}
+                    search={(prev) => ({ ...prev, tab: "storico" as const })}
                     className="inline-flex items-center gap-1 rounded-md bg-destructive/15 text-destructive border border-destructive/30 px-2 py-0.5 text-xs font-medium hover:bg-destructive/25 transition-colors cursor-pointer"
                   >
                     <AlertTriangle className="size-3" /> Cliente bloccato
