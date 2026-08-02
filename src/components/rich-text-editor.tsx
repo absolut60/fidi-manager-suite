@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Bold, Italic, Underline, List, ListOrdered, AlignLeft, AlignCenter, AlignRight,
-  Link2, Link2Off, Image as ImageIcon, Undo2, Redo2, RemoveFormatting, Loader2,
+  Link2, Link2Off, Image as ImageIcon, Undo2, Redo2, RemoveFormatting, Loader2, Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -22,6 +22,26 @@ const COLORI: { label: string; value: string }[] = [
   { label: "Verde", value: "#15803d" },
   { label: "Rosso", value: "#b91c1c" },
 ];
+
+/** Larghezza tipica del corpo email in pixel: riferimento per le percentuali. */
+const LARGHEZZA_CORPO = 600;
+
+/** Legge lo style inline di un elemento come mappa proprietà -> valore. */
+function leggiStile(el: HTMLElement): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const p of (el.getAttribute("style") ?? "").split(";")) {
+    const i = p.indexOf(":");
+    if (i > 0) out[p.slice(0, i).trim().toLowerCase()] = p.slice(i + 1).trim();
+  }
+  return out;
+}
+
+function serializzaStile(stile: Record<string, string>): string {
+  return Object.entries(stile)
+    .filter(([, v]) => v !== "")
+    .map(([k, v]) => `${k}:${v}`)
+    .join(";") + ";";
+}
 
 function cmd(name: string, value?: string, useCss = false) {
   try {
@@ -64,8 +84,13 @@ export function RichTextEditor({
 }) {
   const innerRef = useRef<HTMLDivElement | null>(null);
   const ref = editorRef ?? innerRef;
+  const wrapRef = useRef<HTMLDivElement | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const imgSelRef = useRef<HTMLImageElement | null>(null);
+  const [imgSel, setImgSel] = useState<HTMLImageElement | null>(null);
+  const [riquadro, setRiquadro] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
+  const [larghezzaPx, setLarghezzaPx] = useState<number>(LARGHEZZA_CORPO);
   // Sentinella: garantisce che al primo effetto (montaggio, anche dopo il
   // passaggio da "Modifica HTML") l'innerHTML venga sempre inizializzato.
   const lastHtml = useRef<string>("\u0000__non_inizializzato__");
@@ -174,6 +199,87 @@ export function RichTextEditor({
     cmd("createLink", url);
   };
 
+  // ---- Selezione e ridimensionamento immagini ----------------------------
+  const aggiornaRiquadro = useCallback(() => {
+    const img = imgSelRef.current;
+    const wrap = wrapRef.current;
+    if (!img || !wrap) { setRiquadro(null); return; }
+    const r = img.getBoundingClientRect();
+    const w = wrap.getBoundingClientRect();
+    setRiquadro({ left: r.left - w.left, top: r.top - w.top, width: r.width, height: r.height });
+  }, []);
+
+  const selezionaImmagine = useCallback((img: HTMLImageElement) => {
+    imgSelRef.current = img;
+    setImgSel(img);
+    setLarghezzaPx(Math.round(img.getBoundingClientRect().width) || LARGHEZZA_CORPO);
+    requestAnimationFrame(aggiornaRiquadro);
+  }, [aggiornaRiquadro]);
+
+  const deselezionaImmagine = useCallback(() => {
+    imgSelRef.current = null;
+    setImgSel(null);
+    setRiquadro(null);
+  }, []);
+
+  /** Scrive gli stili inline email-safe sull'immagine selezionata. */
+  const scriviStile = useCallback((patch: Record<string, string>) => {
+    const img = imgSelRef.current;
+    if (!img) return;
+    const stile = { ...leggiStile(img), ...patch };
+    stile["max-width"] = stile["max-width"] || "100%";
+    stile["height"] = "auto";
+    img.setAttribute("style", serializzaStile(stile));
+    emitSoon();
+    requestAnimationFrame(aggiornaRiquadro);
+  }, [emitSoon, aggiornaRiquadro]);
+
+  const applicaLarghezzaPercentuale = useCallback((p: number) => {
+    const px = Math.round((LARGHEZZA_CORPO * p) / 100);
+    setLarghezzaPx(px);
+    scriviStile({ width: `${p}%`, "max-width": `${px}px`, display: "block" });
+  }, [scriviStile]);
+
+  const applicaLarghezzaPixel = useCallback((px: number) => {
+    const v = Math.max(40, Math.min(LARGHEZZA_CORPO, Math.round(px)));
+    scriviStile({ width: `${v}px`, "max-width": `${v}px`, display: "block" });
+  }, [scriviStile]);
+
+  const applicaAllineamento = useCallback((a: "left" | "center" | "right") => {
+    const margine = a === "center" ? "0 auto" : a === "right" ? "0 0 0 auto" : "0 auto 0 0";
+    scriviStile({ display: "block", margin: margine });
+  }, [scriviStile]);
+
+  const rimuoviImmagine = useCallback(() => {
+    imgSelRef.current?.remove();
+    deselezionaImmagine();
+    emitSoon();
+  }, [deselezionaImmagine, emitSoon]);
+
+  const iniziaTrascinamento = useCallback((e: React.PointerEvent) => {
+    const img = imgSelRef.current;
+    if (!img) return;
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = img.getBoundingClientRect().width;
+    const onMove = (ev: PointerEvent) => {
+      const v = Math.max(40, Math.min(LARGHEZZA_CORPO, Math.round(startW + (ev.clientX - startX))));
+      setLarghezzaPx(v);
+      applicaLarghezzaPixel(v);
+    };
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  }, [applicaLarghezzaPixel]);
+
+  // Se il contenuto cambia dall'esterno l'immagine selezionata può non esistere più.
+  useEffect(() => {
+    if (imgSelRef.current && !imgSelRef.current.isConnected) deselezionaImmagine();
+  }, [value, deselezionaImmagine]);
+
   const btn = "h-8 w-8 p-0";
 
   return (
@@ -242,23 +348,86 @@ export function RichTextEditor({
         />
       </div>
 
-      <div
-        ref={ref}
-        contentEditable
-        suppressContentEditableWarning
-        role="textbox"
-        aria-multiline="true"
-        aria-label="Corpo email"
-        className="prose prose-sm max-w-none overflow-y-auto p-3 text-sm outline-none"
-        style={{ minHeight, maxHeight: 460 }}
-        onInput={emit}
-        onKeyUp={emit}
-        onCut={emitSoon}
-        onBlur={emit}
-        onPaste={onPaste}
-        onDrop={onDrop}
-        onDragOver={(e) => e.preventDefault()}
-      />
+      {imgSel && (
+        <div className="flex flex-wrap items-center gap-1.5 border-b bg-muted/40 p-1.5 text-xs">
+          <span className="px-1 font-medium text-muted-foreground">Immagine:</span>
+          {[25, 50, 75, 100].map((p) => (
+            <Button key={p} type="button" size="sm" variant="outline" className="h-7 px-2"
+              onMouseDown={(e) => { e.preventDefault(); applicaLarghezzaPercentuale(p); }}>
+              {p}%
+            </Button>
+          ))}
+          <span className="ml-1 text-muted-foreground">px</span>
+          <input
+            type="number" min={40} max={LARGHEZZA_CORPO} value={larghezzaPx}
+            onChange={(e) => {
+              const v = Number(e.target.value);
+              setLarghezzaPx(v);
+              if (Number.isFinite(v) && v >= 40) applicaLarghezzaPixel(v);
+            }}
+            className="h-7 w-20 rounded-md border bg-background px-2"
+          />
+          <Separator orientation="vertical" className="mx-1 h-6" />
+          <Button type="button" size="sm" variant="outline" className="h-7 w-7 p-0" title="Allinea a sinistra"
+            onMouseDown={(e) => { e.preventDefault(); applicaAllineamento("left"); }}><AlignLeft className="size-3.5" /></Button>
+          <Button type="button" size="sm" variant="outline" className="h-7 w-7 p-0" title="Centra"
+            onMouseDown={(e) => { e.preventDefault(); applicaAllineamento("center"); }}><AlignCenter className="size-3.5" /></Button>
+          <Button type="button" size="sm" variant="outline" className="h-7 w-7 p-0" title="Allinea a destra"
+            onMouseDown={(e) => { e.preventDefault(); applicaAllineamento("right"); }}><AlignRight className="size-3.5" /></Button>
+          <Separator orientation="vertical" className="mx-1 h-6" />
+          <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-destructive"
+            onMouseDown={(e) => { e.preventDefault(); rimuoviImmagine(); }}>
+            <Trash2 className="mr-1 size-3.5" /> Rimuovi immagine
+          </Button>
+          <Button type="button" size="sm" variant="ghost" className="h-7 px-2"
+            onMouseDown={(e) => { e.preventDefault(); deselezionaImmagine(); }}>
+            Chiudi
+          </Button>
+        </div>
+      )}
+
+      <div className="relative" ref={wrapRef}>
+        <div
+          ref={ref}
+          contentEditable
+          suppressContentEditableWarning
+          role="textbox"
+          aria-multiline="true"
+          aria-label="Corpo email"
+          className="prose prose-sm max-w-none overflow-y-auto p-3 text-sm outline-none"
+          style={{ minHeight, maxHeight: 460 }}
+          onInput={emit}
+          onKeyUp={emit}
+          onCut={emitSoon}
+          onBlur={emit}
+          onPaste={onPaste}
+          onDrop={onDrop}
+          onDragOver={(e) => e.preventDefault()}
+          onScroll={aggiornaRiquadro}
+          onClick={(e) => {
+            const t = e.target as HTMLElement;
+            if (t?.tagName === "IMG") selezionaImmagine(t as HTMLImageElement);
+            else deselezionaImmagine();
+          }}
+        />
+
+        {imgSel && riquadro && (
+          <div
+            className="pointer-events-none absolute z-10 rounded-sm"
+            style={{
+              left: riquadro.left, top: riquadro.top, width: riquadro.width, height: riquadro.height,
+              outline: "2px solid #c94f8f", outlineOffset: 1,
+            }}
+          >
+            <div
+              className="pointer-events-auto absolute size-3 cursor-nwse-resize rounded-sm border border-white"
+              style={{ right: -6, bottom: -6, background: "#c94f8f" }}
+              onPointerDown={iniziaTrascinamento}
+              title="Trascina per ridimensionare"
+            />
+          </div>
+        )}
+      </div>
 
       {uploading && (
         <div className="flex items-center gap-2 border-t px-3 py-1.5 text-xs text-muted-foreground">
