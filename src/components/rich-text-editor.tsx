@@ -242,23 +242,86 @@ export function RichTextEditor({
         />
       </div>
 
-      <div
-        ref={ref}
-        contentEditable
-        suppressContentEditableWarning
-        role="textbox"
-        aria-multiline="true"
-        aria-label="Corpo email"
-        className="prose prose-sm max-w-none overflow-y-auto p-3 text-sm outline-none"
-        style={{ minHeight, maxHeight: 460 }}
-        onInput={emit}
-        onKeyUp={emit}
-        onCut={emitSoon}
-        onBlur={emit}
-        onPaste={onPaste}
-        onDrop={onDrop}
-        onDragOver={(e) => e.preventDefault()}
-      />
+      {imgSel && (
+        <div className="flex flex-wrap items-center gap-1.5 border-b bg-muted/40 p-1.5 text-xs">
+          <span className="px-1 font-medium text-muted-foreground">Immagine:</span>
+          {[25, 50, 75, 100].map((p) => (
+            <Button key={p} type="button" size="sm" variant="outline" className="h-7 px-2"
+              onMouseDown={(e) => { e.preventDefault(); applicaLarghezzaPercentuale(p); }}>
+              {p}%
+            </Button>
+          ))}
+          <span className="ml-1 text-muted-foreground">px</span>
+          <input
+            type="number" min={40} max={LARGHEZZA_CORPO} value={larghezzaPx}
+            onChange={(e) => {
+              const v = Number(e.target.value);
+              setLarghezzaPx(v);
+              if (Number.isFinite(v) && v >= 40) applicaLarghezzaPixel(v);
+            }}
+            className="h-7 w-20 rounded-md border bg-background px-2"
+          />
+          <Separator orientation="vertical" className="mx-1 h-6" />
+          <Button type="button" size="sm" variant="outline" className="h-7 w-7 p-0" title="Allinea a sinistra"
+            onMouseDown={(e) => { e.preventDefault(); applicaAllineamento("left"); }}><AlignLeft className="size-3.5" /></Button>
+          <Button type="button" size="sm" variant="outline" className="h-7 w-7 p-0" title="Centra"
+            onMouseDown={(e) => { e.preventDefault(); applicaAllineamento("center"); }}><AlignCenter className="size-3.5" /></Button>
+          <Button type="button" size="sm" variant="outline" className="h-7 w-7 p-0" title="Allinea a destra"
+            onMouseDown={(e) => { e.preventDefault(); applicaAllineamento("right"); }}><AlignRight className="size-3.5" /></Button>
+          <Separator orientation="vertical" className="mx-1 h-6" />
+          <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-destructive"
+            onMouseDown={(e) => { e.preventDefault(); rimuoviImmagine(); }}>
+            <Trash2 className="mr-1 size-3.5" /> Rimuovi immagine
+          </Button>
+          <Button type="button" size="sm" variant="ghost" className="h-7 px-2"
+            onMouseDown={(e) => { e.preventDefault(); deselezionaImmagine(); }}>
+            Chiudi
+          </Button>
+        </div>
+      )}
+
+      <div className="relative">
+        <div
+          ref={ref}
+          contentEditable
+          suppressContentEditableWarning
+          role="textbox"
+          aria-multiline="true"
+          aria-label="Corpo email"
+          className="prose prose-sm max-w-none overflow-y-auto p-3 text-sm outline-none"
+          style={{ minHeight, maxHeight: 460 }}
+          onInput={emit}
+          onKeyUp={emit}
+          onCut={emitSoon}
+          onBlur={emit}
+          onPaste={onPaste}
+          onDrop={onDrop}
+          onDragOver={(e) => e.preventDefault()}
+          onScroll={aggiornaRiquadro}
+          onClick={(e) => {
+            const t = e.target as HTMLElement;
+            if (t?.tagName === "IMG") selezionaImmagine(t as HTMLImageElement);
+            else deselezionaImmagine();
+          }}
+        />
+
+        {imgSel && riquadro && (
+          <div
+            className="pointer-events-none absolute z-10 rounded-sm"
+            style={{
+              left: riquadro.left, top: riquadro.top, width: riquadro.width, height: riquadro.height,
+              outline: "2px solid #c94f8f", outlineOffset: 1,
+            }}
+          >
+            <div
+              className="pointer-events-auto absolute size-3 cursor-nwse-resize rounded-sm border border-white"
+              style={{ right: -6, bottom: -6, background: "#c94f8f" }}
+              onPointerDown={iniziaTrascinamento}
+              title="Trascina per ridimensionare"
+            />
+          </div>
+        )}
+      </div>
 
       {uploading && (
         <div className="flex items-center gap-2 border-t px-3 py-1.5 text-xs text-muted-foreground">
