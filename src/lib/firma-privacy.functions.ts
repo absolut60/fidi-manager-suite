@@ -86,7 +86,7 @@ export const firmaPrivacyConToken = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { data: ct, error } = await supabaseAdmin
       .from("contatti")
-      .select("id, cliente_id, nome, cognome, email, privacy_firmata, privacy_token_expires_at")
+      .select("id, cliente_id, lead_id, nome, cognome, email, privacy_firmata, privacy_token_expires_at")
       .eq("privacy_token", data.token)
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -96,11 +96,8 @@ export const firmaPrivacyConToken = createServerFn({ method: "POST" })
       throw new Error("Link scaduto");
     }
 
-    const { data: cli } = await supabaseAdmin
-      .from("clienti")
-      .select("ragione_sociale, partita_iva, codice_fiscale, indirizzo, citta")
-      .eq("id", ct.cliente_id ?? "00000000-0000-0000-0000-000000000000")
-      .maybeSingle();
+    // Intestazione del soggetto: cliente oppure lead non ancora convertito
+    const soggetto = await risolviIntestazioneSoggetto(ct);
 
     const now = new Date();
     const nomeCompleto = [ct.nome, ct.cognome].filter(Boolean).join(" ").trim() || "Contatto";
@@ -116,16 +113,19 @@ export const firmaPrivacyConToken = createServerFn({ method: "POST" })
     const { data: firmaSigned, error: eSigned } = await supabaseAdmin.storage
       .from("firme")
       .createSignedUrl(firmaPath, 60 * 60 * 24 * 365 * 10);
-    if (eSigned) throw new Error(eSigned.message);
+    if (eSigned) {
+      await supabaseAdmin.storage.from("firme").remove([firmaPath]);
+      throw new Error(eSigned.message);
+    }
     const firmaUrl = { publicUrl: firmaSigned.signedUrl };
 
-    // 2) Genera PDF (intestato al cliente, firmato dal contatto)
+    // 2) Genera PDF (intestato al soggetto — cliente o lead — firmato dal contatto)
     const pdfBytes = await generaPdfPrivacy({
-      ragioneSociale: `${cli?.ragione_sociale ?? ""} — firma di ${nomeCompleto}`,
-      partitaIva: cli?.partita_iva,
-      codiceFiscale: cli?.codice_fiscale,
-      indirizzo: cli?.indirizzo,
-      citta: cli?.citta,
+      ragioneSociale: `${soggetto.ragione_sociale} — firma di ${nomeCompleto}`,
+      partitaIva: soggetto.partita_iva ?? undefined,
+      codiceFiscale: soggetto.codice_fiscale ?? undefined,
+      indirizzo: soggetto.indirizzo ?? undefined,
+      citta: soggetto.citta ?? undefined,
       email: ct.email,
       firmaPngDataUrl: data.firmaDataUrl,
       dataFirma: now,
@@ -133,15 +133,22 @@ export const firmaPrivacyConToken = createServerFn({ method: "POST" })
     const pdfPath = `contatti/${ct.id}/privacy-${now.getTime()}.pdf`;
     const { error: ePdf } = await supabaseAdmin.storage.from("documenti-privacy")
       .upload(pdfPath, pdfBytes, { upsert: true, contentType: "application/pdf" });
-    if (ePdf) throw new Error(ePdf.message);
+    if (ePdf) {
+      await supabaseAdmin.storage.from("firme").remove([firmaPath]);
+      throw new Error(ePdf.message);
+    }
     // Bucket privato: signed URL a lunga scadenza (10 anni). Il path è la fonte di verità.
     const { data: pdfSigned, error: ePdfSigned } = await supabaseAdmin.storage
       .from("documenti-privacy")
       .createSignedUrl(pdfPath, 60 * 60 * 24 * 365 * 10);
-    if (ePdfSigned) throw new Error(ePdfSigned.message);
+    if (ePdfSigned) {
+      await supabaseAdmin.storage.from("firme").remove([firmaPath]);
+      await supabaseAdmin.storage.from("documenti-privacy").remove([pdfPath]);
+      throw new Error(ePdfSigned.message);
+    }
     const pdfUrl = { publicUrl: pdfSigned.signedUrl };
 
-    // 3) Aggiorna contatto e invalida il token
+    // 3) Aggiorna contatto e invalida il token — se fallisce, rimuovi i file orfani
     const { error: eUpd } = await supabaseAdmin.from("contatti").update({
       privacy_firmata: true,
       data_firma: now.toISOString(),
@@ -151,7 +158,12 @@ export const firmaPrivacyConToken = createServerFn({ method: "POST" })
       privacy_token: null,
       privacy_token_expires_at: null,
     }).eq("id", ct.id);
-    if (eUpd) throw new Error(eUpd.message);
+    if (eUpd) {
+      await supabaseAdmin.storage.from("firme").remove([firmaPath]);
+      await supabaseAdmin.storage.from("documenti-privacy").remove([pdfPath]);
+      throw new Error(eUpd.message);
+    }
+
 
     return { ok: true, pdfUrl: pdfUrl.publicUrl, pdfPath };
   });
