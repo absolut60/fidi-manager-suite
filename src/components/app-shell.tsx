@@ -57,7 +57,7 @@ type NavItem = {
   to: string;
   label: string;
   icon: typeof LayoutDashboard;
-  roles?: Array<"admin" | "approvatore" | "store_manager" | "amministrazione" | "direzione">;
+  roles?: Array<"admin" | "approvatore" | "store_manager" | "amministrazione" | "direzione" | "marketing">;
   group: NavGroupKey;
   richiesteScope?: RichiesteScope;
   exact?: boolean;
@@ -92,9 +92,9 @@ const NAV: NavItem[] = [
   { to: "/richieste-interne/tutte", label: "Tutte le richieste", icon: FileSpreadsheet, group: "richieste_interne", richiesteScope: "manage" },
   { to: "/richieste-interne/archivio", label: "Archivio", icon: ScrollText, group: "richieste_interne", richiesteScope: "manage" },
   // MARKETING
-  { to: "/marketing/segmenti", label: "Segmenti", icon: Sparkles, roles: ["admin", "amministrazione", "direzione"], group: "marketing" },
- { to: "/marketing/campagne", label: "Campagne email", icon: Mail, roles: ["admin", "amministrazione", "direzione"], group: "marketing" },
- { to: "/marketing/invii", label: "Invii massivi", icon: Megaphone, roles: ["admin", "amministrazione", "direzione"], group: "marketing" },
+  { to: "/marketing/segmenti", label: "Segmenti", icon: Sparkles, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "marketing" },
+ { to: "/marketing/campagne", label: "Campagne email", icon: Mail, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "marketing" },
+ { to: "/marketing/invii", label: "Invii massivi", icon: Megaphone, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "marketing" },
   // STRUMENTI
   { to: "/import-export", label: "Import / Export", icon: FileSpreadsheet, roles: ["admin", "amministrazione"], group: "strumenti" },
   { to: "/whatsapp", label: "WhatsApp", icon: MessageCircle, roles: ["admin"], group: "strumenti" },
@@ -149,9 +149,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isStoreManager = hasUserRole("store_manager");
   const isAmministrazione = hasUserRole("amministrazione");
   const isDirezione = hasUserRole("direzione");
+  const isMarketing = hasUserRole("marketing");
   const isAgente = hasUserRole("agente");
   const isOnlyAgente =
-    isAgente && !isAdmin && !isApprovatore && !isStoreManager && !isAmministrazione && !hasUserRole("direzione");
+    isAgente && !isAdmin && !isApprovatore && !isStoreManager && !isAmministrazione && !isMarketing && !hasUserRole("direzione");
 
   const AGENTE_WHITELIST = new Set<string>([
     "/clienti",
