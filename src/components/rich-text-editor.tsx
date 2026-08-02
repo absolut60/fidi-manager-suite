@@ -26,6 +26,20 @@ const COLORI: { label: string; value: string }[] = [
 /** Larghezza tipica del corpo email in pixel: riferimento per le percentuali. */
 const LARGHEZZA_CORPO = 600;
 
+/** Direzioni delle 8 maniglie di ridimensionamento (stile Word). */
+type Maniglia = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
+
+const MANIGLIE: { dir: Maniglia; cursor: string; pos: React.CSSProperties }[] = [
+  { dir: "nw", cursor: "nwse-resize", pos: { left: -5, top: -5 } },
+  { dir: "n", cursor: "ns-resize", pos: { left: "calc(50% - 5px)", top: -5 } },
+  { dir: "ne", cursor: "nesw-resize", pos: { right: -5, top: -5 } },
+  { dir: "e", cursor: "ew-resize", pos: { right: -5, top: "calc(50% - 5px)" } },
+  { dir: "se", cursor: "nwse-resize", pos: { right: -5, bottom: -5 } },
+  { dir: "s", cursor: "ns-resize", pos: { left: "calc(50% - 5px)", bottom: -5 } },
+  { dir: "sw", cursor: "nesw-resize", pos: { left: -5, bottom: -5 } },
+  { dir: "w", cursor: "ew-resize", pos: { left: -5, top: "calc(50% - 5px)" } },
+];
+
 /** Legge lo style inline di un elemento come mappa proprietà -> valore. */
 function leggiStile(el: HTMLElement): Record<string, string> {
   const out: Record<string, string> = {};
@@ -90,7 +104,7 @@ export function RichTextEditor({
   const imgSelRef = useRef<HTMLImageElement | null>(null);
   const [imgSel, setImgSel] = useState<HTMLImageElement | null>(null);
   const [riquadro, setRiquadro] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
-  const [larghezzaPx, setLarghezzaPx] = useState<number>(LARGHEZZA_CORPO);
+  const [larghezzaDrag, setLarghezzaDrag] = useState<number | null>(null);
   // Sentinella: garantisce che al primo effetto (montaggio, anche dopo il
   // passaggio da "Modifica HTML") l'innerHTML venga sempre inizializzato.
   const lastHtml = useRef<string>("\u0000__non_inizializzato__");
@@ -212,7 +226,6 @@ export function RichTextEditor({
   const selezionaImmagine = useCallback((img: HTMLImageElement) => {
     imgSelRef.current = img;
     setImgSel(img);
-    setLarghezzaPx(Math.round(img.getBoundingClientRect().width) || LARGHEZZA_CORPO);
     requestAnimationFrame(aggiornaRiquadro);
   }, [aggiornaRiquadro]);
 
@@ -220,6 +233,7 @@ export function RichTextEditor({
     imgSelRef.current = null;
     setImgSel(null);
     setRiquadro(null);
+    setLarghezzaDrag(null);
   }, []);
 
   /** Scrive gli stili inline email-safe sull'immagine selezionata. */
@@ -234,17 +248,6 @@ export function RichTextEditor({
     requestAnimationFrame(aggiornaRiquadro);
   }, [emitSoon, aggiornaRiquadro]);
 
-  const applicaLarghezzaPercentuale = useCallback((p: number) => {
-    const px = Math.round((LARGHEZZA_CORPO * p) / 100);
-    setLarghezzaPx(px);
-    scriviStile({ width: `${p}%`, "max-width": `${px}px`, display: "block" });
-  }, [scriviStile]);
-
-  const applicaLarghezzaPixel = useCallback((px: number) => {
-    const v = Math.max(40, Math.min(LARGHEZZA_CORPO, Math.round(px)));
-    scriviStile({ width: `${v}px`, "max-width": `${v}px`, display: "block" });
-  }, [scriviStile]);
-
   const applicaAllineamento = useCallback((a: "left" | "center" | "right") => {
     const margine = a === "center" ? "0 auto" : a === "right" ? "0 0 0 auto" : "0 auto 0 0";
     scriviStile({ display: "block", margin: margine });
@@ -256,24 +259,49 @@ export function RichTextEditor({
     emitSoon();
   }, [deselezionaImmagine, emitSoon]);
 
-  const iniziaTrascinamento = useCallback((e: React.PointerEvent) => {
+  /**
+   * Trascinamento di una delle 8 maniglie. Le proporzioni sono sempre
+   * mantenute (email-safe): si calcola solo la larghezza.
+   */
+  const iniziaTrascinamento = useCallback((dir: Maniglia) => (e: React.PointerEvent) => {
     const img = imgSelRef.current;
     if (!img) return;
     e.preventDefault();
+    e.stopPropagation();
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    const r = img.getBoundingClientRect();
     const startX = e.clientX;
-    const startW = img.getBoundingClientRect().width;
+    const startY = e.clientY;
+    const startW = r.width;
+    const rapporto = r.height > 0 ? r.width / r.height : 1;
+    const segnoX = dir.includes("e") ? 1 : dir.includes("w") ? -1 : 0;
+    const segnoY = dir.includes("s") ? 1 : dir.includes("n") ? -1 : 0;
+
+    const calcola = (ev: PointerEvent) => {
+      const delta = segnoX !== 0
+        ? segnoX * (ev.clientX - startX)
+        : segnoY * (ev.clientY - startY) * rapporto;
+      return Math.max(40, Math.min(LARGHEZZA_CORPO, Math.round(startW + delta)));
+    };
+
     const onMove = (ev: PointerEvent) => {
-      const v = Math.max(40, Math.min(LARGHEZZA_CORPO, Math.round(startW + (ev.clientX - startX))));
-      setLarghezzaPx(v);
-      applicaLarghezzaPixel(v);
+      const v = calcola(ev);
+      setLarghezzaDrag(v);
+      // Durante il trascinamento tocchiamo solo il DOM, per fluidità.
+      const stile = { ...leggiStile(img), width: `${v}px`, "max-width": `${v}px`, height: "auto", display: "block" };
+      img.setAttribute("style", serializzaStile(stile));
+      aggiornaRiquadro();
     };
     const onUp = () => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
+      setLarghezzaDrag(null);
+      emitSoon();
+      requestAnimationFrame(aggiornaRiquadro);
     };
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
-  }, [applicaLarghezzaPixel]);
+  }, [aggiornaRiquadro, emitSoon]);
 
   // Se il contenuto cambia dall'esterno l'immagine selezionata può non esistere più.
   useEffect(() => {
@@ -349,25 +377,13 @@ export function RichTextEditor({
       </div>
 
       {imgSel && (
-        <div className="flex flex-wrap items-center gap-1.5 border-b bg-muted/40 p-1.5 text-xs">
+        <div
+          contentEditable={false}
+          onKeyDown={(e) => e.stopPropagation()}
+          onKeyUp={(e) => e.stopPropagation()}
+          className="flex flex-wrap items-center gap-1.5 border-b bg-muted/40 p-1.5 text-xs"
+        >
           <span className="px-1 font-medium text-muted-foreground">Immagine:</span>
-          {[25, 50, 75, 100].map((p) => (
-            <Button key={p} type="button" size="sm" variant="outline" className="h-7 px-2"
-              onMouseDown={(e) => { e.preventDefault(); applicaLarghezzaPercentuale(p); }}>
-              {p}%
-            </Button>
-          ))}
-          <span className="ml-1 text-muted-foreground">px</span>
-          <input
-            type="number" min={40} max={LARGHEZZA_CORPO} value={larghezzaPx}
-            onChange={(e) => {
-              const v = Number(e.target.value);
-              setLarghezzaPx(v);
-              if (Number.isFinite(v) && v >= 40) applicaLarghezzaPixel(v);
-            }}
-            className="h-7 w-20 rounded-md border bg-background px-2"
-          />
-          <Separator orientation="vertical" className="mx-1 h-6" />
           <Button type="button" size="sm" variant="outline" className="h-7 w-7 p-0" title="Allinea a sinistra"
             onMouseDown={(e) => { e.preventDefault(); applicaAllineamento("left"); }}><AlignLeft className="size-3.5" /></Button>
           <Button type="button" size="sm" variant="outline" className="h-7 w-7 p-0" title="Centra"
@@ -383,6 +399,7 @@ export function RichTextEditor({
             onMouseDown={(e) => { e.preventDefault(); deselezionaImmagine(); }}>
             Chiudi
           </Button>
+          <span className="ml-auto px-1 text-muted-foreground">Trascina le maniglie per ridimensionare</span>
         </div>
       )}
 
@@ -419,15 +436,27 @@ export function RichTextEditor({
               outline: "2px solid #c94f8f", outlineOffset: 1,
             }}
           >
-            <div
-              className="pointer-events-auto absolute size-3 cursor-nwse-resize rounded-sm border border-white"
-              style={{ right: -6, bottom: -6, background: "#c94f8f" }}
-              onPointerDown={iniziaTrascinamento}
-              title="Trascina per ridimensionare"
-            />
+            {MANIGLIE.map((m) => (
+              <div
+                key={m.dir}
+                className="pointer-events-auto absolute rounded-[2px] border border-white shadow"
+                style={{ ...m.pos, width: 10, height: 10, background: "#c94f8f", cursor: m.cursor, touchAction: "none" }}
+                onPointerDown={iniziaTrascinamento(m.dir)}
+                title="Trascina per ridimensionare"
+              />
+            ))}
+            {larghezzaDrag !== null && (
+              <div
+                className="absolute rounded px-1.5 py-0.5 text-[11px] font-medium text-white"
+                style={{ left: "50%", top: -24, transform: "translateX(-50%)", background: "#c94f8f" }}
+              >
+                {larghezzaDrag} px
+              </div>
+            )}
           </div>
         )}
       </div>
+
 
       {uploading && (
         <div className="flex items-center gap-2 border-t px-3 py-1.5 text-xs text-muted-foreground">
