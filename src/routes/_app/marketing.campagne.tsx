@@ -10,6 +10,8 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { RichTextEditor, pulisciHtmlEmail, inserisciTestoNellEditor } from "@/components/rich-text-editor";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -493,14 +495,34 @@ function EditorCampagna({
               <Input value={oggetto} onChange={(e) => setOggetto(e.target.value)} placeholder="Oggetto visibile al cliente" />
             </div>
             <div className="space-y-2">
-              <Label>Corpo email (HTML semplice)</Label>
-              <Textarea
-                ref={corpoRef}
-                value={corpo}
-                onChange={(e) => setCorpo(e.target.value)}
-                rows={14}
-                className="font-mono text-xs"
-              />
+              <div className="flex items-center justify-between gap-3">
+                <Label>Corpo email</Label>
+                <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Switch checked={modoHtml} onCheckedChange={setModoHtml} />
+                  Modifica HTML
+                </label>
+              </div>
+              {modoHtml ? (
+                <Textarea
+                  ref={corpoRef}
+                  value={corpo}
+                  onChange={(e) => setCorpo(e.target.value)}
+                  rows={16}
+                  className="font-mono text-xs"
+                />
+              ) : (
+                <>
+                  <RichTextEditor
+                    value={corpo}
+                    onChange={setCorpo}
+                    onUploadImage={uploadImmagine}
+                    editorRef={editorRef}
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Puoi inserire immagini dalla barra strumenti, trascinandole nell'editor o incollandole (Ctrl+V).
+                  </p>
+                </>
+              )}
             </div>
 
             <Card className="p-3 space-y-2">
