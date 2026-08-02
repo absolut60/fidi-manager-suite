@@ -21,17 +21,11 @@ import {
  * `cliente_id` e `lead_id`. Le righe lead-only sono governate dai permessi lead.
  */
 
-export function LeadContattiTab({ leadId, clienteId }: { leadId: string; clienteId: string | null }) {
-  const qc = useQueryClient();
-  const [open, setOpen] = useState(false);
-  const [nome, setNome] = useState("");
-  const [cognome, setCognome] = useState("");
-  const [email, setEmail] = useState("");
-  const [telefono, setTelefono] = useState("");
-  const [ruolo, setRuolo] = useState("");
-
-  const { data, isLoading } = useQuery({
+/** Fonte unica dei contatti di un lead: queryKey ["lead-contatti", leadId]. */
+export function useLeadContatti(leadId: string, enabled = true) {
+  return useQuery({
     queryKey: ["lead-contatti", leadId],
+    enabled,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("contatti")
@@ -42,6 +36,18 @@ export function LeadContattiTab({ leadId, clienteId }: { leadId: string; cliente
       return data ?? [];
     },
   });
+}
+
+export function LeadContattiTab({ leadId, clienteId }: { leadId: string; clienteId: string | null }) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [nome, setNome] = useState("");
+  const [cognome, setCognome] = useState("");
+  const [email, setEmail] = useState("");
+  const [telefono, setTelefono] = useState("");
+  const [ruolo, setRuolo] = useState("");
+
+  const { data, isLoading } = useLeadContatti(leadId);
 
   const addMut = useMutation({
     mutationFn: async () => {

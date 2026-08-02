@@ -20,7 +20,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { LeadContattiTab, LeadCantieriTab } from "@/components/lead/lead-relazioni-tabs";
+import { LeadContattiTab, LeadCantieriTab, useLeadContatti } from "@/components/lead/lead-relazioni-tabs";
 import { LeadAzioniStato } from "@/components/lead/lead-azioni-stato";
 import { LinkFirmaPrivacy } from "@/components/link-firma-privacy";
 import { LeadRichiesteTab } from "@/components/lead/lead-richieste-tab";
@@ -213,19 +213,7 @@ function LeadDettaglioPage() {
     },
   });
 
-  const { data: contattiLead } = useQuery({
-    queryKey: ["lead-contatti", leadId],
-    enabled: canSee,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("contatti")
-        .select("id, cliente_id, nome, cognome, email, telefono, cellulare, ruolo")
-        .eq("lead_id", leadId)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
+  const { data: contattiLead } = useLeadContatti(leadId, canSee);
   const haContatti = (contattiLead?.length ?? 0) > 0;
 
 
@@ -489,8 +477,8 @@ function LeadDettaglioPage() {
                   {(storico ?? []).map((s) => (
                     <TableRow key={s.id}>
                       <TableCell className="text-xs">{new Date(s.created_at).toLocaleString("it-IT")}</TableCell>
-                      <TableCell className="text-xs">{s.stato_da ?? "—"}</TableCell>
-                      <TableCell className="text-xs">{s.stato_a ?? "—"}</TableCell>
+                      <TableCell className="text-xs">{(s.stato_da && LEAD_STATO_LABEL[s.stato_da as keyof typeof LEAD_STATO_LABEL]) || "—"}</TableCell>
+                      <TableCell className="text-xs">{(s.stato_a && LEAD_STATO_LABEL[s.stato_a as keyof typeof LEAD_STATO_LABEL]) || "—"}</TableCell>
                       <TableCell className="text-xs">{nomeProfilo(s.operatore_id)}</TableCell>
                       <TableCell className="text-xs">{s.nota ?? "—"}</TableCell>
                     </TableRow>

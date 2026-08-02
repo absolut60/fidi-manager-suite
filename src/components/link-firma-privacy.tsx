@@ -8,7 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export function LinkFirmaPrivacy({ clienteId, leadId }: { clienteId?: string; leadId?: string }) {
+type LinkFirmaPrivacyProps =
+  | { clienteId: string; leadId?: never }
+  | { clienteId?: never; leadId: string };
+
+export function LinkFirmaPrivacy({ clienteId, leadId }: LinkFirmaPrivacyProps) {
   const [link, setLink] = useState<string | null>(null);
   const [expires, setExpires] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
