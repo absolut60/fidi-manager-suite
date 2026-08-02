@@ -867,6 +867,7 @@ export type Database = {
           descrizione: string | null
           id: string
           indirizzo: string | null
+          lead_id: string | null
           nome: string
           note: string | null
           provincia: string | null
@@ -885,6 +886,7 @@ export type Database = {
           descrizione?: string | null
           id?: string
           indirizzo?: string | null
+          lead_id?: string | null
           nome: string
           note?: string | null
           provincia?: string | null
@@ -903,6 +905,7 @@ export type Database = {
           descrizione?: string | null
           id?: string
           indirizzo?: string | null
+          lead_id?: string | null
           nome?: string
           note?: string | null
           provincia?: string | null
@@ -930,6 +933,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "riepilogo_insoluti"
             referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "cantieri_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "lead"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1387,6 +1397,7 @@ export type Database = {
           firma_nome_dichiarato: string | null
           firma_url: string | null
           id: string
+          lead_id: string | null
           luogo_nascita: string | null
           nome: string
           pdf_privacy_path: string | null
@@ -1420,6 +1431,7 @@ export type Database = {
           firma_nome_dichiarato?: string | null
           firma_url?: string | null
           id?: string
+          lead_id?: string | null
           luogo_nascita?: string | null
           nome: string
           pdf_privacy_path?: string | null
@@ -1453,6 +1465,7 @@ export type Database = {
           firma_nome_dichiarato?: string | null
           firma_url?: string | null
           id?: string
+          lead_id?: string | null
           luogo_nascita?: string | null
           nome?: string
           pdf_privacy_path?: string | null
@@ -1490,6 +1503,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "riepilogo_insoluti"
             referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "contatti_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "lead"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1623,6 +1643,240 @@ export type Database = {
           stato?: Database["public"]["Enums"]["stato_importazione"]
         }
         Relationships: []
+      }
+      lead: {
+        Row: {
+          agente_codice: string | null
+          assegnato_a: string | null
+          assegnato_il: string | null
+          cap: string | null
+          cellulare: string | null
+          citta: string | null
+          cliente_id: string | null
+          codice_fiscale: string | null
+          cognome: string | null
+          convertito_da: string | null
+          convertito_il: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          fonte: Database["public"]["Enums"]["lead_fonte"]
+          fonte_dettaglio: string | null
+          hubspot_id: string | null
+          id: string
+          indirizzo: string | null
+          motivo_perdita: string | null
+          nome: string | null
+          note: string | null
+          partita_iva: string | null
+          priorita: Database["public"]["Enums"]["lead_priorita"]
+          prossima_azione_il: string | null
+          prossima_azione_nota: string | null
+          prossima_azione_tipo: string | null
+          provincia: string | null
+          ragione_sociale: string | null
+          stato: Database["public"]["Enums"]["lead_stato"]
+          store_id: string | null
+          telefono: string | null
+          tipo_lead: Database["public"]["Enums"]["lead_tipo"]
+          tipo_soggetto: string | null
+          updated_at: string
+        }
+        Insert: {
+          agente_codice?: string | null
+          assegnato_a?: string | null
+          assegnato_il?: string | null
+          cap?: string | null
+          cellulare?: string | null
+          citta?: string | null
+          cliente_id?: string | null
+          codice_fiscale?: string | null
+          cognome?: string | null
+          convertito_da?: string | null
+          convertito_il?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          fonte?: Database["public"]["Enums"]["lead_fonte"]
+          fonte_dettaglio?: string | null
+          hubspot_id?: string | null
+          id?: string
+          indirizzo?: string | null
+          motivo_perdita?: string | null
+          nome?: string | null
+          note?: string | null
+          partita_iva?: string | null
+          priorita?: Database["public"]["Enums"]["lead_priorita"]
+          prossima_azione_il?: string | null
+          prossima_azione_nota?: string | null
+          prossima_azione_tipo?: string | null
+          provincia?: string | null
+          ragione_sociale?: string | null
+          stato?: Database["public"]["Enums"]["lead_stato"]
+          store_id?: string | null
+          telefono?: string | null
+          tipo_lead?: Database["public"]["Enums"]["lead_tipo"]
+          tipo_soggetto?: string | null
+          updated_at?: string
+        }
+        Update: {
+          agente_codice?: string | null
+          assegnato_a?: string | null
+          assegnato_il?: string | null
+          cap?: string | null
+          cellulare?: string | null
+          citta?: string | null
+          cliente_id?: string | null
+          codice_fiscale?: string | null
+          cognome?: string | null
+          convertito_da?: string | null
+          convertito_il?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          fonte?: Database["public"]["Enums"]["lead_fonte"]
+          fonte_dettaglio?: string | null
+          hubspot_id?: string | null
+          id?: string
+          indirizzo?: string | null
+          motivo_perdita?: string | null
+          nome?: string | null
+          note?: string | null
+          partita_iva?: string | null
+          priorita?: Database["public"]["Enums"]["lead_priorita"]
+          prossima_azione_il?: string | null
+          prossima_azione_nota?: string | null
+          prossima_azione_tipo?: string | null
+          provincia?: string | null
+          ragione_sociale?: string | null
+          stato?: Database["public"]["Enums"]["lead_stato"]
+          store_id?: string | null
+          telefono?: string | null
+          tipo_lead?: Database["public"]["Enums"]["lead_tipo"]
+          tipo_soggetto?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti_con_rischio"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "lead_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_richieste: {
+        Row: {
+          assegnato_a: string | null
+          created_at: string
+          created_by: string | null
+          descrizione: string | null
+          esito: string | null
+          id: string
+          importo_stimato: number | null
+          lead_id: string
+          oggetto: string | null
+          stato: Database["public"]["Enums"]["lead_richiesta_stato"]
+          tipo: Database["public"]["Enums"]["lead_richiesta_tipo"]
+          updated_at: string
+        }
+        Insert: {
+          assegnato_a?: string | null
+          created_at?: string
+          created_by?: string | null
+          descrizione?: string | null
+          esito?: string | null
+          id?: string
+          importo_stimato?: number | null
+          lead_id: string
+          oggetto?: string | null
+          stato?: Database["public"]["Enums"]["lead_richiesta_stato"]
+          tipo: Database["public"]["Enums"]["lead_richiesta_tipo"]
+          updated_at?: string
+        }
+        Update: {
+          assegnato_a?: string | null
+          created_at?: string
+          created_by?: string | null
+          descrizione?: string | null
+          esito?: string | null
+          id?: string
+          importo_stimato?: number | null
+          lead_id?: string
+          oggetto?: string | null
+          stato?: Database["public"]["Enums"]["lead_richiesta_stato"]
+          tipo?: Database["public"]["Enums"]["lead_richiesta_tipo"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_richieste_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "lead"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_storico: {
+        Row: {
+          created_at: string
+          id: string
+          lead_id: string
+          nota: string | null
+          operatore_id: string | null
+          stato_a: string | null
+          stato_da: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lead_id: string
+          nota?: string | null
+          operatore_id?: string | null
+          stato_a?: string | null
+          stato_da?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lead_id?: string
+          nota?: string | null
+          operatore_id?: string | null
+          stato_a?: string | null
+          stato_da?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_storico_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "lead"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       macrocategorie: {
         Row: {
@@ -3751,6 +4005,7 @@ export type Database = {
       bulk_update_clienti_bfa: { Args: { _payloads: Json }; Returns: number }
       calcola_livello_fido: { Args: { _importo: number }; Returns: number }
       calcola_scaduto: { Args: { _ant: number; _ssa: number }; Returns: number }
+      can_access_lead: { Args: { _user_id: string }; Returns: boolean }
       can_manage_email_assets: { Args: never; Returns: boolean }
       effective_store_filter: { Args: { _requested: string }; Returns: string }
       fn_email_valida: { Args: { _raw: string }; Returns: boolean }
@@ -4456,6 +4711,22 @@ export type Database = {
         | "esecutore_richieste"
         | "marketing"
       esito_approvazione: "approvata" | "rifiutata"
+      lead_fonte: "web" | "hubspot" | "manuale" | "fiera" | "evento" | "altro"
+      lead_priorita: "alta" | "media" | "bassa"
+      lead_richiesta_stato: "aperta" | "in_lavorazione" | "evasa" | "respinta"
+      lead_richiesta_tipo:
+        | "preventivo"
+        | "ristrutturazione"
+        | "info_tecnica"
+        | "info_commerciale"
+      lead_stato:
+        | "nuovo"
+        | "assegnato"
+        | "in_lavorazione"
+        | "qualificato"
+        | "convertito"
+        | "perso"
+      lead_tipo: "potenziale_cliente" | "richiesta_specifica"
       stato_importazione:
         | "in_elaborazione"
         | "completata"
@@ -4678,6 +4949,24 @@ export const Constants = {
         "marketing",
       ],
       esito_approvazione: ["approvata", "rifiutata"],
+      lead_fonte: ["web", "hubspot", "manuale", "fiera", "evento", "altro"],
+      lead_priorita: ["alta", "media", "bassa"],
+      lead_richiesta_stato: ["aperta", "in_lavorazione", "evasa", "respinta"],
+      lead_richiesta_tipo: [
+        "preventivo",
+        "ristrutturazione",
+        "info_tecnica",
+        "info_commerciale",
+      ],
+      lead_stato: [
+        "nuovo",
+        "assegnato",
+        "in_lavorazione",
+        "qualificato",
+        "convertito",
+        "perso",
+      ],
+      lead_tipo: ["potenziale_cliente", "richiesta_specifica"],
       stato_importazione: [
         "in_elaborazione",
         "completata",
