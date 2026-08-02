@@ -97,13 +97,14 @@ function LeadDettaglioPage() {
     staleTime: 5 * 60_000,
   });
   const { data: profili } = useQuery({
-    queryKey: ["profili-attivi"],
+    queryKey: ["utenti-assegnabili"],
     queryFn: async () => {
-      const { data } = await supabase.from("profili").select("id, nome, cognome").order("cognome");
+      const { data } = await supabase.rpc("get_utenti_assegnabili");
       return (data ?? []) as { id: string; nome: string | null; cognome: string | null }[];
     },
     staleTime: 5 * 60_000,
   });
+
   const nomeProfilo = (id: string | null) => {
     if (!id) return "—";
     const p = profili?.find((x) => x.id === id);
