@@ -422,8 +422,22 @@ function LeadDettaglioPage() {
 
         <TabsContent value="contatti" className="mt-4 space-y-4">
           <LeadContattiTab leadId={leadId} clienteId={lead.cliente_id} />
-          <LinkFirmaPrivacy leadId={leadId} />
+
+          <div className="space-y-2">
+            <h2 className="text-sm font-semibold tracking-tight">Raccolta consensi GDPR</h2>
+            {!haContatti && (
+              <Alert>
+                <Info className="size-4" />
+                <AlertDescription>
+                  Aggiungi un contatto-persona per poter raccogliere la firma privacy e i consensi
+                  marketing (GDPR). La privacy si firma sulla persona fisica, non sull'azienda.
+                </AlertDescription>
+              </Alert>
+            )}
+            <LinkFirmaPrivacy leadId={leadId} />
+          </div>
         </TabsContent>
+
 
 
         <TabsContent value="cantieri" className="mt-4">
