@@ -3,7 +3,8 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { risolviIntestazioneSoggetto } from "./intestazione-soggetto.server";
-import { generaPdfPrivacy } from "./privacy-pdf";
+import { generaSchedaCliente } from "./scheda-pdf";
+import { buildPrivacyPdfEmailPayload } from "./email-template";
 
 /**
  * Genera (o rigenera) il token per il link di firma privacy di un CONTATTO.
@@ -44,7 +45,7 @@ export const getContattoPerFirma = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const { data: ct, error } = await supabaseAdmin
       .from("contatti")
-      .select("id, cliente_id, lead_id, nome, cognome, email, privacy_firmata, privacy_token_expires_at")
+      .select("id, cliente_id, lead_id, nome, cognome, email, cellulare, luogo_nascita, data_nascita, codice_fiscale, residenza, privacy_firmata, privacy_token_expires_at")
       .eq("privacy_token", data.token)
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -62,6 +63,11 @@ export const getContattoPerFirma = createServerFn({ method: "GET" })
         nome: ct.nome,
         cognome: ct.cognome,
         email: ct.email,
+        cellulare: ct.cellulare,
+        luogo_nascita: ct.luogo_nascita,
+        data_nascita: ct.data_nascita,
+        codice_fiscale: ct.codice_fiscale,
+        residenza: ct.residenza,
       },
       cliente: {
         ragione_sociale: soggetto.ragione_sociale,
