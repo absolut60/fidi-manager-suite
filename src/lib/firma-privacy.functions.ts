@@ -83,13 +83,35 @@ export const getContattoPerFirma = createServerFn({ method: "GET" })
  * Salva la firma del contatto effettuata tramite link pubblico.
  */
 export const firmaPrivacyConToken = createServerFn({ method: "POST" })
-  .inputValidator((d: { token: string; firmaDataUrl: string }) =>
+  .inputValidator((d: unknown) =>
     z.object({
       token: z.string().uuid(),
       firmaDataUrl: z.string().startsWith("data:image/png;base64,").max(2_000_000),
+      dichiarante: z.object({
+        nome: z.string().trim().min(1, "Nome obbligatorio").max(100),
+        cognome: z.string().trim().min(1, "Cognome obbligatorio").max(100),
+        societa: z.string().trim().max(200).optional(),
+        luogo_nascita: z.string().trim().max(120).optional(),
+        data_nascita: z.string().trim().max(20).optional(),
+        codice_fiscale: z.string().trim().max(32).optional(),
+        residenza: z.string().trim().max(250).optional(),
+        email: z.string().trim().max(255),
+        cellulare: z.string().trim().max(40).optional(),
+      }),
+      consensi: z.object({
+        profilazione: z.boolean(),
+        marketing_media: z.boolean(),
+        marketing_diretto: z.boolean(),
+      }),
+      data_firma: z.string().trim().max(20).optional(),
     }).parse(d)
   )
   .handler(async ({ data }) => {
+    const emailDich = data.dichiarante.email.trim();
+    if (!emailDich || !z.string().email().safeParse(emailDich).success) {
+      throw new Error("Email obbligatoria per l'invio del contratto firmato");
+    }
+
     const { data: ct, error } = await supabaseAdmin
       .from("contatti")
       .select("id, cliente_id, lead_id, nome, cognome, email, privacy_firmata, privacy_token_expires_at")
@@ -106,7 +128,10 @@ export const firmaPrivacyConToken = createServerFn({ method: "POST" })
     const soggetto = await risolviIntestazioneSoggetto(ct);
 
     const now = new Date();
-    const nomeCompleto = [ct.nome, ct.cognome].filter(Boolean).join(" ").trim() || "Contatto";
+    const nomeCompleto =
+      [data.dichiarante.nome, data.dichiarante.cognome].filter(Boolean).join(" ").trim() ||
+      [ct.nome, ct.cognome].filter(Boolean).join(" ").trim() ||
+      "Contatto";
 
     // 1) Upload PNG firma
     const base64 = data.firmaDataUrl.split(",")[1];
@@ -125,16 +150,25 @@ export const firmaPrivacyConToken = createServerFn({ method: "POST" })
     }
     const firmaUrl = { publicUrl: firmaSigned.signedUrl };
 
-    // 2) Genera PDF (intestato al soggetto — cliente o lead — firmato dal contatto)
-    const pdfBytes = await generaPdfPrivacy({
-      ragioneSociale: `${soggetto.ragione_sociale} — firma di ${nomeCompleto}`,
+    // 2) Genera il PDF RICCO — stesso generatore del wizard cliente (§5)
+    const ragioneSociale = data.dichiarante.societa?.trim() || soggetto.ragione_sociale;
+    const pdfBytes = await generaSchedaCliente({
+      tipo: "aggiornamento",
+      ragioneSociale,
+      dichiaranteNome: data.dichiarante.nome,
+      dichiaranteCognome: data.dichiarante.cognome,
+      luogoNascita: data.dichiarante.luogo_nascita || undefined,
+      dataNascita: data.dichiarante.data_nascita || undefined,
+      codiceFiscaleDich: data.dichiarante.codice_fiscale || soggetto.codice_fiscale || undefined,
       partitaIva: soggetto.partita_iva ?? undefined,
-      codiceFiscale: soggetto.codice_fiscale ?? undefined,
-      indirizzo: soggetto.indirizzo ?? undefined,
-      citta: soggetto.citta ?? undefined,
-      email: ct.email,
+      residenza: data.dichiarante.residenza || undefined,
+      emailDich: emailDich,
+      cellulareDich: data.dichiarante.cellulare || undefined,
+      consensoProfilazione: data.consensi.profilazione ? "si" : "no",
+      consensoMarketingMedia: data.consensi.marketing_media ? "si" : "no",
+      consensoMarketingDiretto: data.consensi.marketing_diretto ? "si" : "no",
+      dataFirma: data.data_firma || now,
       firmaPngDataUrl: data.firmaDataUrl,
-      dataFirma: now,
     });
     const pdfPath = `contatti/${ct.id}/privacy-${now.getTime()}.pdf`;
     const { error: ePdf } = await supabaseAdmin.storage.from("documenti-privacy")
@@ -161,6 +195,15 @@ export const firmaPrivacyConToken = createServerFn({ method: "POST" })
       firma_url: firmaUrl.publicUrl,
       pdf_privacy_url: pdfUrl.publicUrl,
       pdf_privacy_path: pdfPath,
+      luogo_nascita: data.dichiarante.luogo_nascita || null,
+      data_nascita: data.dichiarante.data_nascita || null,
+      codice_fiscale: data.dichiarante.codice_fiscale || null,
+      residenza: data.dichiarante.residenza || null,
+      email: emailDich,
+      cellulare: data.dichiarante.cellulare || null,
+      consenso_profilazione: data.consensi.profilazione,
+      consenso_marketing_media: data.consensi.marketing_media,
+      consenso_marketing_diretto: data.consensi.marketing_diretto,
       privacy_token: null,
       privacy_token_expires_at: null,
     }).eq("id", ct.id);
@@ -170,6 +213,26 @@ export const firmaPrivacyConToken = createServerFn({ method: "POST" })
       throw new Error(eUpd.message);
     }
 
+    // 4) Invio del PDF al firmatario — non deve MAI rompere il flusso:
+    // il documento è già archiviato e recuperabile dal path.
+    let emailInviata = false;
+    try {
+      let binary = "";
+      for (let i = 0; i < pdfBytes.length; i++) binary += String.fromCharCode(pdfBytes[i]);
+      const payload = buildPrivacyPdfEmailPayload({
+        toName: nomeCompleto,
+        ragioneSociale,
+        dataFirma: now.toISOString(),
+        pdfBase64: btoa(binary),
+      });
+      const { sendEmailViaEdge } = await import("./inngest/send-email.server");
+      const esito = await sendEmailViaEdge({ to: emailDich, ...payload });
+      emailInviata = esito.ok;
+      if (!esito.ok) console.error("[firma-privacy] invio email fallito:", esito.err);
+    } catch (e) {
+      console.error("[firma-privacy] invio email fallito:", e);
+    }
 
-    return { ok: true, pdfUrl: pdfUrl.publicUrl, pdfPath };
+    return { ok: true, pdfUrl: pdfUrl.publicUrl, pdfPath, emailInviata };
   });
+
