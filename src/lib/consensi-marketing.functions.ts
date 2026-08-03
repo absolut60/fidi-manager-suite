@@ -1,10 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { generaPdfConsensiMarketing } from "./consensi-pdf";
 import { risolviIntestazioneSoggetto } from "./intestazione-soggetto.server";
+import { estraiIp } from "./request-ip.server";
+import { buildPrivacyPdfEmailPayload } from "./email-template";
 
 
 
@@ -96,21 +97,6 @@ const salvaSchema = z.object({
   }),
 });
 
-function estraiIp(): string | null {
-  try {
-    const req = getRequest();
-    const h = req.headers;
-    const raw =
-      h.get("cf-connecting-ip") ??
-      h.get("x-real-ip") ??
-      h.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-      null;
-    if (!raw) return null;
-    return raw.slice(0, 100);
-  } catch {
-    return null;
-  }
-}
 
 /**
  * Salva i tre consensi marketing raccolti via link pubblico.
@@ -188,5 +174,26 @@ export const salvaConsensiMarketing = createServerFn({ method: "POST" })
       .update({ consensi_token: null, consensi_token_expires_at: null })
       .eq("id", ct.id);
 
-    return { ok: true };
+    // 5) Invio mail informativa con il PDF di prova — non fatale
+    let emailInviata = false;
+    if (ct.email) {
+      try {
+        let binary = "";
+        for (let i = 0; i < pdfBytes.length; i++) binary += String.fromCharCode(pdfBytes[i]);
+        const payload = buildPrivacyPdfEmailPayload({
+          toName: data.firmaNomeDichiarato,
+          ragioneSociale: soggetto.ragione_sociale,
+          dataFirma: now.toISOString(),
+          pdfBase64: btoa(binary),
+        });
+        const { sendEmailViaEdge } = await import("./inngest/send-email.server");
+        const esito = await sendEmailViaEdge({ to: ct.email, ...payload });
+        emailInviata = esito.ok;
+        if (!esito.ok) console.error("[consensi-marketing] invio email fallito:", esito.err);
+      } catch (e) {
+        console.error("[consensi-marketing] invio email fallito:", e);
+      }
+    }
+
+    return { ok: true, emailInviata };
   });

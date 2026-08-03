@@ -5,6 +5,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { risolviIntestazioneSoggetto } from "./intestazione-soggetto.server";
 import { generaSchedaCliente } from "./scheda-pdf";
 import { buildPrivacyPdfEmailPayload } from "./email-template";
+import { estraiIp } from "./request-ip.server";
 
 /**
  * Genera (o rigenera) il token per il link di firma privacy di un CONTATTO.
@@ -211,6 +212,24 @@ export const firmaPrivacyConToken = createServerFn({ method: "POST" })
       await supabaseAdmin.storage.from("firme").remove([firmaPath]);
       await supabaseAdmin.storage.from("documenti-privacy").remove([pdfPath]);
       throw new Error(eUpd.message);
+    }
+
+    // 3-bis) Registro consensi unificato — non fatale: la firma resta valida
+    try {
+      const ip = estraiIp();
+      const { error: eLog } = await supabaseAdmin.rpc("registra_consensi_batch", {
+        _contatto_id: ct.id,
+        _marketing_diretto: data.consensi.marketing_diretto,
+        _marketing_media: data.consensi.marketing_media,
+        _profilazione: data.consensi.profilazione,
+        _origine: "firma_grafica",
+        _prova_path: pdfPath,
+        ...(ip ? { _ip: ip } : {}),
+        _note: "Firma grafica via link privacy",
+      });
+      if (eLog) console.error("[firma-privacy] registra_consensi_batch fallito:", eLog.message);
+    } catch (e) {
+      console.error("[firma-privacy] registra_consensi_batch fallito:", e);
     }
 
     // 4) Invio del PDF al firmatario — non deve MAI rompere il flusso:

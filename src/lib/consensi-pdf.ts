@@ -10,9 +10,10 @@ export type ConsensiPdfInput = {
   firmatarioNome: string;
   firmatarioEmail?: string | null;
   consensi: Record<TipoConsenso, boolean>;
-  firmaPngDataUrl: string;
+  firmaPngDataUrl?: string | null;
   dataFirma: Date;
   ipAddress?: string | null;
+  origine?: "flag_link" | "firma_grafica";
 };
 
 function wrap(text: string, maxChars: number): string[] {
@@ -144,25 +145,34 @@ export async function generaPdfConsensiMarketing(input: ConsensiPdfInput): Promi
     y -= 4;
   }
 
-  // Firma
+  // Firma / modalità di raccolta
   y -= 10;
   ensureSpace(90);
-  drawLine("Firma del sottoscritto:", { size: 10, bold: true });
-  const sigBoxX = margin;
-  const sigBoxW = 280;
-  const sigMaxH = 60;
-  const pngBytes = await fetch(input.firmaPngDataUrl).then((r) => r.arrayBuffer());
-  const pngImage = await pdf.embedPng(pngBytes);
-  const scale = Math.min(sigBoxW / pngImage.width, sigMaxH / pngImage.height, 0.5);
-  const sigW = pngImage.width * scale;
-  const sigH = pngImage.height * scale;
-  const lineY = y - sigH - 4;
-  page.drawImage(pngImage, { x: sigBoxX, y: lineY + 2, width: sigW, height: sigH });
-  page.drawLine({
-    start: { x: sigBoxX, y: lineY }, end: { x: sigBoxX + sigBoxW, y: lineY },
-    thickness: 0.5, color: rgb(0.5, 0.5, 0.5),
-  });
-  y = lineY - 16;
+  if (input.firmaPngDataUrl) {
+    drawLine("Firma del sottoscritto:", { size: 10, bold: true });
+    const sigBoxX = margin;
+    const sigBoxW = 280;
+    const sigMaxH = 60;
+    const pngBytes = await fetch(input.firmaPngDataUrl).then((r) => r.arrayBuffer());
+    const pngImage = await pdf.embedPng(pngBytes);
+    const scale = Math.min(sigBoxW / pngImage.width, sigMaxH / pngImage.height, 0.5);
+    const sigW = pngImage.width * scale;
+    const sigH = pngImage.height * scale;
+    const lineY = y - sigH - 4;
+    page.drawImage(pngImage, { x: sigBoxX, y: lineY + 2, width: sigW, height: sigH });
+    page.drawLine({
+      start: { x: sigBoxX, y: lineY }, end: { x: sigBoxX + sigBoxW, y: lineY },
+      thickness: 0.5, color: rgb(0.5, 0.5, 0.5),
+    });
+    y = lineY - 16;
+  } else {
+    drawLine("Modalita di raccolta:", { size: 10, bold: true });
+    drawParagraph(
+      "Consenso prestato tramite conferma telematica (flag di accettazione) - nessuna firma grafica apposta.",
+      { size: 9 },
+    );
+    y -= 6;
+  }
   drawLine(`Data e ora: ${input.dataFirma.toLocaleString("it-IT")}`, { size: 9 });
   if (input.ipAddress) drawLine(`IP di provenienza: ${input.ipAddress}`, { size: 8, color: [0.4, 0.4, 0.4] });
 
