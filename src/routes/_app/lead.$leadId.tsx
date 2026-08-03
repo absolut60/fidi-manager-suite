@@ -309,7 +309,29 @@ function LeadDettaglioPage() {
             )}
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          {isAdmin && lead.stato !== "convertito" && (
+            <Button
+              variant="outline"
+              className="gap-1.5"
+              disabled={convertiMut.isPending}
+              onClick={() => convertiMut.mutate(false)}
+            >
+              {convertiMut.isPending ? <Loader2 className="size-4 animate-spin" /> : <UserPlus className="size-4" />}
+              Converti in cliente
+            </Button>
+          )}
+          {isAdmin && lead.stato === "convertito" && (
+            <Button
+              variant="outline"
+              className="gap-1.5"
+              disabled={annullaMut.isPending}
+              onClick={() => { if (confirm("Annullare la conversione ed eliminare il cliente creato?")) annullaMut.mutate(); }}
+            >
+              {annullaMut.isPending ? <Loader2 className="size-4 animate-spin" /> : <Undo2 className="size-4" />}
+              Annulla conversione
+            </Button>
+          )}
           <Button
             variant="outline"
             className="gap-1.5 text-destructive"
