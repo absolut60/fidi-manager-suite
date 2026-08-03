@@ -201,6 +201,49 @@ function LeadDettaglioPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const isAdmin = (roles as string[])?.includes("amministratore");
+  type Duplicato = { id: string; ragione_sociale: string | null; partita_iva: string | null; codice_fiscale: string | null };
+  const [duplicati, setDuplicati] = useState<Duplicato[] | null>(null);
+
+  const convertiMut = useMutation({
+    mutationFn: async (forza: boolean) => {
+      const { data, error } = await supabase.rpc("converti_lead_in_cliente", {
+        _lead_id: leadId,
+        _forza_duplicato: forza,
+      });
+      if (error) throw error;
+      return (data ?? [])[0] as { cliente_id: string | null; duplicati: unknown } | undefined;
+    },
+    onSuccess: (res) => {
+      if (res?.duplicati && !res.cliente_id) {
+        setDuplicati(res.duplicati as Duplicato[]);
+        return;
+      }
+      setDuplicati(null);
+      toast.success("Lead convertito in cliente");
+      qc.invalidateQueries({ queryKey: ["lead", leadId] });
+      qc.invalidateQueries({ queryKey: ["lead-storico", leadId] });
+      qc.invalidateQueries({ queryKey: ["lead-lista"] });
+      if (res?.cliente_id) navigate({ to: "/clienti/$clienteId", params: { clienteId: res.cliente_id } });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const annullaMut = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.rpc("annulla_conversione_lead", { _lead_id: leadId });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Conversione annullata");
+      qc.invalidateQueries({ queryKey: ["lead", leadId] });
+      qc.invalidateQueries({ queryKey: ["lead-storico", leadId] });
+      qc.invalidateQueries({ queryKey: ["lead-lista"] });
+    },
+    onError: (e: Error) => toast.error(e.message, { duration: 10000 }),
+  });
+
+
 
   const { data: storico } = useQuery({
     queryKey: ["lead-storico", leadId],
