@@ -2,7 +2,10 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowLeft, Save, Trash2, Loader2, ScrollText, Info } from "lucide-react";
+import { ArrowLeft, Save, Trash2, Loader2, ScrollText, Info, UserPlus, Undo2 } from "lucide-react";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -198,6 +201,49 @@ function LeadDettaglioPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const isAdmin = (roles as string[])?.includes("amministratore");
+  type Duplicato = { id: string; ragione_sociale: string | null; partita_iva: string | null; codice_fiscale: string | null };
+  const [duplicati, setDuplicati] = useState<Duplicato[] | null>(null);
+
+  const convertiMut = useMutation({
+    mutationFn: async (forza: boolean) => {
+      const { data, error } = await supabase.rpc("converti_lead_in_cliente", {
+        _lead_id: leadId,
+        _forza_duplicato: forza,
+      });
+      if (error) throw error;
+      return (data ?? [])[0] as { cliente_id: string | null; duplicati: unknown } | undefined;
+    },
+    onSuccess: (res) => {
+      if (res?.duplicati && !res.cliente_id) {
+        setDuplicati(res.duplicati as Duplicato[]);
+        return;
+      }
+      setDuplicati(null);
+      toast.success("Lead convertito in cliente");
+      qc.invalidateQueries({ queryKey: ["lead", leadId] });
+      qc.invalidateQueries({ queryKey: ["lead-storico", leadId] });
+      qc.invalidateQueries({ queryKey: ["lead-lista"] });
+      if (res?.cliente_id) navigate({ to: "/clienti/$clienteId", params: { clienteId: res.cliente_id } });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const annullaMut = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.rpc("annulla_conversione_lead", { _lead_id: leadId });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Conversione annullata");
+      qc.invalidateQueries({ queryKey: ["lead", leadId] });
+      qc.invalidateQueries({ queryKey: ["lead-storico", leadId] });
+      qc.invalidateQueries({ queryKey: ["lead-lista"] });
+    },
+    onError: (e: Error) => toast.error(e.message, { duration: 10000 }),
+  });
+
+
 
   const { data: storico } = useQuery({
     queryKey: ["lead-storico", leadId],
@@ -263,7 +309,29 @@ function LeadDettaglioPage() {
             )}
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          {isAdmin && lead.stato !== "convertito" && (
+            <Button
+              variant="outline"
+              className="gap-1.5"
+              disabled={convertiMut.isPending}
+              onClick={() => convertiMut.mutate(false)}
+            >
+              {convertiMut.isPending ? <Loader2 className="size-4 animate-spin" /> : <UserPlus className="size-4" />}
+              Converti in cliente
+            </Button>
+          )}
+          {isAdmin && lead.stato === "convertito" && (
+            <Button
+              variant="outline"
+              className="gap-1.5"
+              disabled={annullaMut.isPending}
+              onClick={() => { if (confirm("Annullare la conversione ed eliminare il cliente creato?")) annullaMut.mutate(); }}
+            >
+              {annullaMut.isPending ? <Loader2 className="size-4 animate-spin" /> : <Undo2 className="size-4" />}
+              Annulla conversione
+            </Button>
+          )}
           <Button
             variant="outline"
             className="gap-1.5 text-destructive"
@@ -287,6 +355,37 @@ function LeadDettaglioPage() {
         />
       </Card>
 
+
+      <Dialog open={!!duplicati} onOpenChange={(o) => { if (!o) setDuplicati(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Possibili clienti esistenti</DialogTitle>
+            <DialogDescription>
+              Esistono già clienti con la stessa P.IVA o codice fiscale. Verifica prima di procedere.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 max-h-64 overflow-auto">
+            {(duplicati ?? []).map((d) => (
+              <div key={d.id} className="rounded-md border p-2 text-sm">
+                <p className="font-medium">{d.ragione_sociale || "—"}</p>
+                <p className="text-xs text-muted-foreground">
+                  P.IVA {d.partita_iva || "—"} · C.F. {d.codice_fiscale || "—"}
+                </p>
+                <Link to="/clienti/$clienteId" params={{ clienteId: d.id }} className="text-xs underline">
+                  Apri scheda cliente
+                </Link>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDuplicati(null)}>Annulla</Button>
+            <Button disabled={convertiMut.isPending} onClick={() => convertiMut.mutate(true)}>
+              {convertiMut.isPending && <Loader2 className="size-4 animate-spin mr-1.5" />}
+              Converti comunque
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Tabs defaultValue="anagrafica">
         <TabsList>
