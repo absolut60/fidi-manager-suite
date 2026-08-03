@@ -356,6 +356,37 @@ function LeadDettaglioPage() {
       </Card>
 
 
+      <Dialog open={!!duplicati} onOpenChange={(o) => { if (!o) setDuplicati(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Possibili clienti esistenti</DialogTitle>
+            <DialogDescription>
+              Esistono già clienti con la stessa P.IVA o codice fiscale. Verifica prima di procedere.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 max-h-64 overflow-auto">
+            {(duplicati ?? []).map((d) => (
+              <div key={d.id} className="rounded-md border p-2 text-sm">
+                <p className="font-medium">{d.ragione_sociale || "—"}</p>
+                <p className="text-xs text-muted-foreground">
+                  P.IVA {d.partita_iva || "—"} · C.F. {d.codice_fiscale || "—"}
+                </p>
+                <Link to="/clienti/$clienteId" params={{ clienteId: d.id }} className="text-xs underline">
+                  Apri scheda cliente
+                </Link>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDuplicati(null)}>Annulla</Button>
+            <Button disabled={convertiMut.isPending} onClick={() => convertiMut.mutate(true)}>
+              {convertiMut.isPending && <Loader2 className="size-4 animate-spin mr-1.5" />}
+              Converti comunque
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Tabs defaultValue="anagrafica">
         <TabsList>
           <TabsTrigger value="anagrafica">Anagrafica</TabsTrigger>
