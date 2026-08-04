@@ -183,140 +183,53 @@ export function NuovoContattoWizard({
 
   async function handleAvanti() {
     if (!validateStep()) return;
-    // Last contact step in modalita senza_firma → save and close
-    if (currentLabel === "Contatto" && modalita === "senza_firma") {
-      try {
-        setSaving(true);
-        const id = await insertContatto();
-        if (id && selectedCliente) {
-          toast.success("Contatto aggiunto");
-          invalidateAll(selectedCliente.id);
-          onSuccess?.(selectedCliente.id);
-          onClose();
-        }
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Errore");
-      } finally {
-        setSaving(false);
-      }
+    if (currentLabel !== "Contatto") {
+      setStep((s) => s + 1);
       return;
     }
-    // Going to Firma: insert contatto first (only if not already inserted), precompile dich
-    const next = steps[step + 1];
-    if (next === "Firma" && !contattoId) {
-      try {
-        setSaving(true);
-        const id = await insertContatto();
-        if (!id) return;
-        setContattoId(id);
-        if (selectedCliente) invalidateAll(selectedCliente.id);
-        setDich((d) => ({
-          ...d,
-          nome: d.nome || contatto.nome,
-          cognome: d.cognome || contatto.cognome,
-          societa: d.societa || selectedCliente?.ragione_sociale || "",
-          luogo_nascita: d.luogo_nascita || contatto.luogo_nascita,
-          data_nascita: d.data_nascita || contatto.data_nascita,
-          codice_fiscale: d.codice_fiscale || contatto.codice_fiscale,
-          residenza: d.residenza || contatto.residenza,
-          email: d.email || contatto.email,
-          cell: d.cell || contatto.cellulare,
-        }));
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Errore");
-        return;
-      } finally {
-        setSaving(false);
-      }
+    // Ultimo step: crea il contatto, poi apri il canale privacy scelto
+    let id: string | null = null;
+    try {
+      setSaving(true);
+      id = await insertContatto();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Errore");
+      return;
+    } finally {
+      setSaving(false);
     }
-    setStep((s) => s + 1);
+    if (!id || !selectedCliente) return;
+    invalidateAll(selectedCliente.id);
+
+    if (modalita === "di_persona") {
+      toast.success("Contatto creato — compila il modulo privacy");
+      setContattoId(id);
+      return;
+    }
+    if (modalita === "a_distanza") {
+      await inviaRichiestaDopoCreazione(inviaFn, id, !!contatto.email.trim());
+    } else {
+      toast.success("Contatto creato — la privacy si raccoglie dopo dalla riga del contatto");
+    }
+    onSuccess?.(selectedCliente.id);
+    onClose();
   }
 
-  async function handleSalvaFirma() {
-    if (!validateStep()) return;
+  async function salvaDiPersona(p: ModuloConsensoPayload) {
     if (!contattoId || !selectedCliente) return;
-    const dataUrl = padRef.current ? getCanvasDataURL(padRef.current) : null;
-    if (!dataUrl) { toast.error("Inserisci la firma"); return; }
     setSaving(true);
     try {
-      const now = new Date();
-      // Upload firma PNG
-      const pngBlob = await (await fetch(dataUrl)).blob();
-      const firmaPath = `contatti/${contattoId}/firma-${now.getTime()}.png`;
-      const { error: e1 } = await supabase.storage.from("firme")
-        .upload(firmaPath, pngBlob, { upsert: true, contentType: "image/png" });
-      if (e1) throw new Error(`Upload firma: ${e1.message}`);
-      const { data: firmaSigned, error: eFs } = await supabase.storage
-        .from("firme").createSignedUrl(firmaPath, 60 * 60 * 24 * 365 * 10);
-      if (eFs || !firmaSigned?.signedUrl) throw new Error("Errore URL firma");
-
-      // Genera PDF
-      const pdfBytes = await generaSchedaCliente({
-        tipo: "aggiornamento",
-        ragioneSociale: selectedCliente.ragione_sociale,
-        dichiaranteNome: dich.nome,
-        dichiaranteCognome: dich.cognome,
-        luogoNascita: dich.luogo_nascita || undefined,
-        dataNascita: dich.data_nascita || undefined,
-        codiceFiscaleDich: dich.codice_fiscale || undefined,
-        partitaIva: selectedCliente.partita_iva || undefined,
-        residenza: dich.residenza || undefined,
-        emailDich: dich.email || undefined,
-        cellulareDich: dich.cell || undefined,
-        consensoProfilazione: consensi.profilazione,
-        consensoMarketingMedia: consensi.marketing_media,
-        consensoMarketingDiretto: consensi.marketing_diretto,
-        dataFirma: dich.data_firma || now,
-        firmaPngDataUrl: dataUrl,
-      });
-
-      const pdfPath = `contatti/${contattoId}/privacy-${now.getTime()}.pdf`;
-      const { error: e2 } = await supabase.storage.from("documenti-privacy")
-        .upload(pdfPath, pdfBytes, { contentType: "application/pdf", upsert: true });
-      if (e2) throw new Error(`Upload PDF: ${e2.message}`);
-      const { data: pdfSigned, error: ePs } = await supabase.storage
-        .from("documenti-privacy").createSignedUrl(pdfPath, 60 * 60 * 24 * 365 * 10);
-      if (ePs || !pdfSigned?.signedUrl) throw new Error("Errore URL PDF");
-
-      const { error: e3 } = await supabase.from("contatti").update({
-        privacy_firmata: true,
-        data_firma: now.toISOString(),
-        firma_url: firmaSigned.signedUrl,
-        pdf_privacy_url: pdfSigned.signedUrl,
-        pdf_privacy_path: pdfPath,
-        luogo_nascita: dich.luogo_nascita || null,
-        data_nascita: dich.data_nascita || null,
-        codice_fiscale: dich.codice_fiscale || null,
-        residenza: dich.residenza || null,
-        email: dich.email || null,
-        cellulare: dich.cell || null,
-        consenso_profilazione: consensi.profilazione === "si",
-        consenso_marketing_media: consensi.marketing_media === "si",
-        consenso_marketing_diretto: consensi.marketing_diretto === "si",
-      }).eq("id", contattoId);
-      if (e3) throw new Error(`Salvataggio: ${e3.message}`);
-
-      toast.success("Privacy firmata e PDF generato");
-
-      if (dich.email && pdfSigned?.signedUrl) {
-        import("@/lib/send-email").then(({ sendPrivacyPdf }) => {
-          sendPrivacyPdf({
-            toEmail: dich.email!,
-            toName: [dich.nome, dich.cognome].filter(Boolean).join(" "),
-            ragioneSociale: selectedCliente.ragione_sociale,
-            dataFirma: now.toISOString(),
-            pdfUrl: pdfSigned.signedUrl,
-          }).then((ok) => {
-            if (ok) toast.success("PDF privacy inviato per email");
-          });
-        });
-      }
-
+      const res = await diPersonaFn({ data: { contattoId, ...p } });
+      toast.success(
+        res.emailInviata
+          ? "Consenso registrato — copia PDF inviata via email"
+          : "Consenso registrato — invio email non riuscito, il PDF è archiviato"
+      );
       invalidateAll(selectedCliente.id);
       onSuccess?.(selectedCliente.id);
       onClose();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Errore salvataggio firma");
+      toast.error(e instanceof Error ? e.message : "Errore");
     } finally {
       setSaving(false);
     }
