@@ -245,7 +245,7 @@ function LeadListaPage() {
       </div>
 
       <Tabs value={tab} onValueChange={(v) => { setTab(v as typeof tab); setPage(1); }}>
-        <TabsList>
+        <TabsList className="w-full justify-start overflow-x-auto sm:w-auto">
           <TabsTrigger value="tutti">Tutti i lead</TabsTrigger>
           <TabsTrigger value="ricontattare" className="gap-1.5">
             <CalendarClock className="size-4" /> Da ricontattare
@@ -254,8 +254,18 @@ function LeadListaPage() {
       </Tabs>
 
       <Card className="p-4 sm:p-5">
-        <div className="flex items-center justify-between mb-3">
-          <div className="text-sm font-medium text-muted-foreground">Filtri</div>
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <button
+            type="button"
+            onClick={() => setFiltriApertiMobile((v) => !v)}
+            className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground md:pointer-events-none"
+          >
+            <SlidersHorizontal className="size-4 md:hidden" />
+            Filtri
+            <ChevronDown
+              className={`size-4 md:hidden transition-transform ${filtriApertiMobile ? "rotate-180" : ""}`}
+            />
+          </button>
           <div className="flex items-center gap-2">
             {attiviCount > 0 && (
               <>
@@ -270,7 +280,9 @@ function LeadListaPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        <div
+          className={`${filtriApertiMobile ? "grid" : "hidden"} md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4`}
+        >
           <div className="lg:col-span-2">
             <Label className="text-xs">Ricerca</Label>
             <div className="relative">
