@@ -190,7 +190,7 @@ function LeadDettaglioPage() {
 
   const delMut = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("lead").delete().eq("id", leadId);
+      const { error } = await supabase.rpc("elimina_lead", { _lead_id: leadId });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -198,7 +198,7 @@ function LeadDettaglioPage() {
       qc.invalidateQueries({ queryKey: ["lead-lista"] });
       navigate({ to: "/lead" });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message, { duration: 10000 }),
   });
 
   const isAdmin = (roles as string[])?.includes("amministratore");
@@ -335,7 +335,7 @@ function LeadDettaglioPage() {
           <Button
             variant="outline"
             className="gap-1.5 text-destructive"
-            onClick={() => { if (confirm("Eliminare definitivamente questo lead?")) delMut.mutate(); }}
+            onClick={() => { if (confirm("Eliminare definitivamente questo lead? Verranno eliminati anche i contatti e i cantieri collegati solo a questo lead.")) delMut.mutate(); }}
           >
             <Trash2 className="size-4" /> Elimina
           </Button>
