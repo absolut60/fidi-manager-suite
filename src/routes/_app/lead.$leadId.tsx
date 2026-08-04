@@ -190,7 +190,7 @@ function LeadDettaglioPage() {
 
   const delMut = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("lead").delete().eq("id", leadId);
+      const { error } = await supabase.rpc("elimina_lead", { _lead_id: leadId });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -198,7 +198,7 @@ function LeadDettaglioPage() {
       qc.invalidateQueries({ queryKey: ["lead-lista"] });
       navigate({ to: "/lead" });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message, { duration: 10000 }),
   });
 
   const isAdmin = (roles as string[])?.includes("amministratore");
