@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Plus, Search, Users, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown, X, CalendarClock,
+  SlidersHorizontal,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -74,6 +75,7 @@ function LeadListaPage() {
   const [pageSize, setPageSize] = useState(25);
   const [sortBy, setSortBy] = useState("created_at");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [filtriApertiMobile, setFiltriApertiMobile] = useState(false);
 
   const { data: stores } = useQuery({
     queryKey: ["stores", "all"],
@@ -238,14 +240,14 @@ function LeadListaPage() {
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button className="gap-1.5"><Plus className="size-4" /> Nuovo lead</Button>
+            <Button className="gap-1.5 w-full sm:w-auto"><Plus className="size-4" /> Nuovo lead</Button>
           </DialogTrigger>
           <NuovoLeadDialog onClose={() => setOpen(false)} />
         </Dialog>
       </div>
 
       <Tabs value={tab} onValueChange={(v) => { setTab(v as typeof tab); setPage(1); }}>
-        <TabsList>
+        <TabsList className="w-full justify-start overflow-x-auto sm:w-auto">
           <TabsTrigger value="tutti">Tutti i lead</TabsTrigger>
           <TabsTrigger value="ricontattare" className="gap-1.5">
             <CalendarClock className="size-4" /> Da ricontattare
@@ -254,8 +256,18 @@ function LeadListaPage() {
       </Tabs>
 
       <Card className="p-4 sm:p-5">
-        <div className="flex items-center justify-between mb-3">
-          <div className="text-sm font-medium text-muted-foreground">Filtri</div>
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <button
+            type="button"
+            onClick={() => setFiltriApertiMobile((v) => !v)}
+            className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground md:pointer-events-none"
+          >
+            <SlidersHorizontal className="size-4 md:hidden" />
+            Filtri
+            <ChevronDown
+              className={`size-4 md:hidden transition-transform ${filtriApertiMobile ? "rotate-180" : ""}`}
+            />
+          </button>
           <div className="flex items-center gap-2">
             {attiviCount > 0 && (
               <>
@@ -270,7 +282,9 @@ function LeadListaPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        <div
+          className={`${filtriApertiMobile ? "grid" : "hidden"} md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4`}
+        >
           <div className="lg:col-span-2">
             <Label className="text-xs">Ricerca</Label>
             <div className="relative">
@@ -407,7 +421,47 @@ function LeadListaPage() {
             <p className="font-medium text-sm">Nessun lead trovato</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          {/* Mobile: schede al posto della tabella */}
+          <div className="md:hidden space-y-2">
+            {rows.map((l) => (
+              <button
+                key={l.id}
+                type="button"
+                onClick={() => navigate({ to: "/lead/$leadId", params: { leadId: l.id } })}
+                className="w-full text-left rounded-lg border bg-card p-3 active:bg-muted/50"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <span className="font-medium text-sm min-w-0 break-words">{nomeLead(l)}</span>
+                  <Badge className={`${LEAD_STATO_CLASS[l.stato]} shrink-0`}>{LEAD_STATO_LABEL[l.stato]}</Badge>
+                </div>
+                <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                  <div className="min-w-0">
+                    <span className="text-muted-foreground">Città: </span>
+                    {l.citta ?? "—"}{l.provincia ? ` (${l.provincia})` : ""}
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-muted-foreground">Fonte: </span>
+                    {LEAD_FONTE_LABEL[l.fonte]}
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-muted-foreground">Assegnato a: </span>
+                    {nomeProfilo(l.assegnato_a)}
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-muted-foreground">Prossima azione: </span>
+                    {formatData(l.prossima_azione_il)}
+                  </div>
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  <Badge className={LEAD_PRIORITA_CLASS[l.priorita]}>{LEAD_PRIORITA_LABEL[l.priorita]}</Badge>
+                  <Badge variant="outline" className="text-xs">{LEAD_TIPO_LABEL[l.tipo_lead]}</Badge>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          <div className="hidden md:block overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -453,6 +507,7 @@ function LeadListaPage() {
               </TableBody>
             </Table>
           </div>
+          </>
         )}
 
         {totalPages > 1 && (
