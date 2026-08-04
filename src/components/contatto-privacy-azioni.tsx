@@ -1,10 +1,15 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
-import { FileCheck2, Mail, Link as LinkIcon, Download, Send, Clock } from "lucide-react";
+import { FileCheck2, Mail, Link as LinkIcon, Download, Send, Clock, PenLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { inviaRichiestaFirmaPrivacy } from "@/lib/firma-privacy.functions";
+import {
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import { ModuloConsensoPrivacy, type ModuloConsensoPayload } from "@/components/modulo-consenso-privacy";
+import { inviaRichiestaFirmaPrivacy, registraConsensoDiPersona } from "@/lib/firma-privacy.functions";
+
 
 export type ContattoPrivacy = {
   id: string;
