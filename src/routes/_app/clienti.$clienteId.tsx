@@ -1305,12 +1305,13 @@ function ContattoCard({
 
 
 function PrivacyTab({ cliente }: { cliente: any; onUpdated?: () => void }) {
+  const qcPrivacy = useQueryClient();
   const { data: contatti } = useQuery({
     queryKey: ["contatti-privacy", cliente.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("contatti")
-        .select("id, nome, cognome, principale, privacy_firmata, data_firma, firma_url, pdf_privacy_url, pdf_privacy_path")
+        .select("id, nome, cognome, email, principale, privacy_firmata, data_firma, firma_url, pdf_privacy_url, pdf_privacy_path, consenso_profilazione, consenso_marketing_media, consenso_marketing_diretto, richiesta_privacy_generata_il, richiesta_privacy_inviata_il, richiesta_privacy_aperta_il")
         .eq("cliente_id", cliente.id)
         .order("principale", { ascending: false })
         .order("nome");
