@@ -543,9 +543,8 @@ function ClienteDetail() {
                 />
               )}
             </Dialog>
-          </div>
 
-          <LinkFirmaPrivacy clienteId={cliente.id} />
+
 
           {loadingContatti ? (
             <div className="space-y-2">
