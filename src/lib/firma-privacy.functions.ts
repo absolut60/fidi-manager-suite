@@ -28,22 +28,69 @@ export const generaTokenFirmaPrivacy = createServerFn({ method: "POST" })
     if (e1) throw new Error(e1.message);
     if (!ct) throw new Error("Contatto non trovato o non accessibile");
 
-    const token = crypto.randomUUID();
-    const expires = new Date(Date.now() + data.giorniValidita * 86400 * 1000).toISOString();
-
-    const { error: e2 } = await supabaseAdmin
-      .from("contatti")
-      .update({
-        privacy_token: token,
-        privacy_token_expires_at: expires,
-        richiesta_privacy_generata_il: new Date().toISOString(),
-      })
-      .eq("id", data.contattoId);
-
-    if (e2) throw new Error(e2.message);
-
-    return { token, expires_at: expires };
+    const { generaTokenPrivacy } = await import("./firma-privacy-token.server");
+    return await generaTokenPrivacy(data.contattoId, data.giorniValidita);
   });
+
+/**
+ * Genera il link di firma privacy e prova a inviarlo via email al contatto.
+ * L'invio NON è fatale: se SMTP non è disponibile ritorna emailInviata=false
+ * e valorizza solo `richiesta_privacy_generata_il`.
+ */
+export const inviaRichiestaFirmaPrivacy = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { contattoId: string; origin: string }) =>
+    z.object({
+      contattoId: z.string().uuid(),
+      origin: z.string().url().max(300),
+    }).parse(d)
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { data: ct, error: e1 } = await supabase
+      .from("contatti")
+      .select("id, cliente_id, lead_id, nome, cognome, email")
+      .eq("id", data.contattoId)
+      .maybeSingle();
+    if (e1) throw new Error(e1.message);
+    if (!ct) throw new Error("Contatto non trovato o non accessibile");
+
+    const { generaTokenPrivacy } = await import("./firma-privacy-token.server");
+    const { token, expires_at } = await generaTokenPrivacy(data.contattoId, 30);
+    const link = `${data.origin.replace(/\/+$/, "")}/firma-privacy/${token}`;
+
+    if (!ct.email) return { link, expires_at, emailInviata: false };
+
+    let emailInviata = false;
+    try {
+      const soggetto = await risolviIntestazioneSoggetto(ct);
+      const { buildRichiestaFirmaEmailPayload } = await import("./email-template");
+      const payload = buildRichiestaFirmaEmailPayload({
+        nomeDestinatario:
+          [ct.nome, ct.cognome].filter(Boolean).join(" ").trim() || "Cliente",
+        ragioneSociale: soggetto.ragione_sociale,
+        link,
+      });
+      const { sendEmailViaEdge } = await import("./inngest/send-email.server");
+      const esito = await sendEmailViaEdge({ to: ct.email, ...payload });
+      emailInviata = esito.ok;
+      if (!esito.ok) console.error("[firma-privacy] invio richiesta fallito:", esito.err);
+    } catch (e) {
+      console.error("[firma-privacy] invio richiesta fallito:", e);
+    }
+
+    if (emailInviata) {
+      const { supabaseAdmin: admin } = await import("@/integrations/supabase/client.server");
+      const { error: eUpd } = await admin
+        .from("contatti")
+        .update({ richiesta_privacy_inviata_il: new Date().toISOString() })
+        .eq("id", data.contattoId);
+      if (eUpd) console.error("[firma-privacy] update inviata_il fallito:", eUpd.message);
+    }
+
+    return { link, expires_at, emailInviata };
+  });
+
 
 /**
  * Recupera dati minimi del contatto + cliente per la pagina pubblica di firma.
