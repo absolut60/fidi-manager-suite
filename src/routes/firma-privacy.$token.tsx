@@ -34,6 +34,7 @@ function FirmaPrivacyPage() {
   const submitFn = useServerFn(firmaPrivacyConToken);
 
   const padRef = useRef<HTMLDivElement>(null);
+  const apertaAlRef = useRef<number>(Date.now());
   const [hasSig, setHasSig] = useState(false);
   const [done, setDone] = useState(false);
   const [emailInviata, setEmailInviata] = useState(false);
@@ -117,6 +118,7 @@ function FirmaPrivacyPage() {
             marketing_diretto: consensi.marketing_diretto === "si",
           },
           data_firma: dich.data_firma || undefined,
+          secondi_permanenza: Math.max(0, Math.min(86400, Math.round((Date.now() - apertaAlRef.current) / 1000))),
         },
       });
     },
