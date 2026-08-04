@@ -1343,7 +1343,7 @@ function PrivacyTab({ cliente }: { cliente: any; onUpdated?: () => void }) {
             <span className="font-medium">{firmati}</span> di <span className="font-medium">{totali}</span> contatti hanno firmato la privacy.
           </div>
 
-          <LinkFirmaPrivacy clienteId={cliente.id} />
+
 
           <div className="pt-3 border-t space-y-2">
             <p className="text-sm font-medium">Riepilogo per contatto</p>
