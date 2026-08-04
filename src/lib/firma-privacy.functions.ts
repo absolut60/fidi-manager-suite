@@ -3,10 +3,8 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { risolviIntestazioneSoggetto } from "./intestazione-soggetto.server";
-import { generaSchedaCliente } from "./scheda-pdf";
-import { buildPrivacyPdfEmailPayload } from "./email-template";
-import { estraiIp, estraiUserAgent } from "./request-ip.server";
-import { INFORMATIVA_FULL, INFORMATIVA_VERSIONE, calcolaInformativaHash } from "./consensi-testi";
+
+
 
 
 /**
