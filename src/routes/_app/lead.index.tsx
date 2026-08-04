@@ -507,6 +507,7 @@ function LeadListaPage() {
               </TableBody>
             </Table>
           </div>
+          </>
         )}
 
         {totalPages > 1 && (
