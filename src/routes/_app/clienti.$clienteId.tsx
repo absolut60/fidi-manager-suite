@@ -1331,52 +1331,20 @@ function PrivacyTab({ cliente }: { cliente: any; onUpdated?: () => void }) {
             <p className="text-sm font-medium">Riepilogo per contatto</p>
             <ul className="divide-y border rounded-md">
               {contatti!.map((c) => (
-                <li key={c.id} className="p-3 flex items-center justify-between gap-3 flex-wrap text-sm">
-                  <div className="min-w-0">
-                    <div className="font-medium truncate">
-                      {[c.nome, c.cognome].filter(Boolean).join(" ")}
-                      {c.principale && <span className="text-xs text-muted-foreground ml-2">(principale)</span>}
-                    </div>
-                    {c.privacy_firmata && c.data_firma && (
-                      <div className="text-xs text-muted-foreground">
-                        Firmata il {new Date(c.data_firma).toLocaleString("it-IT")}
-                      </div>
-                    )}
+                <li key={c.id} className="p-3 space-y-2 text-sm">
+                  <div className="font-medium truncate">
+                    {[c.nome, c.cognome].filter(Boolean).join(" ")}
+                    {c.principale && <span className="text-xs text-muted-foreground ml-2">(principale)</span>}
                   </div>
-                  <div className="flex items-center gap-2">
-                    {c.privacy_firmata ? (
-                      <Badge className="bg-success/15 text-success gap-1">
-                        <FileCheck2 className="size-3" /> Firmata
-                      </Badge>
-                    ) : (
-                      <Badge className="bg-destructive/15 text-destructive gap-1">
-                        <FileX2 className="size-3" /> Non firmata
-                      </Badge>
-                    )}
-                    {c.privacy_firmata && (c.pdf_privacy_path || c.pdf_privacy_url) && (
-                      <>
-                        <PdfPrivacyButton path={c.pdf_privacy_path} url={c.pdf_privacy_url} />
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => toast.info("Funzione in arrivo")}
-                          title={`Invia PDF a ${[c.nome, c.cognome].filter(Boolean).join(" ")}`}
-                        >
-                          Invia PDF
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                  <div className="w-full pt-2 border-t">
-                    <ContattoPrivacyAzioni
-                      contatto={c as any}
-                      onRefresh={() => {
-                        qcPrivacy.invalidateQueries({ queryKey: ["contatti-privacy", cliente.id] });
-                        qcPrivacy.invalidateQueries({ queryKey: ["contatti", cliente.id] });
-                      }}
-                    />
-                  </div>
+                  <ContattoPrivacyAzioni
+                    contatto={c as any}
+                    onRefresh={() => {
+                      qcPrivacy.invalidateQueries({ queryKey: ["contatti-privacy", cliente.id] });
+                      qcPrivacy.invalidateQueries({ queryKey: ["contatti", cliente.id] });
+                    }}
+                  />
                 </li>
+
               ))}
             </ul>
           </div>
