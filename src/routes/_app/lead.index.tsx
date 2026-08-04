@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Plus, Search, Users, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown, X, CalendarClock,
+  SlidersHorizontal,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -74,6 +75,7 @@ function LeadListaPage() {
   const [pageSize, setPageSize] = useState(25);
   const [sortBy, setSortBy] = useState("created_at");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [filtriApertiMobile, setFiltriApertiMobile] = useState(false);
 
   const { data: stores } = useQuery({
     queryKey: ["stores", "all"],
