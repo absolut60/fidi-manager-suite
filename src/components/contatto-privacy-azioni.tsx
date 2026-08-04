@@ -16,6 +16,11 @@ export type ContattoPrivacy = {
   nome?: string | null;
   cognome?: string | null;
   email?: string | null;
+  cellulare?: string | null;
+  luogo_nascita?: string | null;
+  data_nascita?: string | null;
+  codice_fiscale?: string | null;
+  residenza?: string | null;
   privacy_firmata?: boolean | null;
   data_firma?: string | null;
   consenso_profilazione?: boolean | null;
@@ -26,6 +31,7 @@ export type ContattoPrivacy = {
   richiesta_privacy_inviata_il?: string | null;
   richiesta_privacy_aperta_il?: string | null;
 };
+
 
 function fmt(v?: string | null): string {
   if (!v) return "—";
