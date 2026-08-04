@@ -128,14 +128,6 @@ export function NuovoContattoWizard({
       const p = contattoFormSchema.safeParse({ nome: contatto.nome, cognome: contatto.cognome });
       if (!p.success) p.error.issues.forEach((i) => { errs[i.path[0] as string] = i.message; });
     }
-    if (currentLabel === "Firma") {
-      if (!dich.nome.trim()) errs.dich_nome = "Obbligatorio";
-      if (!dich.cognome.trim()) errs.dich_cognome = "Obbligatorio";
-      if (consensi.profilazione !== "si" && consensi.profilazione !== "no") errs.consenso_profilazione = "Scegli un'opzione";
-      if (consensi.marketing_media !== "si" && consensi.marketing_media !== "no") errs.consenso_marketing_media = "Scegli un'opzione";
-      if (consensi.marketing_diretto !== "si" && consensi.marketing_diretto !== "no") errs.consenso_marketing_diretto = "Scegli un'opzione";
-      if (!hasSig) errs.firma = "Firma obbligatoria";
-    }
     setErrors(errs);
     return Object.keys(errs).length === 0;
   }
