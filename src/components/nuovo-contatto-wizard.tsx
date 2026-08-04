@@ -21,6 +21,12 @@ import {
 import { cn } from "@/lib/utils";
 import { RuoloSelect } from "@/components/ruolo-select";
 import { INFORMATIVA_FULL, CONSENSO_TESTI } from "@/lib/consensi-testi";
+import { useServerFn } from "@tanstack/react-start";
+import {
+  SceltaCanalePrivacy, inviaRichiestaDopoCreazione, ModuloConsensoPrivacy,
+  inviaRichiestaFirmaPrivacy, registraConsensoDiPersona,
+  type CanalePrivacy, type ModuloConsensoPayload,
+} from "@/components/privacy-post-creazione";
 
 export type ClienteInfoWizard = {
   id: string;
@@ -42,7 +48,7 @@ const contattoFormSchema = z.object({
 
 type ConsensoVal = "si" | "no" | "";
 
-type Modalita = "con_firma" | "senza_firma" | null;
+type Modalita = CanalePrivacy | null;
 
 type ContattoState = {
   nome: string; cognome: string; ruolo: string;
