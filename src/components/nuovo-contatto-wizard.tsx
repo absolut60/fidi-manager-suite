@@ -86,20 +86,9 @@ export function NuovoContattoWizard({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [contattoId, setContattoId] = useState<string | null>(null);
 
-  // Firma state
-  const todayISO = new Date().toISOString().slice(0, 10);
-  const [dich, setDich] = useState({
-    nome: "", cognome: "", societa: "",
-    luogo_nascita: "", data_nascita: "",
-    codice_fiscale: "", residenza: "",
-    email: "", cell: "", data_firma: todayISO,
-  });
-  const [consensi, setConsensi] = useState<{
-    profilazione: ConsensoVal; marketing_media: ConsensoVal; marketing_diretto: ConsensoVal;
-  }>({ profilazione: "", marketing_media: "", marketing_diretto: "" });
-  const padRef = useRef<HTMLDivElement>(null);
-  const [hasSig, setHasSig] = useState(false);
   const [saving, setSaving] = useState(false);
+  const inviaFn = useServerFn(inviaRichiestaFirmaPrivacy);
+  const diPersonaFn = useServerFn(registraConsensoDiPersona);
 
   // Cliente picker
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -121,9 +110,8 @@ export function NuovoContattoWizard({
     const s: string[] = [];
     if (showClienteStep) s.push("Cliente");
     s.push("Contatto");
-    if (modalita === "con_firma") s.push("Firma");
     return s;
-  }, [modalita, showClienteStep]);
+  }, [showClienteStep]);
 
   const currentLabel = steps[step];
 
