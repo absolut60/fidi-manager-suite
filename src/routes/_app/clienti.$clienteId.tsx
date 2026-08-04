@@ -1385,6 +1385,15 @@ function PrivacyTab({ cliente }: { cliente: any; onUpdated?: () => void }) {
                       </>
                     )}
                   </div>
+                  <div className="w-full pt-2 border-t">
+                    <ContattoPrivacyAzioni
+                      contatto={c as any}
+                      onRefresh={() => {
+                        qcPrivacy.invalidateQueries({ queryKey: ["contatti-privacy", cliente.id] });
+                        qcPrivacy.invalidateQueries({ queryKey: ["contatti", cliente.id] });
+                      }}
+                    />
+                  </div>
                 </li>
               ))}
             </ul>
