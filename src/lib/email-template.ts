@@ -116,3 +116,28 @@ export function buildPrivacyPdfEmailPayload(options: {
       : {}),
   };
 }
+
+/**
+ * Composizione UNICA del messaggio "Richiesta firma consenso privacy".
+ * Riusa il wrapper standard (buildEmailTemplate) — §5: nessuna duplicazione.
+ */
+export function buildRichiestaFirmaEmailPayload(options: {
+  nomeDestinatario: string;
+  ragioneSociale: string;
+  link: string;
+}): { subject: string; html: string } {
+  const { nomeDestinatario, ragioneSociale, link } = options;
+  const subject = "Richiesta firma consenso privacy — MADE";
+  const html = buildEmailTemplate({
+    title: "Richiesta firma consenso privacy",
+    body: `
+        <p>Gentile ${escHtml(nomeDestinatario)},</p>
+        <p>per completare la pratica di <strong>${escHtml(ragioneSociale)}</strong> le chiediamo di firmare l'informativa privacy (Reg. UE 2016/679 — GDPR) tramite il link sicuro qui sotto.</p>
+        <p>La compilazione richiede pochi minuti e può essere completata da computer, tablet o smartphone.</p>
+        <p style="font-size:12px;color:#6b7280;">Se il pulsante non funziona, copi e incolli questo indirizzo nel browser:<br/>${escHtml(link)}</p>
+      `,
+    ctaText: "Firma il consenso privacy",
+    ctaUrl: link,
+  });
+  return { subject, html };
+}

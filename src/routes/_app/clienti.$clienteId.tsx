@@ -11,7 +11,7 @@ import { generaPdfPrivacy } from "@/lib/privacy-pdf";
 import { useRef } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { LinkFirmaPrivacy } from "@/components/link-firma-privacy";
+import { ContattoPrivacyAzioni } from "@/components/contatto-privacy-azioni";
 import { getFidoAttuale } from "@/lib/fido-cliente";
 import { useAuth } from "@/hooks/use-auth";
 import { useConfig, isClienteAttivo } from "@/hooks/use-config";
@@ -545,7 +545,9 @@ function ClienteDetail() {
             </Dialog>
           </div>
 
-          <LinkFirmaPrivacy clienteId={cliente.id} />
+
+
+
 
           {loadingContatti ? (
             <div className="space-y-2">
@@ -1297,18 +1299,28 @@ function ContattoCard({
           }}
         />
       </div>
+      <div className="mt-3 pt-3 border-t">
+        <ContattoPrivacyAzioni
+          contatto={contatto}
+          onRefresh={() => {
+            qc.invalidateQueries({ queryKey: ["contatti", clienteId] });
+            qc.invalidateQueries({ queryKey: ["contatti-privacy", clienteId] });
+          }}
+        />
+      </div>
     </Card>
   );
 }
 
 
 function PrivacyTab({ cliente }: { cliente: any; onUpdated?: () => void }) {
+  const qcPrivacy = useQueryClient();
   const { data: contatti } = useQuery({
     queryKey: ["contatti-privacy", cliente.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("contatti")
-        .select("id, nome, cognome, principale, privacy_firmata, data_firma, firma_url, pdf_privacy_url, pdf_privacy_path")
+        .select("id, nome, cognome, email, principale, privacy_firmata, data_firma, firma_url, pdf_privacy_url, pdf_privacy_path, consenso_profilazione, consenso_marketing_media, consenso_marketing_diretto, richiesta_privacy_generata_il, richiesta_privacy_inviata_il, richiesta_privacy_aperta_il")
         .eq("cliente_id", cliente.id)
         .order("principale", { ascending: false })
         .order("nome");
@@ -1340,7 +1352,7 @@ function PrivacyTab({ cliente }: { cliente: any; onUpdated?: () => void }) {
             <span className="font-medium">{firmati}</span> di <span className="font-medium">{totali}</span> contatti hanno firmato la privacy.
           </div>
 
-          <LinkFirmaPrivacy clienteId={cliente.id} />
+
 
           <div className="pt-3 border-t space-y-2">
             <p className="text-sm font-medium">Riepilogo per contatto</p>
@@ -1381,6 +1393,15 @@ function PrivacyTab({ cliente }: { cliente: any; onUpdated?: () => void }) {
                         </Button>
                       </>
                     )}
+                  </div>
+                  <div className="w-full pt-2 border-t">
+                    <ContattoPrivacyAzioni
+                      contatto={c as any}
+                      onRefresh={() => {
+                        qcPrivacy.invalidateQueries({ queryKey: ["contatti-privacy", cliente.id] });
+                        qcPrivacy.invalidateQueries({ queryKey: ["contatti", cliente.id] });
+                      }}
+                    />
                   </div>
                 </li>
               ))}

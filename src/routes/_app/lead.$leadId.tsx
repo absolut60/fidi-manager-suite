@@ -25,7 +25,6 @@ import {
 } from "@/components/ui/table";
 import { LeadContattiTab, LeadCantieriTab, useLeadContatti } from "@/components/lead/lead-relazioni-tabs";
 import { LeadAzioniStato } from "@/components/lead/lead-azioni-stato";
-import { LinkFirmaPrivacy } from "@/components/link-firma-privacy";
 import { LeadRichiesteTab } from "@/components/lead/lead-richieste-tab";
 
 
@@ -528,19 +527,15 @@ function LeadDettaglioPage() {
         <TabsContent value="contatti" className="mt-4 space-y-4">
           <LeadContattiTab leadId={leadId} clienteId={lead.cliente_id} />
 
-          <div className="space-y-2">
-            <h2 className="text-sm font-semibold tracking-tight">Raccolta consensi GDPR</h2>
-            {!haContatti && (
-              <Alert>
-                <Info className="size-4" />
-                <AlertDescription>
-                  Aggiungi un contatto-persona per poter raccogliere la firma privacy e i consensi
-                  marketing (GDPR). La privacy si firma sulla persona fisica, non sull'azienda.
-                </AlertDescription>
-              </Alert>
-            )}
-            <LinkFirmaPrivacy leadId={leadId} />
-          </div>
+          {!haContatti && (
+            <Alert>
+              <Info className="size-4" />
+              <AlertDescription>
+                Aggiungi un contatto-persona per poter raccogliere la firma privacy e i consensi
+                marketing (GDPR). La privacy si firma sulla persona fisica, non sull'azienda.
+              </AlertDescription>
+            </Alert>
+          )}
         </TabsContent>
 
 
