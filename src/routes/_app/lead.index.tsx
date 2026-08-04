@@ -238,7 +238,7 @@ function LeadListaPage() {
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button className="gap-1.5"><Plus className="size-4" /> Nuovo lead</Button>
+            <Button className="gap-1.5 w-full sm:w-auto"><Plus className="size-4" /> Nuovo lead</Button>
           </DialogTrigger>
           <NuovoLeadDialog onClose={() => setOpen(false)} />
         </Dialog>
