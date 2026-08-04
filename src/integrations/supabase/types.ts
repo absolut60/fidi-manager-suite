@@ -4189,6 +4189,7 @@ export type Database = {
         }[]
       }
       effective_store_filter: { Args: { _requested: string }; Returns: string }
+      elimina_lead: { Args: { _lead_id: string }; Returns: undefined }
       fn_email_valida: { Args: { _raw: string }; Returns: boolean }
       fn_telefono_valido: { Args: { _raw: string }; Returns: boolean }
       genera_snapshot: { Args: { _data: string }; Returns: string }
