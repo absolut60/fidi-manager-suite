@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowRight, Check, FileText, PenTool, Search } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { generaSchedaCliente } from "@/lib/scheda-pdf";
 import { SignaturePad, getCanvasDataURL } from "@/components/signature-pad";
