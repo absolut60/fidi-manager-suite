@@ -330,34 +330,7 @@ export function NuovoContattoWizard({
           <DialogTitle>Nuovo contatto</DialogTitle>
           <DialogDescription>Scegli come vuoi creare il contatto.</DialogDescription>
         </DialogHeader>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 py-2">
-          <button
-            type="button"
-            onClick={() => { setModalita("con_firma"); setStep(0); }}
-            className="text-left rounded-lg border bg-card p-4 hover:border-primary hover:bg-accent/40 transition"
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <PenTool className="size-5 text-primary" />
-              <span className="font-semibold">Crea con firma</span>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Flusso completo con consenso privacy, firma grafometrica e generazione automatica del PDF MADE.
-            </p>
-          </button>
-          <button
-            type="button"
-            onClick={() => { setModalita("senza_firma"); setStep(0); }}
-            className="text-left rounded-lg border bg-card p-4 hover:border-primary hover:bg-accent/40 transition"
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <FileText className="size-5 text-primary" />
-              <span className="font-semibold">Crea senza firma</span>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Inserimento rapido del contatto, senza firma né PDF (potrai raccoglierla dopo).
-            </p>
-          </button>
-        </div>
+        <SceltaCanalePrivacy onScegli={(c) => { setModalita(c); setStep(0); }} />
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Annulla</Button>
         </DialogFooter>
@@ -373,13 +346,48 @@ export function NuovoContattoWizard({
       String(c.codice_gestionale ?? "").toLowerCase().includes(q);
   }).slice(0, 50);
 
+  // Modulo consenso "di persona", aperto dopo la creazione del contatto
+  if (contattoId && modalita === "di_persona") {
+    return (
+      <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Consenso privacy — {`${contatto.nome} ${contatto.cognome}`.trim()}</DialogTitle>
+          <DialogDescription>
+            Contatto creato. Fai compilare e firmare il modulo direttamente all'interessato.
+          </DialogDescription>
+        </DialogHeader>
+        <ModuloConsensoPrivacy
+          valoriIniziali={{
+            nome: contatto.nome,
+            cognome: contatto.cognome,
+            societa: selectedCliente?.ragione_sociale ?? "",
+            luogo_nascita: contatto.luogo_nascita,
+            data_nascita: contatto.data_nascita,
+            codice_fiscale: contatto.codice_fiscale,
+            residenza: contatto.residenza,
+            email: contatto.email,
+            cellulare: contatto.cellulare,
+          }}
+          placeholderSocieta={selectedCliente?.ragione_sociale}
+          onSubmit={salvaDiPersona}
+          isPending={saving}
+          inviaLabel="Conferma e firma"
+        />
+      </DialogContent>
+    );
+  }
+
   return (
     <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
       <DialogHeader>
         <DialogTitle>
           Nuovo contatto
           <span className="ml-2 text-xs font-normal text-muted-foreground">
-            {modalita === "con_firma" ? "(con firma)" : "(senza firma)"}
+            {modalita === "di_persona"
+              ? "(compila di persona)"
+              : modalita === "a_distanza"
+                ? "(richiesta a distanza)"
+                : "(senza privacy)"}
           </span>
         </DialogTitle>
         <DialogDescription>
@@ -512,18 +520,6 @@ export function NuovoContattoWizard({
           </div>
         )}
 
-        {currentLabel === "Firma" && selectedCliente && (
-          <StepFirmaContatto
-            cliente={selectedCliente}
-            dich={dich}
-            setDich={setDich}
-            consensi={consensi}
-            setConsensi={setConsensi}
-            padRef={padRef}
-            setHasSig={setHasSig}
-            errors={errors}
-          />
-        )}
       </div>
 
       <DialogFooter className="gap-2 sm:gap-2">
@@ -540,13 +536,9 @@ export function NuovoContattoWizard({
           <Button type="button" onClick={handleAvanti} disabled={saving}>
             {saving ? "Attendere..." : <>Avanti <ArrowRight className="size-4 ml-1" /></>}
           </Button>
-        ) : modalita === "con_firma" ? (
-          <Button type="button" onClick={handleSalvaFirma} disabled={saving || !hasSig}>
-            {saving ? "Salvataggio..." : <><Check className="size-4 mr-1" /> Salva firma e genera PDF</>}
-          </Button>
         ) : (
           <Button type="button" onClick={handleAvanti} disabled={saving}>
-            {saving ? "Salvataggio..." : <><Check className="size-4 mr-1" /> Salva contatto</>}
+            {saving ? "Salvataggio..." : <><Check className="size-4 mr-1" /> Crea contatto</>}
           </Button>
         )}
       </DialogFooter>
