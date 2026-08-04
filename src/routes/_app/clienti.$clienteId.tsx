@@ -5,9 +5,6 @@ import { z } from "zod";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { ArrowLeft, Plus, Mail, Phone, Smartphone, Star, Trash2, FileCheck2, FileX2, Download, Pencil, Link as LinkIcon, Copy, EyeOff, AlertTriangle, MessageCircle, Send } from "lucide-react";
 import { InviaSollecitoDialog } from "@/components/invia-sollecito-dialog";
-import { SignaturePad, getCanvasDataURL } from "@/components/signature-pad";
-import { PdfPrivacyButton } from "@/components/pdf-privacy-button";
-import { generaPdfPrivacy } from "@/lib/privacy-pdf";
 import { useRef } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -1272,34 +1269,6 @@ function ContattoCard({
         )}
       </div>
       <div className="mt-3 pt-3 border-t">
-        <p className="text-xs font-medium text-muted-foreground mb-2">Consensi privacy</p>
-        <div className="flex flex-wrap gap-1.5">
-          <ConsensoBadge ok={!!contatto.consenso_profilazione} label={CONSENSO_LABEL.profilazione} />
-          <ConsensoBadge ok={!!contatto.consenso_marketing_media} label={CONSENSO_LABEL.marketing_media} />
-          <ConsensoBadge ok={!!contatto.consenso_marketing_diretto} label={CONSENSO_LABEL.marketing_diretto} />
-        </div>
-        {contatto.data_firma && (
-          <p className="text-xs text-muted-foreground mt-2">
-            Firmata il {new Date(contatto.data_firma).toLocaleString("it-IT")}
-          </p>
-        )}
-      </div>
-      <div className="mt-3 pt-3 border-t flex flex-wrap gap-2">
-        {contatto.privacy_firmata && (contatto.pdf_privacy_path || contatto.pdf_privacy_url) && (
-          <PdfPrivacyButton path={contatto.pdf_privacy_path} url={contatto.pdf_privacy_url}>
-            Scarica PDF
-          </PdfPrivacyButton>
-        )}
-        <FirmaContattoDialog
-          cliente={cliente}
-          contatto={contatto}
-          onSaved={() => {
-            qc.invalidateQueries({ queryKey: ["contatti", clienteId] });
-            qc.invalidateQueries({ queryKey: ["contatti-privacy", clienteId] });
-          }}
-        />
-      </div>
-      <div className="mt-3 pt-3 border-t">
         <ContattoPrivacyAzioni
           contatto={contatto}
           onRefresh={() => {
@@ -1308,6 +1277,7 @@ function ContattoCard({
           }}
         />
       </div>
+
     </Card>
   );
 }
@@ -1358,52 +1328,20 @@ function PrivacyTab({ cliente }: { cliente: any; onUpdated?: () => void }) {
             <p className="text-sm font-medium">Riepilogo per contatto</p>
             <ul className="divide-y border rounded-md">
               {contatti!.map((c) => (
-                <li key={c.id} className="p-3 flex items-center justify-between gap-3 flex-wrap text-sm">
-                  <div className="min-w-0">
-                    <div className="font-medium truncate">
-                      {[c.nome, c.cognome].filter(Boolean).join(" ")}
-                      {c.principale && <span className="text-xs text-muted-foreground ml-2">(principale)</span>}
-                    </div>
-                    {c.privacy_firmata && c.data_firma && (
-                      <div className="text-xs text-muted-foreground">
-                        Firmata il {new Date(c.data_firma).toLocaleString("it-IT")}
-                      </div>
-                    )}
+                <li key={c.id} className="p-3 space-y-2 text-sm">
+                  <div className="font-medium truncate">
+                    {[c.nome, c.cognome].filter(Boolean).join(" ")}
+                    {c.principale && <span className="text-xs text-muted-foreground ml-2">(principale)</span>}
                   </div>
-                  <div className="flex items-center gap-2">
-                    {c.privacy_firmata ? (
-                      <Badge className="bg-success/15 text-success gap-1">
-                        <FileCheck2 className="size-3" /> Firmata
-                      </Badge>
-                    ) : (
-                      <Badge className="bg-destructive/15 text-destructive gap-1">
-                        <FileX2 className="size-3" /> Non firmata
-                      </Badge>
-                    )}
-                    {c.privacy_firmata && (c.pdf_privacy_path || c.pdf_privacy_url) && (
-                      <>
-                        <PdfPrivacyButton path={c.pdf_privacy_path} url={c.pdf_privacy_url} />
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => toast.info("Funzione in arrivo")}
-                          title={`Invia PDF a ${[c.nome, c.cognome].filter(Boolean).join(" ")}`}
-                        >
-                          Invia PDF
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                  <div className="w-full pt-2 border-t">
-                    <ContattoPrivacyAzioni
-                      contatto={c as any}
-                      onRefresh={() => {
-                        qcPrivacy.invalidateQueries({ queryKey: ["contatti-privacy", cliente.id] });
-                        qcPrivacy.invalidateQueries({ queryKey: ["contatti", cliente.id] });
-                      }}
-                    />
-                  </div>
+                  <ContattoPrivacyAzioni
+                    contatto={c as any}
+                    onRefresh={() => {
+                      qcPrivacy.invalidateQueries({ queryKey: ["contatti-privacy", cliente.id] });
+                      qcPrivacy.invalidateQueries({ queryKey: ["contatti", cliente.id] });
+                    }}
+                  />
                 </li>
+
               ))}
             </ul>
           </div>
@@ -1413,143 +1351,10 @@ function PrivacyTab({ cliente }: { cliente: any; onUpdated?: () => void }) {
   );
 }
 
-function FirmaContattoDialog({
-  cliente,
-  contatto,
-  onSaved,
-}: {
-  cliente: any;
-  contatto: any;
-  onSaved: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const padRef = useRef<HTMLDivElement>(null);
-  const [hasSig, setHasSig] = useState(false);
-  const [saving, setSaving] = useState(false);
+// Il vecchio <FirmaContattoDialog> ("Raccogli firma": solo firma grafica, senza
+// dati dichiarante né i 3 consensi) è stato rimosso: la raccolta privacy passa
+// esclusivamente da <ContattoPrivacyAzioni> (Compila di persona / link a distanza).
 
-  async function salva() {
-    if (!padRef.current) return;
-    const dataUrl = getCanvasDataURL(padRef.current);
-    if (!dataUrl) { toast.error("Inserisci la firma"); return; }
-    setSaving(true);
-    try {
-      // 1. Verifica esistenza contatto + stato firma (SELECT, mai INSERT)
-      const { data: existing, error: selErr } = await supabase
-        .from("contatti")
-        .select("id, privacy_firmata")
-        .eq("id", contatto.id)
-        .maybeSingle();
-      if (selErr) throw new Error(`Errore lettura contatto: ${selErr.message}`);
-      if (!existing) throw new Error("Contatto non trovato: impossibile salvare la firma.");
-      if (existing.privacy_firmata) {
-        toast.error("Firma già presente per questo contatto");
-        setSaving(false);
-        return;
-      }
-
-      const now = new Date();
-      const pngBlob = await (await fetch(dataUrl)).blob();
-      const firmaPath = `contatti/${contatto.id}/firma-${now.getTime()}.png`;
-      const { error: e1 } = await supabase.storage.from("firme").upload(firmaPath, pngBlob, { upsert: true, contentType: "image/png" });
-      if (e1) throw new Error(`Upload firma: ${e1.message}`);
-      // Bucket "firme" privato: genera URL firmato a lunga scadenza (10 anni)
-      const { data: firmaSigned, error: eFirmaSigned } = await supabase.storage
-        .from("firme")
-        .createSignedUrl(firmaPath, 60 * 60 * 24 * 365 * 10);
-      if (eFirmaSigned || !firmaSigned?.signedUrl) throw new Error(`Signed URL firma: ${eFirmaSigned?.message ?? "vuoto"}`);
-
-      const pdfBytes = await generaPdfPrivacy({
-        ragioneSociale: cliente.ragione_sociale,
-        partitaIva: cliente.partita_iva,
-        codiceFiscale: cliente.codice_fiscale,
-        indirizzo: cliente.indirizzo,
-        citta: cliente.citta,
-        email: cliente.email,
-        firmaPngDataUrl: dataUrl,
-        dataFirma: now,
-      });
-      const pdfPath = `contatti/${contatto.id}/privacy-${now.getTime()}.pdf`;
-      const { error: e2 } = await supabase.storage.from("documenti-privacy").upload(pdfPath, pdfBytes, { contentType: "application/pdf", upsert: true });
-      if (e2) throw new Error(`Upload PDF: ${e2.message}`);
-      // Bucket "documenti-privacy" privato: signed URL a lunga scadenza
-      const { data: pdfSigned, error: ePdfSigned } = await supabase.storage
-        .from("documenti-privacy")
-        .createSignedUrl(pdfPath, 60 * 60 * 24 * 365 * 10);
-      if (ePdfSigned || !pdfSigned?.signedUrl) throw new Error(`Signed URL PDF: ${ePdfSigned?.message ?? "vuoto"}`);
-
-      // 2. UPDATE sul contatto esistente, mai INSERT
-      const { data: updated, error: e3 } = await supabase
-        .from("contatti")
-        .update({
-          privacy_firmata: true,
-          data_firma: now.toISOString(),
-          firma_url: firmaSigned.signedUrl,
-          pdf_privacy_url: pdfSigned.signedUrl,
-          pdf_privacy_path: pdfPath,
-        })
-        .eq("id", contatto.id)
-        .select("id")
-        .maybeSingle();
-      if (e3) throw new Error(`Salvataggio firma: ${e3.message}`);
-      if (!updated) throw new Error("Aggiornamento non riuscito: nessuna riga modificata (verifica i permessi).");
-
-      toast.success("Privacy firmata e PDF generato");
-
-      if (contatto.email && pdfSigned?.signedUrl) {
-        import("@/lib/send-email").then(({ sendPrivacyPdf }) => {
-          sendPrivacyPdf({
-            toEmail: contatto.email!,
-            toName: [contatto.nome, contatto.cognome].filter(Boolean).join(" "),
-            ragioneSociale: cliente.ragione_sociale,
-            dataFirma: new Date().toISOString(),
-            pdfUrl: pdfSigned.signedUrl,
-          }).then((ok) => {
-            if (ok) toast.success("PDF privacy inviato per email");
-          });
-        });
-      }
-
-      onSaved();
-      setOpen(false);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Errore salvataggio");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  const nomeContatto = [contatto.nome, contatto.cognome].filter(Boolean).join(" ");
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm" variant="default" disabled={contatto.privacy_firmata}>
-          <Pencil className="size-4 mr-1" />
-          {contatto.privacy_firmata ? "Firma già presente" : "Raccogli firma"}
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Firma privacy — {nomeContatto}</DialogTitle>
-          <DialogDescription>
-            Raccogli qui la firma del contatto. Verrà generato un PDF dell'informativa salvato nella scheda.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-3">
-          <div ref={padRef}>
-            <SignaturePad onChange={(empty) => setHasSig(!empty)} />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={saving}>Annulla</Button>
-          <Button onClick={salva} disabled={!hasSig || saving}>
-            {saving ? "Salvataggio..." : "Salva firma e genera PDF"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 
 

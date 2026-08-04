@@ -3,10 +3,8 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { risolviIntestazioneSoggetto } from "./intestazione-soggetto.server";
-import { generaSchedaCliente } from "./scheda-pdf";
-import { buildPrivacyPdfEmailPayload } from "./email-template";
-import { estraiIp, estraiUserAgent } from "./request-ip.server";
-import { INFORMATIVA_FULL, INFORMATIVA_VERSIONE, calcolaInformativaHash } from "./consensi-testi";
+
+
 
 
 /**
@@ -196,140 +194,85 @@ export const firmaPrivacyConToken = createServerFn({ method: "POST" })
       throw new Error("Link scaduto");
     }
 
-    // Intestazione del soggetto: cliente oppure lead non ancora convertito
     const soggetto = await risolviIntestazioneSoggetto(ct);
-
-    const now = new Date();
-    const nomeCompleto =
-      [data.dichiarante.nome, data.dichiarante.cognome].filter(Boolean).join(" ").trim() ||
-      [ct.nome, ct.cognome].filter(Boolean).join(" ").trim() ||
-      "Contatto";
-
-    // 1) Upload PNG firma
-    const base64 = data.firmaDataUrl.split(",")[1];
-    const pngBytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-    const firmaPath = `contatti/${ct.id}/firma-${now.getTime()}.png`;
-    const { error: eFirma } = await supabaseAdmin.storage.from("firme")
-      .upload(firmaPath, pngBytes, { upsert: true, contentType: "image/png" });
-    if (eFirma) throw new Error(eFirma.message);
-    // Bucket "firme" privato: genera URL firmato a lunga scadenza (10 anni)
-    const { data: firmaSigned, error: eSigned } = await supabaseAdmin.storage
-      .from("firme")
-      .createSignedUrl(firmaPath, 60 * 60 * 24 * 365 * 10);
-    if (eSigned) {
-      await supabaseAdmin.storage.from("firme").remove([firmaPath]);
-      throw new Error(eSigned.message);
-    }
-    const firmaUrl = { publicUrl: firmaSigned.signedUrl };
-
-    // 2) Genera il PDF RICCO — stesso generatore del wizard cliente (§5)
-    const ragioneSociale = data.dichiarante.societa?.trim() || soggetto.ragione_sociale;
-    const pdfBytes = await generaSchedaCliente({
-      tipo: "aggiornamento",
-      ragioneSociale,
-      dichiaranteNome: data.dichiarante.nome,
-      dichiaranteCognome: data.dichiarante.cognome,
-      luogoNascita: data.dichiarante.luogo_nascita || undefined,
-      dataNascita: data.dichiarante.data_nascita || undefined,
-      codiceFiscaleDich: data.dichiarante.codice_fiscale || soggetto.codice_fiscale || undefined,
-      partitaIva: soggetto.partita_iva ?? undefined,
-      residenza: data.dichiarante.residenza || undefined,
-      emailDich: emailDich,
-      cellulareDich: data.dichiarante.cellulare || undefined,
-      consensoProfilazione: data.consensi.profilazione ? "si" : "no",
-      consensoMarketingMedia: data.consensi.marketing_media ? "si" : "no",
-      consensoMarketingDiretto: data.consensi.marketing_diretto ? "si" : "no",
-      dataFirma: data.data_firma || now,
-      firmaPngDataUrl: data.firmaDataUrl,
+    const { finalizzaRaccoltaPrivacy } = await import("./firma-privacy-finalizza.server");
+    return await finalizzaRaccoltaPrivacy({
+      contattoId: ct.id,
+      contattoNome: ct.nome,
+      contattoCognome: ct.cognome,
+      soggetto,
+      dichiarante: { ...data.dichiarante, email: emailDich },
+      consensi: data.consensi,
+      firmaDataUrl: data.firmaDataUrl,
+      data_firma: data.data_firma,
+      secondi_permanenza: data.secondi_permanenza,
+      origine: "firma_grafica",
+      note: "Firma grafica via link privacy",
+      invalidaToken: true,
     });
-    const pdfPath = `contatti/${ct.id}/privacy-${now.getTime()}.pdf`;
-    const { error: ePdf } = await supabaseAdmin.storage.from("documenti-privacy")
-      .upload(pdfPath, pdfBytes, { upsert: true, contentType: "application/pdf" });
-    if (ePdf) {
-      await supabaseAdmin.storage.from("firme").remove([firmaPath]);
-      throw new Error(ePdf.message);
-    }
-    // Bucket privato: signed URL a lunga scadenza (10 anni). Il path è la fonte di verità.
-    const { data: pdfSigned, error: ePdfSigned } = await supabaseAdmin.storage
-      .from("documenti-privacy")
-      .createSignedUrl(pdfPath, 60 * 60 * 24 * 365 * 10);
-    if (ePdfSigned) {
-      await supabaseAdmin.storage.from("firme").remove([firmaPath]);
-      await supabaseAdmin.storage.from("documenti-privacy").remove([pdfPath]);
-      throw new Error(ePdfSigned.message);
-    }
-    const pdfUrl = { publicUrl: pdfSigned.signedUrl };
-
-    // 3) Aggiorna contatto e invalida il token — se fallisce, rimuovi i file orfani
-    const { error: eUpd } = await supabaseAdmin.from("contatti").update({
-      privacy_firmata: true,
-      data_firma: now.toISOString(),
-      firma_url: firmaUrl.publicUrl,
-      pdf_privacy_url: pdfUrl.publicUrl,
-      pdf_privacy_path: pdfPath,
-      luogo_nascita: data.dichiarante.luogo_nascita || null,
-      data_nascita: data.dichiarante.data_nascita || null,
-      codice_fiscale: data.dichiarante.codice_fiscale || null,
-      residenza: data.dichiarante.residenza || null,
-      email: emailDich,
-      cellulare: data.dichiarante.cellulare || null,
-      consenso_profilazione: data.consensi.profilazione,
-      consenso_marketing_media: data.consensi.marketing_media,
-      consenso_marketing_diretto: data.consensi.marketing_diretto,
-      privacy_token: null,
-      privacy_token_expires_at: null,
-    }).eq("id", ct.id);
-    if (eUpd) {
-      await supabaseAdmin.storage.from("firme").remove([firmaPath]);
-      await supabaseAdmin.storage.from("documenti-privacy").remove([pdfPath]);
-      throw new Error(eUpd.message);
-    }
-
-    // 3-bis) Registro consensi unificato — non fatale: la firma resta valida
-    try {
-      const ip = estraiIp();
-      const ua = estraiUserAgent();
-      const hash = await calcolaInformativaHash(INFORMATIVA_FULL);
-      const { error: eLog } = await supabaseAdmin.rpc("registra_consensi_batch", {
-        _contatto_id: ct.id,
-        _marketing_diretto: data.consensi.marketing_diretto,
-        _marketing_media: data.consensi.marketing_media,
-        _profilazione: data.consensi.profilazione,
-        _origine: "firma_grafica",
-        _prova_path: pdfPath,
-        ...(ip ? { _ip: ip } : {}),
-        _informativa_versione: INFORMATIVA_VERSIONE,
-        _informativa_hash: hash,
-        ...(ua ? { _user_agent: ua } : {}),
-        ...(typeof data.secondi_permanenza === "number" ? { _secondi_permanenza: data.secondi_permanenza } : {}),
-        _note: "Firma grafica via link privacy",
-
-      });
-      if (eLog) console.error("[firma-privacy] registra_consensi_batch fallito:", eLog.message);
-    } catch (e) {
-      console.error("[firma-privacy] registra_consensi_batch fallito:", e);
-    }
-
-    // 4) Invio del PDF al firmatario — non deve MAI rompere il flusso:
-    // il documento è già archiviato e recuperabile dal path.
-    let emailInviata = false;
-    try {
-      let binary = "";
-      for (let i = 0; i < pdfBytes.length; i++) binary += String.fromCharCode(pdfBytes[i]);
-      const payload = buildPrivacyPdfEmailPayload({
-        toName: nomeCompleto,
-        ragioneSociale,
-        dataFirma: now.toISOString(),
-        pdfBase64: btoa(binary),
-      });
-      const { sendEmailViaEdge } = await import("./inngest/send-email.server");
-      const esito = await sendEmailViaEdge({ to: emailDich, ...payload });
-      emailInviata = esito.ok;
-      if (!esito.ok) console.error("[firma-privacy] invio email fallito:", esito.err);
-    } catch (e) {
-      console.error("[firma-privacy] invio email fallito:", e);
-    }
-
-    return { ok: true, pdfUrl: pdfUrl.publicUrl, pdfPath, emailInviata };
   });
+
+/**
+ * Canale "Compila di persona": il cliente compila e firma sul tablet al bancone.
+ * Raccoglie ESATTAMENTE gli stessi dati del link pubblico, ma l'accesso è
+ * garantito dall'utente autenticato (RLS sul contatto) e l'origine registrata
+ * nel registro consensi è 'di_persona'.
+ */
+export const registraConsensoDiPersona = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({
+      contattoId: z.string().uuid(),
+      firmaDataUrl: z.string().startsWith("data:image/png;base64,").max(2_000_000),
+      dichiarante: z.object({
+        nome: z.string().trim().min(1, "Nome obbligatorio").max(100),
+        cognome: z.string().trim().min(1, "Cognome obbligatorio").max(100),
+        societa: z.string().trim().max(200).optional(),
+        luogo_nascita: z.string().trim().max(120).optional(),
+        data_nascita: z.string().trim().max(20).optional(),
+        codice_fiscale: z.string().trim().max(32).optional(),
+        residenza: z.string().trim().max(250).optional(),
+        email: z.string().trim().email("Email non valida").max(255),
+        cellulare: z.string().trim().max(40).optional(),
+      }),
+      consensi: z.object({
+        profilazione: z.boolean(),
+        marketing_media: z.boolean(),
+        marketing_diretto: z.boolean(),
+      }),
+      data_firma: z.string().trim().max(20).optional(),
+      secondi_permanenza: z.number().int().min(0).max(86400).nullable().optional(),
+    }).parse(d)
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    // L'accesso al contatto è verificato dalle RLS con il client dell'utente
+    const { data: ct, error } = await supabase
+      .from("contatti")
+      .select("id, cliente_id, lead_id, nome, cognome, email, privacy_firmata")
+      .eq("id", data.contattoId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!ct) throw new Error("Contatto non trovato o non accessibile");
+    if (ct.privacy_firmata) throw new Error("Privacy già firmata per questo contatto");
+
+    const soggetto = await risolviIntestazioneSoggetto(ct);
+    const { finalizzaRaccoltaPrivacy } = await import("./firma-privacy-finalizza.server");
+    return await finalizzaRaccoltaPrivacy({
+      contattoId: ct.id,
+      contattoNome: ct.nome,
+      contattoCognome: ct.cognome,
+      soggetto,
+      dichiarante: { ...data.dichiarante, email: data.dichiarante.email.trim() },
+      consensi: data.consensi,
+      firmaDataUrl: data.firmaDataUrl,
+      data_firma: data.data_firma,
+      secondi_permanenza: data.secondi_permanenza,
+      origine: "di_persona",
+      note: "Consenso raccolto di persona al punto vendita",
+      operatoreId: userId,
+      invalidaToken: true,
+    });
+  });
+
 

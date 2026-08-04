@@ -1,16 +1,26 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
-import { FileCheck2, Mail, Link as LinkIcon, Download, Send, Clock } from "lucide-react";
+import { FileCheck2, Mail, Link as LinkIcon, Download, Send, Clock, PenLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { inviaRichiestaFirmaPrivacy } from "@/lib/firma-privacy.functions";
+import {
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import { ModuloConsensoPrivacy, type ModuloConsensoPayload } from "@/components/modulo-consenso-privacy";
+import { inviaRichiestaFirmaPrivacy, registraConsensoDiPersona } from "@/lib/firma-privacy.functions";
+
 
 export type ContattoPrivacy = {
   id: string;
   nome?: string | null;
   cognome?: string | null;
   email?: string | null;
+  cellulare?: string | null;
+  luogo_nascita?: string | null;
+  data_nascita?: string | null;
+  codice_fiscale?: string | null;
+  residenza?: string | null;
   privacy_firmata?: boolean | null;
   data_firma?: string | null;
   consenso_profilazione?: boolean | null;
@@ -21,6 +31,7 @@ export type ContattoPrivacy = {
   richiesta_privacy_inviata_il?: string | null;
   richiesta_privacy_aperta_il?: string | null;
 };
+
 
 function fmt(v?: string | null): string {
   if (!v) return "—";
@@ -51,7 +62,12 @@ export function ContattoPrivacyAzioni({
   onRefresh: () => void;
 }) {
   const inviaFn = useServerFn(inviaRichiestaFirmaPrivacy);
+  const diPersonaFn = useServerFn(registraConsensoDiPersona);
   const [loading, setLoading] = useState<"invia" | "copia" | null>(null);
+  const [openDiPersona, setOpenDiPersona] = useState(false);
+  const [savingDiPersona, setSavingDiPersona] = useState(false);
+
+  const nomeContatto = [contatto.nome, contatto.cognome].filter(Boolean).join(" ").trim() || "Contatto";
 
   async function esegui(azione: "invia" | "copia") {
     setLoading(azione);
@@ -82,6 +98,53 @@ export function ContattoPrivacyAzioni({
     }
   }
 
+  async function salvaDiPersona(p: ModuloConsensoPayload) {
+    setSavingDiPersona(true);
+    try {
+      const res = await diPersonaFn({ data: { contattoId: contatto.id, ...p } });
+      toast.success(
+        res.emailInviata
+          ? "Consenso registrato — copia PDF inviata via email"
+          : "Consenso registrato — invio email non riuscito, il PDF è archiviato"
+      );
+      setOpenDiPersona(false);
+      onRefresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Errore");
+    } finally {
+      setSavingDiPersona(false);
+    }
+  }
+
+  const dialogDiPersona = (
+    <Dialog open={openDiPersona} onOpenChange={(v) => !savingDiPersona && setOpenDiPersona(v)}>
+      <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Consenso privacy — {nomeContatto}</DialogTitle>
+          <DialogDescription>
+            Fai compilare e firmare questo modulo direttamente all'interessato. Riceverà via email
+            copia del documento firmato.
+          </DialogDescription>
+        </DialogHeader>
+        <ModuloConsensoPrivacy
+          valoriIniziali={{
+            nome: contatto.nome,
+            cognome: contatto.cognome,
+            luogo_nascita: contatto.luogo_nascita,
+            data_nascita: contatto.data_nascita,
+            codice_fiscale: contatto.codice_fiscale,
+            residenza: contatto.residenza,
+            email: contatto.email,
+            cellulare: contatto.cellulare,
+          }}
+          onSubmit={salvaDiPersona}
+          isPending={savingDiPersona}
+          inviaLabel="Conferma e firma"
+        />
+      </DialogContent>
+    </Dialog>
+  );
+
   // STATO FIRMATA
   if (contatto.privacy_firmata) {
     return (
@@ -110,6 +173,8 @@ export function ContattoPrivacyAzioni({
     );
   }
 
+  const senzaEmail = !contatto.email;
+
   // STATO IN ATTESA
   if (contatto.richiesta_privacy_generata_il) {
     return (
@@ -124,6 +189,9 @@ export function ContattoPrivacyAzioni({
           </span>
         </p>
         <div className="flex flex-wrap gap-2">
+          <Button size="sm" disabled={loading !== null} onClick={() => setOpenDiPersona(true)}>
+            <PenLine className="size-3.5 mr-1" /> Compila di persona
+          </Button>
           <Button size="sm" variant="outline" disabled={loading !== null} onClick={() => esegui("invia")}>
             <Send className="size-3.5 mr-1" /> {loading === "invia" ? "Invio..." : "Rinvia richiesta"}
           </Button>
@@ -131,31 +199,39 @@ export function ContattoPrivacyAzioni({
             <LinkIcon className="size-3.5 mr-1" /> {loading === "copia" ? "..." : "Copia link"}
           </Button>
         </div>
+        {dialogDiPersona}
       </div>
     );
   }
 
   // STATO DA RACCOGLIERE
-  const senzaEmail = !contatto.email;
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap gap-2 items-center">
+        <Button size="sm" disabled={loading !== null} onClick={() => setOpenDiPersona(true)}>
+          <PenLine className="size-3.5 mr-1" /> Compila di persona
+        </Button>
         <Button
           size="sm"
+          variant="outline"
           disabled={senzaEmail || loading !== null}
           title={senzaEmail ? "Manca l'email del contatto" : undefined}
           onClick={() => esegui("invia")}
         >
           <Mail className="size-3.5 mr-1" />
-          {loading === "invia" ? "Invio..." : "Invia richiesta via email"}
+          {loading === "invia" ? "Invio..." : "Invia richiesta a distanza"}
         </Button>
-        <Button size="sm" variant="outline" disabled={loading !== null} onClick={() => esegui("copia")}>
+        <Button size="sm" variant="ghost" disabled={loading !== null} onClick={() => esegui("copia")}>
           <LinkIcon className="size-3.5 mr-1" /> {loading === "copia" ? "..." : "Copia link"}
         </Button>
       </div>
       {senzaEmail && (
-        <p className="text-xs text-muted-foreground">Manca l'email del contatto: usa "Copia link".</p>
+        <p className="text-xs text-muted-foreground">
+          Manca l'email del contatto: usa "Compila di persona" oppure "Copia link".
+        </p>
       )}
+      {dialogDiPersona}
     </div>
   );
+
 }
