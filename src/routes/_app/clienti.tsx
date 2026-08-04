@@ -1141,7 +1141,7 @@ function ClientiPage() {
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button className="gap-1.5">
+            <Button className="gap-1.5 w-full sm:w-auto">
               <Plus className="size-4" />
               Nuova scheda cliente
             </Button>
@@ -1507,6 +1507,7 @@ function ClientiPage() {
               </TableBody>
              </Table>
           </div>
+          </>
         )}
 
         {/* Paginazione */}
