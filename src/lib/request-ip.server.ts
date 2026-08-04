@@ -19,3 +19,16 @@ export function estraiIp(): string | null {
     return null;
   }
 }
+
+/**
+ * Estrae lo User-Agent della richiesta corrente (troncato a 300 caratteri).
+ */
+export function estraiUserAgent(): string | null {
+  try {
+    const ua = getRequest().headers.get("user-agent");
+    return ua ? ua.slice(0, 300) : null;
+  } catch {
+    return null;
+  }
+}
+

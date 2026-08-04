@@ -1314,13 +1314,17 @@ export type Database = {
           contatto_id: string
           created_at: string
           id: string
+          informativa_hash: string | null
+          informativa_versione: string | null
           ip_address: string | null
           lead_id: string | null
           note: string | null
           operatore_id: string | null
           origine: string
           prova_path: string | null
+          secondi_permanenza: number | null
           tipo_consenso: string
+          user_agent: string | null
           valore: boolean
         }
         Insert: {
@@ -1328,13 +1332,17 @@ export type Database = {
           contatto_id: string
           created_at?: string
           id?: string
+          informativa_hash?: string | null
+          informativa_versione?: string | null
           ip_address?: string | null
           lead_id?: string | null
           note?: string | null
           operatore_id?: string | null
           origine: string
           prova_path?: string | null
+          secondi_permanenza?: number | null
           tipo_consenso: string
+          user_agent?: string | null
           valore: boolean
         }
         Update: {
@@ -1342,13 +1350,17 @@ export type Database = {
           contatto_id?: string
           created_at?: string
           id?: string
+          informativa_hash?: string | null
+          informativa_versione?: string | null
           ip_address?: string | null
           lead_id?: string | null
           note?: string | null
           operatore_id?: string | null
           origine?: string
           prova_path?: string | null
+          secondi_permanenza?: number | null
           tipo_consenso?: string
+          user_agent?: string | null
           valore?: boolean
         }
         Relationships: [
@@ -1418,6 +1430,9 @@ export type Database = {
           privacy_token_expires_at: string | null
           recesso_token: string | null
           residenza: string | null
+          richiesta_privacy_aperta_il: string | null
+          richiesta_privacy_generata_il: string | null
+          richiesta_privacy_inviata_il: string | null
           ruolo: string | null
           telefono: string | null
           updated_at: string
@@ -1452,6 +1467,9 @@ export type Database = {
           privacy_token_expires_at?: string | null
           recesso_token?: string | null
           residenza?: string | null
+          richiesta_privacy_aperta_il?: string | null
+          richiesta_privacy_generata_il?: string | null
+          richiesta_privacy_inviata_il?: string | null
           ruolo?: string | null
           telefono?: string | null
           updated_at?: string
@@ -1486,6 +1504,9 @@ export type Database = {
           privacy_token_expires_at?: string | null
           recesso_token?: string | null
           residenza?: string | null
+          richiesta_privacy_aperta_il?: string | null
+          richiesta_privacy_generata_il?: string | null
+          richiesta_privacy_inviata_il?: string | null
           ruolo?: string | null
           telefono?: string | null
           updated_at?: string
@@ -4826,6 +4847,8 @@ export type Database = {
       registra_consensi_batch: {
         Args: {
           _contatto_id: string
+          _informativa_hash?: string
+          _informativa_versione?: string
           _ip?: string
           _marketing_diretto: boolean
           _marketing_media: boolean
@@ -4834,6 +4857,8 @@ export type Database = {
           _origine: string
           _profilazione: boolean
           _prova_path?: string
+          _secondi_permanenza?: number
+          _user_agent?: string
         }
         Returns: undefined
       }

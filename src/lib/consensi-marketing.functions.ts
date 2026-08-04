@@ -4,8 +4,10 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { generaPdfConsensiMarketing } from "./consensi-pdf";
 import { risolviIntestazioneSoggetto } from "./intestazione-soggetto.server";
-import { estraiIp } from "./request-ip.server";
+import { estraiIp, estraiUserAgent } from "./request-ip.server";
 import { buildPrivacyPdfEmailPayload } from "./email-template";
+import { INFORMATIVA_FULL, INFORMATIVA_VERSIONE, calcolaInformativaHash } from "./consensi-testi";
+
 
 
 
@@ -152,6 +154,8 @@ export const salvaConsensiMarketing = createServerFn({ method: "POST" })
 
     // 3) Registra i tre consensi in un'unica transazione atomica
     //    (aggiorna anche i flag di stato attuale sul contatto)
+    const ua = estraiUserAgent();
+    const hashInformativa = await calcolaInformativaHash(INFORMATIVA_FULL);
     const { error: eReg } = await supabaseAdmin.rpc("registra_consensi_batch", {
       _contatto_id: ct.id,
       _marketing_diretto: data.consensi.marketing_diretto,
@@ -160,8 +164,12 @@ export const salvaConsensiMarketing = createServerFn({ method: "POST" })
       _origine: "link_pubblico",
       _prova_path: pdfPath,
       ...(ip ? { _ip: ip } : {}),
+      _informativa_versione: INFORMATIVA_VERSIONE,
+      _informativa_hash: hashInformativa,
+      ...(ua ? { _user_agent: ua } : {}),
       _note: `Firmato via link pubblico da "${data.firmaNomeDichiarato}"`,
     });
+
     if (eReg) {
       // Rollback: nessun PDF orfano su storage se la registrazione fallisce
       await supabaseAdmin.storage.from("documenti-privacy").remove([pdfPath]);
