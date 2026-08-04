@@ -1272,34 +1272,6 @@ function ContattoCard({
         )}
       </div>
       <div className="mt-3 pt-3 border-t">
-        <p className="text-xs font-medium text-muted-foreground mb-2">Consensi privacy</p>
-        <div className="flex flex-wrap gap-1.5">
-          <ConsensoBadge ok={!!contatto.consenso_profilazione} label={CONSENSO_LABEL.profilazione} />
-          <ConsensoBadge ok={!!contatto.consenso_marketing_media} label={CONSENSO_LABEL.marketing_media} />
-          <ConsensoBadge ok={!!contatto.consenso_marketing_diretto} label={CONSENSO_LABEL.marketing_diretto} />
-        </div>
-        {contatto.data_firma && (
-          <p className="text-xs text-muted-foreground mt-2">
-            Firmata il {new Date(contatto.data_firma).toLocaleString("it-IT")}
-          </p>
-        )}
-      </div>
-      <div className="mt-3 pt-3 border-t flex flex-wrap gap-2">
-        {contatto.privacy_firmata && (contatto.pdf_privacy_path || contatto.pdf_privacy_url) && (
-          <PdfPrivacyButton path={contatto.pdf_privacy_path} url={contatto.pdf_privacy_url}>
-            Scarica PDF
-          </PdfPrivacyButton>
-        )}
-        <FirmaContattoDialog
-          cliente={cliente}
-          contatto={contatto}
-          onSaved={() => {
-            qc.invalidateQueries({ queryKey: ["contatti", clienteId] });
-            qc.invalidateQueries({ queryKey: ["contatti-privacy", clienteId] });
-          }}
-        />
-      </div>
-      <div className="mt-3 pt-3 border-t">
         <ContattoPrivacyAzioni
           contatto={contatto}
           onRefresh={() => {
@@ -1308,6 +1280,7 @@ function ContattoCard({
           }}
         />
       </div>
+
     </Card>
   );
 }
