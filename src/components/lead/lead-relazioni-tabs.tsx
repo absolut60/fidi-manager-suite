@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ContattoPrivacyAzioni } from "@/components/contatto-privacy-azioni";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
@@ -30,7 +31,7 @@ export function useLeadContatti(leadId: string, enabled = true) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("contatti")
-        .select("id, cliente_id, nome, cognome, email, telefono, cellulare, ruolo")
+        .select("id, cliente_id, nome, cognome, email, telefono, cellulare, ruolo, privacy_firmata, data_firma, pdf_privacy_url, consenso_profilazione, consenso_marketing_media, consenso_marketing_diretto, richiesta_privacy_generata_il, richiesta_privacy_inviata_il, richiesta_privacy_aperta_il")
         .eq("lead_id", leadId)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -120,6 +121,12 @@ export function LeadContattiTab({ leadId, clienteId }: { leadId: string; cliente
               <div className="mt-2 text-xs text-muted-foreground space-y-0.5">
                 {c.email && <div>{c.email}</div>}
                 {(c.telefono || c.cellulare) && <div>{c.telefono || c.cellulare}</div>}
+              </div>
+              <div className="mt-3 pt-3 border-t">
+                <ContattoPrivacyAzioni
+                  contatto={c}
+                  onRefresh={() => qc.invalidateQueries({ queryKey: ["lead-contatti", leadId] })}
+                />
               </div>
               {c.cliente_id && (
                 <Link
