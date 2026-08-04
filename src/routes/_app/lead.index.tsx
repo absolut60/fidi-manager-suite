@@ -421,7 +421,47 @@ function LeadListaPage() {
             <p className="font-medium text-sm">Nessun lead trovato</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          {/* Mobile: schede al posto della tabella */}
+          <div className="md:hidden space-y-2">
+            {rows.map((l) => (
+              <button
+                key={l.id}
+                type="button"
+                onClick={() => navigate({ to: "/lead/$leadId", params: { leadId: l.id } })}
+                className="w-full text-left rounded-lg border bg-card p-3 active:bg-muted/50"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <span className="font-medium text-sm min-w-0 break-words">{nomeLead(l)}</span>
+                  <Badge className={`${LEAD_STATO_CLASS[l.stato]} shrink-0`}>{LEAD_STATO_LABEL[l.stato]}</Badge>
+                </div>
+                <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                  <div className="min-w-0">
+                    <span className="text-muted-foreground">Città: </span>
+                    {l.citta ?? "—"}{l.provincia ? ` (${l.provincia})` : ""}
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-muted-foreground">Fonte: </span>
+                    {LEAD_FONTE_LABEL[l.fonte]}
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-muted-foreground">Assegnato a: </span>
+                    {nomeProfilo(l.assegnato_a)}
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-muted-foreground">Prossima azione: </span>
+                    {formatData(l.prossima_azione_il)}
+                  </div>
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  <Badge className={LEAD_PRIORITA_CLASS[l.priorita]}>{LEAD_PRIORITA_LABEL[l.priorita]}</Badge>
+                  <Badge variant="outline" className="text-xs">{LEAD_TIPO_LABEL[l.tipo_lead]}</Badge>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          <div className="hidden md:block overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
