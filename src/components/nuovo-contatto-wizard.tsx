@@ -1,11 +1,10 @@
-import { useMemo, useRef, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowRight, Check, FileText, PenTool, Search } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { generaSchedaCliente } from "@/lib/scheda-pdf";
-import { SignaturePad, getCanvasDataURL } from "@/components/signature-pad";
+import { SignaturePad } from "@/components/signature-pad";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,6 +20,12 @@ import {
 import { cn } from "@/lib/utils";
 import { RuoloSelect } from "@/components/ruolo-select";
 import { INFORMATIVA_FULL, CONSENSO_TESTI } from "@/lib/consensi-testi";
+import { useServerFn } from "@tanstack/react-start";
+import {
+  SceltaCanalePrivacy, inviaRichiestaDopoCreazione, ModuloConsensoPrivacy,
+  inviaRichiestaFirmaPrivacy, registraConsensoDiPersona,
+  type CanalePrivacy, type ModuloConsensoPayload,
+} from "@/components/privacy-post-creazione";
 
 export type ClienteInfoWizard = {
   id: string;
@@ -42,7 +47,7 @@ const contattoFormSchema = z.object({
 
 type ConsensoVal = "si" | "no" | "";
 
-type Modalita = "con_firma" | "senza_firma" | null;
+type Modalita = CanalePrivacy | null;
 
 type ContattoState = {
   nome: string; cognome: string; ruolo: string;
@@ -80,20 +85,9 @@ export function NuovoContattoWizard({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [contattoId, setContattoId] = useState<string | null>(null);
 
-  // Firma state
-  const todayISO = new Date().toISOString().slice(0, 10);
-  const [dich, setDich] = useState({
-    nome: "", cognome: "", societa: "",
-    luogo_nascita: "", data_nascita: "",
-    codice_fiscale: "", residenza: "",
-    email: "", cell: "", data_firma: todayISO,
-  });
-  const [consensi, setConsensi] = useState<{
-    profilazione: ConsensoVal; marketing_media: ConsensoVal; marketing_diretto: ConsensoVal;
-  }>({ profilazione: "", marketing_media: "", marketing_diretto: "" });
-  const padRef = useRef<HTMLDivElement>(null);
-  const [hasSig, setHasSig] = useState(false);
   const [saving, setSaving] = useState(false);
+  const inviaFn = useServerFn(inviaRichiestaFirmaPrivacy);
+  const diPersonaFn = useServerFn(registraConsensoDiPersona);
 
   // Cliente picker
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -115,9 +109,8 @@ export function NuovoContattoWizard({
     const s: string[] = [];
     if (showClienteStep) s.push("Cliente");
     s.push("Contatto");
-    if (modalita === "con_firma") s.push("Firma");
     return s;
-  }, [modalita, showClienteStep]);
+  }, [showClienteStep]);
 
   const currentLabel = steps[step];
 
@@ -133,14 +126,6 @@ export function NuovoContattoWizard({
     if (currentLabel === "Contatto") {
       const p = contattoFormSchema.safeParse({ nome: contatto.nome, cognome: contatto.cognome });
       if (!p.success) p.error.issues.forEach((i) => { errs[i.path[0] as string] = i.message; });
-    }
-    if (currentLabel === "Firma") {
-      if (!dich.nome.trim()) errs.dich_nome = "Obbligatorio";
-      if (!dich.cognome.trim()) errs.dich_cognome = "Obbligatorio";
-      if (consensi.profilazione !== "si" && consensi.profilazione !== "no") errs.consenso_profilazione = "Scegli un'opzione";
-      if (consensi.marketing_media !== "si" && consensi.marketing_media !== "no") errs.consenso_marketing_media = "Scegli un'opzione";
-      if (consensi.marketing_diretto !== "si" && consensi.marketing_diretto !== "no") errs.consenso_marketing_diretto = "Scegli un'opzione";
-      if (!hasSig) errs.firma = "Firma obbligatoria";
     }
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -177,140 +162,53 @@ export function NuovoContattoWizard({
 
   async function handleAvanti() {
     if (!validateStep()) return;
-    // Last contact step in modalita senza_firma → save and close
-    if (currentLabel === "Contatto" && modalita === "senza_firma") {
-      try {
-        setSaving(true);
-        const id = await insertContatto();
-        if (id && selectedCliente) {
-          toast.success("Contatto aggiunto");
-          invalidateAll(selectedCliente.id);
-          onSuccess?.(selectedCliente.id);
-          onClose();
-        }
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Errore");
-      } finally {
-        setSaving(false);
-      }
+    if (currentLabel !== "Contatto") {
+      setStep((s) => s + 1);
       return;
     }
-    // Going to Firma: insert contatto first (only if not already inserted), precompile dich
-    const next = steps[step + 1];
-    if (next === "Firma" && !contattoId) {
-      try {
-        setSaving(true);
-        const id = await insertContatto();
-        if (!id) return;
-        setContattoId(id);
-        if (selectedCliente) invalidateAll(selectedCliente.id);
-        setDich((d) => ({
-          ...d,
-          nome: d.nome || contatto.nome,
-          cognome: d.cognome || contatto.cognome,
-          societa: d.societa || selectedCliente?.ragione_sociale || "",
-          luogo_nascita: d.luogo_nascita || contatto.luogo_nascita,
-          data_nascita: d.data_nascita || contatto.data_nascita,
-          codice_fiscale: d.codice_fiscale || contatto.codice_fiscale,
-          residenza: d.residenza || contatto.residenza,
-          email: d.email || contatto.email,
-          cell: d.cell || contatto.cellulare,
-        }));
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Errore");
-        return;
-      } finally {
-        setSaving(false);
-      }
+    // Ultimo step: crea il contatto, poi apri il canale privacy scelto
+    let id: string | null = null;
+    try {
+      setSaving(true);
+      id = await insertContatto();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Errore");
+      return;
+    } finally {
+      setSaving(false);
     }
-    setStep((s) => s + 1);
+    if (!id || !selectedCliente) return;
+    invalidateAll(selectedCliente.id);
+
+    if (modalita === "di_persona") {
+      toast.success("Contatto creato — compila il modulo privacy");
+      setContattoId(id);
+      return;
+    }
+    if (modalita === "a_distanza") {
+      await inviaRichiestaDopoCreazione(inviaFn, id, !!contatto.email.trim());
+    } else {
+      toast.success("Contatto creato — la privacy si raccoglie dopo dalla riga del contatto");
+    }
+    onSuccess?.(selectedCliente.id);
+    onClose();
   }
 
-  async function handleSalvaFirma() {
-    if (!validateStep()) return;
+  async function salvaDiPersona(p: ModuloConsensoPayload) {
     if (!contattoId || !selectedCliente) return;
-    const dataUrl = padRef.current ? getCanvasDataURL(padRef.current) : null;
-    if (!dataUrl) { toast.error("Inserisci la firma"); return; }
     setSaving(true);
     try {
-      const now = new Date();
-      // Upload firma PNG
-      const pngBlob = await (await fetch(dataUrl)).blob();
-      const firmaPath = `contatti/${contattoId}/firma-${now.getTime()}.png`;
-      const { error: e1 } = await supabase.storage.from("firme")
-        .upload(firmaPath, pngBlob, { upsert: true, contentType: "image/png" });
-      if (e1) throw new Error(`Upload firma: ${e1.message}`);
-      const { data: firmaSigned, error: eFs } = await supabase.storage
-        .from("firme").createSignedUrl(firmaPath, 60 * 60 * 24 * 365 * 10);
-      if (eFs || !firmaSigned?.signedUrl) throw new Error("Errore URL firma");
-
-      // Genera PDF
-      const pdfBytes = await generaSchedaCliente({
-        tipo: "aggiornamento",
-        ragioneSociale: selectedCliente.ragione_sociale,
-        dichiaranteNome: dich.nome,
-        dichiaranteCognome: dich.cognome,
-        luogoNascita: dich.luogo_nascita || undefined,
-        dataNascita: dich.data_nascita || undefined,
-        codiceFiscaleDich: dich.codice_fiscale || undefined,
-        partitaIva: selectedCliente.partita_iva || undefined,
-        residenza: dich.residenza || undefined,
-        emailDich: dich.email || undefined,
-        cellulareDich: dich.cell || undefined,
-        consensoProfilazione: consensi.profilazione,
-        consensoMarketingMedia: consensi.marketing_media,
-        consensoMarketingDiretto: consensi.marketing_diretto,
-        dataFirma: dich.data_firma || now,
-        firmaPngDataUrl: dataUrl,
-      });
-
-      const pdfPath = `contatti/${contattoId}/privacy-${now.getTime()}.pdf`;
-      const { error: e2 } = await supabase.storage.from("documenti-privacy")
-        .upload(pdfPath, pdfBytes, { contentType: "application/pdf", upsert: true });
-      if (e2) throw new Error(`Upload PDF: ${e2.message}`);
-      const { data: pdfSigned, error: ePs } = await supabase.storage
-        .from("documenti-privacy").createSignedUrl(pdfPath, 60 * 60 * 24 * 365 * 10);
-      if (ePs || !pdfSigned?.signedUrl) throw new Error("Errore URL PDF");
-
-      const { error: e3 } = await supabase.from("contatti").update({
-        privacy_firmata: true,
-        data_firma: now.toISOString(),
-        firma_url: firmaSigned.signedUrl,
-        pdf_privacy_url: pdfSigned.signedUrl,
-        pdf_privacy_path: pdfPath,
-        luogo_nascita: dich.luogo_nascita || null,
-        data_nascita: dich.data_nascita || null,
-        codice_fiscale: dich.codice_fiscale || null,
-        residenza: dich.residenza || null,
-        email: dich.email || null,
-        cellulare: dich.cell || null,
-        consenso_profilazione: consensi.profilazione === "si",
-        consenso_marketing_media: consensi.marketing_media === "si",
-        consenso_marketing_diretto: consensi.marketing_diretto === "si",
-      }).eq("id", contattoId);
-      if (e3) throw new Error(`Salvataggio: ${e3.message}`);
-
-      toast.success("Privacy firmata e PDF generato");
-
-      if (dich.email && pdfSigned?.signedUrl) {
-        import("@/lib/send-email").then(({ sendPrivacyPdf }) => {
-          sendPrivacyPdf({
-            toEmail: dich.email!,
-            toName: [dich.nome, dich.cognome].filter(Boolean).join(" "),
-            ragioneSociale: selectedCliente.ragione_sociale,
-            dataFirma: now.toISOString(),
-            pdfUrl: pdfSigned.signedUrl,
-          }).then((ok) => {
-            if (ok) toast.success("PDF privacy inviato per email");
-          });
-        });
-      }
-
+      const res = await diPersonaFn({ data: { contattoId, ...p } });
+      toast.success(
+        res.emailInviata
+          ? "Consenso registrato — copia PDF inviata via email"
+          : "Consenso registrato — invio email non riuscito, il PDF è archiviato"
+      );
       invalidateAll(selectedCliente.id);
       onSuccess?.(selectedCliente.id);
       onClose();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Errore salvataggio firma");
+      toast.error(e instanceof Error ? e.message : "Errore");
     } finally {
       setSaving(false);
     }
@@ -324,34 +222,7 @@ export function NuovoContattoWizard({
           <DialogTitle>Nuovo contatto</DialogTitle>
           <DialogDescription>Scegli come vuoi creare il contatto.</DialogDescription>
         </DialogHeader>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 py-2">
-          <button
-            type="button"
-            onClick={() => { setModalita("con_firma"); setStep(0); }}
-            className="text-left rounded-lg border bg-card p-4 hover:border-primary hover:bg-accent/40 transition"
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <PenTool className="size-5 text-primary" />
-              <span className="font-semibold">Crea con firma</span>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Flusso completo con consenso privacy, firma grafometrica e generazione automatica del PDF MADE.
-            </p>
-          </button>
-          <button
-            type="button"
-            onClick={() => { setModalita("senza_firma"); setStep(0); }}
-            className="text-left rounded-lg border bg-card p-4 hover:border-primary hover:bg-accent/40 transition"
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <FileText className="size-5 text-primary" />
-              <span className="font-semibold">Crea senza firma</span>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Inserimento rapido del contatto, senza firma né PDF (potrai raccoglierla dopo).
-            </p>
-          </button>
-        </div>
+        <SceltaCanalePrivacy onScegli={(c) => { setModalita(c); setStep(0); }} />
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Annulla</Button>
         </DialogFooter>
@@ -367,13 +238,48 @@ export function NuovoContattoWizard({
       String(c.codice_gestionale ?? "").toLowerCase().includes(q);
   }).slice(0, 50);
 
+  // Modulo consenso "di persona", aperto dopo la creazione del contatto
+  if (contattoId && modalita === "di_persona") {
+    return (
+      <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Consenso privacy — {`${contatto.nome} ${contatto.cognome}`.trim()}</DialogTitle>
+          <DialogDescription>
+            Contatto creato. Fai compilare e firmare il modulo direttamente all'interessato.
+          </DialogDescription>
+        </DialogHeader>
+        <ModuloConsensoPrivacy
+          valoriIniziali={{
+            nome: contatto.nome,
+            cognome: contatto.cognome,
+            societa: selectedCliente?.ragione_sociale ?? "",
+            luogo_nascita: contatto.luogo_nascita,
+            data_nascita: contatto.data_nascita,
+            codice_fiscale: contatto.codice_fiscale,
+            residenza: contatto.residenza,
+            email: contatto.email,
+            cellulare: contatto.cellulare,
+          }}
+          placeholderSocieta={selectedCliente?.ragione_sociale}
+          onSubmit={salvaDiPersona}
+          isPending={saving}
+          inviaLabel="Conferma e firma"
+        />
+      </DialogContent>
+    );
+  }
+
   return (
     <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
       <DialogHeader>
         <DialogTitle>
           Nuovo contatto
           <span className="ml-2 text-xs font-normal text-muted-foreground">
-            {modalita === "con_firma" ? "(con firma)" : "(senza firma)"}
+            {modalita === "di_persona"
+              ? "(compila di persona)"
+              : modalita === "a_distanza"
+                ? "(richiesta a distanza)"
+                : "(senza privacy)"}
           </span>
         </DialogTitle>
         <DialogDescription>
@@ -506,18 +412,6 @@ export function NuovoContattoWizard({
           </div>
         )}
 
-        {currentLabel === "Firma" && selectedCliente && (
-          <StepFirmaContatto
-            cliente={selectedCliente}
-            dich={dich}
-            setDich={setDich}
-            consensi={consensi}
-            setConsensi={setConsensi}
-            padRef={padRef}
-            setHasSig={setHasSig}
-            errors={errors}
-          />
-        )}
       </div>
 
       <DialogFooter className="gap-2 sm:gap-2">
@@ -534,13 +428,9 @@ export function NuovoContattoWizard({
           <Button type="button" onClick={handleAvanti} disabled={saving}>
             {saving ? "Attendere..." : <>Avanti <ArrowRight className="size-4 ml-1" /></>}
           </Button>
-        ) : modalita === "con_firma" ? (
-          <Button type="button" onClick={handleSalvaFirma} disabled={saving || !hasSig}>
-            {saving ? "Salvataggio..." : <><Check className="size-4 mr-1" /> Salva firma e genera PDF</>}
-          </Button>
         ) : (
           <Button type="button" onClick={handleAvanti} disabled={saving}>
-            {saving ? "Salvataggio..." : <><Check className="size-4 mr-1" /> Salva contatto</>}
+            {saving ? "Salvataggio..." : <><Check className="size-4 mr-1" /> Crea contatto</>}
           </Button>
         )}
       </DialogFooter>

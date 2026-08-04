@@ -13,6 +13,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ContattoPrivacyAzioni } from "@/components/contatto-privacy-azioni";
+import { useServerFn } from "@tanstack/react-start";
+import {
+  SceltaCanalePrivacy, inviaRichiestaDopoCreazione, ModuloConsensoPrivacy,
+  inviaRichiestaFirmaPrivacy, registraConsensoDiPersona,
+  type CanalePrivacy, type ModuloConsensoPayload,
+} from "@/components/privacy-post-creazione";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
@@ -43,17 +49,30 @@ export function useLeadContatti(leadId: string, enabled = true) {
 export function LeadContattiTab({ leadId, clienteId }: { leadId: string; clienteId: string | null }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [canale, setCanale] = useState<CanalePrivacy | null>(null);
   const [nome, setNome] = useState("");
   const [cognome, setCognome] = useState("");
   const [email, setEmail] = useState("");
   const [telefono, setTelefono] = useState("");
   const [ruolo, setRuolo] = useState("");
+  const [nuovoContattoId, setNuovoContattoId] = useState<string | null>(null);
+  const [salvandoPrivacy, setSalvandoPrivacy] = useState(false);
+  const inviaFn = useServerFn(inviaRichiestaFirmaPrivacy);
+  const diPersonaFn = useServerFn(registraConsensoDiPersona);
 
   const { data, isLoading } = useLeadContatti(leadId);
 
+  function chiudi() {
+    setOpen(false);
+    setCanale(null);
+    setNuovoContattoId(null);
+    setNome(""); setCognome(""); setEmail(""); setTelefono(""); setRuolo("");
+    qc.invalidateQueries({ queryKey: ["lead-contatti", leadId] });
+  }
+
   const addMut = useMutation({
     mutationFn: async () => {
-      await creaContattoPersona({
+      const { id } = await creaContattoPersona({
         cliente_id: clienteId,
         lead_id: leadId,
         nome,
@@ -62,46 +81,100 @@ export function LeadContattiTab({ leadId, clienteId }: { leadId: string; cliente
         telefono,
         ruolo,
       });
+      return id;
     },
-    onSuccess: () => {
-      toast.success("Contatto aggiunto");
-      setOpen(false);
-      setNome(""); setCognome(""); setEmail(""); setTelefono(""); setRuolo("");
+    onSuccess: async (id) => {
       qc.invalidateQueries({ queryKey: ["lead-contatti", leadId] });
+      if (canale === "di_persona") {
+        toast.success("Contatto creato — compila il modulo privacy");
+        setNuovoContattoId(id);
+        return;
+      }
+      if (canale === "a_distanza") {
+        await inviaRichiestaDopoCreazione(inviaFn, id, !!email.trim());
+      } else {
+        toast.success("Contatto creato — la privacy si raccoglie dopo dalla riga del contatto");
+      }
+      chiudi();
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
+  async function salvaDiPersona(p: ModuloConsensoPayload) {
+    if (!nuovoContattoId) return;
+    setSalvandoPrivacy(true);
+    try {
+      const res = await diPersonaFn({ data: { contattoId: nuovoContattoId, ...p } });
+      toast.success(
+        res.emailInviata
+          ? "Consenso registrato — copia PDF inviata via email"
+          : "Consenso registrato — invio email non riuscito, il PDF è archiviato"
+      );
+      chiudi();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Errore");
+    } finally {
+      setSalvandoPrivacy(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(v) => { if (!v) chiudi(); else setOpen(true); }}>
           <DialogTrigger asChild>
             <Button size="sm" className="gap-1.5 ml-auto">
               <Plus className="size-4" /> Nuovo contatto
             </Button>
           </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Nuovo contatto</DialogTitle>
-              <DialogDescription>
-                {clienteId
-                  ? "Il contatto viene collegato al lead e al cliente associato."
-                  : "Il contatto appartiene al lead; verrà collegato al cliente alla conversione."}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div><Label className="text-xs">Nome *</Label><Input value={nome} maxLength={100} onChange={(e) => setNome(e.target.value)} /></div>
-              <div><Label className="text-xs">Cognome</Label><Input value={cognome} maxLength={100} onChange={(e) => setCognome(e.target.value)} /></div>
-              <div><Label className="text-xs">Email</Label><Input type="email" value={email} maxLength={255} onChange={(e) => setEmail(e.target.value)} /></div>
-              <div><Label className="text-xs">Telefono</Label><Input value={telefono} maxLength={30} onChange={(e) => setTelefono(e.target.value)} /></div>
-              <div className="sm:col-span-2"><Label className="text-xs">Ruolo</Label><Input value={ruolo} maxLength={100} onChange={(e) => setRuolo(e.target.value)} /></div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setOpen(false)}>Annulla</Button>
-              <Button disabled={!nome.trim() || addMut.isPending} onClick={() => addMut.mutate()}>Salva</Button>
-            </DialogFooter>
-          </DialogContent>
+          {nuovoContattoId && canale === "di_persona" ? (
+            <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Consenso privacy — {`${nome} ${cognome}`.trim()}</DialogTitle>
+                <DialogDescription>
+                  Contatto creato. Fai compilare e firmare il modulo direttamente all'interessato.
+                </DialogDescription>
+              </DialogHeader>
+              <ModuloConsensoPrivacy
+                valoriIniziali={{ nome, cognome, email }}
+                onSubmit={salvaDiPersona}
+                isPending={salvandoPrivacy}
+                inviaLabel="Conferma e firma"
+              />
+            </DialogContent>
+          ) : canale === null ? (
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Nuovo contatto</DialogTitle>
+                <DialogDescription>Scegli come vuoi creare il contatto.</DialogDescription>
+              </DialogHeader>
+              <SceltaCanalePrivacy onScegli={setCanale} />
+            </DialogContent>
+          ) : (
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Nuovo contatto</DialogTitle>
+                <DialogDescription>
+                  {clienteId
+                    ? "Il contatto viene collegato al lead e al cliente associato."
+                    : "Il contatto appartiene al lead; verrà collegato al cliente alla conversione."}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div><Label className="text-xs">Nome *</Label><Input value={nome} maxLength={100} onChange={(e) => setNome(e.target.value)} /></div>
+                <div><Label className="text-xs">Cognome</Label><Input value={cognome} maxLength={100} onChange={(e) => setCognome(e.target.value)} /></div>
+                <div><Label className="text-xs">Email</Label><Input type="email" value={email} maxLength={255} onChange={(e) => setEmail(e.target.value)} /></div>
+                <div><Label className="text-xs">Telefono</Label><Input value={telefono} maxLength={30} onChange={(e) => setTelefono(e.target.value)} /></div>
+                <div className="sm:col-span-2"><Label className="text-xs">Ruolo</Label><Input value={ruolo} maxLength={100} onChange={(e) => setRuolo(e.target.value)} /></div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setCanale(null)}>Indietro</Button>
+                <Button disabled={!nome.trim() || addMut.isPending} onClick={() => addMut.mutate()}>
+                  {addMut.isPending ? "Salvataggio..." : "Crea contatto"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          )}
         </Dialog>
       </div>
 
