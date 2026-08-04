@@ -5,7 +5,9 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { risolviIntestazioneSoggetto } from "./intestazione-soggetto.server";
 import { generaSchedaCliente } from "./scheda-pdf";
 import { buildPrivacyPdfEmailPayload } from "./email-template";
-import { estraiIp } from "./request-ip.server";
+import { estraiIp, estraiUserAgent } from "./request-ip.server";
+import { INFORMATIVA_FULL, INFORMATIVA_VERSIONE, calcolaInformativaHash } from "./consensi-testi";
+
 
 /**
  * Genera (o rigenera) il token per il link di firma privacy di un CONTATTO.
@@ -31,8 +33,13 @@ export const generaTokenFirmaPrivacy = createServerFn({ method: "POST" })
 
     const { error: e2 } = await supabaseAdmin
       .from("contatti")
-      .update({ privacy_token: token, privacy_token_expires_at: expires })
+      .update({
+        privacy_token: token,
+        privacy_token_expires_at: expires,
+        richiesta_privacy_generata_il: new Date().toISOString(),
+      })
       .eq("id", data.contattoId);
+
     if (e2) throw new Error(e2.message);
 
     return { token, expires_at: expires };
@@ -46,7 +53,7 @@ export const getContattoPerFirma = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const { data: ct, error } = await supabaseAdmin
       .from("contatti")
-      .select("id, cliente_id, lead_id, nome, cognome, email, cellulare, luogo_nascita, data_nascita, codice_fiscale, residenza, privacy_firmata, privacy_token_expires_at")
+      .select("id, cliente_id, lead_id, nome, cognome, email, cellulare, luogo_nascita, data_nascita, codice_fiscale, residenza, privacy_firmata, privacy_token_expires_at, richiesta_privacy_aperta_il")
       .eq("privacy_token", data.token)
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -56,7 +63,22 @@ export const getContattoPerFirma = createServerFn({ method: "GET" })
       throw new Error("Link scaduto. Chiedi al punto vendita di generarne uno nuovo.");
     }
 
+    // Prima apertura della pagina: traccia il momento (non sovrascrivere le successive)
+    if (!ct.richiesta_privacy_aperta_il) {
+      try {
+        const { error: eApri } = await supabaseAdmin
+          .from("contatti")
+          .update({ richiesta_privacy_aperta_il: new Date().toISOString() })
+          .eq("id", ct.id)
+          .is("richiesta_privacy_aperta_il", null);
+        if (eApri) console.error("[firma-privacy] tracciamento apertura fallito:", eApri.message);
+      } catch (e) {
+        console.error("[firma-privacy] tracciamento apertura fallito:", e);
+      }
+    }
+
     const soggetto = await risolviIntestazioneSoggetto(ct);
+
 
     return {
       contatto: {
@@ -105,6 +127,8 @@ export const firmaPrivacyConToken = createServerFn({ method: "POST" })
         marketing_diretto: z.boolean(),
       }),
       data_firma: z.string().trim().max(20).optional(),
+      secondi_permanenza: z.number().int().min(0).max(86400).nullable().optional(),
+
     }).parse(d)
   )
   .handler(async ({ data }) => {
@@ -217,6 +241,8 @@ export const firmaPrivacyConToken = createServerFn({ method: "POST" })
     // 3-bis) Registro consensi unificato — non fatale: la firma resta valida
     try {
       const ip = estraiIp();
+      const ua = estraiUserAgent();
+      const hash = await calcolaInformativaHash(INFORMATIVA_FULL);
       const { error: eLog } = await supabaseAdmin.rpc("registra_consensi_batch", {
         _contatto_id: ct.id,
         _marketing_diretto: data.consensi.marketing_diretto,
@@ -225,7 +251,12 @@ export const firmaPrivacyConToken = createServerFn({ method: "POST" })
         _origine: "firma_grafica",
         _prova_path: pdfPath,
         ...(ip ? { _ip: ip } : {}),
+        _informativa_versione: INFORMATIVA_VERSIONE,
+        _informativa_hash: hash,
+        ...(ua ? { _user_agent: ua } : {}),
+        ...(typeof data.secondi_permanenza === "number" ? { _secondi_permanenza: data.secondi_permanenza } : {}),
         _note: "Firma grafica via link privacy",
+
       });
       if (eLog) console.error("[firma-privacy] registra_consensi_batch fallito:", eLog.message);
     } catch (e) {

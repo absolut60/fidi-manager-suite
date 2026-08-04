@@ -2,7 +2,24 @@
  * Testi ufficiali MADE dell'informativa privacy e dei tre consensi granulari.
  * Fonte unica riutilizzata dal wizard nuovo contatto e dalla pagina pubblica
  * di raccolta consensi marketing (§5 - non duplicare i testi).
+ *
+ * Quando si modifica INFORMATIVA_FULL o CONSENSO_TESTI, incrementare
+ * INFORMATIVA_VERSIONE. L'hash viene calcolato a runtime sul testo effettivo
+ * mostrato all'utente.
  */
+
+/** Versione corrente dell'informativa privacy mostrata agli interessati. */
+export const INFORMATIVA_VERSIONE = "2026-08-v1";
+
+/** SHA-256 (hex) del testo passato. Funziona sia lato browser sia lato server. */
+export async function calcolaInformativaHash(testo: string): Promise<string> {
+  const bytes = new TextEncoder().encode(testo);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 
 export const INFORMATIVA_FULL = `Made Distribuzione S.p.A. - C.F. 10126430965, con sede in Milano Corso di Porta Nuova 11 (tel. 02404702800 - email gdpr-md@madepoint.it - pec madedistribuzionesrl@pecplus.it) in persona del suo presidente Dott. Gian Luca Bellini, ai sensi dell'articolo 13 del GDPR 2016/679, Le fornisce le seguenti informazioni.
 
