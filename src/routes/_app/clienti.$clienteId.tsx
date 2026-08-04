@@ -1299,6 +1299,15 @@ function ContattoCard({
           }}
         />
       </div>
+      <div className="mt-3 pt-3 border-t">
+        <ContattoPrivacyAzioni
+          contatto={contatto}
+          onRefresh={() => {
+            qc.invalidateQueries({ queryKey: ["contatti", clienteId] });
+            qc.invalidateQueries({ queryKey: ["contatti-privacy", clienteId] });
+          }}
+        />
+      </div>
     </Card>
   );
 }
