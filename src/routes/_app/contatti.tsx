@@ -194,7 +194,65 @@ function ContattiPage() {
         ) : filtered.length === 0 ? (
           <div className="p-12 text-center text-sm text-muted-foreground">Nessun contatto trovato</div>
         ) : (
+          <>
+          {/* Mobile: schede al posto della tabella */}
+          <div className="md:hidden divide-y">
+            {filtered.map((c: any) => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => navigate({
+                  to: "/clienti/$clienteId",
+                  params: { clienteId: c.clienti.id },
+                  search: { tab: "contatti" },
+                })}
+                className="w-full text-left p-3 active:bg-muted/50"
+              >
+                <div className="flex items-start gap-1.5">
+                  {c.principale && <Star className="size-3.5 fill-accent text-accent shrink-0 mt-0.5" />}
+                  <span className="font-medium text-sm min-w-0 break-words">
+                    {c.nome} {c.cognome}
+                  </span>
+                </div>
+                <div className="mt-2 grid grid-cols-1 gap-y-1 text-xs">
+                  <div className="min-w-0 break-words">
+                    <span className="text-muted-foreground">Cliente: </span>
+                    {c.clienti?.ragione_sociale ?? "—"}
+                    {c.clienti?.stores?.nome ? ` · ${c.clienti.stores.nome}` : ""}
+                  </div>
+                  {c.ruolo && (
+                    <div className="min-w-0 break-words">
+                      <span className="text-muted-foreground">Ruolo: </span>{c.ruolo}
+                    </div>
+                  )}
+                  <div className="min-w-0 break-words">
+                    <span className="text-muted-foreground">Email: </span>{c.email ?? "—"}
+                  </div>
+                  <div className="min-w-0 break-words">
+                    <span className="text-muted-foreground">Cellulare: </span>{c.cellulare ?? "—"}
+                  </div>
+                  <div className="min-w-0 break-words">
+                    <span className="text-muted-foreground">Data firma: </span>{fmtDate(c.data_firma)}
+                  </div>
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
+                  <span className="flex items-center gap-1 text-muted-foreground">
+                    Profilaz. <CB ok={!!c.consenso_profilazione} />
+                  </span>
+                  <span className="flex items-center gap-1 text-muted-foreground">
+                    Marketing <CB ok={!!c.consenso_marketing_media} />
+                  </span>
+                  <span className="flex items-center gap-1 text-muted-foreground">
+                    WhatsApp <CB ok={!!c.consenso_marketing_diretto} />
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          <div className="hidden md:block">
           <Table>
+
             <TableHeader>
               <TableRow>
                 <TableHead>Nome</TableHead>
