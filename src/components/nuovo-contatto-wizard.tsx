@@ -18,6 +18,7 @@ import {
   Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem,
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
+import { formattaNomeProprio } from "@/lib/formato-nomi";
 import { RuoloSelect } from "@/components/ruolo-select";
 import { INFORMATIVA_FULL, CONSENSO_TESTI } from "@/lib/consensi-testi";
 import { useServerFn } from "@tanstack/react-start";
@@ -354,12 +355,26 @@ export function NuovoContattoWizard({
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Nome *</Label>
-                <Input value={contatto.nome} onChange={(e) => setC("nome", e.target.value)} />
+                <Input
+                  value={contatto.nome}
+                  onChange={(e) => setC("nome", e.target.value)}
+                  onBlur={(e) => {
+                    const f = formattaNomeProprio(e.target.value);
+                    if (f !== contatto.nome) setC("nome", f);
+                  }}
+                />
                 {errors.nome && <p className="text-xs text-destructive">{errors.nome}</p>}
               </div>
               <div className="space-y-1.5">
                 <Label>Cognome *</Label>
-                <Input value={contatto.cognome} onChange={(e) => setC("cognome", e.target.value)} />
+                <Input
+                  value={contatto.cognome}
+                  onChange={(e) => setC("cognome", e.target.value)}
+                  onBlur={(e) => {
+                    const f = formattaNomeProprio(e.target.value);
+                    if (f !== contatto.cognome) setC("cognome", f);
+                  }}
+                />
                 {errors.cognome && <p className="text-xs text-destructive">{errors.cognome}</p>}
               </div>
             </div>
