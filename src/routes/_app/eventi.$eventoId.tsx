@@ -346,13 +346,38 @@ function EventoDettaglioPage() {
     onError: (e: Error) => toast.error("Errore nell'eliminazione", { description: e.message }),
   });
 
-  // ——— ricerca + selezione multipla ———
-  const filtrati = useMemo(() => {
+  // ——— riepilogo, filtro stato, ricerca, selezione multipla ———
+  const riepilogo = useMemo(() => {
     const lista = partecipanti ?? [];
+    const attesi = lista.filter((p) => p.stato === "atteso" || p.stato === "confermato").length;
+    const presenti = lista.filter((p) => p.stato === "presentato").length;
+    const noShow = lista.filter((p) => p.stato === "no_show").length;
+    const privacyOk = lista.filter((p) => privacyRiga(p, mappaContatti).tipo === "firmata").length;
+    const base = presenti + noShow;
+    return {
+      totale: lista.length,
+      attesi,
+      presenti,
+      noShow,
+      privacyOk,
+      tasso: base > 0 ? Math.round((presenti / base) * 100) : null,
+    };
+  }, [partecipanti, mappaContatti]);
+
+  const filtrati = useMemo(() => {
+    let lista = partecipanti ?? [];
+    if (filtroStato === "attesi") {
+      lista = lista.filter((p) => p.stato === "atteso" || p.stato === "confermato");
+    } else if (filtroStato === "presenti") {
+      lista = lista.filter((p) => p.stato === "presentato");
+    } else if (filtroStato === "no_show") {
+      lista = lista.filter((p) => p.stato === "no_show");
+    }
     const q = norm(ricercaDeb);
     if (!q) return lista;
-    return lista.filter((p) => testoRicerca(p).includes(q));
-  }, [partecipanti, ricercaDeb]);
+    return lista.filter((p) => testoRicerca(p, mappaContatti).includes(q));
+  }, [partecipanti, ricercaDeb, filtroStato, mappaContatti]);
+
 
   const idsFiltrati = useMemo(() => filtrati.map((p) => p.id), [filtrati]);
   const selezionatiValidi = useMemo(
