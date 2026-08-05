@@ -37,6 +37,11 @@ export const Route = createFileRoute("/_app/lead/")({
 const TUTTI = "tutti";
 const NESSUNO = "__none__";
 
+type Vista = "attivi" | "ricontattare" | "convertiti" | "persi";
+
+/** Stati esclusi dalla vista di lavoro "Attivi". */
+const STATI_NON_ATTIVI = ["convertito", "perso"] as const;
+
 type LeadRow = {
   id: string;
   ragione_sociale: string | null;
@@ -54,6 +59,9 @@ type LeadRow = {
   assegnato_a: string | null;
   prossima_azione_il: string | null;
   created_at: string;
+  cliente_id: string | null;
+  convertito_il: string | null;
+  cliente?: { id: string; ragione_sociale: string | null } | null;
 };
 
 function LeadListaPage() {
@@ -61,7 +69,7 @@ function LeadListaPage() {
   const { roles, loading: authLoading } = useAuth();
   const canSee = useMemo(() => puoAccedereLead(roles as string[]), [roles]);
 
-  const [tab, setTab] = useState<"tutti" | "ricontattare">("tutti");
+  const [tab, setTab] = useState<Vista>("attivi");
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [stato, setStato] = useState(TUTTI);
@@ -76,6 +84,7 @@ function LeadListaPage() {
   const [pageSize, setPageSize] = useState(25);
   const [sortBy, setSortBy] = useState("created_at");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
 
   const { data: stores } = useQuery({
     queryKey: ["stores", "all"],
