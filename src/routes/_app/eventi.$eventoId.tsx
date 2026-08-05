@@ -630,14 +630,18 @@ function EventoDettaglioPage() {
               onChange={(e) => setRicerca(e.target.value)}
             />
           </div>
-          {ricercaDeb && (
+          {(ricercaDeb || filtroStato !== "tutti") && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <span>{filtrati.length} di {totale} partecipanti</span>
-              <Button size="sm" variant="ghost" className="gap-1.5" onClick={() => setRicerca("")}>
+              <Button
+                size="sm" variant="ghost" className="gap-1.5"
+                onClick={() => { setRicerca(""); setFiltroStato("tutti"); }}
+              >
                 <X className="size-4" /> Azzera
               </Button>
             </div>
           )}
+
         </div>
 
         {selezionatiValidi.length > 0 && (
