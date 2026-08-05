@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import * as XLSX from "xlsx";
 import { Download, Upload, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -10,32 +9,15 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { triggerEventiPartecipantiImport } from "@/lib/eventi-import.functions";
+import { scaricaModelloPartecipanti } from "@/lib/eventi-modello-xlsx";
 
-const INTESTAZIONI = [
-  "Nome",
-  "Cognome",
-  "Ragione sociale",
-  "Partita IVA",
-  "Codice fiscale",
-  "Email",
-  "Telefono",
-  "Cellulare",
-  "Note",
-];
-
-function scaricaModello() {
-  const ws = XLSX.utils.aoa_to_sheet([
-    INTESTAZIONI,
-    ["Mario", "Rossi", "", "", "", "mario.rossi@example.com", "", "3331234567", ""],
-    ["", "", "Rossi Srl", "01234567890", "", "info@rossisrl.it", "0301234567", "", ""],
-  ]);
-  ws["!cols"] = INTESTAZIONI.map(() => ({ wch: 22 }));
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Partecipanti");
-  XLSX.writeFile(wb, "modello-partecipanti-evento.xlsx");
-}
-
-export function ImportPartecipantiCard({ eventoId }: { eventoId: string }) {
+export function ImportPartecipantiCard({
+  eventoId,
+  nomeEvento,
+}: {
+  eventoId: string;
+  nomeEvento?: string;
+}) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -112,7 +94,7 @@ export function ImportPartecipantiCard({ eventoId }: { eventoId: string }) {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={scaricaModello}>
+          <Button variant="outline" size="sm" onClick={() => scaricaModelloPartecipanti(nomeEvento)}>
             <Download className="h-4 w-4 mr-2" />
             Scarica modello
           </Button>
