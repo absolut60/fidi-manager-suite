@@ -605,7 +605,21 @@ const CONFIG_FIELDS: { chiave: string; label: string; suffix?: string; hint?: st
     hint: "Importo unitario addebitato a ogni scadenza con codice pagamento RB* nei solleciti (default 3,00 €).",
     type: "decimal",
   },
+  {
+    chiave: "fido_teorico_mesi_rolling",
+    label: "Finestra fido teorico",
+    suffix: "mesi",
+    hint: "Mesi di fatturato usati per il calcolo del fido teorico",
+    type: "mesi",
+  },
+  {
+    chiave: "fido_teorico_piva_escluse",
+    label: "P.IVA escluse dal fido teorico",
+    hint: "Partite IVA escluse dal calcolo del fido teorico (società del gruppo). Separale con una virgola.",
+    type: "text",
+  },
 ];
+
 
 function ConfigurazioniCard() {
   const qc = useQueryClient();
