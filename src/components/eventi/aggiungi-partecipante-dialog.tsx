@@ -127,7 +127,7 @@ export function AggiungiPartecipanteDialog({
   const parsed = JSON.parse(chiaveDeb) as { p: string; c: string; e: string; n: string };
   const dedupAttivo =
     modo === "nuovo" &&
-    !contattoCreatoId &&
+    !esito &&
     (parsed.p.length >= 5 || parsed.c.length >= 5 || parsed.e.length >= 5 || parsed.n.length >= 3);
 
   const { data: duplicati } = useQuery({
