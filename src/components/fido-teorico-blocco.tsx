@@ -32,7 +32,21 @@ export function FidoTeoricoBlocco({ clienteId }: { clienteId: string }) {
     },
   });
 
+  const { data: ultimoRefresh } = useQuery({
+    queryKey: ["fatturato-mensile-ultimo-refresh"],
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("configurazioni")
+        .select("valore")
+        .eq("chiave", "fatturato_mensile_ultimo_refresh")
+        .maybeSingle();
+      return data?.valore ?? null;
+    },
+  });
+
   if (isLoading || !data) return null;
+
 
   const regola = String(data.regola_applicata);
   const condizioneMancante = regola === "condizione_mancante";
