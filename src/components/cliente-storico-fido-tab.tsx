@@ -430,10 +430,17 @@ function RichiestaDialog({
             </div>
             {!isEdit && fidoProposto > 0 && (
               <p className="text-xs text-primary pt-1 border-t">
-                💡 Importo proposto: <strong>{formatEuro(fidoProposto)}</strong>{" "}
-                (copre il totale rischio attuale)
+                💡 Fido teorico proposto: <strong>{formatEuro(fidoProposto)}</strong>{" "}
+                (calcolo su fatturato e condizione di pagamento)
               </p>
             )}
+            {!isEdit && teorico && !proponibile && (
+              <p className="text-xs text-warning pt-1 border-t">
+                ⚠ {MOTIVO_NON_PROPONIBILE[teorico.regola_applicata] ?? "Fido teorico non disponibile"} —
+                inserisci l'importo manualmente.
+              </p>
+            )}
+
           </div>
         )}
         <div className="space-y-1.5">
