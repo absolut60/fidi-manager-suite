@@ -208,6 +208,102 @@ function EventoDettaglioPage() {
     onError: (e: Error) => toast.error("Errore nell'eliminazione", { description: e.message }),
   });
 
+  // ——— ricerca + selezione multipla ———
+  const filtrati = useMemo(() => {
+    const lista = partecipanti ?? [];
+    const q = norm(ricercaDeb);
+    if (!q) return lista;
+    return lista.filter((p) => testoRicerca(p).includes(q));
+  }, [partecipanti, ricercaDeb]);
+
+  const idsFiltrati = useMemo(() => filtrati.map((p) => p.id), [filtrati]);
+  const selezionatiValidi = useMemo(
+    () => selezionati.filter((id) => idsFiltrati.includes(id)),
+    [selezionati, idsFiltrati],
+  );
+  const tuttiSelezionati = idsFiltrati.length > 0 && selezionatiValidi.length === idsFiltrati.length;
+
+  const toggleRiga = (id: string, on: boolean) =>
+    setSelezionati((s) => (on ? [...new Set([...s, id])] : s.filter((x) => x !== id)));
+
+  const cambiaStatoMassivo = useMutation({
+    mutationFn: async (stato: EventiPartecipanteStato) => {
+      const { error } = await supabase
+        .from("eventi_partecipanti")
+        .update({ stato })
+        .in("id", selezionatiValidi);
+      if (error) throw error;
+      return selezionatiValidi.length;
+    },
+    onSuccess: (n) => {
+      setSelezionati([]);
+      queryClient.invalidateQueries({ queryKey: ["evento-partecipanti", eventoId] });
+      queryClient.invalidateQueries({ queryKey: ["eventi-lista"] });
+      toast.success(`${n} partecipanti aggiornati`);
+    },
+    onError: (e: Error) => toast.error("Errore nell'aggiornamento", { description: e.message }),
+  });
+
+  const eliminaMassivo = useMutation({
+    mutationFn: async () => {
+      // Elimina SOLO le righe partecipante: lead, contatti e clienti restano intatti.
+      const { error } = await supabase
+        .from("eventi_partecipanti")
+        .delete()
+        .in("id", selezionatiValidi);
+      if (error) throw error;
+      return selezionatiValidi.length;
+    },
+    onSuccess: (n) => {
+      setSelezionati([]);
+      queryClient.invalidateQueries({ queryKey: ["evento-partecipanti", eventoId] });
+      queryClient.invalidateQueries({ queryKey: ["eventi-lista"] });
+      toast.success(`${n} partecipanti eliminati dall'evento`);
+    },
+    onError: (e: Error) => toast.error("Errore nell'eliminazione", { description: e.message }),
+  });
+
+  /** Invio massivo dei link privacy: sequenziale, con piccolo ritardo fra le chiamate. */
+  const inviaLinkMassivo = async () => {
+    const righe = filtrati.filter((p) => selezionatiValidi.includes(p.id));
+    let inviate = 0;
+    let soloLink = 0;
+    let giaFirmate = 0;
+    let saltate = 0;
+    let errori = 0;
+
+    setInvioInCorso(true);
+    try {
+      for (const p of righe) {
+        if (p.contatto?.privacy_firmata) { giaFirmate++; continue; }
+        const email = p.contatto?.email ?? p.email;
+        if (!p.contatto_id || !email) { saltate++; continue; }
+        try {
+          const res = await inviaFn({
+            data: { contattoId: p.contatto_id, origin: window.location.origin },
+          });
+          if (res.emailInviata) inviate++;
+          else soloLink++;
+        } catch {
+          errori++;
+        }
+        await new Promise((r) => setTimeout(r, 400));
+      }
+    } finally {
+      setInvioInCorso(false);
+    }
+
+    const parti = [`${inviate} inviati`];
+    if (soloLink) parti.push(`${soloLink} con link generato ma email non partita`);
+    if (giaFirmate) parti.push(`${giaFirmate} saltati: privacy già firmata`);
+    if (saltate) parti.push(`${saltate} saltati: senza contatto o email`);
+    if (errori) parti.push(`${errori} in errore`);
+    toast.success("Invio link privacy completato", { description: parti.join(" · ") });
+    setSelezionati([]);
+    queryClient.invalidateQueries({ queryKey: ["evento-partecipanti", eventoId] });
+  };
+
+
 
 
   if (authLoading || isLoading) return <Skeleton className="h-40 w-full" />;
