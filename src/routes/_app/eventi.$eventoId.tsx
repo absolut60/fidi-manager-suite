@@ -983,6 +983,8 @@ function EventoDettaglioPage() {
             ))}
           </TableBody>
         </Table>
+        </div>
+
       </Card>
     </div>
   );
