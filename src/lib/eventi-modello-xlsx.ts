@@ -85,18 +85,14 @@ function foglioIstruzioni(): XLSX.WorkSheet {
     ["Questo foglio è solo informativo: compila esclusivamente il foglio “Partecipanti”."],
   ];
   const ws = XLSX.utils.aoa_to_sheet(righe);
-  ws["!cols"] = [{ wch: 30 }, ...LARGHEZGE_ISTRUZIONI()];
+  ws["!cols"] = [{ wch: 30 }, ...LARGHEZZE.map((wch) => ({ wch }))];
   return ws;
-}
-
-function LARGHEZGE_ISTRUZIONI() {
-  return LARGHEZZE.map((wch) => ({ wch }));
 }
 
 /** Righe (1-based) le cui celle vanno in grassetto, per foglio. */
 const GRASSETTO: Record<string, number[]> = {
   Partecipanti: [1],
-  Istruzioni: [1, 3, 8, 9, 10],
+  Istruzioni: [1, 3, 10, 11],
 };
 
 /**
