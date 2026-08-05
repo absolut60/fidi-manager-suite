@@ -1697,7 +1697,7 @@ function ProposteFidoMassivoDialog({
       });
       const { error } = await supabase.from("richieste_fido").insert(payload as any);
       if (error) throw error;
-      toast.success(`${righe.length} richieste create`);
+      toast.success(`${righeIncluse.length} richieste create`);
       onSuccess();
     } catch (e: any) {
       toast.error(e?.message ?? "Errore nella creazione");
@@ -1708,13 +1708,29 @@ function ProposteFidoMassivoDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Proposta fido massiva — {righe.length} clienti</DialogTitle>
           <DialogDescription>
-            Crea una richiesta fido per ogni cliente selezionato.
+            L'importo proposto è il fido teorico calcolato dal sistema (fatturato + condizione di pagamento).
           </DialogDescription>
         </DialogHeader>
+
+        {teoricoLoading && (
+          <p className="text-sm text-muted-foreground">Calcolo del fido teorico in corso…</p>
+        )}
+        {teoricoError && (
+          <p className="text-sm text-destructive">
+            Impossibile calcolare il fido teorico: {(teoricoError as any)?.message ?? "errore"}
+          </p>
+        )}
+        {righeEscluse.length > 0 && (
+          <div className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning">
+            {righeEscluse.length} client{righeEscluse.length === 1 ? "e" : "i"} non propon{righeEscluse.length === 1 ? "ibile" : "ibili"}:
+            saranno esclusi dalla creazione (motivo indicato sulla riga).
+          </div>
+        )}
+
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
