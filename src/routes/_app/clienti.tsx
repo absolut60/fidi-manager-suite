@@ -10,6 +10,10 @@ import * as RadixSlider from "@radix-ui/react-slider";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { getFidoAttuale, FIDO_CLIENTE_SELECT } from "@/lib/fido-cliente";
+import {
+  fetchFidoTeorico, fetchFidoTeoricoTutti, isProponibile,
+  REGOLA_LABEL, MOTIVO_NON_PROPONIBILE, type FidoTeoricoRow,
+} from "@/lib/fido-teorico";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -82,15 +86,6 @@ type ScadenziarioState = {
   ha_scaduto: boolean;
   ha_a_scadere: boolean;
 };
-
-// Calcolo "Fido proposto" per la proposta massiva.
-// NOTA: implementazione provvisoria — verrà sostituita con un algoritmo più
-// sofisticato. Mantieni questa funzione isolata per facilitare l'aggiornamento.
-function calcolaFidoProposto(cliente: any): number {
-  const esposizione = Number(cliente?.totale_rischio ?? 0);
-  if (!Number.isFinite(esposizione) || esposizione <= 0) return 0;
-  return Math.ceil(esposizione / 500) * 500;
-}
 
 function determinaTipoRichiesta(
   fidoAttuale: number,
