@@ -4272,11 +4272,25 @@ export type Database = {
       calcola_livello_fido: { Args: { _importo: number }; Returns: number }
       calcola_scaduto: { Args: { _ant: number; _ssa: number }; Returns: number }
       can_manage_email_assets: { Args: never; Returns: boolean }
+      collega_righe_import: {
+        Args: { _riga_ids: string[] }
+        Returns: {
+          collegate: number
+          saltate: number
+        }[]
+      }
       converti_lead_in_cliente: {
         Args: { _forza_duplicato?: boolean; _lead_id: string }
         Returns: {
           cliente_id: string
           duplicati: Json
+        }[]
+      }
+      crea_lead_da_righe_import: {
+        Args: { _riga_ids: string[] }
+        Returns: {
+          creati: number
+          saltate: number
         }[]
       }
       crea_partecipante_da_nuovo_soggetto: {
@@ -4988,6 +5002,12 @@ export type Database = {
       rimuovi_orfani_scadenze: {
         Args: { _importazione_id: string }
         Returns: number
+      }
+      scarta_righe_import: {
+        Args: { _riga_ids: string[] }
+        Returns: {
+          scartate: number
+        }[]
       }
       storage_path_cliente_id: { Args: { _name: string }; Returns: string }
       store_id_effettivo: { Args: { _store_id: string }; Returns: string }
