@@ -1175,50 +1175,20 @@ function ClientiPage() {
 
 
       <Card className="p-4 sm:p-5">
-        {/* Desktop: barra filtri (2 righe) con badge + reset in alto a destra */}
-        <div className="hidden md:block mb-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="text-sm font-medium text-muted-foreground">Filtri</div>
-            <div className="flex items-center gap-2">
-              {attiviCount > 0 && (
-                <Badge variant="secondary" className="h-6">{attiviCount} {attiviCount === 1 ? "filtro attivo" : "filtri attivi"}</Badge>
-              )}
-              {attiviCount > 0 && (
-                <Button variant="ghost" size="sm" onClick={resetFiltri} className="gap-1 h-7">
-                  <X className="size-3.5" /> Azzera tutti
-                </Button>
-              )}
-            </div>
-          </div>
-          {renderFiltriContent()}
-        </div>
+        <FiltriCollassabili
+          attivi={attiviCount}
+          azioni={
+            <Button variant="ghost" size="sm" onClick={resetFiltri} className="gap-1 h-7">
+              <X className="size-3.5" /> Azzera tutti
+            </Button>
+          }
+        >
+          {/* Desktop: barra filtri (2 righe) */}
+          <div className="hidden md:block">{renderFiltriContent()}</div>
+          {/* Mobile: filtri impilati */}
+          <div className="md:hidden">{renderFiltriContent(true)}</div>
+        </FiltriCollassabili>
 
-
-        {/* Mobile: search inline + bottone "Filtri" con badge */}
-        <div className="md:hidden flex gap-2 mb-4">
-          <div className="flex-1">
-            <SearchInput value={searchInput} onChange={setSearchInput} placeholder="Cerca cliente..." />
-          </div>
-          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-            <SheetTrigger asChild>
-              <Button variant="outline" className="gap-1.5 relative">
-                <SlidersHorizontal className="size-4" />
-                Filtri
-                {attiviCount > 0 && (
-                  <Badge variant="default" className="ml-1 h-5 min-w-5 px-1.5 text-xs">{attiviCount}</Badge>
-                )}
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-[90vw] sm:max-w-md overflow-y-auto">
-              <SheetHeader>
-                <SheetTitle>Filtri</SheetTitle>
-              </SheetHeader>
-              <div className="mt-4">
-                {renderFiltriContent(true)}
-              </div>
-            </SheetContent>
-          </Sheet>
-        </div>
 
         <div className="mb-3 text-sm text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1">
           <span>
