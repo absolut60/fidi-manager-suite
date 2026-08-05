@@ -767,9 +767,42 @@ function EventoDettaglioPage() {
                   </Badge>
                 </TableCell>
                 <TableCell className="text-sm">
-                  <div>{p.email || "—"}</div>
-                  <div className="text-muted-foreground">{p.telefono || "—"}</div>
+                  {(() => {
+                    const pr = privacyRiga(p, mappaContatti);
+                    if (pr.tipo === "assente") {
+                      return <span className="text-xs text-muted-foreground">—</span>;
+                    }
+                    if (pr.tipo === "firmata") {
+                      return (
+                        <div>
+                          <Badge variant="secondary" className="bg-success/15 text-success hover:opacity-100">
+                            Firmata
+                          </Badge>
+                          {formatDataFirma(pr.data) && (
+                            <div className="text-xs text-muted-foreground mt-0.5">{formatDataFirma(pr.data)}</div>
+                          )}
+                        </div>
+                      );
+                    }
+                    return (
+                      <Badge variant="secondary" className="bg-destructive/15 text-destructive hover:opacity-100">
+                        Non raccolta
+                      </Badge>
+                    );
+                  })()}
                 </TableCell>
+                <TableCell className="text-sm">
+                  {(() => {
+                    const r = recapitiRiga(p, mappaContatti);
+                    return (
+                      <>
+                        <div>{r.email || "—"}</div>
+                        <div className="text-muted-foreground">{r.telefono || "—"}</div>
+                      </>
+                    );
+                  })()}
+                </TableCell>
+
                 <TableCell>
                   <div className="flex items-center justify-end gap-1.5">
                     {(p.stato === "atteso" || p.stato === "confermato") && (
