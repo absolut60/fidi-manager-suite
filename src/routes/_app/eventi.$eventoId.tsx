@@ -181,7 +181,9 @@ function EventoDettaglioPage() {
   }, [ricerca]);
 
   const [selezionati, setSelezionati] = useState<string[]>([]);
+  const [filtroStato, setFiltroStato] = useState<"tutti" | "attesi" | "presenti" | "no_show">("tutti");
   const [invioInCorso, setInvioInCorso] = useState(false);
+
 
 
 
