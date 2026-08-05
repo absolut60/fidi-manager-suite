@@ -163,10 +163,8 @@ export function RiconciliaImportCard({ eventoId }: { eventoId: string }) {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  // La sezione compare solo se c'è qualcosa da riconciliare
-  if (!inSospeso.length && !righe.length) return null;
-  if (!inSospeso.length && filtro !== "lavorate" && !righe.length) return null;
-  if (!inSospeso.length && !righe.some((r) => r.stato !== "in_sospeso")) return null;
+  // La sezione compare solo se l'evento ha righe importate (in sospeso o già lavorate)
+  if (righe.length === 0) return null;
 
   const inCorso = collega.isPending || creaLead.isPending || scarta.isPending;
 
