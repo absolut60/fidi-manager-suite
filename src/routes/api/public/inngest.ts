@@ -45,6 +45,7 @@ const handler = serve({
     inviaEmailRichiesta,
     invioCampagnaMarketing,
     emailHealthCheck,
+    processEventiPartecipantiImport,
 
 
 
