@@ -410,7 +410,7 @@ function EventoDettaglioPage() {
         </div>
       </Card>
 
-      <ImportPartecipantiCard eventoId={eventoId} />
+      <ImportPartecipantiCard eventoId={eventoId} nomeEvento={nome} />
 
       <RiconciliaImportCard eventoId={eventoId} />
 
