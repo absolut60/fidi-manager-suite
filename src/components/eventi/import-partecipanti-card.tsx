@@ -13,11 +13,10 @@ import { scaricaModelloPartecipanti } from "@/lib/eventi-modello-xlsx";
 
 export function ImportPartecipantiCard({
   eventoId,
-  nomeEvento,
 }: {
   eventoId: string;
-  nomeEvento?: string;
 }) {
+
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -94,7 +93,7 @@ export function ImportPartecipantiCard({
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => scaricaModelloPartecipanti(nomeEvento)}>
+          <Button variant="outline" size="sm" onClick={() => scaricaModelloPartecipanti()}>
             <Download className="h-4 w-4 mr-2" />
             Scarica modello
           </Button>
