@@ -2,12 +2,13 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { CheckCircle2, AlertCircle, ShieldCheck, Mail } from "lucide-react";
+import { CheckCircle2, AlertCircle, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ModuloConsensoPrivacy, type ModuloConsensoPayload } from "@/components/modulo-consenso-privacy";
 import { getContattoPerFirma, firmaPrivacyConToken } from "@/lib/firma-privacy.functions";
+import { LOGO_MADE_BASE64 } from "@/lib/logo-made-base64";
 
 export const Route = createFileRoute("/firma-privacy/$token")({
   component: FirmaPrivacyPage,
