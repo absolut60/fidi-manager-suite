@@ -420,9 +420,85 @@ function EventoDettaglioPage() {
 
         </div>
 
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <Input
+              className="pl-8"
+              placeholder="Cerca per nome, cognome, ragione sociale o email…"
+              value={ricerca}
+              onChange={(e) => setRicerca(e.target.value)}
+            />
+          </div>
+          {ricercaDeb && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>{filtrati.length} di {totale} partecipanti</span>
+              <Button size="sm" variant="ghost" className="gap-1.5" onClick={() => setRicerca("")}>
+                <X className="size-4" /> Azzera
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {selezionatiValidi.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/40 p-2">
+            <span className="text-sm font-medium px-1">{selezionatiValidi.length} selezionati</span>
+            <Button
+              size="sm" variant="outline" className="gap-1.5"
+              disabled={cambiaStatoMassivo.isPending}
+              onClick={() => cambiaStatoMassivo.mutate("presentato")}
+            >
+              <Check className="size-4" /> Segna come presente
+            </Button>
+            <Button
+              size="sm" variant="outline" className="gap-1.5"
+              disabled={cambiaStatoMassivo.isPending}
+              onClick={() => cambiaStatoMassivo.mutate("no_show")}
+            >
+              <UserX className="size-4" /> Segna come non venuto
+            </Button>
+            <Button
+              size="sm" variant="outline" className="gap-1.5"
+              disabled={invioInCorso}
+              onClick={() => void inviaLinkMassivo()}
+            >
+              {invioInCorso ? "Invio in corso…" : "Invia link privacy"}
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button size="sm" variant="destructive" className="gap-1.5 ml-auto">
+                  <Trash2 className="size-4" /> Elimina
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    Eliminare {selezionatiValidi.length} partecipanti dall'evento?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Vengono rimosse solo le righe di partecipazione: lead, contatti e clienti collegati
+                    restano invariati.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Annulla</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => eliminaMassivo.mutate()}>Elimina</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        )}
+
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10">
+                <Checkbox
+                  aria-label="Seleziona tutti"
+                  checked={tuttiSelezionati}
+                  onCheckedChange={(v) => setSelezionati(v === true ? idsFiltrati : [])}
+                />
+              </TableHead>
               <TableHead>Identità</TableHead>
               <TableHead>Stato</TableHead>
               <TableHead>Contatti</TableHead>
