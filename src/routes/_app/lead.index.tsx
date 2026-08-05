@@ -373,6 +373,8 @@ function LeadListaPage() {
             </div>
           )}
         </div>
+        </FiltriCollassabili>
+
 
         <div className="mb-3 text-sm text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1">
           <span>
