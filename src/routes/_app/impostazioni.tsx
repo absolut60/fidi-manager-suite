@@ -718,6 +718,28 @@ function ConfigurazioniCard() {
               </div>
             ))}
           </div>
+
+          <div className="mt-4 rounded-md border p-3 space-y-2">
+            <p className="text-sm font-medium">Precalcolo fatturato (fido teorico)</p>
+            <p className="text-xs text-muted-foreground">
+              Il fido teorico usa un riepilogo mensile del fatturato, aggiornato a ogni import
+              scadenziario e una volta al giorno. Ultimo aggiornamento:{" "}
+              {values.fatturato_mensile_ultimo_refresh
+                ? new Date(values.fatturato_mensile_ultimo_refresh).toLocaleString("it-IT")
+                : "—"}
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              disabled={refresh.isPending}
+              onClick={() => refresh.mutate()}
+            >
+              <RefreshCw className={`size-4 ${refresh.isPending ? "animate-spin" : ""}`} />
+              {refresh.isPending ? "Aggiornamento..." : "Aggiorna adesso"}
+            </Button>
+          </div>
+
           <div className="flex justify-end mt-4">
             <Button onClick={() => save.mutate()} disabled={save.isPending} className="gap-1.5">
               <Save className="size-4" /> {save.isPending ? "Salvataggio..." : "Salva parametri"}
