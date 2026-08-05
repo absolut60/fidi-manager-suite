@@ -282,9 +282,15 @@ function RichiestaDialog({
   const fidoResiduo = clienteData?.fido_residuo != null
     ? Number(clienteData.fido_residuo) : null;
 
-  const fidoProposto = totaleRischio > 0
-    ? Math.ceil(totaleRischio / 500) * 500
-    : fidoAttuale > 0 ? fidoAttuale : 0;
+  // Importo proposto = fido teorico canonico (RPC get_fido_teorico).
+  const { data: teorico } = useQuery({
+    queryKey: ["fido-teorico", clienteId],
+    enabled: !!clienteId,
+    staleTime: 5 * 60_000,
+    queryFn: async () => (await fetchFidoTeorico([clienteId])).get(clienteId) ?? null,
+  });
+  const proponibile = isProponibile(teorico?.regola_applicata);
+  const fidoProposto = teorico && proponibile ? teorico.fido_proposto : 0;
 
   function determinaTipo(attuale: number, proposto: number): RichiestaForm["tipo"] {
     if (!attuale || attuale === 0) return "nuovo_fido";
@@ -296,12 +302,25 @@ function RichiestaDialog({
   const isEdit = !!richiesta;
   const [form, setForm] = useState<RichiestaForm>({
     tipo: (richiesta?.tipo === "nuovo" ? "nuovo_fido" : richiesta?.tipo)
-      ?? determinaTipo(fidoAttuale, fidoProposto),
-    importo_richiesto: richiesta?.importo_richiesto ?? fidoProposto,
+      ?? determinaTipo(fidoAttuale, 0),
+    importo_richiesto: richiesta?.importo_richiesto ?? 0,
     durata_mesi: richiesta?.durata_mesi ?? config.durata_default_mesi,
     motivazione: richiesta?.motivazione ?? "",
     note: richiesta?.note ?? "",
   });
+
+  // Precompila l'importo con il fido proposto appena la RPC risponde,
+  // solo su nuova richiesta e finché l'utente non ha toccato il campo.
+  const importoToccato = useRef(false);
+  useEffect(() => {
+    if (isEdit || importoToccato.current || !fidoProposto) return;
+    setForm((f) => ({
+      ...f,
+      importo_richiesto: fidoProposto,
+      tipo: determinaTipo(fidoAttuale, fidoProposto),
+    }));
+  }, [fidoProposto, isEdit, fidoAttuale]);
+
 
   function handleImportoChange(v: number) {
     const tipoAuto = determinaTipo(fidoAttuale, v);
