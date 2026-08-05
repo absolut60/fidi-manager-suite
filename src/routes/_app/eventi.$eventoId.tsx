@@ -585,7 +585,42 @@ function EventoDettaglioPage() {
 
         </div>
 
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {([
+              { k: "tutti", label: "Totale", val: riepilogo.totale },
+              { k: "attesi", label: "Attesi", val: riepilogo.attesi },
+              { k: "presenti", label: "Presenti", val: riepilogo.presenti },
+              { k: "no_show", label: "No show", val: riepilogo.noShow },
+            ] as const).map((c) => {
+              const attivo = filtroStato === c.k;
+              return (
+                <button
+                  key={c.k}
+                  type="button"
+                  onClick={() =>
+                    setFiltroStato((s) => (c.k === "tutti" || s === c.k ? "tutti" : c.k))
+                  }
+                  className={`rounded-md border p-2 text-left transition-colors ${
+                    attivo ? "border-primary bg-primary/10" : "hover:bg-muted/50"
+                  }`}
+                >
+                  <div className="text-xs text-muted-foreground">{c.label}</div>
+                  <div className="text-xl font-semibold">{c.val}</div>
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+            {riepilogo.tasso !== null && (
+              <span>Tasso di presenza <span className="font-medium text-foreground">{riepilogo.tasso}%</span></span>
+            )}
+            <span>Privacy raccolta: <span className="font-medium text-foreground">{riepilogo.privacyOk}</span> di {riepilogo.totale}</span>
+          </div>
+        </div>
+
         <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+
           <div className="relative flex-1">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             <Input
