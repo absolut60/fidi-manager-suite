@@ -507,17 +507,24 @@ function EventoDettaglioPage() {
           </TableHeader>
           <TableBody>
             {loadingPart && (
-              <TableRow><TableCell colSpan={4}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
+              <TableRow><TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
             )}
-            {!loadingPart && totale === 0 && (
+            {!loadingPart && filtrati.length === 0 && (
               <TableRow>
-                <TableCell colSpan={4} className="text-center text-sm text-muted-foreground py-8">
-                  Nessun partecipante censito.
+                <TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-8">
+                  {totale === 0 ? "Nessun partecipante censito." : "Nessun partecipante corrisponde alla ricerca."}
                 </TableCell>
               </TableRow>
             )}
-            {partecipanti?.map((p) => (
-              <TableRow key={p.id}>
+            {filtrati.map((p) => (
+              <TableRow key={p.id} data-state={selezionatiValidi.includes(p.id) ? "selected" : undefined}>
+                <TableCell>
+                  <Checkbox
+                    aria-label="Seleziona partecipante"
+                    checked={selezionatiValidi.includes(p.id)}
+                    onCheckedChange={(v) => toggleRiga(p.id, v === true)}
+                  />
+                </TableCell>
                 <TableCell>
                   <div className="font-medium">
                     {p.lead ? (
