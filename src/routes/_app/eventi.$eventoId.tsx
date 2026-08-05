@@ -30,6 +30,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { inviaRichiestaFirmaPrivacy } from "@/lib/firma-privacy.functions";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Search, X } from "lucide-react";
+import { SchedaLista, ElencoSchede } from "@/components/lista-responsive";
+
 
 import {
   EVENTI_PARTECIPANTE_STATO_CLASS,
@@ -693,7 +695,140 @@ function EventoDettaglioPage() {
           </div>
         )}
 
+        {/* Sotto md: schede partecipanti */}
+        <ElencoSchede>
+          {loadingPart && <Skeleton className="h-24 w-full" />}
+          {!loadingPart && filtrati.length > 0 && (
+            <label className="flex items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-sm">
+              <Checkbox
+                aria-label="Seleziona tutti"
+                checked={tuttiSelezionati}
+                onCheckedChange={(v) => setSelezionati(v === true ? idsFiltrati : [])}
+              />
+              Seleziona tutti ({idsFiltrati.length})
+            </label>
+          )}
+          {!loadingPart && filtrati.length === 0 && (
+            <div className="text-center text-sm text-muted-foreground py-8">
+              {totale === 0 ? "Nessun partecipante censito." : "Nessun partecipante corrisponde alla ricerca."}
+            </div>
+          )}
+          {!loadingPart && filtrati.map((p) => {
+            const pr = privacyRiga(p, mappaContatti);
+            const rec = recapitiRiga(p, mappaContatti);
+            return (
+              <SchedaLista
+                key={p.id}
+                className={selezionatiValidi.includes(p.id) ? "border-primary bg-primary/5" : undefined}
+                titolo={
+                  <span className="flex items-start gap-2">
+                    <Checkbox
+                      aria-label="Seleziona partecipante"
+                      className="mt-0.5 shrink-0"
+                      checked={selezionatiValidi.includes(p.id)}
+                      onCheckedChange={(v) => toggleRiga(p.id, v === true)}
+                    />
+                    <span className="min-w-0">
+                      <span className="block break-words">
+                        {p.lead ? (
+                          <Link to="/lead/$leadId" params={{ leadId: p.lead.id }} className="text-primary hover:underline">
+                            {nomePartecipante(p.lead)}
+                          </Link>
+                        ) : p.cliente ? (
+                          <Link to="/clienti/$clienteId" params={{ clienteId: p.cliente.id }} className="text-primary hover:underline">
+                            {p.cliente.ragione_sociale ?? "Cliente"}
+                          </Link>
+                        ) : p.contatto ? (
+                          <span>{`${p.contatto.nome ?? ""} ${p.contatto.cognome ?? ""}`.trim() || "Contatto"}</span>
+                        ) : (
+                          nomePartecipante(p)
+                        )}
+                      </span>
+                      {(p.partita_iva || p.codice_fiscale) && (
+                        <span className="block text-xs font-normal text-muted-foreground">
+                          {[p.partita_iva, p.codice_fiscale].filter(Boolean).join(" · ")}
+                        </span>
+                      )}
+                    </span>
+                  </span>
+                }
+                badge={
+                  <Badge className={`${EVENTI_PARTECIPANTE_STATO_CLASS[p.stato]} hover:opacity-100 shrink-0`} variant="secondary">
+                    {EVENTI_PARTECIPANTE_STATO_LABEL[p.stato]}
+                  </Badge>
+                }
+                colonneCampi={1}
+                campi={[
+                  {
+                    etichetta: "Privacy",
+                    valore:
+                      pr.tipo === "assente" ? (
+                        <span className="text-muted-foreground">—</span>
+                      ) : pr.tipo === "firmata" ? (
+                        <span className="inline-flex items-center gap-1.5">
+                          <Badge variant="secondary" className="bg-success/15 text-success hover:opacity-100">Firmata</Badge>
+                          {formatDataFirma(pr.data) && (
+                            <span className="text-muted-foreground">{formatDataFirma(pr.data)}</span>
+                          )}
+                        </span>
+                      ) : (
+                        <Badge variant="secondary" className="bg-destructive/15 text-destructive hover:opacity-100">
+                          Non raccolta
+                        </Badge>
+                      ),
+                  },
+                  { etichetta: "Email", valore: rec.email || "—" },
+                  { etichetta: "Telefono", valore: rec.telefono || "—" },
+                ]}
+                footer={
+                  <div className="flex w-full items-center gap-2">
+                    {(p.stato === "atteso" || p.stato === "confermato") && (
+                      <>
+                        <Button
+                          size="sm" variant="outline" className="flex-1 gap-1.5"
+                          disabled={cambiaStato.isPending}
+                          onClick={() => cambiaStato.mutate({ id: p.id, stato: "presentato" })}
+                        >
+                          <Check className="size-4" /> Presente
+                        </Button>
+                        <Button
+                          size="sm" variant="outline" className="flex-1 gap-1.5"
+                          disabled={cambiaStato.isPending}
+                          onClick={() => cambiaStato.mutate({ id: p.id, stato: "no_show" })}
+                        >
+                          <UserX className="size-4" /> No show
+                        </Button>
+                      </>
+                    )}
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button size="icon" variant="ghost" className="text-destructive ml-auto shrink-0">
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Eliminare il partecipante?</AlertDialogTitle>
+                          <AlertDialogDescription>L'operazione non è reversibile.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Annulla</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => eliminaPartecipante.mutate(p.id)}>
+                            Elimina
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                }
+              />
+            );
+          })}
+        </ElencoSchede>
+
+        <div className="hidden md:block">
         <Table>
+
           <TableHeader>
             <TableRow>
               <TableHead className="w-10">
@@ -848,6 +983,8 @@ function EventoDettaglioPage() {
             ))}
           </TableBody>
         </Table>
+        </div>
+
       </Card>
     </div>
   );

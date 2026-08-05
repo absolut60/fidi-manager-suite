@@ -15,7 +15,8 @@ export function SchedaLista({
   colonneCampi = 2,
   className,
 }: {
-  onClick: () => void;
+  /** Se omesso la scheda è un contenitore statico (necessario quando contiene elementi interattivi). */
+  onClick?: () => void;
   titolo: ReactNode;
   badge?: ReactNode;
   campi: CampoScheda[];
@@ -23,12 +24,13 @@ export function SchedaLista({
   colonneCampi?: 1 | 2;
   className?: string;
 }) {
+  const Comp = onClick ? "button" : "div";
   return (
-    <button
-      type="button"
-      onClick={onClick}
+    <Comp
+      {...(onClick ? { type: "button" as const, onClick } : {})}
       className={cn(
-        "w-full text-left rounded-lg border bg-card p-3 active:bg-muted/50",
+        "w-full text-left rounded-lg border bg-card p-3",
+        onClick && "active:bg-muted/50",
         className,
       )}
     >
@@ -36,6 +38,7 @@ export function SchedaLista({
         <span className="font-medium text-sm min-w-0 break-words">{titolo}</span>
         {badge}
       </div>
+
 
       {campi.length > 0 && (
         <div
@@ -54,7 +57,7 @@ export function SchedaLista({
       )}
 
       {footer && <div className="mt-2 flex flex-wrap items-center gap-1.5">{footer}</div>}
-    </button>
+    </Comp>
   );
 }
 
