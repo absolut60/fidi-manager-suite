@@ -697,10 +697,14 @@ function ConfigurazioniCard() {
                 <div className="relative">
                   <Input
                     id={f.chiave}
-                    type="number"
-                    inputMode={f.type === "decimal" ? "decimal" : "numeric"}
+                    type={f.type === "text" ? "text" : "number"}
+                    inputMode={f.type === "text" ? "text" : f.type === "decimal" ? "decimal" : "numeric"}
                     step={f.type === "decimal" ? "0.01" : undefined}
-                    placeholder={f.type === "year" ? "es. 2025" : undefined}
+                    min={f.type === "mesi" ? 1 : undefined}
+                    max={f.type === "mesi" ? 36 : undefined}
+                    placeholder={
+                      f.type === "year" ? "es. 2025" : f.type === "text" ? "es. 10126430965, 07793980967" : undefined
+                    }
                     value={values[f.chiave] ?? ""}
                     onChange={(e) => setValues((v) => ({ ...v, [f.chiave]: e.target.value }))}
                     className={f.suffix ? "pr-14" : ""}
@@ -709,6 +713,7 @@ function ConfigurazioniCard() {
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{f.suffix}</span>
                   )}
                 </div>
+
                 {f.hint && <p className="text-xs text-muted-foreground">{f.hint}</p>}
               </div>
             ))}
