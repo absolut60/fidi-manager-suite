@@ -286,13 +286,23 @@ function LeadListaPage() {
         </Dialog>
       </div>
 
-      <Tabs value={tab} onValueChange={(v) => { setTab(v as typeof tab); setPage(1); }}>
+      <Tabs value={tab} onValueChange={(v) => { setTab(v as Vista); setPage(1); }}>
         <TabsList className="w-full justify-start overflow-x-auto sm:w-auto">
-          <TabsTrigger value="tutti">Tutti i lead</TabsTrigger>
+          <TabsTrigger value="attivi" className="gap-1.5">
+            Attivi <span className="text-xs opacity-70">{conteggi?.attivi ?? "—"}</span>
+          </TabsTrigger>
           <TabsTrigger value="ricontattare" className="gap-1.5">
             <CalendarClock className="size-4" /> Da ricontattare
+            <span className="text-xs opacity-70">{conteggi?.ricontattare ?? "—"}</span>
+          </TabsTrigger>
+          <TabsTrigger value="convertiti" className="gap-1.5">
+            Convertiti <span className="text-xs opacity-70">{conteggi?.convertiti ?? "—"}</span>
+          </TabsTrigger>
+          <TabsTrigger value="persi" className="gap-1.5">
+            Persi <span className="text-xs opacity-70">{conteggi?.persi ?? "—"}</span>
           </TabsTrigger>
         </TabsList>
+
       </Tabs>
 
       <Card className="p-4 sm:p-5">
