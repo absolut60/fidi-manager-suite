@@ -1668,10 +1668,12 @@ function ProposteFidoMassivoDialog({
     }
   }, [tipoForzato]);
 
-  const totale = righe.reduce((acc, r) => acc + (Number(r.fido_proposto) || 0), 0);
+  const righeIncluse = righe.filter((r) => r.proponibile && r.incluso);
+  const righeEscluse = righe.filter((r) => !r.proponibile);
+  const totale = righeIncluse.reduce((acc, r) => acc + (Number(r.fido_proposto) || 0), 0);
 
   async function creaRichieste() {
-    if (righe.length === 0) { toast.error("Nessuna riga da creare"); return; }
+    if (righeIncluse.length === 0) { toast.error("Nessuna riga da creare"); return; }
     if (!userId) { toast.error("Utente non autenticato"); return; }
     setSubmitting(true);
     try {
@@ -1679,7 +1681,8 @@ function ProposteFidoMassivoDialog({
       // Motivazione: override per-riga se valorizzato (anche stringa vuota = override "vuoto"),
       // altrimenti motivazione generale. Stringhe vuote -> null nel DB.
       const motivazioneGeneraleNorm = motivazioneGenerale.trim() === "" ? null : motivazioneGenerale;
-      const payload = righe.map((r) => {
+      const payload = righeIncluse.map((r) => {
+
         const m = r.motivazione === undefined
           ? motivazioneGeneraleNorm
           : (r.motivazione.trim() === "" ? null : r.motivazione);
