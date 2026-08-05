@@ -1243,6 +1243,21 @@ export type Database = {
         }
         Relationships: []
       }
+      codici_pagamento_giorni: {
+        Row: {
+          descrizione: string
+          giorni_totali: number
+        }
+        Insert: {
+          descrizione: string
+          giorni_totali: number
+        }
+        Update: {
+          descrizione?: string
+          giorni_totali?: number
+        }
+        Relationships: []
+      }
       comunicazioni_richiesta: {
         Row: {
           autore_id: string
@@ -4217,6 +4232,37 @@ export type Database = {
           },
         ]
       }
+      fatturato_rolling_cliente: {
+        Row: {
+          anno_corrente: number | null
+          anno_precedente: number | null
+          cliente_id: string | null
+          rolling_12m: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scadenze_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scadenze_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti_con_rischio"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scadenze_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+        ]
+      }
       fatturato_ytd_globale: {
         Row: {
           anno: number | null
@@ -4268,7 +4314,12 @@ export type Database = {
         Args: { _lead_id: string }
         Returns: undefined
       }
+      arrotonda_fido_proposto: { Args: { _fido_base: number }; Returns: number }
       bulk_update_clienti_bfa: { Args: { _payloads: Json }; Returns: number }
+      calcola_fido_base: {
+        Args: { _fatturato_lordo: number; _giorni: number }
+        Returns: number
+      }
       calcola_livello_fido: { Args: { _importo: number }; Returns: number }
       calcola_scaduto: { Args: { _ant: number; _ssa: number }; Returns: number }
       can_manage_email_assets: { Args: never; Returns: boolean }
@@ -4500,6 +4551,20 @@ export type Database = {
           cliente_id: string
           fatturato_anno_corrente: number
           fatturato_anno_prec: number
+        }[]
+      }
+      get_fido_teorico: {
+        Args: { _cliente_ids?: string[] }
+        Returns: {
+          cliente_id: string
+          fatturato_rolling: number
+          fido_attuale: number
+          fido_base: number
+          fido_proposto: number
+          giorni: number
+          giorni_mancanti: boolean
+          regola_applicata: string
+          scostamento: number
         }[]
       }
       get_incassi_periodo: {

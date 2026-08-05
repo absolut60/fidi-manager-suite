@@ -10,6 +10,8 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { ContattoPrivacyAzioni } from "@/components/contatto-privacy-azioni";
 import { getFidoAttuale } from "@/lib/fido-cliente";
+import { FidoTeoricoBlocco } from "@/components/fido-teorico-blocco";
+
 import { useAuth } from "@/hooks/use-auth";
 import { useConfig, isClienteAttivo } from "@/hooks/use-config";
 import { Button } from "@/components/ui/button";
@@ -703,12 +705,14 @@ function DatiRischioCard({ cliente }: { cliente: any }) {
           </dd>
         </div>
       </dl>
+      <FidoTeoricoBlocco clienteId={String(cliente.id)} />
       {(cliente as any).ultima_sincronizzazione && (
         <p className="text-xs text-muted-foreground mt-4 pt-3 border-t">
           Ultima sincronizzazione: {new Date((cliente as any).ultima_sincronizzazione).toLocaleString("it-IT")}
         </p>
       )}
     </Card>
+
   );
 }
 
