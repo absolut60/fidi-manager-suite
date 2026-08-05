@@ -9,7 +9,9 @@ import { formatEuro } from "@/lib/fidi";
 
 const REGOLE: Record<string, string> = {
   sede_esclusa: "Sede esclusa dal calcolo — fido attuale invariato",
-  nessun_fatturato: "Nessun fatturato negli ultimi 12 mesi",
+  esclusa_gruppo: "Società del gruppo esclusa dal calcolo — fido attuale invariato",
+  condizione_mancante: "Condizione di pagamento mancante in anagrafica — impossibile calcolare",
+  nessun_fatturato: "Nessun fatturato nella finestra di calcolo",
   minimo_500: "Fatturato solo nell'anno precedente — minimo 500 €",
   fascia_1000: "Fido base ≤ 5.000 € — arrotondato per eccesso a 1.000 €",
   fascia_5000: "Fido base > 5.000 € — arrotondato al multiplo di 5.000 € più vicino",
@@ -32,6 +34,8 @@ export function FidoTeoricoBlocco({ clienteId }: { clienteId: string }) {
 
   if (isLoading || !data) return null;
 
+  const regola = String(data.regola_applicata);
+  const condizioneMancante = regola === "condizione_mancante";
   const giorniMancanti = !!data.giorni_mancanti;
   const scostamento = Number(data.scostamento ?? 0);
   const scostTone =
@@ -41,34 +45,47 @@ export function FidoTeoricoBlocco({ clienteId }: { clienteId: string }) {
     <div className="mt-4 pt-4 border-t space-y-3">
       <h4 className="text-sm font-semibold">Fido teorico</h4>
 
-      <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3 text-sm">
-        <Cella label="Fatturato ultimi 12 mesi" value={formatEuro(Number(data.fatturato_rolling ?? 0))} />
-        <Cella
-          label="Giorni di pagamento"
-          value={giorniMancanti ? "—" : `${Number(data.giorni ?? 0)} gg`}
-          hint={giorniMancanti ? "condizione di pagamento non riconosciuta" : undefined}
-        />
-        <Cella label="Fido teorico (base)" value={formatEuro(Number(data.fido_base ?? 0))} />
-        <Cella label="Fido proposto" value={formatEuro(Number(data.fido_proposto ?? 0))} strong />
-        <Cella label="Fido attuale" value={formatEuro(Number(data.fido_attuale ?? 0))} />
-        <div>
-          <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Scostamento</dt>
-          <dd className={`mt-0.5 font-medium tabular-nums ${scostTone}`}>
-            {scostamento > 0 ? "+" : ""}
-            {formatEuro(scostamento)}
-          </dd>
-        </div>
-      </dl>
+      {condizioneMancante ? (
+        <>
+          <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3 text-sm">
+            <Cella label="Fatturato nella finestra" value={formatEuro(Number(data.fatturato_rolling ?? 0))} />
+            <Cella label="Fido attuale" value={formatEuro(Number(data.fido_attuale ?? 0))} />
+          </dl>
+          <div className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning">
+            Condizione di pagamento mancante in anagrafica — impossibile calcolare il fido teorico.
+          </div>
+        </>
+      ) : (
+        <>
+          <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3 text-sm">
+            <Cella label="Fatturato nella finestra" value={formatEuro(Number(data.fatturato_rolling ?? 0))} />
+            <Cella
+              label="Giorni di pagamento"
+              value={giorniMancanti ? "—" : `${Number(data.giorni ?? 0)} gg`}
+              hint={giorniMancanti ? "condizione di pagamento non riconosciuta" : undefined}
+            />
+            <Cella label="Fido teorico (base)" value={formatEuro(Number(data.fido_base ?? 0))} />
+            <Cella label="Fido proposto" value={formatEuro(Number(data.fido_proposto ?? 0))} strong />
+            <Cella label="Fido attuale" value={formatEuro(Number(data.fido_attuale ?? 0))} />
+            <div>
+              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Scostamento</dt>
+              <dd className={`mt-0.5 font-medium tabular-nums ${scostTone}`}>
+                {scostamento > 0 ? "+" : ""}
+                {formatEuro(scostamento)}
+              </dd>
+            </div>
+          </dl>
+          <p className="text-xs text-muted-foreground">Regola applicata: {REGOLE[regola] ?? regola}</p>
+        </>
+      )}
 
-      <p className="text-xs text-muted-foreground">
-        Regola applicata: {REGOLE[String(data.regola_applicata)] ?? String(data.regola_applicata)}
-      </p>
       <p className="text-xs text-muted-foreground italic">
         Calcolo indicativo. Non modifica il fido in essere.
       </p>
     </div>
   );
 }
+
 
 function Cella({
   label,
