@@ -95,6 +95,18 @@ function EventoDettaglioPage() {
   const [luogo, setLuogo] = useState("");
   const [note, setNote] = useState("");
 
+  // ricerca lato client sulla lista partecipanti (debounce 200ms)
+  const [ricerca, setRicerca] = useState("");
+  const [ricercaDeb, setRicercaDeb] = useState("");
+  useEffect(() => {
+    const t = window.setTimeout(() => setRicercaDeb(ricerca.trim()), 200);
+    return () => window.clearTimeout(t);
+  }, [ricerca]);
+
+  const [selezionati, setSelezionati] = useState<string[]>([]);
+  const [invioInCorso, setInvioInCorso] = useState(false);
+
+
 
 
 
