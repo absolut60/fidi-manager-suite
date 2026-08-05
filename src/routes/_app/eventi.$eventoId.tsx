@@ -127,7 +127,7 @@ function EventoDettaglioPage() {
       const { data, error } = await supabase
         .from("eventi_partecipanti")
         .select(
-          "id, stato, lead_id, cliente_id, contatto_id, nome, cognome, ragione_sociale, partita_iva, codice_fiscale, email, telefono, note, lead:lead_id(id, ragione_sociale, nome, cognome), cliente:cliente_id(id, ragione_sociale), contatto:contatto_id(id, nome, cognome)",
+          "id, stato, lead_id, cliente_id, contatto_id, nome, cognome, ragione_sociale, partita_iva, codice_fiscale, email, telefono, note, lead:lead_id(id, ragione_sociale, nome, cognome), cliente:cliente_id(id, ragione_sociale), contatto:contatto_id(id, nome, cognome, email, privacy_firmata)",
         )
         .eq("evento_id", eventoId)
         .order("created_at", { ascending: true });
