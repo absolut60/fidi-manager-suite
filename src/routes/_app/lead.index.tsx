@@ -539,7 +539,26 @@ function LeadListaPage() {
                       {nomeStore(l.store_id)}{l.agente_codice ? ` · ${l.agente_codice}` : ""}
                     </TableCell>
                     <TableCell className="text-xs">{nomeProfilo(l.assegnato_a)}</TableCell>
-                    <TableCell className="text-xs">{formatData(l.prossima_azione_il)}</TableCell>
+                    {mostraConversione ? (
+                      <>
+                        <TableCell className="text-xs">{formatData(l.convertito_il)}</TableCell>
+                        <TableCell className="text-xs" onClick={(e) => e.stopPropagation()}>
+                          {l.cliente_id ? (
+                            <Link
+                              to="/clienti/$clienteId"
+                              params={{ clienteId: l.cliente_id }}
+                              className="text-primary hover:underline"
+                            >
+                              {l.cliente?.ragione_sociale ?? "Scheda cliente"}
+                            </Link>
+                          ) : (
+                            <span className="text-muted-foreground">Cliente non collegato</span>
+                          )}
+                        </TableCell>
+                      </>
+                    ) : (
+                      <TableCell className="text-xs">{formatData(l.prossima_azione_il)}</TableCell>
+                    )}
                     <TableCell className="text-xs">{formatData(l.created_at)}</TableCell>
                   </TableRow>
                 ))}
