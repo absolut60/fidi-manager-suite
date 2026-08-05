@@ -76,7 +76,6 @@ function LeadListaPage() {
   const [pageSize, setPageSize] = useState(25);
   const [sortBy, setSortBy] = useState("created_at");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-  const [filtriApertiMobile, setFiltriApertiMobile] = useState(false);
 
   const { data: stores } = useQuery({
     queryKey: ["stores", "all"],
