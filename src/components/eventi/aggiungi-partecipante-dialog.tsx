@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Copy, Link2, Plus, X } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { AlertTriangle, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -16,12 +17,18 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { SoggettoCombobox, type SoggettoSelezionato } from "@/components/soggetto-combobox";
+import {
+  SceltaCanalePrivacy, inviaRichiestaDopoCreazione, ModuloConsensoPrivacy,
+  inviaRichiestaFirmaPrivacy, registraConsensoDiPersona,
+  type CanalePrivacy, type ModuloConsensoPayload,
+} from "@/components/privacy-post-creazione";
 import { cercaDuplicati, type DedupMatch } from "@/lib/lead-dedup";
 import { formattaNomeProprio, formattaRagioneSociale } from "@/lib/formato-nomi";
 import {
   EVENTI_PARTECIPANTE_STATI, EVENTI_PARTECIPANTE_STATO_LABEL,
   type EventiPartecipanteStato,
 } from "@/lib/eventi-costanti";
+
 
 type Campi = {
   tipo_soggetto: "azienda" | "persona_fisica";
