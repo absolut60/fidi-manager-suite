@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/table";
 import { AggiungiPartecipanteDialog } from "@/components/eventi/aggiungi-partecipante-dialog";
 import { ImportPartecipantiCard } from "@/components/eventi/import-partecipanti-card";
+import { RiconciliaImportCard } from "@/components/eventi/riconcilia-import-card";
 import { puoAccedereLead } from "@/lib/lead-costanti";
 import { useServerFn } from "@tanstack/react-start";
 import { inviaRichiestaFirmaPrivacy } from "@/lib/firma-privacy.functions";
@@ -410,6 +411,8 @@ function EventoDettaglioPage() {
       </Card>
 
       <ImportPartecipantiCard eventoId={eventoId} />
+
+      <RiconciliaImportCard eventoId={eventoId} />
 
 
       <Card className="p-4 sm:p-5 space-y-4">
