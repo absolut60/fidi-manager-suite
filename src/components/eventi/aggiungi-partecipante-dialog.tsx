@@ -302,47 +302,55 @@ export function AggiungiPartecipanteDialog({
       <DialogTrigger asChild>
         <Button className="gap-1.5"><Plus className="size-4" /> Aggiungi partecipante</Button>
       </DialogTrigger>
-      <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className={`${esito && canale === "di_persona" ? "max-w-3xl" : "max-w-xl"} max-h-[85vh] overflow-y-auto`}>
         <DialogHeader>
           <DialogTitle>
-            {contattoCreatoId ? "Privacy del nuovo contatto" : "Aggiungi partecipante"}
+            {esito ? "Privacy del partecipante" : "Aggiungi partecipante"}
           </DialogTitle>
         </DialogHeader>
 
-        {contattoCreatoId ? (
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Il partecipante è stato salvato. Puoi raccogliere il consenso privacy adesso
-              generando un link da inviare, oppure più tardi dalla scheda lead (tab Contatti).
-            </p>
-            <Button
-              variant="outline"
-              className="gap-1.5"
-              disabled={generaLink.isPending}
-              onClick={() => generaLink.mutate()}
-            >
-              <Link2 className="size-4" /> Genera link firma privacy
-            </Button>
-            {linkFirma && (
-              <div className="flex items-center gap-2">
-                <Input readOnly value={linkFirma} className="text-xs" />
-                <Button
-                  size="icon"
-                  variant="outline"
-                  onClick={() => {
-                    void navigator.clipboard.writeText(linkFirma);
-                    toast.success("Link copiato");
-                  }}
-                >
-                  <Copy className="size-4" />
-                </Button>
-              </div>
-            )}
-            <DialogFooter>
-              <Button onClick={() => { setOpen(false); reset(); }}>Chiudi</Button>
-            </DialogFooter>
-          </div>
+        {esito ? (
+          !esito.contattoId ? (
+            // Nessun contatto-persona (es. azienda senza referente): niente canale privacy.
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Nessun contatto-persona: la privacy si raccoglie dopo, aggiungendo un referente.
+              </p>
+              <DialogFooter>
+                <Button onClick={chiudi}>Chiudi</Button>
+              </DialogFooter>
+            </div>
+          ) : canale === "di_persona" ? (
+            <ModuloConsensoPrivacy
+              valoriIniziali={{
+                nome: esito.nome,
+                cognome: esito.cognome,
+                societa: esito.societa,
+                luogo_nascita: esito.luogo_nascita,
+                data_nascita: esito.data_nascita,
+                codice_fiscale: esito.codice_fiscale,
+                residenza: esito.residenza,
+                email: esito.email,
+                cellulare: esito.cellulare,
+              }}
+              placeholderSocieta={esito.societa}
+              onSubmit={salvaDiPersona}
+              isPending={savingPrivacy}
+              inviaLabel="Conferma e firma"
+            />
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Il partecipante è stato salvato. Scegli come raccogliere il consenso privacy.
+              </p>
+              <SceltaCanalePrivacy onScegli={(c) => { void scegliCanale(c); }} />
+              <DialogFooter>
+                <Button variant="outline" onClick={chiudi} disabled={savingPrivacy}>Chiudi</Button>
+              </DialogFooter>
+            </div>
+          )
         ) : (
+
           <div className="space-y-4">
             <div className="flex gap-2">
               <Button
