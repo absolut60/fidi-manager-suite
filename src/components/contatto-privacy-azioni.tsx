@@ -1,14 +1,20 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
-import { FileCheck2, Mail, Link as LinkIcon, Download, Send, Clock, PenLine } from "lucide-react";
+import { FileCheck2, Mail, Link as LinkIcon, Download, Send, Clock, PenLine, ChevronDown } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { ModuloConsensoPrivacy, type ModuloConsensoPayload } from "@/components/modulo-consenso-privacy";
-import { inviaRichiestaFirmaPrivacy, registraConsensoDiPersona } from "@/lib/firma-privacy.functions";
+import {
+  inviaRichiestaFirmaPrivacy,
+  registraConsensoDiPersona,
+  getDettagliConsenso,
+} from "@/lib/firma-privacy.functions";
 
 
 export type ContattoPrivacy = {
@@ -40,6 +46,111 @@ function fmt(v?: string | null): string {
   } catch {
     return String(v);
   }
+}
+
+const ORIGINE_LABEL: Record<string, string> = {
+  di_persona: "Firmato di persona",
+  link_pubblico: "Compilato a distanza dal link",
+  firma_grafica: "Firma grafica da link",
+  operatore: "Registrato da operatore",
+  import: "Importato",
+};
+
+function fmtDataOra(v?: string | null): string {
+  if (!v) return "—";
+  try {
+    return new Date(v).toLocaleString("it-IT", { dateStyle: "long", timeStyle: "medium" });
+  } catch {
+    return String(v);
+  }
+}
+
+/** User agent in forma leggibile ("iPhone · Safari"), con fallback ai primi 60 caratteri. */
+function dispositivoLeggibile(ua?: string | null): { label: string; full: string } {
+  if (!ua) return { label: "—", full: "" };
+  const os =
+    /iPhone/i.test(ua) ? "iPhone" :
+    /iPad/i.test(ua) ? "iPad" :
+    /Android/i.test(ua) ? "Android" :
+    /Windows/i.test(ua) ? "Windows" :
+    /Mac OS X|Macintosh/i.test(ua) ? "Mac" :
+    /Linux/i.test(ua) ? "Linux" : null;
+  const browser =
+    /Edg\//i.test(ua) ? "Edge" :
+    /OPR\/|Opera/i.test(ua) ? "Opera" :
+    /Chrome\//i.test(ua) ? "Chrome" :
+    /Firefox\//i.test(ua) ? "Firefox" :
+    /Safari\//i.test(ua) ? "Safari" : null;
+  if (os || browser) {
+    return { label: [os, browser].filter(Boolean).join(" · "), full: ua };
+  }
+  return { label: ua.slice(0, 60), full: ua };
+}
+
+function RigaProva({ label, valore, title }: { label: string; valore: string; title?: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 text-xs">
+      <span className="text-muted-foreground shrink-0">{label}</span>
+      <span className="text-right break-all" title={title}>{valore}</span>
+    </div>
+  );
+}
+
+function DettagliRaccolta({ contattoId }: { contattoId: string }) {
+  const [open, setOpen] = useState(false);
+  const fn = useServerFn(getDettagliConsenso);
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["dettagli-consenso", contattoId],
+    queryFn: () => fn({ data: { contattoId } }),
+    enabled: open,
+    retry: false,
+  });
+  const disp = dispositivoLeggibile(data?.user_agent);
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen} className="rounded-md border">
+      <CollapsibleTrigger className="flex w-full items-center justify-between gap-2 px-3 py-2 text-xs font-medium">
+        Dettagli della raccolta
+        <ChevronDown className={`size-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
+      </CollapsibleTrigger>
+      <CollapsibleContent className="px-3 pb-3 space-y-1.5">
+        {isLoading ? (
+          <p className="text-xs text-muted-foreground">Caricamento…</p>
+        ) : error ? (
+          <p className="text-xs text-destructive">
+            {error instanceof Error ? error.message : "Errore nel recupero dei dettagli"}
+          </p>
+        ) : !data ? (
+          <p className="text-xs text-muted-foreground">Nessun dato di prova registrato.</p>
+        ) : (
+          <>
+            <RigaProva label="Data e ora" valore={fmtDataOra(data.created_at)} />
+            <RigaProva
+              label="Modalità"
+              valore={(data.origine && (ORIGINE_LABEL[data.origine] ?? data.origine)) || "—"}
+            />
+            <RigaProva label="Indirizzo IP" valore={data.ip_address || "—"} />
+            <RigaProva label="Dispositivo" valore={disp.label} title={disp.full || undefined} />
+            <RigaProva label="Versione informativa" valore={data.informativa_versione || "—"} />
+            <RigaProva
+              label="Impronta del testo"
+              valore={data.informativa_hash ? data.informativa_hash.slice(0, 12) : "—"}
+              title={data.informativa_hash ?? undefined}
+            />
+            <RigaProva
+              label="Tempo di compilazione"
+              valore={
+                typeof data.secondi_permanenza === "number" ? `${data.secondi_permanenza} s` : "—"
+              }
+            />
+          </>
+        )}
+        <p className="text-[10px] text-muted-foreground pt-1">
+          Questi dati costituiscono la prova del consenso ai sensi dell'art. 7 GDPR.
+        </p>
+      </CollapsibleContent>
+    </Collapsible>
+  );
 }
 
 function ConsensoBadge({ ok, label }: { ok: boolean; label: string }) {
@@ -162,6 +273,7 @@ export function ContattoPrivacyAzioni({
         <p className="text-xs text-muted-foreground">
           Privacy già firmata il {fmt(contatto.data_firma)} — nessuna richiesta necessaria.
         </p>
+        <DettagliRaccolta contattoId={contatto.id} />
         {contatto.pdf_privacy_url && (
           <Button size="sm" variant="outline" asChild>
             <a href={contatto.pdf_privacy_url} target="_blank" rel="noreferrer">
