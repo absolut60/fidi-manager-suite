@@ -13,11 +13,10 @@ import { scaricaModelloPartecipanti } from "@/lib/eventi-modello-xlsx";
 
 export function ImportPartecipantiCard({
   eventoId,
-  nomeEvento,
 }: {
   eventoId: string;
-  nomeEvento?: string;
 }) {
+
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const inputRef = useRef<HTMLInputElement>(null);
