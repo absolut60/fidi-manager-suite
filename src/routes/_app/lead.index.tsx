@@ -234,7 +234,7 @@ function LeadListaPage() {
   }
 
   function SortHeader({ col, label }: { col: string; label: string }) {
-    const active = sortBy === col && tab === "tutti";
+    const active = sortBy === col && tab !== "ricontattare";
     return (
       <button
         type="button"
