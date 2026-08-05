@@ -4173,7 +4173,6 @@ export type Database = {
       bulk_update_clienti_bfa: { Args: { _payloads: Json }; Returns: number }
       calcola_livello_fido: { Args: { _importo: number }; Returns: number }
       calcola_scaduto: { Args: { _ant: number; _ssa: number }; Returns: number }
-      can_access_lead: { Args: { _user_id: string }; Returns: boolean }
       can_manage_email_assets: { Args: never; Returns: boolean }
       converti_lead_in_cliente: {
         Args: { _forza_duplicato?: boolean; _lead_id: string }
@@ -4751,6 +4750,7 @@ export type Database = {
           nome: string
         }[]
       }
+      has_lead_module_access: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
