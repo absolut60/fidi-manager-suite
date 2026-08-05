@@ -605,7 +605,21 @@ const CONFIG_FIELDS: { chiave: string; label: string; suffix?: string; hint?: st
     hint: "Importo unitario addebitato a ogni scadenza con codice pagamento RB* nei solleciti (default 3,00 €).",
     type: "decimal",
   },
+  {
+    chiave: "fido_teorico_mesi_rolling",
+    label: "Finestra fido teorico",
+    suffix: "mesi",
+    hint: "Mesi di fatturato usati per il calcolo del fido teorico",
+    type: "mesi",
+  },
+  {
+    chiave: "fido_teorico_piva_escluse",
+    label: "P.IVA escluse dal fido teorico",
+    hint: "Partite IVA escluse dal calcolo del fido teorico (società del gruppo). Separale con una virgola.",
+    type: "text",
+  },
 ];
+
 
 function ConfigurazioniCard() {
   const qc = useQueryClient();
@@ -643,9 +657,14 @@ function ConfigurazioniCard() {
       if (!isFinite(spese) || spese < 0 || spese > 1000) {
         throw new Error("Spese di insoluto RiBa non valide (0–1000 €)");
       }
+      const mesi = Number(values.fido_teorico_mesi_rolling);
+      if (!isFinite(mesi) || !Number.isInteger(mesi) || mesi < 1 || mesi > 36) {
+        throw new Error("Finestra fido teorico non valida (1–36 mesi)");
+      }
       const updates = CONFIG_FIELDS.map((f) =>
         supabase.from("configurazioni").update({ valore: values[f.chiave] ?? "" }).eq("chiave", f.chiave)
       );
+
       const results = await Promise.all(updates);
       const err = results.find((r) => r.error)?.error;
       if (err) throw err;
@@ -678,10 +697,14 @@ function ConfigurazioniCard() {
                 <div className="relative">
                   <Input
                     id={f.chiave}
-                    type="number"
-                    inputMode={f.type === "decimal" ? "decimal" : "numeric"}
+                    type={f.type === "text" ? "text" : "number"}
+                    inputMode={f.type === "text" ? "text" : f.type === "decimal" ? "decimal" : "numeric"}
                     step={f.type === "decimal" ? "0.01" : undefined}
-                    placeholder={f.type === "year" ? "es. 2025" : undefined}
+                    min={f.type === "mesi" ? 1 : undefined}
+                    max={f.type === "mesi" ? 36 : undefined}
+                    placeholder={
+                      f.type === "year" ? "es. 2025" : f.type === "text" ? "es. 10126430965, 07793980967" : undefined
+                    }
                     value={values[f.chiave] ?? ""}
                     onChange={(e) => setValues((v) => ({ ...v, [f.chiave]: e.target.value }))}
                     className={f.suffix ? "pr-14" : ""}
@@ -690,6 +713,7 @@ function ConfigurazioniCard() {
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{f.suffix}</span>
                   )}
                 </div>
+
                 {f.hint && <p className="text-xs text-muted-foreground">{f.hint}</p>}
               </div>
             ))}
