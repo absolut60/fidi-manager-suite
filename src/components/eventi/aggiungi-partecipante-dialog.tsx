@@ -159,9 +159,22 @@ export function AggiungiPartecipanteDialog({
     setModo("collega");
   };
 
+  // Contatto-persona su cui raccogliere la privacy (ramo "collega esistente").
+  const caricaContattoSoggetto = async (s: SoggettoSelezionato) => {
+    const q = supabase
+      .from("contatti")
+      .select("id, nome, cognome, email, cellulare, luogo_nascita, data_nascita, codice_fiscale, residenza, privacy_firmata, principale")
+      .order("principale", { ascending: false })
+      .limit(1);
+    const { data } = s.tipo === "cliente"
+      ? await q.eq("cliente_id", s.id)
+      : await q.eq("lead_id", s.id);
+    return data?.[0] ?? null;
+  };
+
   // ——— salvataggio ———
   const salva = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (): Promise<EsitoSalvataggio> => {
       if (modo === "collega") {
         if (!soggetto) throw new Error("Seleziona un soggetto");
         const { error } = await supabase.from("eventi_partecipanti").insert({
@@ -171,7 +184,20 @@ export function AggiungiPartecipanteDialog({
           lead_id: soggetto.tipo === "lead" ? soggetto.id : null,
         });
         if (error) throw error;
-        return { contattoId: null as string | null };
+        const c = await caricaContattoSoggetto(soggetto);
+        return {
+          contattoId: c?.id ?? null,
+          giaFirmata: !!c?.privacy_firmata,
+          nome: c?.nome ?? "",
+          cognome: c?.cognome ?? "",
+          societa: soggetto.etichetta,
+          email: c?.email ?? "",
+          cellulare: c?.cellulare ?? "",
+          luogo_nascita: c?.luogo_nascita ?? "",
+          data_nascita: c?.data_nascita ?? "",
+          codice_fiscale: c?.codice_fiscale ?? "",
+          residenza: c?.residenza ?? "",
+        };
       }
 
       // Creazione atomica lato DB: lead + storico + contatto + partecipante
@@ -199,42 +225,64 @@ export function AggiungiPartecipanteDialog({
       if (error) throw error;
 
       const riga = Array.isArray(data) ? data[0] : data;
-      return { contattoId: (riga?.contatto_id as string | null) ?? null };
+      return {
+        contattoId: (riga?.contatto_id as string | null) ?? null,
+        giaFirmata: false,
+        nome: campi.nome,
+        cognome: campi.cognome,
+        societa: campi.ragione_sociale,
+        email: campi.email,
+        cellulare: campi.cellulare,
+        luogo_nascita: "",
+        data_nascita: "",
+        codice_fiscale: campi.codice_fiscale,
+        residenza: [campi.indirizzo, campi.cap, campi.citta, campi.provincia].filter(Boolean).join(" "),
+      };
     },
-    onSuccess: ({ contattoId }) => {
+    onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ["evento-partecipanti", eventoId] });
       queryClient.invalidateQueries({ queryKey: ["eventi-lista"] });
       toast.success("Partecipante aggiunto");
-      if (contattoId) {
-        setContattoCreatoId(contattoId);
-      } else {
-        setOpen(false);
-        reset();
-      }
+      // Chi ha già firmato non si rifà firmare: nessuna proposta di raccolta.
+      if (res.contattoId && res.giaFirmata) { chiudi(); return; }
+      setEsito(res);
     },
     onError: (e: Error) => toast.error("Errore nell'inserimento", { description: e.message }),
   });
 
-  const generaLink = useMutation({
-    mutationFn: async () => {
-      if (!contattoCreatoId) throw new Error("Nessun contatto");
-      const { generaTokenFirmaPrivacy } = await import("@/lib/firma-privacy.functions");
-      const res = await generaTokenFirmaPrivacy({
-        data: { contattoId: contattoCreatoId, giorniValidita: 30 },
-      });
-      return `${window.location.origin}/firma-privacy/${res.token}`;
-    },
-    onSuccess: async (url) => {
-      setLinkFirma(url);
-      try {
-        await navigator.clipboard.writeText(url);
-        toast.success("Link firma copiato negli appunti");
-      } catch {
-        toast.success("Link firma generato");
-      }
-    },
-    onError: (e: Error) => toast.error("Errore nella generazione del link", { description: e.message }),
-  });
+  // ——— canale privacy scelto dopo il salvataggio ———
+  const scegliCanale = async (c: CanalePrivacy) => {
+    if (!esito?.contattoId) return;
+    if (c === "di_persona") { setCanale(c); return; }
+    if (c === "a_distanza") {
+      setSavingPrivacy(true);
+      await inviaRichiestaDopoCreazione(inviaFn, esito.contattoId, !!esito.email.trim());
+      setSavingPrivacy(false);
+    } else {
+      toast.success("Partecipante salvato — la privacy si raccoglie dopo dalla riga del contatto");
+    }
+    chiudi();
+  };
+
+  const salvaDiPersona = async (p: ModuloConsensoPayload) => {
+    if (!esito?.contattoId) return;
+    setSavingPrivacy(true);
+    try {
+      const res = await diPersonaFn({ data: { contattoId: esito.contattoId, ...p } });
+      toast.success(
+        res.emailInviata
+          ? "Consenso registrato — copia PDF inviata via email"
+          : "Consenso registrato — invio email non riuscito, il PDF è archiviato",
+      );
+      queryClient.invalidateQueries({ queryKey: ["evento-partecipanti", eventoId] });
+      chiudi();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Errore");
+    } finally {
+      setSavingPrivacy(false);
+    }
+  };
+
 
   const nuovoValido =
     campi.tipo_soggetto === "persona_fisica"
