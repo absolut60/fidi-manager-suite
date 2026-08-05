@@ -48,9 +48,12 @@ function FirmaPrivacyPage() {
     <div className="min-h-screen bg-muted/30 py-8 px-4">
       <div className="max-w-2xl mx-auto space-y-6">
         <div className="text-center">
-          <div className="size-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
-            <ShieldCheck className="size-6 text-primary" />
-          </div>
+          <img
+            src={`data:image/png;base64,${LOGO_MADE_BASE64}`}
+            alt="MADE"
+            className="h-12 w-auto mx-auto mb-4"
+            style={{ aspectRatio: "490 / 69" }}
+          />
           <h1 className="text-2xl font-bold tracking-tight">Consenso privacy</h1>
           <p className="text-sm text-muted-foreground mt-1">Reg. UE 2016/679 (GDPR) - Art. 13</p>
         </div>
