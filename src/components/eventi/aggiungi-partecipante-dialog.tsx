@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Copy, Link2, Plus, X } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { AlertTriangle, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -16,12 +17,18 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { SoggettoCombobox, type SoggettoSelezionato } from "@/components/soggetto-combobox";
+import {
+  SceltaCanalePrivacy, inviaRichiestaDopoCreazione, ModuloConsensoPrivacy,
+  inviaRichiestaFirmaPrivacy, registraConsensoDiPersona,
+  type CanalePrivacy, type ModuloConsensoPayload,
+} from "@/components/privacy-post-creazione";
 import { cercaDuplicati, type DedupMatch } from "@/lib/lead-dedup";
 import { formattaNomeProprio, formattaRagioneSociale } from "@/lib/formato-nomi";
 import {
   EVENTI_PARTECIPANTE_STATI, EVENTI_PARTECIPANTE_STATO_LABEL,
   type EventiPartecipanteStato,
 } from "@/lib/eventi-costanti";
+
 
 type Campi = {
   tipo_soggetto: "azienda" | "persona_fisica";
@@ -62,8 +69,30 @@ export function AggiungiPartecipanteDialog({
   const [stato, setStato] = useState<EventiPartecipanteStato>("atteso");
   const [campi, setCampi] = useState<Campi>({ ...CAMPI_VUOTI });
   const [ignoraDuplicati, setIgnoraDuplicati] = useState(false);
-  const [contattoCreatoId, setContattoCreatoId] = useState<string | null>(null);
-  const [linkFirma, setLinkFirma] = useState<string | null>(null);
+
+  /**
+   * Esito del salvataggio: guida la fase privacy post-creazione.
+   * - contattoId nullo → nessun contatto-persona su cui raccogliere la privacy
+   */
+  type EsitoSalvataggio = {
+    contattoId: string | null;
+    giaFirmata: boolean;
+    nome: string;
+    cognome: string;
+    societa: string;
+    email: string;
+    cellulare: string;
+    luogo_nascita: string;
+    data_nascita: string;
+    codice_fiscale: string;
+    residenza: string;
+  };
+  const [esito, setEsito] = useState<EsitoSalvataggio | null>(null);
+  const [canale, setCanale] = useState<CanalePrivacy | null>(null);
+  const [savingPrivacy, setSavingPrivacy] = useState(false);
+
+  const inviaFn = useServerFn(inviaRichiestaFirmaPrivacy);
+  const diPersonaFn = useServerFn(registraConsensoDiPersona);
 
   const reset = () => {
     setModo("collega");
@@ -71,9 +100,13 @@ export function AggiungiPartecipanteDialog({
     setStato("atteso");
     setCampi({ ...CAMPI_VUOTI });
     setIgnoraDuplicati(false);
-    setContattoCreatoId(null);
-    setLinkFirma(null);
+    setEsito(null);
+    setCanale(null);
+    setSavingPrivacy(false);
   };
+
+  const chiudi = () => { setOpen(false); reset(); };
+
 
   // ——— dedup live (debounce) ———
   const chiaveDedup = useMemo(
@@ -94,7 +127,7 @@ export function AggiungiPartecipanteDialog({
   const parsed = JSON.parse(chiaveDeb) as { p: string; c: string; e: string; n: string };
   const dedupAttivo =
     modo === "nuovo" &&
-    !contattoCreatoId &&
+    !esito &&
     (parsed.p.length >= 5 || parsed.c.length >= 5 || parsed.e.length >= 5 || parsed.n.length >= 3);
 
   const { data: duplicati } = useQuery({
@@ -126,9 +159,22 @@ export function AggiungiPartecipanteDialog({
     setModo("collega");
   };
 
+  // Contatto-persona su cui raccogliere la privacy (ramo "collega esistente").
+  const caricaContattoSoggetto = async (s: SoggettoSelezionato) => {
+    const q = supabase
+      .from("contatti")
+      .select("id, nome, cognome, email, cellulare, luogo_nascita, data_nascita, codice_fiscale, residenza, privacy_firmata, principale")
+      .order("principale", { ascending: false })
+      .limit(1);
+    const { data } = s.tipo === "cliente"
+      ? await q.eq("cliente_id", s.id)
+      : await q.eq("lead_id", s.id);
+    return data?.[0] ?? null;
+  };
+
   // ——— salvataggio ———
   const salva = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (): Promise<EsitoSalvataggio> => {
       if (modo === "collega") {
         if (!soggetto) throw new Error("Seleziona un soggetto");
         const { error } = await supabase.from("eventi_partecipanti").insert({
@@ -138,7 +184,20 @@ export function AggiungiPartecipanteDialog({
           lead_id: soggetto.tipo === "lead" ? soggetto.id : null,
         });
         if (error) throw error;
-        return { contattoId: null as string | null };
+        const c = await caricaContattoSoggetto(soggetto);
+        return {
+          contattoId: c?.id ?? null,
+          giaFirmata: !!c?.privacy_firmata,
+          nome: c?.nome ?? "",
+          cognome: c?.cognome ?? "",
+          societa: soggetto.etichetta,
+          email: c?.email ?? "",
+          cellulare: c?.cellulare ?? "",
+          luogo_nascita: c?.luogo_nascita ?? "",
+          data_nascita: c?.data_nascita ?? "",
+          codice_fiscale: c?.codice_fiscale ?? "",
+          residenza: c?.residenza ?? "",
+        };
       }
 
       // Creazione atomica lato DB: lead + storico + contatto + partecipante
@@ -166,42 +225,64 @@ export function AggiungiPartecipanteDialog({
       if (error) throw error;
 
       const riga = Array.isArray(data) ? data[0] : data;
-      return { contattoId: (riga?.contatto_id as string | null) ?? null };
+      return {
+        contattoId: (riga?.contatto_id as string | null) ?? null,
+        giaFirmata: false,
+        nome: campi.nome,
+        cognome: campi.cognome,
+        societa: campi.ragione_sociale,
+        email: campi.email,
+        cellulare: campi.cellulare,
+        luogo_nascita: "",
+        data_nascita: "",
+        codice_fiscale: campi.codice_fiscale,
+        residenza: [campi.indirizzo, campi.cap, campi.citta, campi.provincia].filter(Boolean).join(" "),
+      };
     },
-    onSuccess: ({ contattoId }) => {
+    onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ["evento-partecipanti", eventoId] });
       queryClient.invalidateQueries({ queryKey: ["eventi-lista"] });
       toast.success("Partecipante aggiunto");
-      if (contattoId) {
-        setContattoCreatoId(contattoId);
-      } else {
-        setOpen(false);
-        reset();
-      }
+      // Chi ha già firmato non si rifà firmare: nessuna proposta di raccolta.
+      if (res.contattoId && res.giaFirmata) { chiudi(); return; }
+      setEsito(res);
     },
     onError: (e: Error) => toast.error("Errore nell'inserimento", { description: e.message }),
   });
 
-  const generaLink = useMutation({
-    mutationFn: async () => {
-      if (!contattoCreatoId) throw new Error("Nessun contatto");
-      const { generaTokenFirmaPrivacy } = await import("@/lib/firma-privacy.functions");
-      const res = await generaTokenFirmaPrivacy({
-        data: { contattoId: contattoCreatoId, giorniValidita: 30 },
-      });
-      return `${window.location.origin}/firma-privacy/${res.token}`;
-    },
-    onSuccess: async (url) => {
-      setLinkFirma(url);
-      try {
-        await navigator.clipboard.writeText(url);
-        toast.success("Link firma copiato negli appunti");
-      } catch {
-        toast.success("Link firma generato");
-      }
-    },
-    onError: (e: Error) => toast.error("Errore nella generazione del link", { description: e.message }),
-  });
+  // ——— canale privacy scelto dopo il salvataggio ———
+  const scegliCanale = async (c: CanalePrivacy) => {
+    if (!esito?.contattoId) return;
+    if (c === "di_persona") { setCanale(c); return; }
+    if (c === "a_distanza") {
+      setSavingPrivacy(true);
+      await inviaRichiestaDopoCreazione(inviaFn, esito.contattoId, !!esito.email.trim());
+      setSavingPrivacy(false);
+    } else {
+      toast.success("Partecipante salvato — la privacy si raccoglie dopo dalla riga del contatto");
+    }
+    chiudi();
+  };
+
+  const salvaDiPersona = async (p: ModuloConsensoPayload) => {
+    if (!esito?.contattoId) return;
+    setSavingPrivacy(true);
+    try {
+      const res = await diPersonaFn({ data: { contattoId: esito.contattoId, ...p } });
+      toast.success(
+        res.emailInviata
+          ? "Consenso registrato — copia PDF inviata via email"
+          : "Consenso registrato — invio email non riuscito, il PDF è archiviato",
+      );
+      queryClient.invalidateQueries({ queryKey: ["evento-partecipanti", eventoId] });
+      chiudi();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Errore");
+    } finally {
+      setSavingPrivacy(false);
+    }
+  };
+
 
   const nuovoValido =
     campi.tipo_soggetto === "persona_fisica"
@@ -221,47 +302,55 @@ export function AggiungiPartecipanteDialog({
       <DialogTrigger asChild>
         <Button className="gap-1.5"><Plus className="size-4" /> Aggiungi partecipante</Button>
       </DialogTrigger>
-      <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className={`${esito && canale === "di_persona" ? "max-w-3xl" : "max-w-xl"} max-h-[85vh] overflow-y-auto`}>
         <DialogHeader>
           <DialogTitle>
-            {contattoCreatoId ? "Privacy del nuovo contatto" : "Aggiungi partecipante"}
+            {esito ? "Privacy del partecipante" : "Aggiungi partecipante"}
           </DialogTitle>
         </DialogHeader>
 
-        {contattoCreatoId ? (
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Il partecipante è stato salvato. Puoi raccogliere il consenso privacy adesso
-              generando un link da inviare, oppure più tardi dalla scheda lead (tab Contatti).
-            </p>
-            <Button
-              variant="outline"
-              className="gap-1.5"
-              disabled={generaLink.isPending}
-              onClick={() => generaLink.mutate()}
-            >
-              <Link2 className="size-4" /> Genera link firma privacy
-            </Button>
-            {linkFirma && (
-              <div className="flex items-center gap-2">
-                <Input readOnly value={linkFirma} className="text-xs" />
-                <Button
-                  size="icon"
-                  variant="outline"
-                  onClick={() => {
-                    void navigator.clipboard.writeText(linkFirma);
-                    toast.success("Link copiato");
-                  }}
-                >
-                  <Copy className="size-4" />
-                </Button>
-              </div>
-            )}
-            <DialogFooter>
-              <Button onClick={() => { setOpen(false); reset(); }}>Chiudi</Button>
-            </DialogFooter>
-          </div>
+        {esito ? (
+          !esito.contattoId ? (
+            // Nessun contatto-persona (es. azienda senza referente): niente canale privacy.
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Nessun contatto-persona: la privacy si raccoglie dopo, aggiungendo un referente.
+              </p>
+              <DialogFooter>
+                <Button onClick={chiudi}>Chiudi</Button>
+              </DialogFooter>
+            </div>
+          ) : canale === "di_persona" ? (
+            <ModuloConsensoPrivacy
+              valoriIniziali={{
+                nome: esito.nome,
+                cognome: esito.cognome,
+                societa: esito.societa,
+                luogo_nascita: esito.luogo_nascita,
+                data_nascita: esito.data_nascita,
+                codice_fiscale: esito.codice_fiscale,
+                residenza: esito.residenza,
+                email: esito.email,
+                cellulare: esito.cellulare,
+              }}
+              placeholderSocieta={esito.societa}
+              onSubmit={salvaDiPersona}
+              isPending={savingPrivacy}
+              inviaLabel="Conferma e firma"
+            />
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Il partecipante è stato salvato. Scegli come raccogliere il consenso privacy.
+              </p>
+              <SceltaCanalePrivacy onScegli={(c) => { void scegliCanale(c); }} />
+              <DialogFooter>
+                <Button variant="outline" onClick={chiudi} disabled={savingPrivacy}>Chiudi</Button>
+              </DialogFooter>
+            </div>
+          )
         ) : (
+
           <div className="space-y-4">
             <div className="flex gap-2">
               <Button
