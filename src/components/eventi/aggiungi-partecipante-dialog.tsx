@@ -69,8 +69,30 @@ export function AggiungiPartecipanteDialog({
   const [stato, setStato] = useState<EventiPartecipanteStato>("atteso");
   const [campi, setCampi] = useState<Campi>({ ...CAMPI_VUOTI });
   const [ignoraDuplicati, setIgnoraDuplicati] = useState(false);
-  const [contattoCreatoId, setContattoCreatoId] = useState<string | null>(null);
-  const [linkFirma, setLinkFirma] = useState<string | null>(null);
+
+  /**
+   * Esito del salvataggio: guida la fase privacy post-creazione.
+   * - contattoId nullo → nessun contatto-persona su cui raccogliere la privacy
+   */
+  type EsitoSalvataggio = {
+    contattoId: string | null;
+    giaFirmata: boolean;
+    nome: string;
+    cognome: string;
+    societa: string;
+    email: string;
+    cellulare: string;
+    luogo_nascita: string;
+    data_nascita: string;
+    codice_fiscale: string;
+    residenza: string;
+  };
+  const [esito, setEsito] = useState<EsitoSalvataggio | null>(null);
+  const [canale, setCanale] = useState<CanalePrivacy | null>(null);
+  const [savingPrivacy, setSavingPrivacy] = useState(false);
+
+  const inviaFn = useServerFn(inviaRichiestaFirmaPrivacy);
+  const diPersonaFn = useServerFn(registraConsensoDiPersona);
 
   const reset = () => {
     setModo("collega");
@@ -78,9 +100,13 @@ export function AggiungiPartecipanteDialog({
     setStato("atteso");
     setCampi({ ...CAMPI_VUOTI });
     setIgnoraDuplicati(false);
-    setContattoCreatoId(null);
-    setLinkFirma(null);
+    setEsito(null);
+    setCanale(null);
+    setSavingPrivacy(false);
   };
+
+  const chiudi = () => { setOpen(false); reset(); };
+
 
   // ——— dedup live (debounce) ———
   const chiaveDedup = useMemo(
