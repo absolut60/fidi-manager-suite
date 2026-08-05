@@ -57,7 +57,7 @@ export function SchedaLista({
       )}
 
       {footer && <div className="mt-2 flex flex-wrap items-center gap-1.5">{footer}</div>}
-    </button>
+    </Comp>
   );
 }
 
