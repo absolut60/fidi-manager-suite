@@ -1621,6 +1621,93 @@ export type Database = {
         }
         Relationships: []
       }
+      eventi_import_righe: {
+        Row: {
+          cellulare: string | null
+          codice_fiscale: string | null
+          cognome: string | null
+          created_at: string
+          email: string | null
+          evento_id: string
+          id: string
+          importazione_id: string
+          match_alternative: Json | null
+          match_contatto_id: string | null
+          match_criterio: string | null
+          match_id: string | null
+          match_privacy_firmata: boolean | null
+          match_tipo: string | null
+          nome: string | null
+          note: string | null
+          partita_iva: string | null
+          ragione_sociale: string | null
+          riga_numero: number | null
+          stato: string
+          telefono: string | null
+        }
+        Insert: {
+          cellulare?: string | null
+          codice_fiscale?: string | null
+          cognome?: string | null
+          created_at?: string
+          email?: string | null
+          evento_id: string
+          id?: string
+          importazione_id: string
+          match_alternative?: Json | null
+          match_contatto_id?: string | null
+          match_criterio?: string | null
+          match_id?: string | null
+          match_privacy_firmata?: boolean | null
+          match_tipo?: string | null
+          nome?: string | null
+          note?: string | null
+          partita_iva?: string | null
+          ragione_sociale?: string | null
+          riga_numero?: number | null
+          stato?: string
+          telefono?: string | null
+        }
+        Update: {
+          cellulare?: string | null
+          codice_fiscale?: string | null
+          cognome?: string | null
+          created_at?: string
+          email?: string | null
+          evento_id?: string
+          id?: string
+          importazione_id?: string
+          match_alternative?: Json | null
+          match_contatto_id?: string | null
+          match_criterio?: string | null
+          match_id?: string | null
+          match_privacy_firmata?: boolean | null
+          match_tipo?: string | null
+          nome?: string | null
+          note?: string | null
+          partita_iva?: string | null
+          ragione_sociale?: string | null
+          riga_numero?: number | null
+          stato?: string
+          telefono?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "eventi_import_righe_evento_id_fkey"
+            columns: ["evento_id"]
+            isOneToOne: false
+            referencedRelation: "eventi"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "eventi_import_righe_importazione_id_fkey"
+            columns: ["importazione_id"]
+            isOneToOne: false
+            referencedRelation: "importazioni"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       eventi_partecipanti: {
         Row: {
           cliente_id: string | null
@@ -1748,6 +1835,7 @@ export type Database = {
           created_at: string
           dimensione_bytes: number | null
           eseguita_da: string | null
+          evento_id: string | null
           file_path: string | null
           fonte: string | null
           id: string
@@ -1770,6 +1858,7 @@ export type Database = {
           created_at?: string
           dimensione_bytes?: number | null
           eseguita_da?: string | null
+          evento_id?: string | null
           file_path?: string | null
           fonte?: string | null
           id?: string
@@ -1792,6 +1881,7 @@ export type Database = {
           created_at?: string
           dimensione_bytes?: number | null
           eseguita_da?: string | null
+          evento_id?: string | null
           file_path?: string | null
           fonte?: string | null
           id?: string
@@ -1806,7 +1896,15 @@ export type Database = {
           righe_totali?: number | null
           stato?: Database["public"]["Enums"]["stato_importazione"]
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "importazioni_evento_id_fkey"
+            columns: ["evento_id"]
+            isOneToOne: false
+            referencedRelation: "eventi"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       lead: {
         Row: {
@@ -4893,6 +4991,25 @@ export type Database = {
       }
       storage_path_cliente_id: { Args: { _name: string }; Returns: string }
       store_id_effettivo: { Args: { _store_id: string }; Returns: string }
+      trova_corrispondenze_soggetto: {
+        Args: {
+          _codice_fiscale?: string
+          _cognome?: string
+          _email?: string
+          _nome?: string
+          _partita_iva?: string
+          _ragione_sociale?: string
+        }
+        Returns: {
+          contatto_id: string
+          criterio: string
+          etichetta: string
+          id: string
+          priorita: number
+          privacy_firmata: boolean
+          tipo: string
+        }[]
+      }
       user_can_access_cliente: {
         Args: { _cliente_id: string }
         Returns: boolean
