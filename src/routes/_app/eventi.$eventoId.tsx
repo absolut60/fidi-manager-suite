@@ -24,6 +24,10 @@ import {
 } from "@/components/ui/table";
 import { AggiungiPartecipanteDialog } from "@/components/eventi/aggiungi-partecipante-dialog";
 import { puoAccedereLead } from "@/lib/lead-costanti";
+import { useServerFn } from "@tanstack/react-start";
+import { inviaRichiestaFirmaPrivacy } from "@/lib/firma-privacy.functions";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Search, X } from "lucide-react";
 
 import {
   EVENTI_PARTECIPANTE_STATO_CLASS,
@@ -94,6 +98,7 @@ function EventoDettaglioPage() {
   const [dataEvento, setDataEvento] = useState("");
   const [luogo, setLuogo] = useState("");
   const [note, setNote] = useState("");
+  const inviaFn = useServerFn(inviaRichiestaFirmaPrivacy);
 
   // ricerca lato client sulla lista partecipanti (debounce 200ms)
   const [ricerca, setRicerca] = useState("");
