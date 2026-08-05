@@ -21,6 +21,7 @@ import { inviaEmailRichiesta } from "@/lib/inngest/richieste-email.server";
 import { invioCampagnaMarketing } from "@/lib/inngest/campagna-marketing.server";
 import { emailHealthCheck } from "@/lib/inngest/email-health.server";
 import { processEventiPartecipantiImport } from "@/lib/inngest/eventi-import.server";
+import { refreshFatturatoMensileCron } from "@/lib/inngest/fatturato-mensile.server";
 
 
 
@@ -46,6 +47,7 @@ const handler = serve({
     invioCampagnaMarketing,
     emailHealthCheck,
     processEventiPartecipantiImport,
+    refreshFatturatoMensileCron,
 
 
 
