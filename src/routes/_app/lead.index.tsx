@@ -256,35 +256,16 @@ function LeadListaPage() {
       </Tabs>
 
       <Card className="p-4 sm:p-5">
-        <div className="flex items-center justify-between gap-2 mb-3">
-          <button
-            type="button"
-            onClick={() => setFiltriApertiMobile((v) => !v)}
-            className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground md:pointer-events-none"
-          >
-            <SlidersHorizontal className="size-4 md:hidden" />
-            Filtri
-            <ChevronDown
-              className={`size-4 md:hidden transition-transform ${filtriApertiMobile ? "rotate-180" : ""}`}
-            />
-          </button>
-          <div className="flex items-center gap-2">
-            {attiviCount > 0 && (
-              <>
-                <Badge variant="secondary" className="h-6">
-                  {attiviCount} {attiviCount === 1 ? "filtro attivo" : "filtri attivi"}
-                </Badge>
-                <Button variant="ghost" size="sm" onClick={resetFiltri} className="gap-1 h-7">
-                  <X className="size-3.5" /> Azzera tutti
-                </Button>
-              </>
-            )}
-          </div>
-        </div>
-
-        <div
-          className={`${filtriApertiMobile ? "grid" : "hidden"} md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4`}
+        <FiltriCollassabili
+          attivi={attiviCount}
+          azioni={
+            <Button variant="ghost" size="sm" onClick={resetFiltri} className="gap-1 h-7">
+              <X className="size-3.5" /> Azzera tutti
+            </Button>
+          }
         >
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+
           <div className="lg:col-span-2">
             <Label className="text-xs">Ricerca</Label>
             <div className="relative">
