@@ -154,7 +154,7 @@ export const firmaPrivacyConToken = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
     z.object({
       token: z.string().uuid(),
-      firmaDataUrl: z.string().startsWith("data:image/png;base64,").max(2_000_000),
+      firmaDataUrl: z.string().startsWith("data:image/png;base64,").max(2_000_000).optional(),
       dichiarante: z.object({
         nome: z.string().trim().min(1, "Nome obbligatorio").max(100),
         cognome: z.string().trim().min(1, "Cognome obbligatorio").max(100),
@@ -206,8 +206,10 @@ export const firmaPrivacyConToken = createServerFn({ method: "POST" })
       firmaDataUrl: data.firmaDataUrl,
       data_firma: data.data_firma,
       secondi_permanenza: data.secondi_permanenza,
-      origine: "firma_grafica",
-      note: "Firma grafica via link privacy",
+      origine: data.firmaDataUrl ? "firma_grafica" : "link_pubblico",
+      note: data.firmaDataUrl
+        ? "Firma grafica via link privacy"
+        : "Conferma telematica (flag) via link privacy",
       invalidaToken: true,
     });
   });
@@ -276,3 +278,24 @@ export const registraConsensoDiPersona = createServerFn({ method: "POST" })
   });
 
 
+
+/**
+ * Dettagli di prova della raccolta consenso (riga più recente di consensi_log).
+ * Usa il client dell'utente: le RLS applicano il controllo di accesso.
+ */
+export const getDettagliConsenso = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { contattoId: string }) =>
+    z.object({ contattoId: z.string().uuid() }).parse(d)
+  )
+  .handler(async ({ data, context }) => {
+    const { data: row, error } = await context.supabase
+      .from("consensi_log")
+      .select("created_at, origine, ip_address, user_agent, informativa_versione, informativa_hash, secondi_permanenza")
+      .eq("contatto_id", data.contattoId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return row ?? null;
+  });

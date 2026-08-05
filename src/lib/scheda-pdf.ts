@@ -18,6 +18,8 @@ export interface SchedaPdfInput {
   consensoMarketingDiretto: boolean | string;
   dataFirma: string | Date;
   firmaPngDataUrl?: string;
+  ipRaccolta?: string;
+  dataOraRaccolta?: string;
 }
 
 function toBool(v: unknown): boolean {
@@ -446,23 +448,24 @@ export async function generaSchedaCliente(input: SchedaPdfInput): Promise<Uint8A
   const firmaY = MB + 108;
   page2.drawText(`Li ${fmtFirma(input.dataFirma)} _______________`, { x: ML, y: firmaY, size: 8, font, color: BLACK });
   const firmaX = ML + CW * 0.55;
-  page2.drawLine({
-    start: { x: firmaX, y: firmaY },
-    end: { x: PAGE_W - MR, y: firmaY },
-    thickness: 0.5,
-    color: BLACK,
-  });
-  const firmaLbl = "Firma";
-  const firmaLblW = font.widthOfTextAtSize(firmaLbl, 8);
-  page2.drawText(firmaLbl, {
-    x: firmaX + (PAGE_W - MR - firmaX - firmaLblW) / 2,
-    y: firmaY - 14,
-    size: 8,
-    font,
-    color: BLACK,
-  });
 
   if (input.firmaPngDataUrl) {
+    page2.drawLine({
+      start: { x: firmaX, y: firmaY },
+      end: { x: PAGE_W - MR, y: firmaY },
+      thickness: 0.5,
+      color: BLACK,
+    });
+    const firmaLbl = "Firma";
+    const firmaLblW = font.widthOfTextAtSize(firmaLbl, 8);
+    page2.drawText(firmaLbl, {
+      x: firmaX + (PAGE_W - MR - firmaX - firmaLblW) / 2,
+      y: firmaY - 14,
+      size: 8,
+      font,
+      color: BLACK,
+    });
+
     try {
       const pngBytes = Uint8Array.from(atob(input.firmaPngDataUrl.split(",")[1]), (c) => c.charCodeAt(0));
       const firmaImg = await pdfDoc.embedPng(pngBytes);
@@ -473,7 +476,25 @@ export async function generaSchedaCliente(input: SchedaPdfInput): Promise<Uint8A
     } catch (e) {
       console.warn("Firma PNG non incorporata:", e);
     }
+  } else {
+    // Modalità FLAG: nessuna firma grafica, si stampa la prova telematica
+    page2.drawText("Modalità di raccolta:", { x: firmaX, y: firmaY + 26, size: 8, font: bold, color: BLACK });
+    page2.drawText(
+      "Consenso prestato tramite conferma telematica (flag di",
+      { x: firmaX, y: firmaY + 14, size: 8, font, color: BLACK },
+    );
+    page2.drawText(
+      "accettazione) — nessuna firma grafica apposta.",
+      { x: firmaX, y: firmaY + 4, size: 8, font, color: BLACK },
+    );
+    if (input.ipRaccolta || input.dataOraRaccolta) {
+      const parti: string[] = [];
+      if (input.ipRaccolta) parti.push(`Indirizzo IP: ${input.ipRaccolta}`);
+      if (input.dataOraRaccolta) parti.push(`Data e ora: ${input.dataOraRaccolta}`);
+      page2.drawText(parti.join(" — "), { x: firmaX, y: firmaY - 8, size: 7, font, color: BLACK });
+    }
   }
+
 
   return pdfDoc.save();
 }

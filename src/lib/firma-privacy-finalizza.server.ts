@@ -37,10 +37,10 @@ export async function finalizzaRaccoltaPrivacy(opts: {
   soggetto: SoggettoIntestazione;
   dichiarante: DichiaranteInput;
   consensi: { profilazione: boolean; marketing_media: boolean; marketing_diretto: boolean };
-  firmaDataUrl: string;
+  firmaDataUrl?: string | undefined;
   data_firma?: string | undefined;
   secondi_permanenza?: number | null | undefined;
-  origine: "firma_grafica" | "di_persona";
+  origine: "firma_grafica" | "di_persona" | "link_pubblico";
   note: string;
   operatoreId?: string | undefined;
   invalidaToken: boolean;
@@ -57,20 +57,31 @@ export async function finalizzaRaccoltaPrivacy(opts: {
     [opts.contattoNome, opts.contattoCognome].filter(Boolean).join(" ").trim() ||
     "Contatto";
 
-  // 1) Upload PNG firma
-  const base64 = firmaDataUrl.split(",")[1];
-  const pngBytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-  const firmaPath = `contatti/${contattoId}/firma-${now.getTime()}.png`;
-  const { error: eFirma } = await supabaseAdmin.storage.from("firme")
-    .upload(firmaPath, pngBytes, { upsert: true, contentType: "image/png" });
-  if (eFirma) throw new Error(eFirma.message);
-  const { data: firmaSigned, error: eSigned } = await supabaseAdmin.storage
-    .from("firme")
-    .createSignedUrl(firmaPath, 60 * 60 * 24 * 365 * 10);
-  if (eSigned) {
-    await supabaseAdmin.storage.from("firme").remove([firmaPath]);
-    throw new Error(eSigned.message);
+  const ipRaccolta = estraiIp();
+
+  // 1) Upload PNG firma (solo in modalità firma grafica)
+  let firmaPath: string | null = null;
+  let firmaUrl: string | null = null;
+  if (firmaDataUrl) {
+    const base64 = firmaDataUrl.split(",")[1];
+    const pngBytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+    firmaPath = `contatti/${contattoId}/firma-${now.getTime()}.png`;
+    const { error: eFirma } = await supabaseAdmin.storage.from("firme")
+      .upload(firmaPath, pngBytes, { upsert: true, contentType: "image/png" });
+    if (eFirma) throw new Error(eFirma.message);
+    const { data: firmaSigned, error: eSigned } = await supabaseAdmin.storage
+      .from("firme")
+      .createSignedUrl(firmaPath, 60 * 60 * 24 * 365 * 10);
+    if (eSigned) {
+      await supabaseAdmin.storage.from("firme").remove([firmaPath]);
+      throw new Error(eSigned.message);
+    }
+    firmaUrl = firmaSigned.signedUrl;
   }
+
+  const rimuoviFirma = async () => {
+    if (firmaPath) await supabaseAdmin.storage.from("firme").remove([firmaPath]);
+  };
 
   // 2) PDF ricco — stesso generatore del wizard cliente
   const ragioneSociale = dichiarante.societa?.trim() || soggetto.ragione_sociale;
@@ -90,20 +101,25 @@ export async function finalizzaRaccoltaPrivacy(opts: {
     consensoMarketingMedia: consensi.marketing_media ? "si" : "no",
     consensoMarketingDiretto: consensi.marketing_diretto ? "si" : "no",
     dataFirma: opts.data_firma || now,
-    firmaPngDataUrl: firmaDataUrl,
+    ...(firmaDataUrl
+      ? { firmaPngDataUrl: firmaDataUrl }
+      : {
+          ...(ipRaccolta ? { ipRaccolta } : {}),
+          dataOraRaccolta: now.toLocaleString("it-IT", { timeZone: "Europe/Rome" }),
+        }),
   });
   const pdfPath = `contatti/${contattoId}/privacy-${now.getTime()}.pdf`;
   const { error: ePdf } = await supabaseAdmin.storage.from("documenti-privacy")
     .upload(pdfPath, pdfBytes, { upsert: true, contentType: "application/pdf" });
   if (ePdf) {
-    await supabaseAdmin.storage.from("firme").remove([firmaPath]);
+    await rimuoviFirma();
     throw new Error(ePdf.message);
   }
   const { data: pdfSigned, error: ePdfSigned } = await supabaseAdmin.storage
     .from("documenti-privacy")
     .createSignedUrl(pdfPath, 60 * 60 * 24 * 365 * 10);
   if (ePdfSigned) {
-    await supabaseAdmin.storage.from("firme").remove([firmaPath]);
+    await rimuoviFirma();
     await supabaseAdmin.storage.from("documenti-privacy").remove([pdfPath]);
     throw new Error(ePdfSigned.message);
   }
@@ -112,7 +128,7 @@ export async function finalizzaRaccoltaPrivacy(opts: {
   const { error: eUpd } = await supabaseAdmin.from("contatti").update({
     privacy_firmata: true,
     data_firma: now.toISOString(),
-    firma_url: firmaSigned.signedUrl,
+    ...(firmaUrl ? { firma_url: firmaUrl } : {}),
     pdf_privacy_url: pdfSigned.signedUrl,
     pdf_privacy_path: pdfPath,
     luogo_nascita: dichiarante.luogo_nascita || null,
@@ -127,14 +143,14 @@ export async function finalizzaRaccoltaPrivacy(opts: {
     ...(invalidaToken ? { privacy_token: null, privacy_token_expires_at: null } : {}),
   }).eq("id", contattoId);
   if (eUpd) {
-    await supabaseAdmin.storage.from("firme").remove([firmaPath]);
+    await rimuoviFirma();
     await supabaseAdmin.storage.from("documenti-privacy").remove([pdfPath]);
     throw new Error(eUpd.message);
   }
 
   // 3-bis) Registro consensi unificato — non fatale
   try {
-    const ip = estraiIp();
+    const ip = ipRaccolta;
     const ua = estraiUserAgent();
     const hash = await calcolaInformativaHash(INFORMATIVA_FULL);
     const { error: eLog } = await supabaseAdmin.rpc("registra_consensi_batch", {

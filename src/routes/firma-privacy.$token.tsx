@@ -110,9 +110,10 @@ function FirmaPrivacyPage() {
                 cellulare: contatto.cellulare,
               }}
               placeholderSocieta={cliente.ragione_sociale}
+              modalita="flag"
               onSubmit={(p) => submit.mutate(p)}
               isPending={submit.isPending}
-              inviaLabel="Conferma e firma"
+              inviaLabel="Conferma e invia"
             />
           </>
         ) : null}
