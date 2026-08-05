@@ -97,6 +97,9 @@ function determinaTipoRichiesta(
   return "rinnovo";
 }
 
+/** Colonne ordinabili non presenti nella tabella clienti (ordinamento in memoria). */
+const VIRTUAL_SORT_COLS = ["scaduto", "a_scadere", "fido_proposto", "scostamento"];
+
 const FIDO_RANGE_MIN = -100000;
 const FIDO_RANGE_MAX = 500000;
 
@@ -155,6 +158,9 @@ function ClientiPage() {
   const [scadenziarioFiltro, setScadenziarioFiltro] = useState<string>("tutti");
   const [totaleRischioFiltro, setTotaleRischioFiltro] = useState<string>("tutti");
   const [fatturatoFiltro, setFatturatoFiltro] = useState<string>("tutti");
+  // Colonne "Fido proposto"/"Scostamento": opzionali (una sola chiamata alla RPC)
+  const [mostraFidoTeorico, setMostraFidoTeorico] = useState(false);
+  const [scostamentoFiltro, setScostamentoFiltro] = useState<"tutti" | "positivo" | "negativo" | "nullo">("tutti");
   const [aScadereFiltro, setAScadereFiltro] = useState<string>("tutti");
   const [open, setOpen] = useState(false);
   const [page, setPage] = useState(1);
@@ -411,6 +417,29 @@ function ClientiPage() {
     }).map((c) => c.id);
   }, [classifList, advApplied.percConsumato]);
 
+  // Fido teorico per l'intera anagrafica: una sola chiamata alla RPC,
+  // usata sia per le colonne opzionali sia per filtro/ordinamento.
+  const fidoTeoricoAttivo = mostraFidoTeorico || scostamentoFiltro !== "tutti"
+    || sortBy === "fido_proposto" || sortBy === "scostamento";
+  const { data: fidoTeoricoMap } = useQuery({
+    queryKey: ["fido-teorico-tutti"],
+    enabled: isListRoute && fidoTeoricoAttivo,
+    staleTime: 10 * 60_000,
+    queryFn: fetchFidoTeoricoTutti,
+  });
+
+  const scostamentoIds = useMemo<string[] | null>(() => {
+    if (scostamentoFiltro === "tutti" || !fidoTeoricoMap) return null;
+    const ids: string[] = [];
+    for (const [id, r] of fidoTeoricoMap) {
+      const v = r.scostamento;
+      if (scostamentoFiltro === "positivo" && v > 0) ids.push(id);
+      else if (scostamentoFiltro === "negativo" && v < 0) ids.push(id);
+      else if (scostamentoFiltro === "nullo" && v === 0) ids.push(id);
+    }
+    return ids;
+  }, [fidoTeoricoMap, scostamentoFiltro]);
+
   // Intersezione id set "include" (semaforo ∩ stato_fido ∩ scadenziario ∩ a_scadere ∩ perc consumato)
   const includeIdsFilter = useMemo<string[] | null>(() => {
     const sources: string[][] = [];
@@ -420,16 +449,17 @@ function ClientiPage() {
     if (aScadereIds) sources.push(aScadereIds);
     if (fatturatoIds) sources.push(fatturatoIds);
     if (percConsumatoIds) sources.push(percConsumatoIds);
+    if (scostamentoIds) sources.push(scostamentoIds);
     if (sources.length === 0) return null;
     const sets = sources.map((s) => new Set(s));
     return sources[0].filter((id) => sets.every((s) => s.has(id)));
-  }, [semaforoIds, statoFidoIds, scadenziarioIdsFilter, aScadereIds, fatturatoIds, percConsumatoIds]);
+  }, [semaforoIds, statoFidoIds, scadenziarioIdsFilter, aScadereIds, fatturatoIds, percConsumatoIds, scostamentoIds]);
 
 
   // Reset pagina ogni volta che cambia un filtro o l'ordinamento
   useEffect(() => {
     setPage(1);
-  }, [search, statoCliente, statoAttivita, storeFiltro, statoFido, semaforoFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, pageSize, advApplied, sortBy, sortDir]);
+  }, [search, statoCliente, statoAttivita, storeFiltro, statoFido, semaforoFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro]);
 
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -520,7 +550,7 @@ function ClientiPage() {
     // sortBy "scaduto"/"a_scadere" sono colonne virtuali (da scadenziarioMap):
     // non esistono su clienti, quindi qui usiamo un order neutro (ragione_sociale)
     // e l'ordinamento vero viene applicato dopo in memoria sugli id filtrati.
-    const isVirtualOrder = sortBy === "scaduto" || sortBy === "a_scadere";
+    const isVirtualOrder = VIRTUAL_SORT_COLS.includes(sortBy);
     const orderCol = isVirtualOrder ? "ragione_sociale" : sortBy;
     const orderAsc = isVirtualOrder ? true : sortDir === "asc";
     q = q.order(orderCol, { ascending: orderAsc, nullsFirst: false });
@@ -530,12 +560,15 @@ function ClientiPage() {
 
   const classifReady = (semaforoFiltro === "tutti" && statoFido.size === 0) || !!classifList;
   const scadReady = scadenziarioFiltro === "tutti" || !!scadenziarioMap;
-  const isVirtualSort = sortBy === "scaduto" || sortBy === "a_scadere";
-  // Ordinamento virtuale su Scaduto/A scadere richiede scadenziarioMap completa.
-  const virtualSortReady = !isVirtualSort || !!scadenziarioMap;
+  const isVirtualSort = VIRTUAL_SORT_COLS.includes(sortBy);
+  const isFidoTeoricoSort = sortBy === "fido_proposto" || sortBy === "scostamento";
+  // Ordinamento virtuale: serve la mappa completa (scadenziario o fido teorico).
+  const virtualSortReady = !isVirtualSort
+    || (isFidoTeoricoSort ? !!fidoTeoricoMap : !!scadenziarioMap);
+  const scostamentoReady = scostamentoFiltro === "tutti" || !!fidoTeoricoMap;
 
   const { data: clientiResp, isLoading } = useQuery({
-    queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize, advApplied, sortBy, sortDir, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
+    queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
     queryFn: async () => {
       // Ramo ordinamento virtuale (Scaduto / A scadere): PostgREST non puo'
       // ordinare su un valore che non e' nella query. Prendiamo tutti gli id
@@ -558,11 +591,16 @@ function ClientiPage() {
           if (off > 50000) break; // guardia
         }
 
-        const key = sortBy === "scaduto" ? "totale_scaduto" : "totale_a_scadere";
         const dir = sortDir === "asc" ? 1 : -1;
+        const valore = (id: string): number => {
+          if (sortBy === "fido_proposto") return fidoTeoricoMap?.get(id)?.fido_proposto ?? 0;
+          if (sortBy === "scostamento") return fidoTeoricoMap?.get(id)?.scostamento ?? 0;
+          const key = sortBy === "scaduto" ? "totale_scaduto" : "totale_a_scadere";
+          return scadenziarioMap?.get(id)?.[key] ?? 0;
+        };
         const sortedIds = [...allIds].sort((a, b) => {
-          const va = scadenziarioMap?.get(a)?.[key] ?? 0;
-          const vb = scadenziarioMap?.get(b)?.[key] ?? 0;
+          const va = valore(a);
+          const vb = valore(b);
           if (va === vb) return 0;
           return va < vb ? -1 * dir : 1 * dir;
         });
@@ -584,7 +622,7 @@ function ClientiPage() {
       if (error) throw error;
       return { rows: data ?? [], count: count ?? (data?.length ?? 0) };
     },
-    enabled: isListRoute && scadReady && classifReady && isConfigReady && virtualSortReady,
+    enabled: isListRoute && scadReady && classifReady && isConfigReady && virtualSortReady && scostamentoReady,
   });
   const clienti = (clientiResp?.rows ?? []) as any[];
   const totaleClienti = clientiResp?.count ?? 0;
@@ -632,7 +670,8 @@ function ClientiPage() {
     (aScadereFiltro !== "tutti" ? 1 : 0) +
     (fatturatoFiltro !== "tutti" ? 1 : 0) +
     (fidoFascia !== "tutti" ? 1 : 0) +
-    ((sliderCommitted[0] !== FIDO_RANGE_MIN || sliderCommitted[1] !== FIDO_RANGE_MAX) ? 1 : 0);
+    ((sliderCommitted[0] !== FIDO_RANGE_MIN || sliderCommitted[1] !== FIDO_RANGE_MAX) ? 1 : 0) +
+    (scostamentoFiltro !== "tutti" ? 1 : 0);
 
   // Conteggio filtri avanzati attivi (include quelli spostati dentro il dialog)
   const advCount =
@@ -667,6 +706,7 @@ function ClientiPage() {
     setFidoFascia("tutti");
     setSliderDisplay([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
     setSliderCommitted([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
+    setScostamentoFiltro("tutti");
     setAdvApplied(ADV_EMPTY);
   }
 
@@ -984,6 +1024,10 @@ function ClientiPage() {
   }
   if (sliderCommitted[0] !== FIDO_RANGE_MIN || sliderCommitted[1] !== FIDO_RANGE_MAX) {
     activeChips.push({ key: "slider", label: `Fido slider: ${fmtEuro(sliderCommitted[0])} → ${fmtEuro(sliderCommitted[1])}`, onRemove: () => { setSliderDisplay([FIDO_RANGE_MIN, FIDO_RANGE_MAX]); setSliderCommitted([FIDO_RANGE_MIN, FIDO_RANGE_MAX]); } });
+  }
+  if (scostamentoFiltro !== "tutti") {
+    const map: Record<string, string> = { positivo: "da aumentare", negativo: "da ridurre", nullo: "in linea" };
+    activeChips.push({ key: "scostamento", label: `Scostamento: ${map[scostamentoFiltro]}`, onRemove: () => setScostamentoFiltro("tutti") });
   }
   if (advApplied.fidoOp !== "none") activeChips.push({ key: "advFido", label: `Fido (avanzato): ${advApplied.fidoOp}`, onRemove: () => setAdvApplied({ ...advApplied, fidoOp: "none", fidoVal: null, fidoFrom: null, fidoTo: null }) });
   if (advApplied.percConsumato != null) activeChips.push({ key: "advPerc", label: `Fido consumato ≥ ${advApplied.percConsumato}%`, onRemove: () => setAdvApplied({ ...advApplied, percConsumato: null }) });
