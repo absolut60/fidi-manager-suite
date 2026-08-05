@@ -109,6 +109,10 @@ export function ClienteStoricoFidoTab({ clienteId }: { clienteId: string }) {
     <div className="space-y-6">
       <FidoGestionaleCard cliente={cliente ?? null} />
 
+      <FidoTeoricoBlocco clienteId={clienteId} variant="card" />
+
+
+
       {/* SEZIONE 1: Richieste in corso */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
