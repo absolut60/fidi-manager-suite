@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { toast } from "sonner";
 import { Plus, FileText, Pencil, Ban, Send, History, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getFidoAttuale } from "@/lib/fido-cliente";
+import { FidoTeoricoBlocco } from "@/components/fido-teorico-blocco";
+import { fetchFidoTeorico, isProponibile, MOTIVO_NON_PROPONIBILE } from "@/lib/fido-teorico";
+
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -108,6 +111,10 @@ export function ClienteStoricoFidoTab({ clienteId }: { clienteId: string }) {
   return (
     <div className="space-y-6">
       <FidoGestionaleCard cliente={cliente ?? null} />
+
+      <FidoTeoricoBlocco clienteId={clienteId} variant="card" />
+
+
 
       {/* SEZIONE 1: Richieste in corso */}
       <section className="space-y-3">
@@ -278,9 +285,15 @@ function RichiestaDialog({
   const fidoResiduo = clienteData?.fido_residuo != null
     ? Number(clienteData.fido_residuo) : null;
 
-  const fidoProposto = totaleRischio > 0
-    ? Math.ceil(totaleRischio / 500) * 500
-    : fidoAttuale > 0 ? fidoAttuale : 0;
+  // Importo proposto = fido teorico canonico (RPC get_fido_teorico).
+  const { data: teorico } = useQuery({
+    queryKey: ["fido-teorico", clienteId],
+    enabled: !!clienteId,
+    staleTime: 5 * 60_000,
+    queryFn: async () => (await fetchFidoTeorico([clienteId])).get(clienteId) ?? null,
+  });
+  const proponibile = isProponibile(teorico?.regola_applicata);
+  const fidoProposto = teorico && proponibile ? teorico.fido_proposto : 0;
 
   function determinaTipo(attuale: number, proposto: number): RichiestaForm["tipo"] {
     if (!attuale || attuale === 0) return "nuovo_fido";
@@ -292,17 +305,32 @@ function RichiestaDialog({
   const isEdit = !!richiesta;
   const [form, setForm] = useState<RichiestaForm>({
     tipo: (richiesta?.tipo === "nuovo" ? "nuovo_fido" : richiesta?.tipo)
-      ?? determinaTipo(fidoAttuale, fidoProposto),
-    importo_richiesto: richiesta?.importo_richiesto ?? fidoProposto,
+      ?? determinaTipo(fidoAttuale, 0),
+    importo_richiesto: richiesta?.importo_richiesto ?? 0,
     durata_mesi: richiesta?.durata_mesi ?? config.durata_default_mesi,
     motivazione: richiesta?.motivazione ?? "",
     note: richiesta?.note ?? "",
   });
 
+  // Precompila l'importo con il fido proposto appena la RPC risponde,
+  // solo su nuova richiesta e finché l'utente non ha toccato il campo.
+  const importoToccato = useRef(false);
+  useEffect(() => {
+    if (isEdit || importoToccato.current || !fidoProposto) return;
+    setForm((f) => ({
+      ...f,
+      importo_richiesto: fidoProposto,
+      tipo: determinaTipo(fidoAttuale, fidoProposto),
+    }));
+  }, [fidoProposto, isEdit, fidoAttuale]);
+
+
   function handleImportoChange(v: number) {
+    importoToccato.current = true;
     const tipoAuto = determinaTipo(fidoAttuale, v);
     setForm(f => ({ ...f, importo_richiesto: v, tipo: tipoAuto }));
   }
+
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const save = useMutation({
@@ -404,10 +432,17 @@ function RichiestaDialog({
             </div>
             {!isEdit && fidoProposto > 0 && (
               <p className="text-xs text-primary pt-1 border-t">
-                💡 Importo proposto: <strong>{formatEuro(fidoProposto)}</strong>{" "}
-                (copre il totale rischio attuale)
+                💡 Fido teorico proposto: <strong>{formatEuro(fidoProposto)}</strong>{" "}
+                (calcolo su fatturato e condizione di pagamento)
               </p>
             )}
+            {!isEdit && teorico && !proponibile && (
+              <p className="text-xs text-warning pt-1 border-t">
+                ⚠ {MOTIVO_NON_PROPONIBILE[teorico.regola_applicata] ?? "Fido teorico non disponibile"} —
+                inserisci l'importo manualmente.
+              </p>
+            )}
+
           </div>
         )}
         <div className="space-y-1.5">

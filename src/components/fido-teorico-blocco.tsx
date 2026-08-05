@@ -1,35 +1,27 @@
 /**
- * Blocco informativo "Fido teorico" (scheda cliente).
+ * Blocco informativo "Fido teorico" (tab Fido della scheda cliente).
  * Solo lettura: riproduce la colonna FIDO PROPOSTO del file MD_FIDI tramite
  * la RPC canonica public.get_fido_teorico. NON modifica alcun fido esistente.
  */
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatEuro } from "@/lib/fidi";
+import { Card } from "@/components/ui/card";
+import { fetchFidoTeorico, REGOLA_DESCRIZIONE } from "@/lib/fido-teorico";
 
-const REGOLE: Record<string, string> = {
-  sede_esclusa: "Sede esclusa dal calcolo — fido attuale invariato",
-  esclusa_gruppo: "Società del gruppo esclusa dal calcolo — fido attuale invariato",
-  condizione_mancante: "Condizione di pagamento mancante in anagrafica — impossibile calcolare",
-  nessun_fatturato: "Nessun fatturato nella finestra di calcolo",
-  minimo_500: "Fatturato solo nell'anno precedente — minimo 500 €",
-  fascia_1000: "Fido base ≤ 5.000 € — arrotondato per eccesso a 1.000 €",
-  fascia_5000: "Fido base > 5.000 € — arrotondato al multiplo di 5.000 € più vicino",
-};
-
-export function FidoTeoricoBlocco({ clienteId }: { clienteId: string }) {
+export function FidoTeoricoBlocco({
+  clienteId,
+  variant = "inline",
+}: {
+  clienteId: string;
+  /** "inline" = dentro un'altra card · "card" = card autonoma */
+  variant?: "inline" | "card";
+}) {
   const { data, isLoading } = useQuery({
     queryKey: ["fido-teorico", clienteId],
     enabled: !!clienteId,
     staleTime: 5 * 60_000,
-    queryFn: async () => {
-      const { data, error } = await (supabase as any).rpc("get_fido_teorico", {
-        _cliente_ids: [clienteId],
-      });
-      if (error) throw error;
-      const row = Array.isArray(data) ? data[0] : data;
-      return row ?? null;
-    },
+    queryFn: async () => (await fetchFidoTeorico([clienteId])).get(clienteId) ?? null,
   });
 
   const { data: ultimoRefresh } = useQuery({
@@ -47,23 +39,27 @@ export function FidoTeoricoBlocco({ clienteId }: { clienteId: string }) {
 
   if (isLoading || !data) return null;
 
-
-  const regola = String(data.regola_applicata);
+  const regola = data.regola_applicata;
   const condizioneMancante = regola === "condizione_mancante";
-  const giorniMancanti = !!data.giorni_mancanti;
-  const scostamento = Number(data.scostamento ?? 0);
+  const giorniMancanti = data.giorni_mancanti;
+  const scostamento = data.scostamento;
   const scostTone =
     scostamento > 0 ? "text-success" : scostamento < 0 ? "text-warning" : "text-muted-foreground";
 
-  return (
-    <div className="mt-4 pt-4 border-t space-y-3">
-      <h4 className="text-sm font-semibold">Fido teorico</h4>
+  const contenuto = (
+    <div className="space-y-3">
+      <div>
+        <h4 className="text-sm font-semibold">Fido teorico</h4>
+        <p className="text-xs text-muted-foreground">
+          Valore indicativo calcolato sul fatturato e sulla condizione di pagamento.
+        </p>
+      </div>
 
       {condizioneMancante ? (
         <>
           <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3 text-sm">
-            <Cella label="Fatturato nella finestra" value={formatEuro(Number(data.fatturato_rolling ?? 0))} />
-            <Cella label="Fido attuale" value={formatEuro(Number(data.fido_attuale ?? 0))} />
+            <Cella label="Fatturato nella finestra" value={formatEuro(data.fatturato_rolling)} />
+            <Cella label="Fido attuale" value={formatEuro(data.fido_attuale)} />
           </dl>
           <div className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning">
             Condizione di pagamento mancante in anagrafica — impossibile calcolare il fido teorico.
@@ -72,15 +68,15 @@ export function FidoTeoricoBlocco({ clienteId }: { clienteId: string }) {
       ) : (
         <>
           <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3 text-sm">
-            <Cella label="Fatturato nella finestra" value={formatEuro(Number(data.fatturato_rolling ?? 0))} />
+            <Cella label="Fatturato nella finestra" value={formatEuro(data.fatturato_rolling)} />
             <Cella
               label="Giorni di pagamento"
-              value={giorniMancanti ? "—" : `${Number(data.giorni ?? 0)} gg`}
+              value={giorniMancanti ? "—" : `${data.giorni} gg`}
               hint={giorniMancanti ? "condizione di pagamento non riconosciuta" : undefined}
             />
-            <Cella label="Fido teorico (base)" value={formatEuro(Number(data.fido_base ?? 0))} />
-            <Cella label="Fido proposto" value={formatEuro(Number(data.fido_proposto ?? 0))} strong />
-            <Cella label="Fido attuale" value={formatEuro(Number(data.fido_attuale ?? 0))} />
+            <Cella label="Fido teorico (base)" value={formatEuro(data.fido_base)} />
+            <Cella label="Fido proposto" value={formatEuro(data.fido_proposto)} strong />
+            <Cella label="Fido attuale" value={formatEuro(data.fido_attuale)} />
             <div>
               <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Scostamento</dt>
               <dd className={`mt-0.5 font-medium tabular-nums ${scostTone}`}>
@@ -89,7 +85,9 @@ export function FidoTeoricoBlocco({ clienteId }: { clienteId: string }) {
               </dd>
             </div>
           </dl>
-          <p className="text-xs text-muted-foreground">Regola applicata: {REGOLE[regola] ?? regola}</p>
+          <p className="text-xs text-muted-foreground">
+            Regola applicata: {REGOLA_DESCRIZIONE[regola] ?? regola}
+          </p>
         </>
       )}
 
@@ -101,6 +99,9 @@ export function FidoTeoricoBlocco({ clienteId }: { clienteId: string }) {
       </p>
     </div>
   );
+
+  if (variant === "card") return <Card className="p-4 sm:p-5">{contenuto}</Card>;
+  return <div className="mt-4 pt-4 border-t">{contenuto}</div>;
 }
 
 

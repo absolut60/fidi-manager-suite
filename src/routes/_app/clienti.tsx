@@ -10,6 +10,10 @@ import * as RadixSlider from "@radix-ui/react-slider";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { getFidoAttuale, FIDO_CLIENTE_SELECT } from "@/lib/fido-cliente";
+import {
+  fetchFidoTeorico, fetchFidoTeoricoTutti, isProponibile,
+  REGOLA_LABEL, MOTIVO_NON_PROPONIBILE, type FidoTeoricoRow,
+} from "@/lib/fido-teorico";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -83,15 +87,6 @@ type ScadenziarioState = {
   ha_a_scadere: boolean;
 };
 
-// Calcolo "Fido proposto" per la proposta massiva.
-// NOTA: implementazione provvisoria — verrà sostituita con un algoritmo più
-// sofisticato. Mantieni questa funzione isolata per facilitare l'aggiornamento.
-function calcolaFidoProposto(cliente: any): number {
-  const esposizione = Number(cliente?.totale_rischio ?? 0);
-  if (!Number.isFinite(esposizione) || esposizione <= 0) return 0;
-  return Math.ceil(esposizione / 500) * 500;
-}
-
 function determinaTipoRichiesta(
   fidoAttuale: number,
   fidoProposto: number,
@@ -101,6 +96,9 @@ function determinaTipoRichiesta(
   if (fidoProposto < fidoAttuale) return "diminuzione";
   return "rinnovo";
 }
+
+/** Colonne ordinabili non presenti nella tabella clienti (ordinamento in memoria). */
+const VIRTUAL_SORT_COLS = ["scaduto", "a_scadere", "fido_proposto", "scostamento"];
 
 const FIDO_RANGE_MIN = -100000;
 const FIDO_RANGE_MAX = 500000;
@@ -160,6 +158,9 @@ function ClientiPage() {
   const [scadenziarioFiltro, setScadenziarioFiltro] = useState<string>("tutti");
   const [totaleRischioFiltro, setTotaleRischioFiltro] = useState<string>("tutti");
   const [fatturatoFiltro, setFatturatoFiltro] = useState<string>("tutti");
+  // Colonne "Fido proposto"/"Scostamento": opzionali (una sola chiamata alla RPC)
+  const [mostraFidoTeorico, setMostraFidoTeorico] = useState(false);
+  const [scostamentoFiltro, setScostamentoFiltro] = useState<"tutti" | "positivo" | "negativo" | "nullo">("tutti");
   const [aScadereFiltro, setAScadereFiltro] = useState<string>("tutti");
   const [open, setOpen] = useState(false);
   const [page, setPage] = useState(1);
@@ -416,6 +417,29 @@ function ClientiPage() {
     }).map((c) => c.id);
   }, [classifList, advApplied.percConsumato]);
 
+  // Fido teorico per l'intera anagrafica: una sola chiamata alla RPC,
+  // usata sia per le colonne opzionali sia per filtro/ordinamento.
+  const fidoTeoricoAttivo = mostraFidoTeorico || scostamentoFiltro !== "tutti"
+    || sortBy === "fido_proposto" || sortBy === "scostamento";
+  const { data: fidoTeoricoMap } = useQuery({
+    queryKey: ["fido-teorico-tutti"],
+    enabled: isListRoute && fidoTeoricoAttivo,
+    staleTime: 10 * 60_000,
+    queryFn: fetchFidoTeoricoTutti,
+  });
+
+  const scostamentoIds = useMemo<string[] | null>(() => {
+    if (scostamentoFiltro === "tutti" || !fidoTeoricoMap) return null;
+    const ids: string[] = [];
+    for (const [id, r] of fidoTeoricoMap) {
+      const v = r.scostamento;
+      if (scostamentoFiltro === "positivo" && v > 0) ids.push(id);
+      else if (scostamentoFiltro === "negativo" && v < 0) ids.push(id);
+      else if (scostamentoFiltro === "nullo" && v === 0) ids.push(id);
+    }
+    return ids;
+  }, [fidoTeoricoMap, scostamentoFiltro]);
+
   // Intersezione id set "include" (semaforo ∩ stato_fido ∩ scadenziario ∩ a_scadere ∩ perc consumato)
   const includeIdsFilter = useMemo<string[] | null>(() => {
     const sources: string[][] = [];
@@ -425,16 +449,17 @@ function ClientiPage() {
     if (aScadereIds) sources.push(aScadereIds);
     if (fatturatoIds) sources.push(fatturatoIds);
     if (percConsumatoIds) sources.push(percConsumatoIds);
+    if (scostamentoIds) sources.push(scostamentoIds);
     if (sources.length === 0) return null;
     const sets = sources.map((s) => new Set(s));
     return sources[0].filter((id) => sets.every((s) => s.has(id)));
-  }, [semaforoIds, statoFidoIds, scadenziarioIdsFilter, aScadereIds, fatturatoIds, percConsumatoIds]);
+  }, [semaforoIds, statoFidoIds, scadenziarioIdsFilter, aScadereIds, fatturatoIds, percConsumatoIds, scostamentoIds]);
 
 
   // Reset pagina ogni volta che cambia un filtro o l'ordinamento
   useEffect(() => {
     setPage(1);
-  }, [search, statoCliente, statoAttivita, storeFiltro, statoFido, semaforoFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, pageSize, advApplied, sortBy, sortDir]);
+  }, [search, statoCliente, statoAttivita, storeFiltro, statoFido, semaforoFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro]);
 
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -525,7 +550,7 @@ function ClientiPage() {
     // sortBy "scaduto"/"a_scadere" sono colonne virtuali (da scadenziarioMap):
     // non esistono su clienti, quindi qui usiamo un order neutro (ragione_sociale)
     // e l'ordinamento vero viene applicato dopo in memoria sugli id filtrati.
-    const isVirtualOrder = sortBy === "scaduto" || sortBy === "a_scadere";
+    const isVirtualOrder = VIRTUAL_SORT_COLS.includes(sortBy);
     const orderCol = isVirtualOrder ? "ragione_sociale" : sortBy;
     const orderAsc = isVirtualOrder ? true : sortDir === "asc";
     q = q.order(orderCol, { ascending: orderAsc, nullsFirst: false });
@@ -535,12 +560,15 @@ function ClientiPage() {
 
   const classifReady = (semaforoFiltro === "tutti" && statoFido.size === 0) || !!classifList;
   const scadReady = scadenziarioFiltro === "tutti" || !!scadenziarioMap;
-  const isVirtualSort = sortBy === "scaduto" || sortBy === "a_scadere";
-  // Ordinamento virtuale su Scaduto/A scadere richiede scadenziarioMap completa.
-  const virtualSortReady = !isVirtualSort || !!scadenziarioMap;
+  const isVirtualSort = VIRTUAL_SORT_COLS.includes(sortBy);
+  const isFidoTeoricoSort = sortBy === "fido_proposto" || sortBy === "scostamento";
+  // Ordinamento virtuale: serve la mappa completa (scadenziario o fido teorico).
+  const virtualSortReady = !isVirtualSort
+    || (isFidoTeoricoSort ? !!fidoTeoricoMap : !!scadenziarioMap);
+  const scostamentoReady = scostamentoFiltro === "tutti" || !!fidoTeoricoMap;
 
   const { data: clientiResp, isLoading } = useQuery({
-    queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize, advApplied, sortBy, sortDir, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
+    queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
     queryFn: async () => {
       // Ramo ordinamento virtuale (Scaduto / A scadere): PostgREST non puo'
       // ordinare su un valore che non e' nella query. Prendiamo tutti gli id
@@ -563,11 +591,16 @@ function ClientiPage() {
           if (off > 50000) break; // guardia
         }
 
-        const key = sortBy === "scaduto" ? "totale_scaduto" : "totale_a_scadere";
         const dir = sortDir === "asc" ? 1 : -1;
+        const valore = (id: string): number => {
+          if (sortBy === "fido_proposto") return fidoTeoricoMap?.get(id)?.fido_proposto ?? 0;
+          if (sortBy === "scostamento") return fidoTeoricoMap?.get(id)?.scostamento ?? 0;
+          const key = sortBy === "scaduto" ? "totale_scaduto" : "totale_a_scadere";
+          return scadenziarioMap?.get(id)?.[key] ?? 0;
+        };
         const sortedIds = [...allIds].sort((a, b) => {
-          const va = scadenziarioMap?.get(a)?.[key] ?? 0;
-          const vb = scadenziarioMap?.get(b)?.[key] ?? 0;
+          const va = valore(a);
+          const vb = valore(b);
           if (va === vb) return 0;
           return va < vb ? -1 * dir : 1 * dir;
         });
@@ -589,7 +622,7 @@ function ClientiPage() {
       if (error) throw error;
       return { rows: data ?? [], count: count ?? (data?.length ?? 0) };
     },
-    enabled: isListRoute && scadReady && classifReady && isConfigReady && virtualSortReady,
+    enabled: isListRoute && scadReady && classifReady && isConfigReady && virtualSortReady && scostamentoReady,
   });
   const clienti = (clientiResp?.rows ?? []) as any[];
   const totaleClienti = clientiResp?.count ?? 0;
@@ -637,7 +670,8 @@ function ClientiPage() {
     (aScadereFiltro !== "tutti" ? 1 : 0) +
     (fatturatoFiltro !== "tutti" ? 1 : 0) +
     (fidoFascia !== "tutti" ? 1 : 0) +
-    ((sliderCommitted[0] !== FIDO_RANGE_MIN || sliderCommitted[1] !== FIDO_RANGE_MAX) ? 1 : 0);
+    ((sliderCommitted[0] !== FIDO_RANGE_MIN || sliderCommitted[1] !== FIDO_RANGE_MAX) ? 1 : 0) +
+    (scostamentoFiltro !== "tutti" ? 1 : 0);
 
   // Conteggio filtri avanzati attivi (include quelli spostati dentro il dialog)
   const advCount =
@@ -672,6 +706,7 @@ function ClientiPage() {
     setFidoFascia("tutti");
     setSliderDisplay([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
     setSliderCommitted([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
+    setScostamentoFiltro("tutti");
     setAdvApplied(ADV_EMPTY);
   }
 
@@ -951,6 +986,28 @@ function ClientiPage() {
     </Select>
   );
 
+  const ScostamentoSelect = (
+    <Select value={scostamentoFiltro} onValueChange={(v) => setScostamentoFiltro(v as any)}>
+      <SelectTrigger className="w-full"><SelectValue placeholder="Scostamento fido" /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="tutti">Scostamento: tutti</SelectItem>
+        <SelectItem value="positivo">Da aumentare (proposto &gt; attuale)</SelectItem>
+        <SelectItem value="negativo">Da ridurre (proposto &lt; attuale)</SelectItem>
+        <SelectItem value="nullo">In linea (nessuno scostamento)</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+
+  const FidoTeoricoToggle = (
+    <label className="flex items-center gap-2 text-[13px] cursor-pointer select-none h-9 px-2 rounded-md border">
+      <Checkbox
+        checked={mostraFidoTeorico}
+        onCheckedChange={(v) => setMostraFidoTeorico(!!v)}
+      />
+      <span className="truncate">Mostra fido teorico</span>
+    </label>
+  );
+
   // === Chip filtri attivi ===
   type Chip = { key: string; label: string; onRemove: () => void };
   const activeChips: Chip[] = [];
@@ -989,6 +1046,10 @@ function ClientiPage() {
   }
   if (sliderCommitted[0] !== FIDO_RANGE_MIN || sliderCommitted[1] !== FIDO_RANGE_MAX) {
     activeChips.push({ key: "slider", label: `Fido slider: ${fmtEuro(sliderCommitted[0])} → ${fmtEuro(sliderCommitted[1])}`, onRemove: () => { setSliderDisplay([FIDO_RANGE_MIN, FIDO_RANGE_MAX]); setSliderCommitted([FIDO_RANGE_MIN, FIDO_RANGE_MAX]); } });
+  }
+  if (scostamentoFiltro !== "tutti") {
+    const map: Record<string, string> = { positivo: "da aumentare", negativo: "da ridurre", nullo: "in linea" };
+    activeChips.push({ key: "scostamento", label: `Scostamento: ${map[scostamentoFiltro]}`, onRemove: () => setScostamentoFiltro("tutti") });
   }
   if (advApplied.fidoOp !== "none") activeChips.push({ key: "advFido", label: `Fido (avanzato): ${advApplied.fidoOp}`, onRemove: () => setAdvApplied({ ...advApplied, fidoOp: "none", fidoVal: null, fidoFrom: null, fidoTo: null }) });
   if (advApplied.percConsumato != null) activeChips.push({ key: "advPerc", label: `Fido consumato ≥ ${advApplied.percConsumato}%`, onRemove: () => setAdvApplied({ ...advApplied, percConsumato: null }) });
@@ -1045,6 +1106,8 @@ function ClientiPage() {
             {TotaleRischioSelect}
             {FatturatoSelect}
             {StatoAttivitaSelect}
+            {ScostamentoSelect}
+            {FidoTeoricoToggle}
           </div>
           {AdvFilterBtn}
           {ChipsRow}
@@ -1076,6 +1139,11 @@ function ClientiPage() {
           {FatturatoSelect}
           {StatoAttivitaSelect}
           {AdvFilterBtn}
+        </div>
+        {/* Livello 3 — fido teorico (colonne opzionali + filtro scostamento) */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 opacity-90">
+          {ScostamentoSelect}
+          {FidoTeoricoToggle}
         </div>
         {/* Livello chip — filtri attivi */}
         {ChipsRow}
@@ -1323,6 +1391,12 @@ function ClientiPage() {
                   <TableHead>Punto vendita</TableHead>
                   <TableHead className="text-right"><SortHeader col="fido_gestionale" label="Fido attuale" align="right" /></TableHead>
                   <TableHead className="text-right"><SortHeader col="fido_residuo" label="Fido residuo" align="right" /></TableHead>
+                 {mostraFidoTeorico && (
+                   <>
+                     <TableHead className="text-right whitespace-nowrap"><SortHeader col="fido_proposto" label="Fido proposto" align="right" /></TableHead>
+                     <TableHead className="text-right whitespace-nowrap"><SortHeader col="scostamento" label="Scostamento" align="right" /></TableHead>
+                   </>
+                 )}
                   <TableHead className="whitespace-nowrap"><SortHeader col="scaduto" label="Scaduto" /></TableHead>
                   <TableHead className="whitespace-nowrap"><SortHeader col="a_scadere" label="A scadere" /></TableHead>
                   <TableHead><SortHeader col="privacy_firmata" label="Privacy" /></TableHead>
@@ -1390,6 +1464,20 @@ function ClientiPage() {
                     <TableCell className={`text-right text-sm font-medium ${residuoNum != null && residuoNum < 0 ? "text-destructive" : ""}`}>
                       {fmtEuro(residuo)}
                     </TableCell>
+                    {mostraFidoTeorico && (() => {
+                      const ft = fidoTeoricoMap?.get(c.id);
+                      const scost = ft?.scostamento ?? 0;
+                      return (
+                        <>
+                          <TableCell className="text-right text-sm tabular-nums">
+                            {ft ? fmtEuro(ft.fido_proposto) : <span className="text-muted-foreground">—</span>}
+                          </TableCell>
+                          <TableCell className={`text-right text-sm tabular-nums ${scost > 0 ? "text-success" : scost < 0 ? "text-warning" : "text-muted-foreground"}`}>
+                            {ft ? `${scost > 0 ? "+" : ""}${fmtEuro(scost)}` : "—"}
+                          </TableCell>
+                        </>
+                      );
+                    })()}
                     <TableCell>
                       {sc && sc.ha_scaduto ? (
                         <Badge className="bg-destructive/15 text-destructive hover:bg-destructive/20 gap-1" title="Importo scaduto">
@@ -1571,6 +1659,11 @@ type RigaProposta = {
   fido_attuale: number;
   esposizione: number;
   fido_proposto: number;
+  scostamento: number;
+  regola: string;
+  /** false = regola che non consente una proposta (esclusa dalla creazione) */
+  proponibile: boolean;
+  incluso: boolean;
   tipo: "nuovo_fido" | "aumento" | "diminuzione" | "rinnovo";
   // Override motivazione per-riga. undefined = eredita la motivazione generale.
   motivazione?: string;
@@ -1594,19 +1687,30 @@ function ProposteFidoMassivoDialog({
   const [righe, setRighe] = useState<RigaProposta[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
-  // Inizializza/aggiorna righe quando cambia la selezione o si apre
+  // Fido proposto = SEMPRE la RPC canonica get_fido_teorico (nessun calcolo locale)
+  const ids = useMemo(() => selectedRows.map((c) => c.id as string), [selectedRows]);
+  const { data: teoricoMap, isLoading: teoricoLoading, error: teoricoError } = useQuery({
+    queryKey: ["fido-teorico-massivo", [...ids].sort().join(",")],
+    enabled: open && ids.length > 0,
+    staleTime: 5 * 60_000,
+    queryFn: () => fetchFidoTeorico(ids),
+  });
+
+  // Inizializza/aggiorna righe quando cambia la selezione o arriva il calcolo
   useEffect(() => {
-    if (!open) return;
+    if (!open || !teoricoMap) return;
     setRighe((prev) => {
       const prevMap = new Map(prev.map((r) => [r.cliente_id, r]));
       return selectedRows.map((c) => {
         const existing = prevMap.get(c.id);
         if (existing) return existing;
-        const proposto = calcolaFidoProposto(c);
-        // Fido di riferimento = unico helper getFidoAttuale (centralizzato in
-        // src/lib/fido-cliente.ts) cosi' che lista, scheda cliente, form
-        // singolo e proposta massiva mostrino sempre lo stesso valore.
-        const attuale = getFidoAttuale(c);
+        const t = teoricoMap.get(c.id);
+        const regola = t?.regola_applicata ?? "";
+        const proponibile = isProponibile(regola);
+        const proposto = proponibile ? (t?.fido_proposto ?? 0) : 0;
+        // Fido di riferimento = getFidoAttuale (src/lib/fido-cliente.ts), lo stesso
+        // usato dalla RPC, cosi' lista, scheda cliente e proposta massiva coincidono.
+        const attuale = t ? t.fido_attuale : getFidoAttuale(c);
 
         return {
           cliente_id: c.id,
@@ -1614,11 +1718,21 @@ function ProposteFidoMassivoDialog({
           fido_attuale: attuale,
           esposizione: Number(c.totale_rischio ?? 0),
           fido_proposto: proposto,
+          scostamento: t?.scostamento ?? 0,
+          regola,
+          proponibile,
+          incluso: proponibile,
           tipo: determinaTipoRichiesta(attuale, proposto),
         };
       });
     });
-  }, [open, selectedRows]);
+  }, [open, selectedRows, teoricoMap]);
+
+  function toggleIncluso(id: string) {
+    setRighe((prev) => prev.map((r) =>
+      r.cliente_id === id && r.proponibile ? { ...r, incluso: !r.incluso } : r));
+  }
+
 
   function aggiornaImporto(id: string, valore: number) {
     setRighe((prev) => prev.map((r) => r.cliente_id === id ? {
@@ -1647,10 +1761,12 @@ function ProposteFidoMassivoDialog({
     }
   }, [tipoForzato]);
 
-  const totale = righe.reduce((acc, r) => acc + (Number(r.fido_proposto) || 0), 0);
+  const righeIncluse = righe.filter((r) => r.proponibile && r.incluso);
+  const righeEscluse = righe.filter((r) => !r.proponibile);
+  const totale = righeIncluse.reduce((acc, r) => acc + (Number(r.fido_proposto) || 0), 0);
 
   async function creaRichieste() {
-    if (righe.length === 0) { toast.error("Nessuna riga da creare"); return; }
+    if (righeIncluse.length === 0) { toast.error("Nessuna riga da creare"); return; }
     if (!userId) { toast.error("Utente non autenticato"); return; }
     setSubmitting(true);
     try {
@@ -1658,7 +1774,8 @@ function ProposteFidoMassivoDialog({
       // Motivazione: override per-riga se valorizzato (anche stringa vuota = override "vuoto"),
       // altrimenti motivazione generale. Stringhe vuote -> null nel DB.
       const motivazioneGeneraleNorm = motivazioneGenerale.trim() === "" ? null : motivazioneGenerale;
-      const payload = righe.map((r) => {
+      const payload = righeIncluse.map((r) => {
+
         const m = r.motivazione === undefined
           ? motivazioneGeneraleNorm
           : (r.motivazione.trim() === "" ? null : r.motivazione);
@@ -1673,7 +1790,7 @@ function ProposteFidoMassivoDialog({
       });
       const { error } = await supabase.from("richieste_fido").insert(payload as any);
       if (error) throw error;
-      toast.success(`${righe.length} richieste create`);
+      toast.success(`${righeIncluse.length} richieste create`);
       onSuccess();
     } catch (e: any) {
       toast.error(e?.message ?? "Errore nella creazione");
@@ -1684,13 +1801,29 @@ function ProposteFidoMassivoDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Proposta fido massiva — {righe.length} clienti</DialogTitle>
           <DialogDescription>
-            Crea una richiesta fido per ogni cliente selezionato.
+            L'importo proposto è il fido teorico calcolato dal sistema (fatturato + condizione di pagamento).
           </DialogDescription>
         </DialogHeader>
+
+        {teoricoLoading && (
+          <p className="text-sm text-muted-foreground">Calcolo del fido teorico in corso…</p>
+        )}
+        {teoricoError && (
+          <p className="text-sm text-destructive">
+            Impossibile calcolare il fido teorico: {(teoricoError as any)?.message ?? "errore"}
+          </p>
+        )}
+        {righeEscluse.length > 0 && (
+          <div className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning">
+            {righeEscluse.length} client{righeEscluse.length === 1 ? "e" : "i"} non propon{righeEscluse.length === 1 ? "ibile" : "ibili"}:
+            saranno esclusi dalla creazione (motivo indicato sulla riga).
+          </div>
+        )}
+
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -1736,10 +1869,13 @@ function ProposteFidoMassivoDialog({
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-10"></TableHead>
                 <TableHead>Cliente</TableHead>
                 <TableHead className="text-right">Fido attuale</TableHead>
                 <TableHead className="text-right">Esposizione</TableHead>
                 <TableHead className="text-right">Fido proposto</TableHead>
+                <TableHead className="text-right">Scostamento</TableHead>
+                <TableHead>Regola</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead className="w-10">Mot.</TableHead>
                 <TableHead className="w-10"></TableHead>
@@ -1748,8 +1884,16 @@ function ProposteFidoMassivoDialog({
             <TableBody>
               {righe.map((r) => {
                 const hasOverride = r.motivazione !== undefined;
+                const scost = r.proponibile ? r.fido_proposto - r.fido_attuale : 0;
                 return (
-                  <TableRow key={r.cliente_id}>
+                  <TableRow key={r.cliente_id} className={!r.proponibile ? "opacity-60" : ""}>
+                    <TableCell>
+                      <Checkbox
+                        checked={r.incluso && r.proponibile}
+                        disabled={!r.proponibile}
+                        onCheckedChange={() => toggleIncluso(r.cliente_id)}
+                      />
+                    </TableCell>
                     <TableCell className="font-medium text-sm">{r.ragione_sociale}</TableCell>
                     <TableCell className="text-right text-sm">{fmtEuro(r.fido_attuale)}</TableCell>
                     <TableCell className="text-right text-sm">{fmtEuro(r.esposizione)}</TableCell>
@@ -1758,11 +1902,24 @@ function ProposteFidoMassivoDialog({
                         type="number"
                         className="h-8 text-right w-32 ml-auto"
                         value={r.fido_proposto}
+                        disabled={!r.proponibile}
                         onChange={(e) => aggiornaImporto(r.cliente_id, Number(e.target.value) || 0)}
                       />
                     </TableCell>
+                    <TableCell className={`text-right text-sm tabular-nums ${scost > 0 ? "text-success" : scost < 0 ? "text-warning" : "text-muted-foreground"}`}>
+                      {r.proponibile ? `${scost > 0 ? "+" : ""}${fmtEuro(scost)}` : "—"}
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      {r.proponibile ? (
+                        <span className="text-muted-foreground">{REGOLA_LABEL[r.regola] ?? r.regola ?? "—"}</span>
+                      ) : (
+                        <span className="text-warning" title={MOTIVO_NON_PROPONIBILE[r.regola] ?? ""}>
+                          {MOTIVO_NON_PROPONIBILE[r.regola] ?? REGOLA_LABEL[r.regola] ?? "Non proponibile"}
+                        </span>
+                      )}
+                    </TableCell>
                     <TableCell>
-                      <Select value={r.tipo} onValueChange={(v) => aggiornaTipo(r.cliente_id, v as RigaProposta["tipo"])}>
+                      <Select value={r.tipo} disabled={!r.proponibile} onValueChange={(v) => aggiornaTipo(r.cliente_id, v as RigaProposta["tipo"])}>
                         <SelectTrigger className="h-8 w-36"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="nuovo_fido">Nuovo fido</SelectItem>
@@ -1772,6 +1929,7 @@ function ProposteFidoMassivoDialog({
                         </SelectContent>
                       </Select>
                     </TableCell>
+
                     <TableCell>
                       <Popover>
                         <PopoverTrigger asChild>
@@ -1824,15 +1982,19 @@ function ProposteFidoMassivoDialog({
         </div>
 
         <div className="text-sm font-medium">
-          Totale fido proposto: <strong>{fmtEuro(totale)}</strong> · {righe.length} richieste da creare
+          Totale fido proposto: <strong>{fmtEuro(totale)}</strong> · {righeIncluse.length} richieste da creare
+          {righeEscluse.length > 0 && (
+            <span className="text-muted-foreground font-normal"> · {righeEscluse.length} esclusi</span>
+          )}
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>Annulla</Button>
-          <Button onClick={creaRichieste} disabled={submitting || righe.length === 0}>
-            {submitting ? "Creazione…" : "Crea richieste"}
+          <Button onClick={creaRichieste} disabled={submitting || righeIncluse.length === 0}>
+            {submitting ? "Creazione…" : `Crea ${righeIncluse.length} richieste`}
           </Button>
         </DialogFooter>
+
       </DialogContent>
     </Dialog>
   );
