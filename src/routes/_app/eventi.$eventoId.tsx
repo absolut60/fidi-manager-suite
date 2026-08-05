@@ -63,28 +63,98 @@ type PartecipanteRow = {
   email: string | null;
   telefono: string | null;
   note: string | null;
-  lead: { id: string; ragione_sociale: string | null; nome: string | null; cognome: string | null } | null;
-  cliente: { id: string; ragione_sociale: string | null } | null;
+  lead: {
+    id: string; ragione_sociale: string | null; nome: string | null; cognome: string | null;
+    email: string | null; telefono: string | null;
+  } | null;
+  cliente: { id: string; ragione_sociale: string | null; email: string | null; telefono: string | null } | null;
   contatto: {
     id: string; nome: string | null; cognome: string | null;
-    email: string | null; privacy_firmata: boolean | null;
+    email: string | null; telefono: string | null;
+    privacy_firmata: boolean | null; data_firma: string | null;
   } | null;
 };
+
+type ContattoSoggetto = {
+  id: string;
+  nome: string | null;
+  cognome: string | null;
+  email: string | null;
+  telefono: string | null;
+  privacy_firmata: boolean | null;
+  data_firma: string | null;
+  principale: boolean | null;
+  cliente_id: string | null;
+  lead_id: string | null;
+};
+
+/** Chiave della mappa soggetto → contatti. */
+function chiaveSoggetto(p: { cliente_id: string | null; lead_id: string | null }): string | null {
+  if (p.cliente_id) return `c:${p.cliente_id}`;
+  if (p.lead_id) return `l:${p.lead_id}`;
+  return null;
+}
+
+type MappaContatti = Map<string, ContattoSoggetto[]>;
+
+/** Contatti del soggetto collegato alla riga (vuoto se nessun soggetto). */
+function contattiSoggetto(p: PartecipanteRow, mappa: MappaContatti): ContattoSoggetto[] {
+  const k = chiaveSoggetto(p);
+  return (k && mappa.get(k)) || [];
+}
+
+type StatoPrivacy = { tipo: "firmata" | "non_raccolta" | "assente"; data: string | null };
+
+/**
+ * Stato privacy della riga: prima il contatto agganciato, poi i contatti del
+ * soggetto collegato (basta uno firmato per considerare la privacy raccolta).
+ */
+function privacyRiga(p: PartecipanteRow, mappa: MappaContatti): StatoPrivacy {
+  if (p.contatto) {
+    if (p.contatto.privacy_firmata) return { tipo: "firmata", data: p.contatto.data_firma };
+    return { tipo: "non_raccolta", data: null };
+  }
+  const lista = contattiSoggetto(p, mappa);
+  if (lista.length === 0) return { tipo: "assente", data: null };
+  const firmato = lista.find((c) => c.privacy_firmata);
+  if (firmato) return { tipo: "firmata", data: firmato.data_firma };
+  return { tipo: "non_raccolta", data: null };
+}
+
+/** Email/telefono con precedenza: contatto → soggetto collegato → dati grezzi. */
+function recapitiRiga(p: PartecipanteRow, mappa: MappaContatti): { email: string | null; telefono: string | null } {
+  const lista = contattiSoggetto(p, mappa);
+  const principale = lista.find((c) => c.principale) ?? lista[0] ?? null;
+  const email =
+    p.contatto?.email ?? principale?.email ?? p.cliente?.email ?? p.lead?.email ?? p.email ?? null;
+  const telefono =
+    p.contatto?.telefono ?? principale?.telefono ?? p.cliente?.telefono ?? p.lead?.telefono ?? p.telefono ?? null;
+  return { email: email || null, telefono: telefono || null };
+}
 
 /** Normalizza per la ricerca: minuscolo e senza accenti. */
 function norm(v: string | null | undefined): string {
   return (v ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
-/** Testo ricercabile di una riga partecipante (nome, cognome, ragione sociale, email). */
-function testoRicerca(p: PartecipanteRow): string {
+/** Testo ricercabile: riga, soggetto collegato e TUTTI i contatti del soggetto. */
+function testoRicerca(p: PartecipanteRow, mappa: MappaContatti): string {
+  const extra = contattiSoggetto(p, mappa).flatMap((c) => [c.nome, c.cognome, c.email]);
   return norm([
     p.nome, p.cognome, p.ragione_sociale, p.email,
     p.lead?.nome, p.lead?.cognome, p.lead?.ragione_sociale,
     p.cliente?.ragione_sociale,
     p.contatto?.nome, p.contatto?.cognome, p.contatto?.email,
+    ...extra,
   ].filter(Boolean).join(" "));
 }
+
+function formatDataFirma(d: string | null): string | null {
+  if (!d) return null;
+  const dt = new Date(d);
+  return Number.isNaN(dt.getTime()) ? null : dt.toLocaleDateString("it-IT");
+}
+
 
 
 
@@ -111,7 +181,9 @@ function EventoDettaglioPage() {
   }, [ricerca]);
 
   const [selezionati, setSelezionati] = useState<string[]>([]);
+  const [filtroStato, setFiltroStato] = useState<"tutti" | "attesi" | "presenti" | "no_show">("tutti");
   const [invioInCorso, setInvioInCorso] = useState(false);
+
 
 
 
@@ -146,7 +218,7 @@ function EventoDettaglioPage() {
       const { data, error } = await supabase
         .from("eventi_partecipanti")
         .select(
-          "id, stato, lead_id, cliente_id, contatto_id, nome, cognome, ragione_sociale, partita_iva, codice_fiscale, email, telefono, note, lead:lead_id(id, ragione_sociale, nome, cognome), cliente:cliente_id(id, ragione_sociale), contatto:contatto_id(id, nome, cognome, email, privacy_firmata)",
+          "id, stato, lead_id, cliente_id, contatto_id, nome, cognome, ragione_sociale, partita_iva, codice_fiscale, email, telefono, note, lead:lead_id(id, ragione_sociale, nome, cognome, email, telefono), cliente:cliente_id(id, ragione_sociale, email, telefono), contatto:contatto_id(id, nome, cognome, email, telefono, privacy_firmata, data_firma)",
         )
         .eq("evento_id", eventoId)
         .order("created_at", { ascending: true });
@@ -154,6 +226,67 @@ function EventoDettaglioPage() {
       return (data ?? []) as unknown as PartecipanteRow[];
     },
   });
+
+  // Contatti di TUTTI i soggetti collegati: serve a privacy, recapiti e ricerca.
+  const clienteIds = useMemo(
+    () => [...new Set((partecipanti ?? []).map((p) => p.cliente_id).filter(Boolean) as string[])],
+    [partecipanti],
+  );
+  const leadIds = useMemo(
+    () => [...new Set((partecipanti ?? []).map((p) => p.lead_id).filter(Boolean) as string[])],
+    [partecipanti],
+  );
+
+  const { data: contattiSoggetti } = useQuery({
+    queryKey: ["evento-contatti-soggetti", eventoId, clienteIds.length, leadIds.length],
+    enabled: canSee && (clienteIds.length > 0 || leadIds.length > 0),
+    queryFn: async () => {
+      const COLS =
+        "id, nome, cognome, email, telefono, privacy_firmata, data_firma, principale, cliente_id, lead_id";
+      const out: ContattoSoggetto[] = [];
+
+      const caricaPer = async (campo: "cliente_id" | "lead_id", ids: string[]) => {
+        for (let i = 0; i < ids.length; i += 500) {
+          const blocco = ids.slice(i, i + 500);
+          // PostgREST tronca a 1000 righe: pagina finché il blocco è pieno.
+          let from = 0;
+          for (;;) {
+            const { data, error } = await supabase
+              .from("contatti")
+              .select(COLS)
+              .in(campo, blocco)
+              .order("id", { ascending: true })
+              .range(from, from + 999);
+            if (error) throw error;
+            const righe = (data ?? []) as unknown as ContattoSoggetto[];
+            out.push(...righe);
+            if (righe.length < 1000) break;
+            from += 1000;
+          }
+        }
+      };
+
+      if (clienteIds.length) await caricaPer("cliente_id", clienteIds);
+      if (leadIds.length) await caricaPer("lead_id", leadIds);
+      return out;
+    },
+  });
+
+  const mappaContatti = useMemo<MappaContatti>(() => {
+    const m: MappaContatti = new Map();
+    for (const c of contattiSoggetti ?? []) {
+      const k = c.cliente_id ? `c:${c.cliente_id}` : c.lead_id ? `l:${c.lead_id}` : null;
+      if (!k) continue;
+      const arr = m.get(k);
+      if (arr) arr.push(c);
+      else m.set(k, [c]);
+    }
+    for (const arr of m.values()) {
+      arr.sort((a, b) => Number(!!b.principale) - Number(!!a.principale));
+    }
+    return m;
+  }, [contattiSoggetti]);
+
 
   const salvaEvento = useMutation({
     mutationFn: async () => {
@@ -215,13 +348,38 @@ function EventoDettaglioPage() {
     onError: (e: Error) => toast.error("Errore nell'eliminazione", { description: e.message }),
   });
 
-  // ——— ricerca + selezione multipla ———
-  const filtrati = useMemo(() => {
+  // ——— riepilogo, filtro stato, ricerca, selezione multipla ———
+  const riepilogo = useMemo(() => {
     const lista = partecipanti ?? [];
+    const attesi = lista.filter((p) => p.stato === "atteso" || p.stato === "confermato").length;
+    const presenti = lista.filter((p) => p.stato === "presentato").length;
+    const noShow = lista.filter((p) => p.stato === "no_show").length;
+    const privacyOk = lista.filter((p) => privacyRiga(p, mappaContatti).tipo === "firmata").length;
+    const base = presenti + noShow;
+    return {
+      totale: lista.length,
+      attesi,
+      presenti,
+      noShow,
+      privacyOk,
+      tasso: base > 0 ? Math.round((presenti / base) * 100) : null,
+    };
+  }, [partecipanti, mappaContatti]);
+
+  const filtrati = useMemo(() => {
+    let lista = partecipanti ?? [];
+    if (filtroStato === "attesi") {
+      lista = lista.filter((p) => p.stato === "atteso" || p.stato === "confermato");
+    } else if (filtroStato === "presenti") {
+      lista = lista.filter((p) => p.stato === "presentato");
+    } else if (filtroStato === "no_show") {
+      lista = lista.filter((p) => p.stato === "no_show");
+    }
     const q = norm(ricercaDeb);
     if (!q) return lista;
-    return lista.filter((p) => testoRicerca(p).includes(q));
-  }, [partecipanti, ricercaDeb]);
+    return lista.filter((p) => testoRicerca(p, mappaContatti).includes(q));
+  }, [partecipanti, ricercaDeb, filtroStato, mappaContatti]);
+
 
   const idsFiltrati = useMemo(() => filtrati.map((p) => p.id), [filtrati]);
   const selezionatiValidi = useMemo(
@@ -427,7 +585,42 @@ function EventoDettaglioPage() {
 
         </div>
 
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {([
+              { k: "tutti", label: "Totale", val: riepilogo.totale },
+              { k: "attesi", label: "Attesi", val: riepilogo.attesi },
+              { k: "presenti", label: "Presenti", val: riepilogo.presenti },
+              { k: "no_show", label: "No show", val: riepilogo.noShow },
+            ] as const).map((c) => {
+              const attivo = filtroStato === c.k;
+              return (
+                <button
+                  key={c.k}
+                  type="button"
+                  onClick={() =>
+                    setFiltroStato((s) => (c.k === "tutti" || s === c.k ? "tutti" : c.k))
+                  }
+                  className={`rounded-md border p-2 text-left transition-colors ${
+                    attivo ? "border-primary bg-primary/10" : "hover:bg-muted/50"
+                  }`}
+                >
+                  <div className="text-xs text-muted-foreground">{c.label}</div>
+                  <div className="text-xl font-semibold">{c.val}</div>
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+            {riepilogo.tasso !== null && (
+              <span>Tasso di presenza <span className="font-medium text-foreground">{riepilogo.tasso}%</span></span>
+            )}
+            <span>Privacy raccolta: <span className="font-medium text-foreground">{riepilogo.privacyOk}</span> di {riepilogo.totale}</span>
+          </div>
+        </div>
+
         <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+
           <div className="relative flex-1">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             <Input
@@ -437,14 +630,18 @@ function EventoDettaglioPage() {
               onChange={(e) => setRicerca(e.target.value)}
             />
           </div>
-          {ricercaDeb && (
+          {(ricercaDeb || filtroStato !== "tutti") && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <span>{filtrati.length} di {totale} partecipanti</span>
-              <Button size="sm" variant="ghost" className="gap-1.5" onClick={() => setRicerca("")}>
+              <Button
+                size="sm" variant="ghost" className="gap-1.5"
+                onClick={() => { setRicerca(""); setFiltroStato("tutti"); }}
+              >
                 <X className="size-4" /> Azzera
               </Button>
             </div>
           )}
+
         </div>
 
         {selezionatiValidi.length > 0 && (
@@ -508,17 +705,19 @@ function EventoDettaglioPage() {
               </TableHead>
               <TableHead>Identità</TableHead>
               <TableHead>Stato</TableHead>
+              <TableHead>Privacy</TableHead>
               <TableHead>Contatti</TableHead>
               <TableHead className="text-right">Azioni</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loadingPart && (
-              <TableRow><TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
+              <TableRow><TableCell colSpan={6}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
             )}
             {!loadingPart && filtrati.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-8">
+                <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-8">
+
                   {totale === 0 ? "Nessun partecipante censito." : "Nessun partecipante corrisponde alla ricerca."}
                 </TableCell>
               </TableRow>
@@ -568,9 +767,42 @@ function EventoDettaglioPage() {
                   </Badge>
                 </TableCell>
                 <TableCell className="text-sm">
-                  <div>{p.email || "—"}</div>
-                  <div className="text-muted-foreground">{p.telefono || "—"}</div>
+                  {(() => {
+                    const pr = privacyRiga(p, mappaContatti);
+                    if (pr.tipo === "assente") {
+                      return <span className="text-xs text-muted-foreground">—</span>;
+                    }
+                    if (pr.tipo === "firmata") {
+                      return (
+                        <div>
+                          <Badge variant="secondary" className="bg-success/15 text-success hover:opacity-100">
+                            Firmata
+                          </Badge>
+                          {formatDataFirma(pr.data) && (
+                            <div className="text-xs text-muted-foreground mt-0.5">{formatDataFirma(pr.data)}</div>
+                          )}
+                        </div>
+                      );
+                    }
+                    return (
+                      <Badge variant="secondary" className="bg-destructive/15 text-destructive hover:opacity-100">
+                        Non raccolta
+                      </Badge>
+                    );
+                  })()}
                 </TableCell>
+                <TableCell className="text-sm">
+                  {(() => {
+                    const r = recapitiRiga(p, mappaContatti);
+                    return (
+                      <>
+                        <div>{r.email || "—"}</div>
+                        <div className="text-muted-foreground">{r.telefono || "—"}</div>
+                      </>
+                    );
+                  })()}
+                </TableCell>
+
                 <TableCell>
                   <div className="flex items-center justify-end gap-1.5">
                     {(p.stato === "atteso" || p.stato === "confermato") && (
