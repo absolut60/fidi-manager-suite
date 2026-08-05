@@ -24,6 +24,10 @@ import {
 } from "@/components/ui/table";
 import { AggiungiPartecipanteDialog } from "@/components/eventi/aggiungi-partecipante-dialog";
 import { puoAccedereLead } from "@/lib/lead-costanti";
+import { useServerFn } from "@tanstack/react-start";
+import { inviaRichiestaFirmaPrivacy } from "@/lib/firma-privacy.functions";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Search, X } from "lucide-react";
 
 import {
   EVENTI_PARTECIPANTE_STATO_CLASS,
@@ -59,8 +63,26 @@ type PartecipanteRow = {
   note: string | null;
   lead: { id: string; ragione_sociale: string | null; nome: string | null; cognome: string | null } | null;
   cliente: { id: string; ragione_sociale: string | null } | null;
-  contatto: { id: string; nome: string | null; cognome: string | null } | null;
+  contatto: {
+    id: string; nome: string | null; cognome: string | null;
+    email: string | null; privacy_firmata: boolean | null;
+  } | null;
 };
+
+/** Normalizza per la ricerca: minuscolo e senza accenti. */
+function norm(v: string | null | undefined): string {
+  return (v ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+/** Testo ricercabile di una riga partecipante (nome, cognome, ragione sociale, email). */
+function testoRicerca(p: PartecipanteRow): string {
+  return norm([
+    p.nome, p.cognome, p.ragione_sociale, p.email,
+    p.lead?.nome, p.lead?.cognome, p.lead?.ragione_sociale,
+    p.cliente?.ragione_sociale,
+    p.contatto?.nome, p.contatto?.cognome, p.contatto?.email,
+  ].filter(Boolean).join(" "));
+}
 
 
 
@@ -76,6 +98,19 @@ function EventoDettaglioPage() {
   const [dataEvento, setDataEvento] = useState("");
   const [luogo, setLuogo] = useState("");
   const [note, setNote] = useState("");
+  const inviaFn = useServerFn(inviaRichiestaFirmaPrivacy);
+
+  // ricerca lato client sulla lista partecipanti (debounce 200ms)
+  const [ricerca, setRicerca] = useState("");
+  const [ricercaDeb, setRicercaDeb] = useState("");
+  useEffect(() => {
+    const t = window.setTimeout(() => setRicercaDeb(ricerca.trim()), 200);
+    return () => window.clearTimeout(t);
+  }, [ricerca]);
+
+  const [selezionati, setSelezionati] = useState<string[]>([]);
+  const [invioInCorso, setInvioInCorso] = useState(false);
+
 
 
 
@@ -109,7 +144,7 @@ function EventoDettaglioPage() {
       const { data, error } = await supabase
         .from("eventi_partecipanti")
         .select(
-          "id, stato, lead_id, cliente_id, contatto_id, nome, cognome, ragione_sociale, partita_iva, codice_fiscale, email, telefono, note, lead:lead_id(id, ragione_sociale, nome, cognome), cliente:cliente_id(id, ragione_sociale), contatto:contatto_id(id, nome, cognome)",
+          "id, stato, lead_id, cliente_id, contatto_id, nome, cognome, ragione_sociale, partita_iva, codice_fiscale, email, telefono, note, lead:lead_id(id, ragione_sociale, nome, cognome), cliente:cliente_id(id, ragione_sociale), contatto:contatto_id(id, nome, cognome, email, privacy_firmata)",
         )
         .eq("evento_id", eventoId)
         .order("created_at", { ascending: true });
@@ -177,6 +212,102 @@ function EventoDettaglioPage() {
     },
     onError: (e: Error) => toast.error("Errore nell'eliminazione", { description: e.message }),
   });
+
+  // ——— ricerca + selezione multipla ———
+  const filtrati = useMemo(() => {
+    const lista = partecipanti ?? [];
+    const q = norm(ricercaDeb);
+    if (!q) return lista;
+    return lista.filter((p) => testoRicerca(p).includes(q));
+  }, [partecipanti, ricercaDeb]);
+
+  const idsFiltrati = useMemo(() => filtrati.map((p) => p.id), [filtrati]);
+  const selezionatiValidi = useMemo(
+    () => selezionati.filter((id) => idsFiltrati.includes(id)),
+    [selezionati, idsFiltrati],
+  );
+  const tuttiSelezionati = idsFiltrati.length > 0 && selezionatiValidi.length === idsFiltrati.length;
+
+  const toggleRiga = (id: string, on: boolean) =>
+    setSelezionati((s) => (on ? [...new Set([...s, id])] : s.filter((x) => x !== id)));
+
+  const cambiaStatoMassivo = useMutation({
+    mutationFn: async (stato: EventiPartecipanteStato) => {
+      const { error } = await supabase
+        .from("eventi_partecipanti")
+        .update({ stato })
+        .in("id", selezionatiValidi);
+      if (error) throw error;
+      return selezionatiValidi.length;
+    },
+    onSuccess: (n) => {
+      setSelezionati([]);
+      queryClient.invalidateQueries({ queryKey: ["evento-partecipanti", eventoId] });
+      queryClient.invalidateQueries({ queryKey: ["eventi-lista"] });
+      toast.success(`${n} partecipanti aggiornati`);
+    },
+    onError: (e: Error) => toast.error("Errore nell'aggiornamento", { description: e.message }),
+  });
+
+  const eliminaMassivo = useMutation({
+    mutationFn: async () => {
+      // Elimina SOLO le righe partecipante: lead, contatti e clienti restano intatti.
+      const { error } = await supabase
+        .from("eventi_partecipanti")
+        .delete()
+        .in("id", selezionatiValidi);
+      if (error) throw error;
+      return selezionatiValidi.length;
+    },
+    onSuccess: (n) => {
+      setSelezionati([]);
+      queryClient.invalidateQueries({ queryKey: ["evento-partecipanti", eventoId] });
+      queryClient.invalidateQueries({ queryKey: ["eventi-lista"] });
+      toast.success(`${n} partecipanti eliminati dall'evento`);
+    },
+    onError: (e: Error) => toast.error("Errore nell'eliminazione", { description: e.message }),
+  });
+
+  /** Invio massivo dei link privacy: sequenziale, con piccolo ritardo fra le chiamate. */
+  const inviaLinkMassivo = async () => {
+    const righe = filtrati.filter((p) => selezionatiValidi.includes(p.id));
+    let inviate = 0;
+    let soloLink = 0;
+    let giaFirmate = 0;
+    let saltate = 0;
+    let errori = 0;
+
+    setInvioInCorso(true);
+    try {
+      for (const p of righe) {
+        if (p.contatto?.privacy_firmata) { giaFirmate++; continue; }
+        const email = p.contatto?.email ?? p.email;
+        if (!p.contatto_id || !email) { saltate++; continue; }
+        try {
+          const res = await inviaFn({
+            data: { contattoId: p.contatto_id, origin: window.location.origin },
+          });
+          if (res.emailInviata) inviate++;
+          else soloLink++;
+        } catch {
+          errori++;
+        }
+        await new Promise((r) => setTimeout(r, 400));
+      }
+    } finally {
+      setInvioInCorso(false);
+    }
+
+    const parti = [`${inviate} inviati`];
+    if (soloLink) parti.push(`${soloLink} con link generato ma email non partita`);
+    if (giaFirmate) parti.push(`${giaFirmate} saltati: privacy già firmata`);
+    if (saltate) parti.push(`${saltate} saltati: senza contatto o email`);
+    if (errori) parti.push(`${errori} in errore`);
+    toast.success("Invio link privacy completato", { description: parti.join(" · ") });
+    setSelezionati([]);
+    queryClient.invalidateQueries({ queryKey: ["evento-partecipanti", eventoId] });
+  };
+
 
 
 
@@ -289,9 +420,85 @@ function EventoDettaglioPage() {
 
         </div>
 
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <Input
+              className="pl-8"
+              placeholder="Cerca per nome, cognome, ragione sociale o email…"
+              value={ricerca}
+              onChange={(e) => setRicerca(e.target.value)}
+            />
+          </div>
+          {ricercaDeb && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>{filtrati.length} di {totale} partecipanti</span>
+              <Button size="sm" variant="ghost" className="gap-1.5" onClick={() => setRicerca("")}>
+                <X className="size-4" /> Azzera
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {selezionatiValidi.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/40 p-2">
+            <span className="text-sm font-medium px-1">{selezionatiValidi.length} selezionati</span>
+            <Button
+              size="sm" variant="outline" className="gap-1.5"
+              disabled={cambiaStatoMassivo.isPending}
+              onClick={() => cambiaStatoMassivo.mutate("presentato")}
+            >
+              <Check className="size-4" /> Segna come presente
+            </Button>
+            <Button
+              size="sm" variant="outline" className="gap-1.5"
+              disabled={cambiaStatoMassivo.isPending}
+              onClick={() => cambiaStatoMassivo.mutate("no_show")}
+            >
+              <UserX className="size-4" /> Segna come non venuto
+            </Button>
+            <Button
+              size="sm" variant="outline" className="gap-1.5"
+              disabled={invioInCorso}
+              onClick={() => void inviaLinkMassivo()}
+            >
+              {invioInCorso ? "Invio in corso…" : "Invia link privacy"}
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button size="sm" variant="destructive" className="gap-1.5 ml-auto">
+                  <Trash2 className="size-4" /> Elimina
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    Eliminare {selezionatiValidi.length} partecipanti dall'evento?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Vengono rimosse solo le righe di partecipazione: lead, contatti e clienti collegati
+                    restano invariati.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Annulla</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => eliminaMassivo.mutate()}>Elimina</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        )}
+
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10">
+                <Checkbox
+                  aria-label="Seleziona tutti"
+                  checked={tuttiSelezionati}
+                  onCheckedChange={(v) => setSelezionati(v === true ? idsFiltrati : [])}
+                />
+              </TableHead>
               <TableHead>Identità</TableHead>
               <TableHead>Stato</TableHead>
               <TableHead>Contatti</TableHead>
@@ -300,17 +507,24 @@ function EventoDettaglioPage() {
           </TableHeader>
           <TableBody>
             {loadingPart && (
-              <TableRow><TableCell colSpan={4}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
+              <TableRow><TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
             )}
-            {!loadingPart && totale === 0 && (
+            {!loadingPart && filtrati.length === 0 && (
               <TableRow>
-                <TableCell colSpan={4} className="text-center text-sm text-muted-foreground py-8">
-                  Nessun partecipante censito.
+                <TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-8">
+                  {totale === 0 ? "Nessun partecipante censito." : "Nessun partecipante corrisponde alla ricerca."}
                 </TableCell>
               </TableRow>
             )}
-            {partecipanti?.map((p) => (
-              <TableRow key={p.id}>
+            {filtrati.map((p) => (
+              <TableRow key={p.id} data-state={selezionatiValidi.includes(p.id) ? "selected" : undefined}>
+                <TableCell>
+                  <Checkbox
+                    aria-label="Seleziona partecipante"
+                    checked={selezionatiValidi.includes(p.id)}
+                    onCheckedChange={(v) => toggleRiga(p.id, v === true)}
+                  />
+                </TableCell>
                 <TableCell>
                   <div className="font-medium">
                     {p.lead ? (

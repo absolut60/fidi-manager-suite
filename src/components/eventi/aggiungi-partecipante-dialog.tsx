@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { SoggettoCombobox, type SoggettoSelezionato } from "@/components/soggetto-combobox";
 import { cercaDuplicati, type DedupMatch } from "@/lib/lead-dedup";
+import { formattaNomeProprio, formattaRagioneSociale } from "@/lib/formato-nomi";
 import {
   EVENTI_PARTECIPANTE_STATI, EVENTI_PARTECIPANTE_STATO_LABEL,
   type EventiPartecipanteStato,
@@ -318,7 +319,11 @@ export function AggiungiPartecipanteDialog({
                   <div className="space-y-1.5">
                     <Label htmlFor="np-rs">Ragione sociale *</Label>
                     <Input id="np-rs" value={campi.ragione_sociale}
-                      onChange={(e) => set({ ragione_sociale: e.target.value })} />
+                      onChange={(e) => set({ ragione_sociale: e.target.value })}
+                      onBlur={(e) => {
+                        const f = formattaRagioneSociale(e.target.value);
+                        if (f !== campi.ragione_sociale) set({ ragione_sociale: f });
+                      }} />
                   </div>
                 )}
 
@@ -327,11 +332,21 @@ export function AggiungiPartecipanteDialog({
                     <Label htmlFor="np-nome">
                       Nome {campi.tipo_soggetto === "persona_fisica" ? "*" : "referente"}
                     </Label>
-                    <Input id="np-nome" value={campi.nome} onChange={(e) => set({ nome: e.target.value })} />
+                    <Input id="np-nome" value={campi.nome}
+                      onChange={(e) => set({ nome: e.target.value })}
+                      onBlur={(e) => {
+                        const f = formattaNomeProprio(e.target.value);
+                        if (f !== campi.nome) set({ nome: f });
+                      }} />
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="np-cognome">Cognome</Label>
-                    <Input id="np-cognome" value={campi.cognome} onChange={(e) => set({ cognome: e.target.value })} />
+                    <Input id="np-cognome" value={campi.cognome}
+                      onChange={(e) => set({ cognome: e.target.value })}
+                      onBlur={(e) => {
+                        const f = formattaNomeProprio(e.target.value);
+                        if (f !== campi.cognome) set({ cognome: f });
+                      }} />
                   </div>
                 </div>
 
