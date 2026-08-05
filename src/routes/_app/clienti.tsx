@@ -986,6 +986,28 @@ function ClientiPage() {
     </Select>
   );
 
+  const ScostamentoSelect = (
+    <Select value={scostamentoFiltro} onValueChange={(v) => setScostamentoFiltro(v as any)}>
+      <SelectTrigger className="w-full"><SelectValue placeholder="Scostamento fido" /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="tutti">Scostamento: tutti</SelectItem>
+        <SelectItem value="positivo">Da aumentare (proposto &gt; attuale)</SelectItem>
+        <SelectItem value="negativo">Da ridurre (proposto &lt; attuale)</SelectItem>
+        <SelectItem value="nullo">In linea (nessuno scostamento)</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+
+  const FidoTeoricoToggle = (
+    <label className="flex items-center gap-2 text-[13px] cursor-pointer select-none h-9 px-2 rounded-md border">
+      <Checkbox
+        checked={mostraFidoTeorico}
+        onCheckedChange={(v) => setMostraFidoTeorico(!!v)}
+      />
+      <span className="truncate">Mostra fido teorico</span>
+    </label>
+  );
+
   // === Chip filtri attivi ===
   type Chip = { key: string; label: string; onRemove: () => void };
   const activeChips: Chip[] = [];
@@ -1084,6 +1106,8 @@ function ClientiPage() {
             {TotaleRischioSelect}
             {FatturatoSelect}
             {StatoAttivitaSelect}
+            {ScostamentoSelect}
+            {FidoTeoricoToggle}
           </div>
           {AdvFilterBtn}
           {ChipsRow}
@@ -1115,6 +1139,11 @@ function ClientiPage() {
           {FatturatoSelect}
           {StatoAttivitaSelect}
           {AdvFilterBtn}
+        </div>
+        {/* Livello 3 — fido teorico (colonne opzionali + filtro scostamento) */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 opacity-90">
+          {ScostamentoSelect}
+          {FidoTeoricoToggle}
         </div>
         {/* Livello chip — filtri attivi */}
         {ChipsRow}
@@ -1362,6 +1391,12 @@ function ClientiPage() {
                   <TableHead>Punto vendita</TableHead>
                   <TableHead className="text-right"><SortHeader col="fido_gestionale" label="Fido attuale" align="right" /></TableHead>
                   <TableHead className="text-right"><SortHeader col="fido_residuo" label="Fido residuo" align="right" /></TableHead>
+                 {mostraFidoTeorico && (
+                   <>
+                     <TableHead className="text-right whitespace-nowrap"><SortHeader col="fido_proposto" label="Fido proposto" align="right" /></TableHead>
+                     <TableHead className="text-right whitespace-nowrap"><SortHeader col="scostamento" label="Scostamento" align="right" /></TableHead>
+                   </>
+                 )}
                   <TableHead className="whitespace-nowrap"><SortHeader col="scaduto" label="Scaduto" /></TableHead>
                   <TableHead className="whitespace-nowrap"><SortHeader col="a_scadere" label="A scadere" /></TableHead>
                   <TableHead><SortHeader col="privacy_firmata" label="Privacy" /></TableHead>
@@ -1429,6 +1464,20 @@ function ClientiPage() {
                     <TableCell className={`text-right text-sm font-medium ${residuoNum != null && residuoNum < 0 ? "text-destructive" : ""}`}>
                       {fmtEuro(residuo)}
                     </TableCell>
+                    {mostraFidoTeorico && (() => {
+                      const ft = fidoTeoricoMap?.get(c.id);
+                      const scost = ft?.scostamento ?? 0;
+                      return (
+                        <>
+                          <TableCell className="text-right text-sm tabular-nums">
+                            {ft ? fmtEuro(ft.fido_proposto) : <span className="text-muted-foreground">—</span>}
+                          </TableCell>
+                          <TableCell className={`text-right text-sm tabular-nums ${scost > 0 ? "text-success" : scost < 0 ? "text-warning" : "text-muted-foreground"}`}>
+                            {ft ? `${scost > 0 ? "+" : ""}${fmtEuro(scost)}` : "—"}
+                          </TableCell>
+                        </>
+                      );
+                    })()}
                     <TableCell>
                       {sc && sc.ha_scaduto ? (
                         <Badge className="bg-destructive/15 text-destructive hover:bg-destructive/20 gap-1" title="Importo scaduto">
