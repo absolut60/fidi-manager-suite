@@ -298,6 +298,8 @@ function ContattiPage() {
               ))}
             </TableBody>
           </Table>
+          </div>
+          </>
         )}
       </Card>
 
