@@ -149,7 +149,7 @@ function ContattiPage() {
               />
             </div>
           </div>
-          <div className="w-56">
+          <div className="w-full sm:w-56">
             <Select value={clienteId} onValueChange={setClienteId}>
               <SelectTrigger><SelectValue placeholder="Cliente" /></SelectTrigger>
               <SelectContent>
@@ -161,7 +161,7 @@ function ContattiPage() {
             </Select>
           </div>
           {!isStoreManager && (
-            <div className="w-56">
+            <div className="w-full sm:w-56">
               <Select value={storeId} onValueChange={setStoreId}>
                 <SelectTrigger><SelectValue placeholder="Store" /></SelectTrigger>
                 <SelectContent>
@@ -173,7 +173,7 @@ function ContattiPage() {
               </Select>
             </div>
           )}
-          <div className="w-56">
+          <div className="w-full sm:w-56">
             <Select value={statoConsenso} onValueChange={setStatoConsenso}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
