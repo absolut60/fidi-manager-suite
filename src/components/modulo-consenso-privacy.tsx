@@ -241,7 +241,7 @@ export function ModuloConsensoPrivacy({
             <Input type="email" value={dich.email} onChange={(e) => setD("email", e.target.value)} />
             {!emailOk && (
               <p className="text-xs text-destructive">
-                L'email è necessaria per ricevere il contratto firmato
+                Campo obbligatorio
               </p>
             )}
           </div>
