@@ -103,7 +103,7 @@ function ContattiPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-3 flex-wrap">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
             <Users className="size-7 text-primary" /> Contatti
@@ -112,14 +112,33 @@ function ContattiPage() {
             Referenti collegati ai clienti con stato consensi privacy
           </p>
         </div>
-        <Button onClick={() => setWizardOpen(true)} className="gap-2">
+        <Button onClick={() => setWizardOpen(true)} className="gap-2 w-full sm:w-auto">
           <Plus className="size-4" /> Nuovo contatto
         </Button>
       </div>
 
       <Card className="p-4">
-        <div className="flex flex-wrap gap-3 items-end">
-          <div className="flex-1 min-w-[200px]">
+        <div className="flex items-center justify-between gap-2 md:hidden mb-3">
+          <button
+            type="button"
+            onClick={() => setFiltriApertiMobile((v) => !v)}
+            className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground"
+          >
+            <SlidersHorizontal className="size-4" />
+            Filtri
+            <ChevronDown
+              className={`size-4 transition-transform ${filtriApertiMobile ? "rotate-180" : ""}`}
+            />
+          </button>
+          {attiviCount > 0 && (
+            <Badge variant="secondary" className="h-6">
+              {attiviCount} {attiviCount === 1 ? "filtro attivo" : "filtri attivi"}
+            </Badge>
+          )}
+        </div>
+        <div className={`${filtriApertiMobile ? "flex" : "hidden"} md:flex flex-wrap gap-3 items-end`}>
+          <div className="flex-1 min-w-full sm:min-w-[200px]">
+
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
               <Input
