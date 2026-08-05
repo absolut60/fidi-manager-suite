@@ -1566,6 +1566,11 @@ type RigaProposta = {
   fido_attuale: number;
   esposizione: number;
   fido_proposto: number;
+  scostamento: number;
+  regola: string;
+  /** false = regola che non consente una proposta (esclusa dalla creazione) */
+  proponibile: boolean;
+  incluso: boolean;
   tipo: "nuovo_fido" | "aumento" | "diminuzione" | "rinnovo";
   // Override motivazione per-riga. undefined = eredita la motivazione generale.
   motivazione?: string;
@@ -1589,19 +1594,30 @@ function ProposteFidoMassivoDialog({
   const [righe, setRighe] = useState<RigaProposta[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
-  // Inizializza/aggiorna righe quando cambia la selezione o si apre
+  // Fido proposto = SEMPRE la RPC canonica get_fido_teorico (nessun calcolo locale)
+  const ids = useMemo(() => selectedRows.map((c) => c.id as string), [selectedRows]);
+  const { data: teoricoMap, isLoading: teoricoLoading, error: teoricoError } = useQuery({
+    queryKey: ["fido-teorico-massivo", [...ids].sort().join(",")],
+    enabled: open && ids.length > 0,
+    staleTime: 5 * 60_000,
+    queryFn: () => fetchFidoTeorico(ids),
+  });
+
+  // Inizializza/aggiorna righe quando cambia la selezione o arriva il calcolo
   useEffect(() => {
-    if (!open) return;
+    if (!open || !teoricoMap) return;
     setRighe((prev) => {
       const prevMap = new Map(prev.map((r) => [r.cliente_id, r]));
       return selectedRows.map((c) => {
         const existing = prevMap.get(c.id);
         if (existing) return existing;
-        const proposto = calcolaFidoProposto(c);
-        // Fido di riferimento = unico helper getFidoAttuale (centralizzato in
-        // src/lib/fido-cliente.ts) cosi' che lista, scheda cliente, form
-        // singolo e proposta massiva mostrino sempre lo stesso valore.
-        const attuale = getFidoAttuale(c);
+        const t = teoricoMap.get(c.id);
+        const regola = t?.regola_applicata ?? "";
+        const proponibile = isProponibile(regola);
+        const proposto = proponibile ? (t?.fido_proposto ?? 0) : 0;
+        // Fido di riferimento = getFidoAttuale (src/lib/fido-cliente.ts), lo stesso
+        // usato dalla RPC, cosi' lista, scheda cliente e proposta massiva coincidono.
+        const attuale = t ? t.fido_attuale : getFidoAttuale(c);
 
         return {
           cliente_id: c.id,
@@ -1609,11 +1625,21 @@ function ProposteFidoMassivoDialog({
           fido_attuale: attuale,
           esposizione: Number(c.totale_rischio ?? 0),
           fido_proposto: proposto,
+          scostamento: t?.scostamento ?? 0,
+          regola,
+          proponibile,
+          incluso: proponibile,
           tipo: determinaTipoRichiesta(attuale, proposto),
         };
       });
     });
-  }, [open, selectedRows]);
+  }, [open, selectedRows, teoricoMap]);
+
+  function toggleIncluso(id: string) {
+    setRighe((prev) => prev.map((r) =>
+      r.cliente_id === id && r.proponibile ? { ...r, incluso: !r.incluso } : r));
+  }
+
 
   function aggiornaImporto(id: string, valore: number) {
     setRighe((prev) => prev.map((r) => r.cliente_id === id ? {
