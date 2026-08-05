@@ -20,6 +20,8 @@ import {
 } from "@/components/ui/table";
 import { puoAccedereLead } from "@/lib/lead-costanti";
 import { formatDataEvento } from "@/lib/eventi-costanti";
+import { SchedaLista, ElencoSchede } from "@/components/lista-responsive";
+
 
 export const Route = createFileRoute("/_app/eventi/")({
   component: EventiListaPage,
@@ -121,7 +123,7 @@ function EventiListaPage() {
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button className="gap-1.5"><Plus className="size-4" /> Nuovo evento</Button>
+            <Button className="gap-1.5 w-full sm:w-auto"><Plus className="size-4" /> Nuovo evento</Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>Nuovo evento</DialogTitle></DialogHeader>
@@ -153,8 +155,60 @@ function EventiListaPage() {
         </Dialog>
       </div>
 
-      <Card className="p-0 overflow-hidden">
+      {/* Sotto md: schede */}
+      <ElencoSchede>
+        {isLoading && <Skeleton className="h-20 w-full" />}
+        {!isLoading && (eventi?.length ?? 0) === 0 && (
+          <div className="text-center text-sm text-muted-foreground py-8">
+            Nessun evento. Crea il primo con "Nuovo evento".
+          </div>
+        )}
+        {eventi?.map((ev) => {
+          const totale = ev.eventi_partecipanti?.length ?? 0;
+          const presentati = ev.eventi_partecipanti?.filter((p) => p.stato === "presentato").length ?? 0;
+          return (
+            <SchedaLista
+              key={ev.id}
+              onClick={() => navigate({ to: "/eventi/$eventoId", params: { eventoId: ev.id } })}
+              titolo={ev.nome}
+              badge={
+                <Badge variant="secondary" className="gap-1 shrink-0">
+                  <Users className="size-3" />{totale}
+                </Badge>
+              }
+              colonneCampi={1}
+              campi={[
+                {
+                  etichetta: "Data",
+                  valore: (
+                    <span className="inline-flex items-center gap-1.5">
+                      <CalendarDays className="size-3.5 text-muted-foreground" />
+                      {formatDataEvento(ev.data_evento)}
+                    </span>
+                  ),
+                },
+                {
+                  etichetta: "Luogo",
+                  valore: ev.luogo ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      <MapPin className="size-3.5 text-muted-foreground" />{ev.luogo}
+                    </span>
+                  ) : "—",
+                },
+              ]}
+              footer={
+                <Badge className="bg-success/15 text-success hover:bg-success/15">
+                  {presentati} presentati
+                </Badge>
+              }
+            />
+          );
+        })}
+      </ElencoSchede>
+
+      <Card className="hidden md:block p-0 overflow-hidden">
         <Table>
+
           <TableHeader>
             <TableRow>
               <TableHead>Evento</TableHead>
