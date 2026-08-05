@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
 import { SignaturePad, getCanvasDataURL } from "@/components/signature-pad";
 import { INFORMATIVA_FULL, CONSENSO_TESTI } from "@/lib/consensi-testi";
 
@@ -23,7 +24,7 @@ export type DichiaranteValori = {
 };
 
 export type ModuloConsensoPayload = {
-  firmaDataUrl: string;
+  firmaDataUrl?: string;
   dichiarante: {
     nome: string;
     cognome: string;
@@ -65,6 +66,7 @@ export function ModuloConsensoPrivacy({
   inviaLabel = "Conferma e firma",
   isPending = false,
   notaFinale,
+  modalita = "firma",
 }: {
   valoriIniziali?: DichiaranteValori;
   placeholderSocieta?: string;
@@ -72,10 +74,13 @@ export function ModuloConsensoPrivacy({
   inviaLabel?: string;
   isPending?: boolean;
   notaFinale?: string;
+  /** "firma" = firma grafica (tablet). "flag" = conferma telematica (link pubblico). */
+  modalita?: "firma" | "flag";
 }) {
   const padRef = useRef<HTMLDivElement>(null);
   const apertaAlRef = useRef<number>(Date.now());
   const [hasSig, setHasSig] = useState(false);
+  const [flagConfermato, setFlagConfermato] = useState(false);
 
   const [dich, setDich] = useState({
     nome: "",
@@ -120,14 +125,19 @@ export function ModuloConsensoPrivacy({
     consensi.marketing_diretto !== "";
   const emailOk = emailValida(dich.email);
   const anagraficaOk = dich.nome.trim().length > 0 && dich.cognome.trim().length > 0;
-  const canSubmit = hasSig && emailOk && anagraficaOk && consensiCompleti;
+  const modalitaFlag = modalita === "flag";
+  const canSubmit =
+    (modalitaFlag ? flagConfermato : hasSig) && emailOk && anagraficaOk && consensiCompleti;
 
   function invia() {
-    if (!padRef.current) return;
-    const dataUrl = getCanvasDataURL(padRef.current);
-    if (!dataUrl) return;
+    let dataUrl: string | undefined;
+    if (!modalitaFlag) {
+      if (!padRef.current) return;
+      dataUrl = getCanvasDataURL(padRef.current) || undefined;
+      if (!dataUrl) return;
+    }
     onSubmit({
-      firmaDataUrl: dataUrl,
+      ...(dataUrl ? { firmaDataUrl: dataUrl } : {}),
       dichiarante: {
         nome: dich.nome.trim(),
         cognome: dich.cognome.trim(),
@@ -270,10 +280,25 @@ export function ModuloConsensoPrivacy({
           <Label>Data firma</Label>
           <Input type="date" value={dich.data_firma} onChange={(e) => setD("data_firma", e.target.value)} />
         </div>
-        <p className="text-sm font-medium">Firma qui sotto per esprimere il consenso:</p>
-        <div ref={padRef}>
-          <SignaturePad onChange={(empty) => setHasSig(!empty)} />
-        </div>
+        {modalitaFlag ? (
+          <label className="flex items-start gap-2 text-sm cursor-pointer rounded-md border p-3">
+            <Checkbox
+              checked={flagConfermato}
+              onCheckedChange={(v) => setFlagConfermato(v === true)}
+              className="mt-0.5"
+            />
+            <span>
+              Confermo di aver letto l'informativa e di esprimere le scelte sopra indicate.
+            </span>
+          </label>
+        ) : (
+          <>
+            <p className="text-sm font-medium">Firma qui sotto per esprimere il consenso:</p>
+            <div ref={padRef}>
+              <SignaturePad onChange={(empty) => setHasSig(!empty)} />
+            </div>
+          </>
+        )}
         <Button onClick={invia} disabled={!canSubmit || isPending} className="w-full gap-1.5" size="lg">
           <FileCheck2 className="size-4" />
           {isPending ? "Invio in corso..." : inviaLabel}
