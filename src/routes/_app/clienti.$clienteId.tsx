@@ -10,6 +10,8 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { ContattoPrivacyAzioni } from "@/components/contatto-privacy-azioni";
 import { getFidoAttuale } from "@/lib/fido-cliente";
+import { FidoTeoricoBlocco } from "@/components/fido-teorico-blocco";
+
 import { useAuth } from "@/hooks/use-auth";
 import { useConfig, isClienteAttivo } from "@/hooks/use-config";
 import { Button } from "@/components/ui/button";
