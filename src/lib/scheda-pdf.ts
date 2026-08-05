@@ -18,6 +18,8 @@ export interface SchedaPdfInput {
   consensoMarketingDiretto: boolean | string;
   dataFirma: string | Date;
   firmaPngDataUrl?: string;
+  ipRaccolta?: string;
+  dataOraRaccolta?: string;
 }
 
 function toBool(v: unknown): boolean {
@@ -476,7 +478,7 @@ export async function generaSchedaCliente(input: SchedaPdfInput): Promise<Uint8A
     }
   } else {
     // Modalità FLAG: nessuna firma grafica, si stampa la prova telematica
-    page2.drawText("Modalità di raccolta:", { x: firmaX, y: firmaY + 26, size: 8, font: fontBold, color: BLACK });
+    page2.drawText("Modalità di raccolta:", { x: firmaX, y: firmaY + 26, size: 8, font: bold, color: BLACK });
     page2.drawText(
       "Consenso prestato tramite conferma telematica (flag di",
       { x: firmaX, y: firmaY + 14, size: 8, font, color: BLACK },
