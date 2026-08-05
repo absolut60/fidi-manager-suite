@@ -657,9 +657,14 @@ function ConfigurazioniCard() {
       if (!isFinite(spese) || spese < 0 || spese > 1000) {
         throw new Error("Spese di insoluto RiBa non valide (0–1000 €)");
       }
+      const mesi = Number(values.fido_teorico_mesi_rolling);
+      if (!isFinite(mesi) || !Number.isInteger(mesi) || mesi < 1 || mesi > 36) {
+        throw new Error("Finestra fido teorico non valida (1–36 mesi)");
+      }
       const updates = CONFIG_FIELDS.map((f) =>
         supabase.from("configurazioni").update({ valore: values[f.chiave] ?? "" }).eq("chiave", f.chiave)
       );
+
       const results = await Promise.all(updates);
       const err = results.find((r) => r.error)?.error;
       if (err) throw err;
