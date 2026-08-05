@@ -307,6 +307,16 @@ function LeadListaPage() {
 
       </Tabs>
 
+      {statoEsplicito && tab !== "ricontattare" && (
+        <p className="text-xs text-muted-foreground -mt-3">
+          Filtro Stato attivo: la lista mostra solo i lead in stato{" "}
+          <strong className="text-foreground">{LEAD_STATO_LABEL[stato as LeadRow["stato"]]}</strong>{" "}
+          e ignora la vista selezionata.
+        </p>
+      )}
+
+
+
       <Card className="p-4 sm:p-5">
         <FiltriCollassabili
           attivi={attiviCount}
