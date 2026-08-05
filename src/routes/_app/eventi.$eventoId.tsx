@@ -705,17 +705,19 @@ function EventoDettaglioPage() {
               </TableHead>
               <TableHead>Identità</TableHead>
               <TableHead>Stato</TableHead>
+              <TableHead>Privacy</TableHead>
               <TableHead>Contatti</TableHead>
               <TableHead className="text-right">Azioni</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loadingPart && (
-              <TableRow><TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
+              <TableRow><TableCell colSpan={6}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
             )}
             {!loadingPart && filtrati.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-8">
+                <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-8">
+
                   {totale === 0 ? "Nessun partecipante censito." : "Nessun partecipante corrisponde alla ricerca."}
                 </TableCell>
               </TableRow>
