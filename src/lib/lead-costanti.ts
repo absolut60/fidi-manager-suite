@@ -7,7 +7,7 @@ export type LeadPriorita = Database["public"]["Enums"]["lead_priorita"];
 export type LeadRichiestaTipo = Database["public"]["Enums"]["lead_richiesta_tipo"];
 export type LeadRichiestaStato = Database["public"]["Enums"]["lead_richiesta_stato"];
 
-/** Stessi ruoli della funzione DB can_access_lead(). */
+/** Stessi ruoli della funzione DB has_lead_module_access(). */
 export const LEAD_ROLES = new Set<string>([
   "amministratore",
   "amministrazione",
