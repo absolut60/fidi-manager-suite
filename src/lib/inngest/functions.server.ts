@@ -2092,6 +2092,13 @@ export const finalizeScadenziarioImport = inngest.createFunction(
       });
       logger.info(`Finalize ${importazioneId}: orfani rimossi=${reconc.orfaniRimossi}`);
 
+      // Aggiorna il precalcolo del fatturato mensile (base del fido teorico).
+      await step.run("refresh-fatturato-mensile", async () => {
+        const { error } = await supabaseAdmin.rpc("refresh_fatturato_mensile");
+        if (error) throw new Error(`refresh_fatturato_mensile: ${error.message}`);
+        return true;
+      });
+
 
 
 

@@ -2,8 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import { Plus, Building2, Pencil, Trash2, Sliders, Save, Mail, AlertTriangle } from "lucide-react";
+import { Plus, Building2, Pencil, Trash2, Sliders, Save, Mail, AlertTriangle, RefreshCw } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
+import { refreshFatturatoMensile } from "@/lib/fido-teorico.functions";
 import { getCleanupRecuperoCounts, eseguiCleanupRecupero } from "@/lib/cleanup-recupero.functions";
 import { migrazioneRichiesteCreaUtenti, migrazioneRichiesteDati, migrazioneRichiesteFile } from "@/lib/migrazione-richieste.functions";
 import { notifyRichiestaEvento } from "@/lib/richieste-email.functions";
@@ -642,6 +643,17 @@ function ConfigurazioniCard() {
     }
   }, [data]);
 
+  const refreshFn = useServerFn(refreshFatturatoMensile);
+  const refresh = useMutation({
+    mutationFn: async () => await refreshFn({}),
+    onSuccess: () => {
+      toast.success("Precalcolo fatturato aggiornato");
+      qc.invalidateQueries({ queryKey: ["configurazioni"] });
+      qc.invalidateQueries({ queryKey: ["fido-teorico"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const save = useMutation({
     mutationFn: async () => {
       const s1 = Number(values.soglia_livello_1);
@@ -718,6 +730,28 @@ function ConfigurazioniCard() {
               </div>
             ))}
           </div>
+
+          <div className="mt-4 rounded-md border p-3 space-y-2">
+            <p className="text-sm font-medium">Precalcolo fatturato (fido teorico)</p>
+            <p className="text-xs text-muted-foreground">
+              Il fido teorico usa un riepilogo mensile del fatturato, aggiornato a ogni import
+              scadenziario e una volta al giorno. Ultimo aggiornamento:{" "}
+              {values.fatturato_mensile_ultimo_refresh
+                ? new Date(values.fatturato_mensile_ultimo_refresh).toLocaleString("it-IT")
+                : "—"}
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              disabled={refresh.isPending}
+              onClick={() => refresh.mutate()}
+            >
+              <RefreshCw className={`size-4 ${refresh.isPending ? "animate-spin" : ""}`} />
+              {refresh.isPending ? "Aggiornamento..." : "Aggiorna adesso"}
+            </Button>
+          </div>
+
           <div className="flex justify-end mt-4">
             <Button onClick={() => save.mutate()} disabled={save.isPending} className="gap-1.5">
               <Save className="size-4" /> {save.isPending ? "Salvataggio..." : "Salva parametri"}

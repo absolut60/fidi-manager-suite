@@ -4232,6 +4232,37 @@ export type Database = {
           },
         ]
       }
+      fatturato_mensile_cliente: {
+        Row: {
+          cliente_id: string | null
+          importo_lordo: number | null
+          mese: string | null
+          n_documenti: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scadenze_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scadenze_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti_con_rischio"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scadenze_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+        ]
+      }
       fatturato_rolling_cliente: {
         Row: {
           anno_corrente: number | null
@@ -5017,6 +5048,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      refresh_fatturato_mensile: { Args: never; Returns: string }
       registra_clic_campagna: {
         Args: { _ip?: string; _token: string; _ua?: string; _url: string }
         Returns: boolean
