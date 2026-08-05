@@ -408,6 +408,9 @@ function EventoDettaglioPage() {
         </div>
       </Card>
 
+      <ImportPartecipantiCard eventoId={eventoId} />
+
+
       <Card className="p-4 sm:p-5 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
