@@ -63,28 +63,98 @@ type PartecipanteRow = {
   email: string | null;
   telefono: string | null;
   note: string | null;
-  lead: { id: string; ragione_sociale: string | null; nome: string | null; cognome: string | null } | null;
-  cliente: { id: string; ragione_sociale: string | null } | null;
+  lead: {
+    id: string; ragione_sociale: string | null; nome: string | null; cognome: string | null;
+    email: string | null; telefono: string | null;
+  } | null;
+  cliente: { id: string; ragione_sociale: string | null; email: string | null; telefono: string | null } | null;
   contatto: {
     id: string; nome: string | null; cognome: string | null;
-    email: string | null; privacy_firmata: boolean | null;
+    email: string | null; telefono: string | null;
+    privacy_firmata: boolean | null; data_firma: string | null;
   } | null;
 };
+
+type ContattoSoggetto = {
+  id: string;
+  nome: string | null;
+  cognome: string | null;
+  email: string | null;
+  telefono: string | null;
+  privacy_firmata: boolean | null;
+  data_firma: string | null;
+  principale: boolean | null;
+  cliente_id: string | null;
+  lead_id: string | null;
+};
+
+/** Chiave della mappa soggetto → contatti. */
+function chiaveSoggetto(p: { cliente_id: string | null; lead_id: string | null }): string | null {
+  if (p.cliente_id) return `c:${p.cliente_id}`;
+  if (p.lead_id) return `l:${p.lead_id}`;
+  return null;
+}
+
+type MappaContatti = Map<string, ContattoSoggetto[]>;
+
+/** Contatti del soggetto collegato alla riga (vuoto se nessun soggetto). */
+function contattiSoggetto(p: PartecipanteRow, mappa: MappaContatti): ContattoSoggetto[] {
+  const k = chiaveSoggetto(p);
+  return (k && mappa.get(k)) || [];
+}
+
+type StatoPrivacy = { tipo: "firmata" | "non_raccolta" | "assente"; data: string | null };
+
+/**
+ * Stato privacy della riga: prima il contatto agganciato, poi i contatti del
+ * soggetto collegato (basta uno firmato per considerare la privacy raccolta).
+ */
+function privacyRiga(p: PartecipanteRow, mappa: MappaContatti): StatoPrivacy {
+  if (p.contatto) {
+    if (p.contatto.privacy_firmata) return { tipo: "firmata", data: p.contatto.data_firma };
+    return { tipo: "non_raccolta", data: null };
+  }
+  const lista = contattiSoggetto(p, mappa);
+  if (lista.length === 0) return { tipo: "assente", data: null };
+  const firmato = lista.find((c) => c.privacy_firmata);
+  if (firmato) return { tipo: "firmata", data: firmato.data_firma };
+  return { tipo: "non_raccolta", data: null };
+}
+
+/** Email/telefono con precedenza: contatto → soggetto collegato → dati grezzi. */
+function recapitiRiga(p: PartecipanteRow, mappa: MappaContatti): { email: string | null; telefono: string | null } {
+  const lista = contattiSoggetto(p, mappa);
+  const principale = lista.find((c) => c.principale) ?? lista[0] ?? null;
+  const email =
+    p.contatto?.email ?? principale?.email ?? p.cliente?.email ?? p.lead?.email ?? p.email ?? null;
+  const telefono =
+    p.contatto?.telefono ?? principale?.telefono ?? p.cliente?.telefono ?? p.lead?.telefono ?? p.telefono ?? null;
+  return { email: email || null, telefono: telefono || null };
+}
 
 /** Normalizza per la ricerca: minuscolo e senza accenti. */
 function norm(v: string | null | undefined): string {
   return (v ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
-/** Testo ricercabile di una riga partecipante (nome, cognome, ragione sociale, email). */
-function testoRicerca(p: PartecipanteRow): string {
+/** Testo ricercabile: riga, soggetto collegato e TUTTI i contatti del soggetto. */
+function testoRicerca(p: PartecipanteRow, mappa: MappaContatti): string {
+  const extra = contattiSoggetto(p, mappa).flatMap((c) => [c.nome, c.cognome, c.email]);
   return norm([
     p.nome, p.cognome, p.ragione_sociale, p.email,
     p.lead?.nome, p.lead?.cognome, p.lead?.ragione_sociale,
     p.cliente?.ragione_sociale,
     p.contatto?.nome, p.contatto?.cognome, p.contatto?.email,
+    ...extra,
   ].filter(Boolean).join(" "));
 }
+
+function formatDataFirma(d: string | null): string | null {
+  if (!d) return null;
+  const dt = new Date(d);
+  return Number.isNaN(dt.getTime()) ? null : dt.toLocaleDateString("it-IT");
+}
+
 
 
 
