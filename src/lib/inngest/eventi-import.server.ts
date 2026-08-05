@@ -196,12 +196,12 @@ export const processEventiPartecipantiImport = inngest.createFunction(
 
           const { data: matches, error: mErr } = await withTimeout(
             supabaseAdmin.rpc("trova_corrispondenze_soggetto", {
-              _email: r.email,
-              _partita_iva: r.partita_iva,
-              _codice_fiscale: r.codice_fiscale,
-              _nome: r.nome,
-              _cognome: r.cognome,
-              _ragione_sociale: r.ragione_sociale,
+              _email: r.email ?? undefined,
+              _partita_iva: r.partita_iva ?? undefined,
+              _codice_fiscale: r.codice_fiscale ?? undefined,
+              _nome: r.nome ?? undefined,
+              _cognome: r.cognome ?? undefined,
+              _ragione_sociale: r.ragione_sociale ?? undefined,
             }),
             30_000,
             `match riga ${r.riga}`,
