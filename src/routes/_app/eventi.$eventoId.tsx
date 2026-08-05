@@ -59,8 +59,26 @@ type PartecipanteRow = {
   note: string | null;
   lead: { id: string; ragione_sociale: string | null; nome: string | null; cognome: string | null } | null;
   cliente: { id: string; ragione_sociale: string | null } | null;
-  contatto: { id: string; nome: string | null; cognome: string | null } | null;
+  contatto: {
+    id: string; nome: string | null; cognome: string | null;
+    email: string | null; privacy_firmata: boolean | null;
+  } | null;
 };
+
+/** Normalizza per la ricerca: minuscolo e senza accenti. */
+function norm(v: string | null | undefined): string {
+  return (v ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+/** Testo ricercabile di una riga partecipante (nome, cognome, ragione sociale, email). */
+function testoRicerca(p: PartecipanteRow): string {
+  return norm([
+    p.nome, p.cognome, p.ragione_sociale, p.email,
+    p.lead?.nome, p.lead?.cognome, p.lead?.ragione_sociale,
+    p.cliente?.ragione_sociale,
+    p.contatto?.nome, p.contatto?.cognome, p.contatto?.email,
+  ].filter(Boolean).join(" "));
+}
 
 
 
