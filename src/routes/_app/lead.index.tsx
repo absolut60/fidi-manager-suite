@@ -469,7 +469,17 @@ function LeadListaPage() {
                   { etichetta: "Città", valore: `${l.citta ?? "—"}${l.provincia ? ` (${l.provincia})` : ""}` },
                   { etichetta: "Fonte", valore: LEAD_FONTE_LABEL[l.fonte] },
                   { etichetta: "Assegnato a", valore: nomeProfilo(l.assegnato_a) },
-                  { etichetta: "Prossima azione", valore: formatData(l.prossima_azione_il) },
+                  ...(mostraConversione
+                    ? [
+                        { etichetta: "Convertito il", valore: formatData(l.convertito_il) },
+                        {
+                          etichetta: "Cliente",
+                          valore: l.cliente_id
+                            ? l.cliente?.ragione_sociale ?? "Scheda cliente"
+                            : "Cliente non collegato",
+                        },
+                      ]
+                    : [{ etichetta: "Prossima azione", valore: formatData(l.prossima_azione_il) }]),
                 ]}
                 footer={
                   <>
@@ -495,10 +505,18 @@ function LeadListaPage() {
                   <TableHead>Città</TableHead>
                   <TableHead>Sede / Agente</TableHead>
                   <TableHead>Assegnato a</TableHead>
-                  <TableHead><SortHeader col="prossima_azione_il" label="Prossima azione" /></TableHead>
+                  {mostraConversione ? (
+                    <>
+                      <TableHead><SortHeader col="convertito_il" label="Data conversione" /></TableHead>
+                      <TableHead>Cliente</TableHead>
+                    </>
+                  ) : (
+                    <TableHead><SortHeader col="prossima_azione_il" label="Prossima azione" /></TableHead>
+                  )}
                   <TableHead><SortHeader col="created_at" label="Creato" /></TableHead>
                 </TableRow>
               </TableHeader>
+
               <TableBody>
                 {rows.map((l) => (
                   <TableRow
