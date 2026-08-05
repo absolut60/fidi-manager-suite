@@ -161,19 +161,8 @@ export function creaModelloPartecipanti(): Uint8Array {
   return applicaStiliEBlocco(buf);
 }
 
-function slug(nome: string) {
-  return (
-    nome
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-zA-Z0-9]+/g, "-")
-      .replace(/^-|-$/g, "")
-      .toLowerCase() || "evento"
-  );
-}
-
-/** Genera e scarica il modello. */
-export function scaricaModelloPartecipanti(nomeEvento?: string) {
+/** Genera e scarica il modello (identico per qualsiasi evento). */
+export function scaricaModelloPartecipanti() {
   const bytes = creaModelloPartecipanti();
   const blob = new Blob([bytes as unknown as BlobPart], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -181,7 +170,8 @@ export function scaricaModelloPartecipanti(nomeEvento?: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `modello-partecipanti-${slug(nomeEvento ?? "evento")}.xlsx`;
+  a.download = "modello-partecipanti.xlsx";
+
   a.click();
   URL.revokeObjectURL(url);
 }
