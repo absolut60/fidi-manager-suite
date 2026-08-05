@@ -4554,7 +4554,7 @@ export type Database = {
         }[]
       }
       get_fido_teorico: {
-        Args: { _cliente_ids?: string[] }
+        Args: { _cliente_ids?: string[]; _solo_condizione_mancante?: boolean }
         Returns: {
           cliente_id: string
           fatturato_rolling: number
