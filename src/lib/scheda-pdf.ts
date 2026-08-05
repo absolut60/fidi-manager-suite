@@ -487,13 +487,11 @@ export async function generaSchedaCliente(input: SchedaPdfInput): Promise<Uint8A
       "accettazione) — nessuna firma grafica apposta.",
       { x: firmaX, y: firmaY + 4, size: 8, font, color: BLACK },
     );
-    let extraY = firmaY - 8;
     if (input.ipRaccolta || input.dataOraRaccolta) {
       const parti: string[] = [];
       if (input.ipRaccolta) parti.push(`Indirizzo IP: ${input.ipRaccolta}`);
       if (input.dataOraRaccolta) parti.push(`Data e ora: ${input.dataOraRaccolta}`);
-      page2.drawText(parti.join(" — "), { x: firmaX, y: extraY, size: 7, font, color: BLACK });
-      extraY -= 10;
+      page2.drawText(parti.join(" — "), { x: firmaX, y: firmaY - 8, size: 7, font, color: BLACK });
     }
   }
 
