@@ -3,8 +3,9 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Plus, Search, Users, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown, X, CalendarClock,
-  SlidersHorizontal,
 } from "lucide-react";
+import { FiltriCollassabili, SchedaLista, ElencoSchede } from "@/components/lista-responsive";
+
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -75,7 +76,6 @@ function LeadListaPage() {
   const [pageSize, setPageSize] = useState(25);
   const [sortBy, setSortBy] = useState("created_at");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-  const [filtriApertiMobile, setFiltriApertiMobile] = useState(false);
 
   const { data: stores } = useQuery({
     queryKey: ["stores", "all"],
@@ -256,35 +256,16 @@ function LeadListaPage() {
       </Tabs>
 
       <Card className="p-4 sm:p-5">
-        <div className="flex items-center justify-between gap-2 mb-3">
-          <button
-            type="button"
-            onClick={() => setFiltriApertiMobile((v) => !v)}
-            className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground md:pointer-events-none"
-          >
-            <SlidersHorizontal className="size-4 md:hidden" />
-            Filtri
-            <ChevronDown
-              className={`size-4 md:hidden transition-transform ${filtriApertiMobile ? "rotate-180" : ""}`}
-            />
-          </button>
-          <div className="flex items-center gap-2">
-            {attiviCount > 0 && (
-              <>
-                <Badge variant="secondary" className="h-6">
-                  {attiviCount} {attiviCount === 1 ? "filtro attivo" : "filtri attivi"}
-                </Badge>
-                <Button variant="ghost" size="sm" onClick={resetFiltri} className="gap-1 h-7">
-                  <X className="size-3.5" /> Azzera tutti
-                </Button>
-              </>
-            )}
-          </div>
-        </div>
-
-        <div
-          className={`${filtriApertiMobile ? "grid" : "hidden"} md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4`}
+        <FiltriCollassabili
+          attivi={attiviCount}
+          azioni={
+            <Button variant="ghost" size="sm" onClick={resetFiltri} className="gap-1 h-7">
+              <X className="size-3.5" /> Azzera tutti
+            </Button>
+          }
         >
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+
           <div className="lg:col-span-2">
             <Label className="text-xs">Ricerca</Label>
             <div className="relative">
@@ -392,6 +373,8 @@ function LeadListaPage() {
             </div>
           )}
         </div>
+        </FiltriCollassabili>
+
 
         <div className="mb-3 text-sm text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1">
           <span>
@@ -423,43 +406,31 @@ function LeadListaPage() {
         ) : (
           <>
           {/* Mobile: schede al posto della tabella */}
-          <div className="md:hidden space-y-2">
+          <ElencoSchede>
             {rows.map((l) => (
-              <button
+              <SchedaLista
                 key={l.id}
-                type="button"
                 onClick={() => navigate({ to: "/lead/$leadId", params: { leadId: l.id } })}
-                className="w-full text-left rounded-lg border bg-card p-3 active:bg-muted/50"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <span className="font-medium text-sm min-w-0 break-words">{nomeLead(l)}</span>
+                titolo={nomeLead(l)}
+                badge={
                   <Badge className={`${LEAD_STATO_CLASS[l.stato]} shrink-0`}>{LEAD_STATO_LABEL[l.stato]}</Badge>
-                </div>
-                <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
-                  <div className="min-w-0">
-                    <span className="text-muted-foreground">Città: </span>
-                    {l.citta ?? "—"}{l.provincia ? ` (${l.provincia})` : ""}
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-muted-foreground">Fonte: </span>
-                    {LEAD_FONTE_LABEL[l.fonte]}
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-muted-foreground">Assegnato a: </span>
-                    {nomeProfilo(l.assegnato_a)}
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-muted-foreground">Prossima azione: </span>
-                    {formatData(l.prossima_azione_il)}
-                  </div>
-                </div>
-                <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                  <Badge className={LEAD_PRIORITA_CLASS[l.priorita]}>{LEAD_PRIORITA_LABEL[l.priorita]}</Badge>
-                  <Badge variant="outline" className="text-xs">{LEAD_TIPO_LABEL[l.tipo_lead]}</Badge>
-                </div>
-              </button>
+                }
+                campi={[
+                  { etichetta: "Città", valore: `${l.citta ?? "—"}${l.provincia ? ` (${l.provincia})` : ""}` },
+                  { etichetta: "Fonte", valore: LEAD_FONTE_LABEL[l.fonte] },
+                  { etichetta: "Assegnato a", valore: nomeProfilo(l.assegnato_a) },
+                  { etichetta: "Prossima azione", valore: formatData(l.prossima_azione_il) },
+                ]}
+                footer={
+                  <>
+                    <Badge className={LEAD_PRIORITA_CLASS[l.priorita]}>{LEAD_PRIORITA_LABEL[l.priorita]}</Badge>
+                    <Badge variant="outline" className="text-xs">{LEAD_TIPO_LABEL[l.tipo_lead]}</Badge>
+                  </>
+                }
+              />
             ))}
-          </div>
+          </ElencoSchede>
+
 
           <div className="hidden md:block overflow-x-auto">
             <Table>

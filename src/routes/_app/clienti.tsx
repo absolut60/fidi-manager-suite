@@ -5,7 +5,7 @@ import { z } from "zod";
 import { Plus, Search, Building, MapPin, FileCheck2, FileX2, ArrowLeft, ArrowRight, Check, Pencil, PenTool, FileText, SlidersHorizontal, X, AlertCircle, Clock, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown, MessageSquare } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { FiltriCollassabili, SchedaLista, ElencoSchede } from "@/components/lista-responsive";
 import * as RadixSlider from "@radix-ui/react-slider";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -162,7 +162,6 @@ function ClientiPage() {
   const [fatturatoFiltro, setFatturatoFiltro] = useState<string>("tutti");
   const [aScadereFiltro, setAScadereFiltro] = useState<string>("tutti");
   const [open, setOpen] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [sortBy, setSortBy] = useState("ragione_sociale");
@@ -1175,50 +1174,20 @@ function ClientiPage() {
 
 
       <Card className="p-4 sm:p-5">
-        {/* Desktop: barra filtri (2 righe) con badge + reset in alto a destra */}
-        <div className="hidden md:block mb-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="text-sm font-medium text-muted-foreground">Filtri</div>
-            <div className="flex items-center gap-2">
-              {attiviCount > 0 && (
-                <Badge variant="secondary" className="h-6">{attiviCount} {attiviCount === 1 ? "filtro attivo" : "filtri attivi"}</Badge>
-              )}
-              {attiviCount > 0 && (
-                <Button variant="ghost" size="sm" onClick={resetFiltri} className="gap-1 h-7">
-                  <X className="size-3.5" /> Azzera tutti
-                </Button>
-              )}
-            </div>
-          </div>
-          {renderFiltriContent()}
-        </div>
+        <FiltriCollassabili
+          attivi={attiviCount}
+          azioni={
+            <Button variant="ghost" size="sm" onClick={resetFiltri} className="gap-1 h-7">
+              <X className="size-3.5" /> Azzera tutti
+            </Button>
+          }
+        >
+          {/* Desktop: barra filtri (2 righe) */}
+          <div className="hidden md:block">{renderFiltriContent()}</div>
+          {/* Mobile: filtri impilati */}
+          <div className="md:hidden">{renderFiltriContent(true)}</div>
+        </FiltriCollassabili>
 
-
-        {/* Mobile: search inline + bottone "Filtri" con badge */}
-        <div className="md:hidden flex gap-2 mb-4">
-          <div className="flex-1">
-            <SearchInput value={searchInput} onChange={setSearchInput} placeholder="Cerca cliente..." />
-          </div>
-          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-            <SheetTrigger asChild>
-              <Button variant="outline" className="gap-1.5 relative">
-                <SlidersHorizontal className="size-4" />
-                Filtri
-                {attiviCount > 0 && (
-                  <Badge variant="default" className="ml-1 h-5 min-w-5 px-1.5 text-xs">{attiviCount}</Badge>
-                )}
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-[90vw] sm:max-w-md overflow-y-auto">
-              <SheetHeader>
-                <SheetTitle>Filtri</SheetTitle>
-              </SheetHeader>
-              <div className="mt-4">
-                {renderFiltriContent(true)}
-              </div>
-            </SheetContent>
-          </Sheet>
-        </div>
 
         <div className="mb-3 text-sm text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1">
           <span>
@@ -1272,68 +1241,61 @@ function ClientiPage() {
         ) : (
           <>
           {/* Mobile: schede al posto della tabella */}
-          <div className="md:hidden space-y-2">
+          <ElencoSchede>
             {clienti.map((c: any) => {
               const sc = scadenziarioMap?.get(c.id);
               const isBlocked = !!c.bloccato || Number(c.ind_blocco ?? 0) > 0;
               return (
-                <button
+                <SchedaLista
                   key={c.id}
-                  type="button"
                   onClick={() => navigate({ to: "/clienti/$clienteId", params: { clienteId: c.id } })}
-                  className={`w-full text-left rounded-lg border p-3 active:bg-muted/50 ${isBlocked ? "bg-[#FEF2F2] dark:bg-destructive/10 border-l-[3px] border-l-[#EF4444]" : (c as { in_gestione_legale?: boolean }).in_gestione_legale ? "bg-amber-50 dark:bg-amber-500/10 border-l-[3px] border-l-amber-500" : "bg-card"}`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="font-medium text-sm min-w-0 break-words">{c.ragione_sociale}</span>
+                  className={isBlocked
+                    ? "bg-[#FEF2F2] dark:bg-destructive/10 border-l-[3px] border-l-[#EF4444]"
+                    : (c as { in_gestione_legale?: boolean }).in_gestione_legale
+                      ? "bg-amber-50 dark:bg-amber-500/10 border-l-[3px] border-l-amber-500"
+                      : undefined}
+                  titolo={c.ragione_sociale}
+                  badge={
                     <span
                       className={`mt-1 inline-block size-2.5 shrink-0 rounded-full ${SEMAFORO_DOT[calcSemaforo(c)]}`}
                       title={SEMAFORO_LABEL[calcSemaforo(c)]}
                     />
-                  </div>
-                  <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
-                    <div className="min-w-0">
-                      <span className="text-muted-foreground">Città: </span>
-                      {c.citta ? `${c.citta}${c.provincia ? ` (${c.provincia})` : ""}` : "—"}
-                    </div>
-                    <div className="min-w-0">
-                      <span className="text-muted-foreground">Punto vendita: </span>
-                      {c.stores?.nome || "—"}
-                    </div>
-                    <div className="min-w-0">
-                      <span className="text-muted-foreground">Fido attuale: </span>
-                      {fmtEuro(c.fido_gestionale)}
-                    </div>
-                    <div className="min-w-0">
-                      <span className="text-muted-foreground">Fido residuo: </span>
-                      {fmtEuro(c.fido_residuo)}
-                    </div>
-                  </div>
-                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                    {sc && sc.ha_scaduto && (
-                      <Badge className="bg-destructive/15 text-destructive gap-1">
-                        <AlertCircle className="size-3" /> {fmtEuro(sc.totale_scaduto)}
-                      </Badge>
-                    )}
-                    {sc && sc.ha_a_scadere && (
-                      <Badge className="bg-yellow-500/15 text-yellow-700 dark:text-yellow-500 gap-1">
-                        <Clock className="size-3" /> {fmtEuro(sc.totale_a_scadere)}
-                      </Badge>
-                    )}
-                    {c.privacy_firmata ? (
-                      <Badge className="bg-success/15 text-success gap-1"><FileCheck2 className="size-3" /> Privacy</Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-muted-foreground gap-1"><FileX2 className="size-3" /> Privacy</Badge>
-                    )}
-                    {c.assicurazione_attiva && <Badge className="bg-success/15 text-success">POUEY</Badge>}
-                    {c.ind_blocco === 2 && <Badge className="bg-destructive/15 text-destructive">Bloccato</Badge>}
-                    {c.ind_blocco === 1 && (
-                      <Badge className="bg-yellow-500/15 text-yellow-700 dark:text-yellow-500">Blocco revocabile</Badge>
-                    )}
-                  </div>
-                </button>
+                  }
+                  campi={[
+                    { etichetta: "Città", valore: c.citta ? `${c.citta}${c.provincia ? ` (${c.provincia})` : ""}` : "—" },
+                    { etichetta: "Punto vendita", valore: c.stores?.nome || "—" },
+                    { etichetta: "Fido attuale", valore: fmtEuro(c.fido_gestionale) },
+                    { etichetta: "Fido residuo", valore: fmtEuro(c.fido_residuo) },
+                  ]}
+                  footer={
+                    <>
+                      {sc && sc.ha_scaduto && (
+                        <Badge className="bg-destructive/15 text-destructive gap-1">
+                          <AlertCircle className="size-3" /> {fmtEuro(sc.totale_scaduto)}
+                        </Badge>
+                      )}
+                      {sc && sc.ha_a_scadere && (
+                        <Badge className="bg-yellow-500/15 text-yellow-700 dark:text-yellow-500 gap-1">
+                          <Clock className="size-3" /> {fmtEuro(sc.totale_a_scadere)}
+                        </Badge>
+                      )}
+                      {c.privacy_firmata ? (
+                        <Badge className="bg-success/15 text-success gap-1"><FileCheck2 className="size-3" /> Privacy</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-muted-foreground gap-1"><FileX2 className="size-3" /> Privacy</Badge>
+                      )}
+                      {c.assicurazione_attiva && <Badge className="bg-success/15 text-success">POUEY</Badge>}
+                      {c.ind_blocco === 2 && <Badge className="bg-destructive/15 text-destructive">Bloccato</Badge>}
+                      {c.ind_blocco === 1 && (
+                        <Badge className="bg-yellow-500/15 text-yellow-700 dark:text-yellow-500">Blocco revocabile</Badge>
+                      )}
+                    </>
+                  }
+                />
               );
             })}
-          </div>
+          </ElencoSchede>
+
 
           <div className="hidden md:block overflow-x-auto">
             <Table>

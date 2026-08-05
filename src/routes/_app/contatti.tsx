@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Search, Users, Star, Check, X, Plus, SlidersHorizontal, ChevronDown } from "lucide-react";
+import { Search, Users, Star, Check, X, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { NuovoContattoWizard } from "@/components/nuovo-contatto-wizard";
+import { FiltriCollassabili, SchedaLista, ElencoSchede } from "@/components/lista-responsive";
 
 export const Route = createFileRoute("/_app/contatti")({
   component: ContattiPage,
@@ -43,7 +44,6 @@ function ContattiPage() {
   const [clienteId, setClienteId] = useState("all");
   const [statoConsenso, setStatoConsenso] = useState("tutti");
   const [wizardOpen, setWizardOpen] = useState(false);
-  const [filtriApertiMobile, setFiltriApertiMobile] = useState(false);
 
   const attiviCount = [
     search.trim() !== "",
@@ -118,27 +118,9 @@ function ContattiPage() {
       </div>
 
       <Card className="p-4">
-        <div className="flex items-center justify-between gap-2 md:hidden mb-3">
-          <button
-            type="button"
-            onClick={() => setFiltriApertiMobile((v) => !v)}
-            className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground"
-          >
-            <SlidersHorizontal className="size-4" />
-            Filtri
-            <ChevronDown
-              className={`size-4 transition-transform ${filtriApertiMobile ? "rotate-180" : ""}`}
-            />
-          </button>
-          {attiviCount > 0 && (
-            <Badge variant="secondary" className="h-6">
-              {attiviCount} {attiviCount === 1 ? "filtro attivo" : "filtri attivi"}
-            </Badge>
-          )}
-        </div>
-        <div className={`${filtriApertiMobile ? "flex" : "hidden"} md:flex flex-wrap gap-3 items-end`}>
-          <div className="flex-1 min-w-full sm:min-w-[200px]">
-
+        <FiltriCollassabili attivi={attiviCount}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="lg:col-span-2">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
               <Input
@@ -149,7 +131,7 @@ function ContattiPage() {
               />
             </div>
           </div>
-          <div className="w-full sm:w-56">
+          <div>
             <Select value={clienteId} onValueChange={setClienteId}>
               <SelectTrigger><SelectValue placeholder="Cliente" /></SelectTrigger>
               <SelectContent>
@@ -161,7 +143,7 @@ function ContattiPage() {
             </Select>
           </div>
           {!isStoreManager && (
-            <div className="w-full sm:w-56">
+            <div>
               <Select value={storeId} onValueChange={setStoreId}>
                 <SelectTrigger><SelectValue placeholder="Store" /></SelectTrigger>
                 <SelectContent>
@@ -173,7 +155,7 @@ function ContattiPage() {
               </Select>
             </div>
           )}
-          <div className="w-full sm:w-56">
+          <div>
             <Select value={statoConsenso} onValueChange={setStatoConsenso}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -184,7 +166,9 @@ function ContattiPage() {
             </Select>
           </div>
         </div>
+        </FiltriCollassabili>
       </Card>
+
 
       <Card className="overflow-hidden">
         {isLoading ? (
@@ -196,59 +180,51 @@ function ContattiPage() {
         ) : (
           <>
           {/* Mobile: schede al posto della tabella */}
-          <div className="md:hidden divide-y">
+          <div className="md:hidden p-3">
+          <ElencoSchede>
             {filtered.map((c: any) => (
-              <button
+              <SchedaLista
                 key={c.id}
-                type="button"
                 onClick={() => navigate({
                   to: "/clienti/$clienteId",
                   params: { clienteId: c.clienti.id },
                   search: { tab: "contatti" },
                 })}
-                className="w-full text-left p-3 active:bg-muted/50"
-              >
-                <div className="flex items-start gap-1.5">
-                  {c.principale && <Star className="size-3.5 fill-accent text-accent shrink-0 mt-0.5" />}
-                  <span className="font-medium text-sm min-w-0 break-words">
-                    {c.nome} {c.cognome}
+                colonneCampi={1}
+                titolo={
+                  <span className="flex items-start gap-1.5">
+                    {c.principale && <Star className="size-3.5 fill-accent text-accent shrink-0 mt-0.5" />}
+                    <span className="min-w-0 break-words">{c.nome} {c.cognome}</span>
                   </span>
-                </div>
-                <div className="mt-2 grid grid-cols-1 gap-y-1 text-xs">
-                  <div className="min-w-0 break-words">
-                    <span className="text-muted-foreground">Cliente: </span>
-                    {c.clienti?.ragione_sociale ?? "—"}
-                    {c.clienti?.stores?.nome ? ` · ${c.clienti.stores.nome}` : ""}
-                  </div>
-                  {c.ruolo && (
-                    <div className="min-w-0 break-words">
-                      <span className="text-muted-foreground">Ruolo: </span>{c.ruolo}
-                    </div>
-                  )}
-                  <div className="min-w-0 break-words">
-                    <span className="text-muted-foreground">Email: </span>{c.email ?? "—"}
-                  </div>
-                  <div className="min-w-0 break-words">
-                    <span className="text-muted-foreground">Cellulare: </span>{c.cellulare ?? "—"}
-                  </div>
-                  <div className="min-w-0 break-words">
-                    <span className="text-muted-foreground">Data firma: </span>{fmtDate(c.data_firma)}
-                  </div>
-                </div>
-                <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
-                  <span className="flex items-center gap-1 text-muted-foreground">
-                    Profilaz. <CB ok={!!c.consenso_profilazione} />
-                  </span>
-                  <span className="flex items-center gap-1 text-muted-foreground">
-                    Marketing <CB ok={!!c.consenso_marketing_media} />
-                  </span>
-                  <span className="flex items-center gap-1 text-muted-foreground">
-                    WhatsApp <CB ok={!!c.consenso_marketing_diretto} />
-                  </span>
-                </div>
-              </button>
+                }
+                campi={[
+                  {
+                    etichetta: "Cliente",
+                    valore: `${c.clienti?.ragione_sociale ?? "—"}${c.clienti?.stores?.nome ? ` · ${c.clienti.stores.nome}` : ""}`,
+                  },
+                  ...(c.ruolo ? [{ etichetta: "Ruolo", valore: c.ruolo as string }] : []),
+                  { etichetta: "Email", valore: c.email ?? "—" },
+                  { etichetta: "Cellulare", valore: c.cellulare ?? "—" },
+                  { etichetta: "Data firma", valore: fmtDate(c.data_firma) },
+                ]}
+                footer={
+                  <>
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      Profilaz. <CB ok={!!c.consenso_profilazione} />
+                    </span>
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      Marketing <CB ok={!!c.consenso_marketing_media} />
+                    </span>
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      WhatsApp <CB ok={!!c.consenso_marketing_diretto} />
+                    </span>
+                  </>
+                }
+              />
             ))}
+          </ElencoSchede>
           </div>
+
 
           <div className="hidden md:block">
           <Table>
