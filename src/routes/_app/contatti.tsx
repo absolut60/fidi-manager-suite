@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Search, Users, Star, Check, X, Plus, SlidersHorizontal, ChevronDown } from "lucide-react";
+import { Search, Users, Star, Check, X, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { NuovoContattoWizard } from "@/components/nuovo-contatto-wizard";
+import { FiltriCollassabili, SchedaLista, ElencoSchede } from "@/components/lista-responsive";
 
 export const Route = createFileRoute("/_app/contatti")({
   component: ContattiPage,
@@ -43,7 +44,6 @@ function ContattiPage() {
   const [clienteId, setClienteId] = useState("all");
   const [statoConsenso, setStatoConsenso] = useState("tutti");
   const [wizardOpen, setWizardOpen] = useState(false);
-  const [filtriApertiMobile, setFiltriApertiMobile] = useState(false);
 
   const attiviCount = [
     search.trim() !== "",
