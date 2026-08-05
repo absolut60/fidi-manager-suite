@@ -20,16 +20,17 @@ export function FiltriCollassabili({
 
   return (
     <div>
-      <div className="flex items-center justify-between gap-2 mb-3">
+      {/* Sotto md: intestazione cliccabile */}
+      <div className="flex items-center justify-between gap-2 mb-3 md:hidden">
         <button
           type="button"
           onClick={() => setAperto((v) => !v)}
-          className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground md:pointer-events-none"
+          className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground"
         >
-          <SlidersHorizontal className="size-4 md:hidden" />
+          <SlidersHorizontal className="size-4" />
           Filtri
           <ChevronDown
-            className={`size-4 md:hidden transition-transform ${aperto ? "rotate-180" : ""}`}
+            className={`size-4 transition-transform ${aperto ? "rotate-180" : ""}`}
           />
         </button>
         <div className="flex items-center gap-2">
@@ -42,7 +43,18 @@ export function FiltriCollassabili({
         </div>
       </div>
 
+      {/* Da md in su: nessuna intestazione, solo le azioni (se previste) */}
+      {azioni && attivi > 0 && (
+        <div className="hidden md:flex items-center justify-end gap-2 mb-3">
+          <Badge variant="secondary" className="h-6">
+            {attivi} {attivi === 1 ? "filtro attivo" : "filtri attivi"}
+          </Badge>
+          {azioni}
+        </div>
+      )}
+
       <div className={`${aperto ? "block" : "hidden"} md:block mb-4`}>{children}</div>
     </div>
   );
 }
+
