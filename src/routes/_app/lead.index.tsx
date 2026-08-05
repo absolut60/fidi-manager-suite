@@ -132,6 +132,9 @@ function LeadListaPage() {
     return d.toISOString().slice(0, 10);
   }, [giorni]);
 
+  /** Il filtro Stato ha la precedenza sul set di stati di default della vista. */
+  const statoEsplicito = stato !== TUTTI;
+
   const queryKey = [
     "lead-lista", tab, search, stato, tipoLead, fonte, priorita, storeFiltro, agente,
     assegnatario, page, pageSize, sortBy, sortDir, tab === "ricontattare" ? limiteData : null,
@@ -144,7 +147,7 @@ function LeadListaPage() {
       let q = supabase
         .from("lead")
         .select(
-          "id, ragione_sociale, nome, cognome, tipo_soggetto, stato, tipo_lead, priorita, fonte, citta, provincia, store_id, agente_codice, assegnato_a, prossima_azione_il, created_at",
+          "id, ragione_sociale, nome, cognome, tipo_soggetto, stato, tipo_lead, priorita, fonte, citta, provincia, store_id, agente_codice, assegnato_a, prossima_azione_il, created_at, cliente_id, convertito_il, cliente:clienti!lead_cliente_id_fkey(id, ragione_sociale)",
           { count: "exact" },
         );
 
@@ -161,7 +164,11 @@ function LeadListaPage() {
           ].join(","),
         );
       }
-      if (stato !== TUTTI) q = q.eq("stato", stato as LeadRow["stato"]);
+      if (statoEsplicito) q = q.eq("stato", stato as LeadRow["stato"]);
+      else if (tab === "convertiti") q = q.eq("stato", "convertito");
+      else if (tab === "persi") q = q.eq("stato", "perso");
+      else if (tab === "attivi") q = q.not("stato", "in", `(${STATI_NON_ATTIVI.join(",")})`);
+
       if (tipoLead !== TUTTI) q = q.eq("tipo_lead", tipoLead as LeadRow["tipo_lead"]);
       if (fonte !== TUTTI) q = q.eq("fonte", fonte as LeadRow["fonte"]);
       if (priorita !== TUTTI) q = q.eq("priorita", priorita as LeadRow["priorita"]);
@@ -181,6 +188,8 @@ function LeadListaPage() {
       if (tab === "ricontattare") {
         q = q.not("prossima_azione_il", "is", null).lte("prossima_azione_il", limiteData);
         q = q.order("prossima_azione_il", { ascending: true });
+      } else if (tab === "convertiti" && sortBy === "created_at") {
+        q = q.order("convertito_il", { ascending: false, nullsFirst: false });
       } else {
         q = q.order(sortBy, { ascending: sortDir === "asc", nullsFirst: false });
       }
@@ -188,9 +197,31 @@ function LeadListaPage() {
       const from = (page - 1) * pageSize;
       const { data, error, count } = await q.range(from, from + pageSize - 1);
       if (error) throw error;
-      return { rows: (data ?? []) as LeadRow[], total: count ?? 0 };
+      return { rows: (data ?? []) as unknown as LeadRow[], total: count ?? 0 };
     },
   });
+
+  /** Conteggi dei riquadri: query leggere solo di conteggio. */
+  const { data: conteggi } = useQuery({
+    queryKey: ["lead-conteggi", limiteData],
+    enabled: canSee,
+    queryFn: async () => {
+      const base = () => supabase.from("lead").select("id", { count: "exact", head: true });
+      const [attivi, ricontattare, convertiti, persi] = await Promise.all([
+        base().not("stato", "in", `(${STATI_NON_ATTIVI.join(",")})`),
+        base().not("prossima_azione_il", "is", null).lte("prossima_azione_il", limiteData),
+        base().eq("stato", "convertito"),
+        base().eq("stato", "perso"),
+      ]);
+      return {
+        attivi: attivi.count ?? 0,
+        ricontattare: ricontattare.count ?? 0,
+        convertiti: convertiti.count ?? 0,
+        persi: persi.count ?? 0,
+      } as Record<Vista, number>;
+    },
+  });
+
 
   const rows = data?.rows ?? [];
   const totale = data?.total ?? 0;
