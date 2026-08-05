@@ -216,7 +216,7 @@ function EventoDettaglioPage() {
       const { data, error } = await supabase
         .from("eventi_partecipanti")
         .select(
-          "id, stato, lead_id, cliente_id, contatto_id, nome, cognome, ragione_sociale, partita_iva, codice_fiscale, email, telefono, note, lead:lead_id(id, ragione_sociale, nome, cognome), cliente:cliente_id(id, ragione_sociale), contatto:contatto_id(id, nome, cognome, email, privacy_firmata)",
+          "id, stato, lead_id, cliente_id, contatto_id, nome, cognome, ragione_sociale, partita_iva, codice_fiscale, email, telefono, note, lead:lead_id(id, ragione_sociale, nome, cognome, email, telefono), cliente:cliente_id(id, ragione_sociale, email, telefono), contatto:contatto_id(id, nome, cognome, email, telefono, privacy_firmata, data_firma)",
         )
         .eq("evento_id", eventoId)
         .order("created_at", { ascending: true });
@@ -224,6 +224,67 @@ function EventoDettaglioPage() {
       return (data ?? []) as unknown as PartecipanteRow[];
     },
   });
+
+  // Contatti di TUTTI i soggetti collegati: serve a privacy, recapiti e ricerca.
+  const clienteIds = useMemo(
+    () => [...new Set((partecipanti ?? []).map((p) => p.cliente_id).filter(Boolean) as string[])],
+    [partecipanti],
+  );
+  const leadIds = useMemo(
+    () => [...new Set((partecipanti ?? []).map((p) => p.lead_id).filter(Boolean) as string[])],
+    [partecipanti],
+  );
+
+  const { data: contattiSoggetti } = useQuery({
+    queryKey: ["evento-contatti-soggetti", eventoId, clienteIds.length, leadIds.length],
+    enabled: canSee && (clienteIds.length > 0 || leadIds.length > 0),
+    queryFn: async () => {
+      const COLS =
+        "id, nome, cognome, email, telefono, privacy_firmata, data_firma, principale, cliente_id, lead_id";
+      const out: ContattoSoggetto[] = [];
+
+      const caricaPer = async (campo: "cliente_id" | "lead_id", ids: string[]) => {
+        for (let i = 0; i < ids.length; i += 500) {
+          const blocco = ids.slice(i, i + 500);
+          // PostgREST tronca a 1000 righe: pagina finché il blocco è pieno.
+          let from = 0;
+          for (;;) {
+            const { data, error } = await supabase
+              .from("contatti")
+              .select(COLS)
+              .in(campo, blocco)
+              .order("id", { ascending: true })
+              .range(from, from + 999);
+            if (error) throw error;
+            const righe = (data ?? []) as unknown as ContattoSoggetto[];
+            out.push(...righe);
+            if (righe.length < 1000) break;
+            from += 1000;
+          }
+        }
+      };
+
+      if (clienteIds.length) await caricaPer("cliente_id", clienteIds);
+      if (leadIds.length) await caricaPer("lead_id", leadIds);
+      return out;
+    },
+  });
+
+  const mappaContatti = useMemo<MappaContatti>(() => {
+    const m: MappaContatti = new Map();
+    for (const c of contattiSoggetti ?? []) {
+      const k = c.cliente_id ? `c:${c.cliente_id}` : c.lead_id ? `l:${c.lead_id}` : null;
+      if (!k) continue;
+      const arr = m.get(k);
+      if (arr) arr.push(c);
+      else m.set(k, [c]);
+    }
+    for (const arr of m.values()) {
+      arr.sort((a, b) => Number(!!b.principale) - Number(!!a.principale));
+    }
+    return m;
+  }, [contattiSoggetti]);
+
 
   const salvaEvento = useMutation({
     mutationFn: async () => {
