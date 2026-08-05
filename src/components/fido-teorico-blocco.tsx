@@ -95,6 +95,9 @@ export function FidoTeoricoBlocco({ clienteId }: { clienteId: string }) {
 
       <p className="text-xs text-muted-foreground italic">
         Calcolo indicativo. Non modifica il fido in essere.
+        {ultimoRefresh
+          ? ` Dati fatturato aggiornati al ${new Date(ultimoRefresh).toLocaleString("it-IT")}.`
+          : ""}
       </p>
     </div>
   );
