@@ -2,8 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import { Plus, Building2, Pencil, Trash2, Sliders, Save, Mail, AlertTriangle } from "lucide-react";
+import { Plus, Building2, Pencil, Trash2, Sliders, Save, Mail, AlertTriangle, RefreshCw } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
+import { refreshFatturatoMensile } from "@/lib/fido-teorico.functions";
 import { getCleanupRecuperoCounts, eseguiCleanupRecupero } from "@/lib/cleanup-recupero.functions";
 import { migrazioneRichiesteCreaUtenti, migrazioneRichiesteDati, migrazioneRichiesteFile } from "@/lib/migrazione-richieste.functions";
 import { notifyRichiestaEvento } from "@/lib/richieste-email.functions";
@@ -641,6 +642,17 @@ function ConfigurazioniCard() {
       setValues(map);
     }
   }, [data]);
+
+  const refreshFn = useServerFn(refreshFatturatoMensile);
+  const refresh = useMutation({
+    mutationFn: async () => await refreshFn({}),
+    onSuccess: () => {
+      toast.success("Precalcolo fatturato aggiornato");
+      qc.invalidateQueries({ queryKey: ["configurazioni"] });
+      qc.invalidateQueries({ queryKey: ["fido-teorico"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const save = useMutation({
     mutationFn: async () => {
