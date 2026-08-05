@@ -326,9 +326,11 @@ function RichiestaDialog({
 
 
   function handleImportoChange(v: number) {
+    importoToccato.current = true;
     const tipoAuto = determinaTipo(fidoAttuale, v);
     setForm(f => ({ ...f, importo_richiesto: v, tipo: tipoAuto }));
   }
+
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const save = useMutation({
