@@ -1776,10 +1776,13 @@ function ProposteFidoMassivoDialog({
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-10"></TableHead>
                 <TableHead>Cliente</TableHead>
                 <TableHead className="text-right">Fido attuale</TableHead>
                 <TableHead className="text-right">Esposizione</TableHead>
                 <TableHead className="text-right">Fido proposto</TableHead>
+                <TableHead className="text-right">Scostamento</TableHead>
+                <TableHead>Regola</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead className="w-10">Mot.</TableHead>
                 <TableHead className="w-10"></TableHead>
@@ -1788,8 +1791,16 @@ function ProposteFidoMassivoDialog({
             <TableBody>
               {righe.map((r) => {
                 const hasOverride = r.motivazione !== undefined;
+                const scost = r.proponibile ? r.fido_proposto - r.fido_attuale : 0;
                 return (
-                  <TableRow key={r.cliente_id}>
+                  <TableRow key={r.cliente_id} className={!r.proponibile ? "opacity-60" : ""}>
+                    <TableCell>
+                      <Checkbox
+                        checked={r.incluso && r.proponibile}
+                        disabled={!r.proponibile}
+                        onCheckedChange={() => toggleIncluso(r.cliente_id)}
+                      />
+                    </TableCell>
                     <TableCell className="font-medium text-sm">{r.ragione_sociale}</TableCell>
                     <TableCell className="text-right text-sm">{fmtEuro(r.fido_attuale)}</TableCell>
                     <TableCell className="text-right text-sm">{fmtEuro(r.esposizione)}</TableCell>
@@ -1798,11 +1809,24 @@ function ProposteFidoMassivoDialog({
                         type="number"
                         className="h-8 text-right w-32 ml-auto"
                         value={r.fido_proposto}
+                        disabled={!r.proponibile}
                         onChange={(e) => aggiornaImporto(r.cliente_id, Number(e.target.value) || 0)}
                       />
                     </TableCell>
+                    <TableCell className={`text-right text-sm tabular-nums ${scost > 0 ? "text-success" : scost < 0 ? "text-warning" : "text-muted-foreground"}`}>
+                      {r.proponibile ? `${scost > 0 ? "+" : ""}${fmtEuro(scost)}` : "—"}
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      {r.proponibile ? (
+                        <span className="text-muted-foreground">{REGOLA_LABEL[r.regola] ?? r.regola ?? "—"}</span>
+                      ) : (
+                        <span className="text-warning" title={MOTIVO_NON_PROPONIBILE[r.regola] ?? ""}>
+                          {MOTIVO_NON_PROPONIBILE[r.regola] ?? REGOLA_LABEL[r.regola] ?? "Non proponibile"}
+                        </span>
+                      )}
+                    </TableCell>
                     <TableCell>
-                      <Select value={r.tipo} onValueChange={(v) => aggiornaTipo(r.cliente_id, v as RigaProposta["tipo"])}>
+                      <Select value={r.tipo} disabled={!r.proponibile} onValueChange={(v) => aggiornaTipo(r.cliente_id, v as RigaProposta["tipo"])}>
                         <SelectTrigger className="h-8 w-36"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="nuovo_fido">Nuovo fido</SelectItem>
@@ -1812,6 +1836,7 @@ function ProposteFidoMassivoDialog({
                         </SelectContent>
                       </Select>
                     </TableCell>
+
                     <TableCell>
                       <Popover>
                         <PopoverTrigger asChild>
