@@ -134,6 +134,8 @@ function LeadListaPage() {
 
   /** Il filtro Stato ha la precedenza sul set di stati di default della vista. */
   const statoEsplicito = stato !== TUTTI;
+  /** Colonne/campi di conversione: vista Convertiti oppure filtro Stato = Convertito. */
+  const mostraConversione = stato === "convertito" || (!statoEsplicito && tab === "convertiti");
 
   const queryKey = [
     "lead-lista", tab, search, stato, tipoLead, fonte, priorita, storeFiltro, agente,
