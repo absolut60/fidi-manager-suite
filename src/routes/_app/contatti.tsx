@@ -118,27 +118,9 @@ function ContattiPage() {
       </div>
 
       <Card className="p-4">
-        <div className="flex items-center justify-between gap-2 md:hidden mb-3">
-          <button
-            type="button"
-            onClick={() => setFiltriApertiMobile((v) => !v)}
-            className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground"
-          >
-            <SlidersHorizontal className="size-4" />
-            Filtri
-            <ChevronDown
-              className={`size-4 transition-transform ${filtriApertiMobile ? "rotate-180" : ""}`}
-            />
-          </button>
-          {attiviCount > 0 && (
-            <Badge variant="secondary" className="h-6">
-              {attiviCount} {attiviCount === 1 ? "filtro attivo" : "filtri attivi"}
-            </Badge>
-          )}
-        </div>
-        <div className={`${filtriApertiMobile ? "flex" : "hidden"} md:flex flex-wrap gap-3 items-end`}>
-          <div className="flex-1 min-w-full sm:min-w-[200px]">
-
+        <FiltriCollassabili attivi={attiviCount}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="lg:col-span-2">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
               <Input
@@ -149,7 +131,7 @@ function ContattiPage() {
               />
             </div>
           </div>
-          <div className="w-full sm:w-56">
+          <div>
             <Select value={clienteId} onValueChange={setClienteId}>
               <SelectTrigger><SelectValue placeholder="Cliente" /></SelectTrigger>
               <SelectContent>
@@ -161,7 +143,7 @@ function ContattiPage() {
             </Select>
           </div>
           {!isStoreManager && (
-            <div className="w-full sm:w-56">
+            <div>
               <Select value={storeId} onValueChange={setStoreId}>
                 <SelectTrigger><SelectValue placeholder="Store" /></SelectTrigger>
                 <SelectContent>
@@ -173,7 +155,7 @@ function ContattiPage() {
               </Select>
             </div>
           )}
-          <div className="w-full sm:w-56">
+          <div>
             <Select value={statoConsenso} onValueChange={setStatoConsenso}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -184,7 +166,9 @@ function ContattiPage() {
             </Select>
           </div>
         </div>
+        </FiltriCollassabili>
       </Card>
+
 
       <Card className="overflow-hidden">
         {isLoading ? (
