@@ -43,6 +43,15 @@ function ContattiPage() {
   const [clienteId, setClienteId] = useState("all");
   const [statoConsenso, setStatoConsenso] = useState("tutti");
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [filtriApertiMobile, setFiltriApertiMobile] = useState(false);
+
+  const attiviCount = [
+    search.trim() !== "",
+    storeId !== "all",
+    clienteId !== "all",
+    statoConsenso !== "tutti",
+  ].filter(Boolean).length;
+
 
   const { data: stores } = useQuery({
     queryKey: ["stores-list"],
