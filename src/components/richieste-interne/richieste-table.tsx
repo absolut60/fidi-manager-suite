@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowDown, ArrowUp, ArrowUpDown, MessageSquare, Paperclip, Search } from "lucide-react";
+import { SchedaLista, ElencoSchede, type CampoScheda } from "@/components/lista-responsive";
+
 
 export const STATUS_LABEL: Record<string, string> = {
   pending: "⏳ Att. Resp. Gen.",
@@ -144,18 +146,83 @@ export function RichiesteTable({
             <SelectItem value="90">Ultimi 90 giorni</SelectItem>
           </SelectContent>
         </Select>
-        <div className="ml-auto relative">
+        <div className="ml-auto relative w-full sm:w-auto">
           <Search className="size-4 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Cerca titolo, descrizione o richiedente…"
-            className="pl-8 w-72"
+            className="pl-8 w-full sm:w-72"
           />
         </div>
       </div>
 
-      <div className="rounded-md border">
+      {/* Sotto md: schede */}
+      <ElencoSchede>
+        {isLoading && <div className="text-center text-muted-foreground py-8 text-sm">Caricamento…</div>}
+        {!isLoading && filtered.length === 0 && (
+          <div className="text-center text-muted-foreground py-8 text-sm">{emptyLabel}</div>
+        )}
+        {!isLoading && filtered.map((r) => {
+          const nAll = r.richieste_interne_allegati?.length ?? 0;
+          const showAdmin =
+            showAdminBadge &&
+            (r.status === "resp_approved" || r.status === "approved") &&
+            r.admin_status &&
+            r.admin_status !== "da_gestire";
+          const campi: CampoScheda[] = [
+            { etichetta: "Richiedente", valore: r.requester_name },
+            { etichetta: "Sede", valore: r.sede_name || "—" },
+            { etichetta: "Importo", valore: <span className="font-mono">{fmtEuro(r.amount)}</span> },
+            { etichetta: "Data", valore: fmtData(r.created_at) },
+          ];
+          if (showArchivedColumns) {
+            campi.push({ etichetta: "Archiviata da", valore: r.archived_by_name || "—" });
+            campi.push({ etichetta: "Data archiv.", valore: fmtData(r.archived_at) });
+          }
+          return (
+            <div key={r.id} className="space-y-1.5">
+              <SchedaLista
+                onClick={() => openDetail(r.id)}
+                titolo={
+                  <span className={`inline-flex items-start gap-1.5 ${unreadIds?.has(r.id) ? "font-bold text-primary" : ""}`}>
+                    {unreadIds?.has(r.id) && <MessageSquare className="size-3.5 text-primary shrink-0 mt-0.5" aria-label="Messaggi non letti" />}
+                    <span>{r.title}</span>
+                  </span>
+                }
+                badge={
+                  nAll > 0 ? (
+                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+                      <Paperclip className="size-3" />{nAll}
+                    </span>
+                  ) : undefined
+                }
+                campi={campi}
+                footer={
+                  <>
+                    <Badge variant="secondary">{TIPO_LABEL[r.type] ?? r.type}</Badge>
+                    <Badge variant="outline">{STATUS_LABEL[r.status] ?? r.status}</Badge>
+                    {showAdmin && <Badge variant="outline">{ADMIN_LABEL[r.admin_status!] ?? r.admin_status}</Badge>}
+                  </>
+                }
+              />
+              {(onGestisci || onRipristina) && (
+                <div className="flex items-center gap-2">
+                  {onGestisci && (
+                    <Button size="sm" variant="outline" className="flex-1" onClick={() => onGestisci(r)}>{gestisciLabel}</Button>
+                  )}
+                  {onRipristina && (
+                    <Button size="sm" variant="outline" className="flex-1" onClick={() => onRipristina(r)}>↩ Ripristina</Button>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </ElencoSchede>
+
+      <div className="hidden md:block rounded-md border">
+
         <Table>
           <TableHeader>
             <TableRow>
