@@ -5,7 +5,7 @@ import { z } from "zod";
 import { Plus, Search, Building, MapPin, FileCheck2, FileX2, ArrowLeft, ArrowRight, Check, Pencil, PenTool, FileText, SlidersHorizontal, X, AlertCircle, Clock, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown, MessageSquare } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { FiltriCollassabili, SchedaLista, ElencoSchede } from "@/components/lista-responsive";
 import * as RadixSlider from "@radix-ui/react-slider";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -162,7 +162,6 @@ function ClientiPage() {
   const [fatturatoFiltro, setFatturatoFiltro] = useState<string>("tutti");
   const [aScadereFiltro, setAScadereFiltro] = useState<string>("tutti");
   const [open, setOpen] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [sortBy, setSortBy] = useState("ragione_sociale");
