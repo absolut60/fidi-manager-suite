@@ -1247,14 +1247,17 @@ export type Database = {
         Row: {
           descrizione: string
           giorni_totali: number
+          pagamento_immediato: boolean
         }
         Insert: {
           descrizione: string
           giorni_totali: number
+          pagamento_immediato?: boolean
         }
         Update: {
           descrizione?: string
           giorni_totali?: number
+          pagamento_immediato?: boolean
         }
         Relationships: []
       }
