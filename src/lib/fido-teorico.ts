@@ -25,7 +25,8 @@ export const REGOLA_LABEL: Record<string, string> = {
   condizione_mancante: "Condizione di pagamento mancante",
   nessun_fatturato: "Nessun fatturato",
   minimo_500: "Minimo 500",
-  fascia_1000: "Fascia 1.000",
+  pagamento_immediato: "Pagamento immediato",
+  fascia_500: "Fascia 500",
   fascia_5000: "Fascia 5.000",
 };
 
@@ -36,7 +37,8 @@ export const REGOLA_DESCRIZIONE: Record<string, string> = {
   condizione_mancante: "Condizione di pagamento mancante in anagrafica — impossibile calcolare",
   nessun_fatturato: "Nessun fatturato nella finestra di calcolo",
   minimo_500: "Fatturato solo nell'anno precedente — minimo 500 €",
-  fascia_1000: "Fido base ≤ 5.000 € — arrotondato per eccesso a 1.000 €",
+  pagamento_immediato: "Pagamento immediato (contanti/POS/assegno) — nessuna esposizione, fido non necessario",
+  fascia_500: "Fido base ≤ 5.000 € — arrotondato per eccesso a 500 €",
   fascia_5000: "Fido base > 5.000 € — arrotondato al multiplo di 5.000 € più vicino",
 };
 
