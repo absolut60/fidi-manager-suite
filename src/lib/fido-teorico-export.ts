@@ -370,9 +370,74 @@ export function nomeFileExport(d: Date): string {
   return `fido-teorico-${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}.xlsx`;
 }
 
+/**
+ * SheetJS community non scrive stili ne' riquadri bloccati: il file prodotto
+ * viene quindi ritoccato a valle (aggiunta di un font grassetto, applicazione
+ * alle righe di intestazione e blocco della prima riga del foglio dati).
+ */
+function applicaStiliEBlocco(buf: Uint8Array, grassetto: Record<number, number[]>): Uint8Array {
+  const files = unzipSync(buf);
+  const dec = new TextDecoder();
+  const enc = new TextEncoder();
+
+  const stylesKey = "xl/styles.xml";
+  if (!files[stylesKey]) return buf;
+  let styles = dec.decode(files[stylesKey]);
+
+  // Nuovo font grassetto
+  const fontsMatch = styles.match(/<fonts count="(\d+)">/);
+  if (!fontsMatch) return buf;
+  const nFonts = Number(fontsMatch[1]);
+  styles = styles
+    .replace(fontsMatch[0], `<fonts count="${nFonts + 1}">`)
+    .replace("</fonts>", `<font><b/><sz val="12"/><color theme="1"/><name val="Calibri"/><family val="2"/><scheme val="minor"/></font></fonts>`);
+
+  // Nuovo formato cella che usa il font grassetto
+  const xfsMatch = styles.match(/<cellXfs count="(\d+)">/);
+  if (!xfsMatch) return buf;
+  const boldXf = Number(xfsMatch[1]);
+  styles = styles
+    .replace(xfsMatch[0], `<cellXfs count="${boldXf + 1}">`)
+    .replace("</cellXfs>", `<xf numFmtId="0" fontId="${nFonts}" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs>`);
+  files[stylesKey] = enc.encode(styles);
+
+  for (const [idxStr, righe] of Object.entries(grassetto)) {
+    const idx = Number(idxStr);
+    const key = `xl/worksheets/sheet${idx}.xml`;
+    if (!files[key]) continue;
+    let xml = dec.decode(files[key]);
+
+    if (idx === 1) {
+      xml = xml.replace(
+        /<sheetView([^>]*)\/>/,
+        `<sheetView$1><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="A2" sqref="A2"/></sheetView>`,
+      );
+    }
+
+    for (const riga of righe) {
+      const re = new RegExp(`(<row r="${riga}"[^>]*>)([\\s\\S]*?)(</row>)`);
+      xml = xml.replace(re, (_m, apri: string, corpo: string, chiudi: string) => {
+        const nuovo = corpo
+          .replace(/<c r="([A-Z]+\d+)" s="\d+"/g, `<c r="$1" s="${boldXf}"`)
+          .replace(/<c r="([A-Z]+\d+)"(?! s=)/g, `<c r="$1" s="${boldXf}"`);
+        return apri + nuovo + chiudi;
+      });
+    }
+    files[key] = enc.encode(xml);
+  }
+
+  return zipSync(files, { level: 6 });
+}
+
 export function scaricaWorkbook(wb: XLSX.WorkBook, nomeFile: string) {
-  const buf = XLSX.write(wb, { type: "array", bookType: "xlsx" }) as ArrayBuffer;
-  const blob = new Blob([buf], {
+  const raw = new Uint8Array(XLSX.write(wb, { type: "array", bookType: "xlsx" }) as ArrayBuffer);
+  let out = raw;
+  try {
+    out = applicaStiliEBlocco(raw, (wb as any).__grassetto ?? {});
+  } catch {
+    out = raw; // in caso di problemi si scarica comunque il file senza stili
+  }
+  const blob = new Blob([out], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
   const url = URL.createObjectURL(blob);
@@ -384,3 +449,4 @@ export function scaricaWorkbook(wb: XLSX.WorkBook, nomeFile: string) {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
