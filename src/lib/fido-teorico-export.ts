@@ -443,7 +443,7 @@ export function scaricaWorkbook(wb: XLSX.WorkBook, nomeFile: string) {
     out = raw; // in caso di problemi si scarica comunque il file senza stili
   }
 
-  const blob = new Blob([out], {
+  const blob = new Blob([out as BlobPart], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
   const url = URL.createObjectURL(blob);
