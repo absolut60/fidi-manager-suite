@@ -37,6 +37,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { useConfig, useConfigReady, isClienteAttivo } from "@/hooks/use-config";
 import { CondizionePagamentoSelect } from "@/components/condizione-pagamento-select";
 import { CategoriaSelect } from "@/components/categoria-select";
+import { EsportaFidoTeoricoButton } from "@/components/esporta-fido-teorico-button";
+
 import { INFORMATIVA_FULL, CONSENSO_TESTI } from "@/lib/consensi-testi";
 
 export const Route = createFileRoute("/_app/clienti")({
@@ -1206,15 +1208,19 @@ function ClientiPage() {
             Per un potenziale cliente non ancora attivo, usa i Lead.
           </p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-1.5 w-full sm:w-auto">
-              <Plus className="size-4" />
-              Nuova scheda cliente
-            </Button>
-          </DialogTrigger>
-          <SchedaClienteDialog onClose={() => { setOpen(false); setSearchInput(""); setSearch(""); }} />
-        </Dialog>
+        <div className="flex flex-col sm:flex-row sm:items-start gap-2">
+          {!isAgente && <EsportaFidoTeoricoButton />}
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-1.5 w-full sm:w-auto">
+                <Plus className="size-4" />
+                Nuova scheda cliente
+              </Button>
+            </DialogTrigger>
+            <SchedaClienteDialog onClose={() => { setOpen(false); setSearchInput(""); setSearch(""); }} />
+          </Dialog>
+        </div>
+
       </div>
 
       <FiltriAvanzatiDialog
