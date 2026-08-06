@@ -6,6 +6,8 @@
  * del fido: i valori del motore vengono riportati tali e quali.
  */
 import * as XLSX from "xlsx";
+import { unzipSync, zipSync } from "fflate";
+
 import { supabase } from "@/integrations/supabase/client";
 import { REGOLA_DESCRIZIONE } from "@/lib/fido-teorico";
 
@@ -248,12 +250,8 @@ function marcaTipi(ws: XLSX.WorkSheet, nRighe: number, nCol: number, offsetRiga 
   }
 }
 
-function grassetto(ws: XLSX.WorkSheet, riga: number, nCol: number) {
-  for (let c = 0; c < nCol; c++) {
-    const cell = ws[XLSX.utils.encode_cell({ r: riga, c })];
-    if (cell) cell.s = { font: { bold: true } };
-  }
-}
+
+
 
 export function costruisciWorkbook(
   righe: RigaExport[],
