@@ -170,6 +170,8 @@ type StagedAnagraficaChunk = {
   chunkIndex: number;
   totalChunks: number;
   rows: AnagRow[];
+  /** Chiavi canoniche effettivamente presenti nel tracciato del file (header). */
+  colonne?: string[];
 };
 
 function decodeXmlText(value: string): string {
@@ -335,6 +337,9 @@ async function stageAnagraficaWorkbookIncremental(filePath: string, stagingBase:
   let chunk: AnagRow[] = [];
   let headerIdx = -1;
   let headers: string[] = [];
+  // Colonne canoniche presenti nel tracciato + intestazioni non riconosciute
+  const colonnePresenti = new Set<string>();
+  const colonneIgnorate: string[] = [];
   let streamError: Error | null = null;
   let sheetSeen = false;
   let textTail = "";
@@ -350,6 +355,7 @@ async function stageAnagraficaWorkbookIncremental(filePath: string, stagingBase:
       chunkIndex,
       totalChunks: 0,
       rows,
+      colonne: Array.from(colonnePresenti),
     };
     queuedUploads++;
     uploadChain = uploadChain.then(async () => {
@@ -368,6 +374,12 @@ async function stageAnagraficaWorkbookIncremental(filePath: string, stagingBase:
       if (excelRow <= 10 && values.some((c) => normAnagHeader(c) === "ragionesociale")) {
         headerIdx = excelRow;
         headers = values.map((c) => String(c ?? "").trim());
+        for (const h of headers) {
+          if (!h) continue;
+          const f = ANAG_HEADERS[normalize(h)];
+          if (f) colonnePresenti.add(f);
+          else colonneIgnorate.push(h);
+        }
       }
       return;
     }
@@ -425,7 +437,15 @@ async function stageAnagraficaWorkbookIncremental(filePath: string, stagingBase:
   if (streamError) throw streamError;
   if (!sheetSeen) throw new Error(`Foglio Anagrafica non trovato nel file (${sheetPath})`);
   if (headerIdx < 0) throw new Error("Header ragione_sociale non trovato nelle prime 10 righe del foglio Anagrafica");
-  return { totRows: totalRows, chunkCount: chunkPaths.length, chunks: chunkPaths, fileBytes, sheetPath };
+  return {
+    totRows: totalRows,
+    chunkCount: chunkPaths.length,
+    chunks: chunkPaths,
+    fileBytes,
+    sheetPath,
+    colonne: Array.from(colonnePresenti),
+    colonneIgnorate,
+  };
 }
 
 async function setAnagraficaFinalState(
@@ -542,6 +562,26 @@ export const processAnagraficaImport = inngest.createFunction(
         }
       });
 
+      // STEP 2.6: anomalia informativa per le intestazioni non riconosciute
+      const colonneIgnorate = (init as { colonneIgnorate?: string[] }).colonneIgnorate ?? [];
+      if (colonneIgnorate.length) {
+        await step.run("anomalia-colonne-non-riconosciute", async () => {
+          const { error } = await supabaseAdmin.from("anomalie_import" as never).insert({
+            importazione_id: importazioneId,
+            tipo_anomalia: "colonna_non_riconosciuta",
+            campo: "header",
+            codice_gestionale: "",
+            ragione_sociale: null,
+            valore_attuale: colonneIgnorate.join(" | ").slice(0, 500),
+            valore_nuovo: "ignorata",
+            stato: "in_attesa",
+          } as never);
+          if (error) logger.warn(`anomalia colonne non riconosciute fallita: ${error.message}`);
+        });
+      }
+
+
+
       // STEP 3: fan-out di un evento per chunk
 
       const events = init.chunks.map((chunkPath, i) => ({
@@ -620,6 +660,12 @@ export const processAnagraficaChunk = inngest.createFunction(
         "import-staging",
       );
       const rows = staged.rows;
+      // Colonne canoniche presenti nel tracciato: serve per distinguere
+      // "colonna assente" (non toccare) da "colonna presente ma vuota" (azzera).
+      const colonneFile = new Set<string>(staged.colonne ?? []);
+      const haColAgenteCod = colonneFile.has("codice_agente");
+      const haColAgenteDesc = colonneFile.has("agente");
+      let agentiAzzerati = 0;
       logger.info(
         `Chunk anagrafica ${chunkIndex + 1}/${totalChunks}: ${rows.length} righe`,
       );
@@ -914,8 +960,17 @@ export const processAnagraficaChunk = inngest.createFunction(
           addIfPresent(payload, "macrocategoria", macroLabel);
           addIfPresent(payload, "codice_categoria", codCat);
           addIfPresent(payload, "categoria", catLabel);
-          addIfPresent(payload, "codice_agente", toStr(r.codice_agente));
-          addIfPresent(payload, "agente", toStr(r.agente));
+          // AGENTE — il gestionale è fonte di verità:
+          // colonna presente nel tracciato => scrive sempre (valore o NULL);
+          // colonna assente => non tocca nulla (bypass di addIfPresent, come i telefoni).
+          const agenteCodVal = toStr(r.codice_agente);
+          const agenteDescVal = toStr(r.agente);
+          if (haColAgenteCod) payload.codice_agente = agenteCodVal;
+          else addIfPresent(payload, "codice_agente", agenteCodVal);
+          if (haColAgenteDesc) payload.agente = agenteDescVal;
+          else addIfPresent(payload, "agente", agenteDescVal);
+          const agenteDaAzzerare =
+            (haColAgenteCod && !agenteCodVal) || (haColAgenteDesc && !agenteDescVal);
           addIfPresent(
             payload,
             "condizione_pagamento_cod",
@@ -943,6 +998,7 @@ export const processAnagraficaChunk = inngest.createFunction(
           const pi = toStr(r.partita_iva);
           const existId =
             (cg && existing[`cg:${cg}`]) || (pi && existing[`pi:${pi}`]) || null;
+          if (existId && agenteDaAzzerare) agentiAzzerati++;
           prepared.push({
             idx: r.__row,
             codice_gestionale: cg,
@@ -1125,8 +1181,16 @@ export const processAnagraficaChunk = inngest.createFunction(
         });
       }
 
+      // Report azzeramenti agente (visibile nel log dell'import)
+      if (agentiAzzerati > 0) {
+        errs.push({
+          riga: 0,
+          errore: `Agente azzerato chunk ${chunkIndex + 1}/${totalChunks}: ${agentiAzzerati} clienti (colonna agente presente nel file ma vuota).`,
+        });
+      }
+
       logger.info(
-        `Chunk anagrafica ${chunkIndex + 1}/${totalChunks} done: created=${created}, updated=${updated}, skipped=${skipped}, errs=${errs.length}, anomalie_email=${anomalieEmail.length} (azzerate=${emailAzzerate}, splittate=${emailSplittate}), anomalie_telefono=${anomalieTelefono.length} (azzerate=${telefoniAzzerati})`,
+        `Chunk anagrafica ${chunkIndex + 1}/${totalChunks} done: created=${created}, updated=${updated}, skipped=${skipped}, errs=${errs.length}, anomalie_email=${anomalieEmail.length} (azzerate=${emailAzzerate}, splittate=${emailSplittate}), anomalie_telefono=${anomalieTelefono.length} (azzerate=${telefoniAzzerati}), agenti_azzerati=${agentiAzzerati}`,
       );
       return {
         elaborate: rows.length,
@@ -1134,6 +1198,7 @@ export const processAnagraficaChunk = inngest.createFunction(
         updated,
         skipped,
         errori: errs.length,
+        agentiAzzerati,
       };
     });
 

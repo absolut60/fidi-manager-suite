@@ -187,7 +187,13 @@ export const ANAG_HEADERS: Record<string, string> = {
   // agente
   "id agente": "codice_agente",
   id_agente: "codice_agente",
+  "cod agente": "codice_agente",
+  "codice agente": "codice_agente",
   agente: "agente",
+  "agente di zona": "agente",
+  rappresentante: "agente",
+  "nome agente": "agente",
+  "descrizione agente": "agente",
   // condizione pagamento
   "cod. pagamento": "condizione_pagamento_cod",
   condizione_pagamento_cod: "condizione_pagamento_cod",
