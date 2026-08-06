@@ -292,7 +292,7 @@ export function costruisciWorkbook(
   ];
   const ws = XLSX.utils.aoa_to_sheet(aoa, { cellDates: false });
   marcaTipi(ws, righe.length, INTESTAZIONI.length);
-  grassetto(ws, 0, INTESTAZIONI.length);
+
   ws["!cols"] = INTESTAZIONI.map((h, i) => ({
     wch: i === 1 ? 38 : i === 13 ? 46 : Math.max(12, Math.min(26, h.length + 2)),
   }));
@@ -328,6 +328,7 @@ export function costruisciWorkbook(
   }
   rip.push([]);
 
+  const rigaDinamica = rip.length;
   rip.push(["Per dinamica", "Clienti", "Fido base", "Fido proposto"]);
   for (const d of DINAMICHE) {
     const rows = righe.filter((r) => r.dinamica === d);
@@ -335,6 +336,7 @@ export function costruisciWorkbook(
   }
   rip.push([]);
 
+  const rigaFascia = rip.length;
   rip.push(["Per fascia di fido base", "Clienti", "Fido base", "Fido proposto", "Differenza"]);
   for (const f of FASCE) {
     const rows = righe.filter((r) => f.test(r.fido_base));
@@ -354,14 +356,19 @@ export function costruisciWorkbook(
       }
     }
   }
-  for (const r of [0, 4, 11]) grassetto(wsR, r, 5);
   wsR["!cols"] = [{ wch: 46 }, { wch: 14 }, { wch: 18 }, { wch: 18 }, { wch: 18 }];
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Fido teorico");
   XLSX.utils.book_append_sheet(wb, wsR, "Riepilogo");
+  // Righe (1-based) da rendere in grassetto in post-produzione, per foglio.
+  (wb as any).__grassetto = {
+    1: [1],
+    2: [1, 5, 12, rigaDinamica + 1, rigaFascia + 1],
+  };
   return wb;
 }
+
 
 export function nomeFileExport(d: Date): string {
   const p = (n: number) => String(n).padStart(2, "0");
@@ -429,12 +436,13 @@ function applicaStiliEBlocco(buf: Uint8Array, grassetto: Record<number, number[]
 
 export function scaricaWorkbook(wb: XLSX.WorkBook, nomeFile: string) {
   const raw = new Uint8Array(XLSX.write(wb, { type: "array", bookType: "xlsx" }) as ArrayBuffer);
-  let out = raw;
+  let out: Uint8Array = raw;
   try {
-    out = applicaStiliEBlocco(raw, (wb as any).__grassetto ?? {});
+    out = applicaStiliEBlocco(raw, (wb as any).__grassetto ?? {}) as Uint8Array;
   } catch {
     out = raw; // in caso di problemi si scarica comunque il file senza stili
   }
+
   const blob = new Blob([out], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
