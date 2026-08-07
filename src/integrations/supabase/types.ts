@@ -4530,6 +4530,30 @@ export type Database = {
           store_nome: string
         }[]
       }
+      get_dashboard_fidi: {
+        Args: never
+        Returns: {
+          aggiornato_al: string
+          bloccati_eur: number
+          bloccati_n: number
+          da_verificare_n: number
+          fido_concesso_clienti: number
+          fido_concesso_eur: number
+          fido_concesso_piccoli_eur: number
+          fido_concesso_piccoli_n: number
+          fido_proposto_clienti: number
+          fido_proposto_eur: number
+          fido_proposto_piccoli_eur: number
+          fido_proposto_piccoli_n: number
+          insoluti_eur: number
+          insoluti_n: number
+          insoluti_non_bloccati_n: number
+          oltre_fido_eur: number
+          oltre_fido_n: number
+          scaduto_eur: number
+          scaduto_over60_eur: number
+        }[]
+      }
       get_dso_aggregato: {
         Args: {
           _cliente_id?: string
