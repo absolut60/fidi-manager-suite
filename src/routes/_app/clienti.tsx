@@ -1744,6 +1744,8 @@ function ProposteFidoMassivoDialog({
           fido_proposto: proposto,
           scostamento: t?.scostamento ?? 0,
           regola,
+          richiede_verifica: !!t?.richiede_verifica,
+          nota_proposta: t?.nota_proposta ?? "",
           proponibile,
           incluso: proponibile,
           tipo: determinaTipoRichiesta(attuale, proposto),
