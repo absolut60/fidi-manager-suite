@@ -2,50 +2,24 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useAuth, RUOLI_LABEL } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   FileText,
-  Wallet,
-  Clock,
   AlertTriangle,
   Plus,
   UserPlus,
   Upload,
-  TrendingUp,
 } from "lucide-react";
 import { DashboardReminders } from "@/components/dashboard-reminders";
 import { DashboardFatturato } from "@/components/dashboard-fatturato";
+import { DashboardFidi } from "@/components/dashboard-fidi";
 
 export const Route = createFileRoute("/_app/dashboard")({
   component: DashboardPage,
 });
 
-type Metric = {
-  label: string;
-  value: string;
-  icon: typeof FileText;
-  tone: "primary" | "success" | "warning" | "info";
-  hint?: string;
-};
-
-function formatEuro(n: number) {
-  return new Intl.NumberFormat("it-IT", {
-    style: "currency",
-    currency: "EUR",
-    minimumFractionDigits: 2,
-  }).format(n);
-}
-
 function DashboardPage() {
   const { profilo, role, loading } = useAuth();
 
-  // Placeholder valori — verranno collegati alle tabelle dei fidi nella prossima iterazione
-  const metrics: Metric[] = [
-    { label: "Fidi attivi", value: "—", icon: Wallet, tone: "primary", hint: "Totale clienti con fido in corso" },
-    { label: "Esposizione totale", value: formatEuro(0), icon: TrendingUp, tone: "success", hint: "Somma fidi assegnati" },
-    { label: "In approvazione", value: "—", icon: Clock, tone: "info", hint: "Richieste in attesa" },
-    { label: "In scadenza 30gg", value: "—", icon: AlertTriangle, tone: "warning", hint: "Fidi vicini alla scadenza" },
-  ];
 
   return (
     <div className="space-y-6">
