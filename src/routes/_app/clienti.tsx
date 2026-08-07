@@ -182,10 +182,27 @@ function ClientiPage() {
   // Filtro "solo clienti con fido gestionale attivo" (bonifica bloccati con fido)
   const [soloConFidoAttivo, setSoloConFidoAttivo] = useState(false);
   const [aScadereFiltro, setAScadereFiltro] = useState<string>("tutti");
+  // Fascia di fido CONCESSO (fido_gestionale), usata dalla tabella "per fasce" della dashboard
+  const [fasciaConcesso, setFasciaConcesso] = useState<string>("tutti");
 
   // Preset filtri via URL (?preset=...), usati dai riquadri della dashboard
   const presetSearch = Route.useSearch().preset;
+  const storeSearch = Route.useSearch().store;
+  const fasciaSearch = Route.useSearch().fascia;
   const presetApplicato = useRef<string | null>(null);
+  const sedeApplicata = useRef<string | null>(null);
+  useEffect(() => {
+    if (storeSearch && sedeApplicata.current !== storeSearch) {
+      sedeApplicata.current = storeSearch;
+      setStoreFiltro(storeSearch);
+      setFiltroTipoSoggetto("tutti");
+    }
+    if (fasciaSearch && sedeApplicata.current !== `f:${fasciaSearch}`) {
+      sedeApplicata.current = `f:${fasciaSearch}`;
+      setFasciaConcesso(fasciaSearch);
+      setFiltroTipoSoggetto("tutti");
+    }
+  }, [storeSearch, fasciaSearch]);
   useEffect(() => {
     if (!presetSearch || presetApplicato.current === presetSearch) return;
     presetApplicato.current = presetSearch;
