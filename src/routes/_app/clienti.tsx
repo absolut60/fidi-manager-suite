@@ -1683,6 +1683,8 @@ type RigaProposta = {
   fido_proposto: number;
   scostamento: number;
   regola: string;
+  richiede_verifica: boolean;
+  nota_proposta: string;
   /** false = regola che non consente una proposta (esclusa dalla creazione) */
   proponibile: boolean;
   incluso: boolean;
