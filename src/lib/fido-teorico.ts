@@ -26,6 +26,9 @@ export type FidoTeoricoRow = {
   sede_cinisello: boolean;
   richiede_verifica: boolean;
   nota_proposta: string;
+  fido_teorico_puro: number;
+  pavimento_applicato: boolean;
+  esposizione_corrente: number;
 };
 
 /** Spiegazione in chiaro del coefficiente di comportamento. */
