@@ -41,12 +41,14 @@ import { EsportaFidoTeoricoButton } from "@/components/esporta-fido-teorico-butt
 
 import { INFORMATIVA_FULL, CONSENSO_TESTI } from "@/lib/consensi-testi";
 
-type ClientiSearch = { preset?: string; edit?: 1 };
+type ClientiSearch = { preset?: string; edit?: 1; store?: string; fascia?: string };
 
 export const Route = createFileRoute("/_app/clienti")({
   validateSearch: (search: Record<string, unknown>): ClientiSearch => {
     const out: ClientiSearch = {};
     if (typeof search.preset === "string") out.preset = search.preset;
+    if (typeof search.store === "string") out.store = search.store;
+    if (typeof search.fascia === "string") out.fascia = search.fascia;
     if (search.edit) out.edit = 1;
     return out;
   },
