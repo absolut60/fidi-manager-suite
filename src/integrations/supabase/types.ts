@@ -4534,9 +4534,9 @@ export type Database = {
         Args: never
         Returns: {
           aggiornato_al: string
-          bloccati_eur: number
-          bloccati_n: number
           da_verificare_n: number
+          fermi_n: number
+          fermi_scaduto_eur: number
           fido_concesso_clienti: number
           fido_concesso_eur: number
           fido_concesso_piccoli_eur: number
