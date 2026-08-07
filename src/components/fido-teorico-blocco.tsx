@@ -102,6 +102,20 @@ export function FidoTeoricoBlocco({
             </div>
           </dl>
 
+          {data.nota_proposta && (
+            <p
+              className={`text-xs rounded-md px-3 py-2 border ${
+                data.richiede_verifica
+                  ? "border-warning/40 bg-warning/10 text-warning"
+                  : "border-transparent bg-muted/40 text-muted-foreground"
+              }`}
+            >
+              {data.nota_proposta}
+            </p>
+          )}
+
+
+
           <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground space-y-1">
             <p>
               Ritmo mensile {formatEuro(data.ritmo_mensile)} × {giorniMancanti ? "—" : `${data.giorni} gg`} / 30
