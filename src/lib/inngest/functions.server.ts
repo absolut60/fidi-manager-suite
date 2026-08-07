@@ -1398,18 +1398,24 @@ export const processRischioImport = inngest.createFunction(
         }>;
 
         const codici = Array.from(new Set(rows.map((r) => r.codice_gestionale)));
-        const lookup: Record<string, string> = {};
-        const CHUNK = 200;
+        // lookup: codice -> { id, ragione_sociale attuale }
+        // La ragione sociale serve solo per soddisfare il NOT NULL nell'upsert:
+        // viene riscritta identica, l'import rischio NON la modifica.
+        const lookup: Record<string, { id: string; ragione_sociale: string }> = {};
+        const CHUNK = 500;
         for (let i = 0; i < codici.length; i += CHUNK) {
           const slice = codici.slice(i, i + CHUNK);
           const { data } = await supabaseAdmin
             .from("clienti")
-            .select("id, codice_gestionale")
+            .select("id, codice_gestionale, ragione_sociale")
             .in("codice_gestionale", slice)
             .limit(CHUNK + 10);
-          (data ?? []).forEach((c: { id: string; codice_gestionale: string | null }) => {
-            if (c.codice_gestionale) lookup[c.codice_gestionale] = c.id;
-          });
+          (data ?? []).forEach(
+            (c: { id: string; codice_gestionale: string | null; ragione_sociale: string }) => {
+              if (c.codice_gestionale)
+                lookup[c.codice_gestionale] = { id: c.id, ragione_sociale: c.ragione_sociale };
+            },
+          );
         }
 
         await supabaseAdmin.storage
@@ -1434,52 +1440,73 @@ export const processRischioImport = inngest.createFunction(
           ragione_sociale: string;
           payload: Record<string, unknown>;
         }>;
-        const lookup: Record<string, string> = JSON.parse(await lookupBlob.data!.text());
+        const lookup: Record<string, { id: string; ragione_sociale: string }> = JSON.parse(
+          await lookupBlob.data!.text(),
+        );
 
         const now = new Date().toISOString();
         let aggiornati = 0;
         let saltati = 0;
         let errori = 0;
         const BATCH = 500;
+        const dettaglio: Array<{ riga: number; errore: string }> = [];
+        const MAX_DETTAGLIO = 500;
 
         for (let i = 0; i < rows.length; i += BATCH) {
           const chunk = rows.slice(i, i + BATCH);
-          const errs: Array<{ riga: number; errore: string }> = [];
-          await Promise.all(
-            chunk.map(async (r) => {
-              const id = lookup[r.codice_gestionale];
-              if (!id) {
-                saltati++;
-                errs.push({
-                  riga: r.idx,
-                  errore: `Codice ${r.codice_gestionale} non trovato`,
-                });
-                return;
-              }
-              const { error } = await supabaseAdmin
-                .from("clienti")
-                .update({ ...r.payload, ultima_sincronizzazione: now } as never)
-                .eq("id", id);
-              if (error) {
-                errori++;
-                errs.push({ riga: r.idx, errore: `Update: ${error.message}` });
-              } else {
-                aggiornati++;
-              }
-            }),
-          );
 
-          if (errs.length) {
-            const { data: cur } = await supabaseAdmin
-              .from("importazioni")
-              .select("log_errori")
-              .eq("id", importazioneId)
-              .single();
-            const existing = (cur?.log_errori as Array<{ riga: number; errore: string }> | null) ?? [];
-            await supabaseAdmin
-              .from("importazioni")
-              .update({ log_errori: [...existing, ...errs].slice(0, 500) } as never)
-              .eq("id", importazioneId);
+          // Righe senza cliente corrispondente: NON vanno nell'upsert
+          // (altrimenti verrebbero create anagrafiche fantasma).
+          const mancanti = chunk.filter((r) => !lookup[r.codice_gestionale]);
+          const validi = chunk.filter((r) => !!lookup[r.codice_gestionale]);
+          saltati += mancanti.length;
+          for (const r of mancanti) {
+            if (dettaglio.length < MAX_DETTAGLIO) {
+              dettaglio.push({
+                riga: r.idx,
+                errore: `Codice ${r.codice_gestionale} non trovato in anagrafica`,
+              });
+            }
+          }
+          if (mancanti.length) {
+            await supabaseAdmin.from("anomalie_import").insert(
+              mancanti.map((r) => ({
+                importazione_id: importazioneId,
+                tipo_anomalia: "cliente_non_trovato",
+                campo: "codice_gestionale",
+                codice_gestionale: r.codice_gestionale,
+                ragione_sociale: r.ragione_sociale || null,
+                valore_attuale: r.codice_gestionale,
+              })) as never,
+            );
+          }
+
+          if (validi.length) {
+            // UNA sola chiamata per batch: evita il tetto di subrequest del Worker.
+            // Conflitto sulla PK id => solo UPDATE, mai INSERT di nuovi clienti.
+            const payloads = validi.map((r) => {
+              const cli = lookup[r.codice_gestionale]!;
+              return {
+                id: cli.id,
+                ragione_sociale: cli.ragione_sociale,
+                ...r.payload,
+                ultima_sincronizzazione: now,
+              };
+            });
+            const { error } = await supabaseAdmin
+              .from("clienti")
+              .upsert(payloads as never, { onConflict: "id" });
+            if (error) {
+              errori += validi.length;
+              if (dettaglio.length < MAX_DETTAGLIO) {
+                dettaglio.push({
+                  riga: validi[0]!.idx,
+                  errore: `Upsert batch righe ${validi[0]!.idx}-${validi[validi.length - 1]!.idx}: ${error.message}`,
+                });
+              }
+            } else {
+              aggiornati += validi.length;
+            }
           }
 
           await supabaseAdmin
@@ -1487,23 +1514,27 @@ export const processRischioImport = inngest.createFunction(
             .update({
               righe_elaborate: Math.min(i + BATCH, rows.length),
               righe_aggiornate: aggiornati,
-              righe_errore: errori + saltati,
+              righe_saltate: saltati,
+              righe_errore: errori,
               stato: "in_elaborazione",
             } as never)
             .eq("id", importazioneId);
         }
 
-        return { aggiornati, saltati, errori };
+        return { aggiornati, saltati, errori, dettaglio };
       });
 
       // STEP 4 — finalizza
       const totaleElaborate = initResult.total + initResult.missingCount;
-      const cErrori = initResult.missingCount + allRes.errori + allRes.saltati;
-      const statoFinale = cErrori > 0 ? "completata_con_errori" : "completata";
-      const logFinale = [{
-        riga: 0,
-        errore: `Riepilogo: ${allRes.aggiornati} aggiornati, ${allRes.saltati} saltati, ${cErrori} errori totali`,
-      }];
+      const cErrori = initResult.missingCount + allRes.errori;
+      const statoFinale = cErrori > 0 || allRes.saltati > 0 ? "completata_con_errori" : "completata";
+      const logFinale = [
+        ...allRes.dettaglio.slice(0, 200),
+        {
+          riga: 0,
+          errore: `Riepilogo: ${allRes.aggiornati} aggiornati, ${allRes.saltati} saltati, ${cErrori} errori`,
+        },
+      ];
 
       await step.run("finalize", async () => {
         await supabaseAdmin.storage.from("import-staging").remove([
@@ -1517,6 +1548,7 @@ export const processRischioImport = inngest.createFunction(
             righe_elaborate: totaleElaborate,
             righe_create: 0,
             righe_aggiornate: allRes.aggiornati,
+            righe_saltate: allRes.saltati,
             righe_errore: cErrori,
             stato: statoFinale,
             completata_at: new Date().toISOString(),
