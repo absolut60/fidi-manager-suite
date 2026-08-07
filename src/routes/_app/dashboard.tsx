@@ -2,50 +2,24 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useAuth, RUOLI_LABEL } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   FileText,
-  Wallet,
-  Clock,
   AlertTriangle,
   Plus,
   UserPlus,
   Upload,
-  TrendingUp,
 } from "lucide-react";
 import { DashboardReminders } from "@/components/dashboard-reminders";
 import { DashboardFatturato } from "@/components/dashboard-fatturato";
+import { DashboardFidi } from "@/components/dashboard-fidi";
 
 export const Route = createFileRoute("/_app/dashboard")({
   component: DashboardPage,
 });
 
-type Metric = {
-  label: string;
-  value: string;
-  icon: typeof FileText;
-  tone: "primary" | "success" | "warning" | "info";
-  hint?: string;
-};
-
-function formatEuro(n: number) {
-  return new Intl.NumberFormat("it-IT", {
-    style: "currency",
-    currency: "EUR",
-    minimumFractionDigits: 2,
-  }).format(n);
-}
-
 function DashboardPage() {
   const { profilo, role, loading } = useAuth();
 
-  // Placeholder valori — verranno collegati alle tabelle dei fidi nella prossima iterazione
-  const metrics: Metric[] = [
-    { label: "Fidi attivi", value: "—", icon: Wallet, tone: "primary", hint: "Totale clienti con fido in corso" },
-    { label: "Esposizione totale", value: formatEuro(0), icon: TrendingUp, tone: "success", hint: "Somma fidi assegnati" },
-    { label: "In approvazione", value: "—", icon: Clock, tone: "info", hint: "Richieste in attesa" },
-    { label: "In scadenza 30gg", value: "—", icon: AlertTriangle, tone: "warning", hint: "Fidi vicini alla scadenza" },
-  ];
 
   return (
     <div className="space-y-6">
@@ -74,11 +48,8 @@ function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {metrics.map((m) => (
-          <MetricCard key={m.label} metric={m} loading={loading} />
-        ))}
-      </div>
+      <DashboardFidi />
+
 
       <DashboardFatturato />
 
@@ -113,38 +84,7 @@ function DashboardPage() {
   );
 }
 
-function MetricCard({ metric, loading }: { metric: Metric; loading: boolean }) {
-  const Icon = metric.icon;
-  const toneClass = {
-    primary: "bg-primary/10 text-primary",
-    success: "bg-success/15 text-success",
-    warning: "bg-warning/15 text-warning",
-    info: "bg-info/15 text-info",
-  }[metric.tone];
 
-  return (
-    <Card className="p-5 hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between">
-        <div className="space-y-1">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            {metric.label}
-          </p>
-          {loading ? (
-            <Skeleton className="h-8 w-24" />
-          ) : (
-            <p className="text-2xl font-bold text-foreground">{metric.value}</p>
-          )}
-          {metric.hint && (
-            <p className="text-xs text-muted-foreground">{metric.hint}</p>
-          )}
-        </div>
-        <div className={`size-10 rounded-lg flex items-center justify-center ${toneClass}`}>
-          <Icon className="size-5" />
-        </div>
-      </div>
-    </Card>
-  );
-}
 
 function EmptyState({
   icon: Icon,
