@@ -50,6 +50,9 @@ function DashboardPage() {
 
       <DashboardFidi />
 
+      <DashboardFidiDettaglio />
+
+
 
       <DashboardFatturato />
 
