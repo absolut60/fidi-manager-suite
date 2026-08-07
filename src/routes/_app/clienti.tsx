@@ -1925,7 +1925,15 @@ function ProposteFidoMassivoDialog({
                         onCheckedChange={() => toggleIncluso(r.cliente_id)}
                       />
                     </TableCell>
-                    <TableCell className="font-medium text-sm">{r.ragione_sociale}</TableCell>
+                    <TableCell className="font-medium text-sm">
+                      {r.ragione_sociale}
+                      {r.richiede_verifica && (
+                        <Badge className="ml-2 bg-warning/15 text-warning hover:bg-warning/20">Da verificare</Badge>
+                      )}
+                      {r.nota_proposta && (
+                        <p className="text-xs font-normal text-muted-foreground mt-0.5 max-w-[380px]">{r.nota_proposta}</p>
+                      )}
+                    </TableCell>
                     <TableCell className="text-right text-sm">{fmtEuro(r.fido_attuale)}</TableCell>
                     <TableCell className="text-right text-sm">{fmtEuro(r.esposizione)}</TableCell>
                     <TableCell className="text-right">
