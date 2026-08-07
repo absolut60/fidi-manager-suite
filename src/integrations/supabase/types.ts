@@ -4357,6 +4357,14 @@ export type Database = {
       calcola_livello_fido: { Args: { _importo: number }; Returns: number }
       calcola_scaduto: { Args: { _ant: number; _ssa: number }; Returns: number }
       can_manage_email_assets: { Args: never; Returns: boolean }
+      coefficiente_comportamento: {
+        Args: {
+          _giorni_oltre: number
+          _num_insoluti: number
+          _patologico: boolean
+        }
+        Returns: number
+      }
       collega_righe_import: {
         Args: { _riga_ids: string[] }
         Returns: {
@@ -4591,13 +4599,19 @@ export type Database = {
         Args: { _cliente_ids?: string[]; _solo_condizione_mancante?: boolean }
         Returns: {
           cliente_id: string
+          coefficiente: number
           fatturato_rolling: number
           fido_attuale: number
           fido_base: number
+          fido_base_lordo: number
           fido_proposto: number
+          fido_proposto_senza_coefficiente: number
           giorni: number
           giorni_mancanti: boolean
+          giorni_oltre_accordo: number
+          profilo_pagamento: string
           regola_applicata: string
+          ritmo_mensile: number
           scostamento: number
         }[]
       }
@@ -5008,6 +5022,7 @@ export type Database = {
         Returns: undefined
       }
       marca_messaggi_letti: { Args: { _richiesta_id: string }; Returns: number }
+      peso_mese_fido: { Args: { _eta: number }; Returns: number }
       processa_richiesta_fido: {
         Args: {
           _esito: string
