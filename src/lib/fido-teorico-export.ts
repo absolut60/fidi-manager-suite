@@ -368,6 +368,30 @@ export function costruisciWorkbook(
     const prop = somma((r) => r.fido_proposto, rows);
     rip.push([f.label, rows.length, base, prop, prop - base]);
   }
+  rip.push([]);
+
+  const rigaProfilo = rip.length;
+  rip.push(["Per profilo di pagamento", "Clienti", "Fido proposto", "Senza coefficiente"]);
+  for (const p of ["Sano", "Patologico"]) {
+    const rows = righe.filter((r) => r.profilo_pagamento === p);
+    rip.push([p, rows.length, somma((r) => r.fido_proposto, rows), somma((r) => r.fido_proposto_senza_coefficiente, rows)]);
+  }
+  rip.push([]);
+
+  const rigaCoef = rip.length;
+  rip.push(["Per coefficiente", "Clienti", "Fido proposto", "Senza coefficiente"]);
+  const coefficienti = [...new Set(righe.map((r) => r.coefficiente))].sort((a, b) => a - b);
+  for (const k of coefficienti) {
+    const rows = righe.filter((r) => r.coefficiente === k);
+    rip.push([
+      k.toLocaleString("it-IT"),
+      rows.length,
+      somma((r) => r.fido_proposto, rows),
+      somma((r) => r.fido_proposto_senza_coefficiente, rows),
+    ]);
+  }
+
+
 
   const wsR = XLSX.utils.aoa_to_sheet(rip);
   for (let r = 0; r < rip.length; r++) {
