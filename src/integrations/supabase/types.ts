@@ -4600,6 +4600,7 @@ export type Database = {
         Returns: {
           cliente_id: string
           coefficiente: number
+          ddt_da_fatturare: number
           fatturato_rolling: number
           fido_attuale: number
           fido_base: number
