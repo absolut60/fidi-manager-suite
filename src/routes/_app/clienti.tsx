@@ -168,7 +168,29 @@ function ClientiPage() {
   // Colonne "Fido proposto"/"Scostamento": opzionali (una sola chiamata alla RPC)
   const [mostraFidoTeorico, setMostraFidoTeorico] = useState(false);
   const [scostamentoFiltro, setScostamentoFiltro] = useState<"tutti" | "positivo" | "negativo" | "nullo">("tutti");
+  // Filtro "solo posizioni da verificare" (attivabile dai riquadri della dashboard)
+  const [soloDaVerificare, setSoloDaVerificare] = useState(false);
   const [aScadereFiltro, setAScadereFiltro] = useState<string>("tutti");
+
+  // Preset filtri via URL (?preset=...), usati dai riquadri della dashboard
+  const presetSearch = Route.useSearch().preset;
+  const presetApplicato = useRef<string | null>(null);
+  useEffect(() => {
+    if (!presetSearch || presetApplicato.current === presetSearch) return;
+    presetApplicato.current = presetSearch;
+    if (presetSearch === "da_verificare") {
+      setMostraFidoTeorico(true);
+      setSoloDaVerificare(true);
+      setFiltroTipoSoggetto("tutti");
+    } else if (presetSearch === "bloccati") {
+      setFiltroBlocco("bloccati");
+      setFiltroTipoSoggetto("tutti");
+    } else if (presetSearch === "con_scaduto") {
+      setScadenziarioFiltro("con_scaduto");
+      setFiltroTipoSoggetto("tutti");
+    }
+  }, [presetSearch]);
+
   const [open, setOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
