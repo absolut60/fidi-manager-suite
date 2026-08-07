@@ -197,8 +197,14 @@ export async function raccogliDatiFidoTeorico(
       fatturato_anno_corrente: cur,
       fatturato_anno_precedente: prev,
       dinamica: calcolaDinamica(cur, prev),
+      ritmo_mensile: num(t.ritmo_mensile),
+      giorni_oltre_accordo: num(t.giorni_oltre_accordo),
+      profilo_pagamento: t.profilo_pagamento === "patologico" ? "Patologico" : "Sano",
+      coefficiente: Number(t.coefficiente ?? 1),
+      fido_proposto_senza_coefficiente: num(t.fido_proposto_senza_coefficiente ?? t.fido_proposto),
     });
   }
+
   righe.sort((a, b) => a.ragione_sociale.localeCompare(b.ragione_sociale, "it"));
   return { righe, mesiRolling };
 }
@@ -231,12 +237,18 @@ const INTESTAZIONI = [
   "Fatturato anno corrente",
   "Fatturato anno precedente",
   "Dinamica",
+  "Ritmo mensile",
+  "Giorni oltre l'accordo",
+  "Profilo di pagamento",
+  "Coefficiente",
+  "Fido proposto senza coefficiente",
 ];
 
 /** Indici (0-based) delle colonne da trattare come TESTO (zeri iniziali). */
 const COL_TESTO = new Set([0, 2]);
 /** Indici delle colonne monetarie (due decimali). */
-const COL_EURO = new Set([8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 19, 24, 25]);
+const COL_EURO = new Set([8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 19, 24, 25, 27, 31]);
+
 
 function marcaTipi(ws: XLSX.WorkSheet, nRighe: number, nCol: number, offsetRiga = 1) {
   for (let r = 0; r < nRighe; r++) {
