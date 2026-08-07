@@ -1116,28 +1116,8 @@ export const processAnagraficaChunk = inngest.createFunction(
         });
       }
 
-      // Persisti errori incrementalmente con cap globale
-      if (errs.length) {
-        const { data: cur } = await supabaseAdmin
-          .from("importazioni")
-          .select("log_errori")
-          .eq("id", importazioneId)
-          .single();
-        const existingLog =
-          (cur?.log_errori as Array<{ riga: number; errore: string }> | null) ?? [];
-        const merged = [...existingLog, ...errs];
-        const capped = merged.slice(0, ANAG_MAX_LOG_ERRORI);
-        if (merged.length > ANAG_MAX_LOG_ERRORI) {
-          capped[ANAG_MAX_LOG_ERRORI - 1] = {
-            riga: 0,
-            errore: `... (${merged.length - ANAG_MAX_LOG_ERRORI + 1} ulteriori errori troncati per limite payload)`,
-          };
-        }
-        await supabaseAdmin
-          .from("importazioni")
-          .update({ log_errori: capped } as never)
-          .eq("id", importazioneId);
-      }
+      // Voci puramente informative: NON sono errori, non entrano nel conteggio
+      const infos: Array<{ riga: number; errore: string; livello: "info" }> = [];
 
       // Persisti anomalie email/pec del chunk + log riassuntivo
       if (anomalieEmail.length) {
@@ -1154,8 +1134,9 @@ export const processAnagraficaChunk = inngest.createFunction(
             });
           }
         }
-        errs.push({
+        infos.push({
           riga: 0,
+          livello: "info",
           errore: `Email anomalie chunk ${chunkIndex + 1}/${totalChunks}: ${anomalieEmail.length} rilevate (${emailAzzerate} azzerate, ${emailSplittate} splittate). Consulta la tabella anomalie_import.`,
         });
       }
@@ -1175,19 +1156,45 @@ export const processAnagraficaChunk = inngest.createFunction(
             });
           }
         }
-        errs.push({
+        infos.push({
           riga: 0,
+          livello: "info",
           errore: `Telefono anomalie chunk ${chunkIndex + 1}/${totalChunks}: ${anomalieTelefono.length} azzerate. Consulta la tabella anomalie_import.`,
         });
       }
 
-      // Report azzeramenti agente (visibile nel log dell'import)
+      // Report azzeramenti agente (informativo)
       if (agentiAzzerati > 0) {
-        errs.push({
+        infos.push({
           riga: 0,
+          livello: "info",
           errore: `Agente azzerato chunk ${chunkIndex + 1}/${totalChunks}: ${agentiAzzerati} clienti (colonna agente presente nel file ma vuota).`,
         });
       }
+
+      // Persisti log (errori veri + voci informative) DOPO che gli array sono completi
+      if (errs.length || infos.length) {
+        const { data: cur } = await supabaseAdmin
+          .from("importazioni")
+          .select("log_errori")
+          .eq("id", importazioneId)
+          .single();
+        const existingLog =
+          (cur?.log_errori as Array<{ riga: number; errore: string }> | null) ?? [];
+        const merged = [...existingLog, ...errs, ...infos];
+        const capped = merged.slice(0, ANAG_MAX_LOG_ERRORI);
+        if (merged.length > ANAG_MAX_LOG_ERRORI) {
+          capped[ANAG_MAX_LOG_ERRORI - 1] = {
+            riga: 0,
+            errore: `... (${merged.length - ANAG_MAX_LOG_ERRORI + 1} ulteriori voci troncate per limite payload)`,
+          };
+        }
+        await supabaseAdmin
+          .from("importazioni")
+          .update({ log_errori: capped } as never)
+          .eq("id", importazioneId);
+      }
+
 
       logger.info(
         `Chunk anagrafica ${chunkIndex + 1}/${totalChunks} done: created=${created}, updated=${updated}, skipped=${skipped}, errs=${errs.length}, anomalie_email=${anomalieEmail.length} (azzerate=${emailAzzerate}, splittate=${emailSplittate}), anomalie_telefono=${anomalieTelefono.length} (azzerate=${telefoniAzzerati}), agenti_azzerati=${agentiAzzerati}`,
@@ -1529,7 +1536,7 @@ export const processRischioImport = inngest.createFunction(
 
       // STEP 4 — finalizza
       const totaleElaborate = initResult.total + initResult.missingCount;
-      const cErrori = initResult.missingCount + allRes.errori;
+      const cErrori = allRes.errori;
       // Stato basato SOLO sugli errori reali: le righe saltate (cliente non in
       // anagrafica) sono scarti legittimi, già tracciati in anomalie_import.
       const statoFinale = cErrori > 0 ? "completata_con_errori" : "completata";
@@ -1537,7 +1544,7 @@ export const processRischioImport = inngest.createFunction(
         ...allRes.dettaglio.slice(0, 200),
         {
           riga: 0,
-          errore: `Riepilogo: ${allRes.aggiornati} aggiornati, ${cErrori} errori, ${allRes.saltati} righe saltate: cliente non presente in anagrafica`,
+          errore: `Riepilogo: ${allRes.aggiornati} aggiornati, ${cErrori} errori, ${allRes.saltati + initResult.missingCount} righe saltate: cliente non presente in anagrafica`,
         },
       ];
 
@@ -1554,7 +1561,7 @@ export const processRischioImport = inngest.createFunction(
             righe_elaborate: totaleElaborate,
             righe_create: 0,
             righe_aggiornate: allRes.aggiornati,
-            righe_saltate: allRes.saltati,
+            righe_saltate: allRes.saltati + initResult.missingCount,
             righe_errore: cErrori,
             stato: statoFinale,
             completata_at: new Date().toISOString(),
