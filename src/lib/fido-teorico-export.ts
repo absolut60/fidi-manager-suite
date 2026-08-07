@@ -412,7 +412,7 @@ export function costruisciWorkbook(
   // Righe (1-based) da rendere in grassetto in post-produzione, per foglio.
   (wb as any).__grassetto = {
     1: [1],
-    2: [1, 5, 12, rigaDinamica + 1, rigaFascia + 1],
+    2: [1, 5, 12, rigaDinamica + 1, rigaFascia + 1, rigaProfilo + 1, rigaCoef + 1],
   };
   return wb;
 }
