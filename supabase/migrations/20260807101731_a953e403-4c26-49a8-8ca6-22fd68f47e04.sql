@@ -1,0 +1,1 @@
+GRANT EXECUTE ON FUNCTION public.get_dashboard_fidi() TO service_role, postgres;
