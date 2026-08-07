@@ -22,6 +22,9 @@ export type FidoTeoricoRow = {
   giorni_mancanti: boolean;
   regola_applicata: string;
   scostamento: number;
+  sede_cinisello: boolean;
+  richiede_verifica: boolean;
+  nota_proposta: string;
 };
 
 /** Spiegazione in chiaro del coefficiente di comportamento. */
@@ -103,6 +106,9 @@ function normalizza(r: any): FidoTeoricoRow {
     giorni_mancanti: !!r.giorni_mancanti,
     regola_applicata: String(r.regola_applicata ?? ""),
     scostamento: Number(r.scostamento ?? 0),
+    sede_cinisello: !!r.sede_cinisello,
+    richiede_verifica: !!r.richiede_verifica,
+    nota_proposta: String(r.nota_proposta ?? ""),
   };
 
 }

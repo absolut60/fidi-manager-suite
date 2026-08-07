@@ -4609,10 +4609,13 @@ export type Database = {
           giorni: number
           giorni_mancanti: boolean
           giorni_oltre_accordo: number
+          nota_proposta: string
           profilo_pagamento: string
           regola_applicata: string
+          richiede_verifica: boolean
           ritmo_mensile: number
           scostamento: number
+          sede_cinisello: boolean
         }[]
       }
       get_incassi_periodo: {
