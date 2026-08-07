@@ -1401,6 +1401,9 @@ function ClientiPage() {
                    <>
                      <TableHead className="text-right whitespace-nowrap"><SortHeader col="fido_proposto" label="Fido proposto" align="right" /></TableHead>
                      <TableHead className="text-right whitespace-nowrap"><SortHeader col="scostamento" label="Scostamento" align="right" /></TableHead>
+                     <TableHead className="whitespace-nowrap">Da verificare</TableHead>
+                     <TableHead className="min-w-[260px]">Nota sulla proposta</TableHead>
+                     <TableHead className="whitespace-nowrap">Cinisello</TableHead>
                    </>
                  )}
                   <TableHead className="whitespace-nowrap"><SortHeader col="scaduto" label="Scaduto" /></TableHead>
