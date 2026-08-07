@@ -50,12 +50,20 @@ export function FidoTeoricoBlocco({
 
   const contenuto = (
     <div className="space-y-3">
-      <div>
-        <h4 className="text-sm font-semibold">Fido teorico</h4>
-        <p className="text-xs text-muted-foreground">
-          Valore indicativo calcolato sul fatturato e sulla condizione di pagamento.
-        </p>
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <h4 className="text-sm font-semibold">Fido teorico</h4>
+          <p className="text-xs text-muted-foreground">
+            Valore indicativo calcolato sul fatturato e sulla condizione di pagamento.
+          </p>
+        </div>
+        {data.richiede_verifica && (
+          <span className="shrink-0 rounded-full border border-warning/50 bg-warning/10 px-2 py-0.5 text-xs font-medium text-warning">
+            Da verificare
+          </span>
+        )}
       </div>
+
 
       {condizioneMancante ? (
         <>
