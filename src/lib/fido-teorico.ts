@@ -34,7 +34,6 @@ export function motivoCoefficiente(r: {
   giorni_oltre_accordo: number;
   profilo_pagamento: "sano" | "patologico";
 }): string {
-  if (r.coefficiente === 0) return "Insoluti presenti — nessuna proposta di fido";
   const gg =
     r.giorni_oltre_accordo <= 0
       ? "pagamenti nei termini concordati"
@@ -51,6 +50,8 @@ export function motivoCoefficiente(r: {
 export const REGOLA_LABEL: Record<string, string> = {
   sede_esclusa: "Sede esclusa",
   esclusa_gruppo: "Società del gruppo",
+  cliente_bloccato: "Cliente bloccato",
+  gestione_legale: "In gestione legale",
   condizione_mancante: "Condizione di pagamento mancante",
   nessun_fatturato: "Nessun fatturato",
   minimo_500: "Minimo 500",
@@ -63,6 +64,8 @@ export const REGOLA_LABEL: Record<string, string> = {
 export const REGOLA_DESCRIZIONE: Record<string, string> = {
   sede_esclusa: "Sede esclusa dal calcolo — fido attuale invariato",
   esclusa_gruppo: "Società del gruppo esclusa dal calcolo — fido attuale invariato",
+  cliente_bloccato: "Cliente bloccato — nessuna proposta di fido",
+  gestione_legale: "Cliente in gestione legale — nessuna proposta di fido",
   condizione_mancante: "Condizione di pagamento mancante in anagrafica — impossibile calcolare",
   nessun_fatturato: "Nessun fatturato nella finestra di calcolo",
   minimo_500: "Fatturato solo nell'anno precedente — minimo 500 €",
