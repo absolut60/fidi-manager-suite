@@ -1157,6 +1157,9 @@ function ClientiPage() {
   if (sliderCommitted[0] !== FIDO_RANGE_MIN || sliderCommitted[1] !== FIDO_RANGE_MAX) {
     activeChips.push({ key: "slider", label: `Fido slider: ${fmtEuro(sliderCommitted[0])} → ${fmtEuro(sliderCommitted[1])}`, onRemove: () => { setSliderDisplay([FIDO_RANGE_MIN, FIDO_RANGE_MAX]); setSliderCommitted([FIDO_RANGE_MIN, FIDO_RANGE_MAX]); } });
   }
+  if (fasciaConcesso !== "tutti") {
+    activeChips.push({ key: "fasciaConcesso", label: `Fascia fido concesso: ${FASCE_CONCESSO[fasciaConcesso]?.label ?? fasciaConcesso}`, onRemove: () => setFasciaConcesso("tutti") });
+  }
   if (scostamentoFiltro !== "tutti") {
     const map: Record<string, string> = { positivo: "da aumentare", negativo: "da ridurre", nullo: "in linea" };
     activeChips.push({ key: "scostamento", label: `Scostamento: ${map[scostamentoFiltro]}`, onRemove: () => setScostamentoFiltro("tutti") });
