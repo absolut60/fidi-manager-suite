@@ -9,7 +9,7 @@ import {
   TrendingDown,
   TrendingUp,
   AlertTriangle,
-  Ban,
+  PauseCircle,
   CircleAlert,
   Clock,
 } from "lucide-react";
@@ -27,11 +27,11 @@ type DashboardFidi = {
   da_verificare_n: number;
   oltre_fido_n: number;
   oltre_fido_eur: number;
-  bloccati_n: number;
-  bloccati_eur: number;
   insoluti_n: number;
   insoluti_eur: number;
   insoluti_non_bloccati_n: number;
+  fermi_n: number;
+  fermi_scaduto_eur: number;
   scaduto_eur: number;
   scaduto_over60_eur: number;
   aggiornato_al: string | null;
@@ -80,11 +80,11 @@ export function DashboardFidi() {
         da_verificare_n: num(r.da_verificare_n),
         oltre_fido_n: num(r.oltre_fido_n),
         oltre_fido_eur: num(r.oltre_fido_eur),
-        bloccati_n: num(r.bloccati_n),
-        bloccati_eur: num(r.bloccati_eur),
         insoluti_n: num(r.insoluti_n),
         insoluti_eur: num(r.insoluti_eur),
         insoluti_non_bloccati_n: num(r.insoluti_non_bloccati_n),
+        fermi_n: num(r.fermi_n),
+        fermi_scaduto_eur: num(r.fermi_scaduto_eur),
         scaduto_eur: num(r.scaduto_eur),
         scaduto_over60_eur: num(r.scaduto_over60_eur),
       } as DashboardFidi;
@@ -154,24 +154,25 @@ export function DashboardFidi() {
           sottotitolo={`${numero(data.oltre_fido_n)} clienti oltre il fido concesso`}
           icona={AlertTriangle}
           tono="warning"
-        />
-        <Riquadro
-          compatto
-          titolo="Bloccati con fido attivo"
-          valore={euro(data.bloccati_eur)}
-          sottotitolo={`${numero(data.bloccati_n)} clienti bloccati`}
-          icona={Ban}
-          tono="danger"
-          notaLink={{ to: "/clienti", search: { preset: "bloccati" } }}
+          notaLink={{ to: "/clienti", search: { preset: "oltre_fido" } }}
           nota="Vedi la lista"
         />
         <Riquadro
           compatto
           titolo="Insoluti in corso"
           valore={euro(data.insoluti_eur)}
-          sottotitolo={`${numero(data.insoluti_n)} clienti · ${numero(data.insoluti_non_bloccati_n)} non bloccati`}
+          sottotitolo={`${numero(data.insoluti_n)} clienti · ${numero(data.insoluti_non_bloccati_n)} non bloccati (sotto trattativa)`}
           icona={CircleAlert}
           tono="danger"
+        />
+        <Riquadro
+          compatto
+          titolo="Clienti fermi"
+          valore={numero(data.fermi_n)}
+          sottotitolo={`Fatturato negli ultimi 12 mesi, nulla negli ultimi 3`}
+          icona={PauseCircle}
+          tono="info"
+          nota={`Scaduto residuo: ${euro(data.fermi_scaduto_eur)}`}
         />
         <Riquadro
           compatto
