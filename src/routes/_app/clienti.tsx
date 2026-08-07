@@ -1307,8 +1307,9 @@ function ClientiPage() {
           if (patch.filtroBlocco !== undefined) setFiltroBlocco(patch.filtroBlocco);
           if (patch.filtroAssic !== undefined) setFiltroAssic(patch.filtroAssic);
           if (patch.scadenziarioFiltro !== undefined) setScadenziarioFiltro(patch.scadenziarioFiltro);
+          if (patch.soloConFidoAttivo !== undefined) setSoloConFidoAttivo(patch.soloConFidoAttivo);
         }}
-        currentMain={{ filtroBlocco, filtroAssic, scadenziarioFiltro }}
+        currentMain={{ filtroBlocco, filtroAssic, scadenziarioFiltro, soloConFidoAttivo }}
         movedFilters={
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div><Label className="text-xs">Bloccati</Label>{BloccoSelect}</div>
@@ -3363,8 +3364,8 @@ function FiltriAvanzatiDialog({
   applied: AdvAppliedT;
   onApply: (a: AdvAppliedT) => void;
   onReset: () => void;
-  onSetMainFiltro: (p: { filtroBlocco?: "tutti" | "bloccati" | "non_bloccati"; filtroAssic?: "tutti" | "assicurati" | "non_assicurati"; scadenziarioFiltro?: string }) => void;
-  currentMain: { filtroBlocco: "tutti" | "bloccati" | "non_bloccati"; filtroAssic: "tutti" | "assicurati" | "non_assicurati"; scadenziarioFiltro: string };
+  onSetMainFiltro: (p: { filtroBlocco?: "tutti" | "bloccati" | "non_bloccati"; filtroAssic?: "tutti" | "assicurati" | "non_assicurati"; scadenziarioFiltro?: string; soloConFidoAttivo?: boolean }) => void;
+  currentMain: { filtroBlocco: "tutti" | "bloccati" | "non_bloccati"; filtroAssic: "tutti" | "assicurati" | "non_assicurati"; scadenziarioFiltro: string; soloConFidoAttivo: boolean };
   movedFilters?: React.ReactNode;
   fidoSlider?: React.ReactNode;
 }) {
@@ -3378,6 +3379,7 @@ function FiltriAvanzatiDialog({
     { id: "lt1000", label: "Fido residuo < 1.000 €", apply: (d: AdvAppliedT) => ({ ...d, fidoOp: "lt" as AdvOp, fidoVal: 1000 }) },
     { id: "scoperto", label: "Scoperti con insoluto", apply: (d: AdvAppliedT) => ({ ...d, presetScopertoInsoluto: true }), main: { filtroAssic: "non_assicurati" } as const },
     { id: "blocFat", label: "Bloccati con fatturato 2025", apply: (d: AdvAppliedT) => d, main: { filtroBlocco: "bloccati" } as const },
+    { id: "blocFido", label: "Bloccati con fido attivo", apply: (d: AdvAppliedT) => d, main: { filtroBlocco: "bloccati", soloConFidoAttivo: true } as const },
   ];
 
   const isPresetActive = (id: string): boolean => {
@@ -3388,6 +3390,7 @@ function FiltriAvanzatiDialog({
       case "lt1000": return draft.fidoOp === "lt" && draft.fidoVal === 1000;
       case "scoperto": return draft.presetScopertoInsoluto;
       case "blocFat": return currentMain.filtroBlocco === "bloccati";
+      case "blocFido": return currentMain.filtroBlocco === "bloccati" && currentMain.soloConFidoAttivo;
       default: return false;
     }
   };
