@@ -266,7 +266,7 @@ export const processEventiPartecipantiImport = inngest.createFunction(
         await supabaseAdmin
           .from("importazioni")
           .update({
-            stato: esito.scartate > 0 ? "completata_con_errori" : "completata",
+            stato: "completata",
             completata_at: new Date().toISOString(),
             log_errori: (esito.errori.length ? esito.errori : []) as never,
           })

@@ -1270,8 +1270,11 @@ export const finalizeAnagraficaImport = inngest.createFunction(
           .single();
         const errs = (cur?.righe_errore as number | null) ?? 0;
         const skp = (cur?.righe_saltate as number | null) ?? 0;
+        // Lo stato dipende SOLO dagli errori reali: le righe saltate sono scarti
+        // legittimi e restano visibili nel contatore dedicato / anomalie.
         const stato: "completata" | "completata_con_errori" =
-          errs > 0 || skp > 0 ? "completata_con_errori" : "completata";
+          errs > 0 ? "completata_con_errori" : "completata";
+
         await supabaseAdmin
           .from("importazioni")
           .update({
@@ -1527,14 +1530,17 @@ export const processRischioImport = inngest.createFunction(
       // STEP 4 — finalizza
       const totaleElaborate = initResult.total + initResult.missingCount;
       const cErrori = initResult.missingCount + allRes.errori;
-      const statoFinale = cErrori > 0 || allRes.saltati > 0 ? "completata_con_errori" : "completata";
+      // Stato basato SOLO sugli errori reali: le righe saltate (cliente non in
+      // anagrafica) sono scarti legittimi, già tracciati in anomalie_import.
+      const statoFinale = cErrori > 0 ? "completata_con_errori" : "completata";
       const logFinale = [
         ...allRes.dettaglio.slice(0, 200),
         {
           riga: 0,
-          errore: `Riepilogo: ${allRes.aggiornati} aggiornati, ${allRes.saltati} saltati, ${cErrori} errori`,
+          errore: `Riepilogo: ${allRes.aggiornati} aggiornati, ${cErrori} errori, ${allRes.saltati} righe saltate: cliente non presente in anagrafica`,
         },
       ];
+
 
       await step.run("finalize", async () => {
         await supabaseAdmin.storage.from("import-staging").remove([
@@ -2349,35 +2355,42 @@ export const processScadAssicImport = inngest.createFunction(
 
       let scadCreated = 0,
         scadUpdated = 0,
-        scadSkipped = 0;
+        scadSkipped = 0,
+        scadErrori = 0;
       let matchedClientsCount = 0;
       let clientsToBlockCount = 0;
       let clientsLegaleCount = 0;
       const now = new Date().toISOString();
 
-
-      // UN SOLO step.run per tutti i batch scadenziario
+      // UN SOLO step.run per tutti i batch scadenziario.
+      // Le scritture sono IN BLOCCO (1-2 chiamate per batch di 500 righe):
+      // gli update/insert per riga superavano il tetto di subrequest del Worker.
       const scadAllRes = await step.run("process-all-scad-batches", async () => {
         const BATCH = 500;
         let totC = 0,
           totU = 0,
-          totS = 0;
+          totS = 0,
+          totE = 0;
         let totBlocked = 0,
           totLegale = 0,
           totMatched = 0;
         for (let i = 0; i < scadRows.length; i += BATCH) {
           const chunk = scadRows.slice(i, i + BATCH);
-          let c = 0,
-            u = 0,
-            s = 0;
           const logs: string[] = [];
           const block = new Set<string>();
           const legale = new Set<string>();
           const matched = new Set<string>();
+          const toUpdate: Array<Record<string, unknown>> = [];
+          const toInsert: Array<Record<string, unknown>> = [];
+          const sollecitiNuovi: Array<Record<string, unknown>> = [];
+          const praticheNuove: Array<Record<string, unknown>> = [];
+          const mancanti: typeof chunk = [];
+
           for (const r of chunk) {
             const cid = clientMap.get(r.cod_cli);
             if (!cid) {
-              s++;
+              // Scarto legittimo: nessun record fantasma, riga contata come saltata.
+              mancanti.push(r);
               logs.push(`Riga ${r.excelRow}: cliente ${r.cod_cli} non trovato`);
               continue;
             }
@@ -2395,51 +2408,80 @@ export const processScadAssicImport = inngest.createFunction(
               importato_da: importazioneId,
               ultima_sincronizzazione: now,
             };
-            if (existId) {
-              const { error } = await supabaseAdmin
-                .from("scadenze" as never)
-                .update(payload as never)
-                .eq("id", existId);
-              if (error) {
-                s++;
-                logs.push(`Riga ${r.excelRow}: ${error.message}`);
-              } else u++;
-            } else {
-              const { error } = await supabaseAdmin
-                .from("scadenze" as never)
-                .insert(payload as never);
-              if (error) {
-                s++;
-                logs.push(`Riga ${r.excelRow}: ${error.message}`);
-              } else c++;
-            }
+            if (existId) toUpdate.push({ id: existId, ...payload });
+            else toInsert.push(payload);
+
             if (r.bloccato) block.add(cid);
             if (r.note_solleciti) {
               const dkey = `${cid}|${r.note_solleciti.trim()}`;
               if (!existingSoll.has(dkey)) {
-                const { error } = await supabaseAdmin.from("solleciti" as never).insert({
+                existingSoll.add(dkey);
+                sollecitiNuovi.push({
                   cliente_id: cid,
                   tipo: "interno",
                   nota: r.note_solleciti,
                   inserito_da: userId ?? null,
-                } as never);
-                if (!error) existingSoll.add(dkey);
-                else logs.push(`Riga ${r.excelRow}: sollecito ${error.message}`);
+                });
               }
             }
             if (r.note_legale && !openLegale.has(cid)) {
-              const { error } = await supabaseAdmin.from("pratiche_legali" as never).insert({
+              openLegale.add(cid);
+              legale.add(cid);
+              praticheNuove.push({
                 cliente_id: cid,
                 tipo: "azione_legale_generica",
                 stato: "aperta",
                 note: r.note_legale,
                 gestita_da: userId ?? null,
-              } as never);
-              if (!error) {
-                openLegale.add(cid);
-                legale.add(cid);
-              } else logs.push(`Riga ${r.excelRow}: pratica legale ${error.message}`);
+              });
             }
+          }
+
+          totS += mancanti.length;
+          if (mancanti.length) {
+            await supabaseAdmin.from("anomalie_import").insert(
+              mancanti.map((r) => ({
+                importazione_id: importazioneId,
+                tipo_anomalia: "cliente_non_trovato",
+                campo: "codice_gestionale",
+                codice_gestionale: r.cod_cli,
+                valore_attuale: r.cod_cli,
+              })) as never,
+            );
+          }
+
+          // UPDATE in blocco: conflitto sulla PK `id` (le scadenze esistenti sono
+          // già state risolte tramite la chiave naturale cliente+data+descrizione,
+          // che in tabella non ha un vincolo unico) => mai INSERT accidentali.
+          if (toUpdate.length) {
+            const { error } = await supabaseAdmin
+              .from("scadenze" as never)
+              .upsert(toUpdate as never, { onConflict: "id" });
+            if (error) {
+              totE += toUpdate.length;
+              logs.push(`Update batch scadenze righe ${i + 1}-${i + chunk.length}: ${error.message}`);
+            } else totU += toUpdate.length;
+          }
+          if (toInsert.length) {
+            const { error } = await supabaseAdmin
+              .from("scadenze" as never)
+              .insert(toInsert as never);
+            if (error) {
+              totE += toInsert.length;
+              logs.push(`Insert batch scadenze righe ${i + 1}-${i + chunk.length}: ${error.message}`);
+            } else totC += toInsert.length;
+          }
+          if (sollecitiNuovi.length) {
+            const { error } = await supabaseAdmin
+              .from("solleciti" as never)
+              .insert(sollecitiNuovi as never);
+            if (error) logs.push(`Insert solleciti batch ${i + 1}: ${error.message}`);
+          }
+          if (praticheNuove.length) {
+            const { error } = await supabaseAdmin
+              .from("pratiche_legali" as never)
+              .insert(praticheNuove as never);
+            if (error) logs.push(`Insert pratiche legali batch ${i + 1}: ${error.message}`);
           }
           if (block.size) {
             await supabaseAdmin
@@ -2457,8 +2499,7 @@ export const processScadAssicImport = inngest.createFunction(
               .select("log_errori")
               .eq("id", importazioneId)
               .single();
-            const existing =
-              (cur?.log_errori as Array<{ messaggio: string }> | null) ?? [];
+            const existing = (cur?.log_errori as Array<{ messaggio: string }> | null) ?? [];
             await supabaseAdmin
               .from("importazioni")
               .update({
@@ -2466,9 +2507,6 @@ export const processScadAssicImport = inngest.createFunction(
               } as never)
               .eq("id", importazioneId);
           }
-          totC += c;
-          totU += u;
-          totS += s;
           totBlocked += block.size;
           totLegale += legale.size;
           totMatched += matched.size;
@@ -2478,19 +2516,30 @@ export const processScadAssicImport = inngest.createFunction(
               righe_elaborate: Math.min(i + BATCH, scadRows.length),
               righe_create: totC,
               righe_aggiornate: totU,
-              righe_errore: totS,
+              righe_errore: totE,
+              righe_saltate: totS,
               stato: "in_elaborazione",
             })
             .eq("id", importazioneId);
         }
-        return { c: totC, u: totU, s: totS, blocked: totBlocked, legaleCreated: totLegale, matchedCount: totMatched };
+        return {
+          c: totC,
+          u: totU,
+          s: totS,
+          e: totE,
+          blocked: totBlocked,
+          legaleCreated: totLegale,
+          matchedCount: totMatched,
+        };
       });
       scadCreated += scadAllRes.c;
       scadUpdated += scadAllRes.u;
       scadSkipped += scadAllRes.s;
+      scadErrori += scadAllRes.e;
       matchedClientsCount += scadAllRes.matchedCount;
       clientsToBlockCount += scadAllRes.blocked;
       clientsLegaleCount += scadAllRes.legaleCreated;
+
 
       // Blocco clienti già applicato batch-per-batch nello step
 
@@ -2498,7 +2547,8 @@ export const processScadAssicImport = inngest.createFunction(
       // ASSICURAZIONI
       let assicCreated = 0,
         assicUpdated = 0,
-        assicSkipped = 0;
+        assicSkipped = 0,
+        assicErrori = 0;
       // assicurazione_attiva ora viene aggiornata inline nello step
       const existingPol = new Map<string, string>();
       if (clientIds.length) {
@@ -2511,23 +2561,25 @@ export const processScadAssicImport = inngest.createFunction(
         });
       }
 
-      // UN SOLO step.run per tutti i batch assicurazioni
+      // UN SOLO step.run per tutti i batch assicurazioni, con scritture in blocco.
       const assicAllRes = await step.run("process-all-assic-batches", async () => {
         const BATCH = 500;
         let totC = 0,
           totU = 0,
-          totS = 0;
+          totS = 0,
+          totE = 0;
         for (let i = 0; i < assicRows.length; i += BATCH) {
           const chunk = assicRows.slice(i, i + BATCH);
-          let c = 0,
-            u = 0,
-            s = 0;
           const logs: string[] = [];
           const clients = new Set<string>();
+          const toUpdate: Array<Record<string, unknown>> = [];
+          const toInsert: Array<Record<string, unknown>> = [];
+          const mancanti: typeof chunk = [];
+
           for (const a of chunk) {
             const cid = clientMap.get(a.cod_cli);
             if (!cid) {
-              s++;
+              mancanti.push(a);
               logs.push(`Assic riga ${a.excelRow}: cliente ${a.cod_cli} non trovato`);
               continue;
             }
@@ -2542,27 +2594,42 @@ export const processScadAssicImport = inngest.createFunction(
               stato: "attiva",
             };
             const existId = existingPol.get(cid);
-            if (existId) {
-              const { error } = await supabaseAdmin
-                .from("assicurazioni_credito" as never)
-                .update(payload as never)
-                .eq("id", existId);
-              if (error) {
-                s++;
-                logs.push(`Assic riga ${a.excelRow}: ${error.message}`);
-              } else u++;
-            } else {
-              const { error } = await supabaseAdmin
-                .from("assicurazioni_credito" as never)
-                .insert(payload as never);
-              if (error) {
-                s++;
-                logs.push(`Assic riga ${a.excelRow}: ${error.message}`);
-              } else {
-                c++;
-                existingPol.set(cid, "new");
-              }
-            }
+            if (existId) toUpdate.push({ id: existId, ...payload });
+            else toInsert.push(payload);
+          }
+
+          totS += mancanti.length;
+          if (mancanti.length) {
+            await supabaseAdmin.from("anomalie_import").insert(
+              mancanti.map((a) => ({
+                importazione_id: importazioneId,
+                tipo_anomalia: "cliente_non_trovato",
+                campo: "codice_gestionale",
+                codice_gestionale: a.cod_cli,
+                valore_attuale: a.cod_cli,
+              })) as never,
+            );
+          }
+
+          // Conflitto sulla PK `id`: la polizza esistente è già stata individuata
+          // per cliente_id (nessun vincolo unico su cliente/polizza in tabella).
+          if (toUpdate.length) {
+            const { error } = await supabaseAdmin
+              .from("assicurazioni_credito" as never)
+              .upsert(toUpdate as never, { onConflict: "id" });
+            if (error) {
+              totE += toUpdate.length;
+              logs.push(`Update batch polizze ${i + 1}-${i + chunk.length}: ${error.message}`);
+            } else totU += toUpdate.length;
+          }
+          if (toInsert.length) {
+            const { error } = await supabaseAdmin
+              .from("assicurazioni_credito" as never)
+              .insert(toInsert as never);
+            if (error) {
+              totE += toInsert.length;
+              logs.push(`Insert batch polizze ${i + 1}-${i + chunk.length}: ${error.message}`);
+            } else totC += toInsert.length;
           }
           if (clients.size) {
             await supabaseAdmin
@@ -2576,8 +2643,7 @@ export const processScadAssicImport = inngest.createFunction(
               .select("log_errori")
               .eq("id", importazioneId)
               .single();
-            const existing =
-              (cur?.log_errori as Array<{ messaggio: string }> | null) ?? [];
+            const existing = (cur?.log_errori as Array<{ messaggio: string }> | null) ?? [];
             await supabaseAdmin
               .from("importazioni")
               .update({
@@ -2585,25 +2651,32 @@ export const processScadAssicImport = inngest.createFunction(
               } as never)
               .eq("id", importazioneId);
           }
-          totC += c;
-          totU += u;
-          totS += s;
         }
-        return { c: totC, u: totU, s: totS };
+        return { c: totC, u: totU, s: totS, e: totE };
       });
       assicCreated += assicAllRes.c;
       assicUpdated += assicAllRes.u;
       assicSkipped += assicAllRes.s;
+      assicErrori += assicAllRes.e;
 
-
+      const totSaltate = scadSkipped + assicSkipped;
+      const totErrori = scadErrori + assicErrori;
 
       const summary = [
-        `SCADENZIARIO: lette ${scadTot}, abbinati ${matchedClientsCount} clienti, ${scadCreated} create, ${scadUpdated} aggiornate, ${scadSkipped} saltate`,
-        `ASSICURAZIONI: lette ${assicRows.length}, ${assicCreated} create, ${assicUpdated} aggiornate, ${assicSkipped} saltate`,
+        `SCADENZIARIO: lette ${scadTot}, abbinati ${matchedClientsCount} clienti, ${scadCreated} create, ${scadUpdated} aggiornate, ${scadSkipped} saltate, ${scadErrori} errori`,
+        `ASSICURAZIONI: lette ${assicRows.length}, ${assicCreated} create, ${assicUpdated} aggiornate, ${assicSkipped} saltate, ${assicErrori} errori`,
         `Clienti bloccati: ${clientsToBlockCount}, pratiche legali create: ${clientsLegaleCount}`,
+        `${totSaltate} righe saltate: cliente non presente in anagrafica`,
       ];
 
-      const fullLog = [...summary, ...log];
+      // Il dettaglio raccolto batch per batch resta in coda al riepilogo.
+      const { data: curLog } = await supabaseAdmin
+        .from("importazioni")
+        .select("log_errori")
+        .eq("id", importazioneId)
+        .single();
+      const dettaglioEsistente = (curLog?.log_errori as Array<{ messaggio: string }> | null) ?? [];
+      const fullLog = [...summary, ...log].map((m) => ({ messaggio: m }));
 
       await supabaseAdmin
         .from("importazioni")
@@ -2611,12 +2684,15 @@ export const processScadAssicImport = inngest.createFunction(
           righe_elaborate: scadRows.length + assicRows.length,
           righe_create: scadCreated + assicCreated,
           righe_aggiornate: scadUpdated + assicUpdated,
-          righe_errore: scadSkipped + assicSkipped,
-          stato: scadSkipped + assicSkipped > 0 ? "completata_con_errori" : "completata",
+          righe_errore: totErrori,
+          righe_saltate: totSaltate,
+          // Stato basato SOLO sugli errori reali.
+          stato: totErrori > 0 ? "completata_con_errori" : "completata",
           completata_at: new Date().toISOString(),
-          log_errori: fullLog.length ? fullLog.slice(0, 500).map((m) => ({ messaggio: m })) : null,
+          log_errori: [...fullLog, ...dettaglioEsistente].slice(0, 500),
         })
         .eq("id", importazioneId);
+
 
       return { scadCreated, scadUpdated, assicCreated, assicUpdated };
     } catch (err) {
