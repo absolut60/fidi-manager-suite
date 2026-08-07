@@ -1484,6 +1484,19 @@ function ClientiPage() {
                           <TableCell className={`text-right text-sm tabular-nums ${scost > 0 ? "text-success" : scost < 0 ? "text-warning" : "text-muted-foreground"}`}>
                             {ft ? `${scost > 0 ? "+" : ""}${fmtEuro(scost)}` : "—"}
                           </TableCell>
+                          <TableCell>
+                            {ft?.richiede_verifica ? (
+                              <Badge className="bg-warning/15 text-warning hover:bg-warning/20">Da verificare</Badge>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground max-w-[320px]">
+                            {ft?.nota_proposta || "—"}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {ft?.sede_cinisello ? "Sì" : "—"}
+                          </TableCell>
                         </>
                       );
                     })()}
