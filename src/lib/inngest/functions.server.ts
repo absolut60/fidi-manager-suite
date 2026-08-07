@@ -1398,18 +1398,24 @@ export const processRischioImport = inngest.createFunction(
         }>;
 
         const codici = Array.from(new Set(rows.map((r) => r.codice_gestionale)));
-        const lookup: Record<string, string> = {};
-        const CHUNK = 200;
+        // lookup: codice -> { id, ragione_sociale attuale }
+        // La ragione sociale serve solo per soddisfare il NOT NULL nell'upsert:
+        // viene riscritta identica, l'import rischio NON la modifica.
+        const lookup: Record<string, { id: string; ragione_sociale: string }> = {};
+        const CHUNK = 500;
         for (let i = 0; i < codici.length; i += CHUNK) {
           const slice = codici.slice(i, i + CHUNK);
           const { data } = await supabaseAdmin
             .from("clienti")
-            .select("id, codice_gestionale")
+            .select("id, codice_gestionale, ragione_sociale")
             .in("codice_gestionale", slice)
             .limit(CHUNK + 10);
-          (data ?? []).forEach((c: { id: string; codice_gestionale: string | null }) => {
-            if (c.codice_gestionale) lookup[c.codice_gestionale] = c.id;
-          });
+          (data ?? []).forEach(
+            (c: { id: string; codice_gestionale: string | null; ragione_sociale: string }) => {
+              if (c.codice_gestionale)
+                lookup[c.codice_gestionale] = { id: c.id, ragione_sociale: c.ragione_sociale };
+            },
+          );
         }
 
         await supabaseAdmin.storage
