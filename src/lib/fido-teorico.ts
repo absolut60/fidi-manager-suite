@@ -117,6 +117,9 @@ function normalizza(r: any): FidoTeoricoRow {
     sede_cinisello: !!r.sede_cinisello,
     richiede_verifica: !!r.richiede_verifica,
     nota_proposta: String(r.nota_proposta ?? ""),
+    fido_teorico_puro: Number(r.fido_teorico_puro ?? r.fido_proposto ?? 0),
+    pavimento_applicato: !!r.pavimento_applicato,
+    esposizione_corrente: Number(r.esposizione_corrente ?? 0),
   };
 
 }
