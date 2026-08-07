@@ -1912,7 +1912,12 @@ function ProposteFidoMassivoDialog({
                 const hasOverride = r.motivazione !== undefined;
                 const scost = r.proponibile ? r.fido_proposto - r.fido_attuale : 0;
                 return (
-                  <TableRow key={r.cliente_id} className={!r.proponibile ? "opacity-60" : ""}>
+                  <TableRow
+                    key={r.cliente_id}
+                    className={`${!r.proponibile ? "opacity-60" : ""} ${
+                      r.proponibile && r.richiede_verifica ? "bg-warning/10 border-l-2 border-l-warning" : ""
+                    }`}
+                  >
                     <TableCell>
                       <Checkbox
                         checked={r.incluso && r.proponibile}
