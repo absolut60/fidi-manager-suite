@@ -12,6 +12,7 @@ import {
 import { DashboardReminders } from "@/components/dashboard-reminders";
 import { DashboardFatturato } from "@/components/dashboard-fatturato";
 import { DashboardFidi } from "@/components/dashboard-fidi";
+import { DashboardFidiDettaglio } from "@/components/dashboard-fidi-dettaglio";
 
 export const Route = createFileRoute("/_app/dashboard")({
   component: DashboardPage,
@@ -49,6 +50,9 @@ function DashboardPage() {
       </div>
 
       <DashboardFidi />
+
+      <DashboardFidiDettaglio />
+
 
 
       <DashboardFatturato />

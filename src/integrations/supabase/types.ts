@@ -4554,6 +4554,19 @@ export type Database = {
           scaduto_over60_eur: number
         }[]
       }
+      get_dashboard_fidi_aggregati: {
+        Args: never
+        Returns: {
+          chiave: string
+          etichetta: string
+          fido_concesso_eur: number
+          fido_proposto_eur: number
+          n_clienti: number
+          n_clienti_con_fido: number
+          ordine: number
+          tipo: string
+        }[]
+      }
       get_dso_aggregato: {
         Args: {
           _cliente_id?: string
