@@ -1530,14 +1530,17 @@ export const processRischioImport = inngest.createFunction(
       // STEP 4 — finalizza
       const totaleElaborate = initResult.total + initResult.missingCount;
       const cErrori = initResult.missingCount + allRes.errori;
-      const statoFinale = cErrori > 0 || allRes.saltati > 0 ? "completata_con_errori" : "completata";
+      // Stato basato SOLO sugli errori reali: le righe saltate (cliente non in
+      // anagrafica) sono scarti legittimi, già tracciati in anomalie_import.
+      const statoFinale = cErrori > 0 ? "completata_con_errori" : "completata";
       const logFinale = [
         ...allRes.dettaglio.slice(0, 200),
         {
           riga: 0,
-          errore: `Riepilogo: ${allRes.aggiornati} aggiornati, ${allRes.saltati} saltati, ${cErrori} errori`,
+          errore: `Riepilogo: ${allRes.aggiornati} aggiornati, ${cErrori} errori, ${allRes.saltati} righe saltate: cliente non presente in anagrafica`,
         },
       ];
+
 
       await step.run("finalize", async () => {
         await supabaseAdmin.storage.from("import-staging").remove([
