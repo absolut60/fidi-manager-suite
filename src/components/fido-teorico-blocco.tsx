@@ -7,7 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatEuro } from "@/lib/fidi";
 import { Card } from "@/components/ui/card";
-import { fetchFidoTeorico, REGOLA_DESCRIZIONE } from "@/lib/fido-teorico";
+import { fetchFidoTeorico, REGOLA_DESCRIZIONE, motivoCoefficiente } from "@/lib/fido-teorico";
 
 export function FidoTeoricoBlocco({
   clienteId,
@@ -43,6 +43,8 @@ export function FidoTeoricoBlocco({
   const condizioneMancante = regola === "condizione_mancante";
   const giorniMancanti = data.giorni_mancanti;
   const scostamento = data.scostamento;
+  const coefApplicato = regola === "fascia_500" || regola === "fascia_5000";
+
   const scostTone =
     scostamento > 0 ? "text-success" : scostamento < 0 ? "text-warning" : "text-muted-foreground";
 
