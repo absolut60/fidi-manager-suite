@@ -1401,6 +1401,9 @@ function ClientiPage() {
                    <>
                      <TableHead className="text-right whitespace-nowrap"><SortHeader col="fido_proposto" label="Fido proposto" align="right" /></TableHead>
                      <TableHead className="text-right whitespace-nowrap"><SortHeader col="scostamento" label="Scostamento" align="right" /></TableHead>
+                     <TableHead className="whitespace-nowrap">Da verificare</TableHead>
+                     <TableHead className="min-w-[260px]">Nota sulla proposta</TableHead>
+                     <TableHead className="whitespace-nowrap">Cinisello</TableHead>
                    </>
                  )}
                   <TableHead className="whitespace-nowrap"><SortHeader col="scaduto" label="Scaduto" /></TableHead>
@@ -1480,6 +1483,19 @@ function ClientiPage() {
                           </TableCell>
                           <TableCell className={`text-right text-sm tabular-nums ${scost > 0 ? "text-success" : scost < 0 ? "text-warning" : "text-muted-foreground"}`}>
                             {ft ? `${scost > 0 ? "+" : ""}${fmtEuro(scost)}` : "—"}
+                          </TableCell>
+                          <TableCell>
+                            {ft?.richiede_verifica ? (
+                              <Badge className="bg-warning/15 text-warning hover:bg-warning/20">Da verificare</Badge>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground max-w-[320px]">
+                            {ft?.nota_proposta || "—"}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {ft?.sede_cinisello ? "Sì" : "—"}
                           </TableCell>
                         </>
                       );
@@ -1667,6 +1683,8 @@ type RigaProposta = {
   fido_proposto: number;
   scostamento: number;
   regola: string;
+  richiede_verifica: boolean;
+  nota_proposta: string;
   /** false = regola che non consente una proposta (esclusa dalla creazione) */
   proponibile: boolean;
   incluso: boolean;
@@ -1726,6 +1744,8 @@ function ProposteFidoMassivoDialog({
           fido_proposto: proposto,
           scostamento: t?.scostamento ?? 0,
           regola,
+          richiede_verifica: !!t?.richiede_verifica,
+          nota_proposta: t?.nota_proposta ?? "",
           proponibile,
           incluso: proponibile,
           tipo: determinaTipoRichiesta(attuale, proposto),
@@ -1892,7 +1912,12 @@ function ProposteFidoMassivoDialog({
                 const hasOverride = r.motivazione !== undefined;
                 const scost = r.proponibile ? r.fido_proposto - r.fido_attuale : 0;
                 return (
-                  <TableRow key={r.cliente_id} className={!r.proponibile ? "opacity-60" : ""}>
+                  <TableRow
+                    key={r.cliente_id}
+                    className={`${!r.proponibile ? "opacity-60" : ""} ${
+                      r.proponibile && r.richiede_verifica ? "bg-warning/10 border-l-2 border-l-warning" : ""
+                    }`}
+                  >
                     <TableCell>
                       <Checkbox
                         checked={r.incluso && r.proponibile}
@@ -1900,7 +1925,15 @@ function ProposteFidoMassivoDialog({
                         onCheckedChange={() => toggleIncluso(r.cliente_id)}
                       />
                     </TableCell>
-                    <TableCell className="font-medium text-sm">{r.ragione_sociale}</TableCell>
+                    <TableCell className="font-medium text-sm">
+                      {r.ragione_sociale}
+                      {r.richiede_verifica && (
+                        <Badge className="ml-2 bg-warning/15 text-warning hover:bg-warning/20">Da verificare</Badge>
+                      )}
+                      {r.nota_proposta && (
+                        <p className="text-xs font-normal text-muted-foreground mt-0.5 max-w-[380px]">{r.nota_proposta}</p>
+                      )}
+                    </TableCell>
                     <TableCell className="text-right text-sm">{fmtEuro(r.fido_attuale)}</TableCell>
                     <TableCell className="text-right text-sm">{fmtEuro(r.esposizione)}</TableCell>
                     <TableCell className="text-right">

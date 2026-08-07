@@ -77,6 +77,9 @@ export type RigaExport = {
   profilo_pagamento: string;
   coefficiente: number;
   fido_proposto_senza_coefficiente: number;
+  richiede_verifica: boolean;
+  nota_proposta: string;
+  sede_cinisello: boolean;
 };
 
 
@@ -202,6 +205,9 @@ export async function raccogliDatiFidoTeorico(
       profilo_pagamento: t.profilo_pagamento === "patologico" ? "Patologico" : "Sano",
       coefficiente: Number(t.coefficiente ?? 1),
       fido_proposto_senza_coefficiente: num(t.fido_proposto_senza_coefficiente ?? t.fido_proposto),
+      richiede_verifica: !!t.richiede_verifica,
+      nota_proposta: String(t.nota_proposta ?? ""),
+      sede_cinisello: !!t.sede_cinisello,
     });
   }
 
@@ -242,6 +248,9 @@ const INTESTAZIONI = [
   "Profilo di pagamento",
   "Coefficiente",
   "Fido proposto senza coefficiente",
+  "Da verificare",
+  "Nota sulla proposta",
+  "Sede Cinisello Balsamo",
 ];
 
 /** Indici (0-based) delle colonne da trattare come TESTO (zeri iniziali). */
@@ -311,14 +320,16 @@ export function costruisciWorkbook(
       r.profilo_pagamento,
       r.coefficiente,
       r.fido_proposto_senza_coefficiente,
-
+      r.richiede_verifica ? "Sì" : "No",
+      r.nota_proposta,
+      r.sede_cinisello ? "Sì" : "No",
     ]),
   ];
   const ws = XLSX.utils.aoa_to_sheet(aoa, { cellDates: false });
   marcaTipi(ws, righe.length, INTESTAZIONI.length);
 
   ws["!cols"] = INTESTAZIONI.map((h, i) => ({
-    wch: i === 1 ? 38 : i === 13 ? 46 : Math.max(12, Math.min(26, h.length + 2)),
+    wch: i === 1 ? 38 : i === 13 ? 46 : i === 33 ? 70 : Math.max(12, Math.min(26, h.length + 2)),
   }));
   ws["!autofilter"] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: righe.length, c: INTESTAZIONI.length - 1 } }) };
   (ws as any)["!freeze"] = { xSplit: "0", ySplit: "1", topLeftCell: "A2", activePane: "bottomLeft", state: "frozen" };

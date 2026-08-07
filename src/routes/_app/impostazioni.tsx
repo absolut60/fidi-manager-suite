@@ -642,6 +642,16 @@ const CONFIG_FIELDS: {
     ],
   },
   {
+    chiave: "fido_teorico_escludi_sede",
+    label: "Escludi la sede di Cinisello Balsamo",
+    hint: "Se attivo, i clienti della sede di Cinisello Balsamo mantengono il fido attuale e non ricevono una proposta",
+    type: "scelta",
+    options: [
+      { value: "false", label: "Inclusi nel calcolo" },
+      { value: "true", label: "Esclusi (mantengono il fido attuale)" },
+    ],
+  },
+  {
     chiave: "fido_teorico_piva_escluse",
     label: "P.IVA escluse dal fido teorico",
     hint: "Partite IVA escluse dal calcolo del fido teorico (società del gruppo). Separale con una virgola.",
