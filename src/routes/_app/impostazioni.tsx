@@ -735,6 +735,18 @@ function ConfigurazioniCard() {
             {CONFIG_FIELDS.map((f) => (
               <div key={f.chiave} className="space-y-1.5">
                 <Label htmlFor={f.chiave}>{f.label}</Label>
+                {f.type === "scelta" ? (
+                  <select
+                    id={f.chiave}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    value={values[f.chiave] ?? f.options?.[0]?.value ?? ""}
+                    onChange={(e) => setValues((v) => ({ ...v, [f.chiave]: e.target.value }))}
+                  >
+                    {f.options?.map((o) => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                ) : (
                 <div className="relative">
                   <Input
                     id={f.chiave}
@@ -754,6 +766,8 @@ function ConfigurazioniCard() {
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{f.suffix}</span>
                   )}
                 </div>
+                )}
+
 
                 {f.hint && <p className="text-xs text-muted-foreground">{f.hint}</p>}
               </div>
