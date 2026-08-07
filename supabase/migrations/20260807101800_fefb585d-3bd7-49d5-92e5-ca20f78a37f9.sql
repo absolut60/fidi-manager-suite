@@ -1,0 +1,1 @@
+GRANT EXECUTE ON FUNCTION public.get_dashboard_fidi() TO supabase_read_only_user;
