@@ -1270,8 +1270,11 @@ export const finalizeAnagraficaImport = inngest.createFunction(
           .single();
         const errs = (cur?.righe_errore as number | null) ?? 0;
         const skp = (cur?.righe_saltate as number | null) ?? 0;
+        // Lo stato dipende SOLO dagli errori reali: le righe saltate sono scarti
+        // legittimi e restano visibili nel contatore dedicato / anomalie.
         const stato: "completata" | "completata_con_errori" =
-          errs > 0 || skp > 0 ? "completata_con_errori" : "completata";
+          errs > 0 ? "completata_con_errori" : "completata";
+
         await supabaseAdmin
           .from("importazioni")
           .update({
