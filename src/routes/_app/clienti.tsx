@@ -41,13 +41,18 @@ import { EsportaFidoTeoricoButton } from "@/components/esporta-fido-teorico-butt
 
 import { INFORMATIVA_FULL, CONSENSO_TESTI } from "@/lib/consensi-testi";
 
+type ClientiSearch = { preset?: string; edit?: 1 };
+
 export const Route = createFileRoute("/_app/clienti")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    preset: typeof search.preset === "string" ? search.preset : undefined,
-    edit: search.edit ? 1 : undefined,
-  }),
+  validateSearch: (search: Record<string, unknown>): ClientiSearch => {
+    const out: ClientiSearch = {};
+    if (typeof search.preset === "string") out.preset = search.preset;
+    if (search.edit) out.edit = 1;
+    return out;
+  },
   component: ClientiPage,
 });
+
 
 
 type SemaforoColor = "rosso" | "arancione" | "giallo" | "verde";
