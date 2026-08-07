@@ -64,6 +64,8 @@ export const REGOLA_LABEL: Record<string, string> = {
 export const REGOLA_DESCRIZIONE: Record<string, string> = {
   sede_esclusa: "Sede esclusa dal calcolo — fido attuale invariato",
   esclusa_gruppo: "Società del gruppo esclusa dal calcolo — fido attuale invariato",
+  cliente_bloccato: "Cliente bloccato — nessuna proposta di fido",
+  gestione_legale: "Cliente in gestione legale — nessuna proposta di fido",
   condizione_mancante: "Condizione di pagamento mancante in anagrafica — impossibile calcolare",
   nessun_fatturato: "Nessun fatturato nella finestra di calcolo",
   minimo_500: "Fatturato solo nell'anno precedente — minimo 500 €",
