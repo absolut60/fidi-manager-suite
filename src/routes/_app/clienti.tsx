@@ -57,6 +57,18 @@ export const Route = createFileRoute("/_app/clienti")({
 
 
 
+const FASCE_CONCESSO: Record<string, { min: number; max: number | null; label: string }> = {
+  nessuno: { min: 0, max: 0, label: "Nessun fido" },
+  "0_500": { min: 0, max: 500, label: "Fino a 500 €" },
+  "501_1000": { min: 500, max: 1000, label: "501 - 1.000 €" },
+  "1001_2500": { min: 1000, max: 2500, label: "1.001 - 2.500 €" },
+  "2501_5000": { min: 2500, max: 5000, label: "2.501 - 5.000 €" },
+  "5001_10000": { min: 5000, max: 10000, label: "5.001 - 10.000 €" },
+  "10001_25000": { min: 10000, max: 25000, label: "10.001 - 25.000 €" },
+  "25001_50000": { min: 25000, max: 50000, label: "25.001 - 50.000 €" },
+  oltre_50000: { min: 50000, max: null, label: "Oltre 50.000 €" },
+};
+
 type SemaforoColor = "rosso" | "arancione" | "giallo" | "verde";
 
 function calcSemaforo(c: {
@@ -541,7 +553,7 @@ function ClientiPage() {
   // Reset pagina ogni volta che cambia un filtro o l'ordinamento
   useEffect(() => {
     setPage(1);
-  }, [search, statoCliente, statoAttivita, storeFiltro, statoFido, semaforoFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo]);
+  }, [search, statoCliente, statoAttivita, storeFiltro, statoFido, semaforoFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, fasciaConcesso]);
 
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -572,6 +584,16 @@ function ClientiPage() {
     }
     if (storeFiltro !== "tutti") q = q.eq("store_id", storeFiltro);
     if (soloConFidoAttivo) q = q.gt("fido_gestionale", 0);
+    if (fasciaConcesso !== "tutti") {
+      const range = FASCE_CONCESSO[fasciaConcesso];
+      if (range) {
+        if (range.max === 0) q = q.or("fido_gestionale.is.null,fido_gestionale.lte.0");
+        else {
+          q = q.gt("fido_gestionale", range.min);
+          if (range.max != null) q = q.lte("fido_gestionale", range.max);
+        }
+      }
+    }
     if (filtroBlocco === "bloccati") q = q.eq("bloccato", true);
     else if (filtroBlocco === "non_bloccati") q = q.eq("bloccato", false);
     if (privacyFiltro === "firmata") q = q.eq("privacy_firmata", true);
@@ -651,7 +673,7 @@ function ClientiPage() {
   const scostamentoReady = (scostamentoFiltro === "tutti" && !soloDaVerificare) || !!fidoTeoricoMap;
 
   const { data: clientiResp, isLoading } = useQuery({
-    queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
+    queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, fasciaConcesso, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
     queryFn: async () => {
       // Ramo ordinamento virtuale (Scaduto / A scadere): PostgREST non puo'
       // ordinare su un valore che non e' nella query. Prendiamo tutti gli id
@@ -757,7 +779,8 @@ function ClientiPage() {
     (scostamentoFiltro !== "tutti" ? 1 : 0) +
     (soloDaVerificare ? 1 : 0) +
     (soloOltreFido ? 1 : 0) +
-    (soloConFidoAttivo ? 1 : 0);
+    (soloConFidoAttivo ? 1 : 0) +
+    (fasciaConcesso !== "tutti" ? 1 : 0);
 
   // Conteggio filtri avanzati attivi (include quelli spostati dentro il dialog)
   const advCount =
@@ -777,6 +800,7 @@ function ClientiPage() {
     setStatoCliente("attivi");
     setStatoAttivita("attivi");
     setStoreFiltro("tutti");
+    setFasciaConcesso("tutti");
     setStatoFido(new Set());
     setSemaforoFiltro("tutti");
     setFiltroBlocco("tutti");
