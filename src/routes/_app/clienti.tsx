@@ -448,7 +448,7 @@ function ClientiPage() {
 
   // Fido teorico per l'intera anagrafica: una sola chiamata alla RPC,
   // usata sia per le colonne opzionali sia per filtro/ordinamento.
-  const fidoTeoricoAttivo = mostraFidoTeorico || scostamentoFiltro !== "tutti"
+  const fidoTeoricoAttivo = mostraFidoTeorico || scostamentoFiltro !== "tutti" || soloDaVerificare
     || sortBy === "fido_proposto" || sortBy === "scostamento";
   const { data: fidoTeoricoMap } = useQuery({
     queryKey: ["fido-teorico-tutti"],
@@ -469,6 +469,13 @@ function ClientiPage() {
     return ids;
   }, [fidoTeoricoMap, scostamentoFiltro]);
 
+  const daVerificareIds = useMemo<string[] | null>(() => {
+    if (!soloDaVerificare || !fidoTeoricoMap) return null;
+    const ids: string[] = [];
+    for (const [id, r] of fidoTeoricoMap) if (r.richiede_verifica) ids.push(id);
+    return ids;
+  }, [fidoTeoricoMap, soloDaVerificare]);
+
   // Intersezione id set "include" (semaforo ∩ stato_fido ∩ scadenziario ∩ a_scadere ∩ perc consumato)
   const includeIdsFilter = useMemo<string[] | null>(() => {
     const sources: string[][] = [];
@@ -479,10 +486,12 @@ function ClientiPage() {
     if (fatturatoIds) sources.push(fatturatoIds);
     if (percConsumatoIds) sources.push(percConsumatoIds);
     if (scostamentoIds) sources.push(scostamentoIds);
+    if (daVerificareIds) sources.push(daVerificareIds);
     if (sources.length === 0) return null;
     const sets = sources.map((s) => new Set(s));
     return sources[0].filter((id) => sets.every((s) => s.has(id)));
-  }, [semaforoIds, statoFidoIds, scadenziarioIdsFilter, aScadereIds, fatturatoIds, percConsumatoIds, scostamentoIds]);
+  }, [semaforoIds, statoFidoIds, scadenziarioIdsFilter, aScadereIds, fatturatoIds, percConsumatoIds, scostamentoIds, daVerificareIds]);
+
 
 
   // Reset pagina ogni volta che cambia un filtro o l'ordinamento
