@@ -72,7 +72,13 @@ export type RigaExport = {
   fatturato_anno_corrente: number;
   fatturato_anno_precedente: number;
   dinamica: Dinamica;
+  ritmo_mensile: number;
+  giorni_oltre_accordo: number;
+  profilo_pagamento: string;
+  coefficiente: number;
+  fido_proposto_senza_coefficiente: number;
 };
+
 
 export type ProgressoExport = { fase: string; percentuale: number };
 type OnProgress = (p: ProgressoExport) => void;
@@ -191,8 +197,14 @@ export async function raccogliDatiFidoTeorico(
       fatturato_anno_corrente: cur,
       fatturato_anno_precedente: prev,
       dinamica: calcolaDinamica(cur, prev),
+      ritmo_mensile: num(t.ritmo_mensile),
+      giorni_oltre_accordo: num(t.giorni_oltre_accordo),
+      profilo_pagamento: t.profilo_pagamento === "patologico" ? "Patologico" : "Sano",
+      coefficiente: Number(t.coefficiente ?? 1),
+      fido_proposto_senza_coefficiente: num(t.fido_proposto_senza_coefficiente ?? t.fido_proposto),
     });
   }
+
   righe.sort((a, b) => a.ragione_sociale.localeCompare(b.ragione_sociale, "it"));
   return { righe, mesiRolling };
 }
@@ -225,12 +237,18 @@ const INTESTAZIONI = [
   "Fatturato anno corrente",
   "Fatturato anno precedente",
   "Dinamica",
+  "Ritmo mensile",
+  "Giorni oltre l'accordo",
+  "Profilo di pagamento",
+  "Coefficiente",
+  "Fido proposto senza coefficiente",
 ];
 
 /** Indici (0-based) delle colonne da trattare come TESTO (zeri iniziali). */
 const COL_TESTO = new Set([0, 2]);
 /** Indici delle colonne monetarie (due decimali). */
-const COL_EURO = new Set([8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 19, 24, 25]);
+const COL_EURO = new Set([8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 19, 24, 25, 27, 31]);
+
 
 function marcaTipi(ws: XLSX.WorkSheet, nRighe: number, nCol: number, offsetRiga = 1) {
   for (let r = 0; r < nRighe; r++) {
@@ -288,6 +306,12 @@ export function costruisciWorkbook(
       r.fatturato_anno_corrente,
       r.fatturato_anno_precedente,
       DINAMICA_LABEL[r.dinamica],
+      r.ritmo_mensile,
+      r.giorni_oltre_accordo,
+      r.profilo_pagamento,
+      r.coefficiente,
+      r.fido_proposto_senza_coefficiente,
+
     ]),
   ];
   const ws = XLSX.utils.aoa_to_sheet(aoa, { cellDates: false });
@@ -344,6 +368,30 @@ export function costruisciWorkbook(
     const prop = somma((r) => r.fido_proposto, rows);
     rip.push([f.label, rows.length, base, prop, prop - base]);
   }
+  rip.push([]);
+
+  const rigaProfilo = rip.length;
+  rip.push(["Per profilo di pagamento", "Clienti", "Fido proposto", "Senza coefficiente"]);
+  for (const p of ["Sano", "Patologico"]) {
+    const rows = righe.filter((r) => r.profilo_pagamento === p);
+    rip.push([p, rows.length, somma((r) => r.fido_proposto, rows), somma((r) => r.fido_proposto_senza_coefficiente, rows)]);
+  }
+  rip.push([]);
+
+  const rigaCoef = rip.length;
+  rip.push(["Per coefficiente", "Clienti", "Fido proposto", "Senza coefficiente"]);
+  const coefficienti = [...new Set(righe.map((r) => r.coefficiente))].sort((a, b) => a - b);
+  for (const k of coefficienti) {
+    const rows = righe.filter((r) => r.coefficiente === k);
+    rip.push([
+      k.toLocaleString("it-IT"),
+      rows.length,
+      somma((r) => r.fido_proposto, rows),
+      somma((r) => r.fido_proposto_senza_coefficiente, rows),
+    ]);
+  }
+
+
 
   const wsR = XLSX.utils.aoa_to_sheet(rip);
   for (let r = 0; r < rip.length; r++) {
@@ -364,7 +412,7 @@ export function costruisciWorkbook(
   // Righe (1-based) da rendere in grassetto in post-produzione, per foglio.
   (wb as any).__grassetto = {
     1: [1],
-    2: [1, 5, 12, rigaDinamica + 1, rigaFascia + 1],
+    2: [1, 5, 12, rigaDinamica + 1, rigaFascia + 1, rigaProfilo + 1, rigaCoef + 1],
   };
   return wb;
 }

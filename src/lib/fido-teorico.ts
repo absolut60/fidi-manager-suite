@@ -9,14 +9,39 @@ import { supabase } from "@/integrations/supabase/client";
 export type FidoTeoricoRow = {
   cliente_id: string;
   fatturato_rolling: number;
+  ritmo_mensile: number;
   fido_attuale: number;
   fido_base: number;
+  fido_base_lordo: number;
+  giorni_oltre_accordo: number;
+  profilo_pagamento: "sano" | "patologico";
+  coefficiente: number;
   fido_proposto: number;
+  fido_proposto_senza_coefficiente: number;
   giorni: number;
   giorni_mancanti: boolean;
   regola_applicata: string;
   scostamento: number;
 };
+
+/** Spiegazione in chiaro del coefficiente di comportamento. */
+export function motivoCoefficiente(r: {
+  coefficiente: number;
+  giorni_oltre_accordo: number;
+  profilo_pagamento: "sano" | "patologico";
+}): string {
+  if (r.coefficiente === 0) return "Insoluti presenti — nessuna proposta di fido";
+  const gg =
+    r.giorni_oltre_accordo <= 0
+      ? "pagamenti nei termini concordati"
+      : `${r.giorni_oltre_accordo} giorni oltre l'accordo`;
+  const profilo =
+    r.profilo_pagamento === "patologico"
+      ? "scaduto patologico (insoluti o ritardi oltre 60 giorni)"
+      : "scaduto fisiologico";
+  return `${gg} · ${profilo}`;
+}
+
 
 /** Etichetta breve, per tabelle e badge. */
 export const REGOLA_LABEL: Record<string, string> = {
@@ -63,14 +88,23 @@ function normalizza(r: any): FidoTeoricoRow {
   return {
     cliente_id: String(r.cliente_id),
     fatturato_rolling: Number(r.fatturato_rolling ?? 0),
+    ritmo_mensile: Number(r.ritmo_mensile ?? 0),
     fido_attuale: Number(r.fido_attuale ?? 0),
     fido_base: Number(r.fido_base ?? 0),
+    fido_base_lordo: Number(r.fido_base_lordo ?? r.fido_base ?? 0),
+    giorni_oltre_accordo: Number(r.giorni_oltre_accordo ?? 0),
+    profilo_pagamento: r.profilo_pagamento === "patologico" ? "patologico" : "sano",
+    coefficiente: Number(r.coefficiente ?? 1),
     fido_proposto: Number(r.fido_proposto ?? 0),
+    fido_proposto_senza_coefficiente: Number(
+      r.fido_proposto_senza_coefficiente ?? r.fido_proposto ?? 0,
+    ),
     giorni: Number(r.giorni ?? 0),
     giorni_mancanti: !!r.giorni_mancanti,
     regola_applicata: String(r.regola_applicata ?? ""),
     scostamento: Number(r.scostamento ?? 0),
   };
+
 }
 
 const CHUNK = 500;
