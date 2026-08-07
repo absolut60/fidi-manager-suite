@@ -98,6 +98,20 @@ export function FidoTeoricoBlocco({
               value={coefApplicato ? data.coefficiente.toLocaleString("it-IT") : "—"}
               hint={coefApplicato ? motivoCoefficiente(data) : undefined}
             />
+            {data.pavimento_applicato && (
+              <>
+                <Cella
+                  label="Fido teorico puro"
+                  value={formatEuro(data.fido_teorico_puro)}
+                  hint="fabbisogno calcolato prima del pavimento"
+                />
+                <Cella
+                  label="Esposizione in essere"
+                  value={formatEuro(data.esposizione_corrente)}
+                  hint="pavimento applicato: la proposta non scende sotto l'esposizione"
+                />
+              </>
+            )}
             <Cella label="Fido proposto" value={formatEuro(data.fido_proposto)} strong />
             <Cella label="Fido attuale" value={formatEuro(data.fido_attuale)} />
             <div>
