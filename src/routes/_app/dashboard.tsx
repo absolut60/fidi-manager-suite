@@ -85,7 +85,6 @@ function DashboardPage() {
 }
 
 
-}
 
 function EmptyState({
   icon: Icon,
