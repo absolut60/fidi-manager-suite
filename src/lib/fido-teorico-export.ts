@@ -306,6 +306,12 @@ export function costruisciWorkbook(
       r.fatturato_anno_corrente,
       r.fatturato_anno_precedente,
       DINAMICA_LABEL[r.dinamica],
+      r.ritmo_mensile,
+      r.giorni_oltre_accordo,
+      r.profilo_pagamento,
+      r.coefficiente,
+      r.fido_proposto_senza_coefficiente,
+
     ]),
   ];
   const ws = XLSX.utils.aoa_to_sheet(aoa, { cellDates: false });
