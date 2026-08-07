@@ -9,14 +9,39 @@ import { supabase } from "@/integrations/supabase/client";
 export type FidoTeoricoRow = {
   cliente_id: string;
   fatturato_rolling: number;
+  ritmo_mensile: number;
   fido_attuale: number;
   fido_base: number;
+  fido_base_lordo: number;
+  giorni_oltre_accordo: number;
+  profilo_pagamento: "sano" | "patologico";
+  coefficiente: number;
   fido_proposto: number;
+  fido_proposto_senza_coefficiente: number;
   giorni: number;
   giorni_mancanti: boolean;
   regola_applicata: string;
   scostamento: number;
 };
+
+/** Spiegazione in chiaro del coefficiente di comportamento. */
+export function motivoCoefficiente(r: {
+  coefficiente: number;
+  giorni_oltre_accordo: number;
+  profilo_pagamento: "sano" | "patologico";
+}): string {
+  if (r.coefficiente === 0) return "Insoluti presenti — nessuna proposta di fido";
+  const gg =
+    r.giorni_oltre_accordo <= 0
+      ? "pagamenti nei termini concordati"
+      : `${r.giorni_oltre_accordo} giorni oltre l'accordo`;
+  const profilo =
+    r.profilo_pagamento === "patologico"
+      ? "scaduto patologico (insoluti o ritardi oltre 60 giorni)"
+      : "scaduto fisiologico";
+  return `${gg} · ${profilo}`;
+}
+
 
 /** Etichetta breve, per tabelle e badge. */
 export const REGOLA_LABEL: Record<string, string> = {
