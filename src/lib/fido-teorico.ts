@@ -88,14 +88,23 @@ function normalizza(r: any): FidoTeoricoRow {
   return {
     cliente_id: String(r.cliente_id),
     fatturato_rolling: Number(r.fatturato_rolling ?? 0),
+    ritmo_mensile: Number(r.ritmo_mensile ?? 0),
     fido_attuale: Number(r.fido_attuale ?? 0),
     fido_base: Number(r.fido_base ?? 0),
+    fido_base_lordo: Number(r.fido_base_lordo ?? r.fido_base ?? 0),
+    giorni_oltre_accordo: Number(r.giorni_oltre_accordo ?? 0),
+    profilo_pagamento: r.profilo_pagamento === "patologico" ? "patologico" : "sano",
+    coefficiente: Number(r.coefficiente ?? 1),
     fido_proposto: Number(r.fido_proposto ?? 0),
+    fido_proposto_senza_coefficiente: Number(
+      r.fido_proposto_senza_coefficiente ?? r.fido_proposto ?? 0,
+    ),
     giorni: Number(r.giorni ?? 0),
     giorni_mancanti: !!r.giorni_mancanti,
     regola_applicata: String(r.regola_applicata ?? ""),
     scostamento: Number(r.scostamento ?? 0),
   };
+
 }
 
 const CHUNK = 500;
