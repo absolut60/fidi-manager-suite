@@ -13,6 +13,7 @@ export type FidoTeoricoRow = {
   fido_attuale: number;
   fido_base: number;
   fido_base_lordo: number;
+  ddt_da_fatturare: number;
   giorni_oltre_accordo: number;
   profilo_pagamento: "sano" | "patologico";
   coefficiente: number;
@@ -95,6 +96,7 @@ function normalizza(r: any): FidoTeoricoRow {
     fido_attuale: Number(r.fido_attuale ?? 0),
     fido_base: Number(r.fido_base ?? 0),
     fido_base_lordo: Number(r.fido_base_lordo ?? r.fido_base ?? 0),
+    ddt_da_fatturare: Number(r.ddt_da_fatturare ?? 0),
     giorni_oltre_accordo: Number(r.giorni_oltre_accordo ?? 0),
     profilo_pagamento: r.profilo_pagamento === "patologico" ? "patologico" : "sano",
     coefficiente: Number(r.coefficiente ?? 1),

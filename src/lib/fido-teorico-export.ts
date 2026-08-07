@@ -80,6 +80,7 @@ export type RigaExport = {
   richiede_verifica: boolean;
   nota_proposta: string;
   sede_cinisello: boolean;
+  ddt_incluso: number;
 };
 
 
@@ -208,6 +209,7 @@ export async function raccogliDatiFidoTeorico(
       richiede_verifica: !!t.richiede_verifica,
       nota_proposta: String(t.nota_proposta ?? ""),
       sede_cinisello: !!t.sede_cinisello,
+      ddt_incluso: num(t.ddt_da_fatturare),
     });
   }
 
@@ -251,12 +253,13 @@ const INTESTAZIONI = [
   "Da verificare",
   "Nota sulla proposta",
   "Sede Cinisello Balsamo",
+  "DDT inclusi nel fido",
 ];
 
 /** Indici (0-based) delle colonne da trattare come TESTO (zeri iniziali). */
 const COL_TESTO = new Set([0, 2]);
 /** Indici delle colonne monetarie (due decimali). */
-const COL_EURO = new Set([8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 19, 24, 25, 27, 31]);
+const COL_EURO = new Set([8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 19, 24, 25, 27, 31, 34]);
 
 
 function marcaTipi(ws: XLSX.WorkSheet, nRighe: number, nCol: number, offsetRiga = 1) {
@@ -323,6 +326,7 @@ export function costruisciWorkbook(
       r.richiede_verifica ? "Sì" : "No",
       r.nota_proposta,
       r.sede_cinisello ? "Sì" : "No",
+      r.ddt_incluso,
     ]),
   ];
   const ws = XLSX.utils.aoa_to_sheet(aoa, { cellDates: false });

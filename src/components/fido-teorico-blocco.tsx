@@ -86,6 +86,13 @@ export function FidoTeoricoBlocco({
               hint={giorniMancanti ? "condizione di pagamento non riconosciuta" : undefined}
             />
             <Cella label="Fido teorico (base)" value={formatEuro(data.fido_base_lordo)} />
+            {data.ddt_da_fatturare > 0 && (
+              <Cella
+                label="DDT da fatturare"
+                value={formatEuro(data.ddt_da_fatturare)}
+                hint="merce consegnata non ancora fatturata, sommata al fido base"
+              />
+            )}
             <Cella
               label="Coefficiente"
               value={coefApplicato ? data.coefficiente.toLocaleString("it-IT") : "—"}
@@ -120,6 +127,9 @@ export function FidoTeoricoBlocco({
             <p>
               Ritmo mensile {formatEuro(data.ritmo_mensile)} × {giorniMancanti ? "—" : `${data.giorni} gg`} / 30
               {" = "}fido base {formatEuro(data.fido_base_lordo)}
+              {data.ddt_da_fatturare > 0 ? (
+                <> {" + "}DDT da fatturare {formatEuro(data.ddt_da_fatturare)}</>
+              ) : null}
               {coefApplicato ? (
                 <>
                   {" "}× coefficiente {data.coefficiente.toLocaleString("it-IT")}

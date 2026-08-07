@@ -652,6 +652,16 @@ const CONFIG_FIELDS: {
     ],
   },
   {
+    chiave: "fido_teorico_includi_ddt",
+    label: "Includi i documenti da fatturare",
+    hint: "Somma al fido base i documenti consegnati e non ancora fatturati (merce già uscita che diventerà esposizione)",
+    type: "scelta",
+    options: [
+      { value: "true", label: "Inclusi nel fido base" },
+      { value: "false", label: "Esclusi" },
+    ],
+  },
+  {
     chiave: "fido_teorico_soglia_verifica_eur",
     label: "Soglia di segnalazione «da verificare»",
     suffix: "€",
