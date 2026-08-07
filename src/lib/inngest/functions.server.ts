@@ -2574,7 +2574,6 @@ export const processScadAssicImport = inngest.createFunction(
           const clients = new Set<string>();
           const toUpdate: Array<Record<string, unknown>> = [];
           const toInsert: Array<Record<string, unknown>> = [];
-          const insertedCid = new Set<string>();
           const mancanti: typeof chunk = [];
 
           for (const a of chunk) {
@@ -2595,15 +2594,8 @@ export const processScadAssicImport = inngest.createFunction(
               stato: "attiva",
             };
             const existId = existingPol.get(cid);
-            if (existId) {
-              toUpdate.push({ id: existId, ...payload });
-            } else if (!insertedCid.has(cid)) {
-              // stessa semantica di prima: una sola polizza nuova per cliente
-              insertedCid.add(cid);
-              toInsert.push(payload);
-            } else {
-              toInsert.push(payload);
-            }
+            if (existId) toUpdate.push({ id: existId, ...payload });
+            else toInsert.push(payload);
           }
 
           totS += mancanti.length;
