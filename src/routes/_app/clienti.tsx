@@ -497,7 +497,7 @@ function ClientiPage() {
   // Reset pagina ogni volta che cambia un filtro o l'ordinamento
   useEffect(() => {
     setPage(1);
-  }, [search, statoCliente, statoAttivita, storeFiltro, statoFido, semaforoFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro]);
+  }, [search, statoCliente, statoAttivita, storeFiltro, statoFido, semaforoFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare]);
 
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -603,10 +603,10 @@ function ClientiPage() {
   // Ordinamento virtuale: serve la mappa completa (scadenziario o fido teorico).
   const virtualSortReady = !isVirtualSort
     || (isFidoTeoricoSort ? !!fidoTeoricoMap : !!scadenziarioMap);
-  const scostamentoReady = scostamentoFiltro === "tutti" || !!fidoTeoricoMap;
+  const scostamentoReady = (scostamentoFiltro === "tutti" && !soloDaVerificare) || !!fidoTeoricoMap;
 
   const { data: clientiResp, isLoading } = useQuery({
-    queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
+    queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
     queryFn: async () => {
       // Ramo ordinamento virtuale (Scaduto / A scadere): PostgREST non puo'
       // ordinare su un valore che non e' nella query. Prendiamo tutti gli id
@@ -709,7 +709,8 @@ function ClientiPage() {
     (fatturatoFiltro !== "tutti" ? 1 : 0) +
     (fidoFascia !== "tutti" ? 1 : 0) +
     ((sliderCommitted[0] !== FIDO_RANGE_MIN || sliderCommitted[1] !== FIDO_RANGE_MAX) ? 1 : 0) +
-    (scostamentoFiltro !== "tutti" ? 1 : 0);
+    (scostamentoFiltro !== "tutti" ? 1 : 0) +
+    (soloDaVerificare ? 1 : 0);
 
   // Conteggio filtri avanzati attivi (include quelli spostati dentro il dialog)
   const advCount =
@@ -1088,6 +1089,9 @@ function ClientiPage() {
   if (scostamentoFiltro !== "tutti") {
     const map: Record<string, string> = { positivo: "da aumentare", negativo: "da ridurre", nullo: "in linea" };
     activeChips.push({ key: "scostamento", label: `Scostamento: ${map[scostamentoFiltro]}`, onRemove: () => setScostamentoFiltro("tutti") });
+  }
+  if (soloDaVerificare) {
+    activeChips.push({ key: "daVerificare", label: "Solo posizioni da verificare", onRemove: () => setSoloDaVerificare(false) });
   }
   if (advApplied.fidoOp !== "none") activeChips.push({ key: "advFido", label: `Fido (avanzato): ${advApplied.fidoOp}`, onRemove: () => setAdvApplied({ ...advApplied, fidoOp: "none", fidoVal: null, fidoFrom: null, fidoTo: null }) });
   if (advApplied.percConsumato != null) activeChips.push({ key: "advPerc", label: `Fido consumato ≥ ${advApplied.percConsumato}%`, onRemove: () => setAdvApplied({ ...advApplied, percConsumato: null }) });
