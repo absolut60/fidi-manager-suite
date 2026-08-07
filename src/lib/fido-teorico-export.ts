@@ -72,7 +72,13 @@ export type RigaExport = {
   fatturato_anno_corrente: number;
   fatturato_anno_precedente: number;
   dinamica: Dinamica;
+  ritmo_mensile: number;
+  giorni_oltre_accordo: number;
+  profilo_pagamento: string;
+  coefficiente: number;
+  fido_proposto_senza_coefficiente: number;
 };
+
 
 export type ProgressoExport = { fase: string; percentuale: number };
 type OnProgress = (p: ProgressoExport) => void;
