@@ -652,6 +652,12 @@ const CONFIG_FIELDS: {
     ],
   },
   {
+    chiave: "fido_teorico_soglia_verifica_eur",
+    label: "Soglia di segnalazione «da verificare»",
+    suffix: "€",
+    hint: "Differenza minima in euro fra fido attuale e proposto perché la variazione venga segnalata come da verificare",
+  },
+  {
     chiave: "fido_teorico_piva_escluse",
     label: "P.IVA escluse dal fido teorico",
     hint: "Partite IVA escluse dal calcolo del fido teorico (società del gruppo). Separale con una virgola.",
