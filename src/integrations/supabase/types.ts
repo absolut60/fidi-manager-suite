@@ -4638,16 +4638,19 @@ export type Database = {
           cliente_id: string
           coefficiente: number
           ddt_da_fatturare: number
+          esposizione_corrente: number
           fatturato_rolling: number
           fido_attuale: number
           fido_base: number
           fido_base_lordo: number
           fido_proposto: number
           fido_proposto_senza_coefficiente: number
+          fido_teorico_puro: number
           giorni: number
           giorni_mancanti: boolean
           giorni_oltre_accordo: number
           nota_proposta: string
+          pavimento_applicato: boolean
           profilo_pagamento: string
           regola_applicata: string
           richiede_verifica: boolean

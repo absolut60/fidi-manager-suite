@@ -1,0 +1,2 @@
+REVOKE EXECUTE ON FUNCTION public.get_fido_teorico(uuid[], boolean) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.get_fido_teorico(uuid[], boolean) TO authenticated, service_role, postgres, supabase_read_only_user;

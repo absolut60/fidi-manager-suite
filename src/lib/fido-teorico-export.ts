@@ -81,6 +81,8 @@ export type RigaExport = {
   nota_proposta: string;
   sede_cinisello: boolean;
   ddt_incluso: number;
+  fido_teorico_puro: number;
+  pavimento_applicato: boolean;
 };
 
 
@@ -210,6 +212,8 @@ export async function raccogliDatiFidoTeorico(
       nota_proposta: String(t.nota_proposta ?? ""),
       sede_cinisello: !!t.sede_cinisello,
       ddt_incluso: num(t.ddt_da_fatturare),
+      fido_teorico_puro: num(t.fido_teorico_puro ?? t.fido_proposto),
+      pavimento_applicato: !!t.pavimento_applicato,
     });
   }
 
@@ -254,12 +258,14 @@ const INTESTAZIONI = [
   "Nota sulla proposta",
   "Sede Cinisello Balsamo",
   "DDT inclusi nel fido",
+  "Fido teorico puro (prima del pavimento)",
+  "Pavimento su esposizione",
 ];
 
 /** Indici (0-based) delle colonne da trattare come TESTO (zeri iniziali). */
 const COL_TESTO = new Set([0, 2]);
 /** Indici delle colonne monetarie (due decimali). */
-const COL_EURO = new Set([8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 19, 24, 25, 27, 31, 34]);
+const COL_EURO = new Set([8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 19, 24, 25, 27, 31, 34, 36]);
 
 
 function marcaTipi(ws: XLSX.WorkSheet, nRighe: number, nCol: number, offsetRiga = 1) {
@@ -327,6 +333,8 @@ export function costruisciWorkbook(
       r.nota_proposta,
       r.sede_cinisello ? "Sì" : "No",
       r.ddt_incluso,
+      r.fido_teorico_puro,
+      r.pavimento_applicato ? "Sì" : "No",
     ]),
   ];
   const ws = XLSX.utils.aoa_to_sheet(aoa, { cellDates: false });
