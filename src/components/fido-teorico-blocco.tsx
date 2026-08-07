@@ -69,12 +69,18 @@ export function FidoTeoricoBlocco({
         <>
           <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3 text-sm">
             <Cella label="Fatturato nella finestra" value={formatEuro(data.fatturato_rolling)} />
+            <Cella label="Ritmo mensile" value={formatEuro(data.ritmo_mensile)} />
             <Cella
               label="Giorni di pagamento"
               value={giorniMancanti ? "—" : `${data.giorni} gg`}
               hint={giorniMancanti ? "condizione di pagamento non riconosciuta" : undefined}
             />
-            <Cella label="Fido teorico (base)" value={formatEuro(data.fido_base)} />
+            <Cella label="Fido teorico (base)" value={formatEuro(data.fido_base_lordo)} />
+            <Cella
+              label="Coefficiente"
+              value={coefApplicato ? data.coefficiente.toLocaleString("it-IT") : "—"}
+              hint={coefApplicato ? motivoCoefficiente(data) : undefined}
+            />
             <Cella label="Fido proposto" value={formatEuro(data.fido_proposto)} strong />
             <Cella label="Fido attuale" value={formatEuro(data.fido_attuale)} />
             <div>
@@ -85,11 +91,33 @@ export function FidoTeoricoBlocco({
               </dd>
             </div>
           </dl>
+
+          <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground space-y-1">
+            <p>
+              Ritmo mensile {formatEuro(data.ritmo_mensile)} × {giorniMancanti ? "—" : `${data.giorni} gg`} / 30
+              {" = "}fido base {formatEuro(data.fido_base_lordo)}
+              {coefApplicato ? (
+                <>
+                  {" "}× coefficiente {data.coefficiente.toLocaleString("it-IT")}
+                </>
+              ) : null}
+              {" → "}
+              <span className="font-medium text-foreground">fido proposto {formatEuro(data.fido_proposto)}</span>
+            </p>
+            {coefApplicato && (
+              <p>
+                Motivo del coefficiente: {motivoCoefficiente(data)}. Senza coefficiente sarebbe{" "}
+                {formatEuro(data.fido_proposto_senza_coefficiente)}.
+              </p>
+            )}
+          </div>
+
           <p className="text-xs text-muted-foreground">
             Regola applicata: {REGOLA_DESCRIZIONE[regola] ?? regola}
           </p>
         </>
       )}
+
 
       <p className="text-xs text-muted-foreground italic">
         Calcolo indicativo. Non modifica il fido in essere.
