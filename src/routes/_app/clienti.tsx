@@ -175,6 +175,10 @@ function ClientiPage() {
   const [scostamentoFiltro, setScostamentoFiltro] = useState<"tutti" | "positivo" | "negativo" | "nullo">("tutti");
   // Filtro "solo posizioni da verificare" (attivabile dai riquadri della dashboard)
   const [soloDaVerificare, setSoloDaVerificare] = useState(false);
+  // Filtro "solo esposizione oltre il fido" (riquadro dashboard)
+  const [soloOltreFido, setSoloOltreFido] = useState(false);
+  // Filtro "solo clienti con fido gestionale attivo" (bonifica bloccati con fido)
+  const [soloConFidoAttivo, setSoloConFidoAttivo] = useState(false);
   const [aScadereFiltro, setAScadereFiltro] = useState<string>("tutti");
 
   // Preset filtri via URL (?preset=...), usati dai riquadri della dashboard
@@ -189,6 +193,13 @@ function ClientiPage() {
       setFiltroTipoSoggetto("tutti");
     } else if (presetSearch === "bloccati") {
       setFiltroBlocco("bloccati");
+      setFiltroTipoSoggetto("tutti");
+    } else if (presetSearch === "bloccati_con_fido") {
+      setFiltroBlocco("bloccati");
+      setSoloConFidoAttivo(true);
+      setFiltroTipoSoggetto("tutti");
+    } else if (presetSearch === "oltre_fido") {
+      setSoloOltreFido(true);
       setFiltroTipoSoggetto("tutti");
     } else if (presetSearch === "con_scaduto") {
       setScadenziarioFiltro("con_scaduto");
@@ -293,7 +304,7 @@ function ClientiPage() {
       while (true) {
         const { data, error } = await supabase
           .from("clienti")
-          .select("id, bloccato, fido, fido_residuo, fido_gestionale, scaduto")
+          .select("id, bloccato, fido, fido_residuo, fido_gestionale, scaduto, totale_rischio, doc_da_evadere")
           .range(offset, offset + size - 1);
         if (error) throw error;
         const batch = data ?? [];
@@ -438,6 +449,14 @@ function ClientiPage() {
     }).map((c: any) => c.id);
   }, [classifList, statoFido]);
 
+  // ID set per filtro "esposizione oltre il fido" (rischio + da evadere > fido gestionale)
+  const oltreFidoIds = useMemo<string[] | null>(() => {
+    if (!soloOltreFido || !classifList) return null;
+    return (classifList as any[])
+      .filter((c) => Number(c.totale_rischio ?? 0) + Number(c.doc_da_evadere ?? 0) > Number(c.fido_gestionale ?? 0))
+      .map((c) => c.id);
+  }, [classifList, soloOltreFido]);
+
   // Filtro avanzato: percentuale fido consumato (>= X%) — client-side da classifList
   const percConsumatoIds = useMemo<string[] | null>(() => {
     if (advApplied.percConsumato == null || !classifList) return null;
@@ -486,6 +505,7 @@ function ClientiPage() {
     const sources: string[][] = [];
     if (semaforoIds) sources.push(semaforoIds);
     if (statoFidoIds) sources.push(statoFidoIds);
+    if (oltreFidoIds) sources.push(oltreFidoIds);
     if (scadenziarioIdsFilter?.mode === "include") sources.push(scadenziarioIdsFilter.ids);
     if (aScadereIds) sources.push(aScadereIds);
     if (fatturatoIds) sources.push(fatturatoIds);
@@ -495,14 +515,14 @@ function ClientiPage() {
     if (sources.length === 0) return null;
     const sets = sources.map((s) => new Set(s));
     return sources[0].filter((id) => sets.every((s) => s.has(id)));
-  }, [semaforoIds, statoFidoIds, scadenziarioIdsFilter, aScadereIds, fatturatoIds, percConsumatoIds, scostamentoIds, daVerificareIds]);
+  }, [semaforoIds, statoFidoIds, oltreFidoIds, scadenziarioIdsFilter, aScadereIds, fatturatoIds, percConsumatoIds, scostamentoIds, daVerificareIds]);
 
 
 
   // Reset pagina ogni volta che cambia un filtro o l'ordinamento
   useEffect(() => {
     setPage(1);
-  }, [search, statoCliente, statoAttivita, storeFiltro, statoFido, semaforoFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare]);
+  }, [search, statoCliente, statoAttivita, storeFiltro, statoFido, semaforoFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo]);
 
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -532,6 +552,7 @@ function ClientiPage() {
         .or(`doc_da_fatturare.is.null,doc_da_fatturare.lte.0`);
     }
     if (storeFiltro !== "tutti") q = q.eq("store_id", storeFiltro);
+    if (soloConFidoAttivo) q = q.gt("fido_gestionale", 0);
     if (filtroBlocco === "bloccati") q = q.eq("bloccato", true);
     else if (filtroBlocco === "non_bloccati") q = q.eq("bloccato", false);
     if (privacyFiltro === "firmata") q = q.eq("privacy_firmata", true);
@@ -601,7 +622,7 @@ function ClientiPage() {
   }
 
 
-  const classifReady = (semaforoFiltro === "tutti" && statoFido.size === 0) || !!classifList;
+  const classifReady = (semaforoFiltro === "tutti" && statoFido.size === 0 && !soloOltreFido) || !!classifList;
   const scadReady = scadenziarioFiltro === "tutti" || !!scadenziarioMap;
   const isVirtualSort = VIRTUAL_SORT_COLS.includes(sortBy);
   const isFidoTeoricoSort = sortBy === "fido_proposto" || sortBy === "scostamento";
@@ -611,7 +632,7 @@ function ClientiPage() {
   const scostamentoReady = (scostamentoFiltro === "tutti" && !soloDaVerificare) || !!fidoTeoricoMap;
 
   const { data: clientiResp, isLoading } = useQuery({
-    queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
+    queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
     queryFn: async () => {
       // Ramo ordinamento virtuale (Scaduto / A scadere): PostgREST non puo'
       // ordinare su un valore che non e' nella query. Prendiamo tutti gli id
@@ -715,7 +736,9 @@ function ClientiPage() {
     (fidoFascia !== "tutti" ? 1 : 0) +
     ((sliderCommitted[0] !== FIDO_RANGE_MIN || sliderCommitted[1] !== FIDO_RANGE_MAX) ? 1 : 0) +
     (scostamentoFiltro !== "tutti" ? 1 : 0) +
-    (soloDaVerificare ? 1 : 0);
+    (soloDaVerificare ? 1 : 0) +
+    (soloOltreFido ? 1 : 0) +
+    (soloConFidoAttivo ? 1 : 0);
 
   // Conteggio filtri avanzati attivi (include quelli spostati dentro il dialog)
   const advCount =
@@ -1097,6 +1120,12 @@ function ClientiPage() {
   }
   if (soloDaVerificare) {
     activeChips.push({ key: "daVerificare", label: "Solo posizioni da verificare", onRemove: () => setSoloDaVerificare(false) });
+  }
+  if (soloOltreFido) {
+    activeChips.push({ key: "oltreFido", label: "Esposizione oltre il fido", onRemove: () => setSoloOltreFido(false) });
+  }
+  if (soloConFidoAttivo) {
+    activeChips.push({ key: "conFidoAttivo", label: "Solo con fido gestionale > 0", onRemove: () => setSoloConFidoAttivo(false) });
   }
   if (advApplied.fidoOp !== "none") activeChips.push({ key: "advFido", label: `Fido (avanzato): ${advApplied.fidoOp}`, onRemove: () => setAdvApplied({ ...advApplied, fidoOp: "none", fidoVal: null, fidoFrom: null, fidoTo: null }) });
   if (advApplied.percConsumato != null) activeChips.push({ key: "advPerc", label: `Fido consumato ≥ ${advApplied.percConsumato}%`, onRemove: () => setAdvApplied({ ...advApplied, percConsumato: null }) });
