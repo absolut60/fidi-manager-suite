@@ -1561,7 +1561,7 @@ export const processRischioImport = inngest.createFunction(
             righe_elaborate: totaleElaborate,
             righe_create: 0,
             righe_aggiornate: allRes.aggiornati,
-            righe_saltate: allRes.saltati,
+            righe_saltate: allRes.saltati + initResult.missingCount,
             righe_errore: cErrori,
             stato: statoFinale,
             completata_at: new Date().toISOString(),
