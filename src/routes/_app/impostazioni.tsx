@@ -587,7 +587,15 @@ function StoreDialog({ editing, onClose }: { editing: StoreRow | null; onClose: 
 
 type ConfigRow = { chiave: string; valore: string; descrizione: string | null };
 
-const CONFIG_FIELDS: { chiave: string; label: string; suffix?: string; hint?: string; type?: string }[] = [
+const CONFIG_FIELDS: {
+  chiave: string;
+  label: string;
+  suffix?: string;
+  hint?: string;
+  type?: string;
+  options?: { value: string; label: string }[];
+}[] = [
+
   { chiave: "soglia_livello_1", label: "Soglia Livello 1", suffix: "€", hint: "Importo massimo gestito dal liv. 1" },
   { chiave: "soglia_livello_2", label: "Soglia Livello 2", suffix: "€", hint: "Importo massimo gestito dal liv. 2 (oltre serve liv. 3)" },
   { chiave: "durata_default_mesi", label: "Durata di default", suffix: "mesi", hint: "Durata del fido proposta nelle nuove richieste" },
@@ -614,12 +622,33 @@ const CONFIG_FIELDS: { chiave: string; label: string; suffix?: string; hint?: st
     type: "mesi",
   },
   {
+    chiave: "fido_teorico_ponderazione",
+    label: "Ponderazione del fatturato",
+    hint: "Piatta = media semplice dei mesi. Pesata = più peso ai mesi recenti (3× gli ultimi 3, 2× i 3 precedenti, 1× i più vecchi)",
+    type: "scelta",
+    options: [
+      { value: "piatta", label: "Piatta" },
+      { value: "pesata", label: "Pesata" },
+    ],
+  },
+  {
+    chiave: "fido_teorico_coefficienti",
+    label: "Coefficienti di comportamento",
+    hint: "Riduce il fido proposto ai clienti che pagano oltre i termini concordati",
+    type: "scelta",
+    options: [
+      { value: "true", label: "Attivi" },
+      { value: "false", label: "Disattivati" },
+    ],
+  },
+  {
     chiave: "fido_teorico_piva_escluse",
     label: "P.IVA escluse dal fido teorico",
     hint: "Partite IVA escluse dal calcolo del fido teorico (società del gruppo). Separale con una virgola.",
     type: "text",
   },
 ];
+
 
 
 function ConfigurazioniCard() {
