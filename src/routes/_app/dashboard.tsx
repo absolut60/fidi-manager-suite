@@ -84,37 +84,7 @@ function DashboardPage() {
   );
 }
 
-function MetricCard({ metric, loading }: { metric: Metric; loading: boolean }) {
-  const Icon = metric.icon;
-  const toneClass = {
-    primary: "bg-primary/10 text-primary",
-    success: "bg-success/15 text-success",
-    warning: "bg-warning/15 text-warning",
-    info: "bg-info/15 text-info",
-  }[metric.tone];
 
-  return (
-    <Card className="p-5 hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between">
-        <div className="space-y-1">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            {metric.label}
-          </p>
-          {loading ? (
-            <Skeleton className="h-8 w-24" />
-          ) : (
-            <p className="text-2xl font-bold text-foreground">{metric.value}</p>
-          )}
-          {metric.hint && (
-            <p className="text-xs text-muted-foreground">{metric.hint}</p>
-          )}
-        </div>
-        <div className={`size-10 rounded-lg flex items-center justify-center ${toneClass}`}>
-          <Icon className="size-5" />
-        </div>
-      </div>
-    </Card>
-  );
 }
 
 function EmptyState({
