@@ -22,7 +22,10 @@ import { invioCampagnaMarketing } from "@/lib/inngest/campagna-marketing.server"
 import { emailHealthCheck } from "@/lib/inngest/email-health.server";
 import { processEventiPartecipantiImport } from "@/lib/inngest/eventi-import.server";
 import { refreshFatturatoMensileCron } from "@/lib/inngest/fatturato-mensile.server";
-import { ricalcolaFidoTeoricoJob } from "@/lib/inngest/fido-teorico-ricalcolo.server";
+import {
+  ricalcolaFidoTeoricoAvvia,
+  ricalcolaFidoTeoricoBlocco,
+} from "@/lib/inngest/fido-teorico-ricalcolo.server";
 
 
 
