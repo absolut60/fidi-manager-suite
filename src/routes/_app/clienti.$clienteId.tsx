@@ -644,10 +644,9 @@ function DatiRischioCard({ cliente }: { cliente: any }) {
         <h3 className="font-semibold flex items-center gap-2">
           <AlertTriangle className="size-4" /> Dati rischio
         </h3>
-        <div className={`flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium ${semaforo.color}`}>
-          <span className={`inline-block size-2.5 rounded-full ${semaforo.dot}`} />
-          Semaforo: {semaforo.label}
-          {utilizzo != null && <span className="text-xs opacity-80">· utilizzo fido {utilizzo}%</span>}
+        <div className="flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium">
+          <SemaforoAffidabilitaBadge clienteId={cliente.id} />
+          {utilizzo != null && <span className="text-xs text-muted-foreground">· utilizzo fido {utilizzo}%</span>}
         </div>
       </div>
       <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3 text-sm">
