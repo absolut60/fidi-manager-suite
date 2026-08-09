@@ -71,33 +71,22 @@ const FASCE_CONCESSO: Record<string, { min: number; max: number | null; label: s
 
 type SemaforoColor = "rosso" | "arancione" | "giallo" | "verde";
 
-function calcSemaforo(c: {
-  fido_residuo?: number | null;
-  fido_gestionale?: number | null;
-  scaduto?: number | null;
-}): SemaforoColor {
-  const residuo = c.fido_residuo == null ? null : Number(c.fido_residuo);
-  const fidoGest = c.fido_gestionale == null ? null : Number(c.fido_gestionale);
-  const scaduto = c.scaduto == null ? null : Number(c.scaduto);
-  if (residuo != null && residuo < 0) return "rosso";
-  if (residuo != null && fidoGest != null && fidoGest > 0 && residuo < fidoGest * 0.1) return "arancione";
-  if (scaduto != null && scaduto > 0) return "giallo";
-  return "verde";
-}
-
 const SEMAFORO_DOT: Record<SemaforoColor, string> = {
   rosso: "bg-destructive",
   arancione: "bg-orange-500",
-  giallo: "bg-yellow-500",
+  giallo: "bg-warning",
   verde: "bg-success",
 };
 
 const SEMAFORO_LABEL: Record<SemaforoColor, string> = {
-  rosso: "Rischio critico",
-  arancione: "Fido quasi esaurito",
-  giallo: "Scaduto presente",
-  verde: "Posizione regolare",
+  rosso: "Critico — insoluti, scaduto grave, blocco o gestione legale",
+  arancione: "A rischio — scaduto fermo oltre 60 giorni, importo contenuto",
+  giallo: "Da tenere d'occhio — ritardi sistematici ma nessuna sofferenza",
+  verde: "Affidabile — pagamenti regolari",
 };
+
+type SemaforoPre = { stadio: SemaforoColor | null; motivo: string | null; numero: number | null };
+
 
 function fmtEuro(v: unknown): string {
   if (v == null || v === "") return "—";
@@ -348,6 +337,36 @@ function ClientiPage() {
     staleTime: 60_000,
   });
 
+  // Semaforo affidabilità precalcolato (tabella fido_teorico_cliente), letto in blocco
+  const { data: semaforoMap } = useQuery({
+    queryKey: ["clienti-semaforo-affidabilita"],
+    queryFn: async () => {
+      const map = new Map<string, SemaforoPre>();
+      let offset = 0;
+      const size = 1000;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await (supabase as any)
+          .from("fido_teorico_cliente")
+          .select("cliente_id, semaforo_stadio, semaforo_motivo, semaforo_numero")
+          .range(offset, offset + size - 1);
+        if (error) throw error;
+        const batch = data ?? [];
+        for (const r of batch) {
+          map.set(r.cliente_id, {
+            stadio: (r.semaforo_stadio ?? null) as SemaforoColor | null,
+            motivo: r.semaforo_motivo ?? null,
+            numero: r.semaforo_numero == null ? null : Number(r.semaforo_numero),
+          });
+        }
+        if (batch.length < size) break;
+        offset += size;
+      }
+      return map;
+    },
+    staleTime: 60_000,
+  });
+
   // ID set per filtro "Scaduto" (con / senza scaduto)
   const scadenziarioIdsFilter = useMemo(() => {
     if (!scadenziarioMap || scadenziarioFiltro === "tutti") return null;
@@ -461,9 +480,11 @@ function ClientiPage() {
     staleTime: 60_000,
   });
   const semaforoIds = useMemo<string[] | null>(() => {
-    if (semaforoFiltro === "tutti" || !classifList) return null;
-    return classifList.filter((c: any) => calcSemaforo(c) === semaforoFiltro).map((c: any) => c.id);
-  }, [classifList, semaforoFiltro]);
+    if (semaforoFiltro === "tutti" || !semaforoMap) return null;
+    const ids: string[] = [];
+    for (const [id, s] of semaforoMap) if (s.stadio === semaforoFiltro) ids.push(id);
+    return ids;
+  }, [semaforoMap, semaforoFiltro]);
 
   // ID set per filtro stato fido (server-side via .in)
   const statoFidoIds = useMemo<string[] | null>(() => {
@@ -663,7 +684,8 @@ function ClientiPage() {
   }
 
 
-  const classifReady = (semaforoFiltro === "tutti" && statoFido.size === 0 && !soloOltreFido) || !!classifList;
+  const classifReady = ((statoFido.size === 0 && !soloOltreFido) || !!classifList)
+    && (semaforoFiltro === "tutti" || !!semaforoMap);
   const scadReady = scadenziarioFiltro === "tutti" || !!scadenziarioMap;
   const isVirtualSort = VIRTUAL_SORT_COLS.includes(sortBy);
   const isFidoTeoricoSort = sortBy === "fido_proposto" || sortBy === "scostamento";
@@ -1450,12 +1472,16 @@ function ClientiPage() {
                       ? "bg-amber-50 dark:bg-amber-500/10 border-l-[3px] border-l-amber-500"
                       : undefined}
                   titolo={c.ragione_sociale}
-                  badge={
-                    <span
-                      className={`mt-1 inline-block size-2.5 shrink-0 rounded-full ${SEMAFORO_DOT[calcSemaforo(c)]}`}
-                      title={SEMAFORO_LABEL[calcSemaforo(c)]}
-                    />
-                  }
+                  badge={(() => {
+                    const s = semaforoMap?.get(c.id);
+                    const st = s?.stadio ?? null;
+                    return (
+                      <span
+                        className={`mt-1 inline-block size-2.5 shrink-0 rounded-full ${st ? SEMAFORO_DOT[st] : "bg-muted"}`}
+                        title={s?.motivo ?? (st ? SEMAFORO_LABEL[st] : "Semaforo non ancora calcolato")}
+                      />
+                    );
+                  })()}
                   campi={[
                     { etichetta: "Città", valore: c.citta ? `${c.citta}${c.provincia ? ` (${c.provincia})` : ""}` : "—" },
                     { etichetta: "Punto vendita", valore: c.stores?.nome || "—" },
@@ -1538,7 +1564,7 @@ function ClientiPage() {
               </TableHeader>
               <TableBody>
                 {clienti.map((c: any) => {
-                  const sem = calcSemaforo(c);
+                  const sem = semaforoMap?.get(c.id) ?? null;
                   const residuo = c.fido_residuo;
                   const residuoNum = residuo == null ? null : Number(residuo);
                   const sc = scadenziarioMap?.get(c.id);
@@ -1559,8 +1585,8 @@ function ClientiPage() {
                     )}
                     <TableCell>
                       <span
-                        className={`inline-block size-2.5 rounded-full ${SEMAFORO_DOT[sem]}`}
-                        title={SEMAFORO_LABEL[sem]}
+                        className={`inline-block size-2.5 rounded-full ${sem?.stadio ? SEMAFORO_DOT[sem.stadio] : "bg-muted"}`}
+                        title={sem?.motivo ?? (sem?.stadio ? SEMAFORO_LABEL[sem.stadio] : "Semaforo non ancora calcolato")}
                       />
                     </TableCell>
                     <TableCell className="font-medium">
