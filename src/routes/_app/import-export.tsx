@@ -42,6 +42,11 @@ import { MACROCATEGORIE, CATEGORIE } from "@/lib/macrocategorie";
 import { CODICI_PAGAMENTO } from "@/lib/codici-pagamento";
 import { RiepilogoAnomalieCard } from "@/components/riepilogo-anomalie-card";
 import {
+  FidoTeoricoPrecalcoloCard,
+  RicalcolaFidoTeoricoAvviso,
+} from "@/components/fido-teorico-precalcolo-card";
+
+import {
   generaTracciatoFidiGestionale,
   TRACCIATO_FIDI_SELECT,
 } from "@/lib/export-fidi-tracciato";
@@ -390,6 +395,11 @@ function ImportExportPage() {
       <div className="grid grid-cols-1 gap-6">
         <BloccoFidoAssicurazioneImportCard />
       </div>
+
+      <div className="grid grid-cols-1 gap-6">
+        <FidoTeoricoPrecalcoloCard />
+      </div>
+
 
       <div className="grid grid-cols-1 gap-6">
         <RiepilogoAnomalieCard />
@@ -2899,6 +2909,8 @@ function BloccoFidoAssicurazioneImportCard() {
             <div className="flex items-center gap-2 font-medium">
               <CheckCircle2 className="size-4 text-success" /> Import completato
             </div>
+            <RicalcolaFidoTeoricoAvviso />
+
             {q && (
               <div
                 className={`rounded-md border px-3 py-2 text-xs ${q.gap === 0 ? "border-success/30 bg-success/10 text-success" : "border-destructive/40 bg-destructive/10 text-destructive"}`}
