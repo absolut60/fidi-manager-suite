@@ -55,7 +55,7 @@ type SemaforoData = {
   eurScadutoGrave: number;
 } | null;
 
-function SemaforoAffidabilita({ sem }: { sem: SemaforoData }) {
+export function SemaforoAffidabilita({ sem }: { sem: SemaforoData }) {
   if (!sem) return <span className="text-muted-foreground">—</span>;
   const ui = STADIO_UI[sem.stadio] ?? STADIO_UI.verde;
   const numero =
