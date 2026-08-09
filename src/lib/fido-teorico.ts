@@ -59,6 +59,7 @@ export const REGOLA_LABEL: Record<string, string> = {
   nessun_fatturato: "Nessun fatturato",
   minimo_500: "Minimo 500",
   pagamento_immediato: "Pagamento immediato",
+  nuovo_con_ddt: "Nuovo con merce da fatturare",
   fascia_500: "Fascia 500",
   fascia_5000: "Fascia 5.000",
 };
@@ -73,6 +74,8 @@ export const REGOLA_DESCRIZIONE: Record<string, string> = {
   nessun_fatturato: "Nessun fatturato nella finestra di calcolo",
   minimo_500: "Fatturato solo nell'anno precedente — minimo 500 €",
   pagamento_immediato: "Pagamento immediato (contanti/POS/assegno) — nessuna esposizione, fido non necessario",
+  nuovo_con_ddt:
+    "Nessuno storico di fatturato ma merce già consegnata da fatturare — proposta basata sui documenti da fatturare, da verificare",
   fascia_500: "Fido base ≤ 5.000 € — arrotondato per eccesso a 500 €",
   fascia_5000: "Fido base > 5.000 € — arrotondato al multiplo di 5.000 € più vicino",
 };
