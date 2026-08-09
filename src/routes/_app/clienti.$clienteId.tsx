@@ -796,14 +796,6 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
   const totRischio = Number(cliente.totale_rischio ?? 0);
   const fidoResiduo = cliente.fido_residuo == null ? null : Number(cliente.fido_residuo);
   const scaduto = Number(cliente.scaduto ?? 0);
-  let semaforo = { label: "Verde", dot: "bg-success", text: "text-success", bg: "bg-success/15 border-success/30" };
-  if (fidoResiduo !== null && fidoResiduo < 0) {
-    semaforo = { label: "Rosso", dot: "bg-destructive", text: "text-destructive", bg: "bg-destructive/15 border-destructive/30" };
-  } else if (fidoResiduo !== null && fidoGest > 0 && fidoResiduo < fidoGest * 0.1) {
-    semaforo = { label: "Arancione", dot: "bg-warning", text: "text-warning", bg: "bg-warning/15 border-warning/30" };
-  } else if (scaduto > 0) {
-    semaforo = { label: "Giallo", dot: "bg-yellow-500", text: "text-yellow-700 dark:text-yellow-400", bg: "bg-yellow-500/15 border-yellow-500/30" };
-  }
   const condPag = cliente.condizione_pagamento_desc || cliente.condizioni_pagamento;
 
   return (
