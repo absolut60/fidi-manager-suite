@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { ContattoPrivacyAzioni } from "@/components/contatto-privacy-azioni";
 import { getFidoAttuale } from "@/lib/fido-cliente";
+import { SemaforoAffidabilitaBadge } from "@/components/pannello-rischio-cliente";
 
 import { useAuth } from "@/hooks/use-auth";
 import { useConfig, isClienteAttivo } from "@/hooks/use-config";
@@ -620,16 +621,6 @@ function DatiRischioCard({ cliente }: { cliente: any }) {
   const fidoResiduo = cliente.fido_residuo == null ? null : Number(cliente.fido_residuo);
   const scaduto = Number(cliente.scaduto ?? 0);
 
-  let semaforo: { label: string; color: string; dot: string } = {
-    label: "Verde", color: "bg-success/15 text-success border-success/30", dot: "bg-success",
-  };
-  if (fidoResiduo !== null && fidoResiduo < 0) {
-    semaforo = { label: "Rosso", color: "bg-destructive/15 text-destructive border-destructive/30", dot: "bg-destructive" };
-  } else if (fidoResiduo !== null && fidoGest > 0 && fidoResiduo < fidoGest * 0.1) {
-    semaforo = { label: "Arancione", color: "bg-warning/15 text-warning border-warning/30", dot: "bg-warning" };
-  } else if (scaduto > 0) {
-    semaforo = { label: "Giallo", color: "bg-yellow-500/15 text-yellow-700 dark:text-yellow-400 border-yellow-500/30", dot: "bg-yellow-500" };
-  }
 
   const utilizzo = fidoGest > 0 ? Math.round((totRischio / fidoGest) * 1000) / 10 : null;
   const dilConc = cliente.dilazione_concordata as number | null;
@@ -653,10 +644,9 @@ function DatiRischioCard({ cliente }: { cliente: any }) {
         <h3 className="font-semibold flex items-center gap-2">
           <AlertTriangle className="size-4" /> Dati rischio
         </h3>
-        <div className={`flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium ${semaforo.color}`}>
-          <span className={`inline-block size-2.5 rounded-full ${semaforo.dot}`} />
-          Semaforo: {semaforo.label}
-          {utilizzo != null && <span className="text-xs opacity-80">· utilizzo fido {utilizzo}%</span>}
+        <div className="flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium">
+          <SemaforoAffidabilitaBadge clienteId={cliente.id} />
+          {utilizzo != null && <span className="text-xs text-muted-foreground">· utilizzo fido {utilizzo}%</span>}
         </div>
       </div>
       <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3 text-sm">
@@ -806,14 +796,6 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
   const totRischio = Number(cliente.totale_rischio ?? 0);
   const fidoResiduo = cliente.fido_residuo == null ? null : Number(cliente.fido_residuo);
   const scaduto = Number(cliente.scaduto ?? 0);
-  let semaforo = { label: "Verde", dot: "bg-success", text: "text-success", bg: "bg-success/15 border-success/30" };
-  if (fidoResiduo !== null && fidoResiduo < 0) {
-    semaforo = { label: "Rosso", dot: "bg-destructive", text: "text-destructive", bg: "bg-destructive/15 border-destructive/30" };
-  } else if (fidoResiduo !== null && fidoGest > 0 && fidoResiduo < fidoGest * 0.1) {
-    semaforo = { label: "Arancione", dot: "bg-warning", text: "text-warning", bg: "bg-warning/15 border-warning/30" };
-  } else if (scaduto > 0) {
-    semaforo = { label: "Giallo", dot: "bg-yellow-500", text: "text-yellow-700 dark:text-yellow-400", bg: "bg-yellow-500/15 border-yellow-500/30" };
-  }
   const condPag = cliente.condizione_pagamento_desc || cliente.condizioni_pagamento;
 
   return (
@@ -837,11 +819,10 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
       <section className="space-y-2">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Dati rischio</h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-          <Card className={`px-3 py-2 border ${semaforo.bg}`}>
-            <p className="text-[10px] font-medium text-muted-foreground uppercase truncate">Semaforo rischio</p>
-            <div className="mt-1 flex items-center gap-1.5">
-              <span className={`inline-block size-3 rounded-full ${semaforo.dot}`} />
-              <span className={`text-base font-bold ${semaforo.text}`}>{semaforo.label}</span>
+          <Card className="px-3 py-2 border">
+            <p className="text-[10px] font-medium text-muted-foreground uppercase truncate">Semaforo affidabilità</p>
+            <div className="mt-1 flex items-center gap-1.5 text-sm">
+              <SemaforoAffidabilitaBadge clienteId={cliente.id} />
             </div>
           </Card>
           <MiniStat label="Fido gestionale" value={formatEuro(fidoGest)} />
