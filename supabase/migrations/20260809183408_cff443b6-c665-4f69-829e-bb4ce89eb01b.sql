@@ -1,0 +1,1 @@
+GRANT EXECUTE ON FUNCTION public.calcola_semaforo_affidabilita_batch(uuid[]) TO postgres;
