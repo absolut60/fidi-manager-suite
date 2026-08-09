@@ -5259,6 +5259,12 @@ export type Database = {
         Returns: number
       }
       ricalcola_fido_teorico: { Args: never; Returns: string }
+      ricalcola_fido_teorico_avvia: { Args: never; Returns: undefined }
+      ricalcola_fido_teorico_blocco: {
+        Args: { _dimensione?: number; _dopo_id: string }
+        Returns: string
+      }
+      ricalcola_fido_teorico_finalizza: { Args: never; Returns: string }
       rimuovi_orfani_scadenze: {
         Args: { _importazione_id: string }
         Returns: number
