@@ -827,11 +827,10 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
       <section className="space-y-2">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Dati rischio</h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-          <Card className={`px-3 py-2 border ${semaforo.bg}`}>
-            <p className="text-[10px] font-medium text-muted-foreground uppercase truncate">Semaforo rischio</p>
-            <div className="mt-1 flex items-center gap-1.5">
-              <span className={`inline-block size-3 rounded-full ${semaforo.dot}`} />
-              <span className={`text-base font-bold ${semaforo.text}`}>{semaforo.label}</span>
+          <Card className="px-3 py-2 border">
+            <p className="text-[10px] font-medium text-muted-foreground uppercase truncate">Semaforo affidabilità</p>
+            <div className="mt-1 flex items-center gap-1.5 text-sm">
+              <SemaforoAffidabilitaBadge clienteId={cliente.id} />
             </div>
           </Card>
           <MiniStat label="Fido gestionale" value={formatEuro(fidoGest)} />
