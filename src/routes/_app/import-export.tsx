@@ -2909,6 +2909,8 @@ function BloccoFidoAssicurazioneImportCard() {
             <div className="flex items-center gap-2 font-medium">
               <CheckCircle2 className="size-4 text-success" /> Import completato
             </div>
+            <RicalcolaFidoTeoricoAvviso />
+
             {q && (
               <div
                 className={`rounded-md border px-3 py-2 text-xs ${q.gap === 0 ? "border-success/30 bg-success/10 text-success" : "border-destructive/40 bg-destructive/10 text-destructive"}`}
