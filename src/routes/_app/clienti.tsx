@@ -71,33 +71,22 @@ const FASCE_CONCESSO: Record<string, { min: number; max: number | null; label: s
 
 type SemaforoColor = "rosso" | "arancione" | "giallo" | "verde";
 
-function calcSemaforo(c: {
-  fido_residuo?: number | null;
-  fido_gestionale?: number | null;
-  scaduto?: number | null;
-}): SemaforoColor {
-  const residuo = c.fido_residuo == null ? null : Number(c.fido_residuo);
-  const fidoGest = c.fido_gestionale == null ? null : Number(c.fido_gestionale);
-  const scaduto = c.scaduto == null ? null : Number(c.scaduto);
-  if (residuo != null && residuo < 0) return "rosso";
-  if (residuo != null && fidoGest != null && fidoGest > 0 && residuo < fidoGest * 0.1) return "arancione";
-  if (scaduto != null && scaduto > 0) return "giallo";
-  return "verde";
-}
-
 const SEMAFORO_DOT: Record<SemaforoColor, string> = {
   rosso: "bg-destructive",
   arancione: "bg-orange-500",
-  giallo: "bg-yellow-500",
+  giallo: "bg-warning",
   verde: "bg-success",
 };
 
 const SEMAFORO_LABEL: Record<SemaforoColor, string> = {
-  rosso: "Rischio critico",
-  arancione: "Fido quasi esaurito",
-  giallo: "Scaduto presente",
-  verde: "Posizione regolare",
+  rosso: "Critico — insoluti, scaduto grave, blocco o gestione legale",
+  arancione: "A rischio — scaduto fermo oltre 60 giorni, importo contenuto",
+  giallo: "Da tenere d'occhio — ritardi sistematici ma nessuna sofferenza",
+  verde: "Affidabile — pagamenti regolari",
 };
+
+type SemaforoPre = { stadio: SemaforoColor | null; motivo: string | null; numero: number | null };
+
 
 function fmtEuro(v: unknown): string {
   if (v == null || v === "") return "—";
