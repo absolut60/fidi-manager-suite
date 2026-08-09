@@ -621,16 +621,6 @@ function DatiRischioCard({ cliente }: { cliente: any }) {
   const fidoResiduo = cliente.fido_residuo == null ? null : Number(cliente.fido_residuo);
   const scaduto = Number(cliente.scaduto ?? 0);
 
-  let semaforo: { label: string; color: string; dot: string } = {
-    label: "Verde", color: "bg-success/15 text-success border-success/30", dot: "bg-success",
-  };
-  if (fidoResiduo !== null && fidoResiduo < 0) {
-    semaforo = { label: "Rosso", color: "bg-destructive/15 text-destructive border-destructive/30", dot: "bg-destructive" };
-  } else if (fidoResiduo !== null && fidoGest > 0 && fidoResiduo < fidoGest * 0.1) {
-    semaforo = { label: "Arancione", color: "bg-warning/15 text-warning border-warning/30", dot: "bg-warning" };
-  } else if (scaduto > 0) {
-    semaforo = { label: "Giallo", color: "bg-yellow-500/15 text-yellow-700 dark:text-yellow-400 border-yellow-500/30", dot: "bg-yellow-500" };
-  }
 
   const utilizzo = fidoGest > 0 ? Math.round((totRischio / fidoGest) * 1000) / 10 : null;
   const dilConc = cliente.dilazione_concordata as number | null;
