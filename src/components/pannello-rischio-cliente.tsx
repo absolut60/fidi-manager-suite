@@ -17,13 +17,73 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { getFidoAttuale } from "@/lib/fido-cliente";
 import { formatEuro, formatDate } from "@/lib/fidi";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-function semaforoCliente(c: any): { tone: string; label: string } {
-  if (!c) return { tone: "bg-muted text-muted-foreground", label: "—" };
-  if (c.bloccato || c.in_gestione_legale) return { tone: "bg-destructive/15 text-destructive", label: "Rosso" };
-  if (Number(c.scaduto ?? 0) > 0) return { tone: "bg-warning/15 text-warning", label: "Giallo" };
-  return { tone: "bg-success/15 text-success", label: "Verde" };
+type Stadio = "verde" | "giallo" | "arancione" | "rosso";
+
+const STADIO_UI: Record<Stadio, { dot: string; text: string; label: string; legenda: string }> = {
+  verde: {
+    dot: "bg-success",
+    text: "text-success",
+    label: "Verde",
+    legenda: "Affidabile — pagamenti regolari",
+  },
+  giallo: {
+    dot: "bg-warning",
+    text: "text-warning",
+    label: "Giallo",
+    legenda: "Da tenere d'occhio — ritardi sistematici ma nessuna sofferenza",
+  },
+  arancione: {
+    dot: "bg-orange-500",
+    text: "text-orange-600",
+    label: "Arancione",
+    legenda: "A rischio — scaduto fermo oltre 60 giorni, importo contenuto",
+  },
+  rosso: {
+    dot: "bg-destructive",
+    text: "text-destructive",
+    label: "Rosso",
+    legenda: "Critico — insoluti, scaduto grave, blocco o gestione legale",
+  },
+};
+
+type SemaforoData = {
+  stadio: Stadio;
+  motivo: string;
+  ritardoMedioRitardi: number;
+  eurScadutoGrave: number;
+} | null;
+
+function SemaforoAffidabilita({ sem }: { sem: SemaforoData }) {
+  if (!sem) return <span className="text-muted-foreground">—</span>;
+  const ui = STADIO_UI[sem.stadio] ?? STADIO_UI.verde;
+  const numero =
+    sem.stadio === "arancione" || sem.stadio === "rosso"
+      ? sem.eurScadutoGrave > 0
+        ? formatEuro(sem.eurScadutoGrave)
+        : `${sem.ritardoMedioRitardi} gg`
+      : `${sem.ritardoMedioRitardi} gg`;
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="inline-flex items-center gap-2 cursor-help">
+            <span className={`h-2.5 w-2.5 rounded-full ${ui.dot}`} aria-hidden />
+            <span className={`font-medium ${ui.text}`}>{ui.label}</span>
+            <span className="text-muted-foreground tabular-nums">· {numero}</span>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-[260px]">
+          <p className="font-medium">{sem.motivo}</p>
+          <p className="text-xs opacity-80 mt-0.5">{ui.legenda}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
 }
+
 
 interface Props {
   cliente: any;
