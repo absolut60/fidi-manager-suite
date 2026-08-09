@@ -11,8 +11,8 @@ export const ricalcolaFidoTeoricoJob = inngest.createFunction(
     id: "ricalcola-fido-teorico",
     name: "Ricalcolo precalcolo fido teorico",
     retries: 2,
+    triggers: [{ event: "fido-teorico/ricalcolo.requested" }],
   },
-  { event: "fido-teorico/ricalcolo.requested" },
   async () => {
     const { data, error } = await supabaseAdmin.rpc("ricalcola_fido_teorico");
     if (error) throw new Error(error.message);
