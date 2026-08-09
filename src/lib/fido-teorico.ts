@@ -146,7 +146,8 @@ export async function fetchFidoTeorico(
   return map;
 }
 
-/** Fido teorico per TUTTI i clienti (usato dalla lista per ordinare/filtrare). */
+/** Fido teorico per TUTTI i clienti (usato dalla lista per ordinare/filtrare).
+ *  Legge il precalcolo persistente public.fido_teorico_cliente. */
 export async function fetchFidoTeoricoTutti(): Promise<Map<string, FidoTeoricoRow>> {
   const map = new Map<string, FidoTeoricoRow>();
   let offset = 0;
@@ -154,7 +155,8 @@ export async function fetchFidoTeoricoTutti(): Promise<Map<string, FidoTeoricoRo
   // eslint-disable-next-line no-constant-condition
   while (true) {
     const { data, error } = await (supabase as any)
-      .rpc("get_fido_teorico", {})
+      .from("fido_teorico_cliente")
+      .select("*")
       .range(offset, offset + size - 1);
     if (error) throw error;
     const batch = ((data ?? []) as any[]);
@@ -168,3 +170,4 @@ export async function fetchFidoTeoricoTutti(): Promise<Map<string, FidoTeoricoRo
   }
   return map;
 }
+
