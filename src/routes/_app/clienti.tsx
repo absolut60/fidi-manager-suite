@@ -2177,7 +2177,7 @@ const schedaSchema = z.object({
   provincia: z.string().trim().max(2).optional().or(z.literal("")),
   telefono: z.string().trim().max(30).optional().or(z.literal("")),
   telefono_2: z.string().trim().max(30).optional().or(z.literal("")),
-  forma_giuridica: z.string().trim().max(100).optional().or(z.literal("")),
+  
   codice_macrocategoria: z.string().trim().max(10).optional().or(z.literal("")),
   macrocategoria: z.string().trim().max(100).optional().or(z.literal("")),
   codice_categoria: z.string().trim().max(10).optional().or(z.literal("")),
@@ -2236,7 +2236,6 @@ const emptyForm: SchedaForm = {
   codice_gestionale: "",
   indirizzo: "", cap: "", citta: "", provincia: "",
   telefono: "", telefono_2: "", email: "",
-  forma_giuridica: "",
   codice_macrocategoria: "", macrocategoria: "",
   codice_categoria: "", categoria: "",
   partita_iva: "", codice_fiscale: "",
@@ -2463,7 +2462,6 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
           provincia: parsed.provincia || null,
           telefono: parsed.telefono || null,
           telefono_2: parsed.telefono_2 || null,
-          forma_giuridica: parsed.forma_giuridica || null,
           codice_macrocategoria: parsed.codice_macrocategoria || null,
           macrocategoria: parsed.macrocategoria || null,
           codice_categoria: parsed.codice_categoria || null,
@@ -3152,14 +3150,6 @@ function StepImpresa({
             set("categoria", lbl);
           }}
         />
-        <div className="space-y-1.5 sm:col-span-2">
-          <Label>Forma giuridica</Label>
-          <Input
-            value={form.forma_giuridica}
-            onChange={(e) => set("forma_giuridica", e.target.value)}
-            placeholder="Es. S.r.l., S.p.A., Ditta individuale..."
-          />
-        </div>
       </div>
     </>
   );
