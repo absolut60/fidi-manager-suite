@@ -1851,6 +1851,9 @@ export type Database = {
           ritmo_mensile: number | null
           scostamento: number | null
           sede_cinisello: boolean | null
+          semaforo_motivo: string | null
+          semaforo_numero: number | null
+          semaforo_stadio: string | null
         }
         Insert: {
           calcolato_at?: string
@@ -1876,6 +1879,9 @@ export type Database = {
           ritmo_mensile?: number | null
           scostamento?: number | null
           sede_cinisello?: boolean | null
+          semaforo_motivo?: string | null
+          semaforo_numero?: number | null
+          semaforo_stadio?: string | null
         }
         Update: {
           calcolato_at?: string
@@ -1901,6 +1907,9 @@ export type Database = {
           ritmo_mensile?: number | null
           scostamento?: number | null
           sede_cinisello?: boolean | null
+          semaforo_motivo?: string | null
+          semaforo_numero?: number | null
+          semaforo_stadio?: string | null
         }
         Relationships: [
           {
@@ -4456,6 +4465,15 @@ export type Database = {
       }
       calcola_livello_fido: { Args: { _importo: number }; Returns: number }
       calcola_scaduto: { Args: { _ant: number; _ssa: number }; Returns: number }
+      calcola_semaforo_affidabilita_batch: {
+        Args: { _ids: string[] }
+        Returns: {
+          cliente_id: string
+          motivo: string
+          numero: number
+          stadio: string
+        }[]
+      }
       can_manage_email_assets: { Args: never; Returns: boolean }
       coefficiente_comportamento: {
         Args: {
