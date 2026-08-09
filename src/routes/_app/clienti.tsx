@@ -337,6 +337,36 @@ function ClientiPage() {
     staleTime: 60_000,
   });
 
+  // Semaforo affidabilità precalcolato (tabella fido_teorico_cliente), letto in blocco
+  const { data: semaforoMap } = useQuery({
+    queryKey: ["clienti-semaforo-affidabilita"],
+    queryFn: async () => {
+      const map = new Map<string, SemaforoPre>();
+      let offset = 0;
+      const size = 1000;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await (supabase as any)
+          .from("fido_teorico_cliente")
+          .select("cliente_id, semaforo_stadio, semaforo_motivo, semaforo_numero")
+          .range(offset, offset + size - 1);
+        if (error) throw error;
+        const batch = data ?? [];
+        for (const r of batch) {
+          map.set(r.cliente_id, {
+            stadio: (r.semaforo_stadio ?? null) as SemaforoColor | null,
+            motivo: r.semaforo_motivo ?? null,
+            numero: r.semaforo_numero == null ? null : Number(r.semaforo_numero),
+          });
+        }
+        if (batch.length < size) break;
+        offset += size;
+      }
+      return map;
+    },
+    staleTime: 60_000,
+  });
+
   // ID set per filtro "Scaduto" (con / senza scaduto)
   const scadenziarioIdsFilter = useMemo(() => {
     if (!scadenziarioMap || scadenziarioFiltro === "tutti") return null;
