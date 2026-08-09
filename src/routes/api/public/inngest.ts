@@ -52,7 +52,8 @@ const handler = serve({
     emailHealthCheck,
     processEventiPartecipantiImport,
     refreshFatturatoMensileCron,
-    ricalcolaFidoTeoricoJob,
+    ricalcolaFidoTeoricoAvvia,
+    ricalcolaFidoTeoricoBlocco,
 
 
 
