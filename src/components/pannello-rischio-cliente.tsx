@@ -143,9 +143,29 @@ export function PannelloRischioCliente({
     },
   });
 
+  const { data: sem } = useQuery<SemaforoData>({
+    queryKey: ["semaforo-affidabilita", cliente?.id],
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+    enabled: !!cliente?.id,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc("get_semaforo_affidabilita_cliente", {
+        p_cliente_id: cliente.id,
+      });
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!row) return null;
+      return {
+        stadio: (row.stadio ?? "verde") as Stadio,
+        motivo: String(row.motivo ?? ""),
+        ritardoMedioRitardi: Number(row.ritardo_medio_ritardi ?? 0),
+        eurScadutoGrave: Number(row.eur_scaduto_grave ?? 0),
+      };
+    },
+  });
 
   if (!cliente) return null;
-  const sem = semaforoCliente(cliente);
+
   const fidoAttuale = getFidoAttuale(cliente);
   const disallineato = ultimoApprovatoImp != null && Math.abs(ultimoApprovatoImp - fidoAttuale) > 0.01;
   const scaduto = Number(cliente.scaduto ?? 0);
