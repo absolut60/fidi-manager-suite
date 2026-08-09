@@ -17,13 +17,73 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { getFidoAttuale } from "@/lib/fido-cliente";
 import { formatEuro, formatDate } from "@/lib/fidi";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-function semaforoCliente(c: any): { tone: string; label: string } {
-  if (!c) return { tone: "bg-muted text-muted-foreground", label: "—" };
-  if (c.bloccato || c.in_gestione_legale) return { tone: "bg-destructive/15 text-destructive", label: "Rosso" };
-  if (Number(c.scaduto ?? 0) > 0) return { tone: "bg-warning/15 text-warning", label: "Giallo" };
-  return { tone: "bg-success/15 text-success", label: "Verde" };
+type Stadio = "verde" | "giallo" | "arancione" | "rosso";
+
+const STADIO_UI: Record<Stadio, { dot: string; text: string; label: string; legenda: string }> = {
+  verde: {
+    dot: "bg-success",
+    text: "text-success",
+    label: "Verde",
+    legenda: "Affidabile — pagamenti regolari",
+  },
+  giallo: {
+    dot: "bg-warning",
+    text: "text-warning",
+    label: "Giallo",
+    legenda: "Da tenere d'occhio — ritardi sistematici ma nessuna sofferenza",
+  },
+  arancione: {
+    dot: "bg-orange-500",
+    text: "text-orange-600",
+    label: "Arancione",
+    legenda: "A rischio — scaduto fermo oltre 60 giorni, importo contenuto",
+  },
+  rosso: {
+    dot: "bg-destructive",
+    text: "text-destructive",
+    label: "Rosso",
+    legenda: "Critico — insoluti, scaduto grave, blocco o gestione legale",
+  },
+};
+
+type SemaforoData = {
+  stadio: Stadio;
+  motivo: string;
+  ritardoMedioRitardi: number;
+  eurScadutoGrave: number;
+} | null;
+
+function SemaforoAffidabilita({ sem }: { sem: SemaforoData }) {
+  if (!sem) return <span className="text-muted-foreground">—</span>;
+  const ui = STADIO_UI[sem.stadio] ?? STADIO_UI.verde;
+  const numero =
+    sem.stadio === "arancione" || sem.stadio === "rosso"
+      ? sem.eurScadutoGrave > 0
+        ? formatEuro(sem.eurScadutoGrave)
+        : `${sem.ritardoMedioRitardi} gg`
+      : `${sem.ritardoMedioRitardi} gg`;
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="inline-flex items-center gap-2 cursor-help">
+            <span className={`h-2.5 w-2.5 rounded-full ${ui.dot}`} aria-hidden />
+            <span className={`font-medium ${ui.text}`}>{ui.label}</span>
+            <span className="text-muted-foreground tabular-nums">· {numero}</span>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-[260px]">
+          <p className="font-medium">{sem.motivo}</p>
+          <p className="text-xs opacity-80 mt-0.5">{ui.legenda}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
 }
+
 
 interface Props {
   cliente: any;
@@ -83,9 +143,29 @@ export function PannelloRischioCliente({
     },
   });
 
+  const { data: sem } = useQuery<SemaforoData>({
+    queryKey: ["semaforo-affidabilita", cliente?.id],
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+    enabled: !!cliente?.id,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc("get_semaforo_affidabilita_cliente", {
+        p_cliente_id: cliente.id,
+      });
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!row) return null;
+      return {
+        stadio: (row.stadio ?? "verde") as Stadio,
+        motivo: String(row.motivo ?? ""),
+        ritardoMedioRitardi: Number(row.ritardo_medio_ritardi ?? 0),
+        eurScadutoGrave: Number(row.eur_scaduto_grave ?? 0),
+      };
+    },
+  });
 
   if (!cliente) return null;
-  const sem = semaforoCliente(cliente);
+
   const fidoAttuale = getFidoAttuale(cliente);
   const disallineato = ultimoApprovatoImp != null && Math.abs(ultimoApprovatoImp - fidoAttuale) > 0.01;
   const scaduto = Number(cliente.scaduto ?? 0);
@@ -169,11 +249,10 @@ export function PannelloRischioCliente({
               {cliente.dilazione_effettiva != null ? " gg" : ""}
             </span>
           </DetailRow>
-          <DetailRow label="Semaforo">
-            <span className={`inline-flex rounded-md px-2 py-0.5 font-medium text-xs ${sem.tone}`}>
-              {sem.label}
-            </span>
+          <DetailRow label="Semaforo affidabilità">
+            <SemaforoAffidabilita sem={sem ?? null} />
           </DetailRow>
+
         </div>
 
         <EsperienzaPagamentoBlock esp={esp} variant="extended" />
@@ -246,9 +325,10 @@ export function PannelloRischioCliente({
             <div className="flex justify-between"><span className="text-muted-foreground">Fatt. {annoPrec}</span><span className="tabular-nums">{fatt ? formatEuro(fatt.prev) : "—"}</span></div>
           </>
         )}
-        <div className="flex justify-between items-center col-span-2"><span className="text-muted-foreground">Semaforo rischio</span>
-          <span className={`inline-flex rounded-md px-2 py-0.5 font-medium ${sem.tone}`}>{sem.label}</span>
+        <div className="flex justify-between items-center col-span-2"><span className="text-muted-foreground">Semaforo affidabilità</span>
+          <SemaforoAffidabilita sem={sem ?? null} />
         </div>
+
       </div>
       <div className="border-t pt-1.5 flex flex-wrap items-center gap-2">
         <span className="text-muted-foreground">Stato:</span>

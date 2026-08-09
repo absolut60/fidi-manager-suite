@@ -5107,6 +5107,17 @@ export type Database = {
               tot_scaduto: number
             }[]
           }
+      get_semaforo_affidabilita_cliente: {
+        Args: { p_cliente_id: string }
+        Returns: {
+          eur_scaduto_grave: number
+          motivo: string
+          n_scaduto_grave: number
+          num_insoluti: number
+          ritardo_medio_ritardi: number
+          stadio: string
+        }[]
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
