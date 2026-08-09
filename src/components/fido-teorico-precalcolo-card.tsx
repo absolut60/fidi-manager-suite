@@ -162,15 +162,20 @@ export function FidoTeoricoPrecalcoloCard() {
       <div className="flex items-center gap-3 flex-wrap">
         <Button
           variant={daRicalcolare ? "default" : "secondary"}
-          disabled={ric.isPending}
-          onClick={() => ric.mutate()}
+          disabled={ric.inCorso}
+          onClick={ric.avvia}
         >
-          {ric.isPending && <Loader2 className="size-4 animate-spin" />}
+          {ric.inCorso && <Loader2 className="size-4 animate-spin" />}
           Ricalcola fido teorico ora
         </Button>
-        {ric.isPending && (
+        {ric.inCorso && (
           <span className="text-sm text-muted-foreground">
             Ricalcolo in corso… (può richiedere qualche secondo)
+          </span>
+        )}
+        {ric.scaduto && (
+          <span className="text-sm text-muted-foreground">
+            Ricalcolo avviato: aggiorna la pagina tra poco.
           </span>
         )}
       </div>
