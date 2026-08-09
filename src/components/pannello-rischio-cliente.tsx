@@ -84,6 +84,45 @@ export function SemaforoAffidabilita({ sem }: { sem: SemaforoData }) {
   );
 }
 
+/**
+ * Badge autonomo: carica da solo il semaforo affidabilita' del cliente
+ * (fonte unica: RPC get_semaforo_affidabilita_cliente) e lo mostra.
+ */
+export function SemaforoAffidabilitaBadge({ clienteId }: { clienteId?: string | null }) {
+  const { data: sem, isLoading } = useQuery<SemaforoData>({
+    queryKey: ["semaforo-affidabilita", clienteId],
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+    enabled: !!clienteId,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc("get_semaforo_affidabilita_cliente", {
+        p_cliente_id: clienteId,
+      });
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!row) return null;
+      return {
+        stadio: (row.stadio ?? "verde") as Stadio,
+        motivo: String(row.motivo ?? ""),
+        ritardoMedioRitardi: Number(row.ritardo_medio_ritardi ?? 0),
+        eurScadutoGrave: Number(row.eur_scaduto_grave ?? 0),
+      };
+    },
+  });
+
+  if (isLoading || !sem) {
+    return (
+      <span className="inline-flex items-center gap-2">
+        <span className="h-2.5 w-2.5 rounded-full bg-muted" aria-hidden />
+        <span className="text-muted-foreground">—</span>
+      </span>
+    );
+  }
+  return <SemaforoAffidabilita sem={sem} />;
+}
+
+
+
 
 interface Props {
   cliente: any;
