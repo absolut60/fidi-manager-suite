@@ -1471,12 +1471,16 @@ function ClientiPage() {
                       ? "bg-amber-50 dark:bg-amber-500/10 border-l-[3px] border-l-amber-500"
                       : undefined}
                   titolo={c.ragione_sociale}
-                  badge={
-                    <span
-                      className={`mt-1 inline-block size-2.5 shrink-0 rounded-full ${SEMAFORO_DOT[calcSemaforo(c)]}`}
-                      title={SEMAFORO_LABEL[calcSemaforo(c)]}
-                    />
-                  }
+                  badge={(() => {
+                    const s = semaforoMap?.get(c.id);
+                    const st = s?.stadio ?? null;
+                    return (
+                      <span
+                        className={`mt-1 inline-block size-2.5 shrink-0 rounded-full ${st ? SEMAFORO_DOT[st] : "bg-muted"}`}
+                        title={s?.motivo ?? (st ? SEMAFORO_LABEL[st] : "Semaforo non ancora calcolato")}
+                      />
+                    );
+                  })()}
                   campi={[
                     { etichetta: "Città", valore: c.citta ? `${c.citta}${c.provincia ? ` (${c.provincia})` : ""}` : "—" },
                     { etichetta: "Punto vendita", valore: c.stores?.nome || "—" },
