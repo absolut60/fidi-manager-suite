@@ -1563,7 +1563,7 @@ function ClientiPage() {
               </TableHeader>
               <TableBody>
                 {clienti.map((c: any) => {
-                  const sem = calcSemaforo(c);
+                  const sem = semaforoMap?.get(c.id) ?? null;
                   const residuo = c.fido_residuo;
                   const residuoNum = residuo == null ? null : Number(residuo);
                   const sc = scadenziarioMap?.get(c.id);
