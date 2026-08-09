@@ -1,8 +1,9 @@
 /**
  * Card e pulsante per il ricalcolo del precalcolo persistente del fido teorico.
  * La logica di calcolo resta nella RPC canonica get_fido_teorico: qui si
- * innesca solo la funzione SQL public.ricalcola_fido_teorico().
+ * avvia solo il job Inngest che invoca public.ricalcola_fido_teorico().
  */
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -12,6 +13,9 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ricalcolaFidoTeorico } from "@/lib/fido-teorico-precalcolo.functions";
 
+const POLL_MS = 5_000;
+const POLL_MAX_MS = 3 * 60_000;
+
 function formatData(iso: string | null): string | null {
   if (!iso) return null;
   const d = new Date(iso);
@@ -19,7 +23,7 @@ function formatData(iso: string | null): string | null {
   return `${d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })} del ${d.toLocaleDateString("it-IT")}`;
 }
 
-function useStatoPrecalcolo() {
+function useStatoPrecalcolo(pollingAttivo = false) {
   return useQuery({
     queryKey: ["fido-teorico-precalcolo-stato"],
     queryFn: async () => {
@@ -46,23 +50,63 @@ function useStatoPrecalcolo() {
         ultimoImport: (imp.data?.created_at as string | undefined) ?? null,
       };
     },
-    staleTime: 30_000,
+    staleTime: pollingAttivo ? 0 : 30_000,
+    refetchInterval: pollingAttivo ? POLL_MS : false,
   });
 }
 
+/** Avvia il job Inngest e attende il cambio di timestamp con polling leggero. */
 function useRicalcolo() {
   const qc = useQueryClient();
   const fn = useServerFn(ricalcolaFidoTeorico);
-  return useMutation({
-    mutationFn: async () => await fn({ data: undefined as never }),
-    onSuccess: () => {
+  const [inCorso, setInCorso] = useState(false);
+  const [scaduto, setScaduto] = useState(false);
+  const partenza = useRef<string | null>(null);
+  const inizio = useRef<number>(0);
+
+  const { data } = useStatoPrecalcolo(inCorso);
+  const ultimoRicalcolo = data?.ultimoRicalcolo ?? null;
+
+  useEffect(() => {
+    if (!inCorso) return;
+    const nuovo =
+      ultimoRicalcolo &&
+      (!partenza.current ||
+        new Date(ultimoRicalcolo) > new Date(partenza.current));
+    if (nuovo) {
+      setInCorso(false);
       toast.success("Fido teorico ricalcolato");
       qc.invalidateQueries({ queryKey: ["fido-teorico-precalcolo-stato"] });
+      return;
+    }
+    if (Date.now() - inizio.current > POLL_MAX_MS) {
+      setInCorso(false);
+      setScaduto(true);
+    }
+  }, [inCorso, ultimoRicalcolo, qc]);
+
+  const avvio = useMutation({
+    mutationFn: async () => await fn({ data: undefined as never }),
+    onMutate: () => {
+      partenza.current = ultimoRicalcolo;
+      inizio.current = Date.now();
+      setScaduto(false);
+      setInCorso(true);
     },
-    onError: (e: unknown) =>
-      toast.error(e instanceof Error ? e.message : "Ricalcolo non riuscito"),
+    onError: (e: unknown) => {
+      setInCorso(false);
+      toast.error(e instanceof Error ? e.message : "Avvio ricalcolo non riuscito");
+    },
   });
+
+  return {
+    avvia: () => avvio.mutate(),
+    inCorso: inCorso || avvio.isPending,
+    scaduto,
+    completato: avvio.isSuccess && !inCorso && !scaduto,
+  };
 }
+
 
 export function FidoTeoricoPrecalcoloCard() {
   const { data } = useStatoPrecalcolo();
@@ -118,15 +162,20 @@ export function FidoTeoricoPrecalcoloCard() {
       <div className="flex items-center gap-3 flex-wrap">
         <Button
           variant={daRicalcolare ? "default" : "secondary"}
-          disabled={ric.isPending}
-          onClick={() => ric.mutate()}
+          disabled={ric.inCorso}
+          onClick={ric.avvia}
         >
-          {ric.isPending && <Loader2 className="size-4 animate-spin" />}
+          {ric.inCorso && <Loader2 className="size-4 animate-spin" />}
           Ricalcola fido teorico ora
         </Button>
-        {ric.isPending && (
+        {ric.inCorso && (
           <span className="text-sm text-muted-foreground">
             Ricalcolo in corso… (può richiedere qualche secondo)
+          </span>
+        )}
+        {ric.scaduto && (
+          <span className="text-sm text-muted-foreground">
+            Ricalcolo avviato: aggiorna la pagina tra poco.
           </span>
         )}
       </div>
@@ -144,14 +193,19 @@ export function RicalcolaFidoTeoricoAvviso() {
         il fido teorico ora?
       </p>
       <div className="flex items-center gap-2 flex-wrap">
-        <Button size="sm" disabled={ric.isPending} onClick={() => ric.mutate()}>
-          {ric.isPending && <Loader2 className="size-4 animate-spin" />}
+        <Button size="sm" disabled={ric.inCorso} onClick={ric.avvia}>
+          {ric.inCorso && <Loader2 className="size-4 animate-spin" />}
           Ricalcola fido teorico
         </Button>
-        {ric.isPending && (
+        {ric.inCorso && (
           <span className="text-xs text-muted-foreground">Ricalcolo in corso…</span>
         )}
-        {ric.isSuccess && !ric.isPending && (
+        {ric.scaduto && (
+          <span className="text-xs text-muted-foreground">
+            Ricalcolo avviato: aggiorna la pagina tra poco.
+          </span>
+        )}
+        {ric.completato && (
           <span className="text-xs text-success inline-flex items-center gap-1">
             <CheckCircle2 className="size-3.5" /> Fatto
           </span>
