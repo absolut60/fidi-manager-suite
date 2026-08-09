@@ -1584,8 +1584,8 @@ function ClientiPage() {
                     )}
                     <TableCell>
                       <span
-                        className={`inline-block size-2.5 rounded-full ${SEMAFORO_DOT[sem]}`}
-                        title={SEMAFORO_LABEL[sem]}
+                        className={`inline-block size-2.5 rounded-full ${sem?.stadio ? SEMAFORO_DOT[sem.stadio] : "bg-muted"}`}
+                        title={sem?.motivo ?? (sem?.stadio ? SEMAFORO_LABEL[sem.stadio] : "Semaforo non ancora calcolato")}
                       />
                     </TableCell>
                     <TableCell className="font-medium">
