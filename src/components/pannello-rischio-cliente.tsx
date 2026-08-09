@@ -249,11 +249,10 @@ export function PannelloRischioCliente({
               {cliente.dilazione_effettiva != null ? " gg" : ""}
             </span>
           </DetailRow>
-          <DetailRow label="Semaforo">
-            <span className={`inline-flex rounded-md px-2 py-0.5 font-medium text-xs ${sem.tone}`}>
-              {sem.label}
-            </span>
+          <DetailRow label="Semaforo affidabilità">
+            <SemaforoAffidabilita sem={sem ?? null} />
           </DetailRow>
+
         </div>
 
         <EsperienzaPagamentoBlock esp={esp} variant="extended" />
