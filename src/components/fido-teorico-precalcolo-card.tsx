@@ -193,14 +193,19 @@ export function RicalcolaFidoTeoricoAvviso() {
         il fido teorico ora?
       </p>
       <div className="flex items-center gap-2 flex-wrap">
-        <Button size="sm" disabled={ric.isPending} onClick={() => ric.mutate()}>
-          {ric.isPending && <Loader2 className="size-4 animate-spin" />}
+        <Button size="sm" disabled={ric.inCorso} onClick={ric.avvia}>
+          {ric.inCorso && <Loader2 className="size-4 animate-spin" />}
           Ricalcola fido teorico
         </Button>
-        {ric.isPending && (
+        {ric.inCorso && (
           <span className="text-xs text-muted-foreground">Ricalcolo in corso…</span>
         )}
-        {ric.isSuccess && !ric.isPending && (
+        {ric.scaduto && (
+          <span className="text-xs text-muted-foreground">
+            Ricalcolo avviato: aggiorna la pagina tra poco.
+          </span>
+        )}
+        {ric.completato && (
           <span className="text-xs text-success inline-flex items-center gap-1">
             <CheckCircle2 className="size-3.5" /> Fatto
           </span>
