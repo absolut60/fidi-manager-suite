@@ -480,9 +480,11 @@ function ClientiPage() {
     staleTime: 60_000,
   });
   const semaforoIds = useMemo<string[] | null>(() => {
-    if (semaforoFiltro === "tutti" || !classifList) return null;
-    return classifList.filter((c: any) => calcSemaforo(c) === semaforoFiltro).map((c: any) => c.id);
-  }, [classifList, semaforoFiltro]);
+    if (semaforoFiltro === "tutti" || !semaforoMap) return null;
+    const ids: string[] = [];
+    for (const [id, s] of semaforoMap) if (s.stadio === semaforoFiltro) ids.push(id);
+    return ids;
+  }, [semaforoMap, semaforoFiltro]);
 
   // ID set per filtro stato fido (server-side via .in)
   const statoFidoIds = useMemo<string[] | null>(() => {
