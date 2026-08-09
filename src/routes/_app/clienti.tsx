@@ -684,7 +684,8 @@ function ClientiPage() {
   }
 
 
-  const classifReady = (semaforoFiltro === "tutti" && statoFido.size === 0 && !soloOltreFido) || !!classifList;
+  const classifReady = ((statoFido.size === 0 && !soloOltreFido) || !!classifList)
+    && (semaforoFiltro === "tutti" || !!semaforoMap);
   const scadReady = scadenziarioFiltro === "tutti" || !!scadenziarioMap;
   const isVirtualSort = VIRTUAL_SORT_COLS.includes(sortBy);
   const isFidoTeoricoSort = sortBy === "fido_proposto" || sortBy === "scostamento";
