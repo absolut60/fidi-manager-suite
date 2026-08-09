@@ -1826,6 +1826,106 @@ export type Database = {
           },
         ]
       }
+      fido_teorico_cliente: {
+        Row: {
+          calcolato_at: string
+          cliente_id: string
+          coefficiente: number | null
+          ddt_da_fatturare: number | null
+          esposizione_corrente: number | null
+          fatturato_rolling: number | null
+          fido_attuale: number | null
+          fido_base: number | null
+          fido_base_lordo: number | null
+          fido_proposto: number | null
+          fido_proposto_senza_coefficiente: number | null
+          fido_teorico_puro: number | null
+          giorni: number | null
+          giorni_mancanti: boolean | null
+          giorni_oltre_accordo: number | null
+          nota_proposta: string | null
+          pavimento_applicato: boolean | null
+          profilo_pagamento: string | null
+          regola_applicata: string | null
+          richiede_verifica: boolean | null
+          ritmo_mensile: number | null
+          scostamento: number | null
+          sede_cinisello: boolean | null
+        }
+        Insert: {
+          calcolato_at?: string
+          cliente_id: string
+          coefficiente?: number | null
+          ddt_da_fatturare?: number | null
+          esposizione_corrente?: number | null
+          fatturato_rolling?: number | null
+          fido_attuale?: number | null
+          fido_base?: number | null
+          fido_base_lordo?: number | null
+          fido_proposto?: number | null
+          fido_proposto_senza_coefficiente?: number | null
+          fido_teorico_puro?: number | null
+          giorni?: number | null
+          giorni_mancanti?: boolean | null
+          giorni_oltre_accordo?: number | null
+          nota_proposta?: string | null
+          pavimento_applicato?: boolean | null
+          profilo_pagamento?: string | null
+          regola_applicata?: string | null
+          richiede_verifica?: boolean | null
+          ritmo_mensile?: number | null
+          scostamento?: number | null
+          sede_cinisello?: boolean | null
+        }
+        Update: {
+          calcolato_at?: string
+          cliente_id?: string
+          coefficiente?: number | null
+          ddt_da_fatturare?: number | null
+          esposizione_corrente?: number | null
+          fatturato_rolling?: number | null
+          fido_attuale?: number | null
+          fido_base?: number | null
+          fido_base_lordo?: number | null
+          fido_proposto?: number | null
+          fido_proposto_senza_coefficiente?: number | null
+          fido_teorico_puro?: number | null
+          giorni?: number | null
+          giorni_mancanti?: boolean | null
+          giorni_oltre_accordo?: number | null
+          nota_proposta?: string | null
+          pavimento_applicato?: boolean | null
+          profilo_pagamento?: string | null
+          regola_applicata?: string | null
+          richiede_verifica?: boolean | null
+          ritmo_mensile?: number | null
+          scostamento?: number | null
+          sede_cinisello?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fido_teorico_cliente_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: true
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fido_teorico_cliente_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: true
+            referencedRelation: "clienti_con_rischio"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fido_teorico_cliente_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: true
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+        ]
+      }
       fornitori: {
         Row: {
           created_at: string
@@ -5158,6 +5258,7 @@ export type Database = {
         }
         Returns: number
       }
+      ricalcola_fido_teorico: { Args: never; Returns: string }
       rimuovi_orfani_scadenze: {
         Args: { _importazione_id: string }
         Returns: number
