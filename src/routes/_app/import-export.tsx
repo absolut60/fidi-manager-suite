@@ -392,6 +392,11 @@ function ImportExportPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-6">
+        <FidoTeoricoPrecalcoloCard />
+      </div>
+
+
+      <div className="grid grid-cols-1 gap-6">
         <RiepilogoAnomalieCard />
       </div>
 
