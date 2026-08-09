@@ -325,9 +325,10 @@ export function PannelloRischioCliente({
             <div className="flex justify-between"><span className="text-muted-foreground">Fatt. {annoPrec}</span><span className="tabular-nums">{fatt ? formatEuro(fatt.prev) : "—"}</span></div>
           </>
         )}
-        <div className="flex justify-between items-center col-span-2"><span className="text-muted-foreground">Semaforo rischio</span>
-          <span className={`inline-flex rounded-md px-2 py-0.5 font-medium ${sem.tone}`}>{sem.label}</span>
+        <div className="flex justify-between items-center col-span-2"><span className="text-muted-foreground">Semaforo affidabilità</span>
+          <SemaforoAffidabilita sem={sem ?? null} />
         </div>
+
       </div>
       <div className="border-t pt-1.5 flex flex-wrap items-center gap-2">
         <span className="text-muted-foreground">Stato:</span>
