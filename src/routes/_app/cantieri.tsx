@@ -238,7 +238,10 @@ function CantieriPage() {
         </Card>
       )}
 
-      <Tabs defaultValue="lista">
+      <Tabs
+        value={tab ?? "lista"}
+        onValueChange={(v) => navigate({ search: (s) => ({ ...s, tab: v as "lista" | "mappa" }) })}
+      >
         <TabsList>
           <TabsTrigger value="lista">Lista</TabsTrigger>
           <TabsTrigger value="mappa">Mappa</TabsTrigger>
