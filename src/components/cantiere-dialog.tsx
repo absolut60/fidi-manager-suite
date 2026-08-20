@@ -75,7 +75,7 @@ export function CantiereDialog({
   const ricalcolaSede = useServerFn(ricalcolaSedeVicina);
 
   function invalida() {
-    invalida();
+    qc.invalidateQueries({ queryKey: ["cantieri-lista"] });
     queryKeysExtra?.forEach((k) => qc.invalidateQueries({ queryKey: [...k] }));
   }
 
