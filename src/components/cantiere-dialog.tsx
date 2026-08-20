@@ -28,13 +28,23 @@ import {
 
 type Agente = { codice: string; descrizione: string | null };
 
+/** Soggetto bloccato dall'esterno (scheda cliente / scheda lead). */
+export type SoggettoFisso = {
+  tipo: "cliente" | "lead";
+  id: string;
+  etichetta: string;
+  clienteIdAssociato?: string | null;
+};
+
 export function CantiereDialog({
-  open, onOpenChange, cantiere, agenti,
+  open, onOpenChange, cantiere, agenti, soggettoFisso, queryKeysExtra,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   cantiere?: CantiereRow | null;
-  agenti: Agente[];
+  agenti?: Agente[];
+  soggettoFisso?: SoggettoFisso;
+  queryKeysExtra?: ReadonlyArray<readonly unknown[]>;
 }) {
   const qc = useQueryClient();
   const { user, roles } = useAuth();
@@ -51,7 +61,23 @@ export function CantiereDialog({
     queryFn: async () => (await chiaveMappe()).key,
     staleTime: Infinity,
   });
+  const { data: agentiFetch = [] } = useQuery({
+    queryKey: ["agenti-lookup"],
+    enabled: !agenti,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("agenti").select("codice, descrizione").order("descrizione");
+      if (error) throw error;
+      return (data ?? []) as Agente[];
+    },
+    staleTime: 5 * 60_000,
+  });
+  const listaAgenti = agenti ?? agentiFetch;
   const ricalcolaSede = useServerFn(ricalcolaSedeVicina);
+
+  function invalida() {
+    qc.invalidateQueries({ queryKey: ["cantieri-lista"] });
+    queryKeysExtra?.forEach((k) => qc.invalidateQueries({ queryKey: [...k] }));
+  }
 
   const [nome, setNome] = useState("");
   const [soggetto, setSoggetto] = useState<SoggettoSelezionato | null>(null);
