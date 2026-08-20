@@ -164,14 +164,16 @@ export function CantiereDialog({
     const c = cantiere;
     setNome(c?.nome ?? "");
     setSoggetto(
-      c?.cliente_id
-        ? { tipo: "cliente", id: c.cliente_id, etichetta: c.clienti?.ragione_sociale ?? "Cliente" }
-        : c?.lead_id
-          ? {
-              tipo: "lead", id: c.lead_id,
-              etichetta: c.lead?.ragione_sociale || `${c.lead?.nome ?? ""} ${c.lead?.cognome ?? ""}`.trim() || "Lead",
-            }
-          : null,
+      soggettoFisso
+        ? { tipo: soggettoFisso.tipo, id: soggettoFisso.id, etichetta: soggettoFisso.etichetta }
+        : c?.cliente_id
+          ? { tipo: "cliente", id: c.cliente_id, etichetta: c.clienti?.ragione_sociale ?? "Cliente" }
+          : c?.lead_id
+            ? {
+                tipo: "lead", id: c.lead_id,
+                etichetta: c.lead?.ragione_sociale || `${c.lead?.nome ?? ""} ${c.lead?.cognome ?? ""}`.trim() || "Lead",
+              }
+            : null,
     );
     setIndirizzo(c?.indirizzo ?? "");
     setCap(c?.cap ?? "");
