@@ -88,14 +88,14 @@ export async function geocodificaIndirizzo(
     // Nessun risultato: allenta i vincoli un passo per volta (CAP spesso obsoleto),
     // mantenendo comune/provincia il più a lungo possibile.
     if (json.status === "ZERO_RESULTS") {
-      const successivo: VincoliGeo | undefined = vincoli?.cap
-        ? { citta: vincoli.citta, provincia: vincoli.provincia }
-        : vincoli?.provincia && vincoli?.citta
-          ? { citta: vincoli.citta }
-          : vincoli?.citta || vincoli?.provincia
-            ? undefined
-            : null as unknown as undefined;
-      if (successivo !== null) {
+      const haCap = Boolean(vincoli?.cap?.trim());
+      const haProv = Boolean(vincoli?.provincia?.trim());
+      const haCitta = Boolean(vincoli?.citta?.trim());
+      let successivo: VincoliGeo | undefined | false = false;
+      if (haCap) successivo = { citta: vincoli?.citta ?? null, provincia: vincoli?.provincia ?? null };
+      else if (haProv && haCitta) successivo = { citta: vincoli?.citta ?? null };
+      else if (haCitta || haProv) successivo = undefined;
+      if (successivo !== false) {
         const esito = await geocodificaIndirizzo(indirizzo, successivo);
         if (esito.stato === "ok") {
           return { ...esito, messaggio: "Match approssimativo — verificare la posizione sulla mappa." };
