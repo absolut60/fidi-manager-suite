@@ -95,11 +95,16 @@ export default function CantieriMappa({
             a.style.fontSize = "12px";
             a.style.color = "#666";
             a.textContent = indirizzoCompleto(c) || "—";
+            const sede = document.createElement("div");
+            sede.style.fontSize = "12px";
+            sede.style.marginTop = "4px";
+            const testoSede = testoSedeVicina(c);
+            if (testoSede) sede.textContent = `Sede più vicina: ${testoSede}`;
             const btn = document.createElement("button");
             btn.textContent = "Apri";
             btn.style.cssText = "margin-top:8px;font-size:12px;text-decoration:underline;cursor:pointer";
             btn.onclick = () => onApri(c);
-            div.append(h, s, a, btn);
+            div.append(h, s, a, sede, btn);
             infoRef.current.setContent(div);
             infoRef.current.open({ map, anchor: marker });
           });
