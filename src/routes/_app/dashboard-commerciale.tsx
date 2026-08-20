@@ -103,9 +103,9 @@ function DashboardCommercialePage() {
     queryKey: ["dash-commerciale", periodo, agenteF],
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_dashboard_commerciale", {
-        _agente_codice: agenteF === "tutti" ? null : agenteF,
-        _data_da: da,
-        _data_a: a,
+        _agente_codice: agenteF === "tutti" ? undefined : agenteF,
+        _data_da: da ?? undefined,
+        _data_a: a ?? undefined,
       });
       if (error) throw error;
       const r = (data as unknown as Metriche[])?.[0] ?? null;
@@ -116,7 +116,7 @@ function DashboardCommercialePage() {
   const { data: classifica = [] } = useQuery({
     queryKey: ["dash-commerciale-agenti", periodo],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_dashboard_commerciale_per_agente", { _data_da: da, _data_a: a });
+      const { data, error } = await supabase.rpc("get_dashboard_commerciale_per_agente", { _data_da: da ?? undefined, _data_a: a ?? undefined });
       if (error) throw error;
       return (data ?? []) as unknown as RigaAgente[];
     },
