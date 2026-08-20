@@ -185,10 +185,6 @@ function CantieriPage() {
     }
   }, [focus, rows, navigate]);
 
-  const pulisciFocus = useCallback(() => {
-    navigate({ search: (s) => ({ ...s, focus: undefined }), replace: true });
-  }, [navigate]);
-
   const mostraSuMappa = useCallback((c: CantiereRow) => {
     if (c.lat == null || c.lng == null) {
       toast.error("Cantiere non posizionato: verifica l'indirizzo");
@@ -358,7 +354,6 @@ function CantieriPage() {
                     sedi={sedi}
                     onApri={apriModifica}
                     focusId={focus ?? null}
-                    onFocusFatto={pulisciFocus}
                   />
                 </Suspense>
               </ClientOnly>
