@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
-import { ArrowLeft, Plus, Mail, Phone, Smartphone, Star, Trash2, FileCheck2, FileX2, Download, Pencil, Link as LinkIcon, Copy, EyeOff, AlertTriangle, MessageCircle, Send } from "lucide-react";
+import { ArrowLeft, Plus, Mail, Phone, Smartphone, Star, Trash2, FileCheck2, FileX2, Download, Pencil, Link as LinkIcon, Copy, EyeOff, AlertTriangle, MessageCircle, Send, CreditCard } from "lucide-react";
 import { InviaSollecitoDialog } from "@/components/invia-sollecito-dialog";
 import { useRef } from "react";
 import { toast } from "sonner";
@@ -769,67 +769,83 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
         </div>
       )}
 
-      {/* Colpo d'occhio — riquadri cliccabili che portano al tab pertinente */}
+      {/* Colpo d'occhio — griglia compatta a 4 colonne */}
       <section className="space-y-2">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Colpo d'occhio</h3>
-        <div className="grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(115px,1fr))]">
-          <Card className="px-3 py-2 border">
-            <p className="text-[10px] font-medium text-muted-foreground uppercase truncate">Semaforo affidabilità</p>
-            <div className="mt-1 flex items-center gap-1.5 text-sm">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          <Card className="p-3.5 rounded-xl border-[0.5px]">
+            <p className="text-[11px] font-medium text-muted-foreground uppercase truncate">Semaforo affidabilità</p>
+            <div className="mt-1.5 flex items-center gap-1.5 text-sm">
               <SemaforoAffidabilitaBadge clienteId={cliente.id} />
             </div>
           </Card>
-          <MiniStat label="Fido gestionale" value={formatEuro(fidoGest)} onClick={() => vaiAlTab("storico")} />
-          <MiniStat label="Totale rischio" value={formatEuro(totRischio)} onClick={() => vaiAlTab("scadenziario")} />
+
+          <MiniStat label="Fido gestionale" value={formatEuro(fidoGest)} size="md" onClick={() => vaiAlTab("storico")} />
+          <MiniStat label="Totale rischio" value={formatEuro(totRischio)} size="md" onClick={() => vaiAlTab("scadenziario")} />
+
           {(() => {
             const pctUtil = fidoGest > 0 ? Math.round((totRischio / fidoGest) * 100) : null;
+            const hintTone = pctUtil == null ? "default" : pctUtil >= 100 ? "destructive" : pctUtil >= 70 ? "warning" : "default";
             return (
               <MiniStat
                 label="Fido residuo"
                 value={formatEuro(fidoResiduo)}
                 tone={fidoResiduo != null && fidoResiduo < 0 ? "destructive" : "default"}
-                hint={pctUtil == null ? undefined : `${pctUtil}% utilizzato`}
+                hint={pctUtil == null ? undefined : `${pctUtil}% utilizzo`}
+                hintTone={hintTone}
+                size="md"
                 onClick={() => vaiAlTab("storico")}
               />
             );
           })()}
-          <MiniStat label="Scaduto" value={formatEuro(cliente.scaduto)} tone={scaduto > 0 ? "destructive" : "default"} onClick={() => vaiAlTab("scadenziario")} />
-          <MiniStat label="A scadere" value={formatEuro(cliente.a_scadere)} onClick={() => vaiAlTab("scadenziario")} />
-          <MiniStat label="Max gg ritardo" value={`${maxGg} gg`} tone={maxGg > 60 ? "destructive" : maxGg > 30 ? "warning" : "default"} icon={Clock} onClick={() => vaiAlTab("scadenziario")} />
+
+          <MiniStat label="Scaduto" value={formatEuro(cliente.scaduto)} tone={scaduto > 0 ? "destructive" : "default"} size="md" onClick={() => vaiAlTab("scadenziario")} />
+          <MiniStat label="A scadere" value={formatEuro(cliente.a_scadere)} size="md" onClick={() => vaiAlTab("scadenziario")} />
+          <MiniStat label="Max gg ritardo" value={`${maxGg} gg`} tone={maxGg > 60 ? "destructive" : maxGg > 30 ? "warning" : "default"} size="md" icon={Clock} onClick={() => vaiAlTab("scadenziario")} />
+
+          <Card className="p-3.5 rounded-xl border-[0.5px]">
+            <p className="text-[11px] font-medium text-muted-foreground uppercase truncate">Metodo di pagamento</p>
+            <div className="mt-1.5 flex items-start gap-2">
+              <CreditCard className="size-4 text-muted-foreground shrink-0 mt-0.5" />
+              <p className="text-[14px] font-medium leading-snug text-foreground">{condPag || "—"}</p>
+            </div>
+          </Card>
+
           {(() => {
             const isBloccato = bloccato || indBlocco >= 1;
             const statoTxt = isBloccato
               ? (indBlocco === 1 && !bloccato ? "Bloccato (sbloccabile)" : "Bloccato")
               : cliente.in_gestione_legale
                 ? "In gestione legale"
-                : clienteAttivo ? "Attivo" : "Non attivo";
-            // Priorita' al blocco (condizione operativamente piu' critica)
+                : clienteAttivo ? "Regolare" : "Non attivo";
             const dest = isBloccato ? "storico" : cliente.in_gestione_legale ? "legali" : null;
+            const tone = isBloccato ? "destructive" : cliente.in_gestione_legale ? "warning" : "default";
             return (
               <MiniStat
                 label="Stato cliente"
                 value={statoTxt}
-                tone={isBloccato ? "destructive" : cliente.in_gestione_legale ? "warning" : clienteAttivo ? "success" : "muted"}
+                tone={tone}
                 hint={ultimaFatt ? `ult. fatt. ${fmtDateIt(ultimaFatt)}` : undefined}
+                size="md"
                 onClick={dest ? () => vaiAlTab(dest) : undefined}
               />
             );
           })()}
-          <MiniStat label="Cond. pagamento" value={condPag || "—"} />
-          <Card className="px-3 py-2">
-            <p className="text-[10px] font-medium text-muted-foreground uppercase truncate">Assicurazione</p>
-            <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+
+          <Card className="p-3.5 rounded-xl border-[0.5px]">
+            <p className="text-[11px] font-medium text-muted-foreground uppercase truncate">Assicurazione</p>
+            <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
               {assicurato ? (
                 <>
-                  <Badge className="bg-success/15 text-success border-success/30 hover:bg-success/15 gap-1 text-[10px] py-0">
+                  <Badge variant="outline" className="gap-1 text-[10px] py-0 text-muted-foreground">
                     <Shield className="size-3" /> POUEY
                   </Badge>
                   {polizzaAttiva?.importo_massimale != null && (
-                    <span className="text-xs font-semibold tabular-nums">{formatEuro(polizzaAttiva.importo_massimale)}</span>
+                    <span className="text-sm font-semibold tabular-nums text-foreground">{formatEuro(polizzaAttiva.importo_massimale)}</span>
                   )}
                 </>
               ) : (
-                <Badge variant="secondary" className="gap-1 text-[10px] py-0">
+                <Badge variant="outline" className="gap-1 text-[10px] py-0 text-muted-foreground">
                   <ShieldOff className="size-3" /> Non assicurato
                 </Badge>
               )}
@@ -838,106 +854,103 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
         </div>
       </section>
 
+      {/* Sezioni tematiche in due colonne */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        {/* Composizione esposizione */}
+        {(() => {
+          const ddt = Number(cliente.doc_da_fatturare ?? 0);
+          const eff = Number(cliente.effetti_a_rischio ?? 0);
+          const ord = Number(cliente.doc_da_evadere ?? 0);
+          if (!ddt && !eff && !ord) return null;
+          return (
+            <Card className="p-4 rounded-xl border-l-[3px] border-l-blue-500">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-blue-800 flex items-center gap-1.5 mb-3">
+                <FileText className="size-3.5" /> Composizione esposizione
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <MiniStat
+                  label="DDT da fatturare"
+                  value={formatEuro(ddt)}
+                  title="Materiale consegnato non ancora fatturato — concorre al rischio"
+                />
+                <MiniStat
+                  label="Effetti a rischio (RB)"
+                  value={formatEuro(eff)}
+                  title="Effetti presentati non ancora incassati"
+                />
+                <MiniStat
+                  label="Ordini da evadere"
+                  value={formatEuro(ord)}
+                  hint="non concorre al fido"
+                />
+              </div>
+            </Card>
+          );
+        })()}
 
-      {/* Sezione 1b — Composizione esposizione */}
-      {(() => {
-        const ddt = Number(cliente.doc_da_fatturare ?? 0);
-        const eff = Number(cliente.effetti_a_rischio ?? 0);
-        const ord = Number(cliente.doc_da_evadere ?? 0);
-        if (!ddt && !eff && !ord) return null;
-        return (
-          <section className="space-y-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-              <FileText className="size-3.5" /> Composizione esposizione
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <MiniStat
-                label="DDT da fatturare"
-                value={formatEuro(ddt)}
-                tone={ddt > 0 ? "info" : "muted"}
-                title="Materiale consegnato non ancora fatturato — concorre al rischio"
-              />
-              <MiniStat
-                label="Effetti a rischio (RB)"
-                value={formatEuro(eff)}
-                tone={eff > 0 ? "warning" : "muted"}
-                title="Effetti presentati non ancora incassati"
-              />
-              <MiniStat
-                label="Ordini da evadere"
-                value={formatEuro(ord)}
-                tone={ord > 0 ? "info" : "muted"}
-                hint="non concorre al fido"
-              />
-            </div>
-          </section>
-        );
-      })()}
+        {/* Comportamento pagamento */}
+        {(() => {
+          const ni = cliente.num_insoluti;
+          const dc = cliente.dilazione_concordata;
+          const de = cliente.dilazione_effettiva;
+          if (ni == null && dc == null && de == null) return null;
+          const r = ritardoHelper(dc, de);
+          return (
+            <Card className="p-4 rounded-xl border-l-[3px] border-l-slate-400">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-700 flex items-center gap-1.5 mb-3">
+                <Clock className="size-3.5" /> Comportamento pagamento
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <MiniStat
+                  label="Insoluti storici"
+                  value={ni == null ? "—" : String(ni)}
+                  tone={ni != null && Number(ni) > 0 ? "destructive" : "default"}
+                />
+                <MiniStat
+                  label="Dilazione concordata"
+                  value={dc != null ? `${dc} gg` : "—"}
+                />
+                <MiniStat
+                  label="Ritardo medio reale"
+                  value={r.text}
+                  tone={r.tone}
+                  title="Differenza tra dilazione effettiva e concordata"
+                />
+              </div>
+            </Card>
+          );
+        })()}
 
-      {/* Sezione 1c — Comportamento pagamento */}
-      {(() => {
-        const ni = cliente.num_insoluti;
-        const dc = cliente.dilazione_concordata;
-        const de = cliente.dilazione_effettiva;
-        if (ni == null && dc == null && de == null) return null;
-        const r = ritardoHelper(dc, de);
-        return (
-          <section className="space-y-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-              <Clock className="size-3.5" /> Comportamento pagamento
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <MiniStat
-                label="Insoluti storici"
-                value={ni == null ? "—" : String(ni)}
-                tone={ni != null && Number(ni) > 0 ? "destructive" : "muted"}
-              />
-              <MiniStat
-                label="Dilazione concordata"
-                value={dc != null ? `${dc} gg` : "—"}
-                tone="muted"
-              />
-              <MiniStat
-                label="Ritardo medio reale"
-                value={r.text}
-                tone={r.tone}
-                title="Differenza tra dilazione effettiva e concordata"
-              />
-            </div>
-          </section>
-        );
-      })()}
-
-
-
-      {/* Sezione 2 — Riepilogo insoluti (spostata sopra al fatturato) */}
-      <section className="space-y-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Riepilogo insoluti</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-          <MiniStat label="Totale scaduto" value={formatEuro(totScaduto)} tone={fasciaTone === "destructive" ? "destructive" : fasciaTone === "warning" ? "warning" : "default"} icon={AlertTriangle} />
-          <MiniStat label="A scadere" value={formatEuro(ins?.totale_a_scadere ?? 0)} icon={Calendar} />
-          <MiniStat label="Max gg ritardo" value={`${maxGg} gg`} icon={Clock} />
-          <MiniStat label="Ultimo sollecito" value={fmtDateIt(ins?.ultimo_sollecito)} icon={Bell} />
-        </div>
-        <Card className="px-3 py-2.5">
-          <p className="text-[10px] font-semibold uppercase text-muted-foreground mb-2">Fasce di scaduto</p>
+        {/* Riepilogo insoluti */}
+        <Card className="p-4 rounded-xl border-l-[3px] border-l-amber-500">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-amber-800 flex items-center gap-1.5 mb-3">
+            <AlertTriangle className="size-3.5" /> Riepilogo insoluti
+          </h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+            <MiniStat label="Totale scaduto" value={formatEuro(totScaduto)} tone={totScaduto > 0 ? "destructive" : "default"} icon={AlertTriangle} />
+            <MiniStat label="A scadere" value={formatEuro(ins?.totale_a_scadere ?? 0)} icon={Calendar} />
+            <MiniStat label="Max gg ritardo" value={`${maxGg} gg`} tone={maxGg > 60 ? "destructive" : maxGg > 30 ? "warning" : "default"} icon={Clock} />
+            <MiniStat label="Ultimo sollecito" value={fmtDateIt(ins?.ultimo_sollecito)} icon={Bell} />
+          </div>
           <div className="space-y-2">
+            <p className="text-[10px] font-semibold uppercase text-muted-foreground mb-2">Fasce di scaduto</p>
             <FasciaRow label="0–30 giorni" value={Number(ins?.scaduto_0_30 ?? 0)} pct={pct(Number(ins?.scaduto_0_30 ?? 0))} color="bg-yellow-500" />
             <FasciaRow label="31–60 giorni" value={Number(ins?.scaduto_30_60 ?? 0)} pct={pct(Number(ins?.scaduto_30_60 ?? 0))} color="bg-orange-500" />
             <FasciaRow label="oltre 60 giorni" value={Number(ins?.scaduto_oltre_60 ?? 0)} pct={pct(Number(ins?.scaduto_oltre_60 ?? 0))} color="bg-destructive" />
           </div>
         </Card>
-      </section>
 
-      {/* Sezione 3 — Fatturato */}
-      <ClienteFatturato clienteId={clienteId} />
-
+        {/* Fatturato */}
+        <Card className="p-4 rounded-xl border-l-[3px] border-l-green-600">
+          <ClienteFatturato clienteId={clienteId} titleClassName="text-green-800 mb-3" />
+        </Card>
+      </div>
     </div>
   );
 }
 
 
-function MiniStat({ label, value, tone = "default", icon: Icon, hint, title, onClick }: { label: string; value: string; tone?: "default" | "destructive" | "warning" | "info" | "success" | "muted"; icon?: typeof Calendar; hint?: string; title?: string; onClick?: () => void }) {
+function MiniStat({ label, value, tone = "default", icon: Icon, hint, hintTone, title, onClick, size = "sm" }: { label: string; value: string; tone?: "default" | "destructive" | "warning" | "info" | "success" | "muted"; icon?: typeof Calendar; hint?: string; hintTone?: "default" | "destructive" | "warning"; title?: string; onClick?: () => void; size?: "sm" | "md" }) {
   const valCls =
     tone === "destructive" ? "text-destructive"
     : tone === "warning" ? "text-orange-600"
@@ -945,16 +958,20 @@ function MiniStat({ label, value, tone = "default", icon: Icon, hint, title, onC
     : tone === "success" ? "text-success"
     : tone === "muted" ? "text-muted-foreground"
     : "";
+  const hintCls =
+    hintTone === "destructive" ? "text-destructive"
+    : hintTone === "warning" ? "text-orange-600"
+    : "text-muted-foreground";
   const body = (
     <Card
-      className={`px-3 py-2 h-full ${onClick ? "transition-colors hover:bg-accent/50 hover:border-primary/40 cursor-pointer" : ""}`}
+      className={`${size === "md" ? "p-3.5" : "px-3 py-2"} h-full rounded-xl border-[0.5px] ${onClick ? "transition-colors hover:bg-accent/50 hover:border-primary/40 cursor-pointer" : ""}`}
       title={title}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-[10px] font-medium text-muted-foreground uppercase truncate">{label}</p>
-          <p className={`text-base font-bold mt-0.5 tabular-nums truncate ${valCls}`}>{value}</p>
-          {hint && <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{hint}</p>}
+          <p className={`${size === "md" ? "text-[11px]" : "text-[10px]"} font-medium text-muted-foreground uppercase truncate`}>{label}</p>
+          <p className={`${size === "md" ? "text-[19px]" : "text-base"} font-bold mt-0.5 tabular-nums truncate ${valCls}`}>{value}</p>
+          {hint && <p className={`${size === "md" ? "text-[11px]" : "text-[10px]"} mt-0.5 truncate ${hintCls}`}>{hint}</p>}
         </div>
         {Icon && <Icon className="size-3.5 text-muted-foreground shrink-0" />}
       </div>

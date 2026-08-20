@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TrendingUp, TrendingDown, Minus, Receipt } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
 
 function fmtEuro(v: number | null | undefined): string {
   if (v == null || !Number.isFinite(Number(v))) return "—";
@@ -11,7 +12,15 @@ function fmtEuro(v: number | null | undefined): string {
 
 type Row = { anno: number; num_fatture: number; fatturato: number };
 
-export function ClienteFatturato({ clienteId }: { clienteId: string }) {
+export function ClienteFatturato({
+  clienteId,
+  className,
+  titleClassName,
+}: {
+  clienteId: string;
+  className?: string;
+  titleClassName?: string;
+}) {
   const annoCorrente = new Date().getFullYear();
   const annoPrec = annoCorrente - 1;
 
@@ -59,8 +68,8 @@ export function ClienteFatturato({ clienteId }: { clienteId: string }) {
     : variazione > 0 ? "text-success" : variazione < 0 ? "text-destructive" : "text-muted-foreground";
 
   return (
-    <section className="space-y-2">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-2">
+    <section className={cn("space-y-2", className)}>
+      <h3 className={cn("text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-2", titleClassName)}>
         <Receipt className="size-3.5" /> Fatturato (IVA escl.)
       </h3>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
