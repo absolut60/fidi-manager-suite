@@ -190,7 +190,7 @@ export function CantiereDialog({
     setLng(c?.lng != null ? String(c.lng) : "");
     setSedeTesto(c ? testoSedeVicina(c) : null);
     setCoordDaAutocomplete(false);
-  }, [open, cantiere]);
+  }, [open, cantiere, soggettoFisso]);
 
   // Precompila l'agente dal soggetto scelto
   useEffect(() => {
@@ -265,7 +265,12 @@ export function CantiereDialog({
     try {
       const payload: Record<string, unknown> = {
         nome: nome.trim(),
-        cliente_id: soggetto.tipo === "cliente" ? soggetto.id : null,
+        cliente_id:
+          soggetto.tipo === "cliente"
+            ? soggetto.id
+            : soggettoFisso?.tipo === "lead"
+              ? (soggettoFisso.clienteIdAssociato ?? null)
+              : null,
         lead_id: soggetto.tipo === "lead" ? soggetto.id : null,
         indirizzo: indirizzo.trim() || null,
         cap: cap.trim() || null,
@@ -342,7 +347,9 @@ export function CantiereDialog({
                   {soggetto.tipo === "cliente" ? "Cliente" : "Lead"}
                 </Badge>
                 <span className="text-sm font-medium truncate">{soggetto.etichetta}</span>
-                <Button type="button" variant="ghost" size="sm" onClick={() => setSoggetto(null)}>Cambia</Button>
+                {!soggettoFisso && (
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setSoggetto(null)}>Cambia</Button>
+                )}
               </div>
             ) : (
               <SoggettoCombobox onSelect={setSoggetto} />
