@@ -348,9 +348,24 @@ function LeadDettaglioPage() {
           >
             <Trash2 className="size-4" /> Elimina
           </Button>
-          <Button className="gap-1.5" disabled={saveMut.isPending} onClick={() => saveMut.mutate()}>
-            {saveMut.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />} Salva
-          </Button>
+          {editMode ? (
+            <>
+              <Button
+                variant="outline"
+                className="gap-1.5"
+                onClick={() => { setF(buildForm(lead)); setEditMode(false); }}
+              >
+                <X className="size-4" /> Annulla
+              </Button>
+              <Button className="gap-1.5" disabled={saveMut.isPending} onClick={() => saveMut.mutate()}>
+                {saveMut.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />} Salva
+              </Button>
+            </>
+          ) : (
+            <Button className="gap-1.5" onClick={() => setEditMode(true)}>
+              <Pencil className="size-4" /> Modifica
+            </Button>
+          )}
         </div>
       </div>
 
