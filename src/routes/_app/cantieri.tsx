@@ -21,7 +21,7 @@ import { CantiereDialog } from "@/components/cantiere-dialog";
 import { getChiaveMappe, geocodificaSedi } from "@/lib/cantieri.functions";
 import {
   CATEGORIE_CANTIERE, CATEGORIA_LABEL, GEO_CLASS, GEO_LABEL, GEO_STATI,
-  indirizzoCompleto, nomeSoggettoCantiere,
+  indirizzoCompleto, nomeSoggettoCantiere, testoSedeVicina,
   type CantiereRow, type GeoStato,
 } from "@/lib/cantieri";
 
