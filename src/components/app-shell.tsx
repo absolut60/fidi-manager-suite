@@ -75,6 +75,7 @@ const NAV: NavItem[] = [
   { to: "/lead", label: "Lead", icon: UserPlus, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "generale" },
   // COMMERCIALE
   { to: "/opportunita", label: "Opportunità", icon: Target, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "commerciale" },
+  { to: "/calendario-commerciale", label: "Calendario", icon: CalendarDays, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "commerciale" },
   // FIDI
   { to: "/richieste", label: "Richieste fido", icon: FileText, group: "fidi" },
   { to: "/approvazioni", label: "Approvazioni", icon: CheckCheck, roles: ["admin", "approvatore"], group: "fidi" },
@@ -168,6 +169,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     "/clienti",
     "/contatti",
     "/opportunita",
+    "/calendario-commerciale",
     "/scadenziario",
     "/recupero-crediti",
     "/recupero-crediti-calendario",
