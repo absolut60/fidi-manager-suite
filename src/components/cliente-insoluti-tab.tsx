@@ -1382,6 +1382,7 @@ type PolizzaRow = {
   numero_polizza: string | null;
   importo_massimale: number | null;
   importo_assicurato: number | null;
+  costo_assicurazione: number | null;
   stato: string;
   data_inizio: string | null;
   data_scadenza: string | null;
@@ -1495,6 +1496,9 @@ function AssicurazioniSection({ clienteId, canManage, canEditAllegati }: { clien
                     </div>
                     {p.numero_polizza && <p className="text-xs text-muted-foreground mt-0.5 font-mono">N° {p.numero_polizza}</p>}
                     <p className="text-sm mt-1">Massimale: <strong>{fmtEuro(p.importo_massimale)}</strong></p>
+                    {p.costo_assicurazione != null && p.costo_assicurazione > 0 && (
+                      <p className="text-sm">Costo: <strong>{fmtEuro(p.costo_assicurazione)}</strong></p>
+                    )}
                     {p.data_scadenza && <p className="text-xs text-muted-foreground">Scade: {fmtDate(p.data_scadenza)}</p>}
                     {p.sinistro_aperto && (
                       <Badge className="bg-destructive/15 text-destructive mt-2">
