@@ -988,6 +988,10 @@ export type Database = {
           note: string | null
           provincia: string | null
           referente: string | null
+          sede_piu_vicina_calcolata_il: string | null
+          sede_piu_vicina_id: string | null
+          sede_piu_vicina_km: number | null
+          sede_piu_vicina_min: number | null
           updated_at: string
         }
         Insert: {
@@ -1014,6 +1018,10 @@ export type Database = {
           note?: string | null
           provincia?: string | null
           referente?: string | null
+          sede_piu_vicina_calcolata_il?: string | null
+          sede_piu_vicina_id?: string | null
+          sede_piu_vicina_km?: number | null
+          sede_piu_vicina_min?: number | null
           updated_at?: string
         }
         Update: {
@@ -1040,6 +1048,10 @@ export type Database = {
           note?: string | null
           provincia?: string | null
           referente?: string | null
+          sede_piu_vicina_calcolata_il?: string | null
+          sede_piu_vicina_id?: string | null
+          sede_piu_vicina_km?: number | null
+          sede_piu_vicina_min?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -1069,6 +1081,13 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "lead"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cantieri_sede_piu_vicina_id_fkey"
+            columns: ["sede_piu_vicina_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
             referencedColumns: ["id"]
           },
         ]
@@ -4110,9 +4129,13 @@ export type Database = {
           codice: string
           created_at: string
           email_sede: string | null
+          geocodifica_stato: string | null
+          geocodificato_il: string | null
           id: string
           indirizzo: string | null
           insegna: string | null
+          lat: number | null
+          lng: number | null
           nome: string
           pec_sede: string | null
           piva: string | null
@@ -4128,9 +4151,13 @@ export type Database = {
           codice: string
           created_at?: string
           email_sede?: string | null
+          geocodifica_stato?: string | null
+          geocodificato_il?: string | null
           id?: string
           indirizzo?: string | null
           insegna?: string | null
+          lat?: number | null
+          lng?: number | null
           nome: string
           pec_sede?: string | null
           piva?: string | null
@@ -4146,9 +4173,13 @@ export type Database = {
           codice?: string
           created_at?: string
           email_sede?: string | null
+          geocodifica_stato?: string | null
+          geocodificato_il?: string | null
           id?: string
           indirizzo?: string | null
           insegna?: string | null
+          lat?: number | null
+          lng?: number | null
           nome?: string
           pec_sede?: string | null
           piva?: string | null
