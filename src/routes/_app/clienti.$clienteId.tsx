@@ -672,6 +672,9 @@ function fmtDateIt(v: unknown): string {
 
 function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string }) {
   const config = useConfig();
+  const navigate = useNavigate();
+  const vaiAlTab = (tab: string) =>
+    navigate({ to: "/clienti/$clienteId", params: { clienteId }, search: (prev: any) => ({ ...prev, tab }) });
   const bloccato = !!cliente.bloccato;
   const indBlocco = Number(cliente.ind_blocco ?? 0);
   const ultimaFatt = cliente.ultima_data_fatturazione;
@@ -934,7 +937,7 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
 }
 
 
-function MiniStat({ label, value, tone = "default", icon: Icon, hint, title }: { label: string; value: string; tone?: "default" | "destructive" | "warning" | "info" | "success" | "muted"; icon?: typeof Calendar; hint?: string; title?: string }) {
+function MiniStat({ label, value, tone = "default", icon: Icon, hint, title, onClick }: { label: string; value: string; tone?: "default" | "destructive" | "warning" | "info" | "success" | "muted"; icon?: typeof Calendar; hint?: string; title?: string; onClick?: () => void }) {
   const valCls =
     tone === "destructive" ? "text-destructive"
     : tone === "warning" ? "text-orange-600"
@@ -942,8 +945,11 @@ function MiniStat({ label, value, tone = "default", icon: Icon, hint, title }: {
     : tone === "success" ? "text-success"
     : tone === "muted" ? "text-muted-foreground"
     : "";
-  return (
-    <Card className="px-3 py-2" title={title}>
+  const body = (
+    <Card
+      className={`px-3 py-2 h-full ${onClick ? "transition-colors hover:bg-accent/50 hover:border-primary/40 cursor-pointer" : ""}`}
+      title={title}
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-[10px] font-medium text-muted-foreground uppercase truncate">{label}</p>
@@ -953,6 +959,12 @@ function MiniStat({ label, value, tone = "default", icon: Icon, hint, title }: {
         {Icon && <Icon className="size-3.5 text-muted-foreground shrink-0" />}
       </div>
     </Card>
+  );
+  if (!onClick) return body;
+  return (
+    <button type="button" onClick={onClick} className="text-left w-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      {body}
+    </button>
   );
 }
 
