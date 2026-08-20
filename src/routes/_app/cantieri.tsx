@@ -27,7 +27,13 @@ import {
 
 const CantieriMappa = lazy(() => import("@/components/cantieri-mappa"));
 
+type CantieriSearch = { tab?: "lista" | "mappa"; focus?: string };
+
 export const Route = createFileRoute("/_app/cantieri")({
+  validateSearch: (s: Record<string, unknown>): CantieriSearch => ({
+    tab: s["tab"] === "mappa" ? "mappa" : s["tab"] === "lista" ? "lista" : undefined,
+    focus: typeof s["focus"] === "string" && s["focus"] ? s["focus"] : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Cantieri — FidiManager" },
