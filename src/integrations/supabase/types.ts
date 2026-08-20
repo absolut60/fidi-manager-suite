@@ -1151,6 +1151,9 @@ export type Database = {
           doc_da_fatturare: number | null
           effetti_a_rischio: number | null
           email: string | null
+          fascia_listino_default:
+            | Database["public"]["Enums"]["fascia_listino"]
+            | null
           fido: number | null
           fido_aziendale_concesso: number | null
           fido_gestionale: number | null
@@ -1235,6 +1238,9 @@ export type Database = {
           doc_da_fatturare?: number | null
           effetti_a_rischio?: number | null
           email?: string | null
+          fascia_listino_default?:
+            | Database["public"]["Enums"]["fascia_listino"]
+            | null
           fido?: number | null
           fido_aziendale_concesso?: number | null
           fido_gestionale?: number | null
@@ -1319,6 +1325,9 @@ export type Database = {
           doc_da_fatturare?: number | null
           effetti_a_rischio?: number | null
           email?: string | null
+          fascia_listino_default?:
+            | Database["public"]["Enums"]["fascia_listino"]
+            | null
           fido?: number | null
           fido_aziendale_concesso?: number | null
           fido_gestionale?: number | null
@@ -2086,19 +2095,31 @@ export type Database = {
       }
       fornitori: {
         Row: {
+          categoria_fornitore: string
           created_at: string
           id: string
           nome: string
+          note: string | null
+          ragione_sociale: string | null
+          updated_at: string | null
         }
         Insert: {
+          categoria_fornitore?: string
           created_at?: string
           id?: string
           nome: string
+          note?: string | null
+          ragione_sociale?: string | null
+          updated_at?: string | null
         }
         Update: {
+          categoria_fornitore?: string
           created_at?: string
           id?: string
           nome?: string
+          note?: string | null
+          ragione_sociale?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -5668,12 +5689,41 @@ export type Database = {
         | "gestore_richieste"
         | "esecutore_richieste"
         | "marketing"
+      categoria_allegato:
+        | "capitolato"
+        | "disegni"
+        | "scheda_tecnica"
+        | "certificazioni"
+        | "foto_cantiere"
+        | "documenti_commerciali"
+        | "altro"
+      categoria_allegato_articolo:
+        | "scheda_tecnica"
+        | "scheda_sicurezza"
+        | "certificazione_ce_dop"
+        | "certificazione_antincendio"
+        | "certificazione_acustica"
+        | "dichiarazione_conformita"
+        | "voce_capitolato"
+        | "manuale_posa"
+        | "certificato_ambientale"
+        | "immagine_prodotto"
+        | "disegno_tecnico"
+        | "altro"
       esito_approvazione: "approvata" | "rifiutata"
       eventi_partecipante_stato:
         | "atteso"
         | "confermato"
         | "presentato"
         | "no_show"
+      fascia_listino: "A" | "B" | "C" | "SOCI"
+      kit_famiglia:
+        | "PARETE"
+        | "CONTROPARETE"
+        | "CTS_CARTONGESSO"
+        | "CTS_MODULARE"
+        | "VELETTA"
+        | "ALTRO"
       lead_fonte: "web" | "hubspot" | "manuale" | "fiera" | "evento" | "altro"
       lead_priorita: "alta" | "media" | "bassa"
       lead_richiesta_stato: "aperta" | "in_lavorazione" | "evasa" | "respinta"
@@ -5690,6 +5740,7 @@ export type Database = {
         | "convertito"
         | "perso"
       lead_tipo: "potenziale_cliente" | "richiesta_specifica"
+      stato_articolo: "attivo" | "potenziale"
       stato_importazione:
         | "in_elaborazione"
         | "completata"
@@ -5722,6 +5773,7 @@ export type Database = {
         | "chiusa_pagamento"
         | "chiusa_perdita"
         | "sospesa"
+      stato_preventivo: "bozza" | "inviato" | "confermato"
       stato_richiesta:
         | "bozza"
         | "in_approvazione"
@@ -5746,6 +5798,13 @@ export type Database = {
         | "preventivo_inviato"
         | "nota"
         | "altro"
+      tipo_doc_preventivo:
+        | "PREVENTIVO"
+        | "PROPOSTA_RAPIDA"
+        | "LISTA_MATERIALI"
+        | "LISTA_MAT_FORNITORE"
+      tipo_documento: "preventivo" | "ordine"
+      tipo_driver: "CONSUMO" | "PASSO" | "LATI" | "INCIDENZA_FISSA"
       tipo_opportunita: "vendita" | "fornitura" | "preventivo" | "altro"
       tipo_pratica_legale:
         | "decreto_ingiuntivo"
@@ -5768,6 +5827,13 @@ export type Database = {
         | "diminuzione"
         | "rinnovo"
         | "nuovo_fido"
+      tipo_riga_preventivo:
+        | "da_kit"
+        | "articolo_singolo"
+        | "manuale"
+        | "sotto_totale"
+        | "nota"
+        | "separatore"
       tipo_sollecito:
         | "interno"
         | "email"
@@ -5926,12 +5992,44 @@ export const Constants = {
         "esecutore_richieste",
         "marketing",
       ],
+      categoria_allegato: [
+        "capitolato",
+        "disegni",
+        "scheda_tecnica",
+        "certificazioni",
+        "foto_cantiere",
+        "documenti_commerciali",
+        "altro",
+      ],
+      categoria_allegato_articolo: [
+        "scheda_tecnica",
+        "scheda_sicurezza",
+        "certificazione_ce_dop",
+        "certificazione_antincendio",
+        "certificazione_acustica",
+        "dichiarazione_conformita",
+        "voce_capitolato",
+        "manuale_posa",
+        "certificato_ambientale",
+        "immagine_prodotto",
+        "disegno_tecnico",
+        "altro",
+      ],
       esito_approvazione: ["approvata", "rifiutata"],
       eventi_partecipante_stato: [
         "atteso",
         "confermato",
         "presentato",
         "no_show",
+      ],
+      fascia_listino: ["A", "B", "C", "SOCI"],
+      kit_famiglia: [
+        "PARETE",
+        "CONTROPARETE",
+        "CTS_CARTONGESSO",
+        "CTS_MODULARE",
+        "VELETTA",
+        "ALTRO",
       ],
       lead_fonte: ["web", "hubspot", "manuale", "fiera", "evento", "altro"],
       lead_priorita: ["alta", "media", "bassa"],
@@ -5951,6 +6049,7 @@ export const Constants = {
         "perso",
       ],
       lead_tipo: ["potenziale_cliente", "richiesta_specifica"],
+      stato_articolo: ["attivo", "potenziale"],
       stato_importazione: [
         "in_elaborazione",
         "completata",
@@ -5988,6 +6087,7 @@ export const Constants = {
         "chiusa_perdita",
         "sospesa",
       ],
+      stato_preventivo: ["bozza", "inviato", "confermato"],
       stato_richiesta: [
         "bozza",
         "in_approvazione",
@@ -6015,6 +6115,14 @@ export const Constants = {
         "nota",
         "altro",
       ],
+      tipo_doc_preventivo: [
+        "PREVENTIVO",
+        "PROPOSTA_RAPIDA",
+        "LISTA_MATERIALI",
+        "LISTA_MAT_FORNITORE",
+      ],
+      tipo_documento: ["preventivo", "ordine"],
+      tipo_driver: ["CONSUMO", "PASSO", "LATI", "INCIDENZA_FISSA"],
       tipo_opportunita: ["vendita", "fornitura", "preventivo", "altro"],
       tipo_pratica_legale: [
         "decreto_ingiuntivo",
@@ -6039,6 +6147,14 @@ export const Constants = {
         "diminuzione",
         "rinnovo",
         "nuovo_fido",
+      ],
+      tipo_riga_preventivo: [
+        "da_kit",
+        "articolo_singolo",
+        "manuale",
+        "sotto_totale",
+        "nota",
+        "separatore",
       ],
       tipo_sollecito: [
         "interno",
