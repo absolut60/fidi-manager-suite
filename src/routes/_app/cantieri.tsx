@@ -214,6 +214,7 @@ function CantieriPage() {
                     <TableHead>Cliente / Lead</TableHead>
                     <TableHead>Indirizzo</TableHead>
                     <TableHead>Geocodifica</TableHead>
+                    <TableHead>Sede più vicina</TableHead>
                     <TableHead>Agente</TableHead>
                     <TableHead>Stato</TableHead>
                     <TableHead className="w-12" />
