@@ -1,6 +1,6 @@
 // Scheda dettaglio opportunità commerciale + sezione Attività (appuntamenti, visite, chiamate…).
 import { useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Plus, Pencil, CalendarClock, Target } from "lucide-react";
 import { toast } from "sonner";
@@ -12,6 +12,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { OpportunitaDialog } from "@/components/opportunita-dialog";
 import { AttivitaCommercialeDialog } from "@/components/attivita-commerciale-dialog";
+import { BottoneElimina } from "@/components/conferma-eliminazione";
+import { usePermessiCommerciale } from "@/hooks/use-permessi-commerciale";
 import {
   STATO_LABEL, STATO_CLASS, TIPO_LABEL, fmtEuro, fmtData, nomeSoggetto, type OpportunitaRow,
 } from "@/lib/opportunita";
@@ -43,6 +45,8 @@ function Voce({ label, value }: { label: string; value: React.ReactNode }) {
 function DettaglioOpportunita() {
   const { opportunitaId } = Route.useParams();
   const qc = useQueryClient();
+  const navigate = useNavigate();
+  const { puoEliminareOpportunita } = usePermessiCommerciale();
   const [editOpen, setEditOpen] = useState(false);
   const [attivitaOpen, setAttivitaOpen] = useState(false);
   const [attivitaInModifica, setAttivitaInModifica] = useState<AttivitaRow | null>(null);
@@ -97,6 +101,17 @@ function DettaglioOpportunita() {
     qc.invalidateQueries({ queryKey: ["attivita-commerciale"] });
   }
 
+  async function elimina() {
+    const { error } = await supabase.from("opportunita").delete().eq("id", opportunitaId);
+    if (error) {
+      toast.error("Eliminazione non riuscita: non hai i permessi su questa opportunità.");
+      return;
+    }
+    toast.success("Opportunità eliminata");
+    qc.invalidateQueries({ queryKey: ["opportunita-lista"] });
+    navigate({ to: "/opportunita" });
+  }
+
   if (isLoading) return <div className="space-y-3">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}</div>;
   if (!opp) return <div className="py-10 text-center text-sm text-muted-foreground">Opportunità non trovata.</div>;
 
@@ -106,22 +121,34 @@ function DettaglioOpportunita() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" asChild title="Torna alla lista">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div className="flex min-w-0 items-center gap-3">
+          <Button variant="ghost" size="icon" asChild title="Torna alla lista" className="shrink-0">
             <Link to="/opportunita"><ArrowLeft className="size-4" /></Link>
           </Button>
-          <div>
-            <h1 className="text-2xl font-semibold flex items-center gap-2">
-              <Target className="size-5 text-primary" />
-              {opp.titolo}
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-semibold flex items-center gap-2">
+              <Target className="size-5 shrink-0 text-primary" />
+              <span className="min-w-0 break-words">{opp.titolo}</span>
             </h1>
             <p className="text-sm text-muted-foreground">{nomeSoggetto(opp)}</p>
           </div>
         </div>
-        <Button variant="outline" onClick={() => setEditOpen(true)}>
-          <Pencil className="size-4" /> Modifica
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" onClick={() => setEditOpen(true)}>
+            <Pencil className="size-4" /> Modifica
+          </Button>
+          {puoEliminareOpportunita(opp) && (
+            <BottoneElimina
+              variant="outline"
+              etichetta="Elimina"
+              titolo="Eliminare questa opportunità?"
+              descrizione={`"${opp.titolo}" verrà eliminata definitivamente insieme alle attività collegate. L'azione è irreversibile.`}
+              onConferma={elimina}
+              className="text-destructive hover:text-destructive"
+            />
+          )}
+        </div>
       </div>
 
       <Card className="p-4">
@@ -198,7 +225,13 @@ function DettaglioOpportunita() {
         )}
       </Card>
 
-      <OpportunitaDialog open={editOpen} onOpenChange={setEditOpen} opportunita={opp} agenti={agenti} />
+      <OpportunitaDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        opportunita={opp}
+        agenti={agenti}
+        onDeleted={() => navigate({ to: "/opportunita" })}
+      />
       <AttivitaCommercialeDialog
         open={attivitaOpen}
         onOpenChange={setAttivitaOpen}

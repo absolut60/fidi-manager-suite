@@ -18,6 +18,8 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SoggettoCombobox, type SoggettoSelezionato } from "@/components/soggetto-combobox";
 import { geocodificaCantiere, ricalcolaSedeVicina } from "@/lib/cantieri.functions";
+import { BottoneElimina } from "@/components/conferma-eliminazione";
+import { usePermessiCommerciale } from "@/hooks/use-permessi-commerciale";
 import {
   CATEGORIE_CANTIERE, CATEGORIA_LABEL, GEO_CLASS, GEO_LABEL, testoSedeVicina,
   type CantiereRow, type GeoStato,
@@ -35,6 +37,7 @@ export function CantiereDialog({
 }) {
   const qc = useQueryClient();
   const { user, roles } = useAuth();
+  const { puoEliminareCantiere } = usePermessiCommerciale();
   const isAgente = roles.includes("agente");
   const isTrasversale = roles.some((r) =>
     ["amministratore", "amministrazione", "direzione", "marketing", "store_manager"].includes(r),
@@ -87,6 +90,18 @@ export function CantiereDialog({
       },
       { enableHighAccuracy: true, timeout: 15000 },
     );
+  }
+
+  async function elimina() {
+    if (!cantiere?.id) return;
+    const { error } = await supabase.from("cantieri").delete().eq("id", cantiere.id);
+    if (error) {
+      toast.error("Eliminazione non riuscita: non hai i permessi su questo cantiere.");
+      return;
+    }
+    toast.success("Cantiere eliminato");
+    await qc.invalidateQueries({ queryKey: ["cantieri-lista"] });
+    onOpenChange(false);
   }
 
   async function ricalcolaLaSede(id: string) {
@@ -267,7 +282,7 @@ export function CantiereDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
+      <DialogContent className="w-[calc(100%-1.5rem)] max-w-3xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{cantiere ? "Modifica cantiere" : "Nuovo cantiere"}</DialogTitle>
           <DialogDescription>
@@ -425,7 +440,17 @@ export function CantiereDialog({
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="flex-col-reverse gap-2 sm:flex-row">
+          {cantiere && puoEliminareCantiere(cantiere) && (
+            <BottoneElimina
+              variant="outline"
+              etichetta="Elimina"
+              className="sm:mr-auto text-destructive hover:text-destructive"
+              titolo="Eliminare questo cantiere?"
+              descrizione={`"${cantiere.nome}" verrà eliminato definitivamente. L'azione è irreversibile.`}
+              onConferma={elimina}
+            />
+          )}
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Annulla</Button>
           <Button type="button" onClick={salva} disabled={saving || geoBusy}>
             {saving ? "Salvataggio..." : cantiere ? "Salva" : "Crea"}
