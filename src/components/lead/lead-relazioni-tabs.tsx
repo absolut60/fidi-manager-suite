@@ -315,6 +315,14 @@ export function LeadCantieriTab({
                   </div>
                   {c.descrizione && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{c.descrizione}</p>}
                 </div>
+                <div className="flex gap-1">
+                <Button
+                  variant="ghost" size="icon" title="Modifica"
+                  onClick={() => setEditId(c.id)}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <Pencil className="size-4" />
+                </Button>
                 <Button
                   variant="ghost" size="icon"
                   onClick={() => {
