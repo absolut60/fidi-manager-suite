@@ -651,6 +651,69 @@ export type Database = {
           },
         ]
       }
+      blocchi_preventivo: {
+        Row: {
+          created_at: string
+          descrizione: string | null
+          id: string
+          importo: number | null
+          kit_id: string | null
+          note_tecniche: string | null
+          ordine: number
+          preventivo_id: string
+          prezzo_um: number | null
+          quantita_base: number | null
+          rif_capitolato: string | null
+          um_base: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          descrizione?: string | null
+          id?: string
+          importo?: number | null
+          kit_id?: string | null
+          note_tecniche?: string | null
+          ordine?: number
+          preventivo_id: string
+          prezzo_um?: number | null
+          quantita_base?: number | null
+          rif_capitolato?: string | null
+          um_base?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          descrizione?: string | null
+          id?: string
+          importo?: number | null
+          kit_id?: string | null
+          note_tecniche?: string | null
+          ordine?: number
+          preventivo_id?: string
+          prezzo_um?: number | null
+          quantita_base?: number | null
+          rif_capitolato?: string | null
+          um_base?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blocchi_preventivo_kit_id_fkey"
+            columns: ["kit_id"]
+            isOneToOne: false
+            referencedRelation: "kit"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blocchi_preventivo_preventivo_id_fkey"
+            columns: ["preventivo_id"]
+            isOneToOne: false
+            referencedRelation: "preventivi"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campagne_email_clic: {
         Row: {
           campagna_id: string
@@ -1030,6 +1093,47 @@ export type Database = {
           totale_invii?: number | null
         }
         Relationships: []
+      }
+      cantiere_listini_speciali: {
+        Row: {
+          cantiere_id: string
+          cod_gamma: string
+          costo_netto_speciale: number | null
+          created_at: string
+          id: string
+          note: string | null
+          prezzo_vendita_speciale: number | null
+          updated_at: string
+        }
+        Insert: {
+          cantiere_id: string
+          cod_gamma: string
+          costo_netto_speciale?: number | null
+          created_at?: string
+          id?: string
+          note?: string | null
+          prezzo_vendita_speciale?: number | null
+          updated_at?: string
+        }
+        Update: {
+          cantiere_id?: string
+          cod_gamma?: string
+          costo_netto_speciale?: number | null
+          created_at?: string
+          id?: string
+          note?: string | null
+          prezzo_vendita_speciale?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cantiere_listini_speciali_cantiere_id_fkey"
+            columns: ["cantiere_id"]
+            isOneToOne: false
+            referencedRelation: "cantieri"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       cantieri: {
         Row: {
@@ -1644,6 +1748,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      contatori_preventivo: {
+        Row: {
+          anno: number
+          tipo: Database["public"]["Enums"]["tipo_documento"]
+          ultimo_numero: number
+        }
+        Insert: {
+          anno: number
+          tipo?: Database["public"]["Enums"]["tipo_documento"]
+          ultimo_numero?: number
+        }
+        Update: {
+          anno?: number
+          tipo?: Database["public"]["Enums"]["tipo_documento"]
+          ultimo_numero?: number
+        }
+        Relationships: []
       }
       contatti: {
         Row: {
@@ -3332,6 +3454,132 @@ export type Database = {
           },
         ]
       }
+      preferenze_stampa: {
+        Row: {
+          colonne_righe: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          colonne_righe?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          colonne_righe?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      preventivi: {
+        Row: {
+          agente_codice: string | null
+          cantiere_id: string | null
+          cliente_id: string | null
+          created_at: string
+          data: string
+          fascia_listino: Database["public"]["Enums"]["fascia_listino"] | null
+          filiale: string | null
+          id: string
+          iva_importo: number | null
+          iva_perc: number | null
+          note: string | null
+          numero: string | null
+          preventivo_origine_id: string | null
+          sconto_piede_perc: number
+          stato: Database["public"]["Enums"]["stato_preventivo"]
+          tipo: Database["public"]["Enums"]["tipo_documento"]
+          tipo_doc: Database["public"]["Enums"]["tipo_doc_preventivo"]
+          totale: number | null
+          totale_imponibile: number | null
+          updated_at: string
+          validita: string | null
+        }
+        Insert: {
+          agente_codice?: string | null
+          cantiere_id?: string | null
+          cliente_id?: string | null
+          created_at?: string
+          data?: string
+          fascia_listino?: Database["public"]["Enums"]["fascia_listino"] | null
+          filiale?: string | null
+          id?: string
+          iva_importo?: number | null
+          iva_perc?: number | null
+          note?: string | null
+          numero?: string | null
+          preventivo_origine_id?: string | null
+          sconto_piede_perc?: number
+          stato?: Database["public"]["Enums"]["stato_preventivo"]
+          tipo?: Database["public"]["Enums"]["tipo_documento"]
+          tipo_doc?: Database["public"]["Enums"]["tipo_doc_preventivo"]
+          totale?: number | null
+          totale_imponibile?: number | null
+          updated_at?: string
+          validita?: string | null
+        }
+        Update: {
+          agente_codice?: string | null
+          cantiere_id?: string | null
+          cliente_id?: string | null
+          created_at?: string
+          data?: string
+          fascia_listino?: Database["public"]["Enums"]["fascia_listino"] | null
+          filiale?: string | null
+          id?: string
+          iva_importo?: number | null
+          iva_perc?: number | null
+          note?: string | null
+          numero?: string | null
+          preventivo_origine_id?: string | null
+          sconto_piede_perc?: number
+          stato?: Database["public"]["Enums"]["stato_preventivo"]
+          tipo?: Database["public"]["Enums"]["tipo_documento"]
+          tipo_doc?: Database["public"]["Enums"]["tipo_doc_preventivo"]
+          totale?: number | null
+          totale_imponibile?: number | null
+          updated_at?: string
+          validita?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "preventivi_cantiere_id_fkey"
+            columns: ["cantiere_id"]
+            isOneToOne: false
+            referencedRelation: "cantieri"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "preventivi_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "preventivi_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti_con_rischio"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "preventivi_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "preventivi_preventivo_origine_id_fkey"
+            columns: ["preventivo_origine_id"]
+            isOneToOne: false
+            referencedRelation: "preventivi"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profili: {
         Row: {
           attivo: boolean
@@ -3942,6 +4190,103 @@ export type Database = {
             columns: ["request_id"]
             isOneToOne: false
             referencedRelation: "richieste_interne"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      righe_preventivo: {
+        Row: {
+          articolo_id: string | null
+          blocco_id: string
+          costo: number | null
+          created_at: string
+          descrizione: string | null
+          id: string
+          importo: number | null
+          incidenza: number | null
+          margine: number | null
+          ordine: number
+          peso: number | null
+          prezzo_unit: number | null
+          qta_ordinata: number
+          quantita: number | null
+          ricarico: number | null
+          riga_origine_id: string | null
+          sconto_perc: number | null
+          segno: number
+          tipo_riga: Database["public"]["Enums"]["tipo_riga_preventivo"]
+          um: string | null
+          updated_at: string
+          vendita: number | null
+        }
+        Insert: {
+          articolo_id?: string | null
+          blocco_id: string
+          costo?: number | null
+          created_at?: string
+          descrizione?: string | null
+          id?: string
+          importo?: number | null
+          incidenza?: number | null
+          margine?: number | null
+          ordine?: number
+          peso?: number | null
+          prezzo_unit?: number | null
+          qta_ordinata?: number
+          quantita?: number | null
+          ricarico?: number | null
+          riga_origine_id?: string | null
+          sconto_perc?: number | null
+          segno?: number
+          tipo_riga?: Database["public"]["Enums"]["tipo_riga_preventivo"]
+          um?: string | null
+          updated_at?: string
+          vendita?: number | null
+        }
+        Update: {
+          articolo_id?: string | null
+          blocco_id?: string
+          costo?: number | null
+          created_at?: string
+          descrizione?: string | null
+          id?: string
+          importo?: number | null
+          incidenza?: number | null
+          margine?: number | null
+          ordine?: number
+          peso?: number | null
+          prezzo_unit?: number | null
+          qta_ordinata?: number
+          quantita?: number | null
+          ricarico?: number | null
+          riga_origine_id?: string | null
+          sconto_perc?: number | null
+          segno?: number
+          tipo_riga?: Database["public"]["Enums"]["tipo_riga_preventivo"]
+          um?: string | null
+          updated_at?: string
+          vendita?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "righe_preventivo_articolo_id_fkey"
+            columns: ["articolo_id"]
+            isOneToOne: false
+            referencedRelation: "articoli"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "righe_preventivo_blocco_id_fkey"
+            columns: ["blocco_id"]
+            isOneToOne: false
+            referencedRelation: "blocchi_preventivo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "righe_preventivo_riga_origine_id_fkey"
+            columns: ["riga_origine_id"]
+            isOneToOne: false
+            referencedRelation: "righe_preventivo"
             referencedColumns: ["id"]
           },
         ]
@@ -5069,6 +5414,8 @@ export type Database = {
         Args: { _lead_id: string }
         Returns: undefined
       }
+      anteprima_numero_ordine: { Args: { p_anno: number }; Returns: number }
+      anteprima_numero_preventivo: { Args: { p_anno: number }; Returns: number }
       arrotonda_fido_proposto: { Args: { _fido_base: number }; Returns: number }
       bulk_update_clienti_bfa: { Args: { _payloads: Json }; Returns: number }
       calcola_fido_base: {
@@ -5884,6 +6231,8 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      prossimo_numero_ordine: { Args: { p_anno: number }; Returns: number }
+      prossimo_numero_preventivo: { Args: { p_anno: number }; Returns: number }
       refresh_fatturato_mensile: { Args: never; Returns: string }
       registra_clic_campagna: {
         Args: { _ip?: string; _token: string; _ua?: string; _url: string }
@@ -5955,6 +6304,10 @@ export type Database = {
       }
       storage_path_cliente_id: { Args: { _name: string }; Returns: string }
       store_id_effettivo: { Args: { _store_id: string }; Returns: string }
+      trasforma_preventivo_in_ordine: {
+        Args: { p_preventivo_id: string; p_selezione: Json }
+        Returns: string
+      }
       trova_corrispondenze_soggetto: {
         Args: {
           _codice_fiscale?: string
