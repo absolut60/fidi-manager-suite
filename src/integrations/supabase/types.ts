@@ -99,6 +99,47 @@ export type Database = {
           },
         ]
       }
+      allegati_articolo: {
+        Row: {
+          articolo_id: string
+          categoria: Database["public"]["Enums"]["categoria_allegato_articolo"]
+          created_at: string
+          dimensione_bytes: number | null
+          id: string
+          mime_type: string | null
+          nome_file: string
+          storage_path: string
+        }
+        Insert: {
+          articolo_id: string
+          categoria?: Database["public"]["Enums"]["categoria_allegato_articolo"]
+          created_at?: string
+          dimensione_bytes?: number | null
+          id?: string
+          mime_type?: string | null
+          nome_file: string
+          storage_path: string
+        }
+        Update: {
+          articolo_id?: string
+          categoria?: Database["public"]["Enums"]["categoria_allegato_articolo"]
+          created_at?: string
+          dimensione_bytes?: number | null
+          id?: string
+          mime_type?: string | null
+          nome_file?: string
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "allegati_articolo_articolo_id_fkey"
+            columns: ["articolo_id"]
+            isOneToOne: false
+            referencedRelation: "articoli"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       anomalie_import: {
         Row: {
           campo: string
@@ -220,6 +261,74 @@ export type Database = {
             columns: ["richiesta_id"]
             isOneToOne: false
             referencedRelation: "richieste_fido"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      articoli: {
+        Row: {
+          categoria: string | null
+          cod_fornitore: string | null
+          cod_gamma: string | null
+          componente: string | null
+          created_at: string
+          descrizione: string
+          fornitore_id: string | null
+          id: string
+          note: string | null
+          note_acquisto: string | null
+          peso_unit: number | null
+          qta_cliente: number | null
+          qta_fornitore: number | null
+          stato: Database["public"]["Enums"]["stato_articolo"]
+          tipologia: string | null
+          um: string | null
+          updated_at: string
+        }
+        Insert: {
+          categoria?: string | null
+          cod_fornitore?: string | null
+          cod_gamma?: string | null
+          componente?: string | null
+          created_at?: string
+          descrizione: string
+          fornitore_id?: string | null
+          id?: string
+          note?: string | null
+          note_acquisto?: string | null
+          peso_unit?: number | null
+          qta_cliente?: number | null
+          qta_fornitore?: number | null
+          stato?: Database["public"]["Enums"]["stato_articolo"]
+          tipologia?: string | null
+          um?: string | null
+          updated_at?: string
+        }
+        Update: {
+          categoria?: string | null
+          cod_fornitore?: string | null
+          cod_gamma?: string | null
+          componente?: string | null
+          created_at?: string
+          descrizione?: string
+          fornitore_id?: string | null
+          id?: string
+          note?: string | null
+          note_acquisto?: string | null
+          peso_unit?: number | null
+          qta_cliente?: number | null
+          qta_fornitore?: number | null
+          stato?: Database["public"]["Enums"]["stato_articolo"]
+          tipologia?: string | null
+          um?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "articoli_fornitore_id_fkey"
+            columns: ["fornitore_id"]
+            isOneToOne: false
+            referencedRelation: "fornitori"
             referencedColumns: ["id"]
           },
         ]
@@ -2437,6 +2546,115 @@ export type Database = {
           },
         ]
       }
+      listini_acquisto: {
+        Row: {
+          articolo_id: string
+          condizioni: string | null
+          costo_netto: number | null
+          created_at: string
+          data_validita: string | null
+          id: string
+          listino_for: string | null
+          note: string | null
+          prezzo_scontato: number | null
+          sc1: number | null
+          sc2: number | null
+          sc3: number | null
+          sc4: number | null
+          sc5: number | null
+          trasporto_eur: number | null
+          trasporto_perc: number | null
+          updated_at: string
+        }
+        Insert: {
+          articolo_id: string
+          condizioni?: string | null
+          costo_netto?: number | null
+          created_at?: string
+          data_validita?: string | null
+          id?: string
+          listino_for?: string | null
+          note?: string | null
+          prezzo_scontato?: number | null
+          sc1?: number | null
+          sc2?: number | null
+          sc3?: number | null
+          sc4?: number | null
+          sc5?: number | null
+          trasporto_eur?: number | null
+          trasporto_perc?: number | null
+          updated_at?: string
+        }
+        Update: {
+          articolo_id?: string
+          condizioni?: string | null
+          costo_netto?: number | null
+          created_at?: string
+          data_validita?: string | null
+          id?: string
+          listino_for?: string | null
+          note?: string | null
+          prezzo_scontato?: number | null
+          sc1?: number | null
+          sc2?: number | null
+          sc3?: number | null
+          sc4?: number | null
+          sc5?: number | null
+          trasporto_eur?: number | null
+          trasporto_perc?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listini_acquisto_articolo_id_fkey"
+            columns: ["articolo_id"]
+            isOneToOne: false
+            referencedRelation: "articoli"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      listini_vendita: {
+        Row: {
+          articolo_id: string
+          created_at: string
+          fascia: Database["public"]["Enums"]["fascia_listino"]
+          id: string
+          margine: number | null
+          prezzo: number | null
+          ricarico: number | null
+          updated_at: string
+        }
+        Insert: {
+          articolo_id: string
+          created_at?: string
+          fascia: Database["public"]["Enums"]["fascia_listino"]
+          id?: string
+          margine?: number | null
+          prezzo?: number | null
+          ricarico?: number | null
+          updated_at?: string
+        }
+        Update: {
+          articolo_id?: string
+          created_at?: string
+          fascia?: Database["public"]["Enums"]["fascia_listino"]
+          id?: string
+          margine?: number | null
+          prezzo?: number | null
+          ricarico?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listini_vendita_articolo_id_fkey"
+            columns: ["articolo_id"]
+            isOneToOne: false
+            referencedRelation: "articoli"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       macrocategorie: {
         Row: {
           codice: string
@@ -2449,6 +2667,39 @@ export type Database = {
         Update: {
           codice?: string
           label?: string
+        }
+        Relationships: []
+      }
+      matrice_ricarichi: {
+        Row: {
+          categoria: string
+          descrizione_categoria: string | null
+          macro_gruppo: string | null
+          ricarico_a: number | null
+          ricarico_b: number | null
+          ricarico_c: number | null
+          ricarico_soci: number | null
+          updated_at: string
+        }
+        Insert: {
+          categoria: string
+          descrizione_categoria?: string | null
+          macro_gruppo?: string | null
+          ricarico_a?: number | null
+          ricarico_b?: number | null
+          ricarico_c?: number | null
+          ricarico_soci?: number | null
+          updated_at?: string
+        }
+        Update: {
+          categoria?: string
+          descrizione_categoria?: string | null
+          macro_gruppo?: string | null
+          ricarico_a?: number | null
+          ricarico_b?: number | null
+          ricarico_c?: number | null
+          ricarico_soci?: number | null
+          updated_at?: string
         }
         Relationships: []
       }
