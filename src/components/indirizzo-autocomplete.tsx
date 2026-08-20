@@ -37,6 +37,7 @@ export function IndirizzoAutocomplete({
   const tokenRef = useRef<any>(null);
   const boxRef = useRef<HTMLDivElement | null>(null);
   const ultimoRef = useRef("");
+  const saltaRef = useRef(false);
 
   useEffect(() => {
     if (!apiKey) return;
@@ -55,6 +56,7 @@ export function IndirizzoAutocomplete({
   useEffect(() => {
     const testo = value.trim();
     ultimoRef.current = testo;
+    if (saltaRef.current) { saltaRef.current = false; setSugg([]); setAperto(false); return; }
     if (!apiKey || testo.length < 3) { setSugg([]); return; }
     const t = setTimeout(async () => {
       try {
@@ -84,6 +86,7 @@ export function IndirizzoAutocomplete({
   }, [value, apiKey]);
 
   async function scegli(s: Sugg) {
+    saltaRef.current = true;
     setAperto(false);
     setSugg([]);
     try {
