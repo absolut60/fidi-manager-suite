@@ -55,8 +55,10 @@ export async function geocodificaIndirizzo(
     };
   }
   try {
+    const components = componiComponents(vincoli);
     const url =
       `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(indirizzo)}` +
+      `&components=${encodeURIComponent(components)}` +
       `&region=it&language=it&key=${apiKey}`;
     const res = await fetch(url);
     if (!res.ok) {
@@ -67,10 +69,30 @@ export async function geocodificaIndirizzo(
     const json = (await res.json()) as {
       status: string;
       error_message?: string;
-      results?: Array<{ geometry?: { location?: { lat: number; lng: number } } }>;
+      results?: Array<{
+        partial_match?: boolean;
+        geometry?: { location?: { lat: number; lng: number }; location_type?: string };
+      }>;
     };
-    const loc = json.results?.[0]?.geometry?.location;
-    if (json.status === "OK" && loc) return { stato: "ok", lat: loc.lat, lng: loc.lng, messaggio: null };
+    const primo = json.results?.[0];
+    const loc = primo?.geometry?.location;
+    if (json.status === "OK" && loc) {
+      const approssimativo = primo?.partial_match === true || primo?.geometry?.location_type === "APPROXIMATE";
+      return {
+        stato: "ok",
+        lat: loc.lat,
+        lng: loc.lng,
+        messaggio: approssimativo ? "Match approssimativo — verificare la posizione sulla mappa." : null,
+      };
+    }
+    // Nessun risultato con i vincoli: riprova con il solo indirizzo testuale.
+    if (json.status === "ZERO_RESULTS" && (vincoli?.citta || vincoli?.cap || vincoli?.provincia)) {
+      const esito = await geocodificaIndirizzo(indirizzo);
+      if (esito.stato === "ok") {
+        return { ...esito, messaggio: "Match approssimativo — verificare la posizione sulla mappa." };
+      }
+      return esito;
+    }
 
     let messaggio: string;
     switch (json.status) {
