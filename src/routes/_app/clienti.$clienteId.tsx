@@ -477,7 +477,7 @@ function ClienteDetail() {
             )}
           </div>
 
-          <div className="flex gap-2 items-center">
+          <div className="flex flex-wrap gap-2 items-center">
             {cliente.privacy_firmata ? (
               <Badge className="bg-success/15 text-success gap-1">
                 <FileCheck2 className="size-3" /> Privacy firmata
@@ -573,7 +573,7 @@ function ClienteDetail() {
       </div>
 
       <Tabs key={effTab} defaultValue={effTab}>
-        <TabsList className="flex-wrap h-auto">
+        <TabsList className="md:flex-wrap">
           <TabsTrigger value="riepilogo">Riepilogo</TabsTrigger>
           <TabsTrigger value="anagrafica">Anagrafica</TabsTrigger>
           <TabsTrigger value="contatti">Contatti ({contatti?.length ?? 0})</TabsTrigger>
@@ -1368,7 +1368,7 @@ function MiniStat({
             {label}
           </p>
           <p
-            className={`${size === "md" ? "text-[19px]" : "text-base"} font-bold mt-0.5 tabular-nums truncate ${valCls}`}
+            className={`${size === "md" ? "text-[17px] sm:text-[19px]" : "text-[13px] sm:text-[15px]"} font-bold mt-0.5 tabular-nums whitespace-nowrap leading-tight ${valCls}`}
           >
             {value}
           </p>

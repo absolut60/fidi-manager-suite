@@ -523,7 +523,7 @@ function LeadDettaglioPage() {
       </Dialog>
 
       <Tabs defaultValue="anagrafica">
-        <TabsList className="w-full justify-start overflow-x-auto md:w-auto">
+        <TabsList className="md:justify-start">
           <TabsTrigger value="anagrafica">Anagrafica</TabsTrigger>
           <TabsTrigger value="contatti">Contatti</TabsTrigger>
           <TabsTrigger value="cantieri">Cantieri</TabsTrigger>

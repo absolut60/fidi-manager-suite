@@ -109,3 +109,12 @@
 .pac-container {
   z-index: 10000 !important;
 }
+
+/* Scrollbar nascosta (barre tab scrollabili su mobile) */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
