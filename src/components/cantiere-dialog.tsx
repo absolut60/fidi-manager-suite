@@ -137,6 +137,7 @@ export function CantiereDialog({
     setAttivo(c?.attivo ?? true);
     setLat(c?.lat != null ? String(c.lat) : "");
     setLng(c?.lng != null ? String(c.lng) : "");
+    setSedeTesto(c ? testoSedeVicina(c) : null);
   }, [open, cantiere]);
 
   // Precompila l'agente dal soggetto scelto
