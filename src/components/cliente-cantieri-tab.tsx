@@ -1,46 +1,38 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { z } from "zod";
 import { toast } from "sonner";
-import { Plus, Trash2, MapPin, Map as MapIcon, Pencil, Construction } from "lucide-react";
+import { Plus, MapPin, Map as MapIcon, Pencil, Construction } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
-} from "@/components/ui/dialog";
+import { CantiereDialog } from "@/components/cantiere-dialog";
+import { BottoneElimina } from "@/components/conferma-eliminazione";
+import { usePermessiCommerciale } from "@/hooks/use-permessi-commerciale";
+import type { CantiereRow } from "@/lib/cantieri";
 
-const cantiereSchema = z.object({
-  nome: z.string().trim().min(1, "Obbligatorio").max(200),
-  descrizione: z.string().trim().max(1000).optional().or(z.literal("")),
-  indirizzo: z.string().trim().max(200).optional().or(z.literal("")),
-  citta: z.string().trim().max(100).optional().or(z.literal("")),
-  cap: z.string().trim().max(10).optional().or(z.literal("")),
-  provincia: z.string().trim().max(5).optional().or(z.literal("")),
-  referente: z.string().trim().max(150).optional().or(z.literal("")),
-  data_inizio: z.string().optional().or(z.literal("")),
-  data_fine_prevista: z.string().optional().or(z.literal("")),
-  note: z.string().trim().max(1000).optional().or(z.literal("")),
-  attivo: z.boolean().default(true),
-});
-
-type CantiereForm = z.infer<typeof cantiereSchema>;
-
-const empty: CantiereForm = {
-  nome: "", descrizione: "", indirizzo: "", citta: "", cap: "", provincia: "",
-  referente: "", data_inizio: "", data_fine_prevista: "", note: "", attivo: true,
-};
-
-export function ClienteCantieriTab({ clienteId }: { clienteId: string }) {
+export function ClienteCantieriTab({
+  clienteId,
+  ragioneSociale,
+}: {
+  clienteId: string;
+  ragioneSociale?: string | null;
+}) {
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const { puoEliminareCantiere } = usePermessiCommerciale();
+  const [openNew, setOpenNew] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+
+  const queryKey = useMemo(() => ["cantieri", clienteId] as const, [clienteId]);
+
+  const soggettoFisso = useMemo(
+    () => ({ tipo: "cliente" as const, id: clienteId, etichetta: ragioneSociale?.trim() || "Cliente" }),
+    [clienteId, ragioneSociale],
+  );
+  const queryKeysExtra = useMemo(() => [["cantieri", clienteId]], [clienteId]);
 
   function mostraSuMappa(c: { id: string; lat: number | null; lng: number | null }) {
     if (c.lat == null || c.lng == null) {
@@ -49,11 +41,9 @@ export function ClienteCantieriTab({ clienteId }: { clienteId: string }) {
     }
     navigate({ to: "/cantieri", search: { tab: "mappa", focus: c.id } });
   }
-  const [openNew, setOpenNew] = useState(false);
-  const [editId, setEditId] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["cantieri", clienteId],
+    queryKey,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("cantieri")
@@ -62,7 +52,7 @@ export function ClienteCantieriTab({ clienteId }: { clienteId: string }) {
         .order("attivo", { ascending: false })
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data;
+      return (data ?? []) as unknown as CantiereRow[];
     },
   });
 
@@ -73,29 +63,20 @@ export function ClienteCantieriTab({ clienteId }: { clienteId: string }) {
     },
     onSuccess: () => {
       toast.success("Cantiere eliminato");
-      qc.invalidateQueries({ queryKey: ["cantieri", clienteId] });
+      qc.invalidateQueries({ queryKey });
+      qc.invalidateQueries({ queryKey: ["cantieri-lista"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: () => toast.error("Eliminazione non riuscita: non hai i permessi su questo cantiere."),
   });
 
-  const editingCantiere = data?.find((c) => c.id === editId);
+  const editingCantiere = data?.find((c) => c.id === editId) ?? null;
 
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <Dialog open={openNew} onOpenChange={setOpenNew}>
-          <DialogTrigger asChild>
-            <Button size="sm" className="gap-1.5">
-              <Plus className="size-4" /> Nuovo cantiere
-            </Button>
-          </DialogTrigger>
-          <CantiereDialog
-            clienteId={clienteId}
-            mode="new"
-            initial={empty}
-            onClose={() => setOpenNew(false)}
-          />
-        </Dialog>
+        <Button size="sm" className="gap-1.5" onClick={() => setOpenNew(true)}>
+          <Plus className="size-4" /> Nuovo cantiere
+        </Button>
       </div>
 
       {isLoading ? (
@@ -141,13 +122,13 @@ export function ClienteCantieriTab({ clienteId }: { clienteId: string }) {
                   >
                     <Pencil className="size-4" />
                   </Button>
-                  <Button
-                    variant="ghost" size="icon"
-                    onClick={() => { if (confirm("Eliminare questo cantiere?")) delMut.mutate(c.id); }}
-                    className="text-muted-foreground hover:text-destructive"
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
+                  {puoEliminareCantiere(c) && (
+                    <BottoneElimina
+                      titolo="Eliminare questo cantiere?"
+                      descrizione={`"${c.nome}" verrà eliminato definitivamente. L'azione è irreversibile.`}
+                      onConferma={() => delMut.mutateAsync(c.id)}
+                    />
+                  )}
                 </div>
               </div>
               <div className="mt-3 space-y-1.5 text-xs text-muted-foreground">
@@ -175,161 +156,20 @@ export function ClienteCantieriTab({ clienteId }: { clienteId: string }) {
         </div>
       )}
 
-      {editingCantiere && (
-        <Dialog open={!!editId} onOpenChange={(o) => !o && setEditId(null)}>
-          <CantiereDialog
-            clienteId={clienteId}
-            mode="edit"
-            cantiereId={editingCantiere.id}
-            initial={{
-              nome: editingCantiere.nome ?? "",
-              descrizione: editingCantiere.descrizione ?? "",
-              indirizzo: editingCantiere.indirizzo ?? "",
-              citta: editingCantiere.citta ?? "",
-              cap: editingCantiere.cap ?? "",
-              provincia: editingCantiere.provincia ?? "",
-              referente: editingCantiere.referente ?? "",
-              data_inizio: editingCantiere.data_inizio ?? "",
-              data_fine_prevista: editingCantiere.data_fine_prevista ?? "",
-              note: editingCantiere.note ?? "",
-              attivo: editingCantiere.attivo ?? true,
-            }}
-            onClose={() => setEditId(null)}
-          />
-        </Dialog>
-      )}
+      <CantiereDialog
+        open={openNew}
+        onOpenChange={setOpenNew}
+        soggettoFisso={soggettoFisso}
+        queryKeysExtra={queryKeysExtra}
+      />
+
+      <CantiereDialog
+        open={!!editingCantiere}
+        onOpenChange={(o) => !o && setEditId(null)}
+        cantiere={editingCantiere}
+        soggettoFisso={soggettoFisso}
+        queryKeysExtra={queryKeysExtra}
+      />
     </div>
-  );
-}
-
-function CantiereDialog({
-  clienteId, mode, cantiereId, initial, onClose,
-}: {
-  clienteId: string;
-  mode: "new" | "edit";
-  cantiereId?: string;
-  initial: CantiereForm;
-  onClose: () => void;
-}) {
-  const qc = useQueryClient();
-  const [form, setForm] = useState<CantiereForm>(initial);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const mut = useMutation({
-    mutationFn: async (input: CantiereForm) => {
-      const parsed = cantiereSchema.parse(input);
-      const { data: { user } } = await supabase.auth.getUser();
-      const payload: Record<string, any> = {
-        cliente_id: clienteId,
-        nome: parsed.nome,
-        descrizione: parsed.descrizione || null,
-        indirizzo: parsed.indirizzo || null,
-        citta: parsed.citta || null,
-        cap: parsed.cap || null,
-        provincia: parsed.provincia || null,
-        referente: parsed.referente || null,
-        data_inizio: parsed.data_inizio || null,
-        data_fine_prevista: parsed.data_fine_prevista || null,
-        note: parsed.note || null,
-        attivo: parsed.attivo,
-      };
-      if (mode === "new") {
-        payload.created_by = user?.id ?? null;
-        const { error } = await supabase.from("cantieri").insert(payload as any);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from("cantieri").update(payload as any).eq("id", cantiereId!);
-        if (error) throw error;
-      }
-    },
-    onSuccess: () => {
-      toast.success(mode === "new" ? "Cantiere creato" : "Cantiere aggiornato");
-      qc.invalidateQueries({ queryKey: ["cantieri", clienteId] });
-      onClose();
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  function submit(e: React.FormEvent) {
-    e.preventDefault();
-    const r = cantiereSchema.safeParse(form);
-    if (!r.success) {
-      const errs: Record<string, string> = {};
-      r.error.issues.forEach((i) => { errs[i.path[0] as string] = i.message; });
-      setErrors(errs);
-      return;
-    }
-    setErrors({});
-    mut.mutate(form);
-  }
-
-  function set<K extends keyof CantiereForm>(k: K, v: CantiereForm[K]) {
-    setForm((f) => ({ ...f, [k]: v }));
-  }
-
-  return (
-    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-      <DialogHeader>
-        <DialogTitle>{mode === "new" ? "Nuovo cantiere" : "Modifica cantiere"}</DialogTitle>
-        <DialogDescription>Dati del cantiere collegato al cliente.</DialogDescription>
-      </DialogHeader>
-      <form onSubmit={submit} className="space-y-4">
-        <div className="space-y-1.5">
-          <Label>Nome cantiere *</Label>
-          <Input value={form.nome} onChange={(e) => set("nome", e.target.value)} />
-          {errors.nome && <p className="text-xs text-destructive">{errors.nome}</p>}
-        </div>
-        <div className="space-y-1.5">
-          <Label>Descrizione</Label>
-          <Textarea rows={2} value={form.descrizione} onChange={(e) => set("descrizione", e.target.value)} />
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="space-y-1.5 sm:col-span-2">
-            <Label>Indirizzo</Label>
-            <Input value={form.indirizzo} onChange={(e) => set("indirizzo", e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Città</Label>
-            <Input value={form.citta} onChange={(e) => set("citta", e.target.value)} />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>CAP</Label>
-              <Input value={form.cap} onChange={(e) => set("cap", e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Prov.</Label>
-              <Input value={form.provincia} onChange={(e) => set("provincia", e.target.value)} />
-            </div>
-          </div>
-          <div className="space-y-1.5 sm:col-span-2">
-            <Label>Referente</Label>
-            <Input value={form.referente} onChange={(e) => set("referente", e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Data inizio</Label>
-            <Input type="date" value={form.data_inizio} onChange={(e) => set("data_inizio", e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Fine prevista</Label>
-            <Input type="date" value={form.data_fine_prevista} onChange={(e) => set("data_fine_prevista", e.target.value)} />
-          </div>
-        </div>
-        <div className="space-y-1.5">
-          <Label>Note</Label>
-          <Textarea rows={2} value={form.note} onChange={(e) => set("note", e.target.value)} />
-        </div>
-        <div className="flex items-center gap-2">
-          <Checkbox id="attivo" checked={form.attivo} onCheckedChange={(v) => set("attivo", v === true)} />
-          <Label htmlFor="attivo" className="cursor-pointer text-sm font-normal">Cantiere attivo</Label>
-        </div>
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose}>Annulla</Button>
-          <Button type="submit" disabled={mut.isPending}>
-            {mut.isPending ? "Salvataggio..." : mode === "new" ? "Crea" : "Salva"}
-          </Button>
-        </DialogFooter>
-      </form>
-    </DialogContent>
   );
 }
