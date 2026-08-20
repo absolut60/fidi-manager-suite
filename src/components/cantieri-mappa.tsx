@@ -8,26 +8,7 @@ import {
   nomeSoggettoCantiere, testoSedeVicina, type CantiereRow, type SedeMappa,
 } from "@/lib/cantieri";
 
-declare global {
-  interface Window { google?: any; __initGoogleMaps?: () => void }
-}
-
-let caricamento: Promise<void> | null = null;
-
-function caricaMaps(key: string): Promise<void> {
-  if (typeof window === "undefined") return Promise.resolve();
-  if (window.google?.maps) return Promise.resolve();
-  if (caricamento) return caricamento;
-  caricamento = new Promise<void>((resolve, reject) => {
-    window.__initGoogleMaps = () => resolve();
-    const s = document.createElement("script");
-    s.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&loading=async&callback=__initGoogleMaps&language=it&region=IT`;
-    s.async = true;
-    s.onerror = () => reject(new Error("Caricamento Google Maps non riuscito"));
-    document.head.appendChild(s);
-  });
-  return caricamento;
-}
+import { caricaMaps } from "@/lib/google-maps-loader";
 
 /** Pin a goccia colorato: cantieri (colore per categoria). */
 function pinSvg(colore: string): string {

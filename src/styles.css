@@ -104,3 +104,8 @@
     -webkit-font-smoothing: antialiased;
   }
 }
+
+/* Dropdown suggerimenti Google Places sopra i dialog Radix */
+.pac-container {
+  z-index: 10000 !important;
+}
