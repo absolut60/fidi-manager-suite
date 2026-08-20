@@ -140,6 +140,47 @@ export type Database = {
           },
         ]
       }
+      allegati_kit: {
+        Row: {
+          categoria: string
+          created_at: string
+          dimensione_bytes: number | null
+          id: string
+          kit_id: string
+          mime_type: string | null
+          nome_file: string
+          storage_path: string
+        }
+        Insert: {
+          categoria?: string
+          created_at?: string
+          dimensione_bytes?: number | null
+          id?: string
+          kit_id: string
+          mime_type?: string | null
+          nome_file: string
+          storage_path: string
+        }
+        Update: {
+          categoria?: string
+          created_at?: string
+          dimensione_bytes?: number | null
+          id?: string
+          kit_id?: string
+          mime_type?: string | null
+          nome_file?: string
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "allegati_kit_kit_id_fkey"
+            columns: ["kit_id"]
+            isOneToOne: false
+            referencedRelation: "kit"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       anomalie_import: {
         Row: {
           campo: string
@@ -2308,6 +2349,114 @@ export type Database = {
             columns: ["evento_id"]
             isOneToOne: false
             referencedRelation: "eventi"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kit: {
+        Row: {
+          created_at: string
+          descrizione_tecnica: string | null
+          famiglia: Database["public"]["Enums"]["kit_famiglia"]
+          h_max: number | null
+          id: string
+          isolante: string | null
+          nome: string
+          passo: number | null
+          passo_um: string | null
+          spessore: number | null
+          tipo_struttura: string | null
+          um_base: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          descrizione_tecnica?: string | null
+          famiglia?: Database["public"]["Enums"]["kit_famiglia"]
+          h_max?: number | null
+          id?: string
+          isolante?: string | null
+          nome: string
+          passo?: number | null
+          passo_um?: string | null
+          spessore?: number | null
+          tipo_struttura?: string | null
+          um_base?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          descrizione_tecnica?: string | null
+          famiglia?: Database["public"]["Enums"]["kit_famiglia"]
+          h_max?: number | null
+          id?: string
+          isolante?: string | null
+          nome?: string
+          passo?: number | null
+          passo_um?: string | null
+          spessore?: number | null
+          tipo_struttura?: string | null
+          um_base?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      kit_componenti: {
+        Row: {
+          articolo_id: string | null
+          created_at: string
+          id: string
+          incidenza: number | null
+          kit_id: string
+          lato: number | null
+          ordine: number
+          ruolo: string | null
+          strato: number | null
+          tipo_driver: Database["public"]["Enums"]["tipo_driver"] | null
+          updated_at: string
+          valore_driver: number | null
+        }
+        Insert: {
+          articolo_id?: string | null
+          created_at?: string
+          id?: string
+          incidenza?: number | null
+          kit_id: string
+          lato?: number | null
+          ordine?: number
+          ruolo?: string | null
+          strato?: number | null
+          tipo_driver?: Database["public"]["Enums"]["tipo_driver"] | null
+          updated_at?: string
+          valore_driver?: number | null
+        }
+        Update: {
+          articolo_id?: string | null
+          created_at?: string
+          id?: string
+          incidenza?: number | null
+          kit_id?: string
+          lato?: number | null
+          ordine?: number
+          ruolo?: string | null
+          strato?: number | null
+          tipo_driver?: Database["public"]["Enums"]["tipo_driver"] | null
+          updated_at?: string
+          valore_driver?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kit_componenti_articolo_id_fkey"
+            columns: ["articolo_id"]
+            isOneToOne: false
+            referencedRelation: "articoli"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kit_componenti_kit_id_fkey"
+            columns: ["kit_id"]
+            isOneToOne: false
+            referencedRelation: "kit"
             referencedColumns: ["id"]
           },
         ]
