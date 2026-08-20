@@ -50,6 +50,8 @@ export const Route = createFileRoute("/_app/cantieri")({
 const PAGINA = 1000;
 
 function CantieriPage() {
+  const { tab, focus } = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
   const { roles } = useAuth();
   const isTrasversale = roles.some((r) =>
     ["amministratore", "amministrazione", "direzione", "marketing", "store_manager"].includes(r),
