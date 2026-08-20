@@ -74,6 +74,7 @@ const NAV: NavItem[] = [
   { to: "/contatti", label: "Contatti", icon: Users, group: "generale" },
   { to: "/lead", label: "Lead", icon: UserPlus, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "generale" },
   // COMMERCIALE
+  { to: "/dashboard-commerciale", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "commerciale" },
   { to: "/opportunita", label: "Opportunità", icon: Target, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "commerciale" },
   { to: "/calendario-commerciale", label: "Calendario", icon: CalendarDays, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "commerciale" },
   // FIDI
@@ -168,6 +169,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const AGENTE_WHITELIST = new Set<string>([
     "/clienti",
     "/contatti",
+    "/dashboard-commerciale",
     "/opportunita",
     "/calendario-commerciale",
     "/scadenziario",
