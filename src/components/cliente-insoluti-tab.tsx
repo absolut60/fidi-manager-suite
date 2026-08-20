@@ -1727,6 +1727,7 @@ function NuovaPolizzaDialog({ clienteId, onClose, onSaved }: { clienteId: string
         assicuratore: form.assicuratore.trim(),
         numero_polizza: form.numero_polizza || null,
         importo_massimale: form.importo_massimale ? Number(form.importo_massimale) : null,
+        costo_assicurazione: form.costo_assicurazione ? Number(form.costo_assicurazione) : null,
         data_inizio: form.data_inizio || null,
         data_scadenza: form.data_scadenza || null,
         gestita_da: user?.id ?? null,
@@ -1744,7 +1745,10 @@ function NuovaPolizzaDialog({ clienteId, onClose, onSaved }: { clienteId: string
       <div className="space-y-3">
         <div className="space-y-1.5"><Label>Assicuratore *</Label><Input value={form.assicuratore} onChange={(e) => setForm({ ...form, assicuratore: e.target.value })} /></div>
         <div className="space-y-1.5"><Label>Numero polizza</Label><Input value={form.numero_polizza} onChange={(e) => setForm({ ...form, numero_polizza: e.target.value })} /></div>
-        <div className="space-y-1.5"><Label>Massimale (€)</Label><Input type="number" step="0.01" value={form.importo_massimale} onChange={(e) => setForm({ ...form, importo_massimale: e.target.value })} /></div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5"><Label>Massimale (€)</Label><Input type="number" step="0.01" value={form.importo_massimale} onChange={(e) => setForm({ ...form, importo_massimale: e.target.value })} /></div>
+          <div className="space-y-1.5"><Label>Costo assicurazione (€)</Label><Input type="number" step="0.01" value={form.costo_assicurazione} onChange={(e) => setForm({ ...form, costo_assicurazione: e.target.value })} /></div>
+        </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5"><Label>Data inizio</Label><Input type="date" value={form.data_inizio} onChange={(e) => setForm({ ...form, data_inizio: e.target.value })} /></div>
           <div className="space-y-1.5"><Label>Data scadenza</Label><Input type="date" value={form.data_scadenza} onChange={(e) => setForm({ ...form, data_scadenza: e.target.value })} /></div>
