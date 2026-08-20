@@ -175,9 +175,10 @@ export function OpportunitaDialog({
   }, [stato]);
 
   const agentiOrdinati = useMemo(
-    () => [...agenti].sort((a, b) => (a.descrizione ?? a.codice).localeCompare(b.descrizione ?? b.codice)),
-    [agenti],
+    () => [...listaAgenti].sort((a, b) => (a.descrizione ?? a.codice).localeCompare(b.descrizione ?? b.codice)),
+    [listaAgenti],
   );
+
 
   async function salva() {
     if (!titolo.trim()) { toast.error("Il titolo è obbligatorio"); return; }
