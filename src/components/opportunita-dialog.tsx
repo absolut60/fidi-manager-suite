@@ -221,7 +221,7 @@ export function OpportunitaDialog({
         if (error) throw error;
         toast.success("Opportunità creata");
       }
-      await qc.invalidateQueries({ queryKey: ["opportunita-lista"] });
+      await invalida();
       onOpenChange(false);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Errore nel salvataggio");
@@ -238,7 +238,7 @@ export function OpportunitaDialog({
       return;
     }
     toast.success("Opportunità eliminata");
-    await qc.invalidateQueries({ queryKey: ["opportunita-lista"] });
+    await invalida();
     onOpenChange(false);
     onDeleted?.();
   }
