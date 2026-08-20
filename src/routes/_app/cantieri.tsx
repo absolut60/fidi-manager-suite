@@ -4,7 +4,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ClientOnly } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, Building2, Pencil, Plus, Search } from "lucide-react";
+import { AlertTriangle, Building2, MapPinned, Pencil, Plus, Search } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
@@ -17,10 +18,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FiltriCollassabili } from "@/components/lista-responsive";
 import { CantiereDialog } from "@/components/cantiere-dialog";
-import { getChiaveMappe } from "@/lib/cantieri.functions";
+import { getChiaveMappe, geocodificaSedi } from "@/lib/cantieri.functions";
 import {
   CATEGORIE_CANTIERE, CATEGORIA_LABEL, GEO_CLASS, GEO_LABEL, GEO_STATI,
-  indirizzoCompleto, nomeSoggettoCantiere,
+  indirizzoCompleto, nomeSoggettoCantiere, testoSedeVicina,
   type CantiereRow, type GeoStato,
 } from "@/lib/cantieri";
 
@@ -57,6 +58,22 @@ function CantieriPage() {
   const [inModifica, setInModifica] = useState<CantiereRow | null>(null);
 
   const chiaveMappe = useServerFn(getChiaveMappe);
+  const geoSedi = useServerFn(geocodificaSedi);
+  const [sediBusy, setSediBusy] = useState(false);
+
+  async function geocodificaLeSedi() {
+    setSediBusy(true);
+    try {
+      const r = await geoSedi();
+      if (r.ok === 0 && r.fallite === 0) toast.info("Tutte le sedi hanno già le coordinate");
+      else if (r.fallite === 0) toast.success(`${r.ok} sedi geocodificate`);
+      else toast.warning(`${r.ok} sedi geocodificate, ${r.fallite} fallite: ${r.messaggi.join(" — ")}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Geocodifica sedi non riuscita");
+    } finally {
+      setSediBusy(false);
+    }
+  }
 
   const { data: agenti = [] } = useQuery({
     queryKey: ["agenti-lookup"],
@@ -80,7 +97,7 @@ function CantieriPage() {
       for (let da = 0; ; da += PAGINA) {
         const { data, error } = await supabase
           .from("cantieri")
-          .select("*, clienti(ragione_sociale, codice_agente), lead(ragione_sociale, nome, cognome)")
+          .select("*, clienti(ragione_sociale, codice_agente), lead(ragione_sociale, nome, cognome), sede:stores!cantieri_sede_piu_vicina_id_fkey(nome)")
           .order("created_at", { ascending: false })
           .range(da, da + PAGINA - 1);
         if (error) throw error;
@@ -139,9 +156,16 @@ function CantieriPage() {
           </h1>
           <p className="text-sm text-muted-foreground">Cantieri collegati a clienti e lead, con posizione su mappa.</p>
         </div>
-        <Button onClick={() => { setInModifica(null); setDialogOpen(true); }}>
-          <Plus className="size-4 mr-1.5" /> Nuovo cantiere
-        </Button>
+        <div className="flex items-center gap-2">
+          {isTrasversale && (
+            <Button variant="outline" disabled={sediBusy} onClick={geocodificaLeSedi}>
+              <MapPinned className={`size-4 mr-1.5 ${sediBusy ? "animate-pulse" : ""}`} /> Geocodifica sedi
+            </Button>
+          )}
+          <Button onClick={() => { setInModifica(null); setDialogOpen(true); }}>
+            <Plus className="size-4 mr-1.5" /> Nuovo cantiere
+          </Button>
+        </div>
       </div>
 
       {daPosizionare > 0 && (
@@ -190,6 +214,7 @@ function CantieriPage() {
                     <TableHead>Cliente / Lead</TableHead>
                     <TableHead>Indirizzo</TableHead>
                     <TableHead>Geocodifica</TableHead>
+                    <TableHead>Sede più vicina</TableHead>
                     <TableHead>Agente</TableHead>
                     <TableHead>Stato</TableHead>
                     <TableHead className="w-12" />
@@ -216,6 +241,7 @@ function CantieriPage() {
                             {GEO_LABEL[s]}
                           </Badge>
                         </TableCell>
+                        <TableCell className="text-sm">{testoSedeVicina(c) ?? "—"}</TableCell>
                         <TableCell className="text-sm">
                           {c.agente_codice ? (agenteLabel.get(c.agente_codice) ?? c.agente_codice) : "—"}
                         </TableCell>

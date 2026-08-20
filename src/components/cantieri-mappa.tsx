@@ -1,7 +1,7 @@
 // Mappa Google dei cantieri geolocalizzati. Componente caricato solo lato client
 // (import dinamico): la Maps JS API richiede il browser.
 import { useEffect, useRef } from "react";
-import { CATEGORIA_COLORE, CATEGORIA_LABEL, indirizzoCompleto, nomeSoggettoCantiere, type CantiereRow } from "@/lib/cantieri";
+import { CATEGORIA_COLORE, CATEGORIA_LABEL, indirizzoCompleto, nomeSoggettoCantiere, testoSedeVicina, type CantiereRow } from "@/lib/cantieri";
 
 declare global {
   interface Window { google?: any; __initGoogleMaps?: () => void }
@@ -57,7 +57,12 @@ export default function CantieriMappa({
           mapRef.current = new window.google.maps.Map(divRef.current, {
             center: { lat: 42.5, lng: 12.5 },
             zoom: 6,
-            mapTypeControl: false,
+            mapTypeControl: true,
+            mapTypeId: "roadmap",
+            mapTypeControlOptions: {
+              mapTypeIds: ["roadmap", "satellite", "hybrid", "terrain"],
+              style: window.google.maps.MapTypeControlStyle?.HORIZONTAL_BAR,
+            },
             streetViewControl: false,
           });
           infoRef.current = new window.google.maps.InfoWindow();
@@ -90,11 +95,16 @@ export default function CantieriMappa({
             a.style.fontSize = "12px";
             a.style.color = "#666";
             a.textContent = indirizzoCompleto(c) || "—";
+            const sede = document.createElement("div");
+            sede.style.fontSize = "12px";
+            sede.style.marginTop = "4px";
+            const testoSede = testoSedeVicina(c);
+            if (testoSede) sede.textContent = `Sede più vicina: ${testoSede}`;
             const btn = document.createElement("button");
             btn.textContent = "Apri";
             btn.style.cssText = "margin-top:8px;font-size:12px;text-decoration:underline;cursor:pointer";
             btn.onclick = () => onApri(c);
-            div.append(h, s, a, btn);
+            div.append(h, s, a, sede, btn);
             infoRef.current.setContent(div);
             infoRef.current.open({ map, anchor: marker });
           });

@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { MapPin, RefreshCw } from "lucide-react";
+import { Crosshair, MapPin, Navigation, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -17,9 +17,9 @@ import {
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SoggettoCombobox, type SoggettoSelezionato } from "@/components/soggetto-combobox";
-import { geocodificaCantiere } from "@/lib/cantieri.functions";
+import { geocodificaCantiere, ricalcolaSedeVicina } from "@/lib/cantieri.functions";
 import {
-  CATEGORIE_CANTIERE, CATEGORIA_LABEL, GEO_CLASS, GEO_LABEL,
+  CATEGORIE_CANTIERE, CATEGORIA_LABEL, GEO_CLASS, GEO_LABEL, testoSedeVicina,
   type CantiereRow, type GeoStato,
 } from "@/lib/cantieri";
 
@@ -41,6 +41,7 @@ export function CantiereDialog({
   );
   const forzaAgente = isAgente && !isTrasversale;
   const geocodifica = useServerFn(geocodificaCantiere);
+  const ricalcolaSede = useServerFn(ricalcolaSedeVicina);
 
   const [nome, setNome] = useState("");
   const [soggetto, setSoggetto] = useState<SoggettoSelezionato | null>(null);
@@ -59,6 +60,55 @@ export function CantiereDialog({
   const [lng, setLng] = useState("");
   const [saving, setSaving] = useState(false);
   const [geoBusy, setGeoBusy] = useState(false);
+  const [gpsBusy, setGpsBusy] = useState(false);
+  const [sedeBusy, setSedeBusy] = useState(false);
+  const [sedeTesto, setSedeTesto] = useState<string | null>(null);
+
+  function usaLaMiaPosizione() {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      toast.error("Geolocalizzazione non disponibile su questo dispositivo");
+      return;
+    }
+    setGpsBusy(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLat(String(Number(pos.coords.latitude.toFixed(6))));
+        setLng(String(Number(pos.coords.longitude.toFixed(6))));
+        setGpsBusy(false);
+        toast.success("Posizione acquisita");
+      },
+      (err) => {
+        setGpsBusy(false);
+        toast.error(
+          err.code === err.PERMISSION_DENIED
+            ? "Permesso posizione negato: abilitalo nelle impostazioni del browser."
+            : "Posizione non disponibile: riprova all'aperto o inserisci le coordinate a mano.",
+        );
+      },
+      { enableHighAccuracy: true, timeout: 15000 },
+    );
+  }
+
+  async function ricalcolaLaSede(id: string) {
+    setSedeBusy(true);
+    try {
+      const r = await ricalcolaSede({ data: { cantiere_id: id } });
+      if (r.sede_id) {
+        setSedeTesto(testoSedeVicina({
+          sede: { nome: r.sede_nome }, sede_piu_vicina_km: r.km, sede_piu_vicina_min: r.minuti,
+        }));
+        toast.success("Sede più vicina aggiornata");
+      } else {
+        setSedeTesto(null);
+        toast.error(r.messaggio ?? "Sede più vicina non calcolabile");
+      }
+      qc.invalidateQueries({ queryKey: ["cantieri-lista"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Calcolo sede non riuscito");
+    } finally {
+      setSedeBusy(false);
+    }
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -87,6 +137,7 @@ export function CantiereDialog({
     setAttivo(c?.attivo ?? true);
     setLat(c?.lat != null ? String(c.lat) : "");
     setLng(c?.lng != null ? String(c.lng) : "");
+    setSedeTesto(c ? testoSedeVicina(c) : null);
   }, [open, cantiere]);
 
   // Precompila l'agente dal soggetto scelto
@@ -200,6 +251,9 @@ export function CantiereDialog({
       const serveGeo = !coordManuali && (!cantiere || indirizzoCambiato || latN == null || lngN == null);
       if (serveGeo && (indirizzo.trim() || citta.trim())) {
         await eseguiGeocodifica(id, true);
+      } else if (coordManuali) {
+        try { await ricalcolaSede({ data: { cantiere_id: id } }); } catch { /* non blocca */ }
+        qc.invalidateQueries({ queryKey: ["cantieri-lista"] });
       }
       onOpenChange(false);
     } catch (e) {
@@ -332,10 +386,33 @@ export function CantiereDialog({
                 <Input value={lng} onChange={(e) => setLng(e.target.value)} placeholder="9.19" />
               </div>
             </div>
+            <Button type="button" variant="outline" size="sm" disabled={gpsBusy} onClick={usaLaMiaPosizione}>
+              <Crosshair className={`size-4 mr-1.5 ${gpsBusy ? "animate-pulse" : ""}`} />
+              {gpsBusy ? "Acquisizione…" : "Usa la mia posizione"}
+            </Button>
             <p className="text-xs text-muted-foreground">
               Inserendo le coordinate a mano lo stato diventa "Coordinate manuali" e la geocodifica automatica non le sovrascrive.
             </p>
           </div>
+
+          {cantiere && (
+            <div className="rounded-md border p-3 space-y-2">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <Navigation className="size-4" /> Sede più vicina
+                </div>
+                <Button
+                  type="button" variant="outline" size="sm" disabled={sedeBusy}
+                  onClick={() => ricalcolaLaSede(cantiere.id)}
+                >
+                  <RefreshCw className={`size-4 mr-1.5 ${sedeBusy ? "animate-spin" : ""}`} /> Ricalcola
+                </Button>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {sedeTesto ?? "Non ancora calcolata: posiziona il cantiere e premi Ricalcola."}
+              </p>
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <Label>Note</Label>
