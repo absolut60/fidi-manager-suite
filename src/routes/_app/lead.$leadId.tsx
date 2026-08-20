@@ -1,8 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowLeft, Save, Trash2, Loader2, ScrollText, Info, UserPlus, Undo2 } from "lucide-react";
+import {
+  ArrowLeft, Save, Trash2, Loader2, ScrollText, Info, UserPlus, Undo2,
+  Pencil, X, User, Phone, MapPin, Target, Calendar, StickyNote,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
