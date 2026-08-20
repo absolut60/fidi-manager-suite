@@ -208,11 +208,15 @@ export default function CantieriMappa({
   }, [pronta, sedi, mostraSedi]);
 
   // --- Focus su un cantiere (da lista / da scheda cliente) -----------------
+  // Applicato una sola volta per id: il parametro resta nell'URL, così l'InfoWindow
+  // non viene chiusa da un rebuild dei marker.
   useEffect(() => {
     if (!pronta || !focusId || !mapRef.current) return;
+    if (focusFattoRef.current === focusId) return;
     const marker = markersRef.current.get(focusId);
     const apri = apriInfoRef.current.get(focusId);
     if (!marker || !apri) return;
+    focusFattoRef.current = focusId;
     mapRef.current.panTo(marker.getPosition());
     mapRef.current.setZoom(15);
     apri();
