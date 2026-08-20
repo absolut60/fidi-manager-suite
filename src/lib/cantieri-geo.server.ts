@@ -96,7 +96,11 @@ export async function geocodificaIndirizzo(
       else if (haProv && haCitta) successivo = { citta: vincoli?.citta ?? null };
       else if (haCitta || haProv) successivo = undefined;
       if (successivo !== false) {
-        const esito = await geocodificaIndirizzo(indirizzo, successivo);
+        // Se il CAP viene scartato come vincolo, va tolto anche dal testo:
+        // un CAP obsoleto porta Google su comuni limitrofi.
+        const cap = vincoli?.cap?.trim();
+        const testo = haCap && cap ? indirizzo.replace(new RegExp(`\\b${cap}\\b\\s*`, "g"), "") : indirizzo;
+        const esito = await geocodificaIndirizzo(testo, successivo);
         if (esito.stato === "ok") {
           return { ...esito, messaggio: "Match approssimativo — verificare la posizione sulla mappa." };
         }
