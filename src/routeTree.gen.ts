@@ -30,6 +30,7 @@ import { Route as AppRecuperoCreditiAndamentoRouteImport } from './routes/_app/r
 import { Route as AppRecuperoCreditiRouteImport } from './routes/_app/recupero-crediti'
 import { Route as AppPrivacyRouteImport } from './routes/_app/privacy'
 import { Route as AppPianiRientroRouteImport } from './routes/_app/piani-rientro'
+import { Route as AppOpportunitaRouteImport } from './routes/_app/opportunita'
 import { Route as AppLegaliRouteImport } from './routes/_app/legali'
 import { Route as AppLeadRouteImport } from './routes/_app/lead'
 import { Route as AppImpostazioniRouteImport } from './routes/_app/impostazioni'
@@ -176,6 +177,11 @@ const AppPianiRientroRoute = AppPianiRientroRouteImport.update({
   path: '/piani-rientro',
   getParentRoute: () => AppRoute,
 } as any)
+const AppOpportunitaRoute = AppOpportunitaRouteImport.update({
+  id: '/opportunita',
+  path: '/opportunita',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppLegaliRoute = AppLegaliRouteImport.update({
   id: '/legali',
   path: '/legali',
@@ -255,9 +261,9 @@ const AppRichiesteInterneIndexRoute =
     getParentRoute: () => AppRoute,
   } as any)
 const AppOpportunitaIndexRoute = AppOpportunitaIndexRouteImport.update({
-  id: '/opportunita/',
-  path: '/opportunita/',
-  getParentRoute: () => AppRoute,
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppOpportunitaRoute,
 } as any)
 const AppLeadIndexRoute = AppLeadIndexRouteImport.update({
   id: '/',
@@ -391,6 +397,7 @@ export interface FileRoutesByFullPath {
   '/impostazioni': typeof AppImpostazioniRoute
   '/lead': typeof AppLeadRouteWithChildren
   '/legali': typeof AppLegaliRoute
+  '/opportunita': typeof AppOpportunitaRouteWithChildren
   '/piani-rientro': typeof AppPianiRientroRoute
   '/privacy': typeof AppPrivacyRoute
   '/recupero-crediti': typeof AppRecuperoCreditiRoute
@@ -510,6 +517,7 @@ export interface FileRoutesById {
   '/_app/impostazioni': typeof AppImpostazioniRoute
   '/_app/lead': typeof AppLeadRouteWithChildren
   '/_app/legali': typeof AppLegaliRoute
+  '/_app/opportunita': typeof AppOpportunitaRouteWithChildren
   '/_app/piani-rientro': typeof AppPianiRientroRoute
   '/_app/privacy': typeof AppPrivacyRoute
   '/_app/recupero-crediti': typeof AppRecuperoCreditiRoute
@@ -571,6 +579,7 @@ export interface FileRouteTypes {
     | '/impostazioni'
     | '/lead'
     | '/legali'
+    | '/opportunita'
     | '/piani-rientro'
     | '/privacy'
     | '/recupero-crediti'
@@ -689,6 +698,7 @@ export interface FileRouteTypes {
     | '/_app/impostazioni'
     | '/_app/lead'
     | '/_app/legali'
+    | '/_app/opportunita'
     | '/_app/piani-rientro'
     | '/_app/privacy'
     | '/_app/recupero-crediti'
@@ -899,6 +909,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPianiRientroRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/opportunita': {
+      id: '/_app/opportunita'
+      path: '/opportunita'
+      fullPath: '/opportunita'
+      preLoaderRoute: typeof AppOpportunitaRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/legali': {
       id: '/_app/legali'
       path: '/legali'
@@ -1006,10 +1023,10 @@ declare module '@tanstack/react-router' {
     }
     '/_app/opportunita/': {
       id: '/_app/opportunita/'
-      path: '/opportunita'
+      path: '/'
       fullPath: '/opportunita/'
       preLoaderRoute: typeof AppOpportunitaIndexRouteImport
-      parentRoute: typeof AppRoute
+      parentRoute: typeof AppOpportunitaRoute
     }
     '/_app/lead/': {
       id: '/_app/lead/'
@@ -1186,6 +1203,18 @@ const AppLeadRouteChildren: AppLeadRouteChildren = {
 const AppLeadRouteWithChildren =
   AppLeadRoute._addFileChildren(AppLeadRouteChildren)
 
+interface AppOpportunitaRouteChildren {
+  AppOpportunitaIndexRoute: typeof AppOpportunitaIndexRoute
+}
+
+const AppOpportunitaRouteChildren: AppOpportunitaRouteChildren = {
+  AppOpportunitaIndexRoute: AppOpportunitaIndexRoute,
+}
+
+const AppOpportunitaRouteWithChildren = AppOpportunitaRoute._addFileChildren(
+  AppOpportunitaRouteChildren,
+)
+
 interface AppRichiesteRouteChildren {
   AppRichiesteRichiestaIdRoute: typeof AppRichiesteRichiestaIdRoute
 }
@@ -1211,6 +1240,7 @@ interface AppRouteChildren {
   AppImpostazioniRoute: typeof AppImpostazioniRoute
   AppLeadRoute: typeof AppLeadRouteWithChildren
   AppLegaliRoute: typeof AppLegaliRoute
+  AppOpportunitaRoute: typeof AppOpportunitaRouteWithChildren
   AppPianiRientroRoute: typeof AppPianiRientroRoute
   AppPrivacyRoute: typeof AppPrivacyRoute
   AppRecuperoCreditiRoute: typeof AppRecuperoCreditiRoute
@@ -1235,7 +1265,6 @@ interface AppRouteChildren {
   AppRichiesteInterneMieRoute: typeof AppRichiesteInterneMieRoute
   AppRichiesteInterneTutteRoute: typeof AppRichiesteInterneTutteRoute
   AppEventiIndexRoute: typeof AppEventiIndexRoute
-  AppOpportunitaIndexRoute: typeof AppOpportunitaIndexRoute
   AppRichiesteInterneIndexRoute: typeof AppRichiesteInterneIndexRoute
 }
 
@@ -1252,6 +1281,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppImpostazioniRoute: AppImpostazioniRoute,
   AppLeadRoute: AppLeadRouteWithChildren,
   AppLegaliRoute: AppLegaliRoute,
+  AppOpportunitaRoute: AppOpportunitaRouteWithChildren,
   AppPianiRientroRoute: AppPianiRientroRoute,
   AppPrivacyRoute: AppPrivacyRoute,
   AppRecuperoCreditiRoute: AppRecuperoCreditiRoute,
@@ -1276,7 +1306,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppRichiesteInterneMieRoute: AppRichiesteInterneMieRoute,
   AppRichiesteInterneTutteRoute: AppRichiesteInterneTutteRoute,
   AppEventiIndexRoute: AppEventiIndexRoute,
-  AppOpportunitaIndexRoute: AppOpportunitaIndexRoute,
   AppRichiesteInterneIndexRoute: AppRichiesteInterneIndexRoute,
 }
 
