@@ -128,7 +128,14 @@ export function ClienteCantieriTab({ clienteId }: { clienteId: string }) {
                 </div>
                 <div className="flex gap-1">
                   <Button
-                    variant="ghost" size="icon"
+                    variant="ghost" size="icon" title="Mostra su mappa"
+                    onClick={() => mostraSuMappa(c)}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <MapIcon className="size-4" />
+                  </Button>
+                  <Button
+                    variant="ghost" size="icon" title="Modifica"
                     onClick={() => setEditId(c.id)}
                     className="text-muted-foreground hover:text-foreground"
                   >
