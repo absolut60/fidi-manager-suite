@@ -1714,6 +1714,7 @@ function NuovaPolizzaDialog({ clienteId, onClose, onSaved }: { clienteId: string
     assicuratore: "",
     numero_polizza: "",
     importo_massimale: "",
+    costo_assicurazione: "",
     data_inizio: "",
     data_scadenza: "",
   });
