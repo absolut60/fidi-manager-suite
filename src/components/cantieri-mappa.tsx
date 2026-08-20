@@ -57,7 +57,12 @@ export default function CantieriMappa({
           mapRef.current = new window.google.maps.Map(divRef.current, {
             center: { lat: 42.5, lng: 12.5 },
             zoom: 6,
-            mapTypeControl: false,
+            mapTypeControl: true,
+            mapTypeId: "roadmap",
+            mapTypeControlOptions: {
+              mapTypeIds: ["roadmap", "satellite", "hybrid", "terrain"],
+              style: window.google.maps.MapTypeControlStyle?.HORIZONTAL_BAR,
+            },
             streetViewControl: false,
           });
           infoRef.current = new window.google.maps.InfoWindow();
