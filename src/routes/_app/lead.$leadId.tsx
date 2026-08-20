@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import { OpportunitaSoggettoLista } from "@/components/opportunita-soggetto-lista";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -391,6 +392,7 @@ function LeadDettaglioPage() {
           <TabsTrigger value="anagrafica">Anagrafica</TabsTrigger>
           <TabsTrigger value="contatti">Contatti</TabsTrigger>
           <TabsTrigger value="cantieri">Cantieri</TabsTrigger>
+          <TabsTrigger value="commerciale">Commerciale</TabsTrigger>
           <TabsTrigger value="richieste">Richieste</TabsTrigger>
           <TabsTrigger value="storico">Storico</TabsTrigger>
         </TabsList>
@@ -542,6 +544,12 @@ function LeadDettaglioPage() {
 
         <TabsContent value="cantieri" className="mt-4">
           <LeadCantieriTab leadId={leadId} clienteId={lead.cliente_id} etichetta={nomeLead(lead)} />
+        </TabsContent>
+
+        <TabsContent value="commerciale" className="mt-4">
+          <OpportunitaSoggettoLista
+            soggetto={{ tipo: "lead", id: leadId, etichetta: nomeLead(lead), clienteIdAssociato: lead.cliente_id ?? null }}
+          />
         </TabsContent>
 
         <TabsContent value="richieste" className="mt-4">

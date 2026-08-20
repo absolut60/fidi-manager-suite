@@ -26,6 +26,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { OpportunitaSoggettoLista } from "@/components/opportunita-soggetto-lista";
 import { ClienteCantieriTab } from "@/components/cliente-cantieri-tab";
 import { ClienteStoricoFidoTab } from "@/components/cliente-storico-fido-tab";
 import { ClienteInsolutiTab } from "@/components/cliente-insoluti-tab";
@@ -440,6 +441,7 @@ function ClienteDetail() {
           <TabsTrigger value="contatti">Contatti ({contatti?.length ?? 0})</TabsTrigger>
           <TabsTrigger value="marketing">Marketing</TabsTrigger>
           <TabsTrigger value="cantieri">Cantieri</TabsTrigger>
+          <TabsTrigger value="commerciale">Commerciale</TabsTrigger>
           <TabsTrigger value="storico">Fido</TabsTrigger>
           <TabsTrigger value="insoluti">Dati Rischio</TabsTrigger>
           <TabsTrigger value="attivita">Attività recupero</TabsTrigger>
@@ -579,6 +581,12 @@ function ClienteDetail() {
 
         <TabsContent value="cantieri">
           <ClienteCantieriTab clienteId={clienteId} ragioneSociale={cliente.ragione_sociale} />
+        </TabsContent>
+
+        <TabsContent value="commerciale">
+          <OpportunitaSoggettoLista
+            soggetto={{ tipo: "cliente", id: clienteId, etichetta: cliente.ragione_sociale }}
+          />
         </TabsContent>
 
         <TabsContent value="storico">
