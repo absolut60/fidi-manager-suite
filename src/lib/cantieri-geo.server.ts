@@ -27,8 +27,26 @@ export function componiQuery(c: {
     .join(", ");
 }
 
+/** Vincoli `components` per evitare match su vie omonime in altri comuni. */
+export type VincoliGeo = {
+  cap?: string | null;
+  citta?: string | null;
+  provincia?: string | null;
+};
+
+export function componiComponents(v: VincoliGeo | undefined): string {
+  const parti = ["country:IT"];
+  if (v?.citta?.trim()) parti.push(`locality:${v.citta.trim()}`);
+  if (v?.provincia?.trim()) parti.push(`administrative_area:${v.provincia.trim()}`);
+  if (v?.cap?.trim()) parti.push(`postal_code:${v.cap.trim()}`);
+  return parti.join("|");
+}
+
 /** Geocodifica un indirizzo testuale con la chiave SERVER. Non lancia mai. */
-export async function geocodificaIndirizzo(indirizzo: string): Promise<EsitoGeocodifica> {
+export async function geocodificaIndirizzo(
+  indirizzo: string,
+  vincoli?: VincoliGeo,
+): Promise<EsitoGeocodifica> {
   const apiKey = process.env["GOOGLE_MAPS_API_KEY"];
   if (!apiKey) {
     return {
