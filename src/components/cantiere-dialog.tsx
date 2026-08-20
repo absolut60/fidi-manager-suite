@@ -383,10 +383,33 @@ export function CantiereDialog({
                 <Input value={lng} onChange={(e) => setLng(e.target.value)} placeholder="9.19" />
               </div>
             </div>
+            <Button type="button" variant="outline" size="sm" disabled={gpsBusy} onClick={usaLaMiaPosizione}>
+              <Crosshair className={`size-4 mr-1.5 ${gpsBusy ? "animate-pulse" : ""}`} />
+              {gpsBusy ? "Acquisizione…" : "Usa la mia posizione"}
+            </Button>
             <p className="text-xs text-muted-foreground">
               Inserendo le coordinate a mano lo stato diventa "Coordinate manuali" e la geocodifica automatica non le sovrascrive.
             </p>
           </div>
+
+          {cantiere && (
+            <div className="rounded-md border p-3 space-y-2">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <Navigation className="size-4" /> Sede più vicina
+                </div>
+                <Button
+                  type="button" variant="outline" size="sm" disabled={sedeBusy}
+                  onClick={() => ricalcolaLaSede(cantiere.id)}
+                >
+                  <RefreshCw className={`size-4 mr-1.5 ${sedeBusy ? "animate-spin" : ""}`} /> Ricalcola
+                </Button>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {sedeTesto ?? "Non ancora calcolata: posiziona il cantiere e premi Ricalcola."}
+              </p>
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <Label>Note</Label>
