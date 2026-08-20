@@ -189,6 +189,7 @@ function LeadDettaglioPage() {
 
     onSuccess: () => {
       toast.success("Lead aggiornato");
+      setEditMode(false);
       qc.invalidateQueries({ queryKey: ["lead", leadId] });
       qc.invalidateQueries({ queryKey: ["lead-storico", leadId] });
       qc.invalidateQueries({ queryKey: ["lead-lista"] });
