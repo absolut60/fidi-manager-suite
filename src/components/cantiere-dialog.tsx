@@ -41,6 +41,7 @@ export function CantiereDialog({
   );
   const forzaAgente = isAgente && !isTrasversale;
   const geocodifica = useServerFn(geocodificaCantiere);
+  const ricalcolaSede = useServerFn(ricalcolaSedeVicina);
 
   const [nome, setNome] = useState("");
   const [soggetto, setSoggetto] = useState<SoggettoSelezionato | null>(null);
