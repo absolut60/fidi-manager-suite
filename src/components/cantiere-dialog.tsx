@@ -60,6 +60,55 @@ export function CantiereDialog({
   const [lng, setLng] = useState("");
   const [saving, setSaving] = useState(false);
   const [geoBusy, setGeoBusy] = useState(false);
+  const [gpsBusy, setGpsBusy] = useState(false);
+  const [sedeBusy, setSedeBusy] = useState(false);
+  const [sedeTesto, setSedeTesto] = useState<string | null>(null);
+
+  function usaLaMiaPosizione() {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      toast.error("Geolocalizzazione non disponibile su questo dispositivo");
+      return;
+    }
+    setGpsBusy(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLat(String(Number(pos.coords.latitude.toFixed(6))));
+        setLng(String(Number(pos.coords.longitude.toFixed(6))));
+        setGpsBusy(false);
+        toast.success("Posizione acquisita");
+      },
+      (err) => {
+        setGpsBusy(false);
+        toast.error(
+          err.code === err.PERMISSION_DENIED
+            ? "Permesso posizione negato: abilitalo nelle impostazioni del browser."
+            : "Posizione non disponibile: riprova all'aperto o inserisci le coordinate a mano.",
+        );
+      },
+      { enableHighAccuracy: true, timeout: 15000 },
+    );
+  }
+
+  async function ricalcolaLaSede(id: string) {
+    setSedeBusy(true);
+    try {
+      const r = await ricalcolaSede({ data: { cantiere_id: id } });
+      if (r.sede_id) {
+        setSedeTesto(testoSedeVicina({
+          sede: { nome: r.sede_nome }, sede_piu_vicina_km: r.km, sede_piu_vicina_min: r.minuti,
+        }));
+        toast.success("Sede più vicina aggiornata");
+      } else {
+        setSedeTesto(null);
+        toast.error(r.messaggio ?? "Sede più vicina non calcolabile");
+      }
+      qc.invalidateQueries({ queryKey: ["cantieri-lista"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Calcolo sede non riuscito");
+    } finally {
+      setSedeBusy(false);
+    }
+  }
 
   useEffect(() => {
     if (!open) return;
