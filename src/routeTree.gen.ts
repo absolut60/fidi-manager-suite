@@ -57,6 +57,7 @@ import { Route as AppRichiesteInterneGestioneRouteImport } from './routes/_app/r
 import { Route as AppRichiesteInterneArchivioRouteImport } from './routes/_app/richieste-interne.archivio'
 import { Route as AppRichiesteInterneApprovaRouteImport } from './routes/_app/richieste-interne.approva'
 import { Route as AppRichiesteInterneRichiestaIdRouteImport } from './routes/_app/richieste-interne.$richiestaId'
+import { Route as AppOpportunitaOpportunitaIdRouteImport } from './routes/_app/opportunita.$opportunitaId'
 import { Route as AppMarketingSegmentiRouteImport } from './routes/_app/marketing.segmenti'
 import { Route as AppMarketingInviiRouteImport } from './routes/_app/marketing.invii'
 import { Route as AppMarketingCampagneRouteImport } from './routes/_app/marketing.campagne'
@@ -320,6 +321,12 @@ const AppRichiesteInterneRichiestaIdRoute =
     path: '/richieste-interne/$richiestaId',
     getParentRoute: () => AppRoute,
   } as any)
+const AppOpportunitaOpportunitaIdRoute =
+  AppOpportunitaOpportunitaIdRouteImport.update({
+    id: '/$opportunitaId',
+    path: '/$opportunitaId',
+    getParentRoute: () => AppOpportunitaRoute,
+  } as any)
 const AppMarketingSegmentiRoute = AppMarketingSegmentiRouteImport.update({
   id: '/marketing/segmenti',
   path: '/marketing/segmenti',
@@ -423,6 +430,7 @@ export interface FileRoutesByFullPath {
   '/marketing/campagne': typeof AppMarketingCampagneRoute
   '/marketing/invii': typeof AppMarketingInviiRoute
   '/marketing/segmenti': typeof AppMarketingSegmentiRoute
+  '/opportunita/$opportunitaId': typeof AppOpportunitaOpportunitaIdRoute
   '/richieste-interne/$richiestaId': typeof AppRichiesteInterneRichiestaIdRoute
   '/richieste-interne/approva': typeof AppRichiesteInterneApprovaRoute
   '/richieste-interne/archivio': typeof AppRichiesteInterneArchivioRoute
@@ -481,6 +489,7 @@ export interface FileRoutesByTo {
   '/marketing/campagne': typeof AppMarketingCampagneRoute
   '/marketing/invii': typeof AppMarketingInviiRoute
   '/marketing/segmenti': typeof AppMarketingSegmentiRoute
+  '/opportunita/$opportunitaId': typeof AppOpportunitaOpportunitaIdRoute
   '/richieste-interne/$richiestaId': typeof AppRichiesteInterneRichiestaIdRoute
   '/richieste-interne/approva': typeof AppRichiesteInterneApprovaRoute
   '/richieste-interne/archivio': typeof AppRichiesteInterneArchivioRoute
@@ -543,6 +552,7 @@ export interface FileRoutesById {
   '/_app/marketing/campagne': typeof AppMarketingCampagneRoute
   '/_app/marketing/invii': typeof AppMarketingInviiRoute
   '/_app/marketing/segmenti': typeof AppMarketingSegmentiRoute
+  '/_app/opportunita/$opportunitaId': typeof AppOpportunitaOpportunitaIdRoute
   '/_app/richieste-interne/$richiestaId': typeof AppRichiesteInterneRichiestaIdRoute
   '/_app/richieste-interne/approva': typeof AppRichiesteInterneApprovaRoute
   '/_app/richieste-interne/archivio': typeof AppRichiesteInterneArchivioRoute
@@ -605,6 +615,7 @@ export interface FileRouteTypes {
     | '/marketing/campagne'
     | '/marketing/invii'
     | '/marketing/segmenti'
+    | '/opportunita/$opportunitaId'
     | '/richieste-interne/$richiestaId'
     | '/richieste-interne/approva'
     | '/richieste-interne/archivio'
@@ -663,6 +674,7 @@ export interface FileRouteTypes {
     | '/marketing/campagne'
     | '/marketing/invii'
     | '/marketing/segmenti'
+    | '/opportunita/$opportunitaId'
     | '/richieste-interne/$richiestaId'
     | '/richieste-interne/approva'
     | '/richieste-interne/archivio'
@@ -724,6 +736,7 @@ export interface FileRouteTypes {
     | '/_app/marketing/campagne'
     | '/_app/marketing/invii'
     | '/_app/marketing/segmenti'
+    | '/_app/opportunita/$opportunitaId'
     | '/_app/richieste-interne/$richiestaId'
     | '/_app/richieste-interne/approva'
     | '/_app/richieste-interne/archivio'
@@ -1098,6 +1111,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRichiesteInterneRichiestaIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/opportunita/$opportunitaId': {
+      id: '/_app/opportunita/$opportunitaId'
+      path: '/$opportunitaId'
+      fullPath: '/opportunita/$opportunitaId'
+      preLoaderRoute: typeof AppOpportunitaOpportunitaIdRouteImport
+      parentRoute: typeof AppOpportunitaRoute
+    }
     '/_app/marketing/segmenti': {
       id: '/_app/marketing/segmenti'
       path: '/marketing/segmenti'
@@ -1204,10 +1224,12 @@ const AppLeadRouteWithChildren =
   AppLeadRoute._addFileChildren(AppLeadRouteChildren)
 
 interface AppOpportunitaRouteChildren {
+  AppOpportunitaOpportunitaIdRoute: typeof AppOpportunitaOpportunitaIdRoute
   AppOpportunitaIndexRoute: typeof AppOpportunitaIndexRoute
 }
 
 const AppOpportunitaRouteChildren: AppOpportunitaRouteChildren = {
+  AppOpportunitaOpportunitaIdRoute: AppOpportunitaOpportunitaIdRoute,
   AppOpportunitaIndexRoute: AppOpportunitaIndexRoute,
 }
 
