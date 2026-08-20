@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
@@ -22,7 +22,12 @@ import {
   MessageCircle,
   Send,
   CreditCard,
+  Building2,
+  MapPin,
+  Tags,
+  Landmark,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { InviaSollecitoDialog } from "@/components/invia-sollecito-dialog";
 import { useRef } from "react";
 import { toast } from "sonner";
@@ -590,87 +595,134 @@ function ClienteDetail() {
           <RiepilogoTab cliente={cliente} clienteId={clienteId} />
         </TabsContent>
 
-        <TabsContent value="anagrafica" className="space-y-4">
-          <Card className="p-6">
-            <h3 className="font-semibold mb-4">Dati anagrafici</h3>
-            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
-              <Field label="Ragione sociale" value={cliente.ragione_sociale} />
-              <Field label="Codice gestionale" value={(cliente as any).codice_gestionale} />
-              <Field
-                label="Tipo soggetto"
-                value={
-                  (cliente as any).tipo_soggetto === "persona_fisica"
-                    ? "Persona fisica"
-                    : (cliente as any).tipo_soggetto === "azienda"
-                      ? "Azienda"
-                      : null
-                }
-              />
-              <Field label="Partita IVA" value={cliente.partita_iva} />
-              <Field label="Codice fiscale" value={cliente.codice_fiscale} />
-              <Field label="Punto vendita" value={(cliente as any).stores?.nome} />
-              <Field label="Indirizzo" value={cliente.indirizzo} />
-              <Field
-                label="Città"
-                value={
-                  cliente.citta &&
-                  `${cliente.citta}${cliente.provincia ? ` (${cliente.provincia})` : ""}${cliente.cap ? ` — ${cliente.cap}` : ""}`
-                }
-              />
-              <Field label="Telefono" value={cliente.telefono} />
-              <Field label="Telefono 2" value={(cliente as any).telefono_2} />
-              <Field label="Email" value={cliente.email} />
-              <Field label="PEC" value={(cliente as any).pec} />
-              <Field label="Codice SDI" value={(cliente as any).codice_sdi} />
-              <Field
-                label="Macrocategoria"
-                value={
-                  (cliente as any).codice_macrocategoria || (cliente as any).macrocategoria
-                    ? `${(cliente as any).codice_macrocategoria ?? ""}${(cliente as any).codice_macrocategoria && (cliente as any).macrocategoria ? " — " : ""}${(cliente as any).macrocategoria ?? ""}`
-                    : null
-                }
-              />
-              <Field
-                label="Categoria"
-                value={
-                  (cliente as any).codice_categoria || (cliente as any).categoria
-                    ? `${(cliente as any).codice_categoria ?? ""}${(cliente as any).codice_categoria && (cliente as any).categoria ? " — " : ""}${(cliente as any).categoria ?? ""}`
-                    : null
-                }
-              />
-              <Field
-                label="Agente"
-                value={
-                  (cliente as any).codice_agente || (cliente as any).agente
-                    ? `${(cliente as any).codice_agente ?? ""}${(cliente as any).codice_agente && (cliente as any).agente ? " — " : ""}${(cliente as any).agente ?? ""}`
-                    : null
-                }
-              />
-              <Field label="Forma giuridica" value={(cliente as any).forma_giuridica} />
-              <Field label="Banca" value={(cliente as any).banca} />
-              <Field label="Agenzia" value={(cliente as any).agenzia} />
-              <Field label="ABI" value={(cliente as any).abi} />
-              <Field label="CAB" value={(cliente as any).cab} />
-            </dl>
-            {(cliente as any).scheda_pdf_url && (
-              <div className="mt-4 pt-4 border-t">
-                <p className="text-xs font-medium text-muted-foreground mb-2">
-                  SCHEDA INSERIMENTO FIRMATA
-                </p>
-                <Button variant="outline" size="sm" asChild>
-                  <a href={(cliente as any).scheda_pdf_url} target="_blank" rel="noreferrer">
-                    <Download className="size-4 mr-1" /> Scarica scheda PDF
-                  </a>
-                </Button>
+        <TabsContent value="anagrafica" className="space-y-3">
+          <div className="grid grid-cols-1 gap-3">
+            <SectionCard title="Identità" icon={Building2} variant="blue">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-3">
+                <Field label="Ragione sociale" value={cliente.ragione_sociale} highlight />
+                <Field
+                  label="Codice gestionale"
+                  value={(cliente as any).codice_gestionale}
+                  highlight
+                />
+                <Field
+                  label="Tipo soggetto"
+                  value={
+                    (cliente as any).tipo_soggetto === "persona_fisica"
+                      ? "Persona fisica"
+                      : (cliente as any).tipo_soggetto === "azienda"
+                        ? "Azienda"
+                        : null
+                  }
+                />
+                <Field label="Partita IVA" value={cliente.partita_iva} />
+                <Field label="Codice fiscale" value={cliente.codice_fiscale} />
+                <Field label="Forma giuridica" value={(cliente as any).forma_giuridica} />
               </div>
-            )}
-            {cliente.note && (
-              <div className="mt-4 pt-4 border-t">
-                <p className="text-xs font-medium text-muted-foreground mb-1">NOTE</p>
-                <p className="text-sm whitespace-pre-wrap">{cliente.note}</p>
+            </SectionCard>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              <SectionCard title="Sede" icon={MapPin} variant="green">
+                <div className="grid grid-cols-1 gap-3">
+                  <Field label="Indirizzo" value={cliente.indirizzo} />
+                  <Field
+                    label="Città"
+                    value={
+                      cliente.citta &&
+                      `${cliente.citta}${cliente.provincia ? ` (${cliente.provincia})` : ""}${cliente.cap ? ` — ${cliente.cap}` : ""}`
+                    }
+                  />
+                  <Field label="Punto vendita" value={(cliente as any).stores?.nome} />
+                </div>
+              </SectionCard>
+
+              <SectionCard title="Contatti" icon={Phone} variant="violet">
+                <div className="grid grid-cols-1 gap-3">
+                  <Field label="Telefono" value={cliente.telefono} />
+                  <Field label="Telefono 2" value={(cliente as any).telefono_2} />
+                  <Field label="Email" value={cliente.email} />
+                  <Field label="PEC" value={(cliente as any).pec} />
+                </div>
+              </SectionCard>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              <SectionCard title="Fatturazione" icon={FileText} variant="gray">
+                <div className="grid grid-cols-1 gap-3">
+                  <Field label="Codice SDI" value={(cliente as any).codice_sdi} />
+                  <Field
+                    label="Condizione di pagamento"
+                    value={
+                      (cliente as any).condizione_pagamento_desc ||
+                      (cliente as any).condizioni_pagamento ||
+                      null
+                    }
+                  />
+                </div>
+              </SectionCard>
+
+              <SectionCard title="Classificazione" icon={Tags} variant="amber">
+                <div className="grid grid-cols-1 gap-3">
+                  <Field
+                    label="Macrocategoria"
+                    value={
+                      (cliente as any).codice_macrocategoria || (cliente as any).macrocategoria
+                        ? `${(cliente as any).codice_macrocategoria ?? ""}${(cliente as any).codice_macrocategoria && (cliente as any).macrocategoria ? " — " : ""}${(cliente as any).macrocategoria ?? ""}`
+                        : null
+                    }
+                  />
+                  <Field
+                    label="Categoria"
+                    value={
+                      (cliente as any).codice_categoria || (cliente as any).categoria
+                        ? `${(cliente as any).codice_categoria ?? ""}${(cliente as any).codice_categoria && (cliente as any).categoria ? " — " : ""}${(cliente as any).categoria ?? ""}`
+                        : null
+                    }
+                  />
+                  <Field
+                    label="Agente"
+                    value={
+                      (cliente as any).codice_agente || (cliente as any).agente
+                        ? `${(cliente as any).codice_agente ?? ""}${(cliente as any).codice_agente && (cliente as any).agente ? " — " : ""}${(cliente as any).agente ?? ""}`
+                        : null
+                    }
+                  />
+                </div>
+              </SectionCard>
+            </div>
+
+            <SectionCard title="Coordinate bancarie" icon={Landmark} variant="muted">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <Field label="Banca" value={(cliente as any).banca} />
+                <Field label="Agenzia" value={(cliente as any).agenzia} />
+                <Field label="ABI" value={(cliente as any).abi} />
+                <Field label="CAB" value={(cliente as any).cab} />
               </div>
-            )}
-          </Card>
+            </SectionCard>
+          </div>
+
+          {((cliente as any).scheda_pdf_url || cliente.note) && (
+            <Card className="p-4 rounded-xl border-[0.5px]">
+              {(cliente as any).scheda_pdf_url && (
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-2">
+                    SCHEDA INSERIMENTO FIRMATA
+                  </p>
+                  <Button variant="outline" size="sm" asChild>
+                    <a href={(cliente as any).scheda_pdf_url} target="_blank" rel="noreferrer">
+                      <Download className="size-4 mr-1" /> Scarica scheda PDF
+                    </a>
+                  </Button>
+                </div>
+              )}
+              {cliente.note && (
+                <div className={`${(cliente as any).scheda_pdf_url ? "mt-4 pt-4 border-t" : ""}`}>
+                  <p className="text-xs font-medium text-muted-foreground mb-1">NOTE</p>
+                  <p className="text-sm whitespace-pre-wrap">{cliente.note}</p>
+                </div>
+              )}
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="contatti" className="space-y-4">
@@ -789,12 +841,59 @@ function ClienteDetail() {
   );
 }
 
-function Field({ label, value }: { label: string; value?: string | null }) {
+function Field({
+  label,
+  value,
+  highlight,
+}: {
+  label: string;
+  value?: string | null;
+  highlight?: boolean;
+}) {
   return (
     <div>
       <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</dt>
-      <dd className="mt-0.5">{value || <span className="text-muted-foreground">—</span>}</dd>
+      <dd className={`mt-0.5 ${highlight ? "font-semibold" : ""}`}>
+        {value || <span className="text-muted-foreground">—</span>}
+      </dd>
     </div>
+  );
+}
+
+function SectionCard({
+  title,
+  icon: Icon,
+  variant,
+  children,
+  className,
+}: {
+  title: string;
+  icon?: LucideIcon;
+  variant: "blue" | "green" | "violet" | "gray" | "amber" | "muted";
+  children: ReactNode;
+  className?: string;
+}) {
+  const variants = {
+    blue: { border: "border-l-blue-500", text: "text-blue-700 dark:text-blue-400" },
+    green: { border: "border-l-emerald-500", text: "text-emerald-700 dark:text-emerald-400" },
+    violet: { border: "border-l-violet-500", text: "text-violet-700 dark:text-violet-400" },
+    gray: { border: "border-l-slate-400", text: "text-slate-700 dark:text-slate-400" },
+    amber: { border: "border-l-amber-500", text: "text-amber-700 dark:text-amber-400" },
+    muted: { border: "border-l-slate-300", text: "text-slate-600 dark:text-slate-400" },
+  } as const;
+  const v = variants[variant];
+  return (
+    <Card
+      className={`p-4 rounded-l-none rounded-r-xl border-[0.5px] border-l-[3px] ${v.border} h-full ${className ?? ""}`}
+    >
+      <div
+        className={`flex items-center gap-2 mb-3 text-sm font-semibold uppercase tracking-wide ${v.text}`}
+      >
+        {Icon && <Icon className="size-4" />}
+        <span>{title}</span>
+      </div>
+      {children}
+    </Card>
   );
 }
 
