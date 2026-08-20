@@ -85,13 +85,23 @@ export async function geocodificaIndirizzo(
         messaggio: approssimativo ? "Match approssimativo — verificare la posizione sulla mappa." : null,
       };
     }
-    // Nessun risultato con i vincoli: riprova con il solo indirizzo testuale.
-    if (json.status === "ZERO_RESULTS" && (vincoli?.citta || vincoli?.cap || vincoli?.provincia)) {
-      const esito = await geocodificaIndirizzo(indirizzo);
-      if (esito.stato === "ok") {
-        return { ...esito, messaggio: "Match approssimativo — verificare la posizione sulla mappa." };
+    // Nessun risultato: allenta i vincoli un passo per volta (CAP spesso obsoleto),
+    // mantenendo comune/provincia il più a lungo possibile.
+    if (json.status === "ZERO_RESULTS") {
+      const successivo: VincoliGeo | undefined = vincoli?.cap
+        ? { citta: vincoli.citta, provincia: vincoli.provincia }
+        : vincoli?.provincia && vincoli?.citta
+          ? { citta: vincoli.citta }
+          : vincoli?.citta || vincoli?.provincia
+            ? undefined
+            : null as unknown as undefined;
+      if (successivo !== null) {
+        const esito = await geocodificaIndirizzo(indirizzo, successivo);
+        if (esito.stato === "ok") {
+          return { ...esito, messaggio: "Match approssimativo — verificare la posizione sulla mappa." };
+        }
+        return esito;
       }
-      return esito;
     }
 
     let messaggio: string;
