@@ -120,35 +120,39 @@ function LeadDettaglioPage() {
   };
 
   const [f, setF] = useState<Form | null>(null);
+  const [editMode, setEditMode] = useState(false);
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setF((p) => (p ? { ...p, [k]: v } : p));
+
+  const buildForm = (l: NonNullable<typeof lead>): Form => ({
+    tipo_soggetto: l.tipo_soggetto ?? "azienda",
+    ragione_sociale: l.ragione_sociale ?? "",
+    nome: l.nome ?? "",
+    cognome: l.cognome ?? "",
+    partita_iva: l.partita_iva ?? "",
+    codice_fiscale: l.codice_fiscale ?? "",
+    email: l.email ?? "",
+    telefono: l.telefono ?? "",
+    cellulare: l.cellulare ?? "",
+    indirizzo: l.indirizzo ?? "",
+    citta: l.citta ?? "",
+    cap: l.cap ?? "",
+    provincia: l.provincia ?? "",
+    fonte: l.fonte,
+    fonte_dettaglio: l.fonte_dettaglio ?? "",
+    tipo_lead: l.tipo_lead,
+    priorita: l.priorita,
+    store_id: l.store_id ?? "",
+    agente_codice: l.agente_codice ?? "",
+    prossima_azione_il: l.prossima_azione_il ?? "",
+    prossima_azione_tipo: l.prossima_azione_tipo ?? "",
+    prossima_azione_nota: l.prossima_azione_nota ?? "",
+    note: l.note ?? "",
+  });
 
   useEffect(() => {
     if (!lead) return;
-    setF({
-      tipo_soggetto: lead.tipo_soggetto ?? "azienda",
-      ragione_sociale: lead.ragione_sociale ?? "",
-      nome: lead.nome ?? "",
-      cognome: lead.cognome ?? "",
-      partita_iva: lead.partita_iva ?? "",
-      codice_fiscale: lead.codice_fiscale ?? "",
-      email: lead.email ?? "",
-      telefono: lead.telefono ?? "",
-      cellulare: lead.cellulare ?? "",
-      indirizzo: lead.indirizzo ?? "",
-      citta: lead.citta ?? "",
-      cap: lead.cap ?? "",
-      provincia: lead.provincia ?? "",
-      fonte: lead.fonte,
-      fonte_dettaglio: lead.fonte_dettaglio ?? "",
-      tipo_lead: lead.tipo_lead,
-      priorita: lead.priorita,
-      store_id: lead.store_id ?? "",
-      agente_codice: lead.agente_codice ?? "",
-      prossima_azione_il: lead.prossima_azione_il ?? "",
-      prossima_azione_tipo: lead.prossima_azione_tipo ?? "",
-      prossima_azione_nota: lead.prossima_azione_nota ?? "",
-      note: lead.note ?? "",
-    });
+    setF(buildForm(lead));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lead]);
 
   const saveMut = useMutation({
