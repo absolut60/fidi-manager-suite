@@ -1,0 +1,17 @@
+{
+  "name": "FidiManager Suite",
+  "short_name": "FidiManager",
+  "description": "Gestione crediti e CRM — Gruppo MADE",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#011A3F",
+  "theme_color": "#011A3F",
+  "lang": "it",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/icons/made-any.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/made-any.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/made-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
