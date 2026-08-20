@@ -228,6 +228,7 @@ export type Database = {
         Row: {
           assicuratore: string
           cliente_id: string
+          costo_assicurazione: number | null
           created_at: string
           data_apertura_sinistro: string | null
           data_inizio: string | null
@@ -249,6 +250,7 @@ export type Database = {
         Insert: {
           assicuratore: string
           cliente_id: string
+          costo_assicurazione?: number | null
           created_at?: string
           data_apertura_sinistro?: string | null
           data_inizio?: string | null
@@ -270,6 +272,7 @@ export type Database = {
         Update: {
           assicuratore?: string
           cliente_id?: string
+          costo_assicurazione?: number | null
           created_at?: string
           data_apertura_sinistro?: string | null
           data_inizio?: string | null
