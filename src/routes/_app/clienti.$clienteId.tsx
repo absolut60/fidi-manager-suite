@@ -477,7 +477,7 @@ function ClienteDetail() {
             )}
           </div>
 
-          <div className="flex gap-2 items-center">
+          <div className="flex flex-wrap gap-2 items-center">wq
             {cliente.privacy_firmata ? (
               <Badge className="bg-success/15 text-success gap-1">
                 <FileCheck2 className="size-3" /> Privacy firmata
@@ -1368,7 +1368,7 @@ function MiniStat({
             {label}
           </p>
           <p
-            className={`${size === "md" ? "text-[19px]" : "text-base"} font-bold mt-0.5 tabular-nums truncate ${valCls}`}
+            className={`${size === "md" ? "text-[17px] sm:text-[19px]" : "text-[15px] sm:text-base"} font-bold mt-0.5 tabular-nums break-words leading-tight ${valCls}`}
           >
             {value}
           </p>
