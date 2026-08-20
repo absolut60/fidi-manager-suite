@@ -80,7 +80,7 @@ function CantieriPage() {
       for (let da = 0; ; da += PAGINA) {
         const { data, error } = await supabase
           .from("cantieri")
-          .select("*, clienti(ragione_sociale, codice_agente), lead(ragione_sociale, nome, cognome)")
+          .select("*, clienti(ragione_sociale, codice_agente), lead(ragione_sociale, nome, cognome), sede:stores!cantieri_sede_piu_vicina_id_fkey(nome)")
           .order("created_at", { ascending: false })
           .range(da, da + PAGINA - 1);
         if (error) throw error;
