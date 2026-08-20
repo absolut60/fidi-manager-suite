@@ -4,7 +4,7 @@ import { z } from "zod";
 import { toast } from "sonner";
 import {
   AlertTriangle, AlertCircle, Plus, Calendar, Mail, Phone, FileText, Scale,
-  Shield, Bell, CheckCircle2, Clock, Gavel, ShieldCheck, Loader2, Pencil, Trash2, Info,
+  Shield, Bell, CheckCircle2, Clock, Gavel, ShieldCheck, Loader2, Pencil, Trash2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -33,6 +33,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { classificaScadenza, sommaScadutoCliente, contributoScaduto, isPagatoReale } from "@/lib/scadenze";
 import { AllegatiSection, ALLEGATI_BUCKET } from "@/components/allegati-section";
 import { ClientePianiRientroTab } from "@/components/cliente-piani-rientro-tab";
+import { BottoneElimina } from "@/components/conferma-eliminazione";
 
 // ============================================================================
 
