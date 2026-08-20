@@ -11,7 +11,6 @@ import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription,
 } from "@/components/ui/dialog";
@@ -30,7 +29,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { classificaScadenza, sommaScadutoCliente, contributoScaduto, isPagatoReale } from "@/lib/scadenze";
+import { classificaScadenza, isPagatoReale } from "@/lib/scadenze";
 import { AllegatiSection, ALLEGATI_BUCKET } from "@/components/allegati-section";
 import { ClientePianiRientroTab } from "@/components/cliente-piani-rientro-tab";
 import { BottoneElimina } from "@/components/conferma-eliminazione";
@@ -54,7 +53,15 @@ const STATO_SOLLECITO = ["inviato", "in_attesa_risposta", "risposto", "ignorato"
 const TIPO_PRATICA = ["decreto_ingiuntivo", "pignoramento", "precetto", "azione_legale_generica", "messa_a_perdita", "concordato", "fallimento", "altro"] as const;
 const STATO_PRATICA = ["aperta", "in_corso", "decreto_ottenuto", "pignoramento_eseguito", "pignoramento_negativo", "chiusa_pagamento", "chiusa_perdita", "sospesa"] as const;
 
-export function ClienteInsolutiTab({ cliente, defaultSubTab }: { cliente: { id: string; bloccato?: boolean; in_gestione_legale?: boolean; data_blocco?: string | null; motivo_blocco?: string | null }; defaultSubTab?: string }) {
+export type SezioneInsoluti = "scadenziario" | "solleciti" | "piani" | "legali" | "assicurazioni";
+
+export function ClienteInsolutiTab({
+  cliente,
+  sezione,
+}: {
+  cliente: { id: string; bloccato?: boolean; in_gestione_legale?: boolean; data_blocco?: string | null; motivo_blocco?: string | null };
+  sezione: SezioneInsoluti;
+}) {
   const { role, roles } = useAuth();
   const isStoreManager = role === "store_manager";
   const isAdminOrApprov = role === "amministratore" || role === "approvatore_liv1" || role === "approvatore_liv2" || role === "approvatore_liv3";
@@ -68,10 +75,14 @@ export function ClienteInsolutiTab({ cliente, defaultSubTab }: { cliente: { id: 
     roles.includes("approvatore_liv2") ||
     roles.includes("approvatore_liv3");
 
+  // I banner restano visibili sulle sezioni pertinenti
+  const mostraBanner = sezione === "scadenziario" || sezione === "legali";
+
+  if ((sezione === "legali" || sezione === "assicurazioni") && isStoreManager) return null;
+
   return (
     <div className="space-y-4">
-      {/* Banner blocco */}
-      {cliente.bloccato && (
+      {mostraBanner && cliente.bloccato && (
         <div className="rounded-lg border border-destructive bg-destructive/10 p-4">
           <div className="flex items-start gap-3">
             <AlertTriangle className="size-6 text-destructive shrink-0" />
@@ -87,7 +98,7 @@ export function ClienteInsolutiTab({ cliente, defaultSubTab }: { cliente: { id: 
           </div>
         </div>
       )}
-      {cliente.in_gestione_legale && (
+      {mostraBanner && cliente.in_gestione_legale && (
         <div className="rounded-lg border border-orange-500 bg-orange-500/10 p-3">
           <div className="flex items-center gap-2">
             <Gavel className="size-5 text-orange-600 shrink-0" />
@@ -96,149 +107,22 @@ export function ClienteInsolutiTab({ cliente, defaultSubTab }: { cliente: { id: 
         </div>
       )}
 
-      <Tabs defaultValue={defaultSubTab ?? "riepilogo"}>
-        <TabsList className="flex-wrap h-auto">
-          <TabsTrigger value="riepilogo">Riepilogo</TabsTrigger>
-          <TabsTrigger value="scadenziario">Scadenziario</TabsTrigger>
-          <TabsTrigger value="solleciti">Solleciti</TabsTrigger>
-          <TabsTrigger value="piani">Piani di rientro</TabsTrigger>
-          {!isStoreManager && <TabsTrigger value="legali">Pratiche legali</TabsTrigger>}
-          {!isStoreManager && <TabsTrigger value="assicurazioni">Assicurazione</TabsTrigger>}
-        </TabsList>
-
-        <TabsContent value="riepilogo"><RiepilogoSection clienteId={cliente.id} /></TabsContent>
-        <TabsContent value="scadenziario"><ScadenziarioSection clienteId={cliente.id} canEdit={isAdminOrApprov} /></TabsContent>
-        <TabsContent value="solleciti"><SollecitiSection clienteId={cliente.id} canEdit={isAdminOrApprov} /></TabsContent>
-        <TabsContent value="piani"><ClientePianiRientroTab clienteId={cliente.id} /></TabsContent>
-        {!isStoreManager && <TabsContent value="legali">
-          <div className="space-y-4">
-            <NoteLegaliGestionaliCard clienteId={cliente.id} canManage={canManageAssicPratiche} />
-            <PraticheLegaliSection clienteId={cliente.id} canManage={canManageAssicPratiche} />
-          </div>
-        </TabsContent>}
-        {!isStoreManager && <TabsContent value="assicurazioni"><AssicurazioniSection clienteId={cliente.id} canManage={canManageAssicPratiche} canEditAllegati={canEditAssicurazioniAllegati} /></TabsContent>}
-      </Tabs>
-    </div>
-  );
-}
-
-/* ============================== RIEPILOGO ============================== */
-
-function RiepilogoSection({ clienteId }: { clienteId: string }) {
-  const { data, isLoading } = useQuery({
-    queryKey: ["riepilogo-insoluti", clienteId],
-    queryFn: async () => {
-      const { data: scad, error } = await supabase
-        .from("scadenze")
-        .select("importo_scadenza, giorni_ritardo, stato_contabile, tempi_scadenza, data_scadenza, data_pagamento_effettiva, numero_documento")
-        .eq("cliente_id", clienteId);
-      if (error) throw error;
-      const rows = (scad ?? []) as Array<{ importo_scadenza: number | null; giorni_ritardo: number | null; stato_contabile: string | null; tempi_scadenza: string | null; data_scadenza: string | null; data_pagamento_effettiva: string | null; numero_documento: string | null }>;
-      const scadute = rows.filter((s) => classificaScadenza(s) === "scaduto");
-      const aScadere = rows.filter((s) => classificaScadenza(s) === "a_scadere");
-      const sumImp = (arr: typeof rows) => arr.reduce((acc, r) => acc + Number(r.importo_scadenza ?? 0), 0);
-      // Le fasce di scaduto seguono la stessa regola anticipi (contributo
-      // signed, no clamp per-fascia — clamp solo sul totale cliente).
-      const sumContrib = (arr: typeof rows) => arr.reduce((acc, r) => acc + contributoScaduto(r), 0);
-      const maxGg = [...scadute, ...aScadere].reduce((m, r) => Math.max(m, Number(r.giorni_ritardo ?? 0)), 0);
-      const fascia = (min: number, max: number | null) =>
-        sumContrib(scadute.filter((s) => {
-          const g = Number(s.giorni_ritardo ?? 0);
-          return g >= min && (max == null || g <= max);
-        }));
-      const { data: ultSoll } = await supabase
-        .from("solleciti")
-        .select("data_sollecito")
-        .eq("cliente_id", clienteId)
-        .order("data_sollecito", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      return {
-        num_scadenze_aperte: scadute.length + aScadere.length,
-        // Scaduto con anticipi sottratti + clamp >=0 (src/lib/scadenze.ts).
-        totale_scaduto: sommaScadutoCliente(scadute),
-        totale_a_scadere: sumImp(aScadere),
-        max_giorni_ritardo: maxGg,
-        scaduto_0_30: fascia(1, 30),
-        scaduto_30_60: fascia(31, 60),
-        scaduto_oltre_60: fascia(61, null),
-        ultimo_sollecito: (ultSoll as { data_sollecito: string | null } | null)?.data_sollecito ?? null,
-      };
-    },
-  });
-
-  if (isLoading) return <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">{Array.from({length:4}).map((_,i)=><Skeleton key={i} className="h-24" />)}</div>;
-  const d = data ?? { num_scadenze_aperte: 0, totale_scaduto: 0, totale_a_scadere: 0, max_giorni_ritardo: 0, scaduto_0_30: 0, scaduto_30_60: 0, scaduto_oltre_60: 0, ultimo_sollecito: null };
-  const totFasce = Number(d.scaduto_0_30) + Number(d.scaduto_30_60) + Number(d.scaduto_oltre_60);
-  const pct = (v: number) => totFasce > 0 ? (v / totFasce) * 100 : 0;
-
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <KpiCard label="Totale scaduto" value={fmtEuro(d.totale_scaduto)} tone="destructive" icon={AlertTriangle} />
-        <KpiCard label="A scadere" value={fmtEuro(d.totale_a_scadere)} tone="info" icon={Calendar} />
-        <KpiCard label="Max giorni ritardo" value={`${d.max_giorni_ritardo} gg`} tone="warning" icon={Clock} />
-        <KpiCard label="Ultimo sollecito" value={fmtDate(d.ultimo_sollecito)} tone="default" icon={Bell} />
-      </div>
-      <Card className="p-5">
-        <h3 className="font-semibold mb-3 text-sm">Fasce di scaduto</h3>
-        <div className="space-y-3">
-          <FasciaBar label="0–30 giorni" value={Number(d.scaduto_0_30)} pct={pct(Number(d.scaduto_0_30))} color="bg-yellow-500" />
-          <FasciaBar label="31–60 giorni" value={Number(d.scaduto_30_60)} pct={pct(Number(d.scaduto_30_60))} color="bg-orange-500" />
-          <FasciaBar label="oltre 60 giorni" value={Number(d.scaduto_oltre_60)} pct={pct(Number(d.scaduto_oltre_60))} color="bg-destructive" />
-        </div>
-      </Card>
-      <AssicurazioneRiepilogoCard clienteId={clienteId} />
-    </div>
-  );
-}
-
-function AssicurazioneRiepilogoCard({ clienteId }: { clienteId: string }) {
-  const { role } = useAuth();
-  const isAdmin = role === "amministratore";
-  const { data } = useQuery({
-    queryKey: ["assic-riepilogo", clienteId],
-    queryFn: async () => {
-      const [{ data: cli }, { data: pol }] = await Promise.all([
-        supabase.from("clienti").select("assicurazione_attiva").eq("id", clienteId).maybeSingle(),
-        supabase.from("assicurazioni_credito" as never).select("assicuratore, importo_massimale, data_scadenza, stato").eq("cliente_id", clienteId).order("created_at", { ascending: false }).limit(1).maybeSingle(),
-      ]);
-      return {
-        attiva: !!(cli as { assicurazione_attiva?: boolean } | null)?.assicurazione_attiva,
-        polizza: pol as { assicuratore: string; importo_massimale: number | null; data_scadenza: string | null; stato: string } | null,
-      };
-    },
-  });
-  const attiva = !!data?.attiva;
-  const p = data?.polizza ?? null;
-  const scaduta = !!(p?.data_scadenza && new Date(p.data_scadenza) < new Date());
-
-  return (
-    <Card className="p-5">
-      <h3 className="font-semibold mb-3 text-sm uppercase tracking-wide flex items-center gap-2">
-        <ShieldCheck className="size-4 text-primary" /> Assicurazione crediti
-      </h3>
-      {attiva && p ? (
-        <div className="space-y-2 text-sm">
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge className="bg-success/15 text-success border-success/30">{p.assicuratore || "POUEY"}</Badge>
-            <Badge variant="outline" className="capitalize">{p.stato.replace(/_/g, " ")}</Badge>
-            {scaduta && <Badge className="bg-destructive text-destructive-foreground hover:bg-destructive">Polizza scaduta</Badge>}
-          </div>
-          <p>Massimale: <strong className="tabular-nums">{fmtEuro(p.importo_massimale)}</strong></p>
-          {p.data_scadenza && <p className="text-muted-foreground">Scadenza polizza: {fmtDate(p.data_scadenza)}</p>}
-        </div>
-      ) : (
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <p className="text-sm text-muted-foreground">Nessuna polizza attiva</p>
-          {isAdmin && (
-            <p className="text-xs text-muted-foreground">Vai al sotto-tab "Assicurazione" per aggiungere una polizza.</p>
-          )}
+      {sezione === "scadenziario" && <ScadenziarioSection clienteId={cliente.id} canEdit={isAdminOrApprov} />}
+      {sezione === "solleciti" && <SollecitiSection clienteId={cliente.id} canEdit={isAdminOrApprov} />}
+      {sezione === "piani" && <ClientePianiRientroTab clienteId={cliente.id} />}
+      {sezione === "legali" && (
+        <div className="space-y-4">
+          <NoteLegaliGestionaliCard clienteId={cliente.id} canManage={canManageAssicPratiche} />
+          <PraticheLegaliSection clienteId={cliente.id} canManage={canManageAssicPratiche} />
         </div>
       )}
-    </Card>
+      {sezione === "assicurazioni" && (
+        <AssicurazioniSection clienteId={cliente.id} canManage={canManageAssicPratiche} canEditAllegati={canEditAssicurazioniAllegati} />
+      )}
+    </div>
   );
 }
+
 
 
 function KpiCard({ label, value, tone, icon: Icon }: { label: string; value: string; tone: "destructive" | "info" | "warning" | "default"; icon: typeof FileText }) {
@@ -259,19 +143,6 @@ function KpiCard({ label, value, tone, icon: Icon }: { label: string; value: str
   );
 }
 
-function FasciaBar({ label, value, pct, color }: { label: string; value: number; pct: number; color: string }) {
-  return (
-    <div>
-      <div className="flex justify-between text-xs mb-1">
-        <span>{label}</span>
-        <span className="font-medium tabular-nums">{fmtEuro(value)}</span>
-      </div>
-      <div className="h-2 bg-muted rounded-full overflow-hidden">
-        <div className={`h-full ${color}`} style={{ width: `${pct}%` }} />
-      </div>
-    </div>
-  );
-}
 
 /* ============================== SCADENZIARIO ============================== */
 
