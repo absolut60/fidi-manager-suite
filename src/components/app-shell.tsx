@@ -34,6 +34,7 @@ import {
   ChevronDown,
   ChevronRight,
   Sparkles,
+  Target,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { LOGO_MADE_SIDEBAR_BASE64 } from "@/lib/logo-made-sidebar-base64";
@@ -45,6 +46,7 @@ import { toast } from "sonner";
 
 type NavGroupKey =
   | "generale"
+  | "commerciale"
   | "fidi"
   | "incassi"
   | "recupero"
@@ -71,6 +73,8 @@ const NAV: NavItem[] = [
   { to: "/clienti", label: "Clienti", icon: Building, group: "generale" },
   { to: "/contatti", label: "Contatti", icon: Users, group: "generale" },
   { to: "/lead", label: "Lead", icon: UserPlus, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "generale" },
+  // COMMERCIALE
+  { to: "/opportunita", label: "Opportunità", icon: Target, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "commerciale" },
   // FIDI
   { to: "/richieste", label: "Richieste fido", icon: FileText, group: "fidi" },
   { to: "/approvazioni", label: "Approvazioni", icon: CheckCheck, roles: ["admin", "approvatore"], group: "fidi" },
@@ -114,6 +118,7 @@ const NAV: NavItem[] = [
 // Colori per blocco (bar = 3px verticale a sx della voce, icon = icona header)
 type GroupStyle = { bar: string; icon: typeof LayoutDashboard };
 const GROUP_STYLES: Record<Exclude<NavGroupKey, "generale">, GroupStyle> = {
+  commerciale:        { bar: "#0d9488", icon: Target },
   fidi:               { bar: "#7f77dd", icon: CreditCard },
   incassi:            { bar: "#1d9e75", icon: Banknote },
   recupero:           { bar: "#d85a30", icon: AlertTriangle },
@@ -124,6 +129,7 @@ const GROUP_STYLES: Record<Exclude<NavGroupKey, "generale">, GroupStyle> = {
 };
 
 const GROUP_LABELS: Record<Exclude<NavGroupKey, "generale">, string> = {
+  commerciale: "Commerciale",
   fidi: "Fidi",
   incassi: "Incassi",
   recupero: "Recupero crediti",
@@ -161,6 +167,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const AGENTE_WHITELIST = new Set<string>([
     "/clienti",
     "/contatti",
+    "/opportunita",
     "/scadenziario",
     "/recupero-crediti",
     "/recupero-crediti-calendario",
@@ -206,6 +213,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const generaleItems = visibleNav.filter((i) => i.group === "generale");
   const blocchiKeys: Array<Exclude<NavGroupKey, "generale">> = [
+    "commerciale",
     "fidi",
     "incassi",
     "recupero",
