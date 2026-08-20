@@ -58,6 +58,22 @@ function CantieriPage() {
   const [inModifica, setInModifica] = useState<CantiereRow | null>(null);
 
   const chiaveMappe = useServerFn(getChiaveMappe);
+  const geoSedi = useServerFn(geocodificaSedi);
+  const [sediBusy, setSediBusy] = useState(false);
+
+  async function geocodificaLeSedi() {
+    setSediBusy(true);
+    try {
+      const r = await geoSedi();
+      if (r.ok === 0 && r.fallite === 0) toast.info("Tutte le sedi hanno già le coordinate");
+      else if (r.fallite === 0) toast.success(`${r.ok} sedi geocodificate`);
+      else toast.warning(`${r.ok} sedi geocodificate, ${r.fallite} fallite: ${r.messaggi.join(" — ")}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Geocodifica sedi non riuscita");
+    } finally {
+      setSediBusy(false);
+    }
+  }
 
   const { data: agenti = [] } = useQuery({
     queryKey: ["agenti-lookup"],
