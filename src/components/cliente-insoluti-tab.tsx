@@ -1651,7 +1651,7 @@ function ModificaPolizzaDialog({ polizza, onClose, onSaved }: { polizza: Polizza
       <form onSubmit={(e) => { e.preventDefault(); save.mutate(); }} className="space-y-3 max-h-[65vh] overflow-y-auto pr-1">
         <div className="space-y-1.5"><Label>Assicuratore *</Label><Input value={form.assicuratore} onChange={(e) => setForm({ ...form, assicuratore: e.target.value })} /></div>
         <div className="space-y-1.5"><Label>Numero polizza</Label><Input value={form.numero_polizza} onChange={(e) => setForm({ ...form, numero_polizza: e.target.value })} /></div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <div className="space-y-1.5">
             <Label className="flex items-center">Massimale (€)<RischioBadge field="importo_massimale" /></Label>
             <Input type="number" step="0.01" value={form.importo_massimale} onChange={(e) => setForm({ ...form, importo_massimale: e.target.value })} />
@@ -1659,6 +1659,10 @@ function ModificaPolizzaDialog({ polizza, onClose, onSaved }: { polizza: Polizza
           <div className="space-y-1.5">
             <Label className="flex items-center">Importo assicurato (€)<RischioBadge field="importo_assicurato" /></Label>
             <Input type="number" step="0.01" value={form.importo_assicurato} onChange={(e) => setForm({ ...form, importo_assicurato: e.target.value })} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Costo assicurazione (€)</Label>
+            <Input type="number" step="0.01" value={form.costo_assicurazione} onChange={(e) => setForm({ ...form, costo_assicurazione: e.target.value })} />
           </div>
         </div>
         <div className="space-y-1.5">
