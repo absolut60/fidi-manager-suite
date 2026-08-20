@@ -1603,14 +1603,14 @@ function ModificaPolizzaDialog({ polizza, onClose, onSaved }: { polizza: Polizza
   });
 
   return (
-    <DialogContent className="max-w-lg">
+    <DialogContent className="max-w-2xl w-[calc(100%-2rem)] max-h-[90vh]">
       <DialogHeader>
         <DialogTitle>Modifica polizza</DialogTitle>
       </DialogHeader>
-      <form onSubmit={(e) => { e.preventDefault(); save.mutate(); }} className="space-y-3 max-h-[65vh] overflow-y-auto pr-1">
+      <form onSubmit={(e) => { e.preventDefault(); save.mutate(); }} className="space-y-4 overflow-y-auto pr-1 max-h-[calc(90vh-8rem)]">
         <div className="space-y-1.5"><Label>Assicuratore *</Label><Input value={form.assicuratore} onChange={(e) => setForm({ ...form, assicuratore: e.target.value })} /></div>
         <div className="space-y-1.5"><Label>Numero polizza</Label><Input value={form.numero_polizza} onChange={(e) => setForm({ ...form, numero_polizza: e.target.value })} /></div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="space-y-1.5">
             <Label>Massimale (€)</Label>
             <Input type="number" step="0.01" value={form.importo_massimale} onChange={(e) => setForm({ ...form, importo_massimale: e.target.value })} />
@@ -1633,7 +1633,7 @@ function ModificaPolizzaDialog({ polizza, onClose, onSaved }: { polizza: Polizza
             </SelectContent>
           </Select>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label>Data inizio</Label>
             <Input type="date" value={form.data_inizio} onChange={(e) => setForm({ ...form, data_inizio: e.target.value })} />
@@ -1645,13 +1645,13 @@ function ModificaPolizzaDialog({ polizza, onClose, onSaved }: { polizza: Polizza
         </div>
         <div className="space-y-1.5"><Label>Note</Label><Textarea rows={2} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} /></div>
 
-        <div className="border-t pt-3 space-y-3">
+        <div className="border-t pt-4 space-y-4">
           <p className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">Dati sinistro</p>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5"><Label>Numero sinistro</Label><Input value={form.numero_sinistro} onChange={(e) => setForm({ ...form, numero_sinistro: e.target.value })} /></div>
             <div className="space-y-1.5"><Label>Data apertura sinistro</Label><Input type="date" value={form.data_apertura_sinistro} onChange={(e) => setForm({ ...form, data_apertura_sinistro: e.target.value })} /></div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5"><Label>Importo sinistro (€)</Label><Input type="number" step="0.01" value={form.importo_sinistro} onChange={(e) => setForm({ ...form, importo_sinistro: e.target.value })} /></div>
             <div className="space-y-1.5"><Label>Esito sinistro</Label><Input value={form.esito_sinistro} onChange={(e) => setForm({ ...form, esito_sinistro: e.target.value })} /></div>
           </div>
@@ -1699,16 +1699,16 @@ function NuovaPolizzaDialog({ clienteId, onClose, onSaved }: { clienteId: string
     onError: (e: Error) => toast.error(e.message),
   });
   return (
-    <DialogContent>
+    <DialogContent className="max-w-2xl w-[calc(100%-2rem)] max-h-[90vh]">
       <DialogHeader><DialogTitle>Nuova polizza</DialogTitle></DialogHeader>
-      <div className="space-y-3">
+      <div className="space-y-4 overflow-y-auto pr-1 max-h-[calc(90vh-8rem)]">
         <div className="space-y-1.5"><Label>Assicuratore *</Label><Input value={form.assicuratore} onChange={(e) => setForm({ ...form, assicuratore: e.target.value })} /></div>
         <div className="space-y-1.5"><Label>Numero polizza</Label><Input value={form.numero_polizza} onChange={(e) => setForm({ ...form, numero_polizza: e.target.value })} /></div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5"><Label>Massimale (€)</Label><Input type="number" step="0.01" value={form.importo_massimale} onChange={(e) => setForm({ ...form, importo_massimale: e.target.value })} /></div>
           <div className="space-y-1.5"><Label>Costo assicurazione (€)</Label><Input type="number" step="0.01" value={form.costo_assicurazione} onChange={(e) => setForm({ ...form, costo_assicurazione: e.target.value })} /></div>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5"><Label>Data inizio</Label><Input type="date" value={form.data_inizio} onChange={(e) => setForm({ ...form, data_inizio: e.target.value })} /></div>
           <div className="space-y-1.5"><Label>Data scadenza</Label><Input type="date" value={form.data_scadenza} onChange={(e) => setForm({ ...form, data_scadenza: e.target.value })} /></div>
         </div>
