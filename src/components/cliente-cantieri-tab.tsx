@@ -40,6 +40,15 @@ const empty: CantiereForm = {
 
 export function ClienteCantieriTab({ clienteId }: { clienteId: string }) {
   const qc = useQueryClient();
+  const navigate = useNavigate();
+
+  function mostraSuMappa(c: { id: string; lat: number | null; lng: number | null }) {
+    if (c.lat == null || c.lng == null) {
+      toast.error("Cantiere non posizionato: verifica l'indirizzo");
+      return;
+    }
+    navigate({ to: "/cantieri", search: { tab: "mappa", focus: c.id } });
+  }
   const [openNew, setOpenNew] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
 
