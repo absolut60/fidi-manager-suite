@@ -4866,6 +4866,39 @@ export type Database = {
           store_nome: string
         }[]
       }
+      get_dashboard_commerciale: {
+        Args: { _agente_codice?: string; _data_a?: string; _data_da?: string }
+        Returns: {
+          aperte_n: number
+          aperte_val: number
+          attivita_arretrate_n: number
+          attivita_da_fare_n: number
+          in_lavorazione_n: number
+          in_lavorazione_val: number
+          perse_n: number
+          perse_val: number
+          pipeline_aperta_val: number
+          preventivo_n: number
+          preventivo_val: number
+          tasso_conversione: number
+          valore_medio_vinta: number
+          vinte_n: number
+          vinte_val: number
+        }[]
+      }
+      get_dashboard_commerciale_per_agente: {
+        Args: { _data_a?: string; _data_da?: string }
+        Returns: {
+          agente_codice: string
+          agente_nome: string
+          aperte_n: number
+          perse_n: number
+          pipeline_val: number
+          tasso_conversione: number
+          vinte_n: number
+          vinte_val: number
+        }[]
+      }
       get_dashboard_fidi: {
         Args: never
         Returns: {
