@@ -35,6 +35,7 @@ import {
   ChevronRight,
   Sparkles,
   Target,
+  Building2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { LOGO_MADE_SIDEBAR_BASE64 } from "@/lib/logo-made-sidebar-base64";
@@ -77,6 +78,7 @@ const NAV: NavItem[] = [
   { to: "/dashboard-commerciale", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "commerciale" },
   { to: "/opportunita", label: "Opportunità", icon: Target, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "commerciale" },
   { to: "/calendario-commerciale", label: "Calendario", icon: CalendarDays, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "commerciale" },
+  { to: "/cantieri", label: "Cantieri", icon: Building2, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "commerciale" },
   // FIDI
   { to: "/richieste", label: "Richieste fido", icon: FileText, group: "fidi" },
   { to: "/approvazioni", label: "Approvazioni", icon: CheckCheck, roles: ["admin", "approvatore"], group: "fidi" },
@@ -172,6 +174,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     "/dashboard-commerciale",
     "/opportunita",
     "/calendario-commerciale",
+    "/cantieri",
     "/scadenziario",
     "/recupero-crediti",
     "/recupero-crediti-calendario",
