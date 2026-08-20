@@ -915,8 +915,6 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
     Number(ins?.scaduto_oltre_60 ?? 0);
   const pct = (v: number) => (totFasce > 0 ? (v / totFasce) * 100 : 0);
   const maxGg = Number(ins?.max_giorni_ritardo ?? 0);
-  const fasciaTone =
-    maxGg > 60 ? "destructive" : maxGg > 30 ? "warning" : maxGg > 0 ? "yellow" : "default";
 
   // Dati rischio
   const fidoGest = Number(cliente.fido_gestionale ?? cliente.fido ?? 0);
