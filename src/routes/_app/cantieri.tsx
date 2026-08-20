@@ -147,8 +147,55 @@ function CantieriPage() {
     [rows],
   );
 
-  const suMappa = useMemo(() => filtrati.filter((c) => c.lat != null && c.lng != null), [filtrati]);
-  const nonMostrati = filtrati.length - suMappa.length;
+  // I punti vendita sono aziendali: nessun filtro per agente/categoria.
+  const { data: sedi = [] } = useQuery({
+    queryKey: ["stores-mappa"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("stores")
+        .select("id, nome, indirizzo, cap, citta, provincia, telefono, lat, lng")
+        .eq("attivo", true)
+        .not("lat", "is", null)
+        .not("lng", "is", null)
+        .order("nome");
+      if (error) throw error;
+      return (data ?? []) as unknown as SedeMappa[];
+    },
+    staleTime: 600_000,
+  });
+
+  const suMappa = useMemo(() => {
+    const base = filtrati.filter((c) => c.lat != null && c.lng != null);
+    // Il cantiere messo a fuoco resta visibile anche se escluso dai filtri.
+    if (focus && !base.some((c) => c.id === focus)) {
+      const f = rows.find((c) => c.id === focus && c.lat != null && c.lng != null);
+      if (f) return [...base, f];
+    }
+    return base;
+  }, [filtrati, rows, focus]);
+  const nonMostrati = filtrati.length - filtrati.filter((c) => c.lat != null && c.lng != null).length;
+
+  // focus=<id> senza coordinate: avviso, niente centratura.
+  useEffect(() => {
+    if (!focus || rows.length === 0) return;
+    const c = rows.find((r) => r.id === focus);
+    if (!c || c.lat == null || c.lng == null) {
+      toast.error("Cantiere non posizionato: verifica l'indirizzo");
+      navigate({ search: (s) => ({ ...s, focus: undefined }), replace: true });
+    }
+  }, [focus, rows, navigate]);
+
+  const pulisciFocus = useCallback(() => {
+    navigate({ search: (s) => ({ ...s, focus: undefined }), replace: true });
+  }, [navigate]);
+
+  const mostraSuMappa = useCallback((c: CantiereRow) => {
+    if (c.lat == null || c.lng == null) {
+      toast.error("Cantiere non posizionato: verifica l'indirizzo");
+      return;
+    }
+    navigate({ search: { tab: "mappa", focus: c.id } });
+  }, [navigate]);
 
   const apriModifica = useCallback((c: CantiereRow) => {
     setInModifica(c);
