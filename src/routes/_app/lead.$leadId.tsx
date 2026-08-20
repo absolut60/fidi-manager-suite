@@ -422,6 +422,88 @@ function LeadDettaglioPage() {
         </TabsList>
 
         <TabsContent value="anagrafica" className="mt-4">
+          {!editMode ? (
+          <div className="grid grid-cols-1 gap-3">
+            <LeadSection title="Identità" icon={User} variant="blue">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-3">
+                <LeadField label="Tipo soggetto" value={lead.tipo_soggetto === "persona_fisica" ? "Persona fisica" : "Azienda"} />
+                <LeadField label="Ragione sociale" value={lead.ragione_sociale} highlight />
+                <LeadField label="Nome" value={lead.nome} />
+                <LeadField label="Cognome" value={lead.cognome} />
+                <LeadField label="Partita IVA" value={lead.partita_iva} />
+                <LeadField label="Codice fiscale" value={lead.codice_fiscale} />
+              </div>
+            </LeadSection>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              <LeadSection title="Contatti" icon={Phone} variant="violet">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+                  <LeadField label="Email" value={lead.email} />
+                  <LeadField label="Telefono" value={lead.telefono} />
+                  <LeadField label="Cellulare" value={lead.cellulare} />
+                </div>
+              </LeadSection>
+
+              <LeadSection title="Sede" icon={MapPin} variant="green">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+                  <LeadField label="Indirizzo" value={lead.indirizzo} />
+                  <LeadField label="Città" value={lead.citta} />
+                  <LeadField label="CAP" value={lead.cap} />
+                  <LeadField label="Provincia" value={lead.provincia} />
+                  <LeadField
+                    label="Sede"
+                    value={(stores ?? []).find((s) => s.id === lead.store_id)?.nome || "Nessuna"}
+                  />
+                  <LeadField
+                    label="Agente"
+                    value={
+                      (agenti ?? []).find((a) => a.codice === lead.agente_codice)?.descrizione ||
+                      lead.agente_codice ||
+                      "Nessuno"
+                    }
+                  />
+                </div>
+              </LeadSection>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              <LeadSection title="Qualificazione lead" icon={Target} variant="amber">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+                  <LeadField label="Tipo lead" value={LEAD_TIPO_LABEL[lead.tipo_lead]} />
+                  <LeadField label="Priorità" value={LEAD_PRIORITA_LABEL[lead.priorita]} />
+                  <LeadField label="Fonte" value={LEAD_FONTE_LABEL[lead.fonte]} />
+                  <LeadField label="Dettaglio fonte" value={lead.fonte_dettaglio} />
+                </div>
+                <div className="mt-3 pt-3 border-t grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+                  <LeadField label="Stato" value={LEAD_STATO_LABEL[lead.stato]} hint="(dalla barra azioni)" />
+                  <LeadField label="Assegnato a" value={nomeProfilo(lead.assegnato_a)} hint="(dalla barra azioni)" />
+                  {lead.stato === "perso" && (
+                    <LeadField label="Motivo perdita" value={lead.motivo_perdita} hint="(dalla barra azioni)" />
+                  )}
+                </div>
+              </LeadSection>
+
+              <LeadSection title="Prossima azione" icon={Calendar} variant="gray">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+                  <LeadField
+                    label="Prossima azione il"
+                    value={lead.prossima_azione_il ? new Date(lead.prossima_azione_il).toLocaleDateString("it-IT") : null}
+                  />
+                  <LeadField label="Tipo prossima azione" value={lead.prossima_azione_tipo} />
+                  <div className="sm:col-span-2">
+                    <LeadField label="Nota prossima azione" value={lead.prossima_azione_nota} />
+                  </div>
+                </div>
+              </LeadSection>
+            </div>
+
+            {lead.note && (
+              <LeadSection title="Note" icon={StickyNote} variant="muted">
+                <p className="text-sm whitespace-pre-wrap">{lead.note}</p>
+              </LeadSection>
+            )}
+          </div>
+          ) : (
           <Card className="p-4 sm:p-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               <div>
