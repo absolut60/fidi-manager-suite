@@ -23,18 +23,28 @@ import {
 } from "@/lib/opportunita";
 
 type Agente = { codice: string; descrizione: string | null };
+export type SoggettoFissoOpp = {
+  tipo: "cliente" | "lead";
+  id: string;
+  etichetta: string;
+  clienteIdAssociato?: string | null;
+};
 
 export function OpportunitaDialog({
   open,
   onOpenChange,
   opportunita,
   agenti,
+  soggettoFisso,
+  queryKeysExtra,
   onDeleted,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   opportunita?: OpportunitaRow | null;
-  agenti: Agente[];
+  agenti?: Agente[];
+  soggettoFisso?: SoggettoFissoOpp;
+  queryKeysExtra?: ReadonlyArray<readonly unknown[]>;
   onDeleted?: () => void;
 }) {
   const qc = useQueryClient();
@@ -45,6 +55,24 @@ export function OpportunitaDialog({
     ["amministratore", "amministrazione", "direzione", "marketing", "store_manager"].includes(r),
   );
   const forzaAgente = isAgente && !isTrasversale;
+
+  const { data: agentiFetch = [] } = useQuery({
+    queryKey: ["agenti-lookup"],
+    enabled: !agenti,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("agenti").select("codice, descrizione").order("descrizione");
+      if (error) throw error;
+      return (data ?? []) as Agente[];
+    },
+    staleTime: 300_000,
+  });
+  const listaAgenti = agenti ?? agentiFetch;
+
+  async function invalida() {
+    await qc.invalidateQueries({ queryKey: ["opportunita-lista"] });
+    await Promise.all((queryKeysExtra ?? []).map((k) => qc.invalidateQueries({ queryKey: [...k] })));
+  }
+
 
   const [titolo, setTitolo] = useState("");
   const [tipo, setTipo] = useState<TipoOpportunita>("vendita");
@@ -80,12 +108,15 @@ export function OpportunitaDialog({
     setTipo((o?.tipo as TipoOpportunita) ?? "vendita");
     setStato((o?.stato as StatoOpportunita) ?? "aperta");
     setSoggetto(
-      o?.cliente_id
-        ? { tipo: "cliente", id: o.cliente_id, etichetta: o.clienti?.ragione_sociale ?? "Cliente" }
-        : o?.lead_id
-          ? { tipo: "lead", id: o.lead_id, etichetta: o.lead?.ragione_sociale || `${o.lead?.nome ?? ""} ${o.lead?.cognome ?? ""}`.trim() || "Lead" }
-          : null,
+      soggettoFisso
+        ? { tipo: soggettoFisso.tipo, id: soggettoFisso.id, etichetta: soggettoFisso.etichetta }
+        : o?.cliente_id
+          ? { tipo: "cliente", id: o.cliente_id, etichetta: o.clienti?.ragione_sociale ?? "Cliente" }
+          : o?.lead_id
+            ? { tipo: "lead", id: o.lead_id, etichetta: o.lead?.ragione_sociale || `${o.lead?.nome ?? ""} ${o.lead?.cognome ?? ""}`.trim() || "Lead" }
+            : null,
     );
+
     setCantiereId(o?.cantiere_id ?? "");
     setAgenteCodice(o?.agente_codice ?? "");
     setStoreId(o?.store_id ?? null);
@@ -95,7 +126,7 @@ export function OpportunitaDialog({
     setDataChiusura(o?.data_chiusura ?? "");
     setMotivoPerdita(o?.motivo_perdita ?? "");
     setNote(o?.note ?? "");
-  }, [open, opportunita]);
+  }, [open, opportunita, soggettoFisso]);
 
   // Precompilazione agente/store dal soggetto selezionato
   useEffect(() => {
@@ -147,9 +178,10 @@ export function OpportunitaDialog({
   }, [stato]);
 
   const agentiOrdinati = useMemo(
-    () => [...agenti].sort((a, b) => (a.descrizione ?? a.codice).localeCompare(b.descrizione ?? b.codice)),
-    [agenti],
+    () => [...listaAgenti].sort((a, b) => (a.descrizione ?? a.codice).localeCompare(b.descrizione ?? b.codice)),
+    [listaAgenti],
   );
+
 
   async function salva() {
     if (!titolo.trim()) { toast.error("Il titolo è obbligatorio"); return; }
@@ -159,8 +191,14 @@ export function OpportunitaDialog({
       titolo: titolo.trim(),
       tipo,
       stato,
-      cliente_id: soggetto.tipo === "cliente" ? soggetto.id : null,
+      cliente_id:
+        soggetto.tipo === "cliente"
+          ? soggetto.id
+          : soggettoFisso?.tipo === "lead"
+            ? (soggettoFisso.clienteIdAssociato ?? null)
+            : null,
       lead_id: soggetto.tipo === "lead" ? soggetto.id : null,
+
       cantiere_id: cantiereId || null,
       agente_codice: agenteCodice || null,
       store_id: storeId,
@@ -183,7 +221,7 @@ export function OpportunitaDialog({
         if (error) throw error;
         toast.success("Opportunità creata");
       }
-      await qc.invalidateQueries({ queryKey: ["opportunita-lista"] });
+      await invalida();
       onOpenChange(false);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Errore nel salvataggio");
@@ -200,7 +238,7 @@ export function OpportunitaDialog({
       return;
     }
     toast.success("Opportunità eliminata");
-    await qc.invalidateQueries({ queryKey: ["opportunita-lista"] });
+    await invalida();
     onOpenChange(false);
     onDeleted?.();
   }
@@ -250,15 +288,19 @@ export function OpportunitaDialog({
                   {soggetto.tipo === "cliente" ? "Cliente" : "Lead"}
                 </Badge>
                 <span className="truncate text-sm font-medium flex-1">{soggetto.etichetta}</span>
-                <Button variant="ghost" size="sm" onClick={() => { setSoggetto(null); setCantiereId(""); }}>
-                  Cambia
-                </Button>
+                {!soggettoFisso && (
+                  <Button variant="ghost" size="sm" onClick={() => { setSoggetto(null); setCantiereId(""); }}>
+                    Cambia
+                  </Button>
+                )}
+
               </div>
-            ) : (
+            ) : soggettoFisso ? null : (
               <div className="mt-1">
                 <SoggettoCombobox onSelect={(s) => { setSoggetto(s); setCantiereId(""); }} />
               </div>
             )}
+
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
