@@ -1368,7 +1368,7 @@ function MiniStat({
             {label}
           </p>
           <p
-            className={`${size === "md" ? "text-[17px] sm:text-[19px]" : "text-[15px] sm:text-base"} font-bold mt-0.5 tabular-nums break-words leading-tight ${valCls}`}
+            className={`${size === "md" ? "text-[17px] sm:text-[19px]" : "text-[13px] sm:text-[15px]"} font-bold mt-0.5 tabular-nums whitespace-nowrap leading-tight ${valCls}`}
           >
             {value}
           </p>
