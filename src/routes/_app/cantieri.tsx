@@ -241,6 +241,7 @@ function CantieriPage() {
                             {GEO_LABEL[s]}
                           </Badge>
                         </TableCell>
+                        <TableCell className="text-sm">{testoSedeVicina(c) ?? "—"}</TableCell>
                         <TableCell className="text-sm">
                           {c.agente_codice ? (agenteLabel.get(c.agente_codice) ?? c.agente_codice) : "—"}
                         </TableCell>
