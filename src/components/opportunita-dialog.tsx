@@ -289,11 +289,12 @@ export function OpportunitaDialog({
                 )}
 
               </div>
-            ) : (
+            ) : soggettoFisso ? null : (
               <div className="mt-1">
                 <SoggettoCombobox onSelect={(s) => { setSoggetto(s); setCantiereId(""); }} />
               </div>
             )}
+
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
