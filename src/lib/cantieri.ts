@@ -69,9 +69,29 @@ export type CantiereRow = {
   geocodificato_il: string | null;
   agente_codice: string | null;
   categoria: string | null;
+  sede_piu_vicina_id: string | null;
+  sede_piu_vicina_km: number | null;
+  sede_piu_vicina_min: number | null;
+  sede_piu_vicina_calcolata_il: string | null;
   clienti?: { ragione_sociale: string | null; codice_agente: string | null } | null;
   lead?: { ragione_sociale: string | null; nome: string | null; cognome: string | null } | null;
+  sede?: { nome: string | null } | null;
 };
+
+/** "SEDE DI LISSONE · 12,4 km · 18 min" oppure null se non calcolata. */
+export function testoSedeVicina(c: {
+  sede?: { nome: string | null } | null;
+  sede_piu_vicina_km?: number | null;
+  sede_piu_vicina_min?: number | null;
+}): string | null {
+  if (!c.sede?.nome) return null;
+  const parti = [c.sede.nome];
+  if (c.sede_piu_vicina_km != null) {
+    parti.push(`${c.sede_piu_vicina_km.toLocaleString("it-IT", { maximumFractionDigits: 1 })} km`);
+  }
+  if (c.sede_piu_vicina_min != null) parti.push(`${Math.round(c.sede_piu_vicina_min)} min`);
+  return parti.join(" · ");
+}
 
 export function nomeSoggettoCantiere(c: CantiereRow): string {
   if (c.clienti?.ragione_sociale) return c.clienti.ragione_sociale;
