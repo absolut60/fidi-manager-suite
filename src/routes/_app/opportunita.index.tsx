@@ -1,6 +1,6 @@
 // Modulo commerciale (CRM) — lista opportunità con riepilogo pipeline, filtri e dialog crea/modifica.
 import { useMemo, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Search, Plus, Pencil, Target } from "lucide-react";
 import { toast } from "sonner";
@@ -229,7 +229,15 @@ function OpportunitaPage() {
               <TableBody>
                 {filtrate.map((o) => (
                   <TableRow key={o.id}>
-                    <TableCell className="font-medium">{o.titolo}</TableCell>
+                    <TableCell className="font-medium">
+                      <Link
+                        to="/opportunita/$opportunitaId"
+                        params={{ opportunitaId: o.id }}
+                        className="hover:underline"
+                      >
+                        {o.titolo}
+                      </Link>
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Badge variant={o.cliente_id ? "default" : "secondary"} className="shrink-0">
