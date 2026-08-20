@@ -139,9 +139,16 @@ function CantieriPage() {
           </h1>
           <p className="text-sm text-muted-foreground">Cantieri collegati a clienti e lead, con posizione su mappa.</p>
         </div>
-        <Button onClick={() => { setInModifica(null); setDialogOpen(true); }}>
-          <Plus className="size-4 mr-1.5" /> Nuovo cantiere
-        </Button>
+        <div className="flex items-center gap-2">
+          {isTrasversale && (
+            <Button variant="outline" disabled={sediBusy} onClick={geocodificaLeSedi}>
+              <MapPinned className={`size-4 mr-1.5 ${sediBusy ? "animate-pulse" : ""}`} /> Geocodifica sedi
+            </Button>
+          )}
+          <Button onClick={() => { setInModifica(null); setDialogOpen(true); }}>
+            <Plus className="size-4 mr-1.5" /> Nuovo cantiere
+          </Button>
+        </div>
       </div>
 
       {daPosizionare > 0 && (
