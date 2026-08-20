@@ -29,15 +29,19 @@ export const ricalcolaFidoTeorico = inngest.createFunction(
     let blocchi = 0;
 
     for (let i = 0; i < MAX_ITERAZIONI; i++) {
-      const idCorrente = dopoId;
-      const ultimoId: string | null = await step.run(`blocco-${i}`, async () => {
-        const { data, error } = await supabaseAdmin.rpc(
-          "ricalcola_fido_teorico_blocco",
-          { _dopo_id: idCorrente, _dimensione: DIMENSIONE_BLOCCO } as never,
-        );
-        if (error) throw new Error(error.message);
-        return (data as unknown as string | null) ?? null;
-      });
+      const idCorrente: string | null = dopoId;
+      const ultimoId = (await step.run(
+        `blocco-${i}`,
+        async (): Promise<string | null> => {
+          const res = await supabaseAdmin.rpc(
+            "ricalcola_fido_teorico_blocco",
+            { _dopo_id: idCorrente, _dimensione: DIMENSIONE_BLOCCO } as never,
+          );
+          if (res.error) throw new Error(res.error.message);
+          return (res.data as unknown as string | null) ?? null;
+        },
+      )) as string | null;
+
 
       if (!ultimoId) break;
       dopoId = ultimoId;
