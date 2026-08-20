@@ -53,7 +53,9 @@ export const geocodificaCantiere = createServerFn({ method: "POST" })
       });
     }
 
-    return salva(await geocodificaIndirizzo(componiQuery(c)));
+    return salva(
+      await geocodificaIndirizzo(componiQuery(c), { cap: c.cap, citta: c.citta, provincia: c.provincia }),
+    );
   });
 
 /** Ricalcola la sede più vicina di un cantiere già posizionato. */
