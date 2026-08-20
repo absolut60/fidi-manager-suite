@@ -108,12 +108,15 @@ export function OpportunitaDialog({
     setTipo((o?.tipo as TipoOpportunita) ?? "vendita");
     setStato((o?.stato as StatoOpportunita) ?? "aperta");
     setSoggetto(
-      o?.cliente_id
-        ? { tipo: "cliente", id: o.cliente_id, etichetta: o.clienti?.ragione_sociale ?? "Cliente" }
-        : o?.lead_id
-          ? { tipo: "lead", id: o.lead_id, etichetta: o.lead?.ragione_sociale || `${o.lead?.nome ?? ""} ${o.lead?.cognome ?? ""}`.trim() || "Lead" }
-          : null,
+      soggettoFisso
+        ? { tipo: soggettoFisso.tipo, id: soggettoFisso.id, etichetta: soggettoFisso.etichetta }
+        : o?.cliente_id
+          ? { tipo: "cliente", id: o.cliente_id, etichetta: o.clienti?.ragione_sociale ?? "Cliente" }
+          : o?.lead_id
+            ? { tipo: "lead", id: o.lead_id, etichetta: o.lead?.ragione_sociale || `${o.lead?.nome ?? ""} ${o.lead?.cognome ?? ""}`.trim() || "Lead" }
+            : null,
     );
+
     setCantiereId(o?.cantiere_id ?? "");
     setAgenteCodice(o?.agente_codice ?? "");
     setStoreId(o?.store_id ?? null);
