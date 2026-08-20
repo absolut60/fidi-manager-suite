@@ -477,7 +477,7 @@ function ClienteDetail() {
             )}
           </div>
 
-          <div className="flex flex-wrap gap-2 items-center">wq
+          <div className="flex flex-wrap gap-2 items-center">
             {cliente.privacy_firmata ? (
               <Badge className="bg-success/15 text-success gap-1">
                 <FileCheck2 className="size-3" /> Privacy firmata
