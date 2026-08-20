@@ -1,17 +1,21 @@
-import { inngest, sendInngestEvent } from "./client";
+import { inngest } from "./client";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
+const DIMENSIONE_BLOCCO = 500;
+const MAX_ITERAZIONI = 200;
+
 /**
- * Catena di ricalcolo del precalcolo fido teorico
- * (public.fido_teorico_cliente): avvio → blocchi da 500 concatenati →
- * finalizzazione. Nessun singolo passo supera pochi secondi, così non si
- * incappa mai nel timeout di sessione.
+ * Ricalcolo del precalcolo fido teorico (public.fido_teorico_cliente).
+ * Unica funzione Inngest: refresh → loop di blocchi da 500 (uno step per
+ * blocco, id univoco così Inngest li memoizza) → finalizzazione.
+ * Nessun evento che ri-triggera sé stesso.
  */
-export const ricalcolaFidoTeoricoAvvia = inngest.createFunction(
+export const ricalcolaFidoTeorico = inngest.createFunction(
   {
-    id: "ricalcola-fido-teorico-avvia",
-    name: "Ricalcolo fido teorico — avvio",
+    id: "ricalcola-fido-teorico",
+    name: "Ricalcolo fido teorico",
     retries: 2,
+    concurrency: { limit: 1 },
     triggers: [{ event: "fido-teorico/ricalcolo.requested" }],
   },
   async ({ step }) => {
@@ -21,49 +25,37 @@ export const ricalcolaFidoTeoricoAvvia = inngest.createFunction(
       return { ok: true };
     });
 
-    await step.run("primo-blocco", async () => {
-      await sendInngestEvent("fido-teorico/ricalcolo.blocco", { dopoId: null });
-      return { ok: true };
-    });
+    let dopoId: string | null = null;
+    let blocchi = 0;
 
-    return { avviato: true };
-  },
-);
-
-export const ricalcolaFidoTeoricoBlocco = inngest.createFunction(
-  {
-    id: "ricalcola-fido-teorico-blocco",
-    name: "Ricalcolo fido teorico — blocco",
-    retries: 3,
-    concurrency: { limit: 1 },
-    triggers: [{ event: "fido-teorico/ricalcolo.blocco" }],
-  },
-  async ({ event, step }) => {
-    const dopoId = ((event.data ?? {}) as { dopoId?: string | null }).dopoId ?? null;
-
-    const ultimoId = await step.run("processa-blocco", async () => {
-      const { data, error } = await supabaseAdmin.rpc("ricalcola_fido_teorico_blocco", {
-        _dopo_id: dopoId,
-        _dimensione: 500,
-      } as never);
-      if (error) throw new Error(error.message);
-      return (data as unknown as string | null) ?? null;
-    });
-
-    if (!ultimoId) {
-      await step.run("finalizza", async () => {
-        const { error } = await supabaseAdmin.rpc("ricalcola_fido_teorico_finalizza");
+    for (let i = 0; i < MAX_ITERAZIONI; i++) {
+      const idCorrente = dopoId;
+      const ultimoId: string | null = await step.run(`blocco-${i}`, async () => {
+        const { data, error } = await supabaseAdmin.rpc(
+          "ricalcola_fido_teorico_blocco",
+          { _dopo_id: idCorrente, _dimensione: DIMENSIONE_BLOCCO } as never,
+        );
         if (error) throw new Error(error.message);
-        return { ok: true };
+        return (data as unknown as string | null) ?? null;
       });
-      return { done: true };
+
+      if (!ultimoId) break;
+      dopoId = ultimoId;
+      blocchi += 1;
+
+      if (i === MAX_ITERAZIONI - 1) {
+        throw new Error(
+          `Ricalcolo fido teorico: superato il tetto di ${MAX_ITERAZIONI} blocchi (ultimo id ${dopoId}).`,
+        );
+      }
     }
 
-    await step.run("prossimo-blocco", async () => {
-      await sendInngestEvent("fido-teorico/ricalcolo.blocco", { dopoId: ultimoId });
+    await step.run("finalizza", async () => {
+      const { error } = await supabaseAdmin.rpc("ricalcola_fido_teorico_finalizza");
+      if (error) throw new Error(error.message);
       return { ok: true };
     });
 
-    return { continua: true, dopoId: ultimoId };
+    return { blocchi_elaborati: blocchi, ultimo_id: dopoId, finalizzato: true };
   },
 );
