@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import { Plus, Building2, Pencil, Trash2, Sliders, Save, Mail, AlertTriangle, RefreshCw } from "lucide-react";
+import { Plus, Building2, Pencil, Trash2, Sliders, Save, Mail, AlertTriangle, RefreshCw, MapPinned, LocateFixed } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { refreshFatturatoMensile } from "@/lib/fido-teorico.functions";
 import { getCleanupRecuperoCounts, eseguiCleanupRecupero } from "@/lib/cleanup-recupero.functions";
@@ -11,6 +11,7 @@ import { notifyRichiestaEvento } from "@/lib/richieste-email.functions";
 import { testConnessioneRichieste } from "@/lib/test-connessione-richieste.functions";
 import { previewPromemoriaEmail } from "@/lib/promemoria-preview.functions";
 import { getStatoCanaleEmail } from "@/lib/email-health.functions";
+import { geocodificaIndirizzoSede, geocodificaTutteLeSedi } from "@/lib/sedi.functions";
 import { sendEmailDetailed, buildEmailTemplate } from "@/lib/send-email";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -49,6 +50,8 @@ const storeSchema = z.object({
   email_sede: z.string().trim().max(150).email("Email non valida").optional().or(z.literal("")),
   pec_sede: z.string().trim().max(150).email("PEC non valida").optional().or(z.literal("")),
   piva: z.string().trim().max(20).optional().or(z.literal("")),
+  lat: z.string().trim().optional().or(z.literal("")),
+  lng: z.string().trim().optional().or(z.literal("")),
 });
 type StoreForm = z.infer<typeof storeSchema>;
 type StoreRow = {
@@ -57,6 +60,8 @@ type StoreRow = {
   telefono: string | null; email_sede: string | null; pec_sede: string | null;
   piva: string | null; ragione_sociale_sede: string | null;
   attivo: boolean;
+  lat: number | null; lng: number | null;
+  geocodifica_stato: string | null;
 };
 
 function ImpostazioniPage() {
@@ -116,9 +121,12 @@ function ImpostazioniPage() {
 
 
       <Card className="p-4 sm:p-5">
-        <h2 className="font-semibold mb-3 flex items-center gap-2">
-          <Building2 className="size-4" /> Punti vendita ({stores?.length ?? 0})
-        </h2>
+        <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
+          <h2 className="font-semibold flex items-center gap-2">
+            <Building2 className="size-4" /> Punti vendita ({stores?.length ?? 0})
+          </h2>
+          <GeocodificaSediButton />
+        </div>
         {isLoading ? (
           <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
         ) : !stores || stores.length === 0 ? (
@@ -424,6 +432,39 @@ function ManutenzioneCard() {
   );
 }
 
+function GeocodificaSediButton() {
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState(false);
+  const geocodificaTutte = useServerFn(geocodificaTutteLeSedi);
+
+  async function esegui(forza: boolean) {
+    if (forza && !window.confirm("Rigeocodificare TUTTE le sedi attive, sovrascrivendo le coordinate esistenti?")) return;
+    setBusy(true);
+    try {
+      const r = await geocodificaTutte({ data: { forza } });
+      if (r.ok === 0 && r.fallite === 0) toast.info("Nessuna sede da geocodificare");
+      else if (r.fallite === 0) toast.success(`${r.ok} sedi geocodificate`);
+      else toast.warning(`${r.ok} ok, ${r.fallite} fallite: ${r.messaggi.join(" — ")}`);
+      qc.invalidateQueries({ queryKey: ["stores"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Geocodifica non riuscita");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex gap-2">
+      <Button variant="outline" size="sm" disabled={busy} onClick={() => esegui(false)} className="gap-1.5">
+        <MapPinned className={`size-4 ${busy ? "animate-pulse" : ""}`} /> Geocodifica tutte le sedi
+      </Button>
+      <Button variant="ghost" size="sm" disabled={busy} onClick={() => esegui(true)}>
+        Rigeocodifica tutte
+      </Button>
+    </div>
+  );
+}
+
 function StoreDialog({ editing, onClose }: { editing: StoreRow | null; onClose: () => void }) {
   const qc = useQueryClient();
   const [form, setForm] = useState<StoreForm>({
@@ -439,7 +480,58 @@ function StoreDialog({ editing, onClose }: { editing: StoreRow | null; onClose: 
     email_sede: editing?.email_sede ?? "",
     pec_sede: editing?.pec_sede ?? "",
     piva: editing?.piva ?? "",
+    lat: editing?.lat != null ? String(editing.lat) : "",
+    lng: editing?.lng != null ? String(editing.lng) : "",
   });
+  const [geoStato, setGeoStato] = useState<string | null>(editing?.geocodifica_stato ?? null);
+  const [geoBusy, setGeoBusy] = useState(false);
+  const geocodifica = useServerFn(geocodificaIndirizzoSede);
+
+  async function geolocalizzaDaIndirizzo() {
+    setGeoBusy(true);
+    try {
+      const r = await geocodifica({
+        data: {
+          indirizzo: form.indirizzo || null,
+          cap: form.cap || null,
+          citta: form.citta || null,
+          provincia: form.provincia || null,
+        },
+      });
+      if (r.stato === "ok" && r.lat != null && r.lng != null) {
+        setForm((f) => ({ ...f, lat: String(r.lat), lng: String(r.lng) }));
+        setGeoStato("ok");
+        toast.success(r.messaggio ?? "Coordinate trovate");
+      } else {
+        setGeoStato("fallita");
+        toast.error(r.messaggio ?? "Geocodifica non riuscita");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Geocodifica non riuscita");
+    } finally {
+      setGeoBusy(false);
+    }
+  }
+
+  function usaLaMiaPosizione() {
+    if (!("geolocation" in navigator)) {
+      toast.error("Geolocalizzazione non disponibile su questo dispositivo");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setForm((f) => ({
+          ...f,
+          lat: pos.coords.latitude.toFixed(6),
+          lng: pos.coords.longitude.toFixed(6),
+        }));
+        setGeoStato("manuale");
+        toast.success("Posizione acquisita dal dispositivo");
+      },
+      (err) => toast.error(err.code === err.PERMISSION_DENIED ? "Permesso posizione negato" : "Posizione non disponibile"),
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  }
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const mutation = useMutation({
@@ -458,6 +550,10 @@ function StoreDialog({ editing, onClose }: { editing: StoreRow | null; onClose: 
         email_sede: parsed.email_sede || null,
         pec_sede: parsed.pec_sede || null,
         piva: parsed.piva || null,
+        lat: parsed.lat ? Number(parsed.lat) : null,
+        lng: parsed.lng ? Number(parsed.lng) : null,
+        geocodifica_stato: geoStato,
+        geocodificato_il: parsed.lat && parsed.lng ? new Date().toISOString() : null,
       };
       if (editing) {
         const { error } = await supabase.from("stores").update(payload).eq("id", editing.id);
@@ -571,6 +667,35 @@ function StoreDialog({ editing, onClose }: { editing: StoreRow | null; onClose: 
             {errors.pec_sede && <p className="text-xs text-destructive">{errors.pec_sede}</p>}
           </div>
         </div>
+        <div className="space-y-2 rounded-md border p-3">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <Label className="flex items-center gap-1.5"><MapPinned className="size-4" /> Coordinate</Label>
+            {geoStato && (
+              <Badge variant={geoStato === "ok" ? "default" : geoStato === "fallita" ? "destructive" : "secondary"}>
+                {geoStato === "ok" ? "Geocodificata" : geoStato === "fallita" ? "Geocodifica fallita" : geoStato === "manuale" ? "Coordinate manuali" : "Da geocodificare"}
+              </Badge>
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="lat">Latitudine</Label>
+              <Input id="lat" inputMode="decimal" value={form.lat} onChange={(e) => { setForm({ ...form, lat: e.target.value }); setGeoStato("manuale"); }} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="lng">Longitudine</Label>
+              <Input id="lng" inputMode="decimal" value={form.lng} onChange={(e) => { setForm({ ...form, lng: e.target.value }); setGeoStato("manuale"); }} />
+            </div>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <Button type="button" variant="outline" size="sm" disabled={geoBusy} onClick={geolocalizzaDaIndirizzo} className="gap-1.5">
+              <MapPinned className={`size-4 ${geoBusy ? "animate-pulse" : ""}`} /> Geolocalizza da indirizzo
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={usaLaMiaPosizione} className="gap-1.5">
+              <LocateFixed className="size-4" /> Usa la mia posizione
+            </Button>
+          </div>
+        </div>
+
         <DialogFooter>
           {editing && (
             <Button type="button" variant="outline" className="mr-auto gap-1.5" onClick={() => deleteMutation.mutate()}>

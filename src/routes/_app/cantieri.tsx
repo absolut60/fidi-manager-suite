@@ -4,7 +4,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ClientOnly } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, Building2, MapPin, MapPinned, Pencil, Plus, Search } from "lucide-react";
+import { AlertTriangle, Building2, MapPin, Pencil, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -18,7 +18,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FiltriCollassabili } from "@/components/lista-responsive";
 import { CantiereDialog } from "@/components/cantiere-dialog";
-import { getChiaveMappe, geocodificaSedi } from "@/lib/cantieri.functions";
+import { getChiaveMappe } from "@/lib/cantieri.functions";
 import {
   CATEGORIE_CANTIERE, CATEGORIA_LABEL, GEO_CLASS, GEO_LABEL, GEO_STATI,
   indirizzoCompleto, nomeSoggettoCantiere, testoSedeVicina,
@@ -66,23 +66,6 @@ function CantieriPage() {
   const [inModifica, setInModifica] = useState<CantiereRow | null>(null);
 
   const chiaveMappe = useServerFn(getChiaveMappe);
-  const geoSedi = useServerFn(geocodificaSedi);
-  const [sediBusy, setSediBusy] = useState(false);
-
-  async function geocodificaLeSedi() {
-    setSediBusy(true);
-    try {
-      const r = await geoSedi();
-      if (r.ok === 0 && r.fallite === 0) toast.info("Tutte le sedi hanno già le coordinate");
-      else if (r.fallite === 0) toast.success(`${r.ok} sedi geocodificate`);
-      else toast.warning(`${r.ok} sedi geocodificate, ${r.fallite} fallite: ${r.messaggi.join(" — ")}`);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Geocodifica sedi non riuscita");
-    } finally {
-      setSediBusy(false);
-    }
-  }
-
   const { data: agenti = [] } = useQuery({
     queryKey: ["agenti-lookup"],
     queryFn: async () => {
@@ -208,11 +191,6 @@ function CantieriPage() {
           <p className="text-sm text-muted-foreground">Cantieri collegati a clienti e lead, con posizione su mappa.</p>
         </div>
         <div className="flex items-center gap-2">
-          {isTrasversale && (
-            <Button variant="outline" disabled={sediBusy} onClick={geocodificaLeSedi}>
-              <MapPinned className={`size-4 mr-1.5 ${sediBusy ? "animate-pulse" : ""}`} /> Geocodifica sedi
-            </Button>
-          )}
           <Button onClick={() => { setInModifica(null); setDialogOpen(true); }}>
             <Plus className="size-4 mr-1.5" /> Nuovo cantiere
           </Button>

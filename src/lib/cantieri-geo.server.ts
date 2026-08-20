@@ -27,8 +27,26 @@ export function componiQuery(c: {
     .join(", ");
 }
 
+/** Vincoli `components` per evitare match su vie omonime in altri comuni. */
+export type VincoliGeo = {
+  cap?: string | null;
+  citta?: string | null;
+  provincia?: string | null;
+};
+
+export function componiComponents(v: VincoliGeo | undefined): string {
+  const parti = ["country:IT"];
+  if (v?.citta?.trim()) parti.push(`locality:${v.citta.trim()}`);
+  if (v?.provincia?.trim()) parti.push(`administrative_area:${v.provincia.trim()}`);
+  if (v?.cap?.trim()) parti.push(`postal_code:${v.cap.trim()}`);
+  return parti.join("|");
+}
+
 /** Geocodifica un indirizzo testuale con la chiave SERVER. Non lancia mai. */
-export async function geocodificaIndirizzo(indirizzo: string): Promise<EsitoGeocodifica> {
+export async function geocodificaIndirizzo(
+  indirizzo: string,
+  vincoli?: VincoliGeo,
+): Promise<EsitoGeocodifica> {
   const apiKey = process.env["GOOGLE_MAPS_API_KEY"];
   if (!apiKey) {
     return {
@@ -37,8 +55,10 @@ export async function geocodificaIndirizzo(indirizzo: string): Promise<EsitoGeoc
     };
   }
   try {
+    const components = componiComponents(vincoli);
     const url =
       `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(indirizzo)}` +
+      `&components=${encodeURIComponent(components)}` +
       `&region=it&language=it&key=${apiKey}`;
     const res = await fetch(url);
     if (!res.ok) {
@@ -49,10 +69,44 @@ export async function geocodificaIndirizzo(indirizzo: string): Promise<EsitoGeoc
     const json = (await res.json()) as {
       status: string;
       error_message?: string;
-      results?: Array<{ geometry?: { location?: { lat: number; lng: number } } }>;
+      results?: Array<{
+        partial_match?: boolean;
+        geometry?: { location?: { lat: number; lng: number }; location_type?: string };
+      }>;
     };
-    const loc = json.results?.[0]?.geometry?.location;
-    if (json.status === "OK" && loc) return { stato: "ok", lat: loc.lat, lng: loc.lng, messaggio: null };
+    const primo = json.results?.[0];
+    const loc = primo?.geometry?.location;
+    if (json.status === "OK" && loc) {
+      const approssimativo = primo?.partial_match === true || primo?.geometry?.location_type === "APPROXIMATE";
+      return {
+        stato: "ok",
+        lat: loc.lat,
+        lng: loc.lng,
+        messaggio: approssimativo ? "Match approssimativo — verificare la posizione sulla mappa." : null,
+      };
+    }
+    // Nessun risultato: allenta i vincoli un passo per volta (CAP spesso obsoleto),
+    // mantenendo comune/provincia il più a lungo possibile.
+    if (json.status === "ZERO_RESULTS") {
+      const haCap = Boolean(vincoli?.cap?.trim());
+      const haProv = Boolean(vincoli?.provincia?.trim());
+      const haCitta = Boolean(vincoli?.citta?.trim());
+      let successivo: VincoliGeo | undefined | false = false;
+      if (haCap) successivo = { citta: vincoli?.citta ?? null, provincia: vincoli?.provincia ?? null };
+      else if (haProv && haCitta) successivo = { citta: vincoli?.citta ?? null };
+      else if (haCitta || haProv) successivo = undefined;
+      if (successivo !== false) {
+        // Se il CAP viene scartato come vincolo, va tolto anche dal testo:
+        // un CAP obsoleto porta Google su comuni limitrofi.
+        const cap = vincoli?.cap?.trim();
+        const testo = haCap && cap ? indirizzo.replace(new RegExp(`\\b${cap}\\b\\s*`, "g"), "") : indirizzo;
+        const esito = await geocodificaIndirizzo(testo, successivo);
+        if (esito.stato === "ok") {
+          return { ...esito, messaggio: "Match approssimativo — verificare la posizione sulla mappa." };
+        }
+        return esito;
+      }
+    }
 
     let messaggio: string;
     switch (json.status) {
