@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Plus, Trash2, MapPin, Pencil, Construction } from "lucide-react";
+import { Plus, Trash2, MapPin, Map as MapIcon, Pencil, Construction } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -39,6 +40,15 @@ const empty: CantiereForm = {
 
 export function ClienteCantieriTab({ clienteId }: { clienteId: string }) {
   const qc = useQueryClient();
+  const navigate = useNavigate();
+
+  function mostraSuMappa(c: { id: string; lat: number | null; lng: number | null }) {
+    if (c.lat == null || c.lng == null) {
+      toast.error("Cantiere non posizionato: verifica l'indirizzo");
+      return;
+    }
+    navigate({ to: "/cantieri", search: { tab: "mappa", focus: c.id } });
+  }
   const [openNew, setOpenNew] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
 
@@ -118,7 +128,14 @@ export function ClienteCantieriTab({ clienteId }: { clienteId: string }) {
                 </div>
                 <div className="flex gap-1">
                   <Button
-                    variant="ghost" size="icon"
+                    variant="ghost" size="icon" title="Mostra su mappa"
+                    onClick={() => mostraSuMappa(c)}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <MapIcon className="size-4" />
+                  </Button>
+                  <Button
+                    variant="ghost" size="icon" title="Modifica"
                     onClick={() => setEditId(c.id)}
                     className="text-muted-foreground hover:text-foreground"
                   >

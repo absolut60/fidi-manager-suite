@@ -1,7 +1,12 @@
-// Mappa Google dei cantieri geolocalizzati. Componente caricato solo lato client
-// (import dinamico): la Maps JS API richiede il browser.
-import { useEffect, useRef } from "react";
-import { CATEGORIA_COLORE, CATEGORIA_LABEL, indirizzoCompleto, nomeSoggettoCantiere, testoSedeVicina, type CantiereRow } from "@/lib/cantieri";
+// Mappa Google dei cantieri geolocalizzati + punti vendita MADE. Componente
+// caricato solo lato client (import dinamico): la Maps JS API richiede il browser.
+import { useEffect, useRef, useState } from "react";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import {
+  CATEGORIA_COLORE, CATEGORIA_LABEL, SEDE_COLORE, indirizzoCompleto,
+  nomeSoggettoCantiere, testoSedeVicina, type CantiereRow, type SedeMappa,
+} from "@/lib/cantieri";
 
 declare global {
   interface Window { google?: any; __initGoogleMaps?: () => void }
@@ -24,6 +29,7 @@ function caricaMaps(key: string): Promise<void> {
   return caricamento;
 }
 
+/** Pin a goccia colorato: cantieri (colore per categoria). */
 function pinSvg(colore: string): string {
   return (
     "data:image/svg+xml;charset=UTF-8," +
@@ -36,18 +42,43 @@ function pinSvg(colore: string): string {
   );
 }
 
+/** Segnaposto quadrato con simbolo negozio: punti vendita MADE (inconfondibile). */
+function sedeSvg(colore: string): string {
+  return (
+    "data:image/svg+xml;charset=UTF-8," +
+    encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="34" height="40" viewBox="0 0 34 40">
+        <path d="M4 1h26a3 3 0 0 1 3 3v22a3 3 0 0 1-3 3h-9l-4 10-4-10H4a3 3 0 0 1-3-3V4a3 3 0 0 1 3-3z"
+              fill="${colore}" stroke="#ffffff" stroke-width="2"/>
+        <path d="M9 10h16v3H9z" fill="#ffffff"/>
+        <path d="M10.5 14h13v8h-13z" fill="#ffffff"/>
+        <path d="M14.5 17h5v5h-5z" fill="${colore}"/>
+      </svg>`,
+    )
+  );
+}
+
 export default function CantieriMappa({
-  apiKey, cantieri, onApri,
+  apiKey, cantieri, sedi = [], onApri, focusId, onFocusFatto,
 }: {
   apiKey: string;
   cantieri: CantiereRow[];
+  sedi?: SedeMappa[];
   onApri: (c: CantiereRow) => void;
+  focusId?: string | null;
+  onFocusFatto?: () => void;
 }) {
   const divRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<any>(null);
-  const markersRef = useRef<any[]>([]);
+  const markersRef = useRef<Map<string, any>>(new Map());
+  const sediMarkersRef = useRef<any[]>([]);
   const infoRef = useRef<any>(null);
+  const apriInfoRef = useRef<Map<string, () => void>>(new Map());
+  const focusFattoRef = useRef<string | null>(null);
+  const [pronta, setPronta] = useState(false);
+  const [mostraSedi, setMostraSedi] = useState(true);
 
+  // --- Marker dei cantieri -------------------------------------------------
   useEffect(() => {
     let annullato = false;
     caricaMaps(apiKey)
@@ -70,7 +101,8 @@ export default function CantieriMappa({
         const map = mapRef.current;
 
         markersRef.current.forEach((m) => m.setMap(null));
-        markersRef.current = [];
+        markersRef.current = new Map();
+        apriInfoRef.current = new Map();
 
         const bounds = new window.google.maps.LatLngBounds();
         cantieri.forEach((c) => {
@@ -82,7 +114,7 @@ export default function CantieriMappa({
             title: c.nome,
             icon: { url: pinSvg(colore), scaledSize: new window.google.maps.Size(28, 38) },
           });
-          marker.addListener("click", () => {
+          const apriInfo = () => {
             const div = document.createElement("div");
             div.style.minWidth = "200px";
             const h = document.createElement("div");
@@ -107,24 +139,99 @@ export default function CantieriMappa({
             div.append(h, s, a, sede, btn);
             infoRef.current.setContent(div);
             infoRef.current.open({ map, anchor: marker });
-          });
-          markersRef.current.push(marker);
+          };
+          marker.addListener("click", apriInfo);
+          markersRef.current.set(c.id, marker);
+          apriInfoRef.current.set(c.id, apriInfo);
           bounds.extend({ lat: c.lat, lng: c.lng });
         });
 
-        if (markersRef.current.length === 1) {
+        if (markersRef.current.size === 1) {
           map.setCenter(bounds.getCenter());
           map.setZoom(13);
-        } else if (markersRef.current.length > 1) {
+        } else if (markersRef.current.size > 1) {
           map.fitBounds(bounds);
         }
+        setPronta(true);
       })
       .catch(() => {});
     return () => { annullato = true; };
   }, [apiKey, cantieri, onApri]);
 
+  // --- Marker dei punti vendita (non filtrati per agente) ------------------
+  useEffect(() => {
+    if (!pronta || !mapRef.current || !window.google?.maps) return;
+    const map = mapRef.current;
+
+    sediMarkersRef.current.forEach((m) => m.setMap(null));
+    sediMarkersRef.current = [];
+    if (!mostraSedi) return;
+
+    sedi.forEach((s) => {
+      if (s.lat == null || s.lng == null) return;
+      const marker = new window.google.maps.Marker({
+        position: { lat: s.lat, lng: s.lng },
+        map,
+        title: s.nome,
+        zIndex: 999,
+        icon: {
+          url: sedeSvg(SEDE_COLORE),
+          scaledSize: new window.google.maps.Size(34, 40),
+          anchor: new window.google.maps.Point(17, 40),
+        },
+      });
+      marker.addListener("click", () => {
+        const div = document.createElement("div");
+        div.style.minWidth = "200px";
+        const t = document.createElement("div");
+        t.style.cssText = "font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#0f4c81";
+        t.textContent = "Punto vendita MADE";
+        const h = document.createElement("div");
+        h.style.fontWeight = "600";
+        h.textContent = s.nome;
+        const a = document.createElement("div");
+        a.style.fontSize = "12px";
+        a.style.color = "#666";
+        a.textContent = indirizzoCompleto(s) || "—";
+        div.append(t, h, a);
+        if (s.telefono) {
+          const tel = document.createElement("div");
+          tel.style.fontSize = "12px";
+          tel.style.marginTop = "4px";
+          tel.textContent = `Tel. ${s.telefono}`;
+          div.append(tel);
+        }
+        infoRef.current.setContent(div);
+        infoRef.current.open({ map, anchor: marker });
+      });
+      sediMarkersRef.current.push(marker);
+    });
+  }, [pronta, sedi, mostraSedi]);
+
+  // --- Focus su un cantiere (da lista / da scheda cliente) -----------------
+  // Applicato una sola volta per id: il parametro resta nell'URL, così l'InfoWindow
+  // non viene chiusa da un rebuild dei marker.
+  useEffect(() => {
+    if (!pronta || !focusId || !mapRef.current) return;
+    if (focusFattoRef.current === focusId) return;
+    const marker = markersRef.current.get(focusId);
+    const apri = apriInfoRef.current.get(focusId);
+    if (!marker || !apri) return;
+    focusFattoRef.current = focusId;
+    mapRef.current.panTo(marker.getPosition());
+    mapRef.current.setZoom(15);
+    apri();
+    onFocusFatto?.();
+  }, [pronta, focusId, cantieri, onFocusFatto]);
+
   return (
     <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <Switch id="mostra-sedi" checked={mostraSedi} onCheckedChange={setMostraSedi} />
+        <Label htmlFor="mostra-sedi" className="text-sm font-normal cursor-pointer">
+          Mostra punti vendita ({sedi.length})
+        </Label>
+      </div>
       <div ref={divRef} className="h-[600px] w-full rounded-md border" />
       <div className="flex flex-wrap gap-3 text-xs">
         {Object.keys(CATEGORIA_LABEL).map((k) => (
@@ -133,6 +240,13 @@ export default function CantieriMappa({
             {CATEGORIA_LABEL[k]}
           </span>
         ))}
+        <span className="flex items-center gap-1.5 font-medium">
+          <span
+            className="inline-block size-3 rounded-[3px] border border-background"
+            style={{ background: SEDE_COLORE }}
+          />
+          Punti vendita MADE
+        </span>
       </div>
     </div>
   );

@@ -47,6 +47,22 @@ export const CATEGORIA_COLORE: Record<string, string> = {
   "": "#6b7280",
 };
 
+// Colore del segnaposto dei punti vendita MADE (blu istituzionale)
+export const SEDE_COLORE = "#0f4c81";
+
+/** Punto vendita mostrato sulla mappa cantieri. */
+export type SedeMappa = {
+  id: string;
+  nome: string;
+  indirizzo: string | null;
+  cap: string | null;
+  citta: string | null;
+  provincia: string | null;
+  telefono: string | null;
+  lat: number | null;
+  lng: number | null;
+};
+
 export type CantiereRow = {
   id: string;
   nome: string;

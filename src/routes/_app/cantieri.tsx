@@ -1,10 +1,10 @@
 // Modulo commerciale — Cantieri: lista con stato geocodifica e mappa Google.
-import { Suspense, lazy, useCallback, useMemo, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ClientOnly } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, Building2, MapPinned, Pencil, Plus, Search } from "lucide-react";
+import { AlertTriangle, Building2, MapPin, MapPinned, Pencil, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -22,12 +22,18 @@ import { getChiaveMappe, geocodificaSedi } from "@/lib/cantieri.functions";
 import {
   CATEGORIE_CANTIERE, CATEGORIA_LABEL, GEO_CLASS, GEO_LABEL, GEO_STATI,
   indirizzoCompleto, nomeSoggettoCantiere, testoSedeVicina,
-  type CantiereRow, type GeoStato,
+  type CantiereRow, type GeoStato, type SedeMappa,
 } from "@/lib/cantieri";
 
 const CantieriMappa = lazy(() => import("@/components/cantieri-mappa"));
 
+type CantieriSearch = { tab?: "lista" | "mappa"; focus?: string };
+
 export const Route = createFileRoute("/_app/cantieri")({
+  validateSearch: (s: Record<string, unknown>): CantieriSearch => ({
+    tab: s["tab"] === "mappa" ? "mappa" : s["tab"] === "lista" ? "lista" : undefined,
+    focus: typeof s["focus"] === "string" && s["focus"] ? s["focus"] : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Cantieri — FidiManager" },
@@ -44,6 +50,8 @@ export const Route = createFileRoute("/_app/cantieri")({
 const PAGINA = 1000;
 
 function CantieriPage() {
+  const { tab, focus } = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
   const { roles } = useAuth();
   const isTrasversale = roles.some((r) =>
     ["amministratore", "amministrazione", "direzione", "marketing", "store_manager"].includes(r),
@@ -139,8 +147,51 @@ function CantieriPage() {
     [rows],
   );
 
-  const suMappa = useMemo(() => filtrati.filter((c) => c.lat != null && c.lng != null), [filtrati]);
-  const nonMostrati = filtrati.length - suMappa.length;
+  // I punti vendita sono aziendali: nessun filtro per agente/categoria.
+  const { data: sedi = [] } = useQuery({
+    queryKey: ["stores-mappa"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("stores")
+        .select("id, nome, indirizzo, cap, citta, provincia, telefono, lat, lng")
+        .eq("attivo", true)
+        .not("lat", "is", null)
+        .not("lng", "is", null)
+        .order("nome");
+      if (error) throw error;
+      return (data ?? []) as unknown as SedeMappa[];
+    },
+    staleTime: 600_000,
+  });
+
+  const suMappa = useMemo(() => {
+    const base = filtrati.filter((c) => c.lat != null && c.lng != null);
+    // Il cantiere messo a fuoco resta visibile anche se escluso dai filtri.
+    if (focus && !base.some((c) => c.id === focus)) {
+      const f = rows.find((c) => c.id === focus && c.lat != null && c.lng != null);
+      if (f) return [...base, f];
+    }
+    return base;
+  }, [filtrati, rows, focus]);
+  const nonMostrati = filtrati.length - filtrati.filter((c) => c.lat != null && c.lng != null).length;
+
+  // focus=<id> senza coordinate: avviso, niente centratura.
+  useEffect(() => {
+    if (!focus || rows.length === 0) return;
+    const c = rows.find((r) => r.id === focus);
+    if (!c || c.lat == null || c.lng == null) {
+      toast.error("Cantiere non posizionato: verifica l'indirizzo");
+      navigate({ search: (s) => ({ ...s, focus: undefined }), replace: true });
+    }
+  }, [focus, rows, navigate]);
+
+  const mostraSuMappa = useCallback((c: CantiereRow) => {
+    if (c.lat == null || c.lng == null) {
+      toast.error("Cantiere non posizionato: verifica l'indirizzo");
+      return;
+    }
+    navigate({ search: { tab: "mappa", focus: c.id } });
+  }, [navigate]);
 
   const apriModifica = useCallback((c: CantiereRow) => {
     setInModifica(c);
@@ -183,7 +234,10 @@ function CantieriPage() {
         </Card>
       )}
 
-      <Tabs defaultValue="lista">
+      <Tabs
+        value={tab ?? "lista"}
+        onValueChange={(v) => navigate({ search: (s) => ({ ...s, tab: v as "lista" | "mappa" }) })}
+      >
         <TabsList>
           <TabsTrigger value="lista">Lista</TabsTrigger>
           <TabsTrigger value="mappa">Mappa</TabsTrigger>
@@ -217,7 +271,7 @@ function CantieriPage() {
                     <TableHead>Sede più vicina</TableHead>
                     <TableHead>Agente</TableHead>
                     <TableHead>Stato</TableHead>
-                    <TableHead className="w-12" />
+                    <TableHead className="w-24" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -251,9 +305,17 @@ function CantieriPage() {
                             : <Badge className="bg-emerald-600/15 text-emerald-700">Attivo</Badge>}
                         </TableCell>
                         <TableCell>
-                          <Button variant="ghost" size="icon" onClick={() => apriModifica(c)}>
-                            <Pencil className="size-4" />
-                          </Button>
+                          <div className="flex items-center gap-0.5">
+                            <Button
+                              variant="ghost" size="icon" title="Mostra su mappa"
+                              onClick={() => mostraSuMappa(c)}
+                            >
+                              <MapPin className="size-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" title="Modifica" onClick={() => apriModifica(c)}>
+                              <Pencil className="size-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -286,7 +348,13 @@ function CantieriPage() {
             ) : (
               <ClientOnly fallback={<Skeleton className="h-[600px] w-full" />}>
                 <Suspense fallback={<Skeleton className="h-[600px] w-full" />}>
-                  <CantieriMappa apiKey={mapsKey} cantieri={suMappa} onApri={apriModifica} />
+                  <CantieriMappa
+                    apiKey={mapsKey}
+                    cantieri={suMappa}
+                    sedi={sedi}
+                    onApri={apriModifica}
+                    focusId={focus ?? null}
+                  />
                 </Suspense>
               </ClientOnly>
             )}
