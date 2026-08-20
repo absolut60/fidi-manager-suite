@@ -126,7 +126,7 @@ export function OpportunitaDialog({
     setDataChiusura(o?.data_chiusura ?? "");
     setMotivoPerdita(o?.motivo_perdita ?? "");
     setNote(o?.note ?? "");
-  }, [open, opportunita]);
+  }, [open, opportunita, soggettoFisso]);
 
   // Precompilazione agente/store dal soggetto selezionato
   useEffect(() => {
