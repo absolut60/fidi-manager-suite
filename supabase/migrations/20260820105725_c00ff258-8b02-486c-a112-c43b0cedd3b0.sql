@@ -1,0 +1,1 @@
+ALTER TABLE public.assicurazioni_credito ADD COLUMN IF NOT EXISTS costo_assicurazione numeric;

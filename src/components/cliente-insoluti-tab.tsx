@@ -1382,6 +1382,7 @@ type PolizzaRow = {
   numero_polizza: string | null;
   importo_massimale: number | null;
   importo_assicurato: number | null;
+  costo_assicurazione: number | null;
   stato: string;
   data_inizio: string | null;
   data_scadenza: string | null;
@@ -1495,6 +1496,9 @@ function AssicurazioniSection({ clienteId, canManage, canEditAllegati }: { clien
                     </div>
                     {p.numero_polizza && <p className="text-xs text-muted-foreground mt-0.5 font-mono">N° {p.numero_polizza}</p>}
                     <p className="text-sm mt-1">Massimale: <strong>{fmtEuro(p.importo_massimale)}</strong></p>
+                    {p.costo_assicurazione != null && p.costo_assicurazione > 0 && (
+                      <p className="text-sm">Costo: <strong>{fmtEuro(p.costo_assicurazione)}</strong></p>
+                    )}
                     {p.data_scadenza && <p className="text-xs text-muted-foreground">Scade: {fmtDate(p.data_scadenza)}</p>}
                     {p.sinistro_aperto && (
                       <Badge className="bg-destructive/15 text-destructive mt-2">
@@ -1578,6 +1582,7 @@ function ModificaPolizzaDialog({ polizza, onClose, onSaved }: { polizza: Polizza
     numero_polizza: polizza.numero_polizza ?? "",
     importo_massimale: polizza.importo_massimale != null ? String(polizza.importo_massimale) : "",
     importo_assicurato: polizza.importo_assicurato != null ? String(polizza.importo_assicurato) : "",
+    costo_assicurazione: polizza.costo_assicurazione != null ? String(polizza.costo_assicurazione) : "",
     stato: polizza.stato as typeof STATO_POLIZZA[number],
     data_inizio: polizza.data_inizio ?? "",
     data_scadenza: polizza.data_scadenza ?? "",
@@ -1596,6 +1601,7 @@ function ModificaPolizzaDialog({ polizza, onClose, onSaved }: { polizza: Polizza
         numero_polizza: form.numero_polizza || null,
         importo_massimale: form.importo_massimale ? Number(form.importo_massimale) : null,
         importo_assicurato: form.importo_assicurato ? Number(form.importo_assicurato) : null,
+        costo_assicurazione: form.costo_assicurazione ? Number(form.costo_assicurazione) : null,
         stato: form.stato,
         data_inizio: form.data_inizio || null,
         data_scadenza: form.data_scadenza || null,
@@ -1645,7 +1651,7 @@ function ModificaPolizzaDialog({ polizza, onClose, onSaved }: { polizza: Polizza
       <form onSubmit={(e) => { e.preventDefault(); save.mutate(); }} className="space-y-3 max-h-[65vh] overflow-y-auto pr-1">
         <div className="space-y-1.5"><Label>Assicuratore *</Label><Input value={form.assicuratore} onChange={(e) => setForm({ ...form, assicuratore: e.target.value })} /></div>
         <div className="space-y-1.5"><Label>Numero polizza</Label><Input value={form.numero_polizza} onChange={(e) => setForm({ ...form, numero_polizza: e.target.value })} /></div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <div className="space-y-1.5">
             <Label className="flex items-center">Massimale (€)<RischioBadge field="importo_massimale" /></Label>
             <Input type="number" step="0.01" value={form.importo_massimale} onChange={(e) => setForm({ ...form, importo_massimale: e.target.value })} />
@@ -1653,6 +1659,10 @@ function ModificaPolizzaDialog({ polizza, onClose, onSaved }: { polizza: Polizza
           <div className="space-y-1.5">
             <Label className="flex items-center">Importo assicurato (€)<RischioBadge field="importo_assicurato" /></Label>
             <Input type="number" step="0.01" value={form.importo_assicurato} onChange={(e) => setForm({ ...form, importo_assicurato: e.target.value })} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Costo assicurazione (€)</Label>
+            <Input type="number" step="0.01" value={form.costo_assicurazione} onChange={(e) => setForm({ ...form, costo_assicurazione: e.target.value })} />
           </div>
         </div>
         <div className="space-y-1.5">
@@ -1704,6 +1714,7 @@ function NuovaPolizzaDialog({ clienteId, onClose, onSaved }: { clienteId: string
     assicuratore: "",
     numero_polizza: "",
     importo_massimale: "",
+    costo_assicurazione: "",
     data_inizio: "",
     data_scadenza: "",
   });
@@ -1716,6 +1727,7 @@ function NuovaPolizzaDialog({ clienteId, onClose, onSaved }: { clienteId: string
         assicuratore: form.assicuratore.trim(),
         numero_polizza: form.numero_polizza || null,
         importo_massimale: form.importo_massimale ? Number(form.importo_massimale) : null,
+        costo_assicurazione: form.costo_assicurazione ? Number(form.costo_assicurazione) : null,
         data_inizio: form.data_inizio || null,
         data_scadenza: form.data_scadenza || null,
         gestita_da: user?.id ?? null,
@@ -1733,7 +1745,10 @@ function NuovaPolizzaDialog({ clienteId, onClose, onSaved }: { clienteId: string
       <div className="space-y-3">
         <div className="space-y-1.5"><Label>Assicuratore *</Label><Input value={form.assicuratore} onChange={(e) => setForm({ ...form, assicuratore: e.target.value })} /></div>
         <div className="space-y-1.5"><Label>Numero polizza</Label><Input value={form.numero_polizza} onChange={(e) => setForm({ ...form, numero_polizza: e.target.value })} /></div>
-        <div className="space-y-1.5"><Label>Massimale (€)</Label><Input type="number" step="0.01" value={form.importo_massimale} onChange={(e) => setForm({ ...form, importo_massimale: e.target.value })} /></div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5"><Label>Massimale (€)</Label><Input type="number" step="0.01" value={form.importo_massimale} onChange={(e) => setForm({ ...form, importo_massimale: e.target.value })} /></div>
+          <div className="space-y-1.5"><Label>Costo assicurazione (€)</Label><Input type="number" step="0.01" value={form.costo_assicurazione} onChange={(e) => setForm({ ...form, costo_assicurazione: e.target.value })} /></div>
+        </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5"><Label>Data inizio</Label><Input type="date" value={form.data_inizio} onChange={(e) => setForm({ ...form, data_inizio: e.target.value })} /></div>
           <div className="space-y-1.5"><Label>Data scadenza</Label><Input type="date" value={form.data_scadenza} onChange={(e) => setForm({ ...form, data_scadenza: e.target.value })} /></div>

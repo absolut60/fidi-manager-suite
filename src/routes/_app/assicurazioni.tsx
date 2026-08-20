@@ -219,6 +219,7 @@ export default function AssicurazioniPage() {
                 <TableHead>Cliente</TableHead>
                 <TableHead>Assicuratore</TableHead>
                 <TableHead className="text-right">Massimale</TableHead>
+                <TableHead className="text-right">Costo</TableHead>
                 <TableHead>Scadenza</TableHead>
                 <TableHead>Stato</TableHead>
               </TableRow>
@@ -246,6 +247,7 @@ export default function AssicurazioniPage() {
                       {r.numero_polizza && <div className="text-xs text-muted-foreground">N. {r.numero_polizza}</div>}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{fmtEuro(r.importo_massimale ?? r.importo_assicurato)}</TableCell>
+                    <TableCell className="text-right tabular-nums">{fmtEuro(r.costo_assicurazione)}</TableCell>
                     <TableCell>{fmtDate(r.data_scadenza)}</TableCell>
                     <TableCell>
                       {sinistro ? (
