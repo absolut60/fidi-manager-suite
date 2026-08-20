@@ -36,6 +36,7 @@ import { Route as AppLeadRouteImport } from './routes/_app/lead'
 import { Route as AppImpostazioniRouteImport } from './routes/_app/impostazioni'
 import { Route as AppImportExportRouteImport } from './routes/_app/import-export'
 import { Route as AppFidiProcessareRouteImport } from './routes/_app/fidi-processare'
+import { Route as AppDashboardCommercialeRouteImport } from './routes/_app/dashboard-commerciale'
 import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as AppCruscottoIncassiRouteImport } from './routes/_app/cruscotto-incassi'
 import { Route as AppContattiRouteImport } from './routes/_app/contatti'
@@ -207,6 +208,11 @@ const AppImportExportRoute = AppImportExportRouteImport.update({
 const AppFidiProcessareRoute = AppFidiProcessareRouteImport.update({
   id: '/fidi-processare',
   path: '/fidi-processare',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDashboardCommercialeRoute = AppDashboardCommercialeRouteImport.update({
+  id: '/dashboard-commerciale',
+  path: '/dashboard-commerciale',
   getParentRoute: () => AppRoute,
 } as any)
 const AppDashboardRoute = AppDashboardRouteImport.update({
@@ -407,6 +413,7 @@ export interface FileRoutesByFullPath {
   '/contatti': typeof AppContattiRoute
   '/cruscotto-incassi': typeof AppCruscottoIncassiRoute
   '/dashboard': typeof AppDashboardRoute
+  '/dashboard-commerciale': typeof AppDashboardCommercialeRoute
   '/fidi-processare': typeof AppFidiProcessareRoute
   '/import-export': typeof AppImportExportRoute
   '/impostazioni': typeof AppImpostazioniRoute
@@ -469,6 +476,7 @@ export interface FileRoutesByTo {
   '/contatti': typeof AppContattiRoute
   '/cruscotto-incassi': typeof AppCruscottoIncassiRoute
   '/dashboard': typeof AppDashboardRoute
+  '/dashboard-commerciale': typeof AppDashboardCommercialeRoute
   '/fidi-processare': typeof AppFidiProcessareRoute
   '/import-export': typeof AppImportExportRoute
   '/impostazioni': typeof AppImpostazioniRoute
@@ -531,6 +539,7 @@ export interface FileRoutesById {
   '/_app/contatti': typeof AppContattiRoute
   '/_app/cruscotto-incassi': typeof AppCruscottoIncassiRoute
   '/_app/dashboard': typeof AppDashboardRoute
+  '/_app/dashboard-commerciale': typeof AppDashboardCommercialeRoute
   '/_app/fidi-processare': typeof AppFidiProcessareRoute
   '/_app/import-export': typeof AppImportExportRoute
   '/_app/impostazioni': typeof AppImpostazioniRoute
@@ -595,6 +604,7 @@ export interface FileRouteTypes {
     | '/contatti'
     | '/cruscotto-incassi'
     | '/dashboard'
+    | '/dashboard-commerciale'
     | '/fidi-processare'
     | '/import-export'
     | '/impostazioni'
@@ -657,6 +667,7 @@ export interface FileRouteTypes {
     | '/contatti'
     | '/cruscotto-incassi'
     | '/dashboard'
+    | '/dashboard-commerciale'
     | '/fidi-processare'
     | '/import-export'
     | '/impostazioni'
@@ -718,6 +729,7 @@ export interface FileRouteTypes {
     | '/_app/contatti'
     | '/_app/cruscotto-incassi'
     | '/_app/dashboard'
+    | '/_app/dashboard-commerciale'
     | '/_app/fidi-processare'
     | '/_app/import-export'
     | '/_app/impostazioni'
@@ -975,6 +987,13 @@ declare module '@tanstack/react-router' {
       path: '/fidi-processare'
       fullPath: '/fidi-processare'
       preLoaderRoute: typeof AppFidiProcessareRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/dashboard-commerciale': {
+      id: '/_app/dashboard-commerciale'
+      path: '/dashboard-commerciale'
+      fullPath: '/dashboard-commerciale'
+      preLoaderRoute: typeof AppDashboardCommercialeRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/dashboard': {
@@ -1278,6 +1297,7 @@ interface AppRouteChildren {
   AppContattiRoute: typeof AppContattiRoute
   AppCruscottoIncassiRoute: typeof AppCruscottoIncassiRoute
   AppDashboardRoute: typeof AppDashboardRoute
+  AppDashboardCommercialeRoute: typeof AppDashboardCommercialeRoute
   AppFidiProcessareRoute: typeof AppFidiProcessareRoute
   AppImportExportRoute: typeof AppImportExportRoute
   AppImpostazioniRoute: typeof AppImpostazioniRoute
@@ -1320,6 +1340,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppContattiRoute: AppContattiRoute,
   AppCruscottoIncassiRoute: AppCruscottoIncassiRoute,
   AppDashboardRoute: AppDashboardRoute,
+  AppDashboardCommercialeRoute: AppDashboardCommercialeRoute,
   AppFidiProcessareRoute: AppFidiProcessareRoute,
   AppImportExportRoute: AppImportExportRoute,
   AppImpostazioniRoute: AppImpostazioniRoute,
