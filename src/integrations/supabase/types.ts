@@ -962,8 +962,10 @@ export type Database = {
       }
       cantieri: {
         Row: {
+          agente_codice: string | null
           attivo: boolean
           cap: string | null
+          categoria: string | null
           citta: string | null
           cliente_id: string | null
           created_at: string
@@ -971,9 +973,14 @@ export type Database = {
           data_fine_prevista: string | null
           data_inizio: string | null
           descrizione: string | null
+          geocodifica_messaggio: string | null
+          geocodifica_stato: string | null
+          geocodificato_il: string | null
           id: string
           indirizzo: string | null
+          lat: number | null
           lead_id: string | null
+          lng: number | null
           nome: string
           note: string | null
           provincia: string | null
@@ -981,8 +988,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          agente_codice?: string | null
           attivo?: boolean
           cap?: string | null
+          categoria?: string | null
           citta?: string | null
           cliente_id?: string | null
           created_at?: string
@@ -990,9 +999,14 @@ export type Database = {
           data_fine_prevista?: string | null
           data_inizio?: string | null
           descrizione?: string | null
+          geocodifica_messaggio?: string | null
+          geocodifica_stato?: string | null
+          geocodificato_il?: string | null
           id?: string
           indirizzo?: string | null
+          lat?: number | null
           lead_id?: string | null
+          lng?: number | null
           nome: string
           note?: string | null
           provincia?: string | null
@@ -1000,8 +1014,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          agente_codice?: string | null
           attivo?: boolean
           cap?: string | null
+          categoria?: string | null
           citta?: string | null
           cliente_id?: string | null
           created_at?: string
@@ -1009,9 +1025,14 @@ export type Database = {
           data_fine_prevista?: string | null
           data_inizio?: string | null
           descrizione?: string | null
+          geocodifica_messaggio?: string | null
+          geocodifica_stato?: string | null
+          geocodificato_il?: string | null
           id?: string
           indirizzo?: string | null
+          lat?: number | null
           lead_id?: string | null
+          lng?: number | null
           nome?: string
           note?: string | null
           provincia?: string | null
