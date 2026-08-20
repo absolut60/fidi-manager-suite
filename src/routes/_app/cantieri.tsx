@@ -18,7 +18,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FiltriCollassabili } from "@/components/lista-responsive";
 import { CantiereDialog } from "@/components/cantiere-dialog";
-import { getChiaveMappe } from "@/lib/cantieri.functions";
+import { getChiaveMappe, geocodificaSedi } from "@/lib/cantieri.functions";
 import {
   CATEGORIE_CANTIERE, CATEGORIA_LABEL, GEO_CLASS, GEO_LABEL, GEO_STATI,
   indirizzoCompleto, nomeSoggettoCantiere,
