@@ -2464,6 +2464,118 @@ export type Database = {
         }
         Relationships: []
       }
+      opportunita: {
+        Row: {
+          agente_codice: string | null
+          assegnato_a: string | null
+          cantiere_id: string | null
+          cliente_id: string | null
+          created_at: string
+          created_by: string | null
+          data_chiusura: string | null
+          data_prevista_chiusura: string | null
+          descrizione: string | null
+          id: string
+          lead_id: string | null
+          motivo_perdita: string | null
+          note: string | null
+          probabilita: number | null
+          stato: Database["public"]["Enums"]["stato_opportunita"]
+          store_id: string | null
+          tipo: Database["public"]["Enums"]["tipo_opportunita"]
+          titolo: string
+          updated_at: string
+          valore_stimato: number | null
+        }
+        Insert: {
+          agente_codice?: string | null
+          assegnato_a?: string | null
+          cantiere_id?: string | null
+          cliente_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_chiusura?: string | null
+          data_prevista_chiusura?: string | null
+          descrizione?: string | null
+          id?: string
+          lead_id?: string | null
+          motivo_perdita?: string | null
+          note?: string | null
+          probabilita?: number | null
+          stato?: Database["public"]["Enums"]["stato_opportunita"]
+          store_id?: string | null
+          tipo?: Database["public"]["Enums"]["tipo_opportunita"]
+          titolo: string
+          updated_at?: string
+          valore_stimato?: number | null
+        }
+        Update: {
+          agente_codice?: string | null
+          assegnato_a?: string | null
+          cantiere_id?: string | null
+          cliente_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_chiusura?: string | null
+          data_prevista_chiusura?: string | null
+          descrizione?: string | null
+          id?: string
+          lead_id?: string | null
+          motivo_perdita?: string | null
+          note?: string | null
+          probabilita?: number | null
+          stato?: Database["public"]["Enums"]["stato_opportunita"]
+          store_id?: string | null
+          tipo?: Database["public"]["Enums"]["tipo_opportunita"]
+          titolo?: string
+          updated_at?: string
+          valore_stimato?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opportunita_cantiere_id_fkey"
+            columns: ["cantiere_id"]
+            isOneToOne: false
+            referencedRelation: "cantieri"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunita_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunita_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti_con_rischio"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunita_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "opportunita_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "lead"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunita_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       piani_rientro: {
         Row: {
           cliente_id: string
@@ -5391,6 +5503,12 @@ export type Database = {
         | "consegnato"
         | "letto"
         | "fallito"
+      stato_opportunita:
+        | "aperta"
+        | "in_lavorazione"
+        | "preventivo"
+        | "vinta"
+        | "persa"
       stato_polizza:
         | "attiva"
         | "sospesa"
@@ -5422,6 +5540,7 @@ export type Database = {
         | "risposto"
         | "ignorato"
         | "risolto"
+      tipo_opportunita: "vendita" | "fornitura" | "preventivo" | "altro"
       tipo_pratica_legale:
         | "decreto_ingiuntivo"
         | "pignoramento"
@@ -5639,6 +5758,13 @@ export const Constants = {
         "letto",
         "fallito",
       ],
+      stato_opportunita: [
+        "aperta",
+        "in_lavorazione",
+        "preventivo",
+        "vinta",
+        "persa",
+      ],
       stato_polizza: [
         "attiva",
         "sospesa",
@@ -5674,6 +5800,7 @@ export const Constants = {
         "ignorato",
         "risolto",
       ],
+      tipo_opportunita: ["vendita", "fornitura", "preventivo", "altro"],
       tipo_pratica_legale: [
         "decreto_ingiuntivo",
         "pignoramento",
