@@ -275,7 +275,7 @@ function CantieriPage() {
                     <TableHead>Sede più vicina</TableHead>
                     <TableHead>Agente</TableHead>
                     <TableHead>Stato</TableHead>
-                    <TableHead className="w-12" />
+                    <TableHead className="w-24" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
