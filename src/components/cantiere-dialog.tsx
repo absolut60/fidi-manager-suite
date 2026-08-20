@@ -251,6 +251,9 @@ export function CantiereDialog({
       const serveGeo = !coordManuali && (!cantiere || indirizzoCambiato || latN == null || lngN == null);
       if (serveGeo && (indirizzo.trim() || citta.trim())) {
         await eseguiGeocodifica(id, true);
+      } else if (coordManuali) {
+        try { await ricalcolaSede({ data: { cantiere_id: id } }); } catch { /* non blocca */ }
+        qc.invalidateQueries({ queryKey: ["cantieri-lista"] });
       }
       onOpenChange(false);
     } catch (e) {
