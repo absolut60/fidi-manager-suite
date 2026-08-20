@@ -30,6 +30,7 @@ import { Route as AppRecuperoCreditiAndamentoRouteImport } from './routes/_app/r
 import { Route as AppRecuperoCreditiRouteImport } from './routes/_app/recupero-crediti'
 import { Route as AppPrivacyRouteImport } from './routes/_app/privacy'
 import { Route as AppPianiRientroRouteImport } from './routes/_app/piani-rientro'
+import { Route as AppOpportunitaRouteImport } from './routes/_app/opportunita'
 import { Route as AppLegaliRouteImport } from './routes/_app/legali'
 import { Route as AppLeadRouteImport } from './routes/_app/lead'
 import { Route as AppImpostazioniRouteImport } from './routes/_app/impostazioni'
@@ -173,6 +174,11 @@ const AppPrivacyRoute = AppPrivacyRouteImport.update({
 const AppPianiRientroRoute = AppPianiRientroRouteImport.update({
   id: '/piani-rientro',
   path: '/piani-rientro',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppOpportunitaRoute = AppOpportunitaRouteImport.update({
+  id: '/opportunita',
+  path: '/opportunita',
   getParentRoute: () => AppRoute,
 } as any)
 const AppLegaliRoute = AppLegaliRouteImport.update({
@@ -385,6 +391,7 @@ export interface FileRoutesByFullPath {
   '/impostazioni': typeof AppImpostazioniRoute
   '/lead': typeof AppLeadRouteWithChildren
   '/legali': typeof AppLegaliRoute
+  '/opportunita': typeof AppOpportunitaRoute
   '/piani-rientro': typeof AppPianiRientroRoute
   '/privacy': typeof AppPrivacyRoute
   '/recupero-crediti': typeof AppRecuperoCreditiRoute
@@ -442,6 +449,7 @@ export interface FileRoutesByTo {
   '/import-export': typeof AppImportExportRoute
   '/impostazioni': typeof AppImpostazioniRoute
   '/legali': typeof AppLegaliRoute
+  '/opportunita': typeof AppOpportunitaRoute
   '/piani-rientro': typeof AppPianiRientroRoute
   '/privacy': typeof AppPrivacyRoute
   '/recupero-crediti': typeof AppRecuperoCreditiRoute
@@ -502,6 +510,7 @@ export interface FileRoutesById {
   '/_app/impostazioni': typeof AppImpostazioniRoute
   '/_app/lead': typeof AppLeadRouteWithChildren
   '/_app/legali': typeof AppLegaliRoute
+  '/_app/opportunita': typeof AppOpportunitaRoute
   '/_app/piani-rientro': typeof AppPianiRientroRoute
   '/_app/privacy': typeof AppPrivacyRoute
   '/_app/recupero-crediti': typeof AppRecuperoCreditiRoute
@@ -562,6 +571,7 @@ export interface FileRouteTypes {
     | '/impostazioni'
     | '/lead'
     | '/legali'
+    | '/opportunita'
     | '/piani-rientro'
     | '/privacy'
     | '/recupero-crediti'
@@ -619,6 +629,7 @@ export interface FileRouteTypes {
     | '/import-export'
     | '/impostazioni'
     | '/legali'
+    | '/opportunita'
     | '/piani-rientro'
     | '/privacy'
     | '/recupero-crediti'
@@ -678,6 +689,7 @@ export interface FileRouteTypes {
     | '/_app/impostazioni'
     | '/_app/lead'
     | '/_app/legali'
+    | '/_app/opportunita'
     | '/_app/piani-rientro'
     | '/_app/privacy'
     | '/_app/recupero-crediti'
@@ -885,6 +897,13 @@ declare module '@tanstack/react-router' {
       path: '/piani-rientro'
       fullPath: '/piani-rientro'
       preLoaderRoute: typeof AppPianiRientroRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/opportunita': {
+      id: '/_app/opportunita'
+      path: '/opportunita'
+      fullPath: '/opportunita'
+      preLoaderRoute: typeof AppOpportunitaRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/legali': {
@@ -1192,6 +1211,7 @@ interface AppRouteChildren {
   AppImpostazioniRoute: typeof AppImpostazioniRoute
   AppLeadRoute: typeof AppLeadRouteWithChildren
   AppLegaliRoute: typeof AppLegaliRoute
+  AppOpportunitaRoute: typeof AppOpportunitaRoute
   AppPianiRientroRoute: typeof AppPianiRientroRoute
   AppPrivacyRoute: typeof AppPrivacyRoute
   AppRecuperoCreditiRoute: typeof AppRecuperoCreditiRoute
@@ -1232,6 +1252,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppImpostazioniRoute: AppImpostazioniRoute,
   AppLeadRoute: AppLeadRouteWithChildren,
   AppLegaliRoute: AppLegaliRoute,
+  AppOpportunitaRoute: AppOpportunitaRoute,
   AppPianiRientroRoute: AppPianiRientroRoute,
   AppPrivacyRoute: AppPrivacyRoute,
   AppRecuperoCreditiRoute: AppRecuperoCreditiRoute,
