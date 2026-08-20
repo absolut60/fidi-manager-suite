@@ -548,6 +548,7 @@ function LeadDettaglioPage() {
               </div>
             </div>
           </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="contatti" className="mt-4 space-y-4">
