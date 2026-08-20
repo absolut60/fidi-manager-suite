@@ -46,7 +46,13 @@ import { CategoriaSelect } from "@/components/categoria-select";
 
 
 
-const TAB_VALUES = ["riepilogo", "anagrafica", "contatti", "marketing", "cantieri", "storico", "insoluti", "attivita", "allegati", "privacy"] as const;
+const TAB_VALUES = [
+  "riepilogo", "anagrafica", "contatti", "marketing", "cantieri", "commerciale", "storico",
+  "scadenziario", "solleciti", "piani", "legali", "assicurazioni",
+  "attivita", "allegati", "privacy",
+  // legacy: vecchio contenitore "Dati Rischio" (retro-compatibilita' deep-link)
+  "insoluti",
+] as const;
 const INSOLUTI_SUB_VALUES = ["riepilogo", "scadenziario", "solleciti", "piani", "legali", "assicurazioni"] as const;
 
 const clienteSearchSchema = z.object({
@@ -55,6 +61,7 @@ const clienteSearchSchema = z.object({
   insolutiTab: fallback(z.enum(INSOLUTI_SUB_VALUES).optional(), undefined),
   from: fallback(z.literal("approvazioni").optional(), undefined),
 });
+
 
 export const Route = createFileRoute("/_app/clienti/$clienteId")({
   validateSearch: zodValidator(clienteSearchSchema),
@@ -196,7 +203,15 @@ function ClienteDetail() {
   const navigate = useNavigate();
   const { role, hasRole } = useAuth();
   const isAdmin = role === "amministratore";
+  const isStoreManager = role === "store_manager";
+  // Retro-compatibilita': i vecchi link ?tab=insoluti&insolutiTab=x puntano ora al tab promosso
+  const effTab =
+    tab === "insoluti"
+      ? (insolutiTab && insolutiTab !== "riepilogo" ? insolutiTab : "scadenziario")
+      : (tab ?? "riepilogo");
   const isAgente = hasRole("agente");
+
+
   const [openNew, setOpenNew] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openDisattiva, setOpenDisattiva] = useState(false);
@@ -434,7 +449,7 @@ function ClienteDetail() {
         </div>
       </div>
 
-      <Tabs key={tab ?? "riepilogo"} defaultValue={tab ?? "riepilogo"}>
+      <Tabs key={effTab} defaultValue={effTab}>
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="riepilogo">Riepilogo</TabsTrigger>
           <TabsTrigger value="anagrafica">Anagrafica</TabsTrigger>
@@ -443,11 +458,16 @@ function ClienteDetail() {
           <TabsTrigger value="cantieri">Cantieri</TabsTrigger>
           <TabsTrigger value="commerciale">Commerciale</TabsTrigger>
           <TabsTrigger value="storico">Fido</TabsTrigger>
-          <TabsTrigger value="insoluti">Dati Rischio</TabsTrigger>
+          <TabsTrigger value="scadenziario">Scadenziario</TabsTrigger>
+          <TabsTrigger value="solleciti">Solleciti</TabsTrigger>
+          <TabsTrigger value="piani">Piani di rientro</TabsTrigger>
+          {!isStoreManager && <TabsTrigger value="legali">Pratiche legali</TabsTrigger>}
+          {!isStoreManager && <TabsTrigger value="assicurazioni">Assicurazione</TabsTrigger>}
           <TabsTrigger value="attivita">Attività recupero</TabsTrigger>
           <TabsTrigger value="allegati">Allegati</TabsTrigger>
           <TabsTrigger value="privacy">Privacy</TabsTrigger>
         </TabsList>
+
 
         <TabsContent value="riepilogo" className="space-y-4">
           <RiepilogoTab cliente={cliente} clienteId={clienteId} />
@@ -517,9 +537,8 @@ function ClienteDetail() {
               </div>
             )}
           </Card>
-
-          <DatiRischioCard cliente={cliente} />
         </TabsContent>
+
 
 
         <TabsContent value="contatti" className="space-y-4">
@@ -593,9 +612,23 @@ function ClienteDetail() {
           <ClienteStoricoFidoTab clienteId={clienteId} />
         </TabsContent>
 
-        <TabsContent value="insoluti">
-          <ClienteInsolutiTab cliente={{ id: clienteId, bloccato: (cliente as any).bloccato, in_gestione_legale: (cliente as any).in_gestione_legale, motivo_blocco: (cliente as any).motivo_blocco, data_blocco: (cliente as any).data_blocco }} defaultSubTab={insolutiTab} />
-        </TabsContent>
+        {(["scadenziario", "solleciti", "piani", "legali", "assicurazioni"] as const).map((s) => (
+          (s === "legali" || s === "assicurazioni") && isStoreManager ? null : (
+            <TabsContent key={s} value={s}>
+              <ClienteInsolutiTab
+                cliente={{
+                  id: clienteId,
+                  bloccato: (cliente as any).bloccato,
+                  in_gestione_legale: (cliente as any).in_gestione_legale,
+                  motivo_blocco: (cliente as any).motivo_blocco,
+                  data_blocco: (cliente as any).data_blocco,
+                }}
+                sezione={s}
+              />
+            </TabsContent>
+          )
+        ))}
+
 
         <TabsContent value="attivita">
           <ClienteAttivitaRecuperoTab clienteId={clienteId} />
@@ -621,96 +654,6 @@ function ClienteDetail() {
   );
 }
 
-function DatiRischioCard({ cliente }: { cliente: any }) {
-  const config = useConfig();
-  const clienteAttivo = isClienteAttivo((cliente as any).ultima_data_fatturazione, (cliente as any).doc_da_fatturare, config);
-  const fidoGest = getFidoAttuale(cliente);
-  const totRischio = Number(cliente.totale_rischio ?? 0);
-  const fidoResiduo = cliente.fido_residuo == null ? null : Number(cliente.fido_residuo);
-  const scaduto = Number(cliente.scaduto ?? 0);
-
-
-  const utilizzo = fidoGest > 0 ? Math.round((totRischio / fidoGest) * 1000) / 10 : null;
-  const dilConc = cliente.dilazione_concordata as number | null;
-  const dilEff = cliente.dilazione_effettiva as number | null;
-  const dilSfora = dilConc != null && dilEff != null && dilEff > dilConc;
-
-  const hasAnyData =
-    cliente.fido_gestionale != null || cliente.fido != null ||
-    cliente.totale_rischio != null || cliente.fido_residuo != null ||
-    cliente.scaduto != null || cliente.a_scadere != null ||
-    cliente.condizioni_pagamento || (cliente as any).condizione_pagamento_desc ||
-    dilConc != null || dilEff != null;
-
-  if (!hasAnyData) return null;
-
-  const condPag = (cliente as any).condizione_pagamento_desc || cliente.condizioni_pagamento;
-
-  return (
-    <Card className="p-6">
-      <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
-        <h3 className="font-semibold flex items-center gap-2">
-          <AlertTriangle className="size-4" /> Dati rischio
-        </h3>
-        <div className="flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium">
-          <SemaforoAffidabilitaBadge clienteId={cliente.id} />
-          {utilizzo != null && <span className="text-xs text-muted-foreground">· utilizzo fido {utilizzo}%</span>}
-        </div>
-      </div>
-      <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3 text-sm">
-        <Field label="Fido gestionale" value={formatEuro(cliente.fido_gestionale ?? cliente.fido)} />
-        <Field label="Totale rischio" value={formatEuro(cliente.totale_rischio)} />
-        <Field label="Fido residuo" value={formatEuro(cliente.fido_residuo)} />
-        <Field label="Scaduto" value={formatEuro(cliente.scaduto)} />
-        <Field label="A scadere" value={formatEuro(cliente.a_scadere)} />
-        <Field label="Condizione di pagamento" value={condPag} />
-        <div>
-          <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Dilazione concordata</dt>
-          <dd className="mt-0.5">{dilConc != null ? `${dilConc} gg` : <span className="text-muted-foreground">—</span>}</dd>
-        </div>
-        <div>
-          <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Dilazione effettiva</dt>
-          <dd className={`mt-0.5 ${dilSfora ? "text-destructive font-medium" : ""}`}>
-            {dilEff != null ? `${dilEff} gg${dilSfora ? ` (+${dilEff - (dilConc ?? 0)})` : ""}` : <span className="text-muted-foreground">—</span>}
-          </dd>
-        </div>
-        {(cliente as any).num_insoluti != null && (
-          <Field label="Insoluti" value={String((cliente as any).num_insoluti)} />
-        )}
-        <div>
-          <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Ultima data fatturazione</dt>
-          <dd className="mt-0.5 flex items-center gap-2">
-            {(cliente as any).ultima_data_fatturazione
-              ? new Date((cliente as any).ultima_data_fatturazione).toLocaleDateString("it-IT")
-              : <span className="text-muted-foreground">—</span>}
-            {clienteAttivo ? (
-              <span className="text-xs rounded px-1.5 py-0.5 bg-success/15 text-success border border-success/30">Attivo</span>
-            ) : (
-              <span className="text-xs rounded px-1.5 py-0.5 bg-muted text-muted-foreground border">Non attivo</span>
-            )}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Stato blocco</dt>
-          <dd className="mt-0.5">
-            {(() => {
-              const ib = (cliente as any).ind_blocco ?? 0;
-              if (ib === 2) return <span className="text-destructive font-medium">Bloccato</span>;
-              if (ib === 1) return <span className="text-yellow-700 dark:text-yellow-500 font-medium">Bloccato con possibilità di sblocco</span>;
-              return <span className="text-muted-foreground">Non bloccato</span>;
-            })()}
-          </dd>
-        </div>
-      </dl>
-      {(cliente as any).ultima_sincronizzazione && (
-        <p className="text-xs text-muted-foreground mt-4 pt-3 border-t">
-          Ultima sincronizzazione: {new Date((cliente as any).ultima_sincronizzazione).toLocaleString("it-IT")}
-        </p>
-      )}
-    </Card>
-
-  );
-}
 
 function Field({ label, value }: { label: string; value?: string | null }) {
 
@@ -823,27 +766,52 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
         </div>
       )}
 
-      {/* Sezione 1 — Dati rischio (card compatte) */}
+      {/* Colpo d'occhio — riquadri cliccabili che portano al tab pertinente */}
       <section className="space-y-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Dati rischio</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Colpo d'occhio</h3>
+        <div className="grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(115px,1fr))]">
           <Card className="px-3 py-2 border">
             <p className="text-[10px] font-medium text-muted-foreground uppercase truncate">Semaforo affidabilità</p>
             <div className="mt-1 flex items-center gap-1.5 text-sm">
               <SemaforoAffidabilitaBadge clienteId={cliente.id} />
             </div>
           </Card>
-          <MiniStat label="Fido gestionale" value={formatEuro(fidoGest)} />
-          <MiniStat label="Totale rischio" value={formatEuro(totRischio)} />
-          <MiniStat label="Fido residuo" value={formatEuro(fidoResiduo)} tone={fidoResiduo != null && fidoResiduo < 0 ? "destructive" : "default"} />
+          <MiniStat label="Fido gestionale" value={formatEuro(fidoGest)} onClick={() => vaiAlTab("storico")} />
+          <MiniStat label="Totale rischio" value={formatEuro(totRischio)} onClick={() => vaiAlTab("scadenziario")} />
           {(() => {
             const pctUtil = fidoGest > 0 ? Math.round((totRischio / fidoGest) * 100) : null;
-            const tone: "success" | "warning" | "destructive" | "muted" =
-              pctUtil == null ? "muted" : pctUtil >= 100 ? "destructive" : pctUtil >= 70 ? "warning" : "success";
-            return <MiniStat label="% fido utilizzato" value={pctUtil == null ? "—" : `${pctUtil}%`} tone={tone} />;
+            return (
+              <MiniStat
+                label="Fido residuo"
+                value={formatEuro(fidoResiduo)}
+                tone={fidoResiduo != null && fidoResiduo < 0 ? "destructive" : "default"}
+                hint={pctUtil == null ? undefined : `${pctUtil}% utilizzato`}
+                onClick={() => vaiAlTab("storico")}
+              />
+            );
           })()}
-          <MiniStat label="Scaduto" value={formatEuro(cliente.scaduto)} tone={scaduto > 0 ? "destructive" : "default"} />
-          <MiniStat label="A scadere" value={formatEuro(cliente.a_scadere)} />
+          <MiniStat label="Scaduto" value={formatEuro(cliente.scaduto)} tone={scaduto > 0 ? "destructive" : "default"} onClick={() => vaiAlTab("scadenziario")} />
+          <MiniStat label="A scadere" value={formatEuro(cliente.a_scadere)} onClick={() => vaiAlTab("scadenziario")} />
+          <MiniStat label="Max gg ritardo" value={`${maxGg} gg`} tone={maxGg > 60 ? "destructive" : maxGg > 30 ? "warning" : "default"} icon={Clock} onClick={() => vaiAlTab("scadenziario")} />
+          {(() => {
+            const isBloccato = bloccato || indBlocco >= 1;
+            const statoTxt = isBloccato
+              ? (indBlocco === 1 && !bloccato ? "Bloccato (sbloccabile)" : "Bloccato")
+              : cliente.in_gestione_legale
+                ? "In gestione legale"
+                : clienteAttivo ? "Attivo" : "Non attivo";
+            // Priorita' al blocco (condizione operativamente piu' critica)
+            const dest = isBloccato ? "storico" : cliente.in_gestione_legale ? "legali" : null;
+            return (
+              <MiniStat
+                label="Stato cliente"
+                value={statoTxt}
+                tone={isBloccato ? "destructive" : cliente.in_gestione_legale ? "warning" : clienteAttivo ? "success" : "muted"}
+                hint={ultimaFatt ? `ult. fatt. ${fmtDateIt(ultimaFatt)}` : undefined}
+                onClick={dest ? () => vaiAlTab(dest) : undefined}
+              />
+            );
+          })()}
           <MiniStat label="Cond. pagamento" value={condPag || "—"} />
           <Card className="px-3 py-2">
             <p className="text-[10px] font-medium text-muted-foreground uppercase truncate">Assicurazione</p>
@@ -866,6 +834,7 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
           </Card>
         </div>
       </section>
+
 
       {/* Sezione 1b — Composizione esposizione */}
       {(() => {
@@ -960,57 +929,6 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
       {/* Sezione 3 — Fatturato */}
       <ClienteFatturato clienteId={clienteId} />
 
-      {/* Sezione 4 — Info cliente sintetica */}
-      <section className="space-y-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Info cliente</h3>
-        <Card className="px-4 py-3">
-          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
-            <Field label="Ragione sociale" value={cliente.ragione_sociale} />
-            <Field label="Partita IVA" value={cliente.partita_iva} />
-            <Field label="Punto vendita" value={cliente.stores?.nome} />
-            <div>
-              <dt className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Ultima data fatturazione</dt>
-              <dd className="mt-0.5 flex items-center gap-2">
-                <span>{ultimaFatt ? fmtDateIt(ultimaFatt) : <span className="text-muted-foreground">—</span>}</span>
-                {clienteAttivo ? (
-                  <Badge className="bg-success/15 text-success border-success/30 hover:bg-success/15 text-[10px] py-0">Attivo</Badge>
-                ) : (
-                  <Badge variant="secondary" className="text-[10px] py-0">Non attivo</Badge>
-                )}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Stato blocco</dt>
-              <dd className="mt-0.5">
-                {indBlocco === 2 || bloccato ? (
-                  <span className="text-destructive font-medium">Bloccato</span>
-                ) : indBlocco === 1 ? (
-                  <span className="text-yellow-700 dark:text-yellow-500 font-medium">Bloccato con possibilità di sblocco</span>
-                ) : (
-                  <span className="text-muted-foreground">Non bloccato</span>
-                )}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Assicurazione crediti</dt>
-              <dd className="mt-0.5 flex items-center gap-2 flex-wrap">
-                {assicurato ? (
-                  <>
-                    <Badge className="bg-success/15 text-success border-success/30 hover:bg-success/15 gap-1 text-[10px] py-0">
-                      <Shield className="size-3" /> {polizzaAttiva?.assicuratore || "POUEY"} attiva
-                    </Badge>
-                    {polizzaAttiva?.importo_massimale != null && (
-                      <span className="tabular-nums">{formatEuro(polizzaAttiva.importo_massimale)}</span>
-                    )}
-                  </>
-                ) : (
-                  <span className="text-muted-foreground">Non assicurato</span>
-                )}
-              </dd>
-            </div>
-          </dl>
-        </Card>
-      </section>
     </div>
   );
 }
