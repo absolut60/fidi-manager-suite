@@ -40,6 +40,7 @@ import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as AppCruscottoIncassiRouteImport } from './routes/_app/cruscotto-incassi'
 import { Route as AppContattiRouteImport } from './routes/_app/contatti'
 import { Route as AppClientiRouteImport } from './routes/_app/clienti'
+import { Route as AppCalendarioCommercialeRouteImport } from './routes/_app/calendario-commerciale'
 import { Route as AppAuditRouteImport } from './routes/_app/audit'
 import { Route as AppAssicurazioniRouteImport } from './routes/_app/assicurazioni'
 import { Route as AppApprovazioniRouteImport } from './routes/_app/approvazioni'
@@ -228,6 +229,12 @@ const AppClientiRoute = AppClientiRouteImport.update({
   path: '/clienti',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCalendarioCommercialeRoute =
+  AppCalendarioCommercialeRouteImport.update({
+    id: '/calendario-commerciale',
+    path: '/calendario-commerciale',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppAuditRoute = AppAuditRouteImport.update({
   id: '/audit',
   path: '/audit',
@@ -395,6 +402,7 @@ export interface FileRoutesByFullPath {
   '/approvazioni': typeof AppApprovazioniRoute
   '/assicurazioni': typeof AppAssicurazioniRoute
   '/audit': typeof AppAuditRoute
+  '/calendario-commerciale': typeof AppCalendarioCommercialeRoute
   '/clienti': typeof AppClientiRouteWithChildren
   '/contatti': typeof AppContattiRoute
   '/cruscotto-incassi': typeof AppCruscottoIncassiRoute
@@ -456,6 +464,7 @@ export interface FileRoutesByTo {
   '/approvazioni': typeof AppApprovazioniRoute
   '/assicurazioni': typeof AppAssicurazioniRoute
   '/audit': typeof AppAuditRoute
+  '/calendario-commerciale': typeof AppCalendarioCommercialeRoute
   '/clienti': typeof AppClientiRouteWithChildren
   '/contatti': typeof AppContattiRoute
   '/cruscotto-incassi': typeof AppCruscottoIncassiRoute
@@ -517,6 +526,7 @@ export interface FileRoutesById {
   '/_app/approvazioni': typeof AppApprovazioniRoute
   '/_app/assicurazioni': typeof AppAssicurazioniRoute
   '/_app/audit': typeof AppAuditRoute
+  '/_app/calendario-commerciale': typeof AppCalendarioCommercialeRoute
   '/_app/clienti': typeof AppClientiRouteWithChildren
   '/_app/contatti': typeof AppContattiRoute
   '/_app/cruscotto-incassi': typeof AppCruscottoIncassiRoute
@@ -580,6 +590,7 @@ export interface FileRouteTypes {
     | '/approvazioni'
     | '/assicurazioni'
     | '/audit'
+    | '/calendario-commerciale'
     | '/clienti'
     | '/contatti'
     | '/cruscotto-incassi'
@@ -641,6 +652,7 @@ export interface FileRouteTypes {
     | '/approvazioni'
     | '/assicurazioni'
     | '/audit'
+    | '/calendario-commerciale'
     | '/clienti'
     | '/contatti'
     | '/cruscotto-incassi'
@@ -701,6 +713,7 @@ export interface FileRouteTypes {
     | '/_app/approvazioni'
     | '/_app/assicurazioni'
     | '/_app/audit'
+    | '/_app/calendario-commerciale'
     | '/_app/clienti'
     | '/_app/contatti'
     | '/_app/cruscotto-incassi'
@@ -992,6 +1005,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppClientiRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/calendario-commerciale': {
+      id: '/_app/calendario-commerciale'
+      path: '/calendario-commerciale'
+      fullPath: '/calendario-commerciale'
+      preLoaderRoute: typeof AppCalendarioCommercialeRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/audit': {
       id: '/_app/audit'
       path: '/audit'
@@ -1253,6 +1273,7 @@ interface AppRouteChildren {
   AppApprovazioniRoute: typeof AppApprovazioniRoute
   AppAssicurazioniRoute: typeof AppAssicurazioniRoute
   AppAuditRoute: typeof AppAuditRoute
+  AppCalendarioCommercialeRoute: typeof AppCalendarioCommercialeRoute
   AppClientiRoute: typeof AppClientiRouteWithChildren
   AppContattiRoute: typeof AppContattiRoute
   AppCruscottoIncassiRoute: typeof AppCruscottoIncassiRoute
@@ -1294,6 +1315,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppApprovazioniRoute: AppApprovazioniRoute,
   AppAssicurazioniRoute: AppAssicurazioniRoute,
   AppAuditRoute: AppAuditRoute,
+  AppCalendarioCommercialeRoute: AppCalendarioCommercialeRoute,
   AppClientiRoute: AppClientiRouteWithChildren,
   AppContattiRoute: AppContattiRoute,
   AppCruscottoIncassiRoute: AppCruscottoIncassiRoute,
