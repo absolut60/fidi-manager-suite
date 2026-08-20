@@ -91,7 +91,9 @@ export const geocodificaSedi = createServerFn({ method: "POST" })
 
     for (const s of sedi) {
       if (s.lat != null && s.lng != null) continue;
-      const esito = await geocodificaIndirizzo(componiQuery(s));
+      const esito = await geocodificaIndirizzo(componiQuery(s), {
+        cap: s.cap, citta: s.citta, provincia: s.provincia,
+      });
       await supabase
         .from("stores")
         .update({
