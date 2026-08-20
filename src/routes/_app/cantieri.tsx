@@ -309,9 +309,17 @@ function CantieriPage() {
                             : <Badge className="bg-emerald-600/15 text-emerald-700">Attivo</Badge>}
                         </TableCell>
                         <TableCell>
-                          <Button variant="ghost" size="icon" onClick={() => apriModifica(c)}>
-                            <Pencil className="size-4" />
-                          </Button>
+                          <div className="flex items-center gap-0.5">
+                            <Button
+                              variant="ghost" size="icon" title="Mostra su mappa"
+                              onClick={() => mostraSuMappa(c)}
+                            >
+                              <MapPin className="size-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" title="Modifica" onClick={() => apriModifica(c)}>
+                              <Pencil className="size-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
