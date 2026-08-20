@@ -335,6 +335,7 @@ export function LeadCantieriTab({
                 >
                   <Trash2 className="size-4" />
                 </Button>
+                </div>
               </div>
               {(c.indirizzo || c.citta) && (
                 <div className="mt-3 flex items-start gap-1.5 text-xs text-muted-foreground">
