@@ -1,7 +1,7 @@
 // Mappa Google dei cantieri geolocalizzati. Componente caricato solo lato client
 // (import dinamico): la Maps JS API richiede il browser.
 import { useEffect, useRef } from "react";
-import { CATEGORIA_COLORE, CATEGORIA_LABEL, indirizzoCompleto, nomeSoggettoCantiere, type CantiereRow } from "@/lib/cantieri";
+import { CATEGORIA_COLORE, CATEGORIA_LABEL, indirizzoCompleto, nomeSoggettoCantiere, testoSedeVicina, type CantiereRow } from "@/lib/cantieri";
 
 declare global {
   interface Window { google?: any; __initGoogleMaps?: () => void }
