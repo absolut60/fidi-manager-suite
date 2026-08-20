@@ -191,8 +191,14 @@ export function OpportunitaDialog({
       titolo: titolo.trim(),
       tipo,
       stato,
-      cliente_id: soggetto.tipo === "cliente" ? soggetto.id : null,
+      cliente_id:
+        soggetto.tipo === "cliente"
+          ? soggetto.id
+          : soggettoFisso?.tipo === "lead"
+            ? (soggettoFisso.clienteIdAssociato ?? null)
+            : null,
       lead_id: soggetto.tipo === "lead" ? soggetto.id : null,
+
       cantiere_id: cantiereId || null,
       agente_codice: agenteCodice || null,
       store_id: storeId,
