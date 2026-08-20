@@ -5600,6 +5600,10 @@ export type Database = {
         Returns: string
       }
       ricalcola_fido_teorico_finalizza: { Args: never; Returns: string }
+      ricalcola_in_gestione_legale: {
+        Args: { _cliente_id: string }
+        Returns: undefined
+      }
       rimuovi_orfani_scadenze: {
         Args: { _importazione_id: string }
         Returns: number
