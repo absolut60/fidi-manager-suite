@@ -319,6 +319,112 @@ export type Database = {
           },
         ]
       }
+      attivita_commerciale: {
+        Row: {
+          agente_codice: string | null
+          cliente_id: string | null
+          completata: boolean
+          created_at: string
+          data_pianificata: string | null
+          data_svolgimento: string | null
+          descrizione: string | null
+          esito: string | null
+          id: string
+          lead_id: string | null
+          luogo: string | null
+          note: string | null
+          operatore_id: string | null
+          opportunita_id: string | null
+          store_id: string | null
+          tipo: Database["public"]["Enums"]["tipo_attivita_commerciale"]
+          titolo: string
+          updated_at: string
+        }
+        Insert: {
+          agente_codice?: string | null
+          cliente_id?: string | null
+          completata?: boolean
+          created_at?: string
+          data_pianificata?: string | null
+          data_svolgimento?: string | null
+          descrizione?: string | null
+          esito?: string | null
+          id?: string
+          lead_id?: string | null
+          luogo?: string | null
+          note?: string | null
+          operatore_id?: string | null
+          opportunita_id?: string | null
+          store_id?: string | null
+          tipo?: Database["public"]["Enums"]["tipo_attivita_commerciale"]
+          titolo: string
+          updated_at?: string
+        }
+        Update: {
+          agente_codice?: string | null
+          cliente_id?: string | null
+          completata?: boolean
+          created_at?: string
+          data_pianificata?: string | null
+          data_svolgimento?: string | null
+          descrizione?: string | null
+          esito?: string | null
+          id?: string
+          lead_id?: string | null
+          luogo?: string | null
+          note?: string | null
+          operatore_id?: string | null
+          opportunita_id?: string | null
+          store_id?: string | null
+          tipo?: Database["public"]["Enums"]["tipo_attivita_commerciale"]
+          titolo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attivita_commerciale_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attivita_commerciale_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti_con_rischio"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attivita_commerciale_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "attivita_commerciale_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "lead"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attivita_commerciale_opportunita_id_fkey"
+            columns: ["opportunita_id"]
+            isOneToOne: false
+            referencedRelation: "opportunita"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attivita_commerciale_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_log: {
         Row: {
           azione: string
@@ -5540,6 +5646,14 @@ export type Database = {
         | "risposto"
         | "ignorato"
         | "risolto"
+      tipo_attivita_commerciale:
+        | "appuntamento"
+        | "visita"
+        | "chiamata"
+        | "email"
+        | "preventivo_inviato"
+        | "nota"
+        | "altro"
       tipo_opportunita: "vendita" | "fornitura" | "preventivo" | "altro"
       tipo_pratica_legale:
         | "decreto_ingiuntivo"
@@ -5799,6 +5913,15 @@ export const Constants = {
         "risposto",
         "ignorato",
         "risolto",
+      ],
+      tipo_attivita_commerciale: [
+        "appuntamento",
+        "visita",
+        "chiamata",
+        "email",
+        "preventivo_inviato",
+        "nota",
+        "altro",
       ],
       tipo_opportunita: ["vendita", "fornitura", "preventivo", "altro"],
       tipo_pratica_legale: [
