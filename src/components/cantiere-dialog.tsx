@@ -28,13 +28,23 @@ import {
 
 type Agente = { codice: string; descrizione: string | null };
 
+/** Soggetto bloccato dall'esterno (scheda cliente / scheda lead). */
+export type SoggettoFisso = {
+  tipo: "cliente" | "lead";
+  id: string;
+  etichetta: string;
+  clienteIdAssociato?: string | null;
+};
+
 export function CantiereDialog({
-  open, onOpenChange, cantiere, agenti,
+  open, onOpenChange, cantiere, agenti, soggettoFisso, queryKeysExtra,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   cantiere?: CantiereRow | null;
-  agenti: Agente[];
+  agenti?: Agente[];
+  soggettoFisso?: SoggettoFisso;
+  queryKeysExtra?: ReadonlyArray<readonly unknown[]>;
 }) {
   const qc = useQueryClient();
   const { user, roles } = useAuth();
@@ -51,7 +61,23 @@ export function CantiereDialog({
     queryFn: async () => (await chiaveMappe()).key,
     staleTime: Infinity,
   });
+  const { data: agentiFetch = [] } = useQuery({
+    queryKey: ["agenti-lookup"],
+    enabled: !agenti,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("agenti").select("codice, descrizione").order("descrizione");
+      if (error) throw error;
+      return (data ?? []) as Agente[];
+    },
+    staleTime: 5 * 60_000,
+  });
+  const listaAgenti = agenti ?? agentiFetch;
   const ricalcolaSede = useServerFn(ricalcolaSedeVicina);
+
+  function invalida() {
+    qc.invalidateQueries({ queryKey: ["cantieri-lista"] });
+    queryKeysExtra?.forEach((k) => qc.invalidateQueries({ queryKey: [...k] }));
+  }
 
   const [nome, setNome] = useState("");
   const [soggetto, setSoggetto] = useState<SoggettoSelezionato | null>(null);
@@ -108,7 +134,7 @@ export function CantiereDialog({
       return;
     }
     toast.success("Cantiere eliminato");
-    await qc.invalidateQueries({ queryKey: ["cantieri-lista"] });
+    await Promise.resolve(invalida());
     onOpenChange(false);
   }
 
@@ -125,7 +151,7 @@ export function CantiereDialog({
         setSedeTesto(null);
         toast.error(r.messaggio ?? "Sede più vicina non calcolabile");
       }
-      qc.invalidateQueries({ queryKey: ["cantieri-lista"] });
+      invalida();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Calcolo sede non riuscito");
     } finally {
@@ -138,14 +164,16 @@ export function CantiereDialog({
     const c = cantiere;
     setNome(c?.nome ?? "");
     setSoggetto(
-      c?.cliente_id
-        ? { tipo: "cliente", id: c.cliente_id, etichetta: c.clienti?.ragione_sociale ?? "Cliente" }
-        : c?.lead_id
-          ? {
-              tipo: "lead", id: c.lead_id,
-              etichetta: c.lead?.ragione_sociale || `${c.lead?.nome ?? ""} ${c.lead?.cognome ?? ""}`.trim() || "Lead",
-            }
-          : null,
+      soggettoFisso
+        ? { tipo: soggettoFisso.tipo, id: soggettoFisso.id, etichetta: soggettoFisso.etichetta }
+        : c?.cliente_id
+          ? { tipo: "cliente", id: c.cliente_id, etichetta: c.clienti?.ragione_sociale ?? "Cliente" }
+          : c?.lead_id
+            ? {
+                tipo: "lead", id: c.lead_id,
+                etichetta: c.lead?.ragione_sociale || `${c.lead?.nome ?? ""} ${c.lead?.cognome ?? ""}`.trim() || "Lead",
+              }
+            : null,
     );
     setIndirizzo(c?.indirizzo ?? "");
     setCap(c?.cap ?? "");
@@ -162,7 +190,7 @@ export function CantiereDialog({
     setLng(c?.lng != null ? String(c.lng) : "");
     setSedeTesto(c ? testoSedeVicina(c) : null);
     setCoordDaAutocomplete(false);
-  }, [open, cantiere]);
+  }, [open, cantiere, soggettoFisso]);
 
   // Precompila l'agente dal soggetto scelto
   useEffect(() => {
@@ -211,7 +239,7 @@ export function CantiereDialog({
       } else {
         toast.error(esito.messaggio ?? "Indirizzo non trovato: verifica o inserisci coordinate manuali.");
       }
-      qc.invalidateQueries({ queryKey: ["cantieri-lista"] });
+      invalida();
     } catch (e) {
       if (!silenzioso) toast.error(e instanceof Error ? e.message : "Geocodifica non riuscita");
     } finally {
@@ -237,7 +265,12 @@ export function CantiereDialog({
     try {
       const payload: Record<string, unknown> = {
         nome: nome.trim(),
-        cliente_id: soggetto.tipo === "cliente" ? soggetto.id : null,
+        cliente_id:
+          soggetto.tipo === "cliente"
+            ? soggetto.id
+            : soggettoFisso?.tipo === "lead"
+              ? (soggettoFisso.clienteIdAssociato ?? null)
+              : null,
         lead_id: soggetto.tipo === "lead" ? soggetto.id : null,
         indirizzo: indirizzo.trim() || null,
         cap: cap.trim() || null,
@@ -271,14 +304,14 @@ export function CantiereDialog({
       }
 
       toast.success(cantiere ? "Cantiere aggiornato" : "Cantiere creato");
-      qc.invalidateQueries({ queryKey: ["cantieri-lista"] });
+      invalida();
 
       const serveGeo = !coordManuali && (!cantiere || indirizzoCambiato || latN == null || lngN == null);
       if (serveGeo && (indirizzo.trim() || citta.trim())) {
         await eseguiGeocodifica(id, true);
       } else if (coordManuali) {
         try { await ricalcolaSede({ data: { cantiere_id: id } }); } catch { /* non blocca */ }
-        qc.invalidateQueries({ queryKey: ["cantieri-lista"] });
+        invalida();
       }
       onOpenChange(false);
     } catch (e) {
@@ -314,7 +347,9 @@ export function CantiereDialog({
                   {soggetto.tipo === "cliente" ? "Cliente" : "Lead"}
                 </Badge>
                 <span className="text-sm font-medium truncate">{soggetto.etichetta}</span>
-                <Button type="button" variant="ghost" size="sm" onClick={() => setSoggetto(null)}>Cambia</Button>
+                {!soggettoFisso && (
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setSoggetto(null)}>Cambia</Button>
+                )}
               </div>
             ) : (
               <SoggettoCombobox onSelect={setSoggetto} />
@@ -395,7 +430,7 @@ export function CantiereDialog({
                 <SelectTrigger><SelectValue placeholder="Agente" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="nessuno">Nessuno</SelectItem>
-                  {agenti.map((a) => (
+                  {listaAgenti.map((a) => (
                     <SelectItem key={a.codice} value={a.codice}>{a.descrizione ?? a.codice}</SelectItem>
                   ))}
                 </SelectContent>

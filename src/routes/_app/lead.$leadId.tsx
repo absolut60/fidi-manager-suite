@@ -541,7 +541,7 @@ function LeadDettaglioPage() {
 
 
         <TabsContent value="cantieri" className="mt-4">
-          <LeadCantieriTab leadId={leadId} clienteId={lead.cliente_id} />
+          <LeadCantieriTab leadId={leadId} clienteId={lead.cliente_id} etichetta={nomeLead(lead)} />
         </TabsContent>
 
         <TabsContent value="richieste" className="mt-4">

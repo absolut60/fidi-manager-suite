@@ -578,7 +578,7 @@ function ClienteDetail() {
 
 
         <TabsContent value="cantieri">
-          <ClienteCantieriTab clienteId={clienteId} />
+          <ClienteCantieriTab clienteId={clienteId} ragioneSociale={cliente.ragione_sociale} />
         </TabsContent>
 
         <TabsContent value="storico">
