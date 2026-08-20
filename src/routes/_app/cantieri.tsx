@@ -352,7 +352,14 @@ function CantieriPage() {
             ) : (
               <ClientOnly fallback={<Skeleton className="h-[600px] w-full" />}>
                 <Suspense fallback={<Skeleton className="h-[600px] w-full" />}>
-                  <CantieriMappa apiKey={mapsKey} cantieri={suMappa} onApri={apriModifica} />
+                  <CantieriMappa
+                    apiKey={mapsKey}
+                    cantieri={suMappa}
+                    sedi={sedi}
+                    onApri={apriModifica}
+                    focusId={focus ?? null}
+                    onFocusFatto={pulisciFocus}
+                  />
                 </Suspense>
               </ClientOnly>
             )}
