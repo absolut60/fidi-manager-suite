@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { Plus, Trash2, Construction, MapPin, Users } from "lucide-react";
+import { Plus, Trash2, Pencil, Construction, MapPin, Users } from "lucide-react";
+import { CantiereDialog } from "@/components/cantiere-dialog";
+import type { CantiereRow } from "@/lib/cantieri";
 import { supabase } from "@/integrations/supabase/client";
 import { creaContattoPersona } from "@/lib/contatto-crea";
 import { Button } from "@/components/ui/button";
