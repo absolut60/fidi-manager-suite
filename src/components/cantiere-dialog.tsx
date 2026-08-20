@@ -75,7 +75,7 @@ export function CantiereDialog({
   const ricalcolaSede = useServerFn(ricalcolaSedeVicina);
 
   function invalida() {
-    qc.invalidateQueries({ queryKey: ["cantieri-lista"] });
+    invalida();
     queryKeysExtra?.forEach((k) => qc.invalidateQueries({ queryKey: [...k] }));
   }
 
@@ -134,7 +134,7 @@ export function CantiereDialog({
       return;
     }
     toast.success("Cantiere eliminato");
-    await qc.invalidateQueries({ queryKey: ["cantieri-lista"] });
+    await Promise.resolve(invalida());
     onOpenChange(false);
   }
 
@@ -151,7 +151,7 @@ export function CantiereDialog({
         setSedeTesto(null);
         toast.error(r.messaggio ?? "Sede più vicina non calcolabile");
       }
-      qc.invalidateQueries({ queryKey: ["cantieri-lista"] });
+      invalida();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Calcolo sede non riuscito");
     } finally {
@@ -237,7 +237,7 @@ export function CantiereDialog({
       } else {
         toast.error(esito.messaggio ?? "Indirizzo non trovato: verifica o inserisci coordinate manuali.");
       }
-      qc.invalidateQueries({ queryKey: ["cantieri-lista"] });
+      invalida();
     } catch (e) {
       if (!silenzioso) toast.error(e instanceof Error ? e.message : "Geocodifica non riuscita");
     } finally {
@@ -297,14 +297,14 @@ export function CantiereDialog({
       }
 
       toast.success(cantiere ? "Cantiere aggiornato" : "Cantiere creato");
-      qc.invalidateQueries({ queryKey: ["cantieri-lista"] });
+      invalida();
 
       const serveGeo = !coordManuali && (!cantiere || indirizzoCambiato || latN == null || lngN == null);
       if (serveGeo && (indirizzo.trim() || citta.trim())) {
         await eseguiGeocodifica(id, true);
       } else if (coordManuali) {
         try { await ricalcolaSede({ data: { cantiere_id: id } }); } catch { /* non blocca */ }
-        qc.invalidateQueries({ queryKey: ["cantieri-lista"] });
+        invalida();
       }
       onOpenChange(false);
     } catch (e) {
@@ -421,7 +421,7 @@ export function CantiereDialog({
                 <SelectTrigger><SelectValue placeholder="Agente" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="nessuno">Nessuno</SelectItem>
-                  {agenti.map((a) => (
+                  {listaAgenti.map((a) => (
                     <SelectItem key={a.codice} value={a.codice}>{a.descrizione ?? a.codice}</SelectItem>
                   ))}
                 </SelectContent>
