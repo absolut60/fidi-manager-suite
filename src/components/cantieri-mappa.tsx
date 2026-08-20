@@ -74,6 +74,7 @@ export default function CantieriMappa({
   const sediMarkersRef = useRef<any[]>([]);
   const infoRef = useRef<any>(null);
   const apriInfoRef = useRef<Map<string, () => void>>(new Map());
+  const focusFattoRef = useRef<string | null>(null);
   const [pronta, setPronta] = useState(false);
   const [mostraSedi, setMostraSedi] = useState(true);
 
