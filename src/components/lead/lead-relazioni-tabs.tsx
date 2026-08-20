@@ -218,46 +218,39 @@ export function LeadContattiTab({ leadId, clienteId }: { leadId: string; cliente
   );
 }
 
-export function LeadCantieriTab({ leadId, clienteId }: { leadId: string; clienteId: string | null }) {
+export function LeadCantieriTab({
+  leadId, clienteId, etichetta,
+}: {
+  leadId: string;
+  clienteId: string | null;
+  etichetta?: string | null;
+}) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [nome, setNome] = useState("");
-  const [descrizione, setDescrizione] = useState("");
-  const [indirizzo, setIndirizzo] = useState("");
-  const [citta, setCitta] = useState("");
+  const [editId, setEditId] = useState<string | null>(null);
+
+  const soggettoFisso = useMemo(
+    () => ({
+      tipo: "lead" as const,
+      id: leadId,
+      etichetta: etichetta?.trim() || "Lead",
+      clienteIdAssociato: clienteId ?? null,
+    }),
+    [leadId, clienteId, etichetta],
+  );
+  const queryKeysExtra = useMemo(() => [["lead-cantieri", leadId]], [leadId]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["lead-cantieri", leadId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("cantieri")
-        .select("id, cliente_id, nome, descrizione, indirizzo, citta, provincia, attivo")
+        .select("*")
         .eq("lead_id", leadId)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []) as unknown as CantiereRow[];
     },
-  });
-
-  const addMut = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.from("cantieri").insert({
-        cliente_id: clienteId,
-        lead_id: leadId,
-        nome: nome.trim(),
-        descrizione: descrizione.trim() || null,
-        indirizzo: indirizzo.trim() || null,
-        citta: citta.trim() || null,
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Cantiere aggiunto");
-      setOpen(false);
-      setNome(""); setDescrizione(""); setIndirizzo(""); setCitta("");
-      qc.invalidateQueries({ queryKey: ["lead-cantieri", leadId] });
-    },
-    onError: (e: Error) => toast.error(e.message),
   });
 
   // Righe lead-only: non possono restare senza cliente né lead → si eliminano.
@@ -272,41 +265,34 @@ export function LeadCantieriTab({ leadId, clienteId }: { leadId: string; cliente
     onSuccess: () => {
       toast.success("Cantiere rimosso dal lead");
       qc.invalidateQueries({ queryKey: ["lead-cantieri", leadId] });
+      qc.invalidateQueries({ queryKey: ["cantieri-lista"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const editing = data?.find((c) => c.id === editId) ?? null;
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" className="gap-1.5 ml-auto">
-              <Plus className="size-4" /> Nuovo cantiere
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Nuovo cantiere</DialogTitle>
-              <DialogDescription>
-                {clienteId
-                  ? "Il cantiere viene collegato al lead e al cliente associato."
-                  : "Il cantiere appartiene al lead; verrà collegato al cliente alla conversione."}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="sm:col-span-2"><Label className="text-xs">Nome *</Label><Input value={nome} maxLength={200} onChange={(e) => setNome(e.target.value)} /></div>
-              <div className="sm:col-span-2"><Label className="text-xs">Descrizione</Label><Textarea rows={2} value={descrizione} maxLength={1000} onChange={(e) => setDescrizione(e.target.value)} /></div>
-              <div><Label className="text-xs">Indirizzo</Label><Input value={indirizzo} maxLength={200} onChange={(e) => setIndirizzo(e.target.value)} /></div>
-              <div><Label className="text-xs">Città</Label><Input value={citta} maxLength={100} onChange={(e) => setCitta(e.target.value)} /></div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setOpen(false)}>Annulla</Button>
-              <Button disabled={!nome.trim() || addMut.isPending} onClick={() => addMut.mutate()}>Salva</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <Button size="sm" className="gap-1.5 ml-auto" onClick={() => setOpen(true)}>
+          <Plus className="size-4" /> Nuovo cantiere
+        </Button>
       </div>
+
+      <CantiereDialog
+        open={open}
+        onOpenChange={setOpen}
+        soggettoFisso={soggettoFisso}
+        queryKeysExtra={queryKeysExtra}
+      />
+      <CantiereDialog
+        open={!!editing}
+        onOpenChange={(o) => !o && setEditId(null)}
+        cantiere={editing}
+        soggettoFisso={soggettoFisso}
+        queryKeysExtra={queryKeysExtra}
+      />
 
       {isLoading ? (
         <Skeleton className="h-24 w-full" />
