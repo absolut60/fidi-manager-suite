@@ -23,18 +23,28 @@ import {
 } from "@/lib/opportunita";
 
 type Agente = { codice: string; descrizione: string | null };
+export type SoggettoFissoOpp = {
+  tipo: "cliente" | "lead";
+  id: string;
+  etichetta: string;
+  clienteIdAssociato?: string | null;
+};
 
 export function OpportunitaDialog({
   open,
   onOpenChange,
   opportunita,
   agenti,
+  soggettoFisso,
+  queryKeysExtra,
   onDeleted,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   opportunita?: OpportunitaRow | null;
-  agenti: Agente[];
+  agenti?: Agente[];
+  soggettoFisso?: SoggettoFissoOpp;
+  queryKeysExtra?: ReadonlyArray<readonly unknown[]>;
   onDeleted?: () => void;
 }) {
   const qc = useQueryClient();
@@ -45,6 +55,24 @@ export function OpportunitaDialog({
     ["amministratore", "amministrazione", "direzione", "marketing", "store_manager"].includes(r),
   );
   const forzaAgente = isAgente && !isTrasversale;
+
+  const { data: agentiFetch = [] } = useQuery({
+    queryKey: ["agenti-lookup"],
+    enabled: !agenti,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("agenti").select("codice, descrizione").order("descrizione");
+      if (error) throw error;
+      return (data ?? []) as Agente[];
+    },
+    staleTime: 300_000,
+  });
+  const listaAgenti = agenti ?? agentiFetch;
+
+  async function invalida() {
+    await qc.invalidateQueries({ queryKey: ["opportunita-lista"] });
+    await Promise.all((queryKeysExtra ?? []).map((k) => qc.invalidateQueries({ queryKey: [...k] })));
+  }
+
 
   const [titolo, setTitolo] = useState("");
   const [tipo, setTipo] = useState<TipoOpportunita>("vendita");
