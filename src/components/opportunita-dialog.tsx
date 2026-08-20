@@ -282,9 +282,12 @@ export function OpportunitaDialog({
                   {soggetto.tipo === "cliente" ? "Cliente" : "Lead"}
                 </Badge>
                 <span className="truncate text-sm font-medium flex-1">{soggetto.etichetta}</span>
-                <Button variant="ghost" size="sm" onClick={() => { setSoggetto(null); setCantiereId(""); }}>
-                  Cambia
-                </Button>
+                {!soggettoFisso && (
+                  <Button variant="ghost" size="sm" onClick={() => { setSoggetto(null); setCantiereId(""); }}>
+                    Cambia
+                  </Button>
+                )}
+
               </div>
             ) : (
               <div className="mt-1">
