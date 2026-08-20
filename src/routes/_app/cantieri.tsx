@@ -22,7 +22,7 @@ import { getChiaveMappe, geocodificaSedi } from "@/lib/cantieri.functions";
 import {
   CATEGORIE_CANTIERE, CATEGORIA_LABEL, GEO_CLASS, GEO_LABEL, GEO_STATI,
   indirizzoCompleto, nomeSoggettoCantiere, testoSedeVicina,
-  type CantiereRow, type GeoStato,
+  type CantiereRow, type GeoStato, type SedeMappa,
 } from "@/lib/cantieri";
 
 const CantieriMappa = lazy(() => import("@/components/cantieri-mappa"));
