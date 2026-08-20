@@ -17,9 +17,9 @@ import {
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SoggettoCombobox, type SoggettoSelezionato } from "@/components/soggetto-combobox";
-import { geocodificaCantiere } from "@/lib/cantieri.functions";
+import { geocodificaCantiere, ricalcolaSedeVicina } from "@/lib/cantieri.functions";
 import {
-  CATEGORIE_CANTIERE, CATEGORIA_LABEL, GEO_CLASS, GEO_LABEL,
+  CATEGORIE_CANTIERE, CATEGORIA_LABEL, GEO_CLASS, GEO_LABEL, testoSedeVicina,
   type CantiereRow, type GeoStato,
 } from "@/lib/cantieri";
 
