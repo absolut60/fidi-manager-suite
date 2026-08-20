@@ -13,6 +13,8 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SoggettoCombobox, type SoggettoSelezionato } from "@/components/soggetto-combobox";
+import { Badge } from "@/components/ui/badge";
 import { TIPI_ATTIVITA, TIPO_ATTIVITA_LABEL, type AttivitaRow, type TipoAttivita } from "@/lib/attivita-commerciale";
 
 type Contesto = {
@@ -36,12 +38,16 @@ export function AttivitaCommercialeDialog({
   contesto,
   attivita,
   onSaved,
+  dataIniziale,
+  conSelettoreSoggetto = false,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   contesto: Contesto;
   attivita?: AttivitaRow | null;
   onSaved?: () => void;
+  dataIniziale?: Date | null;
+  conSelettoreSoggetto?: boolean;
 }) {
   const qc = useQueryClient();
   const { user, roles } = useAuth();
@@ -59,6 +65,8 @@ export function AttivitaCommercialeDialog({
   const [luogo, setLuogo] = useState("");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
+  const [soggetto, setSoggetto] = useState<SoggettoSelezionato | null>(null);
+  const [soggettoMeta, setSoggettoMeta] = useState<{ agente_codice: string | null; store_id: string | null }>({ agente_codice: null, store_id: null });
 
   const { data: mioCodice } = useQuery({
     queryKey: ["mio-codice-agente", user?.id],
@@ -80,16 +88,48 @@ export function AttivitaCommercialeDialog({
     setEsito(a?.esito ?? "");
     setLuogo(a?.luogo ?? "");
     setNote(a?.note ?? "");
-  }, [open, attivita]);
+    setSoggetto(null);
+    setSoggettoMeta({ agente_codice: null, store_id: null });
+    if (!a && dataIniziale) setDataPianificata(toLocalInput(dataIniziale.toISOString()));
+  }, [open, attivita, dataIniziale]);
+
+  // Metadati (agente/store) del soggetto scelto dal calendario
+  useEffect(() => {
+    if (!open || !soggetto) return;
+    let annullato = false;
+    (async () => {
+      if (soggetto.tipo === "cliente") {
+        const { data } = await supabase.from("clienti").select("codice_agente, store_id").eq("id", soggetto.id).maybeSingle();
+        if (annullato || !data) return;
+        const d = data as { codice_agente: string | null; store_id: string | null };
+        setSoggettoMeta({ agente_codice: d.codice_agente, store_id: d.store_id });
+      } else {
+        const { data } = await supabase.from("lead").select("agente_codice, store_id").eq("id", soggetto.id).maybeSingle();
+        if (annullato || !data) return;
+        const d = data as { agente_codice: string | null; store_id: string | null };
+        setSoggettoMeta({ agente_codice: d.agente_codice, store_id: d.store_id });
+      }
+    })();
+    return () => { annullato = true; };
+  }, [open, soggetto]);
 
   async function salva() {
     if (!titolo.trim()) { toast.error("Il titolo è obbligatorio"); return; }
+    const clienteId = soggetto?.tipo === "cliente" ? soggetto.id : (contesto.cliente_id ?? null);
+    const leadId = soggetto?.tipo === "lead" ? soggetto.id : (contesto.lead_id ?? null);
+    const opportunitaId = soggetto ? null : (contesto.opportunita_id ?? null);
+    if (!opportunitaId && !clienteId && !leadId) {
+      toast.error("Seleziona un cliente o un lead");
+      return;
+    }
     setSaving(true);
-    const agenteCodice = forzaAgente ? (mioCodice || null) : (contesto.agente_codice ?? null);
+    const agenteCodice = forzaAgente
+      ? (mioCodice || null)
+      : (soggetto ? soggettoMeta.agente_codice : (contesto.agente_codice ?? null));
     const payload = {
-      opportunita_id: contesto.opportunita_id ?? null,
-      cliente_id: contesto.cliente_id ?? null,
-      lead_id: contesto.lead_id ?? null,
+      opportunita_id: opportunitaId,
+      cliente_id: clienteId,
+      lead_id: leadId,
       tipo,
       titolo: titolo.trim(),
       data_pianificata: dataPianificata ? new Date(dataPianificata).toISOString() : null,
@@ -101,7 +141,7 @@ export function AttivitaCommercialeDialog({
       luogo: luogo.trim() || null,
       note: note.trim() || null,
       agente_codice: agenteCodice,
-      store_id: contesto.store_id ?? null,
+      store_id: soggetto ? soggettoMeta.store_id : (contesto.store_id ?? null),
     };
 
     const { error } = attivita
@@ -126,6 +166,22 @@ export function AttivitaCommercialeDialog({
         </DialogHeader>
 
         <div className="space-y-3">
+          {conSelettoreSoggetto && !attivita && (
+            <div className="space-y-1.5">
+              <Label>Soggetto *</Label>
+              {soggetto ? (
+                <div className="flex items-center gap-2">
+                  <Badge variant={soggetto.tipo === "cliente" ? "default" : "secondary"}>
+                    {soggetto.tipo === "cliente" ? "Cliente" : "Lead"}
+                  </Badge>
+                  <span className="truncate text-sm">{soggetto.etichetta}</span>
+                  <Button variant="ghost" size="sm" onClick={() => setSoggetto(null)}>Cambia</Button>
+                </div>
+              ) : (
+                <SoggettoCombobox onSelect={setSoggetto} />
+              )}
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Tipo</Label>
