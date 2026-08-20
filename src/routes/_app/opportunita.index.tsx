@@ -21,7 +21,7 @@ import {
   type OpportunitaRow, type StatoOpportunita,
 } from "@/lib/opportunita";
 
-export const Route = createFileRoute("/_app/opportunita")({
+export const Route = createFileRoute("/_app/opportunita/")({
   head: () => ({
     meta: [
       { title: "Opportunità commerciali — FidiManager" },

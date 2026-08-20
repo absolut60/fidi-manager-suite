@@ -30,7 +30,6 @@ import { Route as AppRecuperoCreditiAndamentoRouteImport } from './routes/_app/r
 import { Route as AppRecuperoCreditiRouteImport } from './routes/_app/recupero-crediti'
 import { Route as AppPrivacyRouteImport } from './routes/_app/privacy'
 import { Route as AppPianiRientroRouteImport } from './routes/_app/piani-rientro'
-import { Route as AppOpportunitaRouteImport } from './routes/_app/opportunita'
 import { Route as AppLegaliRouteImport } from './routes/_app/legali'
 import { Route as AppLeadRouteImport } from './routes/_app/lead'
 import { Route as AppImpostazioniRouteImport } from './routes/_app/impostazioni'
@@ -46,6 +45,7 @@ import { Route as AppApprovazioniRouteImport } from './routes/_app/approvazioni'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as AppRichiesteInterneIndexRouteImport } from './routes/_app/richieste-interne.index'
+import { Route as AppOpportunitaIndexRouteImport } from './routes/_app/opportunita.index'
 import { Route as AppLeadIndexRouteImport } from './routes/_app/lead.index'
 import { Route as AppEventiIndexRouteImport } from './routes/_app/eventi.index'
 import { Route as ApiPublicInngestRouteImport } from './routes/api/public/inngest'
@@ -176,11 +176,6 @@ const AppPianiRientroRoute = AppPianiRientroRouteImport.update({
   path: '/piani-rientro',
   getParentRoute: () => AppRoute,
 } as any)
-const AppOpportunitaRoute = AppOpportunitaRouteImport.update({
-  id: '/opportunita',
-  path: '/opportunita',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppLegaliRoute = AppLegaliRouteImport.update({
   id: '/legali',
   path: '/legali',
@@ -259,6 +254,11 @@ const AppRichiesteInterneIndexRoute =
     path: '/richieste-interne/',
     getParentRoute: () => AppRoute,
   } as any)
+const AppOpportunitaIndexRoute = AppOpportunitaIndexRouteImport.update({
+  id: '/opportunita/',
+  path: '/opportunita/',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppLeadIndexRoute = AppLeadIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -391,7 +391,6 @@ export interface FileRoutesByFullPath {
   '/impostazioni': typeof AppImpostazioniRoute
   '/lead': typeof AppLeadRouteWithChildren
   '/legali': typeof AppLegaliRoute
-  '/opportunita': typeof AppOpportunitaRoute
   '/piani-rientro': typeof AppPianiRientroRoute
   '/privacy': typeof AppPrivacyRoute
   '/recupero-crediti': typeof AppRecuperoCreditiRoute
@@ -427,6 +426,7 @@ export interface FileRoutesByFullPath {
   '/api/public/inngest': typeof ApiPublicInngestRoute
   '/eventi/': typeof AppEventiIndexRoute
   '/lead/': typeof AppLeadIndexRoute
+  '/opportunita/': typeof AppOpportunitaIndexRoute
   '/richieste-interne/': typeof AppRichiesteInterneIndexRoute
   '/api/public/email-img/$': typeof ApiPublicEmailImgSplatRoute
   '/api/public/hooks/check-reminder-ritardi': typeof ApiPublicHooksCheckReminderRitardiRoute
@@ -449,7 +449,6 @@ export interface FileRoutesByTo {
   '/import-export': typeof AppImportExportRoute
   '/impostazioni': typeof AppImpostazioniRoute
   '/legali': typeof AppLegaliRoute
-  '/opportunita': typeof AppOpportunitaRoute
   '/piani-rientro': typeof AppPianiRientroRoute
   '/privacy': typeof AppPrivacyRoute
   '/recupero-crediti': typeof AppRecuperoCreditiRoute
@@ -485,6 +484,7 @@ export interface FileRoutesByTo {
   '/api/public/inngest': typeof ApiPublicInngestRoute
   '/eventi': typeof AppEventiIndexRoute
   '/lead': typeof AppLeadIndexRoute
+  '/opportunita': typeof AppOpportunitaIndexRoute
   '/richieste-interne': typeof AppRichiesteInterneIndexRoute
   '/api/public/email-img/$': typeof ApiPublicEmailImgSplatRoute
   '/api/public/hooks/check-reminder-ritardi': typeof ApiPublicHooksCheckReminderRitardiRoute
@@ -510,7 +510,6 @@ export interface FileRoutesById {
   '/_app/impostazioni': typeof AppImpostazioniRoute
   '/_app/lead': typeof AppLeadRouteWithChildren
   '/_app/legali': typeof AppLegaliRoute
-  '/_app/opportunita': typeof AppOpportunitaRoute
   '/_app/piani-rientro': typeof AppPianiRientroRoute
   '/_app/privacy': typeof AppPrivacyRoute
   '/_app/recupero-crediti': typeof AppRecuperoCreditiRoute
@@ -546,6 +545,7 @@ export interface FileRoutesById {
   '/api/public/inngest': typeof ApiPublicInngestRoute
   '/_app/eventi/': typeof AppEventiIndexRoute
   '/_app/lead/': typeof AppLeadIndexRoute
+  '/_app/opportunita/': typeof AppOpportunitaIndexRoute
   '/_app/richieste-interne/': typeof AppRichiesteInterneIndexRoute
   '/api/public/email-img/$': typeof ApiPublicEmailImgSplatRoute
   '/api/public/hooks/check-reminder-ritardi': typeof ApiPublicHooksCheckReminderRitardiRoute
@@ -571,7 +571,6 @@ export interface FileRouteTypes {
     | '/impostazioni'
     | '/lead'
     | '/legali'
-    | '/opportunita'
     | '/piani-rientro'
     | '/privacy'
     | '/recupero-crediti'
@@ -607,6 +606,7 @@ export interface FileRouteTypes {
     | '/api/public/inngest'
     | '/eventi/'
     | '/lead/'
+    | '/opportunita/'
     | '/richieste-interne/'
     | '/api/public/email-img/$'
     | '/api/public/hooks/check-reminder-ritardi'
@@ -629,7 +629,6 @@ export interface FileRouteTypes {
     | '/import-export'
     | '/impostazioni'
     | '/legali'
-    | '/opportunita'
     | '/piani-rientro'
     | '/privacy'
     | '/recupero-crediti'
@@ -665,6 +664,7 @@ export interface FileRouteTypes {
     | '/api/public/inngest'
     | '/eventi'
     | '/lead'
+    | '/opportunita'
     | '/richieste-interne'
     | '/api/public/email-img/$'
     | '/api/public/hooks/check-reminder-ritardi'
@@ -689,7 +689,6 @@ export interface FileRouteTypes {
     | '/_app/impostazioni'
     | '/_app/lead'
     | '/_app/legali'
-    | '/_app/opportunita'
     | '/_app/piani-rientro'
     | '/_app/privacy'
     | '/_app/recupero-crediti'
@@ -725,6 +724,7 @@ export interface FileRouteTypes {
     | '/api/public/inngest'
     | '/_app/eventi/'
     | '/_app/lead/'
+    | '/_app/opportunita/'
     | '/_app/richieste-interne/'
     | '/api/public/email-img/$'
     | '/api/public/hooks/check-reminder-ritardi'
@@ -899,13 +899,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPianiRientroRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/opportunita': {
-      id: '/_app/opportunita'
-      path: '/opportunita'
-      fullPath: '/opportunita'
-      preLoaderRoute: typeof AppOpportunitaRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/legali': {
       id: '/_app/legali'
       path: '/legali'
@@ -1009,6 +1002,13 @@ declare module '@tanstack/react-router' {
       path: '/richieste-interne'
       fullPath: '/richieste-interne/'
       preLoaderRoute: typeof AppRichiesteInterneIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/opportunita/': {
+      id: '/_app/opportunita/'
+      path: '/opportunita'
+      fullPath: '/opportunita/'
+      preLoaderRoute: typeof AppOpportunitaIndexRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/lead/': {
@@ -1211,7 +1211,6 @@ interface AppRouteChildren {
   AppImpostazioniRoute: typeof AppImpostazioniRoute
   AppLeadRoute: typeof AppLeadRouteWithChildren
   AppLegaliRoute: typeof AppLegaliRoute
-  AppOpportunitaRoute: typeof AppOpportunitaRoute
   AppPianiRientroRoute: typeof AppPianiRientroRoute
   AppPrivacyRoute: typeof AppPrivacyRoute
   AppRecuperoCreditiRoute: typeof AppRecuperoCreditiRoute
@@ -1236,6 +1235,7 @@ interface AppRouteChildren {
   AppRichiesteInterneMieRoute: typeof AppRichiesteInterneMieRoute
   AppRichiesteInterneTutteRoute: typeof AppRichiesteInterneTutteRoute
   AppEventiIndexRoute: typeof AppEventiIndexRoute
+  AppOpportunitaIndexRoute: typeof AppOpportunitaIndexRoute
   AppRichiesteInterneIndexRoute: typeof AppRichiesteInterneIndexRoute
 }
 
@@ -1252,7 +1252,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppImpostazioniRoute: AppImpostazioniRoute,
   AppLeadRoute: AppLeadRouteWithChildren,
   AppLegaliRoute: AppLegaliRoute,
-  AppOpportunitaRoute: AppOpportunitaRoute,
   AppPianiRientroRoute: AppPianiRientroRoute,
   AppPrivacyRoute: AppPrivacyRoute,
   AppRecuperoCreditiRoute: AppRecuperoCreditiRoute,
@@ -1277,6 +1276,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppRichiesteInterneMieRoute: AppRichiesteInterneMieRoute,
   AppRichiesteInterneTutteRoute: AppRichiesteInterneTutteRoute,
   AppEventiIndexRoute: AppEventiIndexRoute,
+  AppOpportunitaIndexRoute: AppOpportunitaIndexRoute,
   AppRichiesteInterneIndexRoute: AppRichiesteInterneIndexRoute,
 }
 
