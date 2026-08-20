@@ -3,7 +3,26 @@ import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
-import { ArrowLeft, Plus, Mail, Phone, Smartphone, Star, Trash2, FileCheck2, FileX2, Download, Pencil, Link as LinkIcon, Copy, EyeOff, AlertTriangle, MessageCircle, Send, CreditCard } from "lucide-react";
+import {
+  ArrowLeft,
+  Plus,
+  Mail,
+  Phone,
+  Smartphone,
+  Star,
+  Trash2,
+  FileCheck2,
+  FileX2,
+  Download,
+  Pencil,
+  Link as LinkIcon,
+  Copy,
+  EyeOff,
+  AlertTriangle,
+  MessageCircle,
+  Send,
+  CreditCard,
+} from "lucide-react";
 import { InviaSollecitoDialog } from "@/components/invia-sollecito-dialog";
 import { useRef } from "react";
 import { toast } from "sonner";
@@ -23,7 +42,13 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { OpportunitaSoggettoLista } from "@/components/opportunita-soggetto-lista";
@@ -37,23 +62,50 @@ import { ClienteMarketingTab } from "@/components/cliente-marketing-tab";
 import { formatEuro } from "@/lib/fidi";
 import { CONSENSO_LABEL } from "@/lib/consensi-testi";
 import { classificaScadenza, sommaScadutoCliente, contributoScaduto } from "@/lib/scadenze";
-import { Ban, Calendar, Clock, Bell, CheckCircle2, Shield, ShieldOff, Scale, FileText, Activity } from "lucide-react";
+import {
+  Ban,
+  Calendar,
+  Clock,
+  Bell,
+  CheckCircle2,
+  Shield,
+  ShieldOff,
+  Scale,
+  FileText,
+  Activity,
+} from "lucide-react";
 import { NuovoContattoWizard } from "@/components/nuovo-contatto-wizard";
 import { RuoloSelect } from "@/components/ruolo-select";
 import { CondizionePagamentoSelect } from "@/components/condizione-pagamento-select";
 import { CategoriaSelect } from "@/components/categoria-select";
 
-
-
-
 const TAB_VALUES = [
-  "riepilogo", "anagrafica", "contatti", "marketing", "cantieri", "commerciale", "storico",
-  "scadenziario", "solleciti", "piani", "legali", "assicurazioni",
-  "attivita", "allegati", "privacy",
+  "riepilogo",
+  "anagrafica",
+  "contatti",
+  "marketing",
+  "cantieri",
+  "commerciale",
+  "storico",
+  "scadenziario",
+  "solleciti",
+  "piani",
+  "legali",
+  "assicurazioni",
+  "attivita",
+  "allegati",
+  "privacy",
   // legacy: vecchio contenitore "Dati Rischio" (retro-compatibilita' deep-link)
   "insoluti",
 ] as const;
-const INSOLUTI_SUB_VALUES = ["riepilogo", "scadenziario", "solleciti", "piani", "legali", "assicurazioni"] as const;
+const INSOLUTI_SUB_VALUES = [
+  "riepilogo",
+  "scadenziario",
+  "solleciti",
+  "piani",
+  "legali",
+  "assicurazioni",
+] as const;
 
 const clienteSearchSchema = z.object({
   edit: fallback(z.union([z.literal(1), z.literal("1")]).optional(), undefined),
@@ -61,7 +113,6 @@ const clienteSearchSchema = z.object({
   insolutiTab: fallback(z.enum(INSOLUTI_SUB_VALUES).optional(), undefined),
   from: fallback(z.literal("approvazioni").optional(), undefined),
 });
-
 
 export const Route = createFileRoute("/_app/clienti/$clienteId")({
   validateSearch: zodValidator(clienteSearchSchema),
@@ -87,15 +138,25 @@ type ContattoForm = z.infer<typeof contattoSchema>;
 
 function emptyContattoForm(): ContattoForm {
   return {
-    nome: "", cognome: "", ruolo: "",
-    email: "", telefono: "", cellulare: "", whatsapp: "",
-    luogo_nascita: "", data_nascita: "", codice_fiscale: "", residenza: "",
+    nome: "",
+    cognome: "",
+    ruolo: "",
+    email: "",
+    telefono: "",
+    cellulare: "",
+    whatsapp: "",
+    luogo_nascita: "",
+    data_nascita: "",
+    codice_fiscale: "",
+    residenza: "",
     principale: false,
   };
 }
 
 function ContattoFormFields({
-  form, errors, set,
+  form,
+  errors,
+  set,
 }: {
   form: ContattoForm;
   errors: Record<string, string>;
@@ -118,8 +179,14 @@ function ContattoFormFields({
         </div>
         <RuoloSelect value={form.ruolo ?? ""} onChange={(v) => set("ruolo", v)} />
         <div className="flex items-center gap-2">
-          <Checkbox id="principale" checked={form.principale} onCheckedChange={(v) => set("principale", v === true)} />
-          <Label htmlFor="principale" className="cursor-pointer text-sm font-normal">Contatto principale</Label>
+          <Checkbox
+            id="principale"
+            checked={form.principale}
+            onCheckedChange={(v) => set("principale", v === true)}
+          />
+          <Label htmlFor="principale" className="cursor-pointer text-sm font-normal">
+            Contatto principale
+          </Label>
         </div>
       </div>
 
@@ -141,7 +208,11 @@ function ContattoFormFields({
           </div>
           <div className="space-y-1.5">
             <Label>WhatsApp</Label>
-            <Input placeholder="+39 333 1234567" value={form.whatsapp} onChange={(e) => set("whatsapp", e.target.value)} />
+            <Input
+              placeholder="+39 333 1234567"
+              value={form.whatsapp}
+              onChange={(e) => set("whatsapp", e.target.value)}
+            />
           </div>
         </div>
       </div>
@@ -151,15 +222,25 @@ function ContattoFormFields({
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label>Luogo di nascita</Label>
-            <Input value={form.luogo_nascita} onChange={(e) => set("luogo_nascita", e.target.value)} />
+            <Input
+              value={form.luogo_nascita}
+              onChange={(e) => set("luogo_nascita", e.target.value)}
+            />
           </div>
           <div className="space-y-1.5">
             <Label>Data di nascita</Label>
-            <Input type="date" value={form.data_nascita} onChange={(e) => set("data_nascita", e.target.value)} />
+            <Input
+              type="date"
+              value={form.data_nascita}
+              onChange={(e) => set("data_nascita", e.target.value)}
+            />
           </div>
           <div className="space-y-1.5">
             <Label>Codice fiscale</Label>
-            <Input value={form.codice_fiscale} onChange={(e) => set("codice_fiscale", e.target.value)} />
+            <Input
+              value={form.codice_fiscale}
+              onChange={(e) => set("codice_fiscale", e.target.value)}
+            />
           </div>
           <div className="space-y-1.5">
             <Label>Residenza</Label>
@@ -192,7 +273,9 @@ function ConsensoBadge({ ok, label }: { ok: boolean; label: string }) {
   return ok ? (
     <Badge className="bg-success/15 text-success border-success/30">{label} ✓</Badge>
   ) : (
-    <Badge variant="outline" className="text-muted-foreground">{label} —</Badge>
+    <Badge variant="outline" className="text-muted-foreground">
+      {label} —
+    </Badge>
   );
 }
 
@@ -207,10 +290,11 @@ function ClienteDetail() {
   // Retro-compatibilita': i vecchi link ?tab=insoluti&insolutiTab=x puntano ora al tab promosso
   const effTab =
     tab === "insoluti"
-      ? (insolutiTab && insolutiTab !== "riepilogo" ? insolutiTab : "scadenziario")
+      ? insolutiTab && insolutiTab !== "riepilogo"
+        ? insolutiTab
+        : "scadenziario"
       : (tab ?? "riepilogo");
   const isAgente = hasRole("agente");
-
 
   const [openNew, setOpenNew] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
@@ -230,7 +314,8 @@ function ClienteDetail() {
         .eq("id", clienteId)
         .select("id");
       if (error) throw error;
-      if (!data || data.length === 0) throw new Error("Non hai i permessi per disattivare questo cliente.");
+      if (!data || data.length === 0)
+        throw new Error("Non hai i permessi per disattivare questo cliente.");
     },
     onSuccess: () => {
       toast.success("Cliente disattivato");
@@ -251,7 +336,9 @@ function ClienteDetail() {
         .eq("cliente_id", clienteId);
       if (cErr) throw cErr;
       if ((count ?? 0) > 0) {
-        throw new Error(`Impossibile eliminare: il cliente ha ${count} richieste fido collegate. Disattivalo invece.`);
+        throw new Error(
+          `Impossibile eliminare: il cliente ha ${count} richieste fido collegate. Disattivalo invece.`,
+        );
       }
       const { error } = await supabase.from("clienti").delete().eq("id", clienteId);
       if (error) throw error;
@@ -264,8 +351,6 @@ function ClienteDetail() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
-
-
 
   const { data: cliente, isLoading } = useQuery({
     queryKey: ["cliente", clienteId],
@@ -330,20 +415,34 @@ function ClienteDetail() {
     <div className="space-y-6">
       <div>
         <Button asChild variant="ghost" size="sm" className="mb-2 -ml-2">
-          {from === "approvazioni"
-            ? <Link to="/approvazioni"><ArrowLeft className="size-4" /> Torna alle Approvazioni</Link>
-            : <Link to="/clienti"><ArrowLeft className="size-4" /> Clienti</Link>}
+          {from === "approvazioni" ? (
+            <Link to="/approvazioni">
+              <ArrowLeft className="size-4" /> Torna alle Approvazioni
+            </Link>
+          ) : (
+            <Link to="/clienti">
+              <ArrowLeft className="size-4" /> Clienti
+            </Link>
+          )}
         </Button>
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{cliente.ragione_sociale}</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+              {cliente.ragione_sociale}
+            </h1>
             <p className="text-sm text-muted-foreground mt-1">
               {[
-                (cliente as any).codice_gestionale ? `Cod. ${(cliente as any).codice_gestionale}` : null,
+                (cliente as any).codice_gestionale
+                  ? `Cod. ${(cliente as any).codice_gestionale}`
+                  : null,
                 cliente.partita_iva ? `P.IVA ${cliente.partita_iva}` : null,
-                (cliente as any).stores?.nome ? String((cliente as any).stores.nome).toUpperCase() : null,
+                (cliente as any).stores?.nome
+                  ? String((cliente as any).stores.nome).toUpperCase()
+                  : null,
                 (cliente as any).agente ? `Agente: ${(cliente as any).agente}` : null,
-              ].filter(Boolean).join(" — ") || "Partita IVA non inserita"}
+              ]
+                .filter(Boolean)
+                .join(" — ") || "Partita IVA non inserita"}
             </p>
             {((cliente as any).bloccato || (cliente as any).in_gestione_legale) && (
               <div className="flex flex-wrap gap-1.5 mt-2">
@@ -351,7 +450,10 @@ function ClienteDetail() {
                   <Link
                     from="/clienti/$clienteId"
                     to="."
-                    search={(prev: Record<string, unknown>) => ({ ...prev, tab: "storico" as const })}
+                    search={(prev: Record<string, unknown>) => ({
+                      ...prev,
+                      tab: "storico" as const,
+                    })}
                     className="inline-flex items-center gap-1 rounded-md bg-destructive/15 text-destructive border border-destructive/30 px-2 py-0.5 text-xs font-medium hover:bg-destructive/25 transition-colors cursor-pointer"
                   >
                     <AlertTriangle className="size-3" /> Cliente bloccato
@@ -380,7 +482,12 @@ function ClienteDetail() {
                 <FileX2 className="size-3" /> Privacy da firmare
               </Badge>
             )}
-            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setOpenSollecito(true)}>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5"
+              onClick={() => setOpenSollecito(true)}
+            >
               <Send className="size-4" /> Invia sollecito
             </Button>
             <InviaSollecitoDialog
@@ -415,11 +522,18 @@ function ClienteDetail() {
                   <DialogHeader>
                     <DialogTitle>Disattivare il cliente?</DialogTitle>
                     <DialogDescription>
-                      Il cliente non comparirà più nelle liste, ma i dati e lo storico restano nel sistema. Potrai riattivarlo in seguito.
+                      Il cliente non comparirà più nelle liste, ma i dati e lo storico restano nel
+                      sistema. Potrai riattivarlo in seguito.
                     </DialogDescription>
                   </DialogHeader>
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => setOpenDisattiva(false)} disabled={disattivaMut.isPending}>Annulla</Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setOpenDisattiva(false)}
+                      disabled={disattivaMut.isPending}
+                    >
+                      Annulla
+                    </Button>
                     <Button onClick={() => disattivaMut.mutate()} disabled={disattivaMut.isPending}>
                       {disattivaMut.isPending ? "Disattivazione…" : "Disattiva cliente"}
                     </Button>
@@ -429,7 +543,12 @@ function ClienteDetail() {
             )}
 
             {isAdmin && (
-              <Dialog open={openElimina} onOpenChange={(v) => { setOpenElimina(v); }}>
+              <Dialog
+                open={openElimina}
+                onOpenChange={(v) => {
+                  setOpenElimina(v);
+                }}
+              >
                 <DialogTrigger asChild>
                   <Button size="sm" variant="destructive" className="gap-1.5">
                     <Trash2 className="size-4" /> Elimina
@@ -445,7 +564,6 @@ function ClienteDetail() {
               </Dialog>
             )}
           </div>
-
         </div>
       </div>
 
@@ -468,7 +586,6 @@ function ClienteDetail() {
           <TabsTrigger value="privacy">Privacy</TabsTrigger>
         </TabsList>
 
-
         <TabsContent value="riepilogo" className="space-y-4">
           <RiepilogoTab cliente={cliente} clienteId={clienteId} />
         </TabsContent>
@@ -479,12 +596,27 @@ function ClienteDetail() {
             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
               <Field label="Ragione sociale" value={cliente.ragione_sociale} />
               <Field label="Codice gestionale" value={(cliente as any).codice_gestionale} />
-              <Field label="Tipo soggetto" value={(cliente as any).tipo_soggetto === "persona_fisica" ? "Persona fisica" : (cliente as any).tipo_soggetto === "azienda" ? "Azienda" : null} />
+              <Field
+                label="Tipo soggetto"
+                value={
+                  (cliente as any).tipo_soggetto === "persona_fisica"
+                    ? "Persona fisica"
+                    : (cliente as any).tipo_soggetto === "azienda"
+                      ? "Azienda"
+                      : null
+                }
+              />
               <Field label="Partita IVA" value={cliente.partita_iva} />
               <Field label="Codice fiscale" value={cliente.codice_fiscale} />
               <Field label="Punto vendita" value={(cliente as any).stores?.nome} />
               <Field label="Indirizzo" value={cliente.indirizzo} />
-              <Field label="Città" value={cliente.citta && `${cliente.citta}${cliente.provincia ? ` (${cliente.provincia})` : ""}${cliente.cap ? ` — ${cliente.cap}` : ""}`} />
+              <Field
+                label="Città"
+                value={
+                  cliente.citta &&
+                  `${cliente.citta}${cliente.provincia ? ` (${cliente.provincia})` : ""}${cliente.cap ? ` — ${cliente.cap}` : ""}`
+                }
+              />
               <Field label="Telefono" value={cliente.telefono} />
               <Field label="Telefono 2" value={(cliente as any).telefono_2} />
               <Field label="Email" value={cliente.email} />
@@ -522,7 +654,9 @@ function ClienteDetail() {
             </dl>
             {(cliente as any).scheda_pdf_url && (
               <div className="mt-4 pt-4 border-t">
-                <p className="text-xs font-medium text-muted-foreground mb-2">SCHEDA INSERIMENTO FIRMATA</p>
+                <p className="text-xs font-medium text-muted-foreground mb-2">
+                  SCHEDA INSERIMENTO FIRMATA
+                </p>
                 <Button variant="outline" size="sm" asChild>
                   <a href={(cliente as any).scheda_pdf_url} target="_blank" rel="noreferrer">
                     <Download className="size-4 mr-1" /> Scarica scheda PDF
@@ -538,8 +672,6 @@ function ClienteDetail() {
             )}
           </Card>
         </TabsContent>
-
-
 
         <TabsContent value="contatti" className="space-y-4">
           <div className="flex justify-end">
@@ -565,18 +697,18 @@ function ClienteDetail() {
             </Dialog>
           </div>
 
-
-
-
-
           {loadingContatti ? (
             <div className="space-y-2">
-              {Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-24 w-full" />)}
+              {Array.from({ length: 2 }).map((_, i) => (
+                <Skeleton key={i} className="h-24 w-full" />
+              ))}
             </div>
           ) : contatti?.length === 0 ? (
             <Card className="p-12 text-center">
               <p className="font-medium text-sm">Nessun contatto</p>
-              <p className="text-xs text-muted-foreground mt-1">Aggiungi un referente per questo cliente.</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Aggiungi un referente per questo cliente.
+              </p>
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -586,7 +718,9 @@ function ClienteDetail() {
                   cliente={cliente}
                   clienteId={clienteId}
                   contatto={c}
-                  onDelete={() => { if (confirm("Eliminare questo contatto?")) deleteContatto.mutate(c.id); }}
+                  onDelete={() => {
+                    if (confirm("Eliminare questo contatto?")) deleteContatto.mutate(c.id);
+                  }}
                 />
               ))}
             </div>
@@ -596,7 +730,6 @@ function ClienteDetail() {
         <TabsContent value="marketing" className="space-y-4">
           <ClienteMarketingTab clienteId={clienteId} cliente={cliente as any} />
         </TabsContent>
-
 
         <TabsContent value="cantieri">
           <ClienteCantieriTab clienteId={clienteId} ragioneSociale={cliente.ragione_sociale} />
@@ -612,7 +745,7 @@ function ClienteDetail() {
           <ClienteStoricoFidoTab clienteId={clienteId} />
         </TabsContent>
 
-        {(["scadenziario", "solleciti", "piani", "legali", "assicurazioni"] as const).map((s) => (
+        {(["scadenziario", "solleciti", "piani", "legali", "assicurazioni"] as const).map((s) =>
           (s === "legali" || s === "assicurazioni") && isStoreManager ? null : (
             <TabsContent key={s} value={s}>
               <ClienteInsolutiTab
@@ -626,9 +759,8 @@ function ClienteDetail() {
                 sezione={s}
               />
             </TabsContent>
-          )
-        ))}
-
+          ),
+        )}
 
         <TabsContent value="attivita">
           <ClienteAttivitaRecuperoTab clienteId={clienteId} />
@@ -647,16 +779,17 @@ function ClienteDetail() {
         </TabsContent>
 
         <TabsContent value="privacy">
-          <PrivacyTab cliente={cliente} onUpdated={() => qc.invalidateQueries({ queryKey: ["cliente", clienteId] })} />
+          <PrivacyTab
+            cliente={cliente}
+            onUpdated={() => qc.invalidateQueries({ queryKey: ["cliente", clienteId] })}
+          />
         </TabsContent>
       </Tabs>
     </div>
   );
 }
 
-
 function Field({ label, value }: { label: string; value?: string | null }) {
-
   return (
     <div>
       <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</dt>
@@ -667,18 +800,30 @@ function Field({ label, value }: { label: string; value?: string | null }) {
 
 function fmtDateIt(v: unknown): string {
   if (!v) return "—";
-  try { return new Date(String(v)).toLocaleDateString("it-IT"); } catch { return String(v); }
+  try {
+    return new Date(String(v)).toLocaleDateString("it-IT");
+  } catch {
+    return String(v);
+  }
 }
 
 function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string }) {
   const config = useConfig();
   const navigate = useNavigate();
   const vaiAlTab = (tab: string) =>
-    navigate({ to: "/clienti/$clienteId", params: { clienteId }, search: (prev: any) => ({ ...prev, tab }) });
+    navigate({
+      to: "/clienti/$clienteId",
+      params: { clienteId },
+      search: (prev: any) => ({ ...prev, tab }),
+    });
   const bloccato = !!cliente.bloccato;
   const indBlocco = Number(cliente.ind_blocco ?? 0);
   const ultimaFatt = cliente.ultima_data_fatturazione;
-  const clienteAttivo = isClienteAttivo(cliente.ultima_data_fatturazione, cliente.doc_da_fatturare, config);
+  const clienteAttivo = isClienteAttivo(
+    cliente.ultima_data_fatturazione,
+    cliente.doc_da_fatturare,
+    config,
+  );
   const assicurato = !!cliente.assicurazione_attiva;
 
   const { data: polizzaAttiva } = useQuery({
@@ -692,33 +837,56 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
         .limit(1)
         .maybeSingle();
       if (error) throw error;
-      return data as { assicuratore: string; importo_massimale: number | null; data_scadenza: string | null; stato: string } | null;
+      return data as {
+        assicuratore: string;
+        importo_massimale: number | null;
+        data_scadenza: string | null;
+        stato: string;
+      } | null;
     },
     enabled: assicurato,
   });
-  const polizzaScaduta = !!(polizzaAttiva?.data_scadenza && new Date(polizzaAttiva.data_scadenza) < new Date());
-
+  const polizzaScaduta = !!(
+    polizzaAttiva?.data_scadenza && new Date(polizzaAttiva.data_scadenza) < new Date()
+  );
 
   const { data: ins } = useQuery({
     queryKey: ["riepilogo-tab-insoluti", clienteId],
     queryFn: async () => {
       const { data: scad, error } = await supabase
         .from("scadenze")
-        .select("importo_scadenza, giorni_ritardo, stato_contabile, tempi_scadenza, data_scadenza, data_pagamento_effettiva, numero_documento")
+        .select(
+          "importo_scadenza, giorni_ritardo, stato_contabile, tempi_scadenza, data_scadenza, data_pagamento_effettiva, numero_documento",
+        )
         .eq("cliente_id", clienteId);
       if (error) throw error;
-      const rows = (scad ?? []) as Array<{ importo_scadenza: number | null; giorni_ritardo: number | null; stato_contabile: string | null; tempi_scadenza: string | null; data_scadenza: string | null; data_pagamento_effettiva: string | null; numero_documento: string | null }>;
+      const rows = (scad ?? []) as Array<{
+        importo_scadenza: number | null;
+        giorni_ritardo: number | null;
+        stato_contabile: string | null;
+        tempi_scadenza: string | null;
+        data_scadenza: string | null;
+        data_pagamento_effettiva: string | null;
+        numero_documento: string | null;
+      }>;
       const scadute = rows.filter((s) => classificaScadenza(s) === "scaduto");
       const aScadere = rows.filter((s) => classificaScadenza(s) === "a_scadere");
-      const sum = (arr: typeof rows) => arr.reduce((a, r) => a + Number(r.importo_scadenza ?? 0), 0);
+      const sum = (arr: typeof rows) =>
+        arr.reduce((a, r) => a + Number(r.importo_scadenza ?? 0), 0);
       // Fasce: contributo signed con anticipi sottratti (no clamp per-fascia).
-      const sumContrib = (arr: typeof rows) => arr.reduce((acc, r) => acc + contributoScaduto(r), 0);
-      const maxGg = [...scadute, ...aScadere].reduce((m, r) => Math.max(m, Number(r.giorni_ritardo ?? 0)), 0);
+      const sumContrib = (arr: typeof rows) =>
+        arr.reduce((acc, r) => acc + contributoScaduto(r), 0);
+      const maxGg = [...scadute, ...aScadere].reduce(
+        (m, r) => Math.max(m, Number(r.giorni_ritardo ?? 0)),
+        0,
+      );
       const fascia = (min: number, max: number | null) =>
-        sumContrib(scadute.filter((s) => {
-          const g = Number(s.giorni_ritardo ?? 0);
-          return g >= min && (max == null || g <= max);
-        }));
+        sumContrib(
+          scadute.filter((s) => {
+            const g = Number(s.giorni_ritardo ?? 0);
+            return g >= min && (max == null || g <= max);
+          }),
+        );
       const { data: ultSoll } = await supabase
         .from("solleciti")
         .select("data_sollecito")
@@ -734,16 +902,21 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
         scaduto_0_30: fascia(1, 30),
         scaduto_30_60: fascia(31, 60),
         scaduto_oltre_60: fascia(61, null),
-        ultimo_sollecito: (ultSoll as { data_sollecito: string | null } | null)?.data_sollecito ?? null,
+        ultimo_sollecito:
+          (ultSoll as { data_sollecito: string | null } | null)?.data_sollecito ?? null,
       };
     },
   });
 
   const totScaduto = Number(ins?.totale_scaduto ?? 0);
-  const totFasce = Number(ins?.scaduto_0_30 ?? 0) + Number(ins?.scaduto_30_60 ?? 0) + Number(ins?.scaduto_oltre_60 ?? 0);
-  const pct = (v: number) => totFasce > 0 ? (v / totFasce) * 100 : 0;
+  const totFasce =
+    Number(ins?.scaduto_0_30 ?? 0) +
+    Number(ins?.scaduto_30_60 ?? 0) +
+    Number(ins?.scaduto_oltre_60 ?? 0);
+  const pct = (v: number) => (totFasce > 0 ? (v / totFasce) * 100 : 0);
   const maxGg = Number(ins?.max_giorni_ritardo ?? 0);
-  const fasciaTone = maxGg > 60 ? "destructive" : maxGg > 30 ? "warning" : maxGg > 0 ? "yellow" : "default";
+  const fasciaTone =
+    maxGg > 60 ? "destructive" : maxGg > 30 ? "warning" : maxGg > 0 ? "yellow" : "default";
 
   // Dati rischio
   const fidoGest = Number(cliente.fido_gestionale ?? cliente.fido ?? 0);
@@ -756,36 +929,67 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
     <div className="space-y-5">
       {/* Banner assicurazione (compatto) */}
       {assicurato && (
-        <div className={`rounded-lg border px-3 py-2 flex items-center gap-2 text-xs ${polizzaScaduta ? "border-destructive/40 bg-destructive/10" : "border-success/30 bg-success/10"}`}>
-          <Shield className={`size-4 shrink-0 ${polizzaScaduta ? "text-destructive" : "text-success"}`} />
+        <div
+          className={`rounded-lg border px-3 py-2 flex items-center gap-2 text-xs ${polizzaScaduta ? "border-destructive/40 bg-destructive/10" : "border-success/30 bg-success/10"}`}
+        >
+          <Shield
+            className={`size-4 shrink-0 ${polizzaScaduta ? "text-destructive" : "text-success"}`}
+          />
           <p className={`font-medium ${polizzaScaduta ? "text-destructive" : "text-success"}`}>
             Assicurato {polizzaAttiva?.assicuratore || "POUEY"}
-            {polizzaAttiva?.importo_massimale != null ? ` — Massimale: ${formatEuro(polizzaAttiva.importo_massimale)}` : ""}
-            {polizzaAttiva?.data_scadenza ? ` — Scade: ${fmtDateIt(polizzaAttiva.data_scadenza)}` : ""}
+            {polizzaAttiva?.importo_massimale != null
+              ? ` — Massimale: ${formatEuro(polizzaAttiva.importo_massimale)}`
+              : ""}
+            {polizzaAttiva?.data_scadenza
+              ? ` — Scade: ${fmtDateIt(polizzaAttiva.data_scadenza)}`
+              : ""}
           </p>
           {polizzaScaduta && (
-            <Badge className="bg-destructive text-destructive-foreground hover:bg-destructive ml-auto text-[10px] py-0">Polizza scaduta</Badge>
+            <Badge className="bg-destructive text-destructive-foreground hover:bg-destructive ml-auto text-[10px] py-0">
+              Polizza scaduta
+            </Badge>
           )}
         </div>
       )}
 
       {/* Colpo d'occhio — griglia compatta a 4 colonne */}
       <section className="space-y-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Colpo d'occhio</h3>
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Colpo d'occhio
+        </h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           <Card className="p-3.5 rounded-xl border-[0.5px]">
-            <p className="text-[11px] font-medium text-muted-foreground uppercase truncate">Semaforo affidabilità</p>
+            <p className="text-[11px] font-medium text-muted-foreground uppercase truncate">
+              Semaforo affidabilità
+            </p>
             <div className="mt-1.5 flex items-center gap-1.5 text-sm">
               <SemaforoAffidabilitaBadge clienteId={cliente.id} />
             </div>
           </Card>
 
-          <MiniStat label="Fido gestionale" value={formatEuro(fidoGest)} size="md" onClick={() => vaiAlTab("storico")} />
-          <MiniStat label="Totale rischio" value={formatEuro(totRischio)} size="md" onClick={() => vaiAlTab("scadenziario")} />
+          <MiniStat
+            label="Fido gestionale"
+            value={formatEuro(fidoGest)}
+            size="md"
+            onClick={() => vaiAlTab("storico")}
+          />
+          <MiniStat
+            label="Totale rischio"
+            value={formatEuro(totRischio)}
+            size="md"
+            onClick={() => vaiAlTab("scadenziario")}
+          />
 
           {(() => {
             const pctUtil = fidoGest > 0 ? Math.round((totRischio / fidoGest) * 100) : null;
-            const hintTone = pctUtil == null ? "default" : pctUtil >= 100 ? "destructive" : pctUtil >= 70 ? "warning" : "default";
+            const hintTone =
+              pctUtil == null
+                ? "default"
+                : pctUtil >= 100
+                  ? "destructive"
+                  : pctUtil >= 70
+                    ? "warning"
+                    : "default";
             return (
               <MiniStat
                 label="Fido residuo"
@@ -799,27 +1003,57 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
             );
           })()}
 
-          <MiniStat label="Scaduto" value={formatEuro(cliente.scaduto)} tone={scaduto > 0 ? "destructive" : "default"} size="md" onClick={() => vaiAlTab("scadenziario")} />
-          <MiniStat label="A scadere" value={formatEuro(cliente.a_scadere)} size="md" onClick={() => vaiAlTab("scadenziario")} />
-          <MiniStat label="Max gg ritardo" value={`${maxGg} gg`} tone={maxGg > 60 ? "destructive" : maxGg > 30 ? "warning" : "default"} size="md" icon={Clock} onClick={() => vaiAlTab("scadenziario")} />
+          <MiniStat
+            label="Scaduto"
+            value={formatEuro(cliente.scaduto)}
+            tone={scaduto > 0 ? "destructive" : "default"}
+            size="md"
+            onClick={() => vaiAlTab("scadenziario")}
+          />
+          <MiniStat
+            label="A scadere"
+            value={formatEuro(cliente.a_scadere)}
+            size="md"
+            onClick={() => vaiAlTab("scadenziario")}
+          />
+          <MiniStat
+            label="Max gg ritardo"
+            value={`${maxGg} gg`}
+            tone={maxGg > 60 ? "destructive" : maxGg > 30 ? "warning" : "default"}
+            size="md"
+            icon={Clock}
+            onClick={() => vaiAlTab("scadenziario")}
+          />
 
           <Card className="p-3.5 rounded-xl border-[0.5px]">
-            <p className="text-[11px] font-medium text-muted-foreground uppercase truncate">Metodo di pagamento</p>
+            <p className="text-[11px] font-medium text-muted-foreground uppercase truncate">
+              Metodo di pagamento
+            </p>
             <div className="mt-1.5 flex items-start gap-2">
               <CreditCard className="size-4 text-muted-foreground shrink-0 mt-0.5" />
-              <p className="text-[14px] font-medium leading-snug text-foreground">{condPag || "—"}</p>
+              <p className="text-[14px] font-medium leading-snug text-foreground">
+                {condPag || "—"}
+              </p>
             </div>
           </Card>
 
           {(() => {
             const isBloccato = bloccato || indBlocco >= 1;
             const statoTxt = isBloccato
-              ? (indBlocco === 1 && !bloccato ? "Bloccato (sbloccabile)" : "Bloccato")
+              ? indBlocco === 1 && !bloccato
+                ? "Bloccato (sbloccabile)"
+                : "Bloccato"
               : cliente.in_gestione_legale
                 ? "In gestione legale"
-                : clienteAttivo ? "Regolare" : "Non attivo";
+                : clienteAttivo
+                  ? "Regolare"
+                  : "Non attivo";
             const dest = isBloccato ? "storico" : cliente.in_gestione_legale ? "legali" : null;
-            const tone = isBloccato ? "destructive" : cliente.in_gestione_legale ? "warning" : "default";
+            const tone = isBloccato
+              ? "destructive"
+              : cliente.in_gestione_legale
+                ? "warning"
+                : "default";
             return (
               <MiniStat
                 label="Stato cliente"
@@ -833,7 +1067,9 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
           })()}
 
           <Card className="p-3.5 rounded-xl border-[0.5px]">
-            <p className="text-[11px] font-medium text-muted-foreground uppercase truncate">Assicurazione</p>
+            <p className="text-[11px] font-medium text-muted-foreground uppercase truncate">
+              Assicurazione
+            </p>
             <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
               {assicurato ? (
                 <>
@@ -841,7 +1077,9 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
                     <Shield className="size-3" /> POUEY
                   </Badge>
                   {polizzaAttiva?.importo_massimale != null && (
-                    <span className="text-sm font-semibold tabular-nums text-foreground">{formatEuro(polizzaAttiva.importo_massimale)}</span>
+                    <span className="text-sm font-semibold tabular-nums text-foreground">
+                      {formatEuro(polizzaAttiva.importo_massimale)}
+                    </span>
                   )}
                 </>
               ) : (
@@ -906,10 +1144,7 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
                   value={ni == null ? "—" : String(ni)}
                   tone={ni != null && Number(ni) > 0 ? "destructive" : "default"}
                 />
-                <MiniStat
-                  label="Dilazione concordata"
-                  value={dc != null ? `${dc} gg` : "—"}
-                />
+                <MiniStat label="Dilazione concordata" value={dc != null ? `${dc} gg` : "—"} />
                 <MiniStat
                   label="Ritardo medio reale"
                   value={r.text}
@@ -927,16 +1162,51 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
             <AlertTriangle className="size-3.5" /> Riepilogo insoluti
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
-            <MiniStat label="Totale scaduto" value={formatEuro(totScaduto)} tone={totScaduto > 0 ? "destructive" : "default"} icon={AlertTriangle} />
-            <MiniStat label="A scadere" value={formatEuro(ins?.totale_a_scadere ?? 0)} icon={Calendar} />
-            <MiniStat label="Max gg ritardo" value={`${maxGg} gg`} tone={maxGg > 60 ? "destructive" : maxGg > 30 ? "warning" : "default"} icon={Clock} />
-            <MiniStat label="Ultimo sollecito" value={fmtDateIt(ins?.ultimo_sollecito)} icon={Bell} />
+            <MiniStat
+              label="Totale scaduto"
+              value={formatEuro(totScaduto)}
+              tone={totScaduto > 0 ? "destructive" : "default"}
+              icon={AlertTriangle}
+            />
+            <MiniStat
+              label="A scadere"
+              value={formatEuro(ins?.totale_a_scadere ?? 0)}
+              icon={Calendar}
+            />
+            <MiniStat
+              label="Max gg ritardo"
+              value={`${maxGg} gg`}
+              tone={maxGg > 60 ? "destructive" : maxGg > 30 ? "warning" : "default"}
+              icon={Clock}
+            />
+            <MiniStat
+              label="Ultimo sollecito"
+              value={fmtDateIt(ins?.ultimo_sollecito)}
+              icon={Bell}
+            />
           </div>
           <div className="space-y-2">
-            <p className="text-[10px] font-semibold uppercase text-muted-foreground mb-2">Fasce di scaduto</p>
-            <FasciaRow label="0–30 giorni" value={Number(ins?.scaduto_0_30 ?? 0)} pct={pct(Number(ins?.scaduto_0_30 ?? 0))} color="bg-yellow-500" />
-            <FasciaRow label="31–60 giorni" value={Number(ins?.scaduto_30_60 ?? 0)} pct={pct(Number(ins?.scaduto_30_60 ?? 0))} color="bg-orange-500" />
-            <FasciaRow label="oltre 60 giorni" value={Number(ins?.scaduto_oltre_60 ?? 0)} pct={pct(Number(ins?.scaduto_oltre_60 ?? 0))} color="bg-destructive" />
+            <p className="text-[10px] font-semibold uppercase text-muted-foreground mb-2">
+              Fasce di scaduto
+            </p>
+            <FasciaRow
+              label="0–30 giorni"
+              value={Number(ins?.scaduto_0_30 ?? 0)}
+              pct={pct(Number(ins?.scaduto_0_30 ?? 0))}
+              color="bg-yellow-500"
+            />
+            <FasciaRow
+              label="31–60 giorni"
+              value={Number(ins?.scaduto_30_60 ?? 0)}
+              pct={pct(Number(ins?.scaduto_30_60 ?? 0))}
+              color="bg-orange-500"
+            />
+            <FasciaRow
+              label="oltre 60 giorni"
+              value={Number(ins?.scaduto_oltre_60 ?? 0)}
+              pct={pct(Number(ins?.scaduto_oltre_60 ?? 0))}
+              color="bg-destructive"
+            />
           </div>
         </Card>
 
@@ -949,19 +1219,45 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
   );
 }
 
-
-function MiniStat({ label, value, tone = "default", icon: Icon, hint, hintTone, title, onClick, size = "sm" }: { label: string; value: string; tone?: "default" | "destructive" | "warning" | "info" | "success" | "muted"; icon?: typeof Calendar; hint?: string; hintTone?: "default" | "destructive" | "warning"; title?: string; onClick?: () => void; size?: "sm" | "md" }) {
+function MiniStat({
+  label,
+  value,
+  tone = "default",
+  icon: Icon,
+  hint,
+  hintTone,
+  title,
+  onClick,
+  size = "sm",
+}: {
+  label: string;
+  value: string;
+  tone?: "default" | "destructive" | "warning" | "info" | "success" | "muted";
+  icon?: typeof Calendar;
+  hint?: string;
+  hintTone?: "default" | "destructive" | "warning";
+  title?: string;
+  onClick?: () => void;
+  size?: "sm" | "md";
+}) {
   const valCls =
-    tone === "destructive" ? "text-destructive"
-    : tone === "warning" ? "text-orange-600"
-    : tone === "info" ? "text-primary"
-    : tone === "success" ? "text-success"
-    : tone === "muted" ? "text-muted-foreground"
-    : "";
+    tone === "destructive"
+      ? "text-destructive"
+      : tone === "warning"
+        ? "text-orange-600"
+        : tone === "info"
+          ? "text-primary"
+          : tone === "success"
+            ? "text-success"
+            : tone === "muted"
+              ? "text-muted-foreground"
+              : "";
   const hintCls =
-    hintTone === "destructive" ? "text-destructive"
-    : hintTone === "warning" ? "text-orange-600"
-    : "text-muted-foreground";
+    hintTone === "destructive"
+      ? "text-destructive"
+      : hintTone === "warning"
+        ? "text-orange-600"
+        : "text-muted-foreground";
   const body = (
     <Card
       className={`${size === "md" ? "p-3.5" : "px-3 py-2"} h-full rounded-xl border-[0.5px] ${onClick ? "transition-colors hover:bg-accent/50 hover:border-primary/40 cursor-pointer" : ""}`}
@@ -969,9 +1265,23 @@ function MiniStat({ label, value, tone = "default", icon: Icon, hint, hintTone, 
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className={`${size === "md" ? "text-[11px]" : "text-[10px]"} font-medium text-muted-foreground uppercase truncate`}>{label}</p>
-          <p className={`${size === "md" ? "text-[19px]" : "text-base"} font-bold mt-0.5 tabular-nums truncate ${valCls}`}>{value}</p>
-          {hint && <p className={`${size === "md" ? "text-[11px]" : "text-[10px]"} mt-0.5 truncate ${hintCls}`}>{hint}</p>}
+          <p
+            className={`${size === "md" ? "text-[11px]" : "text-[10px]"} font-medium text-muted-foreground uppercase truncate`}
+          >
+            {label}
+          </p>
+          <p
+            className={`${size === "md" ? "text-[19px]" : "text-base"} font-bold mt-0.5 tabular-nums truncate ${valCls}`}
+          >
+            {value}
+          </p>
+          {hint && (
+            <p
+              className={`${size === "md" ? "text-[11px]" : "text-[10px]"} mt-0.5 truncate ${hintCls}`}
+            >
+              {hint}
+            </p>
+          )}
         </div>
         {Icon && <Icon className="size-3.5 text-muted-foreground shrink-0" />}
       </div>
@@ -979,21 +1289,37 @@ function MiniStat({ label, value, tone = "default", icon: Icon, hint, hintTone, 
   );
   if (!onClick) return body;
   return (
-    <button type="button" onClick={onClick} className="text-left w-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+    <button
+      type="button"
+      onClick={onClick}
+      className="text-left w-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
       {body}
     </button>
   );
 }
 
-function ritardoHelper(dilConc: number | null | undefined, dilEff: number | null | undefined): { text: string; tone: "destructive" | "success" | "muted" } {
+function ritardoHelper(
+  dilConc: number | null | undefined,
+  dilEff: number | null | undefined,
+): { text: string; tone: "destructive" | "success" | "muted" } {
   if (dilConc == null || dilEff == null) return { text: "—", tone: "muted" };
   const diff = Number(dilEff) - Number(dilConc);
   if (diff > 0) return { text: `+${diff} gg`, tone: "destructive" };
   return { text: "In orario", tone: "success" };
 }
 
-
-function FasciaRow({ label, value, pct, color }: { label: string; value: number; pct: number; color: string }) {
+function FasciaRow({
+  label,
+  value,
+  pct,
+  color,
+}: {
+  label: string;
+  value: number;
+  pct: number;
+  color: string;
+}) {
   return (
     <div>
       <div className="flex justify-between text-xs mb-1">
@@ -1032,7 +1358,9 @@ function NewContattoDialog({ clienteId, onClose }: { clienteId: string; onClose:
     const r = contattoSchema.safeParse(form);
     if (!r.success) {
       const errs: Record<string, string> = {};
-      r.error.issues.forEach((i) => { errs[i.path[0] as string] = i.message; });
+      r.error.issues.forEach((i) => {
+        errs[i.path[0] as string] = i.message;
+      });
       setErrors(errs);
       return;
     }
@@ -1053,7 +1381,9 @@ function NewContattoDialog({ clienteId, onClose }: { clienteId: string; onClose:
       <form onSubmit={submit}>
         <ContattoFormFields form={form} errors={errors} set={set} />
         <DialogFooter className="mt-4">
-          <Button type="button" variant="outline" onClick={onClose}>Annulla</Button>
+          <Button type="button" variant="outline" onClick={onClose}>
+            Annulla
+          </Button>
           <Button type="submit" disabled={mutation.isPending}>
             {mutation.isPending ? "Salvataggio..." : "Aggiungi"}
           </Button>
@@ -1104,7 +1434,9 @@ function EditContattoDialog({ contatto, onClose }: { contatto: any; onClose: () 
     const r = contattoSchema.safeParse(form);
     if (!r.success) {
       const errs: Record<string, string> = {};
-      r.error.issues.forEach((i) => { errs[i.path[0] as string] = i.message; });
+      r.error.issues.forEach((i) => {
+        errs[i.path[0] as string] = i.message;
+      });
       setErrors(errs);
       return;
     }
@@ -1125,7 +1457,9 @@ function EditContattoDialog({ contatto, onClose }: { contatto: any; onClose: () 
       <form onSubmit={submit}>
         <ContattoFormFields form={form} errors={errors} set={set} />
         <DialogFooter className="mt-4">
-          <Button type="button" variant="outline" onClick={onClose}>Annulla</Button>
+          <Button type="button" variant="outline" onClick={onClose}>
+            Annulla
+          </Button>
           <Button type="submit" disabled={mutation.isPending}>
             {mutation.isPending ? "Salvataggio..." : "Salva modifiche"}
           </Button>
@@ -1136,9 +1470,15 @@ function EditContattoDialog({ contatto, onClose }: { contatto: any; onClose: () 
 }
 
 function ContattoCard({
-  cliente, clienteId, contatto, onDelete,
+  cliente,
+  clienteId,
+  contatto,
+  onDelete,
 }: {
-  cliente: any; clienteId: string; contatto: any; onDelete: () => void;
+  cliente: any;
+  clienteId: string;
+  contatto: any;
+  onDelete: () => void;
 }) {
   const qc = useQueryClient();
   const [openEdit, setOpenEdit] = useState(false);
@@ -1149,7 +1489,9 @@ function ContattoCard({
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="font-semibold truncate">{contatto.nome} {contatto.cognome}</p>
+            <p className="font-semibold truncate">
+              {contatto.nome} {contatto.cognome}
+            </p>
             {contatto.principale && (
               <Badge className="bg-accent/15 text-accent gap-1 shrink-0">
                 <Star className="size-3 fill-current" /> Principale
@@ -1165,19 +1507,28 @@ function ContattoCard({
               </Badge>
             )}
           </div>
-          {contatto.ruolo && <p className="text-xs text-muted-foreground mt-0.5">{contatto.ruolo}</p>}
+          {contatto.ruolo && (
+            <p className="text-xs text-muted-foreground mt-0.5">{contatto.ruolo}</p>
+          )}
         </div>
         <div className="flex">
           <Dialog open={openEdit} onOpenChange={setOpenEdit}>
             <DialogTrigger asChild>
-              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground hover:text-foreground"
+              >
                 <Pencil className="size-4" />
               </Button>
             </DialogTrigger>
-            {openEdit && <EditContattoDialog contatto={contatto} onClose={() => setOpenEdit(false)} />}
+            {openEdit && (
+              <EditContattoDialog contatto={contatto} onClose={() => setOpenEdit(false)} />
+            )}
           </Dialog>
           <Button
-            variant="ghost" size="icon"
+            variant="ghost"
+            size="icon"
             onClick={onDelete}
             className="text-muted-foreground hover:text-destructive"
           >
@@ -1187,19 +1538,26 @@ function ContattoCard({
       </div>
       <div className="mt-3 space-y-1.5 text-sm">
         {contatto.email && (
-          <a href={`mailto:${contatto.email}`} className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
+          <a
+            href={`mailto:${contatto.email}`}
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
+          >
             <Mail className="size-3.5" /> {contatto.email}
           </a>
         )}
         {contatto.cellulare && (
-          <a href={`tel:${contatto.cellulare}`} className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
+          <a
+            href={`tel:${contatto.cellulare}`}
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
+          >
             <Smartphone className="size-3.5" /> {contatto.cellulare}
           </a>
         )}
         {contatto.whatsapp && (
           <a
             href={waHref ?? "#"}
-            target="_blank" rel="noreferrer"
+            target="_blank"
+            rel="noreferrer"
             className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
           >
             <MessageCircle className="size-3.5" /> {contatto.whatsapp}
@@ -1215,11 +1573,9 @@ function ContattoCard({
           }}
         />
       </div>
-
     </Card>
   );
 }
-
 
 function PrivacyTab({ cliente }: { cliente: any; onUpdated?: () => void }) {
   const qcPrivacy = useQueryClient();
@@ -1228,7 +1584,9 @@ function PrivacyTab({ cliente }: { cliente: any; onUpdated?: () => void }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("contatti")
-        .select("id, nome, cognome, email, principale, privacy_firmata, data_firma, firma_url, pdf_privacy_url, pdf_privacy_path, consenso_profilazione, consenso_marketing_media, consenso_marketing_diretto, richiesta_privacy_generata_il, richiesta_privacy_inviata_il, richiesta_privacy_aperta_il")
+        .select(
+          "id, nome, cognome, email, principale, privacy_firmata, data_firma, firma_url, pdf_privacy_url, pdf_privacy_path, consenso_profilazione, consenso_marketing_media, consenso_marketing_diretto, richiesta_privacy_generata_il, richiesta_privacy_inviata_il, richiesta_privacy_aperta_il",
+        )
         .eq("cliente_id", cliente.id)
         .order("principale", { ascending: false })
         .order("nome");
@@ -1246,7 +1604,9 @@ function PrivacyTab({ cliente }: { cliente: any; onUpdated?: () => void }) {
       <div>
         <h3 className="font-semibold mb-1">Consenso privacy (GDPR)</h3>
         <p className="text-sm text-muted-foreground">
-          Stato delle firme privacy per i contatti di questo cliente. Per raccogliere una nuova firma, apri la tab <strong>Contatti</strong> e usa il pulsante sulla scheda del singolo contatto.
+          Stato delle firme privacy per i contatti di questo cliente. Per raccogliere una nuova
+          firma, apri la tab <strong>Contatti</strong> e usa il pulsante sulla scheda del singolo
+          contatto.
         </p>
       </div>
 
@@ -1257,10 +1617,9 @@ function PrivacyTab({ cliente }: { cliente: any; onUpdated?: () => void }) {
       ) : (
         <>
           <div className="text-sm">
-            <span className="font-medium">{firmati}</span> di <span className="font-medium">{totali}</span> contatti hanno firmato la privacy.
+            <span className="font-medium">{firmati}</span> di{" "}
+            <span className="font-medium">{totali}</span> contatti hanno firmato la privacy.
           </div>
-
-
 
           <div className="pt-3 border-t space-y-2">
             <p className="text-sm font-medium">Riepilogo per contatto</p>
@@ -1269,7 +1628,9 @@ function PrivacyTab({ cliente }: { cliente: any; onUpdated?: () => void }) {
                 <li key={c.id} className="p-3 space-y-2 text-sm">
                   <div className="font-medium truncate">
                     {[c.nome, c.cognome].filter(Boolean).join(" ")}
-                    {c.principale && <span className="text-xs text-muted-foreground ml-2">(principale)</span>}
+                    {c.principale && (
+                      <span className="text-xs text-muted-foreground ml-2">(principale)</span>
+                    )}
                   </div>
                   <ContattoPrivacyAzioni
                     contatto={c as any}
@@ -1279,7 +1640,6 @@ function PrivacyTab({ cliente }: { cliente: any; onUpdated?: () => void }) {
                     }}
                   />
                 </li>
-
               ))}
             </ul>
           </div>
@@ -1292,9 +1652,6 @@ function PrivacyTab({ cliente }: { cliente: any; onUpdated?: () => void }) {
 // Il vecchio <FirmaContattoDialog> ("Raccogli firma": solo firma grafica, senza
 // dati dichiarante né i 3 consensi) è stato rimosso: la raccolta privacy passa
 // esclusivamente da <ContattoPrivacyAzioni> (Compila di persona / link a distanza).
-
-
-
 
 const editSchema = z.object({
   ragione_sociale: z.string().trim().min(1, "Obbligatoria").max(200),
@@ -1329,7 +1686,15 @@ const editSchema = z.object({
 
 type EditForm = z.infer<typeof editSchema>;
 
-function EditClienteDialog({ cliente, onClose, onSaved }: { cliente: any; onClose: () => void; onSaved: () => void }) {
+function EditClienteDialog({
+  cliente,
+  onClose,
+  onSaved,
+}: {
+  cliente: any;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
   const [form, setForm] = useState<EditForm>({
     ragione_sociale: cliente.ragione_sociale ?? "",
     tipo_soggetto: cliente.tipo_soggetto ?? null,
@@ -1365,7 +1730,11 @@ function EditClienteDialog({ cliente, onClose, onSaved }: { cliente: any; onClos
   const { data: stores } = useQuery({
     queryKey: ["stores-attivi"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("stores").select("id, nome, codice").eq("attivo", true).order("nome");
+      const { data, error } = await supabase
+        .from("stores")
+        .select("id, nome, codice")
+        .eq("attivo", true)
+        .order("nome");
       if (error) throw error;
       return data;
     },
@@ -1385,13 +1754,18 @@ function EditClienteDialog({ cliente, onClose, onSaved }: { cliente: any; onClos
         .eq("id", cliente.id)
         .select("id");
       if (error) {
-        if ((error as any).code === "23505" || error.message.includes("clienti_codice_gestionale_unique")) {
+        if (
+          (error as any).code === "23505" ||
+          error.message.includes("clienti_codice_gestionale_unique")
+        ) {
           throw new Error("Codice gestionale già utilizzato da un altro cliente.");
         }
         throw error;
       }
       if (!data || data.length === 0) {
-        throw new Error("Non hai i permessi per modificare questo cliente (è di un altro punto vendita).");
+        throw new Error(
+          "Non hai i permessi per modificare questo cliente (è di un altro punto vendita).",
+        );
       }
       if (error) throw error;
     },
@@ -1412,7 +1786,9 @@ function EditClienteDialog({ cliente, onClose, onSaved }: { cliente: any; onClos
     const r = editSchema.safeParse(form);
     if (!r.success) {
       const errs: Record<string, string> = {};
-      r.error.issues.forEach((i) => { errs[i.path[0] as string] = i.message; });
+      r.error.issues.forEach((i) => {
+        errs[i.path[0] as string] = i.message;
+      });
       setErrors(errs);
       toast.error("Controlla i campi evidenziati");
       return;
@@ -1431,14 +1807,26 @@ function EditClienteDialog({ cliente, onClose, onSaved }: { cliente: any; onClos
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5 sm:col-span-2">
             <Label>Ragione sociale *</Label>
-            <Input value={form.ragione_sociale} onChange={(e) => set("ragione_sociale", e.target.value)} />
-            {errors.ragione_sociale && <p className="text-xs text-destructive">{errors.ragione_sociale}</p>}
+            <Input
+              value={form.ragione_sociale}
+              onChange={(e) => set("ragione_sociale", e.target.value)}
+            />
+            {errors.ragione_sociale && (
+              <p className="text-xs text-destructive">{errors.ragione_sociale}</p>
+            )}
           </div>
           <div className="space-y-1.5">
             <Label>Tipo soggetto</Label>
             <select
               value={form.tipo_soggetto ?? "none"}
-              onChange={(e) => set("tipo_soggetto", e.target.value === "none" ? null : (e.target.value as "persona_fisica" | "azienda"))}
+              onChange={(e) =>
+                set(
+                  "tipo_soggetto",
+                  e.target.value === "none"
+                    ? null
+                    : (e.target.value as "persona_fisica" | "azienda"),
+                )
+              }
               className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
             >
               <option value="none">—</option>
@@ -1448,7 +1836,10 @@ function EditClienteDialog({ cliente, onClose, onSaved }: { cliente: any; onClos
           </div>
           <div className="space-y-1.5">
             <Label>Codice gestionale</Label>
-            <Input value={form.codice_gestionale} onChange={(e) => set("codice_gestionale", e.target.value)} />
+            <Input
+              value={form.codice_gestionale}
+              onChange={(e) => set("codice_gestionale", e.target.value)}
+            />
           </div>
           <div className="space-y-1.5">
             <Label>Partita IVA</Label>
@@ -1456,7 +1847,10 @@ function EditClienteDialog({ cliente, onClose, onSaved }: { cliente: any; onClos
           </div>
           <div className="space-y-1.5">
             <Label>Codice fiscale</Label>
-            <Input value={form.codice_fiscale} onChange={(e) => set("codice_fiscale", e.target.value)} />
+            <Input
+              value={form.codice_fiscale}
+              onChange={(e) => set("codice_fiscale", e.target.value)}
+            />
           </div>
           <div className="space-y-1.5 sm:col-span-2">
             <Label>Punto vendita</Label>
@@ -1467,7 +1861,9 @@ function EditClienteDialog({ cliente, onClose, onSaved }: { cliente: any; onClos
             >
               <option value="none">—</option>
               {stores?.map((s) => (
-                <option key={s.id} value={s.id}>{s.nome} ({s.codice})</option>
+                <option key={s.id} value={s.id}>
+                  {s.nome} ({s.codice})
+                </option>
               ))}
             </select>
           </div>
@@ -1510,7 +1906,11 @@ function EditClienteDialog({ cliente, onClose, onSaved }: { cliente: any; onClos
             </div>
             <div className="space-y-1.5">
               <Label>Email</Label>
-              <Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} />
+              <Input
+                type="email"
+                value={form.email}
+                onChange={(e) => set("email", e.target.value)}
+              />
               {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
             </div>
             <div className="space-y-1.5">
@@ -1596,7 +1996,9 @@ function EditClienteDialog({ cliente, onClose, onSaved }: { cliente: any; onClos
         </div>
 
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose}>Annulla</Button>
+          <Button type="button" variant="outline" onClick={onClose}>
+            Annulla
+          </Button>
           <Button type="submit" disabled={mutation.isPending}>
             {mutation.isPending ? "Salvataggio..." : "Salva modifiche"}
           </Button>
@@ -1628,8 +2030,9 @@ function EliminaClienteDialog({
           <AlertTriangle className="size-5" /> Elimina definitivamente
         </DialogTitle>
         <DialogDescription>
-          Stai per eliminare in modo permanente <strong>{ragioneSociale}</strong> e tutti i suoi dati (contatti, cantieri, storico).
-          Questa operazione è irreversibile. Se il cliente ha richieste fido collegate l'operazione verrà bloccata.
+          Stai per eliminare in modo permanente <strong>{ragioneSociale}</strong> e tutti i suoi
+          dati (contatti, cantieri, storico). Questa operazione è irreversibile. Se il cliente ha
+          richieste fido collegate l'operazione verrà bloccata.
         </DialogDescription>
       </DialogHeader>
       <div className="space-y-2">
@@ -1645,7 +2048,9 @@ function EliminaClienteDialog({
         />
       </div>
       <DialogFooter>
-        <Button variant="outline" onClick={onClose} disabled={pending}>Annulla</Button>
+        <Button variant="outline" onClick={onClose} disabled={pending}>
+          Annulla
+        </Button>
         <Button variant="destructive" onClick={onConfirm} disabled={!ok || pending}>
           {pending ? "Eliminazione…" : "Elimina definitivamente"}
         </Button>
@@ -1653,4 +2058,3 @@ function EliminaClienteDialog({
     </DialogContent>
   );
 }
-
