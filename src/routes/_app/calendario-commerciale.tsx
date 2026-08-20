@@ -28,6 +28,7 @@ import {
   DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AttivitaCommercialeDialog } from "@/components/attivita-commerciale-dialog";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { TIPO_ATTIVITA_LABEL, fmtDataOra, type AttivitaRow, type TipoAttivita } from "@/lib/attivita-commerciale";
 
 export const Route = createFileRoute("/_app/calendario-commerciale")({
@@ -75,6 +76,7 @@ function hexToRgba(hex: string, alpha: number): string {
 function CalendarioCommercialePage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const isMobile = useIsMobile();
   const { roles } = useAuth();
   const isAgente = roles.includes("agente");
   const isTrasversale = roles.some((r) =>
@@ -229,10 +231,10 @@ function CalendarioCommercialePage() {
       </div>
 
       <Card className="p-4 space-y-3">
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="justify-between font-normal">
+              <Button variant="outline" className="w-full sm:w-auto justify-between font-normal">
                 Tipo{tipoFilter.size > 0 ? ` (${tipoFilter.size})` : ""}
                 <ChevronDown className="size-4 opacity-60 ml-2" />
               </Button>
@@ -262,7 +264,7 @@ function CalendarioCommercialePage() {
 
           {!soloAgente && (
             <Select value={agenteF} onValueChange={setAgenteF}>
-              <SelectTrigger className="w-[220px]"><SelectValue placeholder="Agente" /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-[220px]"><SelectValue placeholder="Agente" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tutti gli agenti</SelectItem>
                 {agenti.map((a) => (
@@ -296,16 +298,21 @@ function CalendarioCommercialePage() {
         </div>
       </Card>
 
-      <Card className="p-4">
+      <Card className="p-2 sm:p-4 overflow-x-hidden">
         {attivitaQuery.isLoading && !attivitaQuery.data ? (
           <Skeleton className="h-[600px] w-full" />
         ) : (
           <FullCalendar
+            key={isMobile ? "mobile" : "desktop"}
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-            initialView="dayGridMonth"
+            initialView={isMobile ? "timeGridDay" : "dayGridMonth"}
             locale={itLocale}
             firstDay={1}
-            headerToolbar={{ left: "prev,next today", center: "title", right: "dayGridMonth,timeGridWeek,timeGridDay" }}
+            headerToolbar={
+              isMobile
+                ? { left: "prev,next", center: "title", right: "timeGridDay,dayGridMonth" }
+                : { left: "prev,next today", center: "title", right: "dayGridMonth,timeGridWeek,timeGridDay" }
+            }
             buttonText={{ today: "Oggi", month: "Mese", week: "Settimana", day: "Giorno" }}
             allDaySlot={false}
             slotMinTime="07:00:00"
@@ -332,7 +339,7 @@ function CalendarioCommercialePage() {
 
       {/* Dettaglio attività */}
       <Dialog open={!!aperta && !modificaOpen} onOpenChange={(o) => { if (!o) setAperta(null); }}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="w-[calc(100%-1.5rem)] max-w-lg">
           {aperta && (
             <>
               <DialogHeader>

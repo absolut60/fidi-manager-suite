@@ -232,7 +232,7 @@ export default function CantieriMappa({
           Mostra punti vendita ({sedi.length})
         </Label>
       </div>
-      <div ref={divRef} className="h-[600px] w-full rounded-md border" />
+      <div ref={divRef} className="h-[420px] sm:h-[520px] lg:h-[600px] w-full rounded-md border" />
       <div className="flex flex-wrap gap-3 text-xs">
         {Object.keys(CATEGORIA_LABEL).map((k) => (
           <span key={k} className="flex items-center gap-1.5">

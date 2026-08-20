@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SoggettoCombobox } from "@/components/soggetto-combobox";
+import { BottoneElimina } from "@/components/conferma-eliminazione";
+import { usePermessiCommerciale } from "@/hooks/use-permessi-commerciale";
 import {
   TIPI_OPPORTUNITA, STATI_OPPORTUNITA, TIPO_LABEL, STATO_LABEL,
   type OpportunitaRow, type TipoOpportunita, type StatoOpportunita,
@@ -27,14 +29,17 @@ export function OpportunitaDialog({
   onOpenChange,
   opportunita,
   agenti,
+  onDeleted,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   opportunita?: OpportunitaRow | null;
   agenti: Agente[];
+  onDeleted?: () => void;
 }) {
   const qc = useQueryClient();
   const { user, roles } = useAuth();
+  const { puoEliminareOpportunita } = usePermessiCommerciale();
   const isAgente = roles.includes("agente");
   const isTrasversale = roles.some((r) =>
     ["amministratore", "amministrazione", "direzione", "marketing", "store_manager"].includes(r),
@@ -187,9 +192,22 @@ export function OpportunitaDialog({
     }
   }
 
+  async function elimina() {
+    if (!opportunita?.id) return;
+    const { error } = await supabase.from("opportunita").delete().eq("id", opportunita.id);
+    if (error) {
+      toast.error("Eliminazione non riuscita: non hai i permessi su questa opportunità.");
+      return;
+    }
+    toast.success("Opportunità eliminata");
+    await qc.invalidateQueries({ queryKey: ["opportunita-lista"] });
+    onOpenChange(false);
+    onDeleted?.();
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[calc(100%-1.5rem)] max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{opportunita ? "Modifica opportunità" : "Nuova opportunità"}</DialogTitle>
           <DialogDescription>
@@ -310,7 +328,17 @@ export function OpportunitaDialog({
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="flex-col-reverse gap-2 sm:flex-row">
+          {opportunita && puoEliminareOpportunita(opportunita) && (
+            <BottoneElimina
+              variant="outline"
+              etichetta="Elimina"
+              className="sm:mr-auto text-destructive hover:text-destructive"
+              titolo="Eliminare questa opportunità?"
+              descrizione={`"${opportunita.titolo}" verrà eliminata definitivamente insieme alle attività collegate. L'azione è irreversibile.`}
+              onConferma={elimina}
+            />
+          )}
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Annulla</Button>
           <Button onClick={salva} disabled={saving}>{saving ? "Salvataggio…" : "Salva"}</Button>
         </DialogFooter>

@@ -13,8 +13,10 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { FiltriCollassabili } from "@/components/lista-responsive";
+import { FiltriCollassabili, ElencoSchede, SchedaLista } from "@/components/lista-responsive";
 import { OpportunitaDialog } from "@/components/opportunita-dialog";
+import { BottoneElimina } from "@/components/conferma-eliminazione";
+import { usePermessiCommerciale } from "@/hooks/use-permessi-commerciale";
 import {
   STATI_OPPORTUNITA, TIPI_OPPORTUNITA, STATO_LABEL, STATO_CLASS, TIPO_LABEL,
   fmtEuro, fmtData, nomeSoggetto,
@@ -37,6 +39,7 @@ const PAGINA = 1000;
 
 function OpportunitaPage() {
   const qc = useQueryClient();
+  const { puoEliminareOpportunita } = usePermessiCommerciale();
   const { roles } = useAuth();
   const isTrasversale = roles.some((r) =>
     ["amministratore", "amministrazione", "direzione", "marketing", "store_manager"].includes(r),
@@ -129,6 +132,16 @@ function OpportunitaPage() {
     qc.invalidateQueries({ queryKey: ["opportunita-lista"] });
   }
 
+  async function elimina(o: OpportunitaRow) {
+    const { error } = await supabase.from("opportunita").delete().eq("id", o.id);
+    if (error) {
+      toast.error("Eliminazione non riuscita: non hai i permessi su questa opportunità.");
+      return;
+    }
+    toast.success("Opportunità eliminata");
+    qc.invalidateQueries({ queryKey: ["opportunita-lista"] });
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -212,45 +225,29 @@ function OpportunitaPage() {
         ) : filtrate.length === 0 ? (
           <div className="py-10 text-center text-sm text-muted-foreground">Nessuna opportunità trovata.</div>
         ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Titolo</TableHead>
-                  <TableHead>Soggetto</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Stato</TableHead>
-                  <TableHead className="text-right">Valore stimato</TableHead>
-                  <TableHead>Agente</TableHead>
-                  <TableHead>Chiusura prevista</TableHead>
-                  <TableHead className="w-10" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtrate.map((o) => (
-                  <TableRow key={o.id}>
-                    <TableCell className="font-medium">
-                      <Link
-                        to="/opportunita/$opportunitaId"
-                        params={{ opportunitaId: o.id }}
-                        className="hover:underline"
-                      >
-                        {o.titolo}
-                      </Link>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Badge variant={o.cliente_id ? "default" : "secondary"} className="shrink-0">
-                          {o.cliente_id ? "Cliente" : "Lead"}
-                        </Badge>
-                        <span className="truncate">{nomeSoggetto(o)}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>{TIPO_LABEL[o.tipo]}</TableCell>
-                    <TableCell>
+          <>
+            <ElencoSchede>
+              {filtrate.map((o) => (
+                <SchedaLista
+                  key={o.id}
+                  titolo={
+                    <Link to="/opportunita/$opportunitaId" params={{ opportunitaId: o.id }} className="hover:underline">
+                      {o.titolo}
+                    </Link>
+                  }
+                  badge={<Badge variant="outline" className={STATO_CLASS[o.stato]}>{STATO_LABEL[o.stato]}</Badge>}
+                  campi={[
+                    { etichetta: "Soggetto", valore: nomeSoggetto(o) },
+                    { etichetta: "Tipo", valore: TIPO_LABEL[o.tipo] },
+                    { etichetta: "Valore", valore: fmtEuro(o.valore_stimato) },
+                    { etichetta: "Agente", valore: o.agente_codice ? (agenteLabel.get(o.agente_codice) ?? o.agente_codice) : "—" },
+                    { etichetta: "Chiusura prevista", valore: fmtData(o.data_prevista_chiusura) },
+                  ]}
+                  footer={
+                    <>
                       <Select value={o.stato} onValueChange={(v) => cambiaStato(o, v as StatoOpportunita)}>
                         <SelectTrigger className="h-8 w-[150px]">
-                          <Badge variant="outline" className={STATO_CLASS[o.stato]}>{STATO_LABEL[o.stato]}</Badge>
+                          <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           {STATI_OPPORTUNITA.map((s) => (
@@ -258,25 +255,98 @@ function OpportunitaPage() {
                           ))}
                         </SelectContent>
                       </Select>
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">{fmtEuro(o.valore_stimato)}</TableCell>
-                    <TableCell>{o.agente_codice ? (agenteLabel.get(o.agente_codice) ?? o.agente_codice) : "—"}</TableCell>
-                    <TableCell>{fmtData(o.data_prevista_chiusura)}</TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        title="Modifica"
-                        onClick={() => { setInModifica(o); setDialogOpen(true); }}
-                      >
-                        <Pencil className="size-4" />
+                      <Button variant="ghost" size="sm" onClick={() => { setInModifica(o); setDialogOpen(true); }}>
+                        <Pencil className="size-4 mr-1.5" /> Modifica
                       </Button>
-                    </TableCell>
+                      {puoEliminareOpportunita(o) && (
+                        <BottoneElimina
+                          etichetta="Elimina"
+                          titolo="Eliminare questa opportunità?"
+                          descrizione={`"${o.titolo}" verrà eliminata definitivamente insieme alle attività collegate. L'azione è irreversibile.`}
+                          onConferma={() => elimina(o)}
+                        />
+                      )}
+                    </>
+                  }
+                />
+              ))}
+            </ElencoSchede>
+
+            <div className="hidden md:block overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Titolo</TableHead>
+                    <TableHead>Soggetto</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Stato</TableHead>
+                    <TableHead className="text-right">Valore stimato</TableHead>
+                    <TableHead>Agente</TableHead>
+                    <TableHead>Chiusura prevista</TableHead>
+                    <TableHead className="w-20" />
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {filtrate.map((o) => (
+                    <TableRow key={o.id}>
+                      <TableCell className="font-medium">
+                        <Link
+                          to="/opportunita/$opportunitaId"
+                          params={{ opportunitaId: o.id }}
+                          className="hover:underline"
+                        >
+                          {o.titolo}
+                        </Link>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Badge variant={o.cliente_id ? "default" : "secondary"} className="shrink-0">
+                            {o.cliente_id ? "Cliente" : "Lead"}
+                          </Badge>
+                          <span className="truncate">{nomeSoggetto(o)}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>{TIPO_LABEL[o.tipo]}</TableCell>
+                      <TableCell>
+                        <Select value={o.stato} onValueChange={(v) => cambiaStato(o, v as StatoOpportunita)}>
+                          <SelectTrigger className="h-8 w-[150px]">
+                            <Badge variant="outline" className={STATO_CLASS[o.stato]}>{STATO_LABEL[o.stato]}</Badge>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {STATI_OPPORTUNITA.map((s) => (
+                              <SelectItem key={s} value={s}>{STATO_LABEL[s]}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">{fmtEuro(o.valore_stimato)}</TableCell>
+                      <TableCell>{o.agente_codice ? (agenteLabel.get(o.agente_codice) ?? o.agente_codice) : "—"}</TableCell>
+                      <TableCell>{fmtData(o.data_prevista_chiusura)}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-0.5">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Modifica"
+                            onClick={() => { setInModifica(o); setDialogOpen(true); }}
+                          >
+                            <Pencil className="size-4" />
+                          </Button>
+                          {puoEliminareOpportunita(o) && (
+                            <BottoneElimina
+                              titolo="Eliminare questa opportunità?"
+                              descrizione={`"${o.titolo}" verrà eliminata definitivamente insieme alle attività collegate. L'azione è irreversibile.`}
+                              onConferma={() => elimina(o)}
+                            />
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
         )}
       </Card>
 

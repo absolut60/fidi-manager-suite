@@ -144,14 +144,14 @@ function DashboardCommercialePage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Dashboard commerciale</h1>
           <p className="text-sm text-muted-foreground">Pipeline, attività e andamento delle opportunità</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
           <Select value={periodo} onValueChange={(v) => setPeriodo(v as Periodo)}>
-            <SelectTrigger className="w-[190px]"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-[190px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               {(Object.keys(PERIODO_LABEL) as Periodo[]).map((p) => (
                 <SelectItem key={p} value={p}>{PERIODO_LABEL[p]}</SelectItem>
@@ -160,7 +160,7 @@ function DashboardCommercialePage() {
           </Select>
           {isDirezionale && (
             <Select value={agenteF} onValueChange={setAgenteF}>
-              <SelectTrigger className="w-[220px]"><SelectValue placeholder="Tutti gli agenti" /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-[220px]"><SelectValue placeholder="Tutti gli agenti" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="tutti">Tutti gli agenti</SelectItem>
                 {agenti.map((ag) => (
@@ -238,7 +238,27 @@ function DashboardCommercialePage() {
       {isDirezionale && (
         <Card className="p-4">
           <h2 className="mb-3 text-sm font-semibold">Classifica agenti</h2>
-          <div className="overflow-x-auto">
+
+          {/* Mobile: schede impilate */}
+          <div className="space-y-2 md:hidden">
+            {classifica.length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">Nessun dato nel periodo selezionato</p>
+            ) : (
+              classifica.map((r) => (
+                <div key={r.agente_codice ?? "nessuno"} className="rounded-lg border p-3">
+                  <p className="text-sm font-medium break-words">{r.agente_nome ?? "Non assegnato"}</p>
+                  <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                    <div><span className="text-muted-foreground">Aperte: </span>{r.aperte_n}</div>
+                    <div><span className="text-muted-foreground">Pipeline: </span>{fmtEuro(Number(r.pipeline_val ?? 0))}</div>
+                    <div><span className="text-muted-foreground">Vinte: </span>{r.vinte_n} · {fmtEuro(Number(r.vinte_val ?? 0))}</div>
+                    <div><span className="text-muted-foreground">Conversione: </span>{fmtPerc(r.tasso_conversione == null ? null : Number(r.tasso_conversione))}</div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="hidden md:block overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>

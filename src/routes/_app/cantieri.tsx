@@ -1,7 +1,7 @@
 // Modulo commerciale — Cantieri: lista con stato geocodifica e mappa Google.
 import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ClientOnly } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { AlertTriangle, Building2, MapPin, Pencil, Plus, Search } from "lucide-react";
@@ -16,8 +16,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FiltriCollassabili } from "@/components/lista-responsive";
+import { FiltriCollassabili, ElencoSchede, SchedaLista } from "@/components/lista-responsive";
 import { CantiereDialog } from "@/components/cantiere-dialog";
+import { BottoneElimina } from "@/components/conferma-eliminazione";
+import { usePermessiCommerciale } from "@/hooks/use-permessi-commerciale";
 import { getChiaveMappe } from "@/lib/cantieri.functions";
 import {
   CATEGORIE_CANTIERE, CATEGORIA_LABEL, GEO_CLASS, GEO_LABEL, GEO_STATI,
@@ -52,7 +54,9 @@ const PAGINA = 1000;
 function CantieriPage() {
   const { tab, focus } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
+  const qc = useQueryClient();
   const { roles } = useAuth();
+  const { puoEliminareCantiere } = usePermessiCommerciale();
   const isTrasversale = roles.some((r) =>
     ["amministratore", "amministrazione", "direzione", "marketing", "store_manager"].includes(r),
   );
@@ -181,6 +185,16 @@ function CantieriPage() {
     setDialogOpen(true);
   }, []);
 
+  const eliminaCantiere = useCallback(async (c: CantiereRow) => {
+    const { error } = await supabase.from("cantieri").delete().eq("id", c.id);
+    if (error) {
+      toast.error("Eliminazione non riuscita: non hai i permessi su questo cantiere.");
+      return;
+    }
+    toast.success("Cantiere eliminato");
+    qc.invalidateQueries({ queryKey: ["cantieri-lista"] });
+  }, [qc]);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -231,77 +245,132 @@ function CantieriPage() {
             agenti={agenti} isTrasversale={isTrasversale}
           />
 
-          <Card className="overflow-x-auto">
-            {isLoading ? (
-              <div className="p-4 space-y-2">
-                {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
-              </div>
-            ) : filtrati.length === 0 ? (
-              <p className="p-12 text-center text-sm text-muted-foreground">Nessun cantiere trovato.</p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Cliente / Lead</TableHead>
-                    <TableHead>Indirizzo</TableHead>
-                    <TableHead>Geocodifica</TableHead>
-                    <TableHead>Sede più vicina</TableHead>
-                    <TableHead>Agente</TableHead>
-                    <TableHead>Stato</TableHead>
-                    <TableHead className="w-24" />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtrati.map((c) => {
-                    const s = (c.geocodifica_stato ?? "da_geocodificare") as GeoStato;
-                    return (
-                      <TableRow key={c.id}>
-                        <TableCell className="font-medium">
-                          {c.nome}
-                          {c.categoria && (
-                            <span className="ml-2 text-xs text-muted-foreground">
-                              {CATEGORIA_LABEL[c.categoria] ?? c.categoria}
-                            </span>
+          {isLoading ? (
+            <Card className="p-4 space-y-2">
+              {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+            </Card>
+          ) : filtrati.length === 0 ? (
+            <Card><p className="p-12 text-center text-sm text-muted-foreground">Nessun cantiere trovato.</p></Card>
+          ) : (
+            <>
+              <ElencoSchede>
+                {filtrati.map((c) => {
+                  const s = (c.geocodifica_stato ?? "da_geocodificare") as GeoStato;
+                  return (
+                    <SchedaLista
+                      key={c.id}
+                      titolo={c.nome}
+                      badge={
+                        c.attivo === false
+                          ? <Badge variant="outline">Chiuso</Badge>
+                          : <Badge className="bg-emerald-600/15 text-emerald-700">Attivo</Badge>
+                      }
+                      campi={[
+                        { etichetta: "Cliente / Lead", valore: nomeSoggettoCantiere(c) },
+                        { etichetta: "Indirizzo", valore: indirizzoCompleto(c) || "—" },
+                        { etichetta: "Categoria", valore: c.categoria ? (CATEGORIA_LABEL[c.categoria] ?? c.categoria) : "—" },
+                        { etichetta: "Sede più vicina", valore: testoSedeVicina(c) ?? "—" },
+                        { etichetta: "Agente", valore: c.agente_codice ? (agenteLabel.get(c.agente_codice) ?? c.agente_codice) : "—" },
+                        {
+                          etichetta: "Geocodifica",
+                          valore: <Badge variant="outline" className={GEO_CLASS[s]}>{GEO_LABEL[s]}</Badge>,
+                        },
+                      ]}
+                      footer={
+                        <>
+                          <Button variant="ghost" size="sm" onClick={() => mostraSuMappa(c)}>
+                            <MapPin className="size-4 mr-1.5" /> Mappa
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => apriModifica(c)}>
+                            <Pencil className="size-4 mr-1.5" /> Modifica
+                          </Button>
+                          {puoEliminareCantiere(c) && (
+                            <BottoneElimina
+                              etichetta="Elimina"
+                              titolo="Eliminare questo cantiere?"
+                              descrizione={`"${c.nome}" verrà eliminato definitivamente. L'azione è irreversibile.`}
+                              onConferma={() => eliminaCantiere(c)}
+                            />
                           )}
-                        </TableCell>
-                        <TableCell className="text-sm">{nomeSoggettoCantiere(c)}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{indirizzoCompleto(c) || "—"}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className={GEO_CLASS[s]} title={c.geocodifica_messaggio ?? undefined}>
-                            {s === "fallita" && <AlertTriangle className="size-3 mr-1" />}
-                            {GEO_LABEL[s]}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-sm">{testoSedeVicina(c) ?? "—"}</TableCell>
-                        <TableCell className="text-sm">
-                          {c.agente_codice ? (agenteLabel.get(c.agente_codice) ?? c.agente_codice) : "—"}
-                        </TableCell>
-                        <TableCell>
-                          {c.attivo === false
-                            ? <Badge variant="outline">Chiuso</Badge>
-                            : <Badge className="bg-emerald-600/15 text-emerald-700">Attivo</Badge>}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-0.5">
-                            <Button
-                              variant="ghost" size="icon" title="Mostra su mappa"
-                              onClick={() => mostraSuMappa(c)}
-                            >
-                              <MapPin className="size-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" title="Modifica" onClick={() => apriModifica(c)}>
-                              <Pencil className="size-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            )}
-          </Card>
+                        </>
+                      }
+                    />
+                  );
+                })}
+              </ElencoSchede>
+
+              <Card className="hidden md:block overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Cliente / Lead</TableHead>
+                      <TableHead>Indirizzo</TableHead>
+                      <TableHead>Geocodifica</TableHead>
+                      <TableHead>Sede più vicina</TableHead>
+                      <TableHead>Agente</TableHead>
+                      <TableHead>Stato</TableHead>
+                      <TableHead className="w-32" />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filtrati.map((c) => {
+                      const s = (c.geocodifica_stato ?? "da_geocodificare") as GeoStato;
+                      return (
+                        <TableRow key={c.id}>
+                          <TableCell className="font-medium">
+                            {c.nome}
+                            {c.categoria && (
+                              <span className="ml-2 text-xs text-muted-foreground">
+                                {CATEGORIA_LABEL[c.categoria] ?? c.categoria}
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-sm">{nomeSoggettoCantiere(c)}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{indirizzoCompleto(c) || "—"}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className={GEO_CLASS[s]} title={c.geocodifica_messaggio ?? undefined}>
+                              {s === "fallita" && <AlertTriangle className="size-3 mr-1" />}
+                              {GEO_LABEL[s]}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-sm">{testoSedeVicina(c) ?? "—"}</TableCell>
+                          <TableCell className="text-sm">
+                            {c.agente_codice ? (agenteLabel.get(c.agente_codice) ?? c.agente_codice) : "—"}
+                          </TableCell>
+                          <TableCell>
+                            {c.attivo === false
+                              ? <Badge variant="outline">Chiuso</Badge>
+                              : <Badge className="bg-emerald-600/15 text-emerald-700">Attivo</Badge>}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-0.5">
+                              <Button
+                                variant="ghost" size="icon" title="Mostra su mappa"
+                                onClick={() => mostraSuMappa(c)}
+                              >
+                                <MapPin className="size-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" title="Modifica" onClick={() => apriModifica(c)}>
+                                <Pencil className="size-4" />
+                              </Button>
+                              {puoEliminareCantiere(c) && (
+                                <BottoneElimina
+                                  titolo="Eliminare questo cantiere?"
+                                  descrizione={`"${c.nome}" verrà eliminato definitivamente. L'azione è irreversibile.`}
+                                  onConferma={() => eliminaCantiere(c)}
+                                />
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </Card>
+            </>
+          )}
         </TabsContent>
 
         <TabsContent value="mappa" className="space-y-4">

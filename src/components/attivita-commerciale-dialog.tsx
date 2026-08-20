@@ -157,7 +157,7 @@ export function AttivitaCommercialeDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="w-[calc(100%-1.5rem)] max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{attivita ? "Modifica attività" : "Registra attività"}</DialogTitle>
           <DialogDescription>
@@ -182,7 +182,7 @@ export function AttivitaCommercialeDialog({
               )}
             </div>
           )}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Tipo</Label>
               <Select value={tipo} onValueChange={(v) => setTipo(v as TipoAttivita)}>
@@ -214,7 +214,7 @@ export function AttivitaCommercialeDialog({
             <Label htmlFor="attivita-completata" className="font-normal">Attività completata (registra data svolgimento)</Label>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Esito</Label>
               <Input value={esito} onChange={(e) => setEsito(e.target.value)} placeholder="positivo, da richiamare…" />
