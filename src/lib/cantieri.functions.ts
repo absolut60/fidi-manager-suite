@@ -1,38 +1,20 @@
-// Server functions del modulo cantieri: geocodifica Google (chiave SERVER) e
-// consegna controllata della chiave per la mappa lato browser.
+// Server functions del modulo cantieri: geocodifica Google (chiave SERVER),
+// calcolo sede più vicina su strada e consegna controllata della chiave mappa.
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { EsitoGeocodifica, EsitoSede } from "@/lib/cantieri-geo.server";
 
 const inputGeo = z.object({ cantiere_id: z.string().uuid() });
 
-export type EsitoGeocodifica = {
-  stato: "ok" | "fallita";
-  lat: number | null;
-  lng: number | null;
-  messaggio: string | null;
-};
+export type { EsitoGeocodifica, EsitoSede };
 
-function componiQuery(c: {
-  indirizzo: string | null;
-  cap: string | null;
-  citta: string | null;
-  provincia: string | null;
-}): string {
-  const parti = [
-    c.indirizzo?.trim(),
-    [c.cap?.trim(), c.citta?.trim()].filter(Boolean).join(" "),
-    c.provincia?.trim() ? `(${c.provincia.trim()})` : "",
-    "Italia",
-  ].filter((p) => p && p.length > 0);
-  return parti.join(", ");
-}
-
-/** Geocodifica un cantiere e salva lat/lng + stato. Non lancia mai per errori di indirizzo. */
+/** Geocodifica un cantiere, salva lat/lng + stato e ricalcola la sede più vicina. */
 export const geocodificaCantiere = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => inputGeo.parse(d))
   .handler(async ({ data, context }): Promise<EsitoGeocodifica> => {
+    const { componiQuery, geocodificaIndirizzo, calcolaSedeVicina } = await import("@/lib/cantieri-geo.server");
     const supabase = context.supabase;
 
     const { data: cantiere, error } = await supabase
@@ -44,10 +26,7 @@ export const geocodificaCantiere = createServerFn({ method: "POST" })
     if (!cantiere) throw new Error("Cantiere non trovato o non accessibile.");
 
     const c = cantiere as {
-      indirizzo: string | null;
-      cap: string | null;
-      citta: string | null;
-      provincia: string | null;
+      indirizzo: string | null; cap: string | null; citta: string | null; provincia: string | null;
     };
 
     const salva = async (e: EsitoGeocodifica) => {
@@ -61,84 +40,70 @@ export const geocodificaCantiere = createServerFn({ method: "POST" })
           geocodificato_il: new Date().toISOString(),
         } as never)
         .eq("id", data.cantiere_id);
+      if (e.stato === "ok") {
+        try { await calcolaSedeVicina(supabase, data.cantiere_id); } catch { /* non blocca */ }
+      }
       return e;
     };
 
     if (!c.indirizzo?.trim() && !c.citta?.trim()) {
       return salva({
-        stato: "fallita",
-        lat: null,
-        lng: null,
+        stato: "fallita", lat: null, lng: null,
         messaggio: "Indirizzo assente: inserisci almeno via o città.",
       });
     }
 
-    const apiKey = process.env["GOOGLE_MAPS_API_KEY"];
-    if (!apiKey) {
-      return salva({
-        stato: "fallita",
-        lat: null,
-        lng: null,
-        messaggio: "Chiave Google Maps non configurata sul server (GOOGLE_MAPS_API_KEY).",
-      });
+    return salva(await geocodificaIndirizzo(componiQuery(c)));
+  });
+
+/** Ricalcola la sede più vicina di un cantiere già posizionato. */
+export const ricalcolaSedeVicina = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => inputGeo.parse(d))
+  .handler(async ({ data, context }): Promise<EsitoSede> => {
+    const { calcolaSedeVicina } = await import("@/lib/cantieri-geo.server");
+    return calcolaSedeVicina(context.supabase, data.cantiere_id);
+  });
+
+/** Geocodifica le sedi (stores) attive prive di coordinate. */
+export const geocodificaSedi = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<{ ok: number; fallite: number; messaggi: string[] }> => {
+    const { componiQuery, geocodificaIndirizzo } = await import("@/lib/cantieri-geo.server");
+    const supabase = context.supabase;
+
+    const { data, error } = await supabase
+      .from("stores")
+      .select("id, nome, indirizzo, cap, citta, provincia, lat, lng")
+      .eq("attivo", true);
+    if (error) throw new Error(error.message);
+
+    const sedi = (data ?? []) as Array<{
+      id: string; nome: string; indirizzo: string | null; cap: string | null;
+      citta: string | null; provincia: string | null; lat: number | null; lng: number | null;
+    }>;
+
+    let ok = 0;
+    let fallite = 0;
+    const messaggi: string[] = [];
+
+    for (const s of sedi) {
+      if (s.lat != null && s.lng != null) continue;
+      const esito = await geocodificaIndirizzo(componiQuery(s));
+      await supabase
+        .from("stores")
+        .update({
+          lat: esito.lat,
+          lng: esito.lng,
+          geocodifica_stato: esito.stato,
+          geocodificato_il: new Date().toISOString(),
+        } as never)
+        .eq("id", s.id);
+      if (esito.stato === "ok") ok++;
+      else { fallite++; messaggi.push(`${s.nome}: ${esito.messaggio ?? "geocodifica fallita"}`); }
     }
 
-    const indirizzo = componiQuery(c);
-    try {
-      const url =
-        `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(indirizzo)}` +
-        `&region=it&language=it&key=${apiKey}`;
-      const res = await fetch(url);
-      if (!res.ok) {
-        const body = await res.text();
-        console.error(`[geocodifica] HTTP ${res.status}: ${body}`);
-        return salva({
-          stato: "fallita",
-          lat: null,
-          lng: null,
-          messaggio: `Errore chiamata Google Maps (HTTP ${res.status}).`,
-        });
-      }
-      const json = (await res.json()) as {
-        status: string;
-        error_message?: string;
-        results?: Array<{ geometry?: { location?: { lat: number; lng: number } } }>;
-      };
-
-      if (json.status === "OK" && json.results?.[0]?.geometry?.location) {
-        const loc = json.results[0].geometry.location!;
-        return salva({ stato: "ok", lat: loc.lat, lng: loc.lng, messaggio: null });
-      }
-
-      let messaggio: string;
-      switch (json.status) {
-        case "ZERO_RESULTS":
-          messaggio = "Indirizzo non trovato (ZERO_RESULTS): verifica via/CAP/città o inserisci le coordinate a mano.";
-          break;
-        case "REQUEST_DENIED":
-          messaggio =
-            "Google ha rifiutato la richiesta (REQUEST_DENIED): la Geocoding API potrebbe non essere abilitata sulla chiave, oppure la chiave ha restrizioni. " +
-            (json.error_message ?? "");
-          break;
-        case "OVER_QUERY_LIMIT":
-          messaggio = "Quota Google Maps esaurita (OVER_QUERY_LIMIT): riprova più tardi.";
-          break;
-        case "INVALID_REQUEST":
-          messaggio = "Richiesta non valida (INVALID_REQUEST): indirizzo incompleto.";
-          break;
-        default:
-          messaggio = `Geocodifica non riuscita (${json.status}). ${json.error_message ?? ""}`;
-      }
-      return salva({ stato: "fallita", lat: null, lng: null, messaggio: messaggio.trim() });
-    } catch (e) {
-      console.error("[geocodifica] errore di rete", e);
-      return salva({
-        stato: "fallita",
-        lat: null,
-        lng: null,
-        messaggio: "Errore di rete verso Google Maps: riprova.",
-      });
-    }
+    return { ok, fallite, messaggi };
   });
 
 /** Restituisce la chiave Google Maps al client autenticato (serve alla Maps JS API). */
