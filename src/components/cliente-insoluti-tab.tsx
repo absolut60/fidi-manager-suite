@@ -4,7 +4,7 @@ import { z } from "zod";
 import { toast } from "sonner";
 import {
   AlertTriangle, AlertCircle, Plus, Calendar, Mail, Phone, FileText, Scale,
-  Shield, Bell, CheckCircle2, Clock, Gavel, ShieldCheck, Loader2, Pencil, Trash2, Info,
+  Shield, Bell, CheckCircle2, Clock, Gavel, ShieldCheck, Loader2, Pencil, Trash2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -33,25 +33,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { classificaScadenza, sommaScadutoCliente, contributoScaduto, isPagatoReale } from "@/lib/scadenze";
 import { AllegatiSection, ALLEGATI_BUCKET } from "@/components/allegati-section";
 import { ClientePianiRientroTab } from "@/components/cliente-piani-rientro-tab";
+import { BottoneElimina } from "@/components/conferma-eliminazione";
 
 // ============================================================================
-// Helper TRANSITORI per gestione import (POUEY assicurazioni, pratiche aperte).
-// Da rimuovere quando gli import di assicurazioni/pratiche saranno disattivati.
-// ============================================================================
-function isPolizzaGestitaDaImport(p: { assicuratore?: string | null }): boolean {
-  return (p.assicuratore ?? "").trim().toUpperCase() === "POUEY";
-}
-function isPraticaARischioRicreazione(p: { stato?: string | null }): boolean {
-  // L'import inserisce solo pratiche con stato='aperta'. Se è aperta, potrebbe essere ricreata.
-  return (p.stato ?? "") === "aperta";
-}
-const CAMPI_POLIZZA_SOVRASCRITTI = new Set([
-  "importo_massimale",
-  "importo_assicurato",
-  "data_inizio",
-  "data_scadenza",
-  "stato",
-]);
 
 
 function fmtEuro(v: unknown): string {
@@ -128,7 +112,7 @@ export function ClienteInsolutiTab({ cliente, defaultSubTab }: { cliente: { id: 
         <TabsContent value="piani"><ClientePianiRientroTab clienteId={cliente.id} /></TabsContent>
         {!isStoreManager && <TabsContent value="legali">
           <div className="space-y-4">
-            <NoteLegaliGestionaliCard clienteId={cliente.id} />
+            <NoteLegaliGestionaliCard clienteId={cliente.id} canManage={canManageAssicPratiche} />
             <PraticheLegaliSection clienteId={cliente.id} canManage={canManageAssicPratiche} />
           </div>
         </TabsContent>}
@@ -867,7 +851,8 @@ const CATEGORIA_COLORS: Record<string, string> = {
   "Altro": "bg-secondary text-secondary-foreground border-border",
 };
 
-function NoteLegaliGestionaliCard({ clienteId }: { clienteId: string }) {
+function NoteLegaliGestionaliCard({ clienteId, canManage }: { clienteId: string; canManage: boolean }) {
+  const qc = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ["note-legali-gest", clienteId],
     queryFn: async () => {
@@ -884,11 +869,28 @@ function NoteLegaliGestionaliCard({ clienteId }: { clienteId: string }) {
     <Card className="p-4 space-y-3">
       <div className="flex items-center justify-between gap-2">
         <h3 className="font-semibold flex items-center gap-2"><Gavel className="size-4" /> Note Legali Gestionali</h3>
-        {data?.categoria && (
-          <Badge variant="outline" className={CATEGORIA_COLORS[data.categoria] ?? CATEGORIA_COLORS.Altro}>
-            {data.categoria}
-          </Badge>
-        )}
+        <div className="flex items-center gap-2">
+          {data?.categoria && (
+            <Badge variant="outline" className={CATEGORIA_COLORS[data.categoria] ?? CATEGORIA_COLORS.Altro}>
+              {data.categoria}
+            </Badge>
+          )}
+          {canManage && data && (
+            <BottoneElimina
+              variant="destructive"
+              size="sm"
+              etichetta="Elimina"
+              titolo="Eliminare la nota legale gestionale?"
+              descrizione="L'azione e irreversibile: la nota legale importata dal gestionale verra eliminata definitivamente."
+              onConferma={async () => {
+                const { error } = await supabase.from("note_legali_gestionali" as never).delete().eq("id", data.id);
+                if (error) { toast.error(error.message); return; }
+                toast.success("Nota legale eliminata");
+                await qc.invalidateQueries({ queryKey: ["note-legali-gest", clienteId] });
+              }}
+            />
+          )}
+        </div>
       </div>
       {isLoading ? (
         <Skeleton className="h-16" />
@@ -998,8 +1000,6 @@ function PraticaCard({ pratica: p, clienteId, canManage }: { pratica: PraticaRow
     }
   }
 
-  const rischioRicreazione = isPraticaARischioRicreazione(p);
-
   return (
     <Card className="p-4">
       <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -1071,11 +1071,6 @@ function PraticaCard({ pratica: p, clienteId, canManage }: { pratica: PraticaRow
                 Verra eliminata definitivamente la pratica <strong>{p.tipo.replace(/_/g, " ")}</strong>,
                 la sua timeline e tutti gli allegati collegati (file inclusi).
               </span>
-              {rischioRicreazione && (
-                <span className="block rounded-md border border-orange-500/40 bg-orange-500/10 p-2 text-orange-800 dark:text-orange-200">
-                  ⚠ Questa pratica e <strong>aperta</strong> e potrebbe essere <strong>ricreata al prossimo import</strong> se la riga del cliente porta ancora una nota legale. Procedere?
-                </span>
-              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1479,7 +1474,6 @@ function AssicurazioniSection({ clienteId, canManage, canEditAllegati }: { clien
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {polizze.map((p) => {
-            const daImport = isPolizzaGestitaDaImport(p);
             return (
               <Card key={p.id} className="p-4">
                 <div className="flex items-start gap-3">
@@ -1488,11 +1482,6 @@ function AssicurazioniSection({ clienteId, canManage, canEditAllegati }: { clien
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-semibold">{p.assicuratore}</p>
                       <Badge variant="outline" className="capitalize">{p.stato.replace(/_/g, " ")}</Badge>
-                      {daImport && (
-                        <Badge className="bg-blue-500/15 text-blue-700 border-blue-500/30 gap-1">
-                          <Info className="size-3" /> Gestita da import
-                        </Badge>
-                      )}
                     </div>
                     {p.numero_polizza && <p className="text-xs text-muted-foreground mt-0.5 font-mono">N° {p.numero_polizza}</p>}
                     <p className="text-sm mt-1">Massimale: <strong>{fmtEuro(p.importo_massimale)}</strong></p>
@@ -1552,11 +1541,6 @@ function AssicurazioniSection({ clienteId, canManage, canEditAllegati }: { clien
                 Verra eliminata la polizza <strong>{deletePol?.assicuratore}</strong>
                 {deletePol?.numero_polizza ? <> (N° {deletePol.numero_polizza})</> : null} e tutti gli allegati collegati (file inclusi).
               </span>
-              {deletePol && isPolizzaGestitaDaImport(deletePol) && (
-                <span className="block rounded-md border border-orange-500/40 bg-orange-500/10 p-2 text-orange-800 dark:text-orange-200">
-                  ⚠ Questa polizza e <strong>gestita dall'import (POUEY)</strong>. Eliminandola, il prossimo import potrebbe <strong>ricrearla automaticamente</strong>. Procedere?
-                </span>
-              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1576,7 +1560,6 @@ function AssicurazioniSection({ clienteId, canManage, canEditAllegati }: { clien
 }
 
 function ModificaPolizzaDialog({ polizza, onClose, onSaved }: { polizza: PolizzaRow; onClose: () => void; onSaved: () => void }) {
-  const daImport = isPolizzaGestitaDaImport(polizza);
   const [form, setForm] = useState({
     assicuratore: polizza.assicuratore ?? "",
     numero_polizza: polizza.numero_polizza ?? "",
@@ -1619,45 +1602,21 @@ function ModificaPolizzaDialog({ polizza, onClose, onSaved }: { polizza: Polizza
     onError: (e: Error) => toast.error(e.message),
   });
 
-  // Helper visuale: marca i campi a rischio sovrascrittura al prossimo import
-  const RischioBadge = ({ field }: { field: string }) =>
-    daImport && CAMPI_POLIZZA_SOVRASCRITTI.has(field) ? (
-      <span title="Verra sovrascritto al prossimo import" className="inline-flex items-center text-orange-600 ml-1">
-        <AlertTriangle className="size-3" />
-      </span>
-    ) : null;
-
   return (
     <DialogContent className="max-w-lg">
       <DialogHeader>
-        <DialogTitle className="flex items-center gap-2">
-          Modifica polizza
-          {daImport && (
-            <Badge className="bg-blue-500/15 text-blue-700 border-blue-500/30 gap-1">
-              <Info className="size-3" /> Gestita da import
-            </Badge>
-          )}
-        </DialogTitle>
+        <DialogTitle>Modifica polizza</DialogTitle>
       </DialogHeader>
-      {daImport && (
-        <div className="rounded-md border border-orange-500/40 bg-orange-500/10 p-3 text-xs text-orange-900 dark:text-orange-200 space-y-1">
-          <p className="font-semibold flex items-center gap-1.5"><AlertTriangle className="size-3.5" /> Avviso polizza da import</p>
-          <p>
-            I campi <strong>Massimale</strong>, <strong>Importo assicurato</strong>, <strong>Stato</strong> e <strong>Date inizio/scadenza</strong> verranno
-            <strong> sovrascritti al prossimo import</strong>. Modifiche sicure: numero polizza, note, dati sinistro.
-          </p>
-        </div>
-      )}
       <form onSubmit={(e) => { e.preventDefault(); save.mutate(); }} className="space-y-3 max-h-[65vh] overflow-y-auto pr-1">
         <div className="space-y-1.5"><Label>Assicuratore *</Label><Input value={form.assicuratore} onChange={(e) => setForm({ ...form, assicuratore: e.target.value })} /></div>
         <div className="space-y-1.5"><Label>Numero polizza</Label><Input value={form.numero_polizza} onChange={(e) => setForm({ ...form, numero_polizza: e.target.value })} /></div>
         <div className="grid grid-cols-3 gap-3">
           <div className="space-y-1.5">
-            <Label className="flex items-center">Massimale (€)<RischioBadge field="importo_massimale" /></Label>
+            <Label>Massimale (€)</Label>
             <Input type="number" step="0.01" value={form.importo_massimale} onChange={(e) => setForm({ ...form, importo_massimale: e.target.value })} />
           </div>
           <div className="space-y-1.5">
-            <Label className="flex items-center">Importo assicurato (€)<RischioBadge field="importo_assicurato" /></Label>
+            <Label>Importo assicurato (€)</Label>
             <Input type="number" step="0.01" value={form.importo_assicurato} onChange={(e) => setForm({ ...form, importo_assicurato: e.target.value })} />
           </div>
           <div className="space-y-1.5">
@@ -1666,7 +1625,7 @@ function ModificaPolizzaDialog({ polizza, onClose, onSaved }: { polizza: Polizza
           </div>
         </div>
         <div className="space-y-1.5">
-          <Label className="flex items-center">Stato<RischioBadge field="stato" /></Label>
+          <Label>Stato</Label>
           <Select value={form.stato} onValueChange={(v) => setForm({ ...form, stato: v as typeof STATO_POLIZZA[number] })}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -1676,11 +1635,11 @@ function ModificaPolizzaDialog({ polizza, onClose, onSaved }: { polizza: Polizza
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label className="flex items-center">Data inizio<RischioBadge field="data_inizio" /></Label>
+            <Label>Data inizio</Label>
             <Input type="date" value={form.data_inizio} onChange={(e) => setForm({ ...form, data_inizio: e.target.value })} />
           </div>
           <div className="space-y-1.5">
-            <Label className="flex items-center">Data scadenza<RischioBadge field="data_scadenza" /></Label>
+            <Label>Data scadenza</Label>
             <Input type="date" value={form.data_scadenza} onChange={(e) => setForm({ ...form, data_scadenza: e.target.value })} />
           </div>
         </div>
