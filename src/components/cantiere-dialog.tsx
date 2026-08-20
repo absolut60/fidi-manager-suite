@@ -1,6 +1,6 @@
 // Dialog creazione / modifica cantiere con geocodifica automatica dell'indirizzo.
 import { useEffect, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Crosshair, MapPin, Navigation, RefreshCw } from "lucide-react";
@@ -17,7 +17,8 @@ import {
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SoggettoCombobox, type SoggettoSelezionato } from "@/components/soggetto-combobox";
-import { geocodificaCantiere, ricalcolaSedeVicina } from "@/lib/cantieri.functions";
+import { geocodificaCantiere, getChiaveMappe, ricalcolaSedeVicina } from "@/lib/cantieri.functions";
+import { IndirizzoAutocomplete } from "@/components/indirizzo-autocomplete";
 import { BottoneElimina } from "@/components/conferma-eliminazione";
 import { usePermessiCommerciale } from "@/hooks/use-permessi-commerciale";
 import {
@@ -44,6 +45,12 @@ export function CantiereDialog({
   );
   const forzaAgente = isAgente && !isTrasversale;
   const geocodifica = useServerFn(geocodificaCantiere);
+  const chiaveMappe = useServerFn(getChiaveMappe);
+  const { data: mapsKey } = useQuery({
+    queryKey: ["chiave-mappe"],
+    queryFn: async () => (await chiaveMappe()).key,
+    staleTime: Infinity,
+  });
   const ricalcolaSede = useServerFn(ricalcolaSedeVicina);
 
   const [nome, setNome] = useState("");
@@ -66,6 +73,7 @@ export function CantiereDialog({
   const [gpsBusy, setGpsBusy] = useState(false);
   const [sedeBusy, setSedeBusy] = useState(false);
   const [sedeTesto, setSedeTesto] = useState<string | null>(null);
+  const [coordDaAutocomplete, setCoordDaAutocomplete] = useState(false);
 
   function usaLaMiaPosizione() {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
@@ -153,6 +161,7 @@ export function CantiereDialog({
     setLat(c?.lat != null ? String(c.lat) : "");
     setLng(c?.lng != null ? String(c.lng) : "");
     setSedeTesto(c ? testoSedeVicina(c) : null);
+    setCoordDaAutocomplete(false);
   }, [open, cantiere]);
 
   // Precompila l'agente dal soggetto scelto
@@ -221,7 +230,8 @@ export function CantiereDialog({
     }
     const coordManuali =
       latN != null && lngN != null &&
-      (latN !== (cantiere?.lat ?? null) || lngN !== (cantiere?.lng ?? null));
+      (coordDaAutocomplete ||
+        latN !== (cantiere?.lat ?? null) || lngN !== (cantiere?.lng ?? null));
 
     setSaving(true);
     try {
@@ -314,7 +324,27 @@ export function CantiereDialog({
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
             <div className="space-y-1.5 sm:col-span-4">
               <Label>Indirizzo</Label>
-              <Input value={indirizzo} onChange={(e) => setIndirizzo(e.target.value)} placeholder="Via Roma 10" />
+              <IndirizzoAutocomplete
+                apiKey={mapsKey}
+                value={indirizzo}
+                onChange={setIndirizzo}
+                placeholder="Via Roma 10"
+                onScelto={(d) => {
+                  setIndirizzo(d.indirizzo);
+                  if (d.cap) setCap(d.cap);
+                  if (d.citta) setCitta(d.citta);
+                  if (d.provincia) setProvincia(d.provincia);
+                  if (d.lat != null && d.lng != null) {
+                    setLat(String(d.lat));
+                    setLng(String(d.lng));
+                    setCoordDaAutocomplete(true);
+                  }
+                  toast.success("Indirizzo compilato dai suggerimenti Google");
+                }}
+              />
+              <p className="text-xs text-muted-foreground">
+                Inizia a scrivere e scegli l'indirizzo suggerito per compilare tutto e posizionare il cantiere.
+              </p>
             </div>
             <div className="space-y-1.5">
               <Label>CAP</Label>
