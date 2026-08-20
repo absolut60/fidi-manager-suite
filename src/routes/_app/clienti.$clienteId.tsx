@@ -573,7 +573,7 @@ function ClienteDetail() {
       </div>
 
       <Tabs key={effTab} defaultValue={effTab}>
-        <TabsList className="flex-wrap h-auto">
+        <TabsList className="md:flex-wrap">
           <TabsTrigger value="riepilogo">Riepilogo</TabsTrigger>
           <TabsTrigger value="anagrafica">Anagrafica</TabsTrigger>
           <TabsTrigger value="contatti">Contatti ({contatti?.length ?? 0})</TabsTrigger>
