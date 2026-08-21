@@ -20,6 +20,8 @@ export interface ClienteRow {
   id_cliente: string | null;
   piva: string | null;
   fascia_listino_default: FasciaListino | null;
+  indirizzo: string | null;
+  cap: string | null;
   citta: string | null;
   provincia: string | null;
   codice_agente: string | null;
@@ -49,6 +51,8 @@ interface ClienteDbPick {
   codice_gestionale: string | null;
   partita_iva: string | null;
   fascia_listino_default: FasciaListino | null;
+  indirizzo: string | null;
+  cap: string | null;
   citta: string | null;
   provincia: string | null;
   codice_agente: string | null;
@@ -70,7 +74,7 @@ interface AgenteDbPick {
 }
 
 const CLIENTE_COLS =
-  "id, ragione_sociale, codice_gestionale, partita_iva, fascia_listino_default, citta, provincia, codice_agente, agente";
+  "id, ragione_sociale, codice_gestionale, partita_iva, fascia_listino_default, indirizzo, cap, citta, provincia, codice_agente, agente";
 
 function mapCliente(r: ClienteDbPick): ClienteRow {
   return {
@@ -79,6 +83,8 @@ function mapCliente(r: ClienteDbPick): ClienteRow {
     id_cliente: r.codice_gestionale,
     piva: r.partita_iva,
     fascia_listino_default: r.fascia_listino_default,
+    indirizzo: r.indirizzo,
+    cap: r.cap,
     citta: r.citta,
     provincia: r.provincia,
     codice_agente: r.codice_agente,
