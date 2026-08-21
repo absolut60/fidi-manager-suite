@@ -31,6 +31,7 @@ import { Route as AppRecuperoCreditiRouteImport } from './routes/_app/recupero-c
 import { Route as AppPrivacyRouteImport } from './routes/_app/privacy'
 import { Route as AppPianiRientroRouteImport } from './routes/_app/piani-rientro'
 import { Route as AppOpportunitaRouteImport } from './routes/_app/opportunita'
+import { Route as AppListiniRouteImport } from './routes/_app/listini'
 import { Route as AppLegaliRouteImport } from './routes/_app/legali'
 import { Route as AppLeadRouteImport } from './routes/_app/lead'
 import { Route as AppImpostazioniRouteImport } from './routes/_app/impostazioni'
@@ -188,6 +189,11 @@ const AppPianiRientroRoute = AppPianiRientroRouteImport.update({
 const AppOpportunitaRoute = AppOpportunitaRouteImport.update({
   id: '/opportunita',
   path: '/opportunita',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppListiniRoute = AppListiniRouteImport.update({
+  id: '/listini',
+  path: '/listini',
   getParentRoute: () => AppRoute,
 } as any)
 const AppLegaliRoute = AppLegaliRouteImport.update({
@@ -450,6 +456,7 @@ export interface FileRoutesByFullPath {
   '/impostazioni': typeof AppImpostazioniRoute
   '/lead': typeof AppLeadRouteWithChildren
   '/legali': typeof AppLegaliRoute
+  '/listini': typeof AppListiniRoute
   '/opportunita': typeof AppOpportunitaRouteWithChildren
   '/piani-rientro': typeof AppPianiRientroRoute
   '/privacy': typeof AppPrivacyRoute
@@ -517,6 +524,7 @@ export interface FileRoutesByTo {
   '/import-export': typeof AppImportExportRoute
   '/impostazioni': typeof AppImpostazioniRoute
   '/legali': typeof AppLegaliRoute
+  '/listini': typeof AppListiniRoute
   '/piani-rientro': typeof AppPianiRientroRoute
   '/privacy': typeof AppPrivacyRoute
   '/recupero-crediti': typeof AppRecuperoCreditiRoute
@@ -586,6 +594,7 @@ export interface FileRoutesById {
   '/_app/impostazioni': typeof AppImpostazioniRoute
   '/_app/lead': typeof AppLeadRouteWithChildren
   '/_app/legali': typeof AppLegaliRoute
+  '/_app/listini': typeof AppListiniRoute
   '/_app/opportunita': typeof AppOpportunitaRouteWithChildren
   '/_app/piani-rientro': typeof AppPianiRientroRoute
   '/_app/privacy': typeof AppPrivacyRoute
@@ -656,6 +665,7 @@ export interface FileRouteTypes {
     | '/impostazioni'
     | '/lead'
     | '/legali'
+    | '/listini'
     | '/opportunita'
     | '/piani-rientro'
     | '/privacy'
@@ -723,6 +733,7 @@ export interface FileRouteTypes {
     | '/import-export'
     | '/impostazioni'
     | '/legali'
+    | '/listini'
     | '/piani-rientro'
     | '/privacy'
     | '/recupero-crediti'
@@ -791,6 +802,7 @@ export interface FileRouteTypes {
     | '/_app/impostazioni'
     | '/_app/lead'
     | '/_app/legali'
+    | '/_app/listini'
     | '/_app/opportunita'
     | '/_app/piani-rientro'
     | '/_app/privacy'
@@ -1012,6 +1024,13 @@ declare module '@tanstack/react-router' {
       path: '/opportunita'
       fullPath: '/opportunita'
       preLoaderRoute: typeof AppOpportunitaRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/listini': {
+      id: '/_app/listini'
+      path: '/listini'
+      fullPath: '/listini'
+      preLoaderRoute: typeof AppListiniRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/legali': {
@@ -1399,6 +1418,7 @@ interface AppRouteChildren {
   AppImpostazioniRoute: typeof AppImpostazioniRoute
   AppLeadRoute: typeof AppLeadRouteWithChildren
   AppLegaliRoute: typeof AppLegaliRoute
+  AppListiniRoute: typeof AppListiniRoute
   AppOpportunitaRoute: typeof AppOpportunitaRouteWithChildren
   AppPianiRientroRoute: typeof AppPianiRientroRoute
   AppPrivacyRoute: typeof AppPrivacyRoute
@@ -1447,6 +1467,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppImpostazioniRoute: AppImpostazioniRoute,
   AppLeadRoute: AppLeadRouteWithChildren,
   AppLegaliRoute: AppLegaliRoute,
+  AppListiniRoute: AppListiniRoute,
   AppOpportunitaRoute: AppOpportunitaRouteWithChildren,
   AppPianiRientroRoute: AppPianiRientroRoute,
   AppPrivacyRoute: AppPrivacyRoute,
