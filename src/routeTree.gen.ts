@@ -54,6 +54,7 @@ import { Route as AppPreventivatoreIndexRouteImport } from './routes/_app/preven
 import { Route as AppOrdiniIndexRouteImport } from './routes/_app/ordini.index'
 import { Route as AppOpportunitaIndexRouteImport } from './routes/_app/opportunita.index'
 import { Route as AppLeadIndexRouteImport } from './routes/_app/lead.index'
+import { Route as AppKitIndexRouteImport } from './routes/_app/kit.index'
 import { Route as AppEventiIndexRouteImport } from './routes/_app/eventi.index'
 import { Route as AppArticoliIndexRouteImport } from './routes/_app/articoli.index'
 import { Route as ApiPublicInngestRouteImport } from './routes/api/public/inngest'
@@ -70,6 +71,7 @@ import { Route as AppMarketingSegmentiRouteImport } from './routes/_app/marketin
 import { Route as AppMarketingInviiRouteImport } from './routes/_app/marketing.invii'
 import { Route as AppMarketingCampagneRouteImport } from './routes/_app/marketing.campagne'
 import { Route as AppLeadLeadIdRouteImport } from './routes/_app/lead.$leadId'
+import { Route as AppKitIdRouteImport } from './routes/_app/kit.$id'
 import { Route as AppEventiEventoIdRouteImport } from './routes/_app/eventi.$eventoId'
 import { Route as AppClientiClienteIdRouteImport } from './routes/_app/clienti.$clienteId'
 import { Route as AppArticoliIdRouteImport } from './routes/_app/articoli.$id'
@@ -311,6 +313,11 @@ const AppLeadIndexRoute = AppLeadIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppLeadRoute,
 } as any)
+const AppKitIndexRoute = AppKitIndexRouteImport.update({
+  id: '/kit/',
+  path: '/kit/',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppEventiIndexRoute = AppEventiIndexRouteImport.update({
   id: '/eventi/',
   path: '/eventi/',
@@ -396,6 +403,11 @@ const AppLeadLeadIdRoute = AppLeadLeadIdRouteImport.update({
   id: '/$leadId',
   path: '/$leadId',
   getParentRoute: () => AppLeadRoute,
+} as any)
+const AppKitIdRoute = AppKitIdRouteImport.update({
+  id: '/kit/$id',
+  path: '/kit/$id',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppEventiEventoIdRoute = AppEventiEventoIdRouteImport.update({
   id: '/eventi/$eventoId',
@@ -486,6 +498,7 @@ export interface FileRoutesByFullPath {
   '/articoli/$id': typeof AppArticoliIdRoute
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
   '/eventi/$eventoId': typeof AppEventiEventoIdRoute
+  '/kit/$id': typeof AppKitIdRoute
   '/lead/$leadId': typeof AppLeadLeadIdRoute
   '/marketing/campagne': typeof AppMarketingCampagneRoute
   '/marketing/invii': typeof AppMarketingInviiRoute
@@ -502,6 +515,7 @@ export interface FileRoutesByFullPath {
   '/api/public/inngest': typeof ApiPublicInngestRoute
   '/articoli/': typeof AppArticoliIndexRoute
   '/eventi/': typeof AppEventiIndexRoute
+  '/kit/': typeof AppKitIndexRoute
   '/lead/': typeof AppLeadIndexRoute
   '/opportunita/': typeof AppOpportunitaIndexRoute
   '/ordini/': typeof AppOrdiniIndexRoute
@@ -554,6 +568,7 @@ export interface FileRoutesByTo {
   '/articoli/$id': typeof AppArticoliIdRoute
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
   '/eventi/$eventoId': typeof AppEventiEventoIdRoute
+  '/kit/$id': typeof AppKitIdRoute
   '/lead/$leadId': typeof AppLeadLeadIdRoute
   '/marketing/campagne': typeof AppMarketingCampagneRoute
   '/marketing/invii': typeof AppMarketingInviiRoute
@@ -570,6 +585,7 @@ export interface FileRoutesByTo {
   '/api/public/inngest': typeof ApiPublicInngestRoute
   '/articoli': typeof AppArticoliIndexRoute
   '/eventi': typeof AppEventiIndexRoute
+  '/kit': typeof AppKitIndexRoute
   '/lead': typeof AppLeadIndexRoute
   '/opportunita': typeof AppOpportunitaIndexRoute
   '/ordini': typeof AppOrdiniIndexRoute
@@ -626,6 +642,7 @@ export interface FileRoutesById {
   '/_app/articoli/$id': typeof AppArticoliIdRoute
   '/_app/clienti/$clienteId': typeof AppClientiClienteIdRoute
   '/_app/eventi/$eventoId': typeof AppEventiEventoIdRoute
+  '/_app/kit/$id': typeof AppKitIdRoute
   '/_app/lead/$leadId': typeof AppLeadLeadIdRoute
   '/_app/marketing/campagne': typeof AppMarketingCampagneRoute
   '/_app/marketing/invii': typeof AppMarketingInviiRoute
@@ -642,6 +659,7 @@ export interface FileRoutesById {
   '/api/public/inngest': typeof ApiPublicInngestRoute
   '/_app/articoli/': typeof AppArticoliIndexRoute
   '/_app/eventi/': typeof AppEventiIndexRoute
+  '/_app/kit/': typeof AppKitIndexRoute
   '/_app/lead/': typeof AppLeadIndexRoute
   '/_app/opportunita/': typeof AppOpportunitaIndexRoute
   '/_app/ordini/': typeof AppOrdiniIndexRoute
@@ -698,6 +716,7 @@ export interface FileRouteTypes {
     | '/articoli/$id'
     | '/clienti/$clienteId'
     | '/eventi/$eventoId'
+    | '/kit/$id'
     | '/lead/$leadId'
     | '/marketing/campagne'
     | '/marketing/invii'
@@ -714,6 +733,7 @@ export interface FileRouteTypes {
     | '/api/public/inngest'
     | '/articoli/'
     | '/eventi/'
+    | '/kit/'
     | '/lead/'
     | '/opportunita/'
     | '/ordini/'
@@ -766,6 +786,7 @@ export interface FileRouteTypes {
     | '/articoli/$id'
     | '/clienti/$clienteId'
     | '/eventi/$eventoId'
+    | '/kit/$id'
     | '/lead/$leadId'
     | '/marketing/campagne'
     | '/marketing/invii'
@@ -782,6 +803,7 @@ export interface FileRouteTypes {
     | '/api/public/inngest'
     | '/articoli'
     | '/eventi'
+    | '/kit'
     | '/lead'
     | '/opportunita'
     | '/ordini'
@@ -837,6 +859,7 @@ export interface FileRouteTypes {
     | '/_app/articoli/$id'
     | '/_app/clienti/$clienteId'
     | '/_app/eventi/$eventoId'
+    | '/_app/kit/$id'
     | '/_app/lead/$leadId'
     | '/_app/marketing/campagne'
     | '/_app/marketing/invii'
@@ -853,6 +876,7 @@ export interface FileRouteTypes {
     | '/api/public/inngest'
     | '/_app/articoli/'
     | '/_app/eventi/'
+    | '/_app/kit/'
     | '/_app/lead/'
     | '/_app/opportunita/'
     | '/_app/ordini/'
@@ -1199,6 +1223,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppLeadIndexRouteImport
       parentRoute: typeof AppLeadRoute
     }
+    '/_app/kit/': {
+      id: '/_app/kit/'
+      path: '/kit'
+      fullPath: '/kit/'
+      preLoaderRoute: typeof AppKitIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/eventi/': {
       id: '/_app/eventi/'
       path: '/eventi'
@@ -1310,6 +1341,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/lead/$leadId'
       preLoaderRoute: typeof AppLeadLeadIdRouteImport
       parentRoute: typeof AppLeadRoute
+    }
+    '/_app/kit/$id': {
+      id: '/_app/kit/$id'
+      path: '/kit/$id'
+      fullPath: '/kit/$id'
+      preLoaderRoute: typeof AppKitIdRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/eventi/$eventoId': {
       id: '/_app/eventi/$eventoId'
@@ -1454,6 +1492,7 @@ interface AppRouteChildren {
   AppWhatsappRoute: typeof AppWhatsappRoute
   AppArticoliIdRoute: typeof AppArticoliIdRoute
   AppEventiEventoIdRoute: typeof AppEventiEventoIdRoute
+  AppKitIdRoute: typeof AppKitIdRoute
   AppMarketingCampagneRoute: typeof AppMarketingCampagneRoute
   AppMarketingInviiRoute: typeof AppMarketingInviiRoute
   AppMarketingSegmentiRoute: typeof AppMarketingSegmentiRoute
@@ -1466,6 +1505,7 @@ interface AppRouteChildren {
   AppRichiesteInterneTutteRoute: typeof AppRichiesteInterneTutteRoute
   AppArticoliIndexRoute: typeof AppArticoliIndexRoute
   AppEventiIndexRoute: typeof AppEventiIndexRoute
+  AppKitIndexRoute: typeof AppKitIndexRoute
   AppOrdiniIndexRoute: typeof AppOrdiniIndexRoute
   AppPreventivatoreIndexRoute: typeof AppPreventivatoreIndexRoute
   AppRichiesteInterneIndexRoute: typeof AppRichiesteInterneIndexRoute
@@ -1504,6 +1544,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppWhatsappRoute: AppWhatsappRoute,
   AppArticoliIdRoute: AppArticoliIdRoute,
   AppEventiEventoIdRoute: AppEventiEventoIdRoute,
+  AppKitIdRoute: AppKitIdRoute,
   AppMarketingCampagneRoute: AppMarketingCampagneRoute,
   AppMarketingInviiRoute: AppMarketingInviiRoute,
   AppMarketingSegmentiRoute: AppMarketingSegmentiRoute,
@@ -1516,6 +1557,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppRichiesteInterneTutteRoute: AppRichiesteInterneTutteRoute,
   AppArticoliIndexRoute: AppArticoliIndexRoute,
   AppEventiIndexRoute: AppEventiIndexRoute,
+  AppKitIndexRoute: AppKitIndexRoute,
   AppOrdiniIndexRoute: AppOrdiniIndexRoute,
   AppPreventivatoreIndexRoute: AppPreventivatoreIndexRoute,
   AppRichiesteInterneIndexRoute: AppRichiesteInterneIndexRoute,
