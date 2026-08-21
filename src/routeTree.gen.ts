@@ -51,6 +51,7 @@ import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } fr
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as AppRichiesteInterneIndexRouteImport } from './routes/_app/richieste-interne.index'
 import { Route as AppPreventivatoreIndexRouteImport } from './routes/_app/preventivatore.index'
+import { Route as AppOrdiniIndexRouteImport } from './routes/_app/ordini.index'
 import { Route as AppOpportunitaIndexRouteImport } from './routes/_app/opportunita.index'
 import { Route as AppLeadIndexRouteImport } from './routes/_app/lead.index'
 import { Route as AppEventiIndexRouteImport } from './routes/_app/eventi.index'
@@ -295,6 +296,11 @@ const AppPreventivatoreIndexRoute = AppPreventivatoreIndexRouteImport.update({
   path: '/preventivatore/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppOrdiniIndexRoute = AppOrdiniIndexRouteImport.update({
+  id: '/ordini/',
+  path: '/ordini/',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppOpportunitaIndexRoute = AppOpportunitaIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -498,6 +504,7 @@ export interface FileRoutesByFullPath {
   '/eventi/': typeof AppEventiIndexRoute
   '/lead/': typeof AppLeadIndexRoute
   '/opportunita/': typeof AppOpportunitaIndexRoute
+  '/ordini/': typeof AppOrdiniIndexRoute
   '/preventivatore/': typeof AppPreventivatoreIndexRoute
   '/richieste-interne/': typeof AppRichiesteInterneIndexRoute
   '/api/public/email-img/$': typeof ApiPublicEmailImgSplatRoute
@@ -565,6 +572,7 @@ export interface FileRoutesByTo {
   '/eventi': typeof AppEventiIndexRoute
   '/lead': typeof AppLeadIndexRoute
   '/opportunita': typeof AppOpportunitaIndexRoute
+  '/ordini': typeof AppOrdiniIndexRoute
   '/preventivatore': typeof AppPreventivatoreIndexRoute
   '/richieste-interne': typeof AppRichiesteInterneIndexRoute
   '/api/public/email-img/$': typeof ApiPublicEmailImgSplatRoute
@@ -636,6 +644,7 @@ export interface FileRoutesById {
   '/_app/eventi/': typeof AppEventiIndexRoute
   '/_app/lead/': typeof AppLeadIndexRoute
   '/_app/opportunita/': typeof AppOpportunitaIndexRoute
+  '/_app/ordini/': typeof AppOrdiniIndexRoute
   '/_app/preventivatore/': typeof AppPreventivatoreIndexRoute
   '/_app/richieste-interne/': typeof AppRichiesteInterneIndexRoute
   '/api/public/email-img/$': typeof ApiPublicEmailImgSplatRoute
@@ -707,6 +716,7 @@ export interface FileRouteTypes {
     | '/eventi/'
     | '/lead/'
     | '/opportunita/'
+    | '/ordini/'
     | '/preventivatore/'
     | '/richieste-interne/'
     | '/api/public/email-img/$'
@@ -774,6 +784,7 @@ export interface FileRouteTypes {
     | '/eventi'
     | '/lead'
     | '/opportunita'
+    | '/ordini'
     | '/preventivatore'
     | '/richieste-interne'
     | '/api/public/email-img/$'
@@ -844,6 +855,7 @@ export interface FileRouteTypes {
     | '/_app/eventi/'
     | '/_app/lead/'
     | '/_app/opportunita/'
+    | '/_app/ordini/'
     | '/_app/preventivatore/'
     | '/_app/richieste-interne/'
     | '/api/public/email-img/$'
@@ -1166,6 +1178,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPreventivatoreIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/ordini/': {
+      id: '/_app/ordini/'
+      path: '/ordini'
+      fullPath: '/ordini/'
+      preLoaderRoute: typeof AppOrdiniIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/opportunita/': {
       id: '/_app/opportunita/'
       path: '/'
@@ -1447,6 +1466,7 @@ interface AppRouteChildren {
   AppRichiesteInterneTutteRoute: typeof AppRichiesteInterneTutteRoute
   AppArticoliIndexRoute: typeof AppArticoliIndexRoute
   AppEventiIndexRoute: typeof AppEventiIndexRoute
+  AppOrdiniIndexRoute: typeof AppOrdiniIndexRoute
   AppPreventivatoreIndexRoute: typeof AppPreventivatoreIndexRoute
   AppRichiesteInterneIndexRoute: typeof AppRichiesteInterneIndexRoute
 }
@@ -1496,6 +1516,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppRichiesteInterneTutteRoute: AppRichiesteInterneTutteRoute,
   AppArticoliIndexRoute: AppArticoliIndexRoute,
   AppEventiIndexRoute: AppEventiIndexRoute,
+  AppOrdiniIndexRoute: AppOrdiniIndexRoute,
   AppPreventivatoreIndexRoute: AppPreventivatoreIndexRoute,
   AppRichiesteInterneIndexRoute: AppRichiesteInterneIndexRoute,
 }
