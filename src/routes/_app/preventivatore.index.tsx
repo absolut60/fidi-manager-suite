@@ -1,9 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { PreventiviListView } from "@/components/preventivatore/PreventiviListView";
 
 export const Route = createFileRoute("/_app/preventivatore/")({
-  component: PreventivatoreIndexPage,
+  head: () => ({ meta: [{ title: "Preventivi — Sistema MADE" }] }),
+  component: () => <PreventiviListView tipo="preventivo" />,
 });
-
-function PreventivatoreIndexPage() {
-  return <div className="p-4 text-sm text-muted-foreground">Preventivatore (in costruzione)</div>;
-}
