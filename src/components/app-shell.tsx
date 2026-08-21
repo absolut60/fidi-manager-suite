@@ -36,6 +36,7 @@ import {
   Sparkles,
   Target,
   Building2,
+  Calculator,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { LOGO_MADE_SIDEBAR_BASE64 } from "@/lib/logo-made-sidebar-base64";
@@ -48,6 +49,7 @@ import { toast } from "sonner";
 type NavGroupKey =
   | "generale"
   | "commerciale"
+  | "preventivi"
   | "fidi"
   | "incassi"
   | "recupero"
@@ -79,6 +81,8 @@ const NAV: NavItem[] = [
   { to: "/opportunita", label: "Opportunità", icon: Target, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "commerciale" },
   { to: "/calendario-commerciale", label: "Calendario", icon: CalendarDays, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "commerciale" },
   { to: "/cantieri", label: "Cantieri", icon: Building2, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "commerciale" },
+  // PREVENTIVI
+  { to: "/preventivatore", label: "Preventivi", icon: Calculator, roles: ["admin"], group: "preventivi" },
   // FIDI
   { to: "/richieste", label: "Richieste fido", icon: FileText, group: "fidi" },
   { to: "/approvazioni", label: "Approvazioni", icon: CheckCheck, roles: ["admin", "approvatore"], group: "fidi" },
@@ -123,6 +127,7 @@ const NAV: NavItem[] = [
 type GroupStyle = { bar: string; icon: typeof LayoutDashboard };
 const GROUP_STYLES: Record<Exclude<NavGroupKey, "generale">, GroupStyle> = {
   commerciale:        { bar: "#0d9488", icon: Target },
+  preventivi:         { bar: "#c79a2e", icon: Calculator },
   fidi:               { bar: "#7f77dd", icon: CreditCard },
   incassi:            { bar: "#1d9e75", icon: Banknote },
   recupero:           { bar: "#d85a30", icon: AlertTriangle },
@@ -134,6 +139,7 @@ const GROUP_STYLES: Record<Exclude<NavGroupKey, "generale">, GroupStyle> = {
 
 const GROUP_LABELS: Record<Exclude<NavGroupKey, "generale">, string> = {
   commerciale: "Commerciale",
+  preventivi: "Preventivi",
   fidi: "Fidi",
   incassi: "Incassi",
   recupero: "Recupero crediti",
@@ -221,6 +227,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const generaleItems = visibleNav.filter((i) => i.group === "generale");
   const blocchiKeys: Array<Exclude<NavGroupKey, "generale">> = [
     "commerciale",
+    "preventivi",
     "fidi",
     "incassi",
     "recupero",
