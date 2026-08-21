@@ -516,8 +516,8 @@ function PreventivoEditorPage() {
                           <div className="font-mono text-xs text-[#2b5ea7]">Cliente n. {cliente.id_cliente}</div>
                         )}
                         <Link
-                          to="/clienti/$id"
-                          params={{ id: cliente.id }}
+                          to="/clienti/$clienteId"
+                          params={{ clienteId: cliente.id }}
                           onClick={(e) => e.stopPropagation()}
                           title="Apri scheda cliente"
                           className="cursor-pointer self-start bg-transparent p-0 text-left text-base font-bold leading-tight text-[#0d1f3c] hover:text-[#2b5ea7] hover:underline"
