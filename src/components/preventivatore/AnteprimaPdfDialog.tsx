@@ -103,7 +103,7 @@ export function AnteprimaPdfDialog({
             canvasContainerRef.current.appendChild(canvas);
           }
 
-          await page.render({ canvasContext: ctx, viewport }).promise;
+          await page.render({ canvasContext: ctx, viewport, canvas }).promise;
           page.cleanup();
           if (i === 1) setLoading(false);
         }
