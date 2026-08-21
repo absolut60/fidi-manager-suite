@@ -32,7 +32,9 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/articoli/$id")({
   head: () => ({ meta: [{ title: "Scheda articolo — Sistema MADE" }] }),
-  validateSearch: (s: Record<string, unknown>) => ({
+  validateSearch: (
+    s: Record<string, unknown>,
+  ): { tab?: "acquisto" | "vendita" | "anagrafica" } => ({
     tab:
       s.tab === "acquisto" || s.tab === "vendita" || s.tab === "anagrafica"
         ? (s.tab as "acquisto" | "vendita" | "anagrafica")
