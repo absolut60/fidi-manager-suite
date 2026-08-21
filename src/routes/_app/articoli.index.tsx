@@ -18,8 +18,9 @@ import {
   type StatoArticolo,
 } from "@/lib/articoli-api";
 import { StatoBadge } from "@/components/articoli/StatoBadge";
+import { ImportArticoliDialog } from "@/components/articoli/ImportDialog";
 import { Badge } from "@/components/ui/badge";
-import { Download, Search, SlidersHorizontal } from "lucide-react";
+import { Download, Upload, Search, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -38,6 +39,7 @@ function ArticoliListPage() {
   const [tipologia, setTipologia] = useState<string | null>(null);
   const [fornitoreId, setFornitoreId] = useState<string | null>(null);
   const [stato, setStato] = useState<StatoArticolo | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
   const [mostraFiltri, setMostraFiltri] = useState(false);
   const nFiltriAttivi = [categoria, tipologia, fornitoreId, stato].filter(Boolean).length;
 
@@ -66,7 +68,7 @@ function ArticoliListPage() {
     setPage(1);
   }, [debouncedSearch, categoria, tipologia, fornitoreId, stato]);
 
-  const { data: result, isLoading } = useQuery({
+  const { data: result, isLoading, refetch } = useQuery({
     queryKey: ["articoli", filters, page, pageSize],
     queryFn: () => fetchArticoli(filters, { page, pageSize }),
   });
@@ -144,6 +146,10 @@ function ArticoliListPage() {
             <Button variant="outline" size="sm" onClick={() => exportCsv(false)}>
               <Download className="h-4 w-4 lg:mr-1" />
               <span className="hidden lg:inline">Esporta tutti</span>
+            </Button>
+            <Button size="sm" onClick={() => setImportOpen(true)}>
+              <Upload className="h-4 w-4 lg:mr-1" />
+              <span className="hidden sm:inline">Importa da GAMMA</span>
             </Button>
           </div>
         </div>
@@ -324,6 +330,8 @@ function ArticoliListPage() {
           </Button>
         </div>
       </div>
+
+      <ImportArticoliDialog open={importOpen} onOpenChange={setImportOpen} onDone={refetch} />
     </div>
   );
 }
