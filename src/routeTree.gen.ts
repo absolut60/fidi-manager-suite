@@ -65,6 +65,7 @@ import { Route as AppRichiesteInterneGestioneRouteImport } from './routes/_app/r
 import { Route as AppRichiesteInterneArchivioRouteImport } from './routes/_app/richieste-interne.archivio'
 import { Route as AppRichiesteInterneApprovaRouteImport } from './routes/_app/richieste-interne.approva'
 import { Route as AppRichiesteInterneRichiestaIdRouteImport } from './routes/_app/richieste-interne.$richiestaId'
+import { Route as AppPreventivatoreDashboardRouteImport } from './routes/_app/preventivatore.dashboard'
 import { Route as AppPreventivatoreIdRouteImport } from './routes/_app/preventivatore.$id'
 import { Route as AppOpportunitaOpportunitaIdRouteImport } from './routes/_app/opportunita.$opportunitaId'
 import { Route as AppMarketingSegmentiRouteImport } from './routes/_app/marketing.segmenti'
@@ -373,6 +374,12 @@ const AppRichiesteInterneRichiestaIdRoute =
     path: '/richieste-interne/$richiestaId',
     getParentRoute: () => AppRoute,
   } as any)
+const AppPreventivatoreDashboardRoute =
+  AppPreventivatoreDashboardRouteImport.update({
+    id: '/preventivatore/dashboard',
+    path: '/preventivatore/dashboard',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppPreventivatoreIdRoute = AppPreventivatoreIdRouteImport.update({
   id: '/preventivatore/$id',
   path: '/preventivatore/$id',
@@ -505,6 +512,7 @@ export interface FileRoutesByFullPath {
   '/marketing/segmenti': typeof AppMarketingSegmentiRoute
   '/opportunita/$opportunitaId': typeof AppOpportunitaOpportunitaIdRoute
   '/preventivatore/$id': typeof AppPreventivatoreIdRoute
+  '/preventivatore/dashboard': typeof AppPreventivatoreDashboardRoute
   '/richieste-interne/$richiestaId': typeof AppRichiesteInterneRichiestaIdRoute
   '/richieste-interne/approva': typeof AppRichiesteInterneApprovaRoute
   '/richieste-interne/archivio': typeof AppRichiesteInterneArchivioRoute
@@ -575,6 +583,7 @@ export interface FileRoutesByTo {
   '/marketing/segmenti': typeof AppMarketingSegmentiRoute
   '/opportunita/$opportunitaId': typeof AppOpportunitaOpportunitaIdRoute
   '/preventivatore/$id': typeof AppPreventivatoreIdRoute
+  '/preventivatore/dashboard': typeof AppPreventivatoreDashboardRoute
   '/richieste-interne/$richiestaId': typeof AppRichiesteInterneRichiestaIdRoute
   '/richieste-interne/approva': typeof AppRichiesteInterneApprovaRoute
   '/richieste-interne/archivio': typeof AppRichiesteInterneArchivioRoute
@@ -649,6 +658,7 @@ export interface FileRoutesById {
   '/_app/marketing/segmenti': typeof AppMarketingSegmentiRoute
   '/_app/opportunita/$opportunitaId': typeof AppOpportunitaOpportunitaIdRoute
   '/_app/preventivatore/$id': typeof AppPreventivatoreIdRoute
+  '/_app/preventivatore/dashboard': typeof AppPreventivatoreDashboardRoute
   '/_app/richieste-interne/$richiestaId': typeof AppRichiesteInterneRichiestaIdRoute
   '/_app/richieste-interne/approva': typeof AppRichiesteInterneApprovaRoute
   '/_app/richieste-interne/archivio': typeof AppRichiesteInterneArchivioRoute
@@ -723,6 +733,7 @@ export interface FileRouteTypes {
     | '/marketing/segmenti'
     | '/opportunita/$opportunitaId'
     | '/preventivatore/$id'
+    | '/preventivatore/dashboard'
     | '/richieste-interne/$richiestaId'
     | '/richieste-interne/approva'
     | '/richieste-interne/archivio'
@@ -793,6 +804,7 @@ export interface FileRouteTypes {
     | '/marketing/segmenti'
     | '/opportunita/$opportunitaId'
     | '/preventivatore/$id'
+    | '/preventivatore/dashboard'
     | '/richieste-interne/$richiestaId'
     | '/richieste-interne/approva'
     | '/richieste-interne/archivio'
@@ -866,6 +878,7 @@ export interface FileRouteTypes {
     | '/_app/marketing/segmenti'
     | '/_app/opportunita/$opportunitaId'
     | '/_app/preventivatore/$id'
+    | '/_app/preventivatore/dashboard'
     | '/_app/richieste-interne/$richiestaId'
     | '/_app/richieste-interne/approva'
     | '/_app/richieste-interne/archivio'
@@ -1300,6 +1313,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRichiesteInterneRichiestaIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/preventivatore/dashboard': {
+      id: '/_app/preventivatore/dashboard'
+      path: '/preventivatore/dashboard'
+      fullPath: '/preventivatore/dashboard'
+      preLoaderRoute: typeof AppPreventivatoreDashboardRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/preventivatore/$id': {
       id: '/_app/preventivatore/$id'
       path: '/preventivatore/$id'
@@ -1497,6 +1517,7 @@ interface AppRouteChildren {
   AppMarketingInviiRoute: typeof AppMarketingInviiRoute
   AppMarketingSegmentiRoute: typeof AppMarketingSegmentiRoute
   AppPreventivatoreIdRoute: typeof AppPreventivatoreIdRoute
+  AppPreventivatoreDashboardRoute: typeof AppPreventivatoreDashboardRoute
   AppRichiesteInterneRichiestaIdRoute: typeof AppRichiesteInterneRichiestaIdRoute
   AppRichiesteInterneApprovaRoute: typeof AppRichiesteInterneApprovaRoute
   AppRichiesteInterneArchivioRoute: typeof AppRichiesteInterneArchivioRoute
@@ -1549,6 +1570,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppMarketingInviiRoute: AppMarketingInviiRoute,
   AppMarketingSegmentiRoute: AppMarketingSegmentiRoute,
   AppPreventivatoreIdRoute: AppPreventivatoreIdRoute,
+  AppPreventivatoreDashboardRoute: AppPreventivatoreDashboardRoute,
   AppRichiesteInterneRichiestaIdRoute: AppRichiesteInterneRichiestaIdRoute,
   AppRichiesteInterneApprovaRoute: AppRichiesteInterneApprovaRoute,
   AppRichiesteInterneArchivioRoute: AppRichiesteInterneArchivioRoute,
