@@ -527,8 +527,14 @@ function PreventivoEditorPage() {
                         {cliente.piva && (
                           <div className="text-sm leading-snug text-[#0d1f3c]/80">P.IVA {cliente.piva}</div>
                         )}
-                        {cliente.comune?.nome && (
-                          <div className="text-sm leading-snug text-[#0d1f3c]/80">{cliente.comune.nome}</div>
+                        {cliente.indirizzo && (
+                          <div className="text-sm leading-snug text-[#0d1f3c]/80">{cliente.indirizzo}</div>
+                        )}
+                        {(cliente.cap || cliente.comune?.nome || cliente.provincia) && (
+                          <div className="text-sm leading-snug text-[#0d1f3c]/80">
+                            {[cliente.cap, cliente.comune?.nome].filter(Boolean).join(" ")}
+                            {cliente.provincia ? ` (${cliente.provincia})` : ""}
+                          </div>
                         )}
                         {cantiereLine && (
                           <div className="pt-0.5 text-sm leading-snug text-[#0d1f3c]">📍 Cantiere: {cantiereLine}</div>

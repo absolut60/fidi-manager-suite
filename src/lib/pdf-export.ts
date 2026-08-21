@@ -74,7 +74,12 @@ function drawHeader(doc: jsPDF, titolo: string, prev: PreventivoConDettagli): nu
     doc.text(`P.IVA ${cli.piva}`, 14, yL);
     yL += 4;
   }
+  if (cli?.indirizzo) {
+    doc.text(cli.indirizzo.slice(0, 70), 14, yL);
+    yL += 4;
+  }
   const loc: string[] = [];
+  if (cli?.cap) loc.push(cli.cap);
   if (cli?.comune?.nome) loc.push(cli.comune.nome);
   if (cli?.provincia) loc.push(`(${cli.provincia})`);
   const locStr = loc.join(" ");
