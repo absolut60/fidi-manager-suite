@@ -120,7 +120,7 @@ export function AnteprimaPdfDialog({
     renderAll();
     return () => {
       cancelled = true;
-      if (pdfDoc) pdfDoc.destroy().catch(() => {});
+      if (pdfDoc) (pdfDoc as { destroy?: () => Promise<void> }).destroy?.().catch(() => {});
       if (canvasContainerRef.current) canvasContainerRef.current.innerHTML = "";
     };
   }, [open, pdfBlob]);
