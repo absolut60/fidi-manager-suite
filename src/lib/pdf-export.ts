@@ -6,7 +6,7 @@ import {
   aggregaMateriali, arricchisciMateriali, arrotondaPerFornitore, buildBlocchiOutput,
   fetchArticoliPerOrdine,
 } from "./output-api";
-import { LOGO_MADE_BASE64 } from "./logo-made-base64";
+
 
 const FOOTER_LEGAL =
   "MADE DISTRIBUZIONE S.p.A.  |  Sede Legale: Corso di Porta Nuova 11, 20121 MILANO  |  " +
