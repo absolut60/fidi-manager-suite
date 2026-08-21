@@ -49,6 +49,7 @@ import { Route as AppApprovazioniRouteImport } from './routes/_app/approvazioni'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as AppRichiesteInterneIndexRouteImport } from './routes/_app/richieste-interne.index'
+import { Route as AppPreventivatoreIndexRouteImport } from './routes/_app/preventivatore.index'
 import { Route as AppOpportunitaIndexRouteImport } from './routes/_app/opportunita.index'
 import { Route as AppLeadIndexRouteImport } from './routes/_app/lead.index'
 import { Route as AppEventiIndexRouteImport } from './routes/_app/eventi.index'
@@ -60,6 +61,7 @@ import { Route as AppRichiesteInterneGestioneRouteImport } from './routes/_app/r
 import { Route as AppRichiesteInterneArchivioRouteImport } from './routes/_app/richieste-interne.archivio'
 import { Route as AppRichiesteInterneApprovaRouteImport } from './routes/_app/richieste-interne.approva'
 import { Route as AppRichiesteInterneRichiestaIdRouteImport } from './routes/_app/richieste-interne.$richiestaId'
+import { Route as AppPreventivatoreIdRouteImport } from './routes/_app/preventivatore.$id'
 import { Route as AppOpportunitaOpportunitaIdRouteImport } from './routes/_app/opportunita.$opportunitaId'
 import { Route as AppMarketingSegmentiRouteImport } from './routes/_app/marketing.segmenti'
 import { Route as AppMarketingInviiRouteImport } from './routes/_app/marketing.invii'
@@ -280,6 +282,11 @@ const AppRichiesteInterneIndexRoute =
     path: '/richieste-interne/',
     getParentRoute: () => AppRoute,
   } as any)
+const AppPreventivatoreIndexRoute = AppPreventivatoreIndexRouteImport.update({
+  id: '/preventivatore/',
+  path: '/preventivatore/',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppOpportunitaIndexRoute = AppOpportunitaIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -340,6 +347,11 @@ const AppRichiesteInterneRichiestaIdRoute =
     path: '/richieste-interne/$richiestaId',
     getParentRoute: () => AppRoute,
   } as any)
+const AppPreventivatoreIdRoute = AppPreventivatoreIdRouteImport.update({
+  id: '/preventivatore/$id',
+  path: '/preventivatore/$id',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppOpportunitaOpportunitaIdRoute =
   AppOpportunitaOpportunitaIdRouteImport.update({
     id: '/$opportunitaId',
@@ -453,6 +465,7 @@ export interface FileRoutesByFullPath {
   '/marketing/invii': typeof AppMarketingInviiRoute
   '/marketing/segmenti': typeof AppMarketingSegmentiRoute
   '/opportunita/$opportunitaId': typeof AppOpportunitaOpportunitaIdRoute
+  '/preventivatore/$id': typeof AppPreventivatoreIdRoute
   '/richieste-interne/$richiestaId': typeof AppRichiesteInterneRichiestaIdRoute
   '/richieste-interne/approva': typeof AppRichiesteInterneApprovaRoute
   '/richieste-interne/archivio': typeof AppRichiesteInterneArchivioRoute
@@ -464,6 +477,7 @@ export interface FileRoutesByFullPath {
   '/eventi/': typeof AppEventiIndexRoute
   '/lead/': typeof AppLeadIndexRoute
   '/opportunita/': typeof AppOpportunitaIndexRoute
+  '/preventivatore/': typeof AppPreventivatoreIndexRoute
   '/richieste-interne/': typeof AppRichiesteInterneIndexRoute
   '/api/public/email-img/$': typeof ApiPublicEmailImgSplatRoute
   '/api/public/hooks/check-reminder-ritardi': typeof ApiPublicHooksCheckReminderRitardiRoute
@@ -515,6 +529,7 @@ export interface FileRoutesByTo {
   '/marketing/invii': typeof AppMarketingInviiRoute
   '/marketing/segmenti': typeof AppMarketingSegmentiRoute
   '/opportunita/$opportunitaId': typeof AppOpportunitaOpportunitaIdRoute
+  '/preventivatore/$id': typeof AppPreventivatoreIdRoute
   '/richieste-interne/$richiestaId': typeof AppRichiesteInterneRichiestaIdRoute
   '/richieste-interne/approva': typeof AppRichiesteInterneApprovaRoute
   '/richieste-interne/archivio': typeof AppRichiesteInterneArchivioRoute
@@ -526,6 +541,7 @@ export interface FileRoutesByTo {
   '/eventi': typeof AppEventiIndexRoute
   '/lead': typeof AppLeadIndexRoute
   '/opportunita': typeof AppOpportunitaIndexRoute
+  '/preventivatore': typeof AppPreventivatoreIndexRoute
   '/richieste-interne': typeof AppRichiesteInterneIndexRoute
   '/api/public/email-img/$': typeof ApiPublicEmailImgSplatRoute
   '/api/public/hooks/check-reminder-ritardi': typeof ApiPublicHooksCheckReminderRitardiRoute
@@ -581,6 +597,7 @@ export interface FileRoutesById {
   '/_app/marketing/invii': typeof AppMarketingInviiRoute
   '/_app/marketing/segmenti': typeof AppMarketingSegmentiRoute
   '/_app/opportunita/$opportunitaId': typeof AppOpportunitaOpportunitaIdRoute
+  '/_app/preventivatore/$id': typeof AppPreventivatoreIdRoute
   '/_app/richieste-interne/$richiestaId': typeof AppRichiesteInterneRichiestaIdRoute
   '/_app/richieste-interne/approva': typeof AppRichiesteInterneApprovaRoute
   '/_app/richieste-interne/archivio': typeof AppRichiesteInterneArchivioRoute
@@ -592,6 +609,7 @@ export interface FileRoutesById {
   '/_app/eventi/': typeof AppEventiIndexRoute
   '/_app/lead/': typeof AppLeadIndexRoute
   '/_app/opportunita/': typeof AppOpportunitaIndexRoute
+  '/_app/preventivatore/': typeof AppPreventivatoreIndexRoute
   '/_app/richieste-interne/': typeof AppRichiesteInterneIndexRoute
   '/api/public/email-img/$': typeof ApiPublicEmailImgSplatRoute
   '/api/public/hooks/check-reminder-ritardi': typeof ApiPublicHooksCheckReminderRitardiRoute
@@ -647,6 +665,7 @@ export interface FileRouteTypes {
     | '/marketing/invii'
     | '/marketing/segmenti'
     | '/opportunita/$opportunitaId'
+    | '/preventivatore/$id'
     | '/richieste-interne/$richiestaId'
     | '/richieste-interne/approva'
     | '/richieste-interne/archivio'
@@ -658,6 +677,7 @@ export interface FileRouteTypes {
     | '/eventi/'
     | '/lead/'
     | '/opportunita/'
+    | '/preventivatore/'
     | '/richieste-interne/'
     | '/api/public/email-img/$'
     | '/api/public/hooks/check-reminder-ritardi'
@@ -709,6 +729,7 @@ export interface FileRouteTypes {
     | '/marketing/invii'
     | '/marketing/segmenti'
     | '/opportunita/$opportunitaId'
+    | '/preventivatore/$id'
     | '/richieste-interne/$richiestaId'
     | '/richieste-interne/approva'
     | '/richieste-interne/archivio'
@@ -720,6 +741,7 @@ export interface FileRouteTypes {
     | '/eventi'
     | '/lead'
     | '/opportunita'
+    | '/preventivatore'
     | '/richieste-interne'
     | '/api/public/email-img/$'
     | '/api/public/hooks/check-reminder-ritardi'
@@ -774,6 +796,7 @@ export interface FileRouteTypes {
     | '/_app/marketing/invii'
     | '/_app/marketing/segmenti'
     | '/_app/opportunita/$opportunitaId'
+    | '/_app/preventivatore/$id'
     | '/_app/richieste-interne/$richiestaId'
     | '/_app/richieste-interne/approva'
     | '/_app/richieste-interne/archivio'
@@ -785,6 +808,7 @@ export interface FileRouteTypes {
     | '/_app/eventi/'
     | '/_app/lead/'
     | '/_app/opportunita/'
+    | '/_app/preventivatore/'
     | '/_app/richieste-interne/'
     | '/api/public/email-img/$'
     | '/api/public/hooks/check-reminder-ritardi'
@@ -1092,6 +1116,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRichiesteInterneIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/preventivatore/': {
+      id: '/_app/preventivatore/'
+      path: '/preventivatore'
+      fullPath: '/preventivatore/'
+      preLoaderRoute: typeof AppPreventivatoreIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/opportunita/': {
       id: '/_app/opportunita/'
       path: '/'
@@ -1167,6 +1198,13 @@ declare module '@tanstack/react-router' {
       path: '/richieste-interne/$richiestaId'
       fullPath: '/richieste-interne/$richiestaId'
       preLoaderRoute: typeof AppRichiesteInterneRichiestaIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/preventivatore/$id': {
+      id: '/_app/preventivatore/$id'
+      path: '/preventivatore/$id'
+      fullPath: '/preventivatore/$id'
+      preLoaderRoute: typeof AppPreventivatoreIdRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/opportunita/$opportunitaId': {
@@ -1341,6 +1379,7 @@ interface AppRouteChildren {
   AppMarketingCampagneRoute: typeof AppMarketingCampagneRoute
   AppMarketingInviiRoute: typeof AppMarketingInviiRoute
   AppMarketingSegmentiRoute: typeof AppMarketingSegmentiRoute
+  AppPreventivatoreIdRoute: typeof AppPreventivatoreIdRoute
   AppRichiesteInterneRichiestaIdRoute: typeof AppRichiesteInterneRichiestaIdRoute
   AppRichiesteInterneApprovaRoute: typeof AppRichiesteInterneApprovaRoute
   AppRichiesteInterneArchivioRoute: typeof AppRichiesteInterneArchivioRoute
@@ -1348,6 +1387,7 @@ interface AppRouteChildren {
   AppRichiesteInterneMieRoute: typeof AppRichiesteInterneMieRoute
   AppRichiesteInterneTutteRoute: typeof AppRichiesteInterneTutteRoute
   AppEventiIndexRoute: typeof AppEventiIndexRoute
+  AppPreventivatoreIndexRoute: typeof AppPreventivatoreIndexRoute
   AppRichiesteInterneIndexRoute: typeof AppRichiesteInterneIndexRoute
 }
 
@@ -1385,6 +1425,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppMarketingCampagneRoute: AppMarketingCampagneRoute,
   AppMarketingInviiRoute: AppMarketingInviiRoute,
   AppMarketingSegmentiRoute: AppMarketingSegmentiRoute,
+  AppPreventivatoreIdRoute: AppPreventivatoreIdRoute,
   AppRichiesteInterneRichiestaIdRoute: AppRichiesteInterneRichiestaIdRoute,
   AppRichiesteInterneApprovaRoute: AppRichiesteInterneApprovaRoute,
   AppRichiesteInterneArchivioRoute: AppRichiesteInterneArchivioRoute,
@@ -1392,6 +1433,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppRichiesteInterneMieRoute: AppRichiesteInterneMieRoute,
   AppRichiesteInterneTutteRoute: AppRichiesteInterneTutteRoute,
   AppEventiIndexRoute: AppEventiIndexRoute,
+  AppPreventivatoreIndexRoute: AppPreventivatoreIndexRoute,
   AppRichiesteInterneIndexRoute: AppRichiesteInterneIndexRoute,
 }
 
