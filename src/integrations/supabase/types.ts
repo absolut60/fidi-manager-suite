@@ -6344,7 +6344,6 @@ export type Database = {
           scartate: number
         }[]
       }
-      set_internal_push_secret: { Args: { _valore: string }; Returns: number }
       storage_path_cliente_id: { Args: { _name: string }; Returns: string }
       store_id_effettivo: { Args: { _store_id: string }; Returns: string }
       trasforma_preventivo_in_ordine: {
