@@ -1,4 +1,4 @@
-// Job Inngest: invio email notifiche Richieste interne.
+// Job Inngest: invio email notifiche Richieste Interne.
 // Trigger: evento "richieste/notifica" inviato da notifyRichiestaEvento.
 // Fonte unica di logica di risoluzione destinatari, rendering e invio:
 // non duplicare nella server function (che ora è un semplice dispatcher).
@@ -10,7 +10,7 @@
 import { inngest } from "./client";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendEmailViaEdge } from "./send-email.server";
-import { buildRichiestaEmail } from "@/lib/richieste-email-render";
+import { buildRichiestaEmail, EVENT_CFG } from "@/lib/richieste-email-render";
 import { SEDE_FALLBACK, type DatiSede } from "@/lib/template-email-render";
 
 // Timeout helper locale (stesso pattern di functions.server.ts):
@@ -104,6 +104,8 @@ export const inviaEmailRichiesta = inngest.createFunction(
 
     // 3) Risoluzione destinatari
     const destinatari = await step.run("resolve-destinatari", async () => {
+      const userIds = new Set<string>();
+
       async function emailsFromRole(role: string): Promise<string[]> {
         const { data: rows, error: eR } = await withTimeout(
           supabaseAdmin.from("user_roles").select("user_id").eq("role", role as never),
@@ -131,6 +133,9 @@ export const inviaEmailRichiesta = inngest.createFunction(
           logger.error(`[emailsFromRole:${role}] errore profili: ${eP.message}`);
           return [];
         }
+        for (const p of profs ?? []) {
+          if (p.id) userIds.add(p.id);
+        }
         return (profs ?? [])
           .map((p) => (typeof p.email === "string" ? p.email : null))
           .filter((e): e is string => !!e && e.includes("@"));
@@ -151,9 +156,27 @@ export const inviaEmailRichiesta = inngest.createFunction(
         return typeof p.email === "string" ? p.email : null;
       }
 
+      async function requesterUserId(): Promise<string | null> {
+        if (!req.requester_id) return null;
+        const { data: p } = await withTimeout(
+          supabaseAdmin
+            .from("profili")
+            .select("id, attivo")
+            .eq("id", req.requester_id)
+            .maybeSingle(),
+          T_MS,
+          "requester user id",
+        );
+        if (!p || p.attivo !== true) return null;
+        return typeof p.id === "string" ? p.id : null;
+      }
+
       const to = new Set<string>();
       const push = (arr: (string | null | undefined)[]) => {
         for (const x of arr) if (x && x.includes("@")) to.add(x.toLowerCase());
+      };
+      const pushUserIds = (arr: (string | null | undefined)[]) => {
+        for (const x of arr) if (x) userIds.add(x);
       };
 
       switch (data.event) {
@@ -165,21 +188,25 @@ export const inviaEmailRichiesta = inngest.createFunction(
         case "dir_approved":
         case "dir_rejected":
           push([await requesterEmail()]);
+          pushUserIds([await requesterUserId()]);
           break;
         case "resp_forwarded":
           push(await emailsFromRole("approvatore_richieste_liv2"));
           push([await requesterEmail()]);
+          pushUserIds([await requesterUserId()]);
           break;
         case "sollecito":
         case "info_request":
         case "messaggio_interno": {
           const dest = data.extra?.dest ?? "tutti";
-          if (dest === "richiedente") push([await requesterEmail()]);
-          else if (dest === "resp_generale")
+          if (dest === "richiedente") {
+            push([await requesterEmail()]);
+            pushUserIds([await requesterUserId()]);
+          } else if (dest === "resp_generale") {
             push(await emailsFromRole("approvatore_richieste_liv1"));
-          else if (dest === "direzione")
+          } else if (dest === "direzione") {
             push(await emailsFromRole("approvatore_richieste_liv2"));
-          else if (dest === "amministrativo") {
+          } else if (dest === "amministrativo") {
             push(await emailsFromRole("gestore_richieste"));
             push(await emailsFromRole("esecutore_richieste"));
           } else {
@@ -188,6 +215,7 @@ export const inviaEmailRichiesta = inngest.createFunction(
             push(await emailsFromRole("approvatore_richieste_liv2"));
             push(await emailsFromRole("gestore_richieste"));
             push(await emailsFromRole("esecutore_richieste"));
+            pushUserIds([await requesterUserId()]);
           }
           break;
         }
@@ -199,8 +227,13 @@ export const inviaEmailRichiesta = inngest.createFunction(
         to.delete(data.actor.email.toLowerCase());
         mittenteEscluso = true;
       }
+      if (data.actor.id && userIds.has(data.actor.id)) {
+        userIds.delete(data.actor.id);
+      }
+
       return {
         list: Array.from(to),
+        userIds: Array.from(userIds),
         totalePrima,
         mittenteEscluso,
       };
@@ -285,6 +318,47 @@ export const inviaEmailRichiesta = inngest.createFunction(
       );
     }
 
+    // 6) Inserisce notifiche in-app/push per ogni destinatario (best-effort, non-throwing)
+    const notificheInserite = await step.run("insert-notifiche", async () => {
+      if (destinatari.userIds.length === 0) {
+        return { inserite: 0 };
+      }
+
+      try {
+        const titolo = EVENT_CFG[data.event].label;
+        const tipo = `richiesta_interna_${data.event}`;
+        const link = `/richieste-interne/${req.id}`;
+        const righe = destinatari.userIds.map((userId) => ({
+          user_id: userId,
+          titolo,
+          messaggio: req.title,
+          tipo,
+          link,
+          metadata: { richiesta_id: req.id, event: data.event },
+        }));
+
+        const { error } = await withTimeout(
+          supabaseAdmin.from("notifiche").insert(righe),
+          15_000,
+          "insert notifiche",
+        );
+
+        if (error) {
+          logger.error(`[richieste-invia-email][${data.event}] insert notifiche fallito: ${error.message}`);
+          return { inserite: 0, errore: error.message };
+        }
+
+        logger.info(
+          `[richieste-invia-email][${data.event}] inserite ${righe.length} notifiche per ${destinatari.userIds.length} utenti`,
+        );
+        return { inserite: righe.length };
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        logger.error(`[richieste-invia-email][${data.event}] insert notifiche eccezione: ${msg}`);
+        return { inserite: 0, errore: msg };
+      }
+    });
+
     return {
       ok: true,
       event: data.event,
@@ -292,6 +366,7 @@ export const inviaEmailRichiesta = inngest.createFunction(
       destinatari: destinatari.list.length,
       sent: esito.sent,
       falliti: esito.errors.length,
+      notifiche_inserite: notificheInserite.inserite,
     };
   },
 );
