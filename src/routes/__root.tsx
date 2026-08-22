@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-router";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/hooks/use-auth";
+import { PushSwRegister } from "@/components/push-sw-register";
 
 import appCss from "../styles.css?url";
 
