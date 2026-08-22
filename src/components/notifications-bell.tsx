@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Bell, Check } from "lucide-react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
+import { toast } from "sonner";
 
 type Notifica = {
   id: string;
@@ -24,8 +25,32 @@ type Notifica = {
   created_at: string;
 };
 
+function playNotificationBeep() {
+  if (typeof window === "undefined") return;
+  try {
+    const Ctx =
+      window.AudioContext ??
+      (window as unknown as { webkitAudioContext?: typeof window.AudioContext }).webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.frequency.value = 880;
+    osc.type = "sine";
+    gain.gain.value = 0.05;
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.15);
+    setTimeout(() => ctx.close(), 250);
+  } catch {
+    // Alcuni browser bloccano l'audio senza interazione utente: ignora silenziosamente.
+  }
+}
+
 export function NotificationsBell() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [notifiche, setNotifiche] = useState<Notifica[]>([]);
   const [open, setOpen] = useState(false);
 
@@ -45,11 +70,47 @@ export function NotificationsBell() {
     load();
     const refreshTimer = window.setInterval(load, 30_000);
 
+    const channel = supabase
+      .channel(`notifiche-realtime-${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "notifiche",
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const nuova = payload.new as Notifica;
+          if (!nuova?.id) return;
+
+          setNotifiche((prev) => {
+            if (prev.some((n) => n.id === nuova.id)) return prev;
+            return [nuova, ...prev];
+          });
+
+          toast(nuova.titolo, {
+            description: nuova.messaggio ?? undefined,
+            duration: 5000,
+            action: nuova.link
+              ? {
+                  label: "Apri",
+                  onClick: () => navigate({ to: nuova.link! }),
+                }
+              : undefined,
+          });
+
+          playNotificationBeep();
+        }
+      )
+      .subscribe();
+
     return () => {
       active = false;
       window.clearInterval(refreshTimer);
+      supabase.removeChannel(channel);
     };
-  }, [user?.id]);
+  }, [user?.id, navigate]);
 
   const nonLette = notifiche.filter((n) => !n.letta).length;
 
