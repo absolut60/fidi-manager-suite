@@ -91,6 +91,33 @@ export function DashboardFidi() {
     },
   });
 
+  const { data: quasiSaturi } = useQuery({
+    queryKey: ["fidi-quasi-saturi-80"],
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      // Replica la definizione usata dai filtri clienti:
+      // consumato = (fido_gestionale - fido_residuo) / fido_gestionale >= 0.80, con fido_gestionale > 0
+      let count = 0;
+      const PAGE = 1000;
+      for (let from = 0; ; from += PAGE) {
+        const { data, error } = await supabase
+          .from("clienti")
+          .select("fido_gestionale, fido_residuo")
+          .gt("fido_gestionale", 0)
+          .range(from, from + PAGE - 1);
+        if (error) throw error;
+        const rows = data ?? [];
+        for (const r of rows as Array<{ fido_gestionale: number | null; fido_residuo: number | null }>) {
+          const fg = Number(r.fido_gestionale ?? 0);
+          const fr = Number(r.fido_residuo ?? 0);
+          if (fg > 0 && (fg - fr) / fg >= 0.8) count++;
+        }
+        if (rows.length < PAGE) break;
+      }
+      return count;
+    },
+  });
+
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -146,7 +173,7 @@ export function DashboardFidi() {
         />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         <Riquadro
           compatto
           titolo="Esposizione oltre il fido"
@@ -183,6 +210,16 @@ export function DashboardFidi() {
           tono="warning"
           notaLink={{ to: "/clienti", search: { preset: "con_scaduto" } }}
           nota="Vedi i clienti con scaduto"
+        />
+        <Riquadro
+          compatto
+          titolo="Fidi ≥80% consumato"
+          valore={quasiSaturi == null ? "…" : numero(quasiSaturi)}
+          sottotitolo="Clienti che hanno consumato almeno l'80% del fido"
+          icona={AlertTriangle}
+          tono="warning"
+          notaLink={{ to: "/clienti", search: { preset: "quasi_saturo" } }}
+          nota="Azioni sui clienti quasi saturi"
         />
       </div>
     </div>
