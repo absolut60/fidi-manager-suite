@@ -49,7 +49,7 @@ function safeEqual(a: string, b: string): boolean {
 type AuthEsito =
   | { ok: true; server: true }
   | { ok: true; server: false; userId: string }
-  | { ok: false; status: number; error: string };
+  | { ok: false; status: number; error: string; authDebug?: string };
 
 async function authorizeRequest(request: Request): Promise<AuthEsito> {
   // Ramo SERVER.
@@ -68,25 +68,31 @@ async function authorizeRequest(request: Request): Promise<AuthEsito> {
   if (!token) return { ok: false, status: 401, error: "Missing token" };
 
   const url = process.env["SUPABASE_URL"] ?? "";
-  const key = process.env["SUPABASE_PUBLISHABLE_KEY"] ?? "";
+  const publishable = process.env["SUPABASE_PUBLISHABLE_KEY"] ?? "";
+  const anon = process.env["SUPABASE_ANON_KEY"] ?? "";
+  const key = publishable || anon;
+  const keyVar = publishable ? "SUPABASE_PUBLISHABLE_KEY" : anon ? "SUPABASE_ANON_KEY" : "(nessuna)";
+  console.log("[invia-push] auth utente, chiave usata:", keyVar);
   if (!url || !key) return { ok: false, status: 500, error: "Server misconfigured" };
 
+  // Funziona con entrambi i formati di chiave (legacy "eyJ..." e nuovo "sb_...").
   const supabase = createClient(url, key, {
     global: {
-      fetch: (input, init) => {
-        const h = new Headers(init?.headers);
-        if (key.startsWith("sb_") && h.get("Authorization") === `Bearer ${key}`) {
-          h.delete("Authorization");
-        }
-        h.set("apikey", key);
-        return fetch(input as RequestInfo, { ...init, headers: h });
-      },
+      headers: { apikey: key, Authorization: `Bearer ${token}` },
     },
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
   const { data, error } = await supabase.auth.getUser(token);
-  if (error || !data?.user) return { ok: false, status: 401, error: "Invalid token" };
+  console.log("[invia-push] getUser esito:", error ? `ko: ${error.message}` : "ok");
+  if (error || !data?.user) {
+    return {
+      ok: false,
+      status: 401,
+      error: "Invalid token",
+      authDebug: `${keyVar}: ${error?.message ?? "nessun utente restituito"}`,
+    };
+  }
   if (data.user.role !== "authenticated" || !data.user.id) {
     return { ok: false, status: 401, error: "Anonymous tokens not allowed" };
   }
