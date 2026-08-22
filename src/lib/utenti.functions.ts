@@ -144,6 +144,11 @@ export const aggiornaPassword = createServerFn({ method: "POST" })
       password: data.password,
     });
     if (error) throw new Error(error.message);
+    const { error: eProf } = await supabaseAdmin
+      .from("profili")
+      .update({ deve_cambiare_password: true })
+      .eq("id", data.userId);
+    if (eProf) throw new Error(eProf.message);
     return { ok: true };
   });
 
