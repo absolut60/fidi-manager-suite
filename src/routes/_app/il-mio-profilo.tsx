@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { isThisDeviceSubscribed } from "@/lib/push";
+import { isThisDeviceSubscribed, removeDeviceSubscription } from "@/lib/push";
 
 export const Route = createFileRoute("/_app/il-mio-profilo")({
   component: IlMioProfiloPage,
@@ -20,6 +20,7 @@ export const Route = createFileRoute("/_app/il-mio-profilo")({
 
 type Dispositivo = {
   id: string;
+  endpoint: string;
   platform: string | null;
   user_agent: string | null;
   device_label?: string | null;
@@ -54,7 +55,7 @@ function IlMioProfiloPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("push_subscriptions")
-        .select("id, platform, user_agent, device_label, created_at, last_used_at")
+        .select("id, endpoint, platform, user_agent, device_label, created_at, last_used_at")
         .eq("user_id", userId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -63,9 +64,9 @@ function IlMioProfiloPage() {
   });
 
   const rimuovi = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("push_subscriptions").delete().eq("id", id);
-      if (error) throw error;
+    mutationFn: async (d: { id: string; endpoint: string }) => {
+      const r = await removeDeviceSubscription(d.id, d.endpoint);
+      if (!r.ok) throw new Error(r.reason ?? "Errore");
     },
     onSuccess: () => {
       toast.success("Dispositivo rimosso");
@@ -204,7 +205,7 @@ function IlMioProfiloPage() {
                     size="icon"
                     aria-label="Rimuovi dispositivo"
                     disabled={rimuovi.isPending}
-                    onClick={() => rimuovi.mutate(d.id)}
+                    onClick={() => rimuovi.mutate({ id: d.id, endpoint: d.endpoint })}
                   >
                     <Trash2 className="size-4" />
                   </Button>
