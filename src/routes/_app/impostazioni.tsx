@@ -31,7 +31,6 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BellRing } from "lucide-react";
-import { AttivaNotifiche } from "@/components/attiva-notifiche";
 
 
 export const Route = createFileRoute("/_app/impostazioni")({
