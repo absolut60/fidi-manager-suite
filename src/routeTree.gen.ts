@@ -45,6 +45,7 @@ import { Route as AppCruscottoIncassiRouteImport } from './routes/_app/cruscotto
 import { Route as AppContattiRouteImport } from './routes/_app/contatti'
 import { Route as AppClientiRouteImport } from './routes/_app/clienti'
 import { Route as AppCantieriRouteImport } from './routes/_app/cantieri'
+import { Route as AppCambiaPasswordRouteImport } from './routes/_app/cambia-password'
 import { Route as AppCalendarioCommercialeRouteImport } from './routes/_app/calendario-commerciale'
 import { Route as AppAuditRouteImport } from './routes/_app/audit'
 import { Route as AppAttivaNotificheRouteImport } from './routes/_app/attiva-notifiche'
@@ -267,6 +268,11 @@ const AppClientiRoute = AppClientiRouteImport.update({
 const AppCantieriRoute = AppCantieriRouteImport.update({
   id: '/cantieri',
   path: '/cantieri',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCambiaPasswordRoute = AppCambiaPasswordRouteImport.update({
+  id: '/cambia-password',
+  path: '/cambia-password',
   getParentRoute: () => AppRoute,
 } as any)
 const AppCalendarioCommercialeRoute =
@@ -495,6 +501,7 @@ export interface FileRoutesByFullPath {
   '/attiva-notifiche': typeof AppAttivaNotificheRoute
   '/audit': typeof AppAuditRoute
   '/calendario-commerciale': typeof AppCalendarioCommercialeRoute
+  '/cambia-password': typeof AppCambiaPasswordRoute
   '/cantieri': typeof AppCantieriRoute
   '/clienti': typeof AppClientiRouteWithChildren
   '/contatti': typeof AppContattiRoute
@@ -572,6 +579,7 @@ export interface FileRoutesByTo {
   '/attiva-notifiche': typeof AppAttivaNotificheRoute
   '/audit': typeof AppAuditRoute
   '/calendario-commerciale': typeof AppCalendarioCommercialeRoute
+  '/cambia-password': typeof AppCambiaPasswordRoute
   '/cantieri': typeof AppCantieriRoute
   '/clienti': typeof AppClientiRouteWithChildren
   '/contatti': typeof AppContattiRoute
@@ -649,6 +657,7 @@ export interface FileRoutesById {
   '/_app/attiva-notifiche': typeof AppAttivaNotificheRoute
   '/_app/audit': typeof AppAuditRoute
   '/_app/calendario-commerciale': typeof AppCalendarioCommercialeRoute
+  '/_app/cambia-password': typeof AppCambiaPasswordRoute
   '/_app/cantieri': typeof AppCantieriRoute
   '/_app/clienti': typeof AppClientiRouteWithChildren
   '/_app/contatti': typeof AppContattiRoute
@@ -728,6 +737,7 @@ export interface FileRouteTypes {
     | '/attiva-notifiche'
     | '/audit'
     | '/calendario-commerciale'
+    | '/cambia-password'
     | '/cantieri'
     | '/clienti'
     | '/contatti'
@@ -805,6 +815,7 @@ export interface FileRouteTypes {
     | '/attiva-notifiche'
     | '/audit'
     | '/calendario-commerciale'
+    | '/cambia-password'
     | '/cantieri'
     | '/clienti'
     | '/contatti'
@@ -881,6 +892,7 @@ export interface FileRouteTypes {
     | '/_app/attiva-notifiche'
     | '/_app/audit'
     | '/_app/calendario-commerciale'
+    | '/_app/cambia-password'
     | '/_app/cantieri'
     | '/_app/clienti'
     | '/_app/contatti'
@@ -1220,6 +1232,13 @@ declare module '@tanstack/react-router' {
       path: '/cantieri'
       fullPath: '/cantieri'
       preLoaderRoute: typeof AppCantieriRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/cambia-password': {
+      id: '/_app/cambia-password'
+      path: '/cambia-password'
+      fullPath: '/cambia-password'
+      preLoaderRoute: typeof AppCambiaPasswordRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/calendario-commerciale': {
@@ -1562,6 +1581,7 @@ interface AppRouteChildren {
   AppAttivaNotificheRoute: typeof AppAttivaNotificheRoute
   AppAuditRoute: typeof AppAuditRoute
   AppCalendarioCommercialeRoute: typeof AppCalendarioCommercialeRoute
+  AppCambiaPasswordRoute: typeof AppCambiaPasswordRoute
   AppCantieriRoute: typeof AppCantieriRoute
   AppClientiRoute: typeof AppClientiRouteWithChildren
   AppContattiRoute: typeof AppContattiRoute
@@ -1618,6 +1638,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAttivaNotificheRoute: AppAttivaNotificheRoute,
   AppAuditRoute: AppAuditRoute,
   AppCalendarioCommercialeRoute: AppCalendarioCommercialeRoute,
+  AppCambiaPasswordRoute: AppCambiaPasswordRoute,
   AppCantieriRoute: AppCantieriRoute,
   AppClientiRoute: AppClientiRouteWithChildren,
   AppContattiRoute: AppContattiRoute,
