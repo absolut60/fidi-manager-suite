@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
-import { HelpCircle, KeyRound, Monitor, Smartphone, Trash2 } from "lucide-react";
+import { BellRing, HelpCircle, KeyRound, Monitor, Send, Smartphone, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { AttivaNotifiche } from "@/components/attiva-notifiche";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { isThisDeviceSubscribed } from "@/lib/push";
 
 export const Route = createFileRoute("/_app/il-mio-profilo")({
   component: IlMioProfiloPage,
@@ -78,6 +79,58 @@ function IlMioProfiloPage() {
   const [busy, setBusy] = useState(false);
   const [errore, setErrore] = useState<string | null>(null);
 
+  const [testAvailable, setTestAvailable] = useState(false);
+  const [testBusy, setTestBusy] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let mounted = true;
+    isThisDeviceSubscribed().then((on) => {
+      if (mounted) setTestAvailable(on);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  async function inviaNotificaDiProva() {
+    if (!user?.id) return;
+    setTestBusy(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        toast.error("Sessione non valida, rientra");
+        return;
+      }
+      const res = await fetch("/api/public/invia-push", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          title: "Notifica di prova",
+          body: "Se vedi questo messaggio, le notifiche funzionano.",
+          url: "/il-mio-profilo",
+          tag: "test-notifica",
+        }),
+      });
+      const out = await res.json().catch(() => null);
+      if (res.ok && out?.ok) {
+        if (out.sent > 0) {
+          toast.success(`Notifica inviata a ${out.sent} dispositivo/i. Controlla tra qualche secondo.`);
+        } else {
+          toast.info("Nessun dispositivo attivo trovato. Riattiva le notifiche.");
+        }
+      } else {
+        toast.error(`Errore invio: ${out?.error ?? res.status}`);
+      }
+    } finally {
+      setTestBusy(false);
+    }
+  }
+
   async function cambiaPassword(e: React.FormEvent) {
     e.preventDefault();
     if (pwd.length < 8) {
@@ -111,6 +164,18 @@ function IlMioProfiloPage() {
       </div>
 
       <AttivaNotifiche />
+
+      {testAvailable && (
+        <Button
+          variant="outline"
+          disabled={testBusy}
+          onClick={inviaNotificaDiProva}
+          className="w-full sm:w-auto"
+        >
+          <Send className="size-4" />
+          Invia notifica di prova
+        </Button>
+      )}
 
       <Card>
         <CardHeader>
