@@ -49,9 +49,10 @@ export function BannerAttivaNotifiche() {
 
   if (!user) return null;
   if (!show) return null;
-  if (pathname === "/attiva-notifiche") return null;
+  if (pathname === "/attiva-notifiche" || pathname === "/il-mio-profilo") return null;
 
   return (
+
     <div className="flex flex-wrap items-center gap-3 bg-primary px-4 py-2.5 text-primary-foreground sm:px-6">
       <Bell className="size-4 shrink-0" />
       <p className="flex-1 text-sm">
