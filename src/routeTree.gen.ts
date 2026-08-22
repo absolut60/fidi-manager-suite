@@ -60,6 +60,7 @@ import { Route as AppLeadIndexRouteImport } from './routes/_app/lead.index'
 import { Route as AppKitIndexRouteImport } from './routes/_app/kit.index'
 import { Route as AppEventiIndexRouteImport } from './routes/_app/eventi.index'
 import { Route as AppArticoliIndexRouteImport } from './routes/_app/articoli.index'
+import { Route as ApiPublicInviaPushRouteImport } from './routes/api/public/invia-push'
 import { Route as ApiPublicInngestRouteImport } from './routes/api/public/inngest'
 import { Route as AppRichiesteRichiestaIdRouteImport } from './routes/_app/richieste.$richiestaId'
 import { Route as AppRichiesteInterneTutteRouteImport } from './routes/_app/richieste-interne.tutte'
@@ -347,6 +348,11 @@ const AppArticoliIndexRoute = AppArticoliIndexRouteImport.update({
   path: '/articoli/',
   getParentRoute: () => AppRoute,
 } as any)
+const ApiPublicInviaPushRoute = ApiPublicInviaPushRouteImport.update({
+  id: '/api/public/invia-push',
+  path: '/api/public/invia-push',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicInngestRoute = ApiPublicInngestRouteImport.update({
   id: '/api/public/inngest',
   path: '/api/public/inngest',
@@ -542,6 +548,7 @@ export interface FileRoutesByFullPath {
   '/richieste-interne/tutte': typeof AppRichiesteInterneTutteRoute
   '/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
   '/api/public/inngest': typeof ApiPublicInngestRoute
+  '/api/public/invia-push': typeof ApiPublicInviaPushRoute
   '/articoli/': typeof AppArticoliIndexRoute
   '/eventi/': typeof AppEventiIndexRoute
   '/kit/': typeof AppKitIndexRoute
@@ -616,6 +623,7 @@ export interface FileRoutesByTo {
   '/richieste-interne/tutte': typeof AppRichiesteInterneTutteRoute
   '/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
   '/api/public/inngest': typeof ApiPublicInngestRoute
+  '/api/public/invia-push': typeof ApiPublicInviaPushRoute
   '/articoli': typeof AppArticoliIndexRoute
   '/eventi': typeof AppEventiIndexRoute
   '/kit': typeof AppKitIndexRoute
@@ -694,6 +702,7 @@ export interface FileRoutesById {
   '/_app/richieste-interne/tutte': typeof AppRichiesteInterneTutteRoute
   '/_app/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
   '/api/public/inngest': typeof ApiPublicInngestRoute
+  '/api/public/invia-push': typeof ApiPublicInviaPushRoute
   '/_app/articoli/': typeof AppArticoliIndexRoute
   '/_app/eventi/': typeof AppEventiIndexRoute
   '/_app/kit/': typeof AppKitIndexRoute
@@ -772,6 +781,7 @@ export interface FileRouteTypes {
     | '/richieste-interne/tutte'
     | '/richieste/$richiestaId'
     | '/api/public/inngest'
+    | '/api/public/invia-push'
     | '/articoli/'
     | '/eventi/'
     | '/kit/'
@@ -846,6 +856,7 @@ export interface FileRouteTypes {
     | '/richieste-interne/tutte'
     | '/richieste/$richiestaId'
     | '/api/public/inngest'
+    | '/api/public/invia-push'
     | '/articoli'
     | '/eventi'
     | '/kit'
@@ -923,6 +934,7 @@ export interface FileRouteTypes {
     | '/_app/richieste-interne/tutte'
     | '/_app/richieste/$richiestaId'
     | '/api/public/inngest'
+    | '/api/public/invia-push'
     | '/_app/articoli/'
     | '/_app/eventi/'
     | '/_app/kit/'
@@ -950,6 +962,7 @@ export interface RootRouteChildren {
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiPublicInngestRoute: typeof ApiPublicInngestRoute
+  ApiPublicInviaPushRoute: typeof ApiPublicInviaPushRoute
   ApiPublicEmailImgSplatRoute: typeof ApiPublicEmailImgSplatRoute
   ApiPublicHooksCheckReminderRitardiRoute: typeof ApiPublicHooksCheckReminderRitardiRoute
   ApiPublicHooksCheckScadenzeRoute: typeof ApiPublicHooksCheckScadenzeRoute
@@ -1314,6 +1327,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppArticoliIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/api/public/invia-push': {
+      id: '/api/public/invia-push'
+      path: '/api/public/invia-push'
+      fullPath: '/api/public/invia-push'
+      preLoaderRoute: typeof ApiPublicInviaPushRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/inngest': {
       id: '/api/public/inngest'
       path: '/api/public/inngest'
@@ -1665,6 +1685,7 @@ const rootRouteChildren: RootRouteChildren = {
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiPublicInngestRoute: ApiPublicInngestRoute,
+  ApiPublicInviaPushRoute: ApiPublicInviaPushRoute,
   ApiPublicEmailImgSplatRoute: ApiPublicEmailImgSplatRoute,
   ApiPublicHooksCheckReminderRitardiRoute:
     ApiPublicHooksCheckReminderRitardiRoute,
