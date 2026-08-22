@@ -5,6 +5,7 @@ import { Bell, BellRing, Share, CheckCircle2, Smartphone } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { InstallaApp } from "@/components/installa-app";
 import {
   isPushSupported,
   isStandalone,
