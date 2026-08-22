@@ -49,7 +49,7 @@ function safeEqual(a: string, b: string): boolean {
 type AuthEsito =
   | { ok: true; server: true }
   | { ok: true; server: false; userId: string }
-  | { ok: false; status: number; error: string };
+  | { ok: false; status: number; error: string; authDebug?: string };
 
 async function authorizeRequest(request: Request): Promise<AuthEsito> {
   // Ramo SERVER.
@@ -68,25 +68,31 @@ async function authorizeRequest(request: Request): Promise<AuthEsito> {
   if (!token) return { ok: false, status: 401, error: "Missing token" };
 
   const url = process.env["SUPABASE_URL"] ?? "";
-  const key = process.env["SUPABASE_PUBLISHABLE_KEY"] ?? "";
+  const publishable = process.env["SUPABASE_PUBLISHABLE_KEY"] ?? "";
+  const anon = process.env["SUPABASE_ANON_KEY"] ?? "";
+  const key = publishable || anon;
+  const keyVar = publishable ? "SUPABASE_PUBLISHABLE_KEY" : anon ? "SUPABASE_ANON_KEY" : "(nessuna)";
+  console.log("[invia-push] auth utente, chiave usata:", keyVar);
   if (!url || !key) return { ok: false, status: 500, error: "Server misconfigured" };
 
+  // Funziona con entrambi i formati di chiave (legacy "eyJ..." e nuovo "sb_...").
   const supabase = createClient(url, key, {
     global: {
-      fetch: (input, init) => {
-        const h = new Headers(init?.headers);
-        if (key.startsWith("sb_") && h.get("Authorization") === `Bearer ${key}`) {
-          h.delete("Authorization");
-        }
-        h.set("apikey", key);
-        return fetch(input as RequestInfo, { ...init, headers: h });
-      },
+      headers: { apikey: key, Authorization: `Bearer ${token}` },
     },
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
   const { data, error } = await supabase.auth.getUser(token);
-  if (error || !data?.user) return { ok: false, status: 401, error: "Invalid token" };
+  console.log("[invia-push] getUser esito:", error ? `ko: ${error.message}` : "ok");
+  if (error || !data?.user) {
+    return {
+      ok: false,
+      status: 401,
+      error: "Invalid token",
+      authDebug: `${keyVar}: ${error?.message ?? "nessun utente restituito"}`,
+    };
+  }
   if (data.user.role !== "authenticated" || !data.user.id) {
     return { ok: false, status: 401, error: "Anonymous tokens not allowed" };
   }
@@ -117,7 +123,11 @@ export const Route = createFileRoute("/api/public/invia-push")({
           });
 
         const auth = await authorizeRequest(request);
-        if (!auth.ok) return json(auth.status, { ok: false, error: auth.error });
+        if (!auth.ok) {
+          console.log("[invia-push] auth fallita:", auth.error, auth.authDebug ?? "");
+          return json(auth.status, { ok: false, error: auth.error, authDebug: auth.authDebug });
+        }
+        console.log("[invia-push] chiamata ricevuta, ramo auth:", auth.server ? "server" : "user");
 
         try {
           const payload = (await request.json()) as PushPayloadInput;
@@ -169,8 +179,15 @@ export const Route = createFileRoute("/api/public/invia-push")({
           let sent = 0;
           let failed = 0;
           let removed = 0;
+          const diagnostica: Array<{
+            endpoint_short: string;
+            status: number | null;
+            bodyText: string;
+            error: string | null;
+          }> = [];
 
           for (const s of subs) {
+            const endpointShort = String(s.endpoint).slice(0, 50);
             try {
               const subscription = {
                 endpoint: s.endpoint,
@@ -183,6 +200,16 @@ export const Route = createFileRoute("/api/public/invia-push")({
                 headers: req.headers,
                 body: req.body as unknown as BodyInit,
               });
+              const bodyText = await res.text().catch(() => "");
+              console.log(
+                `[invia-push] endpoint=${endpointShort} status=${res.status} body=${bodyText}`,
+              );
+              diagnostica.push({
+                endpoint_short: endpointShort,
+                status: res.status,
+                bodyText,
+                error: null,
+              });
 
               if (res.ok) {
                 sent++;
@@ -193,22 +220,35 @@ export const Route = createFileRoute("/api/public/invia-push")({
               } else if (res.status === 404 || res.status === 410) {
                 await supabaseAdmin.from("push_subscriptions").delete().eq("id", s.id);
                 removed++;
-                console.log(`[invia-push] subscription rimossa (${res.status}) ${s.endpoint}`);
+                console.log(`[invia-push] subscription rimossa (${res.status}) ${endpointShort}`);
               } else {
                 failed++;
-                const txt = await res.text().catch(() => "");
-                console.error(
-                  `[invia-push] errore endpoint=${s.endpoint} status=${res.status} body=${txt}`,
-                );
               }
             } catch (e) {
               // Un dispositivo morto non deve bloccare gli altri.
               failed++;
-              console.error(`[invia-push] eccezione endpoint=${s.endpoint}`, e);
+              const msg = e instanceof Error ? e.message : String(e);
+              const stack = e instanceof Error ? e.stack : undefined;
+              console.log(
+                `[invia-push] eccezione endpoint=${endpointShort} message=${msg} stack=${stack ?? ""}`,
+              );
+              diagnostica.push({
+                endpoint_short: endpointShort,
+                status: null,
+                bodyText: "",
+                error: msg,
+              });
             }
           }
 
-          return json(200, { ok: true, sent, failed, removed });
+          const includiDiagnostica = failed > 0 || sent === 0;
+          return json(200, {
+            ok: true,
+            sent,
+            failed,
+            removed,
+            ...(includiDiagnostica ? { diagnostica } : {}),
+          });
         } catch (err) {
           console.error("[invia-push] errore generale", err);
           return json(500, { ok: false, error: String(err) });
