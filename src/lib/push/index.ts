@@ -49,12 +49,29 @@ export function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return outputArray;
 }
 
+export async function isThisDeviceSubscribed(): Promise<boolean> {
+  if (!isPushSupported()) return false;
+  try {
+    if (Notification.permission !== "granted") return false;
+    const reg = await Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000)),
+    ]);
+    if (!reg) return false;
+    const sub = await reg.pushManager.getSubscription();
+    return !!sub;
+  } catch {
+    return false;
+  }
+}
+
 export async function getNotificationPermission(): Promise<
   NotificationPermission | "unsupported"
 > {
   if (!isBrowser() || !("Notification" in window)) return "unsupported";
   return Notification.permission;
 }
+
 
 export async function subscribeToPush(
   userId: string

@@ -47,6 +47,7 @@ import { Route as AppClientiRouteImport } from './routes/_app/clienti'
 import { Route as AppCantieriRouteImport } from './routes/_app/cantieri'
 import { Route as AppCalendarioCommercialeRouteImport } from './routes/_app/calendario-commerciale'
 import { Route as AppAuditRouteImport } from './routes/_app/audit'
+import { Route as AppAttivaNotificheRouteImport } from './routes/_app/attiva-notifiche'
 import { Route as AppAssicurazioniRouteImport } from './routes/_app/assicurazioni'
 import { Route as AppApprovazioniRouteImport } from './routes/_app/approvazioni'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
@@ -278,6 +279,11 @@ const AppAuditRoute = AppAuditRouteImport.update({
   path: '/audit',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAttivaNotificheRoute = AppAttivaNotificheRouteImport.update({
+  id: '/attiva-notifiche',
+  path: '/attiva-notifiche',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAssicurazioniRoute = AppAssicurazioniRouteImport.update({
   id: '/assicurazioni',
   path: '/assicurazioni',
@@ -480,6 +486,7 @@ export interface FileRoutesByFullPath {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/approvazioni': typeof AppApprovazioniRoute
   '/assicurazioni': typeof AppAssicurazioniRoute
+  '/attiva-notifiche': typeof AppAttivaNotificheRoute
   '/audit': typeof AppAuditRoute
   '/calendario-commerciale': typeof AppCalendarioCommercialeRoute
   '/cantieri': typeof AppCantieriRoute
@@ -555,6 +562,7 @@ export interface FileRoutesByTo {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/approvazioni': typeof AppApprovazioniRoute
   '/assicurazioni': typeof AppAssicurazioniRoute
+  '/attiva-notifiche': typeof AppAttivaNotificheRoute
   '/audit': typeof AppAuditRoute
   '/calendario-commerciale': typeof AppCalendarioCommercialeRoute
   '/cantieri': typeof AppCantieriRoute
@@ -630,6 +638,7 @@ export interface FileRoutesById {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/_app/approvazioni': typeof AppApprovazioniRoute
   '/_app/assicurazioni': typeof AppAssicurazioniRoute
+  '/_app/attiva-notifiche': typeof AppAttivaNotificheRoute
   '/_app/audit': typeof AppAuditRoute
   '/_app/calendario-commerciale': typeof AppCalendarioCommercialeRoute
   '/_app/cantieri': typeof AppCantieriRoute
@@ -707,6 +716,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/approvazioni'
     | '/assicurazioni'
+    | '/attiva-notifiche'
     | '/audit'
     | '/calendario-commerciale'
     | '/cantieri'
@@ -782,6 +792,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/approvazioni'
     | '/assicurazioni'
+    | '/attiva-notifiche'
     | '/audit'
     | '/calendario-commerciale'
     | '/cantieri'
@@ -856,6 +867,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/_app/approvazioni'
     | '/_app/assicurazioni'
+    | '/_app/attiva-notifiche'
     | '/_app/audit'
     | '/_app/calendario-commerciale'
     | '/_app/cantieri'
@@ -1211,6 +1223,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuditRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/attiva-notifiche': {
+      id: '/_app/attiva-notifiche'
+      path: '/attiva-notifiche'
+      fullPath: '/attiva-notifiche'
+      preLoaderRoute: typeof AppAttivaNotificheRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/assicurazioni': {
       id: '/_app/assicurazioni'
       path: '/assicurazioni'
@@ -1520,6 +1539,7 @@ const AppRichiesteRouteWithChildren = AppRichiesteRoute._addFileChildren(
 interface AppRouteChildren {
   AppApprovazioniRoute: typeof AppApprovazioniRoute
   AppAssicurazioniRoute: typeof AppAssicurazioniRoute
+  AppAttivaNotificheRoute: typeof AppAttivaNotificheRoute
   AppAuditRoute: typeof AppAuditRoute
   AppCalendarioCommercialeRoute: typeof AppCalendarioCommercialeRoute
   AppCantieriRoute: typeof AppCantieriRoute
@@ -1575,6 +1595,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppApprovazioniRoute: AppApprovazioniRoute,
   AppAssicurazioniRoute: AppAssicurazioniRoute,
+  AppAttivaNotificheRoute: AppAttivaNotificheRoute,
   AppAuditRoute: AppAuditRoute,
   AppCalendarioCommercialeRoute: AppCalendarioCommercialeRoute,
   AppCantieriRoute: AppCantieriRoute,
