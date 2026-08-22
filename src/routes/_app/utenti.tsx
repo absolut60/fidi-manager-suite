@@ -312,6 +312,18 @@ function EditUtenteDialog({ utente, onClose }: { utente: UserRow; onClose: () =>
     }
   }
 
+  async function handleInviaIstruzioniNotifiche() {
+    setBusyNotifiche(true);
+    try {
+      await fnInviaIstrNotifiche({ data: { userId: utente.id } });
+      toast.success("Istruzioni per le notifiche inviate a " + utente.email);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Errore invio istruzioni notifiche");
+    } finally {
+      setBusyNotifiche(false);
+    }
+  }
+
   return (
     <DialogContent className="max-h-[90vh] overflow-y-auto">
       <DialogHeader>
