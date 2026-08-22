@@ -91,13 +91,16 @@ export async function subscribeToPush(
   }
 
   let sub = await reg.pushManager.getSubscription();
-  if (!sub) {
-    sub = await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-        .buffer as ArrayBuffer,
-    });
+  if (sub) {
+    await sub.unsubscribe();
+    sub = null;
   }
+
+  sub = await reg.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      .buffer as ArrayBuffer,
+  });
 
   const json = sub.toJSON();
   const endpoint = json.endpoint;
@@ -108,6 +111,15 @@ export async function subscribeToPush(
     return { ok: false, reason: "invalid-subscription" };
   }
 
+  const platform = detectPlatform();
+
+  await supabase
+    .from("push_subscriptions")
+    .delete()
+    .eq("user_id", userId)
+    .eq("platform", platform)
+    .neq("endpoint", endpoint);
+
   const { error } = await supabase.from("push_subscriptions").upsert(
     {
       user_id: userId,
@@ -115,7 +127,7 @@ export async function subscribeToPush(
       p256dh,
       auth,
       user_agent: navigator.userAgent,
-      platform: detectPlatform(),
+      platform,
     },
     { onConflict: "endpoint" }
   );
@@ -127,21 +139,56 @@ export async function subscribeToPush(
   return { ok: true };
 }
 
-export async function unsubscribeFromPush(): Promise<void> {
-  if (!isBrowser() || !("serviceWorker" in navigator)) return;
+export async function unsubscribeFromPush(): Promise<{ ok: boolean; reason?: string }> {
+  if (!isBrowser() || !("serviceWorker" in navigator)) {
+    return { ok: false, reason: "unsupported" };
+  }
 
   try {
     const reg = await navigator.serviceWorker.ready;
     const sub = await reg.pushManager.getSubscription();
-    if (!sub) return;
 
-    await sub.unsubscribe();
-
-    const endpoint = sub.endpoint;
-    if (endpoint) {
-      await supabase.from("push_subscriptions").delete().eq("endpoint", endpoint);
+    if (sub) {
+      await sub.unsubscribe();
+      await supabase.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
+    } else {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase
+          .from("push_subscriptions")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("platform", detectPlatform());
+      }
     }
-  } catch {
-    // best-effort
+
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, reason: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+export async function removeDeviceSubscription(
+  id: string,
+  endpoint: string
+): Promise<{ ok: boolean; reason?: string }> {
+  if (!isBrowser()) {
+    return { ok: false, reason: "unsupported" };
+  }
+
+  try {
+    await supabase.from("push_subscriptions").delete().eq("id", id);
+
+    if ("serviceWorker" in navigator) {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (sub && sub.endpoint === endpoint) {
+        await sub.unsubscribe();
+      }
+    }
+
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, reason: e instanceof Error ? e.message : String(e) };
   }
 }
