@@ -72,6 +72,10 @@ export async function getNotificationPermission(): Promise<
   return Notification.permission;
 }
 
+function currentPlatform(): "ios" | "android" | "desktop" {
+  return detectPlatform() ?? "desktop";
+}
+
 
 export async function subscribeToPush(
   userId: string
