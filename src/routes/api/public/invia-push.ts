@@ -108,6 +108,12 @@ interface PushPayloadInput {
   icon?: string;
 }
 
+function normalizeVapidSubject(subject: string): string {
+  const trimmed = subject.trim();
+  if (trimmed.startsWith("mailto:") || trimmed.startsWith("https:")) return trimmed;
+  return `mailto:${trimmed}`;
+}
+
 export const Route = createFileRoute("/api/public/invia-push")({
   server: {
     handlers: {
@@ -141,14 +147,17 @@ export const Route = createFileRoute("/api/public/invia-push")({
             return json(403, { ok: false, error: "Forbidden: can only push to yourself" });
           }
 
-          const vapid = {
-            subject: process.env["VAPID_SUBJECT"],
-            publicKey: process.env["VAPID_PUBLIC_KEY"],
-            privateKey: process.env["VAPID_PRIVATE_KEY"],
-          };
-          if (!vapid.subject || !vapid.publicKey || !vapid.privateKey) {
+          const vapidSubject = process.env["VAPID_SUBJECT"] ?? "";
+          const vapidPublicKey = process.env["VAPID_PUBLIC_KEY"] ?? "";
+          const vapidPrivateKey = process.env["VAPID_PRIVATE_KEY"] ?? "";
+          if (!vapidSubject || !vapidPublicKey || !vapidPrivateKey) {
             return json(500, { ok: false, error: "Configurazione VAPID incompleta" });
           }
+          const vapid = {
+            subject: normalizeVapidSubject(vapidSubject),
+            publicKey: vapidPublicKey,
+            privateKey: vapidPrivateKey,
+          };
 
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
