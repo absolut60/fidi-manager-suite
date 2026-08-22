@@ -123,7 +123,11 @@ export const Route = createFileRoute("/api/public/invia-push")({
           });
 
         const auth = await authorizeRequest(request);
-        if (!auth.ok) return json(auth.status, { ok: false, error: auth.error });
+        if (!auth.ok) {
+          console.log("[invia-push] auth fallita:", auth.error, auth.authDebug ?? "");
+          return json(auth.status, { ok: false, error: auth.error, authDebug: auth.authDebug });
+        }
+        console.log("[invia-push] chiamata ricevuta, ramo auth:", auth.server ? "server" : "user");
 
         try {
           const payload = (await request.json()) as PushPayloadInput;
