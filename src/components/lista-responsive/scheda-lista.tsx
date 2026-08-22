@@ -12,7 +12,7 @@ export function SchedaLista({
   badge,
   campi,
   footer,
-  colonneCampi = 2,
+  colonneCampi = 1,
   className,
 }: {
   /** Se omesso la scheda è un contenitore statico (necessario quando contiene elementi interattivi). */
@@ -29,13 +29,13 @@ export function SchedaLista({
     <Comp
       {...(onClick ? { type: "button" as const, onClick } : {})}
       className={cn(
-        "w-full text-left rounded-lg border bg-card p-3",
+        "w-full text-left rounded-lg border bg-card p-4",
         onClick && "active:bg-muted/50",
         className,
       )}
     >
       <div className="flex items-start justify-between gap-2">
-        <span className="font-medium text-sm min-w-0 break-words">{titolo}</span>
+        <span className="font-medium text-base min-w-0 break-words">{titolo}</span>
         {badge}
       </div>
 
@@ -43,7 +43,7 @@ export function SchedaLista({
       {campi.length > 0 && (
         <div
           className={cn(
-            "mt-2 grid gap-x-3 gap-y-1 text-xs",
+            "mt-3 grid gap-x-4 gap-y-1.5 text-sm",
             colonneCampi === 1 ? "grid-cols-1" : "grid-cols-2",
           )}
         >
