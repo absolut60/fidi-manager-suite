@@ -113,6 +113,7 @@ export const creaUtente = createServerFn({ method: "POST" })
         store_id: data.storeId ?? null,
         codice_agente: data.ruoli.includes("agente") ? (data.codiceAgente ?? null) : null,
         attivo: data.attivo ?? true,
+        deve_cambiare_password: true,
       })
       .eq("id", userId);
     if (eProf) throw new Error(eProf.message);
