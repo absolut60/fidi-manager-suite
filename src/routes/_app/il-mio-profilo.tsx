@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
-import { HelpCircle, KeyRound, Monitor, Smartphone, Trash2 } from "lucide-react";
+import { BellRing, HelpCircle, KeyRound, Monitor, Send, Smartphone, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { AttivaNotifiche } from "@/components/attiva-notifiche";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { isThisDeviceSubscribed } from "@/lib/push";
 
 export const Route = createFileRoute("/_app/il-mio-profilo")({
   component: IlMioProfiloPage,
