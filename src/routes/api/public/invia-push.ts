@@ -179,8 +179,15 @@ export const Route = createFileRoute("/api/public/invia-push")({
           let sent = 0;
           let failed = 0;
           let removed = 0;
+          const diagnostica: Array<{
+            endpoint_short: string;
+            status: number | null;
+            bodyText: string;
+            error: string | null;
+          }> = [];
 
           for (const s of subs) {
+            const endpointShort = String(s.endpoint).slice(0, 50);
             try {
               const subscription = {
                 endpoint: s.endpoint,
@@ -193,6 +200,16 @@ export const Route = createFileRoute("/api/public/invia-push")({
                 headers: req.headers,
                 body: req.body as unknown as BodyInit,
               });
+              const bodyText = await res.text().catch(() => "");
+              console.log(
+                `[invia-push] endpoint=${endpointShort} status=${res.status} body=${bodyText}`,
+              );
+              diagnostica.push({
+                endpoint_short: endpointShort,
+                status: res.status,
+                bodyText,
+                error: null,
+              });
 
               if (res.ok) {
                 sent++;
@@ -203,22 +220,35 @@ export const Route = createFileRoute("/api/public/invia-push")({
               } else if (res.status === 404 || res.status === 410) {
                 await supabaseAdmin.from("push_subscriptions").delete().eq("id", s.id);
                 removed++;
-                console.log(`[invia-push] subscription rimossa (${res.status}) ${s.endpoint}`);
+                console.log(`[invia-push] subscription rimossa (${res.status}) ${endpointShort}`);
               } else {
                 failed++;
-                const txt = await res.text().catch(() => "");
-                console.error(
-                  `[invia-push] errore endpoint=${s.endpoint} status=${res.status} body=${txt}`,
-                );
               }
             } catch (e) {
               // Un dispositivo morto non deve bloccare gli altri.
               failed++;
-              console.error(`[invia-push] eccezione endpoint=${s.endpoint}`, e);
+              const msg = e instanceof Error ? e.message : String(e);
+              const stack = e instanceof Error ? e.stack : undefined;
+              console.log(
+                `[invia-push] eccezione endpoint=${endpointShort} message=${msg} stack=${stack ?? ""}`,
+              );
+              diagnostica.push({
+                endpoint_short: endpointShort,
+                status: null,
+                bodyText: "",
+                error: msg,
+              });
             }
           }
 
-          return json(200, { ok: true, sent, failed, removed });
+          const includiDiagnostica = failed > 0 || sent === 0;
+          return json(200, {
+            ok: true,
+            sent,
+            failed,
+            removed,
+            ...(includiDiagnostica ? { diagnostica } : {}),
+          });
         } catch (err) {
           console.error("[invia-push] errore generale", err);
           return json(500, { ok: false, error: String(err) });
