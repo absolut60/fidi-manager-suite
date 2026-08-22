@@ -1,4 +1,6 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
+import { BannerAttivaNotifiche } from "@/components/banner-attiva-notifiche";
+
 import { useEffect, useMemo, useState } from "react";
 import {
   LayoutDashboard,
@@ -442,8 +444,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       )}
 
       <main className="flex-1 min-w-0 lg:ml-64 pt-14 lg:pt-0">
+        <BannerAttivaNotifiche />
         <div className="p-4 sm:p-6 lg:p-8">{children}</div>
       </main>
+
     </div>
   );
 }
