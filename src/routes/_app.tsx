@@ -1,4 +1,4 @@
-import { createFileRoute, Navigate, Outlet } from "@tanstack/react-router";
+import { createFileRoute, Navigate, Outlet, useRouterState } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
 import { useAuth } from "@/hooks/use-auth";
 import { TooltipProvider } from "@/components/ui/tooltip";
