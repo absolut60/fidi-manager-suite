@@ -85,6 +85,7 @@ export function AttivaNotifiche() {
   }
 
   async function handleSubscribe() {
+    if (!user) return;
     setBusy(true);
     const res = await subscribeToPush(user.id);
     if (res.ok) {
