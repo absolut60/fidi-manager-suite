@@ -199,7 +199,7 @@ export const inviaCredenziali = createServerFn({ method: "POST" })
             <tr><td style="font-weight:600;width:120px;background:#f9fafb;">Email</td><td>${esc(email)}</td></tr>
             <tr><td style="font-weight:600;background:#f9fafb;">Password</td><td style="font-family:monospace;">${esc(data.password)}</td></tr>
           </table>
-          <p style="margin:0 0 24px;font-size:13px;color:#6b7280;">Ti consigliamo di cambiare la password al primo accesso.</p>
+          <p style="margin:0 0 24px;font-size:13px;color:#6b7280;">Al primo accesso ti verrà chiesto di impostare una nuova password personale. Dopo averla cambiata, potrai attivare le notifiche sul tuo dispositivo (telefono, tablet o PC).</p>
           <p style="text-align:center;margin:24px 0;">
             <a href="${appUrl}" style="display:inline-block;background:#0f1b3d;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-weight:600;">Accedi a FidiManager →</a>
           </p>
