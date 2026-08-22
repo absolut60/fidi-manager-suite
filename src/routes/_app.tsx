@@ -8,7 +8,8 @@ export const Route = createFileRoute("/_app")({
 });
 
 function ProtectedAppLayout() {
-  const { session, loading } = useAuth();
+  const { session, loading, profilo } = useAuth();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   if (loading) {
     return (
