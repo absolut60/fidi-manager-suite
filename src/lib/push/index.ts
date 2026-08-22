@@ -79,7 +79,7 @@ export async function subscribeToPush(
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(
         VAPID_PUBLIC_KEY
-      ) as Uint8Array,
+      ) as ArrayBufferView,
     });
   }
 
