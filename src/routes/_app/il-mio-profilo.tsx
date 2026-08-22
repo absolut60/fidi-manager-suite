@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { isThisDeviceSubscribed, removeDeviceSubscription } from "@/lib/push";
@@ -31,11 +32,29 @@ type Dispositivo = {
 function etichettaDispositivo(d: Dispositivo): string {
   if (d.device_label) return d.device_label;
   const ua = d.user_agent ?? "";
-  if (/iPhone|iPad|iPod/i.test(ua)) return "iPhone";
-  if (/Android/i.test(ua)) return "Android";
-  if (/Windows/i.test(ua)) return "Windows";
+  if (/iPhone/i.test(ua)) return "iPhone";
+  if (/iPad/i.test(ua)) return "iPad";
+  if (/Android/i.test(ua)) {
+    const m = ua.match(/\(([^)]+)\)/);
+    if (m) {
+      const parts = m[1].split(";").map((s) => s.trim());
+      const model = parts.find((p) => /(Pixel|Galaxy|OnePlus|Xiaomi|Redmi|Huawei|OPPO|vivo|LG|Moto|Nexus|Samsung)/i.test(p));
+      if (model) return model;
+    }
+    return "Android";
+  }
+  if (/Windows/i.test(ua)) return "PC Windows";
   if (/Mac OS X|Macintosh/i.test(ua)) return "Mac";
+  if (/Linux/i.test(ua)) return "PC Linux";
   return "Dispositivo";
+}
+
+function browserDaUA(ua: string): "Safari" | "Chrome" | "Edge" | "Firefox" | "" {
+  if (/Edg\//i.test(ua)) return "Edge";
+  if (/Chrome/i.test(ua)) return "Chrome";
+  if (/Safari/i.test(ua)) return "Safari";
+  if (/Firefox/i.test(ua)) return "Firefox";
+  return "";
 }
 
 function IconaPiattaforma({ platform }: { platform: string | null }) {
@@ -82,6 +101,7 @@ function IlMioProfiloPage() {
 
   const [testAvailable, setTestAvailable] = useState(false);
   const [testBusy, setTestBusy] = useState(false);
+  const [currentEndpoint, setCurrentEndpoint] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -89,6 +109,23 @@ function IlMioProfiloPage() {
     isThisDeviceSubscribed().then((on) => {
       if (mounted) setTestAvailable(on);
     });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
+    let mounted = true;
+    (async () => {
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        if (mounted && sub) setCurrentEndpoint(sub.endpoint);
+      } catch {
+        // ignora
+      }
+    })();
     return () => {
       mounted = false;
     };
@@ -103,6 +140,7 @@ function IlMioProfiloPage() {
         toast.error("Sessione non valida, rientra");
         return;
       }
+      const title = `Ciao ${profilo?.nome ?? ""}! 👋`.trim() || "Ciao! 👋";
       const res = await fetch("/api/public/invia-push", {
         method: "POST",
         headers: {
@@ -111,8 +149,8 @@ function IlMioProfiloPage() {
         },
         body: JSON.stringify({
           userId: user.id,
-          title: "Notifica di prova",
-          body: "Se vedi questo messaggio, le notifiche funzionano.",
+          title,
+          body: "Le notifiche funzionano correttamente su questo dispositivo.",
           url: "/il-mio-profilo",
           tag: "test-notifica",
         }),
@@ -164,25 +202,32 @@ function IlMioProfiloPage() {
         </p>
       </div>
 
-      <AttivaNotifiche />
-
-      {testAvailable && (
-        <Button
-          variant="outline"
-          disabled={testBusy}
-          onClick={inviaNotificaDiProva}
-          className="w-full sm:w-auto"
-        >
-          <Send className="size-4" />
-          Invia notifica di prova
-        </Button>
-      )}
-
       <Card>
         <CardHeader>
-          <CardTitle>Dispositivi collegati</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <BellRing className="size-5" />
+            Notifiche e dispositivi
+          </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <AttivaNotifiche />
+
+          {testAvailable && (
+            <Button
+              variant="outline"
+              disabled={testBusy}
+              onClick={inviaNotificaDiProva}
+              className="w-full sm:w-auto"
+            >
+              <Send className="size-4" />
+              Invia notifica di prova
+            </Button>
+          )}
+
+          <Separator />
+
+          <h3 className="text-sm font-medium">I tuoi dispositivi</h3>
+
           {isLoading ? (
             <div className="text-sm text-muted-foreground">Caricamento…</div>
           ) : dispositivi.length === 0 ? (
@@ -191,26 +236,39 @@ function IlMioProfiloPage() {
             </div>
           ) : (
             <ul className="divide-y">
-              {dispositivi.map((d) => (
-                <li key={d.id} className="flex items-center gap-3 py-3">
-                  <IconaPiattaforma platform={d.platform} />
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium">{etichettaDispositivo(d)}</div>
-                    <div className="text-xs text-muted-foreground">
-                      Registrato il {format(new Date(d.created_at), "d MMMM yyyy", { locale: it })}
+              {dispositivi.map((d) => {
+                const browser = browserDaUA(d.user_agent ?? "");
+                const label = etichettaDispositivo(d);
+                const isCurrent = d.endpoint === currentEndpoint;
+                return (
+                  <li key={d.id} className="flex items-center gap-3 py-3">
+                    <IconaPiattaforma platform={d.platform} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 truncate text-sm font-medium">
+                        {label}
+                        {browser && <span className="text-xs text-muted-foreground">({browser})</span>}
+                        {isCurrent && (
+                          <span className="text-xs text-green-600 dark:text-green-400">questo dispositivo</span>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {d.last_used_at
+                          ? `Ultimo utilizzo: ${format(new Date(d.last_used_at), "d MMM yyyy, HH:mm", { locale: it })}`
+                          : `Registrato il ${format(new Date(d.created_at), "d MMMM yyyy", { locale: it })}`}
+                      </div>
                     </div>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Rimuovi dispositivo"
-                    disabled={rimuovi.isPending}
-                    onClick={() => rimuovi.mutate({ id: d.id, endpoint: d.endpoint })}
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                </li>
-              ))}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Rimuovi dispositivo"
+                      disabled={rimuovi.isPending}
+                      onClick={() => rimuovi.mutate({ id: d.id, endpoint: d.endpoint })}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </CardContent>
