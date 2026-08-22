@@ -2,11 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { UsersRound, Pencil, UserPlus, Eye, EyeOff, Mail } from "lucide-react";
+import { UsersRound, Pencil, UserPlus, Eye, EyeOff, Mail, Bell } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, RUOLI_LABEL } from "@/hooks/use-auth";
-import { creaUtente, updateUtenteRuoli, aggiornaPassword, inviaCredenziali } from "@/lib/utenti.functions";
+import { creaUtente, updateUtenteRuoli, aggiornaPassword, inviaCredenziali, inviaIstruzioniNotifiche } from "@/lib/utenti.functions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -278,8 +278,10 @@ function EditUtenteDialog({ utente, onClose }: { utente: UserRow; onClose: () =>
 
   const [nuovaPassword, setNuovaPassword] = useState("");
   const [mostraPasswordEdit, setMostraPasswordEdit] = useState(false);
+  const [busyNotifiche, setBusyNotifiche] = useState(false);
   const fnAggiornaPwd = useServerFn(aggiornaPassword);
   const fnInviaCred = useServerFn(inviaCredenziali);
+  const fnInviaIstrNotifiche = useServerFn(inviaIstruzioniNotifiche);
 
   async function handleAggiornaPwd() {
     if (nuovaPassword.length < 8) {
@@ -307,6 +309,18 @@ function EditUtenteDialog({ utente, onClose }: { utente: UserRow; onClose: () =>
       setNuovaPassword("");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Errore invio credenziali");
+    }
+  }
+
+  async function handleInviaIstruzioniNotifiche() {
+    setBusyNotifiche(true);
+    try {
+      await fnInviaIstrNotifiche({ data: { userId: utente.id } });
+      toast.success("Istruzioni per le notifiche inviate a " + utente.email);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Errore invio istruzioni notifiche");
+    } finally {
+      setBusyNotifiche(false);
     }
   }
 
@@ -389,6 +403,10 @@ function EditUtenteDialog({ utente, onClose }: { utente: UserRow; onClose: () =>
             <Button type="button" variant="outline" className="w-full gap-2" onClick={handleInviaCredenziali}>
               <Mail className="size-4" />
               Invia credenziali per email
+            </Button>
+            <Button type="button" variant="outline" className="w-full gap-2" onClick={handleInviaIstruzioniNotifiche} disabled={busyNotifiche}>
+              <Bell className="size-4" />
+              {busyNotifiche ? "Invio..." : "Invia istruzioni notifiche"}
             </Button>
             <p className="text-xs text-muted-foreground">
               Inserisci la nuova password, poi clicca "Aggiorna" per cambiarla

@@ -224,6 +224,19 @@ function IlMioProfiloPage() {
             </Button>
           )}
 
+          <Button
+            variant="link"
+            size="sm"
+            className="h-auto px-0 py-1"
+            onClick={() => {
+              if (typeof window !== "undefined") {
+                window.open("/attiva-notifiche", "_blank");
+              }
+            }}
+          >
+            Aggiungi un altro dispositivo
+          </Button>
+
           <Separator />
 
           <h3 className="text-sm font-medium">I tuoi dispositivi</h3>
