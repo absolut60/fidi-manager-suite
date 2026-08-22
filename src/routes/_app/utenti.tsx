@@ -404,6 +404,10 @@ function EditUtenteDialog({ utente, onClose }: { utente: UserRow; onClose: () =>
               <Mail className="size-4" />
               Invia credenziali per email
             </Button>
+            <Button type="button" variant="outline" className="w-full gap-2" onClick={handleInviaIstruzioniNotifiche} disabled={busyNotifiche}>
+              <Bell className="size-4" />
+              {busyNotifiche ? "Invio..." : "Invia istruzioni notifiche"}
+            </Button>
             <p className="text-xs text-muted-foreground">
               Inserisci la nuova password, poi clicca "Aggiorna" per cambiarla
               oppure "Invia credenziali" per aggiornarla e inviarla via email.
