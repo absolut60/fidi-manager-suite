@@ -224,6 +224,9 @@ function ClientiPage() {
     } else if (presetSearch === "con_scaduto") {
       setScadenziarioFiltro("con_scaduto");
       setFiltroTipoSoggetto("tutti");
+    } else if (presetSearch === "quasi_saturo") {
+      setAdvApplied((d) => ({ ...d, percConsumato: 80 }));
+      setFiltroTipoSoggetto("tutti");
     }
   }, [presetSearch]);
 
