@@ -195,29 +195,52 @@ function AttivaNotifichePage() {
         </Card>
       ) : (
         <div className="space-y-4">
-          <Passo numero={1} titolo="App pronta" stato="fatto">
-            <p className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Smartphone className="size-4" />
-              Questo dispositivo è pronto per ricevere le notifiche.
-            </p>
-          </Passo>
-
-          <Passo numero={2} titolo="Attiva le notifiche">
-            {permission === "denied" ? (
-              <p className="text-sm text-destructive">
-                Hai negato il permesso. Sbloccalo dalle impostazioni del
-                dispositivo, poi torna qui.
+          {standalone ? (
+            <Passo numero={1} titolo="App installata" stato="fatto">
+              <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                <CheckCircle2 className="size-4" />
+                FidiManager è installato come app su questo dispositivo.
               </p>
+            </Passo>
+          ) : platform === "android" || platform === "desktop" ? (
+            <Passo numero={1} titolo="Installa l'app">
+              <InstallaApp />
+            </Passo>
+          ) : (
+            <Passo numero={1} titolo="App pronta" stato="fatto">
+              <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Smartphone className="size-4" />
+                Questo dispositivo è pronto per ricevere le notifiche.
+              </p>
+            </Passo>
+          )}
+
+          <Passo
+            numero={2}
+            titolo="Attiva le notifiche"
+            stato={standalone ? "attivo" : "disabilitato"}
+          >
+            {standalone ? (
+              permission === "denied" ? (
+                <p className="text-sm text-destructive">
+                  Hai negato il permesso. Sbloccalo dalle impostazioni del
+                  dispositivo, poi torna qui.
+                </p>
+              ) : (
+                <Button
+                  size="lg"
+                  className="gap-2"
+                  onClick={handleAttiva}
+                  disabled={busy}
+                >
+                  <Bell className="size-5" />
+                  {busy ? "Attivazione..." : "Attiva ora"}
+                </Button>
+              )
             ) : (
-              <Button
-                size="lg"
-                className="gap-2"
-                onClick={handleAttiva}
-                disabled={busy}
-              >
-                <Bell className="size-5" />
-                {busy ? "Attivazione..." : "Attiva ora"}
-              </Button>
+              <p className="text-sm text-muted-foreground">
+                Prima completa il passo 1.
+              </p>
             )}
           </Passo>
 
