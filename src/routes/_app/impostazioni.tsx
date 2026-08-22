@@ -112,6 +112,8 @@ function ImpostazioniPage() {
         </Dialog>
       </div>
 
+      <AttivaNotifiche />
+
       <ConfigurazioniCard />
 
       <PromemoriaScadenzaCard />

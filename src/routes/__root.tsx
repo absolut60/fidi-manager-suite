@@ -124,6 +124,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+        <PushSwRegister />
         <Outlet />
         <Toaster position="top-right" richColors />
       </AuthProvider>
