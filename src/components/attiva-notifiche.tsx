@@ -104,10 +104,17 @@ export function AttivaNotifiche() {
   }
 
   async function handleUnsubscribe() {
-    await unsubscribeFromPush();
-    const perm = await getNotificationPermission();
-    setPermission(perm);
-    setJustSubscribed(false);
+    setBusy(true);
+    const res = await unsubscribeFromPush();
+    if (res.ok) {
+      toast.success("Notifiche disattivate su questo dispositivo");
+      const perm = await getNotificationPermission();
+      setPermission(perm);
+      setJustSubscribed(false);
+    } else {
+      toast.error(`Impossibile disattivare: ${res.reason ?? "errore"}`);
+    }
+    setBusy(false);
   }
 
   if (permission === "granted") {
