@@ -205,7 +205,7 @@ function IlMioProfiloPage() {
                     size="icon"
                     aria-label="Rimuovi dispositivo"
                     disabled={rimuovi.isPending}
-                    onClick={() => rimuovi.mutate({ id: d.id, endpoint: d.endpoint })
+                    onClick={() => rimuovi.mutate({ id: d.id, endpoint: d.endpoint })}
                   >
                     <Trash2 className="size-4" />
                   </Button>
