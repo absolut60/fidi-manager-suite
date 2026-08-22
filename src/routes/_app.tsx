@@ -23,6 +23,11 @@ function ProtectedAppLayout() {
     return <Navigate to="/login" />;
   }
 
+  // Checkpoint obbligatorio: primo accesso / password reimpostata dall'admin
+  if (profilo?.deve_cambiare_password === true && pathname !== "/cambia-password") {
+    return <Navigate to="/cambia-password" replace />;
+  }
+
   return (
     <TooltipProvider>
       <AppShell>
