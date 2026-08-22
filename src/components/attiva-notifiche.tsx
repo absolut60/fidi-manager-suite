@@ -16,23 +16,30 @@ import {
   isStandalone,
   detectPlatform,
   getNotificationPermission,
+  isThisDeviceSubscribed,
 } from "@/lib/push";
 
 export function AttivaNotifiche() {
   const { user } = useAuth();
-  const [permission, setPermission] = useState<
-    NotificationPermission | "unsupported"
-  >("default");
+  const [subscribed, setSubscribed] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
-  const [justSubscribed, setJustSubscribed] = useState(false);
+  const [denied, setDenied] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     let cancelled = false;
-    getNotificationPermission().then((perm) => {
-      if (!cancelled) setPermission(perm);
-    });
+
+    (async () => {
+      const perm = await getNotificationPermission();
+      if (perm === "denied") {
+        if (!cancelled) setDenied(true);
+        if (!cancelled) setSubscribed(false);
+        return;
+      }
+      const active = await isThisDeviceSubscribed();
+      if (!cancelled) setSubscribed(active);
+    })();
 
     return () => {
       cancelled = true;
@@ -84,71 +91,7 @@ export function AttivaNotifiche() {
     );
   }
 
-  async function handleSubscribe() {
-    if (!user) return;
-    setBusy(true);
-    const res = await subscribeToPush(user.id);
-    if (res.ok) {
-      setPermission("granted");
-      setJustSubscribed(true);
-      toast.success("Notifiche attivate");
-    } else {
-      const reasonMap: Record<string, string> = {
-        denied: "Permesso negato",
-        unsupported: "Non supportato",
-        "no-sw": "Service worker non disponibile",
-      };
-      toast.error(reasonMap[res.reason] ?? res.reason);
-    }
-    setBusy(false);
-  }
-
-  async function handleUnsubscribe() {
-    setBusy(true);
-    const res = await unsubscribeFromPush();
-    if (res.ok) {
-      toast.success("Notifiche disattivate su questo dispositivo");
-      const perm = await getNotificationPermission();
-      setPermission(perm);
-      setJustSubscribed(false);
-    } else {
-      toast.error(`Impossibile disattivare: ${res.reason ?? "errore"}`);
-    }
-    setBusy(false);
-  }
-
-  if (permission === "granted") {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <BellRing className="size-5 text-green-600" /> Notifiche
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-400">
-            <Bell className="size-4" />
-            Notifiche attive su questo dispositivo
-          </div>
-          {justSubscribed && (
-            <p className="text-xs text-muted-foreground">
-              Riceverai una notifica anche quando l&apos;app è chiusa.
-            </p>
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-auto px-0 py-0 text-destructive hover:text-destructive"
-            onClick={handleUnsubscribe}
-          >
-            Disattiva
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (permission === "denied") {
+  if (denied) {
     return (
       <Card>
         <CardHeader>
@@ -164,6 +107,80 @@ export function AttivaNotifiche() {
               sbloccarle dalle impostazioni del browser/dispositivo.
             </p>
           </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (subscribed === null) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <BellRing className="size-5" /> Notifiche
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">Verifica in corso…</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  async function handleSubscribe() {
+    if (!user) return;
+    setBusy(true);
+    const res = await subscribeToPush(user.id);
+    if (res.ok) {
+      setSubscribed(true);
+      toast.success("Notifiche attivate");
+      window.dispatchEvent(new Event("push-subscription-changed"));
+    } else {
+      const reasonMap: Record<string, string> = {
+        denied: "Permesso negato",
+        unsupported: "Non supportato",
+        "no-sw": "Service worker non disponibile",
+      };
+      toast.error(reasonMap[res.reason] ?? res.reason);
+    }
+    setBusy(false);
+  }
+
+  async function handleUnsubscribe() {
+    setBusy(true);
+    const res = await unsubscribeFromPush();
+    if (res.ok) {
+      setSubscribed(false);
+      toast.success("Notifiche disattivate su questo dispositivo");
+      window.dispatchEvent(new Event("push-subscription-changed"));
+    } else {
+      toast.error(`Impossibile disattivare: ${res.reason ?? "errore"}`);
+    }
+    setBusy(false);
+  }
+
+  if (subscribed) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <BellRing className="size-5 text-green-600" /> Notifiche
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-400">
+            <Bell className="size-4" />
+            Notifiche attive su questo dispositivo
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-auto px-0 py-0 text-destructive hover:text-destructive"
+            onClick={handleUnsubscribe}
+            disabled={busy}
+          >
+            {busy ? "Disattivazione…" : "Disattiva"}
+          </Button>
         </CardContent>
       </Card>
     );
@@ -187,7 +204,7 @@ export function AttivaNotifiche() {
           className="gap-2"
         >
           <Bell className="size-4" />
-          {busy ? "Attivazione..." : "Attiva le notifiche"}
+          {busy ? "Attivazione…" : "Attiva le notifiche"}
         </Button>
       </CardContent>
     </Card>
