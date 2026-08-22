@@ -115,7 +115,7 @@ export async function subscribeToPush(
     return { ok: false, reason: "invalid-subscription" };
   }
 
-  const platform = detectPlatform();
+  const platform = currentPlatform();
 
   await supabase
     .from("push_subscriptions")
@@ -162,7 +162,7 @@ export async function unsubscribeFromPush(): Promise<{ ok: boolean; reason?: str
           .from("push_subscriptions")
           .delete()
           .eq("user_id", user.id)
-          .eq("platform", detectPlatform());
+          .eq("platform", currentPlatform());
       }
     }
 
