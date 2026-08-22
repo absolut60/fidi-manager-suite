@@ -113,6 +113,7 @@ export const creaUtente = createServerFn({ method: "POST" })
         store_id: data.storeId ?? null,
         codice_agente: data.ruoli.includes("agente") ? (data.codiceAgente ?? null) : null,
         attivo: data.attivo ?? true,
+        deve_cambiare_password: true,
       })
       .eq("id", userId);
     if (eProf) throw new Error(eProf.message);
@@ -143,6 +144,11 @@ export const aggiornaPassword = createServerFn({ method: "POST" })
       password: data.password,
     });
     if (error) throw new Error(error.message);
+    const { error: eProf } = await supabaseAdmin
+      .from("profili")
+      .update({ deve_cambiare_password: true })
+      .eq("id", data.userId);
+    if (eProf) throw new Error(eProf.message);
     return { ok: true };
   });
 

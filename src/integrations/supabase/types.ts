@@ -3586,6 +3586,7 @@ export type Database = {
           codice_agente: string | null
           cognome: string | null
           created_at: string
+          deve_cambiare_password: boolean
           email: string | null
           id: string
           nome: string | null
@@ -3597,6 +3598,7 @@ export type Database = {
           codice_agente?: string | null
           cognome?: string | null
           created_at?: string
+          deve_cambiare_password?: boolean
           email?: string | null
           id: string
           nome?: string | null
@@ -3608,6 +3610,7 @@ export type Database = {
           codice_agente?: string | null
           cognome?: string | null
           created_at?: string
+          deve_cambiare_password?: boolean
           email?: string | null
           id?: string
           nome?: string | null
