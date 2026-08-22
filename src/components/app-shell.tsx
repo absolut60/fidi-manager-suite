@@ -90,6 +90,7 @@ const NAV: NavItem[] = [
   { to: "/listini", label: "Listini", icon: LineChart, roles: ["admin"], group: "preventivi" },
   { to: "/kit", label: "Kit / Lavorazioni", icon: Wrench, roles: ["admin"], group: "preventivi" },
   // FIDI
+  { to: "/fidi-dashboard", label: "Dashboard fidi", icon: LayoutDashboard, group: "fidi" },
   { to: "/richieste", label: "Richieste fido", icon: FileText, group: "fidi" },
   { to: "/approvazioni", label: "Approvazioni", icon: CheckCheck, roles: ["admin", "approvatore"], group: "fidi" },
   { to: "/fidi-processare", label: "Fidi da processare", icon: ClipboardCheck, roles: ["admin", "approvatore"], group: "fidi" },
