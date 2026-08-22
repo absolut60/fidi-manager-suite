@@ -1,4 +1,6 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
+import { BannerAttivaNotifiche } from "@/components/banner-attiva-notifiche";
+
 import { useEffect, useMemo, useState } from "react";
 import {
   LayoutDashboard,
