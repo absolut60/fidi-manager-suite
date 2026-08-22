@@ -239,6 +239,95 @@ export const inviaCredenziali = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/** Invia all'utente le istruzioni per attivare le notifiche push. */
+export const inviaIstruzioniNotifiche = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { userId: string }) =>
+    z.object({
+      userId: z.string().uuid(),
+    }).parse(d)
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+
+    const { data: userData, error: eUser } = await supabaseAdmin.auth.admin.getUserById(data.userId);
+    if (eUser) throw new Error(eUser.message);
+    const email = userData.user?.email;
+    if (!email) throw new Error("Email utente non trovata");
+
+    const { data: profilo } = await supabaseAdmin
+      .from("profili")
+      .select("nome, cognome")
+      .eq("id", data.userId)
+      .maybeSingle();
+
+    const nome = [profilo?.nome, profilo?.cognome].filter(Boolean).join(" ") || email;
+    const appUrl = process.env.VITE_APP_URL ?? "https://fidi-manager-suite.lovable.app";
+    const activationLink = `${appUrl}/attiva-notifiche`;
+
+    const esc = (s: string) =>
+      String(s ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+
+    const html = `<!doctype html>
+<html><body style="margin:0;padding:0;background:#f4f5f7;font-family:Arial,sans-serif;color:#1a1a2e;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f5f7;padding:24px 0;">
+    <tr><td align="center">
+      <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width:600px;background:#ffffff;border-radius:8px;overflow:hidden;">
+        <tr><td style="background:#0f1b3d;padding:24px;text-align:center;color:#ffffff;font-weight:700;font-size:18px;">MADE — FidiManager</td></tr>
+        <tr><td style="padding:32px 28px;">
+          <h1 style="margin:0 0 16px;font-size:20px;color:#0f1b3d;">Attiva le notifiche di FidiManager</h1>
+          <p style="margin:0 0 16px;font-size:14px;line-height:1.5;">Gentile ${esc(nome)},<br/>per ricevere gli aggiornamenti importanti direttamente sul tuo telefono e computer, attiva le notifiche. Apri questo link <strong>DAL DISPOSITIVO</strong> su cui vuoi riceverle (telefono, tablet o PC) e segui i passaggi guidati.</p>
+          <p style="text-align:center;margin:24px 0;">
+            <a href="${esc(activationLink)}" style="display:inline-block;background:#0f1b3d;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-weight:600;">Attiva le notifiche →</a>
+          </p>
+          <p style="margin:0;font-size:13px;color:#6b7280;">Puoi ripetere questa operazione su più dispositivi: apri il link da ognuno di essi. Su iPhone ti verrà chiesto prima di aggiungere l'app alla schermata Home.</p>
+        </td></tr>
+        <tr><td style="padding:16px 28px;background:#f9fafb;font-size:12px;color:#6b7280;text-align:center;">Email generata automaticamente da FidiManager — Gruppo MADE.</td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+
+    const SUPABASE_URL = process.env.SUPABASE_URL;
+    const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const INTERNAL_SECRET = process.env.INTERNAL_EMAIL_SECRET;
+    if (!INTERNAL_SECRET) {
+      throw new Error("Configurazione email server incompleta: manca INTERNAL_EMAIL_SECRET");
+    }
+    if (!SUPABASE_URL || !SERVICE_ROLE) {
+      throw new Error(
+        `Configurazione email server incompleta: manca ${!SUPABASE_URL ? "SUPABASE_URL" : "SUPABASE_SERVICE_ROLE_KEY"}`,
+      );
+    }
+
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/send-email`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: SERVICE_ROLE,
+        Authorization: `Bearer ${SERVICE_ROLE}`,
+        "x-internal-secret": INTERNAL_SECRET,
+      },
+      body: JSON.stringify({
+        to: email,
+        subject: "Attiva le notifiche — FidiManager MADE",
+        html,
+      }),
+    });
+    const bodyTxt = await res.text();
+    const esito = valutaEsitoEmail(res.status, null, bodyTxt);
+    if (!esito.ok) {
+      throw new Error(`Invio email fallito: ${esito.err}`);
+    }
+
+    return { ok: true };
+  });
+
 /** Aggiorna profilo + ruoli multipli di un utente esistente. */
 export const updateUtenteRuoli = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
