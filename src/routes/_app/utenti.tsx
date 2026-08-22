@@ -278,8 +278,10 @@ function EditUtenteDialog({ utente, onClose }: { utente: UserRow; onClose: () =>
 
   const [nuovaPassword, setNuovaPassword] = useState("");
   const [mostraPasswordEdit, setMostraPasswordEdit] = useState(false);
+  const [busyNotifiche, setBusyNotifiche] = useState(false);
   const fnAggiornaPwd = useServerFn(aggiornaPassword);
   const fnInviaCred = useServerFn(inviaCredenziali);
+  const fnInviaIstrNotifiche = useServerFn(inviaIstruzioniNotifiche);
 
   async function handleAggiornaPwd() {
     if (nuovaPassword.length < 8) {
