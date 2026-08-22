@@ -165,6 +165,18 @@ function IlMioProfiloPage() {
 
       <AttivaNotifiche />
 
+      {testAvailable && (
+        <Button
+          variant="outline"
+          disabled={testBusy}
+          onClick={inviaNotificaDiProva}
+          className="w-full sm:w-auto"
+        >
+          <Send className="size-4" />
+          Invia notifica di prova
+        </Button>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>Dispositivi collegati</CardTitle>
