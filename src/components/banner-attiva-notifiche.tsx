@@ -12,32 +12,43 @@ import {
 export function BannerAttivaNotifiche() {
   const { user } = useAuth();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const [show, setShow] = useState<boolean | null>(null);
+  const [show, setShow] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+
     let cancelled = false;
 
-    (async () => {
+    async function ricontrolla() {
       if (!isPushSupported()) {
-        if (!cancelled) setShow(false);
+        setShow(false);
         return;
       }
-      const [subscribed, perm] = await Promise.all([
-        isThisDeviceSubscribed(),
-        getNotificationPermission(),
-      ]);
-      if (!cancelled) setShow(!subscribed && perm !== "denied");
-    })();
+      const perm = await getNotificationPermission();
+      if (perm === "denied") {
+        setShow(false);
+        return;
+      }
+      const subscribed = await isThisDeviceSubscribed();
+      if (!cancelled) setShow(!subscribed);
+    }
+
+    ricontrolla();
+
+    const handler = () => {
+      cancelled = false;
+      ricontrolla();
+    };
+    window.addEventListener("push-subscription-changed", handler);
 
     return () => {
       cancelled = true;
+      window.removeEventListener("push-subscription-changed", handler);
     };
-  }, [user?.id]);
+  }, []);
 
-  if (typeof window === "undefined") return null;
   if (!user) return null;
-  if (show !== true) return null;
+  if (!show) return null;
   if (pathname === "/attiva-notifiche") return null;
 
   return (
