@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ListChecks, MessageSquare, Pencil, Plus, Trash2 } from "lucide-react";
+import { ListChecks, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { format, isBefore, startOfDay } from "date-fns";
 import { it } from "date-fns/locale";
@@ -22,18 +22,10 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import {
-  Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle,
-} from "@/components/ui/sheet";
-import { CommentiTask } from "@/components/commenti-task";
 import type { Database } from "@/integrations/supabase/types";
-import { STATI, STATO_LABEL, STATO_BADGE, type StatoTask } from "@/lib/task-stato";
+import { STATI, STATO_LABEL, STATO_BADGE } from "@/lib/task-stato";
 
 type TaskRow = Database["public"]["Tables"]["task"]["Row"];
 
