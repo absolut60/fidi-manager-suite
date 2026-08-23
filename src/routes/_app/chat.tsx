@@ -73,13 +73,8 @@ const TIPO_LABEL: Record<TipoCanale, string> = {
 function ChatPage() {
   const { user, role } = useAuth();
   const queryClient = useQueryClient();
-  const instanceId = useId();
   const [selected, setSelected] = useState<string | null>(null);
-  const [messaggi, setMessaggi] = useState<Messaggio[]>([]);
-  const [testo, setTesto] = useState("");
-  const [invio, setInvio] = useState(false);
   const [nuovoCanale, setNuovoCanale] = useState(false);
-  const bottomRef = useRef<HTMLDivElement | null>(null);
 
   const isAdmin = role === "amministratore";
 
@@ -114,90 +109,9 @@ function ChatPage() {
     },
   });
 
-  const nomeAutore = useMemo(() => {
-    const map = new Map<string, string>();
-    (profili ?? []).forEach((p) => {
-      const label = `${p.nome ?? ""} ${p.cognome ?? ""}`.trim();
-      map.set(p.id, label || "—");
-    });
-    return map;
-  }, [profili]);
-
   const canaleCorrente = (canali ?? []).find((c) => c.id === selected) ?? null;
 
-  // Caricamento messaggi + realtime del canale selezionato
-  useEffect(() => {
-    if (!selected) {
-      setMessaggi([]);
-      return;
-    }
-    let active = true;
 
-    const load = async () => {
-      const { data, error } = await supabase
-        .from("messaggi")
-        .select("id, canale_id, autore_id, testo, created_at")
-        .eq("canale_id", selected)
-        .is("eliminato_at", null)
-        .order("created_at", { ascending: true })
-        .limit(200);
-      if (error) {
-        toast.error("Errore nel caricamento dei messaggi");
-        return;
-      }
-      if (active) setMessaggi((data ?? []) as Messaggio[]);
-    };
-    load();
-
-    if (typeof window === "undefined") return;
-
-    // Topic unico per istanza: altrimenti supabase-js riusa il channel e `.on()` rompe la pagina.
-    const channel = supabase
-      .channel(`messaggi-${selected}-${instanceId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "messaggi",
-          filter: `canale_id=eq.${selected}`,
-        },
-        (payload) => {
-          const nuovo = payload.new as Messaggio;
-          if (!nuovo?.id) return;
-          setMessaggi((prev) => (prev.some((m) => m.id === nuovo.id) ? prev : [...prev, nuovo]));
-        }
-      )
-      .subscribe();
-
-    return () => {
-      active = false;
-      supabase.removeChannel(channel);
-    };
-  }, [selected, instanceId]);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ block: "end" });
-  }, [messaggi.length, selected]);
-
-  async function inviaMessaggio() {
-    const t = testo.trim();
-    if (!t || !selected || invio) return;
-    setInvio(true);
-    const { data, error } = await supabase
-      .from("messaggi")
-      .insert({ canale_id: selected, testo: t })
-      .select("id, canale_id, autore_id, testo, created_at")
-      .single();
-    setInvio(false);
-    if (error) {
-      toast.error("Impossibile inviare il messaggio");
-      return;
-    }
-    setTesto("");
-    const nuovo = data as Messaggio;
-    setMessaggi((prev) => (prev.some((m) => m.id === nuovo.id) ? prev : [...prev, nuovo]));
-  }
 
   return (
     <div className="space-y-4">
