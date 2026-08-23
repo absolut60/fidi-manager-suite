@@ -66,6 +66,7 @@ import { Route as AppEventiIndexRouteImport } from './routes/_app/eventi.index'
 import { Route as AppArticoliIndexRouteImport } from './routes/_app/articoli.index'
 import { Route as ApiPublicInviaPushRouteImport } from './routes/api/public/invia-push'
 import { Route as ApiPublicInngestRouteImport } from './routes/api/public/inngest'
+import { Route as AppTaskIdRouteImport } from './routes/_app/task.$id'
 import { Route as AppRichiesteRichiestaIdRouteImport } from './routes/_app/richieste.$richiestaId'
 import { Route as AppRichiesteInterneTutteRouteImport } from './routes/_app/richieste-interne.tutte'
 import { Route as AppRichiesteInterneMieRouteImport } from './routes/_app/richieste-interne.mie'
@@ -382,6 +383,11 @@ const ApiPublicInngestRoute = ApiPublicInngestRouteImport.update({
   path: '/api/public/inngest',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppTaskIdRoute = AppTaskIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppTaskRoute,
+} as any)
 const AppRichiesteRichiestaIdRoute = AppRichiesteRichiestaIdRouteImport.update({
   id: '/$richiestaId',
   path: '/$richiestaId',
@@ -546,7 +552,7 @@ export interface FileRoutesByFullPath {
   '/recupero-crediti-promemoria': typeof AppRecuperoCreditiPromemoriaRoute
   '/richieste': typeof AppRichiesteRouteWithChildren
   '/scadenziario': typeof AppScadenziarioRoute
-  '/task': typeof AppTaskRoute
+  '/task': typeof AppTaskRouteWithChildren
   '/template-email': typeof AppTemplateEmailRoute
   '/template-lettera': typeof AppTemplateLetteraRoute
   '/utenti': typeof AppUtentiRoute
@@ -575,6 +581,7 @@ export interface FileRoutesByFullPath {
   '/richieste-interne/mie': typeof AppRichiesteInterneMieRoute
   '/richieste-interne/tutte': typeof AppRichiesteInterneTutteRoute
   '/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
+  '/task/$id': typeof AppTaskIdRoute
   '/api/public/inngest': typeof ApiPublicInngestRoute
   '/api/public/invia-push': typeof ApiPublicInviaPushRoute
   '/articoli/': typeof AppArticoliIndexRoute
@@ -625,7 +632,7 @@ export interface FileRoutesByTo {
   '/recupero-crediti-promemoria': typeof AppRecuperoCreditiPromemoriaRoute
   '/richieste': typeof AppRichiesteRouteWithChildren
   '/scadenziario': typeof AppScadenziarioRoute
-  '/task': typeof AppTaskRoute
+  '/task': typeof AppTaskRouteWithChildren
   '/template-email': typeof AppTemplateEmailRoute
   '/template-lettera': typeof AppTemplateLetteraRoute
   '/utenti': typeof AppUtentiRoute
@@ -654,6 +661,7 @@ export interface FileRoutesByTo {
   '/richieste-interne/mie': typeof AppRichiesteInterneMieRoute
   '/richieste-interne/tutte': typeof AppRichiesteInterneTutteRoute
   '/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
+  '/task/$id': typeof AppTaskIdRoute
   '/api/public/inngest': typeof ApiPublicInngestRoute
   '/api/public/invia-push': typeof ApiPublicInviaPushRoute
   '/articoli': typeof AppArticoliIndexRoute
@@ -708,7 +716,7 @@ export interface FileRoutesById {
   '/_app/recupero-crediti-promemoria': typeof AppRecuperoCreditiPromemoriaRoute
   '/_app/richieste': typeof AppRichiesteRouteWithChildren
   '/_app/scadenziario': typeof AppScadenziarioRoute
-  '/_app/task': typeof AppTaskRoute
+  '/_app/task': typeof AppTaskRouteWithChildren
   '/_app/template-email': typeof AppTemplateEmailRoute
   '/_app/template-lettera': typeof AppTemplateLetteraRoute
   '/_app/utenti': typeof AppUtentiRoute
@@ -737,6 +745,7 @@ export interface FileRoutesById {
   '/_app/richieste-interne/mie': typeof AppRichiesteInterneMieRoute
   '/_app/richieste-interne/tutte': typeof AppRichiesteInterneTutteRoute
   '/_app/richieste/$richiestaId': typeof AppRichiesteRichiestaIdRoute
+  '/_app/task/$id': typeof AppTaskIdRoute
   '/api/public/inngest': typeof ApiPublicInngestRoute
   '/api/public/invia-push': typeof ApiPublicInviaPushRoute
   '/_app/articoli/': typeof AppArticoliIndexRoute
@@ -820,6 +829,7 @@ export interface FileRouteTypes {
     | '/richieste-interne/mie'
     | '/richieste-interne/tutte'
     | '/richieste/$richiestaId'
+    | '/task/$id'
     | '/api/public/inngest'
     | '/api/public/invia-push'
     | '/articoli/'
@@ -899,6 +909,7 @@ export interface FileRouteTypes {
     | '/richieste-interne/mie'
     | '/richieste-interne/tutte'
     | '/richieste/$richiestaId'
+    | '/task/$id'
     | '/api/public/inngest'
     | '/api/public/invia-push'
     | '/articoli'
@@ -981,6 +992,7 @@ export interface FileRouteTypes {
     | '/_app/richieste-interne/mie'
     | '/_app/richieste-interne/tutte'
     | '/_app/richieste/$richiestaId'
+    | '/_app/task/$id'
     | '/api/public/inngest'
     | '/api/public/invia-push'
     | '/_app/articoli/'
@@ -1417,6 +1429,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicInngestRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/task/$id': {
+      id: '/_app/task/$id'
+      path: '/$id'
+      fullPath: '/task/$id'
+      preLoaderRoute: typeof AppTaskIdRouteImport
+      parentRoute: typeof AppTaskRoute
+    }
     '/_app/richieste/$richiestaId': {
       id: '/_app/richieste/$richiestaId'
       path: '/$richiestaId'
@@ -1632,6 +1651,17 @@ const AppRichiesteRouteWithChildren = AppRichiesteRoute._addFileChildren(
   AppRichiesteRouteChildren,
 )
 
+interface AppTaskRouteChildren {
+  AppTaskIdRoute: typeof AppTaskIdRoute
+}
+
+const AppTaskRouteChildren: AppTaskRouteChildren = {
+  AppTaskIdRoute: AppTaskIdRoute,
+}
+
+const AppTaskRouteWithChildren =
+  AppTaskRoute._addFileChildren(AppTaskRouteChildren)
+
 interface AppRouteChildren {
   AppApprovazioniRoute: typeof AppApprovazioniRoute
   AppAreeRoute: typeof AppAreeRoute
@@ -1665,7 +1695,7 @@ interface AppRouteChildren {
   AppRecuperoCreditiPromemoriaRoute: typeof AppRecuperoCreditiPromemoriaRoute
   AppRichiesteRoute: typeof AppRichiesteRouteWithChildren
   AppScadenziarioRoute: typeof AppScadenziarioRoute
-  AppTaskRoute: typeof AppTaskRoute
+  AppTaskRoute: typeof AppTaskRouteWithChildren
   AppTemplateEmailRoute: typeof AppTemplateEmailRoute
   AppTemplateLetteraRoute: typeof AppTemplateLetteraRoute
   AppUtentiRoute: typeof AppUtentiRoute
@@ -1725,7 +1755,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppRecuperoCreditiPromemoriaRoute: AppRecuperoCreditiPromemoriaRoute,
   AppRichiesteRoute: AppRichiesteRouteWithChildren,
   AppScadenziarioRoute: AppScadenziarioRoute,
-  AppTaskRoute: AppTaskRoute,
+  AppTaskRoute: AppTaskRouteWithChildren,
   AppTemplateEmailRoute: AppTemplateEmailRoute,
   AppTemplateLetteraRoute: AppTemplateLetteraRoute,
   AppUtentiRoute: AppUtentiRoute,

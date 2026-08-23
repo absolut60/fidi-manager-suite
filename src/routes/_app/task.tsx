@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ListChecks, Pencil, Plus, Trash2 } from "lucide-react";
@@ -29,8 +29,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import type { Database } from "@/integrations/supabase/types";
+import { STATI, STATO_LABEL, STATO_BADGE, type StatoTask } from "@/lib/task-stato";
 
-type StatoTask = Database["public"]["Enums"]["stato_task"];
 type TaskRow = Database["public"]["Tables"]["task"]["Row"];
 
 export const Route = createFileRoute("/_app/task")({
@@ -47,21 +47,6 @@ export const Route = createFileRoute("/_app/task")({
   }),
 });
 
-const STATI: StatoTask[] = ["da_fare", "in_corso", "fatto", "annullato"];
-
-const STATO_LABEL: Record<StatoTask, string> = {
-  da_fare: "Da fare",
-  in_corso: "In corso",
-  fatto: "Fatto",
-  annullato: "Annullato",
-};
-
-const STATO_BADGE: Record<StatoTask, { variant: "default" | "secondary" | "outline"; className: string }> = {
-  da_fare: { variant: "secondary", className: "" },
-  in_corso: { variant: "default", className: "" },
-  fatto: { variant: "outline", className: "border-emerald-500 text-emerald-600" },
-  annullato: { variant: "secondary", className: "line-through opacity-70" },
-};
 
 const NESSUNO = "__nessuno__";
 const TUTTI = "__tutti__";
@@ -69,6 +54,7 @@ const TUTTI = "__tutti__";
 function TaskPage() {
   const { user, role } = useAuth();
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const isAdmin = role === "amministratore";
   const userId = user?.id ?? null;
 
@@ -242,8 +228,11 @@ function TaskPage() {
                   const badge = STATO_BADGE[t.stato];
                   return (
                     <TableRow key={t.id}>
-                      <TableCell>
-                        <div className="font-medium">{t.titolo}</div>
+                      <TableCell
+                        className="cursor-pointer"
+                        onClick={() => navigate({ to: "/task/$id", params: { id: t.id } })}
+                      >
+                        <div className="font-medium hover:underline">{t.titolo}</div>
                         {t.descrizione && (
                           <div className="text-xs text-muted-foreground truncate max-w-xs">
                             {t.descrizione}
