@@ -111,6 +111,9 @@ function DettaglioRichiesta() {
   const [gestOpen, setGestOpen] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<null | "one" | "two">(null);
+  const [preview, setPreview] = useState<null | { nome: string; url: string; mime: string | null }>(null);
+  const [allegatoDaEliminare, setAllegatoDaEliminare] = useState<any>(null);
+
 
   async function archivia() {
     if (!r) return;
