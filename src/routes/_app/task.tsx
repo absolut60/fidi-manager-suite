@@ -67,6 +67,7 @@ function TaskPage() {
   const [daEliminare, setDaEliminare] = useState<TaskRow | null>(null);
   const [filtroStato, setFiltroStato] = useState<string>(TUTTI);
   const [soloMiei, setSoloMiei] = useState(false);
+  const [taskAperto, setTaskAperto] = useState<TaskRow | null>(null);
 
   const { data: task, isLoading } = useQuery({
     queryKey: ["task"],
