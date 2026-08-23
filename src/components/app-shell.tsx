@@ -129,6 +129,7 @@ const NAV: NavItem[] = [
   { to: "/template-lettera", label: "Template Lettere", icon: FileText, roles: ["admin"], group: "admin" },
   { to: "/impostazioni", label: "Impostazioni", icon: Settings, roles: ["admin"], group: "admin" },
   { to: "/utenti", label: "Utenti", icon: UsersRound, roles: ["admin"], group: "admin" },
+  { to: "/aree", label: "Aree funzionali", icon: Network, roles: ["admin"], group: "admin" },
   { to: "/audit", label: "Audit log", icon: ScrollText, roles: ["admin"], group: "admin" },
 ];
 
