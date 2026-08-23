@@ -21,7 +21,6 @@ import { Route as AppWhatsappRouteImport } from './routes/_app/whatsapp'
 import { Route as AppUtentiRouteImport } from './routes/_app/utenti'
 import { Route as AppTemplateLetteraRouteImport } from './routes/_app/template-lettera'
 import { Route as AppTemplateEmailRouteImport } from './routes/_app/template-email'
-import { Route as AppTaskRouteImport } from './routes/_app/task'
 import { Route as AppScadenziarioRouteImport } from './routes/_app/scadenziario'
 import { Route as AppRichiesteRouteImport } from './routes/_app/richieste'
 import { Route as AppRecuperoCreditiPromemoriaRouteImport } from './routes/_app/recupero-crediti-promemoria'
@@ -56,6 +55,7 @@ import { Route as AppAreeRouteImport } from './routes/_app/aree'
 import { Route as AppApprovazioniRouteImport } from './routes/_app/approvazioni'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
+import { Route as AppTaskIndexRouteImport } from './routes/_app/task.index'
 import { Route as AppRichiesteInterneIndexRouteImport } from './routes/_app/richieste-interne.index'
 import { Route as AppPreventivatoreIndexRouteImport } from './routes/_app/preventivatore.index'
 import { Route as AppOrdiniIndexRouteImport } from './routes/_app/ordini.index'
@@ -148,11 +148,6 @@ const AppTemplateLetteraRoute = AppTemplateLetteraRouteImport.update({
 const AppTemplateEmailRoute = AppTemplateEmailRouteImport.update({
   id: '/template-email',
   path: '/template-email',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppTaskRoute = AppTaskRouteImport.update({
-  id: '/task',
-  path: '/task',
   getParentRoute: () => AppRoute,
 } as any)
 const AppScadenziarioRoute = AppScadenziarioRouteImport.update({
@@ -332,6 +327,11 @@ const Char91DotmcpChar93ListToolsRoute =
     path: '/.mcp/list-tools',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AppTaskIndexRoute = AppTaskIndexRouteImport.update({
+  id: '/task/',
+  path: '/task/',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppRichiesteInterneIndexRoute =
   AppRichiesteInterneIndexRouteImport.update({
     id: '/richieste-interne/',
@@ -384,9 +384,9 @@ const ApiPublicInngestRoute = ApiPublicInngestRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppTaskIdRoute = AppTaskIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => AppTaskRoute,
+  id: '/task/$id',
+  path: '/task/$id',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppRichiesteRichiestaIdRoute = AppRichiesteRichiestaIdRouteImport.update({
   id: '/$richiestaId',
@@ -552,7 +552,6 @@ export interface FileRoutesByFullPath {
   '/recupero-crediti-promemoria': typeof AppRecuperoCreditiPromemoriaRoute
   '/richieste': typeof AppRichiesteRouteWithChildren
   '/scadenziario': typeof AppScadenziarioRoute
-  '/task': typeof AppTaskRouteWithChildren
   '/template-email': typeof AppTemplateEmailRoute
   '/template-lettera': typeof AppTemplateLetteraRoute
   '/utenti': typeof AppUtentiRoute
@@ -592,6 +591,7 @@ export interface FileRoutesByFullPath {
   '/ordini/': typeof AppOrdiniIndexRoute
   '/preventivatore/': typeof AppPreventivatoreIndexRoute
   '/richieste-interne/': typeof AppRichiesteInterneIndexRoute
+  '/task/': typeof AppTaskIndexRoute
   '/api/public/email-img/$': typeof ApiPublicEmailImgSplatRoute
   '/api/public/hooks/check-reminder-ritardi': typeof ApiPublicHooksCheckReminderRitardiRoute
   '/api/public/hooks/check-scadenze': typeof ApiPublicHooksCheckScadenzeRoute
@@ -632,7 +632,6 @@ export interface FileRoutesByTo {
   '/recupero-crediti-promemoria': typeof AppRecuperoCreditiPromemoriaRoute
   '/richieste': typeof AppRichiesteRouteWithChildren
   '/scadenziario': typeof AppScadenziarioRoute
-  '/task': typeof AppTaskRouteWithChildren
   '/template-email': typeof AppTemplateEmailRoute
   '/template-lettera': typeof AppTemplateLetteraRoute
   '/utenti': typeof AppUtentiRoute
@@ -672,6 +671,7 @@ export interface FileRoutesByTo {
   '/ordini': typeof AppOrdiniIndexRoute
   '/preventivatore': typeof AppPreventivatoreIndexRoute
   '/richieste-interne': typeof AppRichiesteInterneIndexRoute
+  '/task': typeof AppTaskIndexRoute
   '/api/public/email-img/$': typeof ApiPublicEmailImgSplatRoute
   '/api/public/hooks/check-reminder-ritardi': typeof ApiPublicHooksCheckReminderRitardiRoute
   '/api/public/hooks/check-scadenze': typeof ApiPublicHooksCheckScadenzeRoute
@@ -716,7 +716,6 @@ export interface FileRoutesById {
   '/_app/recupero-crediti-promemoria': typeof AppRecuperoCreditiPromemoriaRoute
   '/_app/richieste': typeof AppRichiesteRouteWithChildren
   '/_app/scadenziario': typeof AppScadenziarioRoute
-  '/_app/task': typeof AppTaskRouteWithChildren
   '/_app/template-email': typeof AppTemplateEmailRoute
   '/_app/template-lettera': typeof AppTemplateLetteraRoute
   '/_app/utenti': typeof AppUtentiRoute
@@ -756,6 +755,7 @@ export interface FileRoutesById {
   '/_app/ordini/': typeof AppOrdiniIndexRoute
   '/_app/preventivatore/': typeof AppPreventivatoreIndexRoute
   '/_app/richieste-interne/': typeof AppRichiesteInterneIndexRoute
+  '/_app/task/': typeof AppTaskIndexRoute
   '/api/public/email-img/$': typeof ApiPublicEmailImgSplatRoute
   '/api/public/hooks/check-reminder-ritardi': typeof ApiPublicHooksCheckReminderRitardiRoute
   '/api/public/hooks/check-scadenze': typeof ApiPublicHooksCheckScadenzeRoute
@@ -800,7 +800,6 @@ export interface FileRouteTypes {
     | '/recupero-crediti-promemoria'
     | '/richieste'
     | '/scadenziario'
-    | '/task'
     | '/template-email'
     | '/template-lettera'
     | '/utenti'
@@ -840,6 +839,7 @@ export interface FileRouteTypes {
     | '/ordini/'
     | '/preventivatore/'
     | '/richieste-interne/'
+    | '/task/'
     | '/api/public/email-img/$'
     | '/api/public/hooks/check-reminder-ritardi'
     | '/api/public/hooks/check-scadenze'
@@ -880,7 +880,6 @@ export interface FileRouteTypes {
     | '/recupero-crediti-promemoria'
     | '/richieste'
     | '/scadenziario'
-    | '/task'
     | '/template-email'
     | '/template-lettera'
     | '/utenti'
@@ -920,6 +919,7 @@ export interface FileRouteTypes {
     | '/ordini'
     | '/preventivatore'
     | '/richieste-interne'
+    | '/task'
     | '/api/public/email-img/$'
     | '/api/public/hooks/check-reminder-ritardi'
     | '/api/public/hooks/check-scadenze'
@@ -963,7 +963,6 @@ export interface FileRouteTypes {
     | '/_app/recupero-crediti-promemoria'
     | '/_app/richieste'
     | '/_app/scadenziario'
-    | '/_app/task'
     | '/_app/template-email'
     | '/_app/template-lettera'
     | '/_app/utenti'
@@ -1003,6 +1002,7 @@ export interface FileRouteTypes {
     | '/_app/ordini/'
     | '/_app/preventivatore/'
     | '/_app/richieste-interne/'
+    | '/_app/task/'
     | '/api/public/email-img/$'
     | '/api/public/hooks/check-reminder-ritardi'
     | '/api/public/hooks/check-scadenze'
@@ -1112,13 +1112,6 @@ declare module '@tanstack/react-router' {
       path: '/template-email'
       fullPath: '/template-email'
       preLoaderRoute: typeof AppTemplateEmailRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/task': {
-      id: '/_app/task'
-      path: '/task'
-      fullPath: '/task'
-      preLoaderRoute: typeof AppTaskRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/scadenziario': {
@@ -1359,6 +1352,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/task/': {
+      id: '/_app/task/'
+      path: '/task'
+      fullPath: '/task/'
+      preLoaderRoute: typeof AppTaskIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/richieste-interne/': {
       id: '/_app/richieste-interne/'
       path: '/richieste-interne'
@@ -1431,10 +1431,10 @@ declare module '@tanstack/react-router' {
     }
     '/_app/task/$id': {
       id: '/_app/task/$id'
-      path: '/$id'
+      path: '/task/$id'
       fullPath: '/task/$id'
       preLoaderRoute: typeof AppTaskIdRouteImport
-      parentRoute: typeof AppTaskRoute
+      parentRoute: typeof AppRoute
     }
     '/_app/richieste/$richiestaId': {
       id: '/_app/richieste/$richiestaId'
@@ -1651,17 +1651,6 @@ const AppRichiesteRouteWithChildren = AppRichiesteRoute._addFileChildren(
   AppRichiesteRouteChildren,
 )
 
-interface AppTaskRouteChildren {
-  AppTaskIdRoute: typeof AppTaskIdRoute
-}
-
-const AppTaskRouteChildren: AppTaskRouteChildren = {
-  AppTaskIdRoute: AppTaskIdRoute,
-}
-
-const AppTaskRouteWithChildren =
-  AppTaskRoute._addFileChildren(AppTaskRouteChildren)
-
 interface AppRouteChildren {
   AppApprovazioniRoute: typeof AppApprovazioniRoute
   AppAreeRoute: typeof AppAreeRoute
@@ -1695,7 +1684,6 @@ interface AppRouteChildren {
   AppRecuperoCreditiPromemoriaRoute: typeof AppRecuperoCreditiPromemoriaRoute
   AppRichiesteRoute: typeof AppRichiesteRouteWithChildren
   AppScadenziarioRoute: typeof AppScadenziarioRoute
-  AppTaskRoute: typeof AppTaskRouteWithChildren
   AppTemplateEmailRoute: typeof AppTemplateEmailRoute
   AppTemplateLetteraRoute: typeof AppTemplateLetteraRoute
   AppUtentiRoute: typeof AppUtentiRoute
@@ -1714,12 +1702,14 @@ interface AppRouteChildren {
   AppRichiesteInterneGestioneRoute: typeof AppRichiesteInterneGestioneRoute
   AppRichiesteInterneMieRoute: typeof AppRichiesteInterneMieRoute
   AppRichiesteInterneTutteRoute: typeof AppRichiesteInterneTutteRoute
+  AppTaskIdRoute: typeof AppTaskIdRoute
   AppArticoliIndexRoute: typeof AppArticoliIndexRoute
   AppEventiIndexRoute: typeof AppEventiIndexRoute
   AppKitIndexRoute: typeof AppKitIndexRoute
   AppOrdiniIndexRoute: typeof AppOrdiniIndexRoute
   AppPreventivatoreIndexRoute: typeof AppPreventivatoreIndexRoute
   AppRichiesteInterneIndexRoute: typeof AppRichiesteInterneIndexRoute
+  AppTaskIndexRoute: typeof AppTaskIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -1755,7 +1745,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppRecuperoCreditiPromemoriaRoute: AppRecuperoCreditiPromemoriaRoute,
   AppRichiesteRoute: AppRichiesteRouteWithChildren,
   AppScadenziarioRoute: AppScadenziarioRoute,
-  AppTaskRoute: AppTaskRouteWithChildren,
   AppTemplateEmailRoute: AppTemplateEmailRoute,
   AppTemplateLetteraRoute: AppTemplateLetteraRoute,
   AppUtentiRoute: AppUtentiRoute,
@@ -1774,12 +1763,14 @@ const AppRouteChildren: AppRouteChildren = {
   AppRichiesteInterneGestioneRoute: AppRichiesteInterneGestioneRoute,
   AppRichiesteInterneMieRoute: AppRichiesteInterneMieRoute,
   AppRichiesteInterneTutteRoute: AppRichiesteInterneTutteRoute,
+  AppTaskIdRoute: AppTaskIdRoute,
   AppArticoliIndexRoute: AppArticoliIndexRoute,
   AppEventiIndexRoute: AppEventiIndexRoute,
   AppKitIndexRoute: AppKitIndexRoute,
   AppOrdiniIndexRoute: AppOrdiniIndexRoute,
   AppPreventivatoreIndexRoute: AppPreventivatoreIndexRoute,
   AppRichiesteInterneIndexRoute: AppRichiesteInterneIndexRoute,
+  AppTaskIndexRoute: AppTaskIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

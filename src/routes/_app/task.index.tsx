@@ -29,7 +29,7 @@ import { STATI, STATO_LABEL, STATO_BADGE } from "@/lib/task-stato";
 
 type TaskRow = Database["public"]["Tables"]["task"]["Row"];
 
-export const Route = createFileRoute("/_app/task")({
+export const Route = createFileRoute("/_app/task/")({
   component: TaskPage,
   head: () => ({
     meta: [
