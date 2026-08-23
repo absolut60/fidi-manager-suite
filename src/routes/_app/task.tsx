@@ -37,7 +37,7 @@ export const Route = createFileRoute("/_app/task")({
   component: TaskPage,
   head: () => ({
     meta: [
-      { title: "Task — FidiManager" },
+      { title: "Task attività — FidiManager" },
       { name: "description", content: "Gestione dei task assegnati: creazione, delega, stato e scadenze." },
       { property: "og:title", content: "Task — FidiManager" },
       { property: "og:description", content: "Gestione dei task assegnati: creazione, delega, stato e scadenze." },
@@ -161,7 +161,7 @@ function TaskPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Task</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Task attività</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Le attività che ti riguardano: create da te, assegnate a te o della tua area
           </p>
@@ -196,7 +196,7 @@ function TaskPage() {
         </div>
 
         <h2 className="font-semibold mb-3 flex items-center gap-2">
-          <ListChecks className="size-4" /> Task ({righe.length})
+          <ListChecks className="size-4" /> Attività ({righe.length})
         </h2>
 
         {isLoading ? (
@@ -227,19 +227,20 @@ function TaskPage() {
                     isBefore(new Date(t.scadenza), startOfDay(new Date()));
                   const badge = STATO_BADGE[t.stato];
                   return (
-                    <TableRow key={t.id}>
-                      <TableCell
-                        className="cursor-pointer"
-                        onClick={() => navigate({ to: "/task/$id", params: { id: t.id } })}
-                      >
-                        <div className="font-medium hover:underline">{t.titolo}</div>
+                    <TableRow
+                      key={t.id}
+                      className="cursor-pointer hover:bg-muted/50 transition-colors"
+                      onClick={() => navigate({ to: "/task/$id", params: { id: t.id } })}
+                    >
+                      <TableCell>
+                        <div className="font-medium">{t.titolo}</div>
                         {t.descrizione && (
                           <div className="text-xs text-muted-foreground truncate max-w-xs">
                             {t.descrizione}
                           </div>
                         )}
                       </TableCell>
-                      <TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
                         {puoModificare(t) ? (
                           <Select
                             value={t.stato}
@@ -265,7 +266,7 @@ function TaskPage() {
                       <TableCell className={`text-sm ${scaduto ? "text-destructive font-medium" : ""}`}>
                         {t.scadenza ? format(new Date(t.scadenza), "d MMM yyyy", { locale: it }) : "—"}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-end gap-1">
                           <Button
                             variant="ghost"
