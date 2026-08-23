@@ -319,7 +319,7 @@ function DettaglioRichiesta() {
   const canUpload = !r.archived;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 max-w-4xl">
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
           <Button variant="ghost" size="sm" onClick={() => router.history.back()} className="-ml-2 mb-1">
@@ -371,147 +371,140 @@ function DettaglioRichiesta() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* COLONNA SINISTRA */}
-        <div className="lg:col-span-2 space-y-4">
-          <Card>
-            <CardHeader><CardTitle className="text-base">Dati richiesta</CardTitle></CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <Row label="Tipo"><Badge variant="secondary">{TIPO_LABEL[r.type] ?? r.type}</Badge></Row>
-              <Row label="Importo"><span className="font-mono">{fmtEuro(r.amount)}</span></Row>
-              <Row label="Fornitore">{r.fornitore || "—"}</Row>
-              <Row label="Sede">{r.sede_name || "—"}</Row>
-              <Row label="Richiedente">{r.requester_name} · <span className="text-muted-foreground">{fmtDataOra(r.created_at)}</span></Row>
-              {r.description && (
-                <div>
-                  <div className="text-xs text-muted-foreground mb-1">Descrizione</div>
-                  <div className="whitespace-pre-wrap rounded-md border bg-muted/30 p-3">{r.description}</div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-base inline-flex items-center gap-2"><Paperclip className="size-4" />Allegati ({r.richieste_interne_allegati?.length ?? 0})</CardTitle>
-              {canUpload && (
-                <>
-                  <input ref={fileInputRef} type="file" className="hidden" onChange={handleUpload} />
-                  <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-                    {uploading ? <Loader2 className="size-4 mr-1 animate-spin" /> : <Upload className="size-4 mr-1" />}
-                    Carica
-                  </Button>
-                </>
-              )}
-            </CardHeader>
-            <CardContent>
-              {(r.richieste_interne_allegati?.length ?? 0) === 0 ? (
-                <div className="text-sm text-muted-foreground text-center py-4">Nessun allegato</div>
-              ) : (
-                <ul className="divide-y">
-                  {r.richieste_interne_allegati!.map((a: any) => {
-                    const Ico = iconFor(a.mime_type);
-                    const uploader = a.profili ? [a.profili.nome, a.profili.cognome].filter(Boolean).join(" ") : "—";
-                    const canDeleteAllegato = hasRole("amministratore") || a.caricato_da === uid;
-                    const isImage = !!a.mime_type && a.mime_type.startsWith("image/");
-                    const isPdf = a.mime_type === "application/pdf";
-                    return (
-                      <li key={a.id} className="flex items-center gap-3 py-2">
-                        <Ico className="size-5 text-muted-foreground shrink-0" />
-                        <div className="min-w-0 flex-1">
-                          <div className="text-sm font-medium truncate">{a.nome_file}</div>
-                          <div className="text-xs text-muted-foreground">{fmtBytes(a.dimensione_bytes)} · {uploader} · {fmtDataOra(a.created_at)}</div>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          {isImage && (
-                            <Button size="sm" variant="ghost" onClick={() => void apriAnteprima(a)} title="Anteprima">
-                              <Eye className="size-4" />
-                            </Button>
-                          )}
-                          {isPdf && (
-                            <Button size="sm" variant="ghost" onClick={() => void apriInScheda(a.storage_path)} title="Apri">
-                              <Search className="size-4" />
-                            </Button>
-                          )}
-                          <Button size="sm" variant="ghost" onClick={() => void scarica(a.storage_path, a.nome_file)} title="Scarica">
-                            <Download className="size-4" />
-                          </Button>
-                          {canDeleteAllegato && (
-                            <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setAllegatoDaEliminare(a)} title="Elimina">
-                              <Trash2 className="size-4" />
-                            </Button>
-                          )}
-                        </div>
-                      </li>
-                    );
-                  })}
-
-                </ul>
-              )}
-            </CardContent>
-          </Card>
-
-          <ChatMessaggi richiestaId={r.id} disabled={r.archived} status={r.status} archived={r.archived} />
-
-          {(canLiv1 || canLiv2) && (
-            <Card>
-              <CardHeader><CardTitle className="text-base">Azioni</CardTitle></CardHeader>
-              <CardContent className="flex flex-wrap gap-2">
-                {canLiv1 && (
-                  <>
-                    <Button onClick={() => { setNote(""); setDialog({ level: 1, action: "approved" }); }}>Approva</Button>
-                    <Button variant="secondary" onClick={() => { setNote(""); setDialog({ level: 1, action: "forwarded" }); }}>Inoltra alla Direzione</Button>
-                    <Button variant="destructive" onClick={() => { setNote(""); setDialog({ level: 1, action: "rejected" }); }}>Rifiuta</Button>
-                  </>
-                )}
-                {canLiv2 && (
-                  <>
-                    <Button onClick={() => { setNote(""); setDialog({ level: 2, action: "approved" }); }}>Approva</Button>
-                    <Button variant="destructive" onClick={() => { setNote(""); setDialog({ level: 2, action: "rejected" }); }}>Rifiuta</Button>
-                  </>
-                )}
-              </CardContent>
-            </Card>
+      <Card>
+        <CardHeader><CardTitle className="text-base">Dati richiesta</CardTitle></CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          <Row label="Tipo"><Badge variant="secondary">{TIPO_LABEL[r.type] ?? r.type}</Badge></Row>
+          <Row label="Importo"><span className="font-mono">{fmtEuro(r.amount)}</span></Row>
+          <Row label="Fornitore">{r.fornitore || "—"}</Row>
+          <Row label="Sede">{r.sede_name || "—"}</Row>
+          <Row label="Richiedente">{r.requester_name} · <span className="text-muted-foreground">{fmtDataOra(r.created_at)}</span></Row>
+          {r.description && (
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Descrizione</div>
+              <div className="whitespace-pre-wrap rounded-md border bg-muted/30 p-3">{r.description}</div>
+            </div>
           )}
-        </div>
+        </CardContent>
+      </Card>
 
-        {/* COLONNA DESTRA */}
-        <div className="space-y-4">
-          <Card>
-            <CardHeader><CardTitle className="text-base">Responsabile Generale</CardTitle></CardHeader>
-            <CardContent className="text-sm">
-              {r.resp_at ? (
+      <Card>
+        <CardHeader><CardTitle className="text-base">Iter di approvazione</CardTitle></CardHeader>
+        <CardContent className="text-sm space-y-3">
+          <div>
+            <div className="text-xs text-muted-foreground mb-1">Responsabile Generale</div>
+            {r.resp_at ? (
+              <div className="space-y-1">
+                <div className="font-medium">{r.resp_approver_name}</div>
+                <div><Badge variant="outline">{RESP_ACTION_LABEL[r.resp_action!] ?? r.resp_action}</Badge></div>
+                {r.resp_note && <div className="text-muted-foreground whitespace-pre-wrap border-l-2 pl-2 mt-2">{r.resp_note}</div>}
+                <div className="text-xs text-muted-foreground mt-1">{fmtDataOra(r.resp_at)}</div>
+              </div>
+            ) : (
+              <div className="text-muted-foreground italic">In attesa</div>
+            )}
+          </div>
+
+          {(r.status === "forwarded" || r.dir_at) && (
+            <div className="border-t pt-3 mt-3">
+              <div className="text-xs text-muted-foreground mb-1">Direzione</div>
+              {r.dir_at ? (
                 <div className="space-y-1">
-                  <div className="font-medium">{r.resp_approver_name}</div>
-                  <div><Badge variant="outline">{RESP_ACTION_LABEL[r.resp_action!] ?? r.resp_action}</Badge></div>
-                  {r.resp_note && <div className="text-muted-foreground whitespace-pre-wrap border-l-2 pl-2 mt-2">{r.resp_note}</div>}
-                  <div className="text-xs text-muted-foreground mt-1">{fmtDataOra(r.resp_at)}</div>
+                  <div className="font-medium">{r.dir_approver_name}</div>
+                  <div><Badge variant="outline">{DIR_ACTION_LABEL[r.dir_action!] ?? r.dir_action}</Badge></div>
+                  {r.dir_note && <div className="text-muted-foreground whitespace-pre-wrap border-l-2 pl-2 mt-2">{r.dir_note}</div>}
+                  <div className="text-xs text-muted-foreground mt-1">{fmtDataOra(r.dir_at)}</div>
                 </div>
               ) : (
                 <div className="text-muted-foreground italic">In attesa</div>
               )}
-            </CardContent>
-          </Card>
-
-          {(r.status === "forwarded" || r.dir_at) && (
-            <Card>
-              <CardHeader><CardTitle className="text-base">Direzione</CardTitle></CardHeader>
-              <CardContent className="text-sm">
-                {r.dir_at ? (
-                  <div className="space-y-1">
-                    <div className="font-medium">{r.dir_approver_name}</div>
-                    <div><Badge variant="outline">{DIR_ACTION_LABEL[r.dir_action!] ?? r.dir_action}</Badge></div>
-                    {r.dir_note && <div className="text-muted-foreground whitespace-pre-wrap border-l-2 pl-2 mt-2">{r.dir_note}</div>}
-                    <div className="text-xs text-muted-foreground mt-1">{fmtDataOra(r.dir_at)}</div>
-                  </div>
-                ) : (
-                  <div className="text-muted-foreground italic">In attesa</div>
-                )}
-              </CardContent>
-            </Card>
+            </div>
           )}
-        </div>
-      </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-base inline-flex items-center gap-2"><Paperclip className="size-4" />Allegati ({r.richieste_interne_allegati?.length ?? 0})</CardTitle>
+          {canUpload && (
+            <>
+              <input ref={fileInputRef} type="file" className="hidden" onChange={handleUpload} />
+              <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+                {uploading ? <Loader2 className="size-4 mr-1 animate-spin" /> : <Upload className="size-4 mr-1" />}
+                Carica
+              </Button>
+            </>
+          )}
+        </CardHeader>
+        <CardContent>
+          {(r.richieste_interne_allegati?.length ?? 0) === 0 ? (
+            <div className="text-sm text-muted-foreground text-center py-4">Nessun allegato</div>
+          ) : (
+            <ul className="divide-y">
+              {r.richieste_interne_allegati!.map((a: any) => {
+                const Ico = iconFor(a.mime_type);
+                const uploader = a.profili ? [a.profili.nome, a.profili.cognome].filter(Boolean).join(" ") : "—";
+                const canDeleteAllegato = hasRole("amministratore") || a.caricato_da === uid;
+                const isImage = !!a.mime_type && a.mime_type.startsWith("image/");
+                const isPdf = a.mime_type === "application/pdf";
+                return (
+                  <li key={a.id} className="flex items-center gap-3 py-2">
+                    <Ico className="size-5 text-muted-foreground shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-medium truncate">{a.nome_file}</div>
+                      <div className="text-xs text-muted-foreground">{fmtBytes(a.dimensione_bytes)} · {uploader} · {fmtDataOra(a.created_at)}</div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {isImage && (
+                        <Button size="sm" variant="ghost" onClick={() => void apriAnteprima(a)} title="Anteprima">
+                          <Eye className="size-4" />
+                        </Button>
+                      )}
+                      {isPdf && (
+                        <Button size="sm" variant="ghost" onClick={() => void apriInScheda(a.storage_path)} title="Apri">
+                          <Search className="size-4" />
+                        </Button>
+                      )}
+                      <Button size="sm" variant="ghost" onClick={() => void scarica(a.storage_path, a.nome_file)} title="Scarica">
+                        <Download className="size-4" />
+                      </Button>
+                      {canDeleteAllegato && (
+                        <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setAllegatoDaEliminare(a)} title="Elimina">
+                          <Trash2 className="size-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      {(canLiv1 || canLiv2) && (
+        <Card>
+          <CardHeader><CardTitle className="text-base">Azioni</CardTitle></CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            {canLiv1 && (
+              <>
+                <Button onClick={() => { setNote(""); setDialog({ level: 1, action: "approved" }); }}>Approva</Button>
+                <Button variant="secondary" onClick={() => { setNote(""); setDialog({ level: 1, action: "forwarded" }); }}>Inoltra alla Direzione</Button>
+                <Button variant="destructive" onClick={() => { setNote(""); setDialog({ level: 1, action: "rejected" }); }}>Rifiuta</Button>
+              </>
+            )}
+            {canLiv2 && (
+              <>
+                <Button onClick={() => { setNote(""); setDialog({ level: 2, action: "approved" }); }}>Approva</Button>
+                <Button variant="destructive" onClick={() => { setNote(""); setDialog({ level: 2, action: "rejected" }); }}>Rifiuta</Button>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      <ChatMessaggi richiestaId={r.id} disabled={r.archived} status={r.status} archived={r.archived} />
 
       {/* Dialog conferma azione */}
       <Dialog open={!!dialog} onOpenChange={(o) => { if (!o) { setDialog(null); setNote(""); } }}>
