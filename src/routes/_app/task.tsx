@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ListChecks, Pencil, Plus, Trash2 } from "lucide-react";
+import { ListChecks, MessageSquare, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { format, isBefore, startOfDay } from "date-fns";
 import { it } from "date-fns/locale";
