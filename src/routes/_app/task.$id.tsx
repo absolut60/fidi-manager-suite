@@ -247,6 +247,12 @@ function TaskDetailPage() {
     setPreview({ nome: a.nome_file, url: data.signedUrl, mime: a.mime_type });
   }
 
+  async function apriInScheda(path: string) {
+    const { data, error } = await supabase.storage.from(ALLEGATI_BUCKET).createSignedUrl(path, 60);
+    if (error || !data?.signedUrl) { toast.error("Impossibile aprire il file"); return; }
+    window.open(data.signedUrl, "_blank", "noopener");
+  }
+
   async function eliminaAllegato(a: any) {
     const { error: rmErr } = await supabase.storage.from(ALLEGATI_BUCKET).remove([a.storage_path]);
     if (rmErr) console.warn("Rimozione file fallita:", rmErr.message);
