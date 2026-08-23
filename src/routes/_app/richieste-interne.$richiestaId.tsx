@@ -412,6 +412,9 @@ function DettaglioRichiesta() {
                   {r.richieste_interne_allegati!.map((a: any) => {
                     const Ico = iconFor(a.mime_type);
                     const uploader = a.profili ? [a.profili.nome, a.profili.cognome].filter(Boolean).join(" ") : "—";
+                    const canDeleteAllegato = hasRole("amministratore") || a.caricato_da === uid;
+                    const isImage = !!a.mime_type && a.mime_type.startsWith("image/");
+                    const isPdf = a.mime_type === "application/pdf";
                     return (
                       <li key={a.id} className="flex items-center gap-3 py-2">
                         <Ico className="size-5 text-muted-foreground shrink-0" />
@@ -419,12 +422,30 @@ function DettaglioRichiesta() {
                           <div className="text-sm font-medium truncate">{a.nome_file}</div>
                           <div className="text-xs text-muted-foreground">{fmtBytes(a.dimensione_bytes)} · {uploader} · {fmtDataOra(a.created_at)}</div>
                         </div>
-                        <Button size="sm" variant="ghost" onClick={() => openAllegato(a.storage_path)}>
-                          <Download className="size-4" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          {isImage && (
+                            <Button size="sm" variant="ghost" onClick={() => void apriAnteprima(a)} title="Anteprima">
+                              <Eye className="size-4" />
+                            </Button>
+                          )}
+                          {isPdf && (
+                            <Button size="sm" variant="ghost" onClick={() => void apriInScheda(a.storage_path)} title="Apri">
+                              <Search className="size-4" />
+                            </Button>
+                          )}
+                          <Button size="sm" variant="ghost" onClick={() => void scarica(a.storage_path, a.nome_file)} title="Scarica">
+                            <Download className="size-4" />
+                          </Button>
+                          {canDeleteAllegato && (
+                            <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setAllegatoDaEliminare(a)} title="Elimina">
+                              <Trash2 className="size-4" />
+                            </Button>
+                          )}
+                        </div>
                       </li>
                     );
                   })}
+
                 </ul>
               )}
             </CardContent>
