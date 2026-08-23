@@ -578,7 +578,7 @@ function TaskDetailPage() {
                           <Download className="size-4" />
                         </Button>
                         {(isAdmin || a.caricato_da === uid) && (
-                          <Button size="sm" variant="ghost" onClick={() => eliminaAllegato(a)} title="Elimina">
+                          <Button size="sm" variant="ghost" onClick={() => setAllegatoDaEliminare(a)} title="Elimina">
                             <Trash2 className="size-4 text-destructive" />
                           </Button>
                         )}
