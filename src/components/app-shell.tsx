@@ -189,6 +189,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const AGENTE_WHITELIST = new Set<string>([
     "/clienti",
+    "/chat",
     "/contatti",
     "/dashboard-commerciale",
     "/opportunita",
