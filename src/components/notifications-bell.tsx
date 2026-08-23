@@ -51,6 +51,10 @@ function playNotificationBeep() {
 export function NotificationsBell() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  // Il componente può essere montato più volte (sidebar desktop + drawer mobile):
+  // ogni istanza deve avere un topic realtime unico, altrimenti supabase-js riusa
+  // il channel già sottoscritto e `.on()` lancia un errore che rompe la pagina.
+  const instanceId = useId();
   const [notifiche, setNotifiche] = useState<Notifica[]>([]);
   const [open, setOpen] = useState(false);
 
