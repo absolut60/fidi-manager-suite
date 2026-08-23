@@ -280,8 +280,16 @@ function TaskPage() {
                         {t.scadenza ? format(new Date(t.scadenza), "d MMM yyyy", { locale: it }) : "—"}
                       </TableCell>
                       <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex justify-end gap-1">
-                          <Button
+                         <div className="flex justify-end gap-1">
+                           <Button
+                             variant="ghost"
+                             size="icon"
+                             title="Commenti"
+                             onClick={() => setTaskAperto(t)}
+                           >
+                             <MessageSquare className="size-4" />
+                           </Button>
+                           <Button
                             variant="ghost"
                             size="icon"
                             title="Modifica task"
