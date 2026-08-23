@@ -47,21 +47,6 @@ export const Route = createFileRoute("/_app/task")({
   }),
 });
 
-const STATI: StatoTask[] = ["da_fare", "in_corso", "fatto", "annullato"];
-
-const STATO_LABEL: Record<StatoTask, string> = {
-  da_fare: "Da fare",
-  in_corso: "In corso",
-  fatto: "Fatto",
-  annullato: "Annullato",
-};
-
-const STATO_BADGE: Record<StatoTask, { variant: "default" | "secondary" | "outline"; className: string }> = {
-  da_fare: { variant: "secondary", className: "" },
-  in_corso: { variant: "default", className: "" },
-  fatto: { variant: "outline", className: "border-emerald-500 text-emerald-600" },
-  annullato: { variant: "secondary", className: "line-through opacity-70" },
-};
 
 const NESSUNO = "__nessuno__";
 const TUTTI = "__tutti__";
