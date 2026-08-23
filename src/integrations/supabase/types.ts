@@ -3045,6 +3045,60 @@ export type Database = {
         }
         Relationships: []
       }
+      messaggi: {
+        Row: {
+          autore_id: string
+          canale_id: string
+          created_at: string
+          eliminato_at: string | null
+          entita_id: string | null
+          entita_tipo: string | null
+          id: string
+          reply_to_id: string | null
+          testo: string
+          updated_at: string
+        }
+        Insert: {
+          autore_id?: string
+          canale_id: string
+          created_at?: string
+          eliminato_at?: string | null
+          entita_id?: string | null
+          entita_tipo?: string | null
+          id?: string
+          reply_to_id?: string | null
+          testo: string
+          updated_at?: string
+        }
+        Update: {
+          autore_id?: string
+          canale_id?: string
+          created_at?: string
+          eliminato_at?: string | null
+          entita_id?: string | null
+          entita_tipo?: string | null
+          id?: string
+          reply_to_id?: string | null
+          testo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messaggi_canale_id_fkey"
+            columns: ["canale_id"]
+            isOneToOne: false
+            referencedRelation: "canali"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messaggi_reply_to_id_fkey"
+            columns: ["reply_to_id"]
+            isOneToOne: false
+            referencedRelation: "messaggi"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messaggi_whatsapp: {
         Row: {
           campagna_id: string | null
