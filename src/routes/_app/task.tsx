@@ -228,8 +228,11 @@ function TaskPage() {
                   const badge = STATO_BADGE[t.stato];
                   return (
                     <TableRow key={t.id}>
-                      <TableCell>
-                        <div className="font-medium">{t.titolo}</div>
+                      <TableCell
+                        className="cursor-pointer"
+                        onClick={() => navigate({ to: "/task/$id", params: { id: t.id } })}
+                      >
+                        <div className="font-medium hover:underline">{t.titolo}</div>
                         {t.descrizione && (
                           <div className="text-xs text-muted-foreground truncate max-w-xs">
                             {t.descrizione}
