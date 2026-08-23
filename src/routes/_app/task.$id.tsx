@@ -502,25 +502,6 @@ function TaskDetailPage() {
             </CardContent>
           </Card>
         </div>
-
-        {/* DESTRA */}
-        <div className="space-y-4">
-          <Card>
-            <CardHeader><CardTitle className="text-base">Assegnazione</CardTitle></CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              {task.esecutore_id ? (
-                <div className="font-medium">{nomeUtente(task.esecutore_id)}</div>
-              ) : (
-                <div className="text-muted-foreground italic">Nessun esecutore assegnato</div>
-              )}
-              {canEdit && (
-                <Button size="sm" variant="outline" onClick={() => { setSearch(""); setAssignOpen(true); }}>
-                  <UserPlus className="size-4 mr-1" />Assegna a
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        </div>
       </div>
 
       {/* Dialog assegnazione */}
