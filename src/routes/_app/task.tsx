@@ -28,6 +28,10 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import {
+  Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle,
+} from "@/components/ui/sheet";
+import { CommentiTask } from "@/components/commenti-task";
 import type { Database } from "@/integrations/supabase/types";
 import { STATI, STATO_LABEL, STATO_BADGE, type StatoTask } from "@/lib/task-stato";
 
