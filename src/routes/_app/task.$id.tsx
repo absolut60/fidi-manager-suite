@@ -4,8 +4,8 @@ import { useMemo, useRef, useState } from "react";
 import { format, isBefore, startOfDay } from "date-fns";
 import { it } from "date-fns/locale";
 import {
-  ArrowLeft, Download, Eye, ExternalLink, File as FileIcon, FileImage, FileText, Loader2,
-  MessagesSquare, Paperclip, Pencil, Trash2, Upload, UserPlus,
+  ArrowLeft, Download, Eye, File as FileIcon, FileImage, FileText, Loader2,
+  MessagesSquare, Paperclip, Pencil, Search, Trash2, Upload, UserPlus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -166,6 +166,9 @@ function TaskDetailPage() {
   const [uploading, setUploading] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [preview, setPreview] = useState<null | { nome: string; url: string; mime: string | null }>(null);
+  const [allegatoDaEliminare, setAllegatoDaEliminare] = useState<any>(null);
+  const [showUnsaved, setShowUnsaved] = useState(false);
+  const [editInitials, setEditInitials] = useState({ titolo: "", descrizione: "", areaId: "none", scadenza: "" });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const refresh = () => {
@@ -292,10 +295,13 @@ function TaskDetailPage() {
 
   function avviaModifica() {
     if (!task) return;
+    const areaId = task.area_id ?? "none";
+    const scadenza = task.scadenza ? String(task.scadenza).slice(0, 10) : "";
     setFTitolo(task.titolo);
     setFDescrizione(task.descrizione ?? "");
-    setFAreaId(task.area_id ?? "none");
-    setFScadenza(task.scadenza ? String(task.scadenza).slice(0, 10) : "");
+    setFAreaId(areaId);
+    setFScadenza(scadenza);
+    setEditInitials({ titolo: task.titolo, descrizione: task.descrizione ?? "", areaId, scadenza });
     setEditMode(true);
   }
 
@@ -327,6 +333,11 @@ function TaskDetailPage() {
     refresh();
   }
 
+  const hasChanges =
+    fTitolo !== editInitials.titolo ||
+    fDescrizione !== editInitials.descrizione ||
+    fAreaId !== editInitials.areaId ||
+    fScadenza !== editInitials.scadenza;
 
   function indietro() {
     if (typeof window !== "undefined" && window.history.length > 1) router.history.back();
@@ -381,7 +392,12 @@ function TaskDetailPage() {
                 <Button size="sm" onClick={() => void salvaDati()} disabled={saving}>
                   {saving && <Loader2 className="size-4 mr-1 animate-spin" />}Salva
                 </Button>
-                <Button size="sm" variant="ghost" onClick={() => setEditMode(false)} disabled={saving}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => { if (hasChanges) setShowUnsaved(true); else setEditMode(false); }}
+                  disabled={saving}
+                >
                   Annulla
                 </Button>
               </>
@@ -555,14 +571,14 @@ function TaskDetailPage() {
                           </Button>
                         ) : a.mime_type === "application/pdf" ? (
                           <Button size="sm" variant="ghost" onClick={() => apriInScheda(a.storage_path)} title="Apri">
-                            <ExternalLink className="size-4" />
+                            <Search className="size-4" />
                           </Button>
                         ) : null}
                         <Button size="sm" variant="ghost" onClick={() => scarica(a.storage_path, a.nome_file)} title="Scarica">
                           <Download className="size-4" />
                         </Button>
                         {(isAdmin || a.caricato_da === uid) && (
-                          <Button size="sm" variant="ghost" onClick={() => eliminaAllegato(a)} title="Elimina">
+                          <Button size="sm" variant="ghost" onClick={() => setAllegatoDaEliminare(a)} title="Elimina">
                             <Trash2 className="size-4 text-destructive" />
                           </Button>
                         )}
@@ -659,6 +675,66 @@ function TaskDetailPage() {
                 Elimina definitivamente
               </Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Conferma eliminazione allegato */}
+      <Dialog open={!!allegatoDaEliminare} onOpenChange={(o) => { if (!o) setAllegatoDaEliminare(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Elimina allegato</DialogTitle>
+            <DialogDescription>
+              Vuoi eliminare l&apos;allegato &quot;{allegatoDaEliminare?.nome_file}&quot;? L&apos;operazione è irreversibile.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setAllegatoDaEliminare(null)}>Annulla</Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                if (allegatoDaEliminare) {
+                  await eliminaAllegato(allegatoDaEliminare);
+                }
+                setAllegatoDaEliminare(null);
+              }}
+            >
+              Elimina
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modifiche non salvate */}
+      <Dialog open={showUnsaved} onOpenChange={(o) => { if (!o) setShowUnsaved(false); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Modifiche non salvate</DialogTitle>
+            <DialogDescription>Hai modifiche non salvate. Vuoi salvarle?</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setShowUnsaved(false)}>Continua a modificare</Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setFTitolo(editInitials.titolo);
+                setFDescrizione(editInitials.descrizione);
+                setFAreaId(editInitials.areaId);
+                setFScadenza(editInitials.scadenza);
+                setShowUnsaved(false);
+                setEditMode(false);
+              }}
+            >
+              Scarta
+            </Button>
+            <Button
+              onClick={async () => {
+                await salvaDati();
+                setShowUnsaved(false);
+              }}
+            >
+              Salva
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
