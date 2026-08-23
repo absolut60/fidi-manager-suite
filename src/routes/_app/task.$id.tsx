@@ -555,7 +555,7 @@ function TaskDetailPage() {
                           </Button>
                         ) : a.mime_type === "application/pdf" ? (
                           <Button size="sm" variant="ghost" onClick={() => apriInScheda(a.storage_path)} title="Apri">
-                            <ExternalLink className="size-4" />
+                            <Search className="size-4" />
                           </Button>
                         ) : null}
                         <Button size="sm" variant="ghost" onClick={() => scarica(a.storage_path, a.nome_file)} title="Scarica">
