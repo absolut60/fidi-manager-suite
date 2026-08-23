@@ -21,6 +21,7 @@ export function BannerAttivaNotifiche() {
       setShow(false);
       return;
     }
+    const userId = user.id;
 
     let cancelled = false;
 
@@ -39,7 +40,7 @@ export function BannerAttivaNotifiche() {
       const { count } = await supabase
         .from("push_subscriptions")
         .select("id", { count: "exact", head: true })
-        .eq("user_id", user.id);
+        .eq("user_id", userId);
       const haQualcheDispositivo = (count ?? 0) > 0;
 
       if (!cancelled) {
