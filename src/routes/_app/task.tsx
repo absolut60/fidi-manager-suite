@@ -346,6 +346,61 @@ function TaskPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Sheet open={!!taskAperto} onOpenChange={(o) => { if (!o) setTaskAperto(null); }}>
+        <SheetContent side="right" className="w-full sm:max-w-md flex flex-col h-full p-0">
+          <SheetHeader className="p-4 pb-2">
+            <SheetTitle className="text-left">{taskAperto?.titolo}</SheetTitle>
+            <SheetDescription className="text-left">
+              Riepilogo del task e conversazione dei commenti
+            </SheetDescription>
+          </SheetHeader>
+
+          {taskAperto && (
+            <div className="px-4 pb-3 space-y-2 text-sm border-b">
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground">Stato:</span>
+                <Badge
+                  variant={STATO_BADGE[taskAperto.stato].variant}
+                  className={STATO_BADGE[taskAperto.stato].className}
+                >
+                  {STATO_LABEL[taskAperto.stato]}
+                </Badge>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Titolare:</span>{" "}
+                {nomeUtente(taskAperto.titolare_id) ?? "—"}
+              </div>
+              <div>
+                <span className="text-muted-foreground">Esecutore:</span>{" "}
+                {taskAperto.esecutore_id ? nomeUtente(taskAperto.esecutore_id) : "non assegnato"}
+              </div>
+              {taskAperto.scadenza && (
+                <div>
+                  <span className="text-muted-foreground">Scadenza:</span>{" "}
+                  {format(new Date(taskAperto.scadenza), "d MMM yyyy", { locale: it })}
+                </div>
+              )}
+              {taskAperto.descrizione && (
+                <p className="text-muted-foreground whitespace-pre-wrap">{taskAperto.descrizione}</p>
+              )}
+            </div>
+          )}
+
+          {taskAperto?.canale_id ? (
+            <CommentiTask
+              key={taskAperto.canale_id}
+              canaleId={taskAperto.canale_id}
+              userId={userId}
+              nomeAutore={nomeAutore}
+            />
+          ) : (
+            <div className="p-4 text-sm text-muted-foreground">
+              Commenti non disponibili per questo task
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
