@@ -4,8 +4,8 @@ import { useMemo, useRef, useState } from "react";
 import { format, isBefore, startOfDay } from "date-fns";
 import { it } from "date-fns/locale";
 import {
-  ArrowLeft, Download, Eye, ExternalLink, File as FileIcon, FileImage, FileText, Loader2,
-  MessagesSquare, Paperclip, Pencil, Trash2, Upload, UserPlus,
+  ArrowLeft, Download, Eye, File as FileIcon, FileImage, FileText, Loader2,
+  MessagesSquare, Paperclip, Pencil, Search, Trash2, Upload, UserPlus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
