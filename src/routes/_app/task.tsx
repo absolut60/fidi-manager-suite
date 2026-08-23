@@ -161,7 +161,7 @@ function TaskPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Task</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Task attività</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Le attività che ti riguardano: create da te, assegnate a te o della tua area
           </p>
@@ -196,7 +196,7 @@ function TaskPage() {
         </div>
 
         <h2 className="font-semibold mb-3 flex items-center gap-2">
-          <ListChecks className="size-4" /> Task ({righe.length})
+          <ListChecks className="size-4" /> Attività ({righe.length})
         </h2>
 
         {isLoading ? (
