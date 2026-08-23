@@ -678,6 +678,66 @@ function TaskDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Conferma eliminazione allegato */}
+      <Dialog open={!!allegatoDaEliminare} onOpenChange={(o) => { if (!o) setAllegatoDaEliminare(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Elimina allegato</DialogTitle>
+            <DialogDescription>
+              Vuoi eliminare l&apos;allegato &quot;{allegatoDaEliminare?.nome_file}&quot;? L&apos;operazione è irreversibile.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setAllegatoDaEliminare(null)}>Annulla</Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                if (allegatoDaEliminare) {
+                  await eliminaAllegato(allegatoDaEliminare);
+                }
+                setAllegatoDaEliminare(null);
+              }}
+            >
+              Elimina
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modifiche non salvate */}
+      <Dialog open={showUnsaved} onOpenChange={(o) => { if (!o) setShowUnsaved(false); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Modifiche non salvate</DialogTitle>
+            <DialogDescription>Hai modifiche non salvate. Vuoi salvarle?</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setShowUnsaved(false)}>Continua a modificare</Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setFTitolo(editInitials.titolo);
+                setFDescrizione(editInitials.descrizione);
+                setFAreaId(editInitials.areaId);
+                setFScadenza(editInitials.scadenza);
+                setShowUnsaved(false);
+                setEditMode(false);
+              }}
+            >
+              Scarta
+            </Button>
+            <Button
+              onClick={async () => {
+                await salvaDati();
+                setShowUnsaved(false);
+              }}
+            >
+              Salva
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
