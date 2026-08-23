@@ -42,6 +42,7 @@ import {
   Calculator,
   ShoppingCart,
   Network,
+  ListChecks,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { LOGO_MADE_SIDEBAR_BASE64 } from "@/lib/logo-made-sidebar-base64";
@@ -81,6 +82,7 @@ const NAV: NavItem[] = [
   { to: "/clienti", label: "Clienti", icon: Building, group: "generale" },
   { to: "/contatti", label: "Contatti", icon: Users, group: "generale" },
   { to: "/chat", label: "Chat", icon: MessagesSquare, group: "generale" },
+  { to: "/task", label: "Task", icon: ListChecks, group: "generale" },
   { to: "/lead", label: "Lead", icon: UserPlus, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "generale" },
   // COMMERCIALE
   { to: "/dashboard-commerciale", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "commerciale" },
@@ -190,6 +192,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const AGENTE_WHITELIST = new Set<string>([
     "/clienti",
     "/chat",
+    "/task",
     "/contatti",
     "/dashboard-commerciale",
     "/opportunita",

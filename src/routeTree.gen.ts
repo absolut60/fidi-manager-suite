@@ -21,6 +21,7 @@ import { Route as AppWhatsappRouteImport } from './routes/_app/whatsapp'
 import { Route as AppUtentiRouteImport } from './routes/_app/utenti'
 import { Route as AppTemplateLetteraRouteImport } from './routes/_app/template-lettera'
 import { Route as AppTemplateEmailRouteImport } from './routes/_app/template-email'
+import { Route as AppTaskRouteImport } from './routes/_app/task'
 import { Route as AppScadenziarioRouteImport } from './routes/_app/scadenziario'
 import { Route as AppRichiesteRouteImport } from './routes/_app/richieste'
 import { Route as AppRecuperoCreditiPromemoriaRouteImport } from './routes/_app/recupero-crediti-promemoria'
@@ -146,6 +147,11 @@ const AppTemplateLetteraRoute = AppTemplateLetteraRouteImport.update({
 const AppTemplateEmailRoute = AppTemplateEmailRouteImport.update({
   id: '/template-email',
   path: '/template-email',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTaskRoute = AppTaskRouteImport.update({
+  id: '/task',
+  path: '/task',
   getParentRoute: () => AppRoute,
 } as any)
 const AppScadenziarioRoute = AppScadenziarioRouteImport.update({
@@ -540,6 +546,7 @@ export interface FileRoutesByFullPath {
   '/recupero-crediti-promemoria': typeof AppRecuperoCreditiPromemoriaRoute
   '/richieste': typeof AppRichiesteRouteWithChildren
   '/scadenziario': typeof AppScadenziarioRoute
+  '/task': typeof AppTaskRoute
   '/template-email': typeof AppTemplateEmailRoute
   '/template-lettera': typeof AppTemplateLetteraRoute
   '/utenti': typeof AppUtentiRoute
@@ -618,6 +625,7 @@ export interface FileRoutesByTo {
   '/recupero-crediti-promemoria': typeof AppRecuperoCreditiPromemoriaRoute
   '/richieste': typeof AppRichiesteRouteWithChildren
   '/scadenziario': typeof AppScadenziarioRoute
+  '/task': typeof AppTaskRoute
   '/template-email': typeof AppTemplateEmailRoute
   '/template-lettera': typeof AppTemplateLetteraRoute
   '/utenti': typeof AppUtentiRoute
@@ -700,6 +708,7 @@ export interface FileRoutesById {
   '/_app/recupero-crediti-promemoria': typeof AppRecuperoCreditiPromemoriaRoute
   '/_app/richieste': typeof AppRichiesteRouteWithChildren
   '/_app/scadenziario': typeof AppScadenziarioRoute
+  '/_app/task': typeof AppTaskRoute
   '/_app/template-email': typeof AppTemplateEmailRoute
   '/_app/template-lettera': typeof AppTemplateLetteraRoute
   '/_app/utenti': typeof AppUtentiRoute
@@ -782,6 +791,7 @@ export interface FileRouteTypes {
     | '/recupero-crediti-promemoria'
     | '/richieste'
     | '/scadenziario'
+    | '/task'
     | '/template-email'
     | '/template-lettera'
     | '/utenti'
@@ -860,6 +870,7 @@ export interface FileRouteTypes {
     | '/recupero-crediti-promemoria'
     | '/richieste'
     | '/scadenziario'
+    | '/task'
     | '/template-email'
     | '/template-lettera'
     | '/utenti'
@@ -941,6 +952,7 @@ export interface FileRouteTypes {
     | '/_app/recupero-crediti-promemoria'
     | '/_app/richieste'
     | '/_app/scadenziario'
+    | '/_app/task'
     | '/_app/template-email'
     | '/_app/template-lettera'
     | '/_app/utenti'
@@ -1088,6 +1100,13 @@ declare module '@tanstack/react-router' {
       path: '/template-email'
       fullPath: '/template-email'
       preLoaderRoute: typeof AppTemplateEmailRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/task': {
+      id: '/_app/task'
+      path: '/task'
+      fullPath: '/task'
+      preLoaderRoute: typeof AppTaskRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/scadenziario': {
@@ -1646,6 +1665,7 @@ interface AppRouteChildren {
   AppRecuperoCreditiPromemoriaRoute: typeof AppRecuperoCreditiPromemoriaRoute
   AppRichiesteRoute: typeof AppRichiesteRouteWithChildren
   AppScadenziarioRoute: typeof AppScadenziarioRoute
+  AppTaskRoute: typeof AppTaskRoute
   AppTemplateEmailRoute: typeof AppTemplateEmailRoute
   AppTemplateLetteraRoute: typeof AppTemplateLetteraRoute
   AppUtentiRoute: typeof AppUtentiRoute
@@ -1705,6 +1725,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppRecuperoCreditiPromemoriaRoute: AppRecuperoCreditiPromemoriaRoute,
   AppRichiesteRoute: AppRichiesteRouteWithChildren,
   AppScadenziarioRoute: AppScadenziarioRoute,
+  AppTaskRoute: AppTaskRoute,
   AppTemplateEmailRoute: AppTemplateEmailRoute,
   AppTemplateLetteraRoute: AppTemplateLetteraRoute,
   AppUtentiRoute: AppUtentiRoute,
