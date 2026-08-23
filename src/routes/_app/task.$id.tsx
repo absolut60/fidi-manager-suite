@@ -327,30 +327,93 @@ function TaskDetailPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* SINISTRA */}
-        <div className="lg:col-span-2 space-y-4">
+      <div className="space-y-4">
+        <div className="space-y-4">
+          {/* ASSEGNAZIONE compatta */}
+          <Card>
+            <CardContent className="p-4 flex flex-wrap items-center gap-3 text-sm">
+              <span className="text-xs text-muted-foreground">Esecutore</span>
+              {task.esecutore_id ? (
+                <span className="font-medium">{nomeUtente(task.esecutore_id)}</span>
+              ) : (
+                <span className="text-muted-foreground italic">Nessun esecutore assegnato</span>
+              )}
+              {canEdit && (
+                <Button size="sm" variant="outline" onClick={() => { setSearch(""); setAssignOpen(true); }}>
+                  <UserPlus className="size-4 mr-1" />Assegna a
+                </Button>
+              )}
+              {canEdit && (
+                <div className="ml-auto flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Stato</span>
+                  <Select value={stato} onValueChange={(v) => void cambiaStato(v as StatoTask)}>
+                    <SelectTrigger className="h-8 w-40"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {STATI.map((s) => (
+                        <SelectItem key={s} value={s}>{STATO_LABEL[s]}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader><CardTitle className="text-base">Dati attività</CardTitle></CardHeader>
             <CardContent className="space-y-3 text-sm">
-              <Row label="Titolo attività">{task.titolo}</Row>
-              <Row label="Descrizione attività">
-                {task.descrizione ? (
-                  <div className="whitespace-pre-wrap rounded-md border bg-muted/30 p-3">{task.descrizione}</div>
-                ) : "—"}
-              </Row>
-              <Row label="Titolare">{nomeUtente(task.titolare_id) ?? "—"}</Row>
-              <Row label="Stato">
-                <Badge variant={badge.variant} className={badge.className}>{STATO_LABEL[stato]}</Badge>
-              </Row>
-              <Row label="Scadenza">
-                {task.scadenza ? (
-                  <span className={scaduta ? "text-destructive font-medium" : undefined}>{fmtData(task.scadenza)}</span>
-                ) : "—"}
-              </Row>
-              <Row label="Area di riferimento">{nomeArea(task.area_id)}</Row>
+              {editMode ? (
+                <>
+                  <div className="space-y-1">
+                    <Label>Titolo attività</Label>
+                    <Input value={fTitolo} onChange={(e) => setFTitolo(e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Descrizione attività</Label>
+                    <Textarea rows={4} value={fDescrizione} onChange={(e) => setFDescrizione(e.target.value)} />
+                  </div>
+                  <Row label="Titolare">{nomeUtente(task.titolare_id) ?? "—"}</Row>
+                  <Row label="Stato">
+                    <Badge variant={badge.variant} className={badge.className}>{STATO_LABEL[stato]}</Badge>
+                  </Row>
+                  <div className="space-y-1">
+                    <Label>Area di riferimento</Label>
+                    <Select value={fAreaId} onValueChange={setFAreaId}>
+                      <SelectTrigger><SelectValue placeholder="— Nessuna —" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">— Nessuna —</SelectItem>
+                        {(aree ?? []).map((a) => <SelectItem key={a.id} value={a.id}>{a.nome}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Scadenza</Label>
+                    <Input type="date" value={fScadenza} onChange={(e) => setFScadenza(e.target.value)} />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Row label="Titolo attività">{task.titolo}</Row>
+                  <Row label="Descrizione attività">
+                    {task.descrizione ? (
+                      <div className="whitespace-pre-wrap rounded-md border bg-muted/30 p-3">{task.descrizione}</div>
+                    ) : "—"}
+                  </Row>
+                  <Row label="Titolare">{nomeUtente(task.titolare_id) ?? "—"}</Row>
+                  <Row label="Stato">
+                    <Badge variant={badge.variant} className={badge.className}>{STATO_LABEL[stato]}</Badge>
+                  </Row>
+                  <Row label="Scadenza">
+                    {task.scadenza ? (
+                      <span className={scaduta ? "text-destructive font-medium" : undefined}>{fmtData(task.scadenza)}</span>
+                    ) : "—"}
+                  </Row>
+                  <Row label="Area di riferimento">{nomeArea(task.area_id)}</Row>
+                </>
+              )}
             </CardContent>
           </Card>
+
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
