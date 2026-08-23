@@ -29,8 +29,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import type { Database } from "@/integrations/supabase/types";
+import { STATI, STATO_LABEL, STATO_BADGE, type StatoTask } from "@/lib/task-stato";
 
-type StatoTask = Database["public"]["Enums"]["stato_task"];
 type TaskRow = Database["public"]["Tables"]["task"]["Row"];
 
 export const Route = createFileRoute("/_app/task")({
