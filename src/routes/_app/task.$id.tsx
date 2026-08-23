@@ -497,14 +497,6 @@ function TaskDetailPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog modifica */}
-      <ModificaTaskDialog
-        open={editOpen}
-        onOpenChange={setEditOpen}
-        task={task}
-        aree={aree ?? []}
-        onSaved={refresh}
-      />
 
       {/* Anteprima allegato */}
       <Dialog open={!!preview} onOpenChange={(o) => { if (!o) setPreview(null); }}>
