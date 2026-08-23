@@ -118,3 +118,11 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Nasconde il badge "Edit with Lovable" nell'app pubblicata */
+#lovable-badge,
+#lovable-badge-container,
+[id^="lovable-badge"],
+a[href*="lovable.dev"][target="_blank"] {
+  display: none !important;
+}
