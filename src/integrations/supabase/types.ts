@@ -224,6 +224,76 @@ export type Database = {
           },
         ]
       }
+      area_membri: {
+        Row: {
+          area_id: string
+          created_at: string
+          id: string
+          ruolo_area: string
+          user_id: string
+        }
+        Insert: {
+          area_id: string
+          created_at?: string
+          id?: string
+          ruolo_area?: string
+          user_id: string
+        }
+        Update: {
+          area_id?: string
+          created_at?: string
+          id?: string
+          ruolo_area?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "area_membri_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "aree_funzionali"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      aree_funzionali: {
+        Row: {
+          attiva: boolean
+          created_at: string
+          id: string
+          nome: string
+          store_id: string | null
+          tipo: Database["public"]["Enums"]["tipo_area"]
+          updated_at: string
+        }
+        Insert: {
+          attiva?: boolean
+          created_at?: string
+          id?: string
+          nome: string
+          store_id?: string | null
+          tipo: Database["public"]["Enums"]["tipo_area"]
+          updated_at?: string
+        }
+        Update: {
+          attiva?: boolean
+          created_at?: string
+          id?: string
+          nome?: string
+          store_id?: string | null
+          tipo?: Database["public"]["Enums"]["tipo_area"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aree_funzionali_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       articoli: {
         Row: {
           categoria: string | null
@@ -6506,6 +6576,11 @@ export type Database = {
         | "risposto"
         | "ignorato"
         | "risolto"
+      tipo_area:
+        | "recupero_crediti"
+        | "commerciale"
+        | "amministrazione"
+        | "magazzino"
       tipo_attivita_commerciale:
         | "appuntamento"
         | "visita"
@@ -6821,6 +6896,12 @@ export const Constants = {
         "risposto",
         "ignorato",
         "risolto",
+      ],
+      tipo_area: [
+        "recupero_crediti",
+        "commerciale",
+        "amministrazione",
+        "magazzino",
       ],
       tipo_attivita_commerciale: [
         "appuntamento",
