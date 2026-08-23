@@ -52,7 +52,7 @@ function iconFor(mime: string | null) {
 }
 
 const isPreviewable = (mime: string | null) =>
-  !!mime && (mime.startsWith("image/") || mime === "application/pdf");
+  !!mime && mime.startsWith("image/");
 
 export const Route = createFileRoute("/_app/task/$id")({
   component: TaskDetailPage,
@@ -221,10 +221,24 @@ function TaskDetailPage() {
     refreshAllegati();
   }
 
-  async function scarica(path: string) {
+  async function scarica(path: string, nomeFile: string) {
     const { data, error } = await supabase.storage.from(ALLEGATI_BUCKET).createSignedUrl(path, 60);
-    if (error || !data?.signedUrl) { toast.error("Impossibile aprire il file"); return; }
-    window.open(data.signedUrl, "_blank", "noopener");
+    if (error || !data?.signedUrl) { toast.error("Impossibile scaricare il file"); return; }
+    try {
+      const res = await fetch(data.signedUrl);
+      if (!res.ok) throw new Error("Download fallito");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = nomeFile;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      toast.error("Impossibile scaricare il file");
+    }
   }
 
   async function apriAnteprima(a: any) {
@@ -449,22 +463,26 @@ function TaskDetailPage() {
                 </>
               ) : (
                 <>
-                  <Row label="Titolo attività">{task.titolo}</Row>
-                  <Row label="Descrizione attività">
+                  <div className="space-y-4">
+                    <div className="text-lg font-semibold">{task.titolo}</div>
                     {task.descrizione ? (
-                      <div className="whitespace-pre-wrap rounded-md border bg-muted/30 p-3">{task.descrizione}</div>
-                    ) : "—"}
-                  </Row>
-                  <Row label="Titolare">{nomeUtente(task.titolare_id) ?? "—"}</Row>
-                  <Row label="Stato">
-                    <Badge variant={badge.variant} className={badge.className}>{STATO_LABEL[stato]}</Badge>
-                  </Row>
-                  <Row label="Scadenza">
-                    {task.scadenza ? (
-                      <span className={scaduta ? "text-destructive font-medium" : undefined}>{fmtData(task.scadenza)}</span>
-                    ) : "—"}
-                  </Row>
-                  <Row label="Area di riferimento">{nomeArea(task.area_id)}</Row>
+                      <div className="whitespace-pre-wrap rounded-md border bg-muted/30 p-4 text-base">{task.descrizione}</div>
+                    ) : (
+                      <div className="text-sm text-muted-foreground italic">Nessuna descrizione</div>
+                    )}
+                  </div>
+                  <div className="pt-4 border-t space-y-3">
+                    <Row label="Titolare">{nomeUtente(task.titolare_id) ?? "—"}</Row>
+                    <Row label="Stato">
+                      <Badge variant={badge.variant} className={badge.className}>{STATO_LABEL[stato]}</Badge>
+                    </Row>
+                    <Row label="Scadenza">
+                      {task.scadenza ? (
+                        <span className={scaduta ? "text-destructive font-medium" : undefined}>{fmtData(task.scadenza)}</span>
+                      ) : "—"}
+                    </Row>
+                    <Row label="Area di riferimento">{nomeArea(task.area_id)}</Row>
+                  </div>
                 </>
               )}
             </CardContent>
@@ -530,7 +548,7 @@ function TaskDetailPage() {
                             <Eye className="size-4" />
                           </Button>
                         )}
-                        <Button size="sm" variant="ghost" onClick={() => scarica(a.storage_path)} title="Scarica">
+                        <Button size="sm" variant="ghost" onClick={() => scarica(a.storage_path, a.nome_file)} title="Scarica">
                           <Download className="size-4" />
                         </Button>
                         {(isAdmin || a.caricato_da === uid) && (
@@ -607,9 +625,6 @@ function TaskDetailPage() {
           <DialogHeader><DialogTitle className="truncate">{preview?.nome}</DialogTitle></DialogHeader>
           {preview?.mime?.startsWith("image/") && (
             <img src={preview.url} alt={preview.nome} className="max-h-[75vh] w-full object-contain" />
-          )}
-          {preview?.mime === "application/pdf" && (
-            <iframe src={preview.url} title={preview.nome} className="w-full h-[75vh]" />
           )}
         </DialogContent>
       </Dialog>
