@@ -227,14 +227,47 @@ function DettaglioRichiesta() {
     refresh();
   }
 
-  async function openAllegato(path: string) {
+  async function scarica(path: string, nomeFile: string) {
     const { data, error } = await supabase.storage.from("richieste-allegati").createSignedUrl(path, 60);
-    if (error || !data?.signedUrl) {
-      toast.error("Impossibile aprire il file");
-      return;
+    if (error || !data?.signedUrl) { toast.error("Impossibile scaricare il file"); return; }
+    try {
+      const res = await fetch(data.signedUrl);
+      if (!res.ok) throw new Error("Download fallito");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = nomeFile;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      toast.error("Impossibile scaricare il file");
     }
+  }
+
+  async function apriAnteprima(a: any) {
+    const { data, error } = await supabase.storage.from("richieste-allegati").createSignedUrl(a.storage_path, 60);
+    if (error || !data?.signedUrl) { toast.error("Impossibile aprire l'anteprima"); return; }
+    setPreview({ nome: a.nome_file, url: data.signedUrl, mime: a.mime_type });
+  }
+
+  async function apriInScheda(path: string) {
+    const { data, error } = await supabase.storage.from("richieste-allegati").createSignedUrl(path, 60);
+    if (error || !data?.signedUrl) { toast.error("Impossibile aprire il file"); return; }
     window.open(data.signedUrl, "_blank", "noopener");
   }
+
+  async function eliminaAllegato(a: any) {
+    const { error: rmErr } = await supabase.storage.from("richieste-allegati").remove([a.storage_path]);
+    if (rmErr) console.warn("Rimozione file fallita:", rmErr.message);
+    const { error } = await supabase.from("richieste_interne_allegati").delete().eq("id", a.id);
+    if (error) { toast.error("Errore: " + error.message); return; }
+    toast.success("Allegato eliminato");
+    refresh();
+  }
+
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
