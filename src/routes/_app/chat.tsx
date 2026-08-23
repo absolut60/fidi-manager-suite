@@ -278,64 +278,8 @@ function ChatPage() {
                 </div>
               </div>
 
-              <ScrollArea className="flex-1 max-h-[55vh]">
-                <div className="p-4 space-y-3">
-                  {messaggi.length === 0 && (
-                    <div className="text-center text-sm text-muted-foreground py-8">
-                      Nessun messaggio. Scrivi il primo!
-                    </div>
-                  )}
-                  {messaggi.map((m) => {
-                    const mio = m.autore_id === user?.id;
-                    return (
-                      <div key={m.id} className={`flex ${mio ? "justify-end" : "justify-start"}`}>
-                        <div
-                          className={`max-w-[80%] rounded-lg px-3 py-2 ${
-                            mio ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
-                          }`}
-                        >
-                          {!mio && (
-                            <div className="text-[11px] font-semibold mb-0.5">
-                              {nomeAutore.get(m.autore_id) ?? "—"}
-                            </div>
-                          )}
-                          <div className="text-sm whitespace-pre-wrap break-words">{m.testo}</div>
-                          <div
-                            className={`text-[10px] mt-1 ${
-                              mio ? "text-primary-foreground/70" : "text-muted-foreground"
-                            }`}
-                          >
-                            {formatDistanceToNow(new Date(m.created_at), {
-                              addSuffix: true,
-                              locale: it,
-                            })}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  <div ref={bottomRef} />
-                </div>
-              </ScrollArea>
+              <CanaleConversazione canaleId={canaleCorrente.id} />
 
-              <div className="border-t p-3 flex items-end gap-2">
-                <Textarea
-                  value={testo}
-                  onChange={(e) => setTesto(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      inviaMessaggio();
-                    }
-                  }}
-                  placeholder="Scrivi un messaggio…"
-                  rows={2}
-                  className="resize-none"
-                />
-                <Button onClick={inviaMessaggio} disabled={!testo.trim() || invio} size="icon">
-                  <Send className="size-4" />
-                </Button>
-              </div>
             </>
           )}
         </Card>
