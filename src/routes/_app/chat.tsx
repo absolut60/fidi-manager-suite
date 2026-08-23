@@ -45,13 +45,8 @@ type Canale = {
   updated_at: string;
 };
 
-type Messaggio = {
-  id: string;
-  canale_id: string;
-  autore_id: string;
-  testo: string;
-  created_at: string;
-};
+
+
 
 function nomeCanale(c: Canale) {
   if (c.nome && c.nome.trim()) return c.nome;
