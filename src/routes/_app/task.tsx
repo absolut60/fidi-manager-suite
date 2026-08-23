@@ -227,19 +227,20 @@ function TaskPage() {
                     isBefore(new Date(t.scadenza), startOfDay(new Date()));
                   const badge = STATO_BADGE[t.stato];
                   return (
-                    <TableRow key={t.id}>
-                      <TableCell
-                        className="cursor-pointer"
-                        onClick={() => navigate({ to: "/task/$id", params: { id: t.id } })}
-                      >
-                        <div className="font-medium hover:underline">{t.titolo}</div>
+                    <TableRow
+                      key={t.id}
+                      className="cursor-pointer hover:bg-muted/50 transition-colors"
+                      onClick={() => navigate({ to: "/task/$id", params: { id: t.id } })}
+                    >
+                      <TableCell>
+                        <div className="font-medium">{t.titolo}</div>
                         {t.descrizione && (
                           <div className="text-xs text-muted-foreground truncate max-w-xs">
                             {t.descrizione}
                           </div>
                         )}
                       </TableCell>
-                      <TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
                         {puoModificare(t) ? (
                           <Select
                             value={t.stato}
@@ -265,7 +266,7 @@ function TaskPage() {
                       <TableCell className={`text-sm ${scaduto ? "text-destructive font-medium" : ""}`}>
                         {t.scadenza ? format(new Date(t.scadenza), "d MMM yyyy", { locale: it }) : "—"}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-end gap-1">
                           <Button
                             variant="ghost"
