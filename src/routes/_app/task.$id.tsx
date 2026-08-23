@@ -295,10 +295,13 @@ function TaskDetailPage() {
 
   function avviaModifica() {
     if (!task) return;
+    const areaId = task.area_id ?? "none";
+    const scadenza = task.scadenza ? String(task.scadenza).slice(0, 10) : "";
     setFTitolo(task.titolo);
     setFDescrizione(task.descrizione ?? "");
-    setFAreaId(task.area_id ?? "none");
-    setFScadenza(task.scadenza ? String(task.scadenza).slice(0, 10) : "");
+    setFAreaId(areaId);
+    setFScadenza(scadenza);
+    setEditInitials({ titolo: task.titolo, descrizione: task.descrizione ?? "", areaId, scadenza });
     setEditMode(true);
   }
 
