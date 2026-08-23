@@ -1164,6 +1164,89 @@ export type Database = {
         }
         Relationships: []
       }
+      canale_membri: {
+        Row: {
+          canale_id: string
+          created_at: string
+          id: string
+          ultimo_letto_at: string | null
+          user_id: string
+        }
+        Insert: {
+          canale_id: string
+          created_at?: string
+          id?: string
+          ultimo_letto_at?: string | null
+          user_id: string
+        }
+        Update: {
+          canale_id?: string
+          created_at?: string
+          id?: string
+          ultimo_letto_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "canale_membri_canale_id_fkey"
+            columns: ["canale_id"]
+            isOneToOne: false
+            referencedRelation: "canali"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      canali: {
+        Row: {
+          area_id: string | null
+          attivo: boolean
+          created_at: string
+          created_by: string | null
+          id: string
+          nome: string | null
+          store_id: string | null
+          tipo: Database["public"]["Enums"]["tipo_canale"]
+          updated_at: string
+        }
+        Insert: {
+          area_id?: string | null
+          attivo?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          nome?: string | null
+          store_id?: string | null
+          tipo: Database["public"]["Enums"]["tipo_canale"]
+          updated_at?: string
+        }
+        Update: {
+          area_id?: string | null
+          attivo?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          nome?: string | null
+          store_id?: string | null
+          tipo?: Database["public"]["Enums"]["tipo_canale"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "canali_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "aree_funzionali"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "canali_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cantiere_listini_speciali: {
         Row: {
           cantiere_id: string
@@ -6296,6 +6379,10 @@ export type Database = {
         Returns: Json
       }
       is_anticipo: { Args: { _numero_documento: string }; Returns: boolean }
+      is_canale_membro: {
+        Args: { _canale_id: string; _user_id: string }
+        Returns: boolean
+      }
       livello_approvatore: { Args: { _user_id: string }; Returns: number }
       marca_comunicazioni_lette: {
         Args: { _richiesta_id: string }
@@ -6589,6 +6676,7 @@ export type Database = {
         | "preventivo_inviato"
         | "nota"
         | "altro"
+      tipo_canale: "area" | "store" | "diretto"
       tipo_doc_preventivo:
         | "PREVENTIVO"
         | "PROPOSTA_RAPIDA"
@@ -6912,6 +7000,7 @@ export const Constants = {
         "nota",
         "altro",
       ],
+      tipo_canale: ["area", "store", "diretto"],
       tipo_doc_preventivo: [
         "PREVENTIVO",
         "PROPOSTA_RAPIDA",
