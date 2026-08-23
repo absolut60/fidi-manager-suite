@@ -75,7 +75,7 @@ export function NotificationsBell() {
     const refreshTimer = window.setInterval(load, 30_000);
 
     const channel = supabase
-      .channel(`notifiche-realtime-${user.id}`)
+      .channel(`notifiche-realtime-${user.id}-${instanceId}`)
       .on(
         "postgres_changes",
         {
@@ -114,7 +114,7 @@ export function NotificationsBell() {
       window.clearInterval(refreshTimer);
       supabase.removeChannel(channel);
     };
-  }, [user?.id, navigate]);
+  }, [user?.id, navigate, instanceId]);
 
   const nonLette = notifiche.filter((n) => !n.letta).length;
 
