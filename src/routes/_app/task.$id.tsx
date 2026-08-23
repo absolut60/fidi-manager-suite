@@ -392,7 +392,12 @@ function TaskDetailPage() {
                 <Button size="sm" onClick={() => void salvaDati()} disabled={saving}>
                   {saving && <Loader2 className="size-4 mr-1 animate-spin" />}Salva
                 </Button>
-                <Button size="sm" variant="ghost" onClick={() => setEditMode(false)} disabled={saving}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => { if (hasChanges) setShowUnsaved(true); else setEditMode(false); }}
+                  disabled={saving}
+                >
                   Annulla
                 </Button>
               </>
