@@ -9,6 +9,7 @@ import {
   CheckCheck,
   FileSpreadsheet,
   MessageCircle,
+  MessagesSquare,
   Settings,
   UsersRound,
   UserPlus,
@@ -79,6 +80,7 @@ const NAV: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, group: "generale" },
   { to: "/clienti", label: "Clienti", icon: Building, group: "generale" },
   { to: "/contatti", label: "Contatti", icon: Users, group: "generale" },
+  { to: "/chat", label: "Chat", icon: MessagesSquare, group: "generale" },
   { to: "/lead", label: "Lead", icon: UserPlus, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "generale" },
   // COMMERCIALE
   { to: "/dashboard-commerciale", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "commerciale" },
