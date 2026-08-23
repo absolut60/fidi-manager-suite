@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { format, isBefore, startOfDay } from "date-fns";
 import { it } from "date-fns/locale";
 import {
-  ArrowLeft, Download, Eye, File as FileIcon, FileImage, FileText, Loader2,
+  ArrowLeft, Download, Eye, ExternalLink, File as FileIcon, FileImage, FileText, Loader2,
   MessagesSquare, Paperclip, Pencil, Trash2, Upload, UserPlus,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -245,6 +245,12 @@ function TaskDetailPage() {
     const { data, error } = await supabase.storage.from(ALLEGATI_BUCKET).createSignedUrl(a.storage_path, 60);
     if (error || !data?.signedUrl) { toast.error("Impossibile aprire l'anteprima"); return; }
     setPreview({ nome: a.nome_file, url: data.signedUrl, mime: a.mime_type });
+  }
+
+  async function apriInScheda(path: string) {
+    const { data, error } = await supabase.storage.from(ALLEGATI_BUCKET).createSignedUrl(path, 60);
+    if (error || !data?.signedUrl) { toast.error("Impossibile aprire il file"); return; }
+    window.open(data.signedUrl, "_blank", "noopener");
   }
 
   async function eliminaAllegato(a: any) {
@@ -543,11 +549,15 @@ function TaskDetailPage() {
                             {fmtBytes(a.dimensione_bytes)} · {nomeUtente(a.caricato_da) ?? "—"} · {fmtData(a.created_at)}
                           </div>
                         </div>
-                        {isPreviewable(a.mime_type) && (
+                        {a.mime_type?.startsWith("image/") ? (
                           <Button size="sm" variant="ghost" onClick={() => apriAnteprima(a)} title="Anteprima">
                             <Eye className="size-4" />
                           </Button>
-                        )}
+                        ) : a.mime_type === "application/pdf" ? (
+                          <Button size="sm" variant="ghost" onClick={() => apriInScheda(a.storage_path)} title="Apri">
+                            <ExternalLink className="size-4" />
+                          </Button>
+                        ) : null}
                         <Button size="sm" variant="ghost" onClick={() => scarica(a.storage_path, a.nome_file)} title="Scarica">
                           <Download className="size-4" />
                         </Button>
