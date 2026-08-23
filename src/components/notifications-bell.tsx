@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { Bell, Check } from "lucide-react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
@@ -51,6 +51,10 @@ function playNotificationBeep() {
 export function NotificationsBell() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  // Il componente può essere montato più volte (sidebar desktop + drawer mobile):
+  // ogni istanza deve avere un topic realtime unico, altrimenti supabase-js riusa
+  // il channel già sottoscritto e `.on()` lancia un errore che rompe la pagina.
+  const instanceId = useId();
   const [notifiche, setNotifiche] = useState<Notifica[]>([]);
   const [open, setOpen] = useState(false);
 
@@ -71,7 +75,7 @@ export function NotificationsBell() {
     const refreshTimer = window.setInterval(load, 30_000);
 
     const channel = supabase
-      .channel(`notifiche-realtime-${user.id}`)
+      .channel(`notifiche-realtime-${user.id}-${instanceId}`)
       .on(
         "postgres_changes",
         {
@@ -110,7 +114,7 @@ export function NotificationsBell() {
       window.clearInterval(refreshTimer);
       supabase.removeChannel(channel);
     };
-  }, [user?.id, navigate]);
+  }, [user?.id, navigate, instanceId]);
 
   const nonLette = notifiche.filter((n) => !n.letta).length;
 
