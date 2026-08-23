@@ -270,6 +270,44 @@ function TaskDetailPage() {
     refresh();
   }
 
+  function avviaModifica() {
+    if (!task) return;
+    setFTitolo(task.titolo);
+    setFDescrizione(task.descrizione ?? "");
+    setFAreaId(task.area_id ?? "none");
+    setFScadenza(task.scadenza ? String(task.scadenza).slice(0, 10) : "");
+    setEditMode(true);
+  }
+
+  async function salvaDati() {
+    if (!task) return;
+    if (!fTitolo.trim()) { toast.error("Il titolo è obbligatorio"); return; }
+    setSaving(true);
+    const { error } = await supabase
+      .from("task")
+      .update({
+        titolo: fTitolo.trim(),
+        descrizione: fDescrizione.trim() || null,
+        area_id: fAreaId === "none" ? null : fAreaId,
+        scadenza: fScadenza || null,
+      })
+      .eq("id", task.id);
+    setSaving(false);
+    if (error) { toast.error("Errore: " + error.message); return; }
+    setEditMode(false);
+    toast.success("Attività aggiornata");
+    refresh();
+  }
+
+  async function cambiaStato(nuovo: StatoTask) {
+    if (!task) return;
+    const { error } = await supabase.from("task").update({ stato: nuovo }).eq("id", task.id);
+    if (error) { toast.error("Errore: " + error.message); return; }
+    toast.success("Stato aggiornato");
+    refresh();
+  }
+
+
   function indietro() {
     if (typeof window !== "undefined" && window.history.length > 1) router.history.back();
     else navigate({ to: "/task" });
