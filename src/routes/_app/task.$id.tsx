@@ -318,15 +318,28 @@ function TaskDetailPage() {
         <div className="flex flex-col items-end gap-2">
           <Badge variant={badge.variant} className={badge.className}>{STATO_LABEL[stato]}</Badge>
           <div className="flex flex-wrap gap-2 justify-end">
-            {canEdit && (
-              <Button size="sm" variant="outline" onClick={() => setEditOpen(true)}>
-                <Pencil className="size-4 mr-1" />Modifica
-              </Button>
-            )}
-            {canDelete && (
-              <Button size="sm" variant="destructive" onClick={() => setConfirmDelete("one")}>
-                <Trash2 className="size-4 mr-1" />Elimina
-              </Button>
+            {editMode ? (
+              <>
+                <Button size="sm" onClick={() => void salvaDati()} disabled={saving}>
+                  {saving && <Loader2 className="size-4 mr-1 animate-spin" />}Salva
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setEditMode(false)} disabled={saving}>
+                  Annulla
+                </Button>
+              </>
+            ) : (
+              <>
+                {canEdit && (
+                  <Button size="sm" variant="outline" onClick={() => { avviaModifica(); }}>
+                    <Pencil className="size-4 mr-1" />Modifica
+                  </Button>
+                )}
+                {canDelete && (
+                  <Button size="sm" variant="destructive" onClick={() => setConfirmDelete("one")}>
+                    <Trash2 className="size-4 mr-1" />Elimina
+                  </Button>
+                )}
+              </>
             )}
           </div>
         </div>
