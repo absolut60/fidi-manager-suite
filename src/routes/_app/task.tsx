@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ListChecks, Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -55,11 +55,8 @@ function TaskPage() {
   const userId = user?.id ?? null;
 
   const [creating, setCreating] = useState(false);
-  const [editing, setEditing] = useState<TaskRow | null>(null);
-  const [daEliminare, setDaEliminare] = useState<TaskRow | null>(null);
   const [filtroStato, setFiltroStato] = useState<string>(TUTTI);
   const [soloMiei, setSoloMiei] = useState(false);
-  const [taskAperto, setTaskAperto] = useState<TaskRow | null>(null);
 
   const { data: task, isLoading } = useQuery({
     queryKey: ["task"],
@@ -107,21 +104,6 @@ function TaskPage() {
     return [p.nome, p.cognome].filter(Boolean).join(" ") || "—";
   }
 
-  const nomeAutore = useMemo(() => {
-    const map = new Map<string, string>();
-    (profili ?? []).forEach((p) => {
-      map.set(p.id, [p.nome, p.cognome].filter(Boolean).join(" ") || "—");
-    });
-    return map;
-  }, [profili]);
-
-  function puoModificare(t: TaskRow) {
-    return isAdmin || t.titolare_id === userId || t.esecutore_id === userId;
-  }
-  function puoEliminare(t: TaskRow) {
-    return isAdmin || t.titolare_id === userId;
-  }
-
   const righe = useMemo(() => {
     let lista = task ?? [];
     if (filtroStato === TUTTI) {
@@ -136,31 +118,6 @@ function TaskPage() {
     }
     return lista;
   }, [task, filtroStato, soloMiei, userId]);
-
-  const cambiaStato = useMutation({
-    mutationFn: async ({ id, stato }: { id: string; stato: StatoTask }) => {
-      const { error } = await supabase.from("task").update({ stato }).eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Stato aggiornato");
-      qc.invalidateQueries({ queryKey: ["task"] });
-    },
-    onError: () => toast.error("Non hai i permessi per modificare questo task"),
-  });
-
-  const elimina = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("task").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Task eliminato");
-      setDaEliminare(null);
-      qc.invalidateQueries({ queryKey: ["task"] });
-    },
-    onError: () => toast.error("Non hai i permessi per eliminare questo task"),
-  });
 
   return (
     <div className="space-y-6">
@@ -220,7 +177,6 @@ function TaskPage() {
                   <TableHead>Titolare</TableHead>
                   <TableHead>Esecutore</TableHead>
                   <TableHead>Scadenza</TableHead>
-                  <TableHead className="text-right">Azioni</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -245,24 +201,10 @@ function TaskPage() {
                           </div>
                         )}
                       </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        {puoModificare(t) ? (
-                          <Select
-                            value={t.stato}
-                            onValueChange={(v) => cambiaStato.mutate({ id: t.id, stato: v as StatoTask })}
-                          >
-                            <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              {STATI.map((s) => (
-                                <SelectItem key={s} value={s}>{STATO_LABEL[s]}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        ) : (
-                          <Badge variant={badge.variant} className={badge.className}>
-                            {STATO_LABEL[t.stato]}
-                          </Badge>
-                        )}
+                      <TableCell>
+                        <Badge variant={badge.variant} className={badge.className}>
+                          {STATO_LABEL[t.stato]}
+                        </Badge>
                       </TableCell>
                       <TableCell className="text-sm">{nomeUtente(t.titolare_id) ?? "—"}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">
@@ -270,36 +212,6 @@ function TaskPage() {
                       </TableCell>
                       <TableCell className={`text-sm ${scaduto ? "text-destructive font-medium" : ""}`}>
                         {t.scadenza ? format(new Date(t.scadenza), "d MMM yyyy", { locale: it }) : "—"}
-                      </TableCell>
-                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                         <div className="flex justify-end gap-1">
-                           <Button
-                             variant="ghost"
-                             size="icon"
-                             title="Commenti"
-                             onClick={() => setTaskAperto(t)}
-                           >
-                             <MessageSquare className="size-4" />
-                           </Button>
-                           <Button
-                            variant="ghost"
-                            size="icon"
-                            title="Modifica task"
-                            onClick={() => setEditing(t)}
-                          >
-                            <Pencil className="size-4" />
-                          </Button>
-                          {puoEliminare(t) && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              title="Elimina task"
-                              onClick={() => setDaEliminare(t)}
-                            >
-                              <Trash2 className="size-4" />
-                            </Button>
-                          )}
-                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -310,89 +222,15 @@ function TaskPage() {
         )}
       </Card>
 
-      {(creating || editing) && (
+      {creating && (
         <TaskDialog
-          task={editing}
+          task={null}
           profili={profili ?? []}
           aree={aree ?? []}
-          titolareLabel={editing ? (nomeUtente(editing.titolare_id) ?? "—") : ""}
-          onClose={() => { setCreating(false); setEditing(null); }}
+          titolareLabel=""
+          onClose={() => setCreating(false)}
         />
       )}
-
-      <AlertDialog open={!!daEliminare} onOpenChange={(o) => { if (!o) setDaEliminare(null); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Eliminare il task?</AlertDialogTitle>
-            <AlertDialogDescription>
-              «{daEliminare?.titolo}» verrà eliminato definitivamente.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Annulla</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => { if (daEliminare) elimina.mutate(daEliminare.id); }}
-            >
-              Elimina
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <Sheet open={!!taskAperto} onOpenChange={(o) => { if (!o) setTaskAperto(null); }}>
-        <SheetContent side="right" className="w-full sm:max-w-md flex flex-col h-full p-0">
-          <SheetHeader className="p-4 pb-2">
-            <SheetTitle className="text-left">{taskAperto?.titolo}</SheetTitle>
-            <SheetDescription className="text-left">
-              Riepilogo del task e conversazione dei commenti
-            </SheetDescription>
-          </SheetHeader>
-
-          {taskAperto && (
-            <div className="px-4 pb-3 space-y-2 text-sm border-b">
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground">Stato:</span>
-                <Badge
-                  variant={STATO_BADGE[taskAperto.stato].variant}
-                  className={STATO_BADGE[taskAperto.stato].className}
-                >
-                  {STATO_LABEL[taskAperto.stato]}
-                </Badge>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Titolare:</span>{" "}
-                {nomeUtente(taskAperto.titolare_id) ?? "—"}
-              </div>
-              <div>
-                <span className="text-muted-foreground">Esecutore:</span>{" "}
-                {taskAperto.esecutore_id ? nomeUtente(taskAperto.esecutore_id) : "non assegnato"}
-              </div>
-              {taskAperto.scadenza && (
-                <div>
-                  <span className="text-muted-foreground">Scadenza:</span>{" "}
-                  {format(new Date(taskAperto.scadenza), "d MMM yyyy", { locale: it })}
-                </div>
-              )}
-              {taskAperto.descrizione && (
-                <p className="text-muted-foreground whitespace-pre-wrap">{taskAperto.descrizione}</p>
-              )}
-            </div>
-          )}
-
-          {taskAperto?.canale_id ? (
-            <CommentiTask
-              key={taskAperto.canale_id}
-              canaleId={taskAperto.canale_id}
-              userId={userId}
-              nomeAutore={nomeAutore}
-            />
-          ) : (
-            <div className="p-4 text-sm text-muted-foreground">
-              Commenti non disponibili per questo task
-            </div>
-          )}
-        </SheetContent>
-      </Sheet>
     </div>
   );
 }
