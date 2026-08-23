@@ -37,7 +37,7 @@ export const Route = createFileRoute("/_app/task")({
   component: TaskPage,
   head: () => ({
     meta: [
-      { title: "Task — FidiManager" },
+      { title: "Task attività — FidiManager" },
       { name: "description", content: "Gestione dei task assegnati: creazione, delega, stato e scadenze." },
       { property: "og:title", content: "Task — FidiManager" },
       { property: "og:description", content: "Gestione dei task assegnati: creazione, delega, stato e scadenze." },
