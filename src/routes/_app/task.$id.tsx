@@ -333,6 +333,11 @@ function TaskDetailPage() {
     refresh();
   }
 
+  const hasChanges =
+    fTitolo !== editInitials.titolo ||
+    fDescrizione !== editInitials.descrizione ||
+    fAreaId !== editInitials.areaId ||
+    fScadenza !== editInitials.scadenza;
 
   function indietro() {
     if (typeof window !== "undefined" && window.history.length > 1) router.history.back();
