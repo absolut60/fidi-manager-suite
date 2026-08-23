@@ -166,6 +166,9 @@ function TaskDetailPage() {
   const [uploading, setUploading] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [preview, setPreview] = useState<null | { nome: string; url: string; mime: string | null }>(null);
+  const [allegatoDaEliminare, setAllegatoDaEliminare] = useState<any>(null);
+  const [showUnsaved, setShowUnsaved] = useState(false);
+  const [editInitials, setEditInitials] = useState({ titolo: "", descrizione: "", areaId: "none", scadenza: "" });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const refresh = () => {
