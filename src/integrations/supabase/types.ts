@@ -5248,6 +5248,69 @@ export type Database = {
           },
         ]
       }
+      task: {
+        Row: {
+          area_id: string | null
+          canale_id: string | null
+          created_at: string
+          descrizione: string | null
+          entita_id: string | null
+          entita_tipo: string | null
+          esecutore_id: string | null
+          id: string
+          scadenza: string | null
+          stato: Database["public"]["Enums"]["stato_task"]
+          titolare_id: string
+          titolo: string
+          updated_at: string
+        }
+        Insert: {
+          area_id?: string | null
+          canale_id?: string | null
+          created_at?: string
+          descrizione?: string | null
+          entita_id?: string | null
+          entita_tipo?: string | null
+          esecutore_id?: string | null
+          id?: string
+          scadenza?: string | null
+          stato?: Database["public"]["Enums"]["stato_task"]
+          titolare_id?: string
+          titolo: string
+          updated_at?: string
+        }
+        Update: {
+          area_id?: string | null
+          canale_id?: string | null
+          created_at?: string
+          descrizione?: string | null
+          entita_id?: string | null
+          entita_tipo?: string | null
+          esecutore_id?: string | null
+          id?: string
+          scadenza?: string | null
+          stato?: Database["public"]["Enums"]["stato_task"]
+          titolare_id?: string
+          titolo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "aree_funzionali"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_canale_id_fkey"
+            columns: ["canale_id"]
+            isOneToOne: false
+            referencedRelation: "canali"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       template_email: {
         Row: {
           attivo: boolean
@@ -6717,6 +6780,7 @@ export type Database = {
         | "risposto"
         | "ignorato"
         | "risolto"
+      stato_task: "da_fare" | "in_corso" | "fatto" | "annullato"
       tipo_area:
         | "recupero_crediti"
         | "commerciale"
@@ -6730,7 +6794,7 @@ export type Database = {
         | "preventivo_inviato"
         | "nota"
         | "altro"
-      tipo_canale: "area" | "store" | "diretto"
+      tipo_canale: "area" | "store" | "diretto" | "task"
       tipo_doc_preventivo:
         | "PREVENTIVO"
         | "PROPOSTA_RAPIDA"
@@ -7039,6 +7103,7 @@ export const Constants = {
         "ignorato",
         "risolto",
       ],
+      stato_task: ["da_fare", "in_corso", "fatto", "annullato"],
       tipo_area: [
         "recupero_crediti",
         "commerciale",
@@ -7054,7 +7119,7 @@ export const Constants = {
         "nota",
         "altro",
       ],
-      tipo_canale: ["area", "store", "diretto"],
+      tipo_canale: ["area", "store", "diretto", "task"],
       tipo_doc_preventivo: [
         "PREVENTIVO",
         "PROPOSTA_RAPIDA",
