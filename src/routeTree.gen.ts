@@ -44,6 +44,7 @@ import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as AppCruscottoIncassiRouteImport } from './routes/_app/cruscotto-incassi'
 import { Route as AppContattiRouteImport } from './routes/_app/contatti'
 import { Route as AppClientiRouteImport } from './routes/_app/clienti'
+import { Route as AppChatRouteImport } from './routes/_app/chat'
 import { Route as AppCantieriRouteImport } from './routes/_app/cantieri'
 import { Route as AppCambiaPasswordRouteImport } from './routes/_app/cambia-password'
 import { Route as AppCalendarioCommercialeRouteImport } from './routes/_app/calendario-commerciale'
@@ -264,6 +265,11 @@ const AppContattiRoute = AppContattiRouteImport.update({
 const AppClientiRoute = AppClientiRouteImport.update({
   id: '/clienti',
   path: '/clienti',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppChatRoute = AppChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
   getParentRoute: () => AppRoute,
 } as any)
 const AppCantieriRoute = AppCantieriRouteImport.update({
@@ -510,6 +516,7 @@ export interface FileRoutesByFullPath {
   '/calendario-commerciale': typeof AppCalendarioCommercialeRoute
   '/cambia-password': typeof AppCambiaPasswordRoute
   '/cantieri': typeof AppCantieriRoute
+  '/chat': typeof AppChatRoute
   '/clienti': typeof AppClientiRouteWithChildren
   '/contatti': typeof AppContattiRoute
   '/cruscotto-incassi': typeof AppCruscottoIncassiRoute
@@ -589,6 +596,7 @@ export interface FileRoutesByTo {
   '/calendario-commerciale': typeof AppCalendarioCommercialeRoute
   '/cambia-password': typeof AppCambiaPasswordRoute
   '/cantieri': typeof AppCantieriRoute
+  '/chat': typeof AppChatRoute
   '/clienti': typeof AppClientiRouteWithChildren
   '/contatti': typeof AppContattiRoute
   '/cruscotto-incassi': typeof AppCruscottoIncassiRoute
@@ -668,6 +676,7 @@ export interface FileRoutesById {
   '/_app/calendario-commerciale': typeof AppCalendarioCommercialeRoute
   '/_app/cambia-password': typeof AppCambiaPasswordRoute
   '/_app/cantieri': typeof AppCantieriRoute
+  '/_app/chat': typeof AppChatRoute
   '/_app/clienti': typeof AppClientiRouteWithChildren
   '/_app/contatti': typeof AppContattiRoute
   '/_app/cruscotto-incassi': typeof AppCruscottoIncassiRoute
@@ -749,6 +758,7 @@ export interface FileRouteTypes {
     | '/calendario-commerciale'
     | '/cambia-password'
     | '/cantieri'
+    | '/chat'
     | '/clienti'
     | '/contatti'
     | '/cruscotto-incassi'
@@ -828,6 +838,7 @@ export interface FileRouteTypes {
     | '/calendario-commerciale'
     | '/cambia-password'
     | '/cantieri'
+    | '/chat'
     | '/clienti'
     | '/contatti'
     | '/cruscotto-incassi'
@@ -906,6 +917,7 @@ export interface FileRouteTypes {
     | '/_app/calendario-commerciale'
     | '/_app/cambia-password'
     | '/_app/cantieri'
+    | '/_app/chat'
     | '/_app/clienti'
     | '/_app/contatti'
     | '/_app/cruscotto-incassi'
@@ -1237,6 +1249,13 @@ declare module '@tanstack/react-router' {
       path: '/clienti'
       fullPath: '/clienti'
       preLoaderRoute: typeof AppClientiRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/chat': {
+      id: '/_app/chat'
+      path: '/chat'
+      fullPath: '/chat'
+      preLoaderRoute: typeof AppChatRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/cantieri': {
@@ -1603,6 +1622,7 @@ interface AppRouteChildren {
   AppCalendarioCommercialeRoute: typeof AppCalendarioCommercialeRoute
   AppCambiaPasswordRoute: typeof AppCambiaPasswordRoute
   AppCantieriRoute: typeof AppCantieriRoute
+  AppChatRoute: typeof AppChatRoute
   AppClientiRoute: typeof AppClientiRouteWithChildren
   AppContattiRoute: typeof AppContattiRoute
   AppCruscottoIncassiRoute: typeof AppCruscottoIncassiRoute
@@ -1661,6 +1681,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppCalendarioCommercialeRoute: AppCalendarioCommercialeRoute,
   AppCambiaPasswordRoute: AppCambiaPasswordRoute,
   AppCantieriRoute: AppCantieriRoute,
+  AppChatRoute: AppChatRoute,
   AppClientiRoute: AppClientiRouteWithChildren,
   AppContattiRoute: AppContattiRoute,
   AppCruscottoIncassiRoute: AppCruscottoIncassiRoute,
