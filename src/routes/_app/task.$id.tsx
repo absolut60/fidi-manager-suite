@@ -549,11 +549,15 @@ function TaskDetailPage() {
                             {fmtBytes(a.dimensione_bytes)} · {nomeUtente(a.caricato_da) ?? "—"} · {fmtData(a.created_at)}
                           </div>
                         </div>
-                        {isPreviewable(a.mime_type) && (
+                        {a.mime_type?.startsWith("image/") ? (
                           <Button size="sm" variant="ghost" onClick={() => apriAnteprima(a)} title="Anteprima">
                             <Eye className="size-4" />
                           </Button>
-                        )}
+                        ) : a.mime_type === "application/pdf" ? (
+                          <Button size="sm" variant="ghost" onClick={() => apriInScheda(a.storage_path)} title="Apri">
+                            <ExternalLink className="size-4" />
+                          </Button>
+                        ) : null}
                         <Button size="sm" variant="ghost" onClick={() => scarica(a.storage_path, a.nome_file)} title="Scarica">
                           <Download className="size-4" />
                         </Button>
