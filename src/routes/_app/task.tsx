@@ -54,6 +54,7 @@ const TUTTI = "__tutti__";
 function TaskPage() {
   const { user, role } = useAuth();
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const isAdmin = role === "amministratore";
   const userId = user?.id ?? null;
 
