@@ -483,10 +483,13 @@ function TaskDetailPage() {
                   multiple
                   className="hidden"
                   onChange={(e) => {
-                    const files = e.target.files;
+                    // Copia i file PRIMA di resettare il value: la FileList è live
+                    // e si svuota azzerando l'input, annullando l'upload.
+                    const files = e.target.files ? Array.from(e.target.files) : [];
                     e.currentTarget.value = "";
-                    if (files) void uploadFiles(files);
+                    if (files.length) void uploadFiles(files);
                   }}
+
                 />
                 <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
                   {uploading ? <Loader2 className="size-4 mr-1 animate-spin" /> : <Upload className="size-4 mr-1" />}
