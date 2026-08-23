@@ -154,7 +154,12 @@ function TaskDetailPage() {
   const canEdit = !!task && (isAdmin || task.titolare_id === uid || task.esecutore_id === uid);
   const canDelete = !!task && (isAdmin || task.titolare_id === uid);
 
-  const [editOpen, setEditOpen] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [fTitolo, setFTitolo] = useState("");
+  const [fDescrizione, setFDescrizione] = useState("");
+  const [fAreaId, setFAreaId] = useState<string>("none");
+  const [fScadenza, setFScadenza] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<null | "one" | "two">(null);
   const [assignOpen, setAssignOpen] = useState(false);
   const [search, setSearch] = useState("");
