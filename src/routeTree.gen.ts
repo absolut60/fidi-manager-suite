@@ -50,6 +50,7 @@ import { Route as AppCalendarioCommercialeRouteImport } from './routes/_app/cale
 import { Route as AppAuditRouteImport } from './routes/_app/audit'
 import { Route as AppAttivaNotificheRouteImport } from './routes/_app/attiva-notifiche'
 import { Route as AppAssicurazioniRouteImport } from './routes/_app/assicurazioni'
+import { Route as AppAreeRouteImport } from './routes/_app/aree'
 import { Route as AppApprovazioniRouteImport } from './routes/_app/approvazioni'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
@@ -296,6 +297,11 @@ const AppAssicurazioniRoute = AppAssicurazioniRouteImport.update({
   path: '/assicurazioni',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAreeRoute = AppAreeRouteImport.update({
+  id: '/aree',
+  path: '/aree',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppApprovazioniRoute = AppApprovazioniRouteImport.update({
   id: '/approvazioni',
   path: '/approvazioni',
@@ -497,6 +503,7 @@ export interface FileRoutesByFullPath {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/approvazioni': typeof AppApprovazioniRoute
+  '/aree': typeof AppAreeRoute
   '/assicurazioni': typeof AppAssicurazioniRoute
   '/attiva-notifiche': typeof AppAttivaNotificheRoute
   '/audit': typeof AppAuditRoute
@@ -575,6 +582,7 @@ export interface FileRoutesByTo {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/approvazioni': typeof AppApprovazioniRoute
+  '/aree': typeof AppAreeRoute
   '/assicurazioni': typeof AppAssicurazioniRoute
   '/attiva-notifiche': typeof AppAttivaNotificheRoute
   '/audit': typeof AppAuditRoute
@@ -653,6 +661,7 @@ export interface FileRoutesById {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/_app/approvazioni': typeof AppApprovazioniRoute
+  '/_app/aree': typeof AppAreeRoute
   '/_app/assicurazioni': typeof AppAssicurazioniRoute
   '/_app/attiva-notifiche': typeof AppAttivaNotificheRoute
   '/_app/audit': typeof AppAuditRoute
@@ -733,6 +742,7 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/approvazioni'
+    | '/aree'
     | '/assicurazioni'
     | '/attiva-notifiche'
     | '/audit'
@@ -811,6 +821,7 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/approvazioni'
+    | '/aree'
     | '/assicurazioni'
     | '/attiva-notifiche'
     | '/audit'
@@ -888,6 +899,7 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/_app/approvazioni'
+    | '/_app/aree'
     | '/_app/assicurazioni'
     | '/_app/attiva-notifiche'
     | '/_app/audit'
@@ -1269,6 +1281,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAssicurazioniRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/aree': {
+      id: '/_app/aree'
+      path: '/aree'
+      fullPath: '/aree'
+      preLoaderRoute: typeof AppAreeRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/approvazioni': {
       id: '/_app/approvazioni'
       path: '/approvazioni'
@@ -1577,6 +1596,7 @@ const AppRichiesteRouteWithChildren = AppRichiesteRoute._addFileChildren(
 
 interface AppRouteChildren {
   AppApprovazioniRoute: typeof AppApprovazioniRoute
+  AppAreeRoute: typeof AppAreeRoute
   AppAssicurazioniRoute: typeof AppAssicurazioniRoute
   AppAttivaNotificheRoute: typeof AppAttivaNotificheRoute
   AppAuditRoute: typeof AppAuditRoute
@@ -1634,6 +1654,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppApprovazioniRoute: AppApprovazioniRoute,
+  AppAreeRoute: AppAreeRoute,
   AppAssicurazioniRoute: AppAssicurazioniRoute,
   AppAttivaNotificheRoute: AppAttivaNotificheRoute,
   AppAuditRoute: AppAuditRoute,
