@@ -597,7 +597,45 @@ function DettaglioRichiesta() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Anteprima immagine */}
+      <Dialog open={!!preview} onOpenChange={(o) => { if (!o) setPreview(null); }}>
+        <DialogContent className="max-w-4xl p-0 overflow-hidden">
+          <DialogHeader className="sr-only">
+            <DialogTitle>{preview?.nome ?? "Anteprima"}</DialogTitle>
+          </DialogHeader>
+          {preview && (
+            <img src={preview.url} alt={preview.nome} className="w-full h-auto max-h-[80vh] object-contain" />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Conferma eliminazione allegato */}
+      <Dialog open={!!allegatoDaEliminare} onOpenChange={(o) => { if (!o) setAllegatoDaEliminare(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Elimina allegato</DialogTitle>
+            <DialogDescription>
+              Vuoi eliminare l&apos;allegato &quot;{allegatoDaEliminare?.nome_file}&quot;? L&apos;operazione è irreversibile.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setAllegatoDaEliminare(null)}>Annulla</Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                const a = allegatoDaEliminare;
+                setAllegatoDaEliminare(null);
+                if (a) await eliminaAllegato(a);
+              }}
+            >
+              Elimina
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
+
   );
 }
 
