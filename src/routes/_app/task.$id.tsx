@@ -23,7 +23,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { CanaleConversazione } from "@/components/chat/canale-conversazione";
-import { STATO_LABEL, STATO_BADGE, type StatoTask } from "@/lib/task-stato";
+import { STATI, STATO_LABEL, STATO_BADGE, type StatoTask } from "@/lib/task-stato";
 import type { Database } from "@/integrations/supabase/types";
 
 type TaskRow = Database["public"]["Tables"]["task"]["Row"];
