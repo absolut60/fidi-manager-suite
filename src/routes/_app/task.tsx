@@ -115,6 +115,14 @@ function TaskPage() {
     return [p.nome, p.cognome].filter(Boolean).join(" ") || "—";
   }
 
+  const nomeAutore = useMemo(() => {
+    const map = new Map<string, string>();
+    (profili ?? []).forEach((p) => {
+      map.set(p.id, [p.nome, p.cognome].filter(Boolean).join(" ") || "—");
+    });
+    return map;
+  }, [profili]);
+
   function puoModificare(t: TaskRow) {
     return isAdmin || t.titolare_id === userId || t.esecutore_id === userId;
   }
