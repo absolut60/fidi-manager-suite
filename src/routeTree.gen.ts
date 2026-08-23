@@ -56,6 +56,7 @@ import { Route as AppAreeRouteImport } from './routes/_app/aree'
 import { Route as AppApprovazioniRouteImport } from './routes/_app/approvazioni'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
+import { Route as AppTaskIndexRouteImport } from './routes/_app/task.index'
 import { Route as AppRichiesteInterneIndexRouteImport } from './routes/_app/richieste-interne.index'
 import { Route as AppPreventivatoreIndexRouteImport } from './routes/_app/preventivatore.index'
 import { Route as AppOrdiniIndexRouteImport } from './routes/_app/ordini.index'
@@ -332,6 +333,11 @@ const Char91DotmcpChar93ListToolsRoute =
     path: '/.mcp/list-tools',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AppTaskIndexRoute = AppTaskIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppTaskRoute,
+} as any)
 const AppRichiesteInterneIndexRoute =
   AppRichiesteInterneIndexRouteImport.update({
     id: '/richieste-interne/',
@@ -592,6 +598,7 @@ export interface FileRoutesByFullPath {
   '/ordini/': typeof AppOrdiniIndexRoute
   '/preventivatore/': typeof AppPreventivatoreIndexRoute
   '/richieste-interne/': typeof AppRichiesteInterneIndexRoute
+  '/task/': typeof AppTaskIndexRoute
   '/api/public/email-img/$': typeof ApiPublicEmailImgSplatRoute
   '/api/public/hooks/check-reminder-ritardi': typeof ApiPublicHooksCheckReminderRitardiRoute
   '/api/public/hooks/check-scadenze': typeof ApiPublicHooksCheckScadenzeRoute
@@ -632,7 +639,6 @@ export interface FileRoutesByTo {
   '/recupero-crediti-promemoria': typeof AppRecuperoCreditiPromemoriaRoute
   '/richieste': typeof AppRichiesteRouteWithChildren
   '/scadenziario': typeof AppScadenziarioRoute
-  '/task': typeof AppTaskRouteWithChildren
   '/template-email': typeof AppTemplateEmailRoute
   '/template-lettera': typeof AppTemplateLetteraRoute
   '/utenti': typeof AppUtentiRoute
@@ -672,6 +678,7 @@ export interface FileRoutesByTo {
   '/ordini': typeof AppOrdiniIndexRoute
   '/preventivatore': typeof AppPreventivatoreIndexRoute
   '/richieste-interne': typeof AppRichiesteInterneIndexRoute
+  '/task': typeof AppTaskIndexRoute
   '/api/public/email-img/$': typeof ApiPublicEmailImgSplatRoute
   '/api/public/hooks/check-reminder-ritardi': typeof ApiPublicHooksCheckReminderRitardiRoute
   '/api/public/hooks/check-scadenze': typeof ApiPublicHooksCheckScadenzeRoute
@@ -756,6 +763,7 @@ export interface FileRoutesById {
   '/_app/ordini/': typeof AppOrdiniIndexRoute
   '/_app/preventivatore/': typeof AppPreventivatoreIndexRoute
   '/_app/richieste-interne/': typeof AppRichiesteInterneIndexRoute
+  '/_app/task/': typeof AppTaskIndexRoute
   '/api/public/email-img/$': typeof ApiPublicEmailImgSplatRoute
   '/api/public/hooks/check-reminder-ritardi': typeof ApiPublicHooksCheckReminderRitardiRoute
   '/api/public/hooks/check-scadenze': typeof ApiPublicHooksCheckScadenzeRoute
@@ -840,6 +848,7 @@ export interface FileRouteTypes {
     | '/ordini/'
     | '/preventivatore/'
     | '/richieste-interne/'
+    | '/task/'
     | '/api/public/email-img/$'
     | '/api/public/hooks/check-reminder-ritardi'
     | '/api/public/hooks/check-scadenze'
@@ -880,7 +889,6 @@ export interface FileRouteTypes {
     | '/recupero-crediti-promemoria'
     | '/richieste'
     | '/scadenziario'
-    | '/task'
     | '/template-email'
     | '/template-lettera'
     | '/utenti'
@@ -920,6 +928,7 @@ export interface FileRouteTypes {
     | '/ordini'
     | '/preventivatore'
     | '/richieste-interne'
+    | '/task'
     | '/api/public/email-img/$'
     | '/api/public/hooks/check-reminder-ritardi'
     | '/api/public/hooks/check-scadenze'
@@ -1003,6 +1012,7 @@ export interface FileRouteTypes {
     | '/_app/ordini/'
     | '/_app/preventivatore/'
     | '/_app/richieste-interne/'
+    | '/_app/task/'
     | '/api/public/email-img/$'
     | '/api/public/hooks/check-reminder-ritardi'
     | '/api/public/hooks/check-scadenze'
@@ -1359,6 +1369,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/task/': {
+      id: '/_app/task/'
+      path: '/'
+      fullPath: '/task/'
+      preLoaderRoute: typeof AppTaskIndexRouteImport
+      parentRoute: typeof AppTaskRoute
+    }
     '/_app/richieste-interne/': {
       id: '/_app/richieste-interne/'
       path: '/richieste-interne'
@@ -1653,10 +1670,12 @@ const AppRichiesteRouteWithChildren = AppRichiesteRoute._addFileChildren(
 
 interface AppTaskRouteChildren {
   AppTaskIdRoute: typeof AppTaskIdRoute
+  AppTaskIndexRoute: typeof AppTaskIndexRoute
 }
 
 const AppTaskRouteChildren: AppTaskRouteChildren = {
   AppTaskIdRoute: AppTaskIdRoute,
+  AppTaskIndexRoute: AppTaskIndexRoute,
 }
 
 const AppTaskRouteWithChildren =
