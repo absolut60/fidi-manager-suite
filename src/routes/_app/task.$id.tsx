@@ -23,7 +23,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { CanaleConversazione } from "@/components/chat/canale-conversazione";
-import { STATO_LABEL, STATO_BADGE, type StatoTask } from "@/lib/task-stato";
+import { STATI, STATO_LABEL, STATO_BADGE, type StatoTask } from "@/lib/task-stato";
 import type { Database } from "@/integrations/supabase/types";
 
 type TaskRow = Database["public"]["Tables"]["task"]["Row"];
@@ -154,7 +154,12 @@ function TaskDetailPage() {
   const canEdit = !!task && (isAdmin || task.titolare_id === uid || task.esecutore_id === uid);
   const canDelete = !!task && (isAdmin || task.titolare_id === uid);
 
-  const [editOpen, setEditOpen] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [fTitolo, setFTitolo] = useState("");
+  const [fDescrizione, setFDescrizione] = useState("");
+  const [fAreaId, setFAreaId] = useState<string>("none");
+  const [fScadenza, setFScadenza] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<null | "one" | "two">(null);
   const [assignOpen, setAssignOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -265,6 +270,44 @@ function TaskDetailPage() {
     refresh();
   }
 
+  function avviaModifica() {
+    if (!task) return;
+    setFTitolo(task.titolo);
+    setFDescrizione(task.descrizione ?? "");
+    setFAreaId(task.area_id ?? "none");
+    setFScadenza(task.scadenza ? String(task.scadenza).slice(0, 10) : "");
+    setEditMode(true);
+  }
+
+  async function salvaDati() {
+    if (!task) return;
+    if (!fTitolo.trim()) { toast.error("Il titolo è obbligatorio"); return; }
+    setSaving(true);
+    const { error } = await supabase
+      .from("task")
+      .update({
+        titolo: fTitolo.trim(),
+        descrizione: fDescrizione.trim() || null,
+        area_id: fAreaId === "none" ? null : fAreaId,
+        scadenza: fScadenza || null,
+      })
+      .eq("id", task.id);
+    setSaving(false);
+    if (error) { toast.error("Errore: " + error.message); return; }
+    setEditMode(false);
+    toast.success("Attività aggiornata");
+    refresh();
+  }
+
+  async function cambiaStato(nuovo: StatoTask) {
+    if (!task) return;
+    const { error } = await supabase.from("task").update({ stato: nuovo }).eq("id", task.id);
+    if (error) { toast.error("Errore: " + error.message); return; }
+    toast.success("Stato aggiornato");
+    refresh();
+  }
+
+
   function indietro() {
     if (typeof window !== "undefined" && window.history.length > 1) router.history.back();
     else navigate({ to: "/task" });
@@ -313,44 +356,120 @@ function TaskDetailPage() {
         <div className="flex flex-col items-end gap-2">
           <Badge variant={badge.variant} className={badge.className}>{STATO_LABEL[stato]}</Badge>
           <div className="flex flex-wrap gap-2 justify-end">
-            {canEdit && (
-              <Button size="sm" variant="outline" onClick={() => setEditOpen(true)}>
-                <Pencil className="size-4 mr-1" />Modifica
-              </Button>
-            )}
-            {canDelete && (
-              <Button size="sm" variant="destructive" onClick={() => setConfirmDelete("one")}>
-                <Trash2 className="size-4 mr-1" />Elimina
-              </Button>
+            {editMode ? (
+              <>
+                <Button size="sm" onClick={() => void salvaDati()} disabled={saving}>
+                  {saving && <Loader2 className="size-4 mr-1 animate-spin" />}Salva
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setEditMode(false)} disabled={saving}>
+                  Annulla
+                </Button>
+              </>
+            ) : (
+              <>
+                {canEdit && (
+                  <Button size="sm" variant="outline" onClick={() => { avviaModifica(); }}>
+                    <Pencil className="size-4 mr-1" />Modifica
+                  </Button>
+                )}
+                {canDelete && (
+                  <Button size="sm" variant="destructive" onClick={() => setConfirmDelete("one")}>
+                    <Trash2 className="size-4 mr-1" />Elimina
+                  </Button>
+                )}
+              </>
             )}
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* SINISTRA */}
-        <div className="lg:col-span-2 space-y-4">
+      <div className="space-y-4">
+        <div className="space-y-4">
+          {/* ASSEGNAZIONE compatta */}
+          <Card>
+            <CardContent className="p-4 flex flex-wrap items-center gap-3 text-sm">
+              <span className="text-xs text-muted-foreground">Esecutore</span>
+              {task.esecutore_id ? (
+                <span className="font-medium">{nomeUtente(task.esecutore_id)}</span>
+              ) : (
+                <span className="text-muted-foreground italic">Nessun esecutore assegnato</span>
+              )}
+              {canEdit && (
+                <Button size="sm" variant="outline" onClick={() => { setSearch(""); setAssignOpen(true); }}>
+                  <UserPlus className="size-4 mr-1" />Assegna a
+                </Button>
+              )}
+              {canEdit && (
+                <div className="ml-auto flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Stato</span>
+                  <Select value={stato} onValueChange={(v) => void cambiaStato(v as StatoTask)}>
+                    <SelectTrigger className="h-8 w-40"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {STATI.map((s) => (
+                        <SelectItem key={s} value={s}>{STATO_LABEL[s]}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader><CardTitle className="text-base">Dati attività</CardTitle></CardHeader>
             <CardContent className="space-y-3 text-sm">
-              <Row label="Titolo attività">{task.titolo}</Row>
-              <Row label="Descrizione attività">
-                {task.descrizione ? (
-                  <div className="whitespace-pre-wrap rounded-md border bg-muted/30 p-3">{task.descrizione}</div>
-                ) : "—"}
-              </Row>
-              <Row label="Titolare">{nomeUtente(task.titolare_id) ?? "—"}</Row>
-              <Row label="Stato">
-                <Badge variant={badge.variant} className={badge.className}>{STATO_LABEL[stato]}</Badge>
-              </Row>
-              <Row label="Scadenza">
-                {task.scadenza ? (
-                  <span className={scaduta ? "text-destructive font-medium" : undefined}>{fmtData(task.scadenza)}</span>
-                ) : "—"}
-              </Row>
-              <Row label="Area di riferimento">{nomeArea(task.area_id)}</Row>
+              {editMode ? (
+                <>
+                  <div className="space-y-1">
+                    <Label>Titolo attività</Label>
+                    <Input value={fTitolo} onChange={(e) => setFTitolo(e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Descrizione attività</Label>
+                    <Textarea rows={4} value={fDescrizione} onChange={(e) => setFDescrizione(e.target.value)} />
+                  </div>
+                  <Row label="Titolare">{nomeUtente(task.titolare_id) ?? "—"}</Row>
+                  <Row label="Stato">
+                    <Badge variant={badge.variant} className={badge.className}>{STATO_LABEL[stato]}</Badge>
+                  </Row>
+                  <div className="space-y-1">
+                    <Label>Area di riferimento</Label>
+                    <Select value={fAreaId} onValueChange={setFAreaId}>
+                      <SelectTrigger><SelectValue placeholder="— Nessuna —" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">— Nessuna —</SelectItem>
+                        {(aree ?? []).map((a) => <SelectItem key={a.id} value={a.id}>{a.nome}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Scadenza</Label>
+                    <Input type="date" value={fScadenza} onChange={(e) => setFScadenza(e.target.value)} />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Row label="Titolo attività">{task.titolo}</Row>
+                  <Row label="Descrizione attività">
+                    {task.descrizione ? (
+                      <div className="whitespace-pre-wrap rounded-md border bg-muted/30 p-3">{task.descrizione}</div>
+                    ) : "—"}
+                  </Row>
+                  <Row label="Titolare">{nomeUtente(task.titolare_id) ?? "—"}</Row>
+                  <Row label="Stato">
+                    <Badge variant={badge.variant} className={badge.className}>{STATO_LABEL[stato]}</Badge>
+                  </Row>
+                  <Row label="Scadenza">
+                    {task.scadenza ? (
+                      <span className={scaduta ? "text-destructive font-medium" : undefined}>{fmtData(task.scadenza)}</span>
+                    ) : "—"}
+                  </Row>
+                  <Row label="Area di riferimento">{nomeArea(task.area_id)}</Row>
+                </>
+              )}
             </CardContent>
           </Card>
+
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -439,25 +558,6 @@ function TaskDetailPage() {
             </CardContent>
           </Card>
         </div>
-
-        {/* DESTRA */}
-        <div className="space-y-4">
-          <Card>
-            <CardHeader><CardTitle className="text-base">Assegnazione</CardTitle></CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              {task.esecutore_id ? (
-                <div className="font-medium">{nomeUtente(task.esecutore_id)}</div>
-              ) : (
-                <div className="text-muted-foreground italic">Nessun esecutore assegnato</div>
-              )}
-              {canEdit && (
-                <Button size="sm" variant="outline" onClick={() => { setSearch(""); setAssignOpen(true); }}>
-                  <UserPlus className="size-4 mr-1" />Assegna a
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        </div>
       </div>
 
       {/* Dialog assegnazione */}
@@ -497,14 +597,6 @@ function TaskDetailPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog modifica */}
-      <ModificaTaskDialog
-        open={editOpen}
-        onOpenChange={setEditOpen}
-        task={task}
-        aree={aree ?? []}
-        onSaved={refresh}
-      />
 
       {/* Anteprima allegato */}
       <Dialog open={!!preview} onOpenChange={(o) => { if (!o) setPreview(null); }}>
@@ -555,85 +647,3 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
-function ModificaTaskDialog({
-  open, onOpenChange, task, aree, onSaved,
-}: {
-  open: boolean;
-  onOpenChange: (o: boolean) => void;
-  task: TaskRow;
-  aree: Array<{ id: string; nome: string }>;
-  onSaved: () => void;
-}) {
-  const [titolo, setTitolo] = useState(task.titolo);
-  const [descrizione, setDescrizione] = useState(task.descrizione ?? "");
-  const [areaId, setAreaId] = useState<string>(task.area_id ?? "none");
-  const [scadenza, setScadenza] = useState(task.scadenza ? String(task.scadenza).slice(0, 10) : "");
-  const [saving, setSaving] = useState(false);
-
-  function reset() {
-    setTitolo(task.titolo);
-    setDescrizione(task.descrizione ?? "");
-    setAreaId(task.area_id ?? "none");
-    setScadenza(task.scadenza ? String(task.scadenza).slice(0, 10) : "");
-  }
-
-  async function salva() {
-    if (!titolo.trim()) { toast.error("Il titolo è obbligatorio"); return; }
-    setSaving(true);
-    const { error } = await supabase
-      .from("task")
-      .update({
-        titolo: titolo.trim(),
-        descrizione: descrizione.trim() || null,
-        area_id: areaId === "none" ? null : areaId,
-        scadenza: scadenza || null,
-      })
-      .eq("id", task.id);
-    setSaving(false);
-    if (error) { toast.error("Errore: " + error.message); return; }
-    toast.success("Attività aggiornata");
-    onOpenChange(false);
-    onSaved();
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={(o) => { if (o) reset(); onOpenChange(o); }}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Modifica task</DialogTitle>
-          <DialogDescription>Aggiorna i dati dell'attività.</DialogDescription>
-        </DialogHeader>
-        <div className="space-y-3">
-          <div className="space-y-1">
-            <Label>Titolo attività</Label>
-            <Input value={titolo} onChange={(e) => setTitolo(e.target.value)} />
-          </div>
-          <div className="space-y-1">
-            <Label>Descrizione attività</Label>
-            <Textarea rows={4} value={descrizione} onChange={(e) => setDescrizione(e.target.value)} />
-          </div>
-          <div className="space-y-1">
-            <Label>Area</Label>
-            <Select value={areaId} onValueChange={setAreaId}>
-              <SelectTrigger><SelectValue placeholder="— Nessuna —" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">— Nessuna —</SelectItem>
-                {aree.map((a) => <SelectItem key={a.id} value={a.id}>{a.nome}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1">
-            <Label>Scadenza</Label>
-            <Input type="date" value={scadenza} onChange={(e) => setScadenza(e.target.value)} />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>Annulla</Button>
-          <Button onClick={salva} disabled={saving}>
-            {saving && <Loader2 className="size-4 mr-1 animate-spin" />}Salva
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
