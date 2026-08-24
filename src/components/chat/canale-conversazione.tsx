@@ -383,8 +383,21 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
           )}
           {messaggi.map((m) => {
             const mio = m.autore_id === user?.id;
+            const eliminato = !!m.eliminato_at;
+            const puoEliminare = !eliminato && (mio || isAdmin);
             return (
-              <div key={m.id} className={`flex ${mio ? "justify-end" : "justify-start"}`}>
+              <div key={m.id} className={`group flex items-center gap-1 ${mio ? "justify-end" : "justify-start"}`}>
+                {mio && puoEliminare && (
+                  <button
+                    type="button"
+                    aria-label="Elimina messaggio"
+                    title="Elimina messaggio"
+                    onClick={() => setMessaggioDaEliminare(m)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </button>
+                )}
                 <div
                   className={`max-w-[80%] rounded-lg px-3 py-2 ${
                     mio ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
@@ -395,10 +408,16 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
                       {nomeAutore.get(m.autore_id) ?? "—"}
                     </div>
                   )}
-                  {m.testo && (
-                    <div className="text-sm whitespace-pre-wrap break-words">{m.testo}</div>
+                  {eliminato ? (
+                    <div className="text-sm italic text-muted-foreground">Messaggio eliminato</div>
+                  ) : (
+                    <>
+                      {m.testo && (
+                        <div className="text-sm whitespace-pre-wrap break-words">{m.testo}</div>
+                      )}
+                      {m.allegato && <AllegatoMessaggio allegato={m.allegato} />}
+                    </>
                   )}
-                  {m.allegato && <AllegatoMessaggio allegato={m.allegato} />}
                   <div
                     className={`text-[10px] mt-1 ${
                       mio ? "text-primary-foreground/70" : "text-muted-foreground"
