@@ -6477,6 +6477,14 @@ export type Database = {
           nome: string
         }[]
       }
+      get_utenti_chat: {
+        Args: never
+        Returns: {
+          cognome: string
+          id: string
+          nome: string
+        }[]
+      }
       has_lead_module_access: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
         Args: {
