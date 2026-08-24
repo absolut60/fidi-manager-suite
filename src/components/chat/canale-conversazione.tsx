@@ -497,6 +497,21 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
         >
           <Paperclip className="size-4" />
         </Button>
+        <Popover open={emojiOpen} onOpenChange={setEmojiOpen}>
+          <PopoverTrigger asChild>
+            <Button type="button" variant="outline" size="icon" aria-label="Emoji">
+              <Smile className="size-4" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="p-0 w-auto border-none bg-transparent" align="start" side="top">
+            {emojiOpen && typeof window !== "undefined" && (
+              <Suspense fallback={<div className="h-10 w-40 rounded-md bg-muted animate-pulse" />}>
+                <EmojiPicker onEmojiClick={(e) => setTesto((t) => t + e.emoji)} />
+              </Suspense>
+            )}
+          </PopoverContent>
+        </Popover>
+
         <Textarea
           value={testo}
           onChange={(e) => setTesto(e.target.value)}
