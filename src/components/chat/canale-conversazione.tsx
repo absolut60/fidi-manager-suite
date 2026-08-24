@@ -510,6 +510,33 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
           <Send className="size-4" />
         </Button>
       </div>
+
+      <Dialog
+        open={!!messaggioDaEliminare}
+        onOpenChange={(v) => { if (!v) setMessaggioDaEliminare(null); }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Elimina messaggio</DialogTitle>
+            <DialogDescription>
+              Vuoi eliminare questo messaggio? Verrà rimosso anche l'eventuale allegato.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMessaggioDaEliminare(null)}>Annulla</Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                const m = messaggioDaEliminare;
+                setMessaggioDaEliminare(null);
+                if (m) await eliminaMessaggio(m);
+              }}
+            >
+              Elimina
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
