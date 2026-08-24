@@ -79,6 +79,7 @@ const TIPO_LABEL: Record<TipoCanale, string> = {
 function ChatPage() {
   const { user, role } = useAuth();
   const queryClient = useQueryClient();
+  const { canale: canaleParam } = Route.useSearch();
   const [selected, setSelected] = useState<string | null>(null);
   const [nuovoCanale, setNuovoCanale] = useState(false);
   const [confermaEliminaChat, setConfermaEliminaChat] = useState<null | "one" | "two">(null);
@@ -101,11 +102,47 @@ function ChatPage() {
         .select("id, tipo, nome, attivo, updated_at, created_by")
         .in("id", ids)
         .eq("attivo", true)
+        .neq("tipo", "task")
         .order("updated_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as Canale[];
     },
   });
+
+  const { data: nonLetti } = useQuery({
+    queryKey: ["chat", "non-letti", user?.id],
+    enabled: !!user?.id,
+    refetchInterval: 30000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_canali_non_letti");
+      if (error) throw error;
+      return (data ?? []) as Array<{ canale_id: string; non_letti: number }>;
+    },
+  });
+
+  const nonLettiMap = useMemo(() => {
+    const out: Record<string, number> = {};
+    for (const r of nonLetti ?? []) out[r.canale_id] = Number(r.non_letti ?? 0);
+    return out;
+  }, [nonLetti]);
+
+  // Deep link ?canale=<id>
+  useEffect(() => {
+    if (!canaleParam) return;
+    if ((canali ?? []).some((c) => c.id === canaleParam)) setSelected(canaleParam);
+  }, [canaleParam, canali]);
+
+  // Segna letto il canale aperto
+  useEffect(() => {
+    if (!selected) return;
+    void (async () => {
+      await supabase.rpc("segna_canale_letto", { _canale_id: selected } as never);
+      queryClient.invalidateQueries({ queryKey: ["chat", "non-letti"] });
+      queryClient.invalidateQueries({ queryKey: ["menu", "non-letti"] });
+    })();
+  }, [selected, queryClient]);
+
+
 
   const { data: profili } = useQuery({
     queryKey: ["chat", "profili"],
@@ -210,6 +247,11 @@ function ChatPage() {
                     <div className="flex items-center gap-2 min-w-0">
                       <MessagesSquare className="size-4 shrink-0" />
                       <span className="truncate text-sm font-medium">{nomeCanale(c, nomiDiretti)}</span>
+                      {(nonLettiMap[c.id] ?? 0) > 0 && (
+                        <span className="ml-auto shrink-0 rounded-full bg-destructive text-destructive-foreground text-[10px] font-semibold leading-none px-1.5 py-1 min-w-[18px] text-center">
+                          {nonLettiMap[c.id]! > 9 ? "9+" : nonLettiMap[c.id]}
+                        </span>
+                      )}
                     </div>
                     <div className="text-[11px] text-muted-foreground pl-6">
                       {TIPO_LABEL[c.tipo]}
@@ -217,6 +259,7 @@ function ChatPage() {
                   </button>
                 </li>
               ))}
+
             </ul>
           )}
         </Card>
