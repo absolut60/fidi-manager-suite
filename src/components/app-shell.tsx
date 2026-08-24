@@ -465,11 +465,13 @@ function NavItemRow({
   active,
   onNav,
   barColor,
+  badge,
 }: {
   item: NavItem;
   active: boolean;
   onNav: () => void;
   barColor?: string;
+  badge?: number;
 }) {
   const Icon = item.icon;
   return (
@@ -492,8 +494,14 @@ function NavItemRow({
           />
         )}
         <Icon className="size-4 shrink-0" />
-        <span className="truncate">{item.label}</span>
+        <span className="truncate flex-1">{item.label}</span>
+        {!!badge && badge > 0 && (
+          <span className="ml-auto shrink-0 rounded-full bg-destructive text-destructive-foreground text-[10px] font-semibold leading-none px-1.5 py-1 min-w-[18px] text-center">
+            {badge > 9 ? "9+" : badge}
+          </span>
+        )}
       </Link>
     </li>
   );
 }
+
