@@ -429,6 +429,17 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
                     })}
                   </div>
                 </div>
+                {!mio && puoEliminare && (
+                  <button
+                    type="button"
+                    aria-label="Elimina messaggio"
+                    title="Elimina messaggio"
+                    onClick={() => setMessaggioDaEliminare(m)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </button>
+                )}
               </div>
             );
           })}
