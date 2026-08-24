@@ -366,7 +366,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 item={item}
                 active={isItemActive(item, currentPath)}
                 onNav={() => setMobileOpen(false)}
+                badge={badgePerVoce(item.to)}
               />
+
             ))}
           </ul>
         )}
