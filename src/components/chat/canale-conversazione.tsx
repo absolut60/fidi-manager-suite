@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { FileText, Paperclip, Search, Send, X } from "lucide-react";
+import { FileText, Paperclip, Search, Send, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
@@ -9,7 +9,9 @@ import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 
 type Allegato = {
   id: string;
@@ -25,6 +27,7 @@ type Messaggio = {
   autore_id: string;
   testo: string;
   created_at: string;
+  eliminato_at?: string | null;
   allegato?: Allegato | null;
 };
 
@@ -135,8 +138,10 @@ function AllegatoMessaggio({ allegato }: { allegato: Allegato }) {
 }
 
 export function CanaleConversazione({ canaleId }: { canaleId: string }) {
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
+  const isAdmin = hasRole("amministratore");
   const instanceId = useId();
+  const [messaggioDaEliminare, setMessaggioDaEliminare] = useState<Messaggio | null>(null);
   const [messaggi, setMessaggi] = useState<Messaggio[]>([]);
   const [testo, setTesto] = useState("");
   const [invio, setInvio] = useState(false);
@@ -183,9 +188,8 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
     const load = async () => {
       const { data, error } = await supabase
         .from("messaggi")
-        .select("id, canale_id, autore_id, testo, created_at")
+        .select("id, canale_id, autore_id, testo, created_at, eliminato_at")
         .eq("canale_id", canaleId)
-        .is("eliminato_at", null)
         .order("created_at", { ascending: true })
         .limit(200);
       if (error) {
@@ -344,6 +348,28 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
     });
   }
 
+  async function eliminaMessaggio(m: Messaggio) {
+    if (m.allegato) {
+      const { error: sErr } = await supabase.storage.from(BUCKET).remove([m.allegato.storage_path]);
+      if (sErr) console.warn("[chat] rimozione file allegato fallita", sErr);
+      await supabase.from("allegati").delete().eq("id", m.allegato.id);
+    }
+    const { error } = await supabase
+      .from("messaggi")
+      .update({ eliminato_at: new Date().toISOString() })
+      .eq("id", m.id);
+    if (error) {
+      toast.error("Impossibile eliminare il messaggio");
+      return;
+    }
+    setMessaggi((prev) =>
+      prev.map((x) =>
+        x.id === m.id ? { ...x, eliminato_at: new Date().toISOString(), allegato: null } : x
+      )
+    );
+    toast.success("Messaggio eliminato");
+  }
+
   const puoInviare = !!testo.trim() || !!fileSelezionato;
 
   return (
@@ -357,8 +383,21 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
           )}
           {messaggi.map((m) => {
             const mio = m.autore_id === user?.id;
+            const eliminato = !!m.eliminato_at;
+            const puoEliminare = !eliminato && (mio || isAdmin);
             return (
-              <div key={m.id} className={`flex ${mio ? "justify-end" : "justify-start"}`}>
+              <div key={m.id} className={`group flex items-center gap-1 ${mio ? "justify-end" : "justify-start"}`}>
+                {mio && puoEliminare && (
+                  <button
+                    type="button"
+                    aria-label="Elimina messaggio"
+                    title="Elimina messaggio"
+                    onClick={() => setMessaggioDaEliminare(m)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </button>
+                )}
                 <div
                   className={`max-w-[80%] rounded-lg px-3 py-2 ${
                     mio ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
@@ -369,10 +408,16 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
                       {nomeAutore.get(m.autore_id) ?? "—"}
                     </div>
                   )}
-                  {m.testo && (
-                    <div className="text-sm whitespace-pre-wrap break-words">{m.testo}</div>
+                  {eliminato ? (
+                    <div className="text-sm italic text-muted-foreground">Messaggio eliminato</div>
+                  ) : (
+                    <>
+                      {m.testo && (
+                        <div className="text-sm whitespace-pre-wrap break-words">{m.testo}</div>
+                      )}
+                      {m.allegato && <AllegatoMessaggio allegato={m.allegato} />}
+                    </>
                   )}
-                  {m.allegato && <AllegatoMessaggio allegato={m.allegato} />}
                   <div
                     className={`text-[10px] mt-1 ${
                       mio ? "text-primary-foreground/70" : "text-muted-foreground"
@@ -384,6 +429,17 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
                     })}
                   </div>
                 </div>
+                {!mio && puoEliminare && (
+                  <button
+                    type="button"
+                    aria-label="Elimina messaggio"
+                    title="Elimina messaggio"
+                    onClick={() => setMessaggioDaEliminare(m)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </button>
+                )}
               </div>
             );
           })}
@@ -454,6 +510,33 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
           <Send className="size-4" />
         </Button>
       </div>
+
+      <Dialog
+        open={!!messaggioDaEliminare}
+        onOpenChange={(v) => { if (!v) setMessaggioDaEliminare(null); }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Elimina messaggio</DialogTitle>
+            <DialogDescription>
+              Vuoi eliminare questo messaggio? Verrà rimosso anche l'eventuale allegato.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMessaggioDaEliminare(null)}>Annulla</Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                const m = messaggioDaEliminare;
+                setMessaggioDaEliminare(null);
+                if (m) await eliminaMessaggio(m);
+              }}
+            >
+              Elimina
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

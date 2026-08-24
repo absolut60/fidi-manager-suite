@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, MessagesSquare, Plus } from "lucide-react";
+import { ArrowLeft, MessagesSquare, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -43,6 +43,7 @@ type Canale = {
   nome: string | null;
   attivo: boolean;
   updated_at: string;
+  created_by: string | null;
 };
 
 
@@ -68,6 +69,7 @@ function ChatPage() {
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState<string | null>(null);
   const [nuovoCanale, setNuovoCanale] = useState(false);
+  const [confermaEliminaChat, setConfermaEliminaChat] = useState<null | "one" | "two">(null);
 
   const isAdmin = role === "amministratore";
 
@@ -84,7 +86,7 @@ function ChatPage() {
       if (ids.length === 0) return [] as Canale[];
       const { data, error } = await supabase
         .from("canali")
-        .select("id, tipo, nome, attivo, updated_at")
+        .select("id, tipo, nome, attivo, updated_at, created_by")
         .in("id", ids)
         .eq("attivo", true)
         .order("updated_at", { ascending: false });
@@ -103,6 +105,28 @@ function ChatPage() {
   });
 
   const canaleCorrente = (canali ?? []).find((c) => c.id === selected) ?? null;
+
+  async function eliminaChat() {
+    if (!canaleCorrente) return;
+    const { data, error } = await supabase.rpc("elimina_canale", {
+      _canale_id: canaleCorrente.id,
+    } as never);
+    if (error) {
+      toast.error("Impossibile eliminare la chat");
+      return;
+    }
+    const paths = ((data ?? []) as Array<{ storage_path: string | null }>)
+      .map((r) => r.storage_path)
+      .filter((p): p is string => !!p);
+    if (paths.length > 0) {
+      const { error: sErr } = await supabase.storage.from("allegati").remove(paths);
+      if (sErr) console.warn("[chat] rimozione allegati fallita", sErr);
+    }
+    setConfermaEliminaChat(null);
+    setSelected(null);
+    queryClient.invalidateQueries({ queryKey: ["chat", "canali"] });
+    toast.success("Chat eliminata");
+  }
 
 
 
@@ -183,7 +207,19 @@ function ChatPage() {
                     {TIPO_LABEL[canaleCorrente.tipo]}
                   </div>
                 </div>
+                {canaleCorrente.tipo !== "task" &&
+                  (isAdmin || canaleCorrente.created_by === user?.id) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="ml-auto text-destructive hover:text-destructive"
+                      onClick={() => setConfermaEliminaChat("one")}
+                    >
+                      <Trash2 className="size-4 mr-1.5" /> Elimina chat
+                    </Button>
+                  )}
               </div>
+
 
               <CanaleConversazione canaleId={canaleCorrente.id} />
 
@@ -191,6 +227,36 @@ function ChatPage() {
           )}
         </Card>
       </div>
+
+      <Dialog
+        open={confermaEliminaChat !== null}
+        onOpenChange={(v) => { if (!v) setConfermaEliminaChat(null); }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {confermaEliminaChat === "two" ? "Conferma definitiva" : "Elimina chat"}
+            </DialogTitle>
+            <DialogDescription>
+              {confermaEliminaChat === "two"
+                ? "Confermi l'eliminazione definitiva della chat e di tutti i suoi contenuti?"
+                : `Vuoi eliminare la chat "${canaleCorrente ? nomeCanale(canaleCorrente) : ""}"? Verranno eliminati tutti i messaggi e gli allegati. L'operazione è irreversibile.`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfermaEliminaChat(null)}>Annulla</Button>
+            {confermaEliminaChat === "two" ? (
+              <Button variant="destructive" onClick={() => void eliminaChat()}>
+                Elimina definitivamente
+              </Button>
+            ) : (
+              <Button variant="destructive" onClick={() => setConfermaEliminaChat("two")}>
+                Continua
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {isAdmin && (
         <NuovoCanaleDialog
