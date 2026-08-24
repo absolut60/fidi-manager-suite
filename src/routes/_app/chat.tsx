@@ -69,6 +69,7 @@ function ChatPage() {
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState<string | null>(null);
   const [nuovoCanale, setNuovoCanale] = useState(false);
+  const [confermaEliminaChat, setConfermaEliminaChat] = useState<null | "one" | "two">(null);
 
   const isAdmin = role === "amministratore";
 
