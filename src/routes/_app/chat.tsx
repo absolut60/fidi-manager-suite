@@ -25,6 +25,9 @@ type TipoCanale = Database["public"]["Enums"]["tipo_canale"];
 
 export const Route = createFileRoute("/_app/chat")({
   component: ChatPage,
+  validateSearch: (search: Record<string, unknown>): { canale?: string } => ({
+    canale: typeof search.canale === "string" ? search.canale : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Chat — FidiManager" },
@@ -36,6 +39,7 @@ export const Route = createFileRoute("/_app/chat")({
     ],
   }),
 });
+
 
 type Canale = {
   id: string;
