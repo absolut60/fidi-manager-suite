@@ -371,6 +371,7 @@ function NuovoCanaleDialog({
   isAdmin,
   currentUserId,
   profili,
+  rubrica,
   onCreated,
   onOpenCanale,
 }: {
@@ -379,6 +380,7 @@ function NuovoCanaleDialog({
   isAdmin: boolean;
   currentUserId: string | null;
   profili: Array<{ id: string; nome: string | null; cognome: string | null }>;
+  rubrica: Array<{ id: string; nome: string | null; cognome: string | null }>;
   onCreated: () => void;
   onOpenCanale?: (canaleId: string) => void;
 }) {
