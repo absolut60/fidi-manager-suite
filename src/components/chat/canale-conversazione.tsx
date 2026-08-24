@@ -348,6 +348,28 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
     });
   }
 
+  async function eliminaMessaggio(m: Messaggio) {
+    if (m.allegato) {
+      const { error: sErr } = await supabase.storage.from(BUCKET).remove([m.allegato.storage_path]);
+      if (sErr) console.warn("[chat] rimozione file allegato fallita", sErr);
+      await supabase.from("allegati").delete().eq("id", m.allegato.id);
+    }
+    const { error } = await supabase
+      .from("messaggi")
+      .update({ eliminato_at: new Date().toISOString() })
+      .eq("id", m.id);
+    if (error) {
+      toast.error("Impossibile eliminare il messaggio");
+      return;
+    }
+    setMessaggi((prev) =>
+      prev.map((x) =>
+        x.id === m.id ? { ...x, eliminato_at: new Date().toISOString(), allegato: null } : x
+      )
+    );
+    toast.success("Messaggio eliminato");
+  }
+
   const puoInviare = !!testo.trim() || !!fileSelezionato;
 
   return (
