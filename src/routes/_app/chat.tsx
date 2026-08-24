@@ -435,8 +435,7 @@ function NuovoCanaleDialog({
 
   const candidati = useMemo(() => {
     const q = ricerca.trim().toLowerCase();
-    return profili
-      .filter((p) => p.id !== currentUserId)
+    return rubrica
       .filter((p) => {
         if (!q) return true;
         return `${p.nome ?? ""} ${p.cognome ?? ""}`.toLowerCase().includes(q);
@@ -444,7 +443,7 @@ function NuovoCanaleDialog({
       .sort((a, b) =>
         `${a.cognome ?? ""}${a.nome ?? ""}`.localeCompare(`${b.cognome ?? ""}${b.nome ?? ""}`),
       );
-  }, [profili, ricerca, currentUserId]);
+  }, [rubrica, ricerca]);
 
   function toggleMembro(id: string) {
     setMembri((prev) => (prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id]));
