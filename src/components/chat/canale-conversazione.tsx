@@ -186,9 +186,8 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
     const load = async () => {
       const { data, error } = await supabase
         .from("messaggi")
-        .select("id, canale_id, autore_id, testo, created_at")
+        .select("id, canale_id, autore_id, testo, created_at, eliminato_at")
         .eq("canale_id", canaleId)
-        .is("eliminato_at", null)
         .order("created_at", { ascending: true })
         .limit(200);
       if (error) {
