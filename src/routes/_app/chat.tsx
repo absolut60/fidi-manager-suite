@@ -153,6 +153,16 @@ function ChatPage() {
     },
   });
 
+  const { data: rubrica } = useQuery({
+    queryKey: ["chat", "utenti-rubrica", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_utenti_chat");
+      if (error) throw error;
+      return (data ?? []) as Array<{ id: string; nome: string | null; cognome: string | null }>;
+    },
+  });
+
   const direttiIds = useMemo(
     () => (canali ?? []).filter((c) => c.tipo === "diretto").map((c) => c.id),
     [canali],
@@ -172,7 +182,7 @@ function ChatPage() {
   });
 
   const nomiDiretti = useMemo(() => {
-    const byId = new Map((profili ?? []).map((p) => [p.id, p as Profilo]));
+    const byId = new Map((rubrica ?? []).map((p) => [p.id, p as Profilo]));
     const out: Record<string, string> = {};
     for (const m of membriDiretti ?? []) {
       if (m.user_id === user?.id) continue;
@@ -180,7 +190,7 @@ function ChatPage() {
       if (label) out[m.canale_id] = label;
     }
     return out;
-  }, [membriDiretti, profili, user?.id]);
+  }, [membriDiretti, rubrica, user?.id]);
 
   const canaleCorrente = (canali ?? []).find((c) => c.id === selected) ?? null;
 
