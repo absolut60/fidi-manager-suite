@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Send } from "lucide-react";
+import { FileText, Paperclip, Search, Send, X } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
@@ -9,6 +9,15 @@ import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+
+type Allegato = {
+  id: string;
+  nome_file: string;
+  storage_path: string;
+  mime_type: string | null;
+  dimensione_bytes: number | null;
+};
 
 type Messaggio = {
   id: string;
@@ -16,7 +25,114 @@ type Messaggio = {
   autore_id: string;
   testo: string;
   created_at: string;
+  allegato?: Allegato | null;
 };
+
+const BUCKET = "allegati";
+
+function sanitize(name: string) {
+  return name.replace(/[^a-zA-Z0-9._-]/g, "_");
+}
+
+function formatBytes(b: number | null) {
+  if (!b && b !== 0) return "";
+  if (b < 1024) return `${b} B`;
+  if (b < 1024 * 1024) return `${(b / 1024).toFixed(0)} KB`;
+  return `${(b / 1024 / 1024).toFixed(1)} MB`;
+}
+
+async function scaricaFile(path: string, nomeFile: string) {
+  const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60);
+  if (error || !data?.signedUrl) {
+    toast.error("Impossibile scaricare il file");
+    return;
+  }
+  try {
+    const res = await fetch(data.signedUrl);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = nomeFile;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch {
+    toast.error("Impossibile scaricare il file");
+  }
+}
+
+function AllegatoMessaggio({ allegato }: { allegato: Allegato }) {
+  const isImg = (allegato.mime_type ?? "").startsWith("image/");
+  const isPdf = allegato.mime_type === "application/pdf";
+  const [url, setUrl] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isImg) return;
+    let active = true;
+    (async () => {
+      const { data } = await supabase.storage.from(BUCKET).createSignedUrl(allegato.storage_path, 60);
+      if (active) setUrl(data?.signedUrl ?? null);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [allegato.storage_path, isImg]);
+
+  async function apriInScheda() {
+    const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(allegato.storage_path, 60);
+    if (error || !data?.signedUrl) {
+      toast.error("Impossibile aprire il file");
+      return;
+    }
+    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+  }
+
+  if (isImg) {
+    return (
+      <>
+        {url ? (
+          <img
+            src={url}
+            alt={allegato.nome_file}
+            onClick={() => setOpen(true)}
+            className="mt-2 max-w-[200px] rounded-md cursor-pointer"
+          />
+        ) : (
+          <div className="mt-2 h-24 w-[200px] rounded-md bg-background/30 animate-pulse" />
+        )}
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogContent className="max-w-4xl">
+            {url && <img src={url} alt={allegato.nome_file} className="w-full h-auto rounded-md" />}
+          </DialogContent>
+        </Dialog>
+      </>
+    );
+  }
+
+  return (
+    <div className="mt-2 flex items-center gap-2 rounded-md border bg-background/60 px-2 py-1.5 text-foreground">
+      <button
+        type="button"
+        onClick={() => scaricaFile(allegato.storage_path, allegato.nome_file)}
+        className="flex items-center gap-2 min-w-0 text-left"
+      >
+        <FileText className="size-4 shrink-0" />
+        <span className="text-xs truncate max-w-[160px]">{allegato.nome_file}</span>
+        <span className="text-[10px] text-muted-foreground shrink-0">
+          {formatBytes(allegato.dimensione_bytes)}
+        </span>
+      </button>
+      {isPdf && (
+        <button type="button" onClick={apriInScheda} className="shrink-0" title="Apri">
+          <Search className="size-3.5" />
+        </button>
+      )}
+    </div>
+  );
+}
 
 export function CanaleConversazione({ canaleId }: { canaleId: string }) {
   const { user } = useAuth();
@@ -24,6 +140,9 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
   const [messaggi, setMessaggi] = useState<Messaggio[]>([]);
   const [testo, setTesto] = useState("");
   const [invio, setInvio] = useState(false);
+  const [fileSelezionato, setFileSelezionato] = useState<File | null>(null);
+  const [previewLocale, setPreviewLocale] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   const { data: profili } = useQuery({
@@ -45,6 +164,16 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
   }, [profili]);
 
   useEffect(() => {
+    if (!fileSelezionato || !fileSelezionato.type.startsWith("image/")) {
+      setPreviewLocale(null);
+      return;
+    }
+    const url = URL.createObjectURL(fileSelezionato);
+    setPreviewLocale(url);
+    return () => URL.revokeObjectURL(url);
+  }, [fileSelezionato]);
+
+  useEffect(() => {
     if (!canaleId) {
       setMessaggi([]);
       return;
@@ -63,7 +192,30 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
         toast.error("Errore nel caricamento dei messaggi");
         return;
       }
-      if (active) setMessaggi((data ?? []) as Messaggio[]);
+      const lista = (data ?? []) as Messaggio[];
+      if (lista.length > 0) {
+        const { data: alleg } = await supabase
+          .from("allegati")
+          .select("id, entita_id, nome_file, storage_path, mime_type, dimensione_bytes")
+          .eq("entita_tipo", "messaggio")
+          .in("entita_id", lista.map((m) => m.id));
+        const mappa = new Map<string, Allegato>();
+        (alleg ?? []).forEach((a) => {
+          if (!mappa.has(a.entita_id)) {
+            mappa.set(a.entita_id, {
+              id: a.id,
+              nome_file: a.nome_file,
+              storage_path: a.storage_path,
+              mime_type: a.mime_type,
+              dimensione_bytes: a.dimensione_bytes,
+            });
+          }
+        });
+        lista.forEach((m) => {
+          m.allegato = mappa.get(m.id) ?? null;
+        });
+      }
+      if (active) setMessaggi(lista);
     };
     load();
 
@@ -84,6 +236,32 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
           const nuovo = payload.new as Messaggio;
           if (!nuovo?.id) return;
           setMessaggi((prev) => (prev.some((m) => m.id === nuovo.id) ? prev : [...prev, nuovo]));
+          void (async () => {
+            const { data: alleg } = await supabase
+              .from("allegati")
+              .select("id, entita_id, nome_file, storage_path, mime_type, dimensione_bytes")
+              .eq("entita_tipo", "messaggio")
+              .eq("entita_id", nuovo.id)
+              .limit(1);
+            const a = (alleg ?? [])[0];
+            if (!a) return;
+            setMessaggi((prev) =>
+              prev.map((m) =>
+                m.id === nuovo.id
+                  ? {
+                      ...m,
+                      allegato: {
+                        id: a.id,
+                        nome_file: a.nome_file,
+                        storage_path: a.storage_path,
+                        mime_type: a.mime_type,
+                        dimensione_bytes: a.dimensione_bytes,
+                      },
+                    }
+                  : m
+              )
+            );
+          })();
         }
       )
       .subscribe();
@@ -100,22 +278,59 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
 
   async function inviaMessaggio() {
     const t = testo.trim();
-    if (!t || !canaleId || invio) return;
+    const file = fileSelezionato;
+    if ((!t && !file) || !canaleId || invio) return;
     setInvio(true);
     const { data, error } = await supabase
       .from("messaggi")
-      .insert({ canale_id: canaleId, testo: t })
+      .insert({ canale_id: canaleId, testo: t || "" })
       .select("id, canale_id, autore_id, testo, created_at")
       .single();
-    setInvio(false);
-    if (error) {
+    if (error || !data) {
+      setInvio(false);
       toast.error("Impossibile inviare il messaggio");
       return;
     }
-    setTesto("");
     const nuovo = data as Messaggio;
+
+    if (file) {
+      const path = `messaggio/${nuovo.id}/${Date.now()}_${sanitize(file.name)}`;
+      const { error: upErr } = await supabase.storage
+        .from(BUCKET)
+        .upload(path, file, { contentType: file.type || undefined });
+      if (upErr) {
+        toast.error("Messaggio inviato ma allegato non caricato");
+      } else {
+        const { data: row, error: insErr } = await supabase
+          .from("allegati")
+          .insert({
+            entita_tipo: "messaggio",
+            entita_id: nuovo.id,
+            cliente_id: null,
+            nome_file: file.name,
+            storage_path: path,
+            mime_type: file.type || null,
+            dimensione_bytes: file.size,
+            caricato_da: user?.id ?? null,
+          })
+          .select("id, nome_file, storage_path, mime_type, dimensione_bytes")
+          .single();
+        if (insErr || !row) {
+          toast.error("Messaggio inviato ma allegato non caricato");
+        } else {
+          nuovo.allegato = row as Allegato;
+        }
+      }
+    }
+
+    setInvio(false);
+    setTesto("");
+    setFileSelezionato(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
     setMessaggi((prev) => (prev.some((m) => m.id === nuovo.id) ? prev : [...prev, nuovo]));
   }
+
+  const puoInviare = !!testo.trim() || !!fileSelezionato;
 
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -140,7 +355,10 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
                       {nomeAutore.get(m.autore_id) ?? "—"}
                     </div>
                   )}
-                  <div className="text-sm whitespace-pre-wrap break-words">{m.testo}</div>
+                  {m.testo && (
+                    <div className="text-sm whitespace-pre-wrap break-words">{m.testo}</div>
+                  )}
+                  {m.allegato && <AllegatoMessaggio allegato={m.allegato} />}
                   <div
                     className={`text-[10px] mt-1 ${
                       mio ? "text-primary-foreground/70" : "text-muted-foreground"
@@ -159,21 +377,66 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
         </div>
       </ScrollArea>
 
+      {fileSelezionato && (
+        <div className="border-t px-3 pt-2">
+          <div className="inline-flex items-center gap-2 rounded-md border px-2 py-1.5">
+            {previewLocale ? (
+              <img src={previewLocale} alt="" className="size-10 rounded object-cover" />
+            ) : (
+              <FileText className="size-4" />
+            )}
+            <span className="text-xs truncate max-w-[180px]">{fileSelezionato.name}</span>
+            <span className="text-[10px] text-muted-foreground">
+              {formatBytes(fileSelezionato.size)}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setFileSelezionato(null);
+                if (fileInputRef.current) fileInputRef.current.value = "";
+              }}
+              className="text-muted-foreground hover:text-foreground"
+              aria-label="Rimuovi allegato"
+            >
+              <X className="size-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="border-t p-3 flex items-end gap-2">
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0] ?? null;
+            setFileSelezionato(f);
+          }}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={() => fileInputRef.current?.click()}
+          aria-label="Allega file"
+        >
+          <Paperclip className="size-4" />
+        </Button>
         <Textarea
           value={testo}
           onChange={(e) => setTesto(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
-              inviaMessaggio();
+              if (puoInviare) inviaMessaggio();
             }
           }}
           placeholder="Scrivi un messaggio…"
           rows={2}
           className="resize-none"
         />
-        <Button onClick={inviaMessaggio} disabled={!testo.trim() || invio} size="icon">
+        <Button onClick={inviaMessaggio} disabled={!puoInviare || invio} size="icon">
           <Send className="size-4" />
         </Button>
       </div>
