@@ -406,7 +406,7 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
                 )}
                 <div
                   className={`max-w-[80%] rounded-lg px-3 py-2 ${
-                    mio ? "bg-primary/10 text-foreground border border-primary/20" : "bg-muted text-foreground"
+                    mio ? "bg-blue-500 text-white" : "bg-muted text-foreground"
                   }`}
                 >
                   {!mio && (
@@ -426,7 +426,7 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
                   )}
                   <div
                     className={`text-[10px] mt-1 ${
-                      mio ? "text-muted-foreground" : "text-muted-foreground"
+                      mio ? "text-white/70" : "text-muted-foreground"
                     }`}
                   >
                     {formatDistanceToNow(new Date(m.created_at), {
