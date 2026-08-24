@@ -138,8 +138,10 @@ function AllegatoMessaggio({ allegato }: { allegato: Allegato }) {
 }
 
 export function CanaleConversazione({ canaleId }: { canaleId: string }) {
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
+  const isAdmin = hasRole("amministratore");
   const instanceId = useId();
+  const [messaggioDaEliminare, setMessaggioDaEliminare] = useState<Messaggio | null>(null);
   const [messaggi, setMessaggi] = useState<Messaggio[]>([]);
   const [testo, setTesto] = useState("");
   const [invio, setInvio] = useState(false);
