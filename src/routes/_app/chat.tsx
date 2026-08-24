@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, MessagesSquare, Plus } from "lucide-react";
+import { ArrowLeft, MessagesSquare, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -43,6 +43,7 @@ type Canale = {
   nome: string | null;
   attivo: boolean;
   updated_at: string;
+  created_by: string | null;
 };
 
 
@@ -84,7 +85,7 @@ function ChatPage() {
       if (ids.length === 0) return [] as Canale[];
       const { data, error } = await supabase
         .from("canali")
-        .select("id, tipo, nome, attivo, updated_at")
+        .select("id, tipo, nome, attivo, updated_at, created_by")
         .in("id", ids)
         .eq("attivo", true)
         .order("updated_at", { ascending: false });
