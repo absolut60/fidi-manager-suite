@@ -228,6 +228,36 @@ function ChatPage() {
         </Card>
       </div>
 
+      <Dialog
+        open={confermaEliminaChat !== null}
+        onOpenChange={(v) => { if (!v) setConfermaEliminaChat(null); }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {confermaEliminaChat === "two" ? "Conferma definitiva" : "Elimina chat"}
+            </DialogTitle>
+            <DialogDescription>
+              {confermaEliminaChat === "two"
+                ? "Confermi l'eliminazione definitiva della chat e di tutti i suoi contenuti?"
+                : `Vuoi eliminare la chat "${canaleCorrente ? nomeCanale(canaleCorrente) : ""}"? Verranno eliminati tutti i messaggi e gli allegati. L'operazione è irreversibile.`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfermaEliminaChat(null)}>Annulla</Button>
+            {confermaEliminaChat === "two" ? (
+              <Button variant="destructive" onClick={() => void eliminaChat()}>
+                Elimina definitivamente
+              </Button>
+            ) : (
+              <Button variant="destructive" onClick={() => setConfermaEliminaChat("two")}>
+                Continua
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {isAdmin && (
         <NuovoCanaleDialog
           open={nuovoCanale}
