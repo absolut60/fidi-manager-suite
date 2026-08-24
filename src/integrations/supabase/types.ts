@@ -5778,6 +5778,7 @@ export type Database = {
           saltate: number
         }[]
       }
+      crea_o_apri_diretto: { Args: { _altro_user_id: string }; Returns: string }
       crea_partecipante_da_nuovo_soggetto: {
         Args: {
           _cap?: string
