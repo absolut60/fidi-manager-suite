@@ -106,6 +106,28 @@ function ChatPage() {
 
   const canaleCorrente = (canali ?? []).find((c) => c.id === selected) ?? null;
 
+  async function eliminaChat() {
+    if (!canaleCorrente) return;
+    const { data, error } = await supabase.rpc("elimina_canale", {
+      _canale_id: canaleCorrente.id,
+    } as never);
+    if (error) {
+      toast.error("Impossibile eliminare la chat");
+      return;
+    }
+    const paths = ((data ?? []) as Array<{ storage_path: string | null }>)
+      .map((r) => r.storage_path)
+      .filter((p): p is string => !!p);
+    if (paths.length > 0) {
+      const { error: sErr } = await supabase.storage.from("allegati").remove(paths);
+      if (sErr) console.warn("[chat] rimozione allegati fallita", sErr);
+    }
+    setConfermaEliminaChat(null);
+    setSelected(null);
+    queryClient.invalidateQueries({ queryKey: ["chat", "canali"] });
+    toast.success("Chat eliminata");
+  }
+
 
 
   return (
