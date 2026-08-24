@@ -153,6 +153,16 @@ function ChatPage() {
     },
   });
 
+  const { data: rubrica } = useQuery({
+    queryKey: ["chat", "utenti-rubrica", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_utenti_chat");
+      if (error) throw error;
+      return (data ?? []) as Array<{ id: string; nome: string | null; cognome: string | null }>;
+    },
+  });
+
   const direttiIds = useMemo(
     () => (canali ?? []).filter((c) => c.tipo === "diretto").map((c) => c.id),
     [canali],
@@ -172,7 +182,7 @@ function ChatPage() {
   });
 
   const nomiDiretti = useMemo(() => {
-    const byId = new Map((profili ?? []).map((p) => [p.id, p as Profilo]));
+    const byId = new Map((rubrica ?? []).map((p) => [p.id, p as Profilo]));
     const out: Record<string, string> = {};
     for (const m of membriDiretti ?? []) {
       if (m.user_id === user?.id) continue;
@@ -180,7 +190,7 @@ function ChatPage() {
       if (label) out[m.canale_id] = label;
     }
     return out;
-  }, [membriDiretti, profili, user?.id]);
+  }, [membriDiretti, rubrica, user?.id]);
 
   const canaleCorrente = (canali ?? []).find((c) => c.id === selected) ?? null;
 
@@ -342,6 +352,7 @@ function ChatPage() {
         isAdmin={isAdmin}
         currentUserId={user?.id ?? null}
         profili={(profili ?? []).filter((p) => p.attivo)}
+        rubrica={(rubrica ?? [])}
         onCreated={() => {
           queryClient.invalidateQueries({ queryKey: ["chat", "canali"] });
         }}
@@ -360,6 +371,7 @@ function NuovoCanaleDialog({
   isAdmin,
   currentUserId,
   profili,
+  rubrica,
   onCreated,
   onOpenCanale,
 }: {
@@ -368,6 +380,7 @@ function NuovoCanaleDialog({
   isAdmin: boolean;
   currentUserId: string | null;
   profili: Array<{ id: string; nome: string | null; cognome: string | null }>;
+  rubrica: Array<{ id: string; nome: string | null; cognome: string | null }>;
   onCreated: () => void;
   onOpenCanale?: (canaleId: string) => void;
 }) {
@@ -422,8 +435,7 @@ function NuovoCanaleDialog({
 
   const candidati = useMemo(() => {
     const q = ricerca.trim().toLowerCase();
-    return profili
-      .filter((p) => p.id !== currentUserId)
+    return rubrica
       .filter((p) => {
         if (!q) return true;
         return `${p.nome ?? ""} ${p.cognome ?? ""}`.toLowerCase().includes(q);
@@ -431,7 +443,7 @@ function NuovoCanaleDialog({
       .sort((a, b) =>
         `${a.cognome ?? ""}${a.nome ?? ""}`.localeCompare(`${b.cognome ?? ""}${b.nome ?? ""}`),
       );
-  }, [profili, ricerca, currentUserId]);
+  }, [rubrica, ricerca]);
 
   function toggleMembro(id: string) {
     setMembri((prev) => (prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id]));
