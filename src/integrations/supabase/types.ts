@@ -5814,9 +5814,24 @@ export type Database = {
         }[]
       }
       elimina_lead: { Args: { _lead_id: string }; Returns: undefined }
+      elimina_task: {
+        Args: { _task_id: string }
+        Returns: {
+          storage_path: string
+        }[]
+      }
       fn_email_valida: { Args: { _raw: string }; Returns: boolean }
       fn_telefono_valido: { Args: { _raw: string }; Returns: boolean }
       genera_snapshot: { Args: { _data: string }; Returns: string }
+      get_canali_non_letti: {
+        Args: never
+        Returns: {
+          canale_id: string
+          non_letti: number
+          task_id: string
+          tipo: Database["public"]["Enums"]["tipo_canale"]
+        }[]
+      }
       get_clienti_avvisati: {
         Args: never
         Returns: {
@@ -6628,6 +6643,7 @@ export type Database = {
           scartate: number
         }[]
       }
+      segna_canale_letto: { Args: { _canale_id: string }; Returns: undefined }
       storage_path_cliente_id: { Args: { _name: string }; Returns: string }
       store_id_effettivo: { Args: { _store_id: string }; Returns: string }
       trasforma_preventivo_in_ordine: {
