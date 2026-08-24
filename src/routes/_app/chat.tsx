@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, MessagesSquare, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -46,10 +46,18 @@ type Canale = {
   created_by: string | null;
 };
 
+type Profilo = { id: string; nome: string | null; cognome: string | null };
 
+function labelProfilo(p: Profilo | undefined) {
+  if (!p) return "";
+  return `${p.nome ?? ""} ${p.cognome ?? ""}`.trim();
+}
 
-
-function nomeCanale(c: Canale) {
+function nomeCanale(c: Canale, nomiDiretti?: Record<string, string>) {
+  if (c.tipo === "diretto") {
+    const n = nomiDiretti?.[c.id];
+    return n && n.trim() ? n : "Messaggio diretto";
+  }
   if (c.nome && c.nome.trim()) return c.nome;
   if (c.tipo === "area") return "Area";
   if (c.tipo === "store") return "Punto vendita";
@@ -104,6 +112,35 @@ function ChatPage() {
     },
   });
 
+  const direttiIds = useMemo(
+    () => (canali ?? []).filter((c) => c.tipo === "diretto").map((c) => c.id),
+    [canali],
+  );
+
+  const { data: membriDiretti } = useQuery({
+    queryKey: ["chat", "membri-diretti", direttiIds.join(",")],
+    enabled: direttiIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("canale_membri")
+        .select("canale_id, user_id")
+        .in("canale_id", direttiIds);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const nomiDiretti = useMemo(() => {
+    const byId = new Map((profili ?? []).map((p) => [p.id, p as Profilo]));
+    const out: Record<string, string> = {};
+    for (const m of membriDiretti ?? []) {
+      if (m.user_id === user?.id) continue;
+      const label = labelProfilo(byId.get(m.user_id));
+      if (label) out[m.canale_id] = label;
+    }
+    return out;
+  }, [membriDiretti, profili, user?.id]);
+
   const canaleCorrente = (canali ?? []).find((c) => c.id === selected) ?? null;
 
   async function eliminaChat() {
@@ -128,8 +165,6 @@ function ChatPage() {
     toast.success("Chat eliminata");
   }
 
-
-
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -139,11 +174,9 @@ function ChatPage() {
             Conversazioni di area, punto vendita e task.
           </p>
         </div>
-        {isAdmin && (
-          <Button onClick={() => setNuovoCanale(true)}>
-            <Plus className="size-4 mr-1.5" /> Nuovo canale
-          </Button>
-        )}
+        <Button onClick={() => setNuovoCanale(true)}>
+          <Plus className="size-4 mr-1.5" /> Nuovo canale
+        </Button>
       </div>
 
       <div className="grid lg:grid-cols-[280px_1fr] gap-4">
@@ -172,7 +205,7 @@ function ChatPage() {
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <MessagesSquare className="size-4 shrink-0" />
-                      <span className="truncate text-sm font-medium">{nomeCanale(c)}</span>
+                      <span className="truncate text-sm font-medium">{nomeCanale(c, nomiDiretti)}</span>
                     </div>
                     <div className="text-[11px] text-muted-foreground pl-6">
                       {TIPO_LABEL[c.tipo]}
@@ -202,7 +235,7 @@ function ChatPage() {
                   <ArrowLeft className="size-4 mr-1" /> Canali
                 </Button>
                 <div className="min-w-0">
-                  <div className="font-semibold truncate">{nomeCanale(canaleCorrente)}</div>
+                  <div className="font-semibold truncate">{nomeCanale(canaleCorrente, nomiDiretti)}</div>
                   <div className="text-[11px] text-muted-foreground">
                     {TIPO_LABEL[canaleCorrente.tipo]}
                   </div>
@@ -220,9 +253,7 @@ function ChatPage() {
                   )}
               </div>
 
-
               <CanaleConversazione canaleId={canaleCorrente.id} />
-
             </>
           )}
         </Card>
@@ -240,7 +271,7 @@ function ChatPage() {
             <DialogDescription>
               {confermaEliminaChat === "two"
                 ? "Confermi l'eliminazione definitiva della chat e di tutti i suoi contenuti?"
-                : `Vuoi eliminare la chat "${canaleCorrente ? nomeCanale(canaleCorrente) : ""}"? Verranno eliminati tutti i messaggi e gli allegati. L'operazione è irreversibile.`}
+                : `Vuoi eliminare la chat "${canaleCorrente ? nomeCanale(canaleCorrente, nomiDiretti) : ""}"? Verranno eliminati tutti i messaggi e gli allegati. L'operazione è irreversibile.`}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -258,17 +289,20 @@ function ChatPage() {
         </DialogContent>
       </Dialog>
 
-      {isAdmin && (
-        <NuovoCanaleDialog
-          open={nuovoCanale}
-          onOpenChange={setNuovoCanale}
-          currentUserId={user?.id ?? null}
-          profili={(profili ?? []).filter((p) => p.attivo)}
-          onCreated={() => {
-            queryClient.invalidateQueries({ queryKey: ["chat", "canali"] });
-          }}
-        />
-      )}
+      <NuovoCanaleDialog
+        open={nuovoCanale}
+        onOpenChange={setNuovoCanale}
+        isAdmin={isAdmin}
+        currentUserId={user?.id ?? null}
+        profili={(profili ?? []).filter((p) => p.attivo)}
+        onCreated={() => {
+          queryClient.invalidateQueries({ queryKey: ["chat", "canali"] });
+        }}
+        onOpenCanale={(canaleId) => {
+          setSelected(canaleId);
+          queryClient.invalidateQueries({ queryKey: ["chat", "canali"] });
+        }}
+      />
     </div>
   );
 }
@@ -276,36 +310,44 @@ function ChatPage() {
 function NuovoCanaleDialog({
   open,
   onOpenChange,
+  isAdmin,
   currentUserId,
   profili,
   onCreated,
+  onOpenCanale,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  isAdmin: boolean;
   currentUserId: string | null;
   profili: Array<{ id: string; nome: string | null; cognome: string | null }>;
   onCreated: () => void;
+  onOpenCanale?: (canaleId: string) => void;
 }) {
-  const [tipo, setTipo] = useState<"area" | "store">("area");
+  const [tipo, setTipo] = useState<"area" | "store" | "diretto">("area");
   const [areaId, setAreaId] = useState<string>("");
   const [storeId, setStoreId] = useState<string>("");
   const [nome, setNome] = useState("");
   const [membri, setMembri] = useState<string[]>([]);
+  const [ricerca, setRicerca] = useState("");
+  const [destinatarioId, setDestinatarioId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (open) {
-      setTipo("area");
+      setTipo(isAdmin ? "area" : "diretto");
       setAreaId("");
       setStoreId("");
       setNome("");
+      setRicerca("");
+      setDestinatarioId(null);
       setMembri(currentUserId ? [currentUserId] : []);
     }
-  }, [open, currentUserId]);
+  }, [open, currentUserId, isAdmin]);
 
   const { data: aree } = useQuery({
     queryKey: ["chat", "aree-attive"],
-    enabled: open,
+    enabled: open && isAdmin,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("aree_funzionali")
@@ -319,7 +361,7 @@ function NuovoCanaleDialog({
 
   const { data: stores } = useQuery({
     queryKey: ["chat", "stores-attivi"],
-    enabled: open,
+    enabled: open && isAdmin,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("stores")
@@ -331,11 +373,44 @@ function NuovoCanaleDialog({
     },
   });
 
+  const candidati = useMemo(() => {
+    const q = ricerca.trim().toLowerCase();
+    return profili
+      .filter((p) => p.id !== currentUserId)
+      .filter((p) => {
+        if (!q) return true;
+        return `${p.nome ?? ""} ${p.cognome ?? ""}`.toLowerCase().includes(q);
+      })
+      .sort((a, b) =>
+        `${a.cognome ?? ""}${a.nome ?? ""}`.localeCompare(`${b.cognome ?? ""}${b.nome ?? ""}`),
+      );
+  }, [profili, ricerca, currentUserId]);
+
   function toggleMembro(id: string) {
     setMembri((prev) => (prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id]));
   }
 
   async function salva() {
+    if (tipo === "diretto") {
+      if (!destinatarioId) {
+        toast.error("Seleziona una persona");
+        return;
+      }
+      setSaving(true);
+      const { data, error } = await supabase.rpc("crea_o_apri_diretto", {
+        _altro_user_id: destinatarioId,
+      } as never);
+      setSaving(false);
+      if (error || !data) {
+        toast.error("Impossibile aprire la chat");
+        return;
+      }
+      onCreated();
+      onOpenChange(false);
+      onOpenCanale?.(data as unknown as string);
+      return;
+    }
+
     if (tipo === "area" && !areaId) {
       toast.error("Seleziona un'area");
       return;
@@ -377,93 +452,141 @@ function NuovoCanaleDialog({
     onOpenChange(false);
   }
 
+  const diretto = tipo === "diretto";
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Nuovo canale</DialogTitle>
-          <DialogDescription>Crea un canale di area o punto vendita e scegli i membri.</DialogDescription>
+          <DialogTitle>{isAdmin ? "Nuovo canale" : "Nuovo messaggio diretto"}</DialogTitle>
+          <DialogDescription>
+            {isAdmin
+              ? "Crea un canale di area, punto vendita o un messaggio diretto."
+              : "Scegli un collega per aprire una chat diretta."}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>Tipo</Label>
-            <Select value={tipo} onValueChange={(v) => setTipo(v as "area" | "store")}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="area">Area</SelectItem>
-                <SelectItem value="store">Punto vendita</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {tipo === "area" ? (
+          {isAdmin && (
             <div className="space-y-1.5">
-              <Label>Area</Label>
-              <Select
-                value={areaId}
-                onValueChange={(v) => {
-                  setAreaId(v);
-                  const a = (aree ?? []).find((x) => x.id === v);
-                  if (a) setNome(a.nome);
-                }}
-              >
-                <SelectTrigger><SelectValue placeholder="Seleziona area" /></SelectTrigger>
+              <Label>Tipo</Label>
+              <Select value={tipo} onValueChange={(v) => setTipo(v as "area" | "store" | "diretto")}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {(aree ?? []).map((a) => (
-                    <SelectItem key={a.id} value={a.id}>{a.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          ) : (
-            <div className="space-y-1.5">
-              <Label>Punto vendita</Label>
-              <Select
-                value={storeId}
-                onValueChange={(v) => {
-                  setStoreId(v);
-                  const s = (stores ?? []).find((x) => x.id === v);
-                  if (s) setNome(s.nome);
-                }}
-              >
-                <SelectTrigger><SelectValue placeholder="Seleziona punto vendita" /></SelectTrigger>
-                <SelectContent>
-                  {(stores ?? []).map((s) => (
-                    <SelectItem key={s.id} value={s.id}>{s.codice} — {s.nome}</SelectItem>
-                  ))}
+                  <SelectItem value="area">Area</SelectItem>
+                  <SelectItem value="store">Punto vendita</SelectItem>
+                  <SelectItem value="diretto">Diretto</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           )}
 
-          <div className="space-y-1.5">
-            <Label>Nome canale</Label>
-            <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome del canale" />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Membri</Label>
-            <div className="max-h-52 overflow-y-auto rounded-md border p-2 space-y-1">
-              {profili.map((p) => {
-                const label = `${p.nome ?? ""} ${p.cognome ?? ""}`.trim() || "—";
-                return (
-                  <label key={p.id} className="flex items-center gap-2 px-1 py-1 text-sm cursor-pointer">
-                    <Checkbox
-                      checked={membri.includes(p.id)}
-                      onCheckedChange={() => toggleMembro(p.id)}
-                    />
-                    <span>{label}</span>
-                  </label>
-                );
-              })}
+          {diretto ? (
+            <div className="space-y-1.5">
+              <Label>Persona</Label>
+              <Input
+                value={ricerca}
+                onChange={(e) => setRicerca(e.target.value)}
+                placeholder="Cerca per nome o cognome"
+              />
+              <div className="max-h-64 overflow-y-auto rounded-md border p-1 space-y-0.5">
+                {candidati.length === 0 ? (
+                  <div className="p-3 text-sm text-muted-foreground text-center">
+                    Nessuna persona trovata
+                  </div>
+                ) : (
+                  candidati.map((p) => {
+                    const label = `${p.nome ?? ""} ${p.cognome ?? ""}`.trim() || "—";
+                    const sel = destinatarioId === p.id;
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => setDestinatarioId(p.id)}
+                        className={`w-full text-left px-2 py-1.5 rounded-md text-sm transition-colors ${
+                          sel ? "bg-accent text-accent-foreground" : "hover:bg-muted"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
             </div>
-          </div>
+          ) : (
+            <>
+              {tipo === "area" ? (
+                <div className="space-y-1.5">
+                  <Label>Area</Label>
+                  <Select
+                    value={areaId}
+                    onValueChange={(v) => {
+                      setAreaId(v);
+                      const a = (aree ?? []).find((x) => x.id === v);
+                      if (a) setNome(a.nome);
+                    }}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Seleziona area" /></SelectTrigger>
+                    <SelectContent>
+                      {(aree ?? []).map((a) => (
+                        <SelectItem key={a.id} value={a.id}>{a.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  <Label>Punto vendita</Label>
+                  <Select
+                    value={storeId}
+                    onValueChange={(v) => {
+                      setStoreId(v);
+                      const s = (stores ?? []).find((x) => x.id === v);
+                      if (s) setNome(s.nome);
+                    }}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Seleziona punto vendita" /></SelectTrigger>
+                    <SelectContent>
+                      {(stores ?? []).map((s) => (
+                        <SelectItem key={s.id} value={s.id}>{s.codice} — {s.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <Label>Nome canale</Label>
+                <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome del canale" />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Membri</Label>
+                <div className="max-h-52 overflow-y-auto rounded-md border p-2 space-y-1">
+                  {profili.map((p) => {
+                    const label = `${p.nome ?? ""} ${p.cognome ?? ""}`.trim() || "—";
+                    return (
+                      <label key={p.id} className="flex items-center gap-2 px-1 py-1 text-sm cursor-pointer">
+                        <Checkbox
+                          checked={membri.includes(p.id)}
+                          onCheckedChange={() => toggleMembro(p.id)}
+                        />
+                        <span>{label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Annulla</Button>
-          <Button onClick={salva} disabled={saving}>Crea canale</Button>
+          <Button onClick={salva} disabled={saving}>
+            {diretto ? "Apri chat" : "Crea canale"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
