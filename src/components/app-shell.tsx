@@ -175,9 +175,35 @@ function isItemActive(item: NavItem, currentPath: string) {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { profilo, role, roles } = useAuth();
+  const { profilo, role, roles, user } = useAuth();
   const navigate = useNavigate();
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
+
+  const { data: nonLetti } = useQuery({
+    queryKey: ["menu", "non-letti", user?.id],
+    enabled: !!user?.id,
+    refetchInterval: 30000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_canali_non_letti");
+      if (error) throw error;
+      return (data ?? []) as Array<{ canale_id: string; tipo: string; task_id: string | null; non_letti: number }>;
+    },
+  });
+
+  const totaleTask = (nonLetti ?? [])
+    .filter((r) => r.tipo === "task")
+    .reduce((s, r) => s + Number(r.non_letti ?? 0), 0);
+  const totaleChat = (nonLetti ?? [])
+    .filter((r) => r.tipo !== "task")
+    .reduce((s, r) => s + Number(r.non_letti ?? 0), 0);
+
+  function badgePerVoce(to: string) {
+    if (to === "/chat") return totaleChat;
+    if (to === "/task") return totaleTask;
+    return undefined;
+  }
+
+
 
   const userRoles = roles as string[];
   const hasUserRole = (r: string) => userRoles.includes(r);
