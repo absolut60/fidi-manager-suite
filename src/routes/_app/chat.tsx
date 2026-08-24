@@ -185,7 +185,19 @@ function ChatPage() {
                     {TIPO_LABEL[canaleCorrente.tipo]}
                   </div>
                 </div>
+                {canaleCorrente.tipo !== "task" &&
+                  (isAdmin || canaleCorrente.created_by === user?.id) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="ml-auto text-destructive hover:text-destructive"
+                      onClick={() => setConfermaEliminaChat("one")}
+                    >
+                      <Trash2 className="size-4 mr-1.5" /> Elimina chat
+                    </Button>
+                  )}
               </div>
+
 
               <CanaleConversazione canaleId={canaleCorrente.id} />
 
