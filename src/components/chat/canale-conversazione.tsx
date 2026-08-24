@@ -235,7 +235,17 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
         (payload) => {
           const nuovo = payload.new as Messaggio;
           if (!nuovo?.id) return;
-          setMessaggi((prev) => (prev.some((m) => m.id === nuovo.id) ? prev : [...prev, nuovo]));
+          setMessaggi((prev) => {
+            const esistente = prev.find((m) => m.id === nuovo.id);
+            if (esistente) {
+              return prev.map((m) =>
+                m.id === nuovo.id
+                  ? { ...m, ...nuovo, allegato: m.allegato ?? nuovo.allegato }
+                  : m
+              );
+            }
+            return [...prev, nuovo];
+          });
           void (async () => {
             const { data: alleg } = await supabase
               .from("allegati")
@@ -245,20 +255,16 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
               .limit(1);
             const a = (alleg ?? [])[0];
             if (!a) return;
+            const allegatoTrovato: Allegato = {
+              id: a.id,
+              nome_file: a.nome_file,
+              storage_path: a.storage_path,
+              mime_type: a.mime_type,
+              dimensione_bytes: a.dimensione_bytes,
+            };
             setMessaggi((prev) =>
               prev.map((m) =>
-                m.id === nuovo.id
-                  ? {
-                      ...m,
-                      allegato: {
-                        id: a.id,
-                        nome_file: a.nome_file,
-                        storage_path: a.storage_path,
-                        mime_type: a.mime_type,
-                        dimensione_bytes: a.dimensione_bytes,
-                      },
-                    }
-                  : m
+                m.id === nuovo.id ? { ...m, allegato: m.allegato ?? allegatoTrovato } : m
               )
             );
           })();
@@ -327,7 +333,15 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
     setTesto("");
     setFileSelezionato(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
-    setMessaggi((prev) => (prev.some((m) => m.id === nuovo.id) ? prev : [...prev, nuovo]));
+    setMessaggi((prev) => {
+      const esistente = prev.find((m) => m.id === nuovo.id);
+      if (esistente) {
+        return prev.map((m) =>
+          m.id === nuovo.id ? { ...m, ...nuovo, allegato: nuovo.allegato ?? m.allegato } : m
+        );
+      }
+      return [...prev, nuovo];
+    });
   }
 
   const puoInviare = !!testo.trim() || !!fileSelezionato;
