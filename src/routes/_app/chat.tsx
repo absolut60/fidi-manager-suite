@@ -352,6 +352,7 @@ function ChatPage() {
         isAdmin={isAdmin}
         currentUserId={user?.id ?? null}
         profili={(profili ?? []).filter((p) => p.attivo)}
+        rubrica={(rubrica ?? [])}
         onCreated={() => {
           queryClient.invalidateQueries({ queryKey: ["chat", "canali"] });
         }}
