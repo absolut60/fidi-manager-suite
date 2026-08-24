@@ -1,6 +1,6 @@
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { FileText, Paperclip, Search, Send, Trash2, X } from "lucide-react";
+import { FileText, Paperclip, Search, Send, Smile, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
@@ -9,9 +9,13 @@ import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
+
+const EmojiPicker = lazy(() => import("emoji-picker-react"));
+
 
 type Allegato = {
   id: string;
@@ -145,6 +149,8 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
   const [messaggi, setMessaggi] = useState<Messaggio[]>([]);
   const [testo, setTesto] = useState("");
   const [invio, setInvio] = useState(false);
+  const [emojiOpen, setEmojiOpen] = useState(false);
+
   const [fileSelezionato, setFileSelezionato] = useState<File | null>(null);
   const [previewLocale, setPreviewLocale] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -493,6 +499,21 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
         >
           <Paperclip className="size-4" />
         </Button>
+        <Popover open={emojiOpen} onOpenChange={setEmojiOpen}>
+          <PopoverTrigger asChild>
+            <Button type="button" variant="outline" size="icon" aria-label="Emoji">
+              <Smile className="size-4" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="p-0 w-auto border-none bg-transparent" align="start" side="top">
+            {emojiOpen && typeof window !== "undefined" && (
+              <Suspense fallback={<div className="h-10 w-40 rounded-md bg-muted animate-pulse" />}>
+                <EmojiPicker onEmojiClick={(e) => setTesto((t) => t + e.emoji)} />
+              </Suspense>
+            )}
+          </PopoverContent>
+        </Popover>
+
         <Textarea
           value={testo}
           onChange={(e) => setTesto(e.target.value)}

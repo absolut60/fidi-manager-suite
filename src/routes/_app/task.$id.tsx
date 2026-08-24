@@ -267,21 +267,20 @@ function TaskDetailPage() {
 
   async function elimina() {
     if (!task) return;
-    try {
-      const paths = (allegati ?? []).map((a: any) => a.storage_path).filter(Boolean) as string[];
-      if (paths.length > 0) {
-        const { error: rmErr } = await supabase.storage.from(ALLEGATI_BUCKET).remove(paths);
-        if (rmErr) console.warn("Rimozione file bucket fallita:", rmErr.message);
-      }
-    } catch (e) {
-      console.warn("Cleanup bucket fallito:", e);
-    }
-    const { error } = await supabase.from("task").delete().eq("id", task.id);
+    const { data, error } = await supabase.rpc("elimina_task", { _task_id: task.id } as never);
     if (error) { toast.error("Errore: " + error.message); return; }
+    const paths = ((data ?? []) as Array<{ storage_path: string | null }>)
+      .map((r) => r.storage_path)
+      .filter((p): p is string => !!p);
+    if (paths.length > 0) {
+      const { error: rmErr } = await supabase.storage.from(ALLEGATI_BUCKET).remove(paths);
+      if (rmErr) console.warn("Rimozione file bucket fallita:", rmErr.message);
+    }
     toast.success("Attività eliminata");
     qc.invalidateQueries({ queryKey: ["task"] });
     navigate({ to: "/task" });
   }
+
 
   async function assegna(esecutoreId: string | null) {
     if (!task) return;
