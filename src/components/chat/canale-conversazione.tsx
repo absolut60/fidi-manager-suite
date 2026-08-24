@@ -149,6 +149,8 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
   const [messaggi, setMessaggi] = useState<Messaggio[]>([]);
   const [testo, setTesto] = useState("");
   const [invio, setInvio] = useState(false);
+  const [emojiOpen, setEmojiOpen] = useState(false);
+
   const [fileSelezionato, setFileSelezionato] = useState<File | null>(null);
   const [previewLocale, setPreviewLocale] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
