@@ -343,6 +343,31 @@ function ClientiPage() {
     staleTime: 60_000,
   });
 
+  // ID set per preset "clienti fermi" (RPC lato server, paginata per sicurezza)
+  const { data: fermiIds } = useQuery({
+    queryKey: ["clienti-fermi-ids", soloFermi],
+    enabled: soloFermi,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const ids: string[] = [];
+      let offset = 0;
+      const size = 1000;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await (supabase as any)
+          .rpc("get_clienti_fermi_ids")
+          .range(offset, offset + size - 1);
+        if (error) throw error;
+        const batch = (data ?? []) as Array<{ cliente_id: string }>;
+        for (const r of batch) ids.push(r.cliente_id);
+        if (batch.length < size) break;
+        offset += size;
+        if (offset > 100000) break;
+      }
+      return ids;
+    },
+  });
+
   // Semaforo affidabilità precalcolato (tabella fido_teorico_cliente), letto in blocco
   const { data: semaforoMap } = useQuery({
     queryKey: ["clienti-semaforo-affidabilita"],
