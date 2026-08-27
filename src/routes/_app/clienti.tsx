@@ -744,6 +744,8 @@ function ClientiPage() {
   const virtualSortReady = !isVirtualSort
     || (isFidoTeoricoSort ? !!fidoTeoricoMap : !!scadenziarioMap);
   const scostamentoReady = (scostamentoFiltro === "tutti" && !soloDaVerificare) || !!fidoTeoricoMap;
+  const insolutiReady = !soloInsoluti || !!classifList;
+  const fermiReady = !soloFermi || !!fermiIds;
 
   const { data: clientiResp, isLoading } = useQuery({
     queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, fasciaConcesso, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
