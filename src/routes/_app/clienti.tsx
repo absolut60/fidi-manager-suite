@@ -583,7 +583,13 @@ function ClientiPage() {
     return ids;
   }, [fidoTeoricoMap, soloDaVerificare]);
 
-  // Intersezione id set "include" (semaforo ∩ stato_fido ∩ scadenziario ∩ a_scadere ∩ perc consumato)
+  // ID set per preset "insoluti in corso" (num_insoluti > 0)
+  const insolutiIds = useMemo<string[] | null>(() => {
+    if (!soloInsoluti || !classifList) return null;
+    return (classifList as any[]).filter((c) => Number(c.num_insoluti ?? 0) > 0).map((c) => c.id);
+  }, [classifList, soloInsoluti]);
+
+  // Intersezione id set "include" (semaforo ∩ stato_fido ∩ scadenziario ∩ a_scadere ∩ perc consumato ∩ insoluti ∩ fermi)
   const includeIdsFilter = useMemo<string[] | null>(() => {
     const sources: string[][] = [];
     if (semaforoIds) sources.push(semaforoIds);
@@ -595,10 +601,12 @@ function ClientiPage() {
     if (percConsumatoIds) sources.push(percConsumatoIds);
     if (scostamentoIds) sources.push(scostamentoIds);
     if (daVerificareIds) sources.push(daVerificareIds);
+    if (insolutiIds) sources.push(insolutiIds);
+    if (fermiIds) sources.push(fermiIds);
     if (sources.length === 0) return null;
     const sets = sources.map((s) => new Set(s));
     return sources[0].filter((id) => sets.every((s) => s.has(id)));
-  }, [semaforoIds, statoFidoIds, oltreFidoIds, scadenziarioIdsFilter, aScadereIds, fatturatoIds, percConsumatoIds, scostamentoIds, daVerificareIds]);
+  }, [semaforoIds, statoFidoIds, oltreFidoIds, scadenziarioIdsFilter, aScadereIds, fatturatoIds, percConsumatoIds, scostamentoIds, daVerificareIds, insolutiIds, fermiIds]);
 
 
 
