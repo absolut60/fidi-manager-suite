@@ -5978,6 +5978,17 @@ export type Database = {
           vinte_val: number
         }[]
       }
+      get_dashboard_fatturato: {
+        Args: { _store_id?: string }
+        Returns: {
+          anno: number
+          fatturato: number
+          num_clienti: number
+          num_fatture: number
+          tipo: string
+          ytd_alla_data: string
+        }[]
+      }
       get_dashboard_fidi: {
         Args: never
         Returns: {
