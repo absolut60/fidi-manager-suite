@@ -5772,7 +5772,7 @@ export type Database = {
           duplicati: Json
         }[]
       }
-      count_fidi_quasi_saturi: { Args: never; Returns: number }
+      count_fidi_quasi_saturi: { Args: { _store_id?: string }; Returns: number }
       crea_lead_da_righe_import: {
         Args: { _riga_ids: string[] }
         Returns: {
@@ -5845,7 +5845,7 @@ export type Database = {
         }[]
       }
       get_clienti_fermi_ids: {
-        Args: never
+        Args: { _store_id?: string }
         Returns: {
           cliente_id: string
         }[]
