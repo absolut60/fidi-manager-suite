@@ -74,7 +74,8 @@ export function DashboardFatturato() {
   const ytdPrev = ytd.get(annoPrec);
 
   const fatturatoCur = cur?.fatturato ?? 0;
-  const fatturatoPrev = prev?.fatturato ?? 0;
+  // Per il confronto a parità di periodo usiamo il valore YTD dell'anno precedente
+  const fatturatoPrev = ytdPrev?.fatturato ?? 0;
 
   // Variazione a parità di periodo (YTD vs YTD)
   const ytdCurVal = ytdCur?.fatturato ?? 0;
@@ -110,8 +111,8 @@ export function DashboardFatturato() {
             <p className="text-2xl font-bold mt-1 tabular-nums">{fmtEuro(fatturatoPrev)}</p>
           )}
           <p className="text-xs text-muted-foreground mt-1">
-            {prev?.fatture ?? 0} fatture
-            {dataYtdLabel && ytdPrev ? ` · al ${dataYtdLabel}: ${fmtEuro(ytdPrevVal)}` : ""}
+            {ytdPrev?.fatture ?? 0} fatture
+            {dataYtdLabel ? ` · al ${dataYtdLabel}, confronto YTD` : ""}
           </p>
         </Card>
         <Card className="p-5">
