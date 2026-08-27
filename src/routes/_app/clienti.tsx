@@ -731,7 +731,7 @@ function ClientiPage() {
     const orderCol = isVirtualOrder ? "ragione_sociale" : sortBy;
     const orderAsc = isVirtualOrder ? true : sortDir === "asc";
     q = q.order(orderCol, { ascending: orderAsc, nullsFirst: false });
-    return { q };
+    return { q, largeInclude };
   }
 
 
