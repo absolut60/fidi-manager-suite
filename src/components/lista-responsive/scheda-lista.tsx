@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export type CampoScheda = { etichetta: string; valore: ReactNode };
 
@@ -14,6 +15,7 @@ export function SchedaLista({
   footer,
   colonneCampi = 1,
   className,
+  selezione,
 }: {
   /** Se omesso la scheda è un contenitore statico (necessario quando contiene elementi interattivi). */
   onClick?: () => void;
@@ -23,6 +25,7 @@ export function SchedaLista({
   footer?: ReactNode;
   colonneCampi?: 1 | 2;
   className?: string;
+  selezione?: { checked: boolean; onChange: (v: boolean) => void };
 }) {
   const Comp = onClick ? "button" : "div";
   return (
@@ -35,7 +38,21 @@ export function SchedaLista({
       )}
     >
       <div className="flex items-start justify-between gap-2">
-        <span className="font-medium text-base min-w-0 break-words">{titolo}</span>
+        <div className="flex items-start gap-2 min-w-0">
+          {selezione && (
+            <span
+              className="shrink-0 pt-0.5"
+              onClick={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              <Checkbox
+                checked={selezione.checked}
+                onCheckedChange={(v) => selezione.onChange(v === true)}
+              />
+            </span>
+          )}
+          <span className="font-medium text-base min-w-0 break-words">{titolo}</span>
+        </div>
         {badge}
       </div>
 

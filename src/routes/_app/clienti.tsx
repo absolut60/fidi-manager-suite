@@ -1569,6 +1569,7 @@ function ClientiPage() {
                       ? "bg-amber-50 dark:bg-amber-500/10 border-l-[3px] border-l-amber-500"
                       : undefined}
                   titolo={c.ragione_sociale}
+                  selezione={!isAgente ? { checked: selectedIds.has(c.id), onChange: (v) => { const next = new Set(selectedIds); if (v) next.add(c.id); else next.delete(c.id); setSelectedIds(next); } } : undefined}
                   badge={(() => {
                     const s = semaforoMap?.get(c.id);
                     const st = s?.stadio ?? null;
@@ -1584,7 +1585,9 @@ function ClientiPage() {
                     { etichetta: "Punto vendita", valore: c.stores?.nome || "—" },
                     { etichetta: "Fido attuale", valore: fmtEuro(c.fido_gestionale) },
                     { etichetta: "Fido residuo", valore: fmtEuro(c.fido_residuo) },
+                    ...(mostraFidoTeorico ? [{ etichetta: "Fido proposto", valore: (() => { const ft = fidoTeoricoMap?.get(c.id); return ft ? fmtEuro(ft.fido_proposto) : "—"; })() }] : []),
                   ]}
+
                   footer={
                     <>
                       {sc && sc.ha_scaduto && (
