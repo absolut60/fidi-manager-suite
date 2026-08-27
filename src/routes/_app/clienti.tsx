@@ -748,14 +748,14 @@ function ClientiPage() {
   const fermiReady = !soloFermi || !!fermiIds;
 
   const { data: clientiResp, isLoading } = useQuery({
-    queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, fasciaConcesso, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
+    queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, fasciaConcesso, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
     queryFn: async () => {
       // Ramo ordinamento virtuale (Scaduto / A scadere): PostgREST non puo'
       // ordinare su un valore che non e' nella query. Prendiamo tutti gli id
       // che passano i filtri, li ordiniamo in memoria via scadenziarioMap
       // (clienti senza scadenze = 0), poi carichiamo solo la finestra pagina.
       if (isVirtualSort) {
-        const allIds: string[] = [];
+        let allIds: string[] = [];
         let off = 0;
         const size = 1000;
         // eslint-disable-next-line no-constant-condition
@@ -769,6 +769,10 @@ function ClientiPage() {
           if (batch.length < size) break;
           off += size;
           if (off > 50000) break; // guardia
+        }
+        if (includeIdsFilter) {
+          const set = new Set(includeIdsFilter);
+          allIds = allIds.filter((id) => set.has(id));
         }
 
         const dir = sortDir === "asc" ? 1 : -1;
@@ -798,11 +802,32 @@ function ClientiPage() {
 
       const built = buildBaseQuery("*, stores(nome, codice)", "exact");
       if ("empty" in built) return { rows: [], count: 0 };
+      if (built.largeInclude) {
+        // L'intersezione include troppi ID per PostgREST: scarichiamo tutti i
+        // candidati che passano gli altri filtri e paginiamo in memoria.
+        const allRows: any[] = [];
+        let off = 0;
+        const size = 1000;
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          const { data, error } = await built.q.range(off, off + size - 1);
+          if (error) throw error;
+          const batch = data ?? [];
+          allRows.push(...batch);
+          if (batch.length < size) break;
+          off += size;
+          if (off > 50000) break;
+        }
+        const set = new Set(includeIdsFilter!);
+        const filtered = allRows.filter((r) => set.has(r.id));
+        const rows = filtered.slice(from, to + 1);
+        return { rows, count: filtered.length };
+      }
       const { data, error, count } = await built.q.range(from, to);
       if (error) throw error;
       return { rows: data ?? [], count: count ?? (data?.length ?? 0) };
     },
-    enabled: isListRoute && scadReady && classifReady && isConfigReady && virtualSortReady && scostamentoReady,
+    enabled: isListRoute && scadReady && classifReady && isConfigReady && virtualSortReady && scostamentoReady && insolutiReady && fermiReady,
   });
   const clienti = (clientiResp?.rows ?? []) as any[];
   const totaleClienti = clientiResp?.count ?? 0;
