@@ -217,6 +217,7 @@ function Riquadro({
   tono,
   nota,
   notaLink,
+  cardLink,
   compatto,
 }: {
   titolo: string;
@@ -226,6 +227,7 @@ function Riquadro({
   tono: "primary" | "success" | "warning" | "info" | "danger";
   nota?: string;
   notaLink?: { to: string; search: Record<string, string> };
+  cardLink?: { to: string; search?: Record<string, string> };
   compatto?: boolean;
 }) {
   const toneClass = {
@@ -236,31 +238,47 @@ function Riquadro({
     danger: "bg-destructive/10 text-destructive",
   }[tono];
 
-  return (
-    <Card className={compatto ? "p-4" : "p-5"}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="space-y-1 min-w-0">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{titolo}</p>
-          <p className={`font-bold text-foreground ${compatto ? "text-xl" : "text-2xl"}`}>{valore}</p>
-          {sottotitolo && <p className="text-xs text-muted-foreground">{sottotitolo}</p>}
-          {nota && (
-            notaLink ? (
-              <Link
-                to={notaLink.to as any}
-                search={notaLink.search as any}
-                className="inline-block text-xs font-medium text-primary hover:underline"
-              >
-                {nota}
-              </Link>
-            ) : (
-              <p className="text-xs text-muted-foreground">{nota}</p>
-            )
-          )}
-        </div>
-        <div className={`size-10 shrink-0 rounded-lg flex items-center justify-center ${toneClass}`}>
-          <Icon className="size-5" />
-        </div>
+  const content = (
+    <div className="flex items-start justify-between gap-3">
+      <div className="space-y-1 min-w-0">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{titolo}</p>
+        <p className={`font-bold text-foreground ${compatto ? "text-xl" : "text-2xl"}`}>{valore}</p>
+        {sottotitolo && <p className="text-xs text-muted-foreground">{sottotitolo}</p>}
+        {nota && (
+          cardLink ? (
+            <p className="text-xs text-muted-foreground">{nota}</p>
+          ) : notaLink ? (
+            <Link
+              to={notaLink.to as any}
+              search={notaLink.search as any}
+              className="inline-block text-xs font-medium text-primary hover:underline"
+            >
+              {nota}
+            </Link>
+          ) : (
+            <p className="text-xs text-muted-foreground">{nota}</p>
+          )
+        )}
       </div>
+      <div className={`size-10 shrink-0 rounded-lg flex items-center justify-center ${toneClass}`}>
+        <Icon className="size-5" />
+      </div>
+    </div>
+  );
+
+  return (
+    <Card className={`${compatto ? "p-4" : "p-5"} ${cardLink ? "hover:shadow-md transition-shadow" : ""}`}>
+      {cardLink ? (
+        <Link
+          to={cardLink.to as any}
+          search={cardLink.search as any}
+          className="block cursor-pointer"
+        >
+          {content}
+        </Link>
+      ) : (
+        content
+      )}
     </Card>
   );
 }
