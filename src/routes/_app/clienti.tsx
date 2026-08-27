@@ -925,6 +925,8 @@ function ClientiPage() {
     setSliderCommitted([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
     setScostamentoFiltro("tutti");
     setAdvApplied(ADV_EMPTY);
+    setSoloInsoluti(false);
+    setSoloFermi(false);
   }
 
   function toggleSort(colonna: string) {
