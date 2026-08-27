@@ -23,21 +23,31 @@ export function DashboardFatturato() {
   const { data, isLoading } = useQuery({
     queryKey: ["dashboard-fatturato-globale", annoCorrente, annoPrec],
     queryFn: async () => {
-      const [annuale, ytd] = await Promise.all([
-        supabase
-          .from("fatturato_annuale_globale")
-          .select("anno, num_clienti, num_fatture_totali, fatturato_totale")
-          .in("anno", [annoCorrente, annoPrec]),
-        supabase
-          .from("fatturato_ytd_globale")
-          .select("anno, num_clienti, num_fatture, fatturato, ytd_alla_data")
-          .in("anno", [annoCorrente, annoPrec]),
-      ]);
-      if (annuale.error) throw annuale.error;
-      if (ytd.error) throw ytd.error;
-      return { annuale: annuale.data ?? [], ytd: ytd.data ?? [] };
+      const { data, error } = await supabase.rpc("get_dashboard_fatturato", {});
+      if (error) throw error;
+      const rows = (data ?? []) as any[];
+      return {
+        annuale: rows
+          .filter((r) => r.tipo === "annuale")
+          .map((r) => ({
+            anno: r.anno,
+            num_clienti: r.num_clienti,
+            num_fatture_totali: r.num_fatture,
+            fatturato_totale: r.fatturato,
+          })),
+        ytd: rows
+          .filter((r) => r.tipo === "ytd")
+          .map((r) => ({
+            anno: r.anno,
+            num_clienti: r.num_clienti,
+            num_fatture: r.num_fatture,
+            fatturato: r.fatturato,
+            ytd_alla_data: r.ytd_alla_data,
+          })),
+      };
     },
   });
+
 
   const annuale = new Map<number, { fatturato: number; clienti: number; fatture: number }>();
   (data?.annuale ?? []).forEach((r: any) => {
