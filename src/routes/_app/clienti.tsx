@@ -887,6 +887,8 @@ function ClientiPage() {
     (soloDaVerificare ? 1 : 0) +
     (soloOltreFido ? 1 : 0) +
     (soloConFidoAttivo ? 1 : 0) +
+    (soloInsoluti ? 1 : 0) +
+    (soloFermi ? 1 : 0) +
     (fasciaConcesso !== "tutti" ? 1 : 0);
 
   // Conteggio filtri avanzati attivi (include quelli spostati dentro il dialog)
