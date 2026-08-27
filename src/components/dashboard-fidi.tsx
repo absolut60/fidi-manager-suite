@@ -95,26 +95,9 @@ export function DashboardFidi() {
     queryKey: ["fidi-quasi-saturi-80"],
     staleTime: 5 * 60_000,
     queryFn: async () => {
-      // Replica la definizione usata dai filtri clienti:
-      // consumato = (fido_gestionale - fido_residuo) / fido_gestionale >= 0.80, con fido_gestionale > 0
-      let count = 0;
-      const PAGE = 1000;
-      for (let from = 0; ; from += PAGE) {
-        const { data, error } = await supabase
-          .from("clienti")
-          .select("fido_gestionale, fido_residuo")
-          .gt("fido_gestionale", 0)
-          .range(from, from + PAGE - 1);
-        if (error) throw error;
-        const rows = data ?? [];
-        for (const r of rows as Array<{ fido_gestionale: number | null; fido_residuo: number | null }>) {
-          const fg = Number(r.fido_gestionale ?? 0);
-          const fr = Number(r.fido_residuo ?? 0);
-          if (fg > 0 && (fg - fr) / fg >= 0.8) count++;
-        }
-        if (rows.length < PAGE) break;
-      }
-      return count;
+      const { data, error } = await supabase.rpc("count_fidi_quasi_saturi");
+      if (error) throw error;
+      return Number(data ?? 0);
     },
   });
 
