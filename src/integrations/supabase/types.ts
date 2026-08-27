@@ -6473,6 +6473,13 @@ export type Database = {
               tot_scaduto: number
             }[]
           }
+      get_scaduto_dashboard: {
+        Args: { _store_id?: string }
+        Returns: {
+          scaduto_over60: number
+          scaduto_tot: number
+        }[]
+      }
       get_semaforo_affidabilita_cliente: {
         Args: { p_cliente_id: string }
         Returns: {
