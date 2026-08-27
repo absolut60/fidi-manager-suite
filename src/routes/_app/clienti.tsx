@@ -230,6 +230,12 @@ function ClientiPage() {
     } else if (presetSearch === "quasi_saturo") {
       setAdvApplied((d) => ({ ...d, percConsumato: 80 }));
       setFiltroTipoSoggetto("tutti");
+    } else if (presetSearch === "insoluti") {
+      setSoloInsoluti(true);
+      setFiltroTipoSoggetto("tutti");
+    } else if (presetSearch === "fermi") {
+      setSoloFermi(true);
+      setFiltroTipoSoggetto("tutti");
     }
   }, [presetSearch]);
 
