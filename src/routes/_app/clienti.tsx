@@ -589,10 +589,12 @@ function ClientiPage() {
     return ids;
   }, [fidoTeoricoMap, soloDaVerificare]);
 
-  // ID set per preset "insoluti in corso" (num_insoluti > 0)
+  // ID set per preset "insoluti in corso" (attivo = true AND num_insoluti > 0)
   const insolutiIds = useMemo<string[] | null>(() => {
     if (!soloInsoluti || !classifList) return null;
-    return (classifList as any[]).filter((c) => Number(c.num_insoluti ?? 0) > 0).map((c) => c.id);
+    return (classifList as any[])
+      .filter((c) => c.attivo !== false && Number(c.num_insoluti ?? 0) > 0)
+      .map((c) => c.id);
   }, [classifList, soloInsoluti]);
 
   // Intersezione id set "include" (semaforo ∩ stato_fido ∩ scadenziario ∩ a_scadere ∩ perc consumato ∩ insoluti ∩ fermi)
