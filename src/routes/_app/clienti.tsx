@@ -336,7 +336,7 @@ function ClientiPage() {
       while (true) {
         const { data, error } = await supabase
           .from("clienti")
-          .select("id, bloccato, fido, fido_residuo, fido_gestionale, scaduto, totale_rischio, doc_da_evadere, num_insoluti")
+          .select("id, attivo, bloccato, fido, fido_residuo, fido_gestionale, scaduto, totale_rischio, doc_da_evadere, num_insoluti")
           .range(offset, offset + size - 1);
         if (error) throw error;
         const batch = data ?? [];
@@ -589,10 +589,12 @@ function ClientiPage() {
     return ids;
   }, [fidoTeoricoMap, soloDaVerificare]);
 
-  // ID set per preset "insoluti in corso" (num_insoluti > 0)
+  // ID set per preset "insoluti in corso" (attivo = true AND num_insoluti > 0)
   const insolutiIds = useMemo<string[] | null>(() => {
     if (!soloInsoluti || !classifList) return null;
-    return (classifList as any[]).filter((c) => Number(c.num_insoluti ?? 0) > 0).map((c) => c.id);
+    return (classifList as any[])
+      .filter((c) => c.attivo !== false && Number(c.num_insoluti ?? 0) > 0)
+      .map((c) => c.id);
   }, [classifList, soloInsoluti]);
 
   // Intersezione id set "include" (semaforo ∩ stato_fido ∩ scadenziario ∩ a_scadere ∩ perc consumato ∩ insoluti ∩ fermi)
@@ -885,6 +887,8 @@ function ClientiPage() {
     (soloDaVerificare ? 1 : 0) +
     (soloOltreFido ? 1 : 0) +
     (soloConFidoAttivo ? 1 : 0) +
+    (soloInsoluti ? 1 : 0) +
+    (soloFermi ? 1 : 0) +
     (fasciaConcesso !== "tutti" ? 1 : 0);
 
   // Conteggio filtri avanzati attivi (include quelli spostati dentro il dialog)
@@ -923,6 +927,8 @@ function ClientiPage() {
     setSliderCommitted([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
     setScostamentoFiltro("tutti");
     setAdvApplied(ADV_EMPTY);
+    setSoloInsoluti(false);
+    setSoloFermi(false);
   }
 
   function toggleSort(colonna: string) {
