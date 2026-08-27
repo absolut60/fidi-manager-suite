@@ -232,9 +232,11 @@ function ClientiPage() {
       setFiltroTipoSoggetto("tutti");
     } else if (presetSearch === "insoluti") {
       setSoloInsoluti(true);
+      setStatoAttivita("tutti");
       setFiltroTipoSoggetto("tutti");
     } else if (presetSearch === "fermi") {
       setSoloFermi(true);
+      setStatoAttivita("tutti");
       setFiltroTipoSoggetto("tutti");
     }
   }, [presetSearch]);
