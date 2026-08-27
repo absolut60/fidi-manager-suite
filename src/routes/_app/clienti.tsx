@@ -330,7 +330,7 @@ function ClientiPage() {
       while (true) {
         const { data, error } = await supabase
           .from("clienti")
-          .select("id, bloccato, fido, fido_residuo, fido_gestionale, scaduto, totale_rischio, doc_da_evadere")
+          .select("id, bloccato, fido, fido_residuo, fido_gestionale, scaduto, totale_rischio, doc_da_evadere, num_insoluti")
           .range(offset, offset + size - 1);
         if (error) throw error;
         const batch = data ?? [];
