@@ -1240,6 +1240,12 @@ function ClientiPage() {
   if (soloConFidoAttivo) {
     activeChips.push({ key: "conFidoAttivo", label: "Solo con fido gestionale > 0", onRemove: () => setSoloConFidoAttivo(false) });
   }
+  if (soloInsoluti) {
+    activeChips.push({ key: "insoluti", label: "Preset: insoluti in corso", onRemove: () => setSoloInsoluti(false) });
+  }
+  if (soloFermi) {
+    activeChips.push({ key: "fermi", label: "Preset: clienti fermi", onRemove: () => setSoloFermi(false) });
+  }
   if (advApplied.fidoOp !== "none") activeChips.push({ key: "advFido", label: `Fido (avanzato): ${advApplied.fidoOp}`, onRemove: () => setAdvApplied({ ...advApplied, fidoOp: "none", fidoVal: null, fidoFrom: null, fidoTo: null }) });
   if (advApplied.percConsumato != null) activeChips.push({ key: "advPerc", label: `Fido consumato ≥ ${advApplied.percConsumato}%`, onRemove: () => setAdvApplied({ ...advApplied, percConsumato: null }) });
   if (advApplied.dataFattPrima) activeChips.push({ key: "advDataPrima", label: `Fatt. prima di ${advApplied.dataFattPrima}`, onRemove: () => setAdvApplied({ ...advApplied, dataFattPrima: "" }) });
