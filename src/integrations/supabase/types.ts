@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
@@ -5732,6 +5732,7 @@ export type Database = {
       anteprima_numero_ordine: { Args: { p_anno: number }; Returns: number }
       anteprima_numero_preventivo: { Args: { p_anno: number }; Returns: number }
       arrotonda_fido_proposto: { Args: { _fido_base: number }; Returns: number }
+      auth_ha_ruolo_globale_clienti: { Args: never; Returns: boolean }
       bulk_update_clienti_bfa: { Args: { _payloads: Json }; Returns: number }
       calcola_fido_base: {
         Args: { _fatturato_lordo: number; _giorni: number }
@@ -6678,7 +6679,11 @@ export type Database = {
         }[]
       }
       user_can_access_cliente: {
-        Args: { _cliente_id: string }
+        Args: {
+          _cli_codice_agente?: string
+          _cli_store_id?: string
+          _cliente_id: string
+        }
         Returns: boolean
       }
       user_can_access_richiesta_fido: {
