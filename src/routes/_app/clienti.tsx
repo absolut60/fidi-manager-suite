@@ -182,6 +182,9 @@ function ClientiPage() {
   const [soloOltreFido, setSoloOltreFido] = useState(false);
   // Filtro "solo clienti con fido gestionale attivo" (bonifica bloccati con fido)
   const [soloConFidoAttivo, setSoloConFidoAttivo] = useState(false);
+  // Preset "insoluti in corso" e "clienti fermi" dai riquadri dashboard
+  const [soloInsoluti, setSoloInsoluti] = useState(false);
+  const [soloFermi, setSoloFermi] = useState(false);
   const [aScadereFiltro, setAScadereFiltro] = useState<string>("tutti");
   // Fascia di fido CONCESSO (fido_gestionale), usata dalla tabella "per fasce" della dashboard
   const [fasciaConcesso, setFasciaConcesso] = useState<string>("tutti");
