@@ -182,6 +182,9 @@ function ClientiPage() {
   const [soloOltreFido, setSoloOltreFido] = useState(false);
   // Filtro "solo clienti con fido gestionale attivo" (bonifica bloccati con fido)
   const [soloConFidoAttivo, setSoloConFidoAttivo] = useState(false);
+  // Preset "insoluti in corso" e "clienti fermi" dai riquadri dashboard
+  const [soloInsoluti, setSoloInsoluti] = useState(false);
+  const [soloFermi, setSoloFermi] = useState(false);
   const [aScadereFiltro, setAScadereFiltro] = useState<string>("tutti");
   // Fascia di fido CONCESSO (fido_gestionale), usata dalla tabella "per fasce" della dashboard
   const [fasciaConcesso, setFasciaConcesso] = useState<string>("tutti");
@@ -226,6 +229,12 @@ function ClientiPage() {
       setFiltroTipoSoggetto("tutti");
     } else if (presetSearch === "quasi_saturo") {
       setAdvApplied((d) => ({ ...d, percConsumato: 80 }));
+      setFiltroTipoSoggetto("tutti");
+    } else if (presetSearch === "insoluti") {
+      setSoloInsoluti(true);
+      setFiltroTipoSoggetto("tutti");
+    } else if (presetSearch === "fermi") {
+      setSoloFermi(true);
       setFiltroTipoSoggetto("tutti");
     }
   }, [presetSearch]);
@@ -327,7 +336,7 @@ function ClientiPage() {
       while (true) {
         const { data, error } = await supabase
           .from("clienti")
-          .select("id, bloccato, fido, fido_residuo, fido_gestionale, scaduto, totale_rischio, doc_da_evadere")
+          .select("id, bloccato, fido, fido_residuo, fido_gestionale, scaduto, totale_rischio, doc_da_evadere, num_insoluti")
           .range(offset, offset + size - 1);
         if (error) throw error;
         const batch = data ?? [];
@@ -338,6 +347,31 @@ function ClientiPage() {
       return all;
     },
     staleTime: 60_000,
+  });
+
+  // ID set per preset "clienti fermi" (RPC lato server, paginata per sicurezza)
+  const { data: fermiIds } = useQuery({
+    queryKey: ["clienti-fermi-ids", soloFermi],
+    enabled: soloFermi,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const ids: string[] = [];
+      let offset = 0;
+      const size = 1000;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await (supabase as any)
+          .rpc("get_clienti_fermi_ids")
+          .range(offset, offset + size - 1);
+        if (error) throw error;
+        const batch = (data ?? []) as Array<{ cliente_id: string }>;
+        for (const r of batch) ids.push(r.cliente_id);
+        if (batch.length < size) break;
+        offset += size;
+        if (offset > 100000) break;
+      }
+      return ids;
+    },
   });
 
   // Semaforo affidabilità precalcolato (tabella fido_teorico_cliente), letto in blocco
@@ -555,7 +589,13 @@ function ClientiPage() {
     return ids;
   }, [fidoTeoricoMap, soloDaVerificare]);
 
-  // Intersezione id set "include" (semaforo ∩ stato_fido ∩ scadenziario ∩ a_scadere ∩ perc consumato)
+  // ID set per preset "insoluti in corso" (num_insoluti > 0)
+  const insolutiIds = useMemo<string[] | null>(() => {
+    if (!soloInsoluti || !classifList) return null;
+    return (classifList as any[]).filter((c) => Number(c.num_insoluti ?? 0) > 0).map((c) => c.id);
+  }, [classifList, soloInsoluti]);
+
+  // Intersezione id set "include" (semaforo ∩ stato_fido ∩ scadenziario ∩ a_scadere ∩ perc consumato ∩ insoluti ∩ fermi)
   const includeIdsFilter = useMemo<string[] | null>(() => {
     const sources: string[][] = [];
     if (semaforoIds) sources.push(semaforoIds);
@@ -567,17 +607,19 @@ function ClientiPage() {
     if (percConsumatoIds) sources.push(percConsumatoIds);
     if (scostamentoIds) sources.push(scostamentoIds);
     if (daVerificareIds) sources.push(daVerificareIds);
+    if (insolutiIds) sources.push(insolutiIds);
+    if (fermiIds) sources.push(fermiIds);
     if (sources.length === 0) return null;
     const sets = sources.map((s) => new Set(s));
     return sources[0].filter((id) => sets.every((s) => s.has(id)));
-  }, [semaforoIds, statoFidoIds, oltreFidoIds, scadenziarioIdsFilter, aScadereIds, fatturatoIds, percConsumatoIds, scostamentoIds, daVerificareIds]);
+  }, [semaforoIds, statoFidoIds, oltreFidoIds, scadenziarioIdsFilter, aScadereIds, fatturatoIds, percConsumatoIds, scostamentoIds, daVerificareIds, insolutiIds, fermiIds]);
 
 
 
   // Reset pagina ogni volta che cambia un filtro o l'ordinamento
   useEffect(() => {
     setPage(1);
-  }, [search, statoCliente, statoAttivita, storeFiltro, statoFido, semaforoFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, fasciaConcesso]);
+  }, [search, statoCliente, statoAttivita, storeFiltro, statoFido, semaforoFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, fasciaConcesso]);
 
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -658,10 +700,16 @@ function ClientiPage() {
     if (advApplied.dataFattDopo) q = q.gt("ultima_data_fatturazione", advApplied.dataFattDopo);
     if (advApplied.presetScopertoInsoluto) q = q.eq("assicurazione_attiva", false).gt("scaduto", 0);
 
-    // Include intersect (semaforo / stato fido / scadenziario include / a_scadere)
+    // Include intersect (semaforo / stato fido / scadenziario include / a_scadere / insoluti / fermi)
+    let largeInclude = false;
     if (includeIdsFilter) {
       if (includeIdsFilter.length === 0) return { empty: true as const };
-      q = q.in("id", includeIdsFilter);
+      if (includeIdsFilter.length > 1000) {
+        // PostgREST/Supabase limita la lunghezza della query string; filtriamo in memoria
+        largeInclude = true;
+      } else {
+        q = q.in("id", includeIdsFilter);
+      }
     }
     // Exclude scadenziario "in_regola"
     if (scadenziarioIdsFilter?.mode === "exclude" && scadenziarioIdsFilter.ids.length > 0) {
@@ -683,7 +731,7 @@ function ClientiPage() {
     const orderCol = isVirtualOrder ? "ragione_sociale" : sortBy;
     const orderAsc = isVirtualOrder ? true : sortDir === "asc";
     q = q.order(orderCol, { ascending: orderAsc, nullsFirst: false });
-    return { q };
+    return { q, largeInclude };
   }
 
 
@@ -696,16 +744,18 @@ function ClientiPage() {
   const virtualSortReady = !isVirtualSort
     || (isFidoTeoricoSort ? !!fidoTeoricoMap : !!scadenziarioMap);
   const scostamentoReady = (scostamentoFiltro === "tutti" && !soloDaVerificare) || !!fidoTeoricoMap;
+  const insolutiReady = !soloInsoluti || !!classifList;
+  const fermiReady = !soloFermi || !!fermiIds;
 
   const { data: clientiResp, isLoading } = useQuery({
-    queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, fasciaConcesso, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
+    queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, fasciaConcesso, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
     queryFn: async () => {
       // Ramo ordinamento virtuale (Scaduto / A scadere): PostgREST non puo'
       // ordinare su un valore che non e' nella query. Prendiamo tutti gli id
       // che passano i filtri, li ordiniamo in memoria via scadenziarioMap
       // (clienti senza scadenze = 0), poi carichiamo solo la finestra pagina.
       if (isVirtualSort) {
-        const allIds: string[] = [];
+        let allIds: string[] = [];
         let off = 0;
         const size = 1000;
         // eslint-disable-next-line no-constant-condition
@@ -719,6 +769,10 @@ function ClientiPage() {
           if (batch.length < size) break;
           off += size;
           if (off > 50000) break; // guardia
+        }
+        if (includeIdsFilter) {
+          const set = new Set(includeIdsFilter);
+          allIds = allIds.filter((id) => set.has(id));
         }
 
         const dir = sortDir === "asc" ? 1 : -1;
@@ -748,11 +802,32 @@ function ClientiPage() {
 
       const built = buildBaseQuery("*, stores(nome, codice)", "exact");
       if ("empty" in built) return { rows: [], count: 0 };
+      if (built.largeInclude) {
+        // L'intersezione include troppi ID per PostgREST: scarichiamo tutti i
+        // candidati che passano gli altri filtri e paginiamo in memoria.
+        const allRows: any[] = [];
+        let off = 0;
+        const size = 1000;
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          const { data, error } = await built.q.range(off, off + size - 1);
+          if (error) throw error;
+          const batch = data ?? [];
+          allRows.push(...batch);
+          if (batch.length < size) break;
+          off += size;
+          if (off > 50000) break;
+        }
+        const set = new Set(includeIdsFilter!);
+        const filtered = allRows.filter((r) => set.has(r.id));
+        const rows = filtered.slice(from, to + 1);
+        return { rows, count: filtered.length };
+      }
       const { data, error, count } = await built.q.range(from, to);
       if (error) throw error;
       return { rows: data ?? [], count: count ?? (data?.length ?? 0) };
     },
-    enabled: isListRoute && scadReady && classifReady && isConfigReady && virtualSortReady && scostamentoReady,
+    enabled: isListRoute && scadReady && classifReady && isConfigReady && virtualSortReady && scostamentoReady && insolutiReady && fermiReady,
   });
   const clienti = (clientiResp?.rows ?? []) as any[];
   const totaleClienti = clientiResp?.count ?? 0;
@@ -778,6 +853,11 @@ function ClientiPage() {
       const rebuilt = buildBaseQuery(cols, undefined);
       if ("empty" in rebuilt) break;
       (built as any).q = rebuilt.q;
+      (built as any).largeInclude = rebuilt.largeInclude;
+    }
+    if (built.largeInclude && includeIdsFilter) {
+      const set = new Set(includeIdsFilter);
+      return all.filter((r) => set.has(r.id));
     }
     return all;
   }
@@ -1197,6 +1277,12 @@ function ClientiPage() {
   }
   if (soloConFidoAttivo) {
     activeChips.push({ key: "conFidoAttivo", label: "Solo con fido gestionale > 0", onRemove: () => setSoloConFidoAttivo(false) });
+  }
+  if (soloInsoluti) {
+    activeChips.push({ key: "insoluti", label: "Preset: insoluti in corso", onRemove: () => setSoloInsoluti(false) });
+  }
+  if (soloFermi) {
+    activeChips.push({ key: "fermi", label: "Preset: clienti fermi", onRemove: () => setSoloFermi(false) });
   }
   if (advApplied.fidoOp !== "none") activeChips.push({ key: "advFido", label: `Fido (avanzato): ${advApplied.fidoOp}`, onRemove: () => setAdvApplied({ ...advApplied, fidoOp: "none", fidoVal: null, fidoFrom: null, fidoTo: null }) });
   if (advApplied.percConsumato != null) activeChips.push({ key: "advPerc", label: `Fido consumato ≥ ${advApplied.percConsumato}%`, onRemove: () => setAdvApplied({ ...advApplied, percConsumato: null }) });

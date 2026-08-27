@@ -95,26 +95,9 @@ export function DashboardFidi() {
     queryKey: ["fidi-quasi-saturi-80"],
     staleTime: 5 * 60_000,
     queryFn: async () => {
-      // Replica la definizione usata dai filtri clienti:
-      // consumato = (fido_gestionale - fido_residuo) / fido_gestionale >= 0.80, con fido_gestionale > 0
-      let count = 0;
-      const PAGE = 1000;
-      for (let from = 0; ; from += PAGE) {
-        const { data, error } = await supabase
-          .from("clienti")
-          .select("fido_gestionale, fido_residuo")
-          .gt("fido_gestionale", 0)
-          .range(from, from + PAGE - 1);
-        if (error) throw error;
-        const rows = data ?? [];
-        for (const r of rows as Array<{ fido_gestionale: number | null; fido_residuo: number | null }>) {
-          const fg = Number(r.fido_gestionale ?? 0);
-          const fr = Number(r.fido_residuo ?? 0);
-          if (fg > 0 && (fg - fr) / fg >= 0.8) count++;
-        }
-        if (rows.length < PAGE) break;
-      }
-      return count;
+      const { data, error } = await supabase.rpc("count_fidi_quasi_saturi");
+      if (error) throw error;
+      return Number(data ?? 0);
     },
   });
 
@@ -191,6 +174,8 @@ export function DashboardFidi() {
           sottotitolo={`${numero(data.insoluti_n)} clienti · ${numero(data.insoluti_non_bloccati_n)} non bloccati (sotto trattativa)`}
           icona={CircleAlert}
           tono="danger"
+          cardLink={{ to: "/clienti", search: { preset: "insoluti" } }}
+          nota="Vedi i clienti con insoluti"
         />
         <Riquadro
           compatto
@@ -199,6 +184,7 @@ export function DashboardFidi() {
           sottotitolo={`Fatturato negli ultimi 12 mesi, nulla negli ultimi 3`}
           icona={PauseCircle}
           tono="info"
+          cardLink={{ to: "/clienti", search: { preset: "fermi" } }}
           nota={`Scaduto residuo: ${euro(data.fermi_scaduto_eur)}`}
         />
         <Riquadro
@@ -208,8 +194,8 @@ export function DashboardFidi() {
           sottotitolo={`di cui oltre 60 giorni: ${euro(data.scaduto_over60_eur)}`}
           icona={Clock}
           tono="warning"
-          notaLink={{ to: "/clienti", search: { preset: "con_scaduto" } }}
-          nota="Vedi i clienti con scaduto"
+          cardLink={{ to: "/scadenziario" }}
+          nota="Vedi lo scadenzario"
         />
         <Riquadro
           compatto
@@ -218,7 +204,7 @@ export function DashboardFidi() {
           sottotitolo="Clienti che hanno consumato almeno l'80% del fido"
           icona={AlertTriangle}
           tono="warning"
-          notaLink={{ to: "/clienti", search: { preset: "quasi_saturo" } }}
+          cardLink={{ to: "/clienti", search: { preset: "quasi_saturo" } }}
           nota="Azioni sui clienti quasi saturi"
         />
       </div>
@@ -234,6 +220,7 @@ function Riquadro({
   tono,
   nota,
   notaLink,
+  cardLink,
   compatto,
 }: {
   titolo: string;
@@ -243,6 +230,7 @@ function Riquadro({
   tono: "primary" | "success" | "warning" | "info" | "danger";
   nota?: string;
   notaLink?: { to: string; search: Record<string, string> };
+  cardLink?: { to: string; search?: Record<string, string> };
   compatto?: boolean;
 }) {
   const toneClass = {
@@ -253,31 +241,47 @@ function Riquadro({
     danger: "bg-destructive/10 text-destructive",
   }[tono];
 
-  return (
-    <Card className={compatto ? "p-4" : "p-5"}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="space-y-1 min-w-0">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{titolo}</p>
-          <p className={`font-bold text-foreground ${compatto ? "text-xl" : "text-2xl"}`}>{valore}</p>
-          {sottotitolo && <p className="text-xs text-muted-foreground">{sottotitolo}</p>}
-          {nota && (
-            notaLink ? (
-              <Link
-                to={notaLink.to as any}
-                search={notaLink.search as any}
-                className="inline-block text-xs font-medium text-primary hover:underline"
-              >
-                {nota}
-              </Link>
-            ) : (
-              <p className="text-xs text-muted-foreground">{nota}</p>
-            )
-          )}
-        </div>
-        <div className={`size-10 shrink-0 rounded-lg flex items-center justify-center ${toneClass}`}>
-          <Icon className="size-5" />
-        </div>
+  const content = (
+    <div className="flex items-start justify-between gap-3">
+      <div className="space-y-1 min-w-0">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{titolo}</p>
+        <p className={`font-bold text-foreground ${compatto ? "text-xl" : "text-2xl"}`}>{valore}</p>
+        {sottotitolo && <p className="text-xs text-muted-foreground">{sottotitolo}</p>}
+        {nota && (
+          cardLink ? (
+            <p className="text-xs text-muted-foreground">{nota}</p>
+          ) : notaLink ? (
+            <Link
+              to={notaLink.to as any}
+              search={notaLink.search as any}
+              className="inline-block text-xs font-medium text-primary hover:underline"
+            >
+              {nota}
+            </Link>
+          ) : (
+            <p className="text-xs text-muted-foreground">{nota}</p>
+          )
+        )}
       </div>
+      <div className={`size-10 shrink-0 rounded-lg flex items-center justify-center ${toneClass}`}>
+        <Icon className="size-5" />
+      </div>
+    </div>
+  );
+
+  return (
+    <Card className={`${compatto ? "p-4" : "p-5"} ${cardLink ? "hover:shadow-md transition-shadow" : ""}`}>
+      {cardLink ? (
+        <Link
+          to={cardLink.to as any}
+          search={cardLink.search as any}
+          className="block cursor-pointer"
+        >
+          {content}
+        </Link>
+      ) : (
+        content
+      )}
     </Card>
   );
 }
