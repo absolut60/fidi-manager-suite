@@ -853,6 +853,11 @@ function ClientiPage() {
       const rebuilt = buildBaseQuery(cols, undefined);
       if ("empty" in rebuilt) break;
       (built as any).q = rebuilt.q;
+      (built as any).largeInclude = rebuilt.largeInclude;
+    }
+    if (built.largeInclude && includeIdsFilter) {
+      const set = new Set(includeIdsFilter);
+      return all.filter((r) => set.has(r.id));
     }
     return all;
   }
