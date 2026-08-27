@@ -174,6 +174,8 @@ export function DashboardFidi() {
           sottotitolo={`${numero(data.insoluti_n)} clienti · ${numero(data.insoluti_non_bloccati_n)} non bloccati (sotto trattativa)`}
           icona={CircleAlert}
           tono="danger"
+          cardLink={{ to: "/clienti", search: { preset: "insoluti" } }}
+          nota="Vedi i clienti con insoluti"
         />
         <Riquadro
           compatto
@@ -182,6 +184,7 @@ export function DashboardFidi() {
           sottotitolo={`Fatturato negli ultimi 12 mesi, nulla negli ultimi 3`}
           icona={PauseCircle}
           tono="info"
+          cardLink={{ to: "/clienti", search: { preset: "fermi" } }}
           nota={`Scaduto residuo: ${euro(data.fermi_scaduto_eur)}`}
         />
         <Riquadro
@@ -191,8 +194,8 @@ export function DashboardFidi() {
           sottotitolo={`di cui oltre 60 giorni: ${euro(data.scaduto_over60_eur)}`}
           icona={Clock}
           tono="warning"
-          notaLink={{ to: "/clienti", search: { preset: "con_scaduto" } }}
-          nota="Vedi i clienti con scaduto"
+          cardLink={{ to: "/scadenziario" }}
+          nota="Vedi lo scadenzario"
         />
         <Riquadro
           compatto
@@ -201,7 +204,7 @@ export function DashboardFidi() {
           sottotitolo="Clienti che hanno consumato almeno l'80% del fido"
           icona={AlertTriangle}
           tono="warning"
-          notaLink={{ to: "/clienti", search: { preset: "quasi_saturo" } }}
+          cardLink={{ to: "/clienti", search: { preset: "quasi_saturo" } }}
           nota="Azioni sui clienti quasi saturi"
         />
       </div>
