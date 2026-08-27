@@ -6678,16 +6678,14 @@ export type Database = {
           tipo: string
         }[]
       }
-      user_can_access_cliente:
-        | { Args: { _cliente_id: string }; Returns: boolean }
-        | {
-            Args: {
-              _cli_codice_agente?: string
-              _cli_store_id?: string
-              _cliente_id: string
-            }
-            Returns: boolean
-          }
+      user_can_access_cliente: {
+        Args: {
+          _cli_codice_agente?: string
+          _cli_store_id?: string
+          _cliente_id: string
+        }
+        Returns: boolean
+      }
       user_can_access_richiesta_fido: {
         Args: { _id: string }
         Returns: boolean
