@@ -700,10 +700,16 @@ function ClientiPage() {
     if (advApplied.dataFattDopo) q = q.gt("ultima_data_fatturazione", advApplied.dataFattDopo);
     if (advApplied.presetScopertoInsoluto) q = q.eq("assicurazione_attiva", false).gt("scaduto", 0);
 
-    // Include intersect (semaforo / stato fido / scadenziario include / a_scadere)
+    // Include intersect (semaforo / stato fido / scadenziario include / a_scadere / insoluti / fermi)
+    let largeInclude = false;
     if (includeIdsFilter) {
       if (includeIdsFilter.length === 0) return { empty: true as const };
-      q = q.in("id", includeIdsFilter);
+      if (includeIdsFilter.length > 1000) {
+        // PostgREST/Supabase limita la lunghezza della query string; filtriamo in memoria
+        largeInclude = true;
+      } else {
+        q = q.in("id", includeIdsFilter);
+      }
     }
     // Exclude scadenziario "in_regola"
     if (scadenziarioIdsFilter?.mode === "exclude" && scadenziarioIdsFilter.ids.length > 0) {
