@@ -264,6 +264,7 @@ function Riquadro({
             <p className="text-xs text-muted-foreground">{nota}</p>
           )
         )}
+        {notaExtra && <p className="text-xs text-muted-foreground">{notaExtra}</p>}
       </div>
       <div className={`size-10 shrink-0 rounded-lg flex items-center justify-center ${toneClass}`}>
         <Icon className="size-5" />
