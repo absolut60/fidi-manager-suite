@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { KeyboardEvent, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -36,7 +36,7 @@ export function SchedaLista({
             role: "button" as const,
             tabIndex: 0,
             onClick,
-            onKeyDown: (e: React.KeyboardEvent<HTMLDivElement>) => {
+            onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => {
               if (e.target !== e.currentTarget) return;
               if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
@@ -89,7 +89,7 @@ export function SchedaLista({
       )}
 
       {footer && <div className="mt-2 flex flex-wrap items-center gap-1.5">{footer}</div>}
-    </Comp>
+    </div>
   );
 }
 
