@@ -159,10 +159,12 @@ export function SinistriDaAprireCard({
       const esito = await sendEmailDetailed({
         to: dest,
         subject: oggetto,
-        html: buildEmailTemplate({
-          title: "Apertura sinistro",
-          body: testoToHtml(corpo),
-        }),
+        html: wrapEmailHtml(
+          testoToHtml(corpo),
+          null,
+          { nome: nomeMittente, email: emailMittente },
+          { senzaBande: true, sottotitolo: "Assicurazione crediti", useCid: true },
+        ),
         inlineLogo: true,
         fromName: fromName.trim() || undefined,
         ...(attachments.length ? { attachments } : {}),
