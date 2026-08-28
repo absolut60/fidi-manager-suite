@@ -5731,6 +5731,37 @@ export type Database = {
       }
       anteprima_numero_ordine: { Args: { p_anno: number }; Returns: number }
       anteprima_numero_preventivo: { Args: { p_anno: number }; Returns: number }
+      apri_sinistro_pouey: {
+        Args: { _importo_sinistro: number; _nota?: string; _polizza_id: string }
+        Returns: {
+          assicuratore: string
+          cliente_id: string
+          costo_assicurazione: number | null
+          created_at: string
+          data_apertura_sinistro: string | null
+          data_inizio: string | null
+          data_scadenza: string | null
+          esito_sinistro: string | null
+          gestita_da: string | null
+          id: string
+          importo_assicurato: number | null
+          importo_massimale: number | null
+          importo_sinistro: number | null
+          note: string | null
+          note_sinistro: string | null
+          numero_polizza: string | null
+          numero_sinistro: string | null
+          sinistro_aperto: boolean | null
+          stato: Database["public"]["Enums"]["stato_polizza"]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "assicurazioni_credito"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       arrotonda_fido_proposto: { Args: { _fido_base: number }; Returns: number }
       auth_ha_ruolo_globale_clienti: { Args: never; Returns: boolean }
       bulk_update_clienti_bfa: { Args: { _payloads: Json }; Returns: number }
@@ -6489,6 +6520,23 @@ export type Database = {
           num_insoluti: number
           ritardo_medio_ritardi: number
           stadio: string
+        }[]
+      }
+      get_sinistri_da_aprire: {
+        Args: never
+        Returns: {
+          cliente_id: string
+          data_scadenza_piu_vecchia: string
+          finestra: string
+          giorni_da_scadenza: number
+          giorni_residui_30: number
+          importo_assicurato: number
+          numero_polizza: string
+          polizza_id: string
+          promessa_data: string
+          ragione_sociale: string
+          scaduto_eur: number
+          store_nome: string
         }[]
       }
       get_user_role: {
