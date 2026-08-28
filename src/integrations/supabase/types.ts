@@ -6522,6 +6522,21 @@ export type Database = {
           stadio: string
         }[]
       }
+      get_sinistri_aperti: {
+        Args: never
+        Returns: {
+          cliente_id: string
+          data_apertura_sinistro: string
+          esito_sinistro: string
+          importo_sinistro: number
+          note_sinistro: string
+          numero_polizza: string
+          numero_sinistro: string
+          polizza_id: string
+          ragione_sociale: string
+          store_nome: string
+        }[]
+      }
       get_sinistri_da_aprire: {
         Args: never
         Returns: {
