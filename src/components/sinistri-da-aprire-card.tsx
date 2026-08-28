@@ -47,10 +47,6 @@ export interface SinistroAperto {
   numero_polizza: string | null;
 }
 
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
 function testoToHtml(testo: string): string {
   return testo
     .split(/\n{2,}/)
