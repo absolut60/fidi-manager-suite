@@ -1381,14 +1381,35 @@ function AssicurazioniSection({ clienteId, canManage, canEditAllegati }: { clien
                     )}
                     {canManage && (
                       <div className="mt-3 flex flex-wrap gap-1.5">
-                        {!p.sinistro_aperto && (
-                          <Dialog open={openSinistro === p.id} onOpenChange={(v) => setOpenSinistro(v ? p.id : null)}>
-                            <DialogTrigger asChild>
-                              <Button size="sm" variant="outline">Apri sinistro</Button>
-                            </DialogTrigger>
-                            <ApriSinistroDialog polizzaId={p.id} onClose={() => setOpenSinistro(null)} onSaved={invalidate} />
-                          </Dialog>
-                        )}
+                        {!p.sinistro_aperto && (() => {
+                          const conEmail = p.assicuratore === "POUEY" && puoEmailSinistro;
+                          return (
+                            <>
+                              <Dialog open={openSinistro === p.id} onOpenChange={(v) => setOpenSinistro(v ? p.id : null)}>
+                                <DialogTrigger asChild>
+                                  <Button size="sm" variant="outline">{conEmail ? "Apri manualmente" : "Apri sinistro"}</Button>
+                                </DialogTrigger>
+                                <ApriSinistroDialog polizzaId={p.id} onClose={() => setOpenSinistro(null)} onSaved={invalidate} />
+                              </Dialog>
+                              {conEmail && (
+                                <>
+                                  <Button size="sm" variant="outline" onClick={() => setOpenMailSinistro(p.id)}>Apri con email</Button>
+                                  {openMailSinistro === p.id && (
+                                    <MailSinistroDialog
+                                      open
+                                      onOpenChange={(v) => { if (!v) setOpenMailSinistro(null); }}
+                                      polizzaId={p.id}
+                                      ragioneSociale={clienteInfo?.ragione_sociale ?? null}
+                                      importoSuggerito={null}
+                                      onDone={invalidate}
+                                    />
+                                  )}
+                                </>
+                              )}
+                            </>
+                          );
+                        })()}
+
                         <Dialog open={openEdit === p.id} onOpenChange={(v) => setOpenEdit(v ? p.id : null)} key={p.id}>
                           <DialogTrigger asChild>
                             <Button size="sm" variant="outline" className="gap-1.5"><Pencil className="size-3.5" /> Modifica</Button>
