@@ -196,6 +196,7 @@ export function DashboardFidi() {
           tono="warning"
           cardLink={{ to: "/scadenziario" }}
           nota="Vedi lo scadenzario"
+          notaExtra="Coerente con lo scadenziario (esclude BOS e gestione legale)"
         />
         <Riquadro
           compatto
@@ -220,6 +221,7 @@ function Riquadro({
   tono,
   nota,
   notaLink,
+  notaExtra,
   cardLink,
   compatto,
 }: {
@@ -230,6 +232,7 @@ function Riquadro({
   tono: "primary" | "success" | "warning" | "info" | "danger";
   nota?: string;
   notaLink?: { to: string; search: Record<string, string> };
+  notaExtra?: string;
   cardLink?: { to: string; search?: Record<string, string> };
   compatto?: boolean;
 }) {
@@ -262,6 +265,7 @@ function Riquadro({
             <p className="text-xs text-muted-foreground">{nota}</p>
           )
         )}
+        {notaExtra && <p className="text-xs text-muted-foreground">{notaExtra}</p>}
       </div>
       <div className={`size-10 shrink-0 rounded-lg flex items-center justify-center ${toneClass}`}>
         <Icon className="size-5" />
