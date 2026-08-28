@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { KeyboardEvent, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -27,16 +27,31 @@ export function SchedaLista({
   className?: string;
   selezione?: { checked: boolean; onChange: (v: boolean) => void };
 }) {
-  const Comp = onClick ? "button" : "div";
+  // Mai un <button> come wrapper: la scheda può contenere elementi interattivi
+  // (checkbox) e il nesting di bottoni è HTML non valido → mismatch di idratazione.
   return (
-    <Comp
-      {...(onClick ? { type: "button" as const, onClick } : {})}
+    <div
+      {...(onClick
+        ? {
+            role: "button" as const,
+            tabIndex: 0,
+            onClick,
+            onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => {
+              if (e.target !== e.currentTarget) return;
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onClick();
+              }
+            },
+          }
+        : {})}
       className={cn(
         "w-full text-left rounded-lg border bg-card p-4",
-        onClick && "active:bg-muted/50",
+        onClick && "cursor-pointer active:bg-muted/50",
         className,
       )}
     >
+
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-start gap-2 min-w-0">
           {selezione && (
@@ -74,7 +89,7 @@ export function SchedaLista({
       )}
 
       {footer && <div className="mt-2 flex flex-wrap items-center gap-1.5">{footer}</div>}
-    </Comp>
+    </div>
   );
 }
 

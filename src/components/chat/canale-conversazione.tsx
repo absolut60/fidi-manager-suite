@@ -156,10 +156,12 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
+  // RPC accessibile a tutti gli utenti autenticati: la SELECT diretta su
+  // "profili" restituisce solo la propria riga ai non-admin (RLS).
   const { data: profili } = useQuery({
-    queryKey: ["chat", "profili"],
+    queryKey: ["chat", "utenti-rubrica"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("profili").select("id, nome, cognome, attivo");
+      const { data, error } = await supabase.rpc("get_utenti_chat");
       if (error) throw error;
       return data ?? [];
     },
@@ -173,6 +175,7 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
     });
     return map;
   }, [profili]);
+
 
   useEffect(() => {
     if (!fileSelezionato || !fileSelezionato.type.startsWith("image/")) {
