@@ -13,8 +13,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { sendEmailDetailed, buildEmailTemplate } from "@/lib/send-email";
+import { sendEmailDetailed } from "@/lib/send-email";
+import { wrapEmailHtml } from "@/lib/template-email";
+import { escapeHtml } from "@/lib/template-email-render";
 import { isEmailValida } from "@/lib/email-validazione";
+import { useAuth } from "@/hooks/use-auth";
 
 export interface SinistroDaAprire {
   cliente_id: string;
@@ -42,10 +45,6 @@ export interface SinistroAperto {
   esito_sinistro: string | null;
   note_sinistro: string | null;
   numero_polizza: string | null;
-}
-
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 function testoToHtml(testo: string): string {
@@ -83,6 +82,10 @@ export function SinistriDaAprireCard({
   const [files, setFiles] = useState<File[]>([]);
   const [sending, setSending] = useState(false);
 
+  const { profilo, user } = useAuth();
+  const nomeMittente = `${profilo?.nome ?? ""} ${profilo?.cognome ?? ""}`.trim() || "Amministrazione MADE";
+  const emailMittente = profilo?.email ?? user?.email ?? null;
+
   const { data, isLoading } = useQuery({
     queryKey: ["sinistri-da-aprire"],
     queryFn: async () => {
@@ -101,14 +104,16 @@ export function SinistriDaAprireCard({
     },
   });
 
-  // HTML REALE della mail: lo stesso prodotto dall'invio (buildEmailTemplate).
+  // HTML REALE della mail: lo stesso prodotto dall'invio (wrapEmailHtml).
   const anteprimaHtml = useMemo(
     () =>
-      buildEmailTemplate({
-        title: "Apertura sinistro",
-        body: testoToHtml(corpo),
-      }),
-    [corpo],
+      wrapEmailHtml(
+        testoToHtml(corpo),
+        null,
+        { nome: nomeMittente, email: emailMittente },
+        { senzaBande: true, sottotitolo: "Assicurazione crediti" },
+      ),
+    [corpo, nomeMittente, emailMittente],
   );
 
   function apriDialog(r: SinistroDaAprire) {
@@ -154,10 +159,12 @@ export function SinistriDaAprireCard({
       const esito = await sendEmailDetailed({
         to: dest,
         subject: oggetto,
-        html: buildEmailTemplate({
-          title: "Apertura sinistro",
-          body: testoToHtml(corpo),
-        }),
+        html: wrapEmailHtml(
+          testoToHtml(corpo),
+          null,
+          { nome: nomeMittente, email: emailMittente },
+          { senzaBande: true, sottotitolo: "Assicurazione crediti", useCid: true },
+        ),
         inlineLogo: true,
         fromName: fromName.trim() || undefined,
         ...(attachments.length ? { attachments } : {}),
