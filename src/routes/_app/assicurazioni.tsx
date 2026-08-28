@@ -36,9 +36,9 @@ type StatoFilter = "tutti" | "attiva" | "scaduta" | "sinistro";
 
 export default function AssicurazioniPage() {
   const navigate = useNavigate();
-  const { role, profilo } = useAuth();
+  const { role, roles, profilo } = useAuth();
   const isStoreManager = role === "store_manager";
-  const puoAprireSinistri = role === "amministratore" || role === "amministrazione";
+  const puoAprireSinistri = roles.includes("amministratore") || roles.includes("amministrazione");
   const myStoreId = profilo?.store_id ?? null;
 
   const [stato, setStato] = useState<StatoFilter>("tutti");
