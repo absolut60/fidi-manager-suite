@@ -220,6 +220,7 @@ function Riquadro({
   tono,
   nota,
   notaLink,
+  notaExtra,
   cardLink,
   compatto,
 }: {
@@ -230,6 +231,7 @@ function Riquadro({
   tono: "primary" | "success" | "warning" | "info" | "danger";
   nota?: string;
   notaLink?: { to: string; search: Record<string, string> };
+  notaExtra?: string;
   cardLink?: { to: string; search?: Record<string, string> };
   compatto?: boolean;
 }) {
