@@ -1569,7 +1569,7 @@ function ClientiPage() {
                       ? "bg-amber-50 dark:bg-amber-500/10 border-l-[3px] border-l-amber-500"
                       : undefined}
                   titolo={c.ragione_sociale}
-                  selezione={!isAgente ? { checked: selectedIds.has(c.id), onChange: (v) => { const next = new Set(selectedIds); if (v) next.add(c.id); else next.delete(c.id); setSelectedIds(next); } } : undefined}
+                  selezione={!isAgente ? { checked: selectedIds.has(c.id), onChange: () => toggleSelect(c) } : undefined}
                   badge={(() => {
                     const s = semaforoMap?.get(c.id);
                     const st = s?.stadio ?? null;
