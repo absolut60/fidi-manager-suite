@@ -13,8 +13,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { sendEmailDetailed, buildEmailTemplate } from "@/lib/send-email";
+import { sendEmailDetailed } from "@/lib/send-email";
+import { wrapEmailHtml } from "@/lib/template-email";
+import { escapeHtml } from "@/lib/template-email-render";
 import { isEmailValida } from "@/lib/email-validazione";
+import { useAuth } from "@/hooks/use-auth";
 
 export interface SinistroDaAprire {
   cliente_id: string;
