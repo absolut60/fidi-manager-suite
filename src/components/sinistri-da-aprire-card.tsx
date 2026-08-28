@@ -82,6 +82,10 @@ export function SinistriDaAprireCard({
   const [files, setFiles] = useState<File[]>([]);
   const [sending, setSending] = useState(false);
 
+  const { profilo, user } = useAuth();
+  const nomeMittente = `${profilo?.nome ?? ""} ${profilo?.cognome ?? ""}`.trim() || "Amministrazione MADE";
+  const emailMittente = profilo?.email ?? user?.email ?? null;
+
   const { data, isLoading } = useQuery({
     queryKey: ["sinistri-da-aprire"],
     queryFn: async () => {
