@@ -1266,11 +1266,25 @@ const STATO_POLIZZA = ["attiva", "sospesa", "scaduta", "sinistro_aperto", "sinis
 
 function AssicurazioniSection({ clienteId, canManage, canEditAllegati }: { clienteId: string; canManage: boolean; canEditAllegati: boolean }) {
   const qc = useQueryClient();
+  const { roles } = useAuth();
+  const puoEmailSinistro = roles.includes("amministratore") || roles.includes("amministrazione");
   const [open, setOpen] = useState(false);
   const [openSinistro, setOpenSinistro] = useState<string | null>(null);
+  const [openMailSinistro, setOpenMailSinistro] = useState<string | null>(null);
   const [openEdit, setOpenEdit] = useState<string | null>(null);
   const [deletePol, setDeletePol] = useState<PolizzaRow | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  const { data: clienteInfo } = useQuery({
+    queryKey: ["cliente-ragione-sociale", clienteId],
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("clienti").select("ragione_sociale").eq("id", clienteId).maybeSingle();
+      if (error) throw error;
+      return data as { ragione_sociale: string | null } | null;
+    },
+  });
+
 
   const { data: polizze, isLoading } = useQuery({
     queryKey: ["assicurazioni", clienteId],
