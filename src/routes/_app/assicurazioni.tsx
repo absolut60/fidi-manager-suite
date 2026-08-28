@@ -15,6 +15,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { SinistriDaAprireCard } from "@/components/sinistri-da-aprire-card";
 
 export const Route = createFileRoute("/_app/assicurazioni")({
   component: AssicurazioniPage,
@@ -37,6 +38,7 @@ export default function AssicurazioniPage() {
   const navigate = useNavigate();
   const { role, profilo } = useAuth();
   const isStoreManager = role === "store_manager";
+  const puoAprireSinistri = role === "amministratore" || role === "amministrazione";
   const myStoreId = profilo?.store_id ?? null;
 
   const [stato, setStato] = useState<StatoFilter>("tutti");
@@ -148,6 +150,8 @@ export default function AssicurazioniPage() {
           Tutte le polizze {isStoreManager ? "del tuo store" : "dei clienti"}
         </p>
       </div>
+
+      {puoAprireSinistri && <SinistriDaAprireCard fmtEuro={fmtEuro} fmtDate={fmtDate} />}
 
       <TooltipProvider>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
