@@ -196,6 +196,7 @@ export function DashboardFidi() {
           tono="warning"
           cardLink={{ to: "/scadenziario" }}
           nota="Vedi lo scadenzario"
+          notaExtra="Coerente con lo scadenziario (esclude BOS e gestione legale)"
         />
         <Riquadro
           compatto
