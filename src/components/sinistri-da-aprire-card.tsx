@@ -104,14 +104,16 @@ export function SinistriDaAprireCard({
     },
   });
 
-  // HTML REALE della mail: lo stesso prodotto dall'invio (buildEmailTemplate).
+  // HTML REALE della mail: lo stesso prodotto dall'invio (wrapEmailHtml).
   const anteprimaHtml = useMemo(
     () =>
-      buildEmailTemplate({
-        title: "Apertura sinistro",
-        body: testoToHtml(corpo),
-      }),
-    [corpo],
+      wrapEmailHtml(
+        testoToHtml(corpo),
+        null,
+        { nome: nomeMittente, email: emailMittente },
+        { senzaBande: true, sottotitolo: "Assicurazione crediti" },
+      ),
+    [corpo, nomeMittente, emailMittente],
   );
 
   function apriDialog(r: SinistroDaAprire) {
