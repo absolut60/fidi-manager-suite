@@ -45,6 +45,19 @@ export function NuovoPreventivoDialog({
 
   const { data: agenti = [] } = useQuery({ queryKey: ["agenti"], queryFn: fetchAgenti });
 
+  const { data: stores = [] } = useQuery({
+    queryKey: ["stores-attivi"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("stores")
+        .select("id, codice, nome")
+        .eq("attivo", true)
+        .order("codice");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const isOrdine = tipo === "ordine";
   const labelDoc = isOrdine ? "ordine" : "preventivo";
   const labelDocCap = isOrdine ? "Ordine" : "Preventivo";
@@ -142,7 +155,20 @@ export function NuovoPreventivoDialog({
             </div>
             <div className="grid gap-1.5">
               <Label>Filiale</Label>
-              <Input value={filiale} onChange={(e) => setFiliale(e.target.value)} />
+              <Select
+                value={filiale || "_none"}
+                onValueChange={(v) => setFiliale(v === "_none" ? "" : v)}
+              >
+                <SelectTrigger><SelectValue placeholder="Seleziona sede…" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_none">— Nessuna —</SelectItem>
+                  {stores.map((s) => (
+                    <SelectItem key={s.id} value={s.nome}>
+                      {s.codice} — {s.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
