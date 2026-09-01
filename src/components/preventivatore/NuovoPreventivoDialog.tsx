@@ -30,6 +30,8 @@ export function NuovoPreventivoDialog({
   const today = new Date().toISOString().slice(0, 10);
   const [clienteId, setClienteId] = useState<string | null>(null);
   const [cantiereId, setCantiereId] = useState<string | null>(null);
+  const [modoCantiere, setModoCantiere] = useState<"seleziona" | "crea" | "provvisorio">("seleziona");
+  const [cantiereDescrizione, setCantiereDescrizione] = useState("");
   const [agenteId, setAgenteId] = useState<string | null>(null);
   const [filiale, setFiliale] = useState("");
   const [fascia, setFascia] = useState<FasciaListino>("A");
