@@ -6811,6 +6811,9 @@ export type Database = {
         | "gestore_richieste"
         | "esecutore_richieste"
         | "marketing"
+        | "preventivi_read"
+        | "preventivi_write"
+        | "preventivi_manage"
       categoria_allegato:
         | "capitolato"
         | "disegni"
@@ -7120,6 +7123,9 @@ export const Constants = {
         "gestore_richieste",
         "esecutore_richieste",
         "marketing",
+        "preventivi_read",
+        "preventivi_write",
+        "preventivi_manage",
       ],
       categoria_allegato: [
         "capitolato",
