@@ -22,6 +22,9 @@ const RUOLI_VALIDI = [
   "approvatore_richieste_liv2",
   "gestore_richieste",
   "esecutore_richieste",
+  "preventivi_read",
+  "preventivi_write",
+  "preventivi_manage",
 ] as const;
 
 async function assertAgenteEsiste(codice: string) {
@@ -63,7 +66,7 @@ export const creaUtente = createServerFn({ method: "POST" })
       password: z.string().min(8, "Password minimo 8 caratteri").max(100),
       nome: z.string().max(100).optional(),
       cognome: z.string().max(100).optional(),
-      ruoli: z.array(z.enum(RUOLI_VALIDI)).min(1).max(14),
+      ruoli: z.array(z.enum(RUOLI_VALIDI)).min(1).max(17),
       storeId: z.string().uuid().nullable().optional(),
       codiceAgente: z.string().max(50).nullable().optional(),
       attivo: z.boolean().optional().default(true),
@@ -78,7 +81,8 @@ export const creaUtente = createServerFn({ method: "POST" })
     if (data.ruoli.includes("agente") && !data.codiceAgente) {
       throw new Error("Il ruolo Agente richiede un agente collegato");
     }
-    if (data.ruoli.includes("agente") && data.codiceAgente) {
+    const serveCodice = data.ruoli.includes("agente") || data.ruoli.includes("preventivi_write");
+    if (serveCodice && data.codiceAgente) {
       await assertAgenteEsiste(data.codiceAgente);
     }
 
@@ -105,13 +109,14 @@ export const creaUtente = createServerFn({ method: "POST" })
 
 
     // Aggiorna profilo
+    const serveCodice = data.ruoli.includes("agente") || data.ruoli.includes("preventivi_write");
     const { error: eProf } = await supabaseAdmin
       .from("profili")
       .update({
         nome: data.nome ?? "",
         cognome: data.cognome ?? "",
         store_id: data.storeId ?? null,
-        codice_agente: data.ruoli.includes("agente") ? (data.codiceAgente ?? null) : null,
+        codice_agente: serveCodice ? (data.codiceAgente ?? null) : null,
         attivo: data.attivo ?? true,
         deve_cambiare_password: true,
       })
@@ -348,7 +353,7 @@ export const updateUtenteRuoli = createServerFn({ method: "POST" })
   }) =>
     z.object({
       userId: z.string().uuid(),
-      ruoli: z.array(z.enum(RUOLI_VALIDI)).min(1).max(14),
+      ruoli: z.array(z.enum(RUOLI_VALIDI)).min(1).max(17),
       storeId: z.string().uuid().nullable().optional(),
       codiceAgente: z.string().max(50).nullable().optional(),
       attivo: z.boolean(),
@@ -365,7 +370,8 @@ export const updateUtenteRuoli = createServerFn({ method: "POST" })
     if (data.ruoli.includes("agente") && !data.codiceAgente) {
       throw new Error("Il ruolo Agente richiede un agente collegato");
     }
-    if (data.ruoli.includes("agente") && data.codiceAgente) {
+    const serveCodice = data.ruoli.includes("agente") || data.ruoli.includes("preventivi_write");
+    if (serveCodice && data.codiceAgente) {
       await assertAgenteEsiste(data.codiceAgente);
     }
 
@@ -377,7 +383,7 @@ export const updateUtenteRuoli = createServerFn({ method: "POST" })
       cognome?: string;
     } = {
       store_id: data.storeId ?? null,
-      codice_agente: data.ruoli.includes("agente") ? (data.codiceAgente ?? null) : null,
+      codice_agente: serveCodice ? (data.codiceAgente ?? null) : null,
       attivo: data.attivo,
     };
     if (data.nome !== undefined) profileUpdate.nome = data.nome;
