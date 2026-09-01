@@ -30,6 +30,7 @@ export function NuovoPreventivoDialog({
 }: { open: boolean; onOpenChange: (v: boolean) => void; tipo?: TipoDocumento }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const geocodifica = useServerFn(geocodificaCantiere);
   const today = new Date().toISOString().slice(0, 10);
   const [clienteId, setClienteId] = useState<string | null>(null);
   const [cantiereId, setCantiereId] = useState<string | null>(null);
