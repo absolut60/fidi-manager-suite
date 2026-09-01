@@ -90,7 +90,35 @@ function residuoPreventivo(righe: RigaMini[], totaleDocumento: number | null | u
   return Math.max(0, round2(totale * (imponibileResiduoRighe / imponibileTotaleRighe)));
 }
 
+async function risolviNomiClienti(
+  rows: { cliente_id: string | null }[]
+): Promise<Map<string, string>> {
+  const ids = [
+    ...new Set(rows.map((r) => r.cliente_id).filter((v): v is string => !!v)),
+  ];
+  if (ids.length === 0) return new Map();
+
+  const risolti = await Promise.all(
+    ids.map(async (id) => {
+      const { data } = await supabase.rpc("get_cliente_lite" as never, {
+        _id: id,
+      } as never);
+      const row = (
+        data as unknown as
+          | { id: string; ragione_sociale: string | null }[]
+          | null
+      )?.[0];
+      return row ? ([id, row.ragione_sociale ?? "—"] as const) : null;
+    })
+  );
+
+  const m = new Map<string, string>();
+  for (const r of risolti) if (r) m.set(r[0], r[1]);
+  return m;
+}
+
 async function fetchDashboardStats(): Promise<DashStats> {
+
   const now = new Date();
   const inizioMese = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
 
