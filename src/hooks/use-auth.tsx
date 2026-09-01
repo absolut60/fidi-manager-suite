@@ -15,7 +15,7 @@ export type Profilo = {
   deve_cambiare_password?: boolean;
 };
 
-const ORDINE_RUOLI: AppRole[] = ["amministratore", "approvatore_liv3", "approvatore_liv2", "approvatore_liv1", "store_manager", "marketing", "agente", "approvatore_richieste_liv2", "approvatore_richieste_liv1", "gestore_richieste", "esecutore_richieste", "richiedente"];
+const ORDINE_RUOLI: AppRole[] = ["amministratore", "approvatore_liv3", "approvatore_liv2", "approvatore_liv1", "store_manager", "marketing", "agente", "preventivi_manage", "preventivi_write", "preventivi_read", "approvatore_richieste_liv2", "approvatore_richieste_liv1", "gestore_richieste", "esecutore_richieste", "richiedente"];
 
 type AuthContextValue = {
   session: Session | null;

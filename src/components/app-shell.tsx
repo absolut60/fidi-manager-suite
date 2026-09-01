@@ -72,7 +72,7 @@ type NavItem = {
   to: string;
   label: string;
   icon: typeof LayoutDashboard;
-  roles?: Array<"admin" | "approvatore" | "store_manager" | "amministrazione" | "direzione" | "marketing">;
+  roles?: Array<"admin" | "approvatore" | "store_manager" | "amministrazione" | "direzione" | "marketing" | "preventivi_read" | "preventivi_write" | "preventivi_manage">;
   group: NavGroupKey;
   richiesteScope?: RichiesteScope;
   exact?: boolean;
@@ -92,12 +92,12 @@ const NAV: NavItem[] = [
   { to: "/calendario-commerciale", label: "Calendario", icon: CalendarDays, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "commerciale" },
   { to: "/cantieri", label: "Cantieri", icon: Building2, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "commerciale" },
   // PREVENTIVI
-  { to: "/preventivatore/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["admin"], group: "preventivi" },
-  { to: "/preventivatore", label: "Preventivi", icon: Calculator, roles: ["admin"], group: "preventivi", exact: true },
-  { to: "/ordini", label: "Ordini", icon: ShoppingCart, roles: ["admin"], group: "preventivi" },
-  { to: "/articoli", label: "Articoli", icon: FileSpreadsheet, roles: ["admin"], group: "preventivi" },
-  { to: "/listini", label: "Listini", icon: LineChart, roles: ["admin"], group: "preventivi" },
-  { to: "/kit", label: "Kit / Lavorazioni", icon: Wrench, roles: ["admin"], group: "preventivi" },
+  { to: "/preventivatore/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi" },
+  { to: "/preventivatore", label: "Preventivi", icon: Calculator, roles: ["admin", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi", exact: true },
+  { to: "/ordini", label: "Ordini", icon: ShoppingCart, roles: ["admin", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi" },
+  { to: "/articoli", label: "Articoli", icon: FileSpreadsheet, roles: ["admin", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi" },
+  { to: "/listini", label: "Listini", icon: LineChart, roles: ["admin", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi" },
+  { to: "/kit", label: "Kit / Lavorazioni", icon: Wrench, roles: ["admin", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi" },
   // FIDI
   { to: "/fidi-dashboard", label: "Dashboard fidi", icon: LayoutDashboard, group: "fidi" },
   { to: "/richieste", label: "Richieste fido", icon: FileText, group: "fidi" },
