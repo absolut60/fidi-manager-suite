@@ -263,6 +263,10 @@ function PreventivoEditorPage() {
     setEditModeInitialized(true);
   }, [prev, editModeInitialized]);
 
+  useEffect(() => {
+    if (prev) setModoCantiereEdit(((prev as { cantiere_descrizione?: string | null }).cantiere_descrizione) ? "provvisorio" : "cantiere");
+  }, [prev?.id]);
+
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
