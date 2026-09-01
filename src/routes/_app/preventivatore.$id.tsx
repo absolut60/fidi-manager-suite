@@ -594,11 +594,42 @@ function PreventivoEditorPage() {
                       </div>
                       <div className="grid gap-1.5">
                         <Label className="text-xs">Cantiere</Label>
-                        <CantierePicker
-                          cliente_id={prev.cliente_id ?? null}
-                          value={prev.cantiere_id ?? null}
-                          onChange={(id) => save.mutate({ cantiere_id: id }, { onSuccess: () => riapplicaSpeciali.mutate() })}
-                        />
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant={modoCantiereEdit === "cantiere" ? "default" : "outline"}
+                            onClick={() => setModoCantiereEdit("cantiere")}
+                          >
+                            Cantiere
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant={modoCantiereEdit === "provvisorio" ? "default" : "outline"}
+                            onClick={() => setModoCantiereEdit("provvisorio")}
+                          >
+                            Provvisorio
+                          </Button>
+                        </div>
+                        {modoCantiereEdit === "cantiere" ? (
+                          <CantierePicker
+                            cliente_id={prev.cliente_id ?? null}
+                            value={prev.cantiere_id ?? null}
+                            onChange={(id) => save.mutate({ cantiere_id: id, ...(cantDescr ? { cantiere_descrizione: null } : {}) }, { onSuccess: () => riapplicaSpeciali.mutate() })}
+                          />
+                        ) : (
+                          <Input
+                            key={`cantdescr-${prev.id}`}
+                            defaultValue={cantDescr ?? ""}
+                            placeholder="Descrivi il cantiere (indirizzo da definire)…"
+                            onBlur={(e) => {
+                              if ((e.target.value || null) !== cantDescr) {
+                                save.mutate({ cantiere_descrizione: e.target.value || null, cantiere_id: null });
+                              }
+                            }}
+                          />
+                        )}
                       </div>
                     </CardContent>
                   </Card>
