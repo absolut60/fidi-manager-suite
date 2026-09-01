@@ -90,7 +90,35 @@ function residuoPreventivo(righe: RigaMini[], totaleDocumento: number | null | u
   return Math.max(0, round2(totale * (imponibileResiduoRighe / imponibileTotaleRighe)));
 }
 
+async function risolviNomiClienti(
+  rows: { cliente_id: string | null }[]
+): Promise<Map<string, string>> {
+  const ids = [
+    ...new Set(rows.map((r) => r.cliente_id).filter((v): v is string => !!v)),
+  ];
+  if (ids.length === 0) return new Map();
+
+  const risolti = await Promise.all(
+    ids.map(async (id) => {
+      const { data } = await supabase.rpc("get_cliente_lite" as never, {
+        _id: id,
+      } as never);
+      const row = (
+        data as unknown as
+          | { id: string; ragione_sociale: string | null }[]
+          | null
+      )?.[0];
+      return row ? ([id, row.ragione_sociale ?? "—"] as const) : null;
+    })
+  );
+
+  const m = new Map<string, string>();
+  for (const r of risolti) if (r) m.set(r[0], r[1]);
+  return m;
+}
+
 async function fetchDashboardStats(): Promise<DashStats> {
+
   const now = new Date();
   const inizioMese = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
 
@@ -111,16 +139,18 @@ async function fetchDashboardStats(): Promise<DashStats> {
     supabase.from("preventivi").select("totale, data").eq("tipo", "ordine").gte("data", inizioMese),
     supabase
       .from("preventivi")
-      .select(`id, numero, data, stato, totale, clienti(ragione_sociale), ${RIGHE_SELECT}`)
+      .select(`id, numero, data, stato, totale, cliente_id, ${RIGHE_SELECT}`)
       .eq("tipo", "preventivo")
       .order("updated_at", { ascending: false })
       .limit(8),
+
     supabase
       .from("preventivi")
-      .select("id, numero, data, stato, totale, clienti(ragione_sociale)")
+      .select("id, numero, data, stato, totale, cliente_id")
       .eq("tipo", "ordine")
       .order("updated_at", { ascending: false })
       .limit(8),
+
   ]);
 
   // Contatori evasione su TUTTI i preventivi
@@ -140,6 +170,11 @@ async function fetchDashboardStats(): Promise<DashStats> {
   const sumTotale = (rows: any[] | null) =>
     (rows ?? []).reduce((s, p: any) => s + Number(p.totale ?? 0), 0);
 
+  const nomiMap = await risolviNomiClienti([
+    ...(ultimiPrev ?? []),
+    ...(ultimiOrd ?? []),
+  ] as any[]);
+
   const mapPrev = (rows: any[] | null): DocRecente[] =>
     (rows ?? []).map((p: any) => ({
       id: p.id,
@@ -147,7 +182,7 @@ async function fetchDashboardStats(): Promise<DashStats> {
       data: p.data,
       stato: p.stato,
       totale: p.totale,
-      cliente: p.clienti?.ragione_sociale ?? null,
+      cliente: p.cliente_id ? (nomiMap.get(p.cliente_id) ?? null) : null,
       evasione: computeEvasione(flatten(p.blocchi)),
     }));
 
@@ -158,8 +193,9 @@ async function fetchDashboardStats(): Promise<DashStats> {
       data: p.data,
       stato: p.stato,
       totale: p.totale,
-      cliente: p.clienti?.ragione_sociale ?? null,
+      cliente: p.cliente_id ? (nomiMap.get(p.cliente_id) ?? null) : null,
     }));
+
 
   const ordBozza = ((ultimiOrd ?? []) as any[]); // placeholder
   void ordBozza;
