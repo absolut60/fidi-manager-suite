@@ -15,6 +15,7 @@ import { ClientePicker } from "./ClientePicker";
 import { CantierePicker } from "./CantierePicker";
 import {
   createPreventivo, fetchAgenti, fetchCliente, anteprimaProssimoNumero,
+  creaCantiereLite,
   TIPI_DOC, TIPI_DOC_LABEL,
   type TipoDoc, type TipoDocumento,
 } from "@/lib/preventivi-api";
@@ -32,6 +33,10 @@ export function NuovoPreventivoDialog({
   const [cantiereId, setCantiereId] = useState<string | null>(null);
   const [modoCantiere, setModoCantiere] = useState<"seleziona" | "crea" | "provvisorio">("seleziona");
   const [cantiereDescrizione, setCantiereDescrizione] = useState("");
+  const [nuovoCantNome, setNuovoCantNome] = useState("");
+  const [nuovoCantIndirizzo, setNuovoCantIndirizzo] = useState("");
+  const [nuovoCantCitta, setNuovoCantCitta] = useState("");
+  const [nuovoCantProvincia, setNuovoCantProvincia] = useState("");
   const [agenteId, setAgenteId] = useState<string | null>(null);
   const [filiale, setFiliale] = useState("");
   const [fascia, setFascia] = useState<FasciaListino>("A");
@@ -86,9 +91,39 @@ export function NuovoPreventivoDialog({
       if (c.codice_agente) setAgenteId(c.codice_agente);
       setCantiereId(null);
       setCantiereDescrizione("");
+      setNuovoCantNome("");
+      setNuovoCantIndirizzo("");
+      setNuovoCantCitta("");
+      setNuovoCantProvincia("");
       setModoCantiere("seleziona");
     });
   }, [clienteId]);
+
+  const creaCantiere = useMutation({
+    mutationFn: async () => {
+      if (!clienteId) throw new Error("Seleziona un cliente");
+      return creaCantiereLite(
+        clienteId,
+        nuovoCantNome,
+        nuovoCantIndirizzo || null,
+        nuovoCantCitta || null,
+        nuovoCantProvincia || null,
+      );
+    },
+    onSuccess: (nuovo) => {
+      qc.invalidateQueries({ queryKey: ["cantieri-lite", clienteId] });
+      toast.success("Cantiere creato");
+      setCantiereId(nuovo.id);
+      setModoCantiere("seleziona");
+      setNuovoCantNome("");
+      setNuovoCantIndirizzo("");
+      setNuovoCantCitta("");
+      setNuovoCantProvincia("");
+    },
+    onError: (e: unknown) => {
+      toast.error((e as Error).message || "Errore creazione cantiere");
+    },
+  });
 
   const create = useMutation({
     mutationFn: async () => {
@@ -151,8 +186,17 @@ export function NuovoPreventivoDialog({
                   variant={modoCantiere === m ? "default" : "outline"}
                   onClick={() => {
                     setModoCantiere(m);
-                    if (m === "provvisorio") setCantiereId(null);
-                    else setCantiereDescrizione("");
+                    if (m === "provvisorio") {
+                      setCantiereId(null);
+                    } else {
+                      setCantiereDescrizione("");
+                    }
+                    if (m !== "crea") {
+                      setNuovoCantNome("");
+                      setNuovoCantIndirizzo("");
+                      setNuovoCantCitta("");
+                      setNuovoCantProvincia("");
+                    }
                   }}
                 >
                   {l}
@@ -165,15 +209,69 @@ export function NuovoPreventivoDialog({
                 onChange={(e) => setCantiereDescrizione(e.target.value)}
                 placeholder="Descrivi il cantiere (indirizzo da definire)…"
               />
-            ) : (
-              <>
-                {modoCantiere === "crea" && (
-                  <p className="text-xs text-muted-foreground">
-                    Scrivi il nome e clicca «Crea cantiere».
-                  </p>
+            ) : modoCantiere === "crea" ? (
+              <div className="grid gap-2 rounded-md border p-3">
+                {!clienteId ? (
+                  <p className="text-sm text-muted-foreground">Prima seleziona un cliente.</p>
+                ) : (
+                  <>
+                    <div className="grid gap-1.5">
+                      <Label className="text-xs">Nome cantiere *</Label>
+                      <Input
+                        value={nuovoCantNome}
+                        onChange={(e) => setNuovoCantNome(e.target.value)}
+                        placeholder="es. Cantiere zona Milano nord"
+                        disabled={creaCantiere.isPending}
+                      />
+                    </div>
+                    <div className="grid gap-1.5">
+                      <Label className="text-xs">Indirizzo *</Label>
+                      <Input
+                        value={nuovoCantIndirizzo}
+                        onChange={(e) => setNuovoCantIndirizzo(e.target.value)}
+                        placeholder="es. Via Roma 1"
+                        disabled={creaCantiere.isPending}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="grid gap-1.5">
+                        <Label className="text-xs">Città</Label>
+                        <Input
+                          value={nuovoCantCitta}
+                          onChange={(e) => setNuovoCantCitta(e.target.value)}
+                          placeholder="Città"
+                          disabled={creaCantiere.isPending}
+                        />
+                      </div>
+                      <div className="grid gap-1.5">
+                        <Label className="text-xs">Provincia</Label>
+                        <Input
+                          value={nuovoCantProvincia}
+                          onChange={(e) => setNuovoCantProvincia(e.target.value)}
+                          placeholder="PR"
+                          disabled={creaCantiere.isPending}
+                        />
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={creaCantiere.isPending || !clienteId}
+                      onClick={() => {
+                        if (!nuovoCantNome.trim() || !nuovoCantIndirizzo.trim()) {
+                          toast.error("Nome e indirizzo sono obbligatori");
+                          return;
+                        }
+                        creaCantiere.mutate();
+                      }}
+                    >
+                      {creaCantiere.isPending ? "Creazione…" : "Crea e seleziona cantiere"}
+                    </Button>
+                  </>
                 )}
-                <CantierePicker cliente_id={clienteId} value={cantiereId} onChange={setCantiereId} />
-              </>
+              </div>
+            ) : (
+              <CantierePicker cliente_id={clienteId} value={cantiereId} onChange={setCantiereId} />
             )}
           </div>
           <div className="grid grid-cols-2 gap-3">
