@@ -90,9 +90,39 @@ export function NuovoPreventivoDialog({
       if (c.codice_agente) setAgenteId(c.codice_agente);
       setCantiereId(null);
       setCantiereDescrizione("");
+      setNuovoCantNome("");
+      setNuovoCantIndirizzo("");
+      setNuovoCantCitta("");
+      setNuovoCantProvincia("");
       setModoCantiere("seleziona");
     });
   }, [clienteId]);
+
+  const creaCantiere = useMutation({
+    mutationFn: async () => {
+      if (!clienteId) throw new Error("Seleziona un cliente");
+      return creaCantiereLite(
+        clienteId,
+        nuovoCantNome,
+        nuovoCantIndirizzo || null,
+        nuovoCantCitta || null,
+        nuovoCantProvincia || null,
+      );
+    },
+    onSuccess: (nuovo) => {
+      qc.invalidateQueries({ queryKey: ["cantieri-lite", clienteId] });
+      toast.success("Cantiere creato");
+      setCantiereId(nuovo.id);
+      setModoCantiere("seleziona");
+      setNuovoCantNome("");
+      setNuovoCantIndirizzo("");
+      setNuovoCantCitta("");
+      setNuovoCantProvincia("");
+    },
+    onError: (e: unknown) => {
+      toast.error((e as Error).message || "Errore creazione cantiere");
+    },
+  });
 
   const create = useMutation({
     mutationFn: async () => {
