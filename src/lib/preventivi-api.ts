@@ -165,7 +165,6 @@ export async function fetchPreventivi(f: PreventiviFilters): Promise<PreventivoL
     .select(
       `*,
        cantiere:cantieri(id, nome),
-       cantiere:cantieri(id, nome),
        blocchi:blocchi_preventivo(righe:righe_preventivo(tipo_riga, quantita, qta_ordinata))`,
     )
     .order("data", { ascending: false })
