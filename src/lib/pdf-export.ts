@@ -124,8 +124,18 @@ function drawHeader(doc: jsPDF, titolo: string, prev: PreventivoConDettagli, log
 
   let headerEnd = by + bh;
 
-  if (prev.cantiere) {
-    const cant = prev.cantiere;
+  const cantiereProvvisorio =
+    !prev.cantiere && (prev as { cantiere_descrizione?: string | null }).cantiere_descrizione
+      ? ((prev as { cantiere_descrizione?: string | null }).cantiere_descrizione as string)
+      : null;
+
+  if (prev.cantiere || cantiereProvvisorio) {
+    const cant = prev.cantiere ?? {
+      nome: cantiereProvvisorio as string,
+      indirizzo: null as string | null,
+      provincia: null as string | null,
+      comune: null as { nome: string } | null,
+    };
     const ctAddrParts: string[] = [];
     if (cant.indirizzo) ctAddrParts.push(cant.indirizzo);
     const ctLoc: string[] = [];
