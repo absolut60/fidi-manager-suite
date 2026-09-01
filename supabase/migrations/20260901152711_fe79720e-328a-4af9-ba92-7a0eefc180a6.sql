@@ -1,0 +1,2 @@
+ALTER TABLE public.preventivi ADD COLUMN IF NOT EXISTS cantiere_descrizione text;
+COMMENT ON COLUMN public.preventivi.cantiere_descrizione IS 'Cantiere provvisorio: descrizione libera quando non c''e'' ancora un record in cantieri (alternativo a cantiere_id).';
