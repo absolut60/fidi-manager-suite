@@ -147,14 +147,19 @@ export function CantiereDialog({
         setSedeTesto(testoSedeVicina({
           sede: { nome: r.sede_nome }, sede_piu_vicina_km: r.km, sede_piu_vicina_min: r.minuti,
         }));
+        setSedeErrore(null);
         toast.success("Sede più vicina aggiornata");
       } else {
         setSedeTesto(null);
-        toast.error(r.messaggio ?? "Sede più vicina non calcolabile");
+        const msg = r.messaggio ?? "Sede più vicina non calcolabile";
+        setSedeErrore(msg);
+        toast.error(msg);
       }
       invalida();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Calcolo sede non riuscito");
+      const msg = e instanceof Error ? e.message : "Calcolo sede non riuscito";
+      setSedeErrore(msg);
+      toast.error(msg);
     } finally {
       setSedeBusy(false);
     }
