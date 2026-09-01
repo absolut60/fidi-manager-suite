@@ -47,7 +47,7 @@ export function ClienteCantieriTab({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("cantieri")
-        .select("*")
+        .select("*, sede:stores!cantieri_sede_piu_vicina_id_fkey(nome)")
         .eq("cliente_id", clienteId)
         .order("attivo", { ascending: false })
         .order("created_at", { ascending: false });
