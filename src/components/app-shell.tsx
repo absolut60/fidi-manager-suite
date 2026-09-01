@@ -99,6 +99,7 @@ const NAV: NavItem[] = [
   { to: "/articoli", label: "Articoli", icon: FileSpreadsheet, roles: ["admin", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi" },
   { to: "/listini", label: "Listini", icon: LineChart, roles: ["admin", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi" },
   { to: "/kit", label: "Kit / Lavorazioni", icon: Wrench, roles: ["admin", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi" },
+  { id: "cantieri-preventivi", to: "/cantieri", label: "Cantieri", icon: Building2, roles: ["admin", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi" },
   // FIDI
   { to: "/fidi-dashboard", label: "Dashboard fidi", icon: LayoutDashboard, group: "fidi" },
   { to: "/richieste", label: "Richieste fido", icon: FileText, group: "fidi" },
