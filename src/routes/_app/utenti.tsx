@@ -588,7 +588,10 @@ function NewUtenteDialog({ onClose }: { onClose: () => void }) {
         </div>
         {richiedeAgente && (
           <div className="space-y-1.5">
-            <Label>Agente collegato <span className="text-destructive">*</span></Label>
+            <Label>
+              Agente collegato
+              {ruoli.includes("agente") && <span className="text-destructive">*</span>}
+            </Label>
             <Select value={codiceAgente} onValueChange={setCodiceAgente}>
               <SelectTrigger><SelectValue placeholder="Seleziona un agente..." /></SelectTrigger>
               <SelectContent>
@@ -598,6 +601,11 @@ function NewUtenteDialog({ onClose }: { onClose: () => void }) {
                 ))}
               </SelectContent>
             </Select>
+            {ruoli.includes("preventivi_write") && !ruoli.includes("agente") && (
+              <p className="text-xs text-muted-foreground">
+                Serve ai ruoli Agente e Preventivi — Scrittura per legare i preventivi a questa persona.
+              </p>
+            )}
           </div>
         )}
         <label className="flex items-center gap-2 text-sm">
