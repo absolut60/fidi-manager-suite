@@ -170,6 +170,11 @@ async function fetchDashboardStats(): Promise<DashStats> {
   const sumTotale = (rows: any[] | null) =>
     (rows ?? []).reduce((s, p: any) => s + Number(p.totale ?? 0), 0);
 
+  const nomiMap = await risolviNomiClienti([
+    ...(ultimiPrev ?? []),
+    ...(ultimiOrd ?? []),
+  ] as any[]);
+
   const mapPrev = (rows: any[] | null): DocRecente[] =>
     (rows ?? []).map((p: any) => ({
       id: p.id,
@@ -177,7 +182,7 @@ async function fetchDashboardStats(): Promise<DashStats> {
       data: p.data,
       stato: p.stato,
       totale: p.totale,
-      cliente: p.clienti?.ragione_sociale ?? null,
+      cliente: p.cliente_id ? (nomiMap.get(p.cliente_id) ?? null) : null,
       evasione: computeEvasione(flatten(p.blocchi)),
     }));
 
@@ -188,8 +193,9 @@ async function fetchDashboardStats(): Promise<DashStats> {
       data: p.data,
       stato: p.stato,
       totale: p.totale,
-      cliente: p.clienti?.ragione_sociale ?? null,
+      cliente: p.cliente_id ? (nomiMap.get(p.cliente_id) ?? null) : null,
     }));
+
 
   const ordBozza = ((ultimiOrd ?? []) as any[]); // placeholder
   void ordBozza;
