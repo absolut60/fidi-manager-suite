@@ -5822,7 +5822,13 @@ export type Database = {
       }
       count_fidi_quasi_saturi: { Args: { _store_id?: string }; Returns: number }
       crea_cantiere_lite: {
-        Args: { _cliente_id: string; _nome: string }
+        Args: {
+          _citta?: string
+          _cliente_id: string
+          _indirizzo?: string
+          _nome: string
+          _provincia?: string
+        }
         Returns: {
           id: string
           nome: string
