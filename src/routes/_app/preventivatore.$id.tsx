@@ -293,6 +293,8 @@ function PreventivoEditorPage() {
     n.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const cliente = prev.cliente;
   const cantiere = prev.cantiere;
+  const cantiereDescrizione =
+    (prev as { cantiere_descrizione?: string | null }).cantiere_descrizione ?? null;
   const cantiereLine = cantiere
     ? [cantiere.nome, cantiere.indirizzo, cantiere.comune?.nome].filter(Boolean).join(" · ")
     : null;
@@ -536,9 +538,13 @@ function PreventivoEditorPage() {
                             {cliente.provincia ? ` (${cliente.provincia})` : ""}
                           </div>
                         )}
-                        {cantiereLine && (
+                        {cantiereLine ? (
                           <div className="pt-0.5 text-sm leading-snug text-[#0d1f3c]">📍 Cantiere: {cantiereLine}</div>
-                        )}
+                        ) : cantiereDescrizione ? (
+                          <div className="pt-0.5 text-sm leading-snug text-[#0d1f3c]">
+                            📍 Cantiere (provvisorio): {cantiereDescrizione}
+                          </div>
+                        ) : null}
                       </div>
                     ) : (
                       <div className="text-sm text-muted-foreground">Nessun cliente selezionato</div>

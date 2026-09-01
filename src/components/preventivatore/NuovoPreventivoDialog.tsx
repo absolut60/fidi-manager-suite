@@ -30,6 +30,8 @@ export function NuovoPreventivoDialog({
   const today = new Date().toISOString().slice(0, 10);
   const [clienteId, setClienteId] = useState<string | null>(null);
   const [cantiereId, setCantiereId] = useState<string | null>(null);
+  const [modoCantiere, setModoCantiere] = useState<"seleziona" | "crea" | "provvisorio">("seleziona");
+  const [cantiereDescrizione, setCantiereDescrizione] = useState("");
   const [agenteId, setAgenteId] = useState<string | null>(null);
   const [filiale, setFiliale] = useState("");
   const [fascia, setFascia] = useState<FasciaListino>("A");
@@ -83,6 +85,8 @@ export function NuovoPreventivoDialog({
       if (c.fascia_listino_default) setFascia(c.fascia_listino_default);
       if (c.codice_agente) setAgenteId(c.codice_agente);
       setCantiereId(null);
+      setCantiereDescrizione("");
+      setModoCantiere("seleziona");
     });
   }, [clienteId]);
 
@@ -94,7 +98,9 @@ export function NuovoPreventivoDialog({
       const tipoDocFinal: TipoDoc = tipoDoc || "PREVENTIVO";
       return createPreventivo({
         cliente_id: clienteId,
-        cantiere_id: cantiereId,
+        cantiere_id: modoCantiere === "provvisorio" ? null : cantiereId,
+        cantiere_descrizione:
+          modoCantiere === "provvisorio" ? cantiereDescrizione.trim() || null : null,
         agente_codice: agenteId,
         filiale: filiale || null,
         fascia_listino: fasciaFinal,
@@ -132,7 +138,43 @@ export function NuovoPreventivoDialog({
           </div>
           <div className="grid gap-1.5">
             <Label>Cantiere</Label>
-            <CantierePicker cliente_id={clienteId} value={cantiereId} onChange={setCantiereId} />
+            <div className="flex gap-1">
+              {([
+                ["seleziona", "Seleziona"],
+                ["crea", "Crea nuovo"],
+                ["provvisorio", "Provvisorio"],
+              ] as const).map(([m, l]) => (
+                <Button
+                  key={m}
+                  type="button"
+                  size="sm"
+                  variant={modoCantiere === m ? "default" : "outline"}
+                  onClick={() => {
+                    setModoCantiere(m);
+                    if (m === "provvisorio") setCantiereId(null);
+                    else setCantiereDescrizione("");
+                  }}
+                >
+                  {l}
+                </Button>
+              ))}
+            </div>
+            {modoCantiere === "provvisorio" ? (
+              <Input
+                value={cantiereDescrizione}
+                onChange={(e) => setCantiereDescrizione(e.target.value)}
+                placeholder="Descrivi il cantiere (indirizzo da definire)…"
+              />
+            ) : (
+              <>
+                {modoCantiere === "crea" && (
+                  <p className="text-xs text-muted-foreground">
+                    Scrivi il nome e clicca «Crea cantiere».
+                  </p>
+                )}
+                <CantierePicker cliente_id={clienteId} value={cantiereId} onChange={setCantiereId} />
+              </>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-1.5">
