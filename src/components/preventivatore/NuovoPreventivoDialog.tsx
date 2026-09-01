@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { geocodificaCantiere } from "@/lib/cantieri.functions";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -28,6 +30,7 @@ export function NuovoPreventivoDialog({
 }: { open: boolean; onOpenChange: (v: boolean) => void; tipo?: TipoDocumento }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const geocodifica = useServerFn(geocodificaCantiere);
   const today = new Date().toISOString().slice(0, 10);
   const [clienteId, setClienteId] = useState<string | null>(null);
   const [cantiereId, setCantiereId] = useState<string | null>(null);
@@ -102,23 +105,32 @@ export function NuovoPreventivoDialog({
   const creaCantiere = useMutation({
     mutationFn: async () => {
       if (!clienteId) throw new Error("Seleziona un cliente");
-      return creaCantiereLite(
+      const nuovo = await creaCantiereLite(
         clienteId,
         nuovoCantNome,
         nuovoCantIndirizzo || null,
         nuovoCantCitta || null,
         nuovoCantProvincia || null,
       );
+      let esitoGeo: { stato: string; messaggio?: string | null } | null = null;
+      try { esitoGeo = await geocodifica({ data: { cantiere_id: nuovo.id } }); } catch { esitoGeo = null; }
+      return { nuovo, esitoGeo };
     },
-    onSuccess: (nuovo) => {
+    onSuccess: ({ nuovo, esitoGeo }) => {
       qc.invalidateQueries({ queryKey: ["cantieri-lite", clienteId] });
-      toast.success("Cantiere creato");
       setCantiereId(nuovo.id);
       setModoCantiere("seleziona");
       setNuovoCantNome("");
       setNuovoCantIndirizzo("");
       setNuovoCantCitta("");
       setNuovoCantProvincia("");
+      if (esitoGeo?.stato === "ok") {
+        toast.success("Cantiere creato e geolocalizzato. Sede più vicina calcolata.");
+      } else if (esitoGeo) {
+        toast.warning(`Cantiere creato ma NON geolocalizzato: ${esitoGeo.messaggio ?? "indirizzo non trovato"}. Aprilo in Cantieri per posizionarlo a mano.`);
+      } else {
+        toast.warning("Cantiere creato. Geolocalizzazione non riuscita: verifica l'indirizzo nella scheda Cantieri.");
+      }
     },
     onError: (e: unknown) => {
       toast.error((e as Error).message || "Errore creazione cantiere");
@@ -253,6 +265,9 @@ export function NuovoPreventivoDialog({
                         />
                       </div>
                     </div>
+                    <p className="text-xs text-muted-foreground">
+                      L'indirizzo verrà geolocalizzato e verrà calcolata la sede più vicina. Serve un indirizzo valido (via + città).
+                    </p>
                     <Button
                       type="button"
                       size="sm"
