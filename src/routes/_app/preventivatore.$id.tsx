@@ -300,6 +300,7 @@ function PreventivoEditorPage() {
   const cantiere = prev.cantiere;
   const cantiereDescrizione =
     (prev as { cantiere_descrizione?: string | null }).cantiere_descrizione ?? null;
+  const cantDescr = (prev as { cantiere_descrizione?: string | null }).cantiere_descrizione ?? null;
   const cantiereLine = cantiere
     ? [cantiere.nome, cantiere.indirizzo, cantiere.comune?.nome].filter(Boolean).join(" · ")
     : null;
