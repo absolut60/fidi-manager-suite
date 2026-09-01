@@ -405,7 +405,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <ul className="mt-1 space-y-0.5">
                   {b.items.map((item) => (
                     <NavItemRow
-                      key={item.to}
+                      key={item.id ?? item.to}
                       item={item}
                       active={isItemActive(item, currentPath)}
                       onNav={() => setMobileOpen(false)}
