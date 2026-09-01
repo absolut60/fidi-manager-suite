@@ -5818,6 +5818,13 @@ export type Database = {
         }[]
       }
       count_fidi_quasi_saturi: { Args: { _store_id?: string }; Returns: number }
+      crea_cantiere_lite: {
+        Args: { _cliente_id: string; _nome: string }
+        Returns: {
+          id: string
+          nome: string
+        }[]
+      }
       crea_lead_da_righe_import: {
         Args: { _riga_ids: string[] }
         Returns: {
@@ -5877,6 +5884,17 @@ export type Database = {
           non_letti: number
           task_id: string
           tipo: Database["public"]["Enums"]["tipo_canale"]
+        }[]
+      }
+      get_cantieri_lite: {
+        Args: { _cliente_id: string }
+        Returns: {
+          attivo: boolean
+          citta: string
+          id: string
+          indirizzo: string
+          nome: string
+          provincia: string
         }[]
       }
       get_cliente_lite: {
