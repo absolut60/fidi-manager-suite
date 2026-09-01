@@ -45,6 +45,19 @@ export function NuovoPreventivoDialog({
 
   const { data: agenti = [] } = useQuery({ queryKey: ["agenti"], queryFn: fetchAgenti });
 
+  const { data: stores = [] } = useQuery({
+    queryKey: ["stores-attivi"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("stores")
+        .select("id, codice, nome")
+        .eq("attivo", true)
+        .order("codice");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const isOrdine = tipo === "ordine";
   const labelDoc = isOrdine ? "ordine" : "preventivo";
   const labelDocCap = isOrdine ? "Ordine" : "Preventivo";
