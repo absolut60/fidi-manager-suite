@@ -5879,6 +5879,20 @@ export type Database = {
           tipo: Database["public"]["Enums"]["tipo_canale"]
         }[]
       }
+      get_cliente_lite: {
+        Args: { _id: string }
+        Returns: {
+          cap: string
+          citta: string
+          codice_agente: string
+          fascia_listino_default: string
+          id: string
+          indirizzo: string
+          partita_iva: string
+          provincia: string
+          ragione_sociale: string
+        }[]
+      }
       get_clienti_avvisati: {
         Args: never
         Returns: {
@@ -5893,6 +5907,20 @@ export type Database = {
         Args: { _store_id?: string }
         Returns: {
           cliente_id: string
+        }[]
+      }
+      get_clienti_lite_search: {
+        Args: { _q: string }
+        Returns: {
+          cap: string
+          citta: string
+          codice_agente: string
+          fascia_listino_default: string
+          id: string
+          indirizzo: string
+          partita_iva: string
+          provincia: string
+          ragione_sociale: string
         }[]
       }
       get_clienti_scadenziario: {
