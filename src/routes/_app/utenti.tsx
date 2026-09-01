@@ -67,6 +67,8 @@ const RUOLI_RICHIESTE: AppRole[] = [
 
 const RUOLI_MARKETING: AppRole[] = ["marketing"];
 
+const RUOLI_PREVENTIVI: AppRole[] = ["preventivi_read", "preventivi_write", "preventivi_manage"];
+
 type UserRow = {
   id: string;
   nome: string | null;
