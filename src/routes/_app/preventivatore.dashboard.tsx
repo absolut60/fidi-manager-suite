@@ -146,10 +146,11 @@ async function fetchDashboardStats(): Promise<DashStats> {
 
     supabase
       .from("preventivi")
-      .select("id, numero, data, stato, totale, clienti(ragione_sociale)")
+      .select("id, numero, data, stato, totale, cliente_id")
       .eq("tipo", "ordine")
       .order("updated_at", { ascending: false })
       .limit(8),
+
   ]);
 
   // Contatori evasione su TUTTI i preventivi
