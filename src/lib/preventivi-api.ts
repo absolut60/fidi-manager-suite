@@ -102,6 +102,36 @@ export async function fetchCantieriByCliente(cliente_id: string): Promise<Cantie
   return _fetchCantieri(cliente_id);
 }
 
+export interface CantiereLite {
+  id: string;
+  nome: string;
+  indirizzo: string | null;
+  citta: string | null;
+  provincia: string | null;
+}
+
+export async function fetchCantieriLite(cliente_id: string): Promise<CantiereLite[]> {
+  const { data, error } = await supabase.rpc("get_cantieri_lite" as never, {
+    _cliente_id: cliente_id,
+  } as never);
+  if (error) throw error;
+  return (data as unknown as CantiereLite[] | null) ?? [];
+}
+
+export async function creaCantiereLite(
+  cliente_id: string,
+  nome: string,
+): Promise<{ id: string; nome: string }> {
+  const { data, error } = await supabase.rpc("crea_cantiere_lite" as never, {
+    _cliente_id: cliente_id,
+    _nome: nome,
+  } as never);
+  if (error) throw error;
+  const row = (data as unknown as { id: string; nome: string }[] | null)?.[0];
+  if (!row) throw new Error("Creazione cantiere fallita");
+  return row;
+}
+
 export const TIPI_DOC: TipoDoc[] = [
   "PREVENTIVO",
   "PROPOSTA_RAPIDA",
