@@ -180,7 +180,9 @@ export async function fetchPreventivi(f: PreventiviFilters): Promise<PreventivoL
   }
   const { data, error } = await q;
   if (error) throw error;
-  return (data ?? []) as unknown as PreventivoListItem[];
+  const items = (data ?? []) as unknown as PreventivoListItem[];
+  await popolaClientiLite(items);
+  return items;
 }
 
 export interface PrezzoSpecialeCantiere {
@@ -277,7 +279,7 @@ export async function fetchPreventivo(id: string): Promise<PreventivoConDettagli
   for (const b of p.blocchi) {
     b.righe.sort((a, b2) => Number(a.ordine ?? 0) - Number(b2.ordine ?? 0));
   }
-  p.cliente = p.cliente_id ? await _fetchCliente(p.cliente_id) : null;
+  p.cliente = p.cliente_id ? await fetchClienteLite(p.cliente_id) : null;
   if (p.cantiere_id && p.cliente_id) {
     const cants = await _fetchCantieri(p.cliente_id);
     p.cantiere = cants.find((c) => c.id === p.cantiere_id) ?? null;
@@ -392,6 +394,7 @@ export async function duplicaPreventivo(
     if (!options.nuovoClienteId) {
       throw new Error("Seleziona un cliente per il duplicato");
     }
+    // TODO: valutare lite anche qui
     const { data, error } = await supabase
       .from("clienti")
       .select("id, codice_agente, fascia_listino_default")
@@ -1050,12 +1053,14 @@ export async function trasformaPreventivoInOrdine(
 export async function fetchOrdiniCollegati(preventivoId: string): Promise<PreventivoListItem[]> {
   const { data, error } = await supabase
     .from("preventivi")
-    .select("*, cliente:clienti(id, ragione_sociale), cantiere:cantieri(id, nome)")
+    .select("*, cantiere:cantieri(id, nome)")
     .eq("tipo", "ordine")
     .eq("preventivo_origine_id", preventivoId)
     .order("created_at", { ascending: true });
   if (error) throw error;
-  return (data ?? []) as unknown as PreventivoListItem[];
+  const items = (data ?? []) as unknown as PreventivoListItem[];
+  await popolaClientiLite(items);
+  return items;
 }
 
 export async function fetchPreventivoOrigine(
