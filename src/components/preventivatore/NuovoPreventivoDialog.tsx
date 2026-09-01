@@ -105,23 +105,32 @@ export function NuovoPreventivoDialog({
   const creaCantiere = useMutation({
     mutationFn: async () => {
       if (!clienteId) throw new Error("Seleziona un cliente");
-      return creaCantiereLite(
+      const nuovo = await creaCantiereLite(
         clienteId,
         nuovoCantNome,
         nuovoCantIndirizzo || null,
         nuovoCantCitta || null,
         nuovoCantProvincia || null,
       );
+      let esitoGeo: { stato: string; messaggio?: string | null } | null = null;
+      try { esitoGeo = await geocodifica({ data: { cantiere_id: nuovo.id } }); } catch { esitoGeo = null; }
+      return { nuovo, esitoGeo };
     },
-    onSuccess: (nuovo) => {
+    onSuccess: ({ nuovo, esitoGeo }) => {
       qc.invalidateQueries({ queryKey: ["cantieri-lite", clienteId] });
-      toast.success("Cantiere creato");
       setCantiereId(nuovo.id);
       setModoCantiere("seleziona");
       setNuovoCantNome("");
       setNuovoCantIndirizzo("");
       setNuovoCantCitta("");
       setNuovoCantProvincia("");
+      if (esitoGeo?.stato === "ok") {
+        toast.success("Cantiere creato e geolocalizzato. Sede più vicina calcolata.");
+      } else if (esitoGeo) {
+        toast.warning(`Cantiere creato ma NON geolocalizzato: ${esitoGeo.messaggio ?? "indirizzo non trovato"}. Aprilo in Cantieri per posizionarlo a mano.`);
+      } else {
+        toast.warning("Cantiere creato. Geolocalizzazione non riuscita: verifica l'indirizzo nella scheda Cantieri.");
+      }
     },
     onError: (e: unknown) => {
       toast.error((e as Error).message || "Errore creazione cantiere");
