@@ -69,6 +69,7 @@ function PreventivoEditorPage() {
   const [editMode, setEditMode] = useState(false);
   const [editModeInitialized, setEditModeInitialized] = useState(false);
   const [trasformaOpen, setTrasformaOpen] = useState(false);
+  const [modoCantiereEdit, setModoCantiereEdit] = useState<"cantiere" | "provvisorio">("cantiere");
 
   const { data: prev, isLoading } = useQuery({
     queryKey: ["preventivo", id],
