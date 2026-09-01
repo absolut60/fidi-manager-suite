@@ -538,9 +538,13 @@ function PreventivoEditorPage() {
                             {cliente.provincia ? ` (${cliente.provincia})` : ""}
                           </div>
                         )}
-                        {cantiereLine && (
+                        {cantiereLine ? (
                           <div className="pt-0.5 text-sm leading-snug text-[#0d1f3c]">📍 Cantiere: {cantiereLine}</div>
-                        )}
+                        ) : cantiereDescrizione ? (
+                          <div className="pt-0.5 text-sm leading-snug text-[#0d1f3c]">
+                            📍 Cantiere (provvisorio): {cantiereDescrizione}
+                          </div>
+                        ) : null}
                       </div>
                     ) : (
                       <div className="text-sm text-muted-foreground">Nessun cliente selezionato</div>
