@@ -69,6 +69,7 @@ type NavGroupKey =
 type RichiesteScope = "all" | "manage" | "approve" | "gestione";
 
 type NavItem = {
+  id?: string;
   to: string;
   label: string;
   icon: typeof LayoutDashboard;
@@ -98,6 +99,7 @@ const NAV: NavItem[] = [
   { to: "/articoli", label: "Articoli", icon: FileSpreadsheet, roles: ["admin", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi" },
   { to: "/listini", label: "Listini", icon: LineChart, roles: ["admin", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi" },
   { to: "/kit", label: "Kit / Lavorazioni", icon: Wrench, roles: ["admin", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi" },
+  { id: "cantieri-preventivi", to: "/cantieri", label: "Cantieri", icon: Building2, roles: ["admin", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi" },
   // FIDI
   { to: "/fidi-dashboard", label: "Dashboard fidi", icon: LayoutDashboard, group: "fidi" },
   { to: "/richieste", label: "Richieste fido", icon: FileText, group: "fidi" },
@@ -367,7 +369,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <ul className="space-y-0.5">
             {generaleItems.map((item) => (
               <NavItemRow
-                key={item.to}
+                key={item.id ?? item.to}
                 item={item}
                 active={isItemActive(item, currentPath)}
                 onNav={() => setMobileOpen(false)}
@@ -403,7 +405,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <ul className="mt-1 space-y-0.5">
                   {b.items.map((item) => (
                     <NavItemRow
-                      key={item.to}
+                      key={item.id ?? item.to}
                       item={item}
                       active={isItemActive(item, currentPath)}
                       onNav={() => setMobileOpen(false)}
