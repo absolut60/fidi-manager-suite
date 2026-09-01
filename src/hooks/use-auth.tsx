@@ -159,4 +159,7 @@ export const RUOLI_LABEL: Record<AppRole, string> = {
   approvatore_richieste_liv2: "Approvatore Richieste Liv.2",
   gestore_richieste: "Gestore Richieste",
   esecutore_richieste: "Esecutore Richieste",
+  preventivi_read: "Preventivi — Lettura",
+  preventivi_write: "Preventivi — Scrittura",
+  preventivi_manage: "Preventivi — Gestione",
 };

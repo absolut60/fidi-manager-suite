@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.17"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -5763,7 +5763,21 @@ export type Database = {
         }
       }
       arrotonda_fido_proposto: { Args: { _fido_base: number }; Returns: number }
+      auth_ha_accesso_preventivi: { Args: never; Returns: boolean }
       auth_ha_ruolo_globale_clienti: { Args: never; Returns: boolean }
+      auth_puo_gestire_anagrafiche_prev: { Args: never; Returns: boolean }
+      auth_puo_scrivere_blocco: {
+        Args: { _blocco_id: string }
+        Returns: boolean
+      }
+      auth_puo_scrivere_preventivo: {
+        Args: { _agente_codice: string }
+        Returns: boolean
+      }
+      auth_puo_scrivere_preventivo_id: {
+        Args: { _preventivo_id: string }
+        Returns: boolean
+      }
       bulk_update_clienti_bfa: { Args: { _payloads: Json }; Returns: number }
       calcola_fido_base: {
         Args: { _fatturato_lordo: number; _giorni: number }
@@ -6811,6 +6825,9 @@ export type Database = {
         | "gestore_richieste"
         | "esecutore_richieste"
         | "marketing"
+        | "preventivi_read"
+        | "preventivi_write"
+        | "preventivi_manage"
       categoria_allegato:
         | "capitolato"
         | "disegni"
@@ -7120,6 +7137,9 @@ export const Constants = {
         "gestore_richieste",
         "esecutore_richieste",
         "marketing",
+        "preventivi_read",
+        "preventivi_write",
+        "preventivi_manage",
       ],
       categoria_allegato: [
         "capitolato",
