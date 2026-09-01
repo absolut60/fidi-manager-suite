@@ -254,13 +254,13 @@ function EditUtenteDialog({ utente, onClose }: { utente: UserRow; onClose: () =>
   const fn = useServerFn(updateUtenteRuoli);
 
   const richiedeStore = ruoli.includes("store_manager");
-  const richiedeAgente = ruoli.includes("agente");
+  const richiedeAgente = ruoli.includes("agente") || ruoli.includes("preventivi_write");
 
   const mutation = useMutation({
     mutationFn: async () => {
       if (ruoli.length === 0) throw new Error("Seleziona almeno un ruolo");
       if (richiedeStore && storeId === "_none") throw new Error("Il ruolo Store Manager richiede un punto vendita");
-      if (richiedeAgente && codiceAgente === "_none") throw new Error("Il ruolo Agente richiede un agente collegato");
+      if (ruoli.includes("agente") && codiceAgente === "_none") throw new Error("Il ruolo Agente richiede un agente collegato");
       await fn({ data: {
         userId: utente.id,
         ruoli,
