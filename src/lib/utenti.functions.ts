@@ -109,7 +109,6 @@ export const creaUtente = createServerFn({ method: "POST" })
 
 
     // Aggiorna profilo
-    const serveCodice = data.ruoli.includes("agente") || data.ruoli.includes("preventivi_write");
     const { error: eProf } = await supabaseAdmin
       .from("profili")
       .update({
