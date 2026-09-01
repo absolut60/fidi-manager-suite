@@ -20,6 +20,7 @@ import {
 } from "@/lib/preventivi-api";
 import { FASCE, type FasciaListino } from "@/lib/articoli-api";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/use-auth";
 
 export function NuovoPreventivoDialog({
   open, onOpenChange, tipo = "preventivo",

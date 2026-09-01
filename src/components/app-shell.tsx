@@ -214,8 +214,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isDirezione = hasUserRole("direzione");
   const isMarketing = hasUserRole("marketing");
   const isAgente = hasUserRole("agente");
+  const isPrevRead = hasUserRole("preventivi_read");
+  const isPrevWrite = hasUserRole("preventivi_write");
+  const isPrevManage = hasUserRole("preventivi_manage");
+  const hasAccessoPreventivi = isAdmin || isPrevRead || isPrevWrite || isPrevManage;
   const isOnlyAgente =
-    isAgente && !isAdmin && !isApprovatore && !isStoreManager && !isAmministrazione && !isMarketing && !hasUserRole("direzione");
+    isAgente && !isAdmin && !isApprovatore && !isStoreManager && !isAmministrazione && !isMarketing && !hasUserRole("direzione") && !hasAccessoPreventivi;
 
   const AGENTE_WHITELIST = new Set<string>([
     "/clienti",
@@ -266,6 +270,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (item.roles.includes("amministrazione") && isAmministrazione) return true;
     if (item.roles.includes("direzione") && isDirezione) return true;
     if (item.roles.includes("marketing") && isMarketing) return true;
+    if (item.roles.includes("preventivi_read") && hasAccessoPreventivi) return true;
     return false;
   });
 
