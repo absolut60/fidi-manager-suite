@@ -3682,6 +3682,7 @@ export type Database = {
       preventivi: {
         Row: {
           agente_codice: string | null
+          cantiere_descrizione: string | null
           cantiere_id: string | null
           cliente_id: string | null
           created_at: string
@@ -3705,6 +3706,7 @@ export type Database = {
         }
         Insert: {
           agente_codice?: string | null
+          cantiere_descrizione?: string | null
           cantiere_id?: string | null
           cliente_id?: string | null
           created_at?: string
@@ -3728,6 +3730,7 @@ export type Database = {
         }
         Update: {
           agente_codice?: string | null
+          cantiere_descrizione?: string | null
           cantiere_id?: string | null
           cliente_id?: string | null
           created_at?: string
