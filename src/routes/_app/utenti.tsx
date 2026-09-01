@@ -456,7 +456,7 @@ function NewUtenteDialog({ onClose }: { onClose: () => void }) {
   const fnInviaCred = useServerFn(inviaCredenziali);
 
   const richiedeStore = ruoli.includes("store_manager");
-  const richiedeAgente = ruoli.includes("agente");
+  const richiedeAgente = ruoli.includes("agente") || ruoli.includes("preventivi_write");
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -464,7 +464,7 @@ function NewUtenteDialog({ onClose }: { onClose: () => void }) {
       if (password.length < 8) throw new Error("Password minimo 8 caratteri");
       if (ruoli.length === 0) throw new Error("Seleziona almeno un ruolo");
       if (richiedeStore && storeId === "_none") throw new Error("Il ruolo Store Manager richiede un punto vendita");
-      if (richiedeAgente && codiceAgente === "_none") throw new Error("Il ruolo Agente richiede un agente collegato");
+      if (ruoli.includes("agente") && codiceAgente === "_none") throw new Error("Il ruolo Agente richiede un agente collegato");
       const res = await fn({ data: {
         email: email.trim(),
         password,
