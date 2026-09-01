@@ -186,8 +186,17 @@ export function NuovoPreventivoDialog({
                   variant={modoCantiere === m ? "default" : "outline"}
                   onClick={() => {
                     setModoCantiere(m);
-                    if (m === "provvisorio") setCantiereId(null);
-                    else setCantiereDescrizione("");
+                    if (m === "provvisorio") {
+                      setCantiereId(null);
+                    } else {
+                      setCantiereDescrizione("");
+                    }
+                    if (m !== "crea") {
+                      setNuovoCantNome("");
+                      setNuovoCantIndirizzo("");
+                      setNuovoCantCitta("");
+                      setNuovoCantProvincia("");
+                    }
                   }}
                 >
                   {l}
