@@ -38,6 +38,11 @@ export function NuovoPreventivoDialog({
   const [data, setData] = useState(today);
   const [validita, setValidita] = useState("");
 
+  const { profilo, roles } = useAuth();
+  const isWriteOnly = roles.includes("preventivi_write") && !roles.includes("amministratore") && !roles.includes("preventivi_manage");
+  const profiloCodiceAgente = profilo ? (profilo as unknown as Record<string, unknown>).codice_agente as string | null | undefined : undefined;
+  const writeOnlyMissingCodice = isWriteOnly && !profiloCodiceAgente;
+
   const { data: agenti = [] } = useQuery({ queryKey: ["agenti"], queryFn: fetchAgenti });
 
   const isOrdine = tipo === "ordine";
@@ -51,7 +56,11 @@ export function NuovoPreventivoDialog({
     anteprimaProssimoNumero(undefined, tipo)
       .then((n) => setNumero(n))
       .catch((e) => console.warn("[NuovoPreventivoDialog] anteprima numero:", e));
-  }, [open, tipo]);
+    // Agente write-only: forza il proprio codice agente all'apertura.
+    if (isWriteOnly && profiloCodiceAgente) {
+      setAgenteId(profiloCodiceAgente);
+    }
+  }, [open, tipo, isWriteOnly, profiloCodiceAgente]);
 
   // Quando cambia il cliente: precompila fascia e agente
   useEffect(() => {
@@ -115,7 +124,11 @@ export function NuovoPreventivoDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-1.5">
               <Label>Agente</Label>
-              <Select value={agenteId ?? ""} onValueChange={(v) => setAgenteId(v || null)}>
+              <Select
+                value={agenteId ?? ""}
+                onValueChange={(v) => setAgenteId(v || null)}
+                disabled={isWriteOnly}
+              >
                 <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
                 <SelectContent>
                   {agenti.map((a) => (
@@ -123,6 +136,9 @@ export function NuovoPreventivoDialog({
                   ))}
                 </SelectContent>
               </Select>
+              {isWriteOnly && (
+                <p className="text-xs text-muted-foreground">Come agente sei impostato tu.</p>
+              )}
             </div>
             <div className="grid gap-1.5">
               <Label>Filiale</Label>
@@ -168,9 +184,14 @@ export function NuovoPreventivoDialog({
             </div>
           </div>
         </div>
+        {writeOnlyMissingCodice && (
+          <p className="text-sm text-destructive">
+            Il tuo profilo non ha un codice agente: contatta l'amministratore.
+          </p>
+        )}
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Annulla</Button>
-          <Button onClick={() => create.mutate()} disabled={!clienteId || create.isPending}>
+          <Button onClick={() => create.mutate()} disabled={!clienteId || create.isPending || writeOnlyMissingCodice}>
             Crea {labelDoc}
           </Button>
         </DialogFooter>
