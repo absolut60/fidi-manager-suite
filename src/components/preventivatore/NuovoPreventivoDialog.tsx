@@ -265,6 +265,9 @@ export function NuovoPreventivoDialog({
                         />
                       </div>
                     </div>
+                    <p className="text-xs text-muted-foreground">
+                      L'indirizzo verrà geolocalizzato e verrà calcolata la sede più vicina. Serve un indirizzo valido (via + città).
+                    </p>
                     <Button
                       type="button"
                       size="sm"
