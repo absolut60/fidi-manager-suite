@@ -85,6 +85,8 @@ export function NuovoPreventivoDialog({
       if (c.fascia_listino_default) setFascia(c.fascia_listino_default);
       if (c.codice_agente) setAgenteId(c.codice_agente);
       setCantiereId(null);
+      setCantiereDescrizione("");
+      setModoCantiere("seleziona");
     });
   }, [clienteId]);
 
