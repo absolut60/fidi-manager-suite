@@ -195,6 +195,7 @@ export function CantiereDialog({
     setLat(c?.lat != null ? String(c.lat) : "");
     setLng(c?.lng != null ? String(c.lng) : "");
     setSedeTesto(c ? testoSedeVicina(c) : null);
+    setSedeErrore(null);
     setCoordDaAutocomplete(false);
   }, [open, cantiere, soggettoFisso]);
 
