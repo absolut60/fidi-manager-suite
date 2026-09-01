@@ -99,6 +99,7 @@ export function CantiereDialog({
   const [gpsBusy, setGpsBusy] = useState(false);
   const [sedeBusy, setSedeBusy] = useState(false);
   const [sedeTesto, setSedeTesto] = useState<string | null>(null);
+  const [sedeErrore, setSedeErrore] = useState<string | null>(null);
   const [coordDaAutocomplete, setCoordDaAutocomplete] = useState(false);
 
   function usaLaMiaPosizione() {
