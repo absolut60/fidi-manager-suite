@@ -139,10 +139,11 @@ async function fetchDashboardStats(): Promise<DashStats> {
     supabase.from("preventivi").select("totale, data").eq("tipo", "ordine").gte("data", inizioMese),
     supabase
       .from("preventivi")
-      .select(`id, numero, data, stato, totale, clienti(ragione_sociale), ${RIGHE_SELECT}`)
+      .select(`id, numero, data, stato, totale, cliente_id, ${RIGHE_SELECT}`)
       .eq("tipo", "preventivo")
       .order("updated_at", { ascending: false })
       .limit(8),
+
     supabase
       .from("preventivi")
       .select("id, numero, data, stato, totale, clienti(ragione_sociale)")
