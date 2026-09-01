@@ -498,6 +498,7 @@ export function CantiereDialog({
               <p className="text-sm text-muted-foreground">
                 {sedeTesto ?? "Non ancora calcolata: posiziona il cantiere e premi Ricalcola."}
               </p>
+              {sedeErrore && <p className="text-sm text-destructive">{sedeErrore}</p>}
             </div>
           )}
 
