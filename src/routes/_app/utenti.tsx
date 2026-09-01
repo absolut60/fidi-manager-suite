@@ -67,6 +67,8 @@ const RUOLI_RICHIESTE: AppRole[] = [
 
 const RUOLI_MARKETING: AppRole[] = ["marketing"];
 
+const RUOLI_PREVENTIVI: AppRole[] = ["preventivi_read", "preventivi_write", "preventivi_manage"];
+
 type UserRow = {
   id: string;
   nome: string | null;
@@ -211,6 +213,7 @@ function RoleCheckboxes({ value, onChange }: { value: AppRole[]; onChange: (v: A
       {renderGroup("Credito", RUOLI_CREDITO)}
       {renderGroup("Richieste interne", RUOLI_RICHIESTE)}
       {renderGroup("Marketing", RUOLI_MARKETING)}
+      {renderGroup("Preventivi", RUOLI_PREVENTIVI)}
     </div>
   );
 }
@@ -251,13 +254,13 @@ function EditUtenteDialog({ utente, onClose }: { utente: UserRow; onClose: () =>
   const fn = useServerFn(updateUtenteRuoli);
 
   const richiedeStore = ruoli.includes("store_manager");
-  const richiedeAgente = ruoli.includes("agente");
+  const richiedeAgente = ruoli.includes("agente") || ruoli.includes("preventivi_write");
 
   const mutation = useMutation({
     mutationFn: async () => {
       if (ruoli.length === 0) throw new Error("Seleziona almeno un ruolo");
       if (richiedeStore && storeId === "_none") throw new Error("Il ruolo Store Manager richiede un punto vendita");
-      if (richiedeAgente && codiceAgente === "_none") throw new Error("Il ruolo Agente richiede un agente collegato");
+      if (ruoli.includes("agente") && codiceAgente === "_none") throw new Error("Il ruolo Agente richiede un agente collegato");
       await fn({ data: {
         userId: utente.id,
         ruoli,
@@ -359,7 +362,10 @@ function EditUtenteDialog({ utente, onClose }: { utente: UserRow; onClose: () =>
         </div>
         {richiedeAgente && (
           <div className="space-y-1.5">
-            <Label>Agente collegato <span className="text-destructive">*</span></Label>
+            <Label>
+              Agente collegato
+              {ruoli.includes("agente") && <span className="text-destructive">*</span>}
+            </Label>
             <Select value={codiceAgente} onValueChange={setCodiceAgente}>
               <SelectTrigger><SelectValue placeholder="Seleziona un agente..." /></SelectTrigger>
               <SelectContent>
@@ -369,6 +375,11 @@ function EditUtenteDialog({ utente, onClose }: { utente: UserRow; onClose: () =>
                 ))}
               </SelectContent>
             </Select>
+            {ruoli.includes("preventivi_write") && !ruoli.includes("agente") && (
+              <p className="text-xs text-muted-foreground">
+                Serve ai ruoli Agente e Preventivi — Scrittura per legare i preventivi a questa persona.
+              </p>
+            )}
           </div>
         )}
         <label className="flex items-center gap-2 text-sm">
@@ -445,7 +456,7 @@ function NewUtenteDialog({ onClose }: { onClose: () => void }) {
   const fnInviaCred = useServerFn(inviaCredenziali);
 
   const richiedeStore = ruoli.includes("store_manager");
-  const richiedeAgente = ruoli.includes("agente");
+  const richiedeAgente = ruoli.includes("agente") || ruoli.includes("preventivi_write");
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -453,7 +464,7 @@ function NewUtenteDialog({ onClose }: { onClose: () => void }) {
       if (password.length < 8) throw new Error("Password minimo 8 caratteri");
       if (ruoli.length === 0) throw new Error("Seleziona almeno un ruolo");
       if (richiedeStore && storeId === "_none") throw new Error("Il ruolo Store Manager richiede un punto vendita");
-      if (richiedeAgente && codiceAgente === "_none") throw new Error("Il ruolo Agente richiede un agente collegato");
+      if (ruoli.includes("agente") && codiceAgente === "_none") throw new Error("Il ruolo Agente richiede un agente collegato");
       const res = await fn({ data: {
         email: email.trim(),
         password,
@@ -577,7 +588,10 @@ function NewUtenteDialog({ onClose }: { onClose: () => void }) {
         </div>
         {richiedeAgente && (
           <div className="space-y-1.5">
-            <Label>Agente collegato <span className="text-destructive">*</span></Label>
+            <Label>
+              Agente collegato
+              {ruoli.includes("agente") && <span className="text-destructive">*</span>}
+            </Label>
             <Select value={codiceAgente} onValueChange={setCodiceAgente}>
               <SelectTrigger><SelectValue placeholder="Seleziona un agente..." /></SelectTrigger>
               <SelectContent>
@@ -587,6 +601,11 @@ function NewUtenteDialog({ onClose }: { onClose: () => void }) {
                 ))}
               </SelectContent>
             </Select>
+            {ruoli.includes("preventivi_write") && !ruoli.includes("agente") && (
+              <p className="text-xs text-muted-foreground">
+                Serve ai ruoli Agente e Preventivi — Scrittura per legare i preventivi a questa persona.
+              </p>
+            )}
           </div>
         )}
         <label className="flex items-center gap-2 text-sm">
