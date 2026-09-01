@@ -34,11 +34,72 @@ export type TipoRiga = Database["public"]["Enums"]["tipo_riga_preventivo"];
 export type TipoDocumento = Database["public"]["Enums"]["tipo_documento"];
 
 export type { ClienteRow, CantiereRow, Agente } from "./clienti-api";
-export const fetchCliente = _fetchCliente;
 export const fetchAgenti = _fetchAgenti;
-export async function searchClienti(q: string): Promise<ClienteRow[]> {
-  return _fetchClienti({ search: q }, 30);
+
+/** Riga restituita dalle RPC lite (anagrafica cliente senza dati credito). */
+interface ClienteLiteRpc {
+  id: string;
+  ragione_sociale: string | null;
+  partita_iva: string | null;
+  indirizzo: string | null;
+  cap: string | null;
+  citta: string | null;
+  provincia: string | null;
+  fascia_listino_default: FasciaListino | null;
+  codice_agente: string | null;
 }
+
+function mapLite(r: ClienteLiteRpc): ClienteRow {
+  return {
+    id: r.id,
+    ragione_sociale: r.ragione_sociale,
+    id_cliente: null,
+    piva: r.partita_iva,
+    fascia_listino_default: r.fascia_listino_default,
+    indirizzo: r.indirizzo,
+    cap: r.cap,
+    citta: r.citta,
+    provincia: r.provincia,
+    codice_agente: r.codice_agente,
+    agente: null,
+    comune: r.citta ? { nome: r.citta, provincia: r.provincia } : null,
+  };
+}
+
+/** Legge una singola anagrafica cliente tramite RPC lite (no RLS clienti piena). */
+async function fetchClienteLite(id: string): Promise<ClienteRow | null> {
+  const { data, error } = await supabase.rpc("get_cliente_lite" as never, {
+    _id: id,
+  } as never);
+  if (error) throw error;
+  const rows = (data as unknown as ClienteLiteRpc[] | null) ?? [];
+  return rows[0] ? mapLite(rows[0]) : null;
+}
+
+export const fetchCliente = fetchClienteLite;
+
+export async function searchClienti(q: string): Promise<ClienteRow[]> {
+  const { data, error } = await supabase.rpc("get_clienti_lite_search" as never, {
+    _q: q ?? "",
+  } as never);
+  if (error) throw error;
+  return ((data as unknown as ClienteLiteRpc[] | null) ?? []).map(mapLite);
+}
+
+/** Risolve i nomi cliente per una lista di documenti usando la RPC lite. */
+async function popolaClientiLite(items: PreventivoListItem[]): Promise<void> {
+  const ids = [...new Set(items.map((i) => i.cliente_id).filter((v): v is string => !!v))];
+  if (ids.length === 0) return;
+  const rows = await Promise.all(ids.map((id) => fetchClienteLite(id)));
+  const map = new Map<string, { id: string; ragione_sociale: string }>();
+  for (const r of rows) {
+    if (r) map.set(r.id, { id: r.id, ragione_sociale: r.ragione_sociale ?? "—" });
+  }
+  for (const it of items) {
+    it.cliente = it.cliente_id ? (map.get(it.cliente_id) ?? null) : null;
+  }
+}
+
 export async function fetchCantieriByCliente(cliente_id: string): Promise<CantiereRow[]> {
   return _fetchCantieri(cliente_id);
 }
