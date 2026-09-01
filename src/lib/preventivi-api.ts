@@ -164,7 +164,7 @@ export async function fetchPreventivi(f: PreventiviFilters): Promise<PreventivoL
     .from("preventivi")
     .select(
       `*,
-       cliente:clienti(id, ragione_sociale),
+       cantiere:cantieri(id, nome),
        cantiere:cantieri(id, nome),
        blocchi:blocchi_preventivo(righe:righe_preventivo(tipo_riga, quantita, qta_ordinata))`,
     )
