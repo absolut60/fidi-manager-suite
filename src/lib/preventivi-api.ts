@@ -10,8 +10,6 @@ import {
   type FasciaListino,
 } from "./kit-api";
 import {
-  fetchClienti as _fetchClienti,
-  fetchCliente as _fetchCliente,
   fetchCantieri as _fetchCantieri,
   fetchAgenti as _fetchAgenti,
   type ClienteRow,
