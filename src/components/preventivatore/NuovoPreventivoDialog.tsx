@@ -98,7 +98,9 @@ export function NuovoPreventivoDialog({
       const tipoDocFinal: TipoDoc = tipoDoc || "PREVENTIVO";
       return createPreventivo({
         cliente_id: clienteId,
-        cantiere_id: cantiereId,
+        cantiere_id: modoCantiere === "provvisorio" ? null : cantiereId,
+        cantiere_descrizione:
+          modoCantiere === "provvisorio" ? cantiereDescrizione.trim() || null : null,
         agente_codice: agenteId,
         filiale: filiale || null,
         fascia_listino: fasciaFinal,
