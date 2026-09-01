@@ -32,6 +32,10 @@ export function NuovoPreventivoDialog({
   const [cantiereId, setCantiereId] = useState<string | null>(null);
   const [modoCantiere, setModoCantiere] = useState<"seleziona" | "crea" | "provvisorio">("seleziona");
   const [cantiereDescrizione, setCantiereDescrizione] = useState("");
+  const [nuovoCantNome, setNuovoCantNome] = useState("");
+  const [nuovoCantIndirizzo, setNuovoCantIndirizzo] = useState("");
+  const [nuovoCantCitta, setNuovoCantCitta] = useState("");
+  const [nuovoCantProvincia, setNuovoCantProvincia] = useState("");
   const [agenteId, setAgenteId] = useState<string | null>(null);
   const [filiale, setFiliale] = useState("");
   const [fascia, setFascia] = useState<FasciaListino>("A");
