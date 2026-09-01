@@ -69,6 +69,7 @@ type NavGroupKey =
 type RichiesteScope = "all" | "manage" | "approve" | "gestione";
 
 type NavItem = {
+  id?: string;
   to: string;
   label: string;
   icon: typeof LayoutDashboard;
