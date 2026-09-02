@@ -60,6 +60,7 @@ type Filtri = {
   filtroTipoSoggetto: "tutti" | "fisica" | "giuridica";
   fatturato: "tutti" | "nessuno" | "0_10k" | "10k_50k" | "50k_100k" | "oltre_100k";
   filtroConsenso: ConsensoFiltro;      // almeno un contatto con quel consenso attivo
+  filtroEmail: "tutti" | "con" | "senza";
   citta: string;
   provincia: string;
   ricerca: string;
@@ -77,6 +78,7 @@ const FILTRI_DEFAULT: Filtri = {
   filtroTipoSoggetto: "giuridica",
   fatturato: "tutti",
   filtroConsenso: "tutti",
+  filtroEmail: "tutti",
   citta: "",
   provincia: "",
   ricerca: "",
@@ -266,17 +268,74 @@ function MarketingSegmentiPage() {
     },
   });
 
-  // Intersezione id-filter set (semaforo ∩ fatturato ∩ consenso ∩ lista statica)
+  // === Filtro email valida: cliente con email aziendale valida O almeno un contatto valido ===
+  const { data: emailValidaIds } = useQuery({
+    queryKey: ["email-valida-ids-marketing", filtri.filtroEmail],
+    enabled: canSee && filtri.filtroEmail !== "tutti",
+    staleTime: 60_000,
+    queryFn: async () => {
+      const conEmail = new Set<string>();
+      // clienti con email aziendale valida
+      let off = 0;
+      const size = 1000;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await supabase
+          .from("clienti")
+          .select("id, email")
+          .range(off, off + size - 1);
+        if (error) throw error;
+        const batch = (data ?? []) as Array<{ id: string; email: string | null }>;
+        for (const c of batch) if (isEmailValida(c.email)) conEmail.add(c.id);
+        if (batch.length < size) break;
+        off += size;
+      }
+      // clienti con almeno un contatto con email valida
+      off = 0;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await supabase
+          .from("contatti")
+          .select("cliente_id, email")
+          .range(off, off + size - 1);
+        if (error) throw error;
+        const batch = (data ?? []) as Array<{ cliente_id: string | null; email: string | null }>;
+        for (const k of batch) if (k.cliente_id && isEmailValida(k.email)) conEmail.add(k.cliente_id);
+        if (batch.length < size) break;
+        off += size;
+      }
+      if (filtri.filtroEmail === "con") return Array.from(conEmail);
+      // "senza": TUTTI gli id clienti NON in conEmail
+      const senza: string[] = [];
+      off = 0;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await supabase
+          .from("clienti")
+          .select("id")
+          .range(off, off + size - 1);
+        if (error) throw error;
+        const batch = (data ?? []) as Array<{ id: string }>;
+        for (const c of batch) if (!conEmail.has(c.id)) senza.push(c.id);
+        if (batch.length < size) break;
+        off += size;
+      }
+      return senza;
+    },
+  });
+
+  // Intersezione id-filter set (semaforo ∩ fatturato ∩ consenso ∩ email valida ∩ lista statica)
   const includeIds = useMemo<string[] | null>(() => {
     const sources: string[][] = [];
     if (semaforoIds) sources.push(semaforoIds);
     if (fatturatoIds) sources.push(fatturatoIds);
     if (consensoIds) sources.push(consensoIds);
+    if (emailValidaIds) sources.push(emailValidaIds);
     if (listaStatica) sources.push(listaStatica.ids);
     if (sources.length === 0) return null;
     const sets = sources.map((s) => new Set(s));
     return sources[0].filter((id) => sets.every((s) => s.has(id)));
-  }, [semaforoIds, fatturatoIds, consensoIds, listaStatica]);
+  }, [semaforoIds, fatturatoIds, consensoIds, emailValidaIds, listaStatica]);
 
   // === Query builder — allineato a src/routes/_app/clienti.tsx (fonte unica) ===
   function buildQuery(select: string, count: "exact" | undefined, idsSubset?: string[]) {
@@ -306,6 +365,7 @@ function MarketingSegmentiPage() {
   const classifReady = filtri.semaforo === "tutti" || !!classifList;
   const fatturatoReady = filtri.fatturato === "tutti" || !!fatturatoIds;
   const consensoReady = filtri.filtroConsenso === "tutti" || !!consensoIds;
+  const emailReady = filtri.filtroEmail === "tutti" || !!emailValidaIds;
 
   // === Conteggio segmento + lista paginata (100 per pagina) ===
   const PAGE_SIZE = 100;
@@ -313,7 +373,7 @@ function MarketingSegmentiPage() {
   const SELECT_LISTA = "id, ragione_sociale, email, citta, provincia, categoria, agente, codice_agente";
   const { data: segmento, isLoading } = useQuery({
     queryKey: ["marketing-segmento", filtri, includeIds?.length ?? null, listaStatica?.id ?? null, pagina],
-    enabled: canSee && classifReady && fatturatoReady && consensoReady,
+    enabled: canSee && classifReady && fatturatoReady && consensoReady && emailReady,
     queryFn: async () => {
       // Liste id molto lunghe: interroga a blocchi e pagina in memoria
       if (includeIds && includeIds.length > CHUNK_IDS) {
@@ -974,6 +1034,20 @@ function MarketingSegmentiPage() {
                 <SelectItem value="marketing_diretto">Con {CONSENSO_LABEL.marketing_diretto}</SelectItem>
                 <SelectItem value="marketing_media">Con {CONSENSO_LABEL.marketing_media}</SelectItem>
                 <SelectItem value="profilazione">Con {CONSENSO_LABEL.profilazione}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Email valida</Label>
+            <Select
+              value={filtri.filtroEmail}
+              onValueChange={(v) => setFiltri((p) => ({ ...p, filtroEmail: v as Filtri["filtroEmail"] }))}
+            >
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="tutti">Tutte</SelectItem>
+                <SelectItem value="con">Con email valida</SelectItem>
+                <SelectItem value="senza">Senza email valida</SelectItem>
               </SelectContent>
             </Select>
           </div>
