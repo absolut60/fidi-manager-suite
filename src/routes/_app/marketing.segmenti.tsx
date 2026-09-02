@@ -60,6 +60,7 @@ type Filtri = {
   filtroTipoSoggetto: "tutti" | "fisica" | "giuridica";
   fatturato: "tutti" | "nessuno" | "0_10k" | "10k_50k" | "50k_100k" | "oltre_100k";
   filtroConsenso: ConsensoFiltro;      // almeno un contatto con quel consenso attivo
+  filtroEmail: "tutti" | "con" | "senza";
   citta: string;
   provincia: string;
   ricerca: string;
@@ -77,6 +78,7 @@ const FILTRI_DEFAULT: Filtri = {
   filtroTipoSoggetto: "giuridica",
   fatturato: "tutti",
   filtroConsenso: "tutti",
+  filtroEmail: "tutti",
   citta: "",
   provincia: "",
   ricerca: "",
