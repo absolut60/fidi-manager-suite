@@ -1038,6 +1038,20 @@ function MarketingSegmentiPage() {
             </Select>
           </div>
           <div>
+            <Label className="text-xs">Email valida</Label>
+            <Select
+              value={filtri.filtroEmail}
+              onValueChange={(v) => setFiltri((p) => ({ ...p, filtroEmail: v as Filtri["filtroEmail"] }))}
+            >
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="tutti">Tutte</SelectItem>
+                <SelectItem value="con">Con email valida</SelectItem>
+                <SelectItem value="senza">Senza email valida</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
             <Label className="text-xs">Città</Label>
             <Input value={filtri.citta} onChange={(e) => setFiltri((p) => ({ ...p, citta: e.target.value }))} placeholder="Es. Milano" />
           </div>
