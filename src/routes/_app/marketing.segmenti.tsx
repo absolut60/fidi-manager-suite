@@ -3,7 +3,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Sparkles, Save, Users, Mail, MailX, Trash2, RefreshCw,
-  ChevronRight, ChevronDown, Send, Loader2,
+  ChevronRight, ChevronDown, Send, Loader2, Search,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -62,6 +62,7 @@ type Filtri = {
   filtroConsenso: ConsensoFiltro;      // almeno un contatto con quel consenso attivo
   citta: string;
   provincia: string;
+  ricerca: string;
 };
 const TAB_ELENCO = "elenco";
 const TAB_SALVATI = "salvati";
@@ -78,6 +79,7 @@ const FILTRI_DEFAULT: Filtri = {
   filtroConsenso: "tutti",
   citta: "",
   provincia: "",
+  ricerca: "",
 };
 
 type ContattoRiga = {
@@ -125,6 +127,13 @@ function MarketingSegmentiPage() {
   );
 
   const [filtri, setFiltri] = useState<Filtri>(FILTRI_DEFAULT);
+  const [ricercaInput, setRicercaInput] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setFiltri((p) => (p.ricerca === ricercaInput ? p : { ...p, ricerca: ricercaInput }));
+    }, 300);
+    return () => clearTimeout(t);
+  }, [ricercaInput]);
   const [saveOpen, setSaveOpen] = useState(false);
   const [tab, setTab] = useState(TAB_ELENCO);
   const [nome, setNome] = useState("");
@@ -283,6 +292,7 @@ function MarketingSegmentiPage() {
     else if (filtri.filtroBlocco === "non_bloccati") q = q.eq("bloccato", false);
     if (filtri.filtroTipoSoggetto === "fisica") q = q.eq("tipo_soggetto", "persona_fisica");
     else if (filtri.filtroTipoSoggetto === "giuridica") q = q.eq("tipo_soggetto", "azienda");
+    if (filtri.ricerca.trim()) q = q.ilike("ragione_sociale", `%${filtri.ricerca.trim()}%`);
     if (filtri.citta.trim()) q = q.ilike("citta", `%${filtri.citta.trim()}%`);
     if (filtri.provincia.trim()) q = q.ilike("provincia", `%${filtri.provincia.trim()}%`);
     if (includeIds) {
@@ -668,6 +678,7 @@ function MarketingSegmentiPage() {
     // Merge con i default per essere robusti a salvataggi vecchi/parziali
     setListaStatica(null);
     setFiltri({ ...FILTRI_DEFAULT, ...parsed });
+    setRicercaInput(parsed.ricerca ?? "");
     setPagina(1);
     setTab(TAB_ELENCO);
     toast.info("Filtri del segmento caricati");
@@ -698,6 +709,7 @@ function MarketingSegmentiPage() {
       // Il reset-selezione legato al cambio filtri va saltato.
       skipResetSelezione.current = true;
       setFiltri({ ...FILTRI_DEFAULT, filtroTipoSoggetto: "tutti" });
+      setRicercaInput("");
       setListaStatica({ id: s.id, nome: s.nome, ids });
       setSelezionati(new Set(ids));
       setContattiEsclusi(new Set());
@@ -754,6 +766,7 @@ function MarketingSegmentiPage() {
             onClick={() => {
               setListaStatica(null);
               setFiltri(FILTRI_DEFAULT);
+              setRicercaInput("");
             }}
           >
             <RefreshCw className="size-4 mr-2" /> Azzera filtri
@@ -839,6 +852,18 @@ function MarketingSegmentiPage() {
       {/* Filtri */}
       <Card className="p-4">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="md:col-span-2 lg:col-span-4">
+            <Label className="text-xs">Cerca cliente</Label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+              <Input
+                className="pl-9"
+                placeholder="Cerca per ragione sociale…"
+                value={ricercaInput}
+                onChange={(e) => setRicercaInput(e.target.value)}
+              />
+            </div>
+          </div>
           <div>
             <Label className="text-xs">Punto vendita</Label>
             <Select value={filtri.storeFiltro} onValueChange={(v) => setFiltri((p) => ({ ...p, storeFiltro: v }))}>
