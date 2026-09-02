@@ -268,59 +268,17 @@ function MarketingSegmentiPage() {
     },
   });
 
-  // === Filtro email valida: cliente con email aziendale valida O almeno un contatto valido ===
+  // === Filtro email valida: cliente con email aziendale valida O almeno un contatto valido (via RPC) ===
   const { data: emailValidaIds } = useQuery({
     queryKey: ["email-valida-ids-marketing", filtri.filtroEmail],
     enabled: canSee && filtri.filtroEmail !== "tutti",
     staleTime: 60_000,
     queryFn: async () => {
-      const conEmail = new Set<string>();
-      // clienti con email aziendale valida
-      let off = 0;
-      const size = 1000;
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        const { data, error } = await supabase
-          .from("clienti")
-          .select("id, email")
-          .range(off, off + size - 1);
-        if (error) throw error;
-        const batch = (data ?? []) as Array<{ id: string; email: string | null }>;
-        for (const c of batch) if (isEmailValida(c.email)) conEmail.add(c.id);
-        if (batch.length < size) break;
-        off += size;
-      }
-      // clienti con almeno un contatto con email valida
-      off = 0;
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        const { data, error } = await supabase
-          .from("contatti")
-          .select("cliente_id, email")
-          .range(off, off + size - 1);
-        if (error) throw error;
-        const batch = (data ?? []) as Array<{ cliente_id: string | null; email: string | null }>;
-        for (const k of batch) if (k.cliente_id && isEmailValida(k.email)) conEmail.add(k.cliente_id);
-        if (batch.length < size) break;
-        off += size;
-      }
-      if (filtri.filtroEmail === "con") return Array.from(conEmail);
-      // "senza": TUTTI gli id clienti NON in conEmail
-      const senza: string[] = [];
-      off = 0;
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        const { data, error } = await supabase
-          .from("clienti")
-          .select("id")
-          .range(off, off + size - 1);
-        if (error) throw error;
-        const batch = (data ?? []) as Array<{ id: string }>;
-        for (const c of batch) if (!conEmail.has(c.id)) senza.push(c.id);
-        if (batch.length < size) break;
-        off += size;
-      }
-      return senza;
+      const { data, error } = await supabase.rpc("get_clienti_email_valida_ids", {
+        _modo: filtri.filtroEmail, // "con" | "senza"
+      } as never);
+      if (error) throw error;
+      return ((data ?? []) as Array<{ id: string }>).map((r) => r.id);
     },
   });
 
