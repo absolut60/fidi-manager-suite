@@ -330,11 +330,12 @@ function MarketingSegmentiPage() {
     if (semaforoIds) sources.push(semaforoIds);
     if (fatturatoIds) sources.push(fatturatoIds);
     if (consensoIds) sources.push(consensoIds);
+    if (emailValidaIds) sources.push(emailValidaIds);
     if (listaStatica) sources.push(listaStatica.ids);
     if (sources.length === 0) return null;
     const sets = sources.map((s) => new Set(s));
     return sources[0].filter((id) => sets.every((s) => s.has(id)));
-  }, [semaforoIds, fatturatoIds, consensoIds, listaStatica]);
+  }, [semaforoIds, fatturatoIds, consensoIds, emailValidaIds, listaStatica]);
 
   // === Query builder — allineato a src/routes/_app/clienti.tsx (fonte unica) ===
   function buildQuery(select: string, count: "exact" | undefined, idsSubset?: string[]) {
