@@ -365,6 +365,7 @@ function MarketingSegmentiPage() {
   const classifReady = filtri.semaforo === "tutti" || !!classifList;
   const fatturatoReady = filtri.fatturato === "tutti" || !!fatturatoIds;
   const consensoReady = filtri.filtroConsenso === "tutti" || !!consensoIds;
+  const emailReady = filtri.filtroEmail === "tutti" || !!emailValidaIds;
 
   // === Conteggio segmento + lista paginata (100 per pagina) ===
   const PAGE_SIZE = 100;
@@ -372,7 +373,7 @@ function MarketingSegmentiPage() {
   const SELECT_LISTA = "id, ragione_sociale, email, citta, provincia, categoria, agente, codice_agente";
   const { data: segmento, isLoading } = useQuery({
     queryKey: ["marketing-segmento", filtri, includeIds?.length ?? null, listaStatica?.id ?? null, pagina],
-    enabled: canSee && classifReady && fatturatoReady && consensoReady,
+    enabled: canSee && classifReady && fatturatoReady && consensoReady && emailReady,
     queryFn: async () => {
       // Liste id molto lunghe: interroga a blocchi e pagina in memoria
       if (includeIds && includeIds.length > CHUNK_IDS) {
