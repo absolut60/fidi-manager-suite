@@ -133,7 +133,7 @@ export const inviaEmailProvaCampagna = createServerFn({ method: "POST" })
 
     const { data: camp, error } = await supabase
       .from("campagne_email_marketing")
-      .select("id, nome, oggetto, corpo_html")
+      .select("id, nome, oggetto, corpo_html, mittente_nome, mittente_email")
       .eq("id", data.campagnaId)
       .maybeSingle();
     if (error || !camp) throw new Error("Campagna non trovata");
@@ -144,6 +144,8 @@ export const inviaEmailProvaCampagna = createServerFn({ method: "POST" })
       .eq("id", userId)
       .maybeSingle();
     const nomeOp = `${prof?.nome ?? ""} ${prof?.cognome ?? ""}`.trim() || "Ufficio Marketing MADE";
+    const nomeMittente = (camp.mittente_nome as string | null)?.trim() || nomeOp;
+    const emailMittente = (camp.mittente_email as string | null)?.trim() || (prof?.email ?? null);
 
     const { buildEmailCampagna, DATI_ESEMPIO } = await import("@/lib/campagna-marketing-email");
     const appUrl = process.env.VITE_APP_URL ?? "https://fidi-manager-suite.lovable.app";
@@ -152,7 +154,7 @@ export const inviaEmailProvaCampagna = createServerFn({ method: "POST" })
       corpo: camp.corpo_html as string,
       dati: DATI_ESEMPIO,
       sede: null,
-      mittente: { nome: nomeOp, email: prof?.email ?? null },
+      mittente: { nome: nomeMittente, email: emailMittente },
       linkRecesso: `${appUrl}/recesso/00000000-0000-0000-0000-000000000000`,
       useCid: true,
       baseUrl: appUrl,
