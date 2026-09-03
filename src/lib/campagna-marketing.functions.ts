@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-const MARKETING_ROLES = ["amministratore", "amministrazione", "direzione"] as const;
+const MARKETING_ROLES = ["amministratore", "amministrazione", "direzione", "marketing"] as const;
 
 async function assertRuoloMarketing(
   supabase: { from: (t: string) => any },
