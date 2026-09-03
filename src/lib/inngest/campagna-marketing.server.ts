@@ -309,6 +309,7 @@ export const invioCampagnaMarketing = inngest.createFunction(
               fromName: "MADE Distribuzione",
               inlineLogo: true,
               ...(allegati.length ? { attachments: allegati } : {}),
+              ...(cfg.emailOperatore && isEmailValida(cfg.emailOperatore) ? { replyTo: cfg.emailOperatore } : {}),
             });
 
             if (!sendRes.ok) {
