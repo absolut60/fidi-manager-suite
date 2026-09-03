@@ -51,6 +51,8 @@ type Campagna = {
   saltati: number;
   inviata_at: string | null;
   note: string | null;
+  mittente_nome: string | null;
+  mittente_email: string | null;
 };
 
 type ConteggiCampagna = {
@@ -104,13 +106,13 @@ function fmtDateTime(s: string | null) {
 }
 
 /** Anteprima: stessa pipeline dell'invio reale (con footer di recesso). */
-function buildAnteprima(oggetto: string, corpo: string): { oggetto: string; html: string } {
+function buildAnteprima(oggetto: string, corpo: string, mittenteNome?: string): { oggetto: string; html: string } {
   return buildEmailCampagna({
     oggetto,
     corpo,
     dati: DATI_ESEMPIO,
     sede: null,
-    mittente: { nome: "Ufficio Marketing MADE" },
+    mittente: { nome: mittenteNome || "Ufficio Marketing MADE" },
     linkRecesso: "#",
     useCid: false,
     // In anteprima le immagini vengono risolte sull'origin corrente.
@@ -140,7 +142,7 @@ function MarketingCampagnePage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("campagne_email_marketing")
-        .select("id, nome, oggetto, corpo_html, stato, created_at, updated_at, inviati, falliti, saltati, inviata_at, note")
+        .select("id, nome, oggetto, corpo_html, stato, created_at, updated_at, inviati, falliti, saltati, inviata_at, note, mittente_nome, mittente_email")
         .order("updated_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as Campagna[];
@@ -428,10 +430,13 @@ function EditorCampagna({
   const [nome, setNome] = useState(campagna.nome);
   const [oggetto, setOggetto] = useState(campagna.oggetto);
   const [corpo, setCorpo] = useState(campagna.corpo_html);
+  const [mittNome, setMittNome] = useState(campagna.mittente_nome ?? "");
+  const [mittEmail, setMittEmail] =State(campagna.mittente_email ?? "");
   const [modoHtml, setModoHtml] = useState(false);
   // Valori salvati: servono a capire se ci sono modifiche pendenti.
   const [salvato, setSalvato] = useState({
     nome: campagna.nome, oggetto: campagna.oggetto, corpo: campagna.corpo_html,
+    mittente_nome: campagna.mittente_nome ?? "", mittente_email: campagna.mittente_email ?? "",
   });
   const [confermaChiusura, setConfermaChiusura] = useState(false);
   const corpoRef = useRef<HTMLTextAreaElement | null>(null);
@@ -449,7 +454,7 @@ function EditorCampagna({
     return `/api/public/email-img/${path}`;
   };
 
-  const anteprima = useMemo(() => buildAnteprima(oggetto, corpo), [oggetto, corpo]);
+  const anteprima = useMemo(() => buildAnteprima(oggetto, corpo, mittNome), [oggetto, corpo, mittNome]);
 
   const salva = useMutation({
     mutationFn: async (stato: "bozza" | "pronta") => {
@@ -457,14 +462,20 @@ function EditorCampagna({
       if (!oggetto.trim()) throw new Error("L'oggetto è obbligatorio");
       const { error } = await supabase
         .from("campagne_email_marketing")
-        .update({ nome: nome.trim(), oggetto: oggetto.trim(), corpo_html: pulisciHtmlEmail(corpo), stato })
+        .update({
+          nome: nome.trim(), oggetto: oggetto.trim(), corpo_html: pulisciHtmlEmail(corpo), stato,
+          mittente_nome: mittNome.trim() || null, mittente_email: mittEmail.trim() || null,
+        })
         .eq("id", campagna.id);
       if (error) throw error;
       return stato;
     },
     onSuccess: (stato) => {
       toast.success(stato === "pronta" ? "Campagna segnata come pronta" : "Campagna salvata");
-      setSalvato({ nome: nome.trim(), oggetto: oggetto.trim(), corpo });
+      setSalvato({
+        nome: nome.trim(), oggetto: oggetto.trim(), corpo,
+        mittente_nome: mittNome.trim(), mittente_email: mittEmail.trim(),
+      });
       onSaved();
       if (stato === "pronta") onClose();
     },
@@ -474,7 +485,9 @@ function EditorCampagna({
   const modifichePendenti =
     nome.trim() !== salvato.nome.trim() ||
     oggetto.trim() !== salvato.oggetto.trim() ||
-    corpo !== salvato.corpo;
+    corpo !== salvato.corpo ||
+    mittNome.trim() !== salvato.mittente_nome.trim() ||
+    mittEmail.trim() !== salvato.mittente_email.trim();
 
   /** La chiusura passa sempre da qui: con modifiche pendenti chiede conferma. */
   const tentaChiusura = () => {
@@ -528,6 +541,30 @@ function EditorCampagna({
               <Label>Oggetto email</Label>
               <Input value={oggetto} onChange={(e) => setOggetto(e.target.value)} placeholder="Oggetto visibile al cliente" />
             </div>
+
+            <Card className="p-4 space-y-3">
+              <div className="text-sm font-medium">Mittente (opzionale)</div>
+              <div className="space-y-2">
+                <Label>Nome mittente</Label>
+                <Input
+                  value={mittNome}
+                  onChange={(e) => setMittNome(e.target.value)}
+                  placeholder="Es. Ufficio Marketing MADE"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Email per le risposte (Reply-To)</Label>
+                <Input
+                  value={mittEmail}
+                  onChange={(e) => setMittEmail(e.target.value)}
+                  placeholder="Es. marketing@madepoint.it"
+                />
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Se lasci vuoto, viene usato nome ed email di chi invia. L'indirizzo mittente visibile resta quello aziendale.
+              </p>
+            </Card>
+
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-3">
                 <Label>Corpo email</Label>
