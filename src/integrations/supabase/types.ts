@@ -936,6 +936,8 @@ export type Database = {
           id: string
           inviata_at: string | null
           inviati: number
+          mittente_email: string | null
+          mittente_nome: string | null
           nome: string
           note: string | null
           oggetto: string
@@ -954,6 +956,8 @@ export type Database = {
           id?: string
           inviata_at?: string | null
           inviati?: number
+          mittente_email?: string | null
+          mittente_nome?: string | null
           nome: string
           note?: string | null
           oggetto: string
@@ -972,6 +976,8 @@ export type Database = {
           id?: string
           inviata_at?: string | null
           inviati?: number
+          mittente_email?: string | null
+          mittente_nome?: string | null
           nome?: string
           note?: string | null
           oggetto?: string
