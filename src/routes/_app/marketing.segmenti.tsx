@@ -338,7 +338,13 @@ function MarketingSegmentiPage() {
   // === Conteggio segmento + lista paginata (100 per pagina) ===
   const PAGE_SIZE = 100;
   const [pagina, setPagina] = useState(1);
-  const SELECT_LISTA = "id, ragione_sociale, email, citta, provincia, categoria, agente, codice_agente";
+  const SELECT_LISTA = "id, ragione_sociale, email, citta, provincia, categoria, agente, codice_agente, store_id";
+
+  const storeNomeById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const s of (stores ?? []) as any[]) m.set(s.id, s.nome);
+    return m;
+  }, [stores]);
   const { data: segmento, isLoading } = useQuery({
     queryKey: ["marketing-segmento", filtri, includeIds?.length ?? null, listaStatica?.id ?? null, pagina],
     enabled: canSee && classifReady && fatturatoReady && consensoReady && emailReady,
@@ -1164,6 +1170,7 @@ function MarketingSegmentiPage() {
               <TableHead className="w-8" />
               <TableHead>Ragione sociale</TableHead>
               <TableHead>Città / Prov.</TableHead>
+              <TableHead>Sede</TableHead>
               <TableHead>Agente</TableHead>
               <TableHead>Categoria</TableHead>
               <TableHead className="text-center">Email valida</TableHead>
@@ -1171,14 +1178,14 @@ function MarketingSegmentiPage() {
           </TableHeader>
           <TableBody>
             {(isLoading || caricamentoTutti) && (
-              <TableRow><TableCell colSpan={7} className="text-muted-foreground text-center py-6">
+              <TableRow><TableCell colSpan={8} className="text-muted-foreground text-center py-6">
                 {caricamentoTutti ? (
                   <span className="inline-flex items-center gap-2"><Loader2 className="size-4 animate-spin" /> Selezione dell'intero segmento…</span>
                 ) : "Caricamento..."}
               </TableCell></TableRow>
             )}
             {!isLoading && !caricamentoTutti && rows.length === 0 && (
-              <TableRow><TableCell colSpan={7} className="text-muted-foreground text-center py-6">Nessun cliente corrisponde ai filtri</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="text-muted-foreground text-center py-6">Nessun cliente corrisponde ai filtri</TableCell></TableRow>
             )}
             {!caricamentoTutti && rows.map((c: any) => {
               const contatti = contattiMap?.get(c.id) ?? [];
@@ -1211,6 +1218,7 @@ function MarketingSegmentiPage() {
                     <TableCell className="text-sm text-muted-foreground">
                       {[c.citta, c.provincia].filter(Boolean).join(" — ") || "—"}
                     </TableCell>
+                    <TableCell className="text-sm">{c.store_id ? (storeNomeById.get(c.store_id) ?? "—") : "—"}</TableCell>
                     <TableCell className="text-sm">{c.agente || (c.codice_agente ? c.codice_agente : "—")}</TableCell>
                     <TableCell className="text-sm">{c.categoria || "—"}</TableCell>
                     <TableCell className="text-center">
@@ -1228,7 +1236,7 @@ function MarketingSegmentiPage() {
                   {isOpen && (
                     <TableRow key={`${c.id}-exp`} className="bg-muted/30 hover:bg-muted/30">
                       <TableCell />
-                      <TableCell colSpan={6} className="py-3">
+                    <TableCell colSpan={7} className="py-3">
                         <div className="space-y-3">
                           <div className="flex items-center gap-2 text-sm">
                             <Checkbox
