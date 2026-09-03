@@ -90,12 +90,12 @@ export const invioCampagnaMarketing = inngest.createFunction(
     const prep = await step.run("prepara", async () => {
       const { data: camp, error } = await supabaseAdmin
         .from("campagne_email_marketing")
-        .select("id, nome, oggetto, corpo_html, stato, operatore_id")
+        .select("id, nome, oggetto, corpo_html, stato, operatore_id, mittente_nome, mittente_email")
         .eq("id", campagna_id)
         .maybeSingle();
       if (error || !camp) throw new Error(`Campagna non trovata: ${error?.message ?? campagna_id}`);
       if (camp.stato === "annullata") {
-        return { annullata: true, oggetto: "", corpo: "", operatoreId: null as string | null };
+        return { annullata: true, oggetto: "", corpo: "", operatoreId: null as string | null, mittenteNome: null as string | null, mittenteEmail: null as string | null };
       }
       await supabaseAdmin
         .from("campagne_email_marketing")
@@ -106,6 +106,8 @@ export const invioCampagnaMarketing = inngest.createFunction(
         oggetto: camp.oggetto as string,
         corpo: camp.corpo_html as string,
         operatoreId: (camp as { operatore_id?: string | null }).operatore_id ?? null,
+        mittenteNome: (camp as { mittente_nome?: string | null }).mittente_nome?.trim() || null,
+        mittenteEmail: (camp as { mittente_email?: string | null }).mittente_email?.trim() || null,
       };
     });
 
@@ -120,17 +122,17 @@ export const invioCampagnaMarketing = inngest.createFunction(
       nomeOperatore: string;
       emailOperatore: string | null;
     }> => {
-      let nome = "Ufficio Marketing MADE";
-      let email: string | null = null;
-      if (prep.operatoreId) {
+      let nome = prep.mittenteNome || "Ufficio Marketing MADE";
+      let email: string | null = prep.mittenteEmail || null;
+      if ((!nome || !email) && prep.operatoreId) {
         const { data } = await supabaseAdmin
           .from("profili")
           .select("nome, cognome, email")
           .eq("id", prep.operatoreId)
           .maybeSingle();
         const n = `${data?.nome ?? ""} ${data?.cognome ?? ""}`.trim();
-        if (n) nome = n;
-        email = data?.email ?? null;
+        if (!nome && n) nome = n;
+        if (!email) email = data?.email ?? null;
       }
       return {
         blocco: await getConfigInt("campagna_marketing_blocco", DEFAULT_BLOCCO),
@@ -307,6 +309,7 @@ export const invioCampagnaMarketing = inngest.createFunction(
               fromName: "MADE Distribuzione",
               inlineLogo: true,
               ...(allegati.length ? { attachments: allegati } : {}),
+              ...(cfg.emailOperatore && isEmailValida(cfg.emailOperatore) ? { replyTo: cfg.emailOperatore } : {}),
             });
 
             if (!sendRes.ok) {
