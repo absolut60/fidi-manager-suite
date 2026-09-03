@@ -191,6 +191,7 @@ export const inviaEmailProvaCampagna = createServerFn({ method: "POST" })
       fromName: "MADE Distribuzione",
       inlineLogo: true,
       ...(attachments.length ? { attachments } : {}),
+      ...(emailMittente && isEmailValida(emailMittente) ? { replyTo: emailMittente } : {}),
     });
     if (!res.ok) throw new Error(res.err ?? "Invio email di prova fallito");
     return { ok: true };
