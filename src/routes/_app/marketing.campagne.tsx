@@ -431,7 +431,7 @@ function EditorCampagna({
   const [oggetto, setOggetto] = useState(campagna.oggetto);
   const [corpo, setCorpo] = useState(campagna.corpo_html);
   const [mittNome, setMittNome] = useState(campagna.mittente_nome ?? "");
-  const [mittEmail, setMittEmail] =State(campagna.mittente_email ?? "");
+  const [mittEmail, setMittEmail] = useState(campagna.mittente_email ?? "");
   const [modoHtml, setModoHtml] = useState(false);
   // Valori salvati: servono a capire se ci sono modifiche pendenti.
   const [salvato, setSalvato] = useState({
