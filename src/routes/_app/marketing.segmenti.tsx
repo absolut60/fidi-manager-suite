@@ -1218,6 +1218,7 @@ function MarketingSegmentiPage() {
                     <TableCell className="text-sm text-muted-foreground">
                       {[c.citta, c.provincia].filter(Boolean).join(" — ") || "—"}
                     </TableCell>
+                    <TableCell className="text-sm">{c.store_id ? (storeNomeById.get(c.store_id) ?? "—") : "—"}</TableCell>
                     <TableCell className="text-sm">{c.agente || (c.codice_agente ? c.codice_agente : "—")}</TableCell>
                     <TableCell className="text-sm">{c.categoria || "—"}</TableCell>
                     <TableCell className="text-center">
