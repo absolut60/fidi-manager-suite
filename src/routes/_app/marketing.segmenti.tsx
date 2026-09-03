@@ -1236,7 +1236,7 @@ function MarketingSegmentiPage() {
                   {isOpen && (
                     <TableRow key={`${c.id}-exp`} className="bg-muted/30 hover:bg-muted/30">
                       <TableCell />
-                      <TableCell colSpan={6} className="py-3">
+                    <TableCell colSpan={7} className="py-3">
                         <div className="space-y-3">
                           <div className="flex items-center gap-2 text-sm">
                             <Checkbox
