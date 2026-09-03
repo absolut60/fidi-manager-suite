@@ -186,7 +186,6 @@ export const inviaEmailProvaCampagna = createServerFn({ method: "POST" })
       subject: `[PROVA] ${oggetto}`,
       html,
       fromName: "MADE Distribuzione",
-      replyTo: prof?.email ?? undefined,
       inlineLogo: true,
       ...(attachments.length ? { attachments } : {}),
     });
