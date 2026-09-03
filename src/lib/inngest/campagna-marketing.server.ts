@@ -90,12 +90,12 @@ export const invioCampagnaMarketing = inngest.createFunction(
     const prep = await step.run("prepara", async () => {
       const { data: camp, error } = await supabaseAdmin
         .from("campagne_email_marketing")
-        .select("id, nome, oggetto, corpo_html, stato, operatore_id")
+        .select("id, nome, oggetto, corpo_html, stato, operatore_id, mittente_nome, mittente_email")
         .eq("id", campagna_id)
         .maybeSingle();
       if (error || !camp) throw new Error(`Campagna non trovata: ${error?.message ?? campagna_id}`);
       if (camp.stato === "annullata") {
-        return { annullata: true, oggetto: "", corpo: "", operatoreId: null as string | null };
+        return { annullata: true, oggetto: "", corpo: "", operatoreId: null as string | null, mittenteNome: null as string | null, mittenteEmail: null as string | null };
       }
       await supabaseAdmin
         .from("campagne_email_marketing")
@@ -106,6 +106,8 @@ export const invioCampagnaMarketing = inngest.createFunction(
         oggetto: camp.oggetto as string,
         corpo: camp.corpo_html as string,
         operatoreId: (camp as { operatore_id?: string | null }).operatore_id ?? null,
+        mittenteNome: (camp as { mittente_nome?: string | null }).mittente_nome?.trim() || null,
+        mittenteEmail: (camp as { mittente_email?: string | null }).mittente_email?.trim() || null,
       };
     });
 
