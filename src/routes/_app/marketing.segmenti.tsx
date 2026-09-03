@@ -1170,6 +1170,7 @@ function MarketingSegmentiPage() {
               <TableHead className="w-8" />
               <TableHead>Ragione sociale</TableHead>
               <TableHead>Città / Prov.</TableHead>
+              <TableHead>Sede</TableHead>
               <TableHead>Agente</TableHead>
               <TableHead>Categoria</TableHead>
               <TableHead className="text-center">Email valida</TableHead>
