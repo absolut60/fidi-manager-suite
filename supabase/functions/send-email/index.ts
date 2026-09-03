@@ -73,6 +73,14 @@ function sanitizeDisplayName(s: string | undefined | null): string {
   return String(s).replace(/[\r\n"]/g, "").trim().slice(0, 80);
 }
 
+/** Estrae l'indirizzo email da un header From del tipo "Nome <email@dominio>" oppure "email@dominio". */
+function estraiIndirizzoEmail(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const match = raw.match(/<([^>]+)>/);
+  if (match) return match[1].trim();
+  return raw.trim();
+}
+
 // Validazione email — fonte di verità: src/lib/email-validazione.ts.
 // Replicata qui perché Deno edge non importa il modulo TS del bundle Vite.
 // Se cambi la regex là, aggiornala anche qui.
