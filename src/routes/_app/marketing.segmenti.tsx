@@ -1178,14 +1178,14 @@ function MarketingSegmentiPage() {
           </TableHeader>
           <TableBody>
             {(isLoading || caricamentoTutti) && (
-              <TableRow><TableCell colSpan={7} className="text-muted-foreground text-center py-6">
+              <TableRow><TableCell colSpan={8} className="text-muted-foreground text-center py-6">
                 {caricamentoTutti ? (
                   <span className="inline-flex items-center gap-2"><Loader2 className="size-4 animate-spin" /> Selezione dell'intero segmento…</span>
                 ) : "Caricamento..."}
               </TableCell></TableRow>
             )}
             {!isLoading && !caricamentoTutti && rows.length === 0 && (
-              <TableRow><TableCell colSpan={7} className="text-muted-foreground text-center py-6">Nessun cliente corrisponde ai filtri</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="text-muted-foreground text-center py-6">Nessun cliente corrisponde ai filtri</TableCell></TableRow>
             )}
             {!caricamentoTutti && rows.map((c: any) => {
               const contatti = contattiMap?.get(c.id) ?? [];
