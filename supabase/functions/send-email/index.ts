@@ -73,6 +73,14 @@ function sanitizeDisplayName(s: string | undefined | null): string {
   return String(s).replace(/[\r\n"]/g, "").trim().slice(0, 80);
 }
 
+/** Estrae l'indirizzo email da un header From del tipo "Nome <email@dominio>" oppure "email@dominio". */
+function estraiIndirizzoEmail(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const match = raw.match(/<([^>]+)>/);
+  if (match) return match[1].trim();
+  return raw.trim();
+}
+
 // Validazione email — fonte di verità: src/lib/email-validazione.ts.
 // Replicata qui perché Deno edge non importa il modulo TS del bundle Vite.
 // Se cambi la regex là, aggiornala anche qui.
@@ -169,10 +177,19 @@ serve(async (req) => {
     const port = parseInt(Deno.env.get("SMTP_PORT") ?? "465");
     const user = Deno.env.get("SMTP_USER")!;
     const pass = Deno.env.get("SMTP_PASS")!;
-    const defaultFrom = Deno.env.get("SMTP_FROM") ?? `FidiManager MADE <${user}>`;
+    const smtpFrom = Deno.env.get("SMTP_FROM");
 
     const displayName = sanitizeDisplayName(fromName);
-    const from = displayName ? `${displayName} <${user}>` : defaultFrom;
+    let from: string;
+    if (smtpFrom) {
+      const indirizzo = estraiIndirizzoEmail(smtpFrom) ?? user;
+      from = displayName ? `${displayName} <${indirizzo}>` : smtpFrom;
+    } else {
+      console.warn(
+        "[send-email] SMTP_FROM mancante, fallback su SMTP_USER che potrebbe non essere un indirizzo email valido",
+      );
+      from = `FidiManager MADE <${user}>`;
+    }
 
     const recipients = Array.isArray(to) ? to : [to];
 
