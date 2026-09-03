@@ -274,11 +274,21 @@ function MarketingSegmentiPage() {
     enabled: canSee && filtri.filtroEmail !== "tutti",
     staleTime: 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_clienti_email_valida_ids", {
-        _modo: filtri.filtroEmail, // "con" | "senza"
-      } as never);
-      if (error) throw error;
-      return ((data ?? []) as Array<{ id: string }>).map((r) => r.id);
+      const all: string[] = [];
+      let off = 0;
+      const size = 1000;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await supabase
+          .rpc("get_clienti_email_valida_ids", { _modo: filtri.filtroEmail } as never)
+          .range(off, off + size - 1);
+        if (error) throw error;
+        const batch = ((data ?? []) as Array<{ id: string }>).map((r) => r.id);
+        all.push(...batch);
+        if (batch.length < size) break;
+        off += size;
+      }
+      return all;
     },
   });
 
