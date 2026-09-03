@@ -338,7 +338,13 @@ function MarketingSegmentiPage() {
   // === Conteggio segmento + lista paginata (100 per pagina) ===
   const PAGE_SIZE = 100;
   const [pagina, setPagina] = useState(1);
-  const SELECT_LISTA = "id, ragione_sociale, email, citta, provincia, categoria, agente, codice_agente";
+  const SELECT_LISTA = "id, ragione_sociale, email, citta, provincia, categoria, agente, codice_agente, store_id";
+
+  const storeNomeById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const s of (stores ?? []) as any[]) m.set(s.id, s.nome);
+    return m;
+  }, [stores]);
   const { data: segmento, isLoading } = useQuery({
     queryKey: ["marketing-segmento", filtri, includeIds?.length ?? null, listaStatica?.id ?? null, pagina],
     enabled: canSee && classifReady && fatturatoReady && consensoReady && emailReady,
