@@ -61,6 +61,7 @@ import {
   LeadCantieriTab,
   useLeadContatti,
 } from "@/components/lead/lead-relazioni-tabs";
+import { LeadPrivacyTab } from "@/components/lead/lead-privacy-tab";
 import { LeadAzioniStato } from "@/components/lead/lead-azioni-stato";
 import { LeadRichiesteTab } from "@/components/lead/lead-richieste-tab";
 
@@ -529,6 +530,7 @@ function LeadDettaglioPage() {
           <TabsTrigger value="cantieri">Cantieri</TabsTrigger>
           <TabsTrigger value="commerciale">Commerciale</TabsTrigger>
           <TabsTrigger value="richieste">Richieste</TabsTrigger>
+          <TabsTrigger value="privacy">Privacy</TabsTrigger>
           <TabsTrigger value="storico">Storico</TabsTrigger>
         </TabsList>
 
@@ -943,6 +945,10 @@ function LeadDettaglioPage() {
 
         <TabsContent value="richieste" className="mt-4">
           <LeadRichiesteTab leadId={leadId} />
+        </TabsContent>
+
+        <TabsContent value="privacy" className="mt-4">
+          <LeadPrivacyTab leadId={leadId} />
         </TabsContent>
 
         <TabsContent value="storico" className="mt-4">
