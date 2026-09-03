@@ -177,10 +177,19 @@ serve(async (req) => {
     const port = parseInt(Deno.env.get("SMTP_PORT") ?? "465");
     const user = Deno.env.get("SMTP_USER")!;
     const pass = Deno.env.get("SMTP_PASS")!;
-    const defaultFrom = Deno.env.get("SMTP_FROM") ?? `FidiManager MADE <${user}>`;
+    const smtpFrom = Deno.env.get("SMTP_FROM");
 
     const displayName = sanitizeDisplayName(fromName);
-    const from = displayName ? `${displayName} <${user}>` : defaultFrom;
+    let from: string;
+    if (smtpFrom) {
+      const indirizzo = estraiIndirizzoEmail(smtpFrom) ?? user;
+      from = displayName ? `${displayName} <${indirizzo}>` : smtpFrom;
+    } else {
+      console.warn(
+        "[send-email] SMTP_FROM mancante, fallback su SMTP_USER che potrebbe non essere un indirizzo email valido",
+      );
+      from = `FidiManager MADE <${user}>`;
+    }
 
     const recipients = Array.isArray(to) ? to : [to];
 
