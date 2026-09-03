@@ -305,7 +305,6 @@ export const invioCampagnaMarketing = inngest.createFunction(
               subject: oggetto,
               html: htmlFinale,
               fromName: "MADE Distribuzione",
-              replyTo: cfg.emailOperatore ?? undefined,
               inlineLogo: true,
               ...(allegati.length ? { attachments: allegati } : {}),
             });
