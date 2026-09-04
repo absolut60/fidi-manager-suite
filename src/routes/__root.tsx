@@ -72,6 +72,25 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
             Go home
           </a>
         </div>
+        <details className="mt-6 text-left">
+          <summary className="cursor-pointer text-xs text-muted-foreground">
+            Dettagli tecnici (diagnostica)
+          </summary>
+          <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-words rounded border border-border bg-muted p-3 text-[11px] text-muted-foreground select-text">
+            {[
+              `name: ${error?.name ?? "-"}`,
+              `message: ${error?.message ?? "-"}`,
+              (error as { cause?: unknown })?.cause !== undefined
+                ? `cause: ${String((error as { cause?: unknown }).cause)}`
+                : null,
+              "",
+              error?.stack ?? "(nessuno stack disponibile)",
+            ]
+              .filter((r) => r !== null)
+              .join("\n")}
+          </pre>
+        </details>
+
       </div>
     </div>
   );
