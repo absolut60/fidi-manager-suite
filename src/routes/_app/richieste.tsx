@@ -1374,13 +1374,13 @@ function RichiestaFormDialog({
   const sem = semaforoCliente(clienteSel);
 
   return (
-    <DialogContent className="max-w-xl">
+    <DialogContent className="max-w-xl max-h-[90vh] max-h-[90dvh] flex flex-col overflow-hidden">
       <DialogHeader>
         <DialogTitle>{richiesta ? "Modifica richiesta" : cloneFrom ? "Ri-invia richiesta" : "Nuova richiesta fido"}</DialogTitle>
         <DialogDescription>Compila i dettagli della richiesta.</DialogDescription>
       </DialogHeader>
 
-      <div className="space-y-4">
+      <div className="space-y-4 overflow-y-auto flex-1 pr-1 -mr-1">
         <div className="space-y-1.5">
           <Label>Cliente *</Label>
           {isEdit ? (
@@ -1656,7 +1656,7 @@ function RichiestaFormDialog({
         </div>
       </div>
 
-      <DialogFooter>
+      <DialogFooter className="shrink-0">
         <Button variant="outline" onClick={onClose}>Annulla</Button>
         <Button variant="secondary" disabled={mut.isPending} onClick={() => submit(false)}>Salva bozza</Button>
         <Button disabled={mut.isPending} onClick={() => submit(true)}>
