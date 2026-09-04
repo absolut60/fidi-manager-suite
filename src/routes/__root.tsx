@@ -36,8 +36,15 @@ function NotFoundComponent() {
 }
 
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+  console.error("[RootErrorBoundary]", {
+    name: error?.name,
+    message: error?.message,
+    stack: error?.stack,
+    cause: (error as { cause?: unknown })?.cause,
+  });
   console.error(error);
   const router = useRouter();
+
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
