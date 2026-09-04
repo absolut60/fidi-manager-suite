@@ -593,10 +593,13 @@ function ClienteDetail() {
         </TabsList>
 
         <TabsContent value="riepilogo" className="space-y-4">
+          <SectionErrorBoundary nome="Riepilogo">
           <RiepilogoTab cliente={cliente} clienteId={clienteId} />
+          </SectionErrorBoundary>
         </TabsContent>
 
         <TabsContent value="anagrafica" className="space-y-3">
+          <SectionErrorBoundary nome="Anagrafica">
           <div className="grid grid-cols-1 gap-3">
             <SectionCard title="Identità" icon={Building2} variant="blue">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-3">
@@ -724,9 +727,11 @@ function ClienteDetail() {
               )}
             </Card>
           )}
+          </SectionErrorBoundary>
         </TabsContent>
 
         <TabsContent value="contatti" className="space-y-4">
+          <SectionErrorBoundary nome="Contatti">
           <div className="flex justify-end">
             <Dialog open={openNew} onOpenChange={setOpenNew}>
               <DialogTrigger asChild>
@@ -778,29 +783,39 @@ function ClienteDetail() {
               ))}
             </div>
           )}
+          </SectionErrorBoundary>
         </TabsContent>
 
         <TabsContent value="marketing" className="space-y-4">
+          <SectionErrorBoundary nome="Marketing">
           <ClienteMarketingTab clienteId={clienteId} cliente={cliente as any} />
+          </SectionErrorBoundary>
         </TabsContent>
 
         <TabsContent value="cantieri">
+          <SectionErrorBoundary nome="Cantieri">
           <ClienteCantieriTab clienteId={clienteId} ragioneSociale={cliente.ragione_sociale} />
+          </SectionErrorBoundary>
         </TabsContent>
 
         <TabsContent value="commerciale">
+          <SectionErrorBoundary nome="Commerciale">
           <OpportunitaSoggettoLista
             soggetto={{ tipo: "cliente", id: clienteId, etichetta: cliente.ragione_sociale }}
           />
+          </SectionErrorBoundary>
         </TabsContent>
 
         <TabsContent value="storico">
+          <SectionErrorBoundary nome="Fido">
           <ClienteStoricoFidoTab clienteId={clienteId} />
+          </SectionErrorBoundary>
         </TabsContent>
 
         {(["scadenziario", "solleciti", "piani", "legali", "assicurazioni"] as const).map((s) =>
           (s === "legali" || s === "assicurazioni") && isStoreManager ? null : (
             <TabsContent key={s} value={s}>
+              <SectionErrorBoundary nome={s}>
               <ClienteInsolutiTab
                 cliente={{
                   id: clienteId,
@@ -811,15 +826,19 @@ function ClienteDetail() {
                 }}
                 sezione={s}
               />
+              </SectionErrorBoundary>
             </TabsContent>
           ),
         )}
 
         <TabsContent value="attivita">
+          <SectionErrorBoundary nome="Attività recupero">
           <ClienteAttivitaRecuperoTab clienteId={clienteId} />
+          </SectionErrorBoundary>
         </TabsContent>
 
         <TabsContent value="allegati">
+          <SectionErrorBoundary nome="Allegati">
           <Card className="p-6">
             <AllegatiSection
               entitaTipo="cliente"
@@ -829,13 +848,16 @@ function ClienteDetail() {
               title="Documenti del cliente"
             />
           </Card>
+          </SectionErrorBoundary>
         </TabsContent>
 
         <TabsContent value="privacy">
+          <SectionErrorBoundary nome="Privacy">
           <PrivacyTab
             cliente={cliente}
             onUpdated={() => qc.invalidateQueries({ queryKey: ["cliente", clienteId] })}
           />
+          </SectionErrorBoundary>
         </TabsContent>
       </Tabs>
     </div>
