@@ -24,7 +24,6 @@ export const getRouter = () => {
         retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 5000),
         // Le query NON devono mai risalire all'error boundary globale.
         throwOnError: false,
-        refetchOnWindowFocus: false,
       },
       mutations: { throwOnError: false },
     },
