@@ -174,6 +174,17 @@ function InviiMarketingPage() {
         </div>
       </header>
 
+      <Link to="/marketing/disiscrizioni" className="block max-w-xs">
+        <Card className="p-4 flex items-center gap-3 hover:bg-muted/50 transition-colors">
+          <UserX className="size-5 text-muted-foreground" />
+          <div>
+            <div className="text-xs text-muted-foreground">Disiscritti</div>
+            <div className="text-xl font-bold">{totaleDisiscritti ?? "—"}</div>
+          </div>
+        </Card>
+      </Link>
+
+
       <Card className="p-0 overflow-hidden">
         <Table>
           <TableHeader>
