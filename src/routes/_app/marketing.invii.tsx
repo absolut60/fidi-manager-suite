@@ -456,7 +456,31 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
     }
   }
 
+  function esportaExcel() {
+    if (filtered.length === 0) return;
+    const data = filtered.map((r) => ({
+      "Nome riferimento": r.nome_riferimento ?? "",
+      "Email": r.email,
+      "Tipo": r.tipo_destinatario === "aziendale" ? "Aziendale" : "Contatto",
+      "Stato":
+        r.stato_invio === "inviato" ? "Inviato" :
+        r.stato_invio === "da_inviare" ? "In coda" :
+        r.stato_invio === "email_non_valida" ? "Email non valida" :
+        r.stato_invio === "fallito" ? "Fallito" :
+        r.stato_invio === "saltato" ? "Saltato" : r.stato_invio,
+      "Inviato il": fmtDateTime(r.inviato_at),
+      "Clic": r.num_clic ?? 0,
+      "Ultimo clic": fmtDateTime(r.ultimo_clic_at),
+      "Note errore": r.errore ?? "",
+    }));
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Destinatari");
+    XLSX.writeFile(wb, `campagna-destinatari-${new Date().toISOString().slice(0, 10)}.xlsx`);
+  }
+
   return (
+
     <Dialog open onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-5xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
@@ -477,8 +501,28 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
               <SelectItem value="__ha_cliccato__">Ha cliccato</SelectItem>
             </SelectContent>
           </Select>
+          <div className="relative w-[240px]">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Cerca nome o email…"
+              value={ricerca}
+              onChange={(e) => setRicerca(e.target.value)}
+              className="pl-9"
+            />
+          </div>
           <div className="text-sm text-muted-foreground">{filtered.length} righe</div>
           <div className="ml-auto flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={esportaExcel}
+              disabled={filtered.length === 0}
+              className="gap-1.5"
+            >
+              <Download className="size-4" />
+              Esporta Excel
+            </Button>
             <Button
               size="sm"
               variant="outline"
@@ -491,6 +535,7 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
             </Button>
           </div>
         </div>
+
 
         <Table>
           <TableHeader>
