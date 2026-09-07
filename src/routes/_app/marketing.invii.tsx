@@ -391,8 +391,10 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
   const qc = useQueryClient();
   const riprova = useServerFn(riprovaCampagnaMarketingFalliti);
   const [statoFilter, setStatoFilter] = useState<string>("tutti");
+  const [ricerca, setRicerca] = useState<string>("");
   const [retrying, setRetrying] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
+
 
   const { data: rows, isLoading } = useQuery({
     queryKey: ["campagna-marketing-destinatari", campagnaId],
