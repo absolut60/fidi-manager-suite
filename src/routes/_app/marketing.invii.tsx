@@ -83,10 +83,12 @@ function InviiMarketingPage() {
   const canSee = useMemo(() => puoAccedereMarketing(roles as string[]), [roles]);
   const qc = useQueryClient();
   const annulla = useServerFn(annullaInvioCampagnaMarketing);
+  const riprendi = useServerFn(riprendiInvioCampagnaMarketing);
   const [openDettaglio, setOpenDettaglio] = useState<string | null>(null);
   const [confermaAnnulla, setConfermaAnnulla] = useState<string | null>(null);
   const [confermaElimina, setConfermaElimina] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [resumingId, setResumingId] = useState<string | null>(null);
 
   async function doAnnulla(id: string) {
     setBusy(true);
@@ -99,6 +101,23 @@ function InviiMarketingPage() {
     } finally {
       setBusy(false);
       setConfermaAnnulla(null);
+    }
+  }
+
+  async function doRiprendi(id: string) {
+    setResumingId(id);
+    try {
+      const r = await riprendi({ data: { campagnaId: id } });
+      if (r.riemesso) {
+        toast.success(`Invio ripreso: ${r.daInviare} destinatari rimasti`);
+      } else {
+        toast.info("Nessun destinatario da inviare");
+      }
+      qc.invalidateQueries({ queryKey: ["campagne-marketing-invii"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Errore");
+    } finally {
+      setResumingId(null);
     }
   }
 
