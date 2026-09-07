@@ -157,29 +157,14 @@ function MarketingCampagnePage() {
     enabled: canSee,
     refetchInterval: inCorso ? 5000 : false,
     queryFn: async () => {
-      const righe: Array<{ campagna_id: string; stato_invio: string }> = [];
-      let off = 0;
-      const size = 1000;
-      while (true) {
-        const { data, error } = await supabase
-          .from("campagne_email_destinatari")
-          .select("campagna_id, stato_invio")
-          .range(off, off + size - 1);
-        if (error) throw error;
-        const batch = (data ?? []) as Array<{ campagna_id: string; stato_invio: string }>;
-        righe.push(...batch);
-        if (batch.length < size) break;
-        off += size;
-      }
+      const { data, error } = await supabase.rpc("get_conteggi_campagne_email" as never);
+      if (error) throw error;
       const map = new Map<string, ConteggiCampagna>();
-      for (const r of righe) {
-        const cur = map.get(r.campagna_id) ?? { totale: 0, da_inviare: 0, inviato: 0, fallito: 0, saltato: 0 };
-        cur.totale += 1;
-        if (r.stato_invio === "inviato") cur.inviato += 1;
-        else if (r.stato_invio === "fallito") cur.fallito += 1;
-        else if (r.stato_invio === "da_inviare") cur.da_inviare += 1;
-        else cur.saltato += 1;
-        map.set(r.campagna_id, cur);
+      for (const r of (data ?? []) as Array<{ campagna_id: string; totale: number; da_inviare: number; inviato: number; fallito: number; saltato: number }>) {
+        map.set(r.campagna_id, {
+          totale: Number(r.totale), da_inviare: Number(r.da_inviare),
+          inviato: Number(r.inviato), fallito: Number(r.fallito), saltato: Number(r.saltato),
+        });
       }
       return map;
     },
