@@ -1,4 +1,4 @@
-import { inngest } from "./client";
+import { inngest, sendInngestEvent } from "./client";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { isEmailValida } from "@/lib/email-validazione";
 import { sendEmailViaEdge } from "./send-email.server";
@@ -412,9 +412,12 @@ export const invioCampagnaMarketing = inngest.createFunction(
     // NON finalizzare: ri-emetti l'evento e la prossima run riprende dai rimasti.
     // Il guard per riga (stato_invio !== "da_inviare" → skip) evita doppi invii.
     if (total > idsQuestaRun.length) {
-      await step.sendEvent("continua-campagna", {
-        name: "campagna-marketing/invio.requested",
-        data: { campagna_id },
+      logger.info(
+        `[campagna-marketing] re-emit per ${campagna_id}, rimanenti ${total - idsQuestaRun.length}`,
+      );
+      // step.run (non step.sendEvent): emissione via HTTP gateway, idempotente rispetto ai retry.
+      await step.run("continua-campagna", async () => {
+        await sendInngestEvent("campagna-marketing/invio.requested", { campagna_id });
       });
       return { ok: true, continua: true, rimanenti: total - idsQuestaRun.length };
     }

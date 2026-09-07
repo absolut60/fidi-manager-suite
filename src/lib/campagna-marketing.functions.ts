@@ -19,23 +19,11 @@ async function assertRuoloMarketing(
   }
 }
 
+// Unica implementazione HTTP dell'emissione eventi: sendInngestEvent in
+// src/lib/inngest/client.ts (import dinamico: quel modulo resta server-only).
 async function inviaEventoInngest(name: string, data: Record<string, unknown>): Promise<void> {
-  const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
-  const INNGEST_API_KEY = process.env.INNGEST_API_KEY;
-  if (!LOVABLE_API_KEY || !INNGEST_API_KEY) throw new Error("Inngest non configurato");
-  const res = await fetch("https://connector-gateway.lovable.dev/inngest/e/", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${LOVABLE_API_KEY}`,
-      "X-Connection-Api-Key": INNGEST_API_KEY,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ name, data }),
-  });
-  if (!res.ok) {
-    const txt = await res.text();
-    throw new Error(`Trigger Inngest fallito [${res.status}]: ${txt.slice(0, 200)}`);
-  }
+  const { sendInngestEvent } = await import("@/lib/inngest/client");
+  await sendInngestEvent(name, data);
 }
 
 /** Avvia l'invio reale di una campagna marketing (asincrono via Inngest). */
