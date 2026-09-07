@@ -649,7 +649,7 @@ function DettaglioCampagnaDialog({ campagnaId, inCorso, onClose }: { campagnaId:
       );
     }
     return out;
-  }, [rows, statoFilter, ricerca]);
+  }, [rows, statoFilter, ricerca, clicDest]);
 
   useEffect(() => {
     setPagina(1);
@@ -690,8 +690,10 @@ function DettaglioCampagnaDialog({ campagnaId, inCorso, onClose }: { campagnaId:
         r.stato_invio === "fallito" ? "Fallito" :
         r.stato_invio === "saltato" ? "Saltato" : r.stato_invio,
       "Inviato il": fmtDateTime(r.inviato_at),
-      "Clic": r.num_clic ?? 0,
-      "Ultimo clic": fmtDateTime(r.ultimo_clic_at),
+      "Clic totali (grezzo)": r.num_clic ?? 0,
+      "Clic reali": clicDest?.[r.id]?.clic_reali ?? 0,
+      "Aperture automatiche": clicDest?.[r.id]?.clic_auto ?? 0,
+      "Ultimo clic": fmtDateTime(clicDest?.[r.id]?.ultimo_clic_reale ?? null),
       "Note errore": r.errore ?? "",
     }));
     const ws = XLSX.utils.json_to_sheet(data);
@@ -780,7 +782,8 @@ function DettaglioCampagnaDialog({ campagnaId, inCorso, onClose }: { campagnaId:
               <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-6">Nessun destinatario</TableCell></TableRow>
             ) : (
               righeVisibili.map((r) => {
-                const clic = r.num_clic ?? 0;
+                const clic = clicDest?.[r.id]?.clic_reali ?? 0;
+                const clicAuto = clicDest?.[r.id]?.clic_auto ?? 0;
                 const espanso = expanded === r.id;
                 return (
                 <Fragment key={r.id}>
@@ -808,8 +811,11 @@ function DettaglioCampagnaDialog({ campagnaId, inCorso, onClose }: { campagnaId:
                     ) : (
                       <span className="text-muted-foreground">0</span>
                     )}
+                    {clicAuto > 0 && (
+                      <div className="text-xs text-muted-foreground" title="Aperture automatiche del filtro di sicurezza del destinatario, non clic di persone">{clicAuto} auto</div>
+                    )}
                   </TableCell>
-                  <TableCell className="whitespace-nowrap text-sm">{fmtDateTime(r.ultimo_clic_at)}</TableCell>
+                  <TableCell className="whitespace-nowrap text-sm">{fmtDateTime(clicDest?.[r.id]?.ultimo_clic_reale ?? null)}</TableCell>
                   <TableCell className="text-xs text-destructive max-w-[280px] truncate">{r.errore ?? ""}</TableCell>
                   <TableCell>
                     {r.cliente_id && (
