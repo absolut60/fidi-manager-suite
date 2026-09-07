@@ -68,8 +68,8 @@ export async function aggiungiDestinatariCampagna(
   if (filtrati.length === 0) return { aggiunti: 0, saltati: 0, scartati, disiscritti };
 
   let aggiunti = 0;
-  for (let i = 0; i < validi.length; i += CHUNK_INSERT) {
-    const part = validi.slice(i, i + CHUNK_INSERT);
+  for (let i = 0; i < filtrati.length; i += CHUNK_INSERT) {
+    const part = filtrati.slice(i, i + CHUNK_INSERT);
     const { data, error } = await supabase
       .from("campagne_email_destinatari")
       .upsert(
@@ -89,5 +89,5 @@ export async function aggiungiDestinatariCampagna(
     aggiunti += (data ?? []).length;
   }
 
-  return { aggiunti, saltati: validi.length - aggiunti, scartati };
+  return { aggiunti, saltati: filtrati.length - aggiunti, scartati, disiscritti };
 }
