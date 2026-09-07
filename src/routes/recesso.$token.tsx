@@ -10,7 +10,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CONSENSO_LABEL, CONSENSO_TESTI, type TipoConsenso } from "@/lib/consensi-testi";
-import { getContattoPerRecesso, revocaConsensi } from "@/lib/recesso-consensi.functions";
+import {
+  getContattoPerRecesso,
+  revocaConsensi,
+  getRecessoAziendale,
+  registraOptOutAziendale,
+} from "@/lib/recesso-consensi.functions";
 
 export const Route = createFileRoute("/recesso/$token")({
   component: RecessoPage,
@@ -36,7 +41,9 @@ const TESTO: Record<TipoConsenso, string> = {
 function RecessoPage() {
   const { token } = Route.useParams();
   const getCt = useServerFn(getContattoPerRecesso);
+  const getAziendale = useServerFn(getRecessoAziendale);
   const revocaFn = useServerFn(revocaConsensi);
+  const optOutFn = useServerFn(registraOptOutAziendale);
 
   const [scelte, setScelte] = useState<Record<TipoConsenso, boolean>>({
     marketing_diretto: false,
@@ -44,15 +51,29 @@ function RecessoPage() {
     profilazione: false,
   });
   const [revocati, setRevocati] = useState<TipoConsenso[] | null>(null);
+  const [optOutOk, setOptOutOk] = useState(false);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["recesso-consensi", token],
-    queryFn: () => getCt({ data: { token } }),
+    queryFn: async () => {
+      try {
+        const contatto = await getCt({ data: { token } });
+        return { tipo: "contatto" as const, ...contatto };
+      } catch {
+        try {
+          const aziendale = await getAziendale({ data: { token } });
+          return { tipo: "aziendale" as const, ...aziendale };
+        } catch {
+          throw new Error("Link non valido");
+        }
+      }
+    },
     retry: false,
   });
-  const cliente = data?.cliente;
-  const contatto = data?.contatto;
-  const stato = data?.statoAttuale;
+
+  const cliente = data?.tipo === "contatto" ? data.cliente : undefined;
+  const contatto = data?.tipo === "contatto" ? data.contatto : undefined;
+  const stato = data?.tipo === "contatto" ? data.statoAttuale : undefined;
 
   const attivi = TIPI.filter((t) => stato?.[t]);
   const selezionati = TIPI.filter((t) => scelte[t] && stato?.[t]);
@@ -73,6 +94,17 @@ function RecessoPage() {
     },
     onSuccess: (tipi) => {
       setRevocati(tipi);
+      toast.success("Preferenze aggiornate");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const optOut = useMutation({
+    mutationFn: async () => {
+      await optOutFn({ data: { token } });
+    },
+    onSuccess: () => {
+      setOptOutOk(true);
       toast.success("Preferenze aggiornate");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -104,18 +136,26 @@ function RecessoPage() {
             <p className="font-medium">Impossibile aprire il link</p>
             <p className="text-sm text-muted-foreground mt-1">{(error as Error).message}</p>
           </Card>
-        ) : revocati ? (
+        ) : revocati || optOutOk ? (
           <Card className="p-8 text-center space-y-3">
             <CheckCircle2 className="size-12 text-success mx-auto" />
             <h2 className="text-lg font-semibold">Preferenze aggiornate</h2>
-            <p className="text-sm text-muted-foreground">
-              Abbiamo registrato la revoca dei seguenti consensi:
-            </p>
-            <ul className="text-sm font-medium space-y-1">
-              {revocati.map((t) => (
-                <li key={t}>{CONSENSO_LABEL[t]}</li>
-              ))}
-            </ul>
+            {revocati ? (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Abbiamo registrato la revoca dei seguenti consensi:
+                </p>
+                <ul className="text-sm font-medium space-y-1">
+                  {revocati.map((t) => (
+                    <li key={t}>{CONSENSO_LABEL[t]}</li>
+                  ))}
+                </ul>
+              </>
+            ) : data?.tipo === "aziendale" ? (
+              <p className="text-sm text-muted-foreground">
+                Non invieremo più comunicazioni commerciali a {data.email}.
+              </p>
+            ) : null}
             <p className="text-xs text-muted-foreground">Puoi chiudere questa pagina.</p>
           </Card>
         ) : cliente && contatto && stato ? (
@@ -220,6 +260,45 @@ function RecessoPage() {
                   )}
                 </Card>
               </>
+            )}
+          </>
+        ) : data?.tipo === "aziendale" ? (
+          <>
+            <Card className="p-6 space-y-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Preferenze riferite a
+              </p>
+              {data.ragione_sociale && (
+                <p className="text-lg font-semibold">{data.ragione_sociale}</p>
+              )}
+              <p className="text-sm text-muted-foreground">{data.email}</p>
+            </Card>
+
+            {data.gia_disiscritto ? (
+              <Card className="p-8 text-center">
+                <CheckCircle2 className="size-10 text-success mx-auto mb-2" />
+                <p className="font-medium">
+                  Questo indirizzo è già stato rimosso dalle nostre comunicazioni commerciali.
+                </p>
+              </Card>
+            ) : (
+              <Card className="p-6 space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Confermando, interromperemo tutte le comunicazioni commerciali verso questo
+                  indirizzo email.
+                </p>
+                <Button
+                  variant="destructive"
+                  size="lg"
+                  className="w-full"
+                  disabled={optOut.isPending}
+                  onClick={() => optOut.mutate()}
+                >
+                  {optOut.isPending
+                    ? "Invio in corso..."
+                    : "Non voglio più ricevere comunicazioni commerciali"}
+                </Button>
+              </Card>
             )}
           </>
         ) : null}
