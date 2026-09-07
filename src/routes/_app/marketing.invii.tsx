@@ -6,7 +6,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   Megaphone, RefreshCw, ChevronRight, ExternalLink, AlertCircle, CheckCircle2,
-  Clock, XCircle, MailWarning, MoreHorizontal, Ban, Trash2,
+  Clock, XCircle, MailWarning, MoreHorizontal, Ban, Trash2, UserX,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -111,6 +111,17 @@ function InviiMarketingPage() {
       setConfermaElimina(null);
     }
   }
+
+  const { data: totaleDisiscritti } = useQuery({
+    queryKey: ["marketing-disiscrizioni", "totale"],
+    enabled: canSee,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_disiscrizioni", { _limit: 1, _offset: 0 });
+      if (error) throw error;
+      const rows = (data ?? []) as unknown as Array<{ totale: number }>;
+      return rows.length ? Number(rows[0].totale) : 0;
+    },
+  });
 
   const { data: campagne, isLoading } = useQuery({
     queryKey: ["campagne-marketing-invii"],
