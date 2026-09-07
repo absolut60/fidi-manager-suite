@@ -440,6 +440,14 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
     return out;
   }, [rows, statoFilter, ricerca]);
 
+  useEffect(() => {
+    setPagina(1);
+  }, [statoFilter, ricerca]);
+
+  const totaleRighe = filtered.length;
+  const totalePagine = Math.max(1, Math.ceil(totaleRighe / PAGE_SIZE));
+  const pagineClamp = Math.min(pagina, totalePagine);
+  const righeVisibili = filtered.slice((pagineClamp - 1) * PAGE_SIZE, pagineClamp * PAGE_SIZE);
 
   const fallitiCount = (rows ?? []).filter((r) => r.stato_invio === "fallito").length;
 
