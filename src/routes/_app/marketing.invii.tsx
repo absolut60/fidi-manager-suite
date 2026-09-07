@@ -374,12 +374,24 @@ function InviiMarketingPage() {
                     <TableCell className="text-right text-sm tabular-nums cursor-pointer" onClick={apri}>
                       {c.inviati > 0 ? `${Math.round(((c.clic_unici ?? 0) / c.inviati) * 1000) / 10}%` : "—"}
                     </TableCell>
-                    <TableCell className="cursor-pointer" onClick={apri}>
-                      <div className="flex items-center gap-2">
+                    <TableCell>
+                      <div className="flex items-center gap-2 cursor-pointer" onClick={apri}>
                         <Progress value={pct} className="h-2" />
                         <span className="text-xs text-muted-foreground tabular-nums w-10">{pct}%</span>
                       </div>
+                      {salute.livello === "bloccata" && (
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="mt-2 h-7"
+                          disabled={resumingId === c.id}
+                          onClick={(e) => { e.stopPropagation(); doRiprendi(c.id); }}
+                        >
+                          <Play className="size-3.5 mr-1" /> Riprendi invio
+                        </Button>
+                      )}
                     </TableCell>
+
                     <TableCell className="cursor-pointer" onClick={apri}><ChevronRight className="size-4 text-muted-foreground" /></TableCell>
                     <TableCell>
                       <DropdownMenu>
