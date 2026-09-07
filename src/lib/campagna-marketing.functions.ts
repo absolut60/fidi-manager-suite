@@ -119,6 +119,35 @@ export const riprovaCampagnaMarketingFalliti = createServerFn({ method: "POST" }
     return { ok: true, riprovati: ids.length };
   });
 
+/** Riprende l'invio di una campagna ferma a metà riemettendo l'evento Inngest.
+ *  Il job è idempotente: salta i destinatari che non sono più 'da_inviare'.
+ */
+export const riprendiInvioCampagnaMarketing = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => z.object({ campagnaId: z.string().uuid() }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertRuoloMarketing(supabase, userId);
+
+    const { count, error } = await supabase
+      .from("campagne_email_destinatari")
+      .select("id", { count: "exact", head: true })
+      .eq("campagna_id", data.campagnaId)
+      .eq("stato_invio", "da_inviare");
+    if (error) throw new Error(error.message);
+    const daInviare = count ?? 0;
+    if (daInviare === 0) return { ok: true, riemesso: false, daInviare: 0 };
+
+    const { error: eUpd } = await supabase
+      .from("campagne_email_marketing")
+      .update({ stato: "in_corso", operatore_id: userId, note: null } as never)
+      .eq("id", data.campagnaId);
+    if (eUpd) throw new Error(eUpd.message);
+
+    await inviaEventoInngest("campagna-marketing/invio.requested", { campagna_id: data.campagnaId });
+    return { ok: true, riemesso: true, daInviare };
+  });
+
 
 
 /** Invio di prova: stessa pipeline dell'invio reale, nessuna scrittura di stato. */
