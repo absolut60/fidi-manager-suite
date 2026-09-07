@@ -6238,6 +6238,24 @@ export type Database = {
           ragione_sociale: string
         }[]
       }
+      get_disiscrizioni: {
+        Args: { _limit?: number; _offset?: number; _search?: string }
+        Returns: {
+          campagna_id: string
+          campagna_nome: string
+          cliente_id: string
+          codice_gestionale: string
+          created_at: string
+          email: string
+          id: string
+          note: string
+          operatore_id: string
+          operatore_nome: string
+          origine: string
+          ragione_sociale: string
+          totale: number
+        }[]
+      }
       get_dso_aggregato: {
         Args: {
           _cliente_id?: string
@@ -6881,6 +6899,10 @@ export type Database = {
         }
         Returns: string
       }
+      registra_opt_out_manuale: {
+        Args: { _email: string; _note?: string }
+        Returns: boolean
+      }
       registra_opt_out_marketing: {
         Args: { _ip?: string; _token: string; _ua?: string }
         Returns: boolean
@@ -6897,6 +6919,7 @@ export type Database = {
         }
         Returns: number
       }
+      riattiva_marketing: { Args: { _email: string }; Returns: boolean }
       ricalcola_fido_teorico: { Args: never; Returns: string }
       ricalcola_fido_teorico_avvia: { Args: never; Returns: undefined }
       ricalcola_fido_teorico_blocco: {
