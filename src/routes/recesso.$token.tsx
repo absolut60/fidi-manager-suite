@@ -10,7 +10,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CONSENSO_LABEL, CONSENSO_TESTI, type TipoConsenso } from "@/lib/consensi-testi";
-import { getContattoPerRecesso, revocaConsensi } from "@/lib/recesso-consensi.functions";
+import {
+  getContattoPerRecesso,
+  revocaConsensi,
+  getRecessoAziendale,
+  registraOptOutAziendale,
+} from "@/lib/recesso-consensi.functions";
 
 export const Route = createFileRoute("/recesso/$token")({
   component: RecessoPage,
