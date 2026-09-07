@@ -39,6 +39,20 @@ import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import * as XLSX from "xlsx";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { classificaSaluteCampagna, fmtDurataBreve } from "@/lib/campagna-salute";
+
+type ProgressoRow = {
+  stato: string;
+  inviati: number;
+  saltati: number;
+  falliti: number;
+  clic_unici: number;
+  clic_totali: number;
+  ultimo_invio_at: string | null;
+  avviata_at: string | null;
+};
+
 
 
 export const Route = createFileRoute("/_app/marketing/invii")({
