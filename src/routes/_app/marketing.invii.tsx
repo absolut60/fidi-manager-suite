@@ -423,10 +423,21 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
 
   const filtered = useMemo(() => {
     if (!rows) return [];
-    if (statoFilter === "tutti") return rows;
-    if (statoFilter === "__ha_cliccato__") return rows.filter((r) => (r.num_clic ?? 0) > 0);
-    return rows.filter((r) => r.stato_invio === statoFilter);
-  }, [rows, statoFilter]);
+    let out = rows;
+    if (statoFilter !== "tutti") {
+      if (statoFilter === "__ha_cliccato__") out = out.filter((r) => (r.num_clic ?? 0) > 0);
+      else out = out.filter((r) => r.stato_invio === statoFilter);
+    }
+    const q = ricerca.trim().toLowerCase();
+    if (q) {
+      out = out.filter((r) =>
+        (r.nome_riferimento ?? "").toLowerCase().includes(q) ||
+        (r.email ?? "").toLowerCase().includes(q)
+      );
+    }
+    return out;
+  }, [rows, statoFilter, ricerca]);
+
 
   const fallitiCount = (rows ?? []).filter((r) => r.stato_invio === "fallito").length;
 
