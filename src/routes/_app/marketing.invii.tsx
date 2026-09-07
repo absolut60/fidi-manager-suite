@@ -290,7 +290,7 @@ function InviiMarketingPage() {
                 Nessuna campagna ancora avviata.
               </TableCell></TableRow>
             ) : (
-              campagne.map((c) => {
+              (campagneMerged ?? campagne).map((c) => {
                 const processati = c.inviati + c.saltati + c.falliti;
                 const pct = c.totale_destinatari > 0 ? Math.round((processati / c.totale_destinatari) * 100) : 0;
                 const isAttiva = c.stato === "in_corso";
