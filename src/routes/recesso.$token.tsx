@@ -262,6 +262,45 @@ function RecessoPage() {
               </>
             )}
           </>
+        ) : data?.tipo === "aziendale" ? (
+          <>
+            <Card className="p-6 space-y-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Preferenze riferite a
+              </p>
+              {data.ragione_sociale && (
+                <p className="text-lg font-semibold">{data.ragione_sociale}</p>
+              )}
+              <p className="text-sm text-muted-foreground">{data.email}</p>
+            </Card>
+
+            {data.gia_disiscritto ? (
+              <Card className="p-8 text-center">
+                <CheckCircle2 className="size-10 text-success mx-auto mb-2" />
+                <p className="font-medium">
+                  Questo indirizzo è già stato rimosso dalle nostre comunicazioni commerciali.
+                </p>
+              </Card>
+            ) : (
+              <Card className="p-6 space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Confermando, interromperemo tutte le comunicazioni commerciali verso questo
+                  indirizzo email.
+                </p>
+                <Button
+                  variant="destructive"
+                  size="lg"
+                  className="w-full"
+                  disabled={optOut.isPending}
+                  onClick={() => optOut.mutate()}
+                >
+                  {optOut.isPending
+                    ? "Invio in corso..."
+                    : "Non voglio più ricevere comunicazioni commerciali"}
+                </Button>
+              </Card>
+            )}
+          </>
         ) : null}
       </div>
     </div>
