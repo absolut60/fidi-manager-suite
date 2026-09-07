@@ -328,6 +328,15 @@ function InviiMarketingPage() {
                 const pct = c.totale_destinatari > 0 ? Math.round((processati / c.totale_destinatari) * 100) : 0;
                 const isAttiva = c.stato === "in_corso";
                 const isTerminale = c.stato === "completata" || c.stato === "completata_con_errori" || c.stato === "annullata";
+                const p = progresso?.[c.id];
+                const salute = isAttiva && p
+                  ? classificaSaluteCampagna({
+                      ultimoInvioAt: p.ultimo_invio_at,
+                      avviataAt: p.avviata_at,
+                      now: progressoAggiornatoAt || Date.now(),
+                    })
+                  : { livello: "nd" as const, secondiDaUltimo: null };
+                const durata = fmtDurataBreve(salute.secondiDaUltimo);
                 const apri = () => setOpenDettaglio(c.id);
                 return (
                   <TableRow key={c.id} className="hover:bg-muted/50">
@@ -335,7 +344,28 @@ function InviiMarketingPage() {
                     <TableCell className="cursor-pointer" onClick={apri}>{`${c.operatore?.nome ?? ""} ${c.operatore?.cognome ?? ""}`.trim() || "—"}</TableCell>
                     <TableCell className="font-medium cursor-pointer" onClick={apri}>{c.nome}</TableCell>
                     <TableCell className="cursor-pointer text-muted-foreground max-w-[240px] truncate" onClick={apri}>{c.oggetto || "—"}</TableCell>
-                    <TableCell className="cursor-pointer" onClick={apri}><StatoBadge s={c.stato} /></TableCell>
+                    <TableCell className="cursor-pointer" onClick={apri}>
+                      <StatoBadge s={c.stato} />
+                      {salute.livello === "attiva" && (
+                        <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                          <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+                          ultimo invio {durata} fa
+                        </div>
+                      )}
+                      {salute.livello === "rallentata" && (
+                        <div className="mt-1 flex items-center gap-1.5 text-[11px] text-amber-600">
+                          <span className="size-2 rounded-full bg-amber-500" />
+                          rallentata · {durata} fa
+                        </div>
+                      )}
+                      {salute.livello === "bloccata" && (
+                        <div className="mt-1 flex items-center gap-1.5 text-[11px] font-semibold text-destructive">
+                          <span className="size-2 rounded-full bg-destructive" />
+                          BLOCCATA · {durata} fa
+                        </div>
+                      )}
+                    </TableCell>
+
                     <TableCell className="text-right font-medium cursor-pointer" onClick={apri}>{c.totale_destinatari}</TableCell>
                     <TableCell className="text-right text-emerald-600 cursor-pointer" onClick={apri}>{c.inviati}</TableCell>
                     <TableCell className="text-right text-amber-600 cursor-pointer" onClick={apri}>{c.saltati}</TableCell>
