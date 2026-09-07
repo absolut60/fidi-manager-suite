@@ -6,8 +6,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   Megaphone, RefreshCw, ChevronRight, ExternalLink, AlertCircle, CheckCircle2,
-  Clock, XCircle, MailWarning, MoreHorizontal, Ban, Trash2, UserX,
+  Clock, XCircle, MailWarning, MoreHorizontal, Ban, Trash2, UserX, Search, Download,
 } from "lucide-react";
+
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -17,6 +18,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -35,6 +37,8 @@ import {
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
+import * as XLSX from "xlsx";
+
 
 export const Route = createFileRoute("/_app/marketing/invii")({
   component: InviiMarketingPage,
@@ -387,8 +391,10 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
   const qc = useQueryClient();
   const riprova = useServerFn(riprovaCampagnaMarketingFalliti);
   const [statoFilter, setStatoFilter] = useState<string>("tutti");
+  const [ricerca, setRicerca] = useState<string>("");
   const [retrying, setRetrying] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
+
 
   const { data: rows, isLoading } = useQuery({
     queryKey: ["campagna-marketing-destinatari", campagnaId],
@@ -417,10 +423,21 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
 
   const filtered = useMemo(() => {
     if (!rows) return [];
-    if (statoFilter === "tutti") return rows;
-    if (statoFilter === "__ha_cliccato__") return rows.filter((r) => (r.num_clic ?? 0) > 0);
-    return rows.filter((r) => r.stato_invio === statoFilter);
-  }, [rows, statoFilter]);
+    let out = rows;
+    if (statoFilter !== "tutti") {
+      if (statoFilter === "__ha_cliccato__") out = out.filter((r) => (r.num_clic ?? 0) > 0);
+      else out = out.filter((r) => r.stato_invio === statoFilter);
+    }
+    const q = ricerca.trim().toLowerCase();
+    if (q) {
+      out = out.filter((r) =>
+        (r.nome_riferimento ?? "").toLowerCase().includes(q) ||
+        (r.email ?? "").toLowerCase().includes(q)
+      );
+    }
+    return out;
+  }, [rows, statoFilter, ricerca]);
+
 
   const fallitiCount = (rows ?? []).filter((r) => r.stato_invio === "fallito").length;
 
@@ -439,7 +456,31 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
     }
   }
 
+  function esportaExcel() {
+    if (filtered.length === 0) return;
+    const data = filtered.map((r) => ({
+      "Nome riferimento": r.nome_riferimento ?? "",
+      "Email": r.email,
+      "Tipo": r.tipo_destinatario === "aziendale" ? "Aziendale" : "Contatto",
+      "Stato":
+        r.stato_invio === "inviato" ? "Inviato" :
+        r.stato_invio === "da_inviare" ? "In coda" :
+        r.stato_invio === "email_non_valida" ? "Email non valida" :
+        r.stato_invio === "fallito" ? "Fallito" :
+        r.stato_invio === "saltato" ? "Saltato" : r.stato_invio,
+      "Inviato il": fmtDateTime(r.inviato_at),
+      "Clic": r.num_clic ?? 0,
+      "Ultimo clic": fmtDateTime(r.ultimo_clic_at),
+      "Note errore": r.errore ?? "",
+    }));
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Destinatari");
+    XLSX.writeFile(wb, `campagna-destinatari-${new Date().toISOString().slice(0, 10)}.xlsx`);
+  }
+
   return (
+
     <Dialog open onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-5xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
@@ -460,8 +501,28 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
               <SelectItem value="__ha_cliccato__">Ha cliccato</SelectItem>
             </SelectContent>
           </Select>
+          <div className="relative w-[240px]">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Cerca nome o email…"
+              value={ricerca}
+              onChange={(e) => setRicerca(e.target.value)}
+              className="pl-9"
+            />
+          </div>
           <div className="text-sm text-muted-foreground">{filtered.length} righe</div>
           <div className="ml-auto flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={esportaExcel}
+              disabled={filtered.length === 0}
+              className="gap-1.5"
+            >
+              <Download className="size-4" />
+              Esporta Excel
+            </Button>
             <Button
               size="sm"
               variant="outline"
@@ -474,6 +535,7 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
             </Button>
           </div>
         </div>
+
 
         <Table>
           <TableHeader>
