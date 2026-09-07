@@ -78,7 +78,10 @@ export function CampagneEntitaTab({ clienteId, leadId }: { clienteId?: string; l
   const [periodo, setPeriodo] = useState<"3m" | "12m" | "tutte">("12m");
   const [soloClic, setSoloClic] = useState(false);
 
-  const params = { _cliente_id: clienteId ?? null, _lead_id: clienteId ? null : (leadId ?? null) };
+  const params = {
+    _cliente_id: clienteId ?? null,
+    _lead_id: clienteId ? null : (leadId ?? null),
+  } as unknown as { _cliente_id?: string; _lead_id?: string };
 
   const { data: riassunto, isLoading: loadingRiassunto } = useQuery({
     queryKey: ["campagne-entita-riassunto", clienteId ?? null, leadId ?? null],
