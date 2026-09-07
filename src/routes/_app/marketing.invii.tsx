@@ -6,7 +6,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   Megaphone, RefreshCw, ChevronRight, ExternalLink, AlertCircle, CheckCircle2,
-  Clock, XCircle, MailWarning, MoreHorizontal, Ban, Trash2, UserX, Search, Download,
+  Clock, XCircle, MailWarning, MoreHorizontal, Ban, Trash2, UserX, Search, Download, Play,
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   annullaInvioCampagnaMarketing,
   riprovaCampagnaMarketingFalliti,
+  riprendiInvioCampagnaMarketing,
 } from "@/lib/campagna-marketing.functions";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -82,10 +83,12 @@ function InviiMarketingPage() {
   const canSee = useMemo(() => puoAccedereMarketing(roles as string[]), [roles]);
   const qc = useQueryClient();
   const annulla = useServerFn(annullaInvioCampagnaMarketing);
+  const riprendi = useServerFn(riprendiInvioCampagnaMarketing);
   const [openDettaglio, setOpenDettaglio] = useState<string | null>(null);
   const [confermaAnnulla, setConfermaAnnulla] = useState<string | null>(null);
   const [confermaElimina, setConfermaElimina] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [resumingId, setResumingId] = useState<string | null>(null);
 
   async function doAnnulla(id: string) {
     setBusy(true);
@@ -98,6 +101,23 @@ function InviiMarketingPage() {
     } finally {
       setBusy(false);
       setConfermaAnnulla(null);
+    }
+  }
+
+  async function doRiprendi(id: string) {
+    setResumingId(id);
+    try {
+      const r = await riprendi({ data: { campagnaId: id } });
+      if (r.riemesso) {
+        toast.success(`Invio ripreso: ${r.daInviare} destinatari rimasti`);
+      } else {
+        toast.info("Nessun destinatario da inviare");
+      }
+      qc.invalidateQueries({ queryKey: ["campagne-marketing-invii"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Errore");
+    } finally {
+      setResumingId(null);
     }
   }
 
@@ -267,9 +287,17 @@ function InviiMarketingPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           {isAttiva && (
-                            <DropdownMenuItem onClick={() => setConfermaAnnulla(c.id)}>
-                              <Ban className="size-4 mr-2" /> Annulla invio
-                            </DropdownMenuItem>
+                            <>
+                              <DropdownMenuItem
+                                onClick={() => doRiprendi(c.id)}
+                                disabled={resumingId === c.id}
+                              >
+                                <Play className="size-4 mr-2" /> Riprendi invio
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setConfermaAnnulla(c.id)}>
+                                <Ban className="size-4 mr-2" /> Annulla invio
+                              </DropdownMenuItem>
+                            </>
                           )}
                           {isTerminale && (
                             <DropdownMenuItem onClick={() => setConfermaElimina(c.id)} className="text-destructive focus:text-destructive">
