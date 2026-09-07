@@ -136,18 +136,26 @@ function RecessoPage() {
             <p className="font-medium">Impossibile aprire il link</p>
             <p className="text-sm text-muted-foreground mt-1">{(error as Error).message}</p>
           </Card>
-        ) : revocati ? (
+        ) : revocati || optOutOk ? (
           <Card className="p-8 text-center space-y-3">
             <CheckCircle2 className="size-12 text-success mx-auto" />
             <h2 className="text-lg font-semibold">Preferenze aggiornate</h2>
-            <p className="text-sm text-muted-foreground">
-              Abbiamo registrato la revoca dei seguenti consensi:
-            </p>
-            <ul className="text-sm font-medium space-y-1">
-              {revocati.map((t) => (
-                <li key={t}>{CONSENSO_LABEL[t]}</li>
-              ))}
-            </ul>
+            {revocati ? (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Abbiamo registrato la revoca dei seguenti consensi:
+                </p>
+                <ul className="text-sm font-medium space-y-1">
+                  {revocati.map((t) => (
+                    <li key={t}>{CONSENSO_LABEL[t]}</li>
+                  ))}
+                </ul>
+              </>
+            ) : data?.tipo === "aziendale" ? (
+              <p className="text-sm text-muted-foreground">
+                Non invieremo più comunicazioni commerciali a {data.email}.
+              </p>
+            ) : null}
             <p className="text-xs text-muted-foreground">Puoi chiudere questa pagina.</p>
           </Card>
         ) : cliente && contatto && stato ? (
