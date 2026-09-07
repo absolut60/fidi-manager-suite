@@ -145,7 +145,7 @@ export const inviaEmailProvaCampagna = createServerFn({ method: "POST" })
       .maybeSingle();
     const nomeOp = `${prof?.nome ?? ""} ${prof?.cognome ?? ""}`.trim() || "Ufficio Marketing MADE";
     const nomeMittente = (camp.mittente_nome as string | null)?.trim() || nomeOp;
-    const emailMittente = (camp.mittente_email as string | null)?.trim() || (prof?.email ?? null);
+    const emailMittente = (camp.mittente_email as string | null)?.trim() || null;
 
     const { buildEmailCampagna, DATI_ESEMPIO } = await import("@/lib/campagna-marketing-email");
     const appUrl = process.env.VITE_APP_URL ?? "https://fidi-manager-suite.lovable.app";
