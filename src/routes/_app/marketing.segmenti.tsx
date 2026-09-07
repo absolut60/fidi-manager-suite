@@ -61,6 +61,7 @@ type Filtri = {
   fatturato: "tutti" | "nessuno" | "0_10k" | "10k_50k" | "50k_100k" | "oltre_100k";
   filtroConsenso: ConsensoFiltro;      // almeno un contatto con quel consenso attivo
   filtroEmail: "tutti" | "con" | "senza";
+  filtroDisiscritti: "tutti" | "escludi" | "solo";
   citta: string;
   provincia: string;
   ricerca: string;
@@ -79,6 +80,7 @@ const FILTRI_DEFAULT: Filtri = {
   fatturato: "tutti",
   filtroConsenso: "tutti",
   filtroEmail: "tutti",
+  filtroDisiscritti: "tutti",
   citta: "",
   provincia: "",
   ricerca: "",
@@ -292,18 +294,45 @@ function MarketingSegmentiPage() {
     },
   });
 
-  // Intersezione id-filter set (semaforo ∩ fatturato ∩ consenso ∩ email valida ∩ lista statica)
+  // === Filtro disiscrizione marketing: clienti la cui email aziendale è in marketing_opt_out (via RPC) ===
+  const { data: disiscrittiIds } = useQuery({
+    queryKey: ["disiscritti-ids-marketing", filtri.filtroDisiscritti],
+    enabled: canSee && filtri.filtroDisiscritti !== "tutti",
+    staleTime: 60_000,
+    queryFn: async () => {
+      const all: string[] = [];
+      let off = 0;
+      const size = 1000;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await supabase
+          .rpc("get_clienti_disiscritti_ids", {
+            _modo: filtri.filtroDisiscritti === "solo" ? "disiscritti" : "non_disiscritti",
+          } as never)
+          .range(off, off + size - 1);
+        if (error) throw error;
+        const batch = ((data ?? []) as Array<{ id: string }>).map((r) => r.id);
+        all.push(...batch);
+        if (batch.length < size) break;
+        off += size;
+      }
+      return all;
+    },
+  });
+
+  // Intersezione id-filter set (semaforo ∩ fatturato ∩ consenso ∩ email valida ∩ disiscritti ∩ lista statica)
   const includeIds = useMemo<string[] | null>(() => {
     const sources: string[][] = [];
     if (semaforoIds) sources.push(semaforoIds);
     if (fatturatoIds) sources.push(fatturatoIds);
     if (consensoIds) sources.push(consensoIds);
     if (emailValidaIds) sources.push(emailValidaIds);
+    if (disiscrittiIds) sources.push(disiscrittiIds);
     if (listaStatica) sources.push(listaStatica.ids);
     if (sources.length === 0) return null;
     const sets = sources.map((s) => new Set(s));
     return sources[0].filter((id) => sets.every((s) => s.has(id)));
-  }, [semaforoIds, fatturatoIds, consensoIds, emailValidaIds, listaStatica]);
+  }, [semaforoIds, fatturatoIds, consensoIds, emailValidaIds, disiscrittiIds, listaStatica]);
 
   // === Query builder — allineato a src/routes/_app/clienti.tsx (fonte unica) ===
   function buildQuery(select: string, count: "exact" | undefined, idsSubset?: string[]) {
@@ -334,6 +363,7 @@ function MarketingSegmentiPage() {
   const fatturatoReady = filtri.fatturato === "tutti" || !!fatturatoIds;
   const consensoReady = filtri.filtroConsenso === "tutti" || !!consensoIds;
   const emailReady = filtri.filtroEmail === "tutti" || !!emailValidaIds;
+  const disiscrittiReady = filtri.filtroDisiscritti === "tutti" || !!disiscrittiIds;
 
   // === Conteggio segmento + lista paginata (100 per pagina) ===
   const PAGE_SIZE = 100;
@@ -347,7 +377,7 @@ function MarketingSegmentiPage() {
   }, [stores]);
   const { data: segmento, isLoading } = useQuery({
     queryKey: ["marketing-segmento", filtri, includeIds?.length ?? null, listaStatica?.id ?? null, pagina],
-    enabled: canSee && classifReady && fatturatoReady && consensoReady && emailReady,
+    enabled: canSee && classifReady && fatturatoReady && consensoReady && emailReady && disiscrittiReady,
     queryFn: async () => {
       // Liste id molto lunghe: interroga a blocchi e pagina in memoria
       if (includeIds && includeIds.length > CHUNK_IDS) {
@@ -403,6 +433,27 @@ function MarketingSegmentiPage() {
         }
       }
       return map;
+    },
+  });
+
+  // === Stato disiscrizione marketing delle email aziendali visibili in pagina ===
+  const emailsPaginaKey = rows.map((r: any) => String(r.email ?? "")).join("|");
+  const { data: disiscritteSet } = useQuery({
+    queryKey: ["stato-opt-out-pagina", emailsPaginaKey],
+    enabled: rows.some((r: any) => !!r.email),
+    staleTime: 60_000,
+    queryFn: async () => {
+      const emails = rows.map((r: any) => r.email).filter(Boolean) as string[];
+      const set = new Set<string>();
+      for (const part of chunkArray(emails, CHUNK)) {
+        const { data, error } = await supabase
+          .rpc("get_stato_opt_out", { _emails: part } as never);
+        if (error) throw error;
+        for (const r of (data ?? []) as Array<{ email: string; disiscritto: boolean }>) {
+          if (r.disiscritto) set.add(r.email.trim().toLowerCase());
+        }
+      }
+      return set;
     },
   });
 
@@ -1027,6 +1078,20 @@ function MarketingSegmentiPage() {
             </Select>
           </div>
           <div>
+            <Label className="text-xs">Disiscrizione marketing</Label>
+            <Select
+              value={filtri.filtroDisiscritti}
+              onValueChange={(v) => setFiltri((p) => ({ ...p, filtroDisiscritti: v as Filtri["filtroDisiscritti"] }))}
+            >
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="tutti">Tutti</SelectItem>
+                <SelectItem value="escludi">Escludi disiscritti</SelectItem>
+                <SelectItem value="solo">Solo disiscritti</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
             <Label className="text-xs">Città</Label>
             <Input value={filtri.citta} onChange={(e) => setFiltri((p) => ({ ...p, citta: e.target.value }))} placeholder="Es. Milano" />
           </div>
@@ -1175,18 +1240,19 @@ function MarketingSegmentiPage() {
               <TableHead>Agente</TableHead>
               <TableHead>Categoria</TableHead>
               <TableHead className="text-center">Email valida</TableHead>
+              <TableHead className="text-center">Marketing</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {(isLoading || caricamentoTutti) && (
-              <TableRow><TableCell colSpan={8} className="text-muted-foreground text-center py-6">
+              <TableRow><TableCell colSpan={9} className="text-muted-foreground text-center py-6">
                 {caricamentoTutti ? (
                   <span className="inline-flex items-center gap-2"><Loader2 className="size-4 animate-spin" /> Selezione dell'intero segmento…</span>
                 ) : "Caricamento..."}
               </TableCell></TableRow>
             )}
             {!isLoading && !caricamentoTutti && rows.length === 0 && (
-              <TableRow><TableCell colSpan={8} className="text-muted-foreground text-center py-6">Nessun cliente corrisponde ai filtri</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-muted-foreground text-center py-6">Nessun cliente corrisponde ai filtri</TableCell></TableRow>
             )}
             {!caricamentoTutti && rows.map((c: any) => {
               const contatti = contattiMap?.get(c.id) ?? [];
@@ -1233,11 +1299,18 @@ function MarketingSegmentiPage() {
                         </Badge>
                       )}
                     </TableCell>
+                    <TableCell className="text-center">
+                      {c.email && disiscritteSet?.has(String(c.email).trim().toLowerCase()) && (
+                        <Badge variant="destructive" className="gap-1">
+                          <MailX className="size-3" /> Disiscritto
+                        </Badge>
+                      )}
+                    </TableCell>
                   </TableRow>
                   {isOpen && (
                     <TableRow key={`${c.id}-exp`} className="bg-muted/30 hover:bg-muted/30">
                       <TableCell />
-                    <TableCell colSpan={7} className="py-3">
+                    <TableCell colSpan={8} className="py-3">
                         <div className="space-y-3">
                           <div className="flex items-center gap-2 text-sm">
                             <Checkbox
