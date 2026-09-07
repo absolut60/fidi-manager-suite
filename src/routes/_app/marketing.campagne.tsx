@@ -693,35 +693,57 @@ type DestinatarioRiga = {
   clienti: { ragione_sociale: string } | null;
 };
 
+function chunkArray<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
+
+const DEST_PAGE_SIZE = 100;
+
 function DestinatariCampagnaDialog({
   campagna, onClose,
 }: { campagna: Campagna; onClose: () => void }) {
   const qc = useQueryClient();
+  const [pagina, setPagina] = useState(1);
+  const [ricercaInput, setRicercaInput] = useState("");
+  const [ricerca, setRicerca] = useState("");
+  const [selezionati, setSelezionati] = useState<Set<string>>(new Set());
+  const [confermaMultipla, setConfermaMultipla] = useState(false);
+  const inCorso = campagna.stato === "in_corso";
 
-  const { data: righe, isLoading } = useQuery({
-    queryKey: ["campagne-email-destinatari", campagna.id],
-    refetchInterval: campagna.stato === "in_corso" ? 5000 : false,
+  useEffect(() => {
+    const t = setTimeout(() => setRicerca(ricercaInput), 300);
+    return () => clearTimeout(t);
+  }, [ricercaInput]);
+
+  useEffect(() => {
+    setPagina(1);
+  }, [ricerca]);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["campagne-email-destinatari", campagna.id, pagina, ricerca],
+    refetchInterval: inCorso ? 5000 : false,
     queryFn: async () => {
-      const destinatari: DestinatarioRiga[] = [];
-      let off = 0;
-      const size = 1000;
-      while (true) {
-        const { data, error } = await supabase
-          .from("campagne_email_destinatari")
-          .select("id, email, tipo_destinatario, nome_riferimento, cliente_id, aggiunto_il, stato_invio, inviato_at, errore, clienti(ragione_sociale)")
-          .eq("campagna_id", campagna.id)
-          .order("aggiunto_il", { ascending: false })
-          .range(off, off + size - 1);
-        if (error) throw error;
-        const batch = (data ?? []) as unknown as DestinatarioRiga[];
-        destinatari.push(...batch);
-        if (batch.length < size) break;
-        off += size;
-      }
-      return destinatari;
+      let q = supabase
+        .from("campagne_email_destinatari")
+        .select("id, email, tipo_destinatario, nome_riferimento, cliente_id, aggiunto_il, stato_invio, inviato_at, errore, clienti(ragione_sociale)", { count: "exact" })
+        .eq("campagna_id", campagna.id);
+      const term = ricerca.trim().replace(/[,()]/g, " ").trim();
+      if (term) q = q.or(`email.ilike.%${term}%,nome_riferimento.ilike.%${term}%`);
+      const { data, error, count } = await q
+        .order("aggiunto_il", { ascending: false })
+        .range((pagina - 1) * DEST_PAGE_SIZE, pagina * DEST_PAGE_SIZE - 1);
+      if (error) throw error;
+      return { righe: (data ?? []) as unknown as DestinatarioRiga[], totale: count ?? 0 };
     },
   });
 
+  const righe = data?.righe ?? [];
+  const totale = data?.totale ?? 0;
+  const totPagine = Math.max(1, Math.ceil(totale / DEST_PAGE_SIZE));
+  const da = totale === 0 ? 0 : (pagina - 1) * DEST_PAGE_SIZE + 1;
+  const a = Math.min(pagina * DEST_PAGE_SIZE, totale);
 
   const rimuovi = useMutation({
     mutationFn: async (id: string) => {
@@ -735,6 +757,41 @@ function DestinatariCampagnaDialog({
     onError: (e: any) => toast.error(e?.message ?? "Errore rimozione destinatario"),
   });
 
+  const rimuoviSelezionati = useMutation({
+    mutationFn: async () => {
+      for (const part of chunkArray(Array.from(selezionati), 200)) {
+        const { error } = await supabase.from("campagne_email_destinatari").delete().in("id", part);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      toast.success(`${selezionati.size.toLocaleString("it-IT")} destinatari rimossi`);
+      setSelezionati(new Set());
+      setConfermaMultipla(false);
+      qc.invalidateQueries({ queryKey: ["campagne-email-destinatari"] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Errore rimozione destinatari"),
+  });
+
+  const toggleSelezionato = (id: string, checked: boolean) => {
+    setSelezionati((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id); else next.delete(id);
+      return next;
+    });
+  };
+
+  const tuttiSelezionatiInPagina = righe.length > 0 && righe.every((r) => selezionati.has(r.id));
+  const togglePagina = (checked: boolean) => {
+    setSelezionati((prev) => {
+      const next = new Set(prev);
+      for (const r of righe) {
+        if (checked) next.add(r.id); else next.delete(r.id);
+      }
+      return next;
+    });
+  };
+
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
@@ -745,23 +802,58 @@ function DestinatariCampagnaDialog({
           </DialogDescription>
         </DialogHeader>
 
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+          <Input
+            className="pl-9"
+            placeholder="Cerca per email o nome…"
+            value={ricercaInput}
+            onChange={(e) => setRicercaInput(e.target.value)}
+          />
+        </div>
+
+        {selezionati.size > 0 && (
+          <div className="flex items-center justify-between rounded-md border bg-muted/40 px-3 py-2">
+            <span className="text-sm">{selezionati.size.toLocaleString("it-IT")} selezionati</span>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={inCorso || rimuoviSelezionati.isPending}
+              title={inCorso ? "Invio in corso: rimozione non disponibile" : "Rimuovi selezionati"}
+              onClick={() => setConfermaMultipla(true)}
+            >
+              <Trash2 className="size-4 mr-1.5" />
+              Rimuovi selezionati
+            </Button>
+          </div>
+        )}
+
         {isLoading ? (
           <div className="space-y-2">
             <Skeleton className="h-8 w-full" />
             <Skeleton className="h-8 w-full" />
           </div>
-        ) : !righe?.length ? (
+        ) : !righe.length ? (
           <div className="p-8 text-center text-sm text-muted-foreground">
-            Nessun destinatario. Aggiungili dalla pagina Segmenti.
+            {ricerca ? "Nessun destinatario corrisponde alla ricerca." : "Nessun destinatario. Aggiungili dalla pagina Segmenti."}
           </div>
         ) : (
           <>
             <div className="text-sm text-muted-foreground">
-              {righe.length.toLocaleString("it-IT")} destinatari
+              {totale.toLocaleString("it-IT")} destinatari
             </div>
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={tuttiSelezionatiInPagina}
+                      onCheckedChange={(v) => togglePagina(v === true)}
+                      disabled={inCorso}
+                      title={inCorso ? "Invio in corso: rimozione non disponibile" : "Seleziona tutti in pagina"}
+                      aria-label="Seleziona tutti in pagina"
+                    />
+                  </TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead>Stato invio</TableHead>
@@ -774,6 +866,15 @@ function DestinatariCampagnaDialog({
               <TableBody>
                 {righe.map((r) => (
                   <TableRow key={r.id}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selezionati.has(r.id)}
+                        onCheckedChange={(v) => toggleSelezionato(r.id, v === true)}
+                        disabled={inCorso}
+                        title={inCorso ? "Invio in corso: rimozione non disponibile" : undefined}
+                        aria-label={`Seleziona ${r.email}`}
+                      />
+                    </TableCell>
                     <TableCell className="font-medium">
                       {r.email}
                       {r.nome_riferimento && (
@@ -797,9 +898,9 @@ function DestinatariCampagnaDialog({
                       <Button
                         variant="ghost"
                         size="icon"
-                        title="Rimuovi dalla campagna"
+                        title={inCorso ? "Invio in corso: rimozione non disponibile" : "Rimuovi dalla campagna"}
                         onClick={() => rimuovi.mutate(r.id)}
-                        disabled={rimuovi.isPending}
+                        disabled={rimuovi.isPending || inCorso}
                       >
                         <X className="size-4 text-destructive" />
                       </Button>
@@ -808,6 +909,21 @@ function DestinatariCampagnaDialog({
                 ))}
               </TableBody>
             </Table>
+
+            {totale > DEST_PAGE_SIZE && (
+              <div className="flex items-center justify-between gap-2 text-sm">
+                <span className="text-muted-foreground">
+                  Mostrati {da.toLocaleString("it-IT")}–{a.toLocaleString("it-IT")} di {totale.toLocaleString("it-IT")}
+                </span>
+                <div className="flex items-center gap-1">
+                  <Button variant="outline" size="sm" disabled={pagina <= 1} onClick={() => setPagina(1)}>Prima</Button>
+                  <Button variant="outline" size="sm" disabled={pagina <= 1} onClick={() => setPagina((p) => p - 1)}>Precedente</Button>
+                  <span className="px-2 text-muted-foreground">Pagina {pagina} di {totPagine}</span>
+                  <Button variant="outline" size="sm" disabled={pagina >= totPagine} onClick={() => setPagina((p) => p + 1)}>Successiva</Button>
+                  <Button variant="outline" size="sm" disabled={pagina >= totPagine} onClick={() => setPagina(totPagine)}>Ultima</Button>
+                </div>
+              </div>
+            )}
           </>
         )}
 
@@ -815,6 +931,27 @@ function DestinatariCampagnaDialog({
           <Button variant="outline" onClick={onClose}>Chiudi</Button>
         </DialogFooter>
       </DialogContent>
+
+      <AlertDialog open={confermaMultipla} onOpenChange={setConfermaMultipla}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Rimuovere {selezionati.size.toLocaleString("it-IT")} destinatari dalla campagna?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Gli indirizzi selezionati saranno eliminati dall'elenco destinatari. L'operazione non è annullabile.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={rimuoviSelezionati.isPending}>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={rimuoviSelezionati.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => { e.preventDefault(); rimuoviSelezionati.mutate(); }}
+            >
+              {rimuoviSelezionati.isPending ? "Rimozione…" : "Rimuovi definitivamente"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
