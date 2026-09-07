@@ -243,6 +243,12 @@ function InviiMarketingPage() {
         </div>
       </header>
 
+      {anyInCorso && (
+        <p className="text-xs text-muted-foreground">
+          Aggiornamento automatico ogni 10 s · ultimo: {new Date(progressoAggiornatoAt).toLocaleTimeString("it-IT")}
+        </p>
+      )}
+
       <Link to="/marketing/disiscrizioni" className="block max-w-xs">
         <Card className="p-4 flex items-center gap-3 hover:bg-muted/50 transition-colors">
           <UserX className="size-5 text-muted-foreground" />
