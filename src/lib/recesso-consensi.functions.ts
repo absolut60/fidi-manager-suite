@@ -212,8 +212,8 @@ export const registraOptOutAziendale = createServerFn({ method: "POST" })
 
     const { data: ok, error } = await supabaseAdmin.rpc("registra_opt_out_marketing", {
       _token: data.token,
-      _ip: ip,
-      _ua: ua,
+      _ip: ip ?? undefined,
+      _ua: ua ?? undefined,
     });
     if (error) throw new Error(error.message);
     if (!ok) throw new Error("Link non valido");
