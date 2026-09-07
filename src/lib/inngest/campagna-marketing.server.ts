@@ -408,6 +408,17 @@ export const invioCampagnaMarketing = inngest.createFunction(
 
     if (annullataInCorso) return { ok: true, annullata: true };
 
+    // Se restano altri destinatari da_inviare oltre il cap di questa esecuzione,
+    // NON finalizzare: ri-emetti l'evento e la prossima run riprende dai rimasti.
+    // Il guard per riga (stato_invio !== "da_inviare" → skip) evita doppi invii.
+    if (total > idsQuestaRun.length) {
+      await step.sendEvent("continua-campagna", {
+        name: "campagna-marketing/invio.requested",
+        data: { campagna_id },
+      });
+      return { ok: true, continua: true, rimanenti: total - idsQuestaRun.length };
+    }
+
     await step.run("finalize", async () => {
       const { data: camp } = await supabaseAdmin
         .from("campagne_email_marketing")
