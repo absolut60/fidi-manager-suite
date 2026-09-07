@@ -6746,6 +6746,16 @@ export type Database = {
           store_nome: string
         }[]
       }
+      get_stato_opt_out: {
+        Args: { _emails: string[] }
+        Returns: {
+          campagna_nome: string
+          created_at: string
+          disiscritto: boolean
+          email: string
+          origine: string
+        }[]
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]

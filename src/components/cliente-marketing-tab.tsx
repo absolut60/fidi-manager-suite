@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ClienteFatturato } from "@/components/cliente-fatturato";
 import { CONSENSO_LABEL } from "@/lib/consensi-testi";
 import { Tag, Gauge, HardHat, ShieldCheck } from "lucide-react";
+import { BadgeDisiscrizione } from "@/components/marketing/badge-disiscrizione";
 
 const DASH = "—";
 
@@ -33,6 +34,7 @@ function SectionTitle({ icon: Icon, children }: { icon: typeof Tag; children: Re
 }
 
 type ClienteLike = {
+  email?: string | null;
   codice_categoria?: string | null;
   categoria?: string | null;
   codice_macrocategoria?: string | null;
@@ -102,6 +104,8 @@ export function ClienteMarketingTab({ clienteId, cliente }: { clienteId: string;
 
   return (
     <div className="space-y-6">
+      <BadgeDisiscrizione email={cliente.email ?? null} />
+
       <section className="space-y-2">
         <SectionTitle icon={Tag}>Classificazione</SectionTitle>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
