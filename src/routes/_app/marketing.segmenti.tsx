@@ -61,6 +61,7 @@ type Filtri = {
   fatturato: "tutti" | "nessuno" | "0_10k" | "10k_50k" | "50k_100k" | "oltre_100k";
   filtroConsenso: ConsensoFiltro;      // almeno un contatto con quel consenso attivo
   filtroEmail: "tutti" | "con" | "senza";
+  filtroDisiscritti: "tutti" | "escludi" | "solo";
   citta: string;
   provincia: string;
   ricerca: string;
@@ -79,6 +80,7 @@ const FILTRI_DEFAULT: Filtri = {
   fatturato: "tutti",
   filtroConsenso: "tutti",
   filtroEmail: "tutti",
+  filtroDisiscritti: "tutti",
   citta: "",
   provincia: "",
   ricerca: "",
@@ -292,18 +294,45 @@ function MarketingSegmentiPage() {
     },
   });
 
-  // Intersezione id-filter set (semaforo ∩ fatturato ∩ consenso ∩ email valida ∩ lista statica)
+  // === Filtro disiscrizione marketing: clienti la cui email aziendale è in marketing_opt_out (via RPC) ===
+  const { data: disiscrittiIds } = useQuery({
+    queryKey: ["disiscritti-ids-marketing", filtri.filtroDisiscritti],
+    enabled: canSee && filtri.filtroDisiscritti !== "tutti",
+    staleTime: 60_000,
+    queryFn: async () => {
+      const all: string[] = [];
+      let off = 0;
+      const size = 1000;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await supabase
+          .rpc("get_clienti_disiscritti_ids", {
+            _modo: filtri.filtroDisiscritti === "solo" ? "disiscritti" : "non_disiscritti",
+          } as never)
+          .range(off, off + size - 1);
+        if (error) throw error;
+        const batch = ((data ?? []) as Array<{ id: string }>).map((r) => r.id);
+        all.push(...batch);
+        if (batch.length < size) break;
+        off += size;
+      }
+      return all;
+    },
+  });
+
+  // Intersezione id-filter set (semaforo ∩ fatturato ∩ consenso ∩ email valida ∩ disiscritti ∩ lista statica)
   const includeIds = useMemo<string[] | null>(() => {
     const sources: string[][] = [];
     if (semaforoIds) sources.push(semaforoIds);
     if (fatturatoIds) sources.push(fatturatoIds);
     if (consensoIds) sources.push(consensoIds);
     if (emailValidaIds) sources.push(emailValidaIds);
+    if (disiscrittiIds) sources.push(disiscrittiIds);
     if (listaStatica) sources.push(listaStatica.ids);
     if (sources.length === 0) return null;
     const sets = sources.map((s) => new Set(s));
     return sources[0].filter((id) => sets.every((s) => s.has(id)));
-  }, [semaforoIds, fatturatoIds, consensoIds, emailValidaIds, listaStatica]);
+  }, [semaforoIds, fatturatoIds, consensoIds, emailValidaIds, disiscrittiIds, listaStatica]);
 
   // === Query builder — allineato a src/routes/_app/clienti.tsx (fonte unica) ===
   function buildQuery(select: string, count: "exact" | undefined, idsSubset?: string[]) {
@@ -334,6 +363,7 @@ function MarketingSegmentiPage() {
   const fatturatoReady = filtri.fatturato === "tutti" || !!fatturatoIds;
   const consensoReady = filtri.filtroConsenso === "tutti" || !!consensoIds;
   const emailReady = filtri.filtroEmail === "tutti" || !!emailValidaIds;
+  const disiscrittiReady = filtri.filtroDisiscritti === "tutti" || !!disiscrittiIds;
 
   // === Conteggio segmento + lista paginata (100 per pagina) ===
   const PAGE_SIZE = 100;
