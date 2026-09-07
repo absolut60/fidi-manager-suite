@@ -377,7 +377,7 @@ function MarketingSegmentiPage() {
   }, [stores]);
   const { data: segmento, isLoading } = useQuery({
     queryKey: ["marketing-segmento", filtri, includeIds?.length ?? null, listaStatica?.id ?? null, pagina],
-    enabled: canSee && classifReady && fatturatoReady && consensoReady && emailReady,
+    enabled: canSee && classifReady && fatturatoReady && consensoReady && emailReady && disiscrittiReady,
     queryFn: async () => {
       // Liste id molto lunghe: interroga a blocchi e pagina in memoria
       if (includeIds && includeIds.length > CHUNK_IDS) {
