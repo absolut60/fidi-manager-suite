@@ -123,16 +123,15 @@ export const invioCampagnaMarketing = inngest.createFunction(
       emailOperatore: string | null;
     }> => {
       let nome = prep.mittenteNome || "Ufficio Marketing MADE";
-      let email: string | null = prep.mittenteEmail || null;
-      if ((!nome || !email) && prep.operatoreId) {
+      const email: string | null = prep.mittenteEmail || null;
+      if (!nome && prep.operatoreId) {
         const { data } = await supabaseAdmin
           .from("profili")
-          .select("nome, cognome, email")
+          .select("nome, cognome")
           .eq("id", prep.operatoreId)
           .maybeSingle();
         const n = `${data?.nome ?? ""} ${data?.cognome ?? ""}`.trim();
-        if (!nome && n) nome = n;
-        if (!email) email = data?.email ?? null;
+        if (n) nome = n;
       }
       return {
         blocco: await getConfigInt("campagna_marketing_blocco", DEFAULT_BLOCCO),
