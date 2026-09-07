@@ -1299,6 +1299,13 @@ function MarketingSegmentiPage() {
                         </Badge>
                       )}
                     </TableCell>
+                    <TableCell className="text-center">
+                      {c.email && disiscritteSet?.has(String(c.email).trim().toLowerCase()) && (
+                        <Badge variant="destructive" className="gap-1">
+                          <MailX className="size-3" /> Disiscritto
+                        </Badge>
+                      )}
+                    </TableCell>
                   </TableRow>
                   {isOpen && (
                     <TableRow key={`${c.id}-exp`} className="bg-muted/30 hover:bg-muted/30">
