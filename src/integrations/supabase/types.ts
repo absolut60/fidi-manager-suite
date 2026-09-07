@@ -5998,6 +5998,17 @@ export type Database = {
           scaduto_cambiato: boolean
         }[]
       }
+      get_conteggi_campagne_email: {
+        Args: never
+        Returns: {
+          campagna_id: string
+          da_inviare: number
+          fallito: number
+          inviato: number
+          saltato: number
+          totale: number
+        }[]
+      }
       get_cruscotto_incassi_mensile: {
         Args: { _anno: number; _store_id?: string }
         Returns: {
