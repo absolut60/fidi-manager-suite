@@ -107,6 +107,11 @@ export function ClienteMarketingTab({ clienteId, cliente }: { clienteId: string;
       <BadgeDisiscrizione email={cliente.email ?? null} />
 
       <section className="space-y-2">
+        <SectionTitle icon={Megaphone}>Campagne email</SectionTitle>
+        <CampagneEntitaTab clienteId={clienteId} />
+      </section>
+
+      <section className="space-y-2">
         <SectionTitle icon={Tag}>Classificazione</SectionTitle>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
           <Stat label="Categoria" value={categoria} />
