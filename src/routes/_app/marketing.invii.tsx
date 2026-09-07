@@ -625,6 +625,49 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
             )}
           </TableBody>
         </Table>
+
+        {totaleRighe > PAGE_SIZE && (
+          <div className="flex items-center justify-between pt-4">
+            <div className="text-sm text-muted-foreground">
+              Mostrati {totaleRighe === 0 ? 0 : (pagineClamp - 1) * PAGE_SIZE + 1}–{Math.min(pagineClamp * PAGE_SIZE, totaleRighe)} di {totaleRighe}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPagina(1)}
+                disabled={pagineClamp <= 1}
+              >
+                Prima
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPagina((p) => p - 1)}
+                disabled={pagineClamp <= 1}
+              >
+                Precedente
+              </Button>
+              <span className="text-sm px-2">Pagina {pagineClamp} di {totalePagine}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPagina((p) => p + 1)}
+                disabled={pagineClamp >= totalePagine}
+              >
+                Successiva
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPagina(totalePagine)}
+                disabled={pagineClamp >= totalePagine}
+              >
+                Ultima
+              </Button>
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
