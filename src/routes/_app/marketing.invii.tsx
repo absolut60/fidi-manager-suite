@@ -182,11 +182,45 @@ function InviiMarketingPage() {
         totale_destinatari: totMap[r.id] ?? 0,
       })) as CampagnaRow[];
     },
-    refetchInterval: (q) => {
-      const rows = q.state.data as CampagnaRow[] | undefined;
-      return rows?.some((r) => r.stato === "in_corso") ? 10_000 : false;
+  });
+
+  // Polling leggero: solo le campagne in_corso, solo i contatori che cambiano.
+  const anyInCorso = useMemo(() => (campagne ?? []).some((r) => r.stato === "in_corso"), [campagne]);
+
+  const { data: progresso, dataUpdatedAt: progressoAggiornatoAt } = useQuery({
+    queryKey: ["campagne-marketing-progresso"],
+    enabled: canSee && anyInCorso,
+    refetchInterval: 10_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("campagne_email_marketing")
+        .select("id, stato, inviati, saltati, falliti, clic_unici, clic_totali")
+        .eq("stato", "in_corso");
+      if (error) throw error;
+      const map: Record<string, { stato: string; inviati: number; saltati: number; falliti: number; clic_unici: number; clic_totali: number }> = {};
+      for (const r of (data ?? []) as unknown as Array<{ id: string; stato: string; inviati: number; saltati: number; falliti: number; clic_unici: number; clic_totali: number }>) {
+        map[r.id] = { stato: r.stato, inviati: r.inviati, saltati: r.saltati, falliti: r.falliti, clic_unici: r.clic_unici, clic_totali: r.clic_totali };
+      }
+      return map;
     },
   });
+
+  const campagneMerged = useMemo(() => {
+    if (!campagne) return campagne;
+    if (!progresso) return campagne;
+    return campagne.map((c) => {
+      const p = progresso[c.id];
+      return p ? { ...c, ...p } : c;
+    });
+  }, [campagne, progresso]);
+
+  // Quando una campagna esce da "in_corso" (sparisce dal polling), ricarica una volta i dati fissi.
+  useEffect(() => {
+    if (!progresso || !anyInCorso) return;
+    const attive = new Set(Object.keys(progresso));
+    const appenaTerminata = (campagne ?? []).some((c) => c.stato === "in_corso" && !attive.has(c.id));
+    if (appenaTerminata) qc.invalidateQueries({ queryKey: ["campagne-marketing-invii"] });
+  }, [progresso, anyInCorso, campagne, qc]);
 
   if (authLoading) return <div className="p-6 text-muted-foreground">Caricamento...</div>;
   if (!canSee)
