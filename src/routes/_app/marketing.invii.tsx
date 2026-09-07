@@ -361,6 +361,7 @@ function InviiMarketingPage() {
       {openDettaglio && (
         <DettaglioCampagnaDialog
           campagnaId={openDettaglio}
+          inCorso={(campagneMerged ?? []).find((c) => c.id === openDettaglio)?.stato === "in_corso"}
           onClose={() => setOpenDettaglio(null)}
         />
       )}
