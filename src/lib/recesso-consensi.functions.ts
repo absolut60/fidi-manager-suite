@@ -174,3 +174,94 @@ export const revocaConsensi = createServerFn({ method: "POST" })
 
     return { ok: true, revocati: tipi };
   });
+
+/**
+ * Dati pubblici per la pagina di recesso nel caso di destinatario "aziendale"
+ * (email del cliente, senza contatto persona). Nessun login richiesto.
+ */
+export const getRecessoAziendale = createServerFn({ method: "GET" })
+  .inputValidator((d: { token: string }) => z.object({ token: z.string().uuid() }).parse(d))
+  .handler(async ({ data }) => {
+    const { data: rows, error } = await supabaseAdmin.rpc("get_destinatario_recesso", {
+      _token: data.token,
+    });
+    if (error) throw new Error(error.message);
+    if (!rows || rows.length === 0) throw new Error("Link non valido");
+    const row = rows[0] as { email: string; ragione_sociale: string | null; gia_disiscritto: boolean };
+    return {
+      email: row.email,
+      ragione_sociale: row.ragione_sociale,
+      gia_disiscritto: row.gia_disiscritto,
+    };
+  });
+
+/**
+ * Registra l'opt-out di un indirizzo aziendale e notifica l'amministrazione
+ * in modo best-effort. Nessun login richiesto.
+ */
+export const registraOptOutAziendale = createServerFn({ method: "POST" })
+  .inputValidator((d: { token: string }) => z.object({ token: z.string().uuid() }).parse(d))
+  .handler(async ({ data }) => {
+    const ip = estraiIp();
+    let ua: string | null = null;
+    try {
+      ua = getRequest().headers.get("user-agent");
+    } catch {
+      ua = null;
+    }
+
+    const { data: ok, error } = await supabaseAdmin.rpc("registra_opt_out_marketing", {
+      _token: data.token,
+      _ip: ip,
+      _ua: ua,
+    });
+    if (error) throw new Error(error.message);
+    if (!ok) throw new Error("Link non valido");
+
+    // Notifica amministrazione (non blocca la disiscrizione in caso di errore invio)
+    try {
+      const { data: rows } = await supabaseAdmin.rpc("get_destinatario_recesso", {
+        _token: data.token,
+      });
+      const row = rows?.[0] as
+        | { email: string; ragione_sociale: string | null; gia_disiscritto: boolean }
+        | undefined;
+      if (!row) return { ok: true };
+
+      const conf = async (chiave: string) => {
+        const { data: r } = await supabaseAdmin
+          .from("configurazioni")
+          .select("valore")
+          .eq("chiave", chiave)
+          .maybeSingle();
+        return (r?.valore ?? "").toString().trim();
+      };
+      const dest =
+        (await conf("consensi_recesso_email_notifica")) ||
+        (await conf("piano_rientro_email_amministrazione"));
+
+      if (dest) {
+        const { sendEmailViaEdge } = await import("./inngest/send-email.server");
+        const quando = new Date().toLocaleString("it-IT");
+        await sendEmailViaEdge({
+          to: dest,
+          subject: `Disiscrizione comunicazioni commerciali — ${row.ragione_sociale || row.email}`,
+          fromName: "FidiManager",
+          html: `<!doctype html><html><body style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;line-height:1.5;">
+<div style="max-width:640px;margin:0 auto;padding:16px 20px;">
+<h2 style="font-size:18px;">Disiscrizione comunicazioni commerciali</h2>
+<p>Un indirizzo email ha richiesto la disiscrizione dalle comunicazioni commerciali tramite il link pubblico di recesso.</p>
+<ul>
+  <li><strong>Email:</strong> ${row.email}</li>
+  ${row.ragione_sociale ? `<li><strong>Ragione sociale:</strong> ${row.ragione_sociale}</li>` : ""}
+  <li><strong>Data/ora:</strong> ${quando}</li>
+</ul>
+</div></body></html>`,
+        });
+      }
+    } catch (e) {
+      console.error("[recesso] notifica email fallita", e);
+    }
+
+    return { ok: true };
+  });
