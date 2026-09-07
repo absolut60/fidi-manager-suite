@@ -10,6 +10,7 @@ type EventData = { campagna_id: string };
 
 const DEFAULT_BLOCCO = 12;
 const DEFAULT_PAUSA = 60;
+const MAX_PER_RUN = 150; // max destinatari processati per singola esecuzione, poi re-emit
 const ALLEGATI_BUCKET = "allegati";
 
 function appUrl(): string {
@@ -208,7 +209,10 @@ export const invioCampagnaMarketing = inngest.createFunction(
       return { ok: true, inviati: 0 };
     }
 
-    const numBlocchi = Math.ceil(total / cfg.blocco);
+    // Cap per esecuzione: processa al più MAX_PER_RUN destinatari, poi re-emit
+    // dell'evento per riprendere la campagna nella run successiva (job idempotente).
+    const idsQuestaRun = pendingIds.slice(0, MAX_PER_RUN);
+    const numBlocchi = Math.ceil(idsQuestaRun.length / cfg.blocco);
     let annullataInCorso = false;
 
     for (let b = 0; b < numBlocchi; b++) {
@@ -226,7 +230,7 @@ export const invioCampagnaMarketing = inngest.createFunction(
         break;
       }
 
-      const slice = pendingIds.slice(b * cfg.blocco, (b + 1) * cfg.blocco);
+      const slice = idsQuestaRun.slice(b * cfg.blocco, (b + 1) * cfg.blocco);
 
       const blockResult = await step.run(`blocco-${b}`, async () => {
         let inviati = 0;
