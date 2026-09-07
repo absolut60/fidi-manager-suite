@@ -254,6 +254,24 @@ export const invioCampagnaMarketing = inngest.createFunction(
               continue;
             }
 
+            // Controllo opt-out: non inviare a chi è nella lista di soppressione.
+            const { data: optOut } = await supabaseAdmin
+              .from("marketing_opt_out")
+              .select("id")
+              .ilike("email", (d.email as string).trim())
+              .maybeSingle();
+            if (optOut) {
+              await supabaseAdmin
+                .from("campagne_email_destinatari")
+                .update({
+                  stato_invio: "saltato",
+                  errore: "Disiscritto dalle comunicazioni commerciali (opt-out)",
+                } as never)
+                .eq("id", d.id);
+              saltati += 1;
+              continue;
+            }
+
             let ragioneSociale = "";
             let citta = "";
             let agente = "";
@@ -299,8 +317,9 @@ export const invioCampagnaMarketing = inngest.createFunction(
               }
             }
 
-            const token = await tokenRecessoContatto(d.contatto_id as string | null);
-            const linkRecesso = token ? `${appUrl()}/recesso/${token}` : null;
+            let tokenRec = await tokenRecessoContatto(d.contatto_id as string | null);
+            if (!tokenRec) tokenRec = await tokenRecessoDestinatario(d.id as string);
+            const linkRecesso = tokenRec ? `${appUrl()}/recesso/${tokenRec}` : null;
 
             const { oggetto, html } = buildEmailCampagna({
               oggetto: prep.oggetto,
