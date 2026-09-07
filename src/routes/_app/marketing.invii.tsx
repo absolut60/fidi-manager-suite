@@ -39,6 +39,20 @@ import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import * as XLSX from "xlsx";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { classificaSaluteCampagna, fmtDurataBreve } from "@/lib/campagna-salute";
+
+type ProgressoRow = {
+  stato: string;
+  inviati: number;
+  saltati: number;
+  falliti: number;
+  clic_unici: number;
+  clic_totali: number;
+  ultimo_invio_at: string | null;
+  avviata_at: string | null;
+};
+
 
 
 export const Route = createFileRoute("/_app/marketing/invii")({
@@ -192,14 +206,20 @@ function InviiMarketingPage() {
     enabled: canSee && anyInCorso,
     refetchInterval: 10_000,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("campagne_email_marketing")
-        .select("id, stato, inviati, saltati, falliti, clic_unici, clic_totali")
-        .eq("stato", "in_corso");
+      const { data, error } = await supabase.rpc("get_progresso_campagne_in_corso" as never);
       if (error) throw error;
-      const map: Record<string, { stato: string; inviati: number; saltati: number; falliti: number; clic_unici: number; clic_totali: number }> = {};
-      for (const r of (data ?? []) as unknown as Array<{ id: string; stato: string; inviati: number; saltati: number; falliti: number; clic_unici: number; clic_totali: number }>) {
-        map[r.id] = { stato: r.stato, inviati: r.inviati, saltati: r.saltati, falliti: r.falliti, clic_unici: r.clic_unici, clic_totali: r.clic_totali };
+      const map: Record<string, ProgressoRow> = {};
+      for (const r of (data ?? []) as unknown as Array<ProgressoRow & { id: string }>) {
+        map[r.id] = {
+          stato: r.stato,
+          inviati: Number(r.inviati ?? 0),
+          saltati: Number(r.saltati ?? 0),
+          falliti: Number(r.falliti ?? 0),
+          clic_unici: Number(r.clic_unici ?? 0),
+          clic_totali: Number(r.clic_totali ?? 0),
+          ultimo_invio_at: r.ultimo_invio_at ?? null,
+          avviata_at: r.avviata_at ?? null,
+        };
       }
       return map;
     },
@@ -213,6 +233,19 @@ function InviiMarketingPage() {
       return p ? { ...c, ...p } : c;
     });
   }, [campagne, progresso]);
+
+  const bloccate = useMemo(() => {
+    if (!progresso) return 0;
+    return Object.values(progresso).filter(
+      (p) =>
+        classificaSaluteCampagna({
+          ultimoInvioAt: p.ultimo_invio_at,
+          avviataAt: p.avviata_at,
+          now: progressoAggiornatoAt || Date.now(),
+        }).livello === "bloccata",
+    ).length;
+  }, [progresso, progressoAggiornatoAt]);
+
 
   // Quando una campagna esce da "in_corso" (sparisce dal polling), ricarica una volta i dati fissi.
   useEffect(() => {
@@ -243,7 +276,17 @@ function InviiMarketingPage() {
         </div>
       </header>
 
+      {bloccate > 0 && (
+        <Alert variant="destructive">
+          <AlertDescription>
+            ⚠ {bloccate} campagna/e bloccata/e: il job di invio si è fermato. Premi «Riprendi invio»
+            sulla riga per far ripartire dai destinatari rimasti.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {anyInCorso && (
+
         <p className="text-xs text-muted-foreground">
           Aggiornamento automatico ogni 10 s · ultimo: {new Date(progressoAggiornatoAt).toLocaleTimeString("it-IT")}
         </p>
@@ -295,6 +338,15 @@ function InviiMarketingPage() {
                 const pct = c.totale_destinatari > 0 ? Math.round((processati / c.totale_destinatari) * 100) : 0;
                 const isAttiva = c.stato === "in_corso";
                 const isTerminale = c.stato === "completata" || c.stato === "completata_con_errori" || c.stato === "annullata";
+                const p = progresso?.[c.id];
+                const salute = isAttiva && p
+                  ? classificaSaluteCampagna({
+                      ultimoInvioAt: p.ultimo_invio_at,
+                      avviataAt: p.avviata_at,
+                      now: progressoAggiornatoAt || Date.now(),
+                    })
+                  : { livello: "nd" as const, secondiDaUltimo: null };
+                const durata = fmtDurataBreve(salute.secondiDaUltimo);
                 const apri = () => setOpenDettaglio(c.id);
                 return (
                   <TableRow key={c.id} className="hover:bg-muted/50">
@@ -302,7 +354,28 @@ function InviiMarketingPage() {
                     <TableCell className="cursor-pointer" onClick={apri}>{`${c.operatore?.nome ?? ""} ${c.operatore?.cognome ?? ""}`.trim() || "—"}</TableCell>
                     <TableCell className="font-medium cursor-pointer" onClick={apri}>{c.nome}</TableCell>
                     <TableCell className="cursor-pointer text-muted-foreground max-w-[240px] truncate" onClick={apri}>{c.oggetto || "—"}</TableCell>
-                    <TableCell className="cursor-pointer" onClick={apri}><StatoBadge s={c.stato} /></TableCell>
+                    <TableCell className="cursor-pointer" onClick={apri}>
+                      <StatoBadge s={c.stato} />
+                      {salute.livello === "attiva" && (
+                        <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                          <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+                          ultimo invio {durata} fa
+                        </div>
+                      )}
+                      {salute.livello === "rallentata" && (
+                        <div className="mt-1 flex items-center gap-1.5 text-[11px] text-amber-600">
+                          <span className="size-2 rounded-full bg-amber-500" />
+                          rallentata · {durata} fa
+                        </div>
+                      )}
+                      {salute.livello === "bloccata" && (
+                        <div className="mt-1 flex items-center gap-1.5 text-[11px] font-semibold text-destructive">
+                          <span className="size-2 rounded-full bg-destructive" />
+                          BLOCCATA · {durata} fa
+                        </div>
+                      )}
+                    </TableCell>
+
                     <TableCell className="text-right font-medium cursor-pointer" onClick={apri}>{c.totale_destinatari}</TableCell>
                     <TableCell className="text-right text-emerald-600 cursor-pointer" onClick={apri}>{c.inviati}</TableCell>
                     <TableCell className="text-right text-amber-600 cursor-pointer" onClick={apri}>{c.saltati}</TableCell>
@@ -311,12 +384,24 @@ function InviiMarketingPage() {
                     <TableCell className="text-right text-sm tabular-nums cursor-pointer" onClick={apri}>
                       {c.inviati > 0 ? `${Math.round(((c.clic_unici ?? 0) / c.inviati) * 1000) / 10}%` : "—"}
                     </TableCell>
-                    <TableCell className="cursor-pointer" onClick={apri}>
-                      <div className="flex items-center gap-2">
+                    <TableCell>
+                      <div className="flex items-center gap-2 cursor-pointer" onClick={apri}>
                         <Progress value={pct} className="h-2" />
                         <span className="text-xs text-muted-foreground tabular-nums w-10">{pct}%</span>
                       </div>
+                      {salute.livello === "bloccata" && (
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="mt-2 h-7"
+                          disabled={resumingId === c.id}
+                          onClick={(e) => { e.stopPropagation(); doRiprendi(c.id); }}
+                        >
+                          <Play className="size-3.5 mr-1" /> Riprendi invio
+                        </Button>
+                      )}
                     </TableCell>
+
                     <TableCell className="cursor-pointer" onClick={apri}><ChevronRight className="size-4 text-muted-foreground" /></TableCell>
                     <TableCell>
                       <DropdownMenu>

@@ -6396,6 +6396,20 @@ export type Database = {
           scadenza_id: string
         }[]
       }
+      get_progresso_campagne_in_corso: {
+        Args: never
+        Returns: {
+          avviata_at: string
+          clic_totali: number
+          clic_unici: number
+          falliti: number
+          id: string
+          inviati: number
+          saltati: number
+          stato: string
+          ultimo_invio_at: string
+        }[]
+      }
       get_promemoria_clienti_aggregato:
         | {
             Args: {
