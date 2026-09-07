@@ -287,9 +287,17 @@ function InviiMarketingPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           {isAttiva && (
-                            <DropdownMenuItem onClick={() => setConfermaAnnulla(c.id)}>
-                              <Ban className="size-4 mr-2" /> Annulla invio
-                            </DropdownMenuItem>
+                            <>
+                              <DropdownMenuItem
+                                onClick={() => doRiprendi(c.id)}
+                                disabled={resumingId === c.id}
+                              >
+                                <Play className="size-4 mr-2" /> Riprendi invio
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setConfermaAnnulla(c.id)}>
+                                <Ban className="size-4 mr-2" /> Annulla invio
+                              </DropdownMenuItem>
+                            </>
                           )}
                           {isTerminale && (
                             <DropdownMenuItem onClick={() => setConfermaElimina(c.id)} className="text-destructive focus:text-destructive">
