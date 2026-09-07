@@ -6010,6 +6010,12 @@ export type Database = {
           ultima_tipo: string
         }[]
       }
+      get_clienti_disiscritti_ids: {
+        Args: { _modo: string }
+        Returns: {
+          id: string
+        }[]
+      }
       get_clienti_email_valida_ids: {
         Args: { _modo: string }
         Returns: {
