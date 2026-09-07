@@ -41,7 +41,9 @@ const TESTO: Record<TipoConsenso, string> = {
 function RecessoPage() {
   const { token } = Route.useParams();
   const getCt = useServerFn(getContattoPerRecesso);
+  const getAziendale = useServerFn(getRecessoAziendale);
   const revocaFn = useServerFn(revocaConsensi);
+  const optOutFn = useServerFn(registraOptOutAziendale);
 
   const [scelte, setScelte] = useState<Record<TipoConsenso, boolean>>({
     marketing_diretto: false,
@@ -49,15 +51,29 @@ function RecessoPage() {
     profilazione: false,
   });
   const [revocati, setRevocati] = useState<TipoConsenso[] | null>(null);
+  const [optOutOk, setOptOutOk] = useState(false);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["recesso-consensi", token],
-    queryFn: () => getCt({ data: { token } }),
+    queryFn: async () => {
+      try {
+        const contatto = await getCt({ data: { token } });
+        return { tipo: "contatto" as const, ...contatto };
+      } catch {
+        try {
+          const aziendale = await getAziendale({ data: { token } });
+          return { tipo: "aziendale" as const, ...aziendale };
+        } catch {
+          throw new Error("Link non valido");
+        }
+      }
+    },
     retry: false,
   });
-  const cliente = data?.cliente;
-  const contatto = data?.contatto;
-  const stato = data?.statoAttuale;
+
+  const cliente = data?.tipo === "contatto" ? data.cliente : undefined;
+  const contatto = data?.tipo === "contatto" ? data.contatto : undefined;
+  const stato = data?.tipo === "contatto" ? data.statoAttuale : undefined;
 
   const attivi = TIPI.filter((t) => stato?.[t]);
   const selezionati = TIPI.filter((t) => scelte[t] && stato?.[t]);
@@ -78,6 +94,17 @@ function RecessoPage() {
     },
     onSuccess: (tipi) => {
       setRevocati(tipi);
+      toast.success("Preferenze aggiornate");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const optOut = useMutation({
+    mutationFn: async () => {
+      await optOutFn({ data: { token } });
+    },
+    onSuccess: () => {
+      setOptOutOk(true);
       toast.success("Preferenze aggiornate");
     },
     onError: (e: Error) => toast.error(e.message),
