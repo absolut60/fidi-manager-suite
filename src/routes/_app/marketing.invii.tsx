@@ -192,14 +192,20 @@ function InviiMarketingPage() {
     enabled: canSee && anyInCorso,
     refetchInterval: 10_000,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("campagne_email_marketing")
-        .select("id, stato, inviati, saltati, falliti, clic_unici, clic_totali")
-        .eq("stato", "in_corso");
+      const { data, error } = await supabase.rpc("get_progresso_campagne_in_corso" as never);
       if (error) throw error;
-      const map: Record<string, { stato: string; inviati: number; saltati: number; falliti: number; clic_unici: number; clic_totali: number }> = {};
-      for (const r of (data ?? []) as unknown as Array<{ id: string; stato: string; inviati: number; saltati: number; falliti: number; clic_unici: number; clic_totali: number }>) {
-        map[r.id] = { stato: r.stato, inviati: r.inviati, saltati: r.saltati, falliti: r.falliti, clic_unici: r.clic_unici, clic_totali: r.clic_totali };
+      const map: Record<string, ProgressoRow> = {};
+      for (const r of (data ?? []) as unknown as Array<ProgressoRow & { id: string }>) {
+        map[r.id] = {
+          stato: r.stato,
+          inviati: Number(r.inviati ?? 0),
+          saltati: Number(r.saltati ?? 0),
+          falliti: Number(r.falliti ?? 0),
+          clic_unici: Number(r.clic_unici ?? 0),
+          clic_totali: Number(r.clic_totali ?? 0),
+          ultimo_invio_at: r.ultimo_invio_at ?? null,
+          avviata_at: r.avviata_at ?? null,
+        };
       }
       return map;
     },
@@ -213,6 +219,19 @@ function InviiMarketingPage() {
       return p ? { ...c, ...p } : c;
     });
   }, [campagne, progresso]);
+
+  const bloccate = useMemo(() => {
+    if (!progresso) return 0;
+    return Object.values(progresso).filter(
+      (p) =>
+        classificaSaluteCampagna({
+          ultimoInvioAt: p.ultimo_invio_at,
+          avviataAt: p.avviata_at,
+          now: progressoAggiornatoAt || Date.now(),
+        }).livello === "bloccata",
+    ).length;
+  }, [progresso, progressoAggiornatoAt]);
+
 
   // Quando una campagna esce da "in_corso" (sparisce dal polling), ricarica una volta i dati fissi.
   useEffect(() => {
