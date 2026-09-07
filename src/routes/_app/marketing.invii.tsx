@@ -131,16 +131,14 @@ function InviiMarketingPage() {
         (profs ?? []).forEach((p) => { opMap[p.id] = { nome: p.nome, cognome: p.cognome }; });
       }
 
-      // Totale destinatari: una sola query aggregata per tutte le campagne.
+      // Totale destinatari: conteggio aggregato via RPC per evitare lettura di migliaia di righe.
       const totMap: Record<string, number> = {};
       if (rows.length) {
-        const { data: dest } = await supabase
-          .from("campagne_email_destinatari")
-          .select("campagna_id")
-          .in("campagna_id", rows.map((r) => r.id));
-        (dest ?? []).forEach((d: { campagna_id: string }) => {
-          totMap[d.campagna_id] = (totMap[d.campagna_id] ?? 0) + 1;
-        });
+        const { data: conteggi, error: errC } = await supabase.rpc("get_conteggi_campagne_email" as never);
+        if (errC) throw errC;
+        for (const c of (conteggi ?? []) as Array<{ campagna_id: string; totale: number }>) {
+          totMap[c.campagna_id] = Number(c.totale);
+        }
       }
 
       return rows.map((r) => ({
@@ -373,14 +371,24 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
   const { data: rows, isLoading } = useQuery({
     queryKey: ["campagna-marketing-destinatari", campagnaId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("campagne_email_destinatari")
-        .select("id, cliente_id, email, nome_riferimento, tipo_destinatario, stato_invio, errore, inviato_at, num_clic, ultimo_clic_at, message_id")
-        .eq("campagna_id", campagnaId)
-        .order("stato_invio", { ascending: true })
-        .order("inviato_at", { ascending: false, nullsFirst: false });
-      if (error) throw error;
-      return (data ?? []) as unknown as DestRow[];
+      const tutte: DestRow[] = [];
+      let off = 0;
+      const size = 1000;
+      while (true) {
+        const { data, error } = await supabase
+          .from("campagne_email_destinatari")
+          .select("id, cliente_id, email, nome_riferimento, tipo_destinatario, stato_invio, errore, inviato_at, num_clic, ultimo_clic_at, message_id")
+          .eq("campagna_id", campagnaId)
+          .order("stato_invio", { ascending: true })
+          .order("inviato_at", { ascending: false, nullsFirst: false })
+          .range(off, off + size - 1);
+        if (error) throw error;
+        const batch = (data ?? []) as unknown as DestRow[];
+        tutte.push(...batch);
+        if (batch.length < size) break;
+        off += size;
+      }
+      return tutte;
     },
     refetchInterval: 10_000,
   });
