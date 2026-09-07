@@ -44,6 +44,24 @@ async function trackingTokenDestinatario(destinatarioId: string): Promise<string
   return token;
 }
 
+/** Token di recesso del destinatario (idempotente). */
+async function tokenRecessoDestinatario(destinatarioId: string): Promise<string | null> {
+  const { data } = await supabaseAdmin
+    .from("campagne_email_destinatari")
+    .select("recesso_token")
+    .eq("id", destinatarioId)
+    .maybeSingle();
+  const existing = (data as { recesso_token?: string | null } | null)?.recesso_token;
+  if (existing) return existing;
+  const token = crypto.randomUUID();
+  const { error } = await supabaseAdmin
+    .from("campagne_email_destinatari")
+    .update({ recesso_token: token } as never)
+    .eq("id", destinatarioId);
+  if (error) return null;
+  return token;
+}
+
 /** Token di recesso idempotente del contatto (riusa quello esistente). */
 async function tokenRecessoContatto(contattoId: string | null): Promise<string | null> {
   if (!contattoId) return null;
