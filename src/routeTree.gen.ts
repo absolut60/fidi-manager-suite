@@ -80,6 +80,7 @@ import { Route as AppPreventivatoreIdRouteImport } from './routes/_app/preventiv
 import { Route as AppOpportunitaOpportunitaIdRouteImport } from './routes/_app/opportunita.$opportunitaId'
 import { Route as AppMarketingSegmentiRouteImport } from './routes/_app/marketing.segmenti'
 import { Route as AppMarketingInviiRouteImport } from './routes/_app/marketing.invii'
+import { Route as AppMarketingDisiscrizioniRouteImport } from './routes/_app/marketing.disiscrizioni'
 import { Route as AppMarketingCampagneRouteImport } from './routes/_app/marketing.campagne'
 import { Route as AppLeadLeadIdRouteImport } from './routes/_app/lead.$leadId'
 import { Route as AppKitIdRouteImport } from './routes/_app/kit.$id'
@@ -461,6 +462,12 @@ const AppMarketingInviiRoute = AppMarketingInviiRouteImport.update({
   path: '/marketing/invii',
   getParentRoute: () => AppRoute,
 } as any)
+const AppMarketingDisiscrizioniRoute =
+  AppMarketingDisiscrizioniRouteImport.update({
+    id: '/marketing/disiscrizioni',
+    path: '/marketing/disiscrizioni',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppMarketingCampagneRoute = AppMarketingCampagneRouteImport.update({
   id: '/marketing/campagne',
   path: '/marketing/campagne',
@@ -575,6 +582,7 @@ export interface FileRoutesByFullPath {
   '/kit/$id': typeof AppKitIdRoute
   '/lead/$leadId': typeof AppLeadLeadIdRoute
   '/marketing/campagne': typeof AppMarketingCampagneRoute
+  '/marketing/disiscrizioni': typeof AppMarketingDisiscrizioniRoute
   '/marketing/invii': typeof AppMarketingInviiRoute
   '/marketing/segmenti': typeof AppMarketingSegmentiRoute
   '/opportunita/$opportunitaId': typeof AppOpportunitaOpportunitaIdRoute
@@ -655,6 +663,7 @@ export interface FileRoutesByTo {
   '/kit/$id': typeof AppKitIdRoute
   '/lead/$leadId': typeof AppLeadLeadIdRoute
   '/marketing/campagne': typeof AppMarketingCampagneRoute
+  '/marketing/disiscrizioni': typeof AppMarketingDisiscrizioniRoute
   '/marketing/invii': typeof AppMarketingInviiRoute
   '/marketing/segmenti': typeof AppMarketingSegmentiRoute
   '/opportunita/$opportunitaId': typeof AppOpportunitaOpportunitaIdRoute
@@ -740,6 +749,7 @@ export interface FileRoutesById {
   '/_app/kit/$id': typeof AppKitIdRoute
   '/_app/lead/$leadId': typeof AppLeadLeadIdRoute
   '/_app/marketing/campagne': typeof AppMarketingCampagneRoute
+  '/_app/marketing/disiscrizioni': typeof AppMarketingDisiscrizioniRoute
   '/_app/marketing/invii': typeof AppMarketingInviiRoute
   '/_app/marketing/segmenti': typeof AppMarketingSegmentiRoute
   '/_app/opportunita/$opportunitaId': typeof AppOpportunitaOpportunitaIdRoute
@@ -825,6 +835,7 @@ export interface FileRouteTypes {
     | '/kit/$id'
     | '/lead/$leadId'
     | '/marketing/campagne'
+    | '/marketing/disiscrizioni'
     | '/marketing/invii'
     | '/marketing/segmenti'
     | '/opportunita/$opportunitaId'
@@ -905,6 +916,7 @@ export interface FileRouteTypes {
     | '/kit/$id'
     | '/lead/$leadId'
     | '/marketing/campagne'
+    | '/marketing/disiscrizioni'
     | '/marketing/invii'
     | '/marketing/segmenti'
     | '/opportunita/$opportunitaId'
@@ -989,6 +1001,7 @@ export interface FileRouteTypes {
     | '/_app/kit/$id'
     | '/_app/lead/$leadId'
     | '/_app/marketing/campagne'
+    | '/_app/marketing/disiscrizioni'
     | '/_app/marketing/invii'
     | '/_app/marketing/segmenti'
     | '/_app/opportunita/$opportunitaId'
@@ -1537,6 +1550,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppMarketingInviiRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/marketing/disiscrizioni': {
+      id: '/_app/marketing/disiscrizioni'
+      path: '/marketing/disiscrizioni'
+      fullPath: '/marketing/disiscrizioni'
+      preLoaderRoute: typeof AppMarketingDisiscrizioniRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/marketing/campagne': {
       id: '/_app/marketing/campagne'
       path: '/marketing/campagne'
@@ -1723,6 +1743,7 @@ interface AppRouteChildren {
   AppEventiEventoIdRoute: typeof AppEventiEventoIdRoute
   AppKitIdRoute: typeof AppKitIdRoute
   AppMarketingCampagneRoute: typeof AppMarketingCampagneRoute
+  AppMarketingDisiscrizioniRoute: typeof AppMarketingDisiscrizioniRoute
   AppMarketingInviiRoute: typeof AppMarketingInviiRoute
   AppMarketingSegmentiRoute: typeof AppMarketingSegmentiRoute
   AppPreventivatoreIdRoute: typeof AppPreventivatoreIdRoute
@@ -1783,6 +1804,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppEventiEventoIdRoute: AppEventiEventoIdRoute,
   AppKitIdRoute: AppKitIdRoute,
   AppMarketingCampagneRoute: AppMarketingCampagneRoute,
+  AppMarketingDisiscrizioniRoute: AppMarketingDisiscrizioniRoute,
   AppMarketingInviiRoute: AppMarketingInviiRoute,
   AppMarketingSegmentiRoute: AppMarketingSegmentiRoute,
   AppPreventivatoreIdRoute: AppPreventivatoreIdRoute,

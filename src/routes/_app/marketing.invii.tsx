@@ -6,7 +6,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   Megaphone, RefreshCw, ChevronRight, ExternalLink, AlertCircle, CheckCircle2,
-  Clock, XCircle, MailWarning, MoreHorizontal, Ban, Trash2,
+  Clock, XCircle, MailWarning, MoreHorizontal, Ban, Trash2, UserX,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -112,6 +112,17 @@ function InviiMarketingPage() {
     }
   }
 
+  const { data: totaleDisiscritti } = useQuery({
+    queryKey: ["marketing-disiscrizioni", "totale"],
+    enabled: canSee,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_disiscrizioni", { _limit: 1, _offset: 0 });
+      if (error) throw error;
+      const rows = (data ?? []) as unknown as Array<{ totale: number }>;
+      return rows.length ? Number(rows[0].totale) : 0;
+    },
+  });
+
   const { data: campagne, isLoading } = useQuery({
     queryKey: ["campagne-marketing-invii"],
     queryFn: async () => {
@@ -173,6 +184,17 @@ function InviiMarketingPage() {
           <p className="text-sm text-muted-foreground">Campagne email marketing — stato e dettaglio destinatari</p>
         </div>
       </header>
+
+      <Link to="/marketing/disiscrizioni" className="block max-w-xs">
+        <Card className="p-4 flex items-center gap-3 hover:bg-muted/50 transition-colors">
+          <UserX className="size-5 text-muted-foreground" />
+          <div>
+            <div className="text-xs text-muted-foreground">Disiscritti</div>
+            <div className="text-xl font-bold">{totaleDisiscritti ?? "—"}</div>
+          </div>
+        </Card>
+      </Link>
+
 
       <Card className="p-0 overflow-hidden">
         <Table>
