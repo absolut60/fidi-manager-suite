@@ -41,6 +41,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { OpportunitaSoggettoLista } from "@/components/opportunita-soggetto-lista";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CampagneEntitaTab } from "@/components/marketing/campagne-entita-tab";
 import {
   Select,
   SelectContent,
@@ -530,6 +531,7 @@ function LeadDettaglioPage() {
           <TabsTrigger value="cantieri">Cantieri</TabsTrigger>
           <TabsTrigger value="commerciale">Commerciale</TabsTrigger>
           <TabsTrigger value="richieste">Richieste</TabsTrigger>
+          <TabsTrigger value="campagne">Campagne</TabsTrigger>
           <TabsTrigger value="privacy">Privacy</TabsTrigger>
           <TabsTrigger value="storico">Storico</TabsTrigger>
         </TabsList>
@@ -945,6 +947,10 @@ function LeadDettaglioPage() {
 
         <TabsContent value="richieste" className="mt-4">
           <LeadRichiesteTab leadId={leadId} />
+        </TabsContent>
+
+        <TabsContent value="campagne" className="mt-4">
+          <CampagneEntitaTab leadId={leadId} />
         </TabsContent>
 
         <TabsContent value="privacy" className="mt-4">

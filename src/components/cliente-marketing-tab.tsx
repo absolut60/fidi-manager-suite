@@ -5,8 +5,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { ClienteFatturato } from "@/components/cliente-fatturato";
 import { CONSENSO_LABEL } from "@/lib/consensi-testi";
-import { Tag, Gauge, HardHat, ShieldCheck } from "lucide-react";
+import { Tag, Gauge, HardHat, ShieldCheck, Megaphone } from "lucide-react";
 import { BadgeDisiscrizione } from "@/components/marketing/badge-disiscrizione";
+import { CampagneEntitaTab } from "@/components/marketing/campagne-entita-tab";
 
 const DASH = "—";
 
@@ -105,6 +106,11 @@ export function ClienteMarketingTab({ clienteId, cliente }: { clienteId: string;
   return (
     <div className="space-y-6">
       <BadgeDisiscrizione email={cliente.email ?? null} />
+
+      <section className="space-y-2">
+        <SectionTitle icon={Megaphone}>Campagne email</SectionTitle>
+        <CampagneEntitaTab clienteId={clienteId} />
+      </section>
 
       <section className="space-y-2">
         <SectionTitle icon={Tag}>Classificazione</SectionTitle>
