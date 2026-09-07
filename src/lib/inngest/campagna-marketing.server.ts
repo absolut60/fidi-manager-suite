@@ -255,10 +255,11 @@ export const invioCampagnaMarketing = inngest.createFunction(
             }
 
             // Controllo opt-out: non inviare a chi è nella lista di soppressione.
+            const emailNorm = String(d.email ?? "").trim().toLowerCase();
             const { data: optOut } = await supabaseAdmin
               .from("marketing_opt_out")
               .select("id")
-              .ilike("email", (d.email as string).trim())
+              .eq("email", emailNorm)
               .maybeSingle();
             if (optOut) {
               await supabaseAdmin
