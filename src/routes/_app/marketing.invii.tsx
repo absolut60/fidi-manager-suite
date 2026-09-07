@@ -456,7 +456,7 @@ function statoLabel(s: string) {
   return <Badge variant="outline">{s}</Badge>;
 }
 
-function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; onClose: () => void }) {
+function DettaglioCampagnaDialog({ campagnaId, inCorso, onClose }: { campagnaId: string; inCorso: boolean; onClose: () => void }) {
   const qc = useQueryClient();
   const riprova = useServerFn(riprovaCampagnaMarketingFalliti);
   const [statoFilter, setStatoFilter] = useState<string>("tutti");
@@ -489,7 +489,7 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
       }
       return tutte;
     },
-    refetchInterval: 10_000,
+    refetchInterval: inCorso ? 10_000 : false,
   });
 
   const filtered = useMemo(() => {
