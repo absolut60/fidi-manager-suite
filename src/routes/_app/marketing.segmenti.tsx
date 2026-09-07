@@ -436,6 +436,27 @@ function MarketingSegmentiPage() {
     },
   });
 
+  // === Stato disiscrizione marketing delle email aziendali visibili in pagina ===
+  const emailsPaginaKey = rows.map((r: any) => String(r.email ?? "")).join("|");
+  const { data: disiscritteSet } = useQuery({
+    queryKey: ["stato-opt-out-pagina", emailsPaginaKey],
+    enabled: rows.some((r: any) => !!r.email),
+    staleTime: 60_000,
+    queryFn: async () => {
+      const emails = rows.map((r: any) => r.email).filter(Boolean) as string[];
+      const set = new Set<string>();
+      for (const part of chunkArray(emails, CHUNK)) {
+        const { data, error } = await supabase
+          .rpc("get_stato_opt_out", { _emails: part } as never);
+        if (error) throw error;
+        for (const r of (data ?? []) as Array<{ email: string; disiscritto: boolean }>) {
+          if (r.disiscritto) set.add(r.email.trim().toLowerCase());
+        }
+      }
+      return set;
+    },
+  });
+
   // === Selezione destinatari ===
   const [selezionati, setSelezionati] = useState<Set<string>>(new Set());
   const [espansi, setEspansi] = useState<Set<string>>(new Set());
@@ -1057,6 +1078,20 @@ function MarketingSegmentiPage() {
             </Select>
           </div>
           <div>
+            <Label className="text-xs">Disiscrizione marketing</Label>
+            <Select
+              value={filtri.filtroDisiscritti}
+              onValueChange={(v) => setFiltri((p) => ({ ...p, filtroDisiscritti: v as Filtri["filtroDisiscritti"] }))}
+            >
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="tutti">Tutti</SelectItem>
+                <SelectItem value="escludi">Escludi disiscritti</SelectItem>
+                <SelectItem value="solo">Solo disiscritti</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
             <Label className="text-xs">Città</Label>
             <Input value={filtri.citta} onChange={(e) => setFiltri((p) => ({ ...p, citta: e.target.value }))} placeholder="Es. Milano" />
           </div>
@@ -1205,6 +1240,7 @@ function MarketingSegmentiPage() {
               <TableHead>Agente</TableHead>
               <TableHead>Categoria</TableHead>
               <TableHead className="text-center">Email valida</TableHead>
+              <TableHead className="text-center">Marketing</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
