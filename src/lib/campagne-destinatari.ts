@@ -13,9 +13,17 @@ export type RiepilogoAggiunta = {
   aggiunti: number;
   saltati: number;
   scartati: number;
+  disiscritti: number;
 };
 
 const CHUNK_INSERT = 500;
+const CHUNK_OPT_OUT = 200;
+
+function chunkArray<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
 
 /**
  * Aggiunge indirizzi al "carrello" destinatari di una campagna email marketing.
