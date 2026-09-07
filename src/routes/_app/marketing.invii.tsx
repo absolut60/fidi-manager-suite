@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { puoAccedereMarketing } from "@/lib/ruoli-marketing";
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -394,6 +394,8 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
   const [ricerca, setRicerca] = useState<string>("");
   const [retrying, setRetrying] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [pagina, setPagina] = useState(1);
+  const PAGE_SIZE = 50;
 
 
   const { data: rows, isLoading } = useQuery({
@@ -438,6 +440,14 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
     return out;
   }, [rows, statoFilter, ricerca]);
 
+  useEffect(() => {
+    setPagina(1);
+  }, [statoFilter, ricerca]);
+
+  const totaleRighe = filtered.length;
+  const totalePagine = Math.max(1, Math.ceil(totaleRighe / PAGE_SIZE));
+  const pagineClamp = Math.min(pagina, totalePagine);
+  const righeVisibili = filtered.slice((pagineClamp - 1) * PAGE_SIZE, pagineClamp * PAGE_SIZE);
 
   const fallitiCount = (rows ?? []).filter((r) => r.stato_invio === "fallito").length;
 
@@ -558,7 +568,7 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
             ) : filtered.length === 0 ? (
               <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-6">Nessun destinatario</TableCell></TableRow>
             ) : (
-              filtered.map((r) => {
+              righeVisibili.map((r) => {
                 const clic = r.num_clic ?? 0;
                 const espanso = expanded === r.id;
                 return (
@@ -615,6 +625,49 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
             )}
           </TableBody>
         </Table>
+
+        {totaleRighe > PAGE_SIZE && (
+          <div className="flex items-center justify-between pt-4">
+            <div className="text-sm text-muted-foreground">
+              Mostrati {totaleRighe === 0 ? 0 : (pagineClamp - 1) * PAGE_SIZE + 1}–{Math.min(pagineClamp * PAGE_SIZE, totaleRighe)} di {totaleRighe}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPagina(1)}
+                disabled={pagineClamp <= 1}
+              >
+                Prima
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPagina((p) => p - 1)}
+                disabled={pagineClamp <= 1}
+              >
+                Precedente
+              </Button>
+              <span className="text-sm px-2">Pagina {pagineClamp} di {totalePagine}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPagina((p) => p + 1)}
+                disabled={pagineClamp >= totalePagine}
+              >
+                Successiva
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPagina(totalePagine)}
+                disabled={pagineClamp >= totalePagine}
+              >
+                Ultima
+              </Button>
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
