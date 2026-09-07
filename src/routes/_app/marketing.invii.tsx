@@ -182,11 +182,45 @@ function InviiMarketingPage() {
         totale_destinatari: totMap[r.id] ?? 0,
       })) as CampagnaRow[];
     },
-    refetchInterval: (q) => {
-      const rows = q.state.data as CampagnaRow[] | undefined;
-      return rows?.some((r) => r.stato === "in_corso") ? 10_000 : false;
+  });
+
+  // Polling leggero: solo le campagne in_corso, solo i contatori che cambiano.
+  const anyInCorso = useMemo(() => (campagne ?? []).some((r) => r.stato === "in_corso"), [campagne]);
+
+  const { data: progresso, dataUpdatedAt: progressoAggiornatoAt } = useQuery({
+    queryKey: ["campagne-marketing-progresso"],
+    enabled: canSee && anyInCorso,
+    refetchInterval: 10_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("campagne_email_marketing")
+        .select("id, stato, inviati, saltati, falliti, clic_unici, clic_totali")
+        .eq("stato", "in_corso");
+      if (error) throw error;
+      const map: Record<string, { stato: string; inviati: number; saltati: number; falliti: number; clic_unici: number; clic_totali: number }> = {};
+      for (const r of (data ?? []) as unknown as Array<{ id: string; stato: string; inviati: number; saltati: number; falliti: number; clic_unici: number; clic_totali: number }>) {
+        map[r.id] = { stato: r.stato, inviati: r.inviati, saltati: r.saltati, falliti: r.falliti, clic_unici: r.clic_unici, clic_totali: r.clic_totali };
+      }
+      return map;
     },
   });
+
+  const campagneMerged = useMemo(() => {
+    if (!campagne) return campagne;
+    if (!progresso) return campagne;
+    return campagne.map((c) => {
+      const p = progresso[c.id];
+      return p ? { ...c, ...p } : c;
+    });
+  }, [campagne, progresso]);
+
+  // Quando una campagna esce da "in_corso" (sparisce dal polling), ricarica una volta i dati fissi.
+  useEffect(() => {
+    if (!progresso || !anyInCorso) return;
+    const attive = new Set(Object.keys(progresso));
+    const appenaTerminata = (campagne ?? []).some((c) => c.stato === "in_corso" && !attive.has(c.id));
+    if (appenaTerminata) qc.invalidateQueries({ queryKey: ["campagne-marketing-invii"] });
+  }, [progresso, anyInCorso, campagne, qc]);
 
   if (authLoading) return <div className="p-6 text-muted-foreground">Caricamento...</div>;
   if (!canSee)
@@ -208,6 +242,12 @@ function InviiMarketingPage() {
           <p className="text-sm text-muted-foreground">Campagne email marketing — stato e dettaglio destinatari</p>
         </div>
       </header>
+
+      {anyInCorso && (
+        <p className="text-xs text-muted-foreground">
+          Aggiornamento automatico ogni 10 s · ultimo: {new Date(progressoAggiornatoAt).toLocaleTimeString("it-IT")}
+        </p>
+      )}
 
       <Link to="/marketing/disiscrizioni" className="block max-w-xs">
         <Card className="p-4 flex items-center gap-3 hover:bg-muted/50 transition-colors">
@@ -250,7 +290,7 @@ function InviiMarketingPage() {
                 Nessuna campagna ancora avviata.
               </TableCell></TableRow>
             ) : (
-              campagne.map((c) => {
+              (campagneMerged ?? campagne).map((c) => {
                 const processati = c.inviati + c.saltati + c.falliti;
                 const pct = c.totale_destinatari > 0 ? Math.round((processati / c.totale_destinatari) * 100) : 0;
                 const isAttiva = c.stato === "in_corso";
@@ -321,6 +361,7 @@ function InviiMarketingPage() {
       {openDettaglio && (
         <DettaglioCampagnaDialog
           campagnaId={openDettaglio}
+          inCorso={(campagneMerged ?? []).find((c) => c.id === openDettaglio)?.stato === "in_corso"}
           onClose={() => setOpenDettaglio(null)}
         />
       )}
@@ -415,7 +456,7 @@ function statoLabel(s: string) {
   return <Badge variant="outline">{s}</Badge>;
 }
 
-function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; onClose: () => void }) {
+function DettaglioCampagnaDialog({ campagnaId, inCorso, onClose }: { campagnaId: string; inCorso: boolean; onClose: () => void }) {
   const qc = useQueryClient();
   const riprova = useServerFn(riprovaCampagnaMarketingFalliti);
   const [statoFilter, setStatoFilter] = useState<string>("tutti");
@@ -448,7 +489,7 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
       }
       return tutte;
     },
-    refetchInterval: 10_000,
+    refetchInterval: inCorso ? 10_000 : false,
   });
 
   const filtered = useMemo(() => {
