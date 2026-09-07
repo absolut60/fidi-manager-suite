@@ -276,7 +276,17 @@ function InviiMarketingPage() {
         </div>
       </header>
 
+      {bloccate > 0 && (
+        <Alert variant="destructive">
+          <AlertDescription>
+            ⚠ {bloccate} campagna/e bloccata/e: il job di invio si è fermato. Premi «Riprendi invio»
+            sulla riga per far ripartire dai destinatari rimasti.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {anyInCorso && (
+
         <p className="text-xs text-muted-foreground">
           Aggiornamento automatico ogni 10 s · ultimo: {new Date(progressoAggiornatoAt).toLocaleTimeString("it-IT")}
         </p>
