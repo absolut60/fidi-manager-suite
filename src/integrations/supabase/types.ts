@@ -5966,6 +5966,27 @@ export type Database = {
       fn_email_valida: { Args: { _raw: string }; Returns: boolean }
       fn_telefono_valido: { Args: { _raw: string }; Returns: boolean }
       genera_snapshot: { Args: { _data: string }; Returns: string }
+      get_campagne_entita: {
+        Args: { _cliente_id?: string; _lead_id?: string }
+        Returns: {
+          campagna_id: string
+          campagna_inviata_at: string
+          campagna_nome: string
+          campagna_oggetto: string
+          campagna_stato: string
+          canale: string
+          contatto_id: string
+          contatto_nome: string
+          destinatario_id: string
+          email: string
+          errore: string
+          inviato_at: string
+          num_clic: number
+          stato_invio: string
+          tipo_destinatario: string
+          ultimo_clic_at: string
+        }[]
+      }
       get_canali_non_letti: {
         Args: never
         Returns: {
@@ -6515,6 +6536,16 @@ export type Database = {
           totale_scaduto: number
           ultima_fatta_data: string
           ultima_fatta_tipo: string
+        }[]
+      }
+      get_riassunto_campagne_entita: {
+        Args: { _cliente_id?: string; _lead_id?: string }
+        Returns: {
+          n_campagne: number
+          n_cliccate: number
+          n_inviate: number
+          ultima_campagna_at: string
+          ultima_campagna_nome: string
         }[]
       }
       get_richieste_con_messaggi_non_letti: { Args: never; Returns: string[] }
