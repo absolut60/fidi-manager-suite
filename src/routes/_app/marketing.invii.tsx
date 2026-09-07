@@ -225,6 +225,25 @@ function InviiMarketingPage() {
     },
   });
 
+  // Clic reali (persone) vs aperture automatiche dei filtri antivirus — classificazione in lettura via RPC.
+  const { data: clicReali } = useQuery({
+    queryKey: ["campagne-marketing-clic-reali"],
+    enabled: canSee,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_clic_reali_campagne" as never);
+      if (error) throw error;
+      const map: Record<string, { clic_reali_unici: number; clic_reali_totali: number; clic_auto_totali: number }> = {};
+      for (const r of (data ?? []) as unknown as Array<{ campagna_id: string; clic_reali_totali: number; clic_reali_unici: number; clic_auto_totali: number }>) {
+        map[r.campagna_id] = {
+          clic_reali_unici: Number(r.clic_reali_unici ?? 0),
+          clic_reali_totali: Number(r.clic_reali_totali ?? 0),
+          clic_auto_totali: Number(r.clic_auto_totali ?? 0),
+        };
+      }
+      return map;
+    },
+  });
+
   const campagneMerged = useMemo(() => {
     if (!campagne) return campagne;
     if (!progresso) return campagne;
@@ -292,6 +311,10 @@ function InviiMarketingPage() {
         </p>
       )}
 
+      <p className="text-xs text-muted-foreground">
+        I clic mostrati sono quelli di persone reali: le aperture automatiche dei filtri antivirus dei destinatari (spesso tutti i link della mail nello stesso istante) sono escluse dal conteggio.
+      </p>
+
       <Link to="/marketing/disiscrizioni" className="block max-w-xs">
         <Card className="p-4 flex items-center gap-3 hover:bg-muted/50 transition-colors">
           <UserX className="size-5 text-muted-foreground" />
@@ -316,7 +339,7 @@ function InviiMarketingPage() {
               <TableHead className="text-right">Inviati</TableHead>
               <TableHead className="text-right">Saltati</TableHead>
               <TableHead className="text-right">Falliti</TableHead>
-              <TableHead className="text-right">Clic unici</TableHead>
+              <TableHead className="text-right">Clic reali</TableHead>
               <TableHead className="text-right">Tasso clic</TableHead>
               <TableHead className="min-w-[180px]">Avanzamento</TableHead>
               <TableHead className="w-[60px]"></TableHead>
@@ -380,9 +403,25 @@ function InviiMarketingPage() {
                     <TableCell className="text-right text-emerald-600 cursor-pointer" onClick={apri}>{c.inviati}</TableCell>
                     <TableCell className="text-right text-amber-600 cursor-pointer" onClick={apri}>{c.saltati}</TableCell>
                     <TableCell className="text-right text-destructive cursor-pointer" onClick={apri}>{c.falliti}</TableCell>
-                    <TableCell className="text-right font-medium cursor-pointer" onClick={apri} style={{ color: c.clic_unici > 0 ? "#c94f8f" : undefined }}>{c.clic_unici ?? 0}</TableCell>
+                    <TableCell
+                      className="text-right font-medium cursor-pointer"
+                      onClick={apri}
+                      title="Clic di persone reali. Le aperture automatiche dei filtri antivirus dei destinatari sono conteggiate a parte."
+                    >
+                      {(() => {
+                        const cr = clicReali?.[c.id];
+                        const unici = cr?.clic_reali_unici ?? 0;
+                        const auto = cr?.clic_auto_totali ?? 0;
+                        return (
+                          <>
+                            <span style={{ color: unici > 0 ? "#c94f8f" : undefined }}>{unici}</span>
+                            {auto > 0 && <div className="text-xs text-muted-foreground font-normal">+{auto} auto</div>}
+                          </>
+                        );
+                      })()}
+                    </TableCell>
                     <TableCell className="text-right text-sm tabular-nums cursor-pointer" onClick={apri}>
-                      {c.inviati > 0 ? `${Math.round(((c.clic_unici ?? 0) / c.inviati) * 1000) / 10}%` : "—"}
+                      {c.inviati > 0 ? `${Math.round((((clicReali?.[c.id]?.clic_reali_unici ?? 0)) / c.inviati) * 1000) / 10}%` : "—"}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2 cursor-pointer" onClick={apri}>
@@ -577,11 +616,29 @@ function DettaglioCampagnaDialog({ campagnaId, inCorso, onClose }: { campagnaId:
     refetchInterval: inCorso ? 10_000 : false,
   });
 
+  // Clic reali vs aperture automatiche per destinatario — classificazione in lettura via RPC.
+  const { data: clicDest } = useQuery({
+    queryKey: ["campagna-clic-destinatari", campagnaId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_clic_destinatari" as never, { _campagna_id: campagnaId } as never);
+      if (error) throw error;
+      const map: Record<string, { clic_reali: number; clic_auto: number; ultimo_clic_reale: string | null }> = {};
+      for (const r of (data ?? []) as unknown as Array<{ destinatario_id: string; clic_reali: number; clic_auto: number; ultimo_clic_reale: string | null }>) {
+        map[r.destinatario_id] = {
+          clic_reali: Number(r.clic_reali ?? 0),
+          clic_auto: Number(r.clic_auto ?? 0),
+          ultimo_clic_reale: r.ultimo_clic_reale ?? null,
+        };
+      }
+      return map;
+    },
+  });
+
   const filtered = useMemo(() => {
     if (!rows) return [];
     let out = rows;
     if (statoFilter !== "tutti") {
-      if (statoFilter === "__ha_cliccato__") out = out.filter((r) => (r.num_clic ?? 0) > 0);
+      if (statoFilter === "__ha_cliccato__") out = out.filter((r) => (clicDest?.[r.id]?.clic_reali ?? 0) > 0);
       else out = out.filter((r) => r.stato_invio === statoFilter);
     }
     const q = ricerca.trim().toLowerCase();
