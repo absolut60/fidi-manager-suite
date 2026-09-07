@@ -6007,6 +6007,24 @@ export type Database = {
           provincia: string
         }[]
       }
+      get_clic_destinatari: {
+        Args: { _campagna_id: string }
+        Returns: {
+          clic_auto: number
+          clic_reali: number
+          destinatario_id: string
+          ultimo_clic_reale: string
+        }[]
+      }
+      get_clic_reali_campagne: {
+        Args: never
+        Returns: {
+          campagna_id: string
+          clic_auto_totali: number
+          clic_reali_totali: number
+          clic_reali_unici: number
+        }[]
+      }
       get_cliente_lite: {
         Args: { _id: string }
         Returns: {
@@ -6870,6 +6888,10 @@ export type Database = {
       is_anticipo: { Args: { _numero_documento: string }; Returns: boolean }
       is_canale_membro: {
         Args: { _canale_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_clic_automatico: {
+        Args: { _sec_dopo_invio: number; _url_distinti_nel_burst: number }
         Returns: boolean
       }
       livello_approvatore: { Args: { _user_id: string }; Returns: number }
