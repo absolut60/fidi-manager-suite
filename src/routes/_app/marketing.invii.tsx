@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { puoAccedereMarketing } from "@/lib/ruoli-marketing";
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -394,6 +394,8 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
   const [ricerca, setRicerca] = useState<string>("");
   const [retrying, setRetrying] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [pagina, setPagina] = useState(1);
+  const PAGE_SIZE = 50;
 
 
   const { data: rows, isLoading } = useQuery({
