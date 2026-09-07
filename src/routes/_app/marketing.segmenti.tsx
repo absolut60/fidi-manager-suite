@@ -560,7 +560,8 @@ function MarketingSegmentiPage() {
     onSuccess: (r) => {
       toast.success(
         `Aggiunti ${r.aggiunti} nuovi destinatari, ${r.saltati} già presenti saltati` +
-          (r.scartati ? `, ${r.scartati} scartati (email non valida)` : ""),
+          (r.scartati ? `, ${r.scartati} scartati (email non valida)` : "") +
+          (r.disiscritti ? `, ${r.disiscritti} esclusi (disiscritti)` : ""),
       );
       setSelezionati(new Set());
       setContattiEsclusi(new Set());

@@ -13,9 +13,17 @@ export type RiepilogoAggiunta = {
   aggiunti: number;
   saltati: number;
   scartati: number;
+  disiscritti: number;
 };
 
 const CHUNK_INSERT = 500;
+const CHUNK_OPT_OUT = 200;
+
+function chunkArray<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
 
 /**
  * Aggiunge indirizzi al "carrello" destinatari di una campagna email marketing.
@@ -42,11 +50,26 @@ export async function aggiungiDestinatariCampagna(
     validi.push({ ...d, email });
   }
 
-  if (validi.length === 0) return { aggiunti: 0, saltati: 0, scartati };
+  // Filtra gli indirizzi presenti nella lista di soppressione marketing (opt-out).
+  const emailUniche = Array.from(new Set(validi.map((d) => d.email)));
+  const disiscrittiSet = new Set<string>();
+  for (const blocco of chunkArray(emailUniche, CHUNK_OPT_OUT)) {
+    const { data, error } = await supabase
+      .from("marketing_opt_out")
+      .select("email")
+      .in("email", blocco);
+    if (error) throw error;
+    for (const row of data ?? []) disiscrittiSet.add(row.email);
+  }
+
+  const filtrati = validi.filter((d) => !disiscrittiSet.has(d.email));
+  const disiscritti = validi.length - filtrati.length;
+
+  if (filtrati.length === 0) return { aggiunti: 0, saltati: 0, scartati, disiscritti };
 
   let aggiunti = 0;
-  for (let i = 0; i < validi.length; i += CHUNK_INSERT) {
-    const part = validi.slice(i, i + CHUNK_INSERT);
+  for (let i = 0; i < filtrati.length; i += CHUNK_INSERT) {
+    const part = filtrati.slice(i, i + CHUNK_INSERT);
     const { data, error } = await supabase
       .from("campagne_email_destinatari")
       .upsert(
@@ -66,5 +89,5 @@ export async function aggiungiDestinatariCampagna(
     aggiunti += (data ?? []).length;
   }
 
-  return { aggiunti, saltati: validi.length - aggiunti, scartati };
+  return { aggiunti, saltati: filtrati.length - aggiunti, scartati, disiscritti };
 }
