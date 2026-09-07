@@ -568,7 +568,7 @@ function DettaglioCampagnaDialog({ campagnaId, onClose }: { campagnaId: string; 
             ) : filtered.length === 0 ? (
               <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-6">Nessun destinatario</TableCell></TableRow>
             ) : (
-              filtered.map((r) => {
+              righeVisibili.map((r) => {
                 const clic = r.num_clic ?? 0;
                 const espanso = expanded === r.id;
                 return (
