@@ -10,6 +10,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { ModuloConsensoPrivacy, type ModuloConsensoPayload } from "@/components/modulo-consenso-privacy";
+import { BadgeDisiscrizione } from "@/components/marketing/badge-disiscrizione";
 import {
   inviaRichiestaFirmaPrivacy,
   registraConsensoDiPersona,
@@ -256,10 +257,13 @@ export function ContattoPrivacyAzioni({
     </Dialog>
   );
 
+  const badgeDisiscrizione = <BadgeDisiscrizione email={contatto.email ?? null} />;
+
   // STATO FIRMATA
   if (contatto.privacy_firmata) {
     return (
       <div className="space-y-2">
+      {badgeDisiscrizione}
         <div className="flex items-center gap-2 flex-wrap">
           <Badge className="bg-success/15 text-success gap-1">
             <FileCheck2 className="size-3" /> Firmata il {fmt(contatto.data_firma)}
@@ -291,6 +295,7 @@ export function ContattoPrivacyAzioni({
   if (contatto.richiesta_privacy_generata_il) {
     return (
       <div className="space-y-2">
+      {badgeDisiscrizione}
         <p className="text-xs text-muted-foreground flex items-start gap-1.5">
           <Clock className="size-3.5 mt-0.5 shrink-0" />
           <span>
@@ -319,6 +324,7 @@ export function ContattoPrivacyAzioni({
   // STATO DA RACCOGLIERE
   return (
     <div className="space-y-2">
+      {badgeDisiscrizione}
       <div className="flex flex-wrap gap-2 items-center">
         <Button size="sm" disabled={loading !== null} onClick={() => setOpenDiPersona(true)}>
           <PenLine className="size-3.5 mr-1" /> Compila di persona
