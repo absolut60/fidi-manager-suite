@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   annullaInvioCampagnaMarketing,
   riprovaCampagnaMarketingFalliti,
+  riprendiInvioCampagnaMarketing,
 } from "@/lib/campagna-marketing.functions";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
