@@ -844,6 +844,7 @@ export type Database = {
           nome_riferimento: string | null
           num_clic: number
           primo_clic_at: string | null
+          recesso_token: string | null
           stato_invio: string
           tipo_destinatario: string
           tracking_token: string | null
@@ -863,6 +864,7 @@ export type Database = {
           nome_riferimento?: string | null
           num_clic?: number
           primo_clic_at?: string | null
+          recesso_token?: string | null
           stato_invio?: string
           tipo_destinatario: string
           tracking_token?: string | null
@@ -882,6 +884,7 @@ export type Database = {
           nome_riferimento?: string | null
           num_clic?: number
           primo_clic_at?: string | null
+          recesso_token?: string | null
           stato_invio?: string
           tipo_destinatario?: string
           tracking_token?: string | null
@@ -3017,6 +3020,77 @@ export type Database = {
           label?: string
         }
         Relationships: []
+      }
+      marketing_opt_out: {
+        Row: {
+          campagna_id: string | null
+          cliente_id: string | null
+          created_at: string
+          destinatario_id: string | null
+          email: string
+          id: string
+          ip_address: string | null
+          note: string | null
+          operatore_id: string | null
+          origine: string
+          user_agent: string | null
+        }
+        Insert: {
+          campagna_id?: string | null
+          cliente_id?: string | null
+          created_at?: string
+          destinatario_id?: string | null
+          email: string
+          id?: string
+          ip_address?: string | null
+          note?: string | null
+          operatore_id?: string | null
+          origine?: string
+          user_agent?: string | null
+        }
+        Update: {
+          campagna_id?: string | null
+          cliente_id?: string | null
+          created_at?: string
+          destinatario_id?: string | null
+          email?: string
+          id?: string
+          ip_address?: string | null
+          note?: string | null
+          operatore_id?: string | null
+          origine?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_opt_out_campagna_id_fkey"
+            columns: ["campagna_id"]
+            isOneToOne: false
+            referencedRelation: "campagne_email_marketing"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_opt_out_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_opt_out_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti_con_rischio"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_opt_out_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+        ]
       }
       matrice_ricarichi: {
         Row: {
@@ -6156,6 +6230,14 @@ export type Database = {
           tipo: string
         }[]
       }
+      get_destinatario_recesso: {
+        Args: { _token: string }
+        Returns: {
+          email: string
+          gia_disiscritto: boolean
+          ragione_sociale: string
+        }[]
+      }
       get_dso_aggregato: {
         Args: {
           _cliente_id?: string
@@ -6798,6 +6880,10 @@ export type Database = {
           _valore: boolean
         }
         Returns: string
+      }
+      registra_opt_out_marketing: {
+        Args: { _ip?: string; _token: string; _ua?: string }
+        Returns: boolean
       }
       revoca_consensi_batch: {
         Args: {
