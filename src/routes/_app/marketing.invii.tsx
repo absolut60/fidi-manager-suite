@@ -6,8 +6,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   Megaphone, RefreshCw, ChevronRight, ExternalLink, AlertCircle, CheckCircle2,
-  Clock, XCircle, MailWarning, MoreHorizontal, Ban, Trash2, UserX,
+  Clock, XCircle, MailWarning, MoreHorizontal, Ban, Trash2, UserX, Search, Download,
 } from "lucide-react";
+
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -17,6 +18,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -35,6 +37,8 @@ import {
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
+import * as XLSX from "xlsx";
+
 
 export const Route = createFileRoute("/_app/marketing/invii")({
   component: InviiMarketingPage,
