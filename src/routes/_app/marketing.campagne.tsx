@@ -701,13 +701,23 @@ function DestinatariCampagnaDialog({
     queryKey: ["campagne-email-destinatari", campagna.id],
     refetchInterval: campagna.stato === "in_corso" ? 5000 : false,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("campagne_email_destinatari")
-        .select("id, email, tipo_destinatario, nome_riferimento, cliente_id, aggiunto_il, stato_invio, inviato_at, errore, clienti(ragione_sociale)")
-        .eq("campagna_id", campagna.id)
-        .order("aggiunto_il", { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as unknown as DestinatarioRiga[];
+      const destinatari: DestinatarioRiga[] = [];
+      let off = 0;
+      const size = 1000;
+      while (true) {
+        const { data, error } = await supabase
+          .from("campagne_email_destinatari")
+          .select("id, email, tipo_destinatario, nome_riferimento, cliente_id, aggiunto_il, stato_invio, inviato_at, errore, clienti(ragione_sociale)")
+          .eq("campagna_id", campagna.id)
+          .order("aggiunto_il", { ascending: false })
+          .range(off, off + size - 1);
+        if (error) throw error;
+        const batch = (data ?? []) as unknown as DestinatarioRiga[];
+        destinatari.push(...batch);
+        if (batch.length < size) break;
+        off += size;
+      }
+      return destinatari;
     },
   });
 
