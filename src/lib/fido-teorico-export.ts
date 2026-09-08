@@ -96,18 +96,19 @@ export async function raccogliDatiFidoTeorico(
   mesiAttiviMap: Record<string, number>,
   onProgress: OnProgress,
 ): Promise<{ righe: RigaExport[]; mesiRolling: number | null }> {
-  // 1) Motore fido teorico (tutti i clienti visibili)
-  onProgress({ fase: "Calcolo fido teorico...", percentuale: 5 });
+  // 1) Motore fido teorico (mirror persistente già calcolato)
+  onProgress({ fase: "Lettura fido teorico...", percentuale: 5 });
   const teorico = new Map<string, any>();
   for (let off = 0; ; off += PAGE) {
-    const { data, error } = await (supabase as any)
-      .rpc("get_fido_teorico", {})
+    const { data, error } = await supabase
+      .from("fido_teorico_cliente")
+      .select("*")
       .range(off, off + PAGE - 1);
     if (error) throw error;
     const batch = (data ?? []) as any[];
     for (const r of batch) teorico.set(String(r.cliente_id), r);
     onProgress({
-      fase: `Calcolo fido teorico: ${teorico.size} clienti...`,
+      fase: `Lettura fido teorico: ${teorico.size} clienti...`,
       percentuale: Math.min(45, 5 + teorico.size / 400),
     });
     if (batch.length < PAGE) break;
