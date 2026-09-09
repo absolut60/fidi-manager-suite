@@ -200,7 +200,7 @@ export default function IscrittiWhatsappPage() {
       const { data, error } = await supabase.rpc("riconcilia_iscritto_whatsapp", {
         _id: p.id,
         _cliente_id: p.clienteId,
-        _lead_id: null,
+        _lead_id: undefined,
       });
       if (error) throw error;
       return data as { ok?: boolean; errore?: string };
