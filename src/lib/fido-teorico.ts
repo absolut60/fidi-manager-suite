@@ -129,17 +129,21 @@ function normalizza(r: any): FidoTeoricoRow {
 
 const CHUNK = 500;
 
-/** Fido teorico per un insieme di clienti. Le chiamate sono paginate a 500 id. */
+/** Fido teorico per un insieme di clienti. Legge il precalcolo persistente
+ *  (fido_teorico_cliente) filtrando per id, a blocchi di 500. */
 export async function fetchFidoTeorico(
   clienteIds: string[],
 ): Promise<Map<string, FidoTeoricoRow>> {
   const map = new Map<string, FidoTeoricoRow>();
   const ids = Array.from(new Set(clienteIds.filter(Boolean)));
+  // Legge il precalcolo persistente (fido_teorico_cliente) invece della RPC live,
+  // a blocchi di id per non superare i limiti della query string PostgREST.
   for (let i = 0; i < ids.length; i += CHUNK) {
     const chunk = ids.slice(i, i + CHUNK);
     const { data, error } = await (supabase as any)
-      .rpc("get_fido_teorico", { _cliente_ids: chunk })
-      .range(0, CHUNK - 1);
+      .from("fido_teorico_cliente")
+      .select("*")
+      .in("cliente_id", chunk);
     if (error) throw error;
     for (const r of ((data ?? []) as any[])) {
       const row = normalizza(r);
