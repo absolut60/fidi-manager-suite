@@ -6990,6 +6990,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      ignora_iscritto_whatsapp: { Args: { _id: string }; Returns: Json }
       increment_importazione_counters:
         | {
             Args: {
@@ -7167,6 +7168,11 @@ export type Database = {
         Args: { _cliente_id: string }
         Returns: undefined
       }
+      riconcilia_iscritto_whatsapp: {
+        Args: { _cliente_id?: string; _id: string; _lead_id?: string }
+        Returns: Json
+      }
+      rimatch_iscritti_whatsapp: { Args: never; Returns: Json }
       rimuovi_orfani_scadenze: {
         Args: { _importazione_id: string }
         Returns: number
