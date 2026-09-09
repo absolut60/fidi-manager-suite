@@ -1821,7 +1821,7 @@ export type Database = {
       consensi_log: {
         Row: {
           cliente_id: string | null
-          contatto_id: string
+          contatto_id: string | null
           created_at: string
           id: string
           informativa_hash: string | null
@@ -1839,7 +1839,7 @@ export type Database = {
         }
         Insert: {
           cliente_id?: string | null
-          contatto_id: string
+          contatto_id?: string | null
           created_at?: string
           id?: string
           informativa_hash?: string | null
@@ -1857,7 +1857,7 @@ export type Database = {
         }
         Update: {
           cliente_id?: string | null
-          contatto_id?: string
+          contatto_id?: string | null
           created_at?: string
           id?: string
           informativa_hash?: string | null
@@ -2551,6 +2551,97 @@ export type Database = {
             columns: ["evento_id"]
             isOneToOne: false
             referencedRelation: "eventi"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      iscritti_whatsapp: {
+        Row: {
+          cliente_id: string | null
+          cognome: string | null
+          consenso_log_id: string | null
+          contatto_id: string | null
+          created_at: string
+          email: string | null
+          id: string
+          lead_id: string | null
+          nome: string | null
+          numero_norm: string
+          numero_raw: string
+          origine: string
+          stato: string
+        }
+        Insert: {
+          cliente_id?: string | null
+          cognome?: string | null
+          consenso_log_id?: string | null
+          contatto_id?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          lead_id?: string | null
+          nome?: string | null
+          numero_norm: string
+          numero_raw: string
+          origine?: string
+          stato?: string
+        }
+        Update: {
+          cliente_id?: string | null
+          cognome?: string | null
+          consenso_log_id?: string | null
+          contatto_id?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          lead_id?: string | null
+          nome?: string | null
+          numero_norm?: string
+          numero_raw?: string
+          origine?: string
+          stato?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "iscritti_whatsapp_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "iscritti_whatsapp_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti_con_rischio"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "iscritti_whatsapp_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "iscritti_whatsapp_consenso_log_id_fkey"
+            columns: ["consenso_log_id"]
+            isOneToOne: false
+            referencedRelation: "consensi_log"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "iscritti_whatsapp_contatto_id_fkey"
+            columns: ["contatto_id"]
+            isOneToOne: false
+            referencedRelation: "contatti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "iscritti_whatsapp_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "lead"
             referencedColumns: ["id"]
           },
         ]
@@ -5802,6 +5893,52 @@ export type Database = {
           },
         ]
       }
+      v_whatsapp_opt_in_attuale: {
+        Row: {
+          aggiornato_at: string | null
+          cliente_id: string | null
+          contatto_id: string | null
+          lead_id: string | null
+          opt_in: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consensi_log_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consensi_log_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti_con_rischio"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consensi_log_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "consensi_log_contatto_id_fkey"
+            columns: ["contatto_id"]
+            isOneToOne: false
+            referencedRelation: "contatti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consensi_log_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "lead"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       allegato_storage_path_cliente_id: {
@@ -6900,6 +7037,7 @@ export type Database = {
         Returns: undefined
       }
       marca_messaggi_letti: { Args: { _richiesta_id: string }; Returns: number }
+      normalizza_numero_it: { Args: { _raw: string }; Returns: string }
       peso_mese_fido: { Args: { _eta: number }; Returns: number }
       processa_richiesta_fido: {
         Args: {
@@ -6981,6 +7119,21 @@ export type Database = {
           _valore: boolean
         }
         Returns: string
+      }
+      registra_consenso_whatsapp: {
+        Args: {
+          _cognome?: string
+          _email?: string
+          _informativa_hash?: string
+          _informativa_versione?: string
+          _ip?: string
+          _nome?: string
+          _numero_raw: string
+          _origine?: string
+          _secondi_permanenza?: number
+          _user_agent?: string
+        }
+        Returns: Json
       }
       registra_opt_out_manuale: {
         Args: { _email: string; _note?: string }
