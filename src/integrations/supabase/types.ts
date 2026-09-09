@@ -6008,6 +6008,7 @@ export type Database = {
         Args: { _preventivo_id: string }
         Returns: boolean
       }
+      backfill_contatti_iscritti_whatsapp: { Args: never; Returns: Json }
       bulk_update_clienti_bfa: { Args: { _payloads: Json }; Returns: number }
       calcola_fido_base: {
         Args: { _fatturato_lordo: number; _giorni: number }
