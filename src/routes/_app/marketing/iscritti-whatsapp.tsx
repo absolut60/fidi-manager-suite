@@ -7,9 +7,11 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Download,
   RefreshCcw,
   Search,
 } from "lucide-react";
+import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -232,6 +234,64 @@ export default function IscrittiWhatsappPage() {
     onError: (e: any) => toast.error(e?.message ?? "Errore"),
   });
 
+  const esportaExcelMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.rpc("export_iscritti_whatsapp", {
+        _stato: stato,
+        _origine: origine,
+        _q: q || undefined,
+      });
+      if (error) throw error;
+      return (data ?? []) as {
+        numero: string | null;
+        nome: string | null;
+        cognome: string | null;
+        email: string | null;
+        origine: string | null;
+        stato: string | null;
+        collegato_a: string | null;
+        data_iscrizione: string | null;
+        consenso_data: string | null;
+        consenso_origine: string | null;
+        informativa_versione: string | null;
+        informativa_hash: string | null;
+        ip_address: string | null;
+        user_agent: string | null;
+        secondi_permanenza: number | null;
+      }[];
+    },
+    onSuccess: (rows) => {
+      if (rows.length === 0) {
+        toast.info("Nessun iscritto da esportare");
+        return;
+      }
+      const exportRows = rows.map((r) => ({
+        Numero: r.numero ?? "",
+        Nome: r.nome ?? "",
+        Cognome: r.cognome ?? "",
+        Email: r.email ?? "",
+        Origine: r.origine ?? "",
+        Stato: r.stato ?? "",
+        "Collegato a": r.collegato_a ?? "",
+        "Data iscrizione": fmtData(r.data_iscrizione),
+        "Data consenso": fmtData(r.consenso_data),
+        "Origine consenso": r.consenso_origine ?? "",
+        "Versione informativa": r.informativa_versione ?? "",
+        "Hash informativa": r.informativa_hash ?? "",
+        "Indirizzo IP": r.ip_address ?? "",
+        "User agent": r.user_agent ?? "",
+        "Secondi permanenza": r.secondi_permanenza ?? "",
+      }));
+      const ws = XLSX.utils.json_to_sheet(exportRows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Iscritti WhatsApp");
+      const today = new Date().toISOString().split("T")[0];
+      XLSX.writeFile(wb, `iscritti-whatsapp-${today}.xlsx`);
+      toast.success(`Esportati ${rows.length} iscritti`);
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Errore esportazione"),
+  });
+
   const righe = listaQuery.data?.righe ?? [];
   const totale = listaQuery.data?.totale ?? 0;
   const totPagine = Math.max(1, Math.ceil(totale / PAGE_SIZE));
@@ -245,14 +305,24 @@ export default function IscrittiWhatsappPage() {
             Numeri raccolti da pagina pubblica, QR e chat, da riconciliare con clienti e lead.
           </p>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => rimatchMutation.mutate()}
-          disabled={rimatchMutation.isPending}
-        >
-          <RefreshCcw className="h-4 w-4 mr-2" />
-          Ri-verifica corrispondenze
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => esportaExcelMutation.mutate()}
+            disabled={esportaExcelMutation.isPending}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Esporta Excel
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => rimatchMutation.mutate()}
+            disabled={rimatchMutation.isPending}
+          >
+            <RefreshCcw className="h-4 w-4 mr-2" />
+            Ri-verifica corrispondenze
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
