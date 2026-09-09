@@ -2557,6 +2557,7 @@ export type Database = {
       }
       iscritti_whatsapp: {
         Row: {
+          azienda: string | null
           cliente_id: string | null
           cognome: string | null
           consenso_log_id: string | null
@@ -2572,6 +2573,7 @@ export type Database = {
           stato: string
         }
         Insert: {
+          azienda?: string | null
           cliente_id?: string | null
           cognome?: string | null
           consenso_log_id?: string | null
@@ -2587,6 +2589,7 @@ export type Database = {
           stato?: string
         }
         Update: {
+          azienda?: string | null
           cliente_id?: string | null
           cognome?: string | null
           consenso_log_id?: string | null
@@ -6103,6 +6106,7 @@ export type Database = {
       export_iscritti_whatsapp: {
         Args: { _origine?: string; _q?: string; _stato?: string }
         Returns: {
+          azienda: string
           cognome: string
           collegato_a: string
           consenso_data: string
@@ -7044,6 +7048,7 @@ export type Database = {
       }
       registra_consenso_whatsapp: {
         Args: {
+          _azienda?: string
           _cognome?: string
           _email?: string
           _informativa_hash?: string
