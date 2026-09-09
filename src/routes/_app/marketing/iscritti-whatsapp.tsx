@@ -64,6 +64,7 @@ type Iscritto = {
   numero_raw: string | null;
   nome: string | null;
   cognome: string | null;
+  azienda: string | null;
   email: string | null;
   origine: string | null;
   stato: string;
@@ -168,7 +169,7 @@ export default function IscrittiWhatsappPage() {
       if (q) {
         const like = `%${q}%`;
         req = req.or(
-          `numero_raw.ilike.${like},nome.ilike.${like},cognome.ilike.${like}`,
+          `numero_raw.ilike.${like},nome.ilike.${like},cognome.ilike.${like},azienda.ilike.${like}`,
         );
       }
       req = req.range(pagina * PAGE_SIZE, pagina * PAGE_SIZE + PAGE_SIZE - 1);
@@ -246,6 +247,7 @@ export default function IscrittiWhatsappPage() {
         numero: string | null;
         nome: string | null;
         cognome: string | null;
+        azienda: string | null;
         email: string | null;
         origine: string | null;
         stato: string | null;
@@ -269,6 +271,7 @@ export default function IscrittiWhatsappPage() {
         Numero: r.numero ?? "",
         Nome: r.nome ?? "",
         Cognome: r.cognome ?? "",
+        Impresa: r.azienda ?? "",
         Email: r.email ?? "",
         Origine: r.origine ?? "",
         Stato: r.stato ?? "",
@@ -381,6 +384,7 @@ export default function IscrittiWhatsappPage() {
             <TableRow>
               <TableHead>Numero</TableHead>
               <TableHead>Nome</TableHead>
+              <TableHead>Impresa</TableHead>
               <TableHead>Origine</TableHead>
               <TableHead>Data</TableHead>
               <TableHead>Stato</TableHead>
@@ -391,13 +395,13 @@ export default function IscrittiWhatsappPage() {
           <TableBody>
             {listaQuery.isLoading ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground">
+                <TableCell colSpan={8} className="text-center text-muted-foreground">
                   Caricamento…
                 </TableCell>
               </TableRow>
             ) : righe.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground">
+                <TableCell colSpan={8} className="text-center text-muted-foreground">
                   Nessun iscritto trovato
                 </TableCell>
               </TableRow>
@@ -410,6 +414,7 @@ export default function IscrittiWhatsappPage() {
                   <TableCell>
                     {[r.nome, r.cognome].filter(Boolean).join(" ") || "—"}
                   </TableCell>
+                  <TableCell>{r.azienda || "—"}</TableCell>
                   <TableCell>
                     <Badge variant="outline">
                       {LABEL_ORIGINE[r.origine ?? ""] ?? r.origine ?? "—"}
@@ -514,6 +519,11 @@ export default function IscrittiWhatsappPage() {
               Collega il numero {riconcilia?.numero_raw ?? ""} a un cliente
               esistente. Il consenso verrà registrato anche nel registro
               consensi.
+              {riconcilia?.azienda && (
+                <span className="block mt-1 text-xs">
+                  Impresa dichiarata: <strong>{riconcilia.azienda}</strong>
+                </span>
+              )}
             </DialogDescription>
           </DialogHeader>
           <ClientePicker value={clienteScelto} onChange={setClienteScelto} />
