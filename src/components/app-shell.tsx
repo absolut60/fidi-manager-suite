@@ -44,6 +44,7 @@ import {
   Network,
   ListChecks,
   UserX,
+  QrCode,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -130,7 +131,8 @@ const NAV: NavItem[] = [
   { to: "/marketing/segmenti", label: "Segmenti", icon: Sparkles, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "marketing" },
  { to: "/marketing/campagne", label: "Campagne email", icon: Mail, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "marketing" },
  { to: "/marketing/invii", label: "Invii massivi", icon: Megaphone, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "marketing" },
- { to: "/marketing/disiscrizioni", label: "Disiscrizioni", icon: UserX, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "marketing" },
+  { to: "/marketing/disiscrizioni", label: "Disiscrizioni", icon: UserX, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "marketing" },
+  { to: "/marketing/qr-whatsapp", label: "QR WhatsApp", icon: QrCode, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "marketing" },
   // STRUMENTI
   { to: "/import-export", label: "Import / Export", icon: FileSpreadsheet, roles: ["admin", "amministrazione"], group: "strumenti" },
   { to: "/whatsapp", label: "WhatsApp", icon: MessageCircle, roles: ["admin"], group: "strumenti" },
