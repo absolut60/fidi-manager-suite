@@ -305,14 +305,24 @@ export default function IscrittiWhatsappPage() {
             Numeri raccolti da pagina pubblica, QR e chat, da riconciliare con clienti e lead.
           </p>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => rimatchMutation.mutate()}
-          disabled={rimatchMutation.isPending}
-        >
-          <RefreshCcw className="h-4 w-4 mr-2" />
-          Ri-verifica corrispondenze
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => esportaExcelMutation.mutate()}
+            disabled={esportaExcelMutation.isPending}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Esporta Excel
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => rimatchMutation.mutate()}
+            disabled={rimatchMutation.isPending}
+          >
+            <RefreshCcw className="h-4 w-4 mr-2" />
+            Ri-verifica corrispondenze
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
