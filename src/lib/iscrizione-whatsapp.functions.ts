@@ -51,13 +51,13 @@ export const iscriviWhatsapp = createServerFn({ method: "POST" })
         _numero_raw: data.numero,
         _nome: data.nome,
         _cognome: data.cognome,
-        _email: null,
+        _email: undefined,
         _origine: data.origine,
-        _ip: ip,
-        _user_agent: userAgent,
+        _ip: ip ?? undefined,
+        _user_agent: userAgent ?? undefined,
         _informativa_versione: INFORMATIVA_VERSIONE,
         _informativa_hash: informativaHash,
-        _secondi_permanenza: data.secondi_permanenza ?? null,
+        _secondi_permanenza: data.secondi_permanenza ?? undefined,
       }
     );
     if (error) throw new Error(error.message);
