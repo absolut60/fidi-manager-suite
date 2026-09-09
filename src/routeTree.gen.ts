@@ -80,6 +80,7 @@ import { Route as AppPreventivatoreDashboardRouteImport } from './routes/_app/pr
 import { Route as AppPreventivatoreIdRouteImport } from './routes/_app/preventivatore.$id'
 import { Route as AppOpportunitaOpportunitaIdRouteImport } from './routes/_app/opportunita.$opportunitaId'
 import { Route as AppMarketingSegmentiRouteImport } from './routes/_app/marketing.segmenti'
+import { Route as AppMarketingQrWhatsappRouteImport } from './routes/_app/marketing/qr-whatsapp'
 import { Route as AppMarketingInviiRouteImport } from './routes/_app/marketing.invii'
 import { Route as AppMarketingDisiscrizioniRouteImport } from './routes/_app/marketing.disiscrizioni'
 import { Route as AppMarketingCampagneRouteImport } from './routes/_app/marketing.campagne'
@@ -463,6 +464,11 @@ const AppMarketingSegmentiRoute = AppMarketingSegmentiRouteImport.update({
   path: '/marketing/segmenti',
   getParentRoute: () => AppRoute,
 } as any)
+const AppMarketingQrWhatsappRoute = AppMarketingQrWhatsappRouteImport.update({
+  id: '/marketing/qr-whatsapp',
+  path: '/marketing/qr-whatsapp',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppMarketingInviiRoute = AppMarketingInviiRouteImport.update({
   id: '/marketing/invii',
   path: '/marketing/invii',
@@ -591,6 +597,7 @@ export interface FileRoutesByFullPath {
   '/marketing/campagne': typeof AppMarketingCampagneRoute
   '/marketing/disiscrizioni': typeof AppMarketingDisiscrizioniRoute
   '/marketing/invii': typeof AppMarketingInviiRoute
+  '/marketing/qr-whatsapp': typeof AppMarketingQrWhatsappRoute
   '/marketing/segmenti': typeof AppMarketingSegmentiRoute
   '/opportunita/$opportunitaId': typeof AppOpportunitaOpportunitaIdRoute
   '/preventivatore/$id': typeof AppPreventivatoreIdRoute
@@ -673,6 +680,7 @@ export interface FileRoutesByTo {
   '/marketing/campagne': typeof AppMarketingCampagneRoute
   '/marketing/disiscrizioni': typeof AppMarketingDisiscrizioniRoute
   '/marketing/invii': typeof AppMarketingInviiRoute
+  '/marketing/qr-whatsapp': typeof AppMarketingQrWhatsappRoute
   '/marketing/segmenti': typeof AppMarketingSegmentiRoute
   '/opportunita/$opportunitaId': typeof AppOpportunitaOpportunitaIdRoute
   '/preventivatore/$id': typeof AppPreventivatoreIdRoute
@@ -760,6 +768,7 @@ export interface FileRoutesById {
   '/_app/marketing/campagne': typeof AppMarketingCampagneRoute
   '/_app/marketing/disiscrizioni': typeof AppMarketingDisiscrizioniRoute
   '/_app/marketing/invii': typeof AppMarketingInviiRoute
+  '/_app/marketing/qr-whatsapp': typeof AppMarketingQrWhatsappRoute
   '/_app/marketing/segmenti': typeof AppMarketingSegmentiRoute
   '/_app/opportunita/$opportunitaId': typeof AppOpportunitaOpportunitaIdRoute
   '/_app/preventivatore/$id': typeof AppPreventivatoreIdRoute
@@ -847,6 +856,7 @@ export interface FileRouteTypes {
     | '/marketing/campagne'
     | '/marketing/disiscrizioni'
     | '/marketing/invii'
+    | '/marketing/qr-whatsapp'
     | '/marketing/segmenti'
     | '/opportunita/$opportunitaId'
     | '/preventivatore/$id'
@@ -929,6 +939,7 @@ export interface FileRouteTypes {
     | '/marketing/campagne'
     | '/marketing/disiscrizioni'
     | '/marketing/invii'
+    | '/marketing/qr-whatsapp'
     | '/marketing/segmenti'
     | '/opportunita/$opportunitaId'
     | '/preventivatore/$id'
@@ -1015,6 +1026,7 @@ export interface FileRouteTypes {
     | '/_app/marketing/campagne'
     | '/_app/marketing/disiscrizioni'
     | '/_app/marketing/invii'
+    | '/_app/marketing/qr-whatsapp'
     | '/_app/marketing/segmenti'
     | '/_app/opportunita/$opportunitaId'
     | '/_app/preventivatore/$id'
@@ -1563,6 +1575,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppMarketingSegmentiRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/marketing/qr-whatsapp': {
+      id: '/_app/marketing/qr-whatsapp'
+      path: '/marketing/qr-whatsapp'
+      fullPath: '/marketing/qr-whatsapp'
+      preLoaderRoute: typeof AppMarketingQrWhatsappRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/marketing/invii': {
       id: '/_app/marketing/invii'
       path: '/marketing/invii'
@@ -1765,6 +1784,7 @@ interface AppRouteChildren {
   AppMarketingCampagneRoute: typeof AppMarketingCampagneRoute
   AppMarketingDisiscrizioniRoute: typeof AppMarketingDisiscrizioniRoute
   AppMarketingInviiRoute: typeof AppMarketingInviiRoute
+  AppMarketingQrWhatsappRoute: typeof AppMarketingQrWhatsappRoute
   AppMarketingSegmentiRoute: typeof AppMarketingSegmentiRoute
   AppPreventivatoreIdRoute: typeof AppPreventivatoreIdRoute
   AppPreventivatoreDashboardRoute: typeof AppPreventivatoreDashboardRoute
@@ -1826,6 +1846,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppMarketingCampagneRoute: AppMarketingCampagneRoute,
   AppMarketingDisiscrizioniRoute: AppMarketingDisiscrizioniRoute,
   AppMarketingInviiRoute: AppMarketingInviiRoute,
+  AppMarketingQrWhatsappRoute: AppMarketingQrWhatsappRoute,
   AppMarketingSegmentiRoute: AppMarketingSegmentiRoute,
   AppPreventivatoreIdRoute: AppPreventivatoreIdRoute,
   AppPreventivatoreDashboardRoute: AppPreventivatoreDashboardRoute,
