@@ -239,7 +239,7 @@ export default function IscrittiWhatsappPage() {
       const { data, error } = await supabase.rpc("export_iscritti_whatsapp", {
         _stato: stato,
         _origine: origine,
-        _q: q || null,
+        _q: q || undefined,
       });
       if (error) throw error;
       return (data ?? []) as {
