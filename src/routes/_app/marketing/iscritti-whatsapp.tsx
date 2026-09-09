@@ -7,9 +7,11 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Download,
   RefreshCcw,
   Search,
 } from "lucide-react";
+import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
