@@ -126,6 +126,8 @@ export default function IscrittiWhatsappPage() {
   const [riconcilia, setRiconcilia] = useState<Iscritto | null>(null);
   const [clienteScelto, setClienteScelto] = useState<string | null>(null);
   const [daIgnorare, setDaIgnorare] = useState<Iscritto | null>(null);
+  const [daCreareLead, setDaCreareLead] = useState<Iscritto | null>(null);
+
 
   useEffect(() => {
     setPagina(0);
@@ -234,6 +236,22 @@ export default function IscrittiWhatsappPage() {
     },
     onError: (e: any) => toast.error(e?.message ?? "Errore"),
   });
+
+  const creaLeadMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { data, error } = await supabase.rpc("crea_lead_da_iscritto", { _id: id });
+      if (error) throw error;
+      return data as { ok?: boolean; errore?: string; lead_id?: string };
+    },
+    onSuccess: (res) => {
+      if (res?.ok === false) toast.error(res.errore ?? "Operazione non riuscita");
+      else toast.success("Lead creato e collegato");
+      setDaCreareLead(null);
+      invalida();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Errore"),
+  });
+
 
   const esportaExcelMutation = useMutation({
     mutationFn: async () => {
@@ -446,6 +464,13 @@ export default function IscrittiWhatsappPage() {
                         </Button>
                         <Button
                           size="sm"
+                          variant="outline"
+                          onClick={() => setDaCreareLead(r)}
+                        >
+                          Crea lead
+                        </Button>
+                        <Button
+                          size="sm"
                           variant="ghost"
                           onClick={() => setDaIgnorare(r)}
                         >
@@ -454,6 +479,7 @@ export default function IscrittiWhatsappPage() {
                       </>
                     )}
                   </TableCell>
+
                 </TableRow>
               ))
             )}
@@ -573,6 +599,32 @@ export default function IscrittiWhatsappPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog
+        open={!!daCreareLead}
+        onOpenChange={(o) => { if (!o) setDaCreareLead(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Creare un lead da questo iscritto?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Verrà creato un nuovo lead con i dati di{" "}
+              {[daCreareLead?.nome, daCreareLead?.cognome].filter(Boolean).join(" ") || "questo iscritto"}
+              {" "}(numero {daCreareLead?.numero_raw ?? daCreareLead?.numero_norm ?? ""}
+              {daCreareLead?.azienda ? `, impresa ${daCreareLead.azienda}` : ""}). Il consenso WhatsApp verrà registrato sul lead.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => daCreareLead && creaLeadMutation.mutate(daCreareLead.id)}
+            >
+              Crea lead
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
+
   );
 }
