@@ -6100,6 +6100,26 @@ export type Database = {
           storage_path: string
         }[]
       }
+      export_iscritti_whatsapp: {
+        Args: { _origine?: string; _q?: string; _stato?: string }
+        Returns: {
+          cognome: string
+          collegato_a: string
+          consenso_data: string
+          consenso_origine: string
+          data_iscrizione: string
+          email: string
+          informativa_hash: string
+          informativa_versione: string
+          ip_address: string
+          nome: string
+          numero: string
+          origine: string
+          secondi_permanenza: number
+          stato: string
+          user_agent: string
+        }[]
+      }
       fn_email_valida: { Args: { _raw: string }; Returns: boolean }
       fn_telefono_valido: { Args: { _raw: string }; Returns: boolean }
       genera_snapshot: { Args: { _data: string }; Returns: string }
