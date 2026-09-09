@@ -34,6 +34,7 @@ function IscrizioneWhatsappPage() {
   const [numero, setNumero] = useState("");
   const [nome, setNome] = useState("");
   const [cognome, setCognome] = useState("");
+  const [azienda, setAzienda] = useState("");
   const [consenso, setConsenso] = useState(false);
   const [done, setDone] = useState(false);
 
@@ -44,6 +45,7 @@ function IscrizioneWhatsappPage() {
           numero,
           nome,
           cognome,
+          azienda,
           consenso: true as const,
           origine,
           secondi_permanenza: Math.round(
@@ -118,6 +120,14 @@ function IscrizioneWhatsappPage() {
                 placeholder="es. 340 1234567"
                 value={numero}
                 onChange={(e) => setNumero(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Impresa (facoltativo)</Label>
+              <Input
+                placeholder="es. Rossi Costruzioni Srl"
+                value={azienda}
+                onChange={(e) => setAzienda(e.target.value)}
               />
             </div>
             <label className="flex items-start gap-2 text-sm cursor-pointer rounded-md border p-3">
