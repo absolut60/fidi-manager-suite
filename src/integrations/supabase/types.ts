@@ -5947,6 +5947,10 @@ export type Database = {
       }
     }
     Functions: {
+      _crea_contatto_da_iscritto: {
+        Args: { _cliente_id: string; _isc_id: string }
+        Returns: string
+      }
       allegato_storage_path_cliente_id: {
         Args: { _name: string }
         Returns: string
@@ -6968,6 +6972,7 @@ export type Database = {
       }
       marca_messaggi_letti: { Args: { _richiesta_id: string }; Returns: number }
       normalizza_numero_it: { Args: { _raw: string }; Returns: string }
+      normalizza_ragione_sociale: { Args: { _s: string }; Returns: string }
       peso_mese_fido: { Args: { _eta: number }; Returns: number }
       processa_richiesta_fido: {
         Args: {
