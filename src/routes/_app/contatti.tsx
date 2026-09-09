@@ -216,7 +216,7 @@ function ContattiPage() {
                       Marketing <CB ok={!!c.consenso_marketing_media} />
                     </span>
                     <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                      WhatsApp <CB ok={!!c.consenso_marketing_diretto} />
+                      WhatsApp <CB ok={!!c.whatsapp_opt_in} />
                     </span>
                   </>
                 }
@@ -268,7 +268,7 @@ function ContattiPage() {
                   <TableCell className="text-muted-foreground">{c.cellulare ?? "—"}</TableCell>
                   <TableCell className="text-center"><CB ok={!!c.consenso_profilazione} /></TableCell>
                   <TableCell className="text-center"><CB ok={!!c.consenso_marketing_media} /></TableCell>
-                  <TableCell className="text-center"><CB ok={!!c.consenso_marketing_diretto} /></TableCell>
+                  <TableCell className="text-center"><CB ok={!!c.whatsapp_opt_in} /></TableCell>
                   <TableCell className="text-muted-foreground">{fmtDate(c.data_firma)}</TableCell>
                 </TableRow>
               ))}
