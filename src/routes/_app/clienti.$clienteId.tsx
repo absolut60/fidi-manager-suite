@@ -1626,6 +1626,11 @@ function ContattoCard({
                 <FileX2 className="size-3" /> Non firmata
               </Badge>
             )}
+            {contatto.whatsapp_opt_in && (
+              <Badge className="bg-success/15 text-success gap-1 shrink-0">
+                <MessageCircle className="size-3" /> Consenso WhatsApp
+              </Badge>
+            )}
           </div>
           {contatto.ruolo && (
             <p className="text-xs text-muted-foreground mt-0.5">{contatto.ruolo}</p>
