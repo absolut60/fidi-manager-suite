@@ -100,6 +100,22 @@ function badgeStato(stato: string) {
   return <Badge variant="outline">{stato}</Badge>;
 }
 
+function badgeDiagnostico(
+  info?: {
+    esito: string;
+    n_clienti_candidati: number;
+    candidati_clienti: Array<{ ragione_sociale: string }>;
+  },
+) {
+  if (!info) return null;
+  if (info.esito === "ambiguo" && info.n_clienti_candidati >= 2)
+    return <Badge className="bg-amber-100 text-amber-800 border-amber-300">Più clienti possibili</Badge>;
+  if (info.esito === "collega_auto" && info.candidati_clienti[0])
+    return <Badge className="bg-green-100 text-green-800 border-green-300">Cliente trovato: {info.candidati_clienti[0].ragione_sociale}</Badge>;
+  return null;
+}
+
+
 const LABEL_ORIGINE: Record<string, string> = {
   qr_pagina: "QR pagina",
   link: "Link",
@@ -181,10 +197,35 @@ export default function IscrittiWhatsappPage() {
     },
   });
 
+  const idsNuovi = (listaQuery.data?.righe ?? [])
+    .filter((r) => r.stato === "nuovo")
+    .map((r) => r.id);
+
+  const classificaQuery = useQuery({
+    queryKey: ["iscritti-whatsapp-classifica", idsNuovi.sort().join(",")],
+    enabled: idsNuovi.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("classifica_iscritti_whatsapp_batch", { _ids: idsNuovi });
+      if (error) throw error;
+      const arr = (data ?? []) as Array<{
+        iscritto_id: string;
+        esito: string;
+        n_clienti_candidati: number;
+        candidati_clienti: Array<{ cliente_id: string; ragione_sociale: string; motivi: string }>;
+        candidati_lead: Array<{ lead_id: string; nominativo: string; motivi: string }>;
+      }>;
+      const map: Record<string, (typeof arr)[number]> = {};
+      for (const it of arr) map[it.iscritto_id] = it;
+      return map;
+    },
+  });
+  const classifica = classificaQuery.data ?? {};
+
   const invalida = () => {
     queryClient.invalidateQueries({ queryKey: ["iscritti-whatsapp"] });
     queryClient.invalidateQueries({ queryKey: ["iscritti-whatsapp-conteggi"] });
   };
+
 
   const rimatchMutation = useMutation({
     mutationFn: async () => {
@@ -439,7 +480,13 @@ export default function IscrittiWhatsappPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-sm">{fmtData(r.created_at)}</TableCell>
-                  <TableCell>{badgeStato(r.stato)}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-col gap-1 items-start">
+                      {badgeStato(r.stato)}
+                      {r.stato === "nuovo" && badgeDiagnostico(classifica[r.id])}
+                    </div>
+                  </TableCell>
+
                   <TableCell>
                     {r.cliente_id ? (
                       <Badge variant="secondary">Cliente</Badge>
@@ -552,8 +599,32 @@ export default function IscrittiWhatsappPage() {
               )}
             </DialogDescription>
           </DialogHeader>
+          {riconcilia && classifica[riconcilia.id]?.candidati_clienti?.length ? (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">Candidati suggeriti</p>
+              <div className="flex flex-col gap-1.5">
+                {classifica[riconcilia.id].candidati_clienti.map((c) => (
+                  <Button
+                    key={c.cliente_id}
+                    type="button"
+                    variant={clienteScelto === c.cliente_id ? "default" : "outline"}
+                    size="sm"
+                    className="justify-between"
+                    onClick={() => setClienteScelto(c.cliente_id)}
+                  >
+                    <span>{c.ragione_sociale}</span>
+                    <span className="text-xs opacity-70">
+                      {c.motivi === "numero" ? "per numero" : c.motivi === "impresa" ? "per impresa" : c.motivi}
+                    </span>
+                  </Button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">Oppure scegli manualmente:</p>
+            </div>
+          ) : null}
           <ClientePicker value={clienteScelto} onChange={setClienteScelto} />
           <DialogFooter>
+
             <Button variant="outline" onClick={() => setRiconcilia(null)}>
               Annulla
             </Button>
