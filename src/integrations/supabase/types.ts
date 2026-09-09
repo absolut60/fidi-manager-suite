@@ -6026,6 +6026,7 @@ export type Database = {
         }[]
       }
       can_manage_email_assets: { Args: never; Returns: boolean }
+      classifica_iscritto_whatsapp: { Args: { _id: string }; Returns: Json }
       coefficiente_comportamento: {
         Args: {
           _giorni_oltre: number
