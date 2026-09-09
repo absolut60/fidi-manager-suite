@@ -5,7 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { ClienteFatturato } from "@/components/cliente-fatturato";
 import { CONSENSO_LABEL } from "@/lib/consensi-testi";
-import { Tag, Gauge, HardHat, ShieldCheck, Megaphone } from "lucide-react";
+import { Tag, Gauge, HardHat, ShieldCheck, Megaphone, MessageCircle } from "lucide-react";
 import { BadgeDisiscrizione } from "@/components/marketing/badge-disiscrizione";
 import { CampagneEntitaTab } from "@/components/marketing/campagne-entita-tab";
 
@@ -73,6 +73,15 @@ export function ClienteMarketingTab({ clienteId, cliente }: { clienteId: string;
         contatti: contatti.data ?? [],
         store: (store as any)?.data ?? null,
       };
+    },
+  });
+
+  const { data: waData } = useQuery({
+    queryKey: ["cliente-whatsapp", clienteId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_whatsapp_cliente", { _cliente_id: clienteId });
+      if (error) throw error;
+      return data as { ok: boolean; numero: string | null; opt_in: boolean; ha_consenso: boolean; aggiornato_at: string | null };
     },
   });
 
@@ -154,6 +163,30 @@ export function ClienteMarketingTab({ clienteId, cliente }: { clienteId: string;
             <Stat label="Cantieri attivi" value={String(cantieriAttivi)} tone={cantieriAttivi > 0 ? "success" : "muted"} />
             <Stat label="Cantieri chiusi" value={String(Math.max(0, cantieriTot - cantieriAttivi))} tone="muted" />
           </div>
+        )}
+      </section>
+
+      <section className="space-y-2">
+        <SectionTitle icon={MessageCircle}>WhatsApp</SectionTitle>
+        {!waData ? (
+          <Skeleton className="h-14" />
+        ) : (
+          <Card className="px-3 py-2 flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-[10px] font-medium text-muted-foreground uppercase truncate">Numero WhatsApp</p>
+              <p className={`text-base font-bold mt-0.5 truncate ${waData.numero ? "" : "text-muted-foreground"}`}>
+                {waData.numero || "Non registrato"}
+              </p>
+              {waData.aggiornato_at && (
+                <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                  Aggiornato il {new Date(waData.aggiornato_at).toLocaleDateString("it-IT")}
+                </p>
+              )}
+            </div>
+            <Badge variant={waData.ha_consenso ? "default" : "secondary"}>
+              {waData.ha_consenso ? "Consenso attivo" : "Nessun consenso"}
+            </Badge>
+          </Card>
         )}
       </section>
 
