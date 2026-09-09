@@ -1528,6 +1528,7 @@ export type Database = {
           ultima_importazione_d: string | null
           ultima_sincronizzazione: string | null
           updated_at: string
+          whatsapp: string | null
         }
         Insert: {
           a_scadere?: number | null
@@ -1615,6 +1616,7 @@ export type Database = {
           ultima_importazione_d?: string | null
           ultima_sincronizzazione?: string | null
           updated_at?: string
+          whatsapp?: string | null
         }
         Update: {
           a_scadere?: number | null
@@ -1702,6 +1704,7 @@ export type Database = {
           ultima_importazione_d?: string | null
           ultima_sincronizzazione?: string | null
           updated_at?: string
+          whatsapp?: string | null
         }
         Relationships: [
           {
@@ -6907,6 +6910,7 @@ export type Database = {
           nome: string
         }[]
       }
+      get_whatsapp_cliente: { Args: { _cliente_id: string }; Returns: Json }
       has_lead_module_access: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
         Args: {
