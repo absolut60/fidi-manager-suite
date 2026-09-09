@@ -35,14 +35,39 @@ function QrCard({
       .catch(() => setDataUrl(""));
   }, [url]);
 
-  const scarica = () => {
+  const scarica = async () => {
     if (!dataUrl) return;
-    const a = document.createElement("a");
-    a.href = dataUrl;
-    a.download = `qr-${titolo.toLowerCase().replace(/\s+/g, "-")}.png`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    const fileName = `qr-${titolo.toLowerCase().replace(/\s+/g, "-")}.png`;
+
+    // Prova la Web Share API con file (ideale su mobile: apre "Condividi" → Salva immagine)
+    try {
+      const resp = await fetch(dataUrl);
+      const blob = await resp.blob();
+      const file = new File([blob], fileName, { type: "image/png" });
+      const navAny = navigator as any;
+      if (navAny.canShare && navAny.canShare({ files: [file] })) {
+        await navAny.share({ files: [file], title: fileName });
+        return;
+      }
+    } catch {
+      /* share non disponibile o annullato: passo ai fallback */
+    }
+
+    // Desktop: download classico
+    try {
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      return;
+    } catch {
+      /* download bloccato: ultimo fallback */
+    }
+
+    // Ultimo fallback: apri l'immagine in una nuova scheda (long-press per salvare)
+    window.open(dataUrl, "_blank");
   };
   const copia = () => {
     navigator.clipboard.writeText(url);
