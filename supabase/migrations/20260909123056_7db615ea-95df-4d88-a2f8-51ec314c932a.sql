@@ -1,0 +1,3 @@
+DROP FUNCTION IF EXISTS public.get_scadenziario_totali(text, uuid, text, text, text, boolean, boolean, text, numeric, boolean);
+DROP FUNCTION IF EXISTS public.get_scadenziario_ids(text, uuid, text, text, text, boolean, boolean, text, numeric, boolean);
+DROP FUNCTION IF EXISTS public.get_scadenziario_lista_paginata(text, uuid, text, text, text, boolean, boolean, text, numeric, boolean, integer, integer, text, text, integer, integer);
