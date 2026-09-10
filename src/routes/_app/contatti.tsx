@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/table";
 import { NuovoContattoWizard } from "@/components/nuovo-contatto-wizard";
 import { FiltriCollassabili, SchedaLista, ElencoSchede } from "@/components/lista-responsive";
+import { BadgeConsensi, STATO_CONSENSI_VUOTO, useStatoConsensi } from "@/components/badge-consensi";
 
 export const Route = createFileRoute("/_app/contatti")({
   component: ContattiPage,
