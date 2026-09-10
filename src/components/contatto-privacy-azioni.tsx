@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
-import { FileCheck2, Mail, Link as LinkIcon, Download, Send, Clock, PenLine, ChevronDown } from "lucide-react";
+import { FileCheck2, Mail, Link as LinkIcon, Download, Send, Clock, PenLine, ChevronDown, MessageCircle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
@@ -293,11 +293,11 @@ export function ContattoPrivacyAzioni({
             <FileCheck2 className="size-3" /> Firmata il {fmt(contatto.data_firma)}
           </Badge>
         </div>
-        <div className="flex flex-wrap gap-1.5">
-          <ConsensoBadge ok={!!contatto.consenso_profilazione} label="Profilazione" />
-          <ConsensoBadge ok={!!contatto.consenso_marketing_media} label="Marketing media" />
-          <ConsensoBadge ok={!!contatto.consenso_marketing_diretto} label="Marketing diretto" />
-        </div>
+        <ConsensiContattoBadges
+          marketingDiretto={contatto.consenso_marketing_diretto}
+          marketingMedia={contatto.consenso_marketing_media}
+          profilazione={contatto.consenso_profilazione}
+        />
         <p className="text-xs text-muted-foreground">
           Privacy già firmata il {fmt(contatto.data_firma)} — nessuna richiesta necessaria.
         </p>
