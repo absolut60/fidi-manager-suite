@@ -7069,6 +7069,8 @@ export type Database = {
         Args: {
           _azienda?: string
           _cognome?: string
+          _consenso_marketing?: boolean
+          _consenso_profilazione?: boolean
           _email?: string
           _informativa_hash?: string
           _informativa_versione?: string
