@@ -66,6 +66,7 @@ import { Route as AppLeadIndexRouteImport } from './routes/_app/lead.index'
 import { Route as AppKitIndexRouteImport } from './routes/_app/kit.index'
 import { Route as AppEventiIndexRouteImport } from './routes/_app/eventi.index'
 import { Route as AppArticoliIndexRouteImport } from './routes/_app/articoli.index'
+import { Route as ApiTestD360PingRouteImport } from './routes/api/test/d360-ping'
 import { Route as ApiPublicInviaPushRouteImport } from './routes/api/public/invia-push'
 import { Route as ApiPublicInngestRouteImport } from './routes/api/public/inngest'
 import { Route as AppTaskIdRouteImport } from './routes/_app/task.$id'
@@ -388,6 +389,11 @@ const AppArticoliIndexRoute = AppArticoliIndexRouteImport.update({
   path: '/articoli/',
   getParentRoute: () => AppRoute,
 } as any)
+const ApiTestD360PingRoute = ApiTestD360PingRouteImport.update({
+  id: '/api/test/d360-ping',
+  path: '/api/test/d360-ping',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicInviaPushRoute = ApiPublicInviaPushRouteImport.update({
   id: '/api/public/invia-push',
   path: '/api/public/invia-push',
@@ -620,6 +626,7 @@ export interface FileRoutesByFullPath {
   '/task/$id': typeof AppTaskIdRoute
   '/api/public/inngest': typeof ApiPublicInngestRoute
   '/api/public/invia-push': typeof ApiPublicInviaPushRoute
+  '/api/test/d360-ping': typeof ApiTestD360PingRoute
   '/articoli/': typeof AppArticoliIndexRoute
   '/eventi/': typeof AppEventiIndexRoute
   '/kit/': typeof AppKitIndexRoute
@@ -704,6 +711,7 @@ export interface FileRoutesByTo {
   '/task/$id': typeof AppTaskIdRoute
   '/api/public/inngest': typeof ApiPublicInngestRoute
   '/api/public/invia-push': typeof ApiPublicInviaPushRoute
+  '/api/test/d360-ping': typeof ApiTestD360PingRoute
   '/articoli': typeof AppArticoliIndexRoute
   '/eventi': typeof AppEventiIndexRoute
   '/kit': typeof AppKitIndexRoute
@@ -793,6 +801,7 @@ export interface FileRoutesById {
   '/_app/task/$id': typeof AppTaskIdRoute
   '/api/public/inngest': typeof ApiPublicInngestRoute
   '/api/public/invia-push': typeof ApiPublicInviaPushRoute
+  '/api/test/d360-ping': typeof ApiTestD360PingRoute
   '/_app/articoli/': typeof AppArticoliIndexRoute
   '/_app/eventi/': typeof AppEventiIndexRoute
   '/_app/kit/': typeof AppKitIndexRoute
@@ -882,6 +891,7 @@ export interface FileRouteTypes {
     | '/task/$id'
     | '/api/public/inngest'
     | '/api/public/invia-push'
+    | '/api/test/d360-ping'
     | '/articoli/'
     | '/eventi/'
     | '/kit/'
@@ -966,6 +976,7 @@ export interface FileRouteTypes {
     | '/task/$id'
     | '/api/public/inngest'
     | '/api/public/invia-push'
+    | '/api/test/d360-ping'
     | '/articoli'
     | '/eventi'
     | '/kit'
@@ -1054,6 +1065,7 @@ export interface FileRouteTypes {
     | '/_app/task/$id'
     | '/api/public/inngest'
     | '/api/public/invia-push'
+    | '/api/test/d360-ping'
     | '/_app/articoli/'
     | '/_app/eventi/'
     | '/_app/kit/'
@@ -1084,6 +1096,7 @@ export interface RootRouteChildren {
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiPublicInngestRoute: typeof ApiPublicInngestRoute
   ApiPublicInviaPushRoute: typeof ApiPublicInviaPushRoute
+  ApiTestD360PingRoute: typeof ApiTestD360PingRoute
   ApiPublicEmailImgSplatRoute: typeof ApiPublicEmailImgSplatRoute
   ApiPublicHooksCheckReminderRitardiRoute: typeof ApiPublicHooksCheckReminderRitardiRoute
   ApiPublicHooksCheckScadenzeRoute: typeof ApiPublicHooksCheckScadenzeRoute
@@ -1489,6 +1502,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/articoli/'
       preLoaderRoute: typeof AppArticoliIndexRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/api/test/d360-ping': {
+      id: '/api/test/d360-ping'
+      path: '/api/test/d360-ping'
+      fullPath: '/api/test/d360-ping'
+      preLoaderRoute: typeof ApiTestD360PingRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/public/invia-push': {
       id: '/api/public/invia-push'
@@ -1905,6 +1925,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiPublicInngestRoute: ApiPublicInngestRoute,
   ApiPublicInviaPushRoute: ApiPublicInviaPushRoute,
+  ApiTestD360PingRoute: ApiTestD360PingRoute,
   ApiPublicEmailImgSplatRoute: ApiPublicEmailImgSplatRoute,
   ApiPublicHooksCheckReminderRitardiRoute:
     ApiPublicHooksCheckReminderRitardiRoute,
