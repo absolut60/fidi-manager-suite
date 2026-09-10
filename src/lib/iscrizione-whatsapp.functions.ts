@@ -24,6 +24,8 @@ export const iscriviWhatsapp = createServerFn({ method: "POST" })
       consenso: z.literal(true, {
         errorMap: () => ({ message: "Devi dare il consenso per iscriverti" }),
       }),
+      consenso_marketing: z.boolean().default(false),
+      consenso_profilazione: z.boolean().default(false),
       origine: z.enum(["link", "qr_pagina"]).default("link"),
       secondi_permanenza: z.number().int().min(0).max(86400).nullable().optional(),
     }).parse(d)
@@ -53,6 +55,8 @@ export const iscriviWhatsapp = createServerFn({ method: "POST" })
         _nome: data.nome,
         _cognome: data.cognome,
         _azienda: data.azienda || undefined,
+        _consenso_marketing: data.consenso_marketing,
+        _consenso_profilazione: data.consenso_profilazione,
         _email: undefined,
         _origine: data.origine,
         _ip: ip ?? undefined,

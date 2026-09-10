@@ -36,6 +36,8 @@ function IscrizioneWhatsappPage() {
   const [cognome, setCognome] = useState("");
   const [azienda, setAzienda] = useState("");
   const [consenso, setConsenso] = useState(false);
+  const [consensoMarketing, setConsensoMarketing] = useState(false);
+  const [consensoProfilazione, setConsensoProfilazione] = useState(false);
   const [done, setDone] = useState(false);
 
   const submit = useMutation({
@@ -47,6 +49,8 @@ function IscrizioneWhatsappPage() {
           cognome,
           azienda,
           consenso: true as const,
+          consenso_marketing: consensoMarketing,
+          consenso_profilazione: consensoProfilazione,
           origine,
           secondi_permanenza: Math.round(
             (Date.now() - apertaAl.current) / 1000
@@ -138,7 +142,7 @@ function IscrizioneWhatsappPage() {
               />
               <span>
                 Acconsento a ricevere comunicazioni promozionali e offerte da{" "}
-                <strong>MADE Distribuzione</strong> tramite WhatsApp.{" "}
+                <strong>MADE Distribuzione</strong> tramite WhatsApp (obbligatorio).{" "}
                 <Dialog>
                   <DialogTrigger asChild>
                     <button
@@ -158,6 +162,28 @@ function IscrizioneWhatsappPage() {
                     </div>
                   </DialogContent>
                 </Dialog>
+              </span>
+            </label>
+            <label className="flex items-start gap-2 text-sm cursor-pointer rounded-md border p-3">
+              <Checkbox
+                checked={consensoMarketing}
+                onCheckedChange={(v) => setConsensoMarketing(v === true)}
+                className="mt-0.5"
+              />
+              <span>
+                Acconsento a ricevere offerte e comunicazioni commerciali da MADE
+                Distribuzione (email, telefono, SMS).
+              </span>
+            </label>
+            <label className="flex items-start gap-2 text-sm cursor-pointer rounded-md border p-3">
+              <Checkbox
+                checked={consensoProfilazione}
+                onCheckedChange={(v) => setConsensoProfilazione(v === true)}
+                className="mt-0.5"
+              />
+              <span>
+                Acconsento all&apos;analisi delle mie preferenze e abitudini di
+                acquisto per ricevere proposte personalizzate.
               </span>
             </label>
             <Button
