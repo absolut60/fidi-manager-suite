@@ -31,7 +31,8 @@ import { InviaSollecitoDialog } from "@/components/invia-sollecito-dialog";
 import { useRef } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { ContattoPrivacyAzioni, ConsensiContattoBadges } from "@/components/contatto-privacy-azioni";
+import { ContattoPrivacyAzioni } from "@/components/contatto-privacy-azioni";
+import { BadgeConsensiContatto } from "@/components/badge-consensi";
 import { getFidoAttuale } from "@/lib/fido-cliente";
 import { SemaforoAffidabilitaBadge } from "@/components/pannello-rischio-cliente";
 
