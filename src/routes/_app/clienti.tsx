@@ -1439,6 +1439,7 @@ function ClientiPage() {
           <div className="border-t pt-3 grid grid-cols-1 gap-3">
             {TipoSoggettoSelect}
             {AgenteSelect}
+            {PrivacySelect}
             {FidoFasciaSelect}
             {TotaleRischioSelect}
             {FatturatoSelect}
