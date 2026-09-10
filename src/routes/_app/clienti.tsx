@@ -773,50 +773,6 @@ function ClientiPage() {
     return new Map(clienteIds.map((id) => [id, okSet.has(id)]));
   }
 
-  const privacyFilterReady = privacyFiltro === "tutti" || (scadReady && classifReady && isConfigReady && virtualSortReady && scostamentoReady && insolutiReady && fermiReady);
-  const { data: privacyFilterMap } = useQuery({
-    queryKey: ["clienti-privacy-filter", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, fasciaConcesso, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
-    enabled: isListRoute && privacyFiltro !== "tutti" && privacyFilterReady,
-    staleTime: 5 * 60_000,
-    queryFn: async () => {
-      const built = buildBaseQuery("id", undefined);
-      if ("empty" in built) return new Map<string, boolean>();
-      const allIds: string[] = [];
-      let off = 0;
-      const size = 1000;
-      while (true) {
-        const { data, error } = await built.q.range(off, off + size - 1);
-        if (error) throw error;
-        const batch = (data ?? []) as Array<{ id: string }>;
-        for (const r of batch) allIds.push(r.id);
-        if (batch.length < size) break;
-        off += size;
-        if (off > 50000) break;
-      }
-      return fetchPrivacyStatusMap(allIds);
-    },
-  });
-
-  const visibleClienteIds = useMemo(() => clienti.map((c: any) => c.id), [clienti]);
-  const { data: privacyDisplayMap } = useQuery({
-    queryKey: ["clienti-privacy-display", visibleClienteIds],
-    enabled: isListRoute && visibleClienteIds.length > 0,
-    staleTime: 5 * 60_000,
-    queryFn: async () => fetchPrivacyStatusMap(visibleClienteIds),
-  });
-
-  const privacyIdsFilter = useMemo<string[] | null>(() => {
-    if (privacyFiltro === "tutti") return null;
-    const map = privacyFilterMap;
-    if (!map) return null;
-    const ids: string[] = [];
-    for (const [id, ok] of map) {
-      if ((privacyFiltro === "ok" && ok) || (privacyFiltro === "da_richiedere" && !ok)) {
-        ids.push(id);
-      }
-    }
-    return ids;
-  }, [privacyFilterMap, privacyFiltro]);
 
 
   const classifReady = ((statoFido.size === 0 && !soloOltreFido) || !!classifList)
