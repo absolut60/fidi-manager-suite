@@ -19,7 +19,6 @@ import {
   Copy,
   EyeOff,
   AlertTriangle,
-  MessageCircle,
   Send,
   CreditCard,
   Building2,
