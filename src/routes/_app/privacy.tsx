@@ -15,6 +15,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { BadgeConsensi, STATO_CONSENSI_VUOTO, useStatoConsensi } from "@/components/badge-consensi";
 
 export const Route = createFileRoute("/_app/privacy")({
   component: PrivacyPage,
@@ -78,6 +79,8 @@ function PrivacyPage() {
       return true;
     });
   }, [data, stato, storeId, consensoFiltro, q]);
+
+  const { data: statoConsensi } = useStatoConsensi(rows.map((r: any) => r.id));
 
   return (
     <div className="space-y-6">
@@ -154,10 +157,8 @@ function PrivacyPage() {
                 <TableHead>Cliente</TableHead>
                 <TableHead>Contatto</TableHead>
                 <TableHead>Ruolo</TableHead>
-                <TableHead className="text-center">Privacy base</TableHead>
-                <TableHead className="text-center">Profilaz.</TableHead>
-                <TableHead className="text-center">Marketing</TableHead>
-                <TableHead className="text-center">WhatsApp</TableHead>
+                <TableHead className="text-center">Trattamento dati</TableHead>
+                <TableHead>Consensi</TableHead>
                 <TableHead>Data firma</TableHead>
                 <TableHead className="text-right">PDF</TableHead>
               </TableRow>
@@ -180,15 +181,16 @@ function PrivacyPage() {
                   <TableCell>{`${r.nome ?? ""} ${r.cognome ?? ""}`.trim() || "—"}</TableCell>
                   <TableCell className="text-muted-foreground">{r.ruolo ?? "—"}</TableCell>
                   <TableCell className="text-center">
-                    {r.privacy_firmata ? (
-                      <Badge className="bg-success/15 text-success border-success/30">Firmata</Badge>
-                    ) : (
-                      <Badge className="bg-destructive/15 text-destructive border-destructive/30">Da firmare</Badge>
-                    )}
+                    <CB ok={(statoConsensi?.get(r.id) ?? STATO_CONSENSI_VUOTO).trattamento_dati} />
                   </TableCell>
-                  <TableCell className="text-center"><CB ok={!!r.consenso_profilazione} /></TableCell>
-                  <TableCell className="text-center"><CB ok={!!r.consenso_marketing_media} /></TableCell>
-                  <TableCell className="text-center"><CB ok={!!r.consenso_marketing_diretto} /></TableCell>
+                  <TableCell>
+                    <BadgeConsensi
+                      compact
+                      trattamentoDati={(statoConsensi?.get(r.id) ?? STATO_CONSENSI_VUOTO).trattamento_dati}
+                      whatsapp={(statoConsensi?.get(r.id) ?? STATO_CONSENSI_VUOTO).whatsapp}
+                      email={(statoConsensi?.get(r.id) ?? STATO_CONSENSI_VUOTO).email}
+                    />
+                  </TableCell>
                   <TableCell>{fmtDate(r.data_firma)}</TableCell>
                   <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                     {r.pdf_privacy_path || r.pdf_privacy_url ? (

@@ -31,7 +31,8 @@ import { InviaSollecitoDialog } from "@/components/invia-sollecito-dialog";
 import { useRef } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { ContattoPrivacyAzioni, ConsensiContattoBadges } from "@/components/contatto-privacy-azioni";
+import { ContattoPrivacyAzioni } from "@/components/contatto-privacy-azioni";
+import { BadgeConsensiContatto } from "@/components/badge-consensi";
 import { getFidoAttuale } from "@/lib/fido-cliente";
 import { SemaforoAffidabilitaBadge } from "@/components/pannello-rischio-cliente";
 
@@ -1602,21 +1603,12 @@ function ContattoCard({
                 <Star className="size-3 fill-current" /> Principale
               </Badge>
             )}
-            {contatto.privacy_firmata ? (
+            {contatto.privacy_firmata && (
               <Badge className="bg-success/15 text-success gap-1 shrink-0">
                 <FileCheck2 className="size-3" /> Privacy firmata
               </Badge>
-            ) : (
-              <Badge className="bg-destructive/15 text-destructive gap-1 shrink-0">
-                <FileX2 className="size-3" /> Non firmata
-              </Badge>
             )}
-            <ConsensiContattoBadges
-              marketingDiretto={contatto.consenso_marketing_diretto}
-              marketingMedia={contatto.consenso_marketing_media}
-              profilazione={contatto.consenso_profilazione}
-              whatsappOptIn={contatto.whatsapp_opt_in}
-            />
+            <BadgeConsensiContatto contattoId={contatto.id} compact />
           </div>
           {contatto.ruolo && (
             <p className="text-xs text-muted-foreground mt-0.5">{contatto.ruolo}</p>

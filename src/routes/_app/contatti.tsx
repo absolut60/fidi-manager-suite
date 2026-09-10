@@ -1,12 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Search, Users, Star, Check, X, Plus } from "lucide-react";
+import { Search, Users, Star, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog } from "@/components/ui/dialog";
@@ -18,16 +18,12 @@ import {
 } from "@/components/ui/table";
 import { NuovoContattoWizard } from "@/components/nuovo-contatto-wizard";
 import { FiltriCollassabili, SchedaLista, ElencoSchede } from "@/components/lista-responsive";
+import { BadgeConsensi, STATO_CONSENSI_VUOTO, useStatoConsensi } from "@/components/badge-consensi";
 
 export const Route = createFileRoute("/_app/contatti")({
   component: ContattiPage,
 });
 
-function CB({ ok }: { ok: boolean }) {
-  return ok
-    ? <Badge className="bg-success/15 text-success border-success/30"><Check className="size-3" /></Badge>
-    : <Badge variant="outline" className="text-muted-foreground"><X className="size-3" /></Badge>;
-}
 
 function fmtDate(v: unknown): string {
   if (!v) return "—";
@@ -100,6 +96,9 @@ function ContattiPage() {
       return true;
     });
   }, [data, search, storeId, clienteId, statoConsenso]);
+
+  const { data: statoConsensi } = useStatoConsensi(filtered.map((c: any) => c.id));
+
 
   return (
     <div className="space-y-6">
@@ -208,17 +207,12 @@ function ContattiPage() {
                   { etichetta: "Data firma", valore: fmtDate(c.data_firma) },
                 ]}
                 footer={
-                  <>
-                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                      Profilaz. <CB ok={!!c.consenso_profilazione} />
-                    </span>
-                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                      Marketing <CB ok={!!c.consenso_marketing_media} />
-                    </span>
-                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                      WhatsApp <CB ok={!!c.whatsapp_opt_in} />
-                    </span>
-                  </>
+                  <BadgeConsensi
+                    compact
+                    trattamentoDati={(statoConsensi?.get(c.id) ?? STATO_CONSENSI_VUOTO).trattamento_dati}
+                    whatsapp={(statoConsensi?.get(c.id) ?? STATO_CONSENSI_VUOTO).whatsapp}
+                    email={(statoConsensi?.get(c.id) ?? STATO_CONSENSI_VUOTO).email}
+                  />
                 }
               />
             ))}
@@ -236,9 +230,7 @@ function ContattiPage() {
                 <TableHead>Ruolo</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Cellulare</TableHead>
-                <TableHead className="text-center">Profilaz.</TableHead>
-                <TableHead className="text-center">Marketing</TableHead>
-                <TableHead className="text-center">WhatsApp</TableHead>
+                <TableHead>Consensi</TableHead>
                 <TableHead>Data firma</TableHead>
               </TableRow>
             </TableHeader>
@@ -266,9 +258,14 @@ function ContattiPage() {
                   <TableCell className="text-muted-foreground">{c.ruolo ?? "—"}</TableCell>
                   <TableCell className="text-muted-foreground text-xs">{c.email ?? "—"}</TableCell>
                   <TableCell className="text-muted-foreground">{c.cellulare ?? "—"}</TableCell>
-                  <TableCell className="text-center"><CB ok={!!c.consenso_profilazione} /></TableCell>
-                  <TableCell className="text-center"><CB ok={!!c.consenso_marketing_media} /></TableCell>
-                  <TableCell className="text-center"><CB ok={!!c.whatsapp_opt_in} /></TableCell>
+                  <TableCell>
+                    <BadgeConsensi
+                      compact
+                      trattamentoDati={(statoConsensi?.get(c.id) ?? STATO_CONSENSI_VUOTO).trattamento_dati}
+                      whatsapp={(statoConsensi?.get(c.id) ?? STATO_CONSENSI_VUOTO).whatsapp}
+                      email={(statoConsensi?.get(c.id) ?? STATO_CONSENSI_VUOTO).email}
+                    />
+                  </TableCell>
                   <TableCell className="text-muted-foreground">{fmtDate(c.data_firma)}</TableCell>
                 </TableRow>
               ))}
