@@ -807,6 +807,26 @@ function ClientiPage() {
     return ids;
   }, [privacyFilterMap, privacyFiltro]);
 
+  // Intersezione id set "include" (semaforo ∩ stato_fido ∩ scadenziario ∩ a_scadere ∩ perc consumato ∩ insoluti ∩ fermi ∩ privacy)
+  const includeIdsFilter = useMemo<string[] | null>(() => {
+    const sources: string[][] = [];
+    if (semaforoIds) sources.push(semaforoIds);
+    if (statoFidoIds) sources.push(statoFidoIds);
+    if (oltreFidoIds) sources.push(oltreFidoIds);
+    if (scadenziarioIdsFilter?.mode === "include") sources.push(scadenziarioIdsFilter.ids);
+    if (aScadereIds) sources.push(aScadereIds);
+    if (fatturatoIds) sources.push(fatturatoIds);
+    if (percConsumatoIds) sources.push(percConsumatoIds);
+    if (scostamentoIds) sources.push(scostamentoIds);
+    if (daVerificareIds) sources.push(daVerificareIds);
+    if (insolutiIds) sources.push(insolutiIds);
+    if (fermiIds) sources.push(fermiIds);
+    if (privacyIdsFilter) sources.push(privacyIdsFilter);
+    if (sources.length === 0) return null;
+    const sets = sources.map((s) => new Set(s));
+    return sources[0].filter((id) => sets.every((s) => s.has(id)));
+  }, [semaforoIds, statoFidoIds, oltreFidoIds, scadenziarioIdsFilter, aScadereIds, fatturatoIds, percConsumatoIds, scostamentoIds, daVerificareIds, insolutiIds, fermiIds, privacyIdsFilter]);
+
   const { data: clientiResp, isLoading } = useQuery({
     queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, fasciaConcesso, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
     queryFn: async () => {
