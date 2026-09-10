@@ -235,9 +235,7 @@ function ContattiPage() {
                 <TableHead>Ruolo</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Cellulare</TableHead>
-                <TableHead className="text-center">Profilaz.</TableHead>
-                <TableHead className="text-center">Marketing</TableHead>
-                <TableHead className="text-center">WhatsApp</TableHead>
+                <TableHead>Consensi</TableHead>
                 <TableHead>Data firma</TableHead>
               </TableRow>
             </TableHeader>
