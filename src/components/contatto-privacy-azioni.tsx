@@ -262,11 +262,7 @@ export function ContattoPrivacyAzioni({
             <FileCheck2 className="size-3" /> Firmata il {fmt(contatto.data_firma)}
           </Badge>
         </div>
-        <ConsensiContattoBadges
-          marketingDiretto={contatto.consenso_marketing_diretto}
-          marketingMedia={contatto.consenso_marketing_media}
-          profilazione={contatto.consenso_profilazione}
-        />
+        <BadgeConsensiContatto contattoId={contatto.id} />
         <p className="text-xs text-muted-foreground">
           Privacy già firmata il {fmt(contatto.data_firma)} — nessuna richiesta necessaria.
         </p>
