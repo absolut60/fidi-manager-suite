@@ -156,9 +156,33 @@ function DettagliRaccolta({ contattoId }: { contattoId: string }) {
 
 function ConsensoBadge({ ok, label }: { ok: boolean; label: string }) {
   return ok ? (
-    <Badge className="bg-success/15 text-success border-success/30">{label}</Badge>
+    <Badge className="bg-success/15 text-success border-success/30">{label}: sì</Badge>
   ) : (
     <Badge variant="outline" className="text-muted-foreground">{label}: no</Badge>
+  );
+}
+
+/** Badge dei tre consensi + indicatore canale WhatsApp (abilitato dal marketing diretto). */
+export function ConsensiContattoBadges({
+  marketingDiretto,
+  marketingMedia,
+  profilazione,
+}: {
+  marketingDiretto?: boolean | null;
+  marketingMedia?: boolean | null;
+  profilazione?: boolean | null;
+}) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      <ConsensoBadge ok={!!marketingDiretto} label="Marketing diretto" />
+      <ConsensoBadge ok={!!marketingMedia} label="Marketing media" />
+      <ConsensoBadge ok={!!profilazione} label="Profilazione" />
+      {marketingDiretto && (
+        <Badge className="bg-success/15 text-success border-success/30 gap-1">
+          <MessageCircle className="size-3" /> WhatsApp ✓
+        </Badge>
+      )}
+    </div>
   );
 }
 

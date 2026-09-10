@@ -1602,8 +1602,6 @@ function ContattoCard({
 }) {
   const qc = useQueryClient();
   const [openEdit, setOpenEdit] = useState(false);
-  const waNumber = (contatto.whatsapp ?? "").replace(/[^\d+]/g, "");
-  const waHref = waNumber ? `https://wa.me/${waNumber.replace(/^\+/, "")}` : null;
   return (
     <Card className="p-4">
       <div className="flex items-start justify-between gap-2">
