@@ -102,6 +102,9 @@ function ContattiPage() {
     });
   }, [data, search, storeId, clienteId, statoConsenso]);
 
+  const { data: statoConsensi } = useStatoConsensi(filtered.map((c: any) => c.id));
+
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
