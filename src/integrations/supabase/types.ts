@@ -6894,6 +6894,15 @@ export type Database = {
           store_nome: string
         }[]
       }
+      get_stato_consensi: {
+        Args: { _contatto_ids: string[] }
+        Returns: {
+          contatto_id: string
+          email: boolean
+          trattamento_dati: boolean
+          whatsapp: boolean
+        }[]
+      }
       get_stato_opt_out: {
         Args: { _emails: string[] }
         Returns: {
