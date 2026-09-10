@@ -666,8 +666,6 @@ function ClientiPage() {
     }
     if (filtroBlocco === "bloccati") q = q.eq("bloccato", true);
     else if (filtroBlocco === "non_bloccati") q = q.eq("bloccato", false);
-    if (privacyFiltro === "firmata") q = q.eq("privacy_firmata", true);
-    else if (privacyFiltro === "da_firmare") q = q.eq("privacy_firmata", false);
     if (filtroAssic === "assicurati") q = q.eq("assicurazione_attiva", true);
     else if (filtroAssic === "non_assicurati") q = q.eq("assicurazione_attiva", false);
     if (filtroLegale === "in_legale") q = q.eq("in_gestione_legale", true);
