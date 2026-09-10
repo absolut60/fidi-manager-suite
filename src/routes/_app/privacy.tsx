@@ -155,10 +155,8 @@ function PrivacyPage() {
                 <TableHead>Cliente</TableHead>
                 <TableHead>Contatto</TableHead>
                 <TableHead>Ruolo</TableHead>
-                <TableHead className="text-center">Privacy base</TableHead>
-                <TableHead className="text-center">Profilaz.</TableHead>
-                <TableHead className="text-center">Marketing</TableHead>
-                <TableHead className="text-center">WhatsApp</TableHead>
+                <TableHead className="text-center">Trattamento dati</TableHead>
+                <TableHead>Consensi</TableHead>
                 <TableHead>Data firma</TableHead>
                 <TableHead className="text-right">PDF</TableHead>
               </TableRow>
