@@ -7157,6 +7157,10 @@ export type Database = {
           tipo: string
         }[]
       }
+      upsert_iscritto_da_contatto: {
+        Args: { _contatto_id: string }
+        Returns: string
+      }
       user_can_access_cliente: {
         Args: {
           _cli_codice_agente?: string
