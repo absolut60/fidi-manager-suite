@@ -611,7 +611,7 @@ function ClientiPage() {
   const to = from + pageSize - 1;
 
   // Costruisce la query con TUTTI i filtri server-side (cumulativi AND, senza range di paginazione)
-  function buildBaseQuery(selectCols: string, count: "exact" | undefined) {
+  function buildBaseQuery(selectCols: string, count: "exact" | undefined, opts?: { skipIncludeIds?: boolean }) {
     let q = supabase
       .from("clienti")
       .select(selectCols, count ? { count } : undefined);
