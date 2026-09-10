@@ -164,7 +164,7 @@ function ClientiPage() {
   const [statoFido, setStatoFido] = useState<Set<string>>(new Set());
   const [semaforoFiltro, setSemaforoFiltro] = useState<string>("tutti");
   const [filtroBlocco, setFiltroBlocco] = useState<"tutti" | "bloccati" | "non_bloccati">("tutti");
-  const [privacyFiltro, setPrivacyFiltro] = useState<string>("tutti");
+  const [privacyFiltro, setPrivacyFiltro] = useState<"tutti" | "ok" | "da_richiedere">("tutti");
   const [filtroAssic, setFiltroAssic] = useState<"tutti" | "assicurati" | "non_assicurati">("tutti");
   const [filtroLegale, setFiltroLegale] = useState<"tutti" | "in_legale" | "non_in_legale">("tutti");
   // Default: "giuridica" → mostra solo Imprese, esclude i Privati (persona_fisica)
