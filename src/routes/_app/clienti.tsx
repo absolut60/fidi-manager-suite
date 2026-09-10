@@ -1753,7 +1753,7 @@ function ClientiPage() {
                  )}
                   <TableHead className="whitespace-nowrap"><SortHeader col="scaduto" label="Scaduto" /></TableHead>
                   <TableHead className="whitespace-nowrap"><SortHeader col="a_scadere" label="A scadere" /></TableHead>
-                  <TableHead><SortHeader col="privacy_firmata" label="Privacy" /></TableHead>
+                  <TableHead>Privacy</TableHead>
                   <TableHead><SortHeader col="assicurazione_attiva" label="Assic." /></TableHead>
                   <TableHead>Stato</TableHead>
 
