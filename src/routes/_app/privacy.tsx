@@ -80,6 +80,8 @@ function PrivacyPage() {
     });
   }, [data, stato, storeId, consensoFiltro, q]);
 
+  const { data: statoConsensi } = useStatoConsensi(rows.map((r: any) => r.id));
+
   return (
     <div className="space-y-6">
       <div>
