@@ -2574,6 +2574,7 @@ export type Database = {
           numero_raw: string
           origine: string
           stato: string
+          whatsapp_opt_out: boolean
         }
         Insert: {
           azienda?: string | null
@@ -2590,6 +2591,7 @@ export type Database = {
           numero_raw: string
           origine?: string
           stato?: string
+          whatsapp_opt_out?: boolean
         }
         Update: {
           azienda?: string | null
@@ -2606,6 +2608,7 @@ export type Database = {
           numero_raw?: string
           origine?: string
           stato?: string
+          whatsapp_opt_out?: boolean
         }
         Relationships: [
           {
@@ -7086,6 +7089,7 @@ export type Database = {
         Args: { _ip?: string; _token: string; _ua?: string }
         Returns: boolean
       }
+      registra_stop_whatsapp: { Args: { _numero_raw: string }; Returns: Json }
       revoca_consensi_batch: {
         Args: {
           _contatto_id: string
