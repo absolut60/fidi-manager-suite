@@ -1355,6 +1355,7 @@ function ClientiPage() {
   if (totaleRischioFiltro !== "tutti") activeChips.push({ key: "rischio", label: `Rischio: ${totaleRischioFiltro}`, onRemove: () => setTotaleRischioFiltro("tutti") });
   if (fatturatoFiltro !== "tutti") activeChips.push({ key: "fatturato", label: `Fatturato: ${fatturatoFiltro}`, onRemove: () => setFatturatoFiltro("tutti") });
   if (filtroBlocco !== "tutti") activeChips.push({ key: "blocco", label: filtroBlocco === "bloccati" ? "Bloccati" : "Non bloccati", onRemove: () => setFiltroBlocco("tutti") });
+  if (privacyFiltro !== "tutti") activeChips.push({ key: "privacy", label: privacyFiltro === "ok" ? "Privacy OK" : "Privacy da richiedere", onRemove: () => setPrivacyFiltro("tutti") });
   if (filtroLegale !== "tutti") activeChips.push({ key: "legale", label: filtroLegale === "in_legale" ? "In gestione legale" : "Non in gestione legale", onRemove: () => setFiltroLegale("tutti") });
   if (filtroAssic !== "tutti") activeChips.push({ key: "assic", label: filtroAssic === "assicurati" ? "Assicurati" : "Non assicurati", onRemove: () => setFiltroAssic("tutti") });
   if (filtroTipoSoggetto !== "giuridica") activeChips.push({ key: "tipo", label: filtroTipoSoggetto === "fisica" ? "Tipo: Solo Privati" : "Tipo: Tutti (privati+imprese)", onRemove: () => setFiltroTipoSoggetto("giuridica") });
