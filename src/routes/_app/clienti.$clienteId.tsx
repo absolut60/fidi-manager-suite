@@ -1627,6 +1627,7 @@ function ContattoCard({
               marketingDiretto={contatto.consenso_marketing_diretto}
               marketingMedia={contatto.consenso_marketing_media}
               profilazione={contatto.consenso_profilazione}
+              whatsappOptIn={contatto.whatsapp_opt_in}
             />
           </div>
           {contatto.ruolo && (

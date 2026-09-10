@@ -162,24 +162,34 @@ function ConsensoBadge({ ok, label }: { ok: boolean; label: string }) {
   );
 }
 
-/** Badge dei tre consensi + indicatore canale WhatsApp (abilitato dal marketing diretto). */
+/** Badge dei tre consensi + indicatore canale WhatsApp (da opt-in reale se fornito, altrimenti derivato dal marketing diretto). */
 export function ConsensiContattoBadges({
   marketingDiretto,
   marketingMedia,
   profilazione,
+  whatsappOptIn,
 }: {
   marketingDiretto?: boolean | null;
   marketingMedia?: boolean | null;
   profilazione?: boolean | null;
+  whatsappOptIn?: boolean | null;
 }) {
+  const whatsappAttivo = whatsappOptIn !== undefined ? whatsappOptIn : marketingDiretto;
+  const mostraWhatsApp = whatsappOptIn !== undefined || !!marketingDiretto;
   return (
     <div className="flex flex-wrap gap-1.5">
       <ConsensoBadge ok={!!marketingDiretto} label="Marketing diretto" />
       <ConsensoBadge ok={!!marketingMedia} label="Marketing media" />
       <ConsensoBadge ok={!!profilazione} label="Profilazione" />
-      {marketingDiretto && (
-        <Badge className="bg-success/15 text-success border-success/30 gap-1">
-          <MessageCircle className="size-3" /> WhatsApp ✓
+      {mostraWhatsApp && (
+        <Badge
+          className={
+            whatsappAttivo
+              ? "bg-success/15 text-success border-success/30 gap-1"
+              : "text-muted-foreground border border-input gap-1"
+          }
+        >
+          <MessageCircle className="size-3" /> WhatsApp {whatsappAttivo ? "✓" : "✗"}
         </Badge>
       )}
     </div>
