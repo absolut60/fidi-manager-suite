@@ -911,6 +911,14 @@ function ClientiPage() {
   const totaleClienti = clientiResp?.count ?? 0;
   const totalPages = Math.max(1, Math.ceil(totaleClienti / pageSize));
 
+  const visibleClienteIds = useMemo(() => clienti.map((c: any) => c.id), [clienti]);
+  const { data: privacyDisplayMap } = useQuery({
+    queryKey: ["clienti-privacy-display", visibleClienteIds],
+    enabled: isListRoute && visibleClienteIds.length > 0,
+    staleTime: 5 * 60_000,
+    queryFn: async () => fetchPrivacyStatusMap(visibleClienteIds),
+  });
+
   // Fetch di tutti gli id filtrati (per "Seleziona tutti i filtrati")
   async function fetchAllFilteredRows(): Promise<any[]> {
     const cols = `id, ragione_sociale, ${FIDO_CLIENTE_SELECT}, totale_rischio`;
