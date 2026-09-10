@@ -131,7 +131,6 @@ const contattoSchema = z.object({
   email: z.string().trim().email("Email non valida").max(255).optional().or(z.literal("")),
   telefono: z.string().trim().max(30).optional().or(z.literal("")),
   cellulare: z.string().trim().max(30).optional().or(z.literal("")),
-  whatsapp: z.string().trim().max(30).optional().or(z.literal("")),
   luogo_nascita: z.string().trim().max(100).optional().or(z.literal("")),
   data_nascita: z.string().trim().max(20).optional().or(z.literal("")),
   codice_fiscale: z.string().trim().max(20).optional().or(z.literal("")),
@@ -149,7 +148,6 @@ function emptyContattoForm(): ContattoForm {
     email: "",
     telefono: "",
     cellulare: "",
-    whatsapp: "",
     luogo_nascita: "",
     data_nascita: "",
     codice_fiscale: "",
@@ -211,14 +209,6 @@ function ContattoFormFields({
             <Label>Cellulare</Label>
             <Input value={form.cellulare} onChange={(e) => set("cellulare", e.target.value)} />
           </div>
-          <div className="space-y-1.5">
-            <Label>WhatsApp</Label>
-            <Input
-              placeholder="+39 333 1234567"
-              value={form.whatsapp}
-              onChange={(e) => set("whatsapp", e.target.value)}
-            />
-          </div>
         </div>
       </div>
 
@@ -265,7 +255,6 @@ function contattoFormToPayload(parsed: ContattoForm) {
     email: parsed.email || null,
     telefono: parsed.telefono || null,
     cellulare: parsed.cellulare || null,
-    whatsapp: parsed.whatsapp || null,
     luogo_nascita: parsed.luogo_nascita || null,
     data_nascita: parsed.data_nascita || null,
     codice_fiscale: parsed.codice_fiscale || null,
@@ -1521,7 +1510,6 @@ function EditContattoDialog({ contatto, onClose }: { contatto: any; onClose: () 
     email: contatto.email ?? "",
     telefono: contatto.telefono ?? "",
     cellulare: contatto.cellulare ?? "",
-    whatsapp: contatto.whatsapp ?? "",
     luogo_nascita: contatto.luogo_nascita ?? "",
     data_nascita: contatto.data_nascita ?? "",
     codice_fiscale: contatto.codice_fiscale ?? "",
