@@ -173,6 +173,18 @@ export async function finalizzaRaccoltaPrivacy(opts: {
     console.error("[privacy] registra_consensi_batch fallito:", e);
   }
 
+  // 3-ter) Iscritto WhatsApp — solo con consenso marketing diretto, mai fatale
+  if (consensi.marketing_diretto) {
+    try {
+      const { error: eIscr } = await supabaseAdmin.rpc("upsert_iscritto_da_contatto", {
+        _contatto_id: contattoId,
+      });
+      if (eIscr) console.error("[privacy] upsert_iscritto_da_contatto fallito:", eIscr.message);
+    } catch (e) {
+      console.error("[privacy] upsert_iscritto_da_contatto fallito:", e);
+    }
+  }
+
   // 4) Invio copia PDF al firmatario — mai fatale
   let emailInviata = false;
   try {
