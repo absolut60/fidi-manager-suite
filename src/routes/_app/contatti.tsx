@@ -208,17 +208,12 @@ function ContattiPage() {
                   { etichetta: "Data firma", valore: fmtDate(c.data_firma) },
                 ]}
                 footer={
-                  <>
-                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                      Profilaz. <CB ok={!!c.consenso_profilazione} />
-                    </span>
-                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                      Marketing <CB ok={!!c.consenso_marketing_media} />
-                    </span>
-                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                      WhatsApp <CB ok={!!c.whatsapp_opt_in} />
-                    </span>
-                  </>
+                  <BadgeConsensi
+                    compact
+                    trattamentoDati={(statoConsensi?.get(c.id) ?? STATO_CONSENSI_VUOTO).trattamento_dati}
+                    whatsapp={(statoConsensi?.get(c.id) ?? STATO_CONSENSI_VUOTO).whatsapp}
+                    email={(statoConsensi?.get(c.id) ?? STATO_CONSENSI_VUOTO).email}
+                  />
                 }
               />
             ))}
