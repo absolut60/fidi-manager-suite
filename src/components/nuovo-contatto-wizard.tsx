@@ -52,7 +52,7 @@ type Modalita = CanalePrivacy | null;
 
 type ContattoState = {
   nome: string; cognome: string; ruolo: string;
-  email: string; cellulare: string; telefono: string; whatsapp: string;
+  email: string; cellulare: string; telefono: string;
   luogo_nascita: string; data_nascita: string;
   codice_fiscale: string; residenza: string;
   principale: boolean;
@@ -61,7 +61,7 @@ type ContattoState = {
 function emptyContatto(): ContattoState {
   return {
     nome: "", cognome: "", ruolo: "",
-    email: "", cellulare: "", telefono: "", whatsapp: "",
+    email: "", cellulare: "", telefono: "",
     luogo_nascita: "", data_nascita: "",
     codice_fiscale: "", residenza: "", principale: false,
   };
@@ -142,7 +142,6 @@ export function NuovoContattoWizard({
       email: contatto.email || null,
       cellulare: contatto.cellulare || null,
       telefono: contatto.telefono || null,
-      whatsapp: contatto.whatsapp || null,
       luogo_nascita: contatto.luogo_nascita || null,
       data_nascita: contatto.data_nascita || null,
       codice_fiscale: contatto.codice_fiscale || null,
@@ -391,11 +390,6 @@ export function NuovoContattoWizard({
               <div className="space-y-1.5">
                 <Label>Telefono</Label>
                 <Input value={contatto.telefono} onChange={(e) => setC("telefono", e.target.value)} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>WhatsApp</Label>
-                <Input placeholder="+39 333 1234567"
-                  value={contatto.whatsapp} onChange={(e) => setC("whatsapp", e.target.value)} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
