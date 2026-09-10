@@ -1247,6 +1247,17 @@ function ClientiPage() {
     </Select>
   );
 
+  const PrivacySelect = (
+    <Select value={privacyFiltro} onValueChange={(v) => setPrivacyFiltro(v as typeof privacyFiltro)}>
+      <SelectTrigger className="w-full"><SelectValue placeholder="Privacy" /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="tutti">Privacy: tutti</SelectItem>
+        <SelectItem value="ok">Privacy OK</SelectItem>
+        <SelectItem value="da_richiedere">Privacy da richiedere</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+
   const AssicSelect = (
     <Select value={filtroAssic} onValueChange={(v) => setFiltroAssic(v as typeof filtroAssic)}>
       <SelectTrigger className="w-full"><SelectValue placeholder="Assicurazione" /></SelectTrigger>
