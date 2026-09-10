@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, useNavigate, useRouterState } from "@tanstack/
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import { Plus, Search, Building, MapPin, FileCheck2, FileX2, ArrowLeft, ArrowRight, Check, Pencil, PenTool, FileText, SlidersHorizontal, X, AlertCircle, Clock, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown, MessageSquare } from "lucide-react";
+import { Plus, Search, Building, MapPin, Shield, ShieldOff, ArrowLeft, ArrowRight, Check, Pencil, PenTool, FileText, SlidersHorizontal, X, AlertCircle, Clock, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown, MessageSquare } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { FiltriCollassabili, SchedaLista, ElencoSchede } from "@/components/lista-responsive";
@@ -164,7 +164,7 @@ function ClientiPage() {
   const [statoFido, setStatoFido] = useState<Set<string>>(new Set());
   const [semaforoFiltro, setSemaforoFiltro] = useState<string>("tutti");
   const [filtroBlocco, setFiltroBlocco] = useState<"tutti" | "bloccati" | "non_bloccati">("tutti");
-  const [privacyFiltro, setPrivacyFiltro] = useState<string>("tutti");
+  const [privacyFiltro, setPrivacyFiltro] = useState<"tutti" | "ok" | "da_richiedere">("tutti");
   const [filtroAssic, setFiltroAssic] = useState<"tutti" | "assicurati" | "non_assicurati">("tutti");
   const [filtroLegale, setFiltroLegale] = useState<"tutti" | "in_legale" | "non_in_legale">("tutti");
   // Default: "giuridica" → mostra solo Imprese, esclude i Privati (persona_fisica)
@@ -599,24 +599,6 @@ function ClientiPage() {
       .map((c) => c.id);
   }, [classifList, soloInsoluti]);
 
-  // Intersezione id set "include" (semaforo ∩ stato_fido ∩ scadenziario ∩ a_scadere ∩ perc consumato ∩ insoluti ∩ fermi)
-  const includeIdsFilter = useMemo<string[] | null>(() => {
-    const sources: string[][] = [];
-    if (semaforoIds) sources.push(semaforoIds);
-    if (statoFidoIds) sources.push(statoFidoIds);
-    if (oltreFidoIds) sources.push(oltreFidoIds);
-    if (scadenziarioIdsFilter?.mode === "include") sources.push(scadenziarioIdsFilter.ids);
-    if (aScadereIds) sources.push(aScadereIds);
-    if (fatturatoIds) sources.push(fatturatoIds);
-    if (percConsumatoIds) sources.push(percConsumatoIds);
-    if (scostamentoIds) sources.push(scostamentoIds);
-    if (daVerificareIds) sources.push(daVerificareIds);
-    if (insolutiIds) sources.push(insolutiIds);
-    if (fermiIds) sources.push(fermiIds);
-    if (sources.length === 0) return null;
-    const sets = sources.map((s) => new Set(s));
-    return sources[0].filter((id) => sets.every((s) => s.has(id)));
-  }, [semaforoIds, statoFidoIds, oltreFidoIds, scadenziarioIdsFilter, aScadereIds, fatturatoIds, percConsumatoIds, scostamentoIds, daVerificareIds, insolutiIds, fermiIds]);
 
 
 
@@ -629,7 +611,7 @@ function ClientiPage() {
   const to = from + pageSize - 1;
 
   // Costruisce la query con TUTTI i filtri server-side (cumulativi AND, senza range di paginazione)
-  function buildBaseQuery(selectCols: string, count: "exact" | undefined) {
+  function buildBaseQuery(selectCols: string, count: "exact" | undefined, opts?: { skipIncludeIds?: boolean }) {
     let q = supabase
       .from("clienti")
       .select(selectCols, count ? { count } : undefined);
@@ -666,8 +648,6 @@ function ClientiPage() {
     }
     if (filtroBlocco === "bloccati") q = q.eq("bloccato", true);
     else if (filtroBlocco === "non_bloccati") q = q.eq("bloccato", false);
-    if (privacyFiltro === "firmata") q = q.eq("privacy_firmata", true);
-    else if (privacyFiltro === "da_firmare") q = q.eq("privacy_firmata", false);
     if (filtroAssic === "assicurati") q = q.eq("assicurazione_attiva", true);
     else if (filtroAssic === "non_assicurati") q = q.eq("assicurazione_attiva", false);
     if (filtroLegale === "in_legale") q = q.eq("in_gestione_legale", true);
@@ -704,9 +684,9 @@ function ClientiPage() {
     if (advApplied.dataFattDopo) q = q.gt("ultima_data_fatturazione", advApplied.dataFattDopo);
     if (advApplied.presetScopertoInsoluto) q = q.eq("assicurazione_attiva", false).gt("scaduto", 0);
 
-    // Include intersect (semaforo / stato fido / scadenziario include / a_scadere / insoluti / fermi)
+    // Include intersect (semaforo / stato fido / scadenziario include / a_scadere / insoluti / fermi / privacy)
     let largeInclude = false;
-    if (includeIdsFilter) {
+    if (!opts?.skipIncludeIds && includeIdsFilter) {
       if (includeIdsFilter.length === 0) return { empty: true as const };
       if (includeIdsFilter.length > 1000) {
         // PostgREST/Supabase limita la lunghezza della query string; filtriamo in memoria
@@ -738,6 +718,45 @@ function ClientiPage() {
     return { q, largeInclude };
   }
 
+  async function fetchPrivacyStatusMap(clienteIds: string[]): Promise<Map<string, boolean>> {
+    if (clienteIds.length === 0) return new Map();
+    const contactToCliente = new Map<string, string>();
+    const allContactIds: string[] = [];
+    let off = 0;
+    const size = 1000;
+    while (true) {
+      const { data, error } = await supabase
+        .from("contatti")
+        .select("id, cliente_id")
+        .in("cliente_id", clienteIds)
+        .range(off, off + size - 1);
+      if (error) throw error;
+      const batch = data ?? [];
+      for (const c of batch) {
+        if (!c.id || !c.cliente_id) continue;
+        allContactIds.push(c.id);
+        contactToCliente.set(c.id, c.cliente_id);
+      }
+      if (batch.length < size) break;
+      off += size;
+      if (off > 50000) break;
+    }
+    if (allContactIds.length === 0) {
+      return new Map(clienteIds.map((id) => [id, false]));
+    }
+    const { data, error } = await supabase.rpc("get_stato_consensi", { _contatto_ids: allContactIds });
+    if (error) throw error;
+    const okSet = new Set<string>();
+    for (const r of data ?? []) {
+      if (r.trattamento_dati) {
+        const clienteId = contactToCliente.get(r.contatto_id);
+        if (clienteId) okSet.add(clienteId);
+      }
+    }
+    return new Map(clienteIds.map((id) => [id, okSet.has(id)]));
+  }
+
+
 
   const classifReady = ((statoFido.size === 0 && !soloOltreFido) || !!classifList)
     && (semaforoFiltro === "tutti" || !!semaforoMap);
@@ -750,6 +769,63 @@ function ClientiPage() {
   const scostamentoReady = (scostamentoFiltro === "tutti" && !soloDaVerificare) || !!fidoTeoricoMap;
   const insolutiReady = !soloInsoluti || !!classifList;
   const fermiReady = !soloFermi || !!fermiIds;
+
+  const privacyFilterReady = privacyFiltro === "tutti" || (scadReady && classifReady && isConfigReady && virtualSortReady && scostamentoReady && insolutiReady && fermiReady);
+  const { data: privacyFilterMap } = useQuery({
+    queryKey: ["clienti-privacy-filter", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, fasciaConcesso, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
+    enabled: isListRoute && privacyFiltro !== "tutti" && privacyFilterReady,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const built = buildBaseQuery("id", undefined, { skipIncludeIds: true });
+      if ("empty" in built) return new Map<string, boolean>();
+      const allIds: string[] = [];
+      let off = 0;
+      const size = 1000;
+      while (true) {
+        const { data, error } = await built.q.range(off, off + size - 1);
+        if (error) throw error;
+        const batch = ((data ?? []) as unknown) as Array<{ id: string }>;
+        for (const r of batch) allIds.push(r.id);
+        if (batch.length < size) break;
+        off += size;
+        if (off > 50000) break;
+      }
+      return fetchPrivacyStatusMap(allIds);
+    },
+  });
+
+  const privacyIdsFilter = useMemo<string[] | null>(() => {
+    if (privacyFiltro === "tutti") return null;
+    const map = privacyFilterMap;
+    if (!map) return null;
+    const ids: string[] = [];
+    for (const [id, ok] of map) {
+      if ((privacyFiltro === "ok" && ok) || (privacyFiltro === "da_richiedere" && !ok)) {
+        ids.push(id);
+      }
+    }
+    return ids;
+  }, [privacyFilterMap, privacyFiltro]);
+
+  // Intersezione id set "include" (semaforo ∩ stato_fido ∩ scadenziario ∩ a_scadere ∩ perc consumato ∩ insoluti ∩ fermi ∩ privacy)
+  const includeIdsFilter = useMemo<string[] | null>(() => {
+    const sources: string[][] = [];
+    if (semaforoIds) sources.push(semaforoIds);
+    if (statoFidoIds) sources.push(statoFidoIds);
+    if (oltreFidoIds) sources.push(oltreFidoIds);
+    if (scadenziarioIdsFilter?.mode === "include") sources.push(scadenziarioIdsFilter.ids);
+    if (aScadereIds) sources.push(aScadereIds);
+    if (fatturatoIds) sources.push(fatturatoIds);
+    if (percConsumatoIds) sources.push(percConsumatoIds);
+    if (scostamentoIds) sources.push(scostamentoIds);
+    if (daVerificareIds) sources.push(daVerificareIds);
+    if (insolutiIds) sources.push(insolutiIds);
+    if (fermiIds) sources.push(fermiIds);
+    if (privacyIdsFilter) sources.push(privacyIdsFilter);
+    if (sources.length === 0) return null;
+    const sets = sources.map((s) => new Set(s));
+    return sources[0].filter((id) => sets.every((s) => s.has(id)));
+  }, [semaforoIds, statoFidoIds, oltreFidoIds, scadenziarioIdsFilter, aScadereIds, fatturatoIds, percConsumatoIds, scostamentoIds, daVerificareIds, insolutiIds, fermiIds, privacyIdsFilter]);
 
   const { data: clientiResp, isLoading } = useQuery({
     queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, fasciaConcesso, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
@@ -836,6 +912,14 @@ function ClientiPage() {
   const clienti = (clientiResp?.rows ?? []) as any[];
   const totaleClienti = clientiResp?.count ?? 0;
   const totalPages = Math.max(1, Math.ceil(totaleClienti / pageSize));
+
+  const visibleClienteIds = useMemo(() => clienti.map((c: any) => c.id), [clienti]);
+  const { data: privacyDisplayMap } = useQuery({
+    queryKey: ["clienti-privacy-display", visibleClienteIds],
+    enabled: isListRoute && visibleClienteIds.length > 0,
+    staleTime: 5 * 60_000,
+    queryFn: async () => fetchPrivacyStatusMap(visibleClienteIds),
+  });
 
   // Fetch di tutti gli id filtrati (per "Seleziona tutti i filtrati")
   async function fetchAllFilteredRows(): Promise<any[]> {
@@ -1163,6 +1247,17 @@ function ClientiPage() {
     </Select>
   );
 
+  const PrivacySelect = (
+    <Select value={privacyFiltro} onValueChange={(v) => setPrivacyFiltro(v as typeof privacyFiltro)}>
+      <SelectTrigger className="w-full"><SelectValue placeholder="Privacy" /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="tutti">Privacy: tutti</SelectItem>
+        <SelectItem value="ok">Privacy OK</SelectItem>
+        <SelectItem value="da_richiedere">Privacy da richiedere</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+
   const AssicSelect = (
     <Select value={filtroAssic} onValueChange={(v) => setFiltroAssic(v as typeof filtroAssic)}>
       <SelectTrigger className="w-full"><SelectValue placeholder="Assicurazione" /></SelectTrigger>
@@ -1260,6 +1355,7 @@ function ClientiPage() {
   if (totaleRischioFiltro !== "tutti") activeChips.push({ key: "rischio", label: `Rischio: ${totaleRischioFiltro}`, onRemove: () => setTotaleRischioFiltro("tutti") });
   if (fatturatoFiltro !== "tutti") activeChips.push({ key: "fatturato", label: `Fatturato: ${fatturatoFiltro}`, onRemove: () => setFatturatoFiltro("tutti") });
   if (filtroBlocco !== "tutti") activeChips.push({ key: "blocco", label: filtroBlocco === "bloccati" ? "Bloccati" : "Non bloccati", onRemove: () => setFiltroBlocco("tutti") });
+  if (privacyFiltro !== "tutti") activeChips.push({ key: "privacy", label: privacyFiltro === "ok" ? "Privacy OK" : "Privacy da richiedere", onRemove: () => setPrivacyFiltro("tutti") });
   if (filtroLegale !== "tutti") activeChips.push({ key: "legale", label: filtroLegale === "in_legale" ? "In gestione legale" : "Non in gestione legale", onRemove: () => setFiltroLegale("tutti") });
   if (filtroAssic !== "tutti") activeChips.push({ key: "assic", label: filtroAssic === "assicurati" ? "Assicurati" : "Non assicurati", onRemove: () => setFiltroAssic("tutti") });
   if (filtroTipoSoggetto !== "giuridica") activeChips.push({ key: "tipo", label: filtroTipoSoggetto === "fisica" ? "Tipo: Solo Privati" : "Tipo: Tutti (privati+imprese)", onRemove: () => setFiltroTipoSoggetto("giuridica") });
@@ -1343,6 +1439,7 @@ function ClientiPage() {
           <div className="border-t pt-3 grid grid-cols-1 gap-3">
             {TipoSoggettoSelect}
             {AgenteSelect}
+            {PrivacySelect}
             {FidoFasciaSelect}
             {TotaleRischioSelect}
             {FatturatoSelect}
@@ -1372,9 +1469,10 @@ function ClientiPage() {
           {StatoFidoPopover}
         </div>
         {/* Livello 2 — filtri secondari (più leggeri) */}
-        <div className="grid grid-cols-2 lg:grid-cols-7 gap-2 opacity-90">
+        <div className="grid grid-cols-2 lg:grid-cols-8 gap-2 opacity-90">
           {TipoSoggettoSelect}
           {AgenteSelect}
+          {PrivacySelect}
           {FidoFasciaSelect}
           {TotaleRischioSelect}
           {FatturatoSelect}
@@ -1600,10 +1698,10 @@ function ClientiPage() {
                           <Clock className="size-3" /> {fmtEuro(sc.totale_a_scadere)}
                         </Badge>
                       )}
-                      {c.privacy_firmata ? (
-                        <Badge className="bg-success/15 text-success gap-1"><FileCheck2 className="size-3" /> Privacy</Badge>
+                      {privacyDisplayMap?.get(c.id) ? (
+                        <Badge className="bg-success/15 text-success gap-1"><Shield className="size-3" /> Privacy OK</Badge>
                       ) : (
-                        <Badge variant="outline" className="text-muted-foreground gap-1"><FileX2 className="size-3" /> Privacy</Badge>
+                        <Badge className="bg-warning/15 text-warning gap-1"><ShieldOff className="size-3" /> Privacy da richiedere</Badge>
                       )}
                       {c.assicurazione_attiva && <Badge className="bg-success/15 text-success">POUEY</Badge>}
                       {c.ind_blocco === 2 && <Badge className="bg-destructive/15 text-destructive">Bloccato</Badge>}
@@ -1655,7 +1753,7 @@ function ClientiPage() {
                  )}
                   <TableHead className="whitespace-nowrap"><SortHeader col="scaduto" label="Scaduto" /></TableHead>
                   <TableHead className="whitespace-nowrap"><SortHeader col="a_scadere" label="A scadere" /></TableHead>
-                  <TableHead><SortHeader col="privacy_firmata" label="Privacy" /></TableHead>
+                  <TableHead>Privacy</TableHead>
                   <TableHead><SortHeader col="assicurazione_attiva" label="Assic." /></TableHead>
                   <TableHead>Stato</TableHead>
 
@@ -1766,13 +1864,13 @@ function ClientiPage() {
                       )}
                     </TableCell>
                     <TableCell>
-                      {c.privacy_firmata ? (
+                      {privacyDisplayMap?.get(c.id) ? (
                         <Badge className="bg-success/15 text-success hover:bg-success/20 gap-1">
-                          <FileCheck2 className="size-3" /> Firmata
+                          <Shield className="size-3" /> Privacy OK
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="text-muted-foreground gap-1">
-                          <FileX2 className="size-3" /> Da firmare
+                        <Badge className="bg-warning/15 text-warning hover:bg-warning/20 gap-1">
+                          <ShieldOff className="size-3" /> Privacy da richiedere
                         </Badge>
                       )}
                     </TableCell>
