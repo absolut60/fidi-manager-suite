@@ -19,7 +19,6 @@ import {
   Copy,
   EyeOff,
   AlertTriangle,
-  MessageCircle,
   Send,
   CreditCard,
   Building2,
@@ -32,7 +31,7 @@ import { InviaSollecitoDialog } from "@/components/invia-sollecito-dialog";
 import { useRef } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { ContattoPrivacyAzioni } from "@/components/contatto-privacy-azioni";
+import { ContattoPrivacyAzioni, ConsensiContattoBadges } from "@/components/contatto-privacy-azioni";
 import { getFidoAttuale } from "@/lib/fido-cliente";
 import { SemaforoAffidabilitaBadge } from "@/components/pannello-rischio-cliente";
 
@@ -1602,8 +1601,6 @@ function ContattoCard({
 }) {
   const qc = useQueryClient();
   const [openEdit, setOpenEdit] = useState(false);
-  const waNumber = (contatto.whatsapp ?? "").replace(/[^\d+]/g, "");
-  const waHref = waNumber ? `https://wa.me/${waNumber.replace(/^\+/, "")}` : null;
   return (
     <Card className="p-4">
       <div className="flex items-start justify-between gap-2">
@@ -1626,11 +1623,11 @@ function ContattoCard({
                 <FileX2 className="size-3" /> Non firmata
               </Badge>
             )}
-            {contatto.whatsapp_opt_in && (
-              <Badge className="bg-success/15 text-success gap-1 shrink-0">
-                <MessageCircle className="size-3" /> Consenso WhatsApp
-              </Badge>
-            )}
+            <ConsensiContattoBadges
+              marketingDiretto={contatto.consenso_marketing_diretto}
+              marketingMedia={contatto.consenso_marketing_media}
+              profilazione={contatto.consenso_profilazione}
+            />
           </div>
           {contatto.ruolo && (
             <p className="text-xs text-muted-foreground mt-0.5">{contatto.ruolo}</p>
@@ -1676,16 +1673,6 @@ function ContattoCard({
             className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
           >
             <Smartphone className="size-3.5" /> {contatto.cellulare}
-          </a>
-        )}
-        {contatto.whatsapp && (
-          <a
-            href={waHref ?? "#"}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
-          >
-            <MessageCircle className="size-3.5" /> {contatto.whatsapp}
           </a>
         )}
       </div>

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
-import { FileCheck2, Mail, Link as LinkIcon, Download, Send, Clock, PenLine, ChevronDown } from "lucide-react";
+import { FileCheck2, Mail, Link as LinkIcon, Download, Send, Clock, PenLine, ChevronDown, MessageCircle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
@@ -156,9 +156,33 @@ function DettagliRaccolta({ contattoId }: { contattoId: string }) {
 
 function ConsensoBadge({ ok, label }: { ok: boolean; label: string }) {
   return ok ? (
-    <Badge className="bg-success/15 text-success border-success/30">{label}</Badge>
+    <Badge className="bg-success/15 text-success border-success/30">{label}: sì</Badge>
   ) : (
     <Badge variant="outline" className="text-muted-foreground">{label}: no</Badge>
+  );
+}
+
+/** Badge dei tre consensi + indicatore canale WhatsApp (abilitato dal marketing diretto). */
+export function ConsensiContattoBadges({
+  marketingDiretto,
+  marketingMedia,
+  profilazione,
+}: {
+  marketingDiretto?: boolean | null;
+  marketingMedia?: boolean | null;
+  profilazione?: boolean | null;
+}) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      <ConsensoBadge ok={!!marketingDiretto} label="Marketing diretto" />
+      <ConsensoBadge ok={!!marketingMedia} label="Marketing media" />
+      <ConsensoBadge ok={!!profilazione} label="Profilazione" />
+      {marketingDiretto && (
+        <Badge className="bg-success/15 text-success border-success/30 gap-1">
+          <MessageCircle className="size-3" /> WhatsApp ✓
+        </Badge>
+      )}
+    </div>
   );
 }
 
@@ -269,11 +293,11 @@ export function ContattoPrivacyAzioni({
             <FileCheck2 className="size-3" /> Firmata il {fmt(contatto.data_firma)}
           </Badge>
         </div>
-        <div className="flex flex-wrap gap-1.5">
-          <ConsensoBadge ok={!!contatto.consenso_profilazione} label="Profilazione" />
-          <ConsensoBadge ok={!!contatto.consenso_marketing_media} label="Marketing media" />
-          <ConsensoBadge ok={!!contatto.consenso_marketing_diretto} label="Marketing diretto" />
-        </div>
+        <ConsensiContattoBadges
+          marketingDiretto={contatto.consenso_marketing_diretto}
+          marketingMedia={contatto.consenso_marketing_media}
+          profilazione={contatto.consenso_profilazione}
+        />
         <p className="text-xs text-muted-foreground">
           Privacy già firmata il {fmt(contatto.data_firma)} — nessuna richiesta necessaria.
         </p>

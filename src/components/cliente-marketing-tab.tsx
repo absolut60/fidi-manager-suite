@@ -173,7 +173,7 @@ export function ClienteMarketingTab({ clienteId, cliente }: { clienteId: string;
         ) : (
           <Card className="px-3 py-2 flex items-center justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-[10px] font-medium text-muted-foreground uppercase truncate">Numero WhatsApp</p>
+              <p className="text-[10px] font-medium text-muted-foreground uppercase truncate">Cellulare (canale WhatsApp)</p>
               <p className={`text-base font-bold mt-0.5 truncate ${waData.numero ? "" : "text-muted-foreground"}`}>
                 {waData.numero || "Non registrato"}
               </p>
