@@ -1676,16 +1676,6 @@ function ContattoCard({
             <Smartphone className="size-3.5" /> {contatto.cellulare}
           </a>
         )}
-        {contatto.whatsapp && (
-          <a
-            href={waHref ?? "#"}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
-          >
-            <MessageCircle className="size-3.5" /> {contatto.whatsapp}
-          </a>
-        )}
       </div>
       <div className="mt-3 pt-3 border-t">
         <ContattoPrivacyAzioni
