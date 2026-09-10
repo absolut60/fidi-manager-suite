@@ -1698,10 +1698,10 @@ function ClientiPage() {
                           <Clock className="size-3" /> {fmtEuro(sc.totale_a_scadere)}
                         </Badge>
                       )}
-                      {c.privacy_firmata ? (
-                        <Badge className="bg-success/15 text-success gap-1"><FileCheck2 className="size-3" /> Privacy</Badge>
+                      {privacyDisplayMap?.get(c.id) ? (
+                        <Badge className="bg-success/15 text-success gap-1"><Shield className="size-3" /> Privacy OK</Badge>
                       ) : (
-                        <Badge variant="outline" className="text-muted-foreground gap-1"><FileX2 className="size-3" /> Privacy</Badge>
+                        <Badge className="bg-warning/15 text-warning gap-1"><ShieldOff className="size-3" /> Privacy da richiedere</Badge>
                       )}
                       {c.assicurazione_attiva && <Badge className="bg-success/15 text-success">POUEY</Badge>}
                       {c.ind_blocco === 2 && <Badge className="bg-destructive/15 text-destructive">Bloccato</Badge>}
