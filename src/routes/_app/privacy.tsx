@@ -15,6 +15,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { BadgeConsensi, STATO_CONSENSI_VUOTO, useStatoConsensi } from "@/components/badge-consensi";
 
 export const Route = createFileRoute("/_app/privacy")({
   component: PrivacyPage,
