@@ -751,6 +751,7 @@ function ClientiPage() {
       if (error) throw error;
       const batch = data ?? [];
       for (const c of batch) {
+        if (!c.id || !c.cliente_id) continue;
         allContactIds.push(c.id);
         contactToCliente.set(c.id, c.cliente_id);
       }
