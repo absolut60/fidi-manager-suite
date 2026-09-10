@@ -186,9 +186,14 @@ function PrivacyPage() {
                       <Badge className="bg-destructive/15 text-destructive border-destructive/30">Da firmare</Badge>
                     )}
                   </TableCell>
-                  <TableCell className="text-center"><CB ok={!!r.consenso_profilazione} /></TableCell>
-                  <TableCell className="text-center"><CB ok={!!r.consenso_marketing_media} /></TableCell>
-                  <TableCell className="text-center"><CB ok={!!r.consenso_marketing_diretto} /></TableCell>
+                  <TableCell>
+                    <BadgeConsensi
+                      compact
+                      trattamentoDati={(statoConsensi?.get(r.id) ?? STATO_CONSENSI_VUOTO).trattamento_dati}
+                      whatsapp={(statoConsensi?.get(r.id) ?? STATO_CONSENSI_VUOTO).whatsapp}
+                      email={(statoConsensi?.get(r.id) ?? STATO_CONSENSI_VUOTO).email}
+                    />
+                  </TableCell>
                   <TableCell>{fmtDate(r.data_firma)}</TableCell>
                   <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                     {r.pdf_privacy_path || r.pdf_privacy_url ? (
