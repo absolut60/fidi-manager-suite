@@ -141,27 +141,8 @@ function IscrizioneWhatsappPage() {
                 className="mt-0.5"
               />
               <span>
-                Acconsento a ricevere comunicazioni promozionali e offerte da{" "}
-                <strong>MADE Distribuzione</strong> tramite WhatsApp (obbligatorio).{" "}
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <button
-                      type="button"
-                      className="underline text-primary"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      Leggi l&apos;informativa
-                    </button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-lg">
-                    <DialogHeader>
-                      <DialogTitle>Informativa privacy</DialogTitle>
-                    </DialogHeader>
-                    <div className="max-h-[60vh] overflow-y-auto whitespace-pre-line text-xs leading-relaxed">
-                      {INFORMATIVA_FULL}
-                    </div>
-                  </DialogContent>
-                </Dialog>
+                Sì, voglio ricevere le offerte e le novità MADE comodamente su
+                WhatsApp. *
               </span>
             </label>
             <label className="flex items-start gap-2 text-sm cursor-pointer rounded-md border p-3">
@@ -171,8 +152,8 @@ function IscrizioneWhatsappPage() {
                 className="mt-0.5"
               />
               <span>
-                Acconsento a ricevere offerte e comunicazioni commerciali da MADE
-                Distribuzione (email, telefono, SMS).
+                Vorrei restare aggiornato sulle promozioni MADE anche via email o
+                tramite i nostri contatti.
               </span>
             </label>
             <label className="flex items-start gap-2 text-sm cursor-pointer rounded-md border p-3">
@@ -182,8 +163,8 @@ function IscrizioneWhatsappPage() {
                 className="mt-0.5"
               />
               <span>
-                Acconsento all&apos;analisi delle mie preferenze e abitudini di
-                acquisto per ricevere proposte personalizzate.
+                Mi piacerebbe ricevere proposte e offerte pensate su misura per me,
+                in base ai prodotti che seguo di più.
               </span>
             </label>
             <Button
@@ -195,6 +176,28 @@ function IscrizioneWhatsappPage() {
               <MessageCircle className="size-4" />
               {submit.isPending ? "Iscrizione in corso..." : "Iscrivimi"}
             </Button>
+            <p className="text-xs text-muted-foreground text-center">
+              * Campo obbligatorio ·{" "}
+              <Dialog>
+                <DialogTrigger asChild>
+                  <button
+                    type="button"
+                    className="underline text-primary"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    Leggi l&apos;informativa completa
+                  </button>
+                </DialogTrigger>
+                <DialogContent className="max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>Informativa privacy</DialogTitle>
+                  </DialogHeader>
+                  <div className="max-h-[60vh] overflow-y-auto whitespace-pre-line text-xs leading-relaxed">
+                    {INFORMATIVA_FULL}
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </p>
             <p className="text-xs text-muted-foreground text-center">
               Potrai disiscriverti in qualsiasi momento rispondendo STOP.
             </p>
