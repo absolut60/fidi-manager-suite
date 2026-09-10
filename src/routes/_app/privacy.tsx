@@ -179,11 +179,7 @@ function PrivacyPage() {
                   <TableCell>{`${r.nome ?? ""} ${r.cognome ?? ""}`.trim() || "—"}</TableCell>
                   <TableCell className="text-muted-foreground">{r.ruolo ?? "—"}</TableCell>
                   <TableCell className="text-center">
-                    {r.privacy_firmata ? (
-                      <Badge className="bg-success/15 text-success border-success/30">Firmata</Badge>
-                    ) : (
-                      <Badge className="bg-destructive/15 text-destructive border-destructive/30">Da firmare</Badge>
-                    )}
+                    <CB ok={(statoConsensi?.get(r.id) ?? STATO_CONSENSI_VUOTO).trattamento_dati} />
                   </TableCell>
                   <TableCell>
                     <BadgeConsensi
