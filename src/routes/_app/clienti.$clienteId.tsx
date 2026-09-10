@@ -477,13 +477,13 @@ function ClienteDetail() {
           </div>
 
           <div className="flex flex-wrap gap-2 items-center">
-            {cliente.privacy_firmata ? (
+            {privacyOk ? (
               <Badge className="bg-success/15 text-success gap-1">
-                <FileCheck2 className="size-3" /> Privacy firmata
+                <Shield className="size-3" /> Privacy OK
               </Badge>
             ) : (
-              <Badge variant="outline" className="gap-1">
-                <FileX2 className="size-3" /> Privacy da firmare
+              <Badge className="bg-warning/15 text-warning gap-1">
+                <ShieldOff className="size-3" /> Privacy da richiedere
               </Badge>
             )}
             <Button
