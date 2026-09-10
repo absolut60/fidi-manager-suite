@@ -1469,9 +1469,10 @@ function ClientiPage() {
           {StatoFidoPopover}
         </div>
         {/* Livello 2 — filtri secondari (più leggeri) */}
-        <div className="grid grid-cols-2 lg:grid-cols-7 gap-2 opacity-90">
+        <div className="grid grid-cols-2 lg:grid-cols-8 gap-2 opacity-90">
           {TipoSoggettoSelect}
           {AgenteSelect}
+          {PrivacySelect}
           {FidoFasciaSelect}
           {TotaleRischioSelect}
           {FatturatoSelect}
