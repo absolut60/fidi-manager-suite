@@ -263,9 +263,14 @@ function ContattiPage() {
                   <TableCell className="text-muted-foreground">{c.ruolo ?? "—"}</TableCell>
                   <TableCell className="text-muted-foreground text-xs">{c.email ?? "—"}</TableCell>
                   <TableCell className="text-muted-foreground">{c.cellulare ?? "—"}</TableCell>
-                  <TableCell className="text-center"><CB ok={!!c.consenso_profilazione} /></TableCell>
-                  <TableCell className="text-center"><CB ok={!!c.consenso_marketing_media} /></TableCell>
-                  <TableCell className="text-center"><CB ok={!!c.whatsapp_opt_in} /></TableCell>
+                  <TableCell>
+                    <BadgeConsensi
+                      compact
+                      trattamentoDati={(statoConsensi?.get(c.id) ?? STATO_CONSENSI_VUOTO).trattamento_dati}
+                      whatsapp={(statoConsensi?.get(c.id) ?? STATO_CONSENSI_VUOTO).whatsapp}
+                      email={(statoConsensi?.get(c.id) ?? STATO_CONSENSI_VUOTO).email}
+                    />
+                  </TableCell>
                   <TableCell className="text-muted-foreground">{fmtDate(c.data_firma)}</TableCell>
                 </TableRow>
               ))}
