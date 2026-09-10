@@ -92,6 +92,7 @@ import { Route as AppClientiClienteIdRouteImport } from './routes/_app/clienti.$
 import { Route as AppArticoliIdRouteImport } from './routes/_app/articoli.$id'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
+import { Route as ApiWebhooksD360TokenRouteImport } from './routes/api/webhooks/d360/$token'
 import { Route as ApiPublicHooksCheckScadenzeRouteImport } from './routes/api/public/hooks/check-scadenze'
 import { Route as ApiPublicHooksCheckReminderRitardiRouteImport } from './routes/api/public/hooks/check-reminder-ritardi'
 import { Route as ApiPublicEmailImgSplatRouteImport } from './routes/api/public/email-img/$'
@@ -528,6 +529,11 @@ const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
   path: '/.lovable/oauth/consent',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiWebhooksD360TokenRoute = ApiWebhooksD360TokenRouteImport.update({
+  id: '/api/webhooks/d360/$token',
+  path: '/api/webhooks/d360/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicHooksCheckScadenzeRoute =
   ApiPublicHooksCheckScadenzeRouteImport.update({
     id: '/api/public/hooks/check-scadenze',
@@ -632,6 +638,7 @@ export interface FileRoutesByFullPath {
   '/api/public/email-img/$': typeof ApiPublicEmailImgSplatRoute
   '/api/public/hooks/check-reminder-ritardi': typeof ApiPublicHooksCheckReminderRitardiRoute
   '/api/public/hooks/check-scadenze': typeof ApiPublicHooksCheckScadenzeRoute
+  '/api/webhooks/d360/$token': typeof ApiWebhooksD360TokenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -716,6 +723,7 @@ export interface FileRoutesByTo {
   '/api/public/email-img/$': typeof ApiPublicEmailImgSplatRoute
   '/api/public/hooks/check-reminder-ritardi': typeof ApiPublicHooksCheckReminderRitardiRoute
   '/api/public/hooks/check-scadenze': typeof ApiPublicHooksCheckScadenzeRoute
+  '/api/webhooks/d360/$token': typeof ApiWebhooksD360TokenRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -805,6 +813,7 @@ export interface FileRoutesById {
   '/api/public/email-img/$': typeof ApiPublicEmailImgSplatRoute
   '/api/public/hooks/check-reminder-ritardi': typeof ApiPublicHooksCheckReminderRitardiRoute
   '/api/public/hooks/check-scadenze': typeof ApiPublicHooksCheckScadenzeRoute
+  '/api/webhooks/d360/$token': typeof ApiWebhooksD360TokenRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -894,6 +903,7 @@ export interface FileRouteTypes {
     | '/api/public/email-img/$'
     | '/api/public/hooks/check-reminder-ritardi'
     | '/api/public/hooks/check-scadenze'
+    | '/api/webhooks/d360/$token'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -978,6 +988,7 @@ export interface FileRouteTypes {
     | '/api/public/email-img/$'
     | '/api/public/hooks/check-reminder-ritardi'
     | '/api/public/hooks/check-scadenze'
+    | '/api/webhooks/d360/$token'
   id:
     | '__root__'
     | '/'
@@ -1066,6 +1077,7 @@ export interface FileRouteTypes {
     | '/api/public/email-img/$'
     | '/api/public/hooks/check-reminder-ritardi'
     | '/api/public/hooks/check-scadenze'
+    | '/api/webhooks/d360/$token'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1087,6 +1099,7 @@ export interface RootRouteChildren {
   ApiPublicEmailImgSplatRoute: typeof ApiPublicEmailImgSplatRoute
   ApiPublicHooksCheckReminderRitardiRoute: typeof ApiPublicHooksCheckReminderRitardiRoute
   ApiPublicHooksCheckScadenzeRoute: typeof ApiPublicHooksCheckScadenzeRoute
+  ApiWebhooksD360TokenRoute: typeof ApiWebhooksD360TokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1672,6 +1685,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DotlovableOauthConsentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/webhooks/d360/$token': {
+      id: '/api/webhooks/d360/$token'
+      path: '/api/webhooks/d360/$token'
+      fullPath: '/api/webhooks/d360/$token'
+      preLoaderRoute: typeof ApiWebhooksD360TokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/check-scadenze': {
       id: '/api/public/hooks/check-scadenze'
       path: '/api/public/hooks/check-scadenze'
@@ -1909,6 +1929,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksCheckReminderRitardiRoute:
     ApiPublicHooksCheckReminderRitardiRoute,
   ApiPublicHooksCheckScadenzeRoute: ApiPublicHooksCheckScadenzeRoute,
+  ApiWebhooksD360TokenRoute: ApiWebhooksD360TokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
