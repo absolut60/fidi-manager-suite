@@ -776,7 +776,7 @@ function ClientiPage() {
     enabled: isListRoute && privacyFiltro !== "tutti" && privacyFilterReady,
     staleTime: 5 * 60_000,
     queryFn: async () => {
-      const built = buildBaseQuery("id", undefined);
+      const built = buildBaseQuery("id", undefined, { skipIncludeIds: true });
       if ("empty" in built) return new Map<string, boolean>();
       const allIds: string[] = [];
       let off = 0;
