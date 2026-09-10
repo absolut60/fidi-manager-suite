@@ -12,7 +12,6 @@ import {
   Star,
   Trash2,
   FileCheck2,
-  FileX2,
   Download,
   Pencil,
   Link as LinkIcon,
