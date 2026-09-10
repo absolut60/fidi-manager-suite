@@ -373,6 +373,16 @@ function ClienteDetail() {
     },
   });
 
+  const contattoIds = useMemo(() => (contatti ?? []).map((c) => c.id), [contatti]);
+  const { data: statoConsensiMap } = useStatoConsensi(contattoIds);
+  const privacyOk = useMemo(() => {
+    if (!statoConsensiMap) return false;
+    for (const s of statoConsensiMap.values()) {
+      if (s.trattamento_dati) return true;
+    }
+    return false;
+  }, [statoConsensiMap]);
+
   const deleteContatto = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("contatti").delete().eq("id", id);
