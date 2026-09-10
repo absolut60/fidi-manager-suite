@@ -1602,21 +1602,12 @@ function ContattoCard({
                 <Star className="size-3 fill-current" /> Principale
               </Badge>
             )}
-            {contatto.privacy_firmata ? (
+            {contatto.privacy_firmata && (
               <Badge className="bg-success/15 text-success gap-1 shrink-0">
                 <FileCheck2 className="size-3" /> Privacy firmata
               </Badge>
-            ) : (
-              <Badge className="bg-destructive/15 text-destructive gap-1 shrink-0">
-                <FileX2 className="size-3" /> Non firmata
-              </Badge>
             )}
-            <ConsensiContattoBadges
-              marketingDiretto={contatto.consenso_marketing_diretto}
-              marketingMedia={contatto.consenso_marketing_media}
-              profilazione={contatto.consenso_profilazione}
-              whatsappOptIn={contatto.whatsapp_opt_in}
-            />
+            <BadgeConsensiContatto contattoId={contatto.id} compact />
           </div>
           {contatto.ruolo && (
             <p className="text-xs text-muted-foreground mt-0.5">{contatto.ruolo}</p>
