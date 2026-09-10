@@ -1864,13 +1864,13 @@ function ClientiPage() {
                       )}
                     </TableCell>
                     <TableCell>
-                      {c.privacy_firmata ? (
+                      {privacyDisplayMap?.get(c.id) ? (
                         <Badge className="bg-success/15 text-success hover:bg-success/20 gap-1">
-                          <FileCheck2 className="size-3" /> Firmata
+                          <Shield className="size-3" /> Privacy OK
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="text-muted-foreground gap-1">
-                          <FileX2 className="size-3" /> Da firmare
+                        <Badge className="bg-warning/15 text-warning hover:bg-warning/20 gap-1">
+                          <ShieldOff className="size-3" /> Privacy da richiedere
                         </Badge>
                       )}
                     </TableCell>
