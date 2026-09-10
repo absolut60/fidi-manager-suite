@@ -599,24 +599,6 @@ function ClientiPage() {
       .map((c) => c.id);
   }, [classifList, soloInsoluti]);
 
-  // Intersezione id set "include" (semaforo ∩ stato_fido ∩ scadenziario ∩ a_scadere ∩ perc consumato ∩ insoluti ∩ fermi)
-  const includeIdsFilter = useMemo<string[] | null>(() => {
-    const sources: string[][] = [];
-    if (semaforoIds) sources.push(semaforoIds);
-    if (statoFidoIds) sources.push(statoFidoIds);
-    if (oltreFidoIds) sources.push(oltreFidoIds);
-    if (scadenziarioIdsFilter?.mode === "include") sources.push(scadenziarioIdsFilter.ids);
-    if (aScadereIds) sources.push(aScadereIds);
-    if (fatturatoIds) sources.push(fatturatoIds);
-    if (percConsumatoIds) sources.push(percConsumatoIds);
-    if (scostamentoIds) sources.push(scostamentoIds);
-    if (daVerificareIds) sources.push(daVerificareIds);
-    if (insolutiIds) sources.push(insolutiIds);
-    if (fermiIds) sources.push(fermiIds);
-    if (sources.length === 0) return null;
-    const sets = sources.map((s) => new Set(s));
-    return sources[0].filter((id) => sets.every((s) => s.has(id)));
-  }, [semaforoIds, statoFidoIds, oltreFidoIds, scadenziarioIdsFilter, aScadereIds, fatturatoIds, percConsumatoIds, scostamentoIds, daVerificareIds, insolutiIds, fermiIds]);
 
 
 
