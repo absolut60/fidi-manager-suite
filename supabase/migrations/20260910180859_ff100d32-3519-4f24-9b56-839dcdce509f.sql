@@ -1,0 +1,2 @@
+REVOKE ALL ON FUNCTION public.registra_consenso_whatsapp(text, text, text, text, text, text, text, text, text, integer, text, boolean, boolean) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.registra_consenso_whatsapp(text, text, text, text, text, text, text, text, text, integer, text, boolean, boolean) TO anon, authenticated, service_role;
