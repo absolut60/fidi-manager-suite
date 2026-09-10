@@ -24,11 +24,6 @@ export const Route = createFileRoute("/_app/contatti")({
   component: ContattiPage,
 });
 
-function CB({ ok }: { ok: boolean }) {
-  return ok
-    ? <Badge className="bg-success/15 text-success border-success/30"><Check className="size-3" /></Badge>
-    : <Badge variant="outline" className="text-muted-foreground"><X className="size-3" /></Badge>;
-}
 
 function fmtDate(v: unknown): string {
   if (!v) return "—";
