@@ -32,7 +32,7 @@ import { InviaSollecitoDialog } from "@/components/invia-sollecito-dialog";
 import { useRef } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { ContattoPrivacyAzioni } from "@/components/contatto-privacy-azioni";
+import { ContattoPrivacyAzioni, ConsensiContattoBadges } from "@/components/contatto-privacy-azioni";
 import { getFidoAttuale } from "@/lib/fido-cliente";
 import { SemaforoAffidabilitaBadge } from "@/components/pannello-rischio-cliente";
 
@@ -1624,11 +1624,11 @@ function ContattoCard({
                 <FileX2 className="size-3" /> Non firmata
               </Badge>
             )}
-            {contatto.whatsapp_opt_in && (
-              <Badge className="bg-success/15 text-success gap-1 shrink-0">
-                <MessageCircle className="size-3" /> Consenso WhatsApp
-              </Badge>
-            )}
+            <ConsensiContattoBadges
+              marketingDiretto={contatto.consenso_marketing_diretto}
+              marketingMedia={contatto.consenso_marketing_media}
+              profilazione={contatto.consenso_profilazione}
+            />
           </div>
           {contatto.ruolo && (
             <p className="text-xs text-muted-foreground mt-0.5">{contatto.ruolo}</p>
