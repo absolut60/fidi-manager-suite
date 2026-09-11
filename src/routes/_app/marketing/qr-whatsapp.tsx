@@ -118,10 +118,11 @@ async function generaLocandina(formato: "A5" | "A6", origin: string) {
 
   const pdf = new jsPDF({ unit: "mm", format: [pageW, pageH] });
 
-  const navy = [13 / 255, 31 / 255, 60 / 255];
-  const green = [37 / 255, 211 / 255, 102 / 255];
-  const gray = [102 / 255, 102 / 255, 102 / 255];
-  const borderGray = [220 / 255, 220 / 255, 220 / 255];
+  const navy: [number, number, number] = [13 / 255, 31 / 255, 60 / 255];
+  const green: [number, number, number] = [37 / 255, 211 / 255, 102 / 255];
+  const gray: [number, number, number] = [102 / 255, 102 / 255, 102 / 255];
+  const borderGray: [number, number, number] = [220 / 255, 220 / 255, 220 / 255];
+
 
   const marginX = 10 * scale;
   const centerX = pageW / 2;
