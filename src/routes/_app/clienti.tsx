@@ -2182,6 +2182,21 @@ function ProposteFidoMassivoDialog({
           </div>
         )}
 
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <ToggleGroup
+            type="single"
+            value={filtroRinnovi}
+            onValueChange={(v) => v && setFiltroRinnovi(v as typeof filtroRinnovi)}
+            className="justify-start"
+          >
+            <ToggleGroupItem value="escludi" aria-label="Escludi rinnovi">Escludi rinnovi</ToggleGroupItem>
+            <ToggleGroupItem value="tutti" aria-label="Mostra tutti">Mostra tutti</ToggleGroupItem>
+            <ToggleGroupItem value="solo" aria-label="Solo rinnovi">Solo rinnovi</ToggleGroupItem>
+          </ToggleGroup>
+          {filtroRinnovi === "escludi" && rinnoviCount > 0 && (
+            <span className="text-xs text-muted-foreground">{rinnoviCount} rinnovi nascosti</span>
+          )}
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
