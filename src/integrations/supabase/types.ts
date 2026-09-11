@@ -6613,6 +6613,13 @@ export type Database = {
           scadenza_id: string
         }[]
       }
+      get_privacy_base_clienti: {
+        Args: { _cliente_ids: string[] }
+        Returns: {
+          cliente_id: string
+          privacy_ok: boolean
+        }[]
+      }
       get_progresso_campagne_in_corso: {
         Args: never
         Returns: {
