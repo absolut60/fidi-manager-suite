@@ -2112,9 +2112,16 @@ function ProposteFidoMassivoDialog({
     }
   }, [tipoForzato]);
 
-  const righeIncluse = righe.filter((r) => r.proponibile && r.incluso);
+  const righeVisibili = useMemo(() => {
+    if (filtroRinnovi === "tutti") return righe;
+    if (filtroRinnovi === "solo") return righe.filter((r) => r.tipo === "rinnovo");
+    return righe.filter((r) => r.tipo !== "rinnovo");
+  }, [righe, filtroRinnovi]);
+
+  const righeVisibiliIncluse = righeVisibili.filter((r) => r.proponibile && r.incluso);
   const righeEscluse = righe.filter((r) => !r.proponibile);
-  const totale = righeIncluse.reduce((acc, r) => acc + (Number(r.fido_proposto) || 0), 0);
+  const totale = righeVisibiliIncluse.reduce((acc, r) => acc + (Number(r.fido_proposto) || 0), 0);
+  const rinnoviCount = righe.filter((r) => r.tipo === "rinnovo").length;
 
   async function creaRichieste() {
     if (righeIncluse.length === 0) { toast.error("Nessuna riga da creare"); return; }
