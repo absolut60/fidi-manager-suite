@@ -1,11 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
+import { jsPDF } from "jspdf";
 import { Copy, Download, QrCode as QrIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { LOGO_MADE_BASE64 } from "@/lib/logo-made-base64";
+
 
 export const Route = createFileRoute("/_app/marketing/qr-whatsapp")({
   component: QrWhatsappPage,
