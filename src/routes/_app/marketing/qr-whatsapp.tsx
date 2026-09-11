@@ -1,11 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
+import { jsPDF } from "jspdf";
 import { Copy, Download, QrCode as QrIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { LOGO_MADE_BASE64 } from "@/lib/logo-made-base64";
+
 
 export const Route = createFileRoute("/_app/marketing/qr-whatsapp")({
   component: QrWhatsappPage,
@@ -100,6 +103,129 @@ function QrCard({
   );
 }
 
+async function generaLocandina(formato: "A5" | "A6", origin: string) {
+  const urlPagina = `${origin}/iscrizione-whatsapp?origine=qr_pagina`;
+  const qrDataUrl = await QRCode.toDataURL(urlPagina, {
+    width: 1024,
+    margin: 2,
+    errorCorrectionLevel: "M",
+  });
+
+  const isA5 = formato === "A5";
+  const pageW = isA5 ? 148 : 105;
+  const pageH = isA5 ? 210 : 148;
+  const scale = pageW / 148;
+
+  const pdf = new jsPDF({ unit: "mm", format: [pageW, pageH] });
+
+  const navy: [number, number, number] = [13, 31, 60];
+  const green: [number, number, number] = [37, 211, 102];
+  const gray: [number, number, number] = [102, 102, 102];
+  const borderGray: [number, number, number] = [220, 220, 220];
+
+
+
+  const marginX = 10 * scale;
+  const centerX = pageW / 2;
+  let y = 12 * scale;
+
+  // Logo MADE
+  const logoW = 90 * scale;
+  const logoH = logoW * (69 / 490);
+  pdf.addImage(
+    `data:image/png;base64,${LOGO_MADE_BASE64}`,
+    "PNG",
+    centerX - logoW / 2,
+    y,
+    logoW,
+    logoH
+  );
+  y += logoH + 8 * scale;
+
+  // Titolo
+  pdf.setTextColor(...navy);
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(22 * scale);
+  pdf.text("OFFERTE E NOVITÀ", centerX, y, { align: "center" });
+  y += 9 * scale;
+  pdf.setTextColor(...green);
+  pdf.text("SU WHATSAPP", centerX, y, { align: "center" });
+  y += 10 * scale;
+
+  // Sottotitolo
+  pdf.setTextColor(...gray);
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(8.5 * scale);
+  pdf.text(
+    "Promozioni esclusive, arrivi merce e sconti riservati ai clienti",
+    centerX,
+    y,
+    { align: "center" }
+  );
+  y += 7 * scale;
+
+  // MADE DISTRIBUZIONE
+  pdf.setTextColor(...navy);
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(12 * scale);
+  pdf.text("MADE DISTRIBUZIONE", centerX, y, { align: "center" });
+  y += 10 * scale;
+
+  // Freccia giù + invito
+  const arrowY = y - 1 * scale;
+  pdf.setDrawColor(...green);
+  pdf.setLineWidth(0.7 * scale);
+  pdf.line(centerX, arrowY - 5 * scale, centerX, arrowY + 1 * scale);
+  pdf.line(
+    centerX - 2.5 * scale,
+    arrowY - 1 * scale,
+    centerX,
+    arrowY + 1 * scale
+  );
+  pdf.line(
+    centerX + 2.5 * scale,
+    arrowY - 1 * scale,
+    centerX,
+    arrowY + 1 * scale
+  );
+  y += 4 * scale;
+  pdf.setTextColor(...green);
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(11 * scale);
+  pdf.text("Inquadra il QR e iscriviti", centerX, y, { align: "center" });
+  y += 8 * scale;
+
+  // QR code grande con cornice sottile
+  const qrSize = 80 * scale;
+  const qrX = centerX - qrSize / 2;
+  pdf.setDrawColor(...borderGray);
+  pdf.setLineWidth(0.5 * scale);
+  pdf.roundedRect(
+    qrX - 2 * scale,
+    y - 2 * scale,
+    qrSize + 4 * scale,
+    qrSize + 4 * scale,
+    2 * scale,
+    2 * scale,
+    "S"
+  );
+  pdf.addImage(qrDataUrl, "PNG", qrX, y, qrSize, qrSize);
+  y += qrSize + 8 * scale;
+
+  // Footer
+  pdf.setTextColor(...gray);
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(7.5 * scale);
+  pdf.text(
+    "Iscrizione in 30 secondi · Puoi disiscriverti quando vuoi",
+    centerX,
+    y,
+    { align: "center" }
+  );
+
+  pdf.save(`locandina-whatsapp-${formato}.pdf`);
+}
+
 function QrWhatsappPage() {
   const [origin, setOrigin] = useState("");
   useEffect(() => {
@@ -115,6 +241,33 @@ function QrWhatsappPage() {
 
   return (
     <div className="p-6 space-y-6 max-w-4xl">
+      <Card className="p-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold">Locandina da bancone</h2>
+            <p className="text-sm text-muted-foreground">
+              Scarica la locandina pronta per la stampa in formato A5 o A6.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              onClick={() => generaLocandina("A5", origin)}
+              disabled={!origin}
+              className="gap-1.5"
+            >
+              <Download className="size-4" /> Scarica PDF A5
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => generaLocandina("A6", origin)}
+              disabled={!origin}
+              className="gap-1.5"
+            >
+              <Download className="size-4" /> Scarica PDF A6
+            </Button>
+          </div>
+        </div>
+      </Card>
       <div>
         <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
           <QrIcon className="size-6" /> QR WhatsApp
