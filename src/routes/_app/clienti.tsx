@@ -31,6 +31,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { SignaturePad, getCanvasDataURL } from "@/components/signature-pad";
 import { generaSchedaCliente } from "@/lib/scheda-pdf";
 import { useAuth } from "@/hooks/use-auth";
@@ -2032,6 +2033,7 @@ function ProposteFidoMassivoDialog({
   const [tipoForzato, setTipoForzato] = useState<"auto" | "nuovo_fido" | "aumento" | "diminuzione" | "rinnovo">("auto");
   const [motivazioneGenerale, setMotivazioneGenerale] = useState<string>(MOTIVAZIONE_DEFAULT);
   const [righe, setRighe] = useState<RigaProposta[]>([]);
+  const [filtroRinnovi, setFiltroRinnovi] = useState<"escludi" | "tutti" | "solo">("escludi");
   const [submitting, setSubmitting] = useState(false);
 
   // Fido proposto = SEMPRE la RPC canonica get_fido_teorico (nessun calcolo locale)
@@ -2110,12 +2112,19 @@ function ProposteFidoMassivoDialog({
     }
   }, [tipoForzato]);
 
-  const righeIncluse = righe.filter((r) => r.proponibile && r.incluso);
+  const righeVisibili = useMemo(() => {
+    if (filtroRinnovi === "tutti") return righe;
+    if (filtroRinnovi === "solo") return righe.filter((r) => r.tipo === "rinnovo");
+    return righe.filter((r) => r.tipo !== "rinnovo");
+  }, [righe, filtroRinnovi]);
+
+  const righeVisibiliIncluse = righeVisibili.filter((r) => r.proponibile && r.incluso);
   const righeEscluse = righe.filter((r) => !r.proponibile);
-  const totale = righeIncluse.reduce((acc, r) => acc + (Number(r.fido_proposto) || 0), 0);
+  const totale = righeVisibiliIncluse.reduce((acc, r) => acc + (Number(r.fido_proposto) || 0), 0);
+  const rinnoviCount = righe.filter((r) => r.tipo === "rinnovo").length;
 
   async function creaRichieste() {
-    if (righeIncluse.length === 0) { toast.error("Nessuna riga da creare"); return; }
+    if (righeVisibiliIncluse.length === 0) { toast.error("Nessuna riga da creare"); return; }
     if (!userId) { toast.error("Utente non autenticato"); return; }
     setSubmitting(true);
     try {
@@ -2123,7 +2132,7 @@ function ProposteFidoMassivoDialog({
       // Motivazione: override per-riga se valorizzato (anche stringa vuota = override "vuoto"),
       // altrimenti motivazione generale. Stringhe vuote -> null nel DB.
       const motivazioneGeneraleNorm = motivazioneGenerale.trim() === "" ? null : motivazioneGenerale;
-      const payload = righeIncluse.map((r) => {
+      const payload = righeVisibiliIncluse.map((r) => {
 
         const m = r.motivazione === undefined
           ? motivazioneGeneraleNorm
@@ -2139,7 +2148,7 @@ function ProposteFidoMassivoDialog({
       });
       const { error } = await supabase.from("richieste_fido").insert(payload as any);
       if (error) throw error;
-      toast.success(`${righeIncluse.length} richieste create`);
+      toast.success(`${righeVisibiliIncluse.length} richieste create`);
       onSuccess();
     } catch (e: any) {
       toast.error(e?.message ?? "Errore nella creazione");
@@ -2152,7 +2161,7 @@ function ProposteFidoMassivoDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Proposta fido massiva — {righe.length} clienti</DialogTitle>
+          <DialogTitle>Proposta fido massiva — {righeVisibiliIncluse.length} clienti</DialogTitle>
           <DialogDescription>
             L'importo proposto è il fido teorico calcolato dal sistema (fatturato + condizione di pagamento).
           </DialogDescription>
@@ -2173,6 +2182,21 @@ function ProposteFidoMassivoDialog({
           </div>
         )}
 
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <ToggleGroup
+            type="single"
+            value={filtroRinnovi}
+            onValueChange={(v) => v && setFiltroRinnovi(v as typeof filtroRinnovi)}
+            className="justify-start"
+          >
+            <ToggleGroupItem value="escludi" aria-label="Escludi rinnovi">Escludi rinnovi</ToggleGroupItem>
+            <ToggleGroupItem value="tutti" aria-label="Mostra tutti">Mostra tutti</ToggleGroupItem>
+            <ToggleGroupItem value="solo" aria-label="Solo rinnovi">Solo rinnovi</ToggleGroupItem>
+          </ToggleGroup>
+          {filtroRinnovi === "escludi" && rinnoviCount > 0 && (
+            <span className="text-xs text-muted-foreground">{rinnoviCount} rinnovi nascosti</span>
+          )}
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -2231,7 +2255,7 @@ function ProposteFidoMassivoDialog({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {righe.map((r) => {
+              {righeVisibili.map((r) => {
                 const hasOverride = r.motivazione !== undefined;
                 const scost = r.proponibile ? r.fido_proposto - r.fido_attuale : 0;
                 return (
@@ -2344,7 +2368,7 @@ function ProposteFidoMassivoDialog({
         </div>
 
         <div className="text-sm font-medium">
-          Totale fido proposto: <strong>{fmtEuro(totale)}</strong> · {righeIncluse.length} richieste da creare
+          Totale fido proposto: <strong>{fmtEuro(totale)}</strong> · {righeVisibiliIncluse.length} richieste da creare
           {righeEscluse.length > 0 && (
             <span className="text-muted-foreground font-normal"> · {righeEscluse.length} esclusi</span>
           )}
@@ -2352,8 +2376,8 @@ function ProposteFidoMassivoDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>Annulla</Button>
-          <Button onClick={creaRichieste} disabled={submitting || righeIncluse.length === 0}>
-            {submitting ? "Creazione…" : `Crea ${righeIncluse.length} richieste`}
+          <Button onClick={creaRichieste} disabled={submitting || righeVisibiliIncluse.length === 0}>
+            {submitting ? "Creazione…" : `Crea ${righeVisibiliIncluse.length} richieste`}
           </Button>
         </DialogFooter>
 
