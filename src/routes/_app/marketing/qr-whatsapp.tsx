@@ -240,6 +240,33 @@ function QrWhatsappPage() {
 
   return (
     <div className="p-6 space-y-6 max-w-4xl">
+      <Card className="p-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold">Locandina da bancone</h2>
+            <p className="text-sm text-muted-foreground">
+              Scarica la locandina pronta per la stampa in formato A5 o A6.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              onClick={() => generaLocandina("A5", origin)}
+              disabled={!origin}
+              className="gap-1.5"
+            >
+              <Download className="size-4" /> Scarica PDF A5
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => generaLocandina("A6", origin)}
+              disabled={!origin}
+              className="gap-1.5"
+            >
+              <Download className="size-4" /> Scarica PDF A6
+            </Button>
+          </div>
+        </div>
+      </Card>
       <div>
         <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
           <QrIcon className="size-6" /> QR WhatsApp
