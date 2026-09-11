@@ -79,15 +79,18 @@ function ContattiPage() {
     return Array.from(m.entries()).sort((a, b) => a[1].localeCompare(b[1]));
   }, [data]);
 
+  const tuttiIds = useMemo(() => (data ?? []).map((c: any) => c.id), [data]);
+  const { data: statoConsensi } = useStatoConsensi(tuttiIds);
+
   const filtered = useMemo(() => {
     return (data ?? []).filter((c: any) => {
       if (storeId !== "all" && c.clienti?.store_id !== storeId) return false;
       if (clienteId !== "all" && c.clienti?.id !== clienteId) return false;
-      const n = (c.consenso_profilazione ? 1 : 0)
-        + (c.consenso_marketing_media ? 1 : 0)
-        + (c.consenso_marketing_diretto ? 1 : 0);
-      if (statoConsenso === "almeno_uno" && n === 0) return false;
-      if (statoConsenso === "nessuno" && n > 0) return false;
+      const st = statoConsensi?.get(c.id) ?? STATO_CONSENSI_VUOTO;
+      if (statoConsenso === "trattamento" && !st.trattamento_dati) return false;
+      if (statoConsenso === "whatsapp" && !st.whatsapp) return false;
+      if (statoConsenso === "email" && !st.email) return false;
+      if (statoConsenso === "nessuno" && (st.trattamento_dati || st.whatsapp || st.email)) return false;
       if (search.trim()) {
         const q = search.toLowerCase();
         const hay = `${c.nome ?? ""} ${c.cognome ?? ""} ${c.email ?? ""} ${c.clienti?.ragione_sociale ?? ""}`.toLowerCase();
@@ -95,9 +98,7 @@ function ContattiPage() {
       }
       return true;
     });
-  }, [data, search, storeId, clienteId, statoConsenso]);
-
-  const { data: statoConsensi } = useStatoConsensi(filtered.map((c: any) => c.id));
+  }, [data, search, storeId, clienteId, statoConsenso, statoConsensi]);
 
 
   return (
