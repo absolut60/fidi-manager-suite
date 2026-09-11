@@ -2255,7 +2255,7 @@ function ProposteFidoMassivoDialog({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {righe.map((r) => {
+              {righeVisibili.map((r) => {
                 const hasOverride = r.motivazione !== undefined;
                 const scost = r.proponibile ? r.fido_proposto - r.fido_attuale : 0;
                 return (
