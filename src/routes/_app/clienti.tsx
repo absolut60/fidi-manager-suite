@@ -2124,7 +2124,7 @@ function ProposteFidoMassivoDialog({
   const rinnoviCount = righe.filter((r) => r.tipo === "rinnovo").length;
 
   async function creaRichieste() {
-    if (righeIncluse.length === 0) { toast.error("Nessuna riga da creare"); return; }
+    if (righeVisibiliIncluse.length === 0) { toast.error("Nessuna riga da creare"); return; }
     if (!userId) { toast.error("Utente non autenticato"); return; }
     setSubmitting(true);
     try {
@@ -2132,7 +2132,7 @@ function ProposteFidoMassivoDialog({
       // Motivazione: override per-riga se valorizzato (anche stringa vuota = override "vuoto"),
       // altrimenti motivazione generale. Stringhe vuote -> null nel DB.
       const motivazioneGeneraleNorm = motivazioneGenerale.trim() === "" ? null : motivazioneGenerale;
-      const payload = righeIncluse.map((r) => {
+      const payload = righeVisibiliIncluse.map((r) => {
 
         const m = r.motivazione === undefined
           ? motivazioneGeneraleNorm
@@ -2148,7 +2148,7 @@ function ProposteFidoMassivoDialog({
       });
       const { error } = await supabase.from("richieste_fido").insert(payload as any);
       if (error) throw error;
-      toast.success(`${righeIncluse.length} richieste create`);
+      toast.success(`${righeVisibiliIncluse.length} richieste create`);
       onSuccess();
     } catch (e: any) {
       toast.error(e?.message ?? "Errore nella creazione");
