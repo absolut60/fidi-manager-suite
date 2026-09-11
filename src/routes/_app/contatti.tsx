@@ -160,8 +160,10 @@ function ContattiPage() {
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="tutti">Tutti i consensi</SelectItem>
-                <SelectItem value="almeno_uno">Almeno uno firmato</SelectItem>
-                <SelectItem value="nessuno">Nessuno firmato</SelectItem>
+                <SelectItem value="trattamento">Trattamento dati OK</SelectItem>
+                <SelectItem value="whatsapp">WhatsApp attivo</SelectItem>
+                <SelectItem value="email">Email attiva</SelectItem>
+                <SelectItem value="nessuno">Nessun consenso</SelectItem>
               </SelectContent>
             </Select>
           </div>
