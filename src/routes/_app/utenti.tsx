@@ -36,6 +36,8 @@ const ORDINE_RUOLI: AppRole[] = [
   "approvatore_liv3",
   "approvatore_liv2",
   "approvatore_liv1",
+  "direzione",
+  "responsabile_agenti",
   "store_manager",
   "marketing",
   "agente",
