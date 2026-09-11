@@ -7225,6 +7225,7 @@ export type Database = {
         | "preventivi_read"
         | "preventivi_write"
         | "preventivi_manage"
+        | "responsabile_agenti"
       categoria_allegato:
         | "capitolato"
         | "disegni"
@@ -7537,6 +7538,7 @@ export const Constants = {
         "preventivi_read",
         "preventivi_write",
         "preventivi_manage",
+        "responsabile_agenti",
       ],
       categoria_allegato: [
         "capitolato",
