@@ -15,6 +15,7 @@ const RUOLI_VALIDI = [
   "amministratore",
   "amministrazione",
   "direzione",
+  "responsabile_agenti",
   "agente",
   "marketing",
   "richiedente",
