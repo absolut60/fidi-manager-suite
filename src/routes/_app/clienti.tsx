@@ -2033,6 +2033,7 @@ function ProposteFidoMassivoDialog({
   const [tipoForzato, setTipoForzato] = useState<"auto" | "nuovo_fido" | "aumento" | "diminuzione" | "rinnovo">("auto");
   const [motivazioneGenerale, setMotivazioneGenerale] = useState<string>(MOTIVAZIONE_DEFAULT);
   const [righe, setRighe] = useState<RigaProposta[]>([]);
+  const [filtroRinnovi, setFiltroRinnovi] = useState<"escludi" | "tutti" | "solo">("escludi");
   const [submitting, setSubmitting] = useState(false);
 
   // Fido proposto = SEMPRE la RPC canonica get_fido_teorico (nessun calcolo locale)
