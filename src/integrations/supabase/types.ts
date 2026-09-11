@@ -1944,6 +1944,7 @@ export type Database = {
           consenso_marketing_media: boolean
           consenso_profilazione: boolean
           created_at: string
+          created_by: string | null
           data_firma: string | null
           data_nascita: string | null
           email: string | null
@@ -1981,6 +1982,7 @@ export type Database = {
           consenso_marketing_media?: boolean
           consenso_profilazione?: boolean
           created_at?: string
+          created_by?: string | null
           data_firma?: string | null
           data_nascita?: string | null
           email?: string | null
@@ -2018,6 +2020,7 @@ export type Database = {
           consenso_marketing_media?: boolean
           consenso_profilazione?: boolean
           created_at?: string
+          created_by?: string | null
           data_firma?: string | null
           data_nascita?: string | null
           email?: string | null
