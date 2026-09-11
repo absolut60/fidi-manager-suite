@@ -177,10 +177,10 @@ export function ModuloConsensoPrivacy({
         className="flex flex-col gap-1.5"
       >
         <label className="flex items-center gap-2 text-sm cursor-pointer">
-          <RadioGroupItem value="si" /> fornisce il consenso
+          <RadioGroupItem value="si" /> Sì, acconsento
         </label>
         <label className="flex items-center gap-2 text-sm cursor-pointer">
-          <RadioGroupItem value="no" /> nega il consenso
+          <RadioGroupItem value="no" /> No, non acconsento
         </label>
       </RadioGroup>
     </div>
@@ -189,7 +189,7 @@ export function ModuloConsensoPrivacy({
   return (
     <div className="space-y-6">
       <Card className="p-6 space-y-4">
-        <h3 className="font-semibold text-sm">Dati del Dichiarante</h3>
+        <h3 className="font-semibold text-sm">I tuoi dati</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <Label>Nome *</Label>
@@ -253,7 +253,7 @@ export function ModuloConsensoPrivacy({
       </Card>
 
       <Card className="p-6 space-y-3">
-        <h3 className="font-semibold text-sm">Informativa privacy estesa</h3>
+        <h3 className="font-semibold text-sm">Informativa sulla privacy</h3>
         <div
           className="rounded-md border bg-muted/40 p-3 overflow-y-auto whitespace-pre-line leading-relaxed"
           style={{ height: "250px", fontSize: "11px" }}
@@ -262,7 +262,7 @@ export function ModuloConsensoPrivacy({
         </div>
 
         <p className="font-bold leading-relaxed" style={{ fontSize: "12px" }}>
-          Il sottoscritto, avendo letto l'informativa fornita dal titolare del trattamento ai sensi dell'art. 13 GDPR sul trattamento e sulla comunicazione dei dati personali (comuni, sensibili) da questo effettuati, con le finalita' connesse all'adempimento del rapporto contrattuale e ai connessi adempimenti di legge, essendo consapevole che in mancanza di consenso ai predetti trattamenti il titolare non potra' - da un lato - assolvere gli obblighi di legge e quindi costituire o proseguire il rapporto contrattuale e - dall'altro - di svolgere la propria attivita' tipica,
+          Ho letto l&apos;informativa qui sopra, fornita dal Titolare ai sensi dell&apos;art. 13 del GDPR, e sono consapevole di come vengono trattati i miei dati. So che, senza il mio consenso, il Titolare non potrà adempiere agli obblighi di legge, dar seguito al rapporto contrattuale e svolgere la propria attività. Esprimo quindi le mie scelte qui sotto:
         </p>
 
         <div className="space-y-3">
@@ -288,12 +288,12 @@ export function ModuloConsensoPrivacy({
               className="mt-0.5"
             />
             <span>
-              Confermo di aver letto l'informativa e di esprimere le scelte sopra indicate.
+              Ho letto l&apos;informativa e confermo le scelte indicate qui sopra.
             </span>
           </label>
         ) : (
           <>
-            <p className="text-sm font-medium">Firma qui sotto per esprimere il consenso:</p>
+            <p className="text-sm font-medium">Firma qui sotto per confermare:</p>
             <div ref={padRef}>
               <SignaturePad onChange={(empty) => setHasSig(!empty)} />
             </div>
