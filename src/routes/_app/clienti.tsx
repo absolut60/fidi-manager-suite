@@ -2353,7 +2353,7 @@ function ProposteFidoMassivoDialog({
         </div>
 
         <div className="text-sm font-medium">
-          Totale fido proposto: <strong>{fmtEuro(totale)}</strong> · {righeIncluse.length} richieste da creare
+          Totale fido proposto: <strong>{fmtEuro(totale)}</strong> · {righeVisibiliIncluse.length} richieste da creare
           {righeEscluse.length > 0 && (
             <span className="text-muted-foreground font-normal"> · {righeEscluse.length} esclusi</span>
           )}
@@ -2361,8 +2361,8 @@ function ProposteFidoMassivoDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>Annulla</Button>
-          <Button onClick={creaRichieste} disabled={submitting || righeIncluse.length === 0}>
-            {submitting ? "Creazione…" : `Crea ${righeIncluse.length} richieste`}
+          <Button onClick={creaRichieste} disabled={submitting || righeVisibiliIncluse.length === 0}>
+            {submitting ? "Creazione…" : `Crea ${righeVisibiliIncluse.length} richieste`}
           </Button>
         </DialogFooter>
 
