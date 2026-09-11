@@ -2161,7 +2161,7 @@ function ProposteFidoMassivoDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Proposta fido massiva — {righe.length} clienti</DialogTitle>
+          <DialogTitle>Proposta fido massiva — {righeVisibiliIncluse.length} clienti</DialogTitle>
           <DialogDescription>
             L'importo proposto è il fido teorico calcolato dal sistema (fatturato + condizione di pagamento).
           </DialogDescription>
