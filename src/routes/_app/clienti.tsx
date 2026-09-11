@@ -718,42 +718,20 @@ function ClientiPage() {
     return { q, largeInclude };
   }
 
+  /** Privacy base (trattamento dati) per cliente: una sola RPC aggregata. */
   async function fetchPrivacyStatusMap(clienteIds: string[]): Promise<Map<string, boolean>> {
     if (clienteIds.length === 0) return new Map();
-    const contactToCliente = new Map<string, string>();
-    const allContactIds: string[] = [];
-    let off = 0;
-    const size = 1000;
-    while (true) {
-      const { data, error } = await supabase
-        .from("contatti")
-        .select("id, cliente_id")
-        .in("cliente_id", clienteIds)
-        .range(off, off + size - 1);
+    const map = new Map<string, boolean>(clienteIds.map((id) => [id, false]));
+    const size = 500;
+    for (let i = 0; i < clienteIds.length; i += size) {
+      const chunk = clienteIds.slice(i, i + size);
+      const { data, error } = await supabase.rpc("get_privacy_base_clienti", { _cliente_ids: chunk });
       if (error) throw error;
-      const batch = data ?? [];
-      for (const c of batch) {
-        if (!c.id || !c.cliente_id) continue;
-        allContactIds.push(c.id);
-        contactToCliente.set(c.id, c.cliente_id);
-      }
-      if (batch.length < size) break;
-      off += size;
-      if (off > 50000) break;
-    }
-    if (allContactIds.length === 0) {
-      return new Map(clienteIds.map((id) => [id, false]));
-    }
-    const { data, error } = await supabase.rpc("get_stato_consensi", { _contatto_ids: allContactIds });
-    if (error) throw error;
-    const okSet = new Set<string>();
-    for (const r of data ?? []) {
-      if (r.trattamento_dati) {
-        const clienteId = contactToCliente.get(r.contatto_id);
-        if (clienteId) okSet.add(clienteId);
+      for (const r of (data ?? []) as Array<{ cliente_id: string; privacy_ok: boolean }>) {
+        map.set(r.cliente_id, !!r.privacy_ok);
       }
     }
-    return new Map(clienteIds.map((id) => [id, okSet.has(id)]));
+    return map;
   }
 
 
