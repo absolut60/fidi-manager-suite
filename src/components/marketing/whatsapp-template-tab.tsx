@@ -3,11 +3,11 @@
 import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Plus, Pencil, Trash2, Copy, Save, Send, Bold, Italic, Smile, Braces, ImagePlus, X,
+  Plus, Pencil, Trash2, Copy, Save, Send, Bold, Italic, Smile, Braces, ImagePlus, X, RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { inviaTemplateInApprovazione } from "@/lib/whatsapp-template.functions";
+import { inviaTemplateInApprovazione, sincronizzaStatiTemplate } from "@/lib/whatsapp-template.functions";
 
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -160,6 +160,19 @@ export function WhatsAppTemplateTab() {
     onError: (e: any) => toast.error(e?.message ?? "Errore eliminazione"),
   });
 
+  const sincronizza = useMutation({
+    mutationFn: () => sincronizzaStatiTemplate(),
+    onSuccess: (r) => {
+      if (!r.ok) {
+        toast.error(r.error ?? "Sincronizzazione fallita");
+        return;
+      }
+      toast.success(`Stati aggiornati (${r.aggiornati ?? 0} template)`);
+      invalida();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Errore sincronizzazione"),
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
@@ -169,9 +182,19 @@ export function WhatsAppTemplateTab() {
             Componi i template da mandare in approvazione. L'invio dei messaggi arriverà nel prossimo passaggio.
           </p>
         </div>
-        <Button onClick={() => crea.mutate()} disabled={crea.isPending}>
-          <Plus className="size-4 mr-2" /> Nuovo template
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => sincronizza.mutate()}
+            disabled={sincronizza.isPending}
+          >
+            <RefreshCw className={`size-4 mr-2 ${sincronizza.isPending ? "animate-spin" : ""}`} />
+            Sincronizza stati
+          </Button>
+          <Button onClick={() => crea.mutate()} disabled={crea.isPending}>
+            <Plus className="size-4 mr-2" /> Nuovo template
+          </Button>
+        </div>
       </div>
 
       <Card className="p-0 overflow-hidden">
