@@ -220,7 +220,7 @@ async function generaLocandina(formato: "A5" | "A6", origin: string) {
   y += 6 * scale;
 
   // QR code ridotto con cornice arrotondata sottile navy
-  const qrSize = pageW * 0.52;
+  const qrSize = pageW * 0.48;
   const qrX = centerX - qrSize / 2;
   pdf.setDrawColor(...navy);
   pdf.setLineWidth(0.5 * scale);
@@ -234,7 +234,7 @@ async function generaLocandina(formato: "A5" | "A6", origin: string) {
     "S"
   );
   pdf.addImage(qrDataUrl, "PNG", qrX, y, qrSize, qrSize);
-  y += qrSize + 2 * scale;
+  y += qrSize + 1.5 * scale;
 
   // Footer
   pdf.setTextColor(...gray);
