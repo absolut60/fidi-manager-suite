@@ -328,11 +328,23 @@ export function WhatsAppCampagneTab() {
   );
 }
 
+function indiciVariabili(body: string | null): number[] {
+  if (!body) return [];
+  const set = new Set<number>();
+  for (const m of body.matchAll(/\{\{(\d+)\}\}/g)) {
+    set.add(parseInt(m[1], 10));
+  }
+  return [...set].sort((a, b) => a - b);
+}
+
 function EditorCampagnaWhatsApp({
   campagna, onClose, onSaved,
 }: { campagna: CampagnaWa; onClose: () => void; onSaved: () => void }) {
   const [nome, setNome] = useState(campagna.nome);
   const [templateId, setTemplateId] = useState<string>(campagna.template_id ?? "");
+  const [fissi, setFissi] = useState<Record<string, string>>(
+    () => ({ ...(campagna.parametri?.fissi ?? {}) }),
+  );
 
   const { data: templates } = useQuery({
     queryKey: ["whatsapp_template", "opzioni"],
