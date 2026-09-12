@@ -621,12 +621,13 @@ function EditorTemplateWhatsApp({
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Chiudi</Button>
-          <Button variant="secondary" onClick={() => salva.mutate("bozza")} disabled={salva.isPending}>
+          <Button variant="secondary" onClick={() => salva.mutate()} disabled={salva.isPending || invia.isPending}>
             <Save className="size-4 mr-1.5" /> Salva bozza
           </Button>
-          <Button onClick={() => salva.mutate("in_attesa")} disabled={salva.isPending}>
+          <Button onClick={() => invia.mutate()} disabled={salva.isPending || invia.isPending}>
             <Send className="size-4 mr-1.5" /> Invia in approvazione
           </Button>
+
         </DialogFooter>
       </DialogContent>
     </Dialog>
