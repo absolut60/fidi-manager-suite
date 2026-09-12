@@ -323,6 +323,8 @@ export function WhatsAppCampagneTab() {
                 <TableHead>Template</TableHead>
                 <TableHead>Stato</TableHead>
                 <TableHead className="text-center">Destinatari</TableHead>
+                <TableHead>Avanzamento</TableHead>
+                <TableHead className="text-right">Costo stim.</TableHead>
                 <TableHead>Aggiornata</TableHead>
                 <TableHead className="text-right">Azioni</TableHead>
               </TableRow>
