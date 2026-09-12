@@ -47,6 +47,7 @@ const handler = serve({
     promemoriaScadenzaRetention,
     inviaEmailRichiesta,
     invioCampagnaMarketing,
+    invioCampagnaWhatsapp,
     emailHealthCheck,
     processEventiPartecipantiImport,
     refreshFatturatoMensileCron,
