@@ -478,9 +478,18 @@ function EditorCampagnaWhatsApp({
 }: { campagna: CampagnaWa; onClose: () => void; onSaved: () => void }) {
   const [nome, setNome] = useState(campagna.nome);
   const [templateId, setTemplateId] = useState<string>(campagna.template_id ?? "");
-  const [fissi, setFissi] = useState<Record<string, string>>(
-    () => ({ ...(campagna.parametri?.fissi ?? {}) }),
-  );
+  const [vars, setVars] = useState<Record<string, VarWa>>(() => {
+    const p = campagna.parametri;
+    if (p?.vars && typeof p.vars === "object") return { ...p.vars };
+    const out: Record<string, VarWa> = {};
+    for (const [k, v] of Object.entries(p?.fissi ?? {})) {
+      out[k] = { tipo: "fisso", valore: v };
+    }
+    if (indiciVariabili(null).length === 0 && !out["1"]) {
+      out["1"] = { tipo: "campo", campo: "nome" };
+    }
+    return out;
+  });
   const [eventoId, setEventoId] = useState<string>(campagna.evento_id ?? "");
 
   const { data: templates } = useQuery({
