@@ -422,7 +422,12 @@ function MarketingCampagnePage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+      </TabsContent>
+
+      <TabsContent value="whatsapp">
+        <WhatsAppTemplateTab />
+      </TabsContent>
+    </Tabs>
   );
 }
 
