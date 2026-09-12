@@ -25,6 +25,8 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { WhatsAppTemplateTab } from "@/components/marketing/whatsapp-template-tab";
 import { AllegatiSection } from "@/components/allegati-section";
 import {
   buildEmailCampagna, DATI_ESEMPIO, PLACEHOLDER_MARKETING,
@@ -246,7 +248,13 @@ function MarketingCampagnePage() {
     );
 
   return (
-    <div className="space-y-6">
+    <Tabs defaultValue="email" className="space-y-6">
+      <TabsList>
+        <TabsTrigger value="email">Email</TabsTrigger>
+        <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="email" className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold flex items-center gap-2">
@@ -416,7 +424,12 @@ function MarketingCampagnePage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+      </TabsContent>
+
+      <TabsContent value="whatsapp">
+        <WhatsAppTemplateTab />
+      </TabsContent>
+    </Tabs>
   );
 }
 
