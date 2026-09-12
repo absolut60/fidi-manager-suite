@@ -4,6 +4,16 @@ import { inviaTemplate360 } from "./whatsapp-invio.server";
 
 type EventData = { campagna_id: string };
 
+type VarWa = { tipo: "fisso" | "campo"; valore?: string; campo?: string };
+
+type ClienteWa = {
+  ragione_sociale?: string | null;
+  citta?: string | null;
+  provincia?: string | null;
+  indirizzo?: string | null;
+  categoria?: string | null;
+} | null;
+
 const DEFAULT_BLOCCO = 12;
 const DEFAULT_PAUSA = 60;
 const MAX_PER_RUN = 150;
