@@ -165,9 +165,9 @@ async function generaLocandina(formato: "A5" | "A6", origin: string) {
   y += logoH + 3 * scale;
 
   // Icona WhatsApp
-  const iconSize = pageW * 0.18;
+  const iconSize = pageW * 0.16;
   pdf.addImage(iconaDataUrl, "PNG", centerX - iconSize / 2, y, iconSize, iconSize);
-  y += iconSize + 2.5 * scale;
+  y += iconSize + 2 * scale;
 
   // Titolo
   pdf.setTextColor(...navy);
@@ -186,7 +186,7 @@ async function generaLocandina(formato: "A5" | "A6", origin: string) {
   pdf.text("Promozioni esclusive, arrivi merce", centerX, y, { align: "center" });
   y += 5 * scale;
   pdf.text("e sconti riservati ai clienti", centerX, y, { align: "center" });
-  y += 4 * scale;
+  y += 3 * scale;
 
   // MADE DISTRIBUZIONE
   pdf.setTextColor(...navy);
@@ -217,7 +217,7 @@ async function generaLocandina(formato: "A5" | "A6", origin: string) {
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(11 * scale);
   pdf.text("Inquadra il QR e iscriviti", centerX, y, { align: "center" });
-  y += 8 * scale;
+  y += 6 * scale;
 
   // QR code ridotto con cornice arrotondata sottile navy
   const qrSize = pageW * 0.52;
@@ -239,7 +239,7 @@ async function generaLocandina(formato: "A5" | "A6", origin: string) {
   // Footer
   pdf.setTextColor(...gray);
   pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(7 * scale);
+  pdf.setFontSize(6.5 * scale);
   pdf.text(
     "Iscrizione in 30 secondi · Puoi disiscriverti quando vuoi",
     centerX,
