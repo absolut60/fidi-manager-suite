@@ -366,6 +366,16 @@ export function WhatsAppCampagneTab() {
         />
       )}
 
+      {avviando && (
+        <ConfermaInvioWhatsappDialog
+          campagna={avviando}
+          inCoda={conteggi?.get(avviando.id)?.inCoda ?? 0}
+          pending={avvia.isPending}
+          onConfirm={() => avvia.mutate(avviando)}
+          onClose={() => setAvviando(null)}
+        />
+      )}
+
       <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
