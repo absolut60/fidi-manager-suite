@@ -1,4 +1,4 @@
 # Roadmap
 
-- [ ] Strato 2b WhatsApp: server function `sincronizzaStatiTemplate` + bottone "Sincronizza stati" nel tab template
-- [ ] (opzionale, dal piano 522) messaggio più chiaro su errori temporanei 5xx — valutare se coperto dalla nuova gestione errori
+- [x] Strato 2b WhatsApp: server function `sincronizzaStatiTemplate` + bottone "Sincronizza stati" nel tab template
+- [x] Messaggio chiaro su errori temporanei 5xx (502/503/504/522) — incluso nella nuova funzione di sync
