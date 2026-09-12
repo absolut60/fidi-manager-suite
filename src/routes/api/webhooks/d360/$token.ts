@@ -16,8 +16,22 @@ type WaMessage = {
   button?: { text?: string; payload?: string };
 };
 
+type WaStatusError = {
+  code?: number;
+  title?: string;
+  message?: string;
+  error_data?: { details?: string };
+};
+
+type WaStatus = {
+  id?: string;
+  status?: string;
+  errors?: WaStatusError[];
+};
+
 type WaValue = {
   messages?: WaMessage[];
+  statuses?: WaStatus[];
 };
 
 type WaChange = {
