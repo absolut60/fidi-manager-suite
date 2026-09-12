@@ -16,8 +16,22 @@ type WaMessage = {
   button?: { text?: string; payload?: string };
 };
 
+type WaStatusError = {
+  code?: number;
+  title?: string;
+  message?: string;
+  error_data?: { details?: string };
+};
+
+type WaStatus = {
+  id?: string;
+  status?: string;
+  errors?: WaStatusError[];
+};
+
 type WaValue = {
   messages?: WaMessage[];
+  statuses?: WaStatus[];
 };
 
 type WaChange = {
@@ -58,6 +72,41 @@ function estraiMessaggi(body: WaBody): MsgInbound[] {
   return out;
 }
 
+type StatusInbound = {
+  wamid: string;
+  status: string;
+  errore: string | null;
+};
+
+function estraiStatus(body: WaBody): StatusInbound[] {
+  const out: StatusInbound[] = [];
+  for (const e of body?.entry ?? []) {
+    for (const c of e?.changes ?? []) {
+      for (const s of c?.value?.statuses ?? []) {
+        const wamid = typeof s?.id === "string" ? s.id : "";
+        const status =
+          typeof s?.status === "string" ? s.status.toLowerCase() : "";
+        if (!wamid || !status) continue;
+        let errore: string | null = null;
+        if (status === "failed") {
+          const err = s.errors?.[0];
+          if (err) {
+            errore =
+              err.error_data?.details ||
+              err.message ||
+              err.title ||
+              (err.code ? `codice ${err.code}` : "errore sconosciuto");
+          } else {
+            errore = "errore sconosciuto";
+          }
+        }
+        out.push({ wamid, status, errore });
+      }
+    }
+  }
+  return out;
+}
+
 export const Route = createFileRoute("/api/webhooks/d360/$token")({
   server: {
     handlers: {
@@ -81,57 +130,83 @@ export const Route = createFileRoute("/api/webhooks/d360/$token")({
         }
 
         const messaggi = estraiMessaggi(body);
-        if (messaggi.length === 0) {
+        const status = estraiStatus(body);
+
+        if (messaggi.length === 0 && status.length === 0) {
           return Response.json({ ok: true });
         }
 
-        console.log(`[d360-webhook] messaggi ricevuti: ${messaggi.length}`);
+        console.log(
+          `[d360-webhook] messaggi ricevuti: ${messaggi.length}, status ricevuti: ${status.length}`,
+        );
 
         let stop = 0;
         let adesioni = 0;
-        const testoRilevante = (m: MsgInbound) =>
-          m.tipoMsg === "text" ? m.testo : m.bottoneTesto;
-
-        const daProcessare = messaggi.filter((m) => {
-          const t = testoRilevante(m);
-          return t && PAROLE_STOP.has(t.trim().toUpperCase());
-        });
+        let statusAggiornati = 0;
 
         const { supabaseAdmin } = await import(
           "@/integrations/supabase/client.server"
         );
 
-        if (daProcessare.length > 0) {
-          for (const m of daProcessare) {
+        if (messaggi.length > 0) {
+          const testoRilevante = (m: MsgInbound) =>
+            m.tipoMsg === "text" ? m.testo : m.bottoneTesto;
+
+          const daProcessare = messaggi.filter((m) => {
+            const t = testoRilevante(m);
+            return t && PAROLE_STOP.has(t.trim().toUpperCase());
+          });
+
+          if (daProcessare.length > 0) {
+            for (const m of daProcessare) {
+              try {
+                const { error } = await supabaseAdmin.rpc(
+                  "registra_stop_whatsapp",
+                  { _numero_raw: m.mittente } as never,
+                );
+                if (!error) stop += 1;
+                else console.error("[d360-webhook] rpc errore", error.message);
+              } catch (e) {
+                console.error("[d360-webhook] rpc eccezione", e);
+              }
+            }
+          }
+
+          const daAdesione = messaggi.filter(
+            (m) =>
+              m.tipoMsg === "button" &&
+              !PAROLE_STOP.has(testoRilevante(m).trim().toUpperCase()),
+          );
+          for (const m of daAdesione) {
             try {
-              const { error } = await supabaseAdmin.rpc(
-                "registra_stop_whatsapp",
+              const { data, error } = await supabaseAdmin.rpc(
+                "registra_adesione_evento_whatsapp",
                 { _numero_raw: m.mittente } as never,
               );
-              if (!error) stop += 1;
-              else console.error("[d360-webhook] rpc errore", error.message);
+              if (!error && data?.[0]?.ok) adesioni += 1;
+              else if (error)
+                console.error("[d360-webhook] adesione rpc errore", error.message);
             } catch (e) {
-              console.error("[d360-webhook] rpc eccezione", e);
+              console.error("[d360-webhook] adesione rpc eccezione", e);
             }
           }
         }
 
-        const daAdesione = messaggi.filter(
-          (m) =>
-            m.tipoMsg === "button" &&
-            !PAROLE_STOP.has(testoRilevante(m).trim().toUpperCase()),
-        );
-        for (const m of daAdesione) {
+        for (const st of status) {
           try {
             const { data, error } = await supabaseAdmin.rpc(
-              "registra_adesione_evento_whatsapp",
-              { _numero_raw: m.mittente } as never,
+              "aggiorna_stato_messaggio_whatsapp",
+              {
+                _meta_message_id: st.wamid,
+                _nuovo_stato: st.status,
+                _errore: st.errore,
+              } as never,
             );
-            if (!error && data?.[0]?.ok) adesioni += 1;
+            if (!error && data === true) statusAggiornati += 1;
             else if (error)
-              console.error("[d360-webhook] adesione rpc errore", error.message);
+              console.error("[d360-webhook] status rpc errore", error.message);
           } catch (e) {
-            console.error("[d360-webhook] adesione rpc eccezione", e);
+            console.error("[d360-webhook] status rpc eccezione", e);
           }
         }
 
@@ -140,6 +215,7 @@ export const Route = createFileRoute("/api/webhooks/d360/$token")({
           processati: messaggi.length,
           stop,
           adesioni,
+          status_aggiornati: statusAggiornati,
         });
       },
     },
