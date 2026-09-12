@@ -6106,6 +6106,10 @@ export type Database = {
           saltate: number
         }[]
       }
+      conta_contattabili_canale: {
+        Args: { _canale: string; _filtri: Json }
+        Returns: number
+      }
       converti_lead_in_cliente: {
         Args: { _forza_duplicato?: boolean; _lead_id: string }
         Returns: {
@@ -6508,6 +6512,15 @@ export type Database = {
           n_clienti_con_fido: number
           ordine: number
           tipo: string
+        }[]
+      }
+      get_destinatari_whatsapp_segmento: {
+        Args: { _filtri: Json }
+        Returns: {
+          cellulare: string
+          cliente_id: string
+          contatto_id: string
+          nome_riferimento: string
         }[]
       }
       get_destinatario_recesso: {
