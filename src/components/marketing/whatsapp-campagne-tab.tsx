@@ -485,9 +485,7 @@ function EditorCampagnaWhatsApp({
     for (const [k, v] of Object.entries(p?.fissi ?? {})) {
       out[k] = { tipo: "fisso", valore: v };
     }
-    if (indiciVariabili(null).length === 0 && !out["1"]) {
-      out["1"] = { tipo: "campo", campo: "nome" };
-    }
+    if (!out["1"]) out["1"] = { tipo: "campo", campo: "nome" };
     return out;
   });
   const [eventoId, setEventoId] = useState<string>(campagna.evento_id ?? "");
