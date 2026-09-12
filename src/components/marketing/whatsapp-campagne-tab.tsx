@@ -346,6 +346,34 @@ export function WhatsAppCampagneTab() {
                       {(conteggi?.get(c.id)?.totale ?? 0).toLocaleString("it-IT")}
                     </button>
                   </TableCell>
+                  <TableCell className="text-xs whitespace-nowrap">
+                    {(() => {
+                      const k = conteggi?.get(c.id);
+                      if (!k || k.totale === 0) return <span className="text-muted-foreground">—</span>;
+                      if (c.stato === "in_corso") {
+                        const fatti = k.inviato + k.consegnato + k.letto + k.fallito;
+                        return (
+                          <span className="text-amber-600 font-medium">
+                            {fatti.toLocaleString("it-IT")} / {k.totale.toLocaleString("it-IT")} inviati…
+                          </span>
+                        );
+                      }
+                      const inviati = k.inviato + k.consegnato + k.letto;
+                      const consegnati = k.consegnato + k.letto;
+                      return (
+                        <span className="text-muted-foreground">
+                          Inviati {inviati.toLocaleString("it-IT")} · Consegnati {consegnati.toLocaleString("it-IT")} · Letti {k.letto.toLocaleString("it-IT")} · Falliti {k.fallito.toLocaleString("it-IT")}
+                        </span>
+                      );
+                    })()}
+                  </TableCell>
+                  <TableCell className="text-right text-xs text-muted-foreground whitespace-nowrap">
+                    {(() => {
+                      const k = conteggi?.get(c.id);
+                      const consegnati = (k?.consegnato ?? 0) + (k?.letto ?? 0);
+                      return consegnati > 0 ? fmtEuro(consegnati * tariffaWa) : "—";
+                    })()}
+                  </TableCell>
                   <TableCell className="text-muted-foreground">{fmtDate(c.updated_at)}</TableCell>
                   <TableCell className="text-right space-x-1 whitespace-nowrap">
                     {c.stato === "in_corso" ? (
