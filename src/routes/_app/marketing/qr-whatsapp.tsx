@@ -103,13 +103,38 @@ function QrCard({
   );
 }
 
+async function creaIconaWhatsAppDataUrl(size: number): Promise<string> {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${size}" height="${size}">
+    <path fill="#25D366" d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.89L2.05 22l5.3-1.38c1.39.79 3.03 1.22 4.69 1.22 5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2z"/>
+    <path fill="#fff" d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.521.15-.174.2-.298.3-.497.1-.198.05-.371-.025-.521-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.521.074-.797.372-.275.299-1.051 1.027-1.051 2.508 0 1.48 1.077 2.906 1.227 3.106.15.199 2.122 3.239 5.132 4.54.719.31 1.28.496 1.718.635.722.23 1.38.198 1.899.126.58-.08 1.758-.719 2.005-1.336.249-.617.249-1.146.174-1.256-.074-.11-.273-.174-.57-.324z"/>
+  </svg>`;
+
+  return new Promise((resolve, reject) => {
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return reject(new Error("Canvas non disponibile"));
+    const img = new Image();
+    img.onload = () => {
+      ctx.drawImage(img, 0, 0, size, size);
+      resolve(canvas.toDataURL("image/png"));
+    };
+    img.onerror = () => reject(new Error("Caricamento icona WhatsApp fallito"));
+    img.src = "data:image/svg+xml;base64," + btoa(svg);
+  });
+}
+
 async function generaLocandina(formato: "A5" | "A6", origin: string) {
   const urlPagina = `${origin}/iscrizione-whatsapp?origine=qr_pagina`;
-  const qrDataUrl = await QRCode.toDataURL(urlPagina, {
-    width: 1024,
-    margin: 2,
-    errorCorrectionLevel: "M",
-  });
+  const [qrDataUrl, iconaDataUrl] = await Promise.all([
+    QRCode.toDataURL(urlPagina, {
+      width: 1024,
+      margin: 2,
+      errorCorrectionLevel: "M",
+    }),
+    creaIconaWhatsAppDataUrl(512),
+  ]);
 
   const isA5 = formato === "A5";
   const pageW = isA5 ? 148 : 105;
@@ -121,16 +146,13 @@ async function generaLocandina(formato: "A5" | "A6", origin: string) {
   const navy: [number, number, number] = [13, 31, 60];
   const green: [number, number, number] = [37, 211, 102];
   const gray: [number, number, number] = [102, 102, 102];
-  const borderGray: [number, number, number] = [220, 220, 220];
+  const subtitleGray: [number, number, number] = [95, 105, 120];
 
-
-
-  const marginX = 10 * scale;
   const centerX = pageW / 2;
   let y = 12 * scale;
 
   // Logo MADE
-  const logoW = 90 * scale;
+  const logoW = 80 * scale;
   const logoH = logoW * (69 / 490);
   pdf.addImage(
     `data:image/png;base64,${LOGO_MADE_BASE64}`,
@@ -140,7 +162,12 @@ async function generaLocandina(formato: "A5" | "A6", origin: string) {
     logoW,
     logoH
   );
-  y += logoH + 8 * scale;
+  y += logoH + 3 * scale;
+
+  // Icona WhatsApp
+  const iconSize = pageW * 0.18;
+  pdf.addImage(iconaDataUrl, "PNG", centerX - iconSize / 2, y, iconSize, iconSize);
+  y += iconSize + 2.5 * scale;
 
   // Titolo
   pdf.setTextColor(...navy);
@@ -150,24 +177,21 @@ async function generaLocandina(formato: "A5" | "A6", origin: string) {
   y += 9 * scale;
   pdf.setTextColor(...green);
   pdf.text("SU WHATSAPP", centerX, y, { align: "center" });
-  y += 10 * scale;
+  y += 8 * scale;
 
-  // Sottotitolo
-  pdf.setTextColor(...gray);
+  // Sottotitolo (2 righe, ingrandito)
+  pdf.setTextColor(...subtitleGray);
   pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(8.5 * scale);
-  pdf.text(
-    "Promozioni esclusive, arrivi merce e sconti riservati ai clienti",
-    centerX,
-    y,
-    { align: "center" }
-  );
-  y += 7 * scale;
+  pdf.setFontSize(11.5 * scale);
+  pdf.text("Promozioni esclusive, arrivi merce", centerX, y, { align: "center" });
+  y += 5 * scale;
+  pdf.text("e sconti riservati ai clienti", centerX, y, { align: "center" });
+  y += 4 * scale;
 
   // MADE DISTRIBUZIONE
   pdf.setTextColor(...navy);
   pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(12 * scale);
+  pdf.setFontSize(11 * scale);
   pdf.text("MADE DISTRIBUZIONE", centerX, y, { align: "center" });
   y += 10 * scale;
 
@@ -195,10 +219,10 @@ async function generaLocandina(formato: "A5" | "A6", origin: string) {
   pdf.text("Inquadra il QR e iscriviti", centerX, y, { align: "center" });
   y += 8 * scale;
 
-  // QR code grande con cornice sottile
-  const qrSize = 80 * scale;
+  // QR code ridotto con cornice arrotondata sottile navy
+  const qrSize = pageW * 0.52;
   const qrX = centerX - qrSize / 2;
-  pdf.setDrawColor(...borderGray);
+  pdf.setDrawColor(...navy);
   pdf.setLineWidth(0.5 * scale);
   pdf.roundedRect(
     qrX - 2 * scale,
@@ -210,12 +234,12 @@ async function generaLocandina(formato: "A5" | "A6", origin: string) {
     "S"
   );
   pdf.addImage(qrDataUrl, "PNG", qrX, y, qrSize, qrSize);
-  y += qrSize + 8 * scale;
+  y += qrSize + 2 * scale;
 
   // Footer
   pdf.setTextColor(...gray);
   pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(7.5 * scale);
+  pdf.setFontSize(7 * scale);
   pdf.text(
     "Iscrizione in 30 secondi · Puoi disiscriverti quando vuoi",
     centerX,
