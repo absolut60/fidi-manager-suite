@@ -246,7 +246,13 @@ function MarketingCampagnePage() {
     );
 
   return (
-    <div className="space-y-6">
+    <Tabs defaultValue="email" className="space-y-6">
+      <TabsList>
+        <TabsTrigger value="email">Email</TabsTrigger>
+        <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="email" className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold flex items-center gap-2">
