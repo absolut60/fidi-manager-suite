@@ -90,7 +90,28 @@ export const invioCampagnaWhatsapp = inngest.createFunction(
         .update({ stato: "in_corso" } as never)
         .eq("id", campagna_id);
 
-      const parametri = (camp as { parametri?: { fissi?: Record<string, string> } | null }).parametri;
+      const parametri = (
+        camp as {
+          parametri?: {
+            vars?: Record<string, VarWa>;
+            fissi?: Record<string, string>;
+          } | null;
+        }
+      ).parametri;
+
+      // Normalizzazione vars: nuovo formato {vars}, retrocompatibile col vecchio {fissi}.
+      const vars: Record<string, VarWa> = {};
+      if (parametri?.vars && typeof parametri.vars === "object") {
+        for (const [k, v] of Object.entries(parametri.vars)) {
+          if (v && (v.tipo === "fisso" || v.tipo === "campo")) vars[k] = v;
+        }
+      } else if (parametri?.fissi && typeof parametri.fissi === "object") {
+        for (const [k, v] of Object.entries(parametri.fissi)) {
+          vars[k] = { tipo: "fisso", valore: String(v ?? "") };
+        }
+      }
+      if (!vars["1"]) vars["1"] = { tipo: "campo", campo: "nome" };
+      const serveCliente = Object.values(vars).some((v) => v.tipo === "campo");
 
       return {
         giaCompletata: false,
@@ -99,7 +120,8 @@ export const invioCampagnaWhatsapp = inngest.createFunction(
           ((camp as { template_name?: string | null }).template_name ?? ""),
         lingua: (tpl.lingua as string | null) || "it",
         indici: indiciVariabili(tpl.body_testo as string),
-        fissi: (parametri?.fissi ?? {}) as Record<string, string>,
+        vars,
+        serveCliente,
       };
     });
 
