@@ -167,7 +167,7 @@ export function WhatsAppTemplateTab() {
         toast.error(r.error ?? "Sincronizzazione fallita");
         return;
       }
-      toast.success(`Stati aggiornati (${r.aggiornati ?? 0} template)`);
+      toast.success(`Stati Meta aggiornati (${r.aggiornati ?? 0} template)`);
       invalida();
     },
     onError: (e: any) => toast.error(e?.message ?? "Errore sincronizzazione"),
@@ -189,7 +189,7 @@ export function WhatsAppTemplateTab() {
             disabled={sincronizza.isPending}
           >
             <RefreshCw className={`size-4 mr-2 ${sincronizza.isPending ? "animate-spin" : ""}`} />
-            Sincronizza stati
+            Sincronizza stati Meta
           </Button>
           <Button onClick={() => crea.mutate()} disabled={crea.isPending}>
             <Plus className="size-4 mr-2" /> Nuovo template
