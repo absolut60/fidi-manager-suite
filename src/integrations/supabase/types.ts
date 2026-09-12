@@ -5581,6 +5581,66 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_template: {
+        Row: {
+          body_testo: string
+          categoria: string
+          created_at: string
+          created_by: string | null
+          footer_testo: string | null
+          header_media_url: string | null
+          header_testo: string | null
+          header_tipo: string
+          id: string
+          lingua: string
+          meta_template_id: string | null
+          meta_template_name: string | null
+          nome: string
+          nota_rifiuto: string | null
+          pulsanti: Json
+          stato: string
+          updated_at: string
+        }
+        Insert: {
+          body_testo?: string
+          categoria?: string
+          created_at?: string
+          created_by?: string | null
+          footer_testo?: string | null
+          header_media_url?: string | null
+          header_testo?: string | null
+          header_tipo?: string
+          id?: string
+          lingua?: string
+          meta_template_id?: string | null
+          meta_template_name?: string | null
+          nome: string
+          nota_rifiuto?: string | null
+          pulsanti?: Json
+          stato?: string
+          updated_at?: string
+        }
+        Update: {
+          body_testo?: string
+          categoria?: string
+          created_at?: string
+          created_by?: string | null
+          footer_testo?: string | null
+          header_media_url?: string | null
+          header_testo?: string | null
+          header_tipo?: string
+          id?: string
+          lingua?: string
+          meta_template_id?: string | null
+          meta_template_name?: string | null
+          nome?: string
+          nota_rifiuto?: string | null
+          pulsanti?: Json
+          stato?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       clienti_con_rischio: {
