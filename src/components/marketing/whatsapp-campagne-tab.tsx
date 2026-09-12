@@ -165,7 +165,7 @@ export function WhatsAppCampagneTab() {
       return (data ?? []) as CampagnaWa[];
     },
     refetchInterval: (q) =>
-      (q.state.data as CampagnaWa[] | undefined)?.some((c) => c.stato === "in_corso") ? 5000 : false,
+      (q.state.data as CampagnaWa[] | undefined)?.some(campagnaDaSeguire) ? 5000 : false,
   });
 
   const { data: conteggi } = useQuery({
@@ -174,18 +174,38 @@ export function WhatsAppCampagneTab() {
       // TODO: passare a RPC di conteggio se i volumi crescono (limite PostgREST 1000)
       const { data, error } = await supabase.from("messaggi_whatsapp").select("campagna_id, stato");
       if (error) throw error;
-      const map = new Map<string, { totale: number; inCoda: number }>();
+      const map = new Map<string, ConteggiWa>();
       for (const r of (data ?? []) as Array<{ campagna_id: string | null; stato: string }>) {
         if (!r.campagna_id) continue;
-        const cur = map.get(r.campagna_id) ?? { totale: 0, inCoda: 0 };
+        const cur = map.get(r.campagna_id) ?? { ...CONTEGGI_VUOTI };
         cur.totale += 1;
         if (r.stato === "in_coda") cur.inCoda += 1;
+        else if (r.stato === "inviato") cur.inviato += 1;
+        else if (r.stato === "consegnato") cur.consegnato += 1;
+        else if (r.stato === "letto") cur.letto += 1;
+        else if (r.stato === "fallito") cur.fallito += 1;
         map.set(r.campagna_id, cur);
       }
       return map;
     },
     refetchInterval: () =>
-      campagne?.some((c) => c.stato === "in_corso") ? 5000 : false,
+      campagne?.some(campagnaDaSeguire) ? 5000 : false,
+  });
+
+  // Tariffa per messaggio consegnato (categoria marketing); default se la chiave manca
+  const { data: tariffaWa = 0.0535 } = useQuery({
+    queryKey: ["configurazioni", "whatsapp_costo_marketing_eur"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("configurazioni")
+        .select("valore")
+        .eq("chiave", "whatsapp_costo_marketing_eur")
+        .maybeSingle();
+      if (error) throw error;
+      const v = parseFloat(data?.valore ?? "");
+      return isNaN(v) ? 0.0535 : v;
+    },
+    staleTime: 5 * 60 * 1000,
   });
 
   const invalida = () => {
