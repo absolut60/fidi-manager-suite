@@ -72,6 +72,41 @@ function estraiMessaggi(body: WaBody): MsgInbound[] {
   return out;
 }
 
+type StatusInbound = {
+  wamid: string;
+  status: string;
+  errore: string | null;
+};
+
+function estraiStatus(body: WaBody): StatusInbound[] {
+  const out: StatusInbound[] = [];
+  for (const e of body?.entry ?? []) {
+    for (const c of e?.changes ?? []) {
+      for (const s of c?.value?.statuses ?? []) {
+        const wamid = typeof s?.id === "string" ? s.id : "";
+        const status =
+          typeof s?.status === "string" ? s.status.toLowerCase() : "";
+        if (!wamid || !status) continue;
+        let errore: string | null = null;
+        if (status === "failed") {
+          const err = s.errors?.[0];
+          if (err) {
+            errore =
+              err.error_data?.details ||
+              err.message ||
+              err.title ||
+              (err.code ? `codice ${err.code}` : "errore sconosciuto");
+          } else {
+            errore = "errore sconosciuto";
+          }
+        }
+        out.push({ wamid, status, errore });
+      }
+    }
+  }
+  return out;
+}
+
 export const Route = createFileRoute("/api/webhooks/d360/$token")({
   server: {
     handlers: {
