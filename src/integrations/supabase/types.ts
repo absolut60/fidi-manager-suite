@@ -7198,6 +7198,12 @@ export type Database = {
         Args: { _importazione_id: string }
         Returns: number
       }
+      risolvi_pubblico_segmento: {
+        Args: { _filtri: Json }
+        Returns: {
+          cliente_id: string
+        }[]
+      }
       scarta_righe_import: {
         Args: { _riga_ids: string[] }
         Returns: {
