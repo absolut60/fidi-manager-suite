@@ -70,7 +70,8 @@ export const invioCampagnaWhatsapp = inngest.createFunction(
           metaTemplateName: "",
           lingua: "it",
           indici: [] as number[],
-          fissi: {} as Record<string, string>,
+          vars: {} as Record<string, VarWa>,
+          serveCliente: false,
         };
       }
 
