@@ -617,24 +617,59 @@ function EditorCampagnaWhatsApp({
             <Card className="p-4 space-y-3">
               <div className="text-sm font-medium">Contenuto variabili</div>
               <div className="space-y-3">
-                {variabili.includes(1) && (
-                  <div className="text-sm text-muted-foreground">
-                    Variabile 1 — Nome del destinatario (automatico)
-                  </div>
-                )}
-                {variabiliFisse.map((n) => (
-                  <div key={n} className="space-y-1">
-                    <Label htmlFor={`var-${n}`}>Variabile {n}</Label>
-                    <Input
-                      id={`var-${n}`}
-                      value={fissi[String(n)] ?? ""}
-                      onChange={(e) =>
-                        setFissi((prev) => ({ ...prev, [String(n)]: e.target.value }))
-                      }
-                      placeholder={`Valore per {{${n}}}`}
-                    />
-                  </div>
-                ))}
+                {variabili.map((n) => {
+                  const cur: VarWa =
+                    vars[String(n)] ?? (n === 1 ? { tipo: "campo", campo: "nome" } : { tipo: "fisso", valore: "" });
+                  const aggiorna = (patch: Partial<VarWa>) =>
+                    setVars((prev) => ({ ...prev, [String(n)]: { ...cur, ...patch } }));
+                  return (
+                    <div key={n} className="space-y-1">
+                      <Label htmlFor={`var-${n}`}>Variabile {n}</Label>
+                      <div className="flex items-center gap-2">
+                        <Select
+                          value={cur.tipo}
+                          onValueChange={(v) =>
+                            aggiorna(
+                              v === "campo"
+                                ? { tipo: "campo", campo: cur.campo ?? "nome" }
+                                : { tipo: "fisso", valore: cur.valore ?? "" },
+                            )
+                          }
+                        >
+                          <SelectTrigger className="w-[150px] shrink-0">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="fisso">Testo fisso</SelectItem>
+                            <SelectItem value="campo">Campo cliente</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {cur.tipo === "fisso" ? (
+                          <Input
+                            id={`var-${n}`}
+                            value={cur.valore ?? ""}
+                            onChange={(e) => aggiorna({ valore: e.target.value })}
+                            placeholder={`Valore per {{${n}}}`}
+                          />
+                        ) : (
+                          <Select
+                            value={cur.campo ?? "nome"}
+                            onValueChange={(v) => aggiorna({ campo: v })}
+                          >
+                            <SelectTrigger className="flex-1">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {CAMPI_WA.map((c) => (
+                                <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </Card>
           )}
