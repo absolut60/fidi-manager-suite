@@ -32,6 +32,10 @@ import {
   aggiungiDestinatariCampagna,
   type DestinatarioCampagnaInput,
 } from "@/lib/campagne-destinatari";
+import {
+  aggiungiDestinatariWhatsappCampagna,
+  type DestinatarioWhatsappInput,
+} from "@/lib/campagne-destinatari-whatsapp";
 
 export const Route = createFileRoute("/_app/marketing/segmenti")({
   component: MarketingSegmentiPage,
@@ -464,6 +468,8 @@ function MarketingSegmentiPage() {
   const [aziendaliEsclusi, setAziendaliEsclusi] = useState<Set<string>>(new Set());
   const [caricamentoTutti, setCaricamentoTutti] = useState(false);
   const [campagnaId, setCampagnaId] = useState<string | undefined>(undefined);
+  const [canale, setCanale] = useState<"email" | "whatsapp">("email");
+  const [campagnaWaId, setCampagnaWaId] = useState<string | undefined>(undefined);
 
   // Reset selezione e pagina quando cambiano i filtri (NON al cambio pagina).
   // Saltato quando il cambio filtri deriva dal caricamento di una lista statica.
@@ -650,6 +656,78 @@ function MarketingSegmentiPage() {
   // lo stato "nessuna campagna": si distingue caricamento da lista vuota.
   const campagneLoading = campagneQuery.isPending;
   const campagneError = campagneQuery.error;
+
+  // === Canale WhatsApp: campagne + destinatari del segmento ===
+  const campagneWaQuery = useQuery({
+    queryKey: ["campagne-whatsapp", "selector"],
+    enabled: canale === "whatsapp",
+    staleTime: 0,
+    refetchOnMount: "always",
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("campagne_whatsapp")
+        .select("id, nome, stato")
+        .order("updated_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as Array<{ id: string; nome: string; stato: string }>;
+    },
+  });
+  const campagneWa = campagneWaQuery.data;
+  const campagneWaLoading = campagneWaQuery.isPending && canale === "whatsapp";
+  const campagneWaError = campagneWaQuery.error;
+
+  // Destinatari WhatsApp del segmento corrente (fonte: RPC, consenso già garantito).
+  const filtriKey = useMemo(() => JSON.stringify(filtri), [filtri]);
+  const { data: destinatariWaSegmento } = useQuery({
+    queryKey: ["destinatari-wa-segmento", filtriKey],
+    enabled: canale === "whatsapp",
+    staleTime: 30_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_destinatari_whatsapp_segmento", {
+        _filtri: JSON.parse(filtriKey),
+      } as never);
+      if (error) throw error;
+      return (data ?? []) as Array<{
+        contatto_id: string;
+        cliente_id: string | null;
+        cellulare: string;
+        nome_riferimento: string | null;
+      }>;
+    },
+  });
+
+  // Proiezione sui clienti selezionati
+  const destinatariWa = useMemo<DestinatarioWhatsappInput[]>(() => {
+    if (!destinatariWaSegmento) return [];
+    return destinatariWaSegmento
+      .filter((r) => r.cliente_id != null && selezionati.has(r.cliente_id))
+      .map((r) => ({
+        contatto_id: r.contatto_id,
+        cliente_id: r.cliente_id,
+        numero_dest: r.cellulare,
+        nome_riferimento: r.nome_riferimento,
+      }));
+  }, [destinatariWaSegmento, selezionati]);
+
+  const aggiungiDestinatariWa = useMutation({
+    mutationFn: async () => {
+      if (!campagnaWaId) throw new Error("Scegli prima una campagna WhatsApp");
+      if (destinatariWa.length === 0) throw new Error("Nessun destinatario WhatsApp tra i selezionati");
+      return aggiungiDestinatariWhatsappCampagna(campagnaWaId, destinatariWa, user?.id ?? null);
+    },
+    onSuccess: (r) => {
+      toast.success(`Aggiunti ${r.aggiunti} destinatari WhatsApp, ${r.saltati} già presenti saltati`);
+      setSelezionati(new Set());
+      setCampagnaWaId(undefined);
+      qc.invalidateQueries({ queryKey: ["messaggi-whatsapp"] });
+    },
+    onError: (e: any) => {
+      // eslint-disable-next-line no-console
+      console.error("[segmenti] errore aggiunta destinatari whatsapp", e);
+      const dettagli = [e?.message, e?.details, e?.hint, e?.code].filter(Boolean).join(" — ");
+      toast.error(dettagli || "Errore aggiunta destinatari WhatsApp", { duration: 10000 });
+    },
+  });
 
 
   // === Segmenti salvati ===
@@ -1124,61 +1202,138 @@ function MarketingSegmentiPage() {
       {/* Barra selezione destinatari */}
       {selezionati.size > 0 && (
         <Card className="p-4 flex flex-wrap items-center gap-3 border-[#c94f8f]/40 bg-[#c94f8f]/5">
+          <div className="flex items-center rounded-md border bg-background p-0.5 text-xs">
+            <button
+              type="button"
+              onClick={() => setCanale("email")}
+              className={`px-2.5 py-1 rounded-sm ${canale === "email" ? "bg-[#c94f8f] text-white font-medium" : "text-muted-foreground"}`}
+            >
+              Email
+            </button>
+            <button
+              type="button"
+              onClick={() => setCanale("whatsapp")}
+              className={`px-2.5 py-1 rounded-sm ${canale === "whatsapp" ? "bg-[#c94f8f] text-white font-medium" : "text-muted-foreground"}`}
+            >
+              WhatsApp
+            </button>
+          </div>
           <div className="text-sm">
             <span className="font-semibold">{selezionati.size.toLocaleString("it-IT")}</span> client
             {selezionati.size === 1 ? "e" : "i"} selezionat{selezionati.size === 1 ? "o" : "i"} —{" "}
-            <span className="font-semibold">{totaleDestinatari.toLocaleString("it-IT")}</span> destinatari totali
-            <span className="text-muted-foreground"> (email aziendali + contatti)</span>
+            {canale === "email" ? (
+              <>
+                <span className="font-semibold">{totaleDestinatari.toLocaleString("it-IT")}</span> destinatari totali
+                <span className="text-muted-foreground"> (email aziendali + contatti)</span>
+              </>
+            ) : (
+              <>
+                <span className="font-semibold">{destinatariWa.length.toLocaleString("it-IT")}</span> destinatari WhatsApp
+                <span className="text-muted-foreground"> (contatti con cellulare e consenso)</span>
+              </>
+            )}
           </div>
           <div className="flex items-center gap-2 ml-auto">
-            <Select value={campagnaId} onValueChange={setCampagnaId}>
-              <SelectTrigger className="w-[260px]">
-                <SelectValue placeholder="Scegli campagna" />
-              </SelectTrigger>
-              <SelectContent>
-                {campagneLoading ? (
-                  <div className="px-2 py-1.5 text-sm text-muted-foreground">Caricamento campagne…</div>
-                ) : campagneError ? (
-                  <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                    Errore nel caricamento delle campagne
-                    {(campagneError as any)?.message ? ` — ${(campagneError as any).message}` : ""}
-                  </div>
-                ) : !(campagne ?? []).length ? (
-                  <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                    Nessuna campagna disponibile — creane una in Campagne email
-                  </div>
-                ) : (
-                  (campagne ?? []).map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.stato === "pronta" ? "✅ " : "✏️ "}{c.nome}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-            <Button
-              onClick={() => aggiungiDestinatari.mutate()}
-              disabled={!campagnaId || totaleDestinatari === 0 || aggiungiDestinatari.isPending}
-              title={!campagnaId ? "Scegli prima una campagna" : "Aggiungi i destinatari selezionati alla campagna"}
-            >
+            {canale === "email" ? (
+              <Select value={campagnaId} onValueChange={setCampagnaId}>
+                <SelectTrigger className="w-[260px]">
+                  <SelectValue placeholder="Scegli campagna" />
+                </SelectTrigger>
+                <SelectContent>
+                  {campagneLoading ? (
+                    <div className="px-2 py-1.5 text-sm text-muted-foreground">Caricamento campagne…</div>
+                  ) : campagneError ? (
+                    <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                      Errore nel caricamento delle campagne
+                      {(campagneError as any)?.message ? ` — ${(campagneError as any).message}` : ""}
+                    </div>
+                  ) : !(campagne ?? []).length ? (
+                    <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                      Nessuna campagna disponibile — creane una in Campagne email
+                    </div>
+                  ) : (
+                    (campagne ?? []).map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.stato === "pronta" ? "✅ " : "✏️ "}{c.nome}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Select value={campagnaWaId} onValueChange={setCampagnaWaId}>
+                <SelectTrigger className="w-[260px]">
+                  <SelectValue placeholder="Scegli campagna WhatsApp" />
+                </SelectTrigger>
+                <SelectContent>
+                  {campagneWaLoading ? (
+                    <div className="px-2 py-1.5 text-sm text-muted-foreground">Caricamento campagne…</div>
+                  ) : campagneWaError ? (
+                    <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                      Errore nel caricamento delle campagne
+                      {(campagneWaError as any)?.message ? ` — ${(campagneWaError as any).message}` : ""}
+                    </div>
+                  ) : !(campagneWa ?? []).length ? (
+                    <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                      Nessuna campagna WhatsApp — creane una in Campagne › WhatsApp
+                    </div>
+                  ) : (
+                    (campagneWa ?? []).map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.stato === "pronta" ? "✅ " : "✏️ "}{c.nome}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            )}
+            {canale === "email" ? (
+              <Button
+                onClick={() => aggiungiDestinatari.mutate()}
+                disabled={!campagnaId || totaleDestinatari === 0 || aggiungiDestinatari.isPending}
+                title={!campagnaId ? "Scegli prima una campagna" : "Aggiungi i destinatari selezionati alla campagna"}
+              >
 
-              {aggiungiDestinatari.isPending
-                ? <Loader2 className="size-4 mr-2 animate-spin" />
-                : <Send className="size-4 mr-2" />}
-              Aggiungi alla campagna
-            </Button>
+                {aggiungiDestinatari.isPending
+                  ? <Loader2 className="size-4 mr-2 animate-spin" />
+                  : <Send className="size-4 mr-2" />}
+                Aggiungi alla campagna
+              </Button>
+            ) : (
+              <Button
+                onClick={() => aggiungiDestinatariWa.mutate()}
+                disabled={!campagnaWaId || destinatariWa.length === 0 || aggiungiDestinatariWa.isPending}
+                title={!campagnaWaId ? "Scegli prima una campagna WhatsApp" : "Aggiungi i destinatari WhatsApp selezionati alla campagna"}
+              >
+                {aggiungiDestinatariWa.isPending
+                  ? <Loader2 className="size-4 mr-2 animate-spin" />
+                  : <Send className="size-4 mr-2" />}
+                Aggiungi alla campagna
+              </Button>
+            )}
             <Button variant="ghost" size="sm" onClick={() => setSelezionati(new Set())}>
               Azzera selezione
             </Button>
           </div>
-          {campagneError ? (
+          {canale === "email" ? (
+            campagneError ? (
+              <div className="w-full text-xs text-destructive">
+                Impossibile caricare le campagne
+                {(campagneError as any)?.message ? `: ${(campagneError as any).message}` : ""}
+              </div>
+            ) : !campagneLoading && !(campagne ?? []).length ? (
+              <div className="w-full text-xs text-destructive">
+                Nessuna campagna disponibile: creane una nella pagina «Campagne email».
+              </div>
+            ) : null
+          ) : campagneWaError ? (
             <div className="w-full text-xs text-destructive">
-              Impossibile caricare le campagne
-              {(campagneError as any)?.message ? `: ${(campagneError as any).message}` : ""}
+              Impossibile caricare le campagne WhatsApp
+              {(campagneWaError as any)?.message ? `: ${(campagneWaError as any).message}` : ""}
             </div>
-          ) : !campagneLoading && !(campagne ?? []).length ? (
+          ) : !campagneWaLoading && !(campagneWa ?? []).length ? (
             <div className="w-full text-xs text-destructive">
-              Nessuna campagna disponibile: creane una nella pagina «Campagne email».
+              Nessuna campagna WhatsApp — creane una in Campagne › WhatsApp.
             </div>
           ) : null}
           <div className="w-full text-xs text-muted-foreground">
