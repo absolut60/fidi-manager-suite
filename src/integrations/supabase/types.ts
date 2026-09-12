@@ -1135,6 +1135,7 @@ export type Database = {
         Row: {
           creata_da: string | null
           created_at: string
+          evento_id: string | null
           id: string
           inviata_at: string | null
           invii_falliti: number | null
@@ -1152,6 +1153,7 @@ export type Database = {
         Insert: {
           creata_da?: string | null
           created_at?: string
+          evento_id?: string | null
           id?: string
           inviata_at?: string | null
           invii_falliti?: number | null
@@ -1169,6 +1171,7 @@ export type Database = {
         Update: {
           creata_da?: string | null
           created_at?: string
+          evento_id?: string | null
           id?: string
           inviata_at?: string | null
           invii_falliti?: number | null
@@ -1184,6 +1187,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "campagne_whatsapp_evento_id_fkey"
+            columns: ["evento_id"]
+            isOneToOne: false
+            referencedRelation: "eventi"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "campagne_whatsapp_template_id_fkey"
             columns: ["template_id"]
@@ -7166,6 +7176,15 @@ export type Database = {
       prossimo_numero_ordine: { Args: { p_anno: number }; Returns: number }
       prossimo_numero_preventivo: { Args: { p_anno: number }; Returns: number }
       refresh_fatturato_mensile: { Args: never; Returns: string }
+      registra_adesione_evento_whatsapp: {
+        Args: { _numero_raw: string }
+        Returns: {
+          evento_id: string
+          gia_presente: boolean
+          motivo: string
+          ok: boolean
+        }[]
+      }
       registra_clic_campagna: {
         Args: { _ip?: string; _token: string; _ua?: string; _url: string }
         Returns: boolean
