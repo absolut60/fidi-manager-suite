@@ -470,22 +470,42 @@ function EditorCampagnaWhatsApp({
   const [fissi, setFissi] = useState<Record<string, string>>(
     () => ({ ...(campagna.parametri?.fissi ?? {}) }),
   );
+  const [eventoId, setEventoId] = useState<string>(campagna.evento_id ?? "");
 
   const { data: templates } = useQuery({
     queryKey: ["whatsapp_template", "opzioni"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("whatsapp_template")
-        .select("id, nome, stato, body_testo")
+        .select("id, nome, stato, body_testo, pulsanti")
         .order("updated_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as TemplateOpt[];
     },
   });
 
+  const { data: eventi } = useQuery({
+    queryKey: ["eventi", "opzioni"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("eventi")
+        .select("id, nome, data_evento, luogo")
+        .order("data_evento", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as { id: string; nome: string; data_evento: string | null; luogo: string | null }[];
+    },
+  });
+
   const scelto = useMemo(
     () => templates?.find((t) => t.id === templateId) ?? null,
     [templates, templateId],
+  );
+
+  const haFlussoEvento = useMemo(
+    () => Array.isArray(scelto?.pulsanti) && scelto.pulsanti.some(
+      (p: any) => p?.tipo === "rapido" && p?.flusso === "evento",
+    ),
+    [scelto],
   );
 
   const variabili = useMemo(() => indiciVariabili(scelto?.body_testo ?? null), [scelto]);
