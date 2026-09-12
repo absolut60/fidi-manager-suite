@@ -133,6 +133,19 @@ function statoTemplateBadge(stato: string) {
   }
 }
 
+type ConteggiWa = { totale: number; inCoda: number; inviato: number; consegnato: number; letto: number; fallito: number };
+const CONTEGGI_VUOTI: ConteggiWa = { totale: 0, inCoda: 0, inviato: 0, consegnato: 0, letto: 0, fallito: 0 };
+
+const fmtEuro = (v: number) => v.toLocaleString("it-IT", { style: "currency", currency: "EUR" });
+
+// Polling attivo se una campagna è in invio oppure è stata toccata di recente:
+// gli stati consegnato/letto arrivano anche dopo il "completata".
+function campagnaDaSeguire(c: CampagnaWa): boolean {
+  if (c.stato === "in_corso") return true;
+  const ts = c.inviata_at ?? c.updated_at;
+  return !!ts && Date.parse(ts) > Date.now() - 15 * 60 * 1000;
+}
+
 export function WhatsAppCampagneTab() {
   const { user } = useAuth();
   const qc = useQueryClient();
