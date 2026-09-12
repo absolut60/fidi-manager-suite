@@ -32,6 +32,10 @@ import {
   aggiungiDestinatariCampagna,
   type DestinatarioCampagnaInput,
 } from "@/lib/campagne-destinatari";
+import {
+  aggiungiDestinatariWhatsappCampagna,
+  type DestinatarioWhatsappInput,
+} from "@/lib/campagne-destinatari-whatsapp";
 
 export const Route = createFileRoute("/_app/marketing/segmenti")({
   component: MarketingSegmentiPage,
@@ -464,6 +468,8 @@ function MarketingSegmentiPage() {
   const [aziendaliEsclusi, setAziendaliEsclusi] = useState<Set<string>>(new Set());
   const [caricamentoTutti, setCaricamentoTutti] = useState(false);
   const [campagnaId, setCampagnaId] = useState<string | undefined>(undefined);
+  const [canale, setCanale] = useState<"email" | "whatsapp">("email");
+  const [campagnaWaId, setCampagnaWaId] = useState<string | undefined>(undefined);
 
   // Reset selezione e pagina quando cambiano i filtri (NON al cambio pagina).
   // Saltato quando il cambio filtri deriva dal caricamento di una lista statica.
