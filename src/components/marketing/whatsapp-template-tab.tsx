@@ -334,38 +334,53 @@ function EditorTemplateWhatsApp({
     setPulsanti(pulsanti.map((p, idx) => (idx === i ? ({ ...p, ...patch } as PulsanteWa) : p)));
   }
 
+  /** Salva i campi correnti; se `stato` è omesso non tocca lo stato del template. */
+  async function salvaCampi(stato?: "bozza") {
+    if (!nome.trim()) throw new Error("Il nome template è obbligatorio");
+    if (!body.trim()) throw new Error("Il corpo del messaggio è obbligatorio");
+    const { error } = await supabase
+      .from("whatsapp_template")
+      .update({
+        nome: nome.trim(),
+        categoria,
+        ...(stato ? { stato } : {}),
+        header_tipo: headerTipo,
+        header_testo: headerTipo === "testo" ? headerTesto.trim() || null : null,
+        header_media_url: headerTipo === "immagine" ? headerMedia || null : null,
+        body_testo: body,
+        footer_testo: footer.trim() || null,
+        pulsanti: pulsanti as never,
+      } as never)
+      .eq("id", template.id);
+    if (error) throw error;
+  }
+
   const salva = useMutation({
-    mutationFn: async (stato: "bozza" | "in_attesa") => {
-      if (!nome.trim()) throw new Error("Il nome template è obbligatorio");
-      if (!body.trim()) throw new Error("Il corpo del messaggio è obbligatorio");
-      const { error } = await supabase
-        .from("whatsapp_template")
-        .update({
-          nome: nome.trim(),
-          categoria,
-          stato,
-          header_tipo: headerTipo,
-          header_testo: headerTipo === "testo" ? headerTesto.trim() || null : null,
-          header_media_url: headerTipo === "immagine" ? headerMedia || null : null,
-          body_testo: body,
-          footer_testo: footer.trim() || null,
-          pulsanti: pulsanti as never,
-        } as never)
-        .eq("id", template.id);
-      if (error) throw error;
-      return stato;
-    },
-    onSuccess: (stato) => {
-      toast.success(
-        stato === "in_attesa"
-          ? "Inviato in approvazione (collegamento Meta in arrivo)"
-          : "Template salvato",
-      );
+    mutationFn: async () => salvaCampi("bozza"),
+    onSuccess: () => {
+      toast.success("Template salvato");
       onSaved();
-      if (stato === "in_attesa") onClose();
     },
     onError: (e: any) => toast.error(e?.message ?? "Errore salvataggio"),
   });
+
+  const invia = useMutation({
+    mutationFn: async () => {
+      await salvaCampi();
+      return await inviaTemplateInApprovazione({ data: { templateId: template.id } });
+    },
+    onSuccess: (res) => {
+      onSaved();
+      if (res?.ok) {
+        toast.success("Template inviato in approvazione a Meta");
+        onClose();
+      } else {
+        toast.error(res?.error ?? "Invio a Meta non riuscito");
+      }
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Errore invio a Meta"),
+  });
+
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
