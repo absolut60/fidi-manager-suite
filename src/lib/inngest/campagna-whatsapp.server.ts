@@ -4,6 +4,16 @@ import { inviaTemplate360 } from "./whatsapp-invio.server";
 
 type EventData = { campagna_id: string };
 
+type VarWa = { tipo: "fisso" | "campo"; valore?: string; campo?: string };
+
+type ClienteWa = {
+  ragione_sociale?: string | null;
+  citta?: string | null;
+  provincia?: string | null;
+  indirizzo?: string | null;
+  categoria?: string | null;
+} | null;
+
 const DEFAULT_BLOCCO = 12;
 const DEFAULT_PAUSA = 60;
 const MAX_PER_RUN = 150;
@@ -60,7 +70,8 @@ export const invioCampagnaWhatsapp = inngest.createFunction(
           metaTemplateName: "",
           lingua: "it",
           indici: [] as number[],
-          fissi: {} as Record<string, string>,
+          vars: {} as Record<string, VarWa>,
+          serveCliente: false,
         };
       }
 
@@ -79,7 +90,28 @@ export const invioCampagnaWhatsapp = inngest.createFunction(
         .update({ stato: "in_corso" } as never)
         .eq("id", campagna_id);
 
-      const parametri = (camp as { parametri?: { fissi?: Record<string, string> } | null }).parametri;
+      const parametri = (
+        camp as {
+          parametri?: {
+            vars?: Record<string, VarWa>;
+            fissi?: Record<string, string>;
+          } | null;
+        }
+      ).parametri;
+
+      // Normalizzazione vars: nuovo formato {vars}, retrocompatibile col vecchio {fissi}.
+      const vars: Record<string, VarWa> = {};
+      if (parametri?.vars && typeof parametri.vars === "object") {
+        for (const [k, v] of Object.entries(parametri.vars)) {
+          if (v && (v.tipo === "fisso" || v.tipo === "campo")) vars[k] = v;
+        }
+      } else if (parametri?.fissi && typeof parametri.fissi === "object") {
+        for (const [k, v] of Object.entries(parametri.fissi)) {
+          vars[k] = { tipo: "fisso", valore: String(v ?? "") };
+        }
+      }
+      if (!vars["1"]) vars["1"] = { tipo: "campo", campo: "nome" };
+      const serveCliente = Object.values(vars).some((v) => v.tipo === "campo");
 
       return {
         giaCompletata: false,
@@ -88,7 +120,8 @@ export const invioCampagnaWhatsapp = inngest.createFunction(
           ((camp as { template_name?: string | null }).template_name ?? ""),
         lingua: (tpl.lingua as string | null) || "it",
         indici: indiciVariabili(tpl.body_testo as string),
-        fissi: (parametri?.fissi ?? {}) as Record<string, string>,
+        vars,
+        serveCliente,
       };
     });
 
@@ -161,20 +194,45 @@ export const invioCampagnaWhatsapp = inngest.createFunction(
         for (const r of righe ?? []) {
           if (r.stato !== "in_coda") continue;
           try {
-            let nomeDest = (r.nome_riferimento as string | null)?.trim() || "";
-            if (!nomeDest && r.cliente_id) {
-              const { data: cli } = await supabaseAdmin
+            let cli: ClienteWa = null;
+            if (prep.serveCliente && r.cliente_id) {
+              const { data } = await supabaseAdmin
                 .from("clienti")
-                .select("ragione_sociale")
+                .select("ragione_sociale, citta, provincia, indirizzo, categoria")
                 .eq("id", r.cliente_id)
                 .maybeSingle();
-              nomeDest = (cli?.ragione_sociale as string | null)?.trim() || "";
+              cli = (data as ClienteWa) ?? null;
             }
-            if (!nomeDest) nomeDest = "Cliente";
 
-            const parametriBody = prep.indici.map((n) =>
-              n === 1 ? nomeDest : (prep.fissi[String(n)] ?? ""),
-            );
+            const risolviCampo = (chiave?: string): string => {
+              switch (chiave) {
+                case "nome": {
+                  const n = (r.nome_riferimento as string | null)?.trim();
+                  if (n) return n;
+                  const rs = (cli?.ragione_sociale ?? "")?.trim();
+                  return rs || "Cliente";
+                }
+                case "ragione_sociale":
+                  return cli?.ragione_sociale ?? "";
+                case "citta":
+                  return cli?.citta ?? "";
+                case "provincia":
+                  return cli?.provincia ?? "";
+                case "indirizzo":
+                  return cli?.indirizzo ?? "";
+                case "categoria":
+                  return cli?.categoria ?? "";
+                default:
+                  return "";
+              }
+            };
+
+            const parametriBody = prep.indici.map((n) => {
+              const def = prep.vars[String(n)] as VarWa | undefined;
+              if (def?.tipo === "campo") return risolviCampo(def.campo);
+              if (def?.tipo === "fisso") return def.valore ?? "";
+              return n === 1 ? risolviCampo("nome") : "";
+            });
 
             const res = await inviaTemplate360({
               numeroDest: r.numero_dest as string,
