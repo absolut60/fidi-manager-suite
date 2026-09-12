@@ -28,6 +28,17 @@ import {
 
 const DEST_PAGE_SIZE = 100;
 
+const CAMPI_WA = [
+  { key: "nome", label: "Nome del destinatario" },
+  { key: "ragione_sociale", label: "Ragione sociale" },
+  { key: "citta", label: "Città" },
+  { key: "provincia", label: "Provincia" },
+  { key: "indirizzo", label: "Indirizzo" },
+  { key: "categoria", label: "Categoria" },
+] as const;
+
+type VarWa = { tipo: "fisso" | "campo"; valore?: string; campo?: string };
+
 type CampagnaWa = {
   id: string;
   nome: string;
@@ -40,7 +51,7 @@ type CampagnaWa = {
   invii_ok: number | null;
   invii_falliti: number | null;
   saltati: number | null;
-  parametri: { fissi?: Record<string, string> } | null;
+  parametri: { vars?: Record<string, VarWa>; fissi?: Record<string, string> } | null;
   created_at: string;
   updated_at: string | null;
 };
@@ -467,9 +478,16 @@ function EditorCampagnaWhatsApp({
 }: { campagna: CampagnaWa; onClose: () => void; onSaved: () => void }) {
   const [nome, setNome] = useState(campagna.nome);
   const [templateId, setTemplateId] = useState<string>(campagna.template_id ?? "");
-  const [fissi, setFissi] = useState<Record<string, string>>(
-    () => ({ ...(campagna.parametri?.fissi ?? {}) }),
-  );
+  const [vars, setVars] = useState<Record<string, VarWa>>(() => {
+    const p = campagna.parametri;
+    if (p?.vars && typeof p.vars === "object") return { ...p.vars };
+    const out: Record<string, VarWa> = {};
+    for (const [k, v] of Object.entries(p?.fissi ?? {})) {
+      out[k] = { tipo: "fisso", valore: v };
+    }
+    if (!out["1"]) out["1"] = { tipo: "campo", campo: "nome" };
+    return out;
+  });
   const [eventoId, setEventoId] = useState<string>(campagna.evento_id ?? "");
 
   const { data: templates } = useQuery({
@@ -509,7 +527,6 @@ function EditorCampagnaWhatsApp({
   );
 
   const variabili = useMemo(() => indiciVariabili(scelto?.body_testo ?? null), [scelto]);
-  const variabiliFisse = useMemo(() => variabili.filter((n) => n >= 2), [variabili]);
 
   const salva = useMutation({
     mutationFn: async (stato: "bozza" | "pronta") => {
@@ -520,13 +537,14 @@ function EditorCampagnaWhatsApp({
       if (stato === "pronta" && haFlussoEvento && !eventoId) {
         throw new Error("Scegli l'evento collegato prima di segnare pronta");
       }
-      const fissiPuliti: Record<string, string> = {};
-      for (const n of variabiliFisse) {
-        const v = (fissi[String(n)] ?? "").trim();
-        fissiPuliti[String(n)] = v;
-      }
-      if (stato === "pronta" && variabiliFisse.some((n) => !fissiPuliti[String(n)])) {
-        throw new Error("Compila tutte le variabili del template prima di segnare pronta");
+      const varsPulite: Record<string, VarWa> = {};
+      for (const n of variabili) {
+        const cur = vars[String(n)] ?? (n === 1 ? { tipo: "campo" as const, campo: "nome" } : { tipo: "fisso" as const, valore: "" });
+        if (cur.tipo === "campo") {
+          varsPulite[String(n)] = { tipo: "campo", campo: cur.campo ?? "nome" };
+        } else {
+          varsPulite[String(n)] = { tipo: "fisso", valore: (cur.valore ?? "").trim() };
+        }
       }
       const { error } = await supabase
         .from("campagne_whatsapp")
@@ -535,7 +553,7 @@ function EditorCampagnaWhatsApp({
           template_id: scelto?.id ?? null,
           template_name: scelto?.nome ?? null,
           evento_id: haFlussoEvento ? (eventoId || null) : null,
-          parametri: { fissi: fissiPuliti },
+          parametri: { vars: varsPulite },
           stato,
         })
         .eq("id", campagna.id);
@@ -599,24 +617,59 @@ function EditorCampagnaWhatsApp({
             <Card className="p-4 space-y-3">
               <div className="text-sm font-medium">Contenuto variabili</div>
               <div className="space-y-3">
-                {variabili.includes(1) && (
-                  <div className="text-sm text-muted-foreground">
-                    Variabile 1 — Nome del destinatario (automatico)
-                  </div>
-                )}
-                {variabiliFisse.map((n) => (
-                  <div key={n} className="space-y-1">
-                    <Label htmlFor={`var-${n}`}>Variabile {n}</Label>
-                    <Input
-                      id={`var-${n}`}
-                      value={fissi[String(n)] ?? ""}
-                      onChange={(e) =>
-                        setFissi((prev) => ({ ...prev, [String(n)]: e.target.value }))
-                      }
-                      placeholder={`Valore per {{${n}}}`}
-                    />
-                  </div>
-                ))}
+                {variabili.map((n) => {
+                  const cur: VarWa =
+                    vars[String(n)] ?? (n === 1 ? { tipo: "campo", campo: "nome" } : { tipo: "fisso", valore: "" });
+                  const aggiorna = (patch: Partial<VarWa>) =>
+                    setVars((prev) => ({ ...prev, [String(n)]: { ...cur, ...patch } }));
+                  return (
+                    <div key={n} className="space-y-1">
+                      <Label htmlFor={`var-${n}`}>Variabile {n}</Label>
+                      <div className="flex items-center gap-2">
+                        <Select
+                          value={cur.tipo}
+                          onValueChange={(v) =>
+                            aggiorna(
+                              v === "campo"
+                                ? { tipo: "campo", campo: cur.campo ?? "nome" }
+                                : { tipo: "fisso", valore: cur.valore ?? "" },
+                            )
+                          }
+                        >
+                          <SelectTrigger className="w-[150px] shrink-0">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="fisso">Testo fisso</SelectItem>
+                            <SelectItem value="campo">Campo cliente</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {cur.tipo === "fisso" ? (
+                          <Input
+                            id={`var-${n}`}
+                            value={cur.valore ?? ""}
+                            onChange={(e) => aggiorna({ valore: e.target.value })}
+                            placeholder={`Valore per {{${n}}}`}
+                          />
+                        ) : (
+                          <Select
+                            value={cur.campo ?? "nome"}
+                            onValueChange={(v) => aggiorna({ campo: v })}
+                          >
+                            <SelectTrigger className="flex-1">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {CAMPI_WA.map((c) => (
+                                <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </Card>
           )}
