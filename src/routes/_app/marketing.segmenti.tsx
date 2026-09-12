@@ -657,6 +657,78 @@ function MarketingSegmentiPage() {
   const campagneLoading = campagneQuery.isPending;
   const campagneError = campagneQuery.error;
 
+  // === Canale WhatsApp: campagne + destinatari del segmento ===
+  const campagneWaQuery = useQuery({
+    queryKey: ["campagne-whatsapp", "selector"],
+    enabled: canale === "whatsapp",
+    staleTime: 0,
+    refetchOnMount: "always",
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("campagne_whatsapp")
+        .select("id, nome, stato")
+        .order("updated_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as Array<{ id: string; nome: string; stato: string }>;
+    },
+  });
+  const campagneWa = campagneWaQuery.data;
+  const campagneWaLoading = campagneWaQuery.isPending && canale === "whatsapp";
+  const campagneWaError = campagneWaQuery.error;
+
+  // Destinatari WhatsApp del segmento corrente (fonte: RPC, consenso già garantito).
+  const filtriKey = useMemo(() => JSON.stringify(filtri), [filtri]);
+  const { data: destinatariWaSegmento } = useQuery({
+    queryKey: ["destinatari-wa-segmento", filtriKey],
+    enabled: canale === "whatsapp",
+    staleTime: 30_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_destinatari_whatsapp_segmento", {
+        _filtri: JSON.parse(filtriKey),
+      } as never);
+      if (error) throw error;
+      return (data ?? []) as Array<{
+        contatto_id: string;
+        cliente_id: string | null;
+        cellulare: string;
+        nome_riferimento: string | null;
+      }>;
+    },
+  });
+
+  // Proiezione sui clienti selezionati
+  const destinatariWa = useMemo<DestinatarioWhatsappInput[]>(() => {
+    if (!destinatariWaSegmento) return [];
+    return destinatariWaSegmento
+      .filter((r) => r.cliente_id != null && selezionati.has(r.cliente_id))
+      .map((r) => ({
+        contatto_id: r.contatto_id,
+        cliente_id: r.cliente_id,
+        numero_dest: r.cellulare,
+        nome_riferimento: r.nome_riferimento,
+      }));
+  }, [destinatariWaSegmento, selezionati]);
+
+  const aggiungiDestinatariWa = useMutation({
+    mutationFn: async () => {
+      if (!campagnaWaId) throw new Error("Scegli prima una campagna WhatsApp");
+      if (destinatariWa.length === 0) throw new Error("Nessun destinatario WhatsApp tra i selezionati");
+      return aggiungiDestinatariWhatsappCampagna(campagnaWaId, destinatariWa, user?.id ?? null);
+    },
+    onSuccess: (r) => {
+      toast.success(`Aggiunti ${r.aggiunti} destinatari WhatsApp, ${r.saltati} già presenti saltati`);
+      setSelezionati(new Set());
+      setCampagnaWaId(undefined);
+      qc.invalidateQueries({ queryKey: ["messaggi-whatsapp"] });
+    },
+    onError: (e: any) => {
+      // eslint-disable-next-line no-console
+      console.error("[segmenti] errore aggiunta destinatari whatsapp", e);
+      const dettagli = [e?.message, e?.details, e?.hint, e?.code].filter(Boolean).join(" — ");
+      toast.error(dettagli || "Errore aggiunta destinatari WhatsApp", { duration: 10000 });
+    },
+  });
+
 
   // === Segmenti salvati ===
   const { data: segmentiSalvati } = useQuery({
