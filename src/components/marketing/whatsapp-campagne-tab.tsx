@@ -38,6 +38,7 @@ type CampagnaWa = {
   invii_ok: number | null;
   invii_falliti: number | null;
   saltati: number | null;
+  parametri: { fissi?: Record<string, string> } | null;
   created_at: string;
   updated_at: string | null;
 };
@@ -130,7 +131,7 @@ export function WhatsAppCampagneTab() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("campagne_whatsapp")
-        .select("id, nome, stato, template_id, template_name, inviata_at, totale_invii, invii_ok, invii_falliti, saltati, created_at, updated_at")
+        .select("id, nome, stato, template_id, template_name, inviata_at, totale_invii, invii_ok, invii_falliti, saltati, parametri, created_at, updated_at")
         .order("updated_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as CampagnaWa[];
@@ -165,7 +166,7 @@ export function WhatsAppCampagneTab() {
           stato: "bozza",
           creata_da: user?.id ?? null,
         })
-        .select("id, nome, stato, template_id, template_name, inviata_at, totale_invii, invii_ok, invii_falliti, saltati, created_at, updated_at")
+        .select("id, nome, stato, template_id, template_name, inviata_at, totale_invii, invii_ok, invii_falliti, saltati, parametri, created_at, updated_at")
         .single();
       if (error) throw error;
       return data as CampagnaWa;
@@ -184,6 +185,7 @@ export function WhatsAppCampagneTab() {
         stato: "bozza",
         template_id: c.template_id,
         template_name: c.template_name,
+        parametri: c.parametri ?? null,
         creata_da: user?.id ?? null,
       });
       if (error) throw error;
@@ -326,11 +328,23 @@ export function WhatsAppCampagneTab() {
   );
 }
 
+function indiciVariabili(body: string | null): number[] {
+  if (!body) return [];
+  const set = new Set<number>();
+  for (const m of body.matchAll(/\{\{(\d+)\}\}/g)) {
+    set.add(parseInt(m[1], 10));
+  }
+  return [...set].sort((a, b) => a - b);
+}
+
 function EditorCampagnaWhatsApp({
   campagna, onClose, onSaved,
 }: { campagna: CampagnaWa; onClose: () => void; onSaved: () => void }) {
   const [nome, setNome] = useState(campagna.nome);
   const [templateId, setTemplateId] = useState<string>(campagna.template_id ?? "");
+  const [fissi, setFissi] = useState<Record<string, string>>(
+    () => ({ ...(campagna.parametri?.fissi ?? {}) }),
+  );
 
   const { data: templates } = useQuery({
     queryKey: ["whatsapp_template", "opzioni"],
@@ -349,11 +363,22 @@ function EditorCampagnaWhatsApp({
     [templates, templateId],
   );
 
+  const variabili = useMemo(() => indiciVariabili(scelto?.body_testo ?? null), [scelto]);
+  const variabiliFisse = useMemo(() => variabili.filter((n) => n >= 2), [variabili]);
+
   const salva = useMutation({
     mutationFn: async (stato: "bozza" | "pronta") => {
       if (!nome.trim()) throw new Error("Il nome campagna è obbligatorio");
       if (stato === "pronta" && (!scelto || scelto.stato !== "approvato")) {
         throw new Error("Scegli un template approvato prima di segnare pronta");
+      }
+      const fissiPuliti: Record<string, string> = {};
+      for (const n of variabiliFisse) {
+        const v = (fissi[String(n)] ?? "").trim();
+        fissiPuliti[String(n)] = v;
+      }
+      if (stato === "pronta" && variabiliFisse.some((n) => !fissiPuliti[String(n)])) {
+        throw new Error("Compila tutte le variabili del template prima di segnare pronta");
       }
       const { error } = await supabase
         .from("campagne_whatsapp")
@@ -361,6 +386,7 @@ function EditorCampagnaWhatsApp({
           nome: nome.trim(),
           template_id: scelto?.id ?? null,
           template_name: scelto?.nome ?? null,
+          parametri: { fissi: fissiPuliti },
           stato,
         })
         .eq("id", campagna.id);
@@ -419,6 +445,32 @@ function EditorCampagnaWhatsApp({
               </div>
             )}
           </div>
+
+          {scelto && variabili.length > 0 && (
+            <Card className="p-4 space-y-3">
+              <div className="text-sm font-medium">Contenuto variabili</div>
+              <div className="space-y-3">
+                {variabili.includes(1) && (
+                  <div className="text-sm text-muted-foreground">
+                    Variabile 1 — Nome del destinatario (automatico)
+                  </div>
+                )}
+                {variabiliFisse.map((n) => (
+                  <div key={n} className="space-y-1">
+                    <Label htmlFor={`var-${n}`}>Variabile {n}</Label>
+                    <Input
+                      id={`var-${n}`}
+                      value={fissi[String(n)] ?? ""}
+                      onChange={(e) =>
+                        setFissi((prev) => ({ ...prev, [String(n)]: e.target.value }))
+                      }
+                      placeholder={`Valore per {{${n}}}`}
+                    />
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
 
           {scelto?.body_testo && (
             <Card className="p-4 space-y-2">
