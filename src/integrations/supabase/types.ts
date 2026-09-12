@@ -6071,6 +6071,14 @@ export type Database = {
         Args: { _cliente_id: string; _isc_id: string }
         Returns: string
       }
+      aggiorna_stato_messaggio_whatsapp: {
+        Args: {
+          _errore?: string
+          _meta_message_id: string
+          _nuovo_stato: string
+        }
+        Returns: boolean
+      }
       allegato_storage_path_cliente_id: {
         Args: { _name: string }
         Returns: string
