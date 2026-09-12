@@ -1142,8 +1142,12 @@ export type Database = {
           messaggio: string | null
           nome: string
           parametri: Json | null
-          template_name: string
+          saltati: number
+          stato: string
+          template_id: string | null
+          template_name: string | null
           totale_invii: number | null
+          updated_at: string
         }
         Insert: {
           creata_da?: string | null
@@ -1155,8 +1159,12 @@ export type Database = {
           messaggio?: string | null
           nome: string
           parametri?: Json | null
-          template_name: string
+          saltati?: number
+          stato?: string
+          template_id?: string | null
+          template_name?: string | null
           totale_invii?: number | null
+          updated_at?: string
         }
         Update: {
           creata_da?: string | null
@@ -1168,10 +1176,22 @@ export type Database = {
           messaggio?: string | null
           nome?: string
           parametri?: Json | null
-          template_name?: string
+          saltati?: number
+          stato?: string
+          template_id?: string | null
+          template_name?: string | null
           totale_invii?: number | null
+          updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "campagne_whatsapp_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_template"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       canale_membri: {
         Row: {
@@ -3278,7 +3298,9 @@ export type Database = {
       }
       messaggi_whatsapp: {
         Row: {
+          aggiunto_da: string | null
           campagna_id: string | null
+          cliente_id: string | null
           consegnato_at: string | null
           contatto_id: string
           created_at: string
@@ -3288,11 +3310,14 @@ export type Database = {
           letto_at: string | null
           messaggio: string | null
           meta_message_id: string | null
+          nome_riferimento: string | null
           numero_dest: string
           stato: Database["public"]["Enums"]["stato_messaggio_wa"]
         }
         Insert: {
+          aggiunto_da?: string | null
           campagna_id?: string | null
+          cliente_id?: string | null
           consegnato_at?: string | null
           contatto_id: string
           created_at?: string
@@ -3302,11 +3327,14 @@ export type Database = {
           letto_at?: string | null
           messaggio?: string | null
           meta_message_id?: string | null
+          nome_riferimento?: string | null
           numero_dest: string
           stato?: Database["public"]["Enums"]["stato_messaggio_wa"]
         }
         Update: {
+          aggiunto_da?: string | null
           campagna_id?: string | null
+          cliente_id?: string | null
           consegnato_at?: string | null
           contatto_id?: string
           created_at?: string
@@ -3316,6 +3344,7 @@ export type Database = {
           letto_at?: string | null
           messaggio?: string | null
           meta_message_id?: string | null
+          nome_riferimento?: string | null
           numero_dest?: string
           stato?: Database["public"]["Enums"]["stato_messaggio_wa"]
         }
@@ -3326,6 +3355,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "campagne_whatsapp"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messaggi_whatsapp_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messaggi_whatsapp_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti_con_rischio"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messaggi_whatsapp_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
           },
           {
             foreignKeyName: "messaggi_whatsapp_contatto_id_fkey"
