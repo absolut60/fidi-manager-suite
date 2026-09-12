@@ -6228,6 +6228,20 @@ export type Database = {
         }[]
       }
       effective_store_filter: { Args: { _requested: string }; Returns: string }
+      elenco_persone_whatsapp_segmento: {
+        Args: { _filtri: Json; _solo_contattabili?: boolean }
+        Returns: {
+          cellulare: string
+          cellulare_valido: boolean
+          cliente_id: string
+          cognome: string
+          consenso_whatsapp: boolean
+          contattabile: boolean
+          contatto_id: string
+          nome: string
+          ragione_sociale: string
+        }[]
+      }
       elimina_canale: {
         Args: { _canale_id: string }
         Returns: {
