@@ -194,20 +194,45 @@ export const invioCampagnaWhatsapp = inngest.createFunction(
         for (const r of righe ?? []) {
           if (r.stato !== "in_coda") continue;
           try {
-            let nomeDest = (r.nome_riferimento as string | null)?.trim() || "";
-            if (!nomeDest && r.cliente_id) {
-              const { data: cli } = await supabaseAdmin
+            let cli: ClienteWa = null;
+            if (prep.serveCliente && r.cliente_id) {
+              const { data } = await supabaseAdmin
                 .from("clienti")
-                .select("ragione_sociale")
+                .select("ragione_sociale, citta, provincia, indirizzo, categoria")
                 .eq("id", r.cliente_id)
                 .maybeSingle();
-              nomeDest = (cli?.ragione_sociale as string | null)?.trim() || "";
+              cli = (data as ClienteWa) ?? null;
             }
-            if (!nomeDest) nomeDest = "Cliente";
 
-            const parametriBody = prep.indici.map((n) =>
-              n === 1 ? nomeDest : (prep.fissi[String(n)] ?? ""),
-            );
+            const risolviCampo = (chiave?: string): string => {
+              switch (chiave) {
+                case "nome": {
+                  const n = (r.nome_riferimento as string | null)?.trim();
+                  if (n) return n;
+                  const rs = (cli?.ragione_sociale ?? "")?.trim();
+                  return rs || "Cliente";
+                }
+                case "ragione_sociale":
+                  return cli?.ragione_sociale ?? "";
+                case "citta":
+                  return cli?.citta ?? "";
+                case "provincia":
+                  return cli?.provincia ?? "";
+                case "indirizzo":
+                  return cli?.indirizzo ?? "";
+                case "categoria":
+                  return cli?.categoria ?? "";
+                default:
+                  return "";
+              }
+            };
+
+            const parametriBody = prep.indici.map((n) => {
+              const def = prep.vars[String(n)] as VarWa | undefined;
+              if (def?.tipo === "campo") return risolviCampo(def.campo);
+              if (def?.tipo === "fisso") return def.valore ?? "";
+              return n === 1 ? risolviCampo("nome") : "";
+            });
 
             const res = await inviaTemplate360({
               numeroDest: r.numero_dest as string,
