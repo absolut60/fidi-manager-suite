@@ -426,6 +426,16 @@ export function WhatsAppCampagneTab() {
             </TableBody>
           </Table>
         )}
+        {!!campagne?.length && (
+          <div className="px-4 py-2 border-t text-xs text-muted-foreground">
+            Costo stimato totale: {fmtEuro(
+              campagne.reduce((acc, c) => {
+                const k = conteggi?.get(c.id);
+                return acc + ((k?.consegnato ?? 0) + (k?.letto ?? 0)) * tariffaWa;
+              }, 0)
+            )} — Stima basata su {fmtEuro(tariffaWa)}/msg consegnato (categoria marketing). Il costo reale è su 360dialog › Insights.
+          </div>
+        )}
       </Card>
 
       {editing && (
