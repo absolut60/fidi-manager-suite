@@ -399,6 +399,57 @@ export function WhatsAppCampagneTab() {
   );
 }
 
+function ConfermaInvioWhatsappDialog({
+  campagna, inCoda, pending, onConfirm, onClose,
+}: {
+  campagna: CampagnaWa;
+  inCoda: number;
+  pending: boolean;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  const [testo, setTesto] = useState("");
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Avviare l'invio?</DialogTitle>
+          <DialogDescription>
+            Campagna «{campagna.nome}»
+            {campagna.template_name ? ` — template ${campagna.template_name}` : ""}.
+            Riceveranno il messaggio {inCoda.toLocaleString("it-IT")} destinatari.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <Label htmlFor="conferma-invio-wa">Digita INVIA per confermare</Label>
+            <Input
+              id="conferma-invio-wa"
+              value={testo}
+              onChange={(e) => setTesto(e.target.value)}
+              placeholder="INVIA"
+              autoComplete="off"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Verranno inviati messaggi WhatsApp solo ai contatti con consenso esplicito
+            (già garantito dai Segmenti).
+          </p>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Annulla</Button>
+          <Button
+            onClick={onConfirm}
+            disabled={testo !== "INVIA" || pending || inCoda === 0}
+          >
+            {pending ? "Avvio…" : "Invia ora"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function indiciVariabili(body: string | null): number[] {
   if (!body) return [];
   const set = new Set<number>();
