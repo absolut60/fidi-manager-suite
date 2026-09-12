@@ -363,11 +363,22 @@ function EditorCampagnaWhatsApp({
     [templates, templateId],
   );
 
+  const variabili = useMemo(() => indiciVariabili(scelto?.body_testo ?? null), [scelto]);
+  const variabiliFisse = useMemo(() => variabili.filter((n) => n >= 2), [variabili]);
+
   const salva = useMutation({
     mutationFn: async (stato: "bozza" | "pronta") => {
       if (!nome.trim()) throw new Error("Il nome campagna è obbligatorio");
       if (stato === "pronta" && (!scelto || scelto.stato !== "approvato")) {
         throw new Error("Scegli un template approvato prima di segnare pronta");
+      }
+      const fissiPuliti: Record<string, string> = {};
+      for (const n of variabiliFisse) {
+        const v = (fissi[String(n)] ?? "").trim();
+        fissiPuliti[String(n)] = v;
+      }
+      if (stato === "pronta" && variabiliFisse.some((n) => !fissiPuliti[String(n)])) {
+        throw new Error("Compila tutte le variabili del template prima di segnare pronta");
       }
       const { error } = await supabase
         .from("campagne_whatsapp")
@@ -375,6 +386,7 @@ function EditorCampagnaWhatsApp({
           nome: nome.trim(),
           template_id: scelto?.id ?? null,
           template_name: scelto?.nome ?? null,
+          parametri: { fissi: fissiPuliti },
           stato,
         })
         .eq("id", campagna.id);
