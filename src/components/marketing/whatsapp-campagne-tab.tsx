@@ -133,6 +133,19 @@ function statoTemplateBadge(stato: string) {
   }
 }
 
+type ConteggiWa = { totale: number; inCoda: number; inviato: number; consegnato: number; letto: number; fallito: number };
+const CONTEGGI_VUOTI: ConteggiWa = { totale: 0, inCoda: 0, inviato: 0, consegnato: 0, letto: 0, fallito: 0 };
+
+const fmtEuro = (v: number) => v.toLocaleString("it-IT", { style: "currency", currency: "EUR" });
+
+// Polling attivo se una campagna è in invio oppure è stata toccata di recente:
+// gli stati consegnato/letto arrivano anche dopo il "completata".
+function campagnaDaSeguire(c: CampagnaWa): boolean {
+  if (c.stato === "in_corso") return true;
+  const ts = c.inviata_at ?? c.updated_at;
+  return !!ts && Date.parse(ts) > Date.now() - 15 * 60 * 1000;
+}
+
 export function WhatsAppCampagneTab() {
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -152,7 +165,7 @@ export function WhatsAppCampagneTab() {
       return (data ?? []) as CampagnaWa[];
     },
     refetchInterval: (q) =>
-      (q.state.data as CampagnaWa[] | undefined)?.some((c) => c.stato === "in_corso") ? 5000 : false,
+      (q.state.data as CampagnaWa[] | undefined)?.some(campagnaDaSeguire) ? 5000 : false,
   });
 
   const { data: conteggi } = useQuery({
@@ -161,18 +174,38 @@ export function WhatsAppCampagneTab() {
       // TODO: passare a RPC di conteggio se i volumi crescono (limite PostgREST 1000)
       const { data, error } = await supabase.from("messaggi_whatsapp").select("campagna_id, stato");
       if (error) throw error;
-      const map = new Map<string, { totale: number; inCoda: number }>();
+      const map = new Map<string, ConteggiWa>();
       for (const r of (data ?? []) as Array<{ campagna_id: string | null; stato: string }>) {
         if (!r.campagna_id) continue;
-        const cur = map.get(r.campagna_id) ?? { totale: 0, inCoda: 0 };
+        const cur = map.get(r.campagna_id) ?? { ...CONTEGGI_VUOTI };
         cur.totale += 1;
         if (r.stato === "in_coda") cur.inCoda += 1;
+        else if (r.stato === "inviato") cur.inviato += 1;
+        else if (r.stato === "consegnato") cur.consegnato += 1;
+        else if (r.stato === "letto") cur.letto += 1;
+        else if (r.stato === "fallito") cur.fallito += 1;
         map.set(r.campagna_id, cur);
       }
       return map;
     },
     refetchInterval: () =>
-      campagne?.some((c) => c.stato === "in_corso") ? 5000 : false,
+      campagne?.some(campagnaDaSeguire) ? 5000 : false,
+  });
+
+  // Tariffa per messaggio consegnato (categoria marketing); default se la chiave manca
+  const { data: tariffaWa = 0.0535 } = useQuery({
+    queryKey: ["configurazioni", "whatsapp_costo_marketing_eur"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("configurazioni")
+        .select("valore")
+        .eq("chiave", "whatsapp_costo_marketing_eur")
+        .maybeSingle();
+      if (error) throw error;
+      const v = parseFloat(data?.valore ?? "");
+      return isNaN(v) ? 0.0535 : v;
+    },
+    staleTime: 5 * 60 * 1000,
   });
 
   const invalida = () => {
@@ -290,6 +323,8 @@ export function WhatsAppCampagneTab() {
                 <TableHead>Template</TableHead>
                 <TableHead>Stato</TableHead>
                 <TableHead className="text-center">Destinatari</TableHead>
+                <TableHead>Avanzamento</TableHead>
+                <TableHead className="text-right">Costo stim.</TableHead>
                 <TableHead>Aggiornata</TableHead>
                 <TableHead className="text-right">Azioni</TableHead>
               </TableRow>
@@ -310,6 +345,34 @@ export function WhatsAppCampagneTab() {
                       <Users className="size-4" />
                       {(conteggi?.get(c.id)?.totale ?? 0).toLocaleString("it-IT")}
                     </button>
+                  </TableCell>
+                  <TableCell className="text-xs whitespace-nowrap">
+                    {(() => {
+                      const k = conteggi?.get(c.id);
+                      if (!k || k.totale === 0) return <span className="text-muted-foreground">—</span>;
+                      if (c.stato === "in_corso") {
+                        const fatti = k.inviato + k.consegnato + k.letto + k.fallito;
+                        return (
+                          <span className="text-amber-600 font-medium">
+                            {fatti.toLocaleString("it-IT")} / {k.totale.toLocaleString("it-IT")} inviati…
+                          </span>
+                        );
+                      }
+                      const inviati = k.inviato + k.consegnato + k.letto;
+                      const consegnati = k.consegnato + k.letto;
+                      return (
+                        <span className="text-muted-foreground">
+                          Inviati {inviati.toLocaleString("it-IT")} · Consegnati {consegnati.toLocaleString("it-IT")} · Letti {k.letto.toLocaleString("it-IT")} · Falliti {k.fallito.toLocaleString("it-IT")}
+                        </span>
+                      );
+                    })()}
+                  </TableCell>
+                  <TableCell className="text-right text-xs text-muted-foreground whitespace-nowrap">
+                    {(() => {
+                      const k = conteggi?.get(c.id);
+                      const consegnati = (k?.consegnato ?? 0) + (k?.letto ?? 0);
+                      return consegnati > 0 ? fmtEuro(consegnati * tariffaWa) : "—";
+                    })()}
                   </TableCell>
                   <TableCell className="text-muted-foreground">{fmtDate(c.updated_at)}</TableCell>
                   <TableCell className="text-right space-x-1 whitespace-nowrap">
@@ -362,6 +425,16 @@ export function WhatsAppCampagneTab() {
               ))}
             </TableBody>
           </Table>
+        )}
+        {!!campagne?.length && (
+          <div className="px-4 py-2 border-t text-xs text-muted-foreground">
+            Costo stimato totale: {fmtEuro(
+              campagne.reduce((acc, c) => {
+                const k = conteggi?.get(c.id);
+                return acc + ((k?.consegnato ?? 0) + (k?.letto ?? 0)) * tariffaWa;
+              }, 0)
+            )} — Stima basata su {fmtEuro(tariffaWa)}/msg consegnato (categoria marketing). Il costo reale è su 360dialog › Insights.
+          </div>
         )}
       </Card>
 
