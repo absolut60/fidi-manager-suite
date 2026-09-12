@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { MessageCircle, Plus, Pencil, Trash2, Copy, Users, X, Search } from "lucide-react";
+import { MessageCircle, Plus, Pencil, Trash2, Copy, Users, X, Search, Send, RotateCw } from "lucide-react";
 import { toast } from "sonner";
+import { avviaInvioCampagnaWhatsapp, riprendiInvioCampagnaWhatsapp } from "@/lib/campagna-whatsapp.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -125,6 +126,7 @@ export function WhatsAppCampagneTab() {
   const [editing, setEditing] = useState<CampagnaWa | null>(null);
   const [deleting, setDeleting] = useState<CampagnaWa | null>(null);
   const [destinatariDi, setDestinatariDi] = useState<CampagnaWa | null>(null);
+  const [avviando, setAvviando] = useState<CampagnaWa | null>(null);
 
   const { data: campagne, isLoading } = useQuery({
     queryKey: ["campagne_whatsapp"],
