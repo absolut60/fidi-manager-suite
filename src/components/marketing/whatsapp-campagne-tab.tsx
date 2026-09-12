@@ -517,6 +517,9 @@ function EditorCampagnaWhatsApp({
       if (stato === "pronta" && (!scelto || scelto.stato !== "approvato")) {
         throw new Error("Scegli un template approvato prima di segnare pronta");
       }
+      if (stato === "pronta" && haFlussoEvento && !eventoId) {
+        throw new Error("Scegli l'evento collegato prima di segnare pronta");
+      }
       const fissiPuliti: Record<string, string> = {};
       for (const n of variabiliFisse) {
         const v = (fissi[String(n)] ?? "").trim();
@@ -531,6 +534,7 @@ function EditorCampagnaWhatsApp({
           nome: nome.trim(),
           template_id: scelto?.id ?? null,
           template_name: scelto?.nome ?? null,
+          evento_id: haFlussoEvento ? (eventoId || null) : null,
           parametri: { fissi: fissiPuliti },
           stato,
         })
