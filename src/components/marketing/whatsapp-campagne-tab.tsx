@@ -446,6 +446,32 @@ function EditorCampagnaWhatsApp({
             )}
           </div>
 
+          {scelto && variabili.length > 0 && (
+            <Card className="p-4 space-y-3">
+              <div className="text-sm font-medium">Contenuto variabili</div>
+              <div className="space-y-3">
+                {variabili.includes(1) && (
+                  <div className="text-sm text-muted-foreground">
+                    Variabile 1 — Nome del destinatario (automatico)
+                  </div>
+                )}
+                {variabiliFisse.map((n) => (
+                  <div key={n} className="space-y-1">
+                    <Label htmlFor={`var-${n}`}>Variabile {n}</Label>
+                    <Input
+                      id={`var-${n}`}
+                      value={fissi[String(n)] ?? ""}
+                      onChange={(e) =>
+                        setFissi((prev) => ({ ...prev, [String(n)]: e.target.value }))
+                      }
+                      placeholder={`Valore per {{${n}}}`}
+                    />
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
           {scelto?.body_testo && (
             <Card className="p-4 space-y-2">
               <div className="text-sm font-medium">Anteprima messaggio</div>
