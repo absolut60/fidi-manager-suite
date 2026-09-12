@@ -28,6 +28,17 @@ import {
 
 const DEST_PAGE_SIZE = 100;
 
+const CAMPI_WA = [
+  { key: "nome", label: "Nome del destinatario" },
+  { key: "ragione_sociale", label: "Ragione sociale" },
+  { key: "citta", label: "Città" },
+  { key: "provincia", label: "Provincia" },
+  { key: "indirizzo", label: "Indirizzo" },
+  { key: "categoria", label: "Categoria" },
+] as const;
+
+type VarWa = { tipo: "fisso" | "campo"; valore?: string; campo?: string };
+
 type CampagnaWa = {
   id: string;
   nome: string;
@@ -40,7 +51,7 @@ type CampagnaWa = {
   invii_ok: number | null;
   invii_falliti: number | null;
   saltati: number | null;
-  parametri: { fissi?: Record<string, string> } | null;
+  parametri: { vars?: Record<string, VarWa>; fissi?: Record<string, string> } | null;
   created_at: string;
   updated_at: string | null;
 };
