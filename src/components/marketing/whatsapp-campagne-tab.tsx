@@ -294,21 +294,53 @@ export function WhatsAppCampagneTab() {
                       title="Vedi destinatari"
                     >
                       <Users className="size-4" />
-                      {(conteggi?.get(c.id) ?? 0).toLocaleString("it-IT")}
+                      {(conteggi?.get(c.id)?.totale ?? 0).toLocaleString("it-IT")}
                     </button>
                   </TableCell>
                   <TableCell className="text-muted-foreground">{fmtDate(c.updated_at)}</TableCell>
                   <TableCell className="text-right space-x-1 whitespace-nowrap">
+                    {c.stato === "in_corso" ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => riprendi.mutate(c)}
+                        disabled={riprendi.isPending}
+                        title="Riprendi invio"
+                      >
+                        <RotateCw className="size-4 mr-1" /> Riprendi
+                      </Button>
+                    ) : (
+                      c.stato === "pronta" && (conteggi?.get(c.id)?.inCoda ?? 0) > 0 && (
+                        <Button size="sm" onClick={() => setAvviando(c)} title="Avvia invio">
+                          <Send className="size-4 mr-1" /> Avvia invio
+                        </Button>
+                      )
+                    )}
                     <Button variant="ghost" size="icon" onClick={() => setDestinatariDi(c)} title="Destinatari">
                       <Users className="size-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => setEditing(c)} title="Modifica">
+                    <Button
+                      variant="ghost" size="icon"
+                      onClick={() => setEditing(c)}
+                      title={c.stato === "in_corso" ? "Invio in corso" : "Modifica"}
+                      disabled={c.stato === "in_corso"}
+                    >
                       <Pencil className="size-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => duplica.mutate(c)} title="Duplica">
+                    <Button
+                      variant="ghost" size="icon"
+                      onClick={() => duplica.mutate(c)}
+                      title={c.stato === "in_corso" ? "Invio in corso" : "Duplica"}
+                      disabled={c.stato === "in_corso"}
+                    >
                       <Copy className="size-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => setDeleting(c)} title="Elimina">
+                    <Button
+                      variant="ghost" size="icon"
+                      onClick={() => setDeleting(c)}
+                      title={c.stato === "in_corso" ? "Invio in corso" : "Elimina"}
+                      disabled={c.stato === "in_corso"}
+                    >
                       <Trash2 className="size-4 text-destructive" />
                     </Button>
                   </TableCell>
