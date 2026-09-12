@@ -38,6 +38,7 @@ type CampagnaWa = {
   invii_ok: number | null;
   invii_falliti: number | null;
   saltati: number | null;
+  parametri: { fissi?: Record<string, string> } | null;
   created_at: string;
   updated_at: string | null;
 };
@@ -130,7 +131,7 @@ export function WhatsAppCampagneTab() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("campagne_whatsapp")
-        .select("id, nome, stato, template_id, template_name, inviata_at, totale_invii, invii_ok, invii_falliti, saltati, created_at, updated_at")
+        .select("id, nome, stato, template_id, template_name, inviata_at, totale_invii, invii_ok, invii_falliti, saltati, parametri, created_at, updated_at")
         .order("updated_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as CampagnaWa[];
@@ -165,7 +166,7 @@ export function WhatsAppCampagneTab() {
           stato: "bozza",
           creata_da: user?.id ?? null,
         })
-        .select("id, nome, stato, template_id, template_name, inviata_at, totale_invii, invii_ok, invii_falliti, saltati, created_at, updated_at")
+        .select("id, nome, stato, template_id, template_name, inviata_at, totale_invii, invii_ok, invii_falliti, saltati, parametri, created_at, updated_at")
         .single();
       if (error) throw error;
       return data as CampagnaWa;
@@ -184,6 +185,7 @@ export function WhatsAppCampagneTab() {
         stato: "bozza",
         template_id: c.template_id,
         template_name: c.template_name,
+        parametri: c.parametri ?? null,
         creata_da: user?.id ?? null,
       });
       if (error) throw error;
