@@ -527,7 +527,6 @@ function EditorCampagnaWhatsApp({
   );
 
   const variabili = useMemo(() => indiciVariabili(scelto?.body_testo ?? null), [scelto]);
-  const variabiliFisse = useMemo(() => variabili.filter((n) => n >= 2), [variabili]);
 
   const salva = useMutation({
     mutationFn: async (stato: "bozza" | "pronta") => {
@@ -538,13 +537,14 @@ function EditorCampagnaWhatsApp({
       if (stato === "pronta" && haFlussoEvento && !eventoId) {
         throw new Error("Scegli l'evento collegato prima di segnare pronta");
       }
-      const fissiPuliti: Record<string, string> = {};
-      for (const n of variabiliFisse) {
-        const v = (fissi[String(n)] ?? "").trim();
-        fissiPuliti[String(n)] = v;
-      }
-      if (stato === "pronta" && variabiliFisse.some((n) => !fissiPuliti[String(n)])) {
-        throw new Error("Compila tutte le variabili del template prima di segnare pronta");
+      const varsPulite: Record<string, VarWa> = {};
+      for (const n of variabili) {
+        const cur = vars[String(n)] ?? (n === 1 ? { tipo: "campo" as const, campo: "nome" } : { tipo: "fisso" as const, valore: "" });
+        if (cur.tipo === "campo") {
+          varsPulite[String(n)] = { tipo: "campo", campo: cur.campo ?? "nome" };
+        } else {
+          varsPulite[String(n)] = { tipo: "fisso", valore: (cur.valore ?? "").trim() };
+        }
       }
       const { error } = await supabase
         .from("campagne_whatsapp")
@@ -553,7 +553,7 @@ function EditorCampagnaWhatsApp({
           template_id: scelto?.id ?? null,
           template_name: scelto?.nome ?? null,
           evento_id: haFlussoEvento ? (eventoId || null) : null,
-          parametri: { fissi: fissiPuliti },
+          parametri: { vars: varsPulite },
           stato,
         })
         .eq("id", campagna.id);
