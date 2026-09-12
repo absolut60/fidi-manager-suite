@@ -167,6 +167,25 @@ export function WhatsAppCampagneTab() {
     qc.invalidateQueries({ queryKey: ["messaggi_whatsapp"] });
   };
 
+  const avvia = useMutation({
+    mutationFn: async (c: CampagnaWa) => avviaInvioCampagnaWhatsapp({ data: { campagnaId: c.id } }),
+    onSuccess: (r: any) => {
+      toast.success(`Invio avviato per ${r?.totale ?? 0} destinatari`);
+      invalida();
+      setAvviando(null);
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Errore avvio invio"),
+  });
+
+  const riprendi = useMutation({
+    mutationFn: async (c: CampagnaWa) => riprendiInvioCampagnaWhatsapp({ data: { campagnaId: c.id } }),
+    onSuccess: () => {
+      toast.success("Invio ripreso");
+      invalida();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Errore ripresa invio"),
+  });
+
   const crea = useMutation({
     mutationFn: async () => {
       const { data, error } = await supabase
