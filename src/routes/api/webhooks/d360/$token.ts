@@ -13,6 +13,7 @@ type WaMessage = {
   from?: string;
   type?: string;
   text?: { body?: string };
+  button?: { text?: string; payload?: string };
 };
 
 type WaValue = {
@@ -31,18 +32,26 @@ type WaBody = {
   entry?: WaEntry[];
 };
 
-function estraiMessaggi(body: WaBody): { mittente: string; testo: string }[] {
-  const out: { mittente: string; testo: string }[] = [];
+type MsgInbound = {
+  mittente: string;
+  testo: string;
+  tipoMsg: "text" | "button";
+  bottoneTesto: string;
+};
+
+function estraiMessaggi(body: WaBody): MsgInbound[] {
+  const out: MsgInbound[] = [];
   for (const e of body?.entry ?? []) {
     for (const c of e?.changes ?? []) {
       for (const m of c?.value?.messages ?? []) {
         const mittente = typeof m?.from === "string" ? m.from : "";
         if (!mittente) continue;
-        const testo =
-          m?.type === "text" && typeof m?.text?.body === "string"
-            ? m.text.body
-            : "";
-        out.push({ mittente, testo });
+        if (m?.type === "text" && typeof m?.text?.body === "string") {
+          out.push({ mittente, testo: m.text.body, tipoMsg: "text", bottoneTesto: "" });
+        } else if (m?.type === "button") {
+          const bottoneTesto = typeof m?.button?.text === "string" ? m.button.text : "";
+          out.push({ mittente, testo: "", tipoMsg: "button", bottoneTesto });
+        }
       }
     }
   }
@@ -79,13 +88,20 @@ export const Route = createFileRoute("/api/webhooks/d360/$token")({
         console.log(`[d360-webhook] messaggi ricevuti: ${messaggi.length}`);
 
         let stop = 0;
-        const daProcessare = messaggi.filter(
-          (m) => m.testo && PAROLE_STOP.has(m.testo.trim().toUpperCase()),
+        let adesioni = 0;
+        const testoRilevante = (m: MsgInbound) =>
+          m.tipoMsg === "text" ? m.testo : m.bottoneTesto;
+
+        const daProcessare = messaggi.filter((m) => {
+          const t = testoRilevante(m);
+          return t && PAROLE_STOP.has(t.trim().toUpperCase());
+        });
+
+        const { supabaseAdmin } = await import(
+          "@/integrations/supabase/client.server"
         );
+
         if (daProcessare.length > 0) {
-          const { supabaseAdmin } = await import(
-            "@/integrations/supabase/client.server"
-          );
           for (const m of daProcessare) {
             try {
               const { error } = await supabaseAdmin.rpc(
@@ -100,10 +116,30 @@ export const Route = createFileRoute("/api/webhooks/d360/$token")({
           }
         }
 
+        const daAdesione = messaggi.filter(
+          (m) =>
+            m.tipoMsg === "button" &&
+            !PAROLE_STOP.has(testoRilevante(m).trim().toUpperCase()),
+        );
+        for (const m of daAdesione) {
+          try {
+            const { data, error } = await supabaseAdmin.rpc(
+              "registra_adesione_evento_whatsapp",
+              { _numero_raw: m.mittente } as never,
+            );
+            if (!error && data?.[0]?.ok) adesioni += 1;
+            else if (error)
+              console.error("[d360-webhook] adesione rpc errore", error.message);
+          } catch (e) {
+            console.error("[d360-webhook] adesione rpc eccezione", e);
+          }
+        }
+
         return Response.json({
           ok: true,
           processati: messaggi.length,
           stop,
+          adesioni,
         });
       },
     },
