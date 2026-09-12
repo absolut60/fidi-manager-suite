@@ -13,6 +13,7 @@ type WaMessage = {
   from?: string;
   type?: string;
   text?: { body?: string };
+  button?: { text?: string; payload?: string };
 };
 
 type WaValue = {
@@ -31,18 +32,26 @@ type WaBody = {
   entry?: WaEntry[];
 };
 
-function estraiMessaggi(body: WaBody): { mittente: string; testo: string }[] {
-  const out: { mittente: string; testo: string }[] = [];
+type MsgInbound = {
+  mittente: string;
+  testo: string;
+  tipoMsg: "text" | "button";
+  bottoneTesto: string;
+};
+
+function estraiMessaggi(body: WaBody): MsgInbound[] {
+  const out: MsgInbound[] = [];
   for (const e of body?.entry ?? []) {
     for (const c of e?.changes ?? []) {
       for (const m of c?.value?.messages ?? []) {
         const mittente = typeof m?.from === "string" ? m.from : "";
         if (!mittente) continue;
-        const testo =
-          m?.type === "text" && typeof m?.text?.body === "string"
-            ? m.text.body
-            : "";
-        out.push({ mittente, testo });
+        if (m?.type === "text" && typeof m?.text?.body === "string") {
+          out.push({ mittente, testo: m.text.body, tipoMsg: "text", bottoneTesto: "" });
+        } else if (m?.type === "button") {
+          const bottoneTesto = typeof m?.button?.text === "string" ? m.button.text : "";
+          out.push({ mittente, testo: "", tipoMsg: "button", bottoneTesto });
+        }
       }
     }
   }
