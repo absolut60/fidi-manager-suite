@@ -138,20 +138,28 @@ export function WhatsAppCampagneTab() {
       if (error) throw error;
       return (data ?? []) as CampagnaWa[];
     },
+    refetchInterval: (q) =>
+      (q.state.data as CampagnaWa[] | undefined)?.some((c) => c.stato === "in_corso") ? 5000 : false,
   });
 
   const { data: conteggi } = useQuery({
     queryKey: ["messaggi_whatsapp", "conteggi"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("messaggi_whatsapp").select("campagna_id");
+      // TODO: passare a RPC di conteggio se i volumi crescono (limite PostgREST 1000)
+      const { data, error } = await supabase.from("messaggi_whatsapp").select("campagna_id, stato");
       if (error) throw error;
-      const map = new Map<string, number>();
-      for (const r of (data ?? []) as Array<{ campagna_id: string | null }>) {
+      const map = new Map<string, { totale: number; inCoda: number }>();
+      for (const r of (data ?? []) as Array<{ campagna_id: string | null; stato: string }>) {
         if (!r.campagna_id) continue;
-        map.set(r.campagna_id, (map.get(r.campagna_id) ?? 0) + 1);
+        const cur = map.get(r.campagna_id) ?? { totale: 0, inCoda: 0 };
+        cur.totale += 1;
+        if (r.stato === "in_coda") cur.inCoda += 1;
+        map.set(r.campagna_id, cur);
       }
       return map;
     },
+    refetchInterval: () =>
+      campagne?.some((c) => c.stato === "in_corso") ? 5000 : false,
   });
 
   const invalida = () => {
