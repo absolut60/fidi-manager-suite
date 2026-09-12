@@ -34,6 +34,7 @@ type CampagnaWa = {
   stato: string;
   template_id: string | null;
   template_name: string | null;
+  evento_id: string | null;
   inviata_at: string | null;
   totale_invii: number | null;
   invii_ok: number | null;
@@ -49,6 +50,7 @@ type TemplateOpt = {
   nome: string;
   stato: string;
   body_testo: string | null;
+  pulsanti: any[] | null;
 };
 
 type MessaggioRiga = {
@@ -133,7 +135,7 @@ export function WhatsAppCampagneTab() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("campagne_whatsapp")
-        .select("id, nome, stato, template_id, template_name, inviata_at, totale_invii, invii_ok, invii_falliti, saltati, parametri, created_at, updated_at")
+        .select("id, nome, stato, template_id, template_name, evento_id, inviata_at, totale_invii, invii_ok, invii_falliti, saltati, parametri, created_at, updated_at")
         .order("updated_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as CampagnaWa[];
@@ -195,7 +197,7 @@ export function WhatsAppCampagneTab() {
           stato: "bozza",
           creata_da: user?.id ?? null,
         })
-        .select("id, nome, stato, template_id, template_name, inviata_at, totale_invii, invii_ok, invii_falliti, saltati, parametri, created_at, updated_at")
+        .select("id, nome, stato, template_id, template_name, evento_id, inviata_at, totale_invii, invii_ok, invii_falliti, saltati, parametri, created_at, updated_at")
         .single();
       if (error) throw error;
       return data as CampagnaWa;
@@ -214,6 +216,7 @@ export function WhatsAppCampagneTab() {
         stato: "bozza",
         template_id: c.template_id,
         template_name: c.template_name,
+        evento_id: c.evento_id,
         parametri: c.parametri ?? null,
         creata_da: user?.id ?? null,
       });
@@ -467,22 +470,42 @@ function EditorCampagnaWhatsApp({
   const [fissi, setFissi] = useState<Record<string, string>>(
     () => ({ ...(campagna.parametri?.fissi ?? {}) }),
   );
+  const [eventoId, setEventoId] = useState<string>(campagna.evento_id ?? "");
 
   const { data: templates } = useQuery({
     queryKey: ["whatsapp_template", "opzioni"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("whatsapp_template")
-        .select("id, nome, stato, body_testo")
+        .select("id, nome, stato, body_testo, pulsanti")
         .order("updated_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as TemplateOpt[];
     },
   });
 
+  const { data: eventi } = useQuery({
+    queryKey: ["eventi", "opzioni"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("eventi")
+        .select("id, nome, data_evento, luogo")
+        .order("data_evento", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as { id: string; nome: string; data_evento: string | null; luogo: string | null }[];
+    },
+  });
+
   const scelto = useMemo(
     () => templates?.find((t) => t.id === templateId) ?? null,
     [templates, templateId],
+  );
+
+  const haFlussoEvento = useMemo(
+    () => Array.isArray(scelto?.pulsanti) && scelto.pulsanti.some(
+      (p: any) => p?.tipo === "rapido" && p?.flusso === "evento",
+    ),
+    [scelto],
   );
 
   const variabili = useMemo(() => indiciVariabili(scelto?.body_testo ?? null), [scelto]);
@@ -493,6 +516,9 @@ function EditorCampagnaWhatsApp({
       if (!nome.trim()) throw new Error("Il nome campagna è obbligatorio");
       if (stato === "pronta" && (!scelto || scelto.stato !== "approvato")) {
         throw new Error("Scegli un template approvato prima di segnare pronta");
+      }
+      if (stato === "pronta" && haFlussoEvento && !eventoId) {
+        throw new Error("Scegli l'evento collegato prima di segnare pronta");
       }
       const fissiPuliti: Record<string, string> = {};
       for (const n of variabiliFisse) {
@@ -508,6 +534,7 @@ function EditorCampagnaWhatsApp({
           nome: nome.trim(),
           template_id: scelto?.id ?? null,
           template_name: scelto?.nome ?? null,
+          evento_id: haFlussoEvento ? (eventoId || null) : null,
           parametri: { fissi: fissiPuliti },
           stato,
         })
@@ -590,6 +617,30 @@ function EditorCampagnaWhatsApp({
                     />
                   </div>
                 ))}
+              </div>
+            </Card>
+          )}
+
+          {scelto && haFlussoEvento && (
+            <Card className="p-4 space-y-3">
+              <div className="text-sm font-medium">Evento collegato</div>
+              <div className="space-y-2">
+                <Select value={eventoId} onValueChange={setEventoId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Scegli un evento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(eventi ?? []).map((ev) => (
+                      <SelectItem key={ev.id} value={ev.id}>
+                        {ev.nome} — {fmtDate(ev.data_evento)}
+                        {ev.luogo ? ` — ${ev.luogo}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Quando un cliente preme il pulsante di adesione, verrà registrato tra i partecipanti di questo evento.
+                </p>
               </div>
             </Card>
           )}
