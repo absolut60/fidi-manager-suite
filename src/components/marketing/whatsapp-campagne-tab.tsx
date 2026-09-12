@@ -621,6 +621,30 @@ function EditorCampagnaWhatsApp({
             </Card>
           )}
 
+          {scelto && haFlussoEvento && (
+            <Card className="p-4 space-y-3">
+              <div className="text-sm font-medium">Evento collegato</div>
+              <div className="space-y-2">
+                <Select value={eventoId} onValueChange={setEventoId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Scegli un evento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(eventi ?? []).map((ev) => (
+                      <SelectItem key={ev.id} value={ev.id}>
+                        {ev.nome} — {fmtDate(ev.data_evento)}
+                        {ev.luogo ? ` — ${ev.luogo}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Quando un cliente preme il pulsante di adesione, verrà registrato tra i partecipanti di questo evento.
+                </p>
+              </div>
+            </Card>
+          )}
+
           {scelto?.body_testo && (
             <Card className="p-4 space-y-2">
               <div className="text-sm font-medium">Anteprima messaggio</div>
