@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { MessageCircle, Plus, Pencil, Trash2, Copy, Users, X, Search } from "lucide-react";
+import { MessageCircle, Plus, Pencil, Trash2, Copy, Users, X, Search, Send, RotateCw } from "lucide-react";
 import { toast } from "sonner";
+import { avviaInvioCampagnaWhatsapp, riprendiInvioCampagnaWhatsapp } from "@/lib/campagna-whatsapp.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -125,6 +126,7 @@ export function WhatsAppCampagneTab() {
   const [editing, setEditing] = useState<CampagnaWa | null>(null);
   const [deleting, setDeleting] = useState<CampagnaWa | null>(null);
   const [destinatariDi, setDestinatariDi] = useState<CampagnaWa | null>(null);
+  const [avviando, setAvviando] = useState<CampagnaWa | null>(null);
 
   const { data: campagne, isLoading } = useQuery({
     queryKey: ["campagne_whatsapp"],
@@ -136,26 +138,53 @@ export function WhatsAppCampagneTab() {
       if (error) throw error;
       return (data ?? []) as CampagnaWa[];
     },
+    refetchInterval: (q) =>
+      (q.state.data as CampagnaWa[] | undefined)?.some((c) => c.stato === "in_corso") ? 5000 : false,
   });
 
   const { data: conteggi } = useQuery({
     queryKey: ["messaggi_whatsapp", "conteggi"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("messaggi_whatsapp").select("campagna_id");
+      // TODO: passare a RPC di conteggio se i volumi crescono (limite PostgREST 1000)
+      const { data, error } = await supabase.from("messaggi_whatsapp").select("campagna_id, stato");
       if (error) throw error;
-      const map = new Map<string, number>();
-      for (const r of (data ?? []) as Array<{ campagna_id: string | null }>) {
+      const map = new Map<string, { totale: number; inCoda: number }>();
+      for (const r of (data ?? []) as Array<{ campagna_id: string | null; stato: string }>) {
         if (!r.campagna_id) continue;
-        map.set(r.campagna_id, (map.get(r.campagna_id) ?? 0) + 1);
+        const cur = map.get(r.campagna_id) ?? { totale: 0, inCoda: 0 };
+        cur.totale += 1;
+        if (r.stato === "in_coda") cur.inCoda += 1;
+        map.set(r.campagna_id, cur);
       }
       return map;
     },
+    refetchInterval: () =>
+      campagne?.some((c) => c.stato === "in_corso") ? 5000 : false,
   });
 
   const invalida = () => {
     qc.invalidateQueries({ queryKey: ["campagne_whatsapp"] });
     qc.invalidateQueries({ queryKey: ["messaggi_whatsapp"] });
   };
+
+  const avvia = useMutation({
+    mutationFn: async (c: CampagnaWa) => avviaInvioCampagnaWhatsapp({ data: { campagnaId: c.id } }),
+    onSuccess: (r: any) => {
+      toast.success(`Invio avviato per ${r?.totale ?? 0} destinatari`);
+      invalida();
+      setAvviando(null);
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Errore avvio invio"),
+  });
+
+  const riprendi = useMutation({
+    mutationFn: async (c: CampagnaWa) => riprendiInvioCampagnaWhatsapp({ data: { campagnaId: c.id } }),
+    onSuccess: () => {
+      toast.success("Invio ripreso");
+      invalida();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Errore ripresa invio"),
+  });
 
   const crea = useMutation({
     mutationFn: async () => {
@@ -265,21 +294,53 @@ export function WhatsAppCampagneTab() {
                       title="Vedi destinatari"
                     >
                       <Users className="size-4" />
-                      {(conteggi?.get(c.id) ?? 0).toLocaleString("it-IT")}
+                      {(conteggi?.get(c.id)?.totale ?? 0).toLocaleString("it-IT")}
                     </button>
                   </TableCell>
                   <TableCell className="text-muted-foreground">{fmtDate(c.updated_at)}</TableCell>
                   <TableCell className="text-right space-x-1 whitespace-nowrap">
+                    {c.stato === "in_corso" ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => riprendi.mutate(c)}
+                        disabled={riprendi.isPending}
+                        title="Riprendi invio"
+                      >
+                        <RotateCw className="size-4 mr-1" /> Riprendi
+                      </Button>
+                    ) : (
+                      c.stato === "pronta" && (conteggi?.get(c.id)?.inCoda ?? 0) > 0 && (
+                        <Button size="sm" onClick={() => setAvviando(c)} title="Avvia invio">
+                          <Send className="size-4 mr-1" /> Avvia invio
+                        </Button>
+                      )
+                    )}
                     <Button variant="ghost" size="icon" onClick={() => setDestinatariDi(c)} title="Destinatari">
                       <Users className="size-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => setEditing(c)} title="Modifica">
+                    <Button
+                      variant="ghost" size="icon"
+                      onClick={() => setEditing(c)}
+                      title={c.stato === "in_corso" ? "Invio in corso" : "Modifica"}
+                      disabled={c.stato === "in_corso"}
+                    >
                       <Pencil className="size-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => duplica.mutate(c)} title="Duplica">
+                    <Button
+                      variant="ghost" size="icon"
+                      onClick={() => duplica.mutate(c)}
+                      title={c.stato === "in_corso" ? "Invio in corso" : "Duplica"}
+                      disabled={c.stato === "in_corso"}
+                    >
                       <Copy className="size-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => setDeleting(c)} title="Elimina">
+                    <Button
+                      variant="ghost" size="icon"
+                      onClick={() => setDeleting(c)}
+                      title={c.stato === "in_corso" ? "Invio in corso" : "Elimina"}
+                      disabled={c.stato === "in_corso"}
+                    >
                       <Trash2 className="size-4 text-destructive" />
                     </Button>
                   </TableCell>
@@ -305,6 +366,16 @@ export function WhatsAppCampagneTab() {
         />
       )}
 
+      {avviando && (
+        <ConfermaInvioWhatsappDialog
+          campagna={avviando}
+          inCoda={conteggi?.get(avviando.id)?.inCoda ?? 0}
+          pending={avvia.isPending}
+          onConfirm={() => avvia.mutate(avviando)}
+          onClose={() => setAvviando(null)}
+        />
+      )}
+
       <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -325,6 +396,57 @@ export function WhatsAppCampagneTab() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+function ConfermaInvioWhatsappDialog({
+  campagna, inCoda, pending, onConfirm, onClose,
+}: {
+  campagna: CampagnaWa;
+  inCoda: number;
+  pending: boolean;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  const [testo, setTesto] = useState("");
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Avviare l'invio?</DialogTitle>
+          <DialogDescription>
+            Campagna «{campagna.nome}»
+            {campagna.template_name ? ` — template ${campagna.template_name}` : ""}.
+            Riceveranno il messaggio {inCoda.toLocaleString("it-IT")} destinatari.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <Label htmlFor="conferma-invio-wa">Digita INVIA per confermare</Label>
+            <Input
+              id="conferma-invio-wa"
+              value={testo}
+              onChange={(e) => setTesto(e.target.value)}
+              placeholder="INVIA"
+              autoComplete="off"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Verranno inviati messaggi WhatsApp solo ai contatti con consenso esplicito
+            (già garantito dai Segmenti).
+          </p>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Annulla</Button>
+          <Button
+            onClick={onConfirm}
+            disabled={testo !== "INVIA" || pending || inCoda === 0}
+          >
+            {pending ? "Avvio…" : "Invia ora"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
