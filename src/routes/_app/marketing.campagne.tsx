@@ -427,7 +427,18 @@ function MarketingCampagnePage() {
       </TabsContent>
 
       <TabsContent value="whatsapp">
-        <WhatsAppTemplateTab />
+        <Tabs defaultValue="campagne" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="campagne">Campagne</TabsTrigger>
+            <TabsTrigger value="template">Template</TabsTrigger>
+          </TabsList>
+          <TabsContent value="campagne">
+            <WhatsAppCampagneTab />
+          </TabsContent>
+          <TabsContent value="template">
+            <WhatsAppTemplateTab />
+          </TabsContent>
+        </Tabs>
       </TabsContent>
     </Tabs>
   );
