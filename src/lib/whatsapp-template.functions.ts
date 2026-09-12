@@ -199,3 +199,143 @@ export const inviaTemplateInApprovazione = createServerFn({ method: "POST" })
 
     return { ok: true };
   });
+
+/** Messaggio chiaro per errori temporanei del servizio (Cloudflare/origine 360dialog). */
+function messaggioErroreServizio(status: number): string | null {
+  if (status === 502 || status === 503 || status === 504 || status === 522) {
+    return "Il servizio WhatsApp (360dialog) non risponde al momento: riprova tra qualche minuto.";
+  }
+  return null;
+}
+
+type TemplateRemoto = { status: string; reason: string | null };
+
+/** Estrae in modo difensivo l'array di template dalla risposta 360dialog. */
+function estraiTemplateRemoti(json: unknown): Record<string, unknown>[] {
+  if (Array.isArray(json)) return json as Record<string, unknown>[];
+  if (json && typeof json === "object") {
+    const j = json as Record<string, unknown>;
+    for (const k of ["waba_templates", "templates", "data"]) {
+      if (Array.isArray(j[k])) return j[k] as Record<string, unknown>[];
+    }
+  }
+  return [];
+}
+
+/** Mappa lo status Meta al nostro stato interno; null = lascia invariato. */
+function mappaStato(status: string): { stato: string; avviso?: string } | null {
+  switch (status.toUpperCase()) {
+    case "APPROVED":
+      return { stato: "approvato" };
+    case "REJECTED":
+      return { stato: "rifiutato" };
+    case "PENDING":
+    case "IN_APPEAL":
+    case "PENDING_DELETION":
+      return { stato: "in_attesa" };
+    case "PAUSED":
+      return { stato: "approvato", avviso: "Template in pausa su Meta (PAUSED)." };
+    case "DISABLED":
+      return { stato: "approvato", avviso: "Template disabilitato su Meta (DISABLED)." };
+    default:
+      return null;
+  }
+}
+
+/**
+ * Legge gli stati reali dei template da 360dialog e allinea i record locali
+ * che hanno meta_template_name valorizzato.
+ */
+export const sincronizzaStatiTemplate = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<{ ok: boolean; error?: string; aggiornati?: number; totaleRemoti?: number }> => {
+    await assertRuoloMarketing(context.userId);
+
+    const apiKey = process.env["D360_API_KEY"];
+    if (!apiKey || apiKey.trim() === "") {
+      return { ok: false, error: "D360_API_KEY non configurata" };
+    }
+
+    let res: Response;
+    try {
+      res = await fetch(`${BASE_360}/v1/configs/templates`, {
+        method: "GET",
+        headers: { "D360-API-KEY": apiKey, "Content-Type": "application/json" },
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("[whatsapp-template] sync rete 360dialog", msg);
+      return { ok: false, error: `Connessione a 360dialog fallita: ${msg}` };
+    }
+
+    const testo = await res.text();
+    let json: unknown = null;
+    try {
+      json = testo ? JSON.parse(testo) : null;
+    } catch {
+      /* risposta non JSON */
+    }
+
+    if (!res.ok) {
+      const temporaneo = messaggioErroreServizio(res.status);
+      if (temporaneo) {
+        console.error("[whatsapp-template] sync errore servizio", res.status, testo);
+        return { ok: false, error: temporaneo };
+      }
+      const j = json as Record<string, any> | null;
+      const messaggio =
+        j?.error?.error_user_msg ?? j?.error?.message ?? j?.message ?? testo ?? `Errore HTTP ${res.status}`;
+      console.error("[whatsapp-template] sync errore Meta", res.status, testo);
+      return { ok: false, error: String(messaggio) };
+    }
+
+    const remoti = estraiTemplateRemoti(json);
+    const mappa = new Map<string, TemplateRemoto>();
+    for (const t of remoti) {
+      const name = typeof t?.name === "string" ? t.name : null;
+      const status = typeof t?.status === "string" ? t.status : null;
+      if (!name || !status) continue;
+      const reason =
+        (typeof t?.rejected_reason === "string" && t.rejected_reason) ||
+        (typeof t?.reason === "string" && t.reason) ||
+        null;
+      mappa.set(name, { status, reason });
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: locali, error: eRead } = await supabaseAdmin
+      .from("whatsapp_template")
+      .select("id, stato, nota_rifiuto, meta_template_name")
+      .not("meta_template_name", "is", null);
+    if (eRead) return { ok: false, error: eRead.message };
+
+    let aggiornati = 0;
+    for (const loc of locali ?? []) {
+      const remoto = mappa.get(String(loc.meta_template_name));
+      if (!remoto) continue;
+      const mappato = mappaStato(remoto.status);
+      if (!mappato) continue;
+
+      const nuovoStato = mappato.stato;
+      const nuovaNota =
+        nuovoStato === "approvato"
+          ? mappato.avviso ?? null
+          : nuovoStato === "rifiutato"
+            ? remoto.reason ?? loc.nota_rifiuto ?? null
+            : loc.nota_rifiuto ?? null;
+
+      if (nuovoStato === loc.stato && nuovaNota === (loc.nota_rifiuto ?? null)) continue;
+
+      const { error: eUp } = await supabaseAdmin
+        .from("whatsapp_template")
+        .update({ stato: nuovoStato, nota_rifiuto: nuovaNota } as never)
+        .eq("id", loc.id);
+      if (eUp) {
+        console.error("[whatsapp-template] sync update fallito", loc.id, eUp.message);
+        continue;
+      }
+      aggiornati++;
+    }
+
+    return { ok: true, aggiornati, totaleRemoti: remoti.length };
+  });
