@@ -118,8 +118,9 @@ export const iscriviWhatsapp = createServerFn({ method: "POST" })
           cellulareDich: isc.numero_norm ?? data.numero,
           emailDich,
           consensoProfilazione: data.consenso_profilazione ? "si" : "no",
+          // Non stampato (mostraConsensoMedia=false): il QR non raccoglie il consenso "media".
+          consensoMarketingMedia: "no",
           consensoMarketingDiretto: data.consenso_marketing ? "si" : "no",
-          // Il form QR non raccoglie il consenso "media": non stampare quel blocco.
           mostraConsensoMedia: false,
           dataFirma: now,
           ...(ip ? { ipRaccolta: ip } : {}),
