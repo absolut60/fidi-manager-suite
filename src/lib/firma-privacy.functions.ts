@@ -291,7 +291,7 @@ export const getDettagliConsenso = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: rows, error } = await context.supabase
       .from("consensi_log")
-      .select("created_at, origine, ip_address, user_agent, informativa_versione, informativa_hash, secondi_permanenza, tipo_consenso")
+      .select("created_at, origine, ip_address, user_agent, informativa_versione, informativa_hash, secondi_permanenza, tipo_consenso, prova_path")
       .eq("contatto_id", data.contattoId);
     if (error) throw new Error(error.message);
     if (!rows || rows.length === 0) return null;

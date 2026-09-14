@@ -78,5 +78,90 @@ export const iscriviWhatsapp = createServerFn({ method: "POST" })
           : "Non è stato possibile registrare l'iscrizione. Riprova."
       );
     }
+    // Prova documentale: PDF telematico + email + prova_path. Mai fatale.
+    try {
+      const { data: isc } = await supabaseAdmin
+        .from("iscritti_whatsapp")
+        .select("id, contatto_id, cliente_id, email, nome, cognome, azienda")
+        .eq("numero_raw", data.numero)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const contattoId = isc?.contatto_id ?? null;
+      const emailDich = (isc?.email ?? data.email ?? "").trim();
+
+      if (isc && contattoId && emailDich) {
+        let ragioneSociale = (isc.azienda ?? "").trim();
+        let partitaIva: string | undefined;
+        if (isc.cliente_id) {
+          const { risolviIntestazioneSoggetto } = await import("./intestazione-soggetto.server");
+          const soggetto = await risolviIntestazioneSoggetto({ cliente_id: isc.cliente_id });
+          if (soggetto.ragione_sociale) ragioneSociale = soggetto.ragione_sociale;
+          partitaIva = soggetto.partita_iva ?? undefined;
+        }
+
+        const now = new Date();
+        const { generaSchedaCliente } = await import("./scheda-pdf");
+        const pdfBytes = await generaSchedaCliente({
+          tipo: "aggiornamento",
+          ragioneSociale,
+          dichiaranteNome: data.nome,
+          dichiaranteCognome: data.cognome,
+          ...(partitaIva ? { partitaIva } : {}),
+          emailDich,
+          consensoProfilazione: data.consenso_profilazione ? "si" : "no",
+          consensoMarketingMedia: "no",
+          consensoMarketingDiretto: data.consenso_marketing ? "si" : "no",
+          dataFirma: now,
+          ...(ip ? { ipRaccolta: ip } : {}),
+          dataOraRaccolta: now.toLocaleString("it-IT", { timeZone: "Europe/Rome" }),
+        });
+
+        const pdfPath = `contatti/${contattoId}/privacy-qr-${now.getTime()}.pdf`;
+        const { error: ePdf } = await supabaseAdmin.storage
+          .from("documenti-privacy")
+          .upload(pdfPath, pdfBytes, { upsert: true, contentType: "application/pdf" });
+        if (ePdf) throw new Error(ePdf.message);
+
+        const { data: pdfSigned, error: eSigned } = await supabaseAdmin.storage
+          .from("documenti-privacy")
+          .createSignedUrl(pdfPath, 60 * 60 * 24 * 365 * 10);
+        if (eSigned) throw new Error(eSigned.message);
+
+        const { error: eUpd } = await supabaseAdmin
+          .from("contatti")
+          .update({ pdf_privacy_url: pdfSigned.signedUrl, pdf_privacy_path: pdfPath })
+          .eq("id", contattoId);
+        if (eUpd) console.error("[iscrizione-whatsapp] update contatto PDF fallito:", eUpd.message);
+
+        const { error: eLog } = await supabaseAdmin
+          .from("consensi_log")
+          .update({ prova_path: pdfPath })
+          .eq("iscritto_id", isc.id)
+          .is("prova_path", null);
+        if (eLog) console.error("[iscrizione-whatsapp] update prova_path fallito:", eLog.message);
+
+        try {
+          let binary = "";
+          for (let i = 0; i < pdfBytes.length; i++) binary += String.fromCharCode(pdfBytes[i]);
+          const { buildPrivacyPdfEmailPayload } = await import("./email-template");
+          const payload = buildPrivacyPdfEmailPayload({
+            toName: [data.nome, data.cognome].filter(Boolean).join(" ").trim() || "Cliente",
+            ragioneSociale,
+            dataFirma: now.toISOString(),
+            pdfBase64: btoa(binary),
+          });
+          const { sendEmailViaEdge } = await import("./inngest/send-email.server");
+          const esito = await sendEmailViaEdge({ to: emailDich, ...payload });
+          if (!esito.ok) console.error("[iscrizione-whatsapp] invio email QR fallito:", esito.err);
+        } catch (e) {
+          console.error("[iscrizione-whatsapp] invio email QR fallito:", e);
+        }
+      }
+    } catch (e) {
+      console.error("[iscrizione-whatsapp] generazione PDF/mail QR fallita", e);
+    }
+
     return { ok: true };
   });
