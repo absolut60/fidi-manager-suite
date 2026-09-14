@@ -1819,6 +1819,23 @@ function ScadenziarioImportCard() {
         chunkSize: 1000,
       },
     });
+
+    // Ramo aggiuntivo NON bloccante: stesso file, foglio BLOCCO_FIDO_ASSICURAZIONE.
+    // Se il foglio non c'è si salta in silenzio; se fallisce, l'import scadenziario resta valido.
+    if (hasBloccoFido) {
+      const f = file;
+      void (async () => {
+        try {
+          await avviaImportBloccoFido(f);
+          qcScad.invalidateQueries({ queryKey: ["storico-import-export"] });
+          toast.success("Import avviato: scadenziario + blocco fido/assicurazione");
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          console.error("Import blocco fido non avviato:", e);
+          toast.warning(`Import scadenziario avviato. Blocco fido non aggiornato: ${msg}`);
+        }
+      })();
+    }
   }
 
   // Phase + pct derivation (2 fasi)
