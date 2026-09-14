@@ -264,23 +264,22 @@ export function ContattoPrivacyAzioni({
 
   const badgeDisiscrizione = <BadgeDisiscrizione email={contatto.email ?? null} />;
 
-  // STATO FIRMATA
-  if (contatto.privacy_firmata) {
+  // STATO RACCOLTA (in qualunque modalità: firma, link, QR WhatsApp, ...)
+  if (privacyRaccolta) {
+    const dataRaccolta = statoPrivacy?.data_ultima ?? contatto.data_firma;
+    const mostraPdf = statoPrivacy ? statoPrivacy.ha_pdf && !!contatto.pdf_privacy_url : !!contatto.pdf_privacy_url;
     return (
       <div className="space-y-2">
       {badgeDisiscrizione}
         <div className="flex items-center gap-2 flex-wrap">
           <Badge className="bg-success/15 text-success gap-1">
-            <FileCheck2 className="size-3" /> Firmata il {fmt(contatto.data_firma)}
+            <FileCheck2 className="size-3" /> Privacy raccolta il {fmt(dataRaccolta)}
           </Badge>
         </div>
-        <p className="text-xs text-muted-foreground">
-          Privacy già firmata il {fmt(contatto.data_firma)} — nessuna richiesta necessaria.
-        </p>
         <DettagliRaccolta contattoId={contatto.id} />
-        {contatto.pdf_privacy_url && (
+        {mostraPdf && (
           <Button size="sm" variant="outline" asChild>
-            <a href={contatto.pdf_privacy_url} target="_blank" rel="noreferrer">
+            <a href={contatto.pdf_privacy_url!} target="_blank" rel="noreferrer">
               <Download className="size-3.5 mr-1" /> Scarica PDF
             </a>
           </Button>
