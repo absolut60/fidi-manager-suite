@@ -269,6 +269,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       if (item.richiesteScope === "gestione") return canGestioneRich;
       return true;
     }
+    if (isOnlyMarketingEventi) return item.to === "/eventi";
     if (isOnlyAgente) return AGENTE_WHITELIST.has(item.to);
     if (!item.roles) return true;
     if (item.roles.includes("admin") && isAdmin) return true;
@@ -277,6 +278,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (item.roles.includes("amministrazione") && isAmministrazione) return true;
     if (item.roles.includes("direzione") && isDirezione) return true;
     if (item.roles.includes("marketing") && isMarketing) return true;
+    if (item.roles.includes("marketing_eventi") && isMarketingEventi) return true;
     if (item.roles.includes("preventivi_read") && hasAccessoPreventivi) return true;
     return false;
   });
