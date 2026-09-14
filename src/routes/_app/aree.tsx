@@ -138,7 +138,7 @@ function AreePage() {
         ) : !aree?.length ? (
           <div className="text-center py-10"><p className="text-sm">Nessuna area configurata</p></div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="">
             <Table>
               <TableHeader>
                 <TableRow>

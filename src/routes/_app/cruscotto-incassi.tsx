@@ -670,7 +670,7 @@ function ScadenzeGroupedLista({
     nSelVisibili === 0 ? false : nSelVisibili === clientiVisibili.length ? true : "indeterminate";
 
   return (
-    <div className="rounded-md border overflow-x-auto">
+    <div className="rounded-md border">
       <Table>
         <TableHeader>
           <TableRow>
@@ -1413,7 +1413,7 @@ function RicercaIncassiBlock({ storeSel }: { storeSel: string | null }) {
       </div>
 
       {/* Tabella */}
-      <div className="overflow-x-auto">
+      <div className="">
         <Table>
           <TableHeader>
             <TableRow>

@@ -569,7 +569,7 @@ function RecuperoCreditiPage() {
 
       {/* Table */}
       <Card>
-        <div className="overflow-x-auto">
+        <div className="">
           <Table>
             <TableHeader>
               <TableRow>

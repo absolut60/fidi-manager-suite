@@ -299,7 +299,7 @@ function CantieriPage() {
                 })}
               </ElencoSchede>
 
-              <Card className="hidden md:block overflow-x-auto">
+              <Card className="hidden md:block">
                 <Table>
                   <TableHeader>
                     <TableRow>

@@ -168,7 +168,7 @@ function TaskPage() {
         ) : righe.length === 0 ? (
           <div className="text-center py-10"><p className="text-sm">Nessun task da mostrare</p></div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="">
             <Table>
               <TableHeader>
                 <TableRow>

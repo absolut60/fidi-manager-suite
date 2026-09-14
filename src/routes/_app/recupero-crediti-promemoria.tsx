@@ -373,7 +373,7 @@ function PromemoriaScadenzaPage() {
             </Button>
           </div>
         </div>
-        <div className="overflow-x-auto">
+        <div className="">
           <Table>
             <TableHeader>
               <TableRow>
@@ -655,7 +655,7 @@ function InviiAutomaticiSection() {
           Nessun promemoria automatico inviato nel periodo selezionato.
         </div>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="">
           <Table>
             <TableHeader>
               <TableRow>

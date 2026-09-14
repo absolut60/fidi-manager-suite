@@ -136,7 +136,7 @@ function ImpostazioniPage() {
             <p className="text-xs text-muted-foreground mt-1">Aggiungi i 10 punti vendita del gruppo</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="">
             <Table>
               <TableHeader>
                 <TableRow>
