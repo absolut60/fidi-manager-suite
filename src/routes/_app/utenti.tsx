@@ -67,7 +67,7 @@ const RUOLI_RICHIESTE: AppRole[] = [
   "esecutore_richieste",
 ];
 
-const RUOLI_MARKETING: AppRole[] = ["marketing"];
+const RUOLI_MARKETING: AppRole[] = ["marketing", "marketing_eventi"];
 
 const RUOLI_PREVENTIVI: AppRole[] = ["preventivi_read", "preventivi_write", "preventivi_manage"];
 
