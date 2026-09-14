@@ -1857,6 +1857,7 @@ export type Database = {
           informativa_hash: string | null
           informativa_versione: string | null
           ip_address: string | null
+          iscritto_id: string | null
           lead_id: string | null
           note: string | null
           operatore_id: string | null
@@ -1875,6 +1876,7 @@ export type Database = {
           informativa_hash?: string | null
           informativa_versione?: string | null
           ip_address?: string | null
+          iscritto_id?: string | null
           lead_id?: string | null
           note?: string | null
           operatore_id?: string | null
@@ -1893,6 +1895,7 @@ export type Database = {
           informativa_hash?: string | null
           informativa_versione?: string | null
           ip_address?: string | null
+          iscritto_id?: string | null
           lead_id?: string | null
           note?: string | null
           operatore_id?: string | null
@@ -1930,6 +1933,13 @@ export type Database = {
             columns: ["contatto_id"]
             isOneToOne: false
             referencedRelation: "contatti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consensi_log_iscritto_id_fkey"
+            columns: ["iscritto_id"]
+            isOneToOne: false
+            referencedRelation: "iscritti_whatsapp"
             referencedColumns: ["id"]
           },
           {
