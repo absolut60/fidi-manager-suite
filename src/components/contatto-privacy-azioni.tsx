@@ -15,6 +15,7 @@ import {
   inviaRichiestaFirmaPrivacy,
   registraConsensoDiPersona,
   getDettagliConsenso,
+  getStatoPrivacyContatto,
 } from "@/lib/firma-privacy.functions";
 
 
@@ -55,6 +56,8 @@ const ORIGINE_LABEL: Record<string, string> = {
   firma_grafica: "Firma grafica da link",
   operatore: "Registrato da operatore",
   import: "Importato",
+  qr_whatsapp: "Iscrizione WhatsApp (QR/link)",
+  qr_pagina: "Iscrizione WhatsApp (QR pagina)",
 };
 
 function fmtDataOra(v?: string | null): string {
@@ -168,9 +171,18 @@ export function ContattoPrivacyAzioni({
 }) {
   const inviaFn = useServerFn(inviaRichiestaFirmaPrivacy);
   const diPersonaFn = useServerFn(registraConsensoDiPersona);
+  const statoFn = useServerFn(getStatoPrivacyContatto);
   const [loading, setLoading] = useState<"invia" | "copia" | null>(null);
   const [openDiPersona, setOpenDiPersona] = useState(false);
   const [savingDiPersona, setSavingDiPersona] = useState(false);
+
+  const { data: statoPrivacy } = useQuery({
+    queryKey: ["stato-privacy", contatto.id, contatto.privacy_firmata],
+    queryFn: () => statoFn({ data: { contattoId: contatto.id } }),
+    staleTime: 30_000,
+  });
+  // Prima che la query risponda, mantieni il comportamento precedente (campo booleano).
+  const privacyRaccolta = statoPrivacy?.privacy_raccolta ?? !!contatto.privacy_firmata;
 
   const nomeContatto = [contatto.nome, contatto.cognome].filter(Boolean).join(" ").trim() || "Contatto";
 
@@ -252,23 +264,22 @@ export function ContattoPrivacyAzioni({
 
   const badgeDisiscrizione = <BadgeDisiscrizione email={contatto.email ?? null} />;
 
-  // STATO FIRMATA
-  if (contatto.privacy_firmata) {
+  // STATO RACCOLTA (in qualunque modalità: firma, link, QR WhatsApp, ...)
+  if (privacyRaccolta) {
+    const dataRaccolta = statoPrivacy?.data_ultima ?? contatto.data_firma;
+    const mostraPdf = statoPrivacy ? statoPrivacy.ha_pdf && !!contatto.pdf_privacy_url : !!contatto.pdf_privacy_url;
     return (
       <div className="space-y-2">
       {badgeDisiscrizione}
         <div className="flex items-center gap-2 flex-wrap">
           <Badge className="bg-success/15 text-success gap-1">
-            <FileCheck2 className="size-3" /> Firmata il {fmt(contatto.data_firma)}
+            <FileCheck2 className="size-3" /> Privacy raccolta il {fmt(dataRaccolta)}
           </Badge>
         </div>
-        <p className="text-xs text-muted-foreground">
-          Privacy già firmata il {fmt(contatto.data_firma)} — nessuna richiesta necessaria.
-        </p>
         <DettagliRaccolta contattoId={contatto.id} />
-        {contatto.pdf_privacy_url && (
+        {mostraPdf && (
           <Button size="sm" variant="outline" asChild>
-            <a href={contatto.pdf_privacy_url} target="_blank" rel="noreferrer">
+            <a href={contatto.pdf_privacy_url!} target="_blank" rel="noreferrer">
               <Download className="size-3.5 mr-1" /> Scarica PDF
             </a>
           </Button>
