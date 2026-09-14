@@ -2,6 +2,18 @@ import type { Database } from "@/integrations/supabase/types";
 
 export type EventiPartecipanteStato = Database["public"]["Enums"]["eventi_partecipante_stato"];
 
+export const EVENTI_ROLES = new Set<string>([
+  "amministratore",
+  "amministrazione",
+  "direzione",
+  "marketing",
+  "marketing_eventi",
+]);
+
+export function puoAccedereEventi(roles: readonly string[]): boolean {
+  return roles.some((r) => EVENTI_ROLES.has(r));
+}
+
 export const EVENTI_PARTECIPANTE_STATI: EventiPartecipanteStato[] = [
   "atteso",
   "confermato",

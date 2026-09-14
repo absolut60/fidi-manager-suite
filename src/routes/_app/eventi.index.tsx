@@ -18,8 +18,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { puoAccedereLead } from "@/lib/lead-costanti";
-import { formatDataEvento } from "@/lib/eventi-costanti";
+import { formatDataEvento, puoAccedereEventi } from "@/lib/eventi-costanti";
 import { SchedaLista, ElencoSchede } from "@/components/lista-responsive";
 
 
