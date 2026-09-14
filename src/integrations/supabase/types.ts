@@ -7316,6 +7316,17 @@ export type Database = {
         }[]
       }
       segna_canale_letto: { Args: { _canale_id: string }; Returns: undefined }
+      stato_privacy_contatto: {
+        Args: { _contatto_id: string }
+        Returns: {
+          data_ultima: string
+          ha_pdf: boolean
+          ha_trattamento_dati: boolean
+          origine_ultima: string
+          privacy_firmata: boolean
+          privacy_raccolta: boolean
+        }[]
+      }
       storage_path_cliente_id: { Args: { _name: string }; Returns: string }
       store_id_effettivo: { Args: { _store_id: string }; Returns: string }
       trasforma_preventivo_in_ordine: {
