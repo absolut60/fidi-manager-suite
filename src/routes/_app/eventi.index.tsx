@@ -48,7 +48,7 @@ function EventiListaPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, roles, loading: authLoading } = useAuth();
-  const canSee = useMemo(() => puoAccedereLead(roles as string[]), [roles]);
+  const canSee = useMemo(() => puoAccedereEventi(roles as string[]), [roles]);
 
   const [open, setOpen] = useState(false);
   const [nome, setNome] = useState("");

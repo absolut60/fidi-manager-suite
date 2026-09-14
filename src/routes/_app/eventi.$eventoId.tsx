@@ -36,6 +36,7 @@ import { SchedaLista, ElencoSchede } from "@/components/lista-responsive";
 import {
   EVENTI_PARTECIPANTE_STATO_CLASS,
   EVENTI_PARTECIPANTE_STATO_LABEL, formatDataEvento, nomePartecipante,
+  puoAccedereEventi,
   type EventiPartecipanteStato,
 } from "@/lib/eventi-costanti";
 
