@@ -75,7 +75,7 @@ type NavItem = {
   to: string;
   label: string;
   icon: typeof LayoutDashboard;
-  roles?: Array<"admin" | "approvatore" | "store_manager" | "amministrazione" | "direzione" | "marketing" | "preventivi_read" | "preventivi_write" | "preventivi_manage">;
+  roles?: Array<"admin" | "approvatore" | "store_manager" | "amministrazione" | "direzione" | "marketing" | "marketing_eventi" | "preventivi_read" | "preventivi_write" | "preventivi_manage">;
   group: NavGroupKey;
   richiesteScope?: RichiesteScope;
   exact?: boolean;
