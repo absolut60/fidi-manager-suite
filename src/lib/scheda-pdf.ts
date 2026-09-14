@@ -21,6 +21,8 @@ export interface SchedaPdfInput {
   firmaPngDataUrl?: string;
   ipRaccolta?: string;
   dataOraRaccolta?: string;
+  /** Default true: stampa anche il blocco consenso "media". Il QR non lo raccoglie → passare false. */
+  mostraConsensoMedia?: boolean;
 }
 
 function toBool(v: unknown): boolean {
@@ -320,15 +322,17 @@ export async function generaSchedaCliente(input: SchedaPdfInput): Promise<Uint8A
     "al trattamento, ivi compresa la comunicazione ai soggetti di cui al punto 9 e la cessione al di fuori dell'Unione Europea, dei dati personali, ivi compresi quelli sensibili di cui all'art. 9 GDPR e le immagini dell'interessato per le finalita' di analisi anche con strumenti tecnologici automatizzati (profilazione) al fine di consentire al titolare di poter gestire un consolidato nazionale in tempo reale e al fine di poter analizzare i dati caricati sul software per poter indirizzare al meglio le strategie commerciali del network.",
     toBool(input.consensoProfilazione),
   );
-  page2.drawText("Inoltre,", { x: ML, y: y2, size: 8, font, color: BLACK });
-  y2 -= 12;
+  if (input.mostraConsensoMedia !== false) {
+    page2.drawText("Inoltre,", { x: ML, y: y2, size: 8, font, color: BLACK });
+    y2 -= 12;
 
-  y2 = drawConsentBlock(
-    page2,
-    y2,
-    "al trattamento, ivi compresa la comunicazione ai soggetti di cui al punto 9 e la cessione al di fuori dell'Unione Europea, dei dati personali, ivi compresi quelli sensibili di cui all'art. 9 GDPR e le immagini dell'interessato per le finalita' di inserimento di dati, fotografie, articoli e riprese audiovisive nel proprio sito internet e nelle proprie pubblicazioni, social network, per la pubblicazione di fotografie e/o riprese audiovisive, corsi on line, pubblicazioni, brochure, presentazioni, cataloghi per fini didattici, pubblicitari e di marketing",
-    toBool(input.consensoMarketingMedia),
-  );
+    y2 = drawConsentBlock(
+      page2,
+      y2,
+      "al trattamento, ivi compresa la comunicazione ai soggetti di cui al punto 9 e la cessione al di fuori dell'Unione Europea, dei dati personali, ivi compresi quelli sensibili di cui all'art. 9 GDPR e le immagini dell'interessato per le finalita' di inserimento di dati, fotografie, articoli e riprese audiovisive nel proprio sito internet e nelle proprie pubblicazioni, social network, per la pubblicazione di fotografie e/o riprese audiovisive, corsi on line, pubblicazioni, brochure, presentazioni, cataloghi per fini didattici, pubblicitari e di marketing",
+      toBool(input.consensoMarketingMedia),
+    );
+  }
   page2.drawText("Inoltre,", { x: ML, y: y2, size: 8, font, color: BLACK });
   y2 -= 12;
 
