@@ -7393,6 +7393,7 @@ export type Database = {
         | "preventivi_write"
         | "preventivi_manage"
         | "responsabile_agenti"
+        | "marketing_eventi"
       categoria_allegato:
         | "capitolato"
         | "disegni"
@@ -7706,6 +7707,7 @@ export const Constants = {
         "preventivi_write",
         "preventivi_manage",
         "responsabile_agenti",
+        "marketing_eventi",
       ],
       categoria_allegato: [
         "capitolato",
