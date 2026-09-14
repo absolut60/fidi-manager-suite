@@ -82,7 +82,7 @@ export const iscriviWhatsapp = createServerFn({ method: "POST" })
     try {
       const { data: isc } = await supabaseAdmin
         .from("iscritti_whatsapp")
-        .select("id, contatto_id, cliente_id, email, nome, cognome, azienda")
+        .select("id, contatto_id, cliente_id, email, nome, cognome, azienda, numero_norm")
         .eq("numero_raw", data.numero)
         .order("created_at", { ascending: false })
         .limit(1)
