@@ -1,5 +1,6 @@
 import { PDFDocument, StandardFonts, rgb, PDFPage } from "pdf-lib";
 import { LOGO_MADE_BASE64 } from "./logo-made-base64";
+import { INFORMATIVA_FULL } from "./consensi-testi";
 
 export interface SchedaPdfInput {
   tipo: "nuovo" | "aggiornamento";
@@ -42,10 +43,10 @@ function fmtFirma(v: string | Date): string {
 
 const PAGE_W = 595.28;
 const PAGE_H = 841.89;
-const ML = 42;
-const MR = 42;
-const MT = 34;
-const MB = 56;
+const ML = 36;
+const MR = 36;
+const MT = 30;
+const MB = 52;
 const CW = PAGE_W - ML - MR;
 const GRAY = rgb(0.33, 0.33, 0.33);
 const LGRAY = rgb(0.8, 0.8, 0.8);
@@ -92,9 +93,10 @@ export async function generaSchedaCliente(input: SchedaPdfInput): Promise<Uint8A
     size: number,
     f: typeof font,
     color = BLACK,
+    lineHeightMul = 1.4,
   ): number {
     const lines = wrapText(text, maxW, size, f);
-    const lineH = size * 1.4;
+    const lineH = size * lineHeightMul;
     lines.forEach((line, i) => {
       page.drawText(line, { x, y: y - i * lineH, size, font: f, color });
     });
@@ -168,21 +170,23 @@ export async function generaSchedaCliente(input: SchedaPdfInput): Promise<Uint8A
 
   const titleText =
     "INFORMATIVA RESA AI SENSI DEGLI ARTT. 13-14 DEL GDPR (GENERAL DATA PROTECTION REGULATION) 2016/679";
-  const titleH = drawWrapped(page1, titleText, ML, y, CW, 10, bold, NAVY);
+  const titleH = drawWrapped(page1, titleText, ML, y, CW, 8.5, bold, NAVY);
   y -= titleH + 8;
 
-  const introText =
-    "Made Distribuzione S.p.A. - C.F. 10126430965, con sede in Milano Corso di Porta Nuova 11 (tel. 02404702800 - email gdpr-md@madepoint.it pec madedistribuzionesrl@pecplus.it) in persona del suo presidente Dott. Gian Luca Bellini, ai sensi dell'articolo 13 del GDPR 2016/679, Le fornisce le seguenti informazioni:";
-  const introH = drawWrapped(page1, introText, ML, y, CW, 8, font);
+  const informativeLines = INFORMATIVA_FULL.split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+  const introText = informativeLines[0] ?? "";
+  const introH = drawWrapped(page1, introText, ML, y, CW, 6.5, font, BLACK, 1.17);
   y -= introH + 10;
 
-  const half = (CW - 14) / 2;
+  const half = (CW - 16) / 2;
   const colXL = ML;
-  const colXR = ML + half + 14;
+  const colXR = ML + half + 16;
   const colY = y;
   page1.drawLine({
-    start: { x: ML + half + 7, y: colY },
-    end: { x: ML + half + 7, y: minY },
+    start: { x: ML + half + 8, y: colY },
+    end: { x: ML + half + 8, y: minY },
     thickness: 0.3,
     color: LGRAY,
   });
@@ -200,142 +204,32 @@ export async function generaSchedaCliente(input: SchedaPdfInput): Promise<Uint8A
       const f = item.isBold ? bold : font;
       const ix = x + (item.indent || 0);
       const iw = w - (item.indent || 0);
-      const h = drawWrapped(page, item.text, ix, cy, iw, 8, f);
-      cy -= h + 3;
+      const h = drawWrapped(page, item.text, ix, cy, iw, 6.5, f, BLACK, 1.17);
+      cy -= h + 1.3;
       if (cy < stopY) break;
     }
     return cy;
   }
 
-  const colLItems = [
-    { text: "TIPI DI DATI", isBold: true },
-    {
-      text: "1. Dati personali - I dati personali (nome, cognome, estremi documento di riconoscimento e copia dello stesso, telefono, indirizzo e-mail, etc.), sono quelli che saranno forniti al momento della sottoscrizione o comunque prima dell'avvio del rapporto contrattuale ovvero nel corso dello stesso.",
-    },
-    {
-      text: "2. Particolari categorie di dati (dati sensibili) - Tra i dati conferiti possono figurare anche i dati di cui all'art. 9 GDPR, ossia i dati personali che rivelino l'origine razziale o etnica, l'appartenenza sindacale, dati relativi alla salute della persona.",
-    },
-    { text: "TIPI E FINALITA' DI TRATTAMENTO", isBold: true },
-    {
-      text: "3. Trattamenti derivanti da obblighi contrattuali (trattamenti che prescindono da consenso) - I dati personali comuni e/o sensibili e/o giudiziari saranno oggetto, anche senza il Vostro consenso ai sensi dell'art. 6, lettere b) e f) GDPR:",
-    },
-    {
-      text: "i. di trattamento relativo alle funzioni connesse all'esercizio delle proprie attivita' aziendali (fornitura di prodotti, materiali, opere e servizi nei campi edile, elettrotecnico e idraulico);",
-      indent: 12,
-    },
-    {
-      text: "ii. di trattamento relativo all'esame e all'archiviazione dell'anagrafica cliente e del curriculum vitae;",
-      indent: 12,
-    },
-    {
-      text: "iii. di trattamento connesso alla fase precontrattuale e agli adempimenti del rapporto contrattuale: produzione in ambito giudiziale, registrazione fatture, elaborazione certificazioni, stipula di coperture assicurative, comunicazione a commercialisti, avvocati, banche e compagnie assicurative;",
-      indent: 12,
-    },
-    {
-      text: "4. Trattamenti derivanti da obblighi di legge (trattamenti che prescindono da consenso) - I dati saranno oggetto ai sensi dell'art. 6, lettera c) GDPR:",
-    },
-    { text: "iv. di trattamento connesso a finalita' fiscale/tributaria/contributiva;", indent: 12 },
-    { text: "v. di trattamento connesso alla comunicazione a Enti pubblici o privati prevista per legge;", indent: 12 },
-    { text: "vi. di trattamento connesso agli obblighi di legge in tema di tutela della vita e della salute;", indent: 12 },
-    {
-      text: "vii. di trasferimento a terzi per finalita' di backup su server esterni anche fuori UE con cifratura.",
-      indent: 12,
-    },
-    { text: "5. Trattamenti a prescindere da obblighi contrattuali o di legge - I dati personali saranno oggetto:" },
-    {
-      text: "viii. di trattamento costituito dalla conservazione e analisi con strumenti tecnologici automatizzati (profilazione) per gestire un consolidato nazionale in tempo reale e indirizzare le strategie commerciali del network;",
-      indent: 12,
-    },
-    {
-      text: "ix. di inserimento di dati, fotografie, articoli e riprese audiovisive nel sito internet, social network, pubblicazioni, brochure, cataloghi per fini didattici, pubblicitari e di marketing;",
-      indent: 12,
-    },
-    {
-      text: "x. di invio di informative per finalita' pubblicitarie e di marketing anche via e-mail, sms, whatsapp.",
-      indent: 12,
-    },
-    {
-      text: "6. Definizione di trattamento - Il trattamento di dati personali e' definito dall'art. 4 GDPR come qualsiasi operazione compiuta con o senza l'ausilio di processi automatizzati applicata a dati personali.",
-    },
-    {
-      text: "7. Trattamento di particolari categorie di dati (dati sensibili) - I dati particolari ex art. 9 GDPR non rientrano normalmente nel trattamento sopra descritto e verranno trattati solo in presenza di Vostro consenso.",
-    },
-    {
-      text: "8. Trattamento di dati giudiziari - I dati giudiziari verranno trattati solo se necessario e su consenso dell'interessato.",
-    },
-    { text: "CATEGORIE DI SOGGETTI AI QUALI I DATI POSSONO ESSERE COMUNICATI", isBold: true },
-    {
-      text: "9. I dati personali forniti potranno essere oggetto di comunicazione a tutti i dipendenti e collaboratori coinvolti, nonche' agli Enti esterni destinatari delle pratiche che riguardano il cliente/fornitore, e ai soggetti esterni che interagiscono con il titolare, sempre ed esclusivamente per attivita' funzionali alle finalita' sopra descritte; tali categorie sono:",
-    },
-  ];
-
-  const colRItems = [
-    {
-      text: "A. Societa' operanti nel campo E.D.P., anche residenti all'estero, per la cura dell'information management del titolare, della sicurezza e della riservatezza dei dati;",
-    },
-    {
-      text: "B. Commercialisti, societa' di servizi nel campo della consulenza del lavoro e nell'elaborazione di sistemi di paghe e stipendi, nonche' Studi Legali per eventuali controversie;",
-    },
-    {
-      text: "C. Clienti e Fornitori per lo svolgimento delle attivita' commerciali, di servizio e amministrative del titolare;",
-    },
-    {
-      text: "D. Distributori, agenti, vettori, corrieri, trasportatori e comunque ogni altra Societa' utilizzata nell'ambito dei servizi offerti dal titolare;",
-    },
-    { text: "E. Societa' del Gruppo Made;" },
-    {
-      text: "F. Societa' o soggetti che svolgono attivita' commerciale di vendita e/o fornitura di beni e/o servizi, di pubblicita', nell'ambito dell'attivita' commerciale promozionale e di marketing;",
-    },
-    {
-      text: "G. soggetti terzi con cui sia necessario o anche solo opportuno collaborare nell'ambito dell'organizzazione dell'attivita' aziendale.",
-    },
-    { text: "MODALITA' DI TRATTAMENTO", isBold: true },
-    {
-      text: "10. Principi - Il trattamento dei dati personali sara' improntato ai principi di correttezza, licceita', trasparenza e di tutela della Sua riservatezza e dei Suoi diritti.",
-    },
-    {
-      text: "11. Strumenti - Il trattamento dei dati sara' effettuato sia con strumenti manuali e/o informatici e/o telematici con logiche di organizzazione ed elaborazione strettamente correlate alle finalita' stesse.",
-    },
-    {
-      text: "12. Cessione dei dati all'estero - E' possibile la cessione dei dati all'estero e al di fuori dell'Unione Europea per finalita' di backup dati, per l'utilizzo di software che utilizzano server all'estero (Microsoft 365) e nel caso di servizi resi all'estero.",
-    },
-    { text: "TERMINE DI CONSERVAZIONE DEI DATI", isBold: true },
-    {
-      text: "13. I dati personali vengono conservati per tutta la durata del rapporto contrattuale e, nel caso di cessazione del rapporto, nei termini prescrizionali normativamente previsti. In ogni caso per non meno di 10 anni in ragione degli obblighi di conservazione a fini fiscali.",
-    },
-    { text: "CONSENSO DELL'INTERESSATO", isBold: true },
-    {
-      text: "14. Il conferimento dei dati personali al trattamento finora spiegato ha natura obbligatoria ai sensi delle leggi e dei contratti che regolamentano il rapporto contrattuale.",
-    },
-    { text: "15. Si informa in particolare che:" },
-    {
-      text: "a) e' obbligatorio fornire i dati per le finalita' di cui al punto 3 e 4. Il mancato consenso comporta l'impossibilita' di assolvere gli obblighi di legge e quindi di costituire o proseguire il rapporto contrattuale;",
-      indent: 12,
-    },
-    { text: "b) e' facoltativo fornire i dati per il trattamento di cui al punto 5;", indent: 12 },
-    { text: "c) e' facoltativo fornire i dati giudiziari.", indent: 12 },
-    { text: "DIRITTI DELL'INTERESSATO", isBold: true },
-    { text: "16. Ella potra', in qualsiasi momento, esercitare i diritti:" },
-    { text: "a. di accesso ai dati personali ai sensi dell'art. 15 GDPR;", indent: 12 },
-    {
-      text: "b. di ottenere la rettifica (art. 16 GDPR), la cancellazione (art. 17 GDPR) o la limitazione del trattamento (art. 18 GDPR);",
-      indent: 12,
-    },
-    { text: "c. di opporsi al trattamento ai sensi dell'art. 21 GDPR;", indent: 12 },
-    { text: "d. alla portabilita' dei dati ai sensi dell'art. 20 GDPR;", indent: 12 },
-    { text: "e. di revocare il consenso (art. 7 co. 3 GDPR);", indent: 12 },
-    { text: "f. di proporre reclamo all'autorita' di controllo (Garante Privacy).", indent: 12 },
-    {
-      text: "L'esercizio dei suoi diritti potra' avvenire attraverso l'invio di una richiesta mediante e-mail all'indirizzo gdpr-md@madepoint.it.",
-    },
-    {
-      text: "La revoca del consenso, la richiesta di cancellazione, l'opposizione e la richiesta di portabilita' dei dati comportera' l'impossibilita' di adempiere alle obbligazioni inerenti al rapporto e dunque rendera' impossibile la sua prosecuzione.",
-    },
-    { text: "DATI DEL TITOLARE E CONTATTI", isBold: true },
-    {
-      text: "Il Titolare del trattamento dati e' Made Distribuzione S.p.A. - c.f. 10126430965, con sede in Milano Corso di Porta Nuova 11 (tel. 02404702800 - email: gdpr-md@madepoint.it - pec: madedistribuzionesrl@pecplus.it). La persona a cui e' possibile rivolgersi per esercitare i diritti e' raggiungibile all'indirizzo e-mail: gdpr-md@madepoint.it.",
-    },
-  ];
+  const sectionHeadings = new Set([
+    "TIPI DI DATI",
+    "TIPI E FINALITA' DI TRATTAMENTO",
+    "CATEGORIE DI SOGGETTI AI QUALI I DATI POSSONO ESSERE COMUNICATI",
+    "MODALITA' DI TRATTAMENTO",
+    "TERMINE DI CONSERVAZIONE DEI DATI",
+    "CONSENSO DELL'INTERESSATO",
+    "DIRITTI DELL'INTERESSATO",
+    "DATI DEL TITOLARE E CONTATTI",
+  ]);
+  const toColumnItem = (text: string) => ({
+    text,
+    isBold: sectionHeadings.has(text),
+    indent: /^[ivx]+\.\s/i.test(text) || /^[a-c]\)\s/.test(text) ? 10 : /^[A-G]\.\s/.test(text) ? 8 : 0,
+  });
+  const bodyLines = informativeLines.slice(1);
+  const rightColumnStart = bodyLines.indexOf("CATEGORIE DI SOGGETTI AI QUALI I DATI POSSONO ESSERE COMUNICATI");
+  const colLItems = bodyLines.slice(0, rightColumnStart).map(toColumnItem);
+  const colRItems = bodyLines.slice(rightColumnStart).map(toColumnItem);
 
   drawCol(page1, colLItems, colXL, colY, half, minY);
   drawCol(page1, colRItems, colXR, colY, half, minY);
