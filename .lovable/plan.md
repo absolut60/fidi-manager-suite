@@ -1,18 +1,19 @@
-# Gestione errore 522 su invio template WhatsApp a Meta (360dialog)
+# Informativa privacy ufficiale e PDF su una pagina
 
-## Diagnosi (già confermata dai log)
+## Intervento
 
-- Il 522 proviene dalla risposta di 360dialog (Cloudflare: origine non raggiungibile), non da un malfunzionamento della nostra server function.
-- Log esatto: `[whatsapp-template] errore Meta 522 error code: 522` alle 10:51:41 UTC.
-- `D360_API_KEY` presente; nessun log "rete 360dialog"; la server function è raggiungibile nell'ambiente pubblicato.
+1. Aggiornare la versione dell’informativa e sostituire integralmente il testo ufficiale, lasciando invariati consensi, etichette e calcolo hash.
+2. Aggiornare solo l’impaginazione della pagina 1 della scheda PDF: nuovi margini, due colonne, testo 6,5 pt, interlinea 1,17 e spaziatura 1,3.
+3. Riportare nelle due colonne le stesse frasi dell’informativa ufficiale, con la suddivisione e le indentazioni indicate.
+4. Lasciare invariati contenuti e impaginazione della pagina 2; il cambio dei margini richiesto si applicherà alle coordinate condivise di intestazione, tabella e piè di pagina.
 
-## Intervento proposto (opzionale, solo se si vuole rendere l'errore più gestibile)
+## Verifica
 
-1. In `src/lib/whatsapp-template.functions.ts`, intercettare specificamente lo status 522/502/503/504 nella risposta di 360dialog e restituire un messaggio utente più chiaro, es. "Il servizio WhatsApp (360dialog) non risponde al momento: riprova tra qualche minuto." mantenendo il salvataggio in `nota_rifiuto` solo per errori di validazione Meta (4xx), non per errori temporanei 5xx.
-2. Nessuna modifica a webhook, payload template, o altre logiche.
+- Generare un PDF di prova di due pagine.
+- Controllare visivamente entrambe le pagine, verificando che l’informativa resti interamente nella sola pagina 1 e che la pagina 2 non abbia regressioni.
+- Confrontare programmaticamente il testo ufficiale con la concatenazione dei contenuti della pagina 1 per evitare omissioni o riscritture.
 
-## Note tecniche
+## File modificati
 
-- File toccato: solo `src/lib/whatsapp-template.functions.ts`.
-- Nessuna migration, nessun secret nuovo, nessuna modifica UI.
-- Verifica: typecheck `bunx tsgo --noEmit` e rilettura del ramo di gestione errori.
+- `src/lib/consensi-testi.ts`
+- `src/lib/scheda-pdf.ts`
