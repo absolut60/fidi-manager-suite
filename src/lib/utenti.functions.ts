@@ -354,7 +354,7 @@ export const updateUtenteRuoli = createServerFn({ method: "POST" })
   }) =>
     z.object({
       userId: z.string().uuid(),
-      ruoli: z.array(z.enum(RUOLI_VALIDI)).min(1).max(18),
+      ruoli: z.array(z.enum(RUOLI_VALIDI)).min(1).max(19),
       storeId: z.string().uuid().nullable().optional(),
       codiceAgente: z.string().max(50).nullable().optional(),
       attivo: z.boolean(),
