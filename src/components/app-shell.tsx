@@ -220,6 +220,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isAmministrazione = hasUserRole("amministrazione");
   const isDirezione = hasUserRole("direzione");
   const isMarketing = hasUserRole("marketing");
+  const isMarketingEventi = hasUserRole("marketing_eventi");
   const isAgente = hasUserRole("agente");
   const isPrevRead = hasUserRole("preventivi_read");
   const isPrevWrite = hasUserRole("preventivi_write");
