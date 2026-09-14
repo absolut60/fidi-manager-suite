@@ -26,6 +26,7 @@ const RUOLI_VALIDI = [
   "preventivi_read",
   "preventivi_write",
   "preventivi_manage",
+  "marketing_eventi",
 ] as const;
 
 async function assertAgenteEsiste(codice: string) {
