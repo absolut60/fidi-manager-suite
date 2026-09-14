@@ -7093,6 +7093,7 @@ export type Database = {
         }[]
       }
       get_whatsapp_cliente: { Args: { _cliente_id: string }; Returns: Json }
+      has_eventi_module_access: { Args: { _user_id: string }; Returns: boolean }
       has_lead_module_access: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
         Args: {
