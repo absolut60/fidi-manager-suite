@@ -18,8 +18,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { puoAccedereLead } from "@/lib/lead-costanti";
-import { formatDataEvento } from "@/lib/eventi-costanti";
+import { formatDataEvento, puoAccedereEventi } from "@/lib/eventi-costanti";
 import { SchedaLista, ElencoSchede } from "@/components/lista-responsive";
 
 
@@ -49,7 +48,7 @@ function EventiListaPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, roles, loading: authLoading } = useAuth();
-  const canSee = useMemo(() => puoAccedereLead(roles as string[]), [roles]);
+  const canSee = useMemo(() => puoAccedereEventi(roles as string[]), [roles]);
 
   const [open, setOpen] = useState(false);
   const [nome, setNome] = useState("");
@@ -105,7 +104,7 @@ function EventiListaPage() {
       <Card className="p-8 text-center">
         <p className="font-medium">Accesso riservato</p>
         <p className="text-sm text-muted-foreground mt-1">
-          Questa sezione è riservata ai ruoli Marketing, Amministrazione, Direzione e Amministratore.
+          Questa sezione è riservata ai ruoli Marketing, Marketing Eventi, Amministrazione, Direzione e Amministratore.
         </p>
       </Card>
     );

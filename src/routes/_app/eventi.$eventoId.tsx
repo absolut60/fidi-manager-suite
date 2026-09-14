@@ -25,7 +25,7 @@ import {
 import { AggiungiPartecipanteDialog } from "@/components/eventi/aggiungi-partecipante-dialog";
 import { ImportPartecipantiCard } from "@/components/eventi/import-partecipanti-card";
 import { RiconciliaImportCard } from "@/components/eventi/riconcilia-import-card";
-import { puoAccedereLead } from "@/lib/lead-costanti";
+
 import { useServerFn } from "@tanstack/react-start";
 import { inviaRichiestaFirmaPrivacy } from "@/lib/firma-privacy.functions";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -36,6 +36,7 @@ import { SchedaLista, ElencoSchede } from "@/components/lista-responsive";
 import {
   EVENTI_PARTECIPANTE_STATO_CLASS,
   EVENTI_PARTECIPANTE_STATO_LABEL, formatDataEvento, nomePartecipante,
+  puoAccedereEventi,
   type EventiPartecipanteStato,
 } from "@/lib/eventi-costanti";
 
@@ -166,7 +167,7 @@ function EventoDettaglioPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { roles, loading: authLoading } = useAuth();
-  const canSee = useMemo(() => puoAccedereLead(roles as string[]), [roles]);
+  const canSee = useMemo(() => puoAccedereEventi(roles as string[]), [roles]);
 
   const [nome, setNome] = useState("");
   const [dataEvento, setDataEvento] = useState("");
@@ -480,7 +481,7 @@ function EventoDettaglioPage() {
       <Card className="p-8 text-center">
         <p className="font-medium">Accesso riservato</p>
         <p className="text-sm text-muted-foreground mt-1">
-          Questa sezione è riservata ai ruoli Marketing, Amministrazione, Direzione e Amministratore.
+          Questa sezione è riservata ai ruoli Marketing, Marketing Eventi, Amministrazione, Direzione e Amministratore.
         </p>
       </Card>
     );
