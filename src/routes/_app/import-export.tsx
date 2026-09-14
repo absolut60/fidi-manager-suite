@@ -1733,6 +1733,9 @@ function ScadenziarioImportCard() {
   } | null>(null);
   const [parsing, setParsing] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  // Il file MADE_VISTASCADENZE contiene anche il foglio BLOCCO_FIDO_ASSICURAZIONE
+  const [hasBloccoFido, setHasBloccoFido] = useState(false);
+  const qcScad = useQueryClient();
 
   // Progress tracking (2 phases: uploading 0-20%, processing 20-100%)
   const [startedAt, setStartedAt] = useState<number | null>(null);
@@ -1782,6 +1785,7 @@ function ScadenziarioImportCard() {
       if (!sheet) throw new Error("Foglio SCADENZIARIO non trovato nel file");
       const nextParsed = parseOfficialScadenziarioSheet(sheet);
       if (!nextParsed.totRead) throw new Error("Nessuna riga dati trovata nel foglio SCADENZIARIO");
+      setHasBloccoFido(haFoglioBloccoFido(wb));
       setFileName(f.name);
       setFile(f);
       setParsed(nextParsed);
