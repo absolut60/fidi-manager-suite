@@ -75,7 +75,7 @@ type NavItem = {
   to: string;
   label: string;
   icon: typeof LayoutDashboard;
-  roles?: Array<"admin" | "approvatore" | "store_manager" | "amministrazione" | "direzione" | "marketing" | "preventivi_read" | "preventivi_write" | "preventivi_manage">;
+  roles?: Array<"admin" | "approvatore" | "store_manager" | "amministrazione" | "direzione" | "marketing" | "marketing_eventi" | "preventivi_read" | "preventivi_write" | "preventivi_manage">;
   group: NavGroupKey;
   richiesteScope?: RichiesteScope;
   exact?: boolean;
@@ -127,7 +127,7 @@ const NAV: NavItem[] = [
   { to: "/richieste-interne/tutte", label: "Tutte le richieste", icon: FileSpreadsheet, group: "richieste_interne", richiesteScope: "manage" },
   { to: "/richieste-interne/archivio", label: "Archivio", icon: ScrollText, group: "richieste_interne", richiesteScope: "manage" },
   // MARKETING
-  { to: "/eventi", label: "Eventi", icon: CalendarDays, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "marketing" },
+  { to: "/eventi", label: "Eventi", icon: CalendarDays, roles: ["admin", "amministrazione", "direzione", "marketing", "marketing_eventi"], group: "marketing" },
   { to: "/marketing/segmenti", label: "Segmenti", icon: Sparkles, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "marketing" },
  { to: "/marketing/campagne", label: "Campagne email", icon: Mail, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "marketing" },
  { to: "/marketing/invii", label: "Invii massivi", icon: Megaphone, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "marketing" },
@@ -220,6 +220,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isAmministrazione = hasUserRole("amministrazione");
   const isDirezione = hasUserRole("direzione");
   const isMarketing = hasUserRole("marketing");
+  const isMarketingEventi = hasUserRole("marketing_eventi");
   const isAgente = hasUserRole("agente");
   const isPrevRead = hasUserRole("preventivi_read");
   const isPrevWrite = hasUserRole("preventivi_write");
@@ -252,6 +253,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     "esecutore_richieste",
   ];
   const hasAnyRichiesteRole = RICHIESTE_ROLES.some((r) => hasUserRole(r));
+  const isOnlyMarketingEventi =
+    isMarketingEventi && !isAdmin && !isApprovatore && !isStoreManager && !isAmministrazione && !isDirezione && !isMarketing && !isAgente && !hasAccessoPreventivi && !hasAnyRichiesteRole;
   const canSeeRichiesteInterne = isAdmin || hasAnyRichiesteRole;
   const isApprovatoreRichLiv1 = hasUserRole("approvatore_richieste_liv1");
   const isApprovatoreRichLiv2 = hasUserRole("approvatore_richieste_liv2");
@@ -269,6 +272,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       if (item.richiesteScope === "gestione") return canGestioneRich;
       return true;
     }
+    if (isOnlyMarketingEventi) return item.to === "/eventi";
     if (isOnlyAgente) return AGENTE_WHITELIST.has(item.to);
     if (!item.roles) return true;
     if (item.roles.includes("admin") && isAdmin) return true;
@@ -277,6 +281,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (item.roles.includes("amministrazione") && isAmministrazione) return true;
     if (item.roles.includes("direzione") && isDirezione) return true;
     if (item.roles.includes("marketing") && isMarketing) return true;
+    if (item.roles.includes("marketing_eventi") && isMarketingEventi) return true;
     if (item.roles.includes("preventivi_read") && hasAccessoPreventivi) return true;
     return false;
   });
