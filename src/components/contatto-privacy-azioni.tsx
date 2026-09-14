@@ -171,9 +171,18 @@ export function ContattoPrivacyAzioni({
 }) {
   const inviaFn = useServerFn(inviaRichiestaFirmaPrivacy);
   const diPersonaFn = useServerFn(registraConsensoDiPersona);
+  const statoFn = useServerFn(getStatoPrivacyContatto);
   const [loading, setLoading] = useState<"invia" | "copia" | null>(null);
   const [openDiPersona, setOpenDiPersona] = useState(false);
   const [savingDiPersona, setSavingDiPersona] = useState(false);
+
+  const { data: statoPrivacy } = useQuery({
+    queryKey: ["stato-privacy", contatto.id, contatto.privacy_firmata],
+    queryFn: () => statoFn({ data: { contattoId: contatto.id } }),
+    staleTime: 30_000,
+  });
+  // Prima che la query risponda, mantieni il comportamento precedente (campo booleano).
+  const privacyRaccolta = statoPrivacy?.privacy_raccolta ?? !!contatto.privacy_firmata;
 
   const nomeContatto = [contatto.nome, contatto.cognome].filter(Boolean).join(" ").trim() || "Contatto";
 
