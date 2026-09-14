@@ -289,15 +289,36 @@ export const getDettagliConsenso = createServerFn({ method: "POST" })
     z.object({ contattoId: z.string().uuid() }).parse(d)
   )
   .handler(async ({ data, context }) => {
-    const { data: row, error } = await context.supabase
+    const { data: rows, error } = await context.supabase
       .from("consensi_log")
-      .select("created_at, origine, ip_address, user_agent, informativa_versione, informativa_hash, secondi_permanenza")
-      .eq("contatto_id", data.contattoId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .select("created_at, origine, ip_address, user_agent, informativa_versione, informativa_hash, secondi_permanenza, tipo_consenso")
+      .eq("contatto_id", data.contattoId);
     if (error) throw new Error(error.message);
-    return row ?? null;
+    if (!rows || rows.length === 0) return null;
+
+    const haProva = (r: (typeof rows)[number]) =>
+      r.ip_address != null ||
+      r.user_agent != null ||
+      r.informativa_versione != null ||
+      r.secondi_permanenza != null;
+
+    const righeConProva = rows.filter(haProva);
+    const candidati = righeConProva.length > 0 ? righeConProva : rows;
+
+    const ordineTipo: Record<string, number> = {
+      trattamento_dati: 0,
+      whatsapp: 1,
+    };
+
+    const sorted = [...candidati].sort((a, b) => {
+      const aOrd = ordineTipo[a.tipo_consenso ?? ""] ?? 99;
+      const bOrd = ordineTipo[b.tipo_consenso ?? ""] ?? 99;
+      if (aOrd !== bOrd) return aOrd - bOrd;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+
+    const { tipo_consenso: _, ...row } = sorted[0];
+    return row;
   });
 
 export type StatoPrivacyContatto = {
