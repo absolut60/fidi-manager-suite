@@ -253,6 +253,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     "esecutore_richieste",
   ];
   const hasAnyRichiesteRole = RICHIESTE_ROLES.some((r) => hasUserRole(r));
+  const isOnlyMarketingEventi =
+    isMarketingEventi && !isAdmin && !isApprovatore && !isStoreManager && !isAmministrazione && !isDirezione && !isMarketing && !isAgente && !hasAccessoPreventivi && !hasAnyRichiesteRole;
   const canSeeRichiesteInterne = isAdmin || hasAnyRichiesteRole;
   const isApprovatoreRichLiv1 = hasUserRole("approvatore_richieste_liv1");
   const isApprovatoreRichLiv2 = hasUserRole("approvatore_richieste_liv2");
