@@ -167,7 +167,7 @@ function EventoDettaglioPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { roles, loading: authLoading } = useAuth();
-  const canSee = useMemo(() => puoAccedereLead(roles as string[]), [roles]);
+  const canSee = useMemo(() => puoAccedereEventi(roles as string[]), [roles]);
 
   const [nome, setNome] = useState("");
   const [dataEvento, setDataEvento] = useState("");

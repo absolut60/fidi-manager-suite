@@ -104,7 +104,7 @@ function EventiListaPage() {
       <Card className="p-8 text-center">
         <p className="font-medium">Accesso riservato</p>
         <p className="text-sm text-muted-foreground mt-1">
-          Questa sezione è riservata ai ruoli Marketing, Amministrazione, Direzione e Amministratore.
+          Questa sezione è riservata ai ruoli Marketing, Marketing Eventi, Amministrazione, Direzione e Amministratore.
         </p>
       </Card>
     );
