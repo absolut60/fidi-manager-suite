@@ -94,11 +94,15 @@ export const iscriviWhatsapp = createServerFn({ method: "POST" })
       if (isc && contattoId && emailDich) {
         let ragioneSociale = (isc.azienda ?? "").trim();
         let partitaIva: string | undefined;
+        let codiceFiscaleDich: string | undefined;
+        let residenza: string | undefined;
         if (isc.cliente_id) {
           const { risolviIntestazioneSoggetto } = await import("./intestazione-soggetto.server");
           const soggetto = await risolviIntestazioneSoggetto({ cliente_id: isc.cliente_id });
           if (soggetto.ragione_sociale) ragioneSociale = soggetto.ragione_sociale;
           partitaIva = soggetto.partita_iva ?? undefined;
+          codiceFiscaleDich = soggetto.codice_fiscale ?? undefined;
+          residenza = [soggetto.indirizzo, soggetto.citta].filter(Boolean).join(" - ") || undefined;
         }
 
         const now = new Date();
