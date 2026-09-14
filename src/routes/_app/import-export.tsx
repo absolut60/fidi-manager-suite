@@ -1493,6 +1493,235 @@ function ScadenziarioProgressBlock({
   );
 }
 
+// ---------------------------------------------------------------------------
+// Ramo BLOCCO_FIDO_ASSICURAZIONE: riuso integrale del motore esistente.
+// Parsing client-side (recuperato dalla card storica) + staging JSON letto da
+// processBloccoFidoImport. Nessuna modifica ai job backend o alle RPC.
+// ---------------------------------------------------------------------------
+type BfaParsedRow = {
+  cod_cli: string;
+  ind_blocco: number | null;
+  ultima_data_fatturazione: string | null;
+  fido: number | null;
+  assicurazione: number | null;
+};
+type BfaNoteRow = { cod_cli: string; nota: string };
+
+function bfaClientToNum(v: unknown): number | null {
+  if (v === "" || v == null) return null;
+  if (typeof v === "number") return Number.isFinite(v) ? v : null;
+  const s = String(v).trim().replace(/\./g, "").replace(",", ".");
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+
+function bfaClientDateISO(v: unknown): string | null {
+  if (v == null || v === "") return null;
+  if (typeof v === "number") {
+    const d = XLSX.SSF?.parse_date_code?.(v);
+    if (d) {
+      const m = String(d.m).padStart(2, "0");
+      const day = String(d.d).padStart(2, "0");
+      return `${d.y}-${m}-${day}`;
+    }
+  }
+  const s = String(v).trim();
+  if (!s) return null;
+  const m1 = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/);
+  if (m1) {
+    const dd = m1[1].padStart(2, "0");
+    const mm = m1[2].padStart(2, "0");
+    let yy = m1[3];
+    if (yy.length === 2) yy = (Number(yy) > 50 ? "19" : "20") + yy;
+    return `${yy}-${mm}-${dd}`;
+  }
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+  return null;
+}
+
+/** true se il file contiene il foglio BLOCCO_FIDO_ASSICURAZIONE (case-insensitive + trim). */
+function haFoglioBloccoFido(wb: XLSX.WorkBook): boolean {
+  return wb.SheetNames.some((n) => n.trim().toUpperCase() === "BLOCCO_FIDO_ASSICURAZIONE");
+}
+
+async function parseBloccoFidoFile(file: File): Promise<{
+  rowsBlocco: BfaParsedRow[];
+  rowsNote: BfaNoteRow[];
+  foglioNotePresente: boolean;
+  warnings: string[];
+}> {
+  const buffer = await file.arrayBuffer();
+  const wb = XLSX.read(buffer, {
+    type: "array",
+    cellFormula: false,
+    cellStyles: false,
+    cellHTML: false,
+    cellNF: false,
+    cellText: false,
+    sheetStubs: false,
+    bookDeps: false,
+    bookFiles: false,
+    bookProps: false,
+    bookVBA: false,
+  });
+
+  const foglioBlocco = wb.SheetNames.find(
+    (n) => n.trim().toUpperCase() === "BLOCCO_FIDO_ASSICURAZIONE",
+  );
+  if (!foglioBlocco) throw new Error("Foglio BLOCCO_FIDO_ASSICURAZIONE non trovato nel file");
+
+  const matrix = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[foglioBlocco], {
+    header: 1,
+    defval: "",
+    blankrows: false,
+  });
+  if (!matrix.length) throw new Error("Foglio BLOCCO_FIDO_ASSICURAZIONE vuoto");
+
+  const headers = (matrix[0] as unknown[]).map((h) => String(h ?? "").trim().toLowerCase());
+  const iCod = headers.indexOf("cod_cli");
+  const iInd = headers.indexOf("ind_blocco");
+  const iData = headers.indexOf("ultima data fatturazione");
+  const iFido = headers.indexOf("fido");
+  const iAss = headers.indexOf("assicurazione");
+  if (iCod === -1) throw new Error("Colonna COD_CLI non trovata in BLOCCO_FIDO_ASSICURAZIONE");
+
+  const rowsBlocco: BfaParsedRow[] = [];
+  for (let i = 1; i < matrix.length; i++) {
+    const r = (matrix[i] ?? []) as unknown[];
+    const cod = String(r[iCod] ?? "").trim().replace(/\.0$/, "");
+    if (!cod) continue;
+    const indRaw = iInd >= 0 ? bfaClientToNum(r[iInd]) : null;
+    rowsBlocco.push({
+      cod_cli: cod,
+      ind_blocco: indRaw != null ? Math.trunc(indRaw) : null,
+      ultima_data_fatturazione: iData >= 0 ? bfaClientDateISO(r[iData]) : null,
+      fido: iFido >= 0 ? bfaClientToNum(r[iFido]) : null,
+      assicurazione: iAss >= 0 ? bfaClientToNum(r[iAss]) : null,
+    });
+  }
+
+  const warnings: string[] = [];
+  const foglioNote = wb.SheetNames.find((n) => n.trim().toLowerCase() === "note legale");
+  const rowsNote: BfaNoteRow[] = [];
+  if (!foglioNote) {
+    warnings.push("Foglio 'Note Legale' non trovato — nessuna nota importata");
+  } else {
+    const nMatrix = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[foglioNote], {
+      header: 1,
+      defval: "",
+      blankrows: false,
+    });
+    if (nMatrix.length < 2) {
+      warnings.push("Foglio 'Note Legale' vuoto — nessuna nota importata");
+    } else {
+      const nHeaders = (nMatrix[0] as unknown[]).map((h) => String(h ?? "").trim().toLowerCase());
+      const iCodN = nHeaders.indexOf("cod_cli");
+      const iNota = nHeaders.indexOf("note legale");
+      if (iCodN === -1 || iNota === -1) {
+        warnings.push("Foglio 'Note Legale': colonne mancanti — nessuna nota importata");
+      } else {
+        const seen = new Map<string, string>();
+        for (let i = 1; i < nMatrix.length; i++) {
+          const r = (nMatrix[i] ?? []) as unknown[];
+          const cod = String(r[iCodN] ?? "").trim().replace(/\.0$/, "");
+          const nota = String(r[iNota] ?? "").trim();
+          if (!cod || !nota) continue;
+          seen.set(cod, nota);
+        }
+        for (const [cod_cli, nota] of seen) rowsNote.push({ cod_cli, nota });
+      }
+    }
+  }
+
+  return { rowsBlocco, rowsNote, foglioNotePresente: !!foglioNote, warnings };
+}
+
+/**
+ * Crea la riga `importazioni` (fonte blocco_fido_assicurazione), carica lo staging
+ * in `blocco-fido/{importazioneId}/` e innesca il job esistente.
+ * Ritorna l'id dell'importazione creata.
+ */
+async function avviaImportBloccoFido(file: File): Promise<string> {
+  const parsed = await parseBloccoFidoFile(file);
+  if (!parsed.rowsBlocco.length)
+    throw new Error("Nessuna riga utile nel foglio BLOCCO_FIDO_ASSICURAZIONE");
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data: imp, error: impErr } = await supabase
+    .from("importazioni")
+    .insert({
+      nome_file: file.name,
+      fonte: "blocco_fido_assicurazione",
+      stato: "in_elaborazione",
+      righe_totali: parsed.rowsBlocco.length,
+      eseguita_da: user?.id ?? null,
+    })
+    .select("id")
+    .single();
+  if (impErr) throw impErr;
+
+  const baseDir = `blocco-fido/${imp.id}`;
+  const chunkSize = 500;
+  const totalChunks = Math.ceil(parsed.rowsBlocco.length / chunkSize);
+  const chunks = Array.from({ length: totalChunks }, (_, i) => ({
+    chunkIndex: i,
+    chunkPath: `${baseDir}/blocco-chunk-${i}.json`,
+    rowsCount: parsed.rowsBlocco.slice(i * chunkSize, (i + 1) * chunkSize).length,
+  }));
+
+  const manifest = {
+    kind: "blocco-fido-staging-v1",
+    importazioneId: imp.id,
+    nomeFile: file.name,
+    totaleBlocco: parsed.rowsBlocco.length,
+    totaleNote: parsed.rowsNote.length,
+    foglioNotePresente: parsed.foglioNotePresente,
+    chunkSize,
+    totalChunks,
+    chunks,
+    warnings: parsed.warnings,
+    createdAt: new Date().toISOString(),
+  };
+
+  const uploadJson = async (path: string, body: unknown) => {
+    const { error } = await supabase.storage
+      .from("import-files")
+      .upload(path, new Blob([JSON.stringify(body)], { type: "application/json" }), {
+        contentType: "application/json",
+        upsert: true,
+      });
+    if (error) throw error;
+  };
+
+  await uploadJson(`${baseDir}/manifest.json`, manifest);
+  await uploadJson(`${baseDir}/note-legali.json`, parsed.rowsNote);
+  for (let i = 0; i < totalChunks; i++) {
+    await uploadJson(
+      `${baseDir}/blocco-chunk-${i}.json`,
+      parsed.rowsBlocco.slice(i * chunkSize, (i + 1) * chunkSize),
+    );
+  }
+
+  await supabase
+    .from("importazioni")
+    .update({ file_path: `${baseDir}/manifest.json` })
+    .eq("id", imp.id);
+
+  await triggerImport({
+    data: {
+      fonte: "blocco_fido_assicurazione",
+      importazioneId: imp.id,
+      filePath: `${baseDir}/manifest.json`,
+    },
+  });
+
+  return imp.id;
+}
+
 function ScadenziarioImportCard() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState<string | null>(null);
