@@ -299,3 +299,30 @@ export const getDettagliConsenso = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return row ?? null;
   });
+
+export type StatoPrivacyContatto = {
+  privacy_raccolta: boolean;
+  ha_trattamento_dati: boolean;
+  privacy_firmata: boolean;
+  data_ultima: string | null;
+  origine_ultima: string | null;
+  ha_pdf: boolean;
+};
+
+/**
+ * Stato privacy unificato del contatto: "raccolta" se esiste nel registro
+ * consensi (consensi_log) almeno un trattamento_dati=true, in qualunque
+ * modalità; il flag privacy_firmata resta come dettaglio aggiuntivo.
+ */
+export const getStatoPrivacyContatto = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { contattoId: string }) =>
+    z.object({ contattoId: z.string().uuid() }).parse(d)
+  )
+  .handler(async ({ data, context }) => {
+    const { data: rows, error } = await context.supabase
+      .rpc("stato_privacy_contatto", { _contatto_id: data.contattoId });
+    if (error) throw new Error(error.message);
+    const row = Array.isArray(rows) ? rows[0] : rows;
+    return (row ?? null) as StatoPrivacyContatto | null;
+  });
