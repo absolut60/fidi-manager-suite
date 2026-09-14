@@ -15,6 +15,7 @@ import {
   inviaRichiestaFirmaPrivacy,
   registraConsensoDiPersona,
   getDettagliConsenso,
+  getStatoPrivacyContatto,
 } from "@/lib/firma-privacy.functions";
 
 
@@ -55,6 +56,8 @@ const ORIGINE_LABEL: Record<string, string> = {
   firma_grafica: "Firma grafica da link",
   operatore: "Registrato da operatore",
   import: "Importato",
+  qr_whatsapp: "Iscrizione WhatsApp (QR/link)",
+  qr_pagina: "Iscrizione WhatsApp (QR pagina)",
 };
 
 function fmtDataOra(v?: string | null): string {
