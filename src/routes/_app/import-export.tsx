@@ -1077,7 +1077,7 @@ function ImportZone(props: {
       {invalid.length > 0 && (
         <div className="space-y-1">
           <p className="text-xs font-medium">Righe scartate (senza ragione sociale)</p>
-          <div className="max-h-40 overflow-auto rounded-md border">
+          <div className="max-h-40 overflow-y-auto rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -1102,7 +1102,7 @@ function ImportZone(props: {
       {withWarnings.length > 0 && (
         <div className="space-y-1">
           <p className="text-xs font-medium">Righe con warning (importate, campi azzerati)</p>
-          <div className="max-h-40 overflow-auto rounded-md border">
+          <div className="max-h-40 overflow-y-auto rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>

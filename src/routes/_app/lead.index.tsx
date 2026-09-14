@@ -504,7 +504,7 @@ function LeadListaPage() {
           </ElencoSchede>
 
 
-          <div className="hidden md:block overflow-x-auto">
+          <div className="hidden md:block">
             <Table>
               <TableHeader>
                 <TableRow>

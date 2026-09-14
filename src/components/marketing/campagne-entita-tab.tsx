@@ -177,7 +177,7 @@ export function CampagneEntitaTab({ clienteId, leadId }: { clienteId?: string; l
         </span>
       </div>
 
-      <div className="rounded-md border overflow-x-auto">
+      <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>

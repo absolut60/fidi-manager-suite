@@ -1695,7 +1695,7 @@ function ClientiPage() {
           </ElencoSchede>
 
 
-          <div className="hidden md:block overflow-x-auto">
+          <div className="hidden md:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -2238,7 +2238,7 @@ function ProposteFidoMassivoDialog({
           </p>
         </div>
 
-        <div className="overflow-x-auto border rounded-md">
+        <div className="border rounded-md">
           <Table>
             <TableHeader>
               <TableRow>

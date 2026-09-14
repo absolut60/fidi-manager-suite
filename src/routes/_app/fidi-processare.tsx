@@ -408,7 +408,7 @@ function GestireTab({
           Nessuna richiesta da gestire con i filtri attuali.
         </Card>
       ) : (
-        <Card className="p-2 sm:p-3 overflow-x-auto">
+        <Card className="p-2 sm:p-3">
           <Table>
             <TableHeader>
               <TableRow>
@@ -627,7 +627,7 @@ function StoricoTab({
           Nessuna richiesta processata nel periodo selezionato.
         </Card>
       ) : (
-        <Card className="p-2 sm:p-3 overflow-x-auto">
+        <Card className="p-2 sm:p-3">
           <Table>
             <TableHeader>
               <TableRow>

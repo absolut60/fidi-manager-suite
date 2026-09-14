@@ -113,7 +113,7 @@ export function DashboardFidiDettaglio() {
         <p className="text-xs text-muted-foreground mb-3">
           Concesso (fido gestionale) e proposto (calcolo teorico) per sede, ordinati per concesso decrescente.
         </p>
-        <div className="overflow-x-auto">
+        <div className="">
           <Table>
             <TableHeader>
               <TableRow>
@@ -167,7 +167,7 @@ export function DashboardFidiDettaglio() {
           Fascia calcolata sul <strong>fido concesso</strong>; le colonne proposto e variazione si riferiscono
           agli <strong>stessi clienti</strong> della fascia.
         </p>
-        <div className="overflow-x-auto">
+        <div className="">
           <Table>
             <TableHeader>
               <TableRow>

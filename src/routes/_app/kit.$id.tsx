@@ -292,7 +292,7 @@ function KitEditorPage() {
             <Plus className="mr-1 h-4 w-4" /> Aggiungi riga
           </Button>
         </div>
-        <div className="overflow-x-auto">
+        <div className="">
           <Table>
             <TableHeader>
               <TableRow className="text-[11px] uppercase tracking-wide">
