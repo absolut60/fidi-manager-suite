@@ -2006,12 +2006,15 @@ function ScadenziarioImportCard() {
         </div>
       </div>
       <p className="text-xs text-muted-foreground mb-4">
-        Carica il file Excel (tracciato MADE_VISTASCADENZE): viene letto solo il foglio{" "}
+        Carica il file Excel (tracciato MADE_VISTASCADENZE): viene letto il foglio{" "}
         <code>SCADENZIARIO</code>. La riga delle intestazioni è individuata automaticamente
         (compatibile con header in riga 1 o riga 2). Match cliente su <code>COD_CLI</code>. Chiave
         univoca: COD_CLI + <code>_KEYDOCUMENTO</code> + Data Scadenza + <code>_KEYTIPOEFFETTO</code>{" "}
         + Importo Scadenza. <code>Data Pagamento Effettiva</code> viene salvata in
-        <code> data_pagamento_effettiva</code>.
+        <code> data_pagamento_effettiva</code>. Se nello stesso file è presente il foglio{" "}
+        <code>BLOCCO_FIDO_ASSICURAZIONE</code>, con lo stesso caricamento vengono aggiornati anche
+        blocco fido (<code>ind_blocco</code>) e assicurazione dei clienti; i due import restano
+        separati e visibili in “Ultime importazioni”.
       </p>
       {showProgress ? (
         <ScadenziarioProgressBlock
