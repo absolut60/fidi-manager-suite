@@ -225,7 +225,7 @@ export const registraConsensoDiPersona = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
     z.object({
       contattoId: z.string().uuid(),
-      firmaDataUrl: z.string().startsWith("data:image/png;base64,").max(2_000_000),
+      firmaDataUrl: z.string().startsWith("data:image/png;base64,").max(2_000_000).optional(),
       dichiarante: z.object({
         nome: z.string().trim().min(1, "Nome obbligatorio").max(100),
         cognome: z.string().trim().min(1, "Cognome obbligatorio").max(100),
@@ -271,7 +271,9 @@ export const registraConsensoDiPersona = createServerFn({ method: "POST" })
       data_firma: data.data_firma,
       secondi_permanenza: data.secondi_permanenza,
       origine: "di_persona",
-      note: "Consenso raccolto di persona al punto vendita",
+      note: data.firmaDataUrl
+        ? "Consenso raccolto di persona al punto vendita"
+        : "Conferma telematica di persona al punto vendita",
       operatoreId: userId,
       invalidaToken: true,
     });
