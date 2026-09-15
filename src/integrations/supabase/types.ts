@@ -6219,6 +6219,21 @@ export type Database = {
         }[]
       }
       crea_o_apri_diretto: { Args: { _altro_user_id: string }; Returns: string }
+      crea_o_riusa_contatto_in_soggetto: {
+        Args: {
+          _cellulare?: string
+          _cliente_id?: string
+          _codice_fiscale?: string
+          _cognome?: string
+          _email?: string
+          _lead_id?: string
+          _nome?: string
+        }
+        Returns: {
+          contatto_id: string
+          riusato: boolean
+        }[]
+      }
       crea_partecipante_da_nuovo_soggetto: {
         Args: {
           _cap?: string
