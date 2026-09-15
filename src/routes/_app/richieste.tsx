@@ -68,11 +68,10 @@ function attesaTone(g: number): string {
   return "bg-destructive/15 text-destructive";
 }
 
-function semaforoCliente(c: any): { tone: string; label: string } {
-  if (!c) return { tone: "bg-muted text-muted-foreground", label: "—" };
-  if (c.bloccato || c.in_gestione_legale) return { tone: "bg-destructive/15 text-destructive", label: "Rosso" };
-  if (Number(c.scaduto ?? 0) > 0) return { tone: "bg-warning/15 text-warning", label: "Giallo" };
-  return { tone: "bg-success/15 text-success", label: "Verde" };
+/** Semaforo dal valore materializzato in fido_teorico_cliente (fonte unica). */
+function semaforoCli(c: any) {
+  const { stadio, motivo } = semaforoDaCliente(c);
+  return semaforoUI(stadio, motivo);
 }
 
 function userName(p: any): string {
