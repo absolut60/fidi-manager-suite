@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, Plus, X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
@@ -21,7 +21,7 @@ import {
   ModuloConsensoPrivacy, registraConsensoDiPersona,
   type ModuloConsensoPayload,
 } from "@/components/privacy-post-creazione";
-import { cercaDuplicati, type DedupMatch } from "@/lib/lead-dedup";
+
 import { formattaNomeProprio, formattaRagioneSociale } from "@/lib/formato-nomi";
 import {
   EVENTI_PARTECIPANTE_STATI, EVENTI_PARTECIPANTE_STATO_LABEL,
@@ -30,7 +30,6 @@ import {
 
 
 type Campi = {
-  tipo_soggetto: "azienda" | "persona_fisica";
   ragione_sociale: string;
   nome: string;
   cognome: string;
@@ -47,7 +46,6 @@ type Campi = {
 };
 
 const CAMPI_VUOTI: Campi = {
-  tipo_soggetto: "azienda",
   ragione_sociale: "", nome: "", cognome: "", partita_iva: "", codice_fiscale: "",
   email: "", telefono: "", cellulare: "", indirizzo: "", citta: "", cap: "",
   provincia: "", note: "",
