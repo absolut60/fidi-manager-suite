@@ -87,6 +87,9 @@ export interface RichiestaFidoView {
   richiedenteLabel: string;
   approvatore: AnyRecord | null;
   approvatoreLabel: string;
+  /** Semaforo affidabilita' materializzato (fido_teorico_cliente). */
+  semaforoStadio: SemaforoStadio;
+  semaforoMotivo: string | null;
 }
 
 /**
