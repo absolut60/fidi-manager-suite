@@ -2034,6 +2034,8 @@ function ProposteFidoMassivoDialog({
   const [motivazioneGenerale, setMotivazioneGenerale] = useState<string>(MOTIVAZIONE_DEFAULT);
   const [righe, setRighe] = useState<RigaProposta[]>([]);
   const [filtroRinnovi, setFiltroRinnovi] = useState<"escludi" | "tutti" | "solo">("escludi");
+  const [filtroPagImmediato, setFiltroPagImmediato] = useState<"escludi" | "tutti" | "solo">("escludi");
+  const [filtroFidoZero, setFiltroFidoZero] = useState<"escludi" | "tutti" | "solo">("tutti");
   const [submitting, setSubmitting] = useState(false);
 
   // Fido proposto = SEMPRE la RPC canonica get_fido_teorico (nessun calcolo locale)
@@ -2113,15 +2115,28 @@ function ProposteFidoMassivoDialog({
   }, [tipoForzato]);
 
   const righeVisibili = useMemo(() => {
-    if (filtroRinnovi === "tutti") return righe;
-    if (filtroRinnovi === "solo") return righe.filter((r) => r.tipo === "rinnovo");
-    return righe.filter((r) => r.tipo !== "rinnovo");
-  }, [righe, filtroRinnovi]);
+    return righe.filter((r) => {
+      // Filtro rinnovi
+      if (filtroRinnovi === "escludi" && r.tipo === "rinnovo") return false;
+      if (filtroRinnovi === "solo" && r.tipo !== "rinnovo") return false;
+      // Filtro pagamento immediato
+      const isPagImmediato = r.regola === "pagamento_immediato";
+      if (filtroPagImmediato === "escludi" && isPagImmediato) return false;
+      if (filtroPagImmediato === "solo" && !isPagImmediato) return false;
+      // Filtro fido zero
+      const isFidoZero = Number(r.fido_proposto) === 0;
+      if (filtroFidoZero === "escludi" && isFidoZero) return false;
+      if (filtroFidoZero === "solo" && !isFidoZero) return false;
+      return true;
+    });
+  }, [righe, filtroRinnovi, filtroPagImmediato, filtroFidoZero]);
 
   const righeVisibiliIncluse = righeVisibili.filter((r) => r.proponibile && r.incluso);
   const righeEscluse = righe.filter((r) => !r.proponibile);
   const totale = righeVisibiliIncluse.reduce((acc, r) => acc + (Number(r.fido_proposto) || 0), 0);
   const rinnoviCount = righe.filter((r) => r.tipo === "rinnovo").length;
+  const pagImmediatoCount = righe.filter((r) => r.regola === "pagamento_immediato").length;
+  const fidoZeroCount = righe.filter((r) => Number(r.fido_proposto) === 0).length;
 
   async function creaRichieste() {
     if (righeVisibiliIncluse.length === 0) { toast.error("Nessuna riga da creare"); return; }
@@ -2182,20 +2197,54 @@ function ProposteFidoMassivoDialog({
           </div>
         )}
 
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-          <ToggleGroup
-            type="single"
-            value={filtroRinnovi}
-            onValueChange={(v) => v && setFiltroRinnovi(v as typeof filtroRinnovi)}
-            className="justify-start"
-          >
-            <ToggleGroupItem value="escludi" aria-label="Escludi rinnovi">Escludi rinnovi</ToggleGroupItem>
-            <ToggleGroupItem value="tutti" aria-label="Mostra tutti">Mostra tutti</ToggleGroupItem>
-            <ToggleGroupItem value="solo" aria-label="Solo rinnovi">Solo rinnovi</ToggleGroupItem>
-          </ToggleGroup>
-          {filtroRinnovi === "escludi" && rinnoviCount > 0 && (
-            <span className="text-xs text-muted-foreground">{rinnoviCount} rinnovi nascosti</span>
-          )}
+        <div className="flex flex-wrap items-start gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <ToggleGroup
+              type="single"
+              value={filtroRinnovi}
+              onValueChange={(v) => v && setFiltroRinnovi(v as typeof filtroRinnovi)}
+              className="justify-start"
+            >
+              <ToggleGroupItem value="escludi" aria-label="Escludi rinnovi">Escludi rinnovi</ToggleGroupItem>
+              <ToggleGroupItem value="tutti" aria-label="Mostra tutti">Mostra tutti</ToggleGroupItem>
+              <ToggleGroupItem value="solo" aria-label="Solo rinnovi">Solo rinnovi</ToggleGroupItem>
+            </ToggleGroup>
+            {filtroRinnovi === "escludi" && rinnoviCount > 0 && (
+              <span className="text-xs text-muted-foreground">{rinnoviCount} rinnovi nascosti</span>
+            )}
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <ToggleGroup
+              type="single"
+              value={filtroPagImmediato}
+              onValueChange={(v) => v && setFiltroPagImmediato(v as typeof filtroPagImmediato)}
+              className="justify-start"
+            >
+              <ToggleGroupItem value="escludi" aria-label="Escludi pagamento immediato">Escludi pag. immediato</ToggleGroupItem>
+              <ToggleGroupItem value="tutti" aria-label="Mostra tutti">Mostra tutti</ToggleGroupItem>
+              <ToggleGroupItem value="solo" aria-label="Solo pagamento immediato">Solo pag. immediato</ToggleGroupItem>
+            </ToggleGroup>
+            {filtroPagImmediato === "escludi" && pagImmediatoCount > 0 && (
+              <span className="text-xs text-muted-foreground">{pagImmediatoCount} pagamenti immediati nascosti</span>
+            )}
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <ToggleGroup
+              type="single"
+              value={filtroFidoZero}
+              onValueChange={(v) => v && setFiltroFidoZero(v as typeof filtroFidoZero)}
+              className="justify-start"
+            >
+              <ToggleGroupItem value="escludi" aria-label="Escludi fido zero">Escludi fido zero</ToggleGroupItem>
+              <ToggleGroupItem value="tutti" aria-label="Mostra tutti">Mostra tutti</ToggleGroupItem>
+              <ToggleGroupItem value="solo" aria-label="Solo fido zero">Solo fido zero</ToggleGroupItem>
+            </ToggleGroup>
+            {filtroFidoZero === "escludi" && fidoZeroCount > 0 && (
+              <span className="text-xs text-muted-foreground">{fidoZeroCount} fido zero nascosti</span>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
