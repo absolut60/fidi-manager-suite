@@ -635,7 +635,7 @@ function EventoDettaglioPage() {
         </div>
 
         <div className="space-y-2">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
             {([
               { k: "tutti", label: "Totale", val: riepilogo.totale },
               { k: "attesi", label: "Attesi", val: riepilogo.attesi },
@@ -659,13 +659,16 @@ function EventoDettaglioPage() {
                 </button>
               );
             })}
+            <div className="rounded-md border p-2 text-left">
+              <div className="text-xs text-muted-foreground">Sul posto</div>
+              <div className="text-xl font-semibold">{riepilogo.registratiSulPosto}</div>
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
             {riepilogo.tasso !== null && (
               <span>Tasso di presenza <span className="font-medium text-foreground">{riepilogo.tasso}%</span></span>
             )}
             <span>Privacy raccolta: <span className="font-medium text-foreground">{riepilogo.privacyOk}</span> di {riepilogo.totale}</span>
-            <span>Registrati sul posto: <span className="font-medium text-foreground">{riepilogo.registratiSulPosto}</span></span>
             <span>Da riconciliare: <span className="font-medium text-foreground">{riepilogo.daRiconciliare}</span></span>
           </div>
         </div>
