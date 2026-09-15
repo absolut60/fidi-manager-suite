@@ -520,9 +520,6 @@ function EventoDettaglioPage() {
 
         <TabsContent value="partecipanti" className="mt-4 space-y-4">
           <Card className="p-4 sm:p-5 space-y-4">
-
-
-      <Card className="p-4 sm:p-5 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold">Partecipanti</h2>
