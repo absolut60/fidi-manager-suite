@@ -349,3 +349,42 @@ export const getStatoPrivacyContatto = createServerFn({ method: "POST" })
     const row = Array.isArray(rows) ? rows[0] : rows;
     return (row ?? null) as StatoPrivacyContatto | null;
   });
+
+/**
+ * Crea (o riusa, se è la stessa persona) un contatto dentro un soggetto
+ * (cliente OPPURE lead). Usata dal dialog "Aggiungi partecipante → Collega
+ * esistente" per registrare la privacy su un contatto con i dati digitati.
+ */
+export const creaORiusaContattoInSoggetto = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({
+      clienteId: z.string().uuid().nullish(),
+      leadId: z.string().uuid().nullish(),
+      nome: z.string().trim().min(1, "Nome obbligatorio").max(100),
+      cognome: z.string().trim().min(1, "Cognome obbligatorio").max(100),
+      email: z.string().trim().max(255).optional(),
+      cellulare: z.string().trim().max(40).optional(),
+      codiceFiscale: z.string().trim().max(32).optional(),
+    }).refine(
+      (v) => (!!v.clienteId) !== (!!v.leadId),
+      { message: "Specificare uno tra cliente o lead" }
+    ).parse(d)
+  )
+  .handler(async ({ data, context }) => {
+    const { data: rows, error } = await context.supabase.rpc("crea_o_riusa_contatto_in_soggetto", {
+      _cliente_id: data.clienteId ?? undefined,
+      _lead_id: data.leadId ?? undefined,
+      _nome: data.nome,
+      _cognome: data.cognome,
+      _email: data.email || undefined,
+      _cellulare: data.cellulare || undefined,
+      _codice_fiscale: data.codiceFiscale || undefined,
+    });
+    if (error) throw new Error(error.message);
+    const riga = (Array.isArray(rows) ? rows[0] : rows) as
+      | { contatto_id: string; riusato: boolean }
+      | undefined;
+    if (!riga) throw new Error("Contatto non creato");
+    return { contattoId: riga.contatto_id, riusato: riga.riusato };
+  });

@@ -21,6 +21,7 @@ import {
   ModuloConsensoPrivacy, registraConsensoDiPersona,
   type ModuloConsensoPayload,
 } from "@/components/privacy-post-creazione";
+import { creaORiusaContattoInSoggetto } from "@/lib/firma-privacy.functions";
 
 import { formattaNomeProprio, formattaRagioneSociale } from "@/lib/formato-nomi";
 import {
@@ -82,11 +83,14 @@ export function AggiungiPartecipanteDialog({
     data_nascita: string;
     codice_fiscale: string;
     residenza: string;
+    soggetto?: { tipo: "cliente" | "lead"; id: string } | null;
+    partecipanteId?: string | null;
   };
   const [esito, setEsito] = useState<EsitoSalvataggio | null>(null);
   const [savingPrivacy, setSavingPrivacy] = useState(false);
 
   const diPersonaFn = useServerFn(registraConsensoDiPersona);
+  const creaContattoFn = useServerFn(creaORiusaContattoInSoggetto);
 
   const reset = () => {
     setModo("collega");
@@ -100,44 +104,34 @@ export function AggiungiPartecipanteDialog({
   const chiudi = () => { setOpen(false); reset(); };
 
 
-  // Contatto-persona su cui raccogliere la privacy (ramo "collega esistente").
-  const caricaContattoSoggetto = async (s: SoggettoSelezionato) => {
-    const q = supabase
-      .from("contatti")
-      .select("id, nome, cognome, email, cellulare, luogo_nascita, data_nascita, codice_fiscale, residenza, privacy_firmata, principale")
-      .order("principale", { ascending: false })
-      .limit(1);
-    const { data } = s.tipo === "cliente"
-      ? await q.eq("cliente_id", s.id)
-      : await q.eq("lead_id", s.id);
-    return data?.[0] ?? null;
-  };
-
   // ——— salvataggio ———
   const salva = useMutation({
     mutationFn: async (): Promise<EsitoSalvataggio> => {
       if (modo === "collega") {
         if (!soggetto) throw new Error("Seleziona un soggetto");
-        const { error } = await supabase.from("eventi_partecipanti").insert({
+        const { data: part, error } = await supabase.from("eventi_partecipanti").insert({
           evento_id: eventoId,
           stato,
           cliente_id: soggetto.tipo === "cliente" ? soggetto.id : null,
           lead_id: soggetto.tipo === "lead" ? soggetto.id : null,
-        });
+        }).select("id").single();
         if (error) throw error;
-        const c = await caricaContattoSoggetto(soggetto);
+        // La privacy si raccoglie su un contatto NUOVO (o riusato se stessa
+        // persona) con i dati digitati: il modulo parte a campi vuoti.
         return {
-          contattoId: c?.id ?? null,
-          giaFirmata: !!c?.privacy_firmata,
-          nome: c?.nome ?? "",
-          cognome: c?.cognome ?? "",
+          contattoId: null,
+          giaFirmata: false,
+          nome: "",
+          cognome: "",
           societa: soggetto.etichetta,
-          email: c?.email ?? "",
-          cellulare: c?.cellulare ?? "",
-          luogo_nascita: c?.luogo_nascita ?? "",
-          data_nascita: c?.data_nascita ?? "",
-          codice_fiscale: c?.codice_fiscale ?? "",
-          residenza: c?.residenza ?? "",
+          email: "",
+          cellulare: "",
+          luogo_nascita: "",
+          data_nascita: "",
+          codice_fiscale: "",
+          residenza: "",
+          soggetto: { tipo: soggetto.tipo, id: soggetto.id },
+          partecipanteId: part?.id ?? null,
         };
       }
 
@@ -195,10 +189,35 @@ export function AggiungiPartecipanteDialog({
 
   // ——— conferma telematica di persona (modalità flag, senza firma grafica) ———
   const salvaConferma = async (p: ModuloConsensoPayload) => {
-    if (!esito?.contattoId) return;
+    if (!esito) return;
     setSavingPrivacy(true);
     try {
-      const res = await diPersonaFn({ data: { contattoId: esito.contattoId, ...p } });
+      let contattoId = esito.contattoId;
+      if (esito.soggetto && !contattoId) {
+        // Ramo "collega": crea (o riusa se stessa persona) il contatto dentro
+        // il soggetto collegato, con i dati digitati nel modulo privacy.
+        const { contattoId: nuovoId } = await creaContattoFn({
+          data: {
+            clienteId: esito.soggetto.tipo === "cliente" ? esito.soggetto.id : undefined,
+            leadId: esito.soggetto.tipo === "lead" ? esito.soggetto.id : undefined,
+            nome: p.dichiarante.nome,
+            cognome: p.dichiarante.cognome,
+            email: p.dichiarante.email,
+            cellulare: p.dichiarante.cellulare,
+            codiceFiscale: p.dichiarante.codice_fiscale,
+          },
+        });
+        contattoId = nuovoId;
+        if (esito.partecipanteId) {
+          const { error: eUpd } = await supabase
+            .from("eventi_partecipanti")
+            .update({ contatto_id: contattoId })
+            .eq("id", esito.partecipanteId);
+          if (eUpd) throw eUpd;
+        }
+      }
+      if (!contattoId) throw new Error("Contatto non disponibile per la privacy");
+      const res = await diPersonaFn({ data: { contattoId, ...p } });
       toast.success(
         res.emailInviata
           ? "Consenso registrato — copia PDF inviata via email"
@@ -231,7 +250,7 @@ export function AggiungiPartecipanteDialog({
       </DialogTrigger>
       <DialogContent
         className={`${
-          esito && esito.contattoId && !esito.giaFirmata ? "max-w-3xl" : "max-w-xl"
+          esito && ((esito.contattoId && !esito.giaFirmata) || esito.soggetto) ? "max-w-3xl" : "max-w-xl"
         } max-h-[85vh] overflow-y-auto`}
       >
         <DialogHeader>
@@ -241,7 +260,7 @@ export function AggiungiPartecipanteDialog({
         </DialogHeader>
 
         {esito ? (
-          !esito.contattoId ? (
+          !esito.contattoId && !esito.soggetto ? (
             // Nessun contatto-persona (es. azienda senza referente): niente raccolta privacy.
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
