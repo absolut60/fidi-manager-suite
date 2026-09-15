@@ -149,7 +149,7 @@ function ApprovazioniPage() {
       const imp = Number(r.importo_richiesto);
       if (min != null && imp < min) return false;
       if (max != null && imp > max) return false;
-      if (fSem !== "all" && semaforoCli(r.clienti).label.toLowerCase() !== fSem) return false;
+      if (fSem !== "all" && semaforoDaCliente(r.clienti).stadio !== fSem) return false;
       if (fAttesa !== "all") {
         const g = giorniDa(r.data_invio);
         if (fAttesa === "lt7" && g >= 7) return false;
