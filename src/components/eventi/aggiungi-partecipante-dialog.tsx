@@ -143,10 +143,12 @@ export function AggiungiPartecipanteDialog({
 
       // Creazione atomica lato DB: lead + storico + contatto + partecipante
       // in un'unica transazione (nessun lead orfano in caso di errore).
+      // Il tipo soggetto è derivato: ragione sociale valorizzata → azienda.
+      const tipoSoggetto = campi.ragione_sociale.trim().length > 0 ? "azienda" : "persona_fisica";
       const { data, error } = await supabase.rpc("crea_partecipante_da_nuovo_soggetto", {
         _evento_id: eventoId,
         _stato: stato,
-        _tipo_soggetto: campi.tipo_soggetto,
+        _tipo_soggetto: tipoSoggetto,
         _ragione_sociale: campi.ragione_sociale,
         _nome: campi.nome,
         _cognome: campi.cognome,
@@ -212,10 +214,7 @@ export function AggiungiPartecipanteDialog({
   };
 
 
-  const nuovoValido =
-    campi.tipo_soggetto === "persona_fisica"
-      ? campi.nome.trim().length > 0
-      : campi.ragione_sociale.trim().length > 0;
+  const nuovoValido = campi.nome.trim().length > 0 && campi.cognome.trim().length > 0;
 
   const set = (patch: Partial<Campi>) => setCampi((c) => ({ ...c, ...patch }));
 
@@ -322,37 +321,9 @@ export function AggiungiPartecipanteDialog({
               )
             ) : (
               <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label>Tipo soggetto</Label>
-                  <Select
-                    value={campi.tipo_soggetto}
-                    onValueChange={(v) => set({ tipo_soggetto: v as Campi["tipo_soggetto"] })}
-                  >
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="azienda">Azienda</SelectItem>
-                      <SelectItem value="persona_fisica">Persona fisica</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {campi.tipo_soggetto === "azienda" && (
-                  <div className="space-y-1.5">
-                    <Label htmlFor="np-rs">Ragione sociale *</Label>
-                    <Input id="np-rs" value={campi.ragione_sociale}
-                      onChange={(e) => set({ ragione_sociale: e.target.value })}
-                      onBlur={(e) => {
-                        const f = formattaRagioneSociale(e.target.value);
-                        if (f !== campi.ragione_sociale) set({ ragione_sociale: f });
-                      }} />
-                  </div>
-                )}
-
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label htmlFor="np-nome">
-                      Nome {campi.tipo_soggetto === "persona_fisica" ? "*" : "referente"}
-                    </Label>
+                    <Label htmlFor="np-nome">Nome *</Label>
                     <Input id="np-nome" value={campi.nome}
                       onChange={(e) => set({ nome: e.target.value })}
                       onBlur={(e) => {
@@ -361,7 +332,7 @@ export function AggiungiPartecipanteDialog({
                       }} />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="np-cognome">Cognome</Label>
+                    <Label htmlFor="np-cognome">Cognome *</Label>
                     <Input id="np-cognome" value={campi.cognome}
                       onChange={(e) => set({ cognome: e.target.value })}
                       onBlur={(e) => {
@@ -371,17 +342,26 @@ export function AggiungiPartecipanteDialog({
                   </div>
                 </div>
 
-                {campi.tipo_soggetto === "azienda" ? (
+                <div className="space-y-1.5">
+                  <Label htmlFor="np-rs">Ragione sociale (azienda)</Label>
+                  <Input id="np-rs" value={campi.ragione_sociale}
+                    onChange={(e) => set({ ragione_sociale: e.target.value })}
+                    onBlur={(e) => {
+                      const f = formattaRagioneSociale(e.target.value);
+                      if (f !== campi.ragione_sociale) set({ ragione_sociale: f });
+                    }} />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label htmlFor="np-piva">Partita IVA</Label>
                     <Input id="np-piva" value={campi.partita_iva} onChange={(e) => set({ partita_iva: e.target.value })} />
                   </div>
-                ) : (
                   <div className="space-y-1.5">
                     <Label htmlFor="np-cf">Codice fiscale</Label>
                     <Input id="np-cf" value={campi.codice_fiscale} onChange={(e) => set({ codice_fiscale: e.target.value })} />
                   </div>
-                )}
+                </div>
 
                 <div className="space-y-1.5">
                   <Label htmlFor="np-email">Email</Label>
@@ -421,36 +401,6 @@ export function AggiungiPartecipanteDialog({
                   <Label htmlFor="np-note">Note</Label>
                   <Textarea id="np-note" rows={2} value={campi.note} onChange={(e) => set({ note: e.target.value })} />
                 </div>
-
-                {matches.length > 0 && !ignoraDuplicati && (
-                  <Alert>
-                    <AlertTriangle className="size-4" />
-                    <AlertTitle>Possibili duplicati trovati</AlertTitle>
-                    <AlertDescription className="space-y-2">
-                      <p className="text-xs">
-                        Vuoi collegarti a uno di questi invece di creare un nuovo lead?
-                      </p>
-                      <div className="space-y-1.5">
-                        {matches.slice(0, 6).map((m) => (
-                          <div key={`${m.entita}-${m.id}-${m.campo}`} className="flex items-center gap-2">
-                            <Badge variant={m.entita === "cliente" ? "default" : "secondary"} className="shrink-0">
-                              {m.entita === "cliente" ? "Cliente" : m.entita === "lead" ? "Lead" : "Contatto"}
-                            </Badge>
-                            <span className="truncate text-xs">{m.etichetta}</span>
-                            <span className="text-xs text-muted-foreground shrink-0">({m.campo})</span>
-                            <Button size="sm" variant="outline" className="ml-auto shrink-0"
-                              onClick={() => collegaMatch(m)}>
-                              Collega
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                      <Button size="sm" variant="ghost" onClick={() => setIgnoraDuplicati(true)}>
-                        Crea comunque nuovo
-                      </Button>
-                    </AlertDescription>
-                  </Alert>
-                )}
               </div>
             )}
 
