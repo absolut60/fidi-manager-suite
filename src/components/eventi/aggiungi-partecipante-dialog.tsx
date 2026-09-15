@@ -18,9 +18,8 @@ import {
 } from "@/components/ui/select";
 import { SoggettoCombobox, type SoggettoSelezionato } from "@/components/soggetto-combobox";
 import {
-  SceltaCanalePrivacy, inviaRichiestaDopoCreazione, ModuloConsensoPrivacy,
-  inviaRichiestaFirmaPrivacy, registraConsensoDiPersona,
-  type CanalePrivacy, type ModuloConsensoPayload,
+  ModuloConsensoPrivacy, registraConsensoDiPersona,
+  type ModuloConsensoPayload,
 } from "@/components/privacy-post-creazione";
 import { cercaDuplicati, type DedupMatch } from "@/lib/lead-dedup";
 import { formattaNomeProprio, formattaRagioneSociale } from "@/lib/formato-nomi";
@@ -88,10 +87,8 @@ export function AggiungiPartecipanteDialog({
     residenza: string;
   };
   const [esito, setEsito] = useState<EsitoSalvataggio | null>(null);
-  const [canale, setCanale] = useState<CanalePrivacy | null>(null);
   const [savingPrivacy, setSavingPrivacy] = useState(false);
 
-  const inviaFn = useServerFn(inviaRichiestaFirmaPrivacy);
   const diPersonaFn = useServerFn(registraConsensoDiPersona);
 
   const reset = () => {
@@ -101,7 +98,6 @@ export function AggiungiPartecipanteDialog({
     setCampi({ ...CAMPI_VUOTI });
     setIgnoraDuplicati(false);
     setEsito(null);
-    setCanale(null);
     setSavingPrivacy(false);
   };
 
@@ -250,21 +246,8 @@ export function AggiungiPartecipanteDialog({
     onError: (e: Error) => toast.error("Errore nell'inserimento", { description: e.message }),
   });
 
-  // ——— canale privacy scelto dopo il salvataggio ———
-  const scegliCanale = async (c: CanalePrivacy) => {
-    if (!esito?.contattoId) return;
-    if (c === "di_persona") { setCanale(c); return; }
-    if (c === "a_distanza") {
-      setSavingPrivacy(true);
-      await inviaRichiestaDopoCreazione(inviaFn, esito.contattoId, !!esito.email.trim());
-      setSavingPrivacy(false);
-    } else {
-      toast.success("Partecipante salvato — la privacy si raccoglie dopo dalla riga del contatto");
-    }
-    chiudi();
-  };
-
-  const salvaDiPersona = async (p: ModuloConsensoPayload) => {
+  // ——— conferma telematica di persona (modalità flag, senza firma grafica) ———
+  const salvaConferma = async (p: ModuloConsensoPayload) => {
     if (!esito?.contattoId) return;
     setSavingPrivacy(true);
     try {
@@ -302,7 +285,11 @@ export function AggiungiPartecipanteDialog({
       <DialogTrigger asChild>
         <Button className="gap-1.5"><Plus className="size-4" /> Aggiungi partecipante</Button>
       </DialogTrigger>
-      <DialogContent className={`${esito && canale === "di_persona" ? "max-w-3xl" : "max-w-xl"} max-h-[85vh] overflow-y-auto`}>
+      <DialogContent
+        className={`${
+          esito && esito.contattoId && !esito.giaFirmata ? "max-w-3xl" : "max-w-xl"
+        } max-h-[85vh] overflow-y-auto`}
+      >
         <DialogHeader>
           <DialogTitle>
             {esito ? "Privacy del partecipante" : "Aggiungi partecipante"}
@@ -311,7 +298,7 @@ export function AggiungiPartecipanteDialog({
 
         {esito ? (
           !esito.contattoId ? (
-            // Nessun contatto-persona (es. azienda senza referente): niente canale privacy.
+            // Nessun contatto-persona (es. azienda senza referente): niente raccolta privacy.
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
                 Nessun contatto-persona: la privacy si raccoglie dopo, aggiungendo un referente.
@@ -320,8 +307,18 @@ export function AggiungiPartecipanteDialog({
                 <Button onClick={chiudi}>Chiudi</Button>
               </DialogFooter>
             </div>
-          ) : canale === "di_persona" ? (
+          ) : esito.giaFirmata ? (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Il consenso privacy è già stato firmato per questo contatto.
+              </p>
+              <DialogFooter>
+                <Button onClick={chiudi}>Chiudi</Button>
+              </DialogFooter>
+            </div>
+          ) : (
             <ModuloConsensoPrivacy
+              modalita="flag"
               valoriIniziali={{
                 nome: esito.nome,
                 cognome: esito.cognome,
@@ -334,20 +331,10 @@ export function AggiungiPartecipanteDialog({
                 cellulare: esito.cellulare,
               }}
               placeholderSocieta={esito.societa}
-              onSubmit={salvaDiPersona}
+              inviaLabel="Conferma consensi"
               isPending={savingPrivacy}
-              inviaLabel="Conferma e firma"
+              onSubmit={salvaConferma}
             />
-          ) : (
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Il partecipante è stato salvato. Scegli come raccogliere il consenso privacy.
-              </p>
-              <SceltaCanalePrivacy onScegli={(c) => { void scegliCanale(c); }} />
-              <DialogFooter>
-                <Button variant="outline" onClick={chiudi} disabled={savingPrivacy}>Chiudi</Button>
-              </DialogFooter>
-            </div>
           )
         ) : (
 
