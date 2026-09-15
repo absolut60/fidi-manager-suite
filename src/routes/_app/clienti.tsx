@@ -2197,20 +2197,54 @@ function ProposteFidoMassivoDialog({
           </div>
         )}
 
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-          <ToggleGroup
-            type="single"
-            value={filtroRinnovi}
-            onValueChange={(v) => v && setFiltroRinnovi(v as typeof filtroRinnovi)}
-            className="justify-start"
-          >
-            <ToggleGroupItem value="escludi" aria-label="Escludi rinnovi">Escludi rinnovi</ToggleGroupItem>
-            <ToggleGroupItem value="tutti" aria-label="Mostra tutti">Mostra tutti</ToggleGroupItem>
-            <ToggleGroupItem value="solo" aria-label="Solo rinnovi">Solo rinnovi</ToggleGroupItem>
-          </ToggleGroup>
-          {filtroRinnovi === "escludi" && rinnoviCount > 0 && (
-            <span className="text-xs text-muted-foreground">{rinnoviCount} rinnovi nascosti</span>
-          )}
+        <div className="flex flex-wrap items-start gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <ToggleGroup
+              type="single"
+              value={filtroRinnovi}
+              onValueChange={(v) => v && setFiltroRinnovi(v as typeof filtroRinnovi)}
+              className="justify-start"
+            >
+              <ToggleGroupItem value="escludi" aria-label="Escludi rinnovi">Escludi rinnovi</ToggleGroupItem>
+              <ToggleGroupItem value="tutti" aria-label="Mostra tutti">Mostra tutti</ToggleGroupItem>
+              <ToggleGroupItem value="solo" aria-label="Solo rinnovi">Solo rinnovi</ToggleGroupItem>
+            </ToggleGroup>
+            {filtroRinnovi === "escludi" && rinnoviCount > 0 && (
+              <span className="text-xs text-muted-foreground">{rinnoviCount} rinnovi nascosti</span>
+            )}
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <ToggleGroup
+              type="single"
+              value={filtroPagImmediato}
+              onValueChange={(v) => v && setFiltroPagImmediato(v as typeof filtroPagImmediato)}
+              className="justify-start"
+            >
+              <ToggleGroupItem value="escludi" aria-label="Escludi pagamento immediato">Escludi pag. immediato</ToggleGroupItem>
+              <ToggleGroupItem value="tutti" aria-label="Mostra tutti">Mostra tutti</ToggleGroupItem>
+              <ToggleGroupItem value="solo" aria-label="Solo pagamento immediato">Solo pag. immediato</ToggleGroupItem>
+            </ToggleGroup>
+            {filtroPagImmediato === "escludi" && pagImmediatoCount > 0 && (
+              <span className="text-xs text-muted-foreground">{pagImmediatoCount} pagamenti immediati nascosti</span>
+            )}
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <ToggleGroup
+              type="single"
+              value={filtroFidoZero}
+              onValueChange={(v) => v && setFiltroFidoZero(v as typeof filtroFidoZero)}
+              className="justify-start"
+            >
+              <ToggleGroupItem value="escludi" aria-label="Escludi fido zero">Escludi fido zero</ToggleGroupItem>
+              <ToggleGroupItem value="tutti" aria-label="Mostra tutti">Mostra tutti</ToggleGroupItem>
+              <ToggleGroupItem value="solo" aria-label="Solo fido zero">Solo fido zero</ToggleGroupItem>
+            </ToggleGroup>
+            {filtroFidoZero === "escludi" && fidoZeroCount > 0 && (
+              <span className="text-xs text-muted-foreground">{fidoZeroCount} fido zero nascosti</span>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
