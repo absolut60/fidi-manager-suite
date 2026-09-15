@@ -1005,7 +1005,12 @@ function EventoDettaglioPage() {
                         >
                           <UserX className="size-4" /> No show
                         </Button>
-                      </>
+                    {statoRiconciliazione(p) === "da_riconciliare" && (
+                      <RiconciliaAManoDialog
+                        partecipanteId={p.id}
+                        etichetta={p.lead ? nomePartecipante(p.lead) : nomePartecipante(p)}
+                        eventoId={eventoId}
+                      />
                     )}
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
