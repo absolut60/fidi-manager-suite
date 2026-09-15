@@ -104,44 +104,34 @@ export function AggiungiPartecipanteDialog({
   const chiudi = () => { setOpen(false); reset(); };
 
 
-  // Contatto-persona su cui raccogliere la privacy (ramo "collega esistente").
-  const caricaContattoSoggetto = async (s: SoggettoSelezionato) => {
-    const q = supabase
-      .from("contatti")
-      .select("id, nome, cognome, email, cellulare, luogo_nascita, data_nascita, codice_fiscale, residenza, privacy_firmata, principale")
-      .order("principale", { ascending: false })
-      .limit(1);
-    const { data } = s.tipo === "cliente"
-      ? await q.eq("cliente_id", s.id)
-      : await q.eq("lead_id", s.id);
-    return data?.[0] ?? null;
-  };
-
   // ——— salvataggio ———
   const salva = useMutation({
     mutationFn: async (): Promise<EsitoSalvataggio> => {
       if (modo === "collega") {
         if (!soggetto) throw new Error("Seleziona un soggetto");
-        const { error } = await supabase.from("eventi_partecipanti").insert({
+        const { data: part, error } = await supabase.from("eventi_partecipanti").insert({
           evento_id: eventoId,
           stato,
           cliente_id: soggetto.tipo === "cliente" ? soggetto.id : null,
           lead_id: soggetto.tipo === "lead" ? soggetto.id : null,
-        });
+        }).select("id").single();
         if (error) throw error;
-        const c = await caricaContattoSoggetto(soggetto);
+        // La privacy si raccoglie su un contatto NUOVO (o riusato se stessa
+        // persona) con i dati digitati: il modulo parte a campi vuoti.
         return {
-          contattoId: c?.id ?? null,
-          giaFirmata: !!c?.privacy_firmata,
-          nome: c?.nome ?? "",
-          cognome: c?.cognome ?? "",
+          contattoId: null,
+          giaFirmata: false,
+          nome: "",
+          cognome: "",
           societa: soggetto.etichetta,
-          email: c?.email ?? "",
-          cellulare: c?.cellulare ?? "",
-          luogo_nascita: c?.luogo_nascita ?? "",
-          data_nascita: c?.data_nascita ?? "",
-          codice_fiscale: c?.codice_fiscale ?? "",
-          residenza: c?.residenza ?? "",
+          email: "",
+          cellulare: "",
+          luogo_nascita: "",
+          data_nascita: "",
+          codice_fiscale: "",
+          residenza: "",
+          soggetto: { tipo: soggetto.tipo, id: soggetto.id },
+          partecipanteId: part?.id ?? null,
         };
       }
 
