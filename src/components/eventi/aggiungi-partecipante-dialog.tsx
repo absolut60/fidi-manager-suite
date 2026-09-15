@@ -252,7 +252,13 @@ export function AggiungiPartecipanteDialog({
         className={`${
           esito && ((esito.contattoId && !esito.giaFirmata) || esito.soggetto) ? "max-w-3xl" : "max-w-xl"
         } max-h-[85vh] overflow-y-auto`}
-...
+      >
+        <DialogHeader>
+          <DialogTitle>
+            {esito ? "Privacy del partecipante" : "Aggiungi partecipante"}
+          </DialogTitle>
+        </DialogHeader>
+
         {esito ? (
           !esito.contattoId && !esito.soggetto ? (
             // Nessun contatto-persona (es. azienda senza referente): niente raccolta privacy.
