@@ -101,6 +101,7 @@ export function mapRichiestaFido(r: AnyRecord): RichiestaFidoView {
   const c = r?.clienti ?? null;
   const store = c?.stores ?? null;
   const stato = String(r?.stato ?? "");
+  const sem = semaforoDaCliente(c);
   const dataInvio =
     r?.data_invio ?? (stato && stato !== "bozza" ? r?.created_at ?? null : null);
   return {
