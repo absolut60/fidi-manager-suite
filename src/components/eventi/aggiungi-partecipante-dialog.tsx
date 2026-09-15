@@ -21,6 +21,7 @@ import {
   ModuloConsensoPrivacy, registraConsensoDiPersona,
   type ModuloConsensoPayload,
 } from "@/components/privacy-post-creazione";
+import { creaORiusaContattoInSoggetto } from "@/lib/firma-privacy.functions";
 
 import { formattaNomeProprio, formattaRagioneSociale } from "@/lib/formato-nomi";
 import {

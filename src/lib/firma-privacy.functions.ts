@@ -373,13 +373,13 @@ export const creaORiusaContattoInSoggetto = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { data: rows, error } = await context.supabase.rpc("crea_o_riusa_contatto_in_soggetto", {
-      _cliente_id: data.clienteId ?? null,
-      _lead_id: data.leadId ?? null,
+      _cliente_id: data.clienteId ?? undefined,
+      _lead_id: data.leadId ?? undefined,
       _nome: data.nome,
       _cognome: data.cognome,
-      _email: data.email ?? null,
-      _cellulare: data.cellulare ?? null,
-      _codice_fiscale: data.codiceFiscale ?? null,
+      _email: data.email || undefined,
+      _cellulare: data.cellulare || undefined,
+      _codice_fiscale: data.codiceFiscale || undefined,
     });
     if (error) throw new Error(error.message);
     const riga = (Array.isArray(rows) ? rows[0] : rows) as
