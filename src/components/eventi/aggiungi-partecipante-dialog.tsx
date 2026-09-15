@@ -250,17 +250,11 @@ export function AggiungiPartecipanteDialog({
       </DialogTrigger>
       <DialogContent
         className={`${
-          esito && esito.contattoId && !esito.giaFirmata ? "max-w-3xl" : "max-w-xl"
+          esito && ((esito.contattoId && !esito.giaFirmata) || esito.soggetto) ? "max-w-3xl" : "max-w-xl"
         } max-h-[85vh] overflow-y-auto`}
-      >
-        <DialogHeader>
-          <DialogTitle>
-            {esito ? "Privacy del partecipante" : "Aggiungi partecipante"}
-          </DialogTitle>
-        </DialogHeader>
-
+...
         {esito ? (
-          !esito.contattoId ? (
+          !esito.contattoId && !esito.soggetto ? (
             // Nessun contatto-persona (es. azienda senza referente): niente raccolta privacy.
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
