@@ -189,10 +189,35 @@ export function AggiungiPartecipanteDialog({
 
   // ——— conferma telematica di persona (modalità flag, senza firma grafica) ———
   const salvaConferma = async (p: ModuloConsensoPayload) => {
-    if (!esito?.contattoId) return;
+    if (!esito) return;
     setSavingPrivacy(true);
     try {
-      const res = await diPersonaFn({ data: { contattoId: esito.contattoId, ...p } });
+      let contattoId = esito.contattoId;
+      if (esito.soggetto && !contattoId) {
+        // Ramo "collega": crea (o riusa se stessa persona) il contatto dentro
+        // il soggetto collegato, con i dati digitati nel modulo privacy.
+        const { contattoId: nuovoId } = await creaContattoFn({
+          data: {
+            clienteId: esito.soggetto.tipo === "cliente" ? esito.soggetto.id : undefined,
+            leadId: esito.soggetto.tipo === "lead" ? esito.soggetto.id : undefined,
+            nome: p.dichiarante.nome,
+            cognome: p.dichiarante.cognome,
+            email: p.dichiarante.email,
+            cellulare: p.dichiarante.cellulare,
+            codiceFiscale: p.dichiarante.codice_fiscale,
+          },
+        });
+        contattoId = nuovoId;
+        if (esito.partecipanteId) {
+          const { error: eUpd } = await supabase
+            .from("eventi_partecipanti")
+            .update({ contatto_id: contattoId })
+            .eq("id", esito.partecipanteId);
+          if (eUpd) throw eUpd;
+        }
+      }
+      if (!contattoId) throw new Error("Contatto non disponibile per la privacy");
+      const res = await diPersonaFn({ data: { contattoId, ...p } });
       toast.success(
         res.emailInviata
           ? "Consenso registrato — copia PDF inviata via email"
