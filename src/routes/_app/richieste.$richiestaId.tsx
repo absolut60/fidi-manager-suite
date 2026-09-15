@@ -27,14 +27,6 @@ export const Route = createFileRoute("/_app/richieste/$richiestaId")({
   component: RichiestaDetail,
 });
 
-function semaforoTone(c: any): { dot: string; label: string; text: string } {
-  if (!c) return { dot: "bg-muted-foreground", label: "—", text: "text-muted-foreground" };
-  if (c.bloccato || c.in_gestione_legale)
-    return { dot: "bg-destructive", label: "Rosso", text: "text-destructive" };
-  if (Number(c.scaduto ?? 0) > 0)
-    return { dot: "bg-warning", label: "Giallo", text: "text-warning" };
-  return { dot: "bg-success", label: "Verde", text: "text-success" };
-}
 
 function RichiestaDetail() {
   const { richiestaId } = Route.useParams();
