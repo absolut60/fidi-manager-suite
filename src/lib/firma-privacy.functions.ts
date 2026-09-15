@@ -388,3 +388,32 @@ export const creaORiusaContattoInSoggetto = createServerFn({ method: "POST" })
     if (!riga) throw new Error("Contatto non creato");
     return { contattoId: riga.contatto_id, riusato: riga.riusato };
   });
+
+/**
+ * Riconcilia un partecipante di evento verso un cliente: se `_clienteId` non
+ * è passato la RPC tenta la riconciliazione automatica. L'iscritto/lead resta
+ * come storico; `riconciliato_il` viene valorizzato dalla RPC.
+ */
+export const riconciliaPartecipante = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({
+      partecipanteId: z.string().uuid(),
+      clienteId: z.string().uuid().optional(),
+    }).parse(d)
+  )
+  .handler(async ({ data, context }) => {
+    const { data: res, error } = await context.supabase.rpc("riconcilia_partecipante", {
+      _partecipante_id: data.partecipanteId,
+      _cliente_id: data.clienteId ?? undefined,
+    });
+    if (error) throw new Error(error.message);
+    return res as {
+      ok: boolean;
+      errore?: string;
+      n?: number;
+      cliente_id?: string;
+      contatto_id?: string;
+      modo?: string;
+    };
+  });

@@ -67,6 +67,8 @@ type PartecipanteRow = {
   email: string | null;
   telefono: string | null;
   note: string | null;
+  riconciliato_il: string | null;
+  registrato_sul_posto: boolean | null;
   lead: {
     id: string; ragione_sociale: string | null; nome: string | null; cognome: string | null;
     email: string | null; telefono: string | null;
@@ -159,6 +161,33 @@ function formatDataFirma(d: string | null): string | null {
   return Number.isNaN(dt.getTime()) ? null : dt.toLocaleDateString("it-IT");
 }
 
+/** Un partecipante è riconciliato quando è agganciato a un cliente; se è solo lead è da riconciliare. */
+function statoRiconciliazione(p: PartecipanteRow): "riconciliato" | "da_riconciliare" {
+  return p.cliente_id ? "riconciliato" : "da_riconciliare";
+}
+
+/** Badge di riconciliazione della riga (stato + eventuale walk-in "Sul posto"). */
+function BadgeRiconciliazione({ p }: { p: PartecipanteRow }) {
+  return (
+    <>
+      {statoRiconciliazione(p) === "riconciliato" ? (
+        <Badge variant="secondary" className="bg-success/15 text-success hover:opacity-100">
+          Riconciliato
+        </Badge>
+      ) : (
+        <Badge variant="secondary" className="bg-amber-500/15 text-amber-600 hover:opacity-100">
+          Da riconciliare
+        </Badge>
+      )}
+      {p.registrato_sul_posto === true && (
+        <Badge variant="outline" className="text-xs">Sul posto</Badge>
+      )}
+    </>
+  );
+}
+
+
+
 
 
 
@@ -223,7 +252,7 @@ function EventoDettaglioPage() {
       const { data, error } = await supabase
         .from("eventi_partecipanti")
         .select(
-          "id, stato, lead_id, cliente_id, contatto_id, nome, cognome, ragione_sociale, partita_iva, codice_fiscale, email, telefono, note, lead:lead_id(id, ragione_sociale, nome, cognome, email, telefono), cliente:cliente_id(id, ragione_sociale, email, telefono), contatto:contatto_id(id, nome, cognome, email, telefono, privacy_firmata, data_firma)",
+          "id, stato, lead_id, cliente_id, contatto_id, nome, cognome, ragione_sociale, partita_iva, codice_fiscale, email, telefono, note, riconciliato_il, registrato_sul_posto, lead:lead_id(id, ragione_sociale, nome, cognome, email, telefono), cliente:cliente_id(id, ragione_sociale, email, telefono), contatto:contatto_id(id, nome, cognome, email, telefono, privacy_firmata, data_firma)",
         )
         .eq("evento_id", eventoId)
         .order("created_at", { ascending: true });
@@ -361,6 +390,9 @@ function EventoDettaglioPage() {
     const presenti = lista.filter((p) => p.stato === "presentato").length;
     const noShow = lista.filter((p) => p.stato === "no_show").length;
     const privacyOk = lista.filter((p) => privacyRiga(p, mappaContatti).tipo === "firmata").length;
+    const registratiSulPosto = lista.filter((p) => p.registrato_sul_posto === true).length;
+    const riconciliati = lista.filter((p) => statoRiconciliazione(p) === "riconciliato").length;
+    const daRiconciliare = lista.filter((p) => statoRiconciliazione(p) === "da_riconciliare").length;
     const base = presenti + noShow;
     return {
       totale: lista.length,
@@ -368,6 +400,9 @@ function EventoDettaglioPage() {
       presenti,
       noShow,
       privacyOk,
+      registratiSulPosto,
+      riconciliati,
+      daRiconciliare,
       tasso: base > 0 ? Math.round((presenti / base) * 100) : null,
     };
   }, [partecipanti, mappaContatti]);
@@ -562,6 +597,8 @@ function EventoDettaglioPage() {
               <span>Tasso di presenza <span className="font-medium text-foreground">{riepilogo.tasso}%</span></span>
             )}
             <span>Privacy raccolta: <span className="font-medium text-foreground">{riepilogo.privacyOk}</span> di {riepilogo.totale}</span>
+            <span>Registrati sul posto: <span className="font-medium text-foreground">{riepilogo.registratiSulPosto}</span></span>
+            <span>Da riconciliare: <span className="font-medium text-foreground">{riepilogo.daRiconciliare}</span></span>
           </div>
         </div>
 
@@ -697,9 +734,14 @@ function EventoDettaglioPage() {
                   </span>
                 }
                 badge={
-                  <Badge className={`${EVENTI_PARTECIPANTE_STATO_CLASS[p.stato]} hover:opacity-100 shrink-0`} variant="secondary">
-                    {EVENTI_PARTECIPANTE_STATO_LABEL[p.stato]}
-                  </Badge>
+                  <span className="flex flex-col items-end gap-1">
+                    <Badge className={`${EVENTI_PARTECIPANTE_STATO_CLASS[p.stato]} hover:opacity-100 shrink-0`} variant="secondary">
+                      {EVENTI_PARTECIPANTE_STATO_LABEL[p.stato]}
+                    </Badge>
+                    <span className="flex flex-wrap justify-end gap-1">
+                      <BadgeRiconciliazione p={p} />
+                    </span>
+                  </span>
                 }
                 colonneCampi={1}
                 campi={[
@@ -841,9 +883,12 @@ function EventoDettaglioPage() {
                   )}
                 </TableCell>
                 <TableCell>
-                  <Badge className={`${EVENTI_PARTECIPANTE_STATO_CLASS[p.stato]} hover:opacity-100`} variant="secondary">
-                    {EVENTI_PARTECIPANTE_STATO_LABEL[p.stato]}
-                  </Badge>
+                  <div className="flex flex-wrap gap-1">
+                    <Badge className={`${EVENTI_PARTECIPANTE_STATO_CLASS[p.stato]} hover:opacity-100`} variant="secondary">
+                      {EVENTI_PARTECIPANTE_STATO_LABEL[p.stato]}
+                    </Badge>
+                    <BadgeRiconciliazione p={p} />
+                  </div>
                 </TableCell>
                 <TableCell className="text-sm">
                   {(() => {
