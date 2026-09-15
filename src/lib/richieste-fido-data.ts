@@ -20,6 +20,7 @@
  */
 
 import { getFidoAttuale, FIDO_CLIENTE_SELECT } from "@/lib/fido-cliente";
+import { semaforoDaCliente, type SemaforoStadio } from "@/lib/semaforo-ui";
 
 /** Frammento di SELECT PostgREST condiviso (join cliente + store + profili). */
 export const RICHIESTA_FIDO_SELECT = `
@@ -47,7 +48,8 @@ export const RICHIESTA_FIDO_SELECT = `
     cliente_attivo,
     ultima_data_fatturazione,
     ultima_sincronizzazione,
-    stores(nome, codice)
+    stores(nome, codice),
+    fido_teorico_cliente(semaforo_stadio, semaforo_motivo)
   ),
   richiedente:profili!richieste_fido_created_by_fkey(nome, cognome, email),
   approvatore:profili!richieste_fido_approvato_da_fkey(nome, cognome, email)
@@ -86,6 +88,9 @@ export interface RichiestaFidoView {
   richiedenteLabel: string;
   approvatore: AnyRecord | null;
   approvatoreLabel: string;
+  /** Semaforo affidabilita' materializzato (fido_teorico_cliente). */
+  semaforoStadio: SemaforoStadio;
+  semaforoMotivo: string | null;
 }
 
 /**
@@ -96,6 +101,7 @@ export function mapRichiestaFido(r: AnyRecord): RichiestaFidoView {
   const c = r?.clienti ?? null;
   const store = c?.stores ?? null;
   const stato = String(r?.stato ?? "");
+  const sem = semaforoDaCliente(c);
   const dataInvio =
     r?.data_invio ?? (stato && stato !== "bozza" ? r?.created_at ?? null : null);
   return {
@@ -122,6 +128,8 @@ export function mapRichiestaFido(r: AnyRecord): RichiestaFidoView {
     richiedenteLabel: userLabel(r?.richiedente ?? r?.profilo ?? null),
     approvatore: r?.approvatore ?? null,
     approvatoreLabel: userLabel(r?.approvatore ?? null),
+    semaforoStadio: sem.stadio,
+    semaforoMotivo: sem.motivo,
   };
 }
 

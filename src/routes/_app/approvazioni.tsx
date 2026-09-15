@@ -25,6 +25,7 @@ import {
 import { formatEuro, formatDate, TIPO_LABEL, TIPO_TONE, type TipoRichiesta } from "@/lib/fidi";
 import { getFidoAttuale } from "@/lib/fido-cliente";
 import { RICHIESTA_FIDO_SELECT } from "@/lib/richieste-fido-data";
+import { semaforoUI, semaforoDaCliente } from "@/lib/semaforo-ui";
 import { NuovaComunicazioneDialog } from "@/components/nuova-comunicazione-dialog";
 
 export const Route = createFileRoute("/_app/approvazioni")({
@@ -36,11 +37,10 @@ function giorniDa(d: string | null | undefined): number {
   return Math.floor((Date.now() - new Date(d).getTime()) / 86400000);
 }
 
-function semaforoCliente(c: any): { dot: string; tone: string; label: "Verde" | "Giallo" | "Rosso" | "—" } {
-  if (!c) return { dot: "bg-muted-foreground", tone: "bg-muted text-muted-foreground", label: "—" };
-  if (c.bloccato || c.in_gestione_legale) return { dot: "bg-destructive", tone: "bg-destructive/15 text-destructive", label: "Rosso" };
-  if (Number(c.scaduto ?? 0) > 0) return { dot: "bg-warning", tone: "bg-warning/15 text-warning", label: "Giallo" };
-  return { dot: "bg-success", tone: "bg-success/15 text-success", label: "Verde" };
+/** Semaforo dal valore materializzato in fido_teorico_cliente (fonte unica). */
+function semaforoCli(c: any) {
+  const { stadio, motivo } = semaforoDaCliente(c);
+  return semaforoUI(stadio, motivo);
 }
 
 
@@ -149,7 +149,7 @@ function ApprovazioniPage() {
       const imp = Number(r.importo_richiesto);
       if (min != null && imp < min) return false;
       if (max != null && imp > max) return false;
-      if (fSem !== "all" && semaforoCliente(r.clienti).label.toLowerCase() !== fSem) return false;
+      if (fSem !== "all" && semaforoDaCliente(r.clienti).stadio !== fSem) return false;
       if (fAttesa !== "all") {
         const g = giorniDa(r.data_invio);
         if (fAttesa === "lt7" && g >= 7) return false;
@@ -322,6 +322,7 @@ function ApprovazioniPage() {
                 <SelectItem value="all">Tutti</SelectItem>
                 <SelectItem value="verde">Verde</SelectItem>
                 <SelectItem value="giallo">Giallo</SelectItem>
+                <SelectItem value="arancione">Arancione</SelectItem>
                 <SelectItem value="rosso">Rosso</SelectItem>
               </SelectContent>
             </Select>
@@ -409,7 +410,7 @@ function ApprovazioniPage() {
           {richieste.map((r) => {
             const isSel = selected.has(r.id);
             const c = r.clienti ?? {};
-            const sem = semaforoCliente(c);
+            const sem = semaforoCli(c);
             const g = giorniDa(r.data_invio);
             const residuo = Number(c.fido_residuo ?? 0);
             const scaduto = Number(c.scaduto ?? 0);
@@ -432,7 +433,7 @@ function ApprovazioniPage() {
                     <div className="flex items-start justify-between gap-3 flex-wrap">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className={`inline-block size-2.5 rounded-full ${sem.dot}`} title={`Semaforo: ${sem.label}`} />
+                          <span className={`inline-block size-2.5 rounded-full ${sem.dotClass}`} title={`Semaforo: ${sem.label}`} />
                           <Link
                             to="/clienti/$clienteId"
                             params={{ clienteId: r.cliente_id }}
@@ -491,7 +492,7 @@ function ApprovazioniPage() {
         <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
           {detail && (() => {
             const c = detail.clienti ?? {};
-            const sem = semaforoCliente(c);
+            const sem = semaforoCli(c);
             const residuo = Number(c.fido_residuo ?? 0);
             const scaduto = Number(c.scaduto ?? 0);
             const creatore = (detail as any).richiedente ?? (detail as any).profilo;
@@ -499,7 +500,7 @@ function ApprovazioniPage() {
               <>
                 <SheetHeader>
                   <SheetTitle className="flex items-center gap-2">
-                    <span className={`inline-block size-3 rounded-full ${sem.dot}`} />
+                    <span className={`inline-block size-3 rounded-full ${sem.dotClass}`} />
                     {c.ragione_sociale ?? "—"}
                   </SheetTitle>
                   <SheetDescription>
@@ -550,7 +551,7 @@ function ApprovazioniPage() {
                   <section className="border-t pt-4">
                     <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
                       Dati rischio cliente
-                      <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${sem.tone}`}>{sem.label}</span>
+                      <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${sem.toneClass}`}>{sem.label}</span>
                     </h3>
                     <div className="grid grid-cols-2 gap-3 text-sm">
                       <Field label="Fido gestionale">{formatEuro(Number(c.fido_gestionale ?? 0))}</Field>

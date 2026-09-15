@@ -22,19 +22,12 @@ import { AllegatiSection } from "@/components/allegati-section";
 import { RICHIESTA_FIDO_SELECT } from "@/lib/richieste-fido-data";
 import { getFidoAttuale } from "@/lib/fido-cliente";
 import { PannelloRischioCliente } from "@/components/pannello-rischio-cliente";
+import { semaforoUI, semaforoDaCliente } from "@/lib/semaforo-ui";
 
 export const Route = createFileRoute("/_app/richieste/$richiestaId")({
   component: RichiestaDetail,
 });
 
-function semaforoTone(c: any): { dot: string; label: string; text: string } {
-  if (!c) return { dot: "bg-muted-foreground", label: "—", text: "text-muted-foreground" };
-  if (c.bloccato || c.in_gestione_legale)
-    return { dot: "bg-destructive", label: "Rosso", text: "text-destructive" };
-  if (Number(c.scaduto ?? 0) > 0)
-    return { dot: "bg-warning", label: "Giallo", text: "text-warning" };
-  return { dot: "bg-success", label: "Verde", text: "text-success" };
-}
 
 function RichiestaDetail() {
   const { richiestaId } = Route.useParams();
@@ -160,7 +153,8 @@ function RichiestaDetail() {
 
   const cliente = (r as any).clienti;
   const fidoAttuale = getFidoAttuale(cliente);
-  const sem = semaforoTone(cliente);
+  const semRaw = semaforoDaCliente(cliente);
+  const sem = semaforoUI(semRaw.stadio, semRaw.motivo);
   const storeNome = cliente?.stores?.nome ?? (r as any).stores?.nome ?? "—";
   const dataInvio = r.data_invio ?? (r.stato !== "bozza" ? r.created_at : null);
 
@@ -254,16 +248,10 @@ function RichiestaDetail() {
             Semaforo rischio
           </p>
           <div className="mt-2 flex items-center gap-2.5">
-            <span className={`inline-block size-3.5 rounded-full ${sem.dot}`} />
-            <span className={`text-2xl font-bold ${sem.text}`}>{sem.label}</span>
+            <span className={`inline-block size-3.5 rounded-full ${sem.dotClass}`} />
+            <span className={`text-2xl font-bold ${sem.textClass}`}>{sem.label}</span>
           </div>
-          <p className="mt-2 text-xs text-muted-foreground">
-            {cliente?.bloccato
-              ? <span className="text-destructive font-medium">Cliente bloccato{cliente?.motivo_blocco ? ` · ${cliente.motivo_blocco}` : ""}</span>
-              : cliente?.in_gestione_legale
-                ? <span className="text-warning font-medium">In gestione legale</span>
-                : "Non bloccato"}
-          </p>
+          <p className="mt-2 text-xs text-muted-foreground">{sem.motivo}</p>
         </Card>
       </div>
 

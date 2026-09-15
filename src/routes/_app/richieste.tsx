@@ -50,6 +50,7 @@ import { getFidoAttuale } from "@/lib/fido-cliente";
 import { RICHIESTA_FIDO_SELECT } from "@/lib/richieste-fido-data";
 import { NuovaComunicazioneDialog } from "@/components/nuova-comunicazione-dialog";
 import { PannelloRischioCliente } from "@/components/pannello-rischio-cliente";
+import { semaforoUI, semaforoDaCliente } from "@/lib/semaforo-ui";
 
 export const Route = createFileRoute("/_app/richieste")({
   component: RichiestePage,
@@ -68,11 +69,10 @@ function attesaTone(g: number): string {
   return "bg-destructive/15 text-destructive";
 }
 
-function semaforoCliente(c: any): { tone: string; label: string } {
-  if (!c) return { tone: "bg-muted text-muted-foreground", label: "—" };
-  if (c.bloccato || c.in_gestione_legale) return { tone: "bg-destructive/15 text-destructive", label: "Rosso" };
-  if (Number(c.scaduto ?? 0) > 0) return { tone: "bg-warning/15 text-warning", label: "Giallo" };
-  return { tone: "bg-success/15 text-success", label: "Verde" };
+/** Semaforo dal valore materializzato in fido_teorico_cliente (fonte unica). */
+function semaforoCli(c: any) {
+  const { stadio, motivo } = semaforoDaCliente(c);
+  return semaforoUI(stadio, motivo);
 }
 
 function userName(p: any): string {
@@ -844,8 +844,8 @@ function InApprovazioneTab({
               <div className="flex justify-between"><span>Scaduto</span><span className="tabular-nums">{formatEuro(Number(action.rows[0].clienti?.scaduto ?? 0))}</span></div>
               <div className="flex justify-between"><span>Totale rischio</span><span className="tabular-nums">{formatEuro(Number(action.rows[0].clienti?.totale_rischio ?? 0))}</span></div>
               <div className="flex justify-between"><span>Semaforo</span>
-                <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${semaforoCliente(action.rows[0].clienti).tone}`}>
-                  {semaforoCliente(action.rows[0].clienti).label}
+                <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${semaforoCli(action.rows[0].clienti).toneClass}`}>
+                  {semaforoCli(action.rows[0].clienti).label}
                 </span>
               </div>
             </div>
@@ -1371,7 +1371,6 @@ function RichiestaFormDialog({
     mut.mutate({ invia });
   }
 
-  const sem = semaforoCliente(clienteSel);
 
   return (
     <DialogContent className="max-w-xl max-h-[90vh] max-h-[90dvh] flex flex-col overflow-hidden">
