@@ -925,7 +925,9 @@ function EventoDettaglioPage() {
                 </TableCell>
               </TableRow>
             )}
-            {filtrati.map((p) => (
+            {filtrati.map((p) => {
+              const titolo = nomePersonaEragione(p);
+              return (
               <TableRow key={p.id} data-state={selezionatiValidi.includes(p.id) ? "selected" : undefined}>
                 <TableCell>
                   <Checkbox
