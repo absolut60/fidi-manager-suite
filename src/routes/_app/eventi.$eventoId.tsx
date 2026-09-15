@@ -167,6 +167,21 @@ function statoRiconciliazione(p: PartecipanteRow): "riconciliato" | "da_riconcil
   return p.cliente_id ? "riconciliato" : "da_riconciliare";
 }
 
+/**
+ * Titolo della riga: nome della persona (prima riga) e, se presente e diverso,
+ * la ragione sociale collegata (seconda riga più piccola).
+ */
+function nomePersonaEragione(p: PartecipanteRow): { persona: string; ragione: string | null } {
+  const persona =
+    `${p.nome ?? ""} ${p.cognome ?? ""}`.trim() ||
+    `${p.contatto?.nome ?? ""} ${p.contatto?.cognome ?? ""}`.trim() ||
+    `${p.lead?.nome ?? ""} ${p.lead?.cognome ?? ""}`.trim() ||
+    nomePartecipante(p);
+  const ragione =
+    p.cliente?.ragione_sociale || p.lead?.ragione_sociale || p.ragione_sociale || "";
+  return { persona, ragione: ragione && ragione !== persona ? ragione : null };
+}
+
 /** Badge di riconciliazione della riga (stato + eventuale walk-in "Sul posto"). */
 function BadgeRiconciliazione({ p }: { p: PartecipanteRow }) {
   return (
@@ -620,7 +635,7 @@ function EventoDettaglioPage() {
         </div>
 
         <div className="space-y-2">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
             {([
               { k: "tutti", label: "Totale", val: riepilogo.totale },
               { k: "attesi", label: "Attesi", val: riepilogo.attesi },
@@ -644,13 +659,16 @@ function EventoDettaglioPage() {
                 </button>
               );
             })}
+            <div className="rounded-md border p-2 text-left">
+              <div className="text-xs text-muted-foreground">Sul posto</div>
+              <div className="text-xl font-semibold">{riepilogo.registratiSulPosto}</div>
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
             {riepilogo.tasso !== null && (
               <span>Tasso di presenza <span className="font-medium text-foreground">{riepilogo.tasso}%</span></span>
             )}
             <span>Privacy raccolta: <span className="font-medium text-foreground">{riepilogo.privacyOk}</span> di {riepilogo.totale}</span>
-            <span>Registrati sul posto: <span className="font-medium text-foreground">{riepilogo.registratiSulPosto}</span></span>
             <span>Da riconciliare: <span className="font-medium text-foreground">{riepilogo.daRiconciliare}</span></span>
           </div>
         </div>
@@ -748,6 +766,7 @@ function EventoDettaglioPage() {
             </div>
           )}
           {!loadingPart && filtrati.map((p) => {
+            const titolo = nomePersonaEragione(p);
             const pr = privacyRiga(p, mappaContatti);
             const rec = recapitiRiga(p, mappaContatti);
             return (
@@ -766,18 +785,21 @@ function EventoDettaglioPage() {
                       <span className="block break-words">
                         {p.lead ? (
                           <Link to="/lead/$leadId" params={{ leadId: p.lead.id }} className="text-primary hover:underline">
-                            {nomePartecipante(p.lead)}
+                            {titolo.persona}
                           </Link>
                         ) : p.cliente ? (
                           <Link to="/clienti/$clienteId" params={{ clienteId: p.cliente.id }} className="text-primary hover:underline">
-                            {p.cliente.ragione_sociale ?? "Cliente"}
+                            {titolo.persona}
                           </Link>
-                        ) : p.contatto ? (
-                          <span>{`${p.contatto.nome ?? ""} ${p.contatto.cognome ?? ""}`.trim() || "Contatto"}</span>
                         ) : (
-                          nomePartecipante(p)
+                          <span>{titolo.persona}</span>
                         )}
                       </span>
+                      {titolo.ragione && (
+                        <span className="block text-xs font-normal text-muted-foreground">
+                          {titolo.ragione}
+                        </span>
+                      )}
                       {(p.partita_iva || p.codice_fiscale) && (
                         <span className="block text-xs font-normal text-muted-foreground">
                           {[p.partita_iva, p.codice_fiscale].filter(Boolean).join(" · ")}
@@ -903,7 +925,9 @@ function EventoDettaglioPage() {
                 </TableCell>
               </TableRow>
             )}
-            {filtrati.map((p) => (
+            {filtrati.map((p) => {
+              const titolo = nomePersonaEragione(p);
+              return (
               <TableRow key={p.id} data-state={selezionatiValidi.includes(p.id) ? "selected" : undefined}>
                 <TableCell>
                   <Checkbox
@@ -920,7 +944,7 @@ function EventoDettaglioPage() {
                         params={{ leadId: p.lead.id }}
                         className="text-primary hover:underline"
                       >
-                        {nomePartecipante(p.lead)}
+                        {titolo.persona}
                       </Link>
                     ) : p.cliente ? (
                       <Link
@@ -928,14 +952,15 @@ function EventoDettaglioPage() {
                         params={{ clienteId: p.cliente.id }}
                         className="text-primary hover:underline"
                       >
-                        {p.cliente.ragione_sociale ?? "Cliente"}
+                        {titolo.persona}
                       </Link>
-                    ) : p.contatto ? (
-                      <span>{`${p.contatto.nome ?? ""} ${p.contatto.cognome ?? ""}`.trim() || "Contatto"}</span>
                     ) : (
-                      nomePartecipante(p)
+                      <span>{titolo.persona}</span>
                     )}
                   </div>
+                  {titolo.ragione && (
+                    <div className="text-xs text-muted-foreground">{titolo.ragione}</div>
+                  )}
                   {(p.partita_iva || p.codice_fiscale) && (
                     <div className="text-xs text-muted-foreground">
                       {[p.partita_iva, p.codice_fiscale].filter(Boolean).join(" · ")}
@@ -1036,7 +1061,8 @@ function EventoDettaglioPage() {
                   </div>
                 </TableCell>
               </TableRow>
-            ))}
+              );
+            })}
           </TableBody>
         </Table>
         </div>
