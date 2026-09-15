@@ -65,7 +65,6 @@ export function AggiungiPartecipanteDialog({
   const [soggetto, setSoggetto] = useState<SoggettoSelezionato | null>(null);
   const [stato, setStato] = useState<EventiPartecipanteStato>("presentato");
   const [campi, setCampi] = useState<Campi>({ ...CAMPI_VUOTI });
-  const [ignoraDuplicati, setIgnoraDuplicati] = useState(false);
 
   /**
    * Esito del salvataggio: guida la fase privacy post-creazione.
@@ -94,64 +93,12 @@ export function AggiungiPartecipanteDialog({
     setSoggetto(null);
     setStato("presentato");
     setCampi({ ...CAMPI_VUOTI });
-    setIgnoraDuplicati(false);
     setEsito(null);
     setSavingPrivacy(false);
   };
 
   const chiudi = () => { setOpen(false); reset(); };
 
-
-  // ——— dedup live (debounce) ———
-  const chiaveDedup = useMemo(
-    () => JSON.stringify({
-      p: campi.partita_iva.trim(),
-      c: campi.codice_fiscale.trim(),
-      e: campi.email.trim(),
-      n: campi.ragione_sociale.trim() || `${campi.nome} ${campi.cognome}`.trim(),
-    }),
-    [campi.partita_iva, campi.codice_fiscale, campi.email, campi.ragione_sociale, campi.nome, campi.cognome],
-  );
-  const [chiaveDeb, setChiaveDeb] = useState(chiaveDedup);
-  useEffect(() => {
-    const t = window.setTimeout(() => setChiaveDeb(chiaveDedup), 350);
-    return () => window.clearTimeout(t);
-  }, [chiaveDedup]);
-
-  const parsed = JSON.parse(chiaveDeb) as { p: string; c: string; e: string; n: string };
-  const dedupAttivo =
-    modo === "nuovo" &&
-    !esito &&
-    (parsed.p.length >= 5 || parsed.c.length >= 5 || parsed.e.length >= 5 || parsed.n.length >= 3);
-
-  const { data: duplicati } = useQuery({
-    queryKey: ["eventi-dedup", chiaveDeb],
-    enabled: open && dedupAttivo,
-    staleTime: 30_000,
-    queryFn: () =>
-      cercaDuplicati({
-        partitaIva: parsed.p || null,
-        codiceFiscale: parsed.c || null,
-        email: parsed.e || null,
-        nome: parsed.n.length >= 3 ? parsed.n : null,
-      }),
-  });
-
-  const matches: DedupMatch[] = duplicati ?? [];
-
-  const collegaMatch = (m: DedupMatch) => {
-    if (m.entita === "lead") {
-      setSoggetto({ tipo: "lead", id: m.id, etichetta: m.etichetta });
-    } else if (m.entita === "cliente") {
-      setSoggetto({ tipo: "cliente", id: m.id, etichetta: m.etichetta });
-    } else if (m.linkId) {
-      setSoggetto({ tipo: "cliente", id: m.linkId, etichetta: m.etichetta });
-    } else {
-      toast.error("Questo contatto non è collegabile direttamente: apri la scheda lead");
-      return;
-    }
-    setModo("collega");
-  };
 
   // Contatto-persona su cui raccogliere la privacy (ramo "collega esistente").
   const caricaContattoSoggetto = async (s: SoggettoSelezionato) => {
