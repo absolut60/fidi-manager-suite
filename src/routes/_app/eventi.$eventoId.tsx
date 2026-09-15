@@ -155,6 +155,12 @@ function testoRicerca(p: PartecipanteRow, mappa: MappaContatti): string {
   ].filter(Boolean).join(" "));
 }
 
+function formatDataFirma(d: string | null): string | null {
+  if (!d) return null;
+  const dt = new Date(d);
+  return Number.isNaN(dt.getTime()) ? null : dt.toLocaleDateString("it-IT");
+}
+
 /** Un partecipante è riconciliato quando è agganciato a un cliente; se è solo lead è da riconciliare. */
 function statoRiconciliazione(p: PartecipanteRow): "riconciliato" | "da_riconciliare" {
   return p.cliente_id ? "riconciliato" : "da_riconciliare";
