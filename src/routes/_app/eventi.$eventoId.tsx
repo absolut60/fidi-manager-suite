@@ -766,6 +766,7 @@ function EventoDettaglioPage() {
             </div>
           )}
           {!loadingPart && filtrati.map((p) => {
+            const titolo = nomePersonaEragione(p);
             const pr = privacyRiga(p, mappaContatti);
             const rec = recapitiRiga(p, mappaContatti);
             return (
@@ -784,18 +785,21 @@ function EventoDettaglioPage() {
                       <span className="block break-words">
                         {p.lead ? (
                           <Link to="/lead/$leadId" params={{ leadId: p.lead.id }} className="text-primary hover:underline">
-                            {nomePartecipante(p.lead)}
+                            {titolo.persona}
                           </Link>
                         ) : p.cliente ? (
                           <Link to="/clienti/$clienteId" params={{ clienteId: p.cliente.id }} className="text-primary hover:underline">
-                            {p.cliente.ragione_sociale ?? "Cliente"}
+                            {titolo.persona}
                           </Link>
-                        ) : p.contatto ? (
-                          <span>{`${p.contatto.nome ?? ""} ${p.contatto.cognome ?? ""}`.trim() || "Contatto"}</span>
                         ) : (
-                          nomePartecipante(p)
+                          <span>{titolo.persona}</span>
                         )}
                       </span>
+                      {titolo.ragione && (
+                        <span className="block text-xs font-normal text-muted-foreground">
+                          {titolo.ragione}
+                        </span>
+                      )}
                       {(p.partita_iva || p.codice_fiscale) && (
                         <span className="block text-xs font-normal text-muted-foreground">
                           {[p.partita_iva, p.codice_fiscale].filter(Boolean).join(" · ")}
