@@ -128,6 +128,8 @@ export function mapRichiestaFido(r: AnyRecord): RichiestaFidoView {
     richiedenteLabel: userLabel(r?.richiedente ?? r?.profilo ?? null),
     approvatore: r?.approvatore ?? null,
     approvatoreLabel: userLabel(r?.approvatore ?? null),
+    semaforoStadio: sem.stadio,
+    semaforoMotivo: sem.motivo,
   };
 }
 
