@@ -82,11 +82,14 @@ export function AggiungiPartecipanteDialog({
     data_nascita: string;
     codice_fiscale: string;
     residenza: string;
+    soggetto?: { tipo: "cliente" | "lead"; id: string } | null;
+    partecipanteId?: string | null;
   };
   const [esito, setEsito] = useState<EsitoSalvataggio | null>(null);
   const [savingPrivacy, setSavingPrivacy] = useState(false);
 
   const diPersonaFn = useServerFn(registraConsensoDiPersona);
+  const creaContattoFn = useServerFn(creaORiusaContattoInSoggetto);
 
   const reset = () => {
     setModo("collega");
