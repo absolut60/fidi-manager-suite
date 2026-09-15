@@ -2034,6 +2034,8 @@ function ProposteFidoMassivoDialog({
   const [motivazioneGenerale, setMotivazioneGenerale] = useState<string>(MOTIVAZIONE_DEFAULT);
   const [righe, setRighe] = useState<RigaProposta[]>([]);
   const [filtroRinnovi, setFiltroRinnovi] = useState<"escludi" | "tutti" | "solo">("escludi");
+  const [filtroPagImmediato, setFiltroPagImmediato] = useState<"escludi" | "tutti" | "solo">("escludi");
+  const [filtroFidoZero, setFiltroFidoZero] = useState<"escludi" | "tutti" | "solo">("tutti");
   const [submitting, setSubmitting] = useState(false);
 
   // Fido proposto = SEMPRE la RPC canonica get_fido_teorico (nessun calcolo locale)
