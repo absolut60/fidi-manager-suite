@@ -163,9 +163,10 @@ function MarketingSegmentiPage() {
       const size = 1000;
       // eslint-disable-next-line no-constant-condition
       while (true) {
+        // Fonte unica del semaforo: valore materializzato dal ricalcolo fido teorico.
         const { data, error } = await supabase
-          .from("clienti")
-          .select("id, fido_residuo, fido_gestionale, scaduto")
+          .from("fido_teorico_cliente")
+          .select("cliente_id, semaforo_stadio")
           .range(offset, offset + size - 1);
         if (error) throw error;
         const batch = data ?? [];
