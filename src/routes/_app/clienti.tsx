@@ -2115,15 +2115,28 @@ function ProposteFidoMassivoDialog({
   }, [tipoForzato]);
 
   const righeVisibili = useMemo(() => {
-    if (filtroRinnovi === "tutti") return righe;
-    if (filtroRinnovi === "solo") return righe.filter((r) => r.tipo === "rinnovo");
-    return righe.filter((r) => r.tipo !== "rinnovo");
-  }, [righe, filtroRinnovi]);
+    return righe.filter((r) => {
+      // Filtro rinnovi
+      if (filtroRinnovi === "escludi" && r.tipo === "rinnovo") return false;
+      if (filtroRinnovi === "solo" && r.tipo !== "rinnovo") return false;
+      // Filtro pagamento immediato
+      const isPagImmediato = r.regola === "pagamento_immediato";
+      if (filtroPagImmediato === "escludi" && isPagImmediato) return false;
+      if (filtroPagImmediato === "solo" && !isPagImmediato) return false;
+      // Filtro fido zero
+      const isFidoZero = Number(r.fido_proposto) === 0;
+      if (filtroFidoZero === "escludi" && isFidoZero) return false;
+      if (filtroFidoZero === "solo" && !isFidoZero) return false;
+      return true;
+    });
+  }, [righe, filtroRinnovi, filtroPagImmediato, filtroFidoZero]);
 
   const righeVisibiliIncluse = righeVisibili.filter((r) => r.proponibile && r.incluso);
   const righeEscluse = righe.filter((r) => !r.proponibile);
   const totale = righeVisibiliIncluse.reduce((acc, r) => acc + (Number(r.fido_proposto) || 0), 0);
   const rinnoviCount = righe.filter((r) => r.tipo === "rinnovo").length;
+  const pagImmediatoCount = righe.filter((r) => r.regola === "pagamento_immediato").length;
+  const fidoZeroCount = righe.filter((r) => Number(r.fido_proposto) === 0).length;
 
   async function creaRichieste() {
     if (righeVisibiliIncluse.length === 0) { toast.error("Nessuna riga da creare"); return; }
