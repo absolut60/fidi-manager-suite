@@ -167,6 +167,21 @@ function statoRiconciliazione(p: PartecipanteRow): "riconciliato" | "da_riconcil
   return p.cliente_id ? "riconciliato" : "da_riconciliare";
 }
 
+/**
+ * Titolo della riga: nome della persona (prima riga) e, se presente e diverso,
+ * la ragione sociale collegata (seconda riga più piccola).
+ */
+function nomePersonaEragione(p: PartecipanteRow): { persona: string; ragione: string | null } {
+  const persona =
+    `${p.nome ?? ""} ${p.cognome ?? ""}`.trim() ||
+    `${p.contatto?.nome ?? ""} ${p.contatto?.cognome ?? ""}`.trim() ||
+    `${p.lead?.nome ?? ""} ${p.lead?.cognome ?? ""}`.trim() ||
+    nomePartecipante(p);
+  const ragione =
+    p.cliente?.ragione_sociale || p.lead?.ragione_sociale || p.ragione_sociale || "";
+  return { persona, ragione: ragione && ragione !== persona ? ragione : null };
+}
+
 /** Badge di riconciliazione della riga (stato + eventuale walk-in "Sul posto"). */
 function BadgeRiconciliazione({ p }: { p: PartecipanteRow }) {
   return (
