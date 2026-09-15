@@ -254,8 +254,8 @@ function RichiestaDetail() {
             Semaforo rischio
           </p>
           <div className="mt-2 flex items-center gap-2.5">
-            <span className={`inline-block size-3.5 rounded-full ${sem.dot}`} />
-            <span className={`text-2xl font-bold ${sem.text}`}>{sem.label}</span>
+            <span className={`inline-block size-3.5 rounded-full ${sem.dotClass}`} />
+            <span className={`text-2xl font-bold ${sem.textClass}`}>{sem.label}</span>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
             {cliente?.bloccato

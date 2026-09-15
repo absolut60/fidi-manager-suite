@@ -432,7 +432,7 @@ function ApprovazioniPage() {
                     <div className="flex items-start justify-between gap-3 flex-wrap">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className={`inline-block size-2.5 rounded-full ${sem.dot}`} title={`Semaforo: ${sem.label}`} />
+                          <span className={`inline-block size-2.5 rounded-full ${sem.dotClass}`} title={`Semaforo: ${sem.label}`} />
                           <Link
                             to="/clienti/$clienteId"
                             params={{ clienteId: r.cliente_id }}
@@ -499,7 +499,7 @@ function ApprovazioniPage() {
               <>
                 <SheetHeader>
                   <SheetTitle className="flex items-center gap-2">
-                    <span className={`inline-block size-3 rounded-full ${sem.dot}`} />
+                    <span className={`inline-block size-3 rounded-full ${sem.dotClass}`} />
                     {c.ragione_sociale ?? "—"}
                   </SheetTitle>
                   <SheetDescription>
@@ -550,7 +550,7 @@ function ApprovazioniPage() {
                   <section className="border-t pt-4">
                     <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
                       Dati rischio cliente
-                      <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${sem.tone}`}>{sem.label}</span>
+                      <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${sem.toneClass}`}>{sem.label}</span>
                     </h3>
                     <div className="grid grid-cols-2 gap-3 text-sm">
                       <Field label="Fido gestionale">{formatEuro(Number(c.fido_gestionale ?? 0))}</Field>
