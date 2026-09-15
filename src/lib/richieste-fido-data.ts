@@ -47,7 +47,8 @@ export const RICHIESTA_FIDO_SELECT = `
     cliente_attivo,
     ultima_data_fatturazione,
     ultima_sincronizzazione,
-    stores(nome, codice)
+    stores(nome, codice),
+    fido_teorico_cliente(semaforo_stadio, semaforo_motivo)
   ),
   richiedente:profili!richieste_fido_created_by_fkey(nome, cognome, email),
   approvatore:profili!richieste_fido_approvato_da_fkey(nome, cognome, email)
