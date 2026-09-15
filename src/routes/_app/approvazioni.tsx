@@ -36,11 +36,10 @@ function giorniDa(d: string | null | undefined): number {
   return Math.floor((Date.now() - new Date(d).getTime()) / 86400000);
 }
 
-function semaforoCliente(c: any): { dot: string; tone: string; label: "Verde" | "Giallo" | "Rosso" | "—" } {
-  if (!c) return { dot: "bg-muted-foreground", tone: "bg-muted text-muted-foreground", label: "—" };
-  if (c.bloccato || c.in_gestione_legale) return { dot: "bg-destructive", tone: "bg-destructive/15 text-destructive", label: "Rosso" };
-  if (Number(c.scaduto ?? 0) > 0) return { dot: "bg-warning", tone: "bg-warning/15 text-warning", label: "Giallo" };
-  return { dot: "bg-success", tone: "bg-success/15 text-success", label: "Verde" };
+/** Semaforo dal valore materializzato in fido_teorico_cliente (fonte unica). */
+function semaforoCli(c: any) {
+  const { stadio, motivo } = semaforoDaCliente(c);
+  return semaforoUI(stadio, motivo);
 }
 
 
