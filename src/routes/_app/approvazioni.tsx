@@ -322,6 +322,7 @@ function ApprovazioniPage() {
                 <SelectItem value="all">Tutti</SelectItem>
                 <SelectItem value="verde">Verde</SelectItem>
                 <SelectItem value="giallo">Giallo</SelectItem>
+                <SelectItem value="arancione">Arancione</SelectItem>
                 <SelectItem value="rosso">Rosso</SelectItem>
               </SelectContent>
             </Select>
