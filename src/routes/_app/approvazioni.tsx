@@ -25,6 +25,7 @@ import {
 import { formatEuro, formatDate, TIPO_LABEL, TIPO_TONE, type TipoRichiesta } from "@/lib/fidi";
 import { getFidoAttuale } from "@/lib/fido-cliente";
 import { RICHIESTA_FIDO_SELECT } from "@/lib/richieste-fido-data";
+import { semaforoUI, semaforoDaCliente } from "@/lib/semaforo-ui";
 import { NuovaComunicazioneDialog } from "@/components/nuova-comunicazione-dialog";
 
 export const Route = createFileRoute("/_app/approvazioni")({
@@ -148,7 +149,7 @@ function ApprovazioniPage() {
       const imp = Number(r.importo_richiesto);
       if (min != null && imp < min) return false;
       if (max != null && imp > max) return false;
-      if (fSem !== "all" && semaforoCliente(r.clienti).label.toLowerCase() !== fSem) return false;
+      if (fSem !== "all" && semaforoCli(r.clienti).label.toLowerCase() !== fSem) return false;
       if (fAttesa !== "all") {
         const g = giorniDa(r.data_invio);
         if (fAttesa === "lt7" && g >= 7) return false;
@@ -408,7 +409,7 @@ function ApprovazioniPage() {
           {richieste.map((r) => {
             const isSel = selected.has(r.id);
             const c = r.clienti ?? {};
-            const sem = semaforoCliente(c);
+            const sem = semaforoCli(c);
             const g = giorniDa(r.data_invio);
             const residuo = Number(c.fido_residuo ?? 0);
             const scaduto = Number(c.scaduto ?? 0);
@@ -490,7 +491,7 @@ function ApprovazioniPage() {
         <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
           {detail && (() => {
             const c = detail.clienti ?? {};
-            const sem = semaforoCliente(c);
+            const sem = semaforoCli(c);
             const residuo = Number(c.fido_residuo ?? 0);
             const scaduto = Number(c.scaduto ?? 0);
             const creatore = (detail as any).richiedente ?? (detail as any).profilo;
