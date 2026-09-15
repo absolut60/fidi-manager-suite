@@ -26,6 +26,7 @@ import {
 import { AggiungiPartecipanteDialog } from "@/components/eventi/aggiungi-partecipante-dialog";
 import { ImportPartecipantiCard } from "@/components/eventi/import-partecipanti-card";
 import { RiconciliaImportCard } from "@/components/eventi/riconcilia-import-card";
+import { RiconciliaAManoDialog } from "@/components/eventi/riconcilia-a-mano-dialog";
 
 import { useServerFn } from "@tanstack/react-start";
 import { inviaRichiestaFirmaPrivacy, riconciliaPartecipante } from "@/lib/firma-privacy.functions";
@@ -837,6 +838,13 @@ function EventoDettaglioPage() {
                           <UserX className="size-4" /> No show
                         </Button>
                       </>
+                    )}
+                    {statoRiconciliazione(p) === "da_riconciliare" && (
+                      <RiconciliaAManoDialog
+                        partecipanteId={p.id}
+                        etichetta={p.lead ? nomePartecipante(p.lead) : nomePartecipante(p)}
+                        eventoId={eventoId}
+                      />
                     )}
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
