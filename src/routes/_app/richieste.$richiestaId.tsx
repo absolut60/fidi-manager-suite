@@ -251,13 +251,7 @@ function RichiestaDetail() {
             <span className={`inline-block size-3.5 rounded-full ${sem.dotClass}`} />
             <span className={`text-2xl font-bold ${sem.textClass}`}>{sem.label}</span>
           </div>
-          <p className="mt-2 text-xs text-muted-foreground">
-            {cliente?.bloccato
-              ? <span className="text-destructive font-medium">Cliente bloccato{cliente?.motivo_blocco ? ` · ${cliente.motivo_blocco}` : ""}</span>
-              : cliente?.in_gestione_legale
-                ? <span className="text-warning font-medium">In gestione legale</span>
-                : "Non bloccato"}
-          </p>
+          <p className="mt-2 text-xs text-muted-foreground">{sem.motivo}</p>
         </Card>
       </div>
 
