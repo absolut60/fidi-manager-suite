@@ -183,8 +183,8 @@ function MarketingSegmentiPage() {
   const semaforoIds = useMemo<string[] | null>(() => {
     if (filtri.semaforo === "tutti" || !classifList) return null;
     return classifList
-      .filter((c: any) => calcSemaforo(c) === filtri.semaforo)
-      .map((c: any) => c.id);
+      .filter((c: any) => c.semaforo_stadio === filtri.semaforo)
+      .map((c: any) => c.cliente_id as string);
   }, [classifList, filtri.semaforo]);
 
   // === Fatturato (fasce) ===
