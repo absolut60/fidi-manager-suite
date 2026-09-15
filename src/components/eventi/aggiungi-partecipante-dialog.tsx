@@ -66,7 +66,7 @@ export function AggiungiPartecipanteDialog({
   const [open, setOpen] = useState(false);
   const [modo, setModo] = useState<"collega" | "nuovo">("collega");
   const [soggetto, setSoggetto] = useState<SoggettoSelezionato | null>(null);
-  const [stato, setStato] = useState<EventiPartecipanteStato>("atteso");
+  const [stato, setStato] = useState<EventiPartecipanteStato>("presentato");
   const [campi, setCampi] = useState<Campi>({ ...CAMPI_VUOTI });
   const [ignoraDuplicati, setIgnoraDuplicati] = useState(false);
 
@@ -97,7 +97,7 @@ export function AggiungiPartecipanteDialog({
   const reset = () => {
     setModo("collega");
     setSoggetto(null);
-    setStato("atteso");
+    setStato("presentato");
     setCampi({ ...CAMPI_VUOTI });
     setIgnoraDuplicati(false);
     setEsito(null);
@@ -439,22 +439,23 @@ export function AggiungiPartecipanteDialog({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                {campi.tipo_soggetto === "azienda" ? (
                   <div className="space-y-1.5">
                     <Label htmlFor="np-piva">Partita IVA</Label>
                     <Input id="np-piva" value={campi.partita_iva} onChange={(e) => set({ partita_iva: e.target.value })} />
                   </div>
+                ) : (
                   <div className="space-y-1.5">
                     <Label htmlFor="np-cf">Codice fiscale</Label>
                     <Input id="np-cf" value={campi.codice_fiscale} onChange={(e) => set({ codice_fiscale: e.target.value })} />
                   </div>
-                </div>
+                )}
 
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="np-email">Email</Label>
-                    <Input id="np-email" type="email" value={campi.email} onChange={(e) => set({ email: e.target.value })} />
-                  </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="np-email">Email</Label>
+                  <Input id="np-email" type="email" value={campi.email} onChange={(e) => set({ email: e.target.value })} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label htmlFor="np-tel">Telefono</Label>
                     <Input id="np-tel" value={campi.telefono} onChange={(e) => set({ telefono: e.target.value })} />
