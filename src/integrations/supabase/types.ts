@@ -2291,6 +2291,8 @@ export type Database = {
           note: string | null
           partita_iva: string | null
           ragione_sociale: string | null
+          registrato_sul_posto: boolean
+          riconciliato_il: string | null
           stato: Database["public"]["Enums"]["eventi_partecipante_stato"]
           telefono: string | null
           updated_at: string
@@ -2309,6 +2311,8 @@ export type Database = {
           note?: string | null
           partita_iva?: string | null
           ragione_sociale?: string | null
+          registrato_sul_posto?: boolean
+          riconciliato_il?: string | null
           stato?: Database["public"]["Enums"]["eventi_partecipante_stato"]
           telefono?: string | null
           updated_at?: string
@@ -2327,6 +2331,8 @@ export type Database = {
           note?: string | null
           partita_iva?: string | null
           ragione_sociale?: string | null
+          registrato_sul_posto?: boolean
+          riconciliato_il?: string | null
           stato?: Database["public"]["Enums"]["eventi_partecipante_stato"]
           telefono?: string | null
           updated_at?: string
