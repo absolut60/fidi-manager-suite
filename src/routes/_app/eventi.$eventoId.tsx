@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft, CalendarDays, Check, MapPin, Pencil, Save, Trash2, UserX,
+  ArrowLeft, CalendarDays, Check, Link2, MapPin, Pencil, Save, Trash2, UserX,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,7 +28,7 @@ import { ImportPartecipantiCard } from "@/components/eventi/import-partecipanti-
 import { RiconciliaImportCard } from "@/components/eventi/riconcilia-import-card";
 
 import { useServerFn } from "@tanstack/react-start";
-import { inviaRichiestaFirmaPrivacy } from "@/lib/firma-privacy.functions";
+import { inviaRichiestaFirmaPrivacy, riconciliaPartecipante } from "@/lib/firma-privacy.functions";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Search, X } from "lucide-react";
 import { SchedaLista, ElencoSchede } from "@/components/lista-responsive";
@@ -204,6 +204,8 @@ function EventoDettaglioPage() {
   const [luogo, setLuogo] = useState("");
   const [note, setNote] = useState("");
   const inviaFn = useServerFn(inviaRichiestaFirmaPrivacy);
+  const riconciliaFn = useServerFn(riconciliaPartecipante);
+  const [riconciliaInCorso, setRiconciliaInCorso] = useState(false);
 
   // ricerca lato client sulla lista partecipanti (debounce 200ms)
   const [ricerca, setRicerca] = useState("");
@@ -509,6 +511,43 @@ function EventoDettaglioPage() {
     queryClient.invalidateQueries({ queryKey: ["evento-partecipanti", eventoId] });
   };
 
+  /** Riconciliazione automatica massiva: tutti i partecipanti non ancora agganciati a un cliente. */
+  const riconciliaAutomatica = async () => {
+    const righe = (partecipanti ?? []).filter(
+      (p) => statoRiconciliazione(p) === "da_riconciliare",
+    );
+    let riconciliati = 0;
+    let senzaMatch = 0;
+    let saltati = 0;
+    let errori = 0;
+
+    setRiconciliaInCorso(true);
+    try {
+      for (const p of righe) {
+        try {
+          const res = await riconciliaFn({ data: { partecipanteId: p.id } });
+          if (res.ok === true) riconciliati++;
+          else if (res.errore === "match_non_univoco") senzaMatch++;
+          else if (res.errore === "gia_riconciliato") saltati++;
+          else errori++;
+        } catch {
+          errori++;
+        }
+        await new Promise((r) => setTimeout(r, 250));
+      }
+    } finally {
+      setRiconciliaInCorso(false);
+    }
+
+    const parti = [`${riconciliati} riconciliati`];
+    if (senzaMatch) parti.push(`${senzaMatch} senza corrispondenza univoca (da fare a mano)`);
+    if (saltati) parti.push(`${saltati} già riconciliati`);
+    if (errori) parti.push(`${errori} in errore`);
+    toast.success(`${riconciliati} riconciliati`, { description: parti.slice(1).join(" · ") || undefined });
+    queryClient.invalidateQueries({ queryKey: ["evento-partecipanti", eventoId] });
+    queryClient.invalidateQueries({ queryKey: ["eventi-lista"] });
+  };
+
 
 
 
@@ -562,7 +601,20 @@ function EventoDettaglioPage() {
               Prima dell'evento la lista degli attesi, durante e dopo il censimento di chi si presenta.
             </p>
           </div>
-          <AggiungiPartecipanteDialog eventoId={eventoId} nomeEvento={evento.nome} />
+          <div className="flex flex-wrap items-center gap-2">
+            <AggiungiPartecipanteDialog eventoId={eventoId} nomeEvento={evento.nome} />
+            {riepilogo.daRiconciliare > 0 && (
+              <Button
+                variant="outline"
+                className="gap-1.5"
+                disabled={riconciliaInCorso}
+                onClick={() => void riconciliaAutomatica()}
+              >
+                <Link2 className="size-4" />
+                {riconciliaInCorso ? "Riconciliazione…" : "Riconcilia automaticamente"}
+              </Button>
+            )}
+          </div>
 
         </div>
 
