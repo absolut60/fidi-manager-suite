@@ -20,6 +20,7 @@
  */
 
 import { getFidoAttuale, FIDO_CLIENTE_SELECT } from "@/lib/fido-cliente";
+import { semaforoDaCliente, type SemaforoStadio } from "@/lib/semaforo-ui";
 
 /** Frammento di SELECT PostgREST condiviso (join cliente + store + profili). */
 export const RICHIESTA_FIDO_SELECT = `
