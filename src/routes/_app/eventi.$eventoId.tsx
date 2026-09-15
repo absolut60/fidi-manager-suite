@@ -944,7 +944,7 @@ function EventoDettaglioPage() {
                         params={{ leadId: p.lead.id }}
                         className="text-primary hover:underline"
                       >
-                        {nomePartecipante(p.lead)}
+                        {titolo.persona}
                       </Link>
                     ) : p.cliente ? (
                       <Link
@@ -952,14 +952,15 @@ function EventoDettaglioPage() {
                         params={{ clienteId: p.cliente.id }}
                         className="text-primary hover:underline"
                       >
-                        {p.cliente.ragione_sociale ?? "Cliente"}
+                        {titolo.persona}
                       </Link>
-                    ) : p.contatto ? (
-                      <span>{`${p.contatto.nome ?? ""} ${p.contatto.cognome ?? ""}`.trim() || "Contatto"}</span>
                     ) : (
-                      nomePartecipante(p)
+                      <span>{titolo.persona}</span>
                     )}
                   </div>
+                  {titolo.ragione && (
+                    <div className="text-xs text-muted-foreground">{titolo.ragione}</div>
+                  )}
                   {(p.partita_iva || p.codice_fiscale) && (
                     <div className="text-xs text-muted-foreground">
                       {[p.partita_iva, p.codice_fiscale].filter(Boolean).join(" · ")}
@@ -1060,7 +1061,8 @@ function EventoDettaglioPage() {
                   </div>
                 </TableCell>
               </TableRow>
-            ))}
+              );
+            })}
           </TableBody>
         </Table>
         </div>
