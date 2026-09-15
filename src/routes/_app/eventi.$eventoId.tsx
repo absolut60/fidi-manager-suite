@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft, CalendarDays, Check, MapPin, Save, Trash2, UserX,
+  ArrowLeft, CalendarDays, Check, MapPin, Pencil, Save, Trash2, UserX,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
@@ -186,6 +187,7 @@ function EventoDettaglioPage() {
   const [selezionati, setSelezionati] = useState<string[]>([]);
   const [filtroStato, setFiltroStato] = useState<"tutti" | "attesi" | "presenti" | "no_show">("tutti");
   const [invioInCorso, setInvioInCorso] = useState(false);
+  const [modifica, setModifica] = useState(false);
 
 
 
@@ -308,6 +310,7 @@ function EventoDettaglioPage() {
       queryClient.invalidateQueries({ queryKey: ["evento", eventoId] });
       queryClient.invalidateQueries({ queryKey: ["eventi-lista"] });
       toast.success("Evento aggiornato");
+      setModifica(false);
     },
     onError: (e: Error) => toast.error("Errore nel salvataggio", { description: e.message }),
   });
@@ -507,73 +510,16 @@ function EventoDettaglioPage() {
         <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => navigate({ to: "/eventi" })}>
           <ArrowLeft className="size-4" /> Eventi
         </Button>
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="destructive" size="sm" className="gap-1.5">
-              <Trash2 className="size-4" /> Elimina evento
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Eliminare l'evento?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Verranno eliminati anche tutti i partecipanti censiti. L'operazione non è reversibile.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Annulla</AlertDialogCancel>
-              <AlertDialogAction onClick={() => eliminaEvento.mutate()}>Elimina</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
       </div>
 
-      <Card className="p-4 sm:p-5 space-y-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">{evento.nome}</h1>
-          <p className="text-sm text-muted-foreground mt-1 flex flex-wrap items-center gap-3">
-            <span className="inline-flex items-center gap-1.5">
-              <CalendarDays className="size-4" />{formatDataEvento(evento.data_evento)}
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <MapPin className="size-4" />{evento.luogo || "—"}
-            </span>
-            <span>{totale} partecipanti · {presentati} presentati</span>
-          </p>
-        </div>
+      <Tabs defaultValue="partecipanti">
+        <TabsList>
+          <TabsTrigger value="partecipanti">Partecipanti</TabsTrigger>
+          <TabsTrigger value="dettagli">Dettagli evento</TabsTrigger>
+        </TabsList>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="ed-nome">Nome</Label>
-            <Input id="ed-nome" value={nome} onChange={(e) => setNome(e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="ed-data">Data</Label>
-            <Input id="ed-data" type="date" value={dataEvento} onChange={(e) => setDataEvento(e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="ed-luogo">Luogo</Label>
-            <Input id="ed-luogo" value={luogo} onChange={(e) => setLuogo(e.target.value)} />
-          </div>
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="ed-note">Note</Label>
-          <Textarea id="ed-note" rows={3} value={note} onChange={(e) => setNote(e.target.value)} />
-        </div>
-        <div className="flex justify-end">
-          <Button
-            className="gap-1.5"
-            disabled={!nome.trim() || salvaEvento.isPending}
-            onClick={() => salvaEvento.mutate()}
-          >
-            <Save className="size-4" /> Salva modifiche
-          </Button>
-        </div>
-      </Card>
-
-      <ImportPartecipantiCard eventoId={eventoId} />
-
-      <RiconciliaImportCard eventoId={eventoId} />
+        <TabsContent value="partecipanti" className="mt-4 space-y-4">
+          <Card className="p-4 sm:p-5 space-y-4">
 
 
       <Card className="p-4 sm:p-5 space-y-4">
@@ -986,7 +932,123 @@ function EventoDettaglioPage() {
         </Table>
         </div>
 
-      </Card>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="dettagli" className="mt-4 space-y-4">
+          <Card className="p-4 sm:p-5 space-y-4">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight">{evento.nome}</h1>
+              <p className="text-sm text-muted-foreground mt-1 flex flex-wrap items-center gap-3">
+                <span className="inline-flex items-center gap-1.5">
+                  <CalendarDays className="size-4" />{formatDataEvento(evento.data_evento)}
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <MapPin className="size-4" />{evento.luogo || "—"}
+                </span>
+                <span>{totale} partecipanti · {presentati} presentati</span>
+              </p>
+            </div>
+
+            {!modifica ? (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Nome</Label>
+                    <p className="text-sm break-words">{evento.nome || "—"}</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Data</Label>
+                    <p className="text-sm">{formatDataEvento(evento.data_evento)}</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Luogo</Label>
+                    <p className="text-sm break-words">{evento.luogo || "—"}</p>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Note</Label>
+                  <p className="text-sm whitespace-pre-wrap break-words">{evento.note || "—"}</p>
+                </div>
+                <div className="flex justify-end">
+                  <Button variant="outline" className="gap-1.5" onClick={() => setModifica(true)}>
+                    <Pencil className="size-4" /> Modifica
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="ed-nome">Nome</Label>
+                    <Input id="ed-nome" value={nome} onChange={(e) => setNome(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="ed-data">Data</Label>
+                    <Input id="ed-data" type="date" value={dataEvento} onChange={(e) => setDataEvento(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="ed-luogo">Luogo</Label>
+                    <Input id="ed-luogo" value={luogo} onChange={(e) => setLuogo(e.target.value)} />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="ed-note">Note</Label>
+                  <Textarea id="ed-note" rows={3} value={note} onChange={(e) => setNote(e.target.value)} />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    disabled={salvaEvento.isPending}
+                    onClick={() => {
+                      setNome(evento.nome ?? "");
+                      setDataEvento(evento.data_evento ?? "");
+                      setLuogo(evento.luogo ?? "");
+                      setNote(evento.note ?? "");
+                      setModifica(false);
+                    }}
+                  >
+                    Annulla
+                  </Button>
+                  <Button
+                    className="gap-1.5"
+                    disabled={!nome.trim() || salvaEvento.isPending}
+                    onClick={() => salvaEvento.mutate()}
+                  >
+                    <Save className="size-4" /> Salva modifiche
+                  </Button>
+                </div>
+              </>
+            )}
+          </Card>
+
+          <ImportPartecipantiCard eventoId={eventoId} />
+
+          <RiconciliaImportCard eventoId={eventoId} />
+
+          <div className="flex justify-end">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm" className="gap-1.5">
+                  <Trash2 className="size-4" /> Elimina evento
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Eliminare l'evento?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Verranno eliminati anche tutti i partecipanti censiti. L'operazione non è reversibile.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Annulla</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => eliminaEvento.mutate()}>Elimina</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
