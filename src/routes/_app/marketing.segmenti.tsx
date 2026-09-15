@@ -109,19 +109,6 @@ function chunkArray<T>(arr: T[], size: number): T[][] {
   return out;
 }
 
-function calcSemaforo(c: {
-  fido_residuo?: number | null;
-  fido_gestionale?: number | null;
-  scaduto?: number | null;
-}): "rosso" | "arancione" | "giallo" | "verde" {
-  const residuo = c.fido_residuo == null ? null : Number(c.fido_residuo);
-  const fidoGest = c.fido_gestionale == null ? null : Number(c.fido_gestionale);
-  const scaduto = c.scaduto == null ? null : Number(c.scaduto);
-  if (residuo != null && residuo < 0) return "rosso";
-  if (residuo != null && fidoGest != null && fidoGest > 0 && residuo < fidoGest * 0.1) return "arancione";
-  if (scaduto != null && scaduto > 0) return "giallo";
-  return "verde";
-}
 
 function MarketingSegmentiPage() {
   const { roles, loading, user } = useAuth();
