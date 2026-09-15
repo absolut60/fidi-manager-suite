@@ -22,6 +22,7 @@ import { AllegatiSection } from "@/components/allegati-section";
 import { RICHIESTA_FIDO_SELECT } from "@/lib/richieste-fido-data";
 import { getFidoAttuale } from "@/lib/fido-cliente";
 import { PannelloRischioCliente } from "@/components/pannello-rischio-cliente";
+import { semaforoUI, semaforoDaCliente } from "@/lib/semaforo-ui";
 
 export const Route = createFileRoute("/_app/richieste/$richiestaId")({
   component: RichiestaDetail,
@@ -152,7 +153,8 @@ function RichiestaDetail() {
 
   const cliente = (r as any).clienti;
   const fidoAttuale = getFidoAttuale(cliente);
-  const sem = semaforoTone(cliente);
+  const semRaw = semaforoDaCliente(cliente);
+  const sem = semaforoUI(semRaw.stadio, semRaw.motivo);
   const storeNome = cliente?.stores?.nome ?? (r as any).stores?.nome ?? "—";
   const dataInvio = r.data_invio ?? (r.stato !== "bozza" ? r.created_at : null);
 
