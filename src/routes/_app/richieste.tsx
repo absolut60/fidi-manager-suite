@@ -50,6 +50,7 @@ import { getFidoAttuale } from "@/lib/fido-cliente";
 import { RICHIESTA_FIDO_SELECT } from "@/lib/richieste-fido-data";
 import { NuovaComunicazioneDialog } from "@/components/nuova-comunicazione-dialog";
 import { PannelloRischioCliente } from "@/components/pannello-rischio-cliente";
+import { semaforoUI, semaforoDaCliente } from "@/lib/semaforo-ui";
 
 export const Route = createFileRoute("/_app/richieste")({
   component: RichiestePage,
@@ -843,8 +844,8 @@ function InApprovazioneTab({
               <div className="flex justify-between"><span>Scaduto</span><span className="tabular-nums">{formatEuro(Number(action.rows[0].clienti?.scaduto ?? 0))}</span></div>
               <div className="flex justify-between"><span>Totale rischio</span><span className="tabular-nums">{formatEuro(Number(action.rows[0].clienti?.totale_rischio ?? 0))}</span></div>
               <div className="flex justify-between"><span>Semaforo</span>
-                <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${semaforoCliente(action.rows[0].clienti).tone}`}>
-                  {semaforoCliente(action.rows[0].clienti).label}
+                <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${semaforoCli(action.rows[0].clienti).toneClass}`}>
+                  {semaforoCli(action.rows[0].clienti).label}
                 </span>
               </div>
             </div>
@@ -1370,7 +1371,6 @@ function RichiestaFormDialog({
     mut.mutate({ invia });
   }
 
-  const sem = semaforoCliente(clienteSel);
 
   return (
     <DialogContent className="max-w-xl max-h-[90vh] max-h-[90dvh] flex flex-col overflow-hidden">
