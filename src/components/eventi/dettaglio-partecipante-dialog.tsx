@@ -208,7 +208,11 @@ export function DettaglioPartecipanteDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+      <DialogContent
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+        className="max-w-2xl max-h-[85vh] overflow-y-auto"
+      >
         <DialogHeader>
           <DialogTitle>{titolo}</DialogTitle>
         </DialogHeader>
