@@ -1,0 +1,2 @@
+ALTER TABLE public.consensi_log DROP CONSTRAINT consensi_log_origine_check;
+ALTER TABLE public.consensi_log ADD CONSTRAINT consensi_log_origine_check CHECK (origine = ANY (ARRAY['link_pubblico'::text, 'operatore'::text, 'recesso_link'::text, 'import'::text, 'firma_grafica'::text, 'di_persona'::text, 'qr_whatsapp'::text, 'azienda_gruppo'::text]));
