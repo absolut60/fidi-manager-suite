@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -31,7 +32,7 @@ import { DettaglioPartecipanteDialog } from "@/components/eventi/dettaglio-parte
 import { useServerFn } from "@tanstack/react-start";
 import { inviaRichiestaFirmaPrivacy, riconciliaPartecipante } from "@/lib/firma-privacy.functions";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search, X } from "lucide-react";
+import { Filter, Search, X } from "lucide-react";
 import { SchedaLista, ElencoSchede } from "@/components/lista-responsive";
 
 
@@ -223,6 +224,8 @@ function EventoDettaglioPage() {
 
   const [selezionati, setSelezionati] = useState<string[]>([]);
   const [filtroStato, setFiltroStato] = useState<"tutti" | "attesi" | "presenti" | "no_show">("tutti");
+  const [fRiconc, setFRiconc] = useState<"tutti" | "riconciliato" | "da_riconciliare">("tutti");
+  const [fSulPosto, setFSulPosto] = useState<"tutti" | "solo">("tutti");
   const [invioInCorso, setInvioInCorso] = useState(false);
   const [modifica, setModifica] = useState(false);
   const [tab, setTab] = useState("partecipanti");
@@ -414,10 +417,16 @@ function EventoDettaglioPage() {
     } else if (filtroStato === "no_show") {
       lista = lista.filter((p) => p.stato === "no_show");
     }
+    if (fRiconc !== "tutti") {
+      lista = lista.filter((p) => statoRiconciliazione(p) === fRiconc);
+    }
+    if (fSulPosto !== "tutti") {
+      lista = lista.filter((p) => p.registrato_sul_posto === true);
+    }
     const q = norm(ricercaDeb);
     if (!q) return lista;
     return lista.filter((p) => testoRicerca(p, mappaContatti).includes(q));
-  }, [partecipanti, ricercaDeb, filtroStato, mappaContatti]);
+  }, [partecipanti, ricercaDeb, filtroStato, fRiconc, fSulPosto, mappaContatti]);
 
 
   const idsFiltrati = useMemo(() => filtrati.map((p) => p.id), [filtrati]);
@@ -574,6 +583,8 @@ function EventoDettaglioPage() {
 
   const totale = partecipanti?.length ?? 0;
   const presentati = partecipanti?.filter((p) => p.stato === "presentato").length ?? 0;
+  const filtriAttivi =
+    (filtroStato !== "tutti" ? 1 : 0) + (fRiconc !== "tutti" ? 1 : 0) + (fSulPosto !== "tutti" ? 1 : 0);
 
   return (
     <div className="space-y-6">
@@ -654,12 +665,99 @@ function EventoDettaglioPage() {
               onChange={(e) => setRicerca(e.target.value)}
             />
           </div>
-          {(ricercaDeb || filtroStato !== "tutti") && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1.5 shrink-0">
+                <Filter className="size-4" /> Filtri
+                {filtriAttivi > 0 && (
+                  <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-xs">
+                    {filtriAttivi}
+                  </Badge>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64" align="end">
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Stato presenza</Label>
+                  <div className="flex flex-wrap gap-1">
+                    {([
+                      { k: "tutti", label: "Tutti" },
+                      { k: "attesi", label: "Attesi" },
+                      { k: "presenti", label: "Presenti" },
+                      { k: "no_show", label: "No show" },
+                    ] as const).map((o) => (
+                      <Button
+                        key={o.k}
+                        size="sm"
+                        variant={filtroStato === o.k ? "default" : "outline"}
+                        className="h-7 px-2 text-xs"
+                        onClick={() => setFiltroStato(o.k)}
+                      >
+                        {o.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Riconciliazione</Label>
+                  <div className="flex flex-wrap gap-1">
+                    {([
+                      { k: "tutti", label: "Tutti" },
+                      { k: "riconciliato", label: "Riconciliato" },
+                      { k: "da_riconciliare", label: "Da riconciliare" },
+                    ] as const).map((o) => (
+                      <Button
+                        key={o.k}
+                        size="sm"
+                        variant={fRiconc === o.k ? "default" : "outline"}
+                        className="h-7 px-2 text-xs"
+                        onClick={() => setFRiconc(o.k)}
+                      >
+                        {o.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Sul posto</Label>
+                  <div className="flex flex-wrap gap-1">
+                    {([
+                      { k: "tutti", label: "Tutti" },
+                      { k: "solo", label: "Solo sul posto" },
+                    ] as const).map((o) => (
+                      <Button
+                        key={o.k}
+                        size="sm"
+                        variant={fSulPosto === o.k ? "default" : "outline"}
+                        className="h-7 px-2 text-xs"
+                        onClick={() => setFSulPosto(o.k)}
+                      >
+                        {o.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="gap-1.5 text-xs text-muted-foreground"
+                    disabled={filtriAttivi === 0}
+                    onClick={() => { setFiltroStato("tutti"); setFRiconc("tutti"); setFSulPosto("tutti"); }}
+                  >
+                    <X className="size-3.5" /> Azzera filtri
+                  </Button>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+          {(ricercaDeb || filtriAttivi > 0) && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <span>{filtrati.length} di {totale} partecipanti</span>
               <Button
                 size="sm" variant="ghost" className="gap-1.5"
-                onClick={() => { setRicerca(""); setFiltroStato("tutti"); }}
+                onClick={() => { setRicerca(""); setFiltroStato("tutti"); setFRiconc("tutti"); setFSulPosto("tutti"); }}
               >
                 <X className="size-4" /> Azzera
               </Button>
