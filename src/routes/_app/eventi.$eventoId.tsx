@@ -1078,6 +1078,26 @@ function EventoDettaglioPage() {
 
           <RiconciliaImportCard eventoId={eventoId} />
 
+          {riepilogo.daRiconciliare > 0 && (
+            <Card className="p-4 sm:p-5 space-y-3">
+              <div>
+                <h3 className="text-base font-semibold">Riconciliazione partecipanti</h3>
+                <p className="text-sm text-muted-foreground">
+                  Prova a collegare automaticamente i partecipanti non ancora riconciliati ai clienti esistenti.
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                className="gap-1.5"
+                disabled={riconciliaInCorso}
+                onClick={() => void riconciliaAutomatica()}
+              >
+                <Link2 className="size-4" />
+                {riconciliaInCorso ? "Riconciliazione…" : "Riconcilia automaticamente"}
+              </Button>
+            </Card>
+          )}
+
           <div className="flex justify-end">
             <AlertDialog>
               <AlertDialogTrigger asChild>
@@ -1101,6 +1121,16 @@ function EventoDettaglioPage() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {dettaglio && (
+        <DettaglioPartecipanteDialog
+          partecipante={dettaglio}
+          eventoId={eventoId}
+          nomeEvento={evento.nome}
+          open
+          onOpenChange={(v) => { if (!v) setDettaglio(null); }}
+        />
+      )}
     </div>
   );
 }
