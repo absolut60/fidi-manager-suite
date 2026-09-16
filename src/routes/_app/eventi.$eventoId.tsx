@@ -583,7 +583,7 @@ function EventoDettaglioPage() {
         </Button>
       </div>
 
-      <Tabs defaultValue="partecipanti">
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="partecipanti">Partecipanti</TabsTrigger>
           <TabsTrigger value="dettagli">Dettagli evento</TabsTrigger>
@@ -600,17 +600,6 @@ function EventoDettaglioPage() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <AggiungiPartecipanteDialog eventoId={eventoId} nomeEvento={evento.nome} />
-            {riepilogo.daRiconciliare > 0 && (
-              <Button
-                variant="outline"
-                className="gap-1.5"
-                disabled={riconciliaInCorso}
-                onClick={() => void riconciliaAutomatica()}
-              >
-                <Link2 className="size-4" />
-                {riconciliaInCorso ? "Riconciliazione…" : "Riconcilia automaticamente"}
-              </Button>
-            )}
           </div>
 
         </div>
