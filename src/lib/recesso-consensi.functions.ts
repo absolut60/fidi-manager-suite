@@ -153,7 +153,7 @@ export const revocaConsensi = createServerFn({ method: "POST" })
         await sendEmailViaEdge({
           to: dest,
           subject: `Revoca consensi marketing — ${soggetto.ragione_sociale}`,
-          fromName: "FidiManager",
+          fromName: "MADE Distribuzione",
           html: `<!doctype html><html><body style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;line-height:1.5;">
 <div style="max-width:640px;margin:0 auto;padding:16px 20px;">
 <h2 style="font-size:18px;">Revoca consensi marketing</h2>
@@ -246,7 +246,7 @@ export const registraOptOutAziendale = createServerFn({ method: "POST" })
         await sendEmailViaEdge({
           to: dest,
           subject: `Disiscrizione comunicazioni commerciali — ${row.ragione_sociale || row.email}`,
-          fromName: "FidiManager",
+          fromName: "MADE Distribuzione",
           html: `<!doctype html><html><body style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;line-height:1.5;">
 <div style="max-width:640px;margin:0 auto;padding:16px 20px;">
 <h2 style="font-size:18px;">Disiscrizione comunicazioni commerciali</h2>

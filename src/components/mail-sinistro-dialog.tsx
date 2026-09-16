@@ -53,7 +53,7 @@ export function MailSinistroDialog({
   onDone?: () => void;
 }) {
   const [destinatario, setDestinatario] = useState("");
-  const [fromName, setFromName] = useState("MADE – FidiManager");
+  const [fromName, setFromName] = useState("MADE Distribuzione");
   const [oggetto, setOggetto] = useState("");
   const [corpo, setCorpo] = useState("");
   const [notaInterna, setNotaInterna] = useState("");
@@ -77,7 +77,7 @@ export function MailSinistroDialog({
       ? `Il cliente ha promesso un pagamento entro il ${fmtDate ? fmtDate(promessaData) : promessaData}.`
       : "";
     setDestinatario("");
-    setFromName("MADE – FidiManager");
+    setFromName("MADE Distribuzione");
     setOggetto(`Apertura sinistro - ${ragioneSociale ?? ""}`);
     setCorpo(
       `Buongiorno,\n\ncon la presente siamo a chiedervi apertura del sinistro per il nostro cliente ${ragioneSociale ?? ""} per un importo di ${importo} €\n\nTrasmettiamo in allegato:\nScheda contabile\nFattura insoluta\n\nDichiariamo che siete gli unici assicuratori a intervenire per questo cliente.\n\n${rigaPromessa}\n\nIn attesa di un riscontro o di richiesta ulteriori chiarimenti, porgo cordiali saluti`,
@@ -169,7 +169,7 @@ export function MailSinistroDialog({
             <Input
               value={fromName}
               onChange={(e) => setFromName(e.target.value)}
-              placeholder="MADE – FidiManager"
+              placeholder="MADE Distribuzione"
             />
           </div>
           <div>
@@ -227,7 +227,7 @@ export function MailSinistroDialog({
             <div className="text-sm space-y-0.5">
               <div>
                 <span className="text-muted-foreground">Da:</span>{" "}
-                {fromName.trim() || "MADE – FidiManager"}{" "}
+                {fromName.trim() || "MADE Distribuzione"}{" "}
                 <span className="text-xs text-muted-foreground">(indirizzo aziendale MADE)</span>
               </div>
               <div>
