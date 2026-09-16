@@ -225,6 +225,8 @@ function EventoDettaglioPage() {
   const [filtroStato, setFiltroStato] = useState<"tutti" | "attesi" | "presenti" | "no_show">("tutti");
   const [invioInCorso, setInvioInCorso] = useState(false);
   const [modifica, setModifica] = useState(false);
+  const [tab, setTab] = useState("partecipanti");
+  const [dettaglio, setDettaglio] = useState<PartecipanteRow | null>(null);
 
 
 
@@ -515,6 +517,7 @@ function EventoDettaglioPage() {
     let saltati = 0;
     let errori = 0;
 
+    setTab("partecipanti");
     setRiconciliaInCorso(true);
     try {
       for (const p of righe) {
