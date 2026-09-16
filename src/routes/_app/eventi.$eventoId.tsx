@@ -583,6 +583,8 @@ function EventoDettaglioPage() {
 
   const totale = partecipanti?.length ?? 0;
   const presentati = partecipanti?.filter((p) => p.stato === "presentato").length ?? 0;
+  const filtriAttivi =
+    (filtroStato !== "tutti" ? 1 : 0) + (fRiconc !== "tutti" ? 1 : 0) + (fSulPosto !== "tutti" ? 1 : 0);
 
   return (
     <div className="space-y-6">
@@ -663,12 +665,99 @@ function EventoDettaglioPage() {
               onChange={(e) => setRicerca(e.target.value)}
             />
           </div>
-          {(ricercaDeb || filtroStato !== "tutti") && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1.5 shrink-0">
+                <Filter className="size-4" /> Filtri
+                {filtriAttivi > 0 && (
+                  <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-xs">
+                    {filtriAttivi}
+                  </Badge>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64" align="end">
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Stato presenza</Label>
+                  <div className="flex flex-wrap gap-1">
+                    {([
+                      { k: "tutti", label: "Tutti" },
+                      { k: "attesi", label: "Attesi" },
+                      { k: "presenti", label: "Presenti" },
+                      { k: "no_show", label: "No show" },
+                    ] as const).map((o) => (
+                      <Button
+                        key={o.k}
+                        size="sm"
+                        variant={filtroStato === o.k ? "default" : "outline"}
+                        className="h-7 px-2 text-xs"
+                        onClick={() => setFiltroStato(o.k)}
+                      >
+                        {o.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Riconciliazione</Label>
+                  <div className="flex flex-wrap gap-1">
+                    {([
+                      { k: "tutti", label: "Tutti" },
+                      { k: "riconciliato", label: "Riconciliato" },
+                      { k: "da_riconciliare", label: "Da riconciliare" },
+                    ] as const).map((o) => (
+                      <Button
+                        key={o.k}
+                        size="sm"
+                        variant={fRiconc === o.k ? "default" : "outline"}
+                        className="h-7 px-2 text-xs"
+                        onClick={() => setFRiconc(o.k)}
+                      >
+                        {o.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Sul posto</Label>
+                  <div className="flex flex-wrap gap-1">
+                    {([
+                      { k: "tutti", label: "Tutti" },
+                      { k: "solo", label: "Solo sul posto" },
+                    ] as const).map((o) => (
+                      <Button
+                        key={o.k}
+                        size="sm"
+                        variant={fSulPosto === o.k ? "default" : "outline"}
+                        className="h-7 px-2 text-xs"
+                        onClick={() => setFSulPosto(o.k)}
+                      >
+                        {o.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="gap-1.5 text-xs text-muted-foreground"
+                    disabled={filtriAttivi === 0}
+                    onClick={() => { setFiltroStato("tutti"); setFRiconc("tutti"); setFSulPosto("tutti"); }}
+                  >
+                    <X className="size-3.5" /> Azzera filtri
+                  </Button>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+          {(ricercaDeb || filtriAttivi > 0) && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <span>{filtrati.length} di {totale} partecipanti</span>
               <Button
                 size="sm" variant="ghost" className="gap-1.5"
-                onClick={() => { setRicerca(""); setFiltroStato("tutti"); }}
+                onClick={() => { setRicerca(""); setFiltroStato("tutti"); setFRiconc("tutti"); setFSulPosto("tutti"); }}
               >
                 <X className="size-4" /> Azzera
               </Button>
