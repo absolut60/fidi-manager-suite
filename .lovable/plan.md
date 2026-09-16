@@ -1,75 +1,67 @@
-# Diagnosi: immagine template WhatsApp bloccata dalla sicurezza
+# Immagine header template WhatsApp rifiutata da Meta
 
-## Causa
+## Diagnosi (verificata)
 
-Il caricamento salva il file in una cartella che le regole di sicurezza non consentono. Non è un problema di ruoli né di archivio mancante.
+**1. Dove nasce l'URL doppio**
 
-- L'archivio usato è `email-assets` e **esiste** (privato).
-- Il percorso costruito è `whatsapp-template/<id-template>/<uuid>.<ext>`.
-- Le regole di sicurezza permettono scrittura/lettura **solo** nella cartella `campagne/`.
-- Il ruolo dell'utente non c'entra: il controllo ruoli (marketing, amministratore, amministrazione, direzione) è soddisfatto; a bloccare è la prima cartella del percorso.
-
-Effetto collaterale correlato: anche se il file venisse caricato, l'indirizzo pubblico generato (`/api/public/email-img/...`) serve unicamente i file sotto `campagne/`, quindi l'immagine non sarebbe comunque visibile a Meta/WhatsApp.
-
-## Codice rilevante (verbatim)
-
-`src/components/marketing/whatsapp-template-tab.tsx` righe 332-348:
+`src/lib/whatsapp-template.functions.ts`, funzione `originPubblico()` (righe 33-50):
 
 ```ts
-  async function caricaImmagine(file: File) {
-    setUploading(true);
-    try {
-      const ext = (file.name.split(".").pop() || "png").toLowerCase().replace(/[^a-z0-9]/g, "");
-      const path = `whatsapp-template/${template.id}/${crypto.randomUUID()}.${ext}`;
-      const { error } = await supabase.storage
-        .from("email-assets")
-        .upload(path, file, { contentType: file.type, upsert: false });
-      if (error) throw new Error(`Caricamento immagine fallito: ${error.message}`);
-      setHeaderMedia(`/api/public/email-img/${path}`);
-      toast.success("Immagine caricata");
-    } catch (e: any) {
-      toast.error(e?.message ?? "Errore caricamento");
-    } finally {
-      setUploading(false);
-    }
+function originPubblico(): string | null {
+  const env =
+    process.env["APP_PUBLIC_URL"] ??
+    process.env["PUBLIC_APP_URL"] ??
+    process.env["APP_URL"] ??
+    null;
+  if (env && /^https?:\/\//i.test(env)) return env.replace(/\/+$/, "");
+  ...
+}
+```
+
+e l'uso in `inviaTemplateInApprovazione` (righe 93-113):
+
+```ts
+} else if (tpl.header_tipo === "immagine") {
+  const media = (tpl.header_media_url ?? "").trim();
+  if (!media) return { ok: false, error: "Immagine header mancante" };
+  let assoluto = media;
+  if (!/^https?:\/\//i.test(media)) {
+    const origin = originPubblico();
+    ...
+    assoluto = `${origin}${media.startsWith("/") ? "" : "/"}${media}`;
   }
+  components.push({ type: "HEADER", format: "IMAGE", example: { header_handle: [assoluto] } });
+}
 ```
 
-## Stato attuale verificato
+Il controllo `/^https?:\/\//` passa anche se la variabile contiene **più** indirizzi: viene usata tale e quale.
 
-Bucket:
+**2. Valore reale della variabile di ambiente (letto adesso sul server)**
 
-```text
-id: email-assets | name: email-assets | public: false
+```
+APP_URL = https://fidi-manager-suite.lovable.app,https://id-preview--c39b9f1b-be3e-4e5c-8b69-3cf1408dd985.lovable.app
 ```
 
-Policy su `storage.objects` per `email-assets` (tutte con ruolo `authenticated`):
+`APP_PUBLIC_URL`, `PUBLIC_APP_URL`, `SITE_URL`, `VITE_APP_URL` non sono impostate. Quindi è confermato: la variabile contiene **due indirizzi separati da virgola** ed è esattamente quella la causa dell'URL doppio inviato a Meta. L'errore 503 è conseguenza dell'indirizzo malformato, non della route.
 
-```text
-DELETE email_assets_campagne_delete  qual:  bucket_id='email-assets' AND foldername(name)[1]='campagne' AND can_manage_email_assets()
-INSERT email_assets_campagne_insert  check: bucket_id='email-assets' AND foldername(name)[1]='campagne' AND can_manage_email_assets()
-SELECT email_assets_campagne_select  qual:  bucket_id='email-assets' AND foldername(name)[1]='campagne' AND can_manage_email_assets()
-UPDATE email_assets_campagne_update  qual/check: idem
-```
+**3. Route pubblica immagini**
 
-Gate ruoli `public.can_manage_email_assets()` (SQL, STABLE, SECURITY DEFINER, search_path=public):
+`src/routes/api/public/email-img/$.ts` — legge dal bucket privato `email-assets`, limitata al prefisso `campagne/`, nessuna autenticazione richiesta (prefisso `/api/public/`). In produzione risponde regolarmente (verificato via richiesta HTTP: 200). In locale non è servita (404), ma è irrilevante per Meta.
 
-```text
-has_role(auth.uid(),'marketing') OR 'amministratore' OR 'amministrazione' OR 'direzione'
-```
+**4. Dominio di produzione corretto**
 
-## Opzioni di correzione (da scegliere, non ancora applicate)
+`https://fidi-manager-suite.lovable.app` — è il dominio pubblicato e raggiungibile da Meta. Il secondo (`id-preview--...`) è l'anteprima e non va mai usato per gli URL immagine.
 
-Opzione A — solo frontend, nessuna modifica al database:
-- Cambiare il percorso in `campagne/whatsapp-template/<id-template>/<uuid>.<ext>`.
-- Nessun altro intervento: le regole e l'indirizzo pubblico funzionano già per questa cartella.
+## Intervento proposto (solo dopo approvazione)
 
-Opzione B — separare le cartelle:
-- Mantenere `whatsapp-template/` e aggiungere via migrazione le regole di sicurezza per quella cartella, più estendere la route pubblica delle immagini ad accettarla.
-- Più lavoro, nessun vantaggio pratico rispetto ad A.
+In `src/lib/whatsapp-template.functions.ts`, dentro `originPubblico()`:
 
-Raccomandazione: opzione A.
+1. Prendere solo il **primo** valore della variabile quando contiene una lista separata da virgole (`split(",")`, trim, scarto voci vuote).
+2. Scartare le voci che puntano all'anteprima (`id-preview--`, `localhost`, `127.0.0.1`), preferendo il primo indirizzo pubblico valido.
+3. Rimuovere la barra finale come già fa oggi.
 
-## Nota sui ruoli
+Nessun'altra modifica: bucket, percorso `campagne/whatsapp-template/...`, route pubblica e resto del payload restano invariati.
 
-Chi crea i template WhatsApp usa il gate marketing della pagina Campagne (marketing, amministrazione, direzione, amministratore): coincide con quello dell'archivio, quindi non serve toccare i permessi.
+## Nota
+
+Se dopo la correzione Meta dovesse ancora rifiutare l'immagine, il passo successivo è caricare l'immagine su Meta per ottenere un vero `header_handle` invece di passare un URL; va valutato solo se il problema persiste.
