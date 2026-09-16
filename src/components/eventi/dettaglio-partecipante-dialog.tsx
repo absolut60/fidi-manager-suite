@@ -9,6 +9,14 @@ import {
   creaLeadDaPartecipante,
   riconciliaPartecipante,
 } from "@/lib/firma-privacy.functions";
+import {
+  EVENTI_PARTECIPANTE_STATI,
+  EVENTI_PARTECIPANTE_STATO_LABEL,
+  type EventiPartecipanteStato,
+} from "@/lib/eventi-costanti";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { SoggettoCombobox, type SoggettoSelezionato } from "@/components/soggetto-combobox";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
@@ -39,6 +47,7 @@ export type PartecipanteDettaglio = {
   contatto_id: string | null;
   registrato_sul_posto: boolean | null;
   lead_evento_grezzo?: boolean | null;
+  stato: string;
 };
 
 function messaggioErrore(errore: unknown): string {
