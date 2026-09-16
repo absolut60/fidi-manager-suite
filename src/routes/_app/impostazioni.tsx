@@ -187,12 +187,12 @@ function ImpostazioniPage() {
               setTestEmailResult(null);
               const esito = await sendEmailDetailed({
                 to: testEmailTo,
-                subject: "✅ Test FidiManager — Email funzionante",
+                subject: "✅ Test email — MADE Distribuzione",
                 html: buildEmailTemplate({
-                  title: "Test email FidiManager",
-                  body: `<p>Questa è un'email di test inviata da FidiManager — Gruppo MADE.</p>
+                  title: "Test email — MADE Distribuzione",
+                  body: `<p>Questa è un'email di test inviata da Gruppo MADE.</p>
                          <p>Se stai leggendo questo messaggio, la configurazione SMTP è corretta.</p>`,
-                  ctaText: "Apri FidiManager",
+                  ctaText: "Apri il gestionale",
                   ctaUrl: window.location.origin,
                 }),
               });

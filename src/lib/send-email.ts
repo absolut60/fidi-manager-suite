@@ -119,7 +119,7 @@ export async function sendNotificaComunicazione(options: {
         <blockquote style="margin:16px 0;padding:12px 16px;background:#f3f4f6;border-left:3px solid #1e3a8a;border-radius:4px;color:#374151;font-style:italic;">
           ${safeTesto}
         </blockquote>
-        <p>Accedi a FidiManager per rispondere.</p>
+        <p>Accedi al gestionale per rispondere.</p>
       `,
       ctaText: "Vai alla richiesta",
       ctaUrl: `${appUrl}/richieste/${richiestaId}`,

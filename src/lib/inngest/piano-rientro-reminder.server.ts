@@ -37,7 +37,7 @@ function wrapHtml(inner: string): string {
 <div style="max-width:640px;margin:0 auto;padding:16px 20px;">
 ${inner}
 <hr style="margin-top:24px;border:none;border-top:1px solid #e2e8f0;" />
-<p style="font-size:11px;color:#64748b;margin-top:12px;">Email generata automaticamente da FidiManager.</p>
+<p style="font-size:11px;color:#64748b;margin-top:12px;">Email generata automaticamente da Gruppo MADE.</p>
 </div></body></html>`;
 }
 

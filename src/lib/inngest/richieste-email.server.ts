@@ -252,7 +252,7 @@ export const inviaEmailRichiesta = inngest.createFunction(
     const rendered = await step.run("render-email", () => {
       const appUrl =
         process.env.VITE_APP_URL ?? "https://fidi-manager-suite.lovable.app";
-      const mittenteNome = data.actor.nome?.trim() || "FidiManager MADE";
+      const mittenteNome = data.actor.nome?.trim() || "MADE Distribuzione";
       const { oggetto, html } = buildRichiestaEmail({
         event: data.event,
         richiesta: {
