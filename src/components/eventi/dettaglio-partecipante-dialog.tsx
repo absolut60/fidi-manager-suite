@@ -324,7 +324,7 @@ export function DettaglioPartecipanteDialog({
               <AlertDialogHeader>
                 <AlertDialogTitle>Eliminare il partecipante?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Vengono rimosse solo le righe di partecipazione: lead, contatti e clienti collegati restano invariati.
+                  Il partecipante viene rimosso dall'evento. Se era un nuovo iscritto sul posto non ancora lavorato, viene eliminato anche il lead collegato con la sua privacy. Clienti e lead già gestiti restano invariati.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
