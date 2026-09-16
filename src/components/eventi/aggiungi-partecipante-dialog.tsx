@@ -262,14 +262,16 @@ export function AggiungiPartecipanteDialog({
     <Dialog
       open={open}
       onOpenChange={(v) => {
+        if (!v) { richiediChiusura(); return; }
         setOpen(v);
-        if (!v) reset();
       }}
     >
       <DialogTrigger asChild>
         <Button className="gap-1.5"><Plus className="size-4" /> Aggiungi partecipante</Button>
       </DialogTrigger>
       <DialogContent
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
         className={`${
           esito && ((esito.contattoId && !esito.giaFirmata) || esito.soggetto) ? "max-w-3xl" : "max-w-xl"
         } max-h-[85vh] overflow-y-auto`}
@@ -457,7 +459,7 @@ export function AggiungiPartecipanteDialog({
             </div>
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => { setOpen(false); reset(); }}>Annulla</Button>
+              <Button variant="outline" onClick={richiediChiusura}>Annulla</Button>
               <Button
                 disabled={
                   salva.isPending ||
@@ -471,6 +473,23 @@ export function AggiungiPartecipanteDialog({
           </div>
         )}
       </DialogContent>
+
+      <AlertDialog open={confermaChiudi} onOpenChange={setConfermaChiudi}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Scartare i dati inseriti?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Le informazioni digitate andranno perse.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Continua a compilare</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setConfermaChiudi(false); chiudi(); }}>
+              Scarta
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
