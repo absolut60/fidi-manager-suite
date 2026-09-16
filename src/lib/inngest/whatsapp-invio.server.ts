@@ -69,6 +69,24 @@ export async function inviaTemplate360(params: {
     return { ok: false, err: "Numero non valido" };
   }
 
+  const components: Record<string, unknown>[] = [];
+
+  if (params.headerTipo === "immagine") {
+    const link = urlAssolutoMedia(params.headerMediaUrl ?? "");
+    if (!link) return { ok: false, err: "Immagine header mancante" };
+    components.push({
+      type: "header",
+      parameters: [{ type: "image", image: { link } }],
+    });
+  }
+
+  if (params.parametriBody.length > 0) {
+    components.push({
+      type: "body",
+      parameters: params.parametriBody.map((v) => ({ type: "text", text: v })),
+    });
+  }
+
   const payload = {
     messaging_product: "whatsapp",
     recipient_type: "individual",
@@ -77,15 +95,7 @@ export async function inviaTemplate360(params: {
     template: {
       name: params.templateName,
       language: { code: params.lingua || "it" },
-      components:
-        params.parametriBody.length > 0
-          ? [
-              {
-                type: "body",
-                parameters: params.parametriBody.map((v) => ({ type: "text", text: v })),
-              },
-            ]
-          : [],
+      components,
     },
   };
 
