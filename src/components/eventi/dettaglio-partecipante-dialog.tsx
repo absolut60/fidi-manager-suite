@@ -1,10 +1,14 @@
 import { useEffect, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Link2, Save, UserPlus, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { creaLeadDaPartecipante, riconciliaPartecipante } from "@/lib/firma-privacy.functions";
+import {
+  cercaCandidatiRiconciliazione,
+  creaLeadDaPartecipante,
+  riconciliaPartecipante,
+} from "@/lib/firma-privacy.functions";
 import { SoggettoCombobox, type SoggettoSelezionato } from "@/components/soggetto-combobox";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
@@ -34,6 +38,7 @@ export type PartecipanteDettaglio = {
   cliente_id: string | null;
   contatto_id: string | null;
   registrato_sul_posto: boolean | null;
+  lead_evento_grezzo?: boolean | null;
 };
 
 function messaggioErrore(errore: unknown): string {
@@ -46,6 +51,10 @@ function messaggioErrore(errore: unknown): string {
       return "Partecipante già riconciliato";
     case "cliente_non_trovato":
       return "Cliente non trovato";
+    case "lead_non_trovato":
+      return "Lead non trovato";
+    case "lead_non_valido":
+      return "Lead non valido";
     case "match_non_univoco":
       return "Riconciliazione non riuscita";
     default:
