@@ -55,7 +55,10 @@ export async function inviaTemplate360(params: {
   templateName: string;
   lingua: string;
   parametriBody: string[];
+  headerTipo?: string | null;
+  headerMediaUrl?: string | null;
 }): Promise<{ ok: boolean; messageId?: string; err?: string; temporaneo?: boolean }> {
+
   const apiKey = process.env["D360_API_KEY"];
   if (!apiKey || !apiKey.trim()) {
     return { ok: false, err: "D360_API_KEY non configurata" };
