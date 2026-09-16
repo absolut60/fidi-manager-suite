@@ -72,6 +72,8 @@ export const invioCampagnaWhatsapp = inngest.createFunction(
           indici: [] as number[],
           vars: {} as Record<string, VarWa>,
           serveCliente: false,
+          headerTipo: null as string | null,
+          headerMediaUrl: null as string | null,
         };
       }
 
