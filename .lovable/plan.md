@@ -1,67 +1,46 @@
-# Immagine header template WhatsApp rifiutata da Meta
+# Campagna WhatsApp "PIANETA MADE 26": perché i 4 invii sono falliti
 
-## Diagnosi (verificata)
+## Diagnosi (verificata sul database)
 
-**1. Dove nasce l'URL doppio**
+**Tabelle**
+- Campagne: `campagne_whatsapp`
+- Destinatari/invii: `messaggi_whatsapp`
+- Template: `whatsapp_template`
 
-`src/lib/whatsapp-template.functions.ts`, funzione `originPubblico()` (righe 33-50):
+**1. Campagna**
+- id `3177b7a3-0392-4eb0-bfb2-928627b81982`, nome "Campagna PIANETA MADE 26"
+- stato `completata`, totale 4, inviati 0, falliti 4
+- creata 16/09/2026 11:28, chiusa 11:35
+- `parametri` = `{ "vars": {} }`
 
-```ts
-function originPubblico(): string | null {
-  const env =
-    process.env["APP_PUBLIC_URL"] ??
-    process.env["PUBLIC_APP_URL"] ??
-    process.env["APP_URL"] ??
-    null;
-  if (env && /^https?:\/\//i.test(env)) return env.replace(/\/+$/, "");
-  ...
-}
-```
+**2. I 4 destinatari (tutti `fallito`, nessun id messaggio Meta)**
 
-e l'uso in `inviaTemplateInApprovazione` (righe 93-113):
+| nome | numero | errore |
+|---|---|---|
+| Enrico Mongiusti | 3484458626 | (#132012) Parameter format does not match format in the created template |
+| Andrea Giani | 3384863801 | stesso errore |
+| Emanuele Rio | 3493313695 | stesso errore |
+| Omar Sfratta | 3783032220 | stesso errore |
 
-```ts
-} else if (tpl.header_tipo === "immagine") {
-  const media = (tpl.header_media_url ?? "").trim();
-  if (!media) return { ok: false, error: "Immagine header mancante" };
-  let assoluto = media;
-  if (!/^https?:\/\//i.test(media)) {
-    const origin = originPubblico();
-    ...
-    assoluto = `${origin}${media.startsWith("/") ? "" : "/"}${media}`;
-  }
-  components.push({ type: "HEADER", format: "IMAGE", example: { header_handle: [assoluto] } });
-}
-```
+**3. Template**
+- "PIANETA MADE - 18.09.2026", stato `approvato` (quindi NON è un problema di approvazione Meta)
+- `meta_template_name` `pianeta_made_18_09_2026`, lingua `it`
+- `header_tipo` = `immagine`, `header_media_url` = `/api/public/email-img/campagne/whatsapp-template/.../bd47d879-....jpg`
+- Il corpo del testo non contiene variabili `{{1}}`, `{{2}}`, ecc.
 
-Il controllo `/^https?:\/\//` passa anche se la variabile contiene **più** indirizzi: viene usata tale e quale.
+**4. Errore verbatim Meta**: `(#132012) Parameter format does not match format in the created template`
 
-**2. Valore reale della variabile di ambiente (letto adesso sul server)**
+**Causa**: il template approvato ha un'intestazione con immagine, ma il codice di invio costruisce il messaggio con i soli parametri del corpo. Poiché il corpo non ha variabili, viene inviato un messaggio senza alcun componente: manca il componente "header" con il link dell'immagine, che Meta considera obbligatorio. Da qui il rifiuto per formato non corrispondente, uguale per tutti e quattro.
 
-```
-APP_URL = https://fidi-manager-suite.lovable.app,https://id-preview--c39b9f1b-be3e-4e5c-8b69-3cf1408dd985.lovable.app
-```
+Nota collegata: l'indirizzo dell'immagine salvato è relativo; per essere scaricabile da Meta va inviato come indirizzo assoluto sul dominio pubblico di produzione.
 
-`APP_PUBLIC_URL`, `PUBLIC_APP_URL`, `SITE_URL`, `VITE_APP_URL` non sono impostate. Quindi è confermato: la variabile contiene **due indirizzi separati da virgola** ed è esattamente quella la causa dell'URL doppio inviato a Meta. L'errore 503 è conseguenza dell'indirizzo malformato, non della route.
+## Correzione proposta (da approvare prima di toccare il codice)
 
-**3. Route pubblica immagini**
+1. In `src/lib/inngest/campagna-whatsapp.server.ts`, leggere anche `header_tipo` e `header_media_url` del template nello step `prepara` e passarli all'invio.
+2. In `src/lib/inngest/whatsapp-invio.server.ts`, aggiungere il componente header quando il template ha un'immagine:
+   - `{ type: "header", parameters: [{ type: "image", image: { link: <url assoluto> } }] }`
+   - includere il componente body solo quando ci sono parametri (comportamento attuale).
+3. Rendere assoluto l'indirizzo dell'immagine usando lo stesso criterio già adottato in `src/lib/whatsapp-template.functions.ts` (`originPubblico()`), così Meta scarica il file dal dominio pubblico.
+4. Riprovare l'invio: i destinatari falliti vanno rimessi in coda (o creata una nuova campagna) — da decidere insieme, non incluso in questa correzione.
 
-`src/routes/api/public/email-img/$.ts` — legge dal bucket privato `email-assets`, limitata al prefisso `campagne/`, nessuna autenticazione richiesta (prefisso `/api/public/`). In produzione risponde regolarmente (verificato via richiesta HTTP: 200). In locale non è servita (404), ma è irrilevante per Meta.
-
-**4. Dominio di produzione corretto**
-
-`https://fidi-manager-suite.lovable.app` — è il dominio pubblicato e raggiungibile da Meta. Il secondo (`id-preview--...`) è l'anteprima e non va mai usato per gli URL immagine.
-
-## Intervento proposto (solo dopo approvazione)
-
-In `src/lib/whatsapp-template.functions.ts`, dentro `originPubblico()`:
-
-1. Prendere solo il **primo** valore della variabile quando contiene una lista separata da virgole (`split(",")`, trim, scarto voci vuote).
-2. Scartare le voci che puntano all'anteprima (`id-preview--`, `localhost`, `127.0.0.1`), preferendo il primo indirizzo pubblico valido.
-3. Rimuovere la barra finale come già fa oggi.
-
-Nessun'altra modifica: bucket, percorso `campagne/whatsapp-template/...`, route pubblica e resto del payload restano invariati.
-
-## Nota
-
-Se dopo la correzione Meta dovesse ancora rifiutare l'immagine, il passo successivo è caricare l'immagine su Meta per ottenere un vero `header_handle` invece di passare un URL; va valutato solo se il problema persiste.
+Nessuna modifica al database e nessuna modifica alla logica dei template o delle campagne oltre a quanto sopra.
