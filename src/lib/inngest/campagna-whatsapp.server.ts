@@ -82,7 +82,7 @@ export const invioCampagnaWhatsapp = inngest.createFunction(
 
       const { data: tpl } = await supabaseAdmin
         .from("whatsapp_template")
-        .select("meta_template_name, lingua, body_testo, stato")
+        .select("meta_template_name, lingua, body_testo, stato, header_tipo, header_media_url")
         .eq("id", templateId)
         .maybeSingle();
       if (!tpl || tpl.stato !== "approvato") throw new Error("Template non approvato o mancante");
@@ -124,6 +124,8 @@ export const invioCampagnaWhatsapp = inngest.createFunction(
         indici: indiciVariabili(tpl.body_testo as string),
         vars,
         serveCliente,
+        headerTipo: (tpl as { header_tipo?: string | null }).header_tipo ?? null,
+        headerMediaUrl: (tpl as { header_media_url?: string | null }).header_media_url ?? null,
       };
     });
 
@@ -241,6 +243,8 @@ export const invioCampagnaWhatsapp = inngest.createFunction(
               templateName: prep.metaTemplateName,
               lingua: prep.lingua,
               parametriBody,
+              headerTipo: prep.headerTipo,
+              headerMediaUrl: prep.headerMediaUrl,
             });
 
             if (!res.ok) {
