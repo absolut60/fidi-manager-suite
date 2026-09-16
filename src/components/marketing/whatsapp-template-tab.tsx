@@ -333,7 +333,7 @@ function EditorTemplateWhatsApp({
     setUploading(true);
     try {
       const ext = (file.name.split(".").pop() || "png").toLowerCase().replace(/[^a-z0-9]/g, "");
-      const path = `whatsapp-template/${template.id}/${crypto.randomUUID()}.${ext}`;
+      const path = `campagne/whatsapp-template/${template.id}/${crypto.randomUUID()}.${ext}`;
       const { error } = await supabase.storage
         .from("email-assets")
         .upload(path, file, { contentType: file.type, upsert: false });
