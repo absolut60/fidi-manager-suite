@@ -128,16 +128,6 @@ function privacyRiga(p: PartecipanteRow, mappa: MappaContatti): StatoPrivacy {
   return { tipo: "non_raccolta", data: null };
 }
 
-/** Email/telefono con precedenza: contatto → soggetto collegato → dati grezzi. */
-function recapitiRiga(p: PartecipanteRow, mappa: MappaContatti): { email: string | null; telefono: string | null } {
-  const lista = contattiSoggetto(p, mappa);
-  const principale = lista.find((c) => c.principale) ?? lista[0] ?? null;
-  const email =
-    p.contatto?.email ?? principale?.email ?? p.cliente?.email ?? p.lead?.email ?? p.email ?? null;
-  const telefono =
-    p.contatto?.telefono ?? principale?.telefono ?? p.cliente?.telefono ?? p.lead?.telefono ?? p.telefono ?? null;
-  return { email: email || null, telefono: telefono || null };
-}
 
 /** Normalizza per la ricerca: minuscolo e senza accenti. */
 function norm(v: string | null | undefined): string {
@@ -388,18 +378,6 @@ function EventoDettaglioPage() {
     onError: (e: Error) => toast.error("Errore nel cambio stato", { description: e.message }),
   });
 
-  const eliminaPartecipante = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("eventi_partecipanti").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["evento-partecipanti", eventoId] });
-      queryClient.invalidateQueries({ queryKey: ["eventi-lista"] });
-      toast.success("Partecipante eliminato");
-    },
-    onError: (e: Error) => toast.error("Errore nell'eliminazione", { description: e.message }),
-  });
 
   // ——— riepilogo, filtro stato, ricerca, selezione multipla ———
   const riepilogo = useMemo(() => {
