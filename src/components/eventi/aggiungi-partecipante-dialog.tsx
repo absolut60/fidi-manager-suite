@@ -14,6 +14,10 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { SoggettoCombobox, type SoggettoSelezionato } from "@/components/soggetto-combobox";
@@ -102,6 +106,23 @@ export function AggiungiPartecipanteDialog({
   };
 
   const chiudi = () => { setOpen(false); reset(); };
+
+  // ——— conferma scarto dati ———
+  const [confermaChiudi, setConfermaChiudi] = useState(false);
+
+  const formSporco = () => {
+    if (esito) return false; // in fase privacy non serve
+    if (modo === "collega") return !!soggetto;
+    return Object.values(campi).some((v) => v.trim().length > 0);
+  };
+
+  const richiediChiusura = () => {
+    if (formSporco()) {
+      setConfermaChiudi(true); // NON chiudere: chiedi conferma
+    } else {
+      chiudi();
+    }
+  };
 
 
   // ——— salvataggio ———
@@ -241,14 +262,16 @@ export function AggiungiPartecipanteDialog({
     <Dialog
       open={open}
       onOpenChange={(v) => {
+        if (!v) { richiediChiusura(); return; }
         setOpen(v);
-        if (!v) reset();
       }}
     >
       <DialogTrigger asChild>
         <Button className="gap-1.5"><Plus className="size-4" /> Aggiungi partecipante</Button>
       </DialogTrigger>
       <DialogContent
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
         className={`${
           esito && ((esito.contattoId && !esito.giaFirmata) || esito.soggetto) ? "max-w-3xl" : "max-w-xl"
         } max-h-[85vh] overflow-y-auto`}
@@ -436,7 +459,7 @@ export function AggiungiPartecipanteDialog({
             </div>
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => { setOpen(false); reset(); }}>Annulla</Button>
+              <Button variant="outline" onClick={richiediChiusura}>Annulla</Button>
               <Button
                 disabled={
                   salva.isPending ||
@@ -450,6 +473,23 @@ export function AggiungiPartecipanteDialog({
           </div>
         )}
       </DialogContent>
+
+      <AlertDialog open={confermaChiudi} onOpenChange={setConfermaChiudi}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Scartare i dati inseriti?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Le informazioni digitate andranno perse.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Continua a compilare</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setConfermaChiudi(false); chiudi(); }}>
+              Scarta
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
