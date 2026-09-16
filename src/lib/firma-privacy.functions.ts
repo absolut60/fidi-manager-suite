@@ -407,7 +407,7 @@ export const riconciliaPartecipante = createServerFn({ method: "POST" })
     const { data: res, error } = await context.supabase.rpc("riconcilia_partecipante", {
       _partecipante_id: data.partecipanteId,
       _cliente_id: data.clienteId ?? undefined,
-      _lead_id: data.leadId ?? null,
+      _lead_id: data.leadId ?? undefined,
     });
     if (error) throw new Error(error.message);
     return res as {
