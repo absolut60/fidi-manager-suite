@@ -158,45 +158,60 @@ function RichiestaDetail() {
   const storeNome = cliente?.stores?.nome ?? (r as any).stores?.nome ?? "—";
   const dataInvio = r.data_invio ?? (r.stato !== "bozza" ? r.created_at : null);
 
+  const badgeTipo = (
+    <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>
+      {TIPO_LABEL[r.tipo as TipoRichiesta]}
+    </span>
+  );
+  const badgeStato = (
+    <span className={`inline-flex items-center rounded-md px-3 py-1 text-sm font-medium ${STATO_TONE[r.stato]}`}>
+      {STATO_LABEL[r.stato]}
+    </span>
+  );
+
   return (
     <div className="space-y-5">
-      {/* 1) TESTATA COMPATTA */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <Button variant="ghost" size="sm" asChild>
-          <Link to="/richieste"><ArrowLeft className="size-4" /></Link>
-        </Button>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-xl sm:text-2xl font-bold truncate">{cliente?.ragione_sociale ?? "—"}</h1>
-          <p className="text-xs text-muted-foreground truncate">
-            Richiesta del {formatDate(r.created_at)}
-            {cliente?.partita_iva ? ` · P.IVA ${cliente.partita_iva}` : ""}
-            {storeNome !== "—" ? ` · ${storeNome}` : ""}
-          </p>
+      {/* 1) TESTATA COMPATTA — una riga su desktop, due su mobile */}
+      <div className="space-y-2">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 sm:flex sm:items-center">
+          <div className="flex min-w-0 items-start gap-2 sm:flex-1 sm:items-center sm:gap-3">
+            <Button variant="ghost" size="sm" asChild className="shrink-0">
+              <Link to="/richieste"><ArrowLeft className="size-4" /></Link>
+            </Button>
+            <div className="min-w-0">
+              <h1 className="text-lg sm:text-2xl font-bold leading-tight line-clamp-2">
+                {cliente?.ragione_sociale ?? "—"}
+              </h1>
+              <p className="text-xs text-muted-foreground leading-snug">
+                Richiesta del {formatDate(r.created_at)}
+                {cliente?.partita_iva ? ` · P.IVA ${cliente.partita_iva}` : ""}
+                {storeNome !== "—" ? ` · ${storeNome}` : ""}
+              </p>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <div className="hidden items-center gap-2 sm:flex">{badgeTipo}{badgeStato}</div>
+            {canDelete && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                title="Elimina richiesta"
+                onClick={() => {
+                  const msg = r.stato === "approvata"
+                    ? "⚠️ Questa richiesta è GIÀ APPROVATA e potrebbe essere già stata esportata nel gestionale. Eliminarla può creare disallineamenti. L'operazione è irreversibile. Procedere?"
+                    : (r.stato === "in_approvazione" || r.stato === "integrazioni_richieste")
+                    ? "Questa richiesta è in approvazione: eliminandola l'iter verrà interrotto. L'operazione è irreversibile. Procedere?"
+                    : "Eliminare definitivamente questa richiesta?";
+                  if (confirm(msg)) deleteMutation.mutate();
+                }}
+              >
+                <Trash2 className="size-4" />
+              </Button>
+            )}
+          </div>
         </div>
-        <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>
-          {TIPO_LABEL[r.tipo as TipoRichiesta]}
-        </span>
-        <span className={`inline-flex items-center rounded-md px-3 py-1 text-sm font-medium ${STATO_TONE[r.stato]}`}>
-          {STATO_LABEL[r.stato]}
-        </span>
-        {canDelete && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-destructive"
-            title="Elimina richiesta"
-            onClick={() => {
-              const msg = r.stato === "approvata"
-                ? "⚠️ Questa richiesta è GIÀ APPROVATA e potrebbe essere già stata esportata nel gestionale. Eliminarla può creare disallineamenti. L'operazione è irreversibile. Procedere?"
-                : (r.stato === "in_approvazione" || r.stato === "integrazioni_richieste")
-                ? "Questa richiesta è in approvazione: eliminandola l'iter verrà interrotto. L'operazione è irreversibile. Procedere?"
-                : "Eliminare definitivamente questa richiesta?";
-              if (confirm(msg)) deleteMutation.mutate();
-            }}
-          >
-            <Trash2 className="size-4" />
-          </Button>
-        )}
+        <div className="flex flex-wrap items-center gap-2 sm:hidden">{badgeTipo}{badgeStato}</div>
       </div>
 
       {/* 2) TRE CARD IN EVIDENZA */}
@@ -205,7 +220,7 @@ function RichiestaDetail() {
           <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
             Importo richiesto
           </p>
-          <p className="mt-2 text-3xl font-bold tabular-nums text-info">
+          <p className="mt-2 text-2xl sm:text-3xl font-bold tabular-nums text-info break-words">
             {formatEuro(Number(r.importo_richiesto))}
           </p>
           <p className="mt-2 text-xs text-muted-foreground">
@@ -324,7 +339,7 @@ function RichiestaDetail() {
 
         <Card className="p-5 space-y-3">
           <h2 className="font-semibold">Dati richiesta</h2>
-          <div className="grid grid-cols-2 gap-3 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
             <Info label="Richiesto da" value={userNameDet((r as any).richiedente)} />
             <Info label="Inviata il" value={formatDate(dataInvio)} />
             <Info label="Punto vendita" value={storeNome} />
