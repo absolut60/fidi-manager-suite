@@ -107,6 +107,23 @@ export function AggiungiPartecipanteDialog({
 
   const chiudi = () => { setOpen(false); reset(); };
 
+  // ——— conferma scarto dati ———
+  const [confermaChiudi, setConfermaChiudi] = useState(false);
+
+  const formSporco = () => {
+    if (esito) return false; // in fase privacy non serve
+    if (modo === "collega") return !!soggetto;
+    return Object.values(campi).some((v) => v.trim().length > 0);
+  };
+
+  const richiediChiusura = () => {
+    if (formSporco()) {
+      setConfermaChiudi(true); // NON chiudere: chiedi conferma
+    } else {
+      chiudi();
+    }
+  };
+
 
   // ——— salvataggio ———
   const salva = useMutation({
