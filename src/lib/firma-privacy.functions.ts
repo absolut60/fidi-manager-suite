@@ -417,3 +417,23 @@ export const riconciliaPartecipante = createServerFn({ method: "POST" })
       modo?: string;
     };
   });
+
+/**
+ * Crea un lead dai dati anagrafici salvati sulla riga del partecipante
+ * (walk-in): collega il lead alla riga e marca la riconciliazione.
+ */
+export const creaLeadDaPartecipante = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { partecipanteId: string; fonteDettaglio?: string }) =>
+    z.object({
+      partecipanteId: z.string().uuid(),
+      fonteDettaglio: z.string().max(200).optional(),
+    }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: res, error } = await context.supabase.rpc("crea_lead_da_partecipante", {
+      _partecipante_id: data.partecipanteId,
+      _fonte_dettaglio: data.fonteDettaglio ?? undefined,
+    });
+    if (error) throw new Error(error.message);
+    return res as { ok: boolean; errore?: string; lead_id?: string; contatto_id?: string };
+  });
