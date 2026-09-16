@@ -171,6 +171,24 @@ export function DettaglioPartecipanteDialog({
     onError: (e: Error) => toast.error("Errore nell'eliminazione", { description: e.message }),
   });
 
+  const cambiaStato = useMutation({
+    mutationFn: async (nuovoStato: EventiPartecipanteStato) => {
+      const { error } = await supabase
+        .from("eventi_partecipanti")
+        .update({ stato: nuovoStato })
+        .eq("id", partecipante.id);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      toast.success("Stato aggiornato");
+      await invalida();
+    },
+    onError: (e: Error) => {
+      toast.error("Errore nell'aggiornamento dello stato", { description: e.message });
+      setStatoLoc(partecipante.stato);
+    },
+  });
+
   const seleziona = (s: SoggettoSelezionato) => {
     if (s.tipo !== "cliente") {
       toast.error("Seleziona un cliente");
@@ -316,6 +334,29 @@ export function DettaglioPartecipanteDialog({
               <Save className="size-4" /> {salva.isPending ? "Salvataggio…" : "Salva modifiche"}
             </Button>
           </div>
+        </div>
+
+        {/* SEZIONE STATO */}
+        <div className="space-y-1.5">
+          <Label htmlFor="dp-stato">Stato partecipante</Label>
+          <Select
+            value={statoLoc}
+            onValueChange={(v) => {
+              setStatoLoc(v);
+              cambiaStato.mutate(v as EventiPartecipanteStato);
+            }}
+          >
+            <SelectTrigger id="dp-stato" className="w-full sm:w-64">
+              <SelectValue placeholder="Stato" />
+            </SelectTrigger>
+            <SelectContent>
+              {EVENTI_PARTECIPANTE_STATI.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {EVENTI_PARTECIPANTE_STATO_LABEL[s]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* SEZIONE RICONCILIAZIONE */}
