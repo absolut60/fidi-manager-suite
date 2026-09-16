@@ -738,27 +738,32 @@ function EventoDettaglioPage() {
           {!loadingPart && filtrati.map((p) => {
             const titolo = nomePersonaEragione(p);
             const pr = privacyRiga(p, mappaContatti);
-            const rec = recapitiRiga(p, mappaContatti);
             return (
               <SchedaLista
                 key={p.id}
                 className={selezionatiValidi.includes(p.id) ? "border-primary bg-primary/5" : undefined}
+                onClick={() => setDettaglio(p)}
                 titolo={
                   <span className="flex items-start gap-2">
-                    <Checkbox
-                      aria-label="Seleziona partecipante"
+                    <span
                       className="mt-0.5 shrink-0"
-                      checked={selezionatiValidi.includes(p.id)}
-                      onCheckedChange={(v) => toggleRiga(p.id, v === true)}
-                    />
+                      onClick={(e) => e.stopPropagation()}
+                      onPointerDown={(e) => e.stopPropagation()}
+                    >
+                      <Checkbox
+                        aria-label="Seleziona partecipante"
+                        checked={selezionatiValidi.includes(p.id)}
+                        onCheckedChange={(v) => toggleRiga(p.id, v === true)}
+                      />
+                    </span>
                     <span className="min-w-0">
                       <span className="block break-words">
                         {p.lead ? (
-                          <Link to="/lead/$leadId" params={{ leadId: p.lead.id }} className="text-primary hover:underline">
+                          <Link to="/lead/$leadId" params={{ leadId: p.lead.id }} className="text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
                             {titolo.persona}
                           </Link>
                         ) : p.cliente ? (
-                          <Link to="/clienti/$clienteId" params={{ clienteId: p.cliente.id }} className="text-primary hover:underline">
+                          <Link to="/clienti/$clienteId" params={{ clienteId: p.cliente.id }} className="text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
                             {titolo.persona}
                           </Link>
                         ) : (
@@ -808,56 +813,30 @@ function EventoDettaglioPage() {
                         </Badge>
                       ),
                   },
-                  { etichetta: "Email", valore: rec.email || "—" },
-                  { etichetta: "Telefono", valore: rec.telefono || "—" },
                 ]}
                 footer={
-                  <div className="flex w-full items-center gap-2">
-                    {(p.stato === "atteso" || p.stato === "confermato") && (
-                      <>
-                        <Button
-                          size="sm" variant="outline" className="flex-1 gap-1.5"
-                          disabled={cambiaStato.isPending}
-                          onClick={() => cambiaStato.mutate({ id: p.id, stato: "presentato" })}
-                        >
-                          <Check className="size-4" /> Presente
-                        </Button>
-                        <Button
-                          size="sm" variant="outline" className="flex-1 gap-1.5"
-                          disabled={cambiaStato.isPending}
-                          onClick={() => cambiaStato.mutate({ id: p.id, stato: "no_show" })}
-                        >
-                          <UserX className="size-4" /> No show
-                        </Button>
-                      </>
-                    )}
-                    {statoRiconciliazione(p) === "da_riconciliare" && (
-                      <RiconciliaAManoDialog
-                        partecipanteId={p.id}
-                        etichetta={p.lead ? nomePartecipante(p.lead) : nomePartecipante(p)}
-                        eventoId={eventoId}
-                      />
-                    )}
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button size="icon" variant="ghost" className="text-destructive ml-auto shrink-0">
-                          <Trash2 className="size-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Eliminare il partecipante?</AlertDialogTitle>
-                          <AlertDialogDescription>L'operazione non è reversibile.</AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Annulla</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => eliminaPartecipante.mutate(p.id)}>
-                            Elimina
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
+                  (p.stato === "atteso" || p.stato === "confermato") ? (
+                    <div
+                      className="flex w-full items-center gap-2"
+                      onClick={(e) => e.stopPropagation()}
+                      onPointerDown={(e) => e.stopPropagation()}
+                    >
+                      <Button
+                        size="sm" variant="outline" className="flex-1 gap-1.5"
+                        disabled={cambiaStato.isPending}
+                        onClick={() => cambiaStato.mutate({ id: p.id, stato: "presentato" })}
+                      >
+                        <Check className="size-4" /> Presente
+                      </Button>
+                      <Button
+                        size="sm" variant="outline" className="flex-1 gap-1.5"
+                        disabled={cambiaStato.isPending}
+                        onClick={() => cambiaStato.mutate({ id: p.id, stato: "no_show" })}
+                      >
+                        <UserX className="size-4" /> No show
+                      </Button>
+                    </div>
+                  ) : undefined
                 }
               />
             );
