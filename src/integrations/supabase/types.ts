@@ -7458,7 +7458,11 @@ export type Database = {
         Returns: Json
       }
       riconcilia_partecipante: {
-        Args: { _cliente_id?: string; _partecipante_id: string }
+        Args: {
+          _cliente_id?: string
+          _lead_id?: string
+          _partecipante_id: string
+        }
         Returns: Json
       }
       rimatch_iscritti_whatsapp: { Args: never; Returns: Json }
