@@ -400,12 +400,14 @@ export const riconciliaPartecipante = createServerFn({ method: "POST" })
     z.object({
       partecipanteId: z.string().uuid(),
       clienteId: z.string().uuid().optional(),
+      leadId: z.string().uuid().optional(),
     }).parse(d)
   )
   .handler(async ({ data, context }) => {
     const { data: res, error } = await context.supabase.rpc("riconcilia_partecipante", {
       _partecipante_id: data.partecipanteId,
       _cliente_id: data.clienteId ?? undefined,
+      _lead_id: data.leadId ?? undefined,
     });
     if (error) throw new Error(error.message);
     return res as {
@@ -413,6 +415,7 @@ export const riconciliaPartecipante = createServerFn({ method: "POST" })
       errore?: string;
       n?: number;
       cliente_id?: string;
+      lead_id?: string;
       contatto_id?: string;
       modo?: string;
     };
