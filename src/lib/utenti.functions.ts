@@ -197,9 +197,9 @@ export const inviaCredenziali = createServerFn({ method: "POST" })
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f5f7;padding:24px 0;">
     <tr><td align="center">
       <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width:600px;background:#ffffff;border-radius:8px;overflow:hidden;">
-        <tr><td style="background:#0f1b3d;padding:24px;text-align:center;color:#ffffff;font-weight:700;font-size:18px;">MADE — FidiManager</td></tr>
+        <tr><td style="background:#0f1b3d;padding:24px;text-align:center;color:#ffffff;font-weight:700;font-size:18px;">MADE Distribuzione</td></tr>
         <tr><td style="padding:32px 28px;">
-          <h1 style="margin:0 0 16px;font-size:20px;color:#0f1b3d;">Benvenuto in FidiManager</h1>
+          <h1 style="margin:0 0 16px;font-size:20px;color:#0f1b3d;">Benvenuto nel gestionale MADE</h1>
           <p style="margin:0 0 16px;font-size:14px;line-height:1.5;">Gentile ${esc(nome)},<br/>di seguito le tue credenziali di accesso:</p>
           <table role="presentation" cellspacing="0" cellpadding="8" style="width:100%;border:1px solid #e5e7eb;border-radius:6px;font-size:14px;margin:16px 0;">
             <tr><td style="font-weight:600;width:120px;background:#f9fafb;">Email</td><td>${esc(email)}</td></tr>
@@ -207,10 +207,10 @@ export const inviaCredenziali = createServerFn({ method: "POST" })
           </table>
           <p style="margin:0 0 24px;font-size:13px;color:#6b7280;">Al primo accesso ti verrà chiesto di impostare una nuova password personale. Dopo averla cambiata, potrai attivare le notifiche sul tuo dispositivo (telefono, tablet o PC).</p>
           <p style="text-align:center;margin:24px 0;">
-            <a href="${appUrl}" style="display:inline-block;background:#0f1b3d;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-weight:600;">Accedi a FidiManager →</a>
+            <a href="${appUrl}" style="display:inline-block;background:#0f1b3d;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-weight:600;">Accedi al gestionale →</a>
           </p>
         </td></tr>
-        <tr><td style="padding:16px 28px;background:#f9fafb;font-size:12px;color:#6b7280;text-align:center;">Email generata automaticamente da FidiManager — Gruppo MADE.</td></tr>
+        <tr><td style="padding:16px 28px;background:#f9fafb;font-size:12px;color:#6b7280;text-align:center;">Email generata automaticamente da Gruppo MADE.</td></tr>
       </table>
     </td></tr>
   </table>
@@ -238,7 +238,7 @@ export const inviaCredenziali = createServerFn({ method: "POST" })
       },
       body: JSON.stringify({
         to: email,
-        subject: "Le tue credenziali di accesso — FidiManager MADE",
+        subject: "Le tue credenziali di accesso — MADE Distribuzione",
         html,
       }),
     });
@@ -290,16 +290,16 @@ export const inviaIstruzioniNotifiche = createServerFn({ method: "POST" })
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f5f7;padding:24px 0;">
     <tr><td align="center">
       <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width:600px;background:#ffffff;border-radius:8px;overflow:hidden;">
-        <tr><td style="background:#0f1b3d;padding:24px;text-align:center;color:#ffffff;font-weight:700;font-size:18px;">MADE — FidiManager</td></tr>
+        <tr><td style="background:#0f1b3d;padding:24px;text-align:center;color:#ffffff;font-weight:700;font-size:18px;">MADE Distribuzione</td></tr>
         <tr><td style="padding:32px 28px;">
-          <h1 style="margin:0 0 16px;font-size:20px;color:#0f1b3d;">Attiva le notifiche di FidiManager</h1>
+          <h1 style="margin:0 0 16px;font-size:20px;color:#0f1b3d;">Attiva le notifiche MADE</h1>
           <p style="margin:0 0 16px;font-size:14px;line-height:1.5;">Gentile ${esc(nome)},<br/>per ricevere gli aggiornamenti importanti direttamente sul tuo telefono e computer, attiva le notifiche. Apri questo link <strong>DAL DISPOSITIVO</strong> su cui vuoi riceverle (telefono, tablet o PC) e segui i passaggi guidati.</p>
           <p style="text-align:center;margin:24px 0;">
             <a href="${esc(activationLink)}" style="display:inline-block;background:#0f1b3d;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-weight:600;">Attiva le notifiche →</a>
           </p>
           <p style="margin:0;font-size:13px;color:#6b7280;">Puoi ripetere questa operazione su più dispositivi: apri il link da ognuno di essi. Su iPhone ti verrà chiesto prima di aggiungere l'app alla schermata Home.</p>
         </td></tr>
-        <tr><td style="padding:16px 28px;background:#f9fafb;font-size:12px;color:#6b7280;text-align:center;">Email generata automaticamente da FidiManager — Gruppo MADE.</td></tr>
+        <tr><td style="padding:16px 28px;background:#f9fafb;font-size:12px;color:#6b7280;text-align:center;">Email generata automaticamente da Gruppo MADE.</td></tr>
       </table>
     </td></tr>
   </table>
@@ -327,7 +327,7 @@ export const inviaIstruzioniNotifiche = createServerFn({ method: "POST" })
       },
       body: JSON.stringify({
         to: email,
-        subject: "Attiva le notifiche — FidiManager MADE",
+        subject: "Attiva le notifiche — MADE Distribuzione",
         html,
       }),
     });
