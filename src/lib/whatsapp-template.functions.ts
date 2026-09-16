@@ -29,6 +29,29 @@ function slugMeta(nome: string): string {
   return s || `template_${Date.now()}`;
 }
 
+/** Sceglie un solo indirizzo pubblico valido da una eventuale lista separata da virgole. */
+function primoOriginValido(env: string): string | null {
+  const voci = env
+    .split(",")
+    .map((v) => v.trim())
+    .filter((v) => v !== "");
+  const valide: string[] = [];
+  for (const v of voci) {
+    try {
+      const u = new URL(v);
+      if (u.protocol !== "http:" && u.protocol !== "https:") continue;
+      valide.push(u.origin);
+    } catch {
+      /* voce non URL */
+    }
+  }
+  if (valide.length === 0) return null;
+  const pubbliche = valide.filter(
+    (v) => !v.includes("id-preview--") && !v.includes("localhost") && !v.includes("127.0.0.1"),
+  );
+  return (pubbliche[0] ?? valide[0]).replace(/\/+$/, "");
+}
+
 /** Origin pubblico dell'app, per rendere assoluti i path relativi delle immagini. */
 function originPubblico(): string | null {
   const env =
@@ -36,7 +59,10 @@ function originPubblico(): string | null {
     process.env["PUBLIC_APP_URL"] ??
     process.env["APP_URL"] ??
     null;
-  if (env && /^https?:\/\//i.test(env)) return env.replace(/\/+$/, "");
+  if (env) {
+    const scelto = primoOriginValido(env);
+    if (scelto) return scelto;
+  }
   try {
     const req = getRequest();
     const url = req?.url ? new URL(req.url) : null;
