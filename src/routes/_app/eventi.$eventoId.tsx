@@ -71,6 +71,7 @@ type PartecipanteRow = {
   note: string | null;
   riconciliato_il: string | null;
   registrato_sul_posto: boolean | null;
+  origine: string | null;
   lead_evento_grezzo: boolean | null;
   lead: {
     id: string; ragione_sociale: string | null; nome: string | null; cognome: string | null;
@@ -176,7 +177,7 @@ function nomePersonaEragione(p: PartecipanteRow): { persona: string; ragione: st
   return { persona, ragione: ragione && ragione !== persona ? ragione : null };
 }
 
-/** Badge di riconciliazione della riga (stato + eventuale walk-in "Sul posto"). */
+/** Badge di riconciliazione della riga (stato + eventuale provenienza). */
 function BadgeRiconciliazione({ p }: { p: PartecipanteRow }) {
   return (
     <>
@@ -189,8 +190,11 @@ function BadgeRiconciliazione({ p }: { p: PartecipanteRow }) {
           Da riconciliare
         </Badge>
       )}
-      {p.registrato_sul_posto === true && (
+      {p.origine === "sul_posto" && (
         <Badge variant="outline" className="text-xs">Sul posto</Badge>
+      )}
+      {p.origine === "import" && (
+        <Badge variant="outline" className="text-xs">Da importazione</Badge>
       )}
     </>
   );
@@ -268,7 +272,7 @@ function EventoDettaglioPage() {
       const { data, error } = await supabase
         .from("v_eventi_partecipanti_stato")
         .select(
-          "id, stato, lead_id, cliente_id, contatto_id, nome, cognome, ragione_sociale, partita_iva, codice_fiscale, email, telefono, note, riconciliato_il, registrato_sul_posto, lead_evento_grezzo, lead:lead_id(id, ragione_sociale, nome, cognome, email, telefono), cliente:cliente_id(id, ragione_sociale, email, telefono), contatto:contatto_id(id, nome, cognome, email, telefono, privacy_firmata, data_firma)",
+          "id, stato, lead_id, cliente_id, contatto_id, nome, cognome, ragione_sociale, partita_iva, codice_fiscale, email, telefono, note, riconciliato_il, registrato_sul_posto, origine, lead_evento_grezzo, lead:lead_id(id, ragione_sociale, nome, cognome, email, telefono), cliente:cliente_id(id, ragione_sociale, email, telefono), contatto:contatto_id(id, nome, cognome, email, telefono, privacy_firmata, data_firma)",
         )
         .eq("evento_id", eventoId)
         .order("created_at", { ascending: true });
@@ -903,7 +907,9 @@ function EventoDettaglioPage() {
                         <span className="text-muted-foreground">—</span>
                       ) : pr.tipo === "firmata" ? (
                         <span className="inline-flex items-center gap-1.5">
-                          <Badge variant="secondary" className="bg-success/15 text-success hover:opacity-100">Firmata</Badge>
+                          <Badge variant="secondary" className="bg-success/15 text-success hover:opacity-100">
+                            {p.origine === "import" ? "Da gruppo" : "Firmata"}
+                          </Badge>
                           {formatDataFirma(pr.data) && (
                             <span className="text-muted-foreground">{formatDataFirma(pr.data)}</span>
                           )}
@@ -1041,7 +1047,7 @@ function EventoDettaglioPage() {
                       return (
                         <div>
                           <Badge variant="secondary" className="bg-success/15 text-success hover:opacity-100">
-                            Firmata
+                            {p.origine === "import" ? "Da gruppo" : "Firmata"}
                           </Badge>
                           {formatDataFirma(pr.data) && (
                             <div className="text-xs text-muted-foreground mt-0.5">{formatDataFirma(pr.data)}</div>
