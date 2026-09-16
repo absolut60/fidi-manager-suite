@@ -6035,6 +6035,119 @@ export type Database = {
           },
         ]
       }
+      v_eventi_partecipanti_stato: {
+        Row: {
+          cliente_id: string | null
+          codice_fiscale: string | null
+          cognome: string | null
+          contatto_id: string | null
+          created_at: string | null
+          email: string | null
+          evento_id: string | null
+          id: string | null
+          lead_evento_grezzo: boolean | null
+          lead_id: string | null
+          nome: string | null
+          note: string | null
+          partita_iva: string | null
+          ragione_sociale: string | null
+          registrato_sul_posto: boolean | null
+          riconciliato_il: string | null
+          stato: Database["public"]["Enums"]["eventi_partecipante_stato"] | null
+          telefono: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          cliente_id?: string | null
+          codice_fiscale?: string | null
+          cognome?: string | null
+          contatto_id?: string | null
+          created_at?: string | null
+          email?: string | null
+          evento_id?: string | null
+          id?: string | null
+          lead_evento_grezzo?: never
+          lead_id?: string | null
+          nome?: string | null
+          note?: string | null
+          partita_iva?: string | null
+          ragione_sociale?: string | null
+          registrato_sul_posto?: boolean | null
+          riconciliato_il?: string | null
+          stato?:
+            | Database["public"]["Enums"]["eventi_partecipante_stato"]
+            | null
+          telefono?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          cliente_id?: string | null
+          codice_fiscale?: string | null
+          cognome?: string | null
+          contatto_id?: string | null
+          created_at?: string | null
+          email?: string | null
+          evento_id?: string | null
+          id?: string | null
+          lead_evento_grezzo?: never
+          lead_id?: string | null
+          nome?: string | null
+          note?: string | null
+          partita_iva?: string | null
+          ragione_sociale?: string | null
+          registrato_sul_posto?: boolean | null
+          riconciliato_il?: string | null
+          stato?:
+            | Database["public"]["Enums"]["eventi_partecipante_stato"]
+            | null
+          telefono?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "eventi_partecipanti_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "eventi_partecipanti_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti_con_rischio"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "eventi_partecipanti_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "eventi_partecipanti_contatto_id_fkey"
+            columns: ["contatto_id"]
+            isOneToOne: false
+            referencedRelation: "contatti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "eventi_partecipanti_evento_id_fkey"
+            columns: ["evento_id"]
+            isOneToOne: false
+            referencedRelation: "eventi"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "eventi_partecipanti_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "lead"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_whatsapp_opt_in_attuale: {
         Row: {
           aggiornato_at: string | null
