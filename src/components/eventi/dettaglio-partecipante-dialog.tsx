@@ -98,6 +98,7 @@ export function DettaglioPartecipanteDialog({
   const [note, setNote] = useState(partecipante.note ?? "");
   const [soggetto, setSoggetto] = useState<SoggettoSelezionato | null>(null);
   const [inCorso, setInCorso] = useState(false);
+  const [statoLoc, setStatoLoc] = useState(partecipante.stato);
 
   useEffect(() => {
     setNome(partecipante.nome ?? "");
@@ -109,6 +110,7 @@ export function DettaglioPartecipanteDialog({
     setTelefono(partecipante.telefono ?? "");
     setNote(partecipante.note ?? "");
     setSoggetto(null);
+    setStatoLoc(partecipante.stato);
   }, [partecipante.id]);
 
   const modificato =
