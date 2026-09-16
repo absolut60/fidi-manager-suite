@@ -26,7 +26,7 @@ import {
 import { AggiungiPartecipanteDialog } from "@/components/eventi/aggiungi-partecipante-dialog";
 import { ImportPartecipantiCard } from "@/components/eventi/import-partecipanti-card";
 import { RiconciliaImportCard } from "@/components/eventi/riconcilia-import-card";
-import { RiconciliaAManoDialog } from "@/components/eventi/riconcilia-a-mano-dialog";
+import { DettaglioPartecipanteDialog } from "@/components/eventi/dettaglio-partecipante-dialog";
 
 import { useServerFn } from "@tanstack/react-start";
 import { inviaRichiestaFirmaPrivacy, riconciliaPartecipante } from "@/lib/firma-privacy.functions";
@@ -162,9 +162,9 @@ function formatDataFirma(d: string | null): string | null {
   return Number.isNaN(dt.getTime()) ? null : dt.toLocaleDateString("it-IT");
 }
 
-/** Un partecipante è riconciliato quando è agganciato a un cliente; se è solo lead è da riconciliare. */
+/** Un partecipante è riconciliato quando è agganciato a un cliente o a un lead. */
 function statoRiconciliazione(p: PartecipanteRow): "riconciliato" | "da_riconciliare" {
-  return p.cliente_id ? "riconciliato" : "da_riconciliare";
+  return p.cliente_id || p.lead_id ? "riconciliato" : "da_riconciliare";
 }
 
 /**
