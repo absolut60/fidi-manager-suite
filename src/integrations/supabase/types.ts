@@ -6217,6 +6217,10 @@ export type Database = {
         }[]
       }
       crea_lead_da_iscritto: { Args: { _id: string }; Returns: Json }
+      crea_lead_da_partecipante: {
+        Args: { _fonte_dettaglio?: string; _partecipante_id: string }
+        Returns: Json
+      }
       crea_lead_da_righe_import: {
         Args: { _riga_ids: string[] }
         Returns: {
