@@ -876,8 +876,13 @@ function EventoDettaglioPage() {
             {filtrati.map((p) => {
               const titolo = nomePersonaEragione(p);
               return (
-              <TableRow key={p.id} data-state={selezionatiValidi.includes(p.id) ? "selected" : undefined}>
-                <TableCell>
+              <TableRow
+                key={p.id}
+                data-state={selezionatiValidi.includes(p.id) ? "selected" : undefined}
+                className="cursor-pointer"
+                onClick={() => setDettaglio(p)}
+              >
+                <TableCell onClick={(e) => e.stopPropagation()}>
                   <Checkbox
                     aria-label="Seleziona partecipante"
                     checked={selezionatiValidi.includes(p.id)}
@@ -891,6 +896,7 @@ function EventoDettaglioPage() {
                         to="/lead/$leadId"
                         params={{ leadId: p.lead.id }}
                         className="text-primary hover:underline"
+                        onClick={(e) => e.stopPropagation()}
                       >
                         {titolo.persona}
                       </Link>
@@ -899,6 +905,7 @@ function EventoDettaglioPage() {
                         to="/clienti/$clienteId"
                         params={{ clienteId: p.cliente.id }}
                         className="text-primary hover:underline"
+                        onClick={(e) => e.stopPropagation()}
                       >
                         {titolo.persona}
                       </Link>
