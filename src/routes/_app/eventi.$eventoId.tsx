@@ -955,19 +955,7 @@ function EventoDettaglioPage() {
                     );
                   })()}
                 </TableCell>
-                <TableCell className="text-sm">
-                  {(() => {
-                    const r = recapitiRiga(p, mappaContatti);
-                    return (
-                      <>
-                        <div>{r.email || "—"}</div>
-                        <div className="text-muted-foreground">{r.telefono || "—"}</div>
-                      </>
-                    );
-                  })()}
-                </TableCell>
-
-                <TableCell>
+                <TableCell onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center justify-end gap-1.5">
                     {(p.stato === "atteso" || p.stato === "confermato") && (
                       <>
@@ -987,32 +975,6 @@ function EventoDettaglioPage() {
                         </Button>
                       </>
                     )}
-                    {statoRiconciliazione(p) === "da_riconciliare" && (
-                      <RiconciliaAManoDialog
-                        partecipanteId={p.id}
-                        etichetta={p.lead ? nomePartecipante(p.lead) : nomePartecipante(p)}
-                        eventoId={eventoId}
-                      />
-                    )}
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button size="icon" variant="ghost" className="text-destructive">
-                          <Trash2 className="size-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Eliminare il partecipante?</AlertDialogTitle>
-                          <AlertDialogDescription>L'operazione non è reversibile.</AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Annulla</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => eliminaPartecipante.mutate(p.id)}>
-                            Elimina
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
                   </div>
                 </TableCell>
               </TableRow>
