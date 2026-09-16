@@ -1,4 +1,44 @@
 const API_URL = "https://waba-v2.360dialog.io";
+const APP_URL_FALLBACK = "https://fidi-manager-suite.lovable.app";
+
+/** Sceglie un solo indirizzo pubblico valido da una eventuale lista separata da virgole. */
+function primoOriginValido(env: string): string | null {
+  const valide: string[] = [];
+  for (const v of env.split(",").map((s) => s.trim()).filter(Boolean)) {
+    try {
+      const u = new URL(v);
+      if (u.protocol !== "http:" && u.protocol !== "https:") continue;
+      valide.push(u.origin);
+    } catch {
+      /* voce non URL */
+    }
+  }
+  if (valide.length === 0) return null;
+  const pubbliche = valide.filter(
+    (v) => !v.includes("id-preview--") && !v.includes("localhost") && !v.includes("127.0.0.1"),
+  );
+  return (pubbliche[0] ?? valide[0]).replace(/\/+$/, "");
+}
+
+/** Origin pubblico dell'app, per rendere assoluti i path relativi delle immagini. */
+function originPubblico(): string {
+  const env =
+    process.env["APP_PUBLIC_URL"] ??
+    process.env["PUBLIC_APP_URL"] ??
+    process.env["APP_URL"] ??
+    process.env["VITE_APP_URL"] ??
+    null;
+  return (env ? primoOriginValido(env) : null) ?? APP_URL_FALLBACK;
+}
+
+/** Rende assoluto un path relativo dell'immagine header. */
+export function urlAssolutoMedia(media: string): string {
+  const m = String(media ?? "").trim();
+  if (!m) return "";
+  if (/^https?:\/\//i.test(m)) return m;
+  const origin = originPubblico();
+  return `${origin}${m.startsWith("/") ? "" : "/"}${m}`;
+}
 
 /** Normalizza un numero al formato internazionale Meta (solo cifre, senza "+"). */
 function normalizzaNumeroWa(raw: string): string {
