@@ -1,4 +1,4 @@
-import { LOGO_MADE_BASE64 } from "@/lib/logo-made-base64";
+import { LOGO_MADE_EMAIL_BASE64 } from "@/lib/logo-made-email-base64";
 
 /** Escape HTML — condiviso da tutti i compositori di email. */
 export function escHtml(s: string): string {
@@ -41,8 +41,8 @@ export function buildEmailTemplate(options: {
           <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;max-width:600px;width:100%;">
             <tr>
               <td style="background:#0f1e3d;padding:20px 24px;color:#ffffff;">
-                <img src="data:image/png;base64,${LOGO_MADE_BASE64}" alt="MADE" width="140" style="display:block;height:auto;filter:brightness(0) invert(1);margin-bottom:6px;" />
-                <div style="font-size:12px;opacity:.8;">FidiManager · Gruppo MADE</div>
+                 <img src="data:image/png;base64,${LOGO_MADE_EMAIL_BASE64}" alt="MADE" width="160" style="display:block;height:auto;margin-bottom:6px;" />
+                 <div style="font-size:12px;opacity:.8;">Gruppo MADE</div>
               </td>
             </tr>
             <tr>
@@ -54,7 +54,7 @@ export function buildEmailTemplate(options: {
             </tr>
             <tr>
               <td style="padding:16px 24px;background:#f9fafb;border-top:1px solid #e5e7eb;font-size:12px;color:#6b7280;">
-                Email generata automaticamente da FidiManager — Gruppo MADE.<br/>
+                 Email generata automaticamente da Gruppo MADE.<br/>
                 Non rispondere a questa email.
               </td>
             </tr>
