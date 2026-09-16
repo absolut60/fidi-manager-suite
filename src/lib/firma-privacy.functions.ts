@@ -422,6 +422,28 @@ export const riconciliaPartecipante = createServerFn({ method: "POST" })
   });
 
 /**
+ * Cerca i possibili soggetti (clienti o lead veri) a cui collegare un
+ * partecipante evento, per evitare doppioni.
+ */
+export const cercaCandidatiRiconciliazione = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { partecipanteId: string }) =>
+    z.object({ partecipanteId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: rows, error } = await context.supabase.rpc("cerca_candidati_riconciliazione", {
+      _partecipante_id: data.partecipanteId,
+    });
+    if (error) throw new Error(error.message);
+    return (rows ?? []) as Array<{
+      tipo: "cliente" | "lead";
+      id: string;
+      etichetta: string;
+      motivi: string[];
+      forte: boolean;
+    }>;
+  });
+
+/**
  * Crea un lead dai dati anagrafici salvati sulla riga del partecipante
  * (walk-in): collega il lead alla riga e marca la riconciliazione.
  */

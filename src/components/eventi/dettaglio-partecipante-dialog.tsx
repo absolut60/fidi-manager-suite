@@ -1,10 +1,14 @@
 import { useEffect, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Link2, Save, UserPlus, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { creaLeadDaPartecipante, riconciliaPartecipante } from "@/lib/firma-privacy.functions";
+import {
+  cercaCandidatiRiconciliazione,
+  creaLeadDaPartecipante,
+  riconciliaPartecipante,
+} from "@/lib/firma-privacy.functions";
 import { SoggettoCombobox, type SoggettoSelezionato } from "@/components/soggetto-combobox";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
@@ -34,6 +38,7 @@ export type PartecipanteDettaglio = {
   cliente_id: string | null;
   contatto_id: string | null;
   registrato_sul_posto: boolean | null;
+  lead_evento_grezzo?: boolean | null;
 };
 
 function messaggioErrore(errore: unknown): string {
@@ -46,6 +51,10 @@ function messaggioErrore(errore: unknown): string {
       return "Partecipante già riconciliato";
     case "cliente_non_trovato":
       return "Cliente non trovato";
+    case "lead_non_trovato":
+      return "Lead non trovato";
+    case "lead_non_valido":
+      return "Lead non valido";
     case "match_non_univoco":
       return "Riconciliazione non riuscita";
     default:
@@ -129,6 +138,7 @@ export function DettaglioPartecipanteDialog({
     },
     onSuccess: async () => {
       toast.success("Modifiche salvate");
+      await queryClient.invalidateQueries({ queryKey: ["candidati-riconciliazione", partecipante.id] });
       await invalida();
     },
     onError: (e: Error) => toast.error("Errore nel salvataggio", { description: e.message }),
@@ -204,7 +214,40 @@ export function DettaglioPartecipanteDialog({
     partecipante.ragione_sociale ||
     "Partecipante";
 
-  const daRiconciliare = !partecipante.cliente_id && !partecipante.lead_id;
+  const daRiconciliare =
+    !partecipante.cliente_id &&
+    (!partecipante.lead_id || partecipante.lead_evento_grezzo === true);
+
+  const cercaCandidatiFn = useServerFn(cercaCandidatiRiconciliazione);
+  const { data: candidati, isLoading: caricandoCandidati } = useQuery({
+    queryKey: ["candidati-riconciliazione", partecipante.id],
+    queryFn: () => cercaCandidatiFn({ data: { partecipanteId: partecipante.id } }),
+    enabled: open && daRiconciliare,
+  });
+
+  const onCollegaCandidato = async (c: { tipo: "cliente" | "lead"; id: string }) => {
+    setInCorso(true);
+    try {
+      const res = await riconciliaFn({
+        data: {
+          partecipanteId: partecipante.id,
+          clienteId: c.tipo === "cliente" ? c.id : undefined,
+          leadId: c.tipo === "lead" ? c.id : undefined,
+        },
+      });
+      if (res.ok === true) {
+        toast.success("Collegato");
+        await invalida();
+        onOpenChange(false);
+      } else {
+        toast.error(messaggioErrore(res.errore));
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Riconciliazione non riuscita");
+    } finally {
+      setInCorso(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -268,6 +311,45 @@ export function DettaglioPartecipanteDialog({
         {daRiconciliare ? (
           <div className="space-y-4 rounded-md border p-4">
             <p className="text-sm font-medium">Riconciliazione</p>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Possibili corrispondenze</p>
+              {caricandoCandidati ? (
+                <p className="text-sm text-muted-foreground">Cerco corrispondenze…</p>
+              ) : candidati && candidati.length > 0 ? (
+                <div className="space-y-2">
+                  {candidati.map((c) => (
+                    <div
+                      key={`${c.tipo}-${c.id}`}
+                      className="flex items-center gap-2 rounded-md border px-3 py-2"
+                    >
+                      <Badge variant={c.tipo === "cliente" ? "default" : "secondary"} className="shrink-0">
+                        {c.tipo === "cliente" ? "Cliente" : "Lead"}
+                      </Badge>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">{c.etichetta}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {c.motivi.join(", ")}
+                          {!c.forte && " (solo ragione sociale — verifica)"}
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="shrink-0"
+                        disabled={inCorso}
+                        onClick={() => void onCollegaCandidato(c)}
+                      >
+                        Collega
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Nessuna corrispondenza trovata nelle anagrafiche.
+                </p>
+              )}
+            </div>
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">Collega a cliente esistente</p>
               {soggetto ? (

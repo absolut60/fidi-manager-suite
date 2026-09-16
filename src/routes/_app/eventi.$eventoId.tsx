@@ -71,6 +71,7 @@ type PartecipanteRow = {
   note: string | null;
   riconciliato_il: string | null;
   registrato_sul_posto: boolean | null;
+  lead_evento_grezzo: boolean | null;
   lead: {
     id: string; ragione_sociale: string | null; nome: string | null; cognome: string | null;
     email: string | null; telefono: string | null;
@@ -155,7 +156,9 @@ function formatDataFirma(d: string | null): string | null {
 
 /** Un partecipante è riconciliato quando è agganciato a un cliente o a un lead. */
 function statoRiconciliazione(p: PartecipanteRow): "riconciliato" | "da_riconciliare" {
-  return p.cliente_id || p.lead_id ? "riconciliato" : "da_riconciliare";
+  if (p.cliente_id) return "riconciliato";
+  if (p.lead_id && p.lead_evento_grezzo !== true) return "riconciliato";
+  return "da_riconciliare";
 }
 
 /**
@@ -263,9 +266,9 @@ function EventoDettaglioPage() {
     enabled: canSee,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("eventi_partecipanti")
+        .from("v_eventi_partecipanti_stato")
         .select(
-          "id, stato, lead_id, cliente_id, contatto_id, nome, cognome, ragione_sociale, partita_iva, codice_fiscale, email, telefono, note, riconciliato_il, registrato_sul_posto, lead:lead_id(id, ragione_sociale, nome, cognome, email, telefono), cliente:cliente_id(id, ragione_sociale, email, telefono), contatto:contatto_id(id, nome, cognome, email, telefono, privacy_firmata, data_firma)",
+          "id, stato, lead_id, cliente_id, contatto_id, nome, cognome, ragione_sociale, partita_iva, codice_fiscale, email, telefono, note, riconciliato_il, registrato_sul_posto, lead_evento_grezzo, lead:lead_id(id, ragione_sociale, nome, cognome, email, telefono), cliente:cliente_id(id, ragione_sociale, email, telefono), contatto:contatto_id(id, nome, cognome, email, telefono, privacy_firmata, data_firma)",
         )
         .eq("evento_id", eventoId)
         .order("created_at", { ascending: true });
