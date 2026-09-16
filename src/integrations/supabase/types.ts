@@ -6284,6 +6284,16 @@ export type Database = {
         }[]
       }
       can_manage_email_assets: { Args: never; Returns: boolean }
+      cerca_candidati_riconciliazione: {
+        Args: { _partecipante_id: string }
+        Returns: {
+          etichetta: string
+          forte: boolean
+          id: string
+          motivi: string[]
+          tipo: string
+        }[]
+      }
       classifica_iscritti_whatsapp_batch: {
         Args: { _ids: string[] }
         Returns: Json
