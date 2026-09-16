@@ -91,3 +91,39 @@ export const riprendiInvioCampagnaWhatsapp = createServerFn({ method: "POST" })
     await inviaEventoInngest("campagna-whatsapp/invio.requested", { campagna_id: data.campagnaId });
     return { ok: true, riemesso: true, daInviare };
   });
+
+/** Rimette in coda i destinatari falliti di una campagna e rilancia l'invio
+ *  (il job è idempotente: salta i destinatari che non sono più 'in_coda').
+ */
+export const reinviaFallitiCampagnaWhatsapp = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => z.object({ campagnaId: z.string().uuid() }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertRuoloMarketing(supabase, userId);
+
+    const { count, error: eSel } = await supabase
+      .from("messaggi_whatsapp")
+      .select("id", { count: "exact", head: true })
+      .eq("campagna_id", data.campagnaId)
+      .eq("stato", "fallito");
+    if (eSel) throw new Error(eSel.message);
+    const falliti = count ?? 0;
+    if (falliti === 0) return { ok: true, riemesso: false, falliti: 0 };
+
+    const { error: eUpdMsg } = await supabase
+      .from("messaggi_whatsapp")
+      .update({ stato: "in_coda", errore: null } as never)
+      .eq("campagna_id", data.campagnaId)
+      .eq("stato", "fallito");
+    if (eUpdMsg) throw new Error(eUpdMsg.message);
+
+    const { error: eUpdCamp } = await supabase
+      .from("campagne_whatsapp")
+      .update({ stato: "in_corso" } as never)
+      .eq("id", data.campagnaId);
+    if (eUpdCamp) throw new Error(eUpdCamp.message);
+
+    await inviaEventoInngest("campagna-whatsapp/invio.requested", { campagna_id: data.campagnaId });
+    return { ok: true, riemesso: true, falliti };
+  });

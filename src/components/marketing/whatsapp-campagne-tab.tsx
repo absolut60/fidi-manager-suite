@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MessageCircle, Plus, Pencil, Trash2, Copy, Users, X, Search, Send, RotateCw } from "lucide-react";
 import { toast } from "sonner";
-import { avviaInvioCampagnaWhatsapp, riprendiInvioCampagnaWhatsapp } from "@/lib/campagna-whatsapp.functions";
+import { avviaInvioCampagnaWhatsapp, reinviaFallitiCampagnaWhatsapp, riprendiInvioCampagnaWhatsapp } from "@/lib/campagna-whatsapp.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -232,6 +232,16 @@ export function WhatsAppCampagneTab() {
     onError: (e: any) => toast.error(e?.message ?? "Errore ripresa invio"),
   });
 
+  const reinviaFalliti = useMutation({
+    mutationFn: async (c: CampagnaWa) => reinviaFallitiCampagnaWhatsapp({ data: { campagnaId: c.id } }),
+    onSuccess: (res) => {
+      if (res.riemesso) toast.success(`Reinvio avviato: ${res.falliti} destinatari rimessi in coda`);
+      else toast.info("Nessun invio fallito da reinviare");
+      invalida();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Errore reinvio falliti"),
+  });
+
   const crea = useMutation({
     mutationFn: async () => {
       const { data, error } = await supabase
@@ -376,6 +386,17 @@ export function WhatsAppCampagneTab() {
                   </TableCell>
                   <TableCell className="text-muted-foreground">{fmtDate(c.updated_at)}</TableCell>
                   <TableCell className="text-right space-x-1 whitespace-nowrap">
+                    {(c.stato === "in_corso" || c.stato === "completata") && (c.invii_falliti ?? 0) > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => reinviaFalliti.mutate(c)}
+                        disabled={reinviaFalliti.isPending}
+                        title="Rimetti in coda i falliti e rilancia l'invio"
+                      >
+                        <RotateCw className="size-4 mr-1" /> Rimetti in coda i falliti
+                      </Button>
+                    )}
                     {c.stato === "in_corso" ? (
                       <Button
                         variant="outline"
