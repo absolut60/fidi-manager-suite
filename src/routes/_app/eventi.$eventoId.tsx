@@ -26,7 +26,7 @@ import {
 import { AggiungiPartecipanteDialog } from "@/components/eventi/aggiungi-partecipante-dialog";
 import { ImportPartecipantiCard } from "@/components/eventi/import-partecipanti-card";
 import { RiconciliaImportCard } from "@/components/eventi/riconcilia-import-card";
-import { RiconciliaAManoDialog } from "@/components/eventi/riconcilia-a-mano-dialog";
+import { DettaglioPartecipanteDialog } from "@/components/eventi/dettaglio-partecipante-dialog";
 
 import { useServerFn } from "@tanstack/react-start";
 import { inviaRichiestaFirmaPrivacy, riconciliaPartecipante } from "@/lib/firma-privacy.functions";
@@ -128,16 +128,6 @@ function privacyRiga(p: PartecipanteRow, mappa: MappaContatti): StatoPrivacy {
   return { tipo: "non_raccolta", data: null };
 }
 
-/** Email/telefono con precedenza: contatto → soggetto collegato → dati grezzi. */
-function recapitiRiga(p: PartecipanteRow, mappa: MappaContatti): { email: string | null; telefono: string | null } {
-  const lista = contattiSoggetto(p, mappa);
-  const principale = lista.find((c) => c.principale) ?? lista[0] ?? null;
-  const email =
-    p.contatto?.email ?? principale?.email ?? p.cliente?.email ?? p.lead?.email ?? p.email ?? null;
-  const telefono =
-    p.contatto?.telefono ?? principale?.telefono ?? p.cliente?.telefono ?? p.lead?.telefono ?? p.telefono ?? null;
-  return { email: email || null, telefono: telefono || null };
-}
 
 /** Normalizza per la ricerca: minuscolo e senza accenti. */
 function norm(v: string | null | undefined): string {
@@ -162,9 +152,9 @@ function formatDataFirma(d: string | null): string | null {
   return Number.isNaN(dt.getTime()) ? null : dt.toLocaleDateString("it-IT");
 }
 
-/** Un partecipante è riconciliato quando è agganciato a un cliente; se è solo lead è da riconciliare. */
+/** Un partecipante è riconciliato quando è agganciato a un cliente o a un lead. */
 function statoRiconciliazione(p: PartecipanteRow): "riconciliato" | "da_riconciliare" {
-  return p.cliente_id ? "riconciliato" : "da_riconciliare";
+  return p.cliente_id || p.lead_id ? "riconciliato" : "da_riconciliare";
 }
 
 /**
@@ -235,6 +225,8 @@ function EventoDettaglioPage() {
   const [filtroStato, setFiltroStato] = useState<"tutti" | "attesi" | "presenti" | "no_show">("tutti");
   const [invioInCorso, setInvioInCorso] = useState(false);
   const [modifica, setModifica] = useState(false);
+  const [tab, setTab] = useState("partecipanti");
+  const [dettaglio, setDettaglio] = useState<PartecipanteRow | null>(null);
 
 
 
@@ -388,18 +380,6 @@ function EventoDettaglioPage() {
     onError: (e: Error) => toast.error("Errore nel cambio stato", { description: e.message }),
   });
 
-  const eliminaPartecipante = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("eventi_partecipanti").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["evento-partecipanti", eventoId] });
-      queryClient.invalidateQueries({ queryKey: ["eventi-lista"] });
-      toast.success("Partecipante eliminato");
-    },
-    onError: (e: Error) => toast.error("Errore nell'eliminazione", { description: e.message }),
-  });
 
   // ——— riepilogo, filtro stato, ricerca, selezione multipla ———
   const riepilogo = useMemo(() => {
@@ -537,6 +517,7 @@ function EventoDettaglioPage() {
     let saltati = 0;
     let errori = 0;
 
+    setTab("partecipanti");
     setRiconciliaInCorso(true);
     try {
       for (const p of righe) {
@@ -602,7 +583,7 @@ function EventoDettaglioPage() {
         </Button>
       </div>
 
-      <Tabs defaultValue="partecipanti">
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="partecipanti">Partecipanti</TabsTrigger>
           <TabsTrigger value="dettagli">Dettagli evento</TabsTrigger>
@@ -619,17 +600,6 @@ function EventoDettaglioPage() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <AggiungiPartecipanteDialog eventoId={eventoId} nomeEvento={evento.nome} />
-            {riepilogo.daRiconciliare > 0 && (
-              <Button
-                variant="outline"
-                className="gap-1.5"
-                disabled={riconciliaInCorso}
-                onClick={() => void riconciliaAutomatica()}
-              >
-                <Link2 className="size-4" />
-                {riconciliaInCorso ? "Riconciliazione…" : "Riconcilia automaticamente"}
-              </Button>
-            )}
           </div>
 
         </div>
@@ -768,27 +738,32 @@ function EventoDettaglioPage() {
           {!loadingPart && filtrati.map((p) => {
             const titolo = nomePersonaEragione(p);
             const pr = privacyRiga(p, mappaContatti);
-            const rec = recapitiRiga(p, mappaContatti);
             return (
               <SchedaLista
                 key={p.id}
                 className={selezionatiValidi.includes(p.id) ? "border-primary bg-primary/5" : undefined}
+                onClick={() => setDettaglio(p)}
                 titolo={
                   <span className="flex items-start gap-2">
-                    <Checkbox
-                      aria-label="Seleziona partecipante"
+                    <span
                       className="mt-0.5 shrink-0"
-                      checked={selezionatiValidi.includes(p.id)}
-                      onCheckedChange={(v) => toggleRiga(p.id, v === true)}
-                    />
+                      onClick={(e) => e.stopPropagation()}
+                      onPointerDown={(e) => e.stopPropagation()}
+                    >
+                      <Checkbox
+                        aria-label="Seleziona partecipante"
+                        checked={selezionatiValidi.includes(p.id)}
+                        onCheckedChange={(v) => toggleRiga(p.id, v === true)}
+                      />
+                    </span>
                     <span className="min-w-0">
                       <span className="block break-words">
                         {p.lead ? (
-                          <Link to="/lead/$leadId" params={{ leadId: p.lead.id }} className="text-primary hover:underline">
+                          <Link to="/lead/$leadId" params={{ leadId: p.lead.id }} className="text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
                             {titolo.persona}
                           </Link>
                         ) : p.cliente ? (
-                          <Link to="/clienti/$clienteId" params={{ clienteId: p.cliente.id }} className="text-primary hover:underline">
+                          <Link to="/clienti/$clienteId" params={{ clienteId: p.cliente.id }} className="text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
                             {titolo.persona}
                           </Link>
                         ) : (
@@ -838,56 +813,30 @@ function EventoDettaglioPage() {
                         </Badge>
                       ),
                   },
-                  { etichetta: "Email", valore: rec.email || "—" },
-                  { etichetta: "Telefono", valore: rec.telefono || "—" },
                 ]}
                 footer={
-                  <div className="flex w-full items-center gap-2">
-                    {(p.stato === "atteso" || p.stato === "confermato") && (
-                      <>
-                        <Button
-                          size="sm" variant="outline" className="flex-1 gap-1.5"
-                          disabled={cambiaStato.isPending}
-                          onClick={() => cambiaStato.mutate({ id: p.id, stato: "presentato" })}
-                        >
-                          <Check className="size-4" /> Presente
-                        </Button>
-                        <Button
-                          size="sm" variant="outline" className="flex-1 gap-1.5"
-                          disabled={cambiaStato.isPending}
-                          onClick={() => cambiaStato.mutate({ id: p.id, stato: "no_show" })}
-                        >
-                          <UserX className="size-4" /> No show
-                        </Button>
-                      </>
-                    )}
-                    {statoRiconciliazione(p) === "da_riconciliare" && (
-                      <RiconciliaAManoDialog
-                        partecipanteId={p.id}
-                        etichetta={p.lead ? nomePartecipante(p.lead) : nomePartecipante(p)}
-                        eventoId={eventoId}
-                      />
-                    )}
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button size="icon" variant="ghost" className="text-destructive ml-auto shrink-0">
-                          <Trash2 className="size-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Eliminare il partecipante?</AlertDialogTitle>
-                          <AlertDialogDescription>L'operazione non è reversibile.</AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Annulla</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => eliminaPartecipante.mutate(p.id)}>
-                            Elimina
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
+                  (p.stato === "atteso" || p.stato === "confermato") ? (
+                    <div
+                      className="flex w-full items-center gap-2"
+                      onClick={(e) => e.stopPropagation()}
+                      onPointerDown={(e) => e.stopPropagation()}
+                    >
+                      <Button
+                        size="sm" variant="outline" className="flex-1 gap-1.5"
+                        disabled={cambiaStato.isPending}
+                        onClick={() => cambiaStato.mutate({ id: p.id, stato: "presentato" })}
+                      >
+                        <Check className="size-4" /> Presente
+                      </Button>
+                      <Button
+                        size="sm" variant="outline" className="flex-1 gap-1.5"
+                        disabled={cambiaStato.isPending}
+                        onClick={() => cambiaStato.mutate({ id: p.id, stato: "no_show" })}
+                      >
+                        <UserX className="size-4" /> No show
+                      </Button>
+                    </div>
+                  ) : undefined
                 }
               />
             );
@@ -909,17 +858,16 @@ function EventoDettaglioPage() {
               <TableHead>Identità</TableHead>
               <TableHead>Stato</TableHead>
               <TableHead>Privacy</TableHead>
-              <TableHead>Contatti</TableHead>
               <TableHead className="text-right">Azioni</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loadingPart && (
-              <TableRow><TableCell colSpan={6}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
+              <TableRow><TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
             )}
             {!loadingPart && filtrati.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-8">
+                <TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-8">
 
                   {totale === 0 ? "Nessun partecipante censito." : "Nessun partecipante corrisponde alla ricerca."}
                 </TableCell>
@@ -928,8 +876,13 @@ function EventoDettaglioPage() {
             {filtrati.map((p) => {
               const titolo = nomePersonaEragione(p);
               return (
-              <TableRow key={p.id} data-state={selezionatiValidi.includes(p.id) ? "selected" : undefined}>
-                <TableCell>
+              <TableRow
+                key={p.id}
+                data-state={selezionatiValidi.includes(p.id) ? "selected" : undefined}
+                className="cursor-pointer"
+                onClick={() => setDettaglio(p)}
+              >
+                <TableCell onClick={(e) => e.stopPropagation()}>
                   <Checkbox
                     aria-label="Seleziona partecipante"
                     checked={selezionatiValidi.includes(p.id)}
@@ -943,6 +896,7 @@ function EventoDettaglioPage() {
                         to="/lead/$leadId"
                         params={{ leadId: p.lead.id }}
                         className="text-primary hover:underline"
+                        onClick={(e) => e.stopPropagation()}
                       >
                         {titolo.persona}
                       </Link>
@@ -951,6 +905,7 @@ function EventoDettaglioPage() {
                         to="/clienti/$clienteId"
                         params={{ clienteId: p.cliente.id }}
                         className="text-primary hover:underline"
+                        onClick={(e) => e.stopPropagation()}
                       >
                         {titolo.persona}
                       </Link>
@@ -1000,19 +955,7 @@ function EventoDettaglioPage() {
                     );
                   })()}
                 </TableCell>
-                <TableCell className="text-sm">
-                  {(() => {
-                    const r = recapitiRiga(p, mappaContatti);
-                    return (
-                      <>
-                        <div>{r.email || "—"}</div>
-                        <div className="text-muted-foreground">{r.telefono || "—"}</div>
-                      </>
-                    );
-                  })()}
-                </TableCell>
-
-                <TableCell>
+                <TableCell onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center justify-end gap-1.5">
                     {(p.stato === "atteso" || p.stato === "confermato") && (
                       <>
@@ -1032,32 +975,6 @@ function EventoDettaglioPage() {
                         </Button>
                       </>
                     )}
-                    {statoRiconciliazione(p) === "da_riconciliare" && (
-                      <RiconciliaAManoDialog
-                        partecipanteId={p.id}
-                        etichetta={p.lead ? nomePartecipante(p.lead) : nomePartecipante(p)}
-                        eventoId={eventoId}
-                      />
-                    )}
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button size="icon" variant="ghost" className="text-destructive">
-                          <Trash2 className="size-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Eliminare il partecipante?</AlertDialogTitle>
-                          <AlertDialogDescription>L'operazione non è reversibile.</AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Annulla</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => eliminaPartecipante.mutate(p.id)}>
-                            Elimina
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
                   </div>
                 </TableCell>
               </TableRow>
@@ -1161,6 +1078,26 @@ function EventoDettaglioPage() {
 
           <RiconciliaImportCard eventoId={eventoId} />
 
+          {riepilogo.daRiconciliare > 0 && (
+            <Card className="p-4 sm:p-5 space-y-3">
+              <div>
+                <h3 className="text-base font-semibold">Riconciliazione partecipanti</h3>
+                <p className="text-sm text-muted-foreground">
+                  Prova a collegare automaticamente i partecipanti non ancora riconciliati ai clienti esistenti.
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                className="gap-1.5"
+                disabled={riconciliaInCorso}
+                onClick={() => void riconciliaAutomatica()}
+              >
+                <Link2 className="size-4" />
+                {riconciliaInCorso ? "Riconciliazione…" : "Riconcilia automaticamente"}
+              </Button>
+            </Card>
+          )}
+
           <div className="flex justify-end">
             <AlertDialog>
               <AlertDialogTrigger asChild>
@@ -1184,6 +1121,16 @@ function EventoDettaglioPage() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {dettaglio && (
+        <DettaglioPartecipanteDialog
+          partecipante={dettaglio}
+          eventoId={eventoId}
+          nomeEvento={evento.nome}
+          open
+          onOpenChange={(v) => { if (!v) setDettaglio(null); }}
+        />
+      )}
     </div>
   );
 }
