@@ -1,36 +1,56 @@
-# Diagnosi: partecipanti creati ma non visibili dopo la riconciliazione import
+# Evento con 231 partecipanti: nomi mancanti e privacy non registrata
 
-## Cosa dicono i dati
+## Cosa dicono i dati (verificato)
 
-Ultimo import (evento 75ef3412-…), righe di staging:
+Evento `75ef3412-bcd8-4f2b-9c31-616919a6ca57` — 231 partecipanti, tutti `origine = 'import'`.
+- con cliente: 20 — con lead: 211 — con contatto: 212 — senza nome e cognome: 19
+- Import: `5262c334-…` del 16/09/2026 09:12:02 → 09:13:17, 231 righe, stato completata (le migrazioni su origine/privacy sono delle 07:18, quindi l'import è successivo: il codice nuovo era già attivo)
+- Righe di staging: 216 `lead_creato`, 23 `collegato`, 2 `scartato` — tutte e 239 hanno nome/cognome nel file
 
-| riga | soggetto | match | stato |
-|---|---|---|---|
-| 2 | Sergio Evento / MADEDISTRIBUZIONE | cliente fb0f205c… | collegato (06:29:51) |
-| 3 | Claudio Evento | cliente 8840e2b7… | collegato (06:29:52) |
+## Problema 1 — nomi "—" sui riconciliati a cliente
 
-Partecipanti dello stesso evento:
+I 19 partecipanti senza nome sono esattamente quelli collegati a un cliente esistente
+(`contatto_id` nullo, `nome`/`cognome`/`email`/`ragione_sociale` tutti nulli).
+`collega_righe_import` inserisce solo gli id (cliente/lead/contatto/note): i dati anagrafici
+della riga importata non vengono copiati sul partecipante e nessun contatto viene creato.
+Il nome della persona resta solo nella riga di staging `eventi_import_righe`, non è perso.
 
-| id | cliente_id | contatto_id | stato | created_at |
-|---|---|---|---|---|
-| 6ea5bea2… | fb0f205c… | 4d5a4c34… | atteso | 06:30:03 |
-| a9487dff… | 8840e2b7… | — | atteso | 06:30:03 |
+Correzione: in `collega_righe_import`, copiare nome, cognome, ragione sociale, email, telefono,
+codice fiscale e partita IVA della riga nel partecipante creato (fallback visuale), e — quando
+la riga ha un nome persona — creare/riusare il contatto sul cliente tramite
+`crea_o_riusa_contatto_in_soggetto`, come già fa il percorso "crea lead".
+Backfill dei 19 partecipanti esistenti dalle rispettive righe di staging.
 
-Quindi **i partecipanti vengono creati davvero**. La RPC `collega_righe_import` inserisce in `eventi_partecipanti` (evento_id, stato 'atteso', cliente_id/lead_id, contatto_id, note) e solo dopo marca la riga come `collegato`. Anche `crea_lead_da_righe_import` crea il partecipante tramite `crea_partecipante_da_nuovo_soggetto`.
+## Problema 2 — privacy "Non raccolta" invece di "Da gruppo"
 
-## Causa reale del sintomo
+Nessuna riga in `consensi_log` con `origine = 'azienda_gruppo'` (0 in tutto il database) e i
+contatti da import hanno `privacy_firmata = false`.
+Causa: la whitelist è stata aggiornata nella funzione `registra_consensi_batch`, ma il vincolo
+di tabella è rimasto indietro:
 
-Il problema è di aggiornamento della schermata, non di dati. In `riconcilia-import-card.tsx`, dopo l'azione si invalidano le chiavi:
+```text
+consensi_log_origine_check CHECK (origine IN
+  ('link_pubblico','operatore','recesso_link','import','firma_grafica','di_persona','qr_whatsapp'))
+```
 
-- `["evento-import-righe", eventoId]`
-- `["evento", eventoId]`
-- `["eventi-partecipanti", eventoId]`
-- `["partecipanti", eventoId]`
+L'INSERT viola il CHECK, l'eccezione viene assorbita dal blocco non fatale nelle due funzioni di
+import, quindi la privacy non viene mai scritta e nemmeno `privacy_firmata` aggiornato.
 
-ma la lista del tab Partecipanti usa la chiave `["evento-partecipanti", eventoId]` (singolare "evento"). Nessuna delle chiavi invalidate combacia, quindi la lista resta quella in cache e sembra che il partecipante non sia stato creato. Ricaricando la pagina i partecipanti compaiono.
+Correzione: estendere il CHECK di `consensi_log` con `'azienda_gruppo'`, poi rigenerare la privacy
+da gruppo per i 212 contatti già creati da questo import (5 righe di consenso ciascuno +
+`privacy_firmata = true`, `data_firma`).
 
-Nota secondaria: i partecipanti creati da import hanno `nome`/`cognome` NULL e mostrano l'etichetta ricavata dal cliente/contatto collegato (comportamento previsto dalla catena di fallback del titolo riga).
+## Dettagli tecnici
 
-## Correzione proposta (un solo file)
+Tutto via migrazione, nessuna modifica al codice TypeScript prevista:
+1. `ALTER TABLE public.consensi_log DROP CONSTRAINT consensi_log_origine_check` e ricreato con
+   `'azienda_gruppo'` aggiunto (resto identico).
+2. `CREATE OR REPLACE FUNCTION public.collega_righe_import` — identica salvo l'INSERT in
+   `eventi_partecipanti` (aggiunta dei campi anagrafici dalla riga) e la creazione del contatto
+   quando la riga ha un nome persona; firma, SECURITY DEFINER, search_path e grant preservati.
+3. Backfill mirato al solo evento `75ef3412-…`:
+   - anagrafica dei 19 partecipanti dalle righe `collegato` corrispondenti;
+   - privacy da gruppo per i contatti dei partecipanti `origine='import'` privi di consensi,
+     riusando `registra_consensi_batch` (nessuna logica duplicata).
 
-`src/components/eventi/riconcilia-import-card.tsx`, funzione `dopoAzione`: aggiungere l'invalidazione di `["evento-partecipanti", eventoId]` (mantenendo le altre chiavi). Nessuna modifica a RPC, database o logica di import.
+Da confermare: il backfill va limitato a questo evento o esteso a tutti i partecipanti da import.
