@@ -126,8 +126,8 @@ export function RiconciliaImportCard({ eventoId }: { eventoId: string }) {
     setSelezione(new Set());
     queryClient.invalidateQueries({ queryKey: ["evento-import-righe", eventoId] });
     queryClient.invalidateQueries({ queryKey: ["evento", eventoId] });
-    queryClient.invalidateQueries({ queryKey: ["eventi-partecipanti", eventoId] });
-    queryClient.invalidateQueries({ queryKey: ["partecipanti", eventoId] });
+    queryClient.invalidateQueries({ queryKey: ["evento-partecipanti", eventoId] });
+    queryClient.invalidateQueries({ queryKey: ["eventi-lista"] });
   };
 
   const collega = useMutation({
