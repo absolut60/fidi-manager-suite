@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -31,7 +32,7 @@ import { DettaglioPartecipanteDialog } from "@/components/eventi/dettaglio-parte
 import { useServerFn } from "@tanstack/react-start";
 import { inviaRichiestaFirmaPrivacy, riconciliaPartecipante } from "@/lib/firma-privacy.functions";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search, X } from "lucide-react";
+import { Filter, Search, X } from "lucide-react";
 import { SchedaLista, ElencoSchede } from "@/components/lista-responsive";
 
 
@@ -223,6 +224,8 @@ function EventoDettaglioPage() {
 
   const [selezionati, setSelezionati] = useState<string[]>([]);
   const [filtroStato, setFiltroStato] = useState<"tutti" | "attesi" | "presenti" | "no_show">("tutti");
+  const [fRiconc, setFRiconc] = useState<"tutti" | "riconciliato" | "da_riconciliare">("tutti");
+  const [fSulPosto, setFSulPosto] = useState<"tutti" | "solo">("tutti");
   const [invioInCorso, setInvioInCorso] = useState(false);
   const [modifica, setModifica] = useState(false);
   const [tab, setTab] = useState("partecipanti");
@@ -414,10 +417,16 @@ function EventoDettaglioPage() {
     } else if (filtroStato === "no_show") {
       lista = lista.filter((p) => p.stato === "no_show");
     }
+    if (fRiconc !== "tutti") {
+      lista = lista.filter((p) => statoRiconciliazione(p) === fRiconc);
+    }
+    if (fSulPosto !== "tutti") {
+      lista = lista.filter((p) => p.registrato_sul_posto === true);
+    }
     const q = norm(ricercaDeb);
     if (!q) return lista;
     return lista.filter((p) => testoRicerca(p, mappaContatti).includes(q));
-  }, [partecipanti, ricercaDeb, filtroStato, mappaContatti]);
+  }, [partecipanti, ricercaDeb, filtroStato, fRiconc, fSulPosto, mappaContatti]);
 
 
   const idsFiltrati = useMemo(() => filtrati.map((p) => p.id), [filtrati]);
