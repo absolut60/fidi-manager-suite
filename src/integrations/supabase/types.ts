@@ -2289,6 +2289,7 @@ export type Database = {
           lead_id: string | null
           nome: string | null
           note: string | null
+          origine: string
           partita_iva: string | null
           ragione_sociale: string | null
           registrato_sul_posto: boolean
@@ -2309,6 +2310,7 @@ export type Database = {
           lead_id?: string | null
           nome?: string | null
           note?: string | null
+          origine?: string
           partita_iva?: string | null
           ragione_sociale?: string | null
           registrato_sul_posto?: boolean
@@ -2329,6 +2331,7 @@ export type Database = {
           lead_id?: string | null
           nome?: string | null
           note?: string | null
+          origine?: string
           partita_iva?: string | null
           ragione_sociale?: string | null
           registrato_sul_posto?: boolean
@@ -6049,6 +6052,7 @@ export type Database = {
           lead_id: string | null
           nome: string | null
           note: string | null
+          origine: string | null
           partita_iva: string | null
           ragione_sociale: string | null
           registrato_sul_posto: boolean | null
@@ -6070,6 +6074,7 @@ export type Database = {
           lead_id?: string | null
           nome?: string | null
           note?: string | null
+          origine?: string | null
           partita_iva?: string | null
           ragione_sociale?: string | null
           registrato_sul_posto?: boolean | null
@@ -6093,6 +6098,7 @@ export type Database = {
           lead_id?: string | null
           nome?: string | null
           note?: string | null
+          origine?: string | null
           partita_iva?: string | null
           ragione_sociale?: string | null
           registrato_sul_posto?: boolean | null
