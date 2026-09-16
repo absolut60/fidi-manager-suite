@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.trg_cancella_lead_evento_da_partecipante() FROM anon, authenticated, public;
