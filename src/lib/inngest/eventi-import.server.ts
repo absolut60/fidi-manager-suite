@@ -169,6 +169,25 @@ export const processEventiPartecipantiImport = inngest.createFunction(
 
       // STEP 2: riconoscimento + staging (file piccoli: passaggio unico)
       const esito = await step.run("riconosci-e-staging", async () => {
+        // Idempotenza: un ritentativo riparte pulito, senza duplicare le righe
+        const { error: delErr } = await withTimeout(
+          supabaseAdmin
+            .from("eventi_import_righe")
+            .delete()
+            .eq("importazione_id", importazioneId),
+          30_000,
+          "reset staging import",
+        );
+        if (delErr) throw new Error(`reset staging: ${delErr.message}`);
+        await withTimeout(
+          supabaseAdmin
+            .from("anomalie_import")
+            .delete()
+            .eq("importazione_id", importazioneId),
+          20_000,
+          "reset anomalie import",
+        );
+
         let create = 0;
         let scartate = 0;
         const errori: Array<{ riga: number; errore: string }> = [];
@@ -247,12 +266,12 @@ export const processEventiPartecipantiImport = inngest.createFunction(
               args: Record<string, unknown>,
             ) => PromiseLike<{ error: { message: string } | null }>
           )("increment_importazione_counters", {
-            _importazione_id: importazioneId,
-            _righe_elaborate: righe.length,
-            _righe_create: create,
-            _righe_aggiornate: 0,
-            _righe_errore: 0,
-            _righe_saltate: scartate,
+            _id: importazioneId,
+            _elaborate: righe.length,
+            _create: create,
+            _update: 0,
+            _error: 0,
+            _skipped: scartate,
           }),
           30_000,
           "increment_importazione_counters",
