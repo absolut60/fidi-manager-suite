@@ -213,7 +213,40 @@ export function DettaglioPartecipanteDialog({
     partecipante.ragione_sociale ||
     "Partecipante";
 
-  const daRiconciliare = !partecipante.cliente_id && !partecipante.lead_id;
+  const daRiconciliare =
+    !partecipante.cliente_id &&
+    (!partecipante.lead_id || partecipante.lead_evento_grezzo === true);
+
+  const cercaCandidatiFn = useServerFn(cercaCandidatiRiconciliazione);
+  const { data: candidati, isLoading: caricandoCandidati } = useQuery({
+    queryKey: ["candidati-riconciliazione", partecipante.id],
+    queryFn: () => cercaCandidatiFn({ data: { partecipanteId: partecipante.id } }),
+    enabled: open && daRiconciliare,
+  });
+
+  const onCollegaCandidato = async (c: { tipo: "cliente" | "lead"; id: string }) => {
+    setInCorso(true);
+    try {
+      const res = await riconciliaFn({
+        data: {
+          partecipanteId: partecipante.id,
+          clienteId: c.tipo === "cliente" ? c.id : undefined,
+          leadId: c.tipo === "lead" ? c.id : undefined,
+        },
+      });
+      if (res.ok === true) {
+        toast.success("Collegato");
+        await invalida();
+        onOpenChange(false);
+      } else {
+        toast.error(messaggioErrore(res.errore));
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Riconciliazione non riuscita");
+    } finally {
+      setInCorso(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
