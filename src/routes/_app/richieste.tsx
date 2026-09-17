@@ -785,6 +785,7 @@ function InApprovazioneTab({
               const g = giorniDa(r.data_invio);
               const livMio = canApprove && (isAdmin || livelloUtente >= Number(r.livello_richiesto ?? 99));
               const unread = msgNonLetti?.[r.id] ?? 0;
+              const nAltre = altreAttiveMap.get(r.cliente_id) ?? 0;
               return (
                 <SchedaLista
                   key={r.id}
@@ -806,6 +807,7 @@ function InApprovazioneTab({
                       <Badge variant="outline">L{r.livello_corrente}/{r.livello_richiesto}</Badge>
                       <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${attesaTone(g)}`}>{g}gg</span>
                       {unread > 0 && <span className="inline-flex items-center gap-1 rounded-md bg-info/15 text-info px-2 py-0.5 text-xs font-medium"><MessageSquare className="size-3" />{unread}</span>}
+                      {nAltre > 0 && <Badge variant="outline" className="text-warning border-warning/40 gap-1" title="Altra richiesta attiva o approvata-non-esportata per lo stesso cliente"><AlertCircle className="size-3" /> +{nAltre}</Badge>}
                     </>
                   }
                 />
@@ -836,6 +838,7 @@ function InApprovazioneTab({
                 const g = giorniDa(r.data_invio);
                 const livMio = canApprove && (isAdmin || livelloUtente >= Number(r.livello_richiesto ?? 99));
                 const unread = msgNonLetti?.[r.id] ?? 0;
+                const nAltre = altreAttiveMap.get(r.cliente_id) ?? 0;
                 return (
                   <TableRow
                     key={r.id}
@@ -847,7 +850,12 @@ function InApprovazioneTab({
                         <Checkbox checked={selected.has(r.id)} onCheckedChange={() => toggle(r.id)} disabled={!livMio} />
                       </TableCell>
                     )}
-                    <TableCell className="font-medium">{r.clienti?.ragione_sociale ?? "—"}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="inline-flex items-center gap-2">
+                        {r.clienti?.ragione_sociale ?? "—"}
+                        {nAltre > 0 && <Badge variant="outline" className="text-warning border-warning/40 gap-1 text-xs" title="Altra richiesta attiva o approvata-non-esportata per lo stesso cliente"><AlertCircle className="size-3" /> +{nAltre}</Badge>}
+                      </div>
+                    </TableCell>
                     {!isStoreManagerView(canApprove) && <TableCell className="text-sm text-muted-foreground">{r.clienti?.stores?.nome ?? "—"}</TableCell>}
                     <TableCell><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{TIPO_LABEL[r.tipo as TipoRichiesta]}</span></TableCell>
                     <TableCell className="text-right tabular-nums font-medium">{formatEuro(Number(r.importo_richiesto))}</TableCell>
