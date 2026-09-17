@@ -1120,6 +1120,7 @@ function StoricoTab({
               })}
             </TableBody>
           </Table>
+          </div>
         </Card>
       )}
     </div>
@@ -1227,6 +1228,7 @@ function TuttoTab({ rows, loading, msgCounts }: { rows: any[]; loading: boolean;
             ))}
           </TableBody>
         </Table>
+        </div>
       </Card>
     </div>
   );
