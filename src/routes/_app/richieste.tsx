@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, Outlet, useMatchRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Outlet, useMatchRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
@@ -44,7 +44,7 @@ import {
 } from "@/components/ui/select";
 import {
   STATO_LABEL, STATO_TONE, TIPO_LABEL, TIPO_TONE, calcolaLivello,
-  formatEuro, formatDate, type TipoRichiesta,
+  formatEuro, formatDate, type TipoRichiesta, isRichiestaAttiva,
 } from "@/lib/fidi";
 import { getFidoAttuale } from "@/lib/fido-cliente";
 import { RICHIESTA_FIDO_SELECT } from "@/lib/richieste-fido-data";
@@ -1324,6 +1324,20 @@ function RichiestaFormDialog({
   const clienteSel: any = clienteEdit ?? clientiSearch?.find((c) => c.id === form.cliente_id);
   const fidoAttuale = getFidoAttuale(clienteSel);
 
+  const { data: altreRichiesteAttive } = useQuery({
+    queryKey: ["richieste-attive-cliente", form.cliente_id, richiesta?.id],
+    enabled: !!form.cliente_id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("richieste_fido")
+        .select("id, tipo, stato, stato_export, importo_richiesto, created_at")
+        .eq("cliente_id", form.cliente_id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []).filter((r) => r.id !== richiesta?.id && isRichiestaAttiva(r));
+    },
+  });
+
   // Auto-calcolo TIPO in base al confronto Importo richiesto vs Fido attuale.
   // Regola: fido=0 -> nuovo_fido; importo>fido -> aumento; importo<fido -> diminuzione;
   // importo=fido -> aumento (default ragionevole, variazione 0).
@@ -1573,6 +1587,21 @@ function RichiestaFormDialog({
         {clienteSel && (
           <PannelloRischioCliente cliente={clienteSel} ultimoApprovatoImp={ultimoApprovatoImp} />
         )}
+
+        {!!altreRichiesteAttive?.length && (
+          <div className="rounded-md border border-warning/40 bg-warning/10 p-3 text-xs space-y-1.5">
+            <p className="font-medium flex items-center gap-1.5">
+              <AlertCircle className="size-3.5" /> {altreRichiesteAttive.length} altra{altreRichiesteAttive.length > 1 ? "e" : ""} richiesta{altreRichiesteAttive.length > 1 ? "e" : ""} attiva{altreRichiesteAttive.length > 1 ? "e" : ""} per questo cliente
+            </p>
+            {altreRichiesteAttive.map((r) => (
+              <div key={r.id} className="flex items-center justify-between gap-2">
+                <span>{TIPO_LABEL[r.tipo as TipoRichiesta]} · {STATO_LABEL[r.stato as keyof typeof STATO_LABEL]} · {formatEuro(Number(r.importo_richiesto))}</span>
+                <Link to="/richieste/$richiestaId" params={{ richiestaId: r.id }} target="_blank" rel="noopener" className="text-primary underline shrink-0">Apri ↗</Link>
+              </div>
+            ))}
+          </div>
+        )}
+
 
 
         <div className="grid grid-cols-2 gap-3">
