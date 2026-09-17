@@ -163,7 +163,8 @@ function FidiProcessarePage() {
       toast.error(`Errore nella generazione del file: ${e?.message ?? e}`);
       return;
     }
-    const ids = rows.map((r) => r.id);
+    const ids = result.includedRichiestaIds;
+    const escluse = rows.filter((r) => !ids.includes(r.id));
     try {
       await setStatoMutation.mutateAsync({
         ids,
@@ -185,6 +186,12 @@ function FidiProcessarePage() {
         },
       },
     );
+    if (escluse.length > 0) {
+      toast.warning(
+        `Attenzione: ${escluse.length} richiest${escluse.length === 1 ? "a" : "e"} escluse dal file perché il cliente aveva già un'altra richiesta più recente nella stessa esportazione: ${escluse.map(r => r.clienti?.ragione_sociale ?? "—").join(", ")}. Restano in stato "da esportare".`,
+        { duration: 15000 },
+      );
+    }
   }
 
   /** Rigenera il file SENZA aggiornare lo stato (per righe gia' esportate). */
