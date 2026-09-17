@@ -588,8 +588,57 @@ function RecuperoCreditiPage() {
 
       {/* Table */}
       <Card>
-        <div className="">
-          <Table>
+        <div className="md:hidden p-3">
+          {aggQuery.isLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-24 w-full" />)}
+            </div>
+          ) : pageRows.length === 0 ? (
+            <div className="text-center text-muted-foreground py-10 text-sm">Nessun cliente con azioni di recupero</div>
+          ) : (
+            <ElencoSchede>
+              {pageRows.map((r) => (
+                <SchedaLista
+                  key={r.cliente_id}
+                  onClick={() => navigate({ to: "/clienti/$clienteId", params: { clienteId: r.cliente_id }, search: { tab: "attivita" } as never })}
+                  colonneCampi={2}
+                  titolo={r.ragione_sociale}
+                  badge={
+                    r.in_ritardo ? (
+                      <Badge variant="destructive" className="gap-1"><AlertTriangle className="size-3" /> In ritardo</Badge>
+                    ) : r.azioni_aperte > 0 ? (
+                      <Badge className="bg-yellow-500 text-white hover:bg-yellow-500">Aperte</Badge>
+                    ) : (
+                      <Badge variant="secondary">Solo storico</Badge>
+                    )
+                  }
+                  campi={[
+                    { etichetta: "Scaduto", valore: (
+                      <span className={`tabular-nums font-semibold ${Number(r.totale_scaduto) > 0 ? "text-destructive" : ""}`}>{fmtEuro(r.totale_scaduto)}</span>
+                    ) },
+                    { etichetta: "Aperte", valore: r.azioni_aperte > 0 ? String(r.azioni_aperte) : "—" },
+                    { etichetta: "Prossima", valore: r.prossima_data ? (
+                      <span className="inline-flex items-center gap-1">{tipoLabel(r.prossima_tipo)} <span className={r.in_ritardo ? "text-destructive" : ""}>{fmtDateTime(r.prossima_data)}</span></span>
+                    ) : "—" },
+                    { etichetta: "Ultima", valore: r.ultima_fatta_data ? (
+                      <span className="inline-flex items-center gap-1">{tipoLabel(r.ultima_fatta_tipo)} {fmtDateTime(r.ultima_fatta_data)}</span>
+                    ) : "—" },
+                    { etichetta: "Store", valore: r.store_nome ?? "—" },
+                  ]}
+                  footer={
+                    <>
+                      <StadioBadge s={r} />
+                      {r.ha_promessa && <Badge className="bg-orange-500 text-white hover:bg-orange-500">Promessa {r.data_promessa ? fmtDate(r.data_promessa) : ""}</Badge>}
+                    </>
+                  }
+                />
+              ))}
+            </ElencoSchede>
+          )}
+        </div>
+
+        <div className="hidden md:block">
+          <Table className="min-w-[1150px]">
             <TableHeader>
               <TableRow>
                 <TableHead className="w-10" />
