@@ -1696,7 +1696,7 @@ function ClientiPage() {
 
 
           <div className="hidden md:block">
-            <Table>
+            <Table className="min-w-[1600px]">
               <TableHeader>
                 <TableRow>
                   {!isAgente && (
