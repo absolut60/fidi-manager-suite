@@ -756,7 +756,40 @@ function InApprovazioneTab({
               </div>
             </div>
           )}
-          <Table>
+          <ElencoSchede>
+            {filtered.map((r) => {
+              const g = giorniDa(r.data_invio);
+              const livMio = canApprove && (isAdmin || livelloUtente >= Number(r.livello_richiesto ?? 99));
+              const unread = msgNonLetti?.[r.id] ?? 0;
+              return (
+                <SchedaLista
+                  key={r.id}
+                  onClick={() => navigate({ to: "/richieste/$richiestaId", params: { richiestaId: r.id } })}
+                  colonneCampi={2}
+                  selezione={livMio ? { checked: selected.has(r.id), onChange: () => toggle(r.id) } : undefined}
+                  titolo={r.clienti?.ragione_sociale ?? "—"}
+                  badge={<span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{TIPO_LABEL[r.tipo as TipoRichiesta]}</span>}
+                  campi={[
+                    { etichetta: "Importo", valore: <span className="tabular-nums font-medium">{formatEuro(Number(r.importo_richiesto))}</span> },
+                    { etichetta: "Fido attuale", valore: <span className="tabular-nums">{formatEuro(getFidoAttuale(r.clienti))}</span> },
+                    { etichetta: "Tot. rischio", valore: <span className="tabular-nums">{formatEuro(Number(r.clienti?.totale_rischio ?? 0))}</span> },
+                    { etichetta: "Scaduto", valore: Number(r.clienti?.scaduto ?? 0) > 0 ? <span className="tabular-nums text-destructive">{formatEuro(Number(r.clienti?.scaduto))}</span> : "—" },
+                    { etichetta: "Store", valore: r.clienti?.stores?.nome ?? "—" },
+                    { etichetta: "Richiesto da", valore: userName((r as any).richiedente) },
+                  ]}
+                  footer={
+                    <>
+                      <Badge variant="outline">L{r.livello_corrente}/{r.livello_richiesto}</Badge>
+                      <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${attesaTone(g)}`}>{g}gg</span>
+                      {unread > 0 && <span className="inline-flex items-center gap-1 rounded-md bg-info/15 text-info px-2 py-0.5 text-xs font-medium"><MessageSquare className="size-3" />{unread}</span>}
+                    </>
+                  }
+                />
+              );
+            })}
+          </ElencoSchede>
+          <div className="hidden md:block">
+          <Table className="min-w-[1300px]">
             <TableHeader>
               <TableRow>
                 {canApprove && <TableHead className="w-8"><Checkbox checked={allSel} onCheckedChange={() => setSelected(allSel ? new Set() : new Set(filtered.map((r) => r.id)))} /></TableHead>}
