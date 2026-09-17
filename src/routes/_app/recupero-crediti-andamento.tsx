@@ -151,7 +151,7 @@ function AndamentoPage() {
           </Card>
         ) : (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
               <KpiCard label="Totale scaduto" value={fmtEuro(Number(ultimo.totale_scaduto))} />
               <KpiCard label="A scadere" value={fmtEuro(Number(ultimo.totale_a_scadere))} />
               <KpiCard label="Clienti con scaduto" value={String(ultimo.n_clienti_con_scaduto)} />
@@ -414,7 +414,7 @@ function DsoSection({
         <DsoMetricCard label="Scollamento (reale − teorico)" pond={scollP} medio={scollM} accent="scoll" />
       </div>
 
-      <div className="grid grid-cols-3 gap-3 mb-5">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
         <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/30 p-3">
           <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">Pagati in anticipo</p>
           <p className="text-lg font-bold mt-1">{pct(Number(dso.importo_anticipo), Number(dso.all_importo))}</p>
