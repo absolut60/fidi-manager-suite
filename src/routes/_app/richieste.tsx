@@ -51,6 +51,7 @@ import { RICHIESTA_FIDO_SELECT } from "@/lib/richieste-fido-data";
 import { NuovaComunicazioneDialog } from "@/components/nuova-comunicazione-dialog";
 import { PannelloRischioCliente } from "@/components/pannello-rischio-cliente";
 import { semaforoUI, semaforoDaCliente } from "@/lib/semaforo-ui";
+import { SchedaLista, ElencoSchede } from "@/components/lista-responsive";
 
 export const Route = createFileRoute("/_app/richieste")({
   component: RichiestePage,
@@ -477,7 +478,29 @@ function BozzeTab({
           </Button>
         </div>
       )}
-      <Table>
+      <ElencoSchede>
+        {rows.map((r) => (
+          <SchedaLista
+            key={r.id}
+            onClick={() => navigate({ to: "/richieste/$richiestaId", params: { richiestaId: r.id } })}
+            colonneCampi={2}
+            selezione={{ checked: selected.has(r.id), onChange: () => toggle(r.id) }}
+            titolo={r.clienti?.ragione_sociale ?? "—"}
+            badge={<span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{TIPO_LABEL[r.tipo as TipoRichiesta]}</span>}
+            campi={[
+              { etichetta: "Importo rich.", valore: <span className="tabular-nums">{formatEuro(Number(r.importo_richiesto))}</span> },
+              { etichetta: "Fido attuale", valore: <span className="tabular-nums">{formatEuro(getFidoAttuale(r.clienti))}</span> },
+              { etichetta: "Richiesto da", valore: userName((r as any).richiedente) },
+              { etichetta: "Data", valore: formatDate(r.created_at) },
+            ]}
+            footer={(msgCounts?.[r.id] ?? 0) > 0 ? (
+              <span className="inline-flex items-center gap-1 rounded-md bg-info/15 text-info px-2 py-0.5 text-xs font-medium"><MessageSquare className="size-3" />{msgCounts![r.id]}</span>
+            ) : undefined}
+          />
+        ))}
+      </ElencoSchede>
+      <div className="hidden md:block">
+      <Table className="min-w-[900px]">
         <TableHeader>
           <TableRow>
             <TableHead className="w-8"><Checkbox checked={allSel} onCheckedChange={() => setSelected(allSel ? new Set() : new Set(rows.map((r) => r.id)))} /></TableHead>
