@@ -14,6 +14,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { SchedaLista, ElencoSchede } from "@/components/lista-responsive";
 
 export const Route = createFileRoute("/_app/legali")({
   component: PraticheLegaliPage,
@@ -219,7 +220,7 @@ function PraticheLegaliPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <Card className="p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-md bg-destructive/10 text-destructive"><Gavel className="size-5" /></div>
@@ -332,60 +333,95 @@ function PraticheLegaliPage() {
         ) : rows.length === 0 ? (
           <div className="p-12 text-center text-sm text-muted-foreground">Nessuna pratica trovata</div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Store</TableHead>
-                <TableHead>Origine</TableHead>
-                <TableHead>Categoria / Tipo</TableHead>
-                <TableHead>Stato</TableHead>
-                <TableHead className="text-right">Importo</TableHead>
-                <TableHead>Apertura</TableHead>
-                <TableHead>Avvocato</TableHead>
-                <TableHead>Ultimo agg.</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((r) => {
-                const tone = r.origine === "gestionale"
-                  ? { label: "Gestionale", cls: "bg-blue-600 text-white" }
-                  : statoTone(r.stato);
-                return (
-                  <TableRow
-                    key={r.id}
-                    className="cursor-pointer hover:bg-muted/40"
-                    onClick={() => navigate({
-                      to: "/clienti/$clienteId",
-                      params: { clienteId: r.cliente_id },
-                      search: { tab: "insoluti", insolutiTab: "legali" },
-                    })}
-                  >
-                    <TableCell className="font-medium">{r.ragione_sociale}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{r.store_nome ?? "—"}</TableCell>
-                    <TableCell>
-                      <Badge variant={r.origine === "gestionale" ? "secondary" : "outline"} className="capitalize">
-                        {r.origine}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {r.categoria ? (
-                        <Badge className={categoriaTone(r.categoria)}>{r.categoria}</Badge>
-                      ) : "—"}
-                    </TableCell>
-                    <TableCell><Badge className={tone.cls}>{tone.label}</Badge></TableCell>
-                    <TableCell className="text-right tabular-nums">{fmtEuro(r.importo)}</TableCell>
-                    <TableCell>{fmtDate(r.data_apertura)}</TableCell>
-                    <TableCell>
-                      {r.avvocato ?? "—"}
-                      {r.numero_fascicolo && <div className="text-xs text-muted-foreground">Fasc. {r.numero_fascicolo}</div>}
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{fmtDate(r.ultimo_aggiornamento)}</TableCell>
+          <>
+            <div className="md:hidden divide-y">
+              <ElencoSchede>
+                {rows.map((r) => {
+                  const tone = r.origine === "gestionale"
+                    ? { label: "Gestionale", cls: "bg-blue-600 text-white" }
+                    : statoTone(r.stato);
+                  return (
+                    <SchedaLista
+                      key={r.id}
+                      onClick={() => navigate({
+                        to: "/clienti/$clienteId",
+                        params: { clienteId: r.cliente_id },
+                        search: { tab: "insoluti", insolutiTab: "legali" },
+                      })}
+                      colonneCampi={2}
+                      titolo={r.ragione_sociale}
+                      badge={<Badge className={tone.cls}>{tone.label}</Badge>}
+                      campi={[
+                        { etichetta: "Categoria", valore: r.categoria ? <Badge className={categoriaTone(r.categoria)}>{r.categoria}</Badge> : "—" },
+                        { etichetta: "Importo", valore: <span className="tabular-nums">{fmtEuro(r.importo)}</span> },
+                        { etichetta: "Apertura", valore: fmtDate(r.data_apertura) },
+                        { etichetta: "Store", valore: r.store_nome ?? "—" },
+                        { etichetta: "Avvocato", valore: r.avvocato ?? "—" },
+                        { etichetta: "Ultimo agg.", valore: fmtDate(r.ultimo_aggiornamento) },
+                      ]}
+                      footer={r.numero_fascicolo ? <Badge variant="outline">Fasc. {r.numero_fascicolo}</Badge> : undefined}
+                    />
+                  );
+                })}
+              </ElencoSchede>
+            </div>
+            <div className="hidden md:block">
+              <Table className="min-w-[1100px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Store</TableHead>
+                    <TableHead>Origine</TableHead>
+                    <TableHead>Categoria / Tipo</TableHead>
+                    <TableHead>Stato</TableHead>
+                    <TableHead className="text-right">Importo</TableHead>
+                    <TableHead>Apertura</TableHead>
+                    <TableHead>Avvocato</TableHead>
+                    <TableHead>Ultimo agg.</TableHead>
                   </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                </TableHeader>
+                <TableBody>
+                  {rows.map((r) => {
+                    const tone = r.origine === "gestionale"
+                      ? { label: "Gestionale", cls: "bg-blue-600 text-white" }
+                      : statoTone(r.stato);
+                    return (
+                      <TableRow
+                        key={r.id}
+                        className="cursor-pointer hover:bg-muted/40"
+                        onClick={() => navigate({
+                          to: "/clienti/$clienteId",
+                          params: { clienteId: r.cliente_id },
+                          search: { tab: "insoluti", insolutiTab: "legali" },
+                        })}
+                      >
+                        <TableCell className="font-medium">{r.ragione_sociale}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{r.store_nome ?? "—"}</TableCell>
+                        <TableCell>
+                          <Badge variant={r.origine === "gestionale" ? "secondary" : "outline"} className="capitalize">
+                            {r.origine}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {r.categoria ? (
+                            <Badge className={categoriaTone(r.categoria)}>{r.categoria}</Badge>
+                          ) : "—"}
+                        </TableCell>
+                        <TableCell><Badge className={tone.cls}>{tone.label}</Badge></TableCell>
+                        <TableCell className="text-right tabular-nums">{fmtEuro(r.importo)}</TableCell>
+                        <TableCell>{fmtDate(r.data_apertura)}</TableCell>
+                        <TableCell>
+                          {r.avvocato ?? "—"}
+                          {r.numero_fascicolo && <div className="text-xs text-muted-foreground">Fasc. {r.numero_fascicolo}</div>}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{fmtDate(r.ultimo_aggiornamento)}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </>
         )}
       </Card>
     </div>
