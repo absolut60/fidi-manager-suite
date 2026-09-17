@@ -363,7 +363,7 @@ function ApprovazioniPage() {
 
       {/* TOOLBAR SELEZIONE */}
       {selected.size > 0 && (
-        <Card className="p-3 sm:p-4 bg-info/5 border-info/30 sticky top-2 z-10">
+        <Card className="p-3 sm:p-4 bg-info/5 border-info/30 sticky top-16 lg:top-2 z-10">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-3">
               <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
@@ -371,7 +371,7 @@ function ApprovazioniPage() {
                 {selected.size} selezionate · totale {formatEuro(totaleSelezionato)}
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button size="sm" variant="outline" onClick={() => setSelected(new Set())}>Annulla</Button>
               <Button size="sm" variant="outline" className="text-destructive border-destructive/30"
                 onClick={() => setAction("rifiuta")}>

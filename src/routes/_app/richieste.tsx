@@ -716,11 +716,11 @@ function InApprovazioneTab({
       ) : (
         <Card className="p-2 sm:p-3">
           {canApprove && selected.size > 0 && (
-            <div className="flex items-center justify-between gap-3 p-3 mb-2 bg-primary/5 rounded-md sticky top-2 z-10">
-              <p className="text-sm font-medium">
+            <div className="flex flex-wrap items-center justify-between gap-3 p-3 mb-2 bg-primary/5 rounded-md sticky top-16 lg:top-2 z-10">
+              <p className="text-sm font-medium min-w-0">
                 {selected.size} selezionate · {formatEuro(filtered.filter((r) => selected.has(r.id)).reduce((s, r) => s + Number(r.importo_richiesto), 0))}
               </p>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button size="sm" variant="outline" className="text-destructive border-destructive/30"
                   onClick={() => setAction({ kind: "rifiuta", rows: filtered.filter((r) => selected.has(r.id)) })}>
                   <X className="size-4" /> Rifiuta
