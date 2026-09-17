@@ -19,6 +19,7 @@ import {
 import { searchClienti } from "@/lib/preventivi-api";
 import { NuovoPreventivoDialog } from "@/components/preventivatore/NuovoPreventivoDialog";
 import { EvasioneBadge } from "@/components/preventivatore/EvasioneBadge";
+import { SchedaLista, ElencoSchede } from "@/components/lista-responsive";
 import { computeEvasione } from "@/lib/evasione";
 
 
