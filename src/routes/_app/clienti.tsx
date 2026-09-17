@@ -3317,12 +3317,12 @@ function StepImpresa({
         <Input value={form.indirizzo} onChange={(e) => set("indirizzo", e.target.value)} />
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-[1fr_2fr_1fr] sm:grid-cols-4 gap-4">
         <div className="space-y-1.5">
           <Label>CAP</Label>
           <Input value={form.cap} onChange={(e) => set("cap", e.target.value)} />
         </div>
-        <div className="space-y-1.5 col-span-2">
+        <div className="space-y-1.5 sm:col-span-2">
           <Label>Città</Label>
           <Input value={form.citta} onChange={(e) => set("citta", e.target.value)} />
         </div>
