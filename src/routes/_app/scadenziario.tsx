@@ -6,6 +6,7 @@ import { InvioMassivoDialog } from "@/components/invio-massivo-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { FiltriCollassabili, SchedaLista, ElencoSchede } from "@/components/lista-responsive";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -160,6 +161,18 @@ function ScadenziarioPage() {
   const annoCorrente = useMemo(() => new Date().getFullYear(), []);
   const annoPrec = annoCorrente - 1;
   const minImp = Number(importoMin) || 0;
+  const filtriAttivi = [
+    searchDebounced !== "",
+    !isStoreManager && storeId !== "all",
+    agenteFiltro !== "tutti",
+    fascia !== "tutte",
+    minImp > 0,
+    statoBlocco !== "tutti",
+    statoLegale !== "tutti",
+    avvisatoFilter !== "tutti",
+    mostraACredito,
+  ].filter(Boolean).length;
+
 
   const commonParams = useMemo(() => ({
     p_search: searchDebounced || null,
@@ -347,7 +360,9 @@ function ScadenziarioPage() {
       )}
 
       {/* Filtri */}
-      <Card className="p-4 space-y-4">
+      <Card className="p-4">
+        <FiltriCollassabili attivi={filtriAttivi}>
+        <div className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
           <div className="lg:col-span-2">
             <label className="text-xs font-medium text-muted-foreground">Cerca cliente</label>
@@ -465,6 +480,8 @@ function ScadenziarioPage() {
             )}
           </div>
         </div>
+        </div>
+        </FiltriCollassabili>
       </Card>
 
       {/* Barra azioni selezione */}
@@ -519,7 +536,54 @@ function ScadenziarioPage() {
           <Card className="p-8 text-center text-sm text-muted-foreground">Nessun cliente con scadenze aperte</Card>
         ) : (
           <Card>
-            <Table>
+            <div className="md:hidden p-3">
+              <ElencoSchede>
+                {pageRows.map((r) => {
+                  const totScad = Number(r.tot_scaduto ?? 0);
+                  const totAScad = Number(r.tot_a_scadere ?? 0);
+                  return (
+                    <SchedaLista
+                      key={r.cliente_id}
+                      onClick={() => apriCliente(r.cliente_id)}
+                      colonneCampi={2}
+                      selezione={{
+                        checked: selectedIds.has(r.cliente_id),
+                        onChange: (v) => {
+                          const next = new Set(selectedIds);
+                          if (v) next.add(r.cliente_id); else next.delete(r.cliente_id);
+                          setSelectedIds(next);
+                        },
+                      }}
+                      titolo={r.ragione_sociale}
+                      badge={fasciaBadge(r.fascia)}
+                      campi={[
+                        { etichetta: "Scaduto", valore: (
+                          <span className={`tabular-nums font-semibold ${totScad < 0 ? "text-emerald-700 dark:text-emerald-400" : totScad > 0 ? "text-destructive" : ""}`}>
+                            {totScad !== 0 ? fmtEuro(totScad) : "—"}
+                          </span>
+                        ) },
+                        { etichetta: "A scadere", valore: <span className="tabular-nums">{totAScad > 0 ? fmtEuro(totAScad) : "—"}</span> },
+                        { etichetta: "N. scadute", valore: r.n_scadute || "—" },
+                        { etichetta: "Prossima", valore: fmtDate(r.prossima_scadenza) },
+                        { etichetta: "Store", valore: r.store_nome ?? "—" },
+                        { etichetta: "Cod.", valore: r.codice_gestionale ?? "—" },
+                      ]}
+                      footer={
+                        <>
+                          {blockBadge(r)}
+                          {legaleBadge(r)}
+                          {totScad < 0 && <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">A credito</Badge>}
+                          {r.ha_promessa && <Badge variant="outline" className="text-orange-600 border-orange-300">Promessa</Badge>}
+                          {r.ha_piano_rientro && <Badge variant="outline" className="text-emerald-600 border-emerald-300">Piano rientro</Badge>}
+                        </>
+                      }
+                    />
+                  );
+                })}
+              </ElencoSchede>
+            </div>
+            <div className="hidden md:block">
+            <Table className="min-w-[1200px]">
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-10">
@@ -680,6 +744,7 @@ function ScadenziarioPage() {
                 })}
               </TableBody>
             </Table>
+            </div>
 
             {/* Paginazione */}
             <div className="flex items-center justify-between px-4 py-3 border-t text-sm">
