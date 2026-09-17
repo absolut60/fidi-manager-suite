@@ -2001,6 +2001,7 @@ function ClientiPage() {
 
 type RigaProposta = {
   cliente_id: string;
+  store_id: string | null;
   ragione_sociale: string;
   fido_attuale: number;
   esposizione: number;
@@ -2065,6 +2066,7 @@ function ProposteFidoMassivoDialog({
 
         return {
           cliente_id: c.id,
+          store_id: c.store_id ?? null,
           ragione_sociale: c.ragione_sociale,
           fido_attuale: attuale,
           esposizione: Number(c.totale_rischio ?? 0),
@@ -2154,6 +2156,7 @@ function ProposteFidoMassivoDialog({
           : (r.motivazione.trim() === "" ? null : r.motivazione);
         return {
           cliente_id: r.cliente_id,
+          store_id: r.store_id,
           tipo: r.tipo,
           importo_richiesto: r.fido_proposto,
           stato,
