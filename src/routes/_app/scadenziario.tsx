@@ -536,7 +536,54 @@ function ScadenziarioPage() {
           <Card className="p-8 text-center text-sm text-muted-foreground">Nessun cliente con scadenze aperte</Card>
         ) : (
           <Card>
-            <Table>
+            <div className="md:hidden p-3">
+              <ElencoSchede>
+                {pageRows.map((r) => {
+                  const totScad = Number(r.tot_scaduto ?? 0);
+                  const totAScad = Number(r.tot_a_scadere ?? 0);
+                  return (
+                    <SchedaLista
+                      key={r.cliente_id}
+                      onClick={() => apriCliente(r.cliente_id)}
+                      colonneCampi={2}
+                      selezione={{
+                        checked: selectedIds.has(r.cliente_id),
+                        onChange: (v) => {
+                          const next = new Set(selectedIds);
+                          if (v) next.add(r.cliente_id); else next.delete(r.cliente_id);
+                          setSelectedIds(next);
+                        },
+                      }}
+                      titolo={r.ragione_sociale}
+                      badge={fasciaBadge(r.fascia)}
+                      campi={[
+                        { etichetta: "Scaduto", valore: (
+                          <span className={`tabular-nums font-semibold ${totScad < 0 ? "text-emerald-700 dark:text-emerald-400" : totScad > 0 ? "text-destructive" : ""}`}>
+                            {totScad !== 0 ? fmtEuro(totScad) : "—"}
+                          </span>
+                        ) },
+                        { etichetta: "A scadere", valore: <span className="tabular-nums">{totAScad > 0 ? fmtEuro(totAScad) : "—"}</span> },
+                        { etichetta: "N. scadute", valore: r.n_scadute || "—" },
+                        { etichetta: "Prossima", valore: fmtDate(r.prossima_scadenza) },
+                        { etichetta: "Store", valore: r.store_nome ?? "—" },
+                        { etichetta: "Cod.", valore: r.codice_gestionale ?? "—" },
+                      ]}
+                      footer={
+                        <>
+                          {blockBadge(r)}
+                          {legaleBadge(r)}
+                          {totScad < 0 && <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">A credito</Badge>}
+                          {r.ha_promessa && <Badge variant="outline" className="text-orange-600 border-orange-300">Promessa</Badge>}
+                          {r.ha_piano_rientro && <Badge variant="outline" className="text-emerald-600 border-emerald-300">Piano rientro</Badge>}
+                        </>
+                      }
+                    />
+                  );
+                })}
+              </ElencoSchede>
+            </div>
+            <div className="hidden md:block">
+            <Table className="min-w-[1200px]">
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-10">
