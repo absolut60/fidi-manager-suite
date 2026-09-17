@@ -223,7 +223,7 @@ export function RichiesteTable({
 
       <div className="hidden md:block rounded-md border">
 
-        <Table>
+        <Table className="min-w-[1000px]">
           <TableHeader>
             <TableRow>
               <SortHead active={sortKey === "title"} dir={sortDir} onClick={() => toggleSort("title")}>Richiesta</SortHead>

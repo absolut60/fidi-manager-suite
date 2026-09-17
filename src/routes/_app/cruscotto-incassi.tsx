@@ -344,7 +344,7 @@ function CruscottoIncassiPage() {
 
         {/* Totali anno */}
         <Card className="p-4">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
             <TotBox label="Dovuto anno" value={fmtEuro(totali.dovuto)} />
             <TotBox
               label="Incassato"
@@ -429,7 +429,7 @@ function CruscottoIncassiPage() {
             </div>
 
             {/* 4 riquadri: Dovuto, Incassato, Scaduto, A scadere */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
               <MetricButton
                 label="Dovuto"
                 value={fmtEuro(dettaglioMese.dovuto)}
