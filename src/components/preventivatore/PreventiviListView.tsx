@@ -152,53 +152,88 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
         </div>
 
         <div className="rounded-md border bg-card">
-          <Table>
-            <TableHeader>
-              <TableRow className="text-xs uppercase tracking-wide">
-                <TableHead className="w-32">Numero</TableHead>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Cantiere</TableHead>
-                <TableHead className="w-28">Data</TableHead>
-                {!isOrdine && <TableHead className="w-40">Tipo doc</TableHead>}
-                <TableHead className="w-28">Stato</TableHead>
-                <TableHead className="w-32 text-right">Totale</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow><TableCell colSpan={isOrdine ? 6 : 7} className="py-8 text-center text-sm text-muted-foreground">Caricamento…</TableCell></TableRow>
-              ) : rows.length === 0 ? (
-                <TableRow><TableCell colSpan={isOrdine ? 6 : 7} className="py-8 text-center text-sm text-muted-foreground">{labelEmpty}</TableCell></TableRow>
-              ) : (
-                rows.map((r) => (
-                  <TableRow
+          <div className="md:hidden divide-y">
+            {isLoading ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">Caricamento…</div>
+            ) : rows.length === 0 ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">{labelEmpty}</div>
+            ) : (
+              <ElencoSchede>
+                {rows.map((r) => (
+                  <SchedaLista
                     key={r.id}
                     onClick={() => navigate({ to: "/preventivatore/$id", params: { id: r.id } })}
-                    className="cursor-pointer text-sm hover:bg-muted/50"
-                  >
-                    <TableCell className="font-mono">{r.numero ?? "—"}</TableCell>
-                    <TableCell className="truncate">{r.cliente?.ragione_sociale ?? "—"}</TableCell>
-                    <TableCell className="truncate text-muted-foreground">{r.cantiere?.nome ?? "—"}</TableCell>
-                    <TableCell className="font-mono text-xs">{r.data}</TableCell>
-                    {!isOrdine && <TableCell className="text-xs">{TIPI_DOC_LABEL[r.tipo_doc]}</TableCell>}
-                    <TableCell>
-                      {isOrdine ? (
+                    colonneCampi={2}
+                    titolo={`${r.numero ?? "—"} · ${r.cliente?.ragione_sociale ?? "—"}`}
+                    badge={
+                      isOrdine ? (
                         <Badge variant={r.stato === "confermato" ? "default" : r.stato === "inviato" ? "secondary" : "outline"}>
                           {STATI_LABEL[r.stato]}
                         </Badge>
                       ) : (
-                        <EvasioneBadge
-                          stato={computeEvasione((r.blocchi ?? []).flatMap((b) => b.righe ?? []))}
-                        />
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right font-mono">€ {Number(r.totale ?? 0).toFixed(2)}</TableCell>
-                  </TableRow>
-                ))
+                        <EvasioneBadge stato={computeEvasione((r.blocchi ?? []).flatMap((b) => b.righe ?? []))} />
+                      )
+                    }
+                    campi={[
+                      { etichetta: "Cantiere", valore: r.cantiere?.nome ?? "—" },
+                      { etichetta: "Data", valore: r.data },
+                      ...(!isOrdine ? [{ etichetta: "Tipo doc", valore: TIPI_DOC_LABEL[r.tipo_doc] }] : []),
+                      { etichetta: "Totale", valore: <span className="tabular-nums font-medium">€ {Number(r.totale ?? 0).toFixed(2)}</span> },
+                    ]}
+                  />
+                ))}
+              </ElencoSchede>
+            )}
+          </div>
+          <div className="hidden md:block">
+            <Table className="min-w-[800px]">
+              <TableHeader>
+                <TableRow className="text-xs uppercase tracking-wide">
+                  <TableHead className="w-32">Numero</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Cantiere</TableHead>
+                  <TableHead className="w-28">Data</TableHead>
+                  {!isOrdine && <TableHead className="w-40">Tipo doc</TableHead>}
+                  <TableHead className="w-28">Stato</TableHead>
+                  <TableHead className="w-32 text-right">Totale</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow><TableCell colSpan={isOrdine ? 6 : 7} className="py-8 text-center text-sm text-muted-foreground">Caricamento…</TableCell></TableRow>
+                ) : rows.length === 0 ? (
+                  <TableRow><TableCell colSpan={isOrdine ? 6 : 7} className="py-8 text-center text-sm text-muted-foreground">{labelEmpty}</TableCell></TableRow>
+                ) : (
+                  rows.map((r) => (
+                    <TableRow
+                      key={r.id}
+                      onClick={() => navigate({ to: "/preventivatore/$id", params: { id: r.id } })}
+                      className="cursor-pointer text-sm hover:bg-muted/50"
+                    >
+                      <TableCell className="font-mono">{r.numero ?? "—"}</TableCell>
+                      <TableCell className="truncate">{r.cliente?.ragione_sociale ?? "—"}</TableCell>
+                      <TableCell className="truncate text-muted-foreground">{r.cantiere?.nome ?? "—"}</TableCell>
+                      <TableCell className="font-mono text-xs">{r.data}</TableCell>
+                      {!isOrdine && <TableCell className="text-xs">{TIPI_DOC_LABEL[r.tipo_doc]}</TableCell>}
+                      <TableCell>
+                        {isOrdine ? (
+                          <Badge variant={r.stato === "confermato" ? "default" : r.stato === "inviato" ? "secondary" : "outline"}>
+                            {STATI_LABEL[r.stato]}
+                          </Badge>
+                        ) : (
+                          <EvasioneBadge
+                            stato={computeEvasione((r.blocchi ?? []).flatMap((b) => b.righe ?? []))}
+                          />
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">€ {Number(r.totale ?? 0).toFixed(2)}</TableCell>
+                    </TableRow>
+                  ))
 
-              )}
-            </TableBody>
-          </Table>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       </div>
 
