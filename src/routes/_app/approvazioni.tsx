@@ -737,9 +737,9 @@ function ApprovazioniPage() {
 
 function Riga({ label, v, danger }: { label: string; v: string; danger?: boolean }) {
   return (
-    <div className="flex items-baseline gap-1.5 min-w-0">
+    <div className="flex flex-col sm:flex-row sm:items-baseline sm:gap-1.5 min-w-0">
       <span className="text-muted-foreground shrink-0">{label}:</span>
-      <span className={`tabular-nums truncate font-medium ${danger ? "text-destructive" : ""}`}>{v}</span>
+      <span className={`tabular-nums break-words font-medium ${danger ? "text-destructive" : ""}`}>{v}</span>
     </div>
   );
 }
