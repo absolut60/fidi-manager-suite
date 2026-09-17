@@ -169,7 +169,7 @@ function ContattoFormFields({
     <div className="space-y-4">
       <div className="space-y-3">
         <h4 className="text-sm font-semibold">Dati anagrafici</h4>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label>Nome *</Label>
             <Input value={form.nome} onChange={(e) => set("nome", e.target.value)} />
@@ -195,7 +195,7 @@ function ContattoFormFields({
 
       <div className="space-y-3 border-t pt-3">
         <h4 className="text-sm font-semibold">Recapiti</h4>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label>Email</Label>
             <Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} />
@@ -214,7 +214,7 @@ function ContattoFormFields({
 
       <div className="space-y-3 border-t pt-3">
         <h4 className="text-sm font-semibold">Dati personali</h4>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label>Luogo di nascita</Label>
             <Input

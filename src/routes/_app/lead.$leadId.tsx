@@ -367,7 +367,7 @@ function LeadDettaglioPage() {
           >
             <ArrowLeft className="size-4" /> Lead
           </Link>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mt-1 truncate">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mt-1 break-words">
             {nomeLead(lead)}
           </h1>
           <div className="flex flex-wrap items-center gap-2 mt-2">

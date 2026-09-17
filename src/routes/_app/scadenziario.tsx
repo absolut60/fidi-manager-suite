@@ -912,7 +912,7 @@ function CellInfo({ label, value, cls, hint }: { label: string; value: string; c
   return (
     <div className="min-w-0">
       <p className="text-[10px] font-medium text-muted-foreground uppercase truncate">{label}</p>
-      <p className={`tabular-nums truncate ${cls ?? ""}`}>{value}{hint && <span className="text-[10px] text-muted-foreground ml-1">{hint}</span>}</p>
+      <p className={`tabular-nums break-words ${cls ?? ""}`}>{value}{hint && <span className="text-[10px] text-muted-foreground ml-1">{hint}</span>}</p>
     </div>
   );
 }
@@ -1014,7 +1014,7 @@ function AzioneRecuperoDialog({
         <div className="space-y-4">
           <div className="space-y-2">
             <Label>Tipo azione</Label>
-            <RadioGroup value={tipo} onValueChange={(v) => setTipo(v as typeof tipo)} className="grid grid-cols-3 gap-2">
+            <RadioGroup value={tipo} onValueChange={(v) => setTipo(v as typeof tipo)} className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {(["email", "telefonata", "promemoria"] as const).map((t) => (
                 <label
                   key={t}
