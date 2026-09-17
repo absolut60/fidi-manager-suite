@@ -6,6 +6,7 @@ import { InvioMassivoDialog } from "@/components/invio-massivo-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { FiltriCollassabili, SchedaLista, ElencoSchede } from "@/components/lista-responsive";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -160,6 +161,18 @@ function ScadenziarioPage() {
   const annoCorrente = useMemo(() => new Date().getFullYear(), []);
   const annoPrec = annoCorrente - 1;
   const minImp = Number(importoMin) || 0;
+  const filtriAttivi = [
+    searchDebounced !== "",
+    !isStoreManager && storeId !== "all",
+    agenteFiltro !== "tutti",
+    fascia !== "tutte",
+    minImp > 0,
+    statoBlocco !== "tutti",
+    statoLegale !== "tutti",
+    avvisatoFilter !== "tutti",
+    mostraACredito,
+  ].filter(Boolean).length;
+
 
   const commonParams = useMemo(() => ({
     p_search: searchDebounced || null,
@@ -347,7 +360,9 @@ function ScadenziarioPage() {
       )}
 
       {/* Filtri */}
-      <Card className="p-4 space-y-4">
+      <Card className="p-4">
+        <FiltriCollassabili attivi={filtriAttivi}>
+        <div className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
           <div className="lg:col-span-2">
             <label className="text-xs font-medium text-muted-foreground">Cerca cliente</label>
@@ -465,6 +480,8 @@ function ScadenziarioPage() {
             )}
           </div>
         </div>
+        </div>
+        </FiltriCollassabili>
       </Card>
 
       {/* Barra azioni selezione */}
