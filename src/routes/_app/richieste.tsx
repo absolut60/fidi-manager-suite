@@ -621,6 +621,30 @@ function InApprovazioneTab({
     .filter((r) => !giorniMin || giorniDa(r.data_invio) >= Number(giorniMin))
     .sort((a, b) => Number(b.importo_richiesto) - Number(a.importo_richiesto));
 
+  const clienteIdsInCoda = useMemo(() => Array.from(new Set(rows.map((r) => r.cliente_id))), [rows]);
+  const { data: altreApprovateNonEsportate } = useQuery({
+    queryKey: ["altre-approvate-non-esportate", clienteIdsInCoda.slice().sort().join(",")],
+    enabled: clienteIdsInCoda.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("richieste_fido")
+        .select("id, cliente_id, stato, stato_export")
+        .in("cliente_id", clienteIdsInCoda)
+        .eq("stato", "approvata")
+        .neq("stato_export", "processata");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const altreAttiveMap = useMemo(() => {
+    const map = new Map<string, number>();
+    const countByCliente = new Map<string, number>();
+    rows.forEach((r) => countByCliente.set(r.cliente_id, (countByCliente.get(r.cliente_id) ?? 0) + 1));
+    countByCliente.forEach((n, cid) => { if (n > 1) map.set(cid, (map.get(cid) ?? 0) + n - 1); });
+    (altreApprovateNonEsportate ?? []).forEach((r) => map.set(r.cliente_id, (map.get(r.cliente_id) ?? 0) + 1));
+    return map;
+  }, [rows, altreApprovateNonEsportate]);
+
   function toggle(id: string) {
     const next = new Set(selected);
     next.has(id) ? next.delete(id) : next.add(id);
