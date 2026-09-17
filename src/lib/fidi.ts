@@ -86,3 +86,18 @@ export function formatDate(d: string | null | undefined) {
     year: "numeric",
   });
 }
+
+export const STATI_RICHIESTA_NON_TERMINALI = [
+  "bozza", "in_approvazione", "in_attesa_liv1", "in_attesa_liv2", "in_attesa_liv3", "integrazioni_richieste",
+] as const;
+
+/**
+ * Vero se la richiesta e' ancora "attiva" operativamente: non rifiutata/annullata,
+ * e se approvata non ancora processata (importata nel gestionale). Fonte unica
+ * per l'avviso di richieste multiple sullo stesso cliente.
+ */
+export function isRichiestaAttiva(r: { stato: string; stato_export?: string | null }): boolean {
+  if ((STATI_RICHIESTA_NON_TERMINALI as readonly string[]).includes(r.stato)) return true;
+  if (r.stato === "approvata" && r.stato_export !== "processata") return true;
+  return false;
+}
