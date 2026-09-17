@@ -1,7 +1,8 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, Fragment } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, CalendarClock as CalendarClockIcon } from "lucide-react";
+import { FiltriCollassabili, SchedaLista, ElencoSchede } from "@/components/lista-responsive";
 import { CreaAzioneDialog } from "@/components/crea-azione-dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
@@ -423,6 +424,18 @@ function RecuperoCreditiPage() {
     };
   }, [aggQuery.data]);
 
+  const navigate = useNavigate();
+  const filtriAttivi = [
+    searchDebounced !== "",
+    esitoFilter.size > 0,
+    tipoFilter.size > 0,
+    !isRistretto && storeId !== "all",
+    !isRistretto && operatoreId !== "all",
+    stadioFilter !== "all",
+    !!dataDa,
+    !!dataA,
+  ].filter(Boolean).length;
+
   return (
     <TooltipProvider delayDuration={200}>
       <div className="space-y-6">
@@ -496,6 +509,7 @@ function RecuperoCreditiPage() {
 
       {/* Filters */}
       <Card className="p-4">
+        <FiltriCollassabili attivi={filtriAttivi}>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3">
           <div className="lg:col-span-2">
             <div className="relative">
@@ -569,12 +583,62 @@ function RecuperoCreditiPage() {
           <DateRangePicker label="Da" date={dataDa} onChange={setDataDa} />
           <DateRangePicker label="A" date={dataA} onChange={setDataA} />
         </div>
+        </FiltriCollassabili>
       </Card>
 
       {/* Table */}
       <Card>
-        <div className="">
-          <Table>
+        <div className="md:hidden p-3">
+          {aggQuery.isLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-24 w-full" />)}
+            </div>
+          ) : pageRows.length === 0 ? (
+            <div className="text-center text-muted-foreground py-10 text-sm">Nessun cliente con azioni di recupero</div>
+          ) : (
+            <ElencoSchede>
+              {pageRows.map((r) => (
+                <SchedaLista
+                  key={r.cliente_id}
+                  onClick={() => navigate({ to: "/clienti/$clienteId", params: { clienteId: r.cliente_id }, search: { tab: "attivita" } as never })}
+                  colonneCampi={2}
+                  titolo={r.ragione_sociale}
+                  badge={
+                    r.in_ritardo ? (
+                      <Badge variant="destructive" className="gap-1"><AlertTriangle className="size-3" /> In ritardo</Badge>
+                    ) : r.azioni_aperte > 0 ? (
+                      <Badge className="bg-yellow-500 text-white hover:bg-yellow-500">Aperte</Badge>
+                    ) : (
+                      <Badge variant="secondary">Solo storico</Badge>
+                    )
+                  }
+                  campi={[
+                    { etichetta: "Scaduto", valore: (
+                      <span className={`tabular-nums font-semibold ${Number(r.totale_scaduto) > 0 ? "text-destructive" : ""}`}>{fmtEuro(r.totale_scaduto)}</span>
+                    ) },
+                    { etichetta: "Aperte", valore: r.azioni_aperte > 0 ? String(r.azioni_aperte) : "—" },
+                    { etichetta: "Prossima", valore: r.prossima_data ? (
+                      <span className="inline-flex items-center gap-1">{tipoLabel(r.prossima_tipo)} <span className={r.in_ritardo ? "text-destructive" : ""}>{fmtDateTime(r.prossima_data)}</span></span>
+                    ) : "—" },
+                    { etichetta: "Ultima", valore: r.ultima_fatta_data ? (
+                      <span className="inline-flex items-center gap-1">{tipoLabel(r.ultima_fatta_tipo)} {fmtDateTime(r.ultima_fatta_data)}</span>
+                    ) : "—" },
+                    { etichetta: "Store", valore: r.store_nome ?? "—" },
+                  ]}
+                  footer={
+                    <>
+                      <StadioBadge s={r} />
+                      {r.ha_promessa && <Badge className="bg-orange-500 text-white hover:bg-orange-500">Promessa {r.data_promessa ? fmtDate(r.data_promessa) : ""}</Badge>}
+                    </>
+                  }
+                />
+              ))}
+            </ElencoSchede>
+          )}
+        </div>
+
+        <div className="hidden md:block">
+          <Table className="min-w-[1150px]">
             <TableHeader>
               <TableRow>
                 <TableHead className="w-10" />
