@@ -31,6 +31,7 @@ import {
   type StatoExport,
 } from "@/lib/fidi-export";
 import { generaTracciatoFidiGestionale } from "@/lib/export-fidi-tracciato";
+import { FiltriCollassabili } from "@/components/lista-responsive";
 import { Undo2 } from "lucide-react";
 
 export const Route = createFileRoute("/_app/fidi-processare")({
@@ -315,6 +316,9 @@ function GestireTab({
   const [statoFilter, setStatoFilter] = useState<string>("all");
   const [dataDa, setDataDa] = useState("");
   const [dataA, setDataA] = useState("");
+  const [search, setSearch] = useState("");
+
+  const filtriAttivi = [search.trim() !== "", storeFilter !== "all", statoFilter !== "all", !!dataDa, !!dataA].filter(Boolean).length;
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [erroreDialog, setErroreDialog] = useState<any | null>(null);
   const [erroreNote, setErroreNote] = useState("");
@@ -327,9 +331,14 @@ function GestireTab({
       const d = (r.data_chiusura ?? r.updated_at)?.slice(0, 10) ?? "";
       if (dataDa && d < dataDa) return false;
       if (dataA && d > dataA) return false;
+      if (search.trim()) {
+        const q = search.trim().toLowerCase();
+        const hay = [r.clienti?.ragione_sociale, r.clienti?.codice_gestionale, r.clienti?.codice_assegnato, r.clienti?.partita_iva].filter(Boolean).join(" ").toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
       return true;
     });
-  }, [rows, storeFilter, statoFilter, dataDa, dataA]);
+  }, [rows, storeFilter, statoFilter, dataDa, dataA, search]);
 
   const allChecked = filtered.length > 0 && filtered.every((r) => selected.has(r.id));
   const someChecked = selected.size > 0;
@@ -350,29 +359,37 @@ function GestireTab({
 
   return (
     <div className="space-y-3">
-      <Card className="p-3 flex flex-wrap items-center gap-2">
-        <Select value={storeFilter} onValueChange={setStoreFilter}>
-          <SelectTrigger className="flex-1 min-w-[160px] sm:flex-none sm:w-44"><SelectValue placeholder="Store" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tutti gli store</SelectItem>
-            {stores.map((s) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={statoFilter} onValueChange={setStatoFilter}>
-          <SelectTrigger className="flex-1 min-w-[160px] sm:flex-none sm:w-44"><SelectValue placeholder="Stato export" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tutti gli stati</SelectItem>
-            <SelectItem value="da_esportare">Da esportare</SelectItem>
-            <SelectItem value="esportata">Esportata</SelectItem>
-            <SelectItem value="errore_export">Errore</SelectItem>
-          </SelectContent>
-        </Select>
-        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-          <Label className="text-xs">Dal</Label>
-          <Input type="date" value={dataDa} onChange={(e) => setDataDa(e.target.value)} className="flex-1 min-w-[140px] sm:flex-none sm:w-40" />
-          <Label className="text-xs">al</Label>
-          <Input type="date" value={dataA} onChange={(e) => setDataA(e.target.value)} className="flex-1 min-w-[140px] sm:flex-none sm:w-40" />
-        </div>
+      <Card className="p-3">
+        <FiltriCollassabili
+          attivi={filtriAttivi}
+          azioni={<Button variant="ghost" size="sm" onClick={() => { setSearch(""); setStoreFilter("all"); setStatoFilter("all"); setDataDa(""); setDataA(""); }} className="h-7 text-xs">Reset</Button>}
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <Input placeholder="Cerca ragione sociale, cod. gestionale o P.IVA..." value={search} onChange={(e) => setSearch(e.target.value)} className="flex-1 min-w-[220px]" />
+            <Select value={storeFilter} onValueChange={setStoreFilter}>
+              <SelectTrigger className="flex-1 min-w-[160px] sm:flex-none sm:w-44"><SelectValue placeholder="Store" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tutti gli store</SelectItem>
+                {stores.map((s) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={statoFilter} onValueChange={setStatoFilter}>
+              <SelectTrigger className="flex-1 min-w-[160px] sm:flex-none sm:w-44"><SelectValue placeholder="Stato export" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tutti gli stati</SelectItem>
+                <SelectItem value="da_esportare">Da esportare</SelectItem>
+                <SelectItem value="esportata">Esportata</SelectItem>
+                <SelectItem value="errore_export">Errore</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+              <Label className="text-xs">Dal</Label>
+              <Input type="date" value={dataDa} onChange={(e) => setDataDa(e.target.value)} className="flex-1 min-w-[140px] sm:flex-none sm:w-40" />
+              <Label className="text-xs">al</Label>
+              <Input type="date" value={dataA} onChange={(e) => setDataA(e.target.value)} className="flex-1 min-w-[140px] sm:flex-none sm:w-40" />
+            </div>
+          </div>
+        </FiltriCollassabili>
       </Card>
 
       {someChecked && (

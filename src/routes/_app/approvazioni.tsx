@@ -26,6 +26,7 @@ import { formatEuro, formatDate, TIPO_LABEL, TIPO_TONE, type TipoRichiesta } fro
 import { getFidoAttuale } from "@/lib/fido-cliente";
 import { RICHIESTA_FIDO_SELECT } from "@/lib/richieste-fido-data";
 import { semaforoUI, semaforoDaCliente } from "@/lib/semaforo-ui";
+import { FiltriCollassabili } from "@/components/lista-responsive";
 import { NuovaComunicazioneDialog } from "@/components/nuova-comunicazione-dialog";
 
 export const Route = createFileRoute("/_app/approvazioni")({
@@ -87,6 +88,7 @@ function ApprovazioniPage() {
   const [fSem, setFSem] = useState("all");
   const [fAttesa, setFAttesa] = useState("all");
   const [sort, setSort] = useState<"importo_desc" | "data_asc" | "attesa_desc">("importo_desc");
+  const [fSearch, setFSearch] = useState("");
 
   const { data: stores } = useQuery({
     queryKey: ["stores-all"],
@@ -167,6 +169,11 @@ function ApprovazioniPage() {
     const min = fMin ? Number(fMin) : null;
     const max = fMax ? Number(fMax) : null;
     let out = list.filter((r) => {
+      if (fSearch.trim()) {
+        const q = fSearch.trim().toLowerCase();
+        const hay = `${r.clienti?.ragione_sociale ?? ""} ${r.clienti?.partita_iva ?? ""}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
       if (fStore !== "all" && r.clienti?.store_id !== fStore) return false;
       if (fTipo !== "all" && r.tipo !== fTipo) return false;
       if (fLivello !== "all" && String(r.livello_corrente) !== fLivello) return false;
@@ -188,7 +195,7 @@ function ApprovazioniPage() {
       return giorniDa(b.data_invio) - giorniDa(a.data_invio);
     });
     return out;
-  }, [data, fStore, fTipo, fLivello, fMin, fMax, fSem, fAttesa, sort]);
+  }, [data, fSearch, fStore, fTipo, fLivello, fMin, fMax, fSem, fAttesa, sort]);
 
   const richiesteApprovabili = useMemo(
     () => richieste.filter((r) => canApproveRow(r)),
@@ -205,10 +212,12 @@ function ApprovazioniPage() {
     setSelected(allSelected ? new Set() : new Set(richiesteApprovabili.map((r) => r.id)));
   }
   function clearFilters() {
+    setFSearch("");
     setFStore("all"); setFTipo("all"); setFLivello("all");
     setFMin(""); setFMax(""); setFSem("all"); setFAttesa("all");
   }
   const numFiltriAttivi =
+    (fSearch.trim() !== "" ? 1 : 0) +
     (fStore !== "all" ? 1 : 0) + (fTipo !== "all" ? 1 : 0) + (fLivello !== "all" ? 1 : 0) +
     (fMin ? 1 : 0) + (fMax ? 1 : 0) + (fSem !== "all" ? 1 : 0) + (fAttesa !== "all" ? 1 : 0);
 
@@ -291,16 +300,15 @@ function ApprovazioniPage() {
 
       {/* FILTRI */}
       <Card className="p-3 sm:p-4">
-        <div className="flex items-center gap-2 mb-3 text-sm font-medium">
-          <FilterIcon className="size-4" /> Filtri
-          {numFiltriAttivi > 0 && (
-            <>
-              <Badge variant="secondary">{numFiltriAttivi} attivi</Badge>
-              <Button variant="ghost" size="sm" onClick={clearFilters} className="ml-auto h-7 text-xs">Reset</Button>
-            </>
-          )}
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        <FiltriCollassabili
+          attivi={numFiltriAttivi}
+          azioni={<Button variant="ghost" size="sm" onClick={clearFilters} className="h-7 text-xs">Reset</Button>}
+        >
+          <div className="mb-3">
+            <Label className="text-xs">Cerca</Label>
+            <Input placeholder="Ragione sociale o P.IVA..." value={fSearch} onChange={(e) => setFSearch(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
           <div>
             <Label className="text-xs">Store</Label>
             <Select value={fStore} onValueChange={setFStore}>
