@@ -706,9 +706,9 @@ function InApprovazioneTab({
             <SelectItem value="rinnovo">Rinnovo</SelectItem>
           </SelectContent>
         </Select>
-        <Input className="flex-1 min-w-[140px] sm:flex-none sm:w-28" type="number" placeholder="Importo min" value={importoMin} onChange={(e) => setImportoMin(e.target.value)} />
-        <Input className="flex-1 min-w-[140px] sm:flex-none sm:w-28" type="number" placeholder="Importo max" value={importoMax} onChange={(e) => setImportoMax(e.target.value)} />
-        <Input className="flex-1 min-w-[140px] sm:flex-none sm:w-32" type="number" placeholder="Giorni attesa ≥" value={giorniMin} onChange={(e) => setGiorniMin(e.target.value)} />
+        <Input className="flex-1 min-w-[140px] sm:flex-none sm:min-w-0 sm:w-28" type="number" placeholder="Importo min" value={importoMin} onChange={(e) => setImportoMin(e.target.value)} />
+        <Input className="flex-1 min-w-[140px] sm:flex-none sm:min-w-0 sm:w-28" type="number" placeholder="Importo max" value={importoMax} onChange={(e) => setImportoMax(e.target.value)} />
+        <Input className="flex-1 min-w-[140px] sm:flex-none sm:min-w-0 sm:w-32" type="number" placeholder="Giorni attesa ≥" value={giorniMin} onChange={(e) => setGiorniMin(e.target.value)} />
       </Card>
 
       {filtered.length === 0 ? (
