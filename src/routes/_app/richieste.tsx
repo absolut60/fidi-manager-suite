@@ -876,6 +876,7 @@ function InApprovazioneTab({
               })}
             </TableBody>
           </Table>
+          </div>
         </Card>
       )}
 
