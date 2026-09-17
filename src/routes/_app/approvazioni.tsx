@@ -440,6 +440,7 @@ function ApprovazioniPage() {
             const scaduto = Number(c.scaduto ?? 0);
             const unread = msgNonLetti?.[r.id] ?? 0;
             const canAct = canApproveRow(r);
+            const nAltre = altreAttiveMap.get(r.cliente_id) ?? 0;
             return (
               <Card key={r.id} className={`p-4 transition-shadow ${isSel ? "border-primary bg-primary/5" : "hover:shadow-md hover:border-primary/30"} ${!canAct ? "opacity-90" : ""}`}>
                 <div className="flex items-start gap-3">
@@ -486,6 +487,7 @@ function ApprovazioniPage() {
                               {unread} non letti
                             </span>
                           )}
+                          {nAltre > 0 && <Badge variant="outline" className="text-warning border-warning/40 gap-1" title="Altra richiesta attiva o approvata-non-esportata per lo stesso cliente"><span className="text-xs">⚠ +{nAltre} attiv{nAltre > 1 ? "e" : "a"}</span></Badge>}
                         </div>
                         <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1 text-xs">
                           <Riga label="Fido gestionale" v={formatEuro(Number(c.fido_gestionale ?? 0))} />
