@@ -111,6 +111,30 @@ function ApprovazioniPage() {
     enabled: true,
   });
 
+  const clienteIdsInCoda = useMemo(() => Array.from(new Set((data ?? []).map((r: any) => r.cliente_id))), [data]);
+  const { data: altreApprovateNonEsportate } = useQuery({
+    queryKey: ["altre-approvate-non-esportate-appr", clienteIdsInCoda.slice().sort().join(",")],
+    enabled: clienteIdsInCoda.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("richieste_fido")
+        .select("id, cliente_id, stato, stato_export")
+        .in("cliente_id", clienteIdsInCoda)
+        .eq("stato", "approvata")
+        .neq("stato_export", "processata");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const altreAttiveMap = useMemo(() => {
+    const map = new Map<string, number>();
+    const countByCliente = new Map<string, number>();
+    (data ?? []).forEach((r: any) => countByCliente.set(r.cliente_id, (countByCliente.get(r.cliente_id) ?? 0) + 1));
+    countByCliente.forEach((n, cid) => { if (n > 1) map.set(cid, (map.get(cid) ?? 0) + n - 1); });
+    (altreApprovateNonEsportate ?? []).forEach((r) => map.set(r.cliente_id, (map.get(r.cliente_id) ?? 0) + 1));
+    return map;
+  }, [data, altreApprovateNonEsportate]);
+
   // Posso approvare/rifiutare questa richiesta?
   // mio_livello >= livello_richiesto (cascata) oppure admin.
   function canApproveRow(r: any): boolean {
@@ -416,6 +440,7 @@ function ApprovazioniPage() {
             const scaduto = Number(c.scaduto ?? 0);
             const unread = msgNonLetti?.[r.id] ?? 0;
             const canAct = canApproveRow(r);
+            const nAltre = altreAttiveMap.get(r.cliente_id) ?? 0;
             return (
               <Card key={r.id} className={`p-4 transition-shadow ${isSel ? "border-primary bg-primary/5" : "hover:shadow-md hover:border-primary/30"} ${!canAct ? "opacity-90" : ""}`}>
                 <div className="flex items-start gap-3">
@@ -462,6 +487,7 @@ function ApprovazioniPage() {
                               {unread} non letti
                             </span>
                           )}
+                          {nAltre > 0 && <Badge variant="outline" className="text-warning border-warning/40 gap-1" title="Altra richiesta attiva o approvata-non-esportata per lo stesso cliente"><span className="text-xs">⚠ +{nAltre} attiv{nAltre > 1 ? "e" : "a"}</span></Badge>}
                         </div>
                         <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1 text-xs">
                           <Riga label="Fido gestionale" v={formatEuro(Number(c.fido_gestionale ?? 0))} />

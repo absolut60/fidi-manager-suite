@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, Outlet, useMatchRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Outlet, useMatchRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
@@ -44,7 +44,7 @@ import {
 } from "@/components/ui/select";
 import {
   STATO_LABEL, STATO_TONE, TIPO_LABEL, TIPO_TONE, calcolaLivello,
-  formatEuro, formatDate, type TipoRichiesta,
+  formatEuro, formatDate, type TipoRichiesta, isRichiestaAttiva,
 } from "@/lib/fidi";
 import { getFidoAttuale } from "@/lib/fido-cliente";
 import { RICHIESTA_FIDO_SELECT } from "@/lib/richieste-fido-data";
@@ -621,6 +621,30 @@ function InApprovazioneTab({
     .filter((r) => !giorniMin || giorniDa(r.data_invio) >= Number(giorniMin))
     .sort((a, b) => Number(b.importo_richiesto) - Number(a.importo_richiesto));
 
+  const clienteIdsInCoda = useMemo(() => Array.from(new Set(rows.map((r) => r.cliente_id))), [rows]);
+  const { data: altreApprovateNonEsportate } = useQuery({
+    queryKey: ["altre-approvate-non-esportate", clienteIdsInCoda.slice().sort().join(",")],
+    enabled: clienteIdsInCoda.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("richieste_fido")
+        .select("id, cliente_id, stato, stato_export")
+        .in("cliente_id", clienteIdsInCoda)
+        .eq("stato", "approvata")
+        .neq("stato_export", "processata");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const altreAttiveMap = useMemo(() => {
+    const map = new Map<string, number>();
+    const countByCliente = new Map<string, number>();
+    rows.forEach((r) => countByCliente.set(r.cliente_id, (countByCliente.get(r.cliente_id) ?? 0) + 1));
+    countByCliente.forEach((n, cid) => { if (n > 1) map.set(cid, (map.get(cid) ?? 0) + n - 1); });
+    (altreApprovateNonEsportate ?? []).forEach((r) => map.set(r.cliente_id, (map.get(r.cliente_id) ?? 0) + 1));
+    return map;
+  }, [rows, altreApprovateNonEsportate]);
+
   function toggle(id: string) {
     const next = new Set(selected);
     next.has(id) ? next.delete(id) : next.add(id);
@@ -761,6 +785,7 @@ function InApprovazioneTab({
               const g = giorniDa(r.data_invio);
               const livMio = canApprove && (isAdmin || livelloUtente >= Number(r.livello_richiesto ?? 99));
               const unread = msgNonLetti?.[r.id] ?? 0;
+              const nAltre = altreAttiveMap.get(r.cliente_id) ?? 0;
               return (
                 <SchedaLista
                   key={r.id}
@@ -782,6 +807,7 @@ function InApprovazioneTab({
                       <Badge variant="outline">L{r.livello_corrente}/{r.livello_richiesto}</Badge>
                       <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${attesaTone(g)}`}>{g}gg</span>
                       {unread > 0 && <span className="inline-flex items-center gap-1 rounded-md bg-info/15 text-info px-2 py-0.5 text-xs font-medium"><MessageSquare className="size-3" />{unread}</span>}
+                      {nAltre > 0 && <Badge variant="outline" className="text-warning border-warning/40 gap-1" title="Altra richiesta attiva o approvata-non-esportata per lo stesso cliente"><AlertCircle className="size-3" /> +{nAltre}</Badge>}
                     </>
                   }
                 />
@@ -812,6 +838,7 @@ function InApprovazioneTab({
                 const g = giorniDa(r.data_invio);
                 const livMio = canApprove && (isAdmin || livelloUtente >= Number(r.livello_richiesto ?? 99));
                 const unread = msgNonLetti?.[r.id] ?? 0;
+                const nAltre = altreAttiveMap.get(r.cliente_id) ?? 0;
                 return (
                   <TableRow
                     key={r.id}
@@ -823,7 +850,12 @@ function InApprovazioneTab({
                         <Checkbox checked={selected.has(r.id)} onCheckedChange={() => toggle(r.id)} disabled={!livMio} />
                       </TableCell>
                     )}
-                    <TableCell className="font-medium">{r.clienti?.ragione_sociale ?? "—"}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="inline-flex items-center gap-2">
+                        {r.clienti?.ragione_sociale ?? "—"}
+                        {nAltre > 0 && <Badge variant="outline" className="text-warning border-warning/40 gap-1 text-xs" title="Altra richiesta attiva o approvata-non-esportata per lo stesso cliente"><AlertCircle className="size-3" /> +{nAltre}</Badge>}
+                      </div>
+                    </TableCell>
                     {!isStoreManagerView(canApprove) && <TableCell className="text-sm text-muted-foreground">{r.clienti?.stores?.nome ?? "—"}</TableCell>}
                     <TableCell><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{TIPO_LABEL[r.tipo as TipoRichiesta]}</span></TableCell>
                     <TableCell className="text-right tabular-nums font-medium">{formatEuro(Number(r.importo_richiesto))}</TableCell>
@@ -1324,6 +1356,20 @@ function RichiestaFormDialog({
   const clienteSel: any = clienteEdit ?? clientiSearch?.find((c) => c.id === form.cliente_id);
   const fidoAttuale = getFidoAttuale(clienteSel);
 
+  const { data: altreRichiesteAttive } = useQuery({
+    queryKey: ["richieste-attive-cliente", form.cliente_id, richiesta?.id],
+    enabled: !!form.cliente_id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("richieste_fido")
+        .select("id, tipo, stato, stato_export, importo_richiesto, created_at")
+        .eq("cliente_id", form.cliente_id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []).filter((r) => r.id !== richiesta?.id && isRichiestaAttiva(r));
+    },
+  });
+
   // Auto-calcolo TIPO in base al confronto Importo richiesto vs Fido attuale.
   // Regola: fido=0 -> nuovo_fido; importo>fido -> aumento; importo<fido -> diminuzione;
   // importo=fido -> aumento (default ragionevole, variazione 0).
@@ -1573,6 +1619,21 @@ function RichiestaFormDialog({
         {clienteSel && (
           <PannelloRischioCliente cliente={clienteSel} ultimoApprovatoImp={ultimoApprovatoImp} />
         )}
+
+        {!!altreRichiesteAttive?.length && (
+          <div className="rounded-md border border-warning/40 bg-warning/10 p-3 text-xs space-y-1.5">
+            <p className="font-medium flex items-center gap-1.5">
+              <AlertCircle className="size-3.5" /> {altreRichiesteAttive.length} altra{altreRichiesteAttive.length > 1 ? "e" : ""} richiesta{altreRichiesteAttive.length > 1 ? "e" : ""} attiva{altreRichiesteAttive.length > 1 ? "e" : ""} per questo cliente
+            </p>
+            {altreRichiesteAttive.map((r) => (
+              <div key={r.id} className="flex items-center justify-between gap-2">
+                <span>{TIPO_LABEL[r.tipo as TipoRichiesta]} · {STATO_LABEL[r.stato as keyof typeof STATO_LABEL]} · {formatEuro(Number(r.importo_richiesto))}</span>
+                <Link to="/richieste/$richiestaId" params={{ richiestaId: r.id }} target="_blank" rel="noopener" className="text-primary underline shrink-0">Apri ↗</Link>
+              </div>
+            ))}
+          </div>
+        )}
+
 
 
         <div className="grid grid-cols-2 gap-3">
