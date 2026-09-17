@@ -689,7 +689,7 @@ function InApprovazioneTab({
       <Card className="p-3 flex flex-wrap gap-2 items-center">
         {stores.length > 1 && (
           <Select value={storeFilter} onValueChange={setStoreFilter}>
-            <SelectTrigger className="w-44"><SelectValue placeholder="Store" /></SelectTrigger>
+            <SelectTrigger className="flex-1 min-w-[160px] sm:flex-none sm:w-44"><SelectValue placeholder="Store" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="tutti">Tutti gli store</SelectItem>
               {stores.map(([id, nome]) => <SelectItem key={id} value={id}>{nome}</SelectItem>)}
@@ -697,7 +697,7 @@ function InApprovazioneTab({
           </Select>
         )}
         <Select value={tipoFilter} onValueChange={setTipoFilter}>
-          <SelectTrigger className="w-40"><SelectValue placeholder="Tipo" /></SelectTrigger>
+          <SelectTrigger className="flex-1 min-w-[160px] sm:flex-none sm:w-40"><SelectValue placeholder="Tipo" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="tutti">Tutti i tipi</SelectItem>
             <SelectItem value="nuovo">Nuovo fido</SelectItem>
@@ -706,9 +706,9 @@ function InApprovazioneTab({
             <SelectItem value="rinnovo">Rinnovo</SelectItem>
           </SelectContent>
         </Select>
-        <Input className="w-28" type="number" placeholder="Importo min" value={importoMin} onChange={(e) => setImportoMin(e.target.value)} />
-        <Input className="w-28" type="number" placeholder="Importo max" value={importoMax} onChange={(e) => setImportoMax(e.target.value)} />
-        <Input className="w-32" type="number" placeholder="Giorni attesa ≥" value={giorniMin} onChange={(e) => setGiorniMin(e.target.value)} />
+        <Input className="flex-1 min-w-[140px] sm:flex-none sm:w-28" type="number" placeholder="Importo min" value={importoMin} onChange={(e) => setImportoMin(e.target.value)} />
+        <Input className="flex-1 min-w-[140px] sm:flex-none sm:w-28" type="number" placeholder="Importo max" value={importoMax} onChange={(e) => setImportoMax(e.target.value)} />
+        <Input className="flex-1 min-w-[140px] sm:flex-none sm:w-32" type="number" placeholder="Giorni attesa ≥" value={giorniMin} onChange={(e) => setGiorniMin(e.target.value)} />
       </Card>
 
       {filtered.length === 0 ? (
