@@ -1,7 +1,8 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, Fragment } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, CalendarClock as CalendarClockIcon } from "lucide-react";
+import { FiltriCollassabili, SchedaLista, ElencoSchede } from "@/components/lista-responsive";
 import { CreaAzioneDialog } from "@/components/crea-azione-dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
@@ -422,6 +423,18 @@ function RecuperoCreditiPage() {
       ritardo: rows.filter((r) => r.in_ritardo).length,
     };
   }, [aggQuery.data]);
+
+  const navigate = useNavigate();
+  const filtriAttivi = [
+    searchDebounced !== "",
+    esitoFilter.size > 0,
+    tipoFilter.size > 0,
+    !isRistretto && storeId !== "all",
+    !isRistretto && operatoreId !== "all",
+    stadioFilter !== "all",
+    !!dataDa,
+    !!dataA,
+  ].filter(Boolean).length;
 
   return (
     <TooltipProvider delayDuration={200}>
