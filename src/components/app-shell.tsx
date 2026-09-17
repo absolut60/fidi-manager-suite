@@ -352,6 +352,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     });
   }
 
+  // Blocco dello scroll di fondo quando il menu mobile è aperto
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileOpen]);
+
+  // Chiusura del menu mobile con il tasto Esc
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [mobileOpen]);
+
   async function handleLogout() {
     await supabase.auth.signOut();
     toast.success("Disconnesso");
