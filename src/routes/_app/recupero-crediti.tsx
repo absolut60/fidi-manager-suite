@@ -583,6 +583,7 @@ function RecuperoCreditiPage() {
           <DateRangePicker label="Da" date={dataDa} onChange={setDataDa} />
           <DateRangePicker label="A" date={dataA} onChange={setDataA} />
         </div>
+        </FiltriCollassabili>
       </Card>
 
       {/* Table */}
