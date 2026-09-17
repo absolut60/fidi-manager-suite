@@ -14,6 +14,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { SchedaLista, ElencoSchede } from "@/components/lista-responsive";
 
 export const Route = createFileRoute("/_app/legali")({
   component: PraticheLegaliPage,
@@ -219,7 +220,7 @@ function PraticheLegaliPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <Card className="p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-md bg-destructive/10 text-destructive"><Gavel className="size-5" /></div>
