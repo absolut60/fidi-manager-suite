@@ -557,6 +557,7 @@ function BozzeTab({
           ))}
         </TableBody>
       </Table>
+      </div>
     </Card>
   );
 }
