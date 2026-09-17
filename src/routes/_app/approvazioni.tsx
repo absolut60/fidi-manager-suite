@@ -390,7 +390,7 @@ function ApprovazioniPage() {
               </SelectContent>
             </Select>
           </div>
-        </div>
+        </FiltriCollassabili>
       </Card>
 
       {/* TOOLBAR SELEZIONE */}
