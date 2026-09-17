@@ -1016,7 +1016,38 @@ function StoricoTab({
         <Empty label={kind === "approvata" ? "Nessuna richiesta approvata" : "Nessuna richiesta rifiutata"} hint="" />
       ) : (
         <Card className="p-2 sm:p-3">
-          <Table>
+          <ElencoSchede>
+            {filtered.map((r) => {
+              const se = r.stato_export as ("da_esportare"|"esportata"|"processata"|"errore_export"|null);
+              const exportLabel: Record<string,string> = { da_esportare:"Da esportare", esportata:"Esportata", processata:"Processata", errore_export:"Errore" };
+              const exportTone: Record<string,string> = { da_esportare:"bg-info/15 text-info", esportata:"bg-warning/15 text-warning", processata:"bg-success/15 text-success", errore_export:"bg-destructive/15 text-destructive" };
+              return (
+                <SchedaLista
+                  key={r.id}
+                  onClick={() => navigate({ to: "/richieste/$richiestaId", params: { richiestaId: r.id } })}
+                  colonneCampi={2}
+                  titolo={r.clienti?.ragione_sociale ?? "—"}
+                  badge={<span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{TIPO_LABEL[r.tipo as TipoRichiesta]}</span>}
+                  campi={[
+                    { etichetta: "Importo rich.", valore: <span className="tabular-nums">{formatEuro(Number(r.importo_richiesto))}</span> },
+                    ...(kind === "approvata" ? [{ etichetta: "Importo appr.", valore: <span className="tabular-nums text-success font-medium">{formatEuro(Number(r.importo_approvato ?? r.importo_richiesto))}</span> }] : []),
+                    ...(kind === "rifiutata" ? [{ etichetta: "Motivo", valore: <span className="break-words">{r.note ?? r.motivazione ?? "—"}</span> }] : []),
+                    { etichetta: "Richiesto da", valore: userName((r as any).richiedente) },
+                    { etichetta: kind === "approvata" ? "Approvato da" : "Deciso da", valore: userName((r as any).approvatore) },
+                    { etichetta: "Data", valore: formatDate(r.data_chiusura ?? r.created_at) },
+                  ]}
+                  footer={
+                    <>
+                      {kind === "approvata" && se && <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${exportTone[se]}`}>{exportLabel[se]}</span>}
+                      {(msgCounts?.[r.id] ?? 0) > 0 && <span className="inline-flex items-center gap-1 rounded-md bg-info/15 text-info px-2 py-0.5 text-xs font-medium"><MessageSquare className="size-3" />{msgCounts![r.id]}</span>}
+                    </>
+                  }
+                />
+              );
+            })}
+          </ElencoSchede>
+          <div className="hidden md:block">
+          <Table className="min-w-[1000px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Cliente</TableHead>
@@ -1089,6 +1120,7 @@ function StoricoTab({
               })}
             </TableBody>
           </Table>
+          </div>
         </Card>
       )}
     </div>
@@ -1126,7 +1158,33 @@ function TuttoTab({ rows, loading, msgCounts }: { rows: any[]; loading: boolean;
         </Select>
       </Card>
       <Card className="p-2 sm:p-3">
-        <Table>
+        <ElencoSchede>
+          {filtered.map((r) => (
+            <SchedaLista
+              key={r.id}
+              onClick={() => navigate({ to: "/richieste/$richiestaId", params: { richiestaId: r.id } })}
+              colonneCampi={2}
+              titolo={r.clienti?.ragione_sociale ?? "—"}
+              badge={<span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${STATO_TONE[r.stato as keyof typeof STATO_TONE]}`}>{STATO_LABEL[r.stato as keyof typeof STATO_LABEL]}</span>}
+              campi={[
+                { etichetta: "Store", valore: r.clienti?.stores?.nome ?? "—" },
+                { etichetta: "Importo", valore: <span className="tabular-nums">{formatEuro(Number(r.importo_richiesto))}</span> },
+                { etichetta: "Liv.", valore: `L${r.livello_corrente}/${r.livello_richiesto}` },
+                { etichetta: "Richiesto da", valore: userName((r as any).richiedente) },
+                { etichetta: "Approvato da", valore: userName((r as any).approvatore) },
+                { etichetta: "Data", valore: formatDate(r.created_at) },
+              ]}
+              footer={
+                <>
+                  <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{TIPO_LABEL[r.tipo as TipoRichiesta]}</span>
+                  {(msgCounts?.[r.id] ?? 0) > 0 && <span className="inline-flex items-center gap-1 rounded-md bg-info/15 text-info px-2 py-0.5 text-xs font-medium"><MessageSquare className="size-3" />{msgCounts![r.id]}</span>}
+                </>
+              }
+            />
+          ))}
+        </ElencoSchede>
+        <div className="hidden md:block">
+        <Table className="min-w-[1000px]">
           <TableHeader>
             <TableRow>
               <TableHead>Cliente</TableHead>
@@ -1170,6 +1228,7 @@ function TuttoTab({ rows, loading, msgCounts }: { rows: any[]; loading: boolean;
             ))}
           </TableBody>
         </Table>
+        </div>
       </Card>
     </div>
   );
