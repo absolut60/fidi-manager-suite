@@ -1384,12 +1384,12 @@ function MiniStat({
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p
-            className={`${size === "md" ? "text-[11px]" : "text-[10px]"} font-medium text-muted-foreground uppercase truncate`}
+            className={`${size === "md" ? "text-[11px]" : "text-[10px]"} font-medium text-muted-foreground uppercase`}
           >
             {label}
           </p>
           <p
-            className={`${size === "md" ? "text-[17px] sm:text-[19px]" : "text-[13px] sm:text-[15px]"} font-bold mt-0.5 tabular-nums whitespace-nowrap leading-tight ${valCls}`}
+            className={`${size === "md" ? "text-[17px] sm:text-[19px]" : "text-[13px] sm:text-[15px]"} font-bold mt-0.5 tabular-nums break-words leading-tight ${valCls}`}
           >
             {value}
           </p>

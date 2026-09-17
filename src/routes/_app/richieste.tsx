@@ -253,7 +253,7 @@ function RichiestePage() {
       </div>
 
       {/* KPI */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard icon={FileText} tone="text-muted-foreground" label="Bozze da inviare" value={String(kpi.bozze)} />
         <KpiCard icon={Clock} tone="text-info" label="In attesa approvazione" value={String(kpi.inAttesaCount)} />
         <KpiCard icon={CheckCircle2} tone="text-success" label="Approvate questo mese" value={String(kpi.approvateMese)} />
@@ -425,11 +425,11 @@ function RichiestePage() {
 function KpiCard({ icon: Icon, tone, label, value }: { icon: any; tone: string; label: string; value: string }) {
   return (
     <Card className="p-4">
-      <div className="flex items-center gap-2">
-        <Icon className={`size-4 ${tone}`} />
-        <p className="text-xs text-muted-foreground">{label}</p>
+      <div className="flex items-center gap-2 min-w-0">
+        <Icon className={`size-4 shrink-0 ${tone}`} />
+        <p className="text-xs text-muted-foreground min-w-0">{label}</p>
       </div>
-      <p className="text-2xl font-bold mt-2 tabular-nums">{value}</p>
+      <p className="text-xl sm:text-2xl font-bold mt-2 tabular-nums break-words">{value}</p>
     </Card>
   );
 }
@@ -1478,7 +1478,7 @@ function RichiestaFormDialog({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label>Importo richiesto (€) *</Label>
             <Input type="number" step="0.01" min="0" value={form.importo_richiesto || ""}
