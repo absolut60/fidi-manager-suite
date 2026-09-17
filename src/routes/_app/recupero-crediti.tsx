@@ -426,28 +426,32 @@ function RecuperoCreditiPage() {
   return (
     <TooltipProvider delayDuration={200}>
       <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <HandCoins className="size-7 text-primary" />
-        <div className="flex-1">
-          <h1 className="text-2xl font-semibold tracking-tight">Recupero Crediti</h1>
-          <p className="text-sm text-muted-foreground">
-            Clienti con azioni di recupero — priorità agli aperti e in ritardo
-          </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="flex items-center gap-3 min-w-0 sm:flex-1">
+          <HandCoins className="size-7 text-primary shrink-0" />
+          <div className="min-w-0">
+            <h1 className="text-2xl font-semibold tracking-tight">Recupero Crediti</h1>
+            <p className="text-sm text-muted-foreground">
+              Clienti con azioni di recupero — priorità agli aperti e in ritardo
+            </p>
+          </div>
         </div>
-        <Button size="sm" onClick={() => setNuovaAzioneOpen(true)} className="gap-1.5">
-          <Plus className="size-4" /> Nuova azione
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => setPromessaSelectorOpen(true)} className="gap-1.5">
-          <HandCoins className="size-4" /> Registra promessa
-        </Button>
-        <Button asChild variant="outline" size="sm" className="gap-1.5">
-          <Link to="/recupero-crediti-promemoria">
-            <CalendarClockIcon className="size-4" /> Promemoria di scadenza
-          </Link>
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => setInvioMassivoOpen(true)} className="gap-1.5">
-          <Send className="size-4" /> Invio massivo solleciti
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" onClick={() => setNuovaAzioneOpen(true)} className="gap-1.5">
+            <Plus className="size-4" /> Nuova azione
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setPromessaSelectorOpen(true)} className="gap-1.5">
+            <HandCoins className="size-4" /> Registra promessa
+          </Button>
+          <Button asChild variant="outline" size="sm" className="gap-1.5">
+            <Link to="/recupero-crediti-promemoria">
+              <CalendarClockIcon className="size-4" /> Promemoria di scadenza
+            </Link>
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setInvioMassivoOpen(true)} className="gap-1.5">
+            <Send className="size-4" /> Invio massivo solleciti
+          </Button>
+        </div>
       </div>
 
       {/* Metric cards */}
