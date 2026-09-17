@@ -345,14 +345,14 @@ function GestireTab({
     <div className="space-y-3">
       <Card className="p-3 flex flex-wrap items-center gap-2">
         <Select value={storeFilter} onValueChange={setStoreFilter}>
-          <SelectTrigger className="w-44"><SelectValue placeholder="Store" /></SelectTrigger>
+          <SelectTrigger className="flex-1 min-w-[160px] sm:flex-none sm:w-44"><SelectValue placeholder="Store" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tutti gli store</SelectItem>
             {stores.map((s) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={statoFilter} onValueChange={setStatoFilter}>
-          <SelectTrigger className="w-44"><SelectValue placeholder="Stato export" /></SelectTrigger>
+          <SelectTrigger className="flex-1 min-w-[160px] sm:flex-none sm:w-44"><SelectValue placeholder="Stato export" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tutti gli stati</SelectItem>
             <SelectItem value="da_esportare">Da esportare</SelectItem>
@@ -360,11 +360,11 @@ function GestireTab({
             <SelectItem value="errore_export">Errore</SelectItem>
           </SelectContent>
         </Select>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <Label className="text-xs">Dal</Label>
-          <Input type="date" value={dataDa} onChange={(e) => setDataDa(e.target.value)} className="w-40" />
+          <Input type="date" value={dataDa} onChange={(e) => setDataDa(e.target.value)} className="flex-1 min-w-[140px] sm:flex-none sm:w-40" />
           <Label className="text-xs">al</Label>
-          <Input type="date" value={dataA} onChange={(e) => setDataA(e.target.value)} className="w-40" />
+          <Input type="date" value={dataA} onChange={(e) => setDataA(e.target.value)} className="flex-1 min-w-[140px] sm:flex-none sm:w-40" />
         </div>
       </Card>
 
