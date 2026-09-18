@@ -14,6 +14,8 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useCategorieSegmento } from "@/lib/use-categorie-segmento";
+import { SegmentoSelect } from "@/components/segmento-select";
 import { SoggettoCombobox } from "@/components/soggetto-combobox";
 import { BottoneElimina } from "@/components/conferma-eliminazione";
 import { usePermessiCommerciale } from "@/hooks/use-permessi-commerciale";

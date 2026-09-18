@@ -1,0 +1,1 @@
+ALTER TABLE public.opportunita ADD COLUMN settore_id uuid NULL REFERENCES public.categorie_segmento(id);

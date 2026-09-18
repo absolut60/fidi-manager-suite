@@ -3676,6 +3676,7 @@ export type Database = {
           motivo_perdita: string | null
           note: string | null
           probabilita: number | null
+          settore_id: string | null
           stato: Database["public"]["Enums"]["stato_opportunita"]
           store_id: string | null
           tipo: Database["public"]["Enums"]["tipo_opportunita"]
@@ -3698,6 +3699,7 @@ export type Database = {
           motivo_perdita?: string | null
           note?: string | null
           probabilita?: number | null
+          settore_id?: string | null
           stato?: Database["public"]["Enums"]["stato_opportunita"]
           store_id?: string | null
           tipo?: Database["public"]["Enums"]["tipo_opportunita"]
@@ -3720,6 +3722,7 @@ export type Database = {
           motivo_perdita?: string | null
           note?: string | null
           probabilita?: number | null
+          settore_id?: string | null
           stato?: Database["public"]["Enums"]["stato_opportunita"]
           store_id?: string | null
           tipo?: Database["public"]["Enums"]["tipo_opportunita"]
@@ -3761,6 +3764,13 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "lead"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunita_settore_id_fkey"
+            columns: ["settore_id"]
+            isOneToOne: false
+            referencedRelation: "categorie_segmento"
             referencedColumns: ["id"]
           },
           {

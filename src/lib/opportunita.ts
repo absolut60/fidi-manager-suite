@@ -46,6 +46,7 @@ export type OpportunitaRow = {
   data_chiusura: string | null;
   motivo_perdita: string | null;
   note: string | null;
+  settore_id: string | null;
   created_at: string;
   clienti?: { ragione_sociale: string | null; codice_agente: string | null } | null;
   lead?: { ragione_sociale: string | null; nome: string | null; cognome: string | null } | null;
