@@ -25,6 +25,7 @@ import {
   Landmark,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { BackButton } from "@/components/back-button";
 import { InviaSollecitoDialog } from "@/components/invia-sollecito-dialog";
 import { useRef } from "react";
 import { toast } from "sonner";
