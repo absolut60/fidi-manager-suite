@@ -23,6 +23,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { NuovoLeadDialog } from "@/components/lead/nuovo-lead-dialog";
+import { useCategorieSegmento } from "@/lib/use-categorie-segmento";
 import {
   LEAD_STATI, LEAD_STATO_LABEL, LEAD_STATO_CLASS,
   LEAD_TIPI, LEAD_TIPO_LABEL, LEAD_FONTI, LEAD_FONTE_LABEL,
@@ -76,6 +77,7 @@ function LeadListaPage() {
   const [tipoLead, setTipoLead] = useState(TUTTI);
   const [fonte, setFonte] = useState(TUTTI);
   const [priorita, setPriorita] = useState(TUTTI);
+  const [mestiere, setMestiere] = useState(TUTTI);
   const [storeFiltro, setStoreFiltro] = useState(TUTTI);
   const [agente, setAgente] = useState(TUTTI);
   const [assegnatario, setAssegnatario] = useState(TUTTI);
@@ -109,6 +111,7 @@ function LeadListaPage() {
     },
     staleTime: 5 * 60_000,
   });
+  const { data: mestieriFiltro } = useCategorieSegmento("mestiere");
 
   const nomeProfilo = (id: string | null) => {
     if (!id) return "—";
@@ -117,12 +120,12 @@ function LeadListaPage() {
   };
   const nomeStore = (id: string | null) => stores?.find((s) => s.id === id)?.nome ?? "—";
 
-  const attiviCount = [stato, tipoLead, fonte, priorita, storeFiltro, agente, assegnatario]
+  const attiviCount = [stato, tipoLead, fonte, priorita, mestiere, storeFiltro, agente, assegnatario]
     .filter((v) => v !== TUTTI).length + (search ? 1 : 0);
 
   function resetFiltri() {
     setStato(TUTTI); setTipoLead(TUTTI); setFonte(TUTTI); setPriorita(TUTTI);
-    setStoreFiltro(TUTTI); setAgente(TUTTI); setAssegnatario(TUTTI);
+    setStoreFiltro(TUTTI); setAgente(TUTTI); setAssegnatario(TUTTI); setMestiere(TUTTI);
     setSearch(""); setSearchInput(""); setPage(1);
   }
 
@@ -138,7 +141,7 @@ function LeadListaPage() {
   const mostraConversione = stato === "convertito" || (!statoEsplicito && tab === "convertiti");
 
   const queryKey = [
-    "lead-lista", tab, search, stato, tipoLead, fonte, priorita, storeFiltro, agente,
+    "lead-lista", tab, search, stato, tipoLead, fonte, priorita, mestiere, storeFiltro, agente,
     assegnatario, page, pageSize, sortBy, sortDir, tab === "ricontattare" ? limiteData : null,
   ];
 
@@ -174,6 +177,10 @@ function LeadListaPage() {
       if (tipoLead !== TUTTI) q = q.eq("tipo_lead", tipoLead as LeadRow["tipo_lead"]);
       if (fonte !== TUTTI) q = q.eq("fonte", fonte as LeadRow["fonte"]);
       if (priorita !== TUTTI) q = q.eq("priorita", priorita as LeadRow["priorita"]);
+      if (mestiere !== TUTTI) {
+        if (mestiere === NESSUNO) q = q.is("mestiere_id", null);
+        else q = q.eq("mestiere_id", mestiere);
+      }
       if (storeFiltro !== TUTTI) {
         if (storeFiltro === NESSUNO) q = q.is("store_id", null);
         else q = q.eq("store_id", storeFiltro);
@@ -379,6 +386,19 @@ function LeadListaPage() {
               <SelectContent>
                 <SelectItem value={TUTTI}>Tutte</SelectItem>
                 {LEAD_PRIORITA.map((s) => <SelectItem key={s} value={s}>{LEAD_PRIORITA_LABEL[s]}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Mestiere</Label>
+            <Select value={mestiere} onValueChange={(v) => { setMestiere(v); setPage(1); }}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={TUTTI}>Tutti</SelectItem>
+                <SelectItem value={NESSUNO}>Senza mestiere</SelectItem>
+                {(mestieriFiltro ?? []).map((m) => (
+                  <SelectItem key={m.id} value={m.id}>{m.parent_id ? `— ${m.label}` : m.label}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
