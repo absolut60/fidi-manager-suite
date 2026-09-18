@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft, CalendarDays, Check, Link2, MapPin, Pencil, Save, Trash2, UserX,
+  CalendarDays, Check, Link2, MapPin, Pencil, Save, Trash2, UserX,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,6 +24,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { BackButton } from "@/components/back-button";
 import { AggiungiPartecipanteDialog } from "@/components/eventi/aggiungi-partecipante-dialog";
 import { ImportPartecipantiCard } from "@/components/eventi/import-partecipanti-card";
 import { RiconciliaImportCard } from "@/components/eventi/riconcilia-import-card";
@@ -581,9 +582,7 @@ function EventoDettaglioPage() {
     return (
       <Card className="p-8 text-center">
         <p className="font-medium">Evento non trovato</p>
-        <Button variant="outline" className="mt-3" onClick={() => navigate({ to: "/eventi" })}>
-          Torna agli eventi
-        </Button>
+        <BackButton fallbackTo="/eventi" fallbackLabel="Torna agli eventi" />
       </Card>
     );
   }
@@ -596,9 +595,7 @@ function EventoDettaglioPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3">
-        <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => navigate({ to: "/eventi" })}>
-          <ArrowLeft className="size-4" /> Eventi
-        </Button>
+        <BackButton fallbackTo="/eventi" fallbackLabel="Eventi" />
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
