@@ -1456,6 +1456,68 @@ export type Database = {
           },
         ]
       }
+      categoria_storico: {
+        Row: {
+          campo: string
+          cliente_id: string | null
+          created_at: string
+          id: string
+          lead_id: string | null
+          operatore_id: string | null
+          valore_a: string | null
+          valore_da: string | null
+        }
+        Insert: {
+          campo: string
+          cliente_id?: string | null
+          created_at?: string
+          id?: string
+          lead_id?: string | null
+          operatore_id?: string | null
+          valore_a?: string | null
+          valore_da?: string | null
+        }
+        Update: {
+          campo?: string
+          cliente_id?: string | null
+          created_at?: string
+          id?: string
+          lead_id?: string | null
+          operatore_id?: string | null
+          valore_a?: string | null
+          valore_da?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "categoria_storico_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "categoria_storico_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti_con_rischio"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "categoria_storico_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "categoria_storico_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "lead"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categorie_cliente: {
         Row: {
           codice: string
@@ -1470,6 +1532,47 @@ export type Database = {
           label?: string
         }
         Relationships: []
+      }
+      categorie_segmento: {
+        Row: {
+          attivo: boolean
+          codice: string
+          created_at: string
+          dimensione: string
+          id: string
+          label: string
+          ordine: number
+          parent_id: string | null
+        }
+        Insert: {
+          attivo?: boolean
+          codice: string
+          created_at?: string
+          dimensione: string
+          id?: string
+          label: string
+          ordine?: number
+          parent_id?: string | null
+        }
+        Update: {
+          attivo?: boolean
+          codice?: string
+          created_at?: string
+          dimensione?: string
+          id?: string
+          label?: string
+          ordine?: number
+          parent_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "categorie_segmento_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "categorie_segmento"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       clienti: {
         Row: {
@@ -1530,6 +1633,7 @@ export type Database = {
           ind_blocco: number
           indirizzo: string | null
           macrocategoria: string | null
+          mestiere_id: string | null
           motivo_blocco: string | null
           note: string | null
           note_amministrazione: string | null
@@ -1617,6 +1721,7 @@ export type Database = {
           ind_blocco?: number
           indirizzo?: string | null
           macrocategoria?: string | null
+          mestiere_id?: string | null
           motivo_blocco?: string | null
           note?: string | null
           note_amministrazione?: string | null
@@ -1704,6 +1809,7 @@ export type Database = {
           ind_blocco?: number
           indirizzo?: string | null
           macrocategoria?: string | null
+          mestiere_id?: string | null
           motivo_blocco?: string | null
           note?: string | null
           note_amministrazione?: string | null
@@ -1739,6 +1845,13 @@ export type Database = {
             columns: ["bloccato_da"]
             isOneToOne: false
             referencedRelation: "profili"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clienti_mestiere_id_fkey"
+            columns: ["mestiere_id"]
+            isOneToOne: false
+            referencedRelation: "categorie_segmento"
             referencedColumns: ["id"]
           },
           {
@@ -2830,6 +2943,7 @@ export type Database = {
           hubspot_id: string | null
           id: string
           indirizzo: string | null
+          mestiere_id: string | null
           motivo_perdita: string | null
           nome: string | null
           note: string | null
@@ -2867,6 +2981,7 @@ export type Database = {
           hubspot_id?: string | null
           id?: string
           indirizzo?: string | null
+          mestiere_id?: string | null
           motivo_perdita?: string | null
           nome?: string | null
           note?: string | null
@@ -2904,6 +3019,7 @@ export type Database = {
           hubspot_id?: string | null
           id?: string
           indirizzo?: string | null
+          mestiere_id?: string | null
           motivo_perdita?: string | null
           nome?: string | null
           note?: string | null
@@ -2942,6 +3058,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "riepilogo_insoluti"
             referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "lead_mestiere_id_fkey"
+            columns: ["mestiere_id"]
+            isOneToOne: false
+            referencedRelation: "categorie_segmento"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "lead_store_id_fkey"
