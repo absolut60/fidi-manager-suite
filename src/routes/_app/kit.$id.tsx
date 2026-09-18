@@ -1,4 +1,5 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { BackButton } from "@/components/back-button";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -32,7 +33,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Copy, Plus, Trash2 } from "lucide-react";
+import { Copy, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { parseNumeroIt } from "@/lib/numero-it";
 import {
@@ -142,9 +143,7 @@ function KitEditorPage() {
     <div className="flex flex-col gap-4 p-3 md:p-4 lg:p-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <Button asChild variant="ghost" size="sm">
-            <Link to="/kit"><ArrowLeft className="mr-1 h-4 w-4" /> Kit</Link>
-          </Button>
+          <BackButton fallbackTo="/kit" fallbackLabel="Kit" />
           <h1 className="text-xl font-semibold">{kit.nome}</h1>
         </div>
         <div className="flex items-center gap-2">
