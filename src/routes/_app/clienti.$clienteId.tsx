@@ -1880,6 +1880,22 @@ function EditClienteDialog({
           "Non hai i permessi per modificare questo cliente (è di un altro punto vendita).",
         );
       }
+      const mestiereDaOld = (mestieriEdit ?? []).find(
+        (m) => m.id === ((cliente as any).mestiere_id ?? ""),
+      )?.codice ?? null;
+      const mestiereANew = (mestieriEdit ?? []).find(
+        (m) => m.id === (parsed.mestiere_id ?? ""),
+      )?.codice ?? null;
+      if (((cliente as any).mestiere_id ?? null) !== (parsed.mestiere_id ?? null)) {
+        const { error: errStorico } = await supabase.from("categoria_storico").insert({
+          cliente_id: cliente.id,
+          campo: "mestiere",
+          valore_da: mestiereDaOld,
+          valore_a: mestiereANew,
+          operatore_id: user?.id ?? null,
+        });
+        if (errStorico) throw errStorico;
+      }
       if (error) throw error;
     },
     onSuccess: () => {
@@ -2092,6 +2108,14 @@ function EditClienteDialog({
                 set("categoria", lbl);
               }}
             />
+            <div className="space-y-1.5">
+              <Label>Mestiere</Label>
+              <SegmentoSelect
+                items={mestieriEdit}
+                value={form.mestiere_id ?? ""}
+                onChange={(v) => set("mestiere_id", v || null)}
+              />
+            </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label>Forma giuridica</Label>
               <Input
