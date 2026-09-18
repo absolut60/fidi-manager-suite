@@ -1,7 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Check, X, Send, Trash2, Lock } from "lucide-react";
+import { Check, X, Send, Trash2, Lock } from "lucide-react";
+import { BackButton } from "@/components/back-button";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -175,9 +176,7 @@ function RichiestaDetail() {
       <div className="space-y-2">
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 sm:flex sm:items-center">
           <div className="flex min-w-0 items-start gap-2 sm:flex-1 sm:items-center sm:gap-3">
-            <Button variant="ghost" size="sm" asChild className="shrink-0">
-              <Link to="/richieste"><ArrowLeft className="size-4" /></Link>
-            </Button>
+            <BackButton fallbackTo="/richieste" fallbackLabel="Richieste" iconOnly />
             <div className="min-w-0">
               <h1 className="text-lg sm:text-2xl font-bold leading-tight line-clamp-2">
                 {cliente?.ragione_sociale ?? "—"}
