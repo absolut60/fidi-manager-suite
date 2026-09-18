@@ -14,6 +14,8 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useCategorieSegmento } from "@/lib/use-categorie-segmento";
+import { SegmentoSelect } from "@/components/segmento-select";
 import { SoggettoCombobox } from "@/components/soggetto-combobox";
 import { BottoneElimina } from "@/components/conferma-eliminazione";
 import { usePermessiCommerciale } from "@/hooks/use-permessi-commerciale";
@@ -67,6 +69,7 @@ export function OpportunitaDialog({
     staleTime: 300_000,
   });
   const listaAgenti = agenti ?? agentiFetch;
+  const { data: settori } = useCategorieSegmento("settore");
 
   async function invalida() {
     await qc.invalidateQueries({ queryKey: ["opportunita-lista"] });
@@ -77,6 +80,7 @@ export function OpportunitaDialog({
   const [titolo, setTitolo] = useState("");
   const [tipo, setTipo] = useState<TipoOpportunita>("vendita");
   const [stato, setStato] = useState<StatoOpportunita>("aperta");
+  const [settoreId, setSettoreId] = useState<string>("");
   const [soggetto, setSoggetto] = useState<{ tipo: "cliente" | "lead"; id: string; etichetta: string } | null>(null);
   const [cantiereId, setCantiereId] = useState<string>("");
   const [agenteCodice, setAgenteCodice] = useState<string>("");
@@ -107,6 +111,7 @@ export function OpportunitaDialog({
     setTitolo(o?.titolo ?? "");
     setTipo((o?.tipo as TipoOpportunita) ?? "vendita");
     setStato((o?.stato as StatoOpportunita) ?? "aperta");
+    setSettoreId(o?.settore_id ?? "");
     setSoggetto(
       soggettoFisso
         ? { tipo: soggettoFisso.tipo, id: soggettoFisso.id, etichetta: soggettoFisso.etichetta }
@@ -191,6 +196,7 @@ export function OpportunitaDialog({
       titolo: titolo.trim(),
       tipo,
       stato,
+      settore_id: settoreId || null,
       cliente_id:
         soggetto.tipo === "cliente"
           ? soggetto.id
@@ -278,6 +284,16 @@ export function OpportunitaDialog({
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div>
+            <Label>Settore</Label>
+            <SegmentoSelect
+              items={settori}
+              value={settoreId}
+              onChange={setSettoreId}
+              placeholder="Nessuno"
+            />
           </div>
 
           <div>
