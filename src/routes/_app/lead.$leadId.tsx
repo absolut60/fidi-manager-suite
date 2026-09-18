@@ -32,6 +32,8 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useCategorieSegmento } from "@/lib/use-categorie-segmento";
+import { SegmentoSelect } from "@/components/segmento-select";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -108,6 +110,7 @@ type Form = {
   fonte_dettaglio: string;
   tipo_lead: LeadTipo;
   priorita: LeadPriorita;
+  mestiere_id: string;
   store_id: string;
   agente_codice: string;
   prossima_azione_il: string;
@@ -167,6 +170,7 @@ function LeadDettaglioPage() {
     },
     staleTime: 5 * 60_000,
   });
+  const { data: mestieri } = useCategorieSegmento("mestiere");
 
   const nomeProfilo = (id: string | null) => {
     if (!id) return "—";
@@ -196,6 +200,7 @@ function LeadDettaglioPage() {
     fonte_dettaglio: l.fonte_dettaglio ?? "",
     tipo_lead: l.tipo_lead,
     priorita: l.priorita,
+    mestiere_id: l.mestiere_id ?? "",
     store_id: l.store_id ?? "",
     agente_codice: l.agente_codice ?? "",
     prossima_azione_il: l.prossima_azione_il ?? "",
@@ -231,6 +236,7 @@ function LeadDettaglioPage() {
         fonte_dettaglio: f.fonte_dettaglio.trim() || null,
         tipo_lead: f.tipo_lead,
         priorita: f.priorita,
+        mestiere_id: f.mestiere_id || null,
         store_id: f.store_id || null,
         agente_codice: f.agente_codice || null,
         prossima_azione_il: f.prossima_azione_il || null,
@@ -240,6 +246,18 @@ function LeadDettaglioPage() {
       };
       const { error } = await supabase.from("lead").update(payload).eq("id", leadId);
       if (error) throw error;
+      const mestiereDa = (mestieri ?? []).find((m) => m.id === (lead.mestiere_id ?? ""))?.codice ?? null;
+      const mestiereA = (mestieri ?? []).find((m) => m.id === f.mestiere_id)?.codice ?? null;
+      if ((lead.mestiere_id ?? "") !== f.mestiere_id) {
+        const { error: errStorico } = await supabase.from("categoria_storico").insert({
+          lead_id: leadId,
+          campo: "mestiere",
+          valore_da: mestiereDa,
+          valore_a: mestiereA,
+          operatore_id: user?.id ?? null,
+        });
+        if (errStorico) throw errStorico;
+      }
     },
 
     onSuccess: () => {
@@ -591,6 +609,10 @@ function LeadDettaglioPage() {
                     <LeadField label="Priorità" value={LEAD_PRIORITA_LABEL[lead.priorita]} />
                     <LeadField label="Fonte" value={LEAD_FONTE_LABEL[lead.fonte]} />
                     <LeadField label="Dettaglio fonte" value={lead.fonte_dettaglio} />
+                    <LeadField
+                      label="Mestiere"
+                      value={mestieri?.find((m) => m.id === lead.mestiere_id)?.label ?? null}
+                    />
                   </div>
                   <div className="mt-3 pt-3 border-t grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
                     <LeadField
@@ -820,6 +842,14 @@ function LeadDettaglioPage() {
                     value={f.fonte_dettaglio}
                     maxLength={200}
                     onChange={(e) => set("fonte_dettaglio", e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Mestiere</Label>
+                  <SegmentoSelect
+                    items={mestieri}
+                    value={f.mestiere_id}
+                    onChange={(v) => set("mestiere_id", v)}
                   />
                 </div>
                 <div>

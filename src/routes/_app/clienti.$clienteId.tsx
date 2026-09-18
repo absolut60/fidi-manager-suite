@@ -36,6 +36,8 @@ import { getFidoAttuale } from "@/lib/fido-cliente";
 import { SemaforoAffidabilitaBadge } from "@/components/pannello-rischio-cliente";
 
 import { useAuth } from "@/hooks/use-auth";
+import { useCategorieSegmento } from "@/lib/use-categorie-segmento";
+import { SegmentoSelect } from "@/components/segmento-select";
 import { useConfig, isClienteAttivo } from "@/hooks/use-config";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -289,6 +291,7 @@ function ClienteDetail() {
         : "scadenziario"
       : (tab ?? "riepilogo");
   const isAgente = hasRole("agente");
+  const { data: mestieri } = useCategorieSegmento("mestiere");
 
   const [openNew, setOpenNew] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
@@ -688,6 +691,10 @@ function ClienteDetail() {
                         ? `${(cliente as any).codice_agente ?? ""}${(cliente as any).codice_agente && (cliente as any).agente ? " — " : ""}${(cliente as any).agente ?? ""}`
                         : null
                     }
+                  />
+                  <Field
+                    label="Mestiere"
+                    value={mestieri?.find((m) => m.id === (cliente as any).mestiere_id)?.label ?? null}
                   />
                 </div>
               </SectionCard>
@@ -1783,6 +1790,7 @@ const editSchema = z.object({
   macrocategoria: z.string().trim().max(100).optional().or(z.literal("")),
   codice_categoria: z.string().trim().max(10).optional().or(z.literal("")),
   categoria: z.string().trim().max(100).optional().or(z.literal("")),
+  mestiere_id: z.string().uuid().nullable().optional(),
   note: z.string().trim().max(2000).optional().or(z.literal("")),
 });
 
@@ -1825,6 +1833,7 @@ function EditClienteDialog({
     macrocategoria: (cliente as any).macrocategoria ?? "",
     codice_categoria: (cliente as any).codice_categoria ?? "",
     categoria: (cliente as any).categoria ?? "",
+    mestiere_id: (cliente as any).mestiere_id ?? null,
     note: cliente.note ?? "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -1841,6 +1850,8 @@ function EditClienteDialog({
       return data;
     },
   });
+  const { data: mestieriEdit } = useCategorieSegmento("mestiere");
+  const { user } = useAuth();
 
   const mutation = useMutation({
     mutationFn: async (input: EditForm) => {
@@ -1868,6 +1879,22 @@ function EditClienteDialog({
         throw new Error(
           "Non hai i permessi per modificare questo cliente (è di un altro punto vendita).",
         );
+      }
+      const mestiereDaOld = (mestieriEdit ?? []).find(
+        (m) => m.id === ((cliente as any).mestiere_id ?? ""),
+      )?.codice ?? null;
+      const mestiereANew = (mestieriEdit ?? []).find(
+        (m) => m.id === (parsed.mestiere_id ?? ""),
+      )?.codice ?? null;
+      if (((cliente as any).mestiere_id ?? null) !== (parsed.mestiere_id ?? null)) {
+        const { error: errStorico } = await supabase.from("categoria_storico").insert({
+          cliente_id: cliente.id,
+          campo: "mestiere",
+          valore_da: mestiereDaOld,
+          valore_a: mestiereANew,
+          operatore_id: user?.id ?? null,
+        });
+        if (errStorico) throw errStorico;
       }
       if (error) throw error;
     },
@@ -2081,6 +2108,14 @@ function EditClienteDialog({
                 set("categoria", lbl);
               }}
             />
+            <div className="space-y-1.5">
+              <Label>Mestiere</Label>
+              <SegmentoSelect
+                items={mestieriEdit}
+                value={form.mestiere_id ?? ""}
+                onChange={(v) => set("mestiere_id", v || null)}
+              />
+            </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label>Forma giuridica</Label>
               <Input
