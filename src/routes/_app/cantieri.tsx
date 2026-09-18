@@ -58,7 +58,7 @@ function CantieriPage() {
   const { roles } = useAuth();
   const { puoEliminareCantiere } = usePermessiCommerciale();
   const isTrasversale = roles.some((r) =>
-    ["amministratore", "amministrazione", "direzione", "marketing", "store_manager"].includes(r),
+    ["amministratore", "amministrazione", "direzione", "marketing", "store_manager", "responsabile_agenti"].includes(r),
   );
 
   const [search, setSearch] = useState("");
