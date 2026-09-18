@@ -1833,6 +1833,7 @@ function EditClienteDialog({
     macrocategoria: (cliente as any).macrocategoria ?? "",
     codice_categoria: (cliente as any).codice_categoria ?? "",
     categoria: (cliente as any).categoria ?? "",
+    mestiere_id: (cliente as any).mestiere_id ?? null,
     note: cliente.note ?? "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -1849,6 +1850,8 @@ function EditClienteDialog({
       return data;
     },
   });
+  const { data: mestieriEdit } = useCategorieSegmento("mestiere");
+  const { user } = useAuth();
 
   const mutation = useMutation({
     mutationFn: async (input: EditForm) => {
