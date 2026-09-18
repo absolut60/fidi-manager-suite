@@ -11,6 +11,7 @@ import { OpportunitaDialog } from "@/components/opportunita-dialog";
 import {
   STATO_LABEL, STATO_CLASS, TIPO_LABEL, fmtEuro, fmtData, type OpportunitaRow,
 } from "@/lib/opportunita";
+import { useCategorieSegmento } from "@/lib/use-categorie-segmento";
 
 export function OpportunitaSoggettoLista({
   soggetto,
@@ -19,6 +20,7 @@ export function OpportunitaSoggettoLista({
 }) {
   const [openNew, setOpenNew] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+  const { data: settori } = useCategorieSegmento("settore");
 
   const queryKey = useMemo(
     () => ["opportunita-soggetto", soggetto.tipo, soggetto.id] as const,
@@ -84,6 +86,11 @@ export function OpportunitaSoggettoLista({
                     <Badge variant="outline" className={STATO_CLASS[o.stato]}>{STATO_LABEL[o.stato]}</Badge>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">{TIPO_LABEL[o.tipo]}</p>
+                  {o.settore_id && (
+                    <p className="text-xs text-muted-foreground">
+                      {settori?.find((s) => s.id === o.settore_id)?.label ?? "Settore"}
+                    </p>
+                  )}
                 </div>
                 <Button variant="ghost" size="icon" title="Modifica" onClick={() => setEditId(o.id)}>
                   <Pencil className="size-4" />
