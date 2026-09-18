@@ -4,7 +4,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import {
-  ArrowLeft,
   Plus,
   Mail,
   Phone,
@@ -26,6 +25,7 @@ import {
   Landmark,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { BackButton } from "@/components/back-button";
 import { InviaSollecitoDialog } from "@/components/invia-sollecito-dialog";
 import { useRef } from "react";
 import { toast } from "sonner";
@@ -277,7 +277,7 @@ function ConsensoBadge({ ok, label }: { ok: boolean; label: string }) {
 
 function ClienteDetail() {
   const { clienteId } = Route.useParams();
-  const { edit, tab, insolutiTab, from } = Route.useSearch();
+  const { edit, tab, insolutiTab } = Route.useSearch();
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { role, hasRole } = useAuth();
@@ -421,17 +421,9 @@ function ClienteDetail() {
   return (
     <div className="space-y-6">
       <div>
-        <Button asChild variant="ghost" size="sm" className="mb-2 -ml-2">
-          {from === "approvazioni" ? (
-            <Link to="/approvazioni">
-              <ArrowLeft className="size-4" /> Torna alle Approvazioni
-            </Link>
-          ) : (
-            <Link to="/clienti">
-              <ArrowLeft className="size-4" /> Clienti
-            </Link>
-          )}
-        </Button>
+        <div className="mb-2">
+          <BackButton fallbackTo="/clienti" fallbackLabel="Clienti" />
+        </div>
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">

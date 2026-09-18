@@ -3,7 +3,6 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  ArrowLeft,
   Save,
   Trash2,
   Loader2,
@@ -30,6 +29,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { BackButton } from "@/components/back-button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useCategorieSegmento } from "@/lib/use-categorie-segmento";
@@ -379,12 +379,7 @@ function LeadDettaglioPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="min-w-0">
-          <Link
-            to="/lead"
-            className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
-          >
-            <ArrowLeft className="size-4" /> Lead
-          </Link>
+          <BackButton fallbackTo="/lead" fallbackLabel="Lead" />
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mt-1 break-words">
             {nomeLead(lead)}
           </h1>
