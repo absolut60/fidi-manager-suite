@@ -80,7 +80,7 @@ function CalendarioCommercialePage() {
   const { roles } = useAuth();
   const isAgente = roles.includes("agente");
   const isTrasversale = roles.some((r) =>
-    ["amministratore", "amministrazione", "direzione", "marketing", "store_manager"].includes(r),
+    ["amministratore", "amministrazione", "direzione", "marketing", "store_manager", "responsabile_agenti"].includes(r),
   );
   const soloAgente = isAgente && !isTrasversale;
 

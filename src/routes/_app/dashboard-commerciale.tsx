@@ -82,7 +82,7 @@ function fmtPerc(v: number | null | undefined): string {
 
 function DashboardCommercialePage() {
   const { roles } = useAuth();
-  const isDirezionale = roles.some((r) => ["amministratore", "amministrazione", "direzione"].includes(r));
+  const isDirezionale = roles.some((r) => ["amministratore", "amministrazione", "direzione", "responsabile_agenti"].includes(r));
 
   const [periodo, setPeriodo] = useState<Periodo>("anno");
   const [agenteF, setAgenteF] = useState<string>("tutti");

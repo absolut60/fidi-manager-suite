@@ -42,7 +42,7 @@ function OpportunitaPage() {
   const { puoEliminareOpportunita } = usePermessiCommerciale();
   const { roles } = useAuth();
   const isTrasversale = roles.some((r) =>
-    ["amministratore", "amministrazione", "direzione", "marketing", "store_manager"].includes(r),
+    ["amministratore", "amministrazione", "direzione", "marketing", "store_manager", "responsabile_agenti"].includes(r),
   );
 
   const [search, setSearch] = useState("");
