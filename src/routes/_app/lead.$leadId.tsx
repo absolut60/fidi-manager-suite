@@ -609,6 +609,10 @@ function LeadDettaglioPage() {
                     <LeadField label="Priorità" value={LEAD_PRIORITA_LABEL[lead.priorita]} />
                     <LeadField label="Fonte" value={LEAD_FONTE_LABEL[lead.fonte]} />
                     <LeadField label="Dettaglio fonte" value={lead.fonte_dettaglio} />
+                    <LeadField
+                      label="Mestiere"
+                      value={mestieri?.find((m) => m.id === lead.mestiere_id)?.label ?? null}
+                    />
                   </div>
                   <div className="mt-3 pt-3 border-t grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
                     <LeadField
@@ -838,6 +842,14 @@ function LeadDettaglioPage() {
                     value={f.fonte_dettaglio}
                     maxLength={200}
                     onChange={(e) => set("fonte_dettaglio", e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Mestiere</Label>
+                  <SegmentoSelect
+                    items={mestieri}
+                    value={f.mestiere_id}
+                    onChange={(v) => set("mestiere_id", v)}
                   />
                 </div>
                 <div>
