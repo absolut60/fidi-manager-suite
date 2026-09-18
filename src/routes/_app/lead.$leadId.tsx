@@ -32,6 +32,8 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useCategorieSegmento } from "@/lib/use-categorie-segmento";
+import { SegmentoSelect } from "@/components/segmento-select";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -108,6 +110,7 @@ type Form = {
   fonte_dettaglio: string;
   tipo_lead: LeadTipo;
   priorita: LeadPriorita;
+  mestiere_id: string;
   store_id: string;
   agente_codice: string;
   prossima_azione_il: string;
@@ -196,6 +199,7 @@ function LeadDettaglioPage() {
     fonte_dettaglio: l.fonte_dettaglio ?? "",
     tipo_lead: l.tipo_lead,
     priorita: l.priorita,
+    mestiere_id: l.mestiere_id ?? "",
     store_id: l.store_id ?? "",
     agente_codice: l.agente_codice ?? "",
     prossima_azione_il: l.prossima_azione_il ?? "",
