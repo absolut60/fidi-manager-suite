@@ -24,6 +24,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { BackButton } from "@/components/back-button";
 import { AggiungiPartecipanteDialog } from "@/components/eventi/aggiungi-partecipante-dialog";
 import { ImportPartecipantiCard } from "@/components/eventi/import-partecipanti-card";
 import { RiconciliaImportCard } from "@/components/eventi/riconcilia-import-card";
