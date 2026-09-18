@@ -38,6 +38,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useConfig, useConfigReady, isClienteAttivo } from "@/hooks/use-config";
 import { CondizionePagamentoSelect } from "@/components/condizione-pagamento-select";
 import { CategoriaSelect } from "@/components/categoria-select";
+import { useCategorieSegmento } from "@/lib/use-categorie-segmento";
 import { EsportaFidoTeoricoButton } from "@/components/esporta-fido-teorico-button";
 
 import { INFORMATIVA_FULL, CONSENSO_TESTI } from "@/lib/consensi-testi";
@@ -171,6 +172,7 @@ function ClientiPage() {
   // Default: "giuridica" → mostra solo Imprese, esclude i Privati (persona_fisica)
   const [filtroTipoSoggetto, setFiltroTipoSoggetto] = useState<"tutti" | "fisica" | "giuridica">("giuridica");
   const [filtroAgente, setFiltroAgente] = useState<string>("tutti");
+  const [filtroMestiere, setFiltroMestiere] = useState<string>("tutti");
   const [scadenziarioFiltro, setScadenziarioFiltro] = useState<string>("tutti");
   const [totaleRischioFiltro, setTotaleRischioFiltro] = useState<string>("tutti");
   const [fatturatoFiltro, setFatturatoFiltro] = useState<string>("tutti");
@@ -294,6 +296,7 @@ function ClientiPage() {
     },
     staleTime: 5 * 60_000,
   });
+  const { data: mestieriFiltro } = useCategorieSegmento("mestiere");
 
   // Aggregato scadenziario (una sola query, cached) per badge + filtro
   const { data: scadenziarioMap } = useQuery({
@@ -606,7 +609,7 @@ function ClientiPage() {
   // Reset pagina ogni volta che cambia un filtro o l'ordinamento
   useEffect(() => {
     setPage(1);
-  }, [search, statoCliente, statoAttivita, storeFiltro, statoFido, semaforoFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, fasciaConcesso]);
+  }, [search, statoCliente, statoAttivita, storeFiltro, statoFido, semaforoFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, filtroMestiere, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, fasciaConcesso]);
 
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -657,6 +660,8 @@ function ClientiPage() {
     else if (filtroTipoSoggetto === "giuridica") q = q.eq("tipo_soggetto", "azienda");
     if (filtroAgente === "__none__") q = q.is("codice_agente", null);
     else if (filtroAgente !== "tutti") q = q.eq("codice_agente", filtroAgente);
+    if (filtroMestiere === "__none__") q = q.is("mestiere_id", null);
+    else if (filtroMestiere !== "tutti") q = q.eq("mestiere_id", filtroMestiere);
 
 
     // Fido residuo: fascia E range slider applicati insieme
@@ -751,7 +756,7 @@ function ClientiPage() {
 
   const privacyFilterReady = privacyFiltro === "tutti" || (scadReady && classifReady && isConfigReady && virtualSortReady && scostamentoReady && insolutiReady && fermiReady);
   const { data: privacyFilterMap } = useQuery({
-    queryKey: ["clienti-privacy-filter", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, fasciaConcesso, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
+    queryKey: ["clienti-privacy-filter", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, filtroMestiere, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, fasciaConcesso, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
     enabled: isListRoute && privacyFiltro !== "tutti" && privacyFilterReady,
     staleTime: 5 * 60_000,
     queryFn: async () => {
@@ -807,7 +812,7 @@ function ClientiPage() {
   }, [semaforoIds, statoFidoIds, oltreFidoIds, scadenziarioIdsFilter, aScadereIds, fatturatoIds, percConsumatoIds, scostamentoIds, daVerificareIds, insolutiIds, fermiIds, privacyIdsFilter]);
 
   const { data: clientiResp, isLoading } = useQuery({
-    queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, fasciaConcesso, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
+    queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, filtroMestiere, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, fasciaConcesso, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
     queryFn: async () => {
       // Ramo ordinamento virtuale (Scaduto / A scadere): PostgREST non puo'
       // ordinare su un valore che non e' nella query. Prendiamo tutti gli id
@@ -942,6 +947,7 @@ function ClientiPage() {
     (filtroLegale !== "tutti" ? 1 : 0) +
     (filtroTipoSoggetto !== "giuridica" ? 1 : 0) +
     (filtroAgente !== "tutti" ? 1 : 0) +
+    (filtroMestiere !== "tutti" ? 1 : 0) +
     (scadenziarioFiltro !== "tutti" ? 1 : 0) +
     (totaleRischioFiltro !== "tutti" ? 1 : 0) +
     (aScadereFiltro !== "tutti" ? 1 : 0) +
@@ -982,6 +988,7 @@ function ClientiPage() {
     setFiltroAssic("tutti");
     setFiltroLegale("tutti");
     setFiltroTipoSoggetto("giuridica");
+    setFiltroMestiere("tutti");
     setFiltroAgente("tutti");
     setScadenziarioFiltro("tutti");
     setTotaleRischioFiltro("tutti");
@@ -1283,6 +1290,19 @@ function ClientiPage() {
     </Select>
   );
 
+  const MestiereSelect = (
+    <Select value={filtroMestiere} onValueChange={setFiltroMestiere}>
+      <SelectTrigger className="w-full"><SelectValue placeholder="Mestiere" /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="tutti">Tutti i mestieri</SelectItem>
+        <SelectItem value="__none__">Senza mestiere</SelectItem>
+        {(mestieriFiltro ?? []).map((m) => (
+          <SelectItem key={m.id} value={m.id}>{m.parent_id ? `— ${m.label}` : m.label}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+
   const ScostamentoSelect = (
     <Select value={scostamentoFiltro} onValueChange={(v) => setScostamentoFiltro(v as any)}>
       <SelectTrigger className="w-full"><SelectValue placeholder="Scostamento fido" /></SelectTrigger>
@@ -1341,6 +1361,10 @@ function ClientiPage() {
   if (filtroAgente !== "tutti") {
     const desc = filtroAgente === "__none__" ? "Senza agente" : ((agenti ?? []).find((a) => a.codice === filtroAgente)?.descrizione ?? filtroAgente);
     activeChips.push({ key: "agente", label: `Agente: ${desc}`, onRemove: () => setFiltroAgente("tutti") });
+  }
+  if (filtroMestiere !== "tutti") {
+    const desc = filtroMestiere === "__none__" ? "Senza mestiere" : ((mestieriFiltro ?? []).find((m) => m.id === filtroMestiere)?.label ?? filtroMestiere);
+    activeChips.push({ key: "mestiere", label: `Mestiere: ${desc}`, onRemove: () => setFiltroMestiere("tutti") });
   }
   if (sliderCommitted[0] !== FIDO_RANGE_MIN || sliderCommitted[1] !== FIDO_RANGE_MAX) {
     activeChips.push({ key: "slider", label: `Fido slider: ${fmtEuro(sliderCommitted[0])} → ${fmtEuro(sliderCommitted[1])}`, onRemove: () => { setSliderDisplay([FIDO_RANGE_MIN, FIDO_RANGE_MAX]); setSliderCommitted([FIDO_RANGE_MIN, FIDO_RANGE_MAX]); } });
@@ -1418,6 +1442,7 @@ function ClientiPage() {
           <div className="border-t pt-3 grid grid-cols-1 gap-3">
             {TipoSoggettoSelect}
             {AgenteSelect}
+            {MestiereSelect}
             {PrivacySelect}
             {FidoFasciaSelect}
             {TotaleRischioSelect}
@@ -1451,6 +1476,7 @@ function ClientiPage() {
         <div className="grid grid-cols-2 lg:grid-cols-8 gap-2 opacity-90">
           {TipoSoggettoSelect}
           {AgenteSelect}
+          {MestiereSelect}
           {PrivacySelect}
           {FidoFasciaSelect}
           {TotaleRischioSelect}
