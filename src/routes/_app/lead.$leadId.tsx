@@ -236,6 +236,7 @@ function LeadDettaglioPage() {
         fonte_dettaglio: f.fonte_dettaglio.trim() || null,
         tipo_lead: f.tipo_lead,
         priorita: f.priorita,
+        mestiere_id: f.mestiere_id || null,
         store_id: f.store_id || null,
         agente_codice: f.agente_codice || null,
         prossima_azione_il: f.prossima_azione_il || null,
@@ -245,6 +246,18 @@ function LeadDettaglioPage() {
       };
       const { error } = await supabase.from("lead").update(payload).eq("id", leadId);
       if (error) throw error;
+      const mestiereDa = (mestieri ?? []).find((m) => m.id === (lead.mestiere_id ?? ""))?.codice ?? null;
+      const mestiereA = (mestieri ?? []).find((m) => m.id === f.mestiere_id)?.codice ?? null;
+      if ((lead.mestiere_id ?? "") !== f.mestiere_id) {
+        const { error: errStorico } = await supabase.from("categoria_storico").insert({
+          lead_id: leadId,
+          campo: "mestiere",
+          valore_da: mestiereDa,
+          valore_a: mestiereA,
+          operatore_id: user?.id ?? null,
+        });
+        if (errStorico) throw errStorico;
+      }
     },
 
     onSuccess: () => {
