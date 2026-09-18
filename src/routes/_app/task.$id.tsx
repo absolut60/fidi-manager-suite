@@ -1,10 +1,10 @@
-import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
 import { format, isBefore, startOfDay } from "date-fns";
 import { it } from "date-fns/locale";
 import {
-  ArrowLeft, Download, Eye, File as FileIcon, FileImage, FileText, Loader2,
+  Download, Eye, File as FileIcon, FileImage, FileText, Loader2,
   MessagesSquare, Paperclip, Pencil, Search, Trash2, Upload, UserPlus,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -23,6 +23,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { CanaleConversazione } from "@/components/chat/canale-conversazione";
+import { BackButton } from "@/components/back-button";
 import { STATI, STATO_LABEL, STATO_BADGE, type StatoTask } from "@/lib/task-stato";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -71,7 +72,6 @@ export const Route = createFileRoute("/_app/task/$id")({
 function TaskDetailPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
-  const router = useRouter();
   const qc = useQueryClient();
   const { user, hasRole } = useAuth();
   const uid = user?.id ?? "";
@@ -338,11 +338,6 @@ function TaskDetailPage() {
     fAreaId !== editInitials.areaId ||
     fScadenza !== editInitials.scadenza;
 
-  function indietro() {
-    if (typeof window !== "undefined" && window.history.length > 1) router.history.back();
-    else navigate({ to: "/task" });
-  }
-
   if (isLoading) {
     return (
       <div className="p-8 text-center text-muted-foreground">
@@ -354,7 +349,7 @@ function TaskDetailPage() {
   if (!task) {
     return (
       <div className="space-y-4">
-        <Button variant="ghost" size="sm" onClick={indietro}><ArrowLeft className="size-4 mr-1" />Indietro</Button>
+        <BackButton fallbackTo="/task" fallbackLabel="Attività" />
         <Card><CardContent className="p-8 text-center text-muted-foreground">Attività non trovata</CardContent></Card>
       </div>
     );
@@ -373,9 +368,7 @@ function TaskDetailPage() {
       {/* HEADER */}
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
-          <Button variant="ghost" size="sm" onClick={indietro} className="-ml-2 mb-1">
-            <ArrowLeft className="size-4 mr-1" />Indietro
-          </Button>
+          <BackButton fallbackTo="/task" fallbackLabel="Attività" />
           <h1 className="text-2xl font-semibold">{task.titolo}</h1>
           <div className="text-sm text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1">
             <span>Attività</span><span>·</span>

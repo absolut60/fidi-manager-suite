@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { BackButton } from "@/components/back-button";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -26,7 +27,7 @@ import {
 import { StatoBadge } from "@/components/articoli/StatoBadge";
 import { ListinoAcquistoSection } from "@/components/articoli/ListinoAcquistoSection";
 import { ListinoVenditaSection } from "@/components/articoli/ListinoVenditaSection";
-import { ArrowLeft, Save, CheckCircle2 } from "lucide-react";
+import { Save, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
 
@@ -124,13 +125,7 @@ function ArticoloDetailPage() {
       <div className="border-b bg-card px-6 py-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate({ to: "/articoli" })}
-            >
-              <ArrowLeft className="mr-1 h-4 w-4" /> Elenco
-            </Button>
+            <BackButton fallbackTo="/articoli" fallbackLabel="Elenco" />
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-lg font-bold text-navy">

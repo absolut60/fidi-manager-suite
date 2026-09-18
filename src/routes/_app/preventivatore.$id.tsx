@@ -26,8 +26,9 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  ArrowLeft, Check, Copy, FileDown, GripVertical, Pencil, Plus, RefreshCw, ShoppingCart, Trash2,
+  Check, Copy, FileDown, GripVertical, Pencil, Plus, RefreshCw, ShoppingCart, Trash2,
 } from "lucide-react";
+import { BackButton } from "@/components/back-button";
 import { toast } from "sonner";
 import {
   addBloccoVuoto,
@@ -311,9 +312,7 @@ function PreventivoEditorPage() {
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <Button asChild variant="ghost" size="sm">
-              <Link to="/preventivatore"><ArrowLeft className="mr-1 h-4 w-4" /> Preventivi</Link>
-            </Button>
+            <BackButton fallbackTo="/preventivatore" fallbackLabel="Preventivi" />
             <h1 className="text-xl font-semibold">
               {prev.numero ?? (prev.tipo === "ordine" ? "Nuovo ordine" : "Nuovo preventivo")}
             </h1>

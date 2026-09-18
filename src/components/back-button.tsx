@@ -7,7 +7,7 @@ export function BackButton({
   fallbackLabel,
   iconOnly = false,
 }: {
-  fallbackTo: "/clienti" | "/lead" | "/richieste";
+  fallbackTo: "/clienti" | "/lead" | "/richieste" | "/task" | "/articoli" | "/kit" | "/preventivatore";
   fallbackLabel: string;
   iconOnly?: boolean;
 }) {
