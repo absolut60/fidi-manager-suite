@@ -75,7 +75,7 @@ type NavItem = {
   to: string;
   label: string;
   icon: typeof LayoutDashboard;
-  roles?: Array<"admin" | "approvatore" | "store_manager" | "amministrazione" | "direzione" | "marketing" | "marketing_eventi" | "preventivi_read" | "preventivi_write" | "preventivi_manage">;
+  roles?: Array<"admin" | "approvatore" | "store_manager" | "responsabile_agenti" | "amministrazione" | "direzione" | "marketing" | "marketing_eventi" | "preventivi_read" | "preventivi_write" | "preventivi_manage">;
   group: NavGroupKey;
   richiesteScope?: RichiesteScope;
   exact?: boolean;
@@ -88,12 +88,12 @@ const NAV: NavItem[] = [
   { to: "/contatti", label: "Contatti", icon: Users, group: "generale" },
   { to: "/chat", label: "Chat", icon: MessagesSquare, group: "generale" },
   { to: "/task", label: "Task attività", icon: ListChecks, group: "generale" },
-  { to: "/lead", label: "Lead", icon: UserPlus, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "generale" },
+  { to: "/lead", label: "Lead", icon: UserPlus, roles: ["admin", "amministrazione", "direzione", "marketing", "responsabile_agenti"], group: "generale" },
   // COMMERCIALE
-  { to: "/dashboard-commerciale", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "commerciale" },
-  { to: "/opportunita", label: "Opportunità", icon: Target, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "commerciale" },
-  { to: "/calendario-commerciale", label: "Calendario", icon: CalendarDays, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "commerciale" },
-  { to: "/cantieri", label: "Cantieri", icon: Building2, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "commerciale" },
+  { to: "/dashboard-commerciale", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "amministrazione", "direzione", "marketing", "responsabile_agenti"], group: "commerciale" },
+  { to: "/opportunita", label: "Opportunità", icon: Target, roles: ["admin", "amministrazione", "direzione", "marketing", "responsabile_agenti"], group: "commerciale" },
+  { to: "/calendario-commerciale", label: "Calendario", icon: CalendarDays, roles: ["admin", "amministrazione", "direzione", "marketing", "responsabile_agenti"], group: "commerciale" },
+  { to: "/cantieri", label: "Cantieri", icon: Building2, roles: ["admin", "amministrazione", "direzione", "marketing", "responsabile_agenti"], group: "commerciale" },
   // PREVENTIVI
   { to: "/preventivatore/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi" },
   { to: "/preventivatore", label: "Preventivi", icon: Calculator, roles: ["admin", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi", exact: true },
@@ -221,6 +221,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isDirezione = hasUserRole("direzione");
   const isMarketing = hasUserRole("marketing");
   const isMarketingEventi = hasUserRole("marketing_eventi");
+  const isResponsabileAgenti = hasUserRole("responsabile_agenti");
   const isAgente = hasUserRole("agente");
   const isPrevRead = hasUserRole("preventivi_read");
   const isPrevWrite = hasUserRole("preventivi_write");
@@ -282,6 +283,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (item.roles.includes("direzione") && isDirezione) return true;
     if (item.roles.includes("marketing") && isMarketing) return true;
     if (item.roles.includes("marketing_eventi") && isMarketingEventi) return true;
+    if (item.roles.includes("responsabile_agenti") && isResponsabileAgenti) return true;
     if (item.roles.includes("preventivi_read") && hasAccessoPreventivi) return true;
     return false;
   });
