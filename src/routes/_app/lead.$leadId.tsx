@@ -170,6 +170,7 @@ function LeadDettaglioPage() {
     },
     staleTime: 5 * 60_000,
   });
+  const { data: mestieri } = useCategorieSegmento("mestiere");
 
   const nomeProfilo = (id: string | null) => {
     if (!id) return "—";
