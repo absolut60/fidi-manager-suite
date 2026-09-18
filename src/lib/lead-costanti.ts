@@ -13,6 +13,7 @@ export const LEAD_ROLES = new Set<string>([
   "amministrazione",
   "direzione",
   "marketing",
+  "responsabile_agenti",
 ]);
 
 export function puoAccedereLead(roles: readonly string[]): boolean {
