@@ -755,7 +755,7 @@ function ClientiPage() {
 
   const classifReady = (!needsClassif || !!classifList)
     && (semaforoFiltro === "tutti" || !!semaforoMap);
-  const scadReady = scadenziarioFiltro === "tutti" || !!scadenziarioMap;
+  const scadReady = !needsScadFull || !!scadenziarioMap;
   const isVirtualSort = VIRTUAL_SORT_COLS.includes(sortBy);
   const isFidoTeoricoSort = sortBy === "fido_proposto" || sortBy === "scostamento";
   // Ordinamento virtuale: serve la mappa completa (scadenziario o fido teorico).
@@ -933,6 +933,28 @@ function ClientiPage() {
           stadio: (r.semaforo_stadio ?? null) as SemaforoColor | null,
           motivo: r.semaforo_motivo ?? null,
           numero: r.semaforo_numero == null ? null : Number(r.semaforo_numero),
+        });
+      }
+      return map;
+    },
+  });
+
+  // Scadenziario di display per le sole righe visibili (pagina corrente): evita
+  // di caricare la mappa completa quando non serve a filtro/ordinamento.
+  const { data: scadenziarioDisplayMap } = useQuery({
+    queryKey: ["clienti-scadenziario-display", visibleClienteIds],
+    enabled: isListRoute && visibleClienteIds.length > 0,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const map = new Map<string, ScadenziarioState>();
+      const { data, error } = await (supabase as any).rpc("get_clienti_scadenziario", { _cliente_ids: visibleClienteIds });
+      if (error) throw error;
+      for (const r of (data ?? []) as any[]) {
+        map.set(r.cliente_id, {
+          totale_scaduto: Number(r.totale_scaduto) || 0,
+          totale_a_scadere: Number(r.totale_a_scadere) || 0,
+          ha_scaduto: !!r.ha_scaduto,
+          ha_a_scadere: !!r.ha_a_scadere,
         });
       }
       return map;
