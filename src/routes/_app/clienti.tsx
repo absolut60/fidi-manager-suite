@@ -408,6 +408,10 @@ function ClientiPage() {
       return map;
     },
     staleTime: 60_000,
+    // Mappa completa necessaria solo quando il filtro Semaforo è attivo
+    // (per generare semaforoIds); per il solo pallino di display c'è la
+    // query mirata ["clienti-semaforo-display"] sulle righe visibili.
+    enabled: isListRoute && semaforoFiltro !== "tutti",
   });
 
   // ID set per filtro "Scaduto" (con / senza scaduto)
@@ -903,6 +907,29 @@ function ClientiPage() {
     enabled: isListRoute && visibleClienteIds.length > 0,
     staleTime: 5 * 60_000,
     queryFn: async () => fetchPrivacyStatusMap(visibleClienteIds),
+  });
+  // Semaforo di display per le sole righe visibili (pagina corrente): evita
+  // di caricare la mappa completa quando il filtro Semaforo è su "tutti".
+  const { data: semaforoDisplayMap } = useQuery({
+    queryKey: ["clienti-semaforo-display", visibleClienteIds],
+    enabled: isListRoute && visibleClienteIds.length > 0,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const map = new Map<string, SemaforoPre>();
+      const { data, error } = await (supabase as any)
+        .from("fido_teorico_cliente")
+        .select("cliente_id, semaforo_stadio, semaforo_motivo, semaforo_numero")
+        .in("cliente_id", visibleClienteIds);
+      if (error) throw error;
+      for (const r of data ?? []) {
+        map.set(r.cliente_id, {
+          stadio: (r.semaforo_stadio ?? null) as SemaforoColor | null,
+          motivo: r.semaforo_motivo ?? null,
+          numero: r.semaforo_numero == null ? null : Number(r.semaforo_numero),
+        });
+      }
+      return map;
+    },
   });
 
   // Fetch di tutti gli id filtrati (per "Seleziona tutti i filtrati")
@@ -1674,7 +1701,7 @@ function ClientiPage() {
                   titolo={c.ragione_sociale}
                   selezione={!isAgente ? { checked: selectedIds.has(c.id), onChange: () => toggleSelect(c) } : undefined}
                   badge={(() => {
-                    const s = semaforoMap?.get(c.id);
+                    const s = (semaforoMap ?? semaforoDisplayMap)?.get(c.id);
                     const st = s?.stadio ?? null;
                     return (
                       <span
@@ -1767,7 +1794,7 @@ function ClientiPage() {
               </TableHeader>
               <TableBody>
                 {clienti.map((c: any) => {
-                  const sem = semaforoMap?.get(c.id) ?? null;
+                  const sem = (semaforoMap ?? semaforoDisplayMap)?.get(c.id) ?? null;
                   const residuo = c.fido_residuo;
                   const residuoNum = residuo == null ? null : Number(residuo);
                   const sc = scadenziarioMap?.get(c.id);
