@@ -332,8 +332,12 @@ function ClientiPage() {
 
   // Mappa classificazione (id + colonne necessarie per semaforo e stato fido)
   // Carica tutti i clienti in chunk da 1000 per superare il limite Supabase.
+  // Serve solo ai 4 filtri opzionali (stato fido, oltre fido, fido consumato >= X%, insoluti):
+  // viene caricata solo quando almeno uno di essi è attivo.
+  const needsClassif = statoFido.size > 0 || soloOltreFido || advApplied.percConsumato != null || soloInsoluti;
   const { data: classifList } = useQuery({
     queryKey: ["clienti-classificazione"],
+    enabled: isListRoute && needsClassif,
     queryFn: async () => {
       const all: any[] = [];
       let offset = 0;
@@ -746,7 +750,7 @@ function ClientiPage() {
 
 
 
-  const classifReady = ((statoFido.size === 0 && !soloOltreFido) || !!classifList)
+  const classifReady = (!needsClassif || !!classifList)
     && (semaforoFiltro === "tutti" || !!semaforoMap);
   const scadReady = scadenziarioFiltro === "tutti" || !!scadenziarioMap;
   const isVirtualSort = VIRTUAL_SORT_COLS.includes(sortBy);
