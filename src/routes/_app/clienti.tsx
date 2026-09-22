@@ -1716,7 +1716,7 @@ function ClientiPage() {
           {/* Mobile: schede al posto della tabella */}
           <ElencoSchede>
             {clienti.map((c: any) => {
-              const sc = scadenziarioMap?.get(c.id);
+              const sc = (scadenziarioMap ?? scadenziarioDisplayMap)?.get(c.id);
               const isBlocked = !!c.bloccato || Number(c.ind_blocco ?? 0) > 0;
               return (
                 <SchedaLista
@@ -1826,7 +1826,7 @@ function ClientiPage() {
                   const sem = (semaforoMap ?? semaforoDisplayMap)?.get(c.id) ?? null;
                   const residuo = c.fido_residuo;
                   const residuoNum = residuo == null ? null : Number(residuo);
-                  const sc = scadenziarioMap?.get(c.id);
+                  const sc = (scadenziarioMap ?? scadenziarioDisplayMap)?.get(c.id);
                   const isBlocked = !!c.bloccato || Number(c.ind_blocco ?? 0) > 0;
                   return (
                    <TableRow
