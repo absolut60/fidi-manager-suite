@@ -298,9 +298,12 @@ function ClientiPage() {
   });
   const { data: mestieriFiltro } = useCategorieSegmento("mestiere");
 
-  // Aggregato scadenziario (una sola query, cached) per badge + filtro
+  // Aggregato scadenziario (una sola query, cached) per badge + filtro.
+  // La mappa COMPLETA serve solo al filtro Scaduto o all'ordinamento virtuale.
+  const needsScadFull = scadenziarioFiltro !== "tutti" || sortBy === "scaduto" || sortBy === "a_scadere";
   const { data: scadenziarioMap } = useQuery({
     queryKey: ["clienti-scadenziario-agg"],
+    enabled: isListRoute && needsScadFull,
     queryFn: async () => {
       const map = new Map<string, ScadenziarioState>();
       let offset = 0;
