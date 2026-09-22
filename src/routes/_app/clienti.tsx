@@ -298,9 +298,12 @@ function ClientiPage() {
   });
   const { data: mestieriFiltro } = useCategorieSegmento("mestiere");
 
-  // Aggregato scadenziario (una sola query, cached) per badge + filtro
+  // Aggregato scadenziario (una sola query, cached) per badge + filtro.
+  // La mappa COMPLETA serve solo al filtro Scaduto o all'ordinamento virtuale.
+  const needsScadFull = scadenziarioFiltro !== "tutti" || sortBy === "scaduto" || sortBy === "a_scadere";
   const { data: scadenziarioMap } = useQuery({
     queryKey: ["clienti-scadenziario-agg"],
+    enabled: isListRoute && needsScadFull,
     queryFn: async () => {
       const map = new Map<string, ScadenziarioState>();
       let offset = 0;
@@ -752,7 +755,7 @@ function ClientiPage() {
 
   const classifReady = (!needsClassif || !!classifList)
     && (semaforoFiltro === "tutti" || !!semaforoMap);
-  const scadReady = scadenziarioFiltro === "tutti" || !!scadenziarioMap;
+  const scadReady = !needsScadFull || !!scadenziarioMap;
   const isVirtualSort = VIRTUAL_SORT_COLS.includes(sortBy);
   const isFidoTeoricoSort = sortBy === "fido_proposto" || sortBy === "scostamento";
   // Ordinamento virtuale: serve la mappa completa (scadenziario o fido teorico).
@@ -930,6 +933,28 @@ function ClientiPage() {
           stadio: (r.semaforo_stadio ?? null) as SemaforoColor | null,
           motivo: r.semaforo_motivo ?? null,
           numero: r.semaforo_numero == null ? null : Number(r.semaforo_numero),
+        });
+      }
+      return map;
+    },
+  });
+
+  // Scadenziario di display per le sole righe visibili (pagina corrente): evita
+  // di caricare la mappa completa quando non serve a filtro/ordinamento.
+  const { data: scadenziarioDisplayMap } = useQuery({
+    queryKey: ["clienti-scadenziario-display", visibleClienteIds],
+    enabled: isListRoute && visibleClienteIds.length > 0,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const map = new Map<string, ScadenziarioState>();
+      const { data, error } = await (supabase as any).rpc("get_clienti_scadenziario", { _cliente_ids: visibleClienteIds });
+      if (error) throw error;
+      for (const r of (data ?? []) as any[]) {
+        map.set(r.cliente_id, {
+          totale_scaduto: Number(r.totale_scaduto) || 0,
+          totale_a_scadere: Number(r.totale_a_scadere) || 0,
+          ha_scaduto: !!r.ha_scaduto,
+          ha_a_scadere: !!r.ha_a_scadere,
         });
       }
       return map;
@@ -1691,7 +1716,7 @@ function ClientiPage() {
           {/* Mobile: schede al posto della tabella */}
           <ElencoSchede>
             {clienti.map((c: any) => {
-              const sc = scadenziarioMap?.get(c.id);
+              const sc = (scadenziarioMap ?? scadenziarioDisplayMap)?.get(c.id);
               const isBlocked = !!c.bloccato || Number(c.ind_blocco ?? 0) > 0;
               return (
                 <SchedaLista
@@ -1801,7 +1826,7 @@ function ClientiPage() {
                   const sem = (semaforoMap ?? semaforoDisplayMap)?.get(c.id) ?? null;
                   const residuo = c.fido_residuo;
                   const residuoNum = residuo == null ? null : Number(residuo);
-                  const sc = scadenziarioMap?.get(c.id);
+                  const sc = (scadenziarioMap ?? scadenziarioDisplayMap)?.get(c.id);
                   const isBlocked = !!c.bloccato || Number(c.ind_blocco ?? 0) > 0;
                   return (
                    <TableRow

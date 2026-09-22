@@ -6701,7 +6701,7 @@ export type Database = {
         }[]
       }
       get_clienti_scadenziario: {
-        Args: never
+        Args: { _cliente_ids?: string[] }
         Returns: {
           cliente_id: string
           ha_a_scadere: boolean
