@@ -45,6 +45,7 @@ import { Route as AppDashboardCommercialeRouteImport } from './routes/_app/dashb
 import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as AppCruscottoIncassiRouteImport } from './routes/_app/cruscotto-incassi'
 import { Route as AppContattiRouteImport } from './routes/_app/contatti'
+import { Route as AppClientiVariazioniBloccoRouteImport } from './routes/_app/clienti-variazioni-blocco'
 import { Route as AppClientiRouteImport } from './routes/_app/clienti'
 import { Route as AppChatRouteImport } from './routes/_app/chat'
 import { Route as AppCantieriRouteImport } from './routes/_app/cantieri'
@@ -280,6 +281,12 @@ const AppContattiRoute = AppContattiRouteImport.update({
   path: '/contatti',
   getParentRoute: () => AppRoute,
 } as any)
+const AppClientiVariazioniBloccoRoute =
+  AppClientiVariazioniBloccoRouteImport.update({
+    id: '/clienti-variazioni-blocco',
+    path: '/clienti-variazioni-blocco',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppClientiRoute = AppClientiRouteImport.update({
   id: '/clienti',
   path: '/clienti',
@@ -569,6 +576,7 @@ export interface FileRoutesByFullPath {
   '/cantieri': typeof AppCantieriRoute
   '/chat': typeof AppChatRoute
   '/clienti': typeof AppClientiRouteWithChildren
+  '/clienti-variazioni-blocco': typeof AppClientiVariazioniBloccoRoute
   '/contatti': typeof AppContattiRoute
   '/cruscotto-incassi': typeof AppCruscottoIncassiRoute
   '/dashboard': typeof AppDashboardRoute
@@ -657,6 +665,7 @@ export interface FileRoutesByTo {
   '/cantieri': typeof AppCantieriRoute
   '/chat': typeof AppChatRoute
   '/clienti': typeof AppClientiRouteWithChildren
+  '/clienti-variazioni-blocco': typeof AppClientiVariazioniBloccoRoute
   '/contatti': typeof AppContattiRoute
   '/cruscotto-incassi': typeof AppCruscottoIncassiRoute
   '/dashboard': typeof AppDashboardRoute
@@ -744,6 +753,7 @@ export interface FileRoutesById {
   '/_app/cantieri': typeof AppCantieriRoute
   '/_app/chat': typeof AppChatRoute
   '/_app/clienti': typeof AppClientiRouteWithChildren
+  '/_app/clienti-variazioni-blocco': typeof AppClientiVariazioniBloccoRoute
   '/_app/contatti': typeof AppContattiRoute
   '/_app/cruscotto-incassi': typeof AppCruscottoIncassiRoute
   '/_app/dashboard': typeof AppDashboardRoute
@@ -834,6 +844,7 @@ export interface FileRouteTypes {
     | '/cantieri'
     | '/chat'
     | '/clienti'
+    | '/clienti-variazioni-blocco'
     | '/contatti'
     | '/cruscotto-incassi'
     | '/dashboard'
@@ -922,6 +933,7 @@ export interface FileRouteTypes {
     | '/cantieri'
     | '/chat'
     | '/clienti'
+    | '/clienti-variazioni-blocco'
     | '/contatti'
     | '/cruscotto-incassi'
     | '/dashboard'
@@ -1008,6 +1020,7 @@ export interface FileRouteTypes {
     | '/_app/cantieri'
     | '/_app/chat'
     | '/_app/clienti'
+    | '/_app/clienti-variazioni-blocco'
     | '/_app/contatti'
     | '/_app/cruscotto-incassi'
     | '/_app/dashboard'
@@ -1354,6 +1367,13 @@ declare module '@tanstack/react-router' {
       path: '/contatti'
       fullPath: '/contatti'
       preLoaderRoute: typeof AppContattiRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/clienti-variazioni-blocco': {
+      id: '/_app/clienti-variazioni-blocco'
+      path: '/clienti-variazioni-blocco'
+      fullPath: '/clienti-variazioni-blocco'
+      preLoaderRoute: typeof AppClientiVariazioniBloccoRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/clienti': {
@@ -1791,6 +1811,7 @@ interface AppRouteChildren {
   AppCantieriRoute: typeof AppCantieriRoute
   AppChatRoute: typeof AppChatRoute
   AppClientiRoute: typeof AppClientiRouteWithChildren
+  AppClientiVariazioniBloccoRoute: typeof AppClientiVariazioniBloccoRoute
   AppContattiRoute: typeof AppContattiRoute
   AppCruscottoIncassiRoute: typeof AppCruscottoIncassiRoute
   AppDashboardRoute: typeof AppDashboardRoute
@@ -1854,6 +1875,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppCantieriRoute: AppCantieriRoute,
   AppChatRoute: AppChatRoute,
   AppClientiRoute: AppClientiRouteWithChildren,
+  AppClientiVariazioniBloccoRoute: AppClientiVariazioniBloccoRoute,
   AppContattiRoute: AppContattiRoute,
   AppCruscottoIncassiRoute: AppCruscottoIncassiRoute,
   AppDashboardRoute: AppDashboardRoute,
