@@ -56,6 +56,23 @@ const RUOLI_MARKETING: AppRole[] = ["marketing", "marketing_eventi"];
 
 const RUOLI_PREVENTIVI: AppRole[] = ["preventivi_read", "preventivi_write", "preventivi_manage"];
 
+const GRUPPI_RUOLI: AppRole[][] = [RUOLI_CREDITO, RUOLI_RICHIESTE, RUOLI_MARKETING, RUOLI_PREVENTIVI];
+
+// Rete di sicurezza: qualunque ruolo futuro dell'enum, presente in RUOLI_LABEL
+// (Record<AppRole, string>, quindi completo per costruzione), finisce qui e resta visibile.
+const ALTRI_RUOLI: AppRole[] = (Object.keys(RUOLI_LABEL) as AppRole[]).filter(
+  (r) => !GRUPPI_RUOLI.some((g) => g.includes(r)),
+);
+
+// Ordine badge in tabella: gruppi appiattiti (credito, richieste, marketing, preventivi, altri).
+const ORDINE_GRUPPI: AppRole[] = [
+  ...RUOLI_CREDITO,
+  ...RUOLI_RICHIESTE,
+  ...RUOLI_MARKETING,
+  ...RUOLI_PREVENTIVI,
+  ...ALTRI_RUOLI,
+];
+
 type UserRow = {
   id: string;
   nome: string | null;
@@ -86,7 +103,7 @@ function UtentiPage() {
         const userRoles = (roles ?? [])
           .filter((r) => r.user_id === p.id)
           .map((r) => r.role as AppRole)
-          .sort((a, b) => ORDINE_RUOLI.indexOf(a) - ORDINE_RUOLI.indexOf(b));
+          .sort((a, b) => ORDINE_GRUPPI.indexOf(a) - ORDINE_GRUPPI.indexOf(b));
         const store = stores?.find((s) => s.id === p.store_id);
         return {
           ...p,
