@@ -138,7 +138,7 @@ function UtentiPage() {
   const [editing, setEditing] = useState<UserRow | null>(null);
   const [creating, setCreating] = useState(false);
   const [search, setSearch] = useState("");
-  const [filtroRuolo, setFiltroRuolo] = useState<AppRole | "tutti">("tutti");
+  const [filtroRuolo, setFiltroRuolo] = useState<string>("tutti");
   const [filtroStore, setFiltroStore] = useState("tutti");
   const [filtroStato, setFiltroStato] = useState("tutti");
   const [ordina, setOrdina] = useState<{ chiave: OrdinaChiave; dir: OrdinaDir }>({ chiave: "nome", dir: "asc" });
@@ -187,7 +187,7 @@ function UtentiPage() {
   const filtrati = useMemo(() => {
     const q = search.trim().toLowerCase();
     return (utenti ?? []).filter((u) => {
-      if (filtroRuolo !== "tutti" && !u.ruoli.includes(filtroRuolo)) return false;
+      if (filtroRuolo !== "tutti" && !u.ruoli.includes(filtroRuolo as AppRole)) return false;
       if (filtroStore === "nessuno" && u.store_id !== null) return false;
       if (filtroStore !== "tutti" && filtroStore !== "nessuno" && u.store_id !== filtroStore) return false;
       if (filtroStato === "attivi" && !u.attivo) return false;
@@ -413,7 +413,7 @@ function UtentiPage() {
                           <TableCell className="text-sm">{u.store_nome || <span className="text-muted-foreground">—</span>}</TableCell>
                           <TableCell><Badge variant={u.attivo ? "default" : "secondary"}>{u.attivo ? "Attivo" : "Inattivo"}</Badge></TableCell>
                           <TableCell className="text-right">
-                            <Button size="icon" variant="ghost" onClick={() => setEditing(u)} aria-label={`Modifica ${[u.nome, u.cognome].filter(Boolean).join(" ") || u.email ?? ""}`}><Pencil className="size-4" /></Button>
+                            <Button size="icon" variant="ghost" onClick={() => setEditing(u)} aria-label={`Modifica ${[u.nome, u.cognome].filter(Boolean).join(" ") || (u.email ?? "")}`}><Pencil className="size-4" /></Button>
                           </TableCell>
                         </TableRow>
                       ))}
