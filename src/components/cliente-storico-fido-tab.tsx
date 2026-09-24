@@ -22,7 +22,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  STATO_LABEL, STATO_TONE, TIPO_LABEL, TIPO_TONE, formatEuro, formatDate,
+  STATO_LABEL, STATO_TONE, TIPO_LABEL, TIPO_TONE, formatEuro, formatDate, determinaTipoRichiesta,
   type TipoRichiesta, type StatoRichiesta,
 } from "@/lib/fidi";
 import { useConfig } from "@/hooks/use-config";
