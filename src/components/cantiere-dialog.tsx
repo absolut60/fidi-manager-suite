@@ -217,9 +217,9 @@ export function CantiereDialog({
     return () => { annullato = true; };
   }, [open, soggetto]);
 
-  // L'agente-only intesta sempre a sé stesso
+  // L'agente-only intesta a sé stesso solo i cantieri nuovi (in modifica resta il valore salvato)
   useEffect(() => {
-    if (!open || !forzaAgente || !user?.id) return;
+    if (!open || !forzaAgente || !user?.id || cantiere) return;
     let annullato = false;
     (async () => {
       const { data } = await supabase.from("profili").select("codice_agente").eq("id", user.id).maybeSingle();
@@ -227,7 +227,7 @@ export function CantiereDialog({
       if (!annullato && cod) setAgenteCodice(cod);
     })();
     return () => { annullato = true; };
-  }, [open, forzaAgente, user?.id]);
+  }, [open, forzaAgente, user?.id, cantiere]);
 
   const indirizzoCambiato =
     (cantiere?.indirizzo ?? "") !== indirizzo.trim() ||
@@ -301,6 +301,8 @@ export function CantiereDialog({
 
       let id = cantiere?.id ?? "";
       if (cantiere) {
+        // In modifica l'agente-only non deve mai riscrivere agente_codice
+        if (forzaAgente) delete payload.agente_codice;
         const { error } = await supabase.from("cantieri").update(payload as never).eq("id", cantiere.id);
         if (error) throw error;
       } else {
