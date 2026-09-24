@@ -119,12 +119,13 @@ function legaleBadge(c: { in_gestione_legale: boolean }) {
 
 const PAGE_SIZE = 25;
 
-type Situazione = "con_scaduto" | "tutte" | "solo_a_scadere" | "scaduto_e_a_scadere";
+type Situazione = "con_scaduto" | "tutte" | "solo_a_scadere" | "scaduto_e_a_scadere" | "portafoglio";
 const SITUAZIONE_LABEL: Record<Situazione, string> = {
   con_scaduto: "Con scaduto",
   tutte: "Tutte le scadenze aperte",
   solo_a_scadere: "Solo a scadere",
   scaduto_e_a_scadere: "Scaduto e a scadere",
+  portafoglio: "Tutto il portafoglio clienti",
 };
 
 type SortKey =
@@ -281,9 +282,9 @@ function ScadenziarioPage() {
   }
   const azzeraFiltri = () => resetFiltri("con_scaduto");
   // "Vedi tutto" è derivato, non uno state: si spegne da solo se l'utente cambia a mano uno dei 4 valori.
-  const vediTuttoAttivo = situazione === "tutte" && !escludiBonifici && !escludiLegale && mostraACredito;
+  const vediTuttoAttivo = situazione === "portafoglio" && !escludiBonifici && !escludiLegale && mostraACredito;
   const attivaVediTutto = () => {
-    resetFiltri("tutte");
+    resetFiltri("portafoglio");
     setEscludiBonifici(false);
     setEscludiLegale(false);
     setMostraACredito(true);
@@ -781,7 +782,7 @@ function ScadenziarioPage() {
                   />
                   <div className="min-w-0">
                     <Label htmlFor="vedi-tutto" className="text-sm cursor-pointer">Vedi tutto</Label>
-                    <p className="text-xs text-muted-foreground">Tutte le scadenze aperte, inclusi BOS, gestione legale e clienti a credito</p>
+                    <p className="text-xs text-muted-foreground">Tutto il portafoglio clienti, anche senza scadenze aperte, inclusi BOS, gestione legale e clienti a credito</p>
                   </div>
                 </div>
                 <Button type="button" size="sm" variant="outline" className="h-10 gap-1.5 shrink-0" onClick={() => void esportaExcel()} disabled={exporting}>
@@ -836,7 +837,7 @@ function ScadenziarioPage() {
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <h2 className="text-sm font-semibold uppercase text-foreground flex items-center gap-2">
-            <FileText className="size-4" /> Clienti con scadenze aperte ({totalCount})
+            <FileText className="size-4" /> {situazione === "portafoglio" ? "Portafoglio clienti" : "Clienti con scadenze aperte"} ({totalCount})
           </h2>
           <Button size="sm" variant="outline" onClick={() => setInvioMassivoOpen(true)} className="gap-1.5">
             <Mail className="size-4" /> Invio massivo solleciti
