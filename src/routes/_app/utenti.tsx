@@ -97,16 +97,17 @@ function codiceNumericoPuntoVendita(label: string): number {
 }
 
 function IntestazioneOrdinabile({
-  label, chiave, ordina, onOrdina,
+  label, chiave, ordina, onOrdina, className,
 }: {
   label: string;
   chiave: OrdinaChiave;
   ordina: { chiave: OrdinaChiave; dir: OrdinaDir };
   onOrdina: (c: OrdinaChiave) => void;
+  className?: string;
 }) {
   const attivo = ordina.chiave === chiave;
   return (
-    <TableHead>
+    <TableHead className={className}>
       <button
         type="button"
         onClick={() => onOrdina(chiave)}
@@ -284,19 +285,19 @@ function UtentiPage() {
                 </Button>
               }
             >
-              <div className="flex flex-wrap gap-2">
-                <div className="relative flex-1 min-w-[200px] sm:flex-none sm:w-72">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative min-w-[200px] flex-1 sm:w-72 sm:flex-none">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                   <Input
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Cerca nome, cognome o email..."
-                    className="pl-9"
+                    className="h-9 pl-9"
                   />
                 </div>
-                <div className="flex-1 min-w-[160px] sm:flex-none sm:w-auto sm:min-w-[11rem]">
+                <div className="min-w-[160px] flex-1 sm:w-auto sm:min-w-[11rem] sm:flex-none">
                   <Select value={filtroRuolo} onValueChange={setFiltroRuolo}>
-                    <SelectTrigger className="w-full"><SelectValue placeholder="Ruolo" /></SelectTrigger>
+                    <SelectTrigger className="h-9 w-full"><SelectValue placeholder="Ruolo" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="tutti">Tutti i ruoli</SelectItem>
                       {ORDINE_GRUPPI.map((r) => (
@@ -305,11 +306,11 @@ function UtentiPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex-1 min-w-[160px] sm:flex-none sm:w-auto sm:min-w-[11rem]">
+                <div className="min-w-[160px] flex-1 sm:w-auto sm:min-w-[13rem] sm:flex-none">
                   <Select value={filtroStore} onValueChange={setFiltroStore}>
-                    <SelectTrigger className="w-full"><SelectValue placeholder="Punto vendita" /></SelectTrigger>
+                    <SelectTrigger className="h-9 w-full"><SelectValue placeholder="Punto vendita" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="tutti">Tutti</SelectItem>
+                      <SelectItem value="tutti">Tutti i punti vendita</SelectItem>
                       <SelectItem value="nessuno">Senza punto vendita</SelectItem>
                       {opzioniStore.map(([id, label]) => (
                         <SelectItem key={id} value={id}>{label}</SelectItem>
@@ -317,11 +318,11 @@ function UtentiPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex-1 min-w-[160px] sm:flex-none sm:w-auto sm:min-w-[9rem]">
+                <div className="min-w-[160px] flex-1 sm:w-auto sm:min-w-[10rem] sm:flex-none">
                   <Select value={filtroStato} onValueChange={setFiltroStato}>
-                    <SelectTrigger className="w-full"><SelectValue placeholder="Stato" /></SelectTrigger>
+                    <SelectTrigger className="h-9 w-full"><SelectValue placeholder="Stato" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="tutti">Tutti</SelectItem>
+                      <SelectItem value="tutti">Tutti gli stati</SelectItem>
                       <SelectItem value="attivi">Attivi</SelectItem>
                       <SelectItem value="inattivi">Inattivi</SelectItem>
                     </SelectContent>
@@ -388,27 +389,30 @@ function UtentiPage() {
 
                 {/* Desktop: tabella con intestazioni ordinabili */}
                 <div className="hidden md:block">
-                  <Table>
+                  <Table className="table-auto">
                     <TableHeader>
                       <TableRow>
-                        <IntestazioneOrdinabile label="Nome" chiave="nome" ordina={ordina} onOrdina={handleOrdina} />
-                        <IntestazioneOrdinabile label="Email" chiave="email" ordina={ordina} onOrdina={handleOrdina} />
-                        <TableHead>Ruoli</TableHead>
-                        <IntestazioneOrdinabile label="Punto vendita" chiave="store" ordina={ordina} onOrdina={handleOrdina} />
-                        <IntestazioneOrdinabile label="Stato" chiave="stato" ordina={ordina} onOrdina={handleOrdina} />
-                        <TableHead className="text-right">Azioni</TableHead>
+                        <IntestazioneOrdinabile className="w-px whitespace-nowrap" label="Nome" chiave="nome" ordina={ordina} onOrdina={handleOrdina} />
+                        <IntestazioneOrdinabile className="hidden w-px whitespace-nowrap xl:table-cell" label="Email" chiave="email" ordina={ordina} onOrdina={handleOrdina} />
+                        <TableHead className="w-full">Ruoli</TableHead>
+                        <IntestazioneOrdinabile className="w-px whitespace-nowrap" label="Punto vendita" chiave="store" ordina={ordina} onOrdina={handleOrdina} />
+                        <IntestazioneOrdinabile className="w-px whitespace-nowrap" label="Stato" chiave="stato" ordina={ordina} onOrdina={handleOrdina} />
+                        <TableHead className="w-px whitespace-nowrap text-right">Azioni</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {ordinati.map((u) => (
                         <TableRow key={u.id}>
-                          <TableCell className="font-medium">
-                            <span className="break-words">{[u.nome, u.cognome].filter(Boolean).join(" ") || "—"}</span>
+                          <TableCell className="py-2 font-medium whitespace-nowrap">
+                            <span>{[u.nome, u.cognome].filter(Boolean).join(" ") || "—"}</span>
+                            <span className="block max-w-48 truncate text-xs font-normal text-muted-foreground xl:hidden" title={u.email ?? undefined}>
+                              {u.email ?? "—"}
+                            </span>
                           </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            <span className="break-all">{u.email ?? "—"}</span>
+                          <TableCell className="hidden w-px py-2 text-sm text-muted-foreground whitespace-nowrap xl:table-cell">
+                            <span className="block max-w-64 truncate" title={u.email ?? undefined}>{u.email ?? "—"}</span>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="py-2">
                             <div className="flex flex-wrap gap-1">
                               {u.ruoli.length === 0 ? (
                                 <span className="text-muted-foreground text-sm">—</span>
@@ -419,9 +423,9 @@ function UtentiPage() {
                               )}
                             </div>
                           </TableCell>
-                          <TableCell className="text-sm">{u.store_nome || <span className="text-muted-foreground">—</span>}</TableCell>
-                          <TableCell><Badge variant={u.attivo ? "default" : "secondary"}>{u.attivo ? "Attivo" : "Inattivo"}</Badge></TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="w-px py-2 text-sm whitespace-nowrap">{u.store_nome || <span className="text-muted-foreground">—</span>}</TableCell>
+                          <TableCell className="w-px py-2 whitespace-nowrap"><Badge variant={u.attivo ? "default" : "secondary"}>{u.attivo ? "Attivo" : "Inattivo"}</Badge></TableCell>
+                          <TableCell className="w-px py-2 text-right whitespace-nowrap">
                             <Button size="icon" variant="ghost" onClick={() => setEditing(u)} aria-label={`Modifica ${[u.nome, u.cognome].filter(Boolean).join(" ") || (u.email ?? "")}`}><Pencil className="size-4" /></Button>
                           </TableCell>
                         </TableRow>
