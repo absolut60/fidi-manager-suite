@@ -2425,11 +2425,106 @@ function ProposteFidoMassivoDialog({
     }
   }
 
+  // Pezzi condivisi tra tabella desktop e schede mobile (stessi handler)
+  const renderCliente = (r: RigaProposta) => (
+    <>
+      <span className="break-words">{r.ragione_sociale}</span>
+      {r.richiede_verifica && (
+        <Badge className="ml-2 bg-warning/15 text-warning hover:bg-warning/20">Da verificare</Badge>
+      )}
+      {r.nota_proposta && (
+        <p className="text-xs font-normal text-muted-foreground mt-0.5 max-w-[380px] break-words">{r.nota_proposta}</p>
+      )}
+      {r.richiestaInCorso && (
+        <div className={`mt-1 inline-block max-w-full md:max-w-[380px] whitespace-normal break-words rounded px-2 py-0.5 text-xs font-medium ${STATO_TONE[r.richiestaInCorso.stato as StatoRichiesta] ?? "bg-muted text-muted-foreground"}`}>
+          Richiesta già in corso: {STATO_LABEL[r.richiestaInCorso.stato as StatoRichiesta] ?? r.richiestaInCorso.stato}
+          {" · "}{TIPO_LABEL[r.richiestaInCorso.tipo as TipoRichiesta] ?? r.richiestaInCorso.tipo} {fmtEuro(r.richiestaInCorso.importo)}
+          {" · del "}{formatDate(r.richiestaInCorso.created_at)}
+        </div>
+      )}
+    </>
+  );
+  const renderImporto = (r: RigaProposta, className: string) => (
+    <Input
+      type="number"
+      className={className}
+      value={r.fido_proposto}
+      disabled={!r.proponibile}
+      onChange={(e) => aggiornaImporto(r.cliente_id, Number(e.target.value) || 0)}
+    />
+  );
+  const renderRegola = (r: RigaProposta) =>
+    r.proponibile ? (
+      <span className="text-muted-foreground">{REGOLA_LABEL[r.regola] ?? r.regola ?? "—"}</span>
+    ) : (
+      <span className="text-warning" title={MOTIVO_NON_PROPONIBILE[r.regola] ?? ""}>
+        {MOTIVO_NON_PROPONIBILE[r.regola] ?? REGOLA_LABEL[r.regola] ?? "Non proponibile"}
+      </span>
+    );
+  const renderTipo = (r: RigaProposta, triggerClass: string) => (
+    <>
+      <Select value={r.tipo} disabled={!r.proponibile} onValueChange={(v) => aggiornaTipo(r.cliente_id, v as RigaProposta["tipo"])}>
+        <SelectTrigger className={triggerClass}><SelectValue /></SelectTrigger>
+        <SelectContent>
+          {TIPI_PROPOSTA.map((t) => <SelectItem key={t} value={t}>{TIPO_LABEL[t]}</SelectItem>)}
+        </SelectContent>
+      </Select>
+      {Number(r.fido_proposto) === 0 && (r.tipo === "diminuzione" || r.tipo === "rinnovo") && (
+        <div className={`mt-1 text-xs ${r.tipo === "diminuzione" ? "text-warning" : "text-muted-foreground"}`}>
+          {etichettaTipoRichiesta(r.tipo, 0)}
+        </div>
+      )}
+    </>
+  );
+  const renderMotivazione = (r: RigaProposta) => {
+    const hasOverride = r.motivazione !== undefined;
+    return (
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={hasOverride ? "text-primary" : ""}
+            title={hasOverride ? "Motivazione personalizzata" : "Eredita motivazione generale"}
+          >
+            <MessageSquare className="size-4" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-80 max-w-[calc(100vw-2rem)]" align="end">
+          <div className="space-y-2">
+            <Label className="text-xs">Motivazione per questo cliente</Label>
+            <Textarea
+              value={hasOverride ? r.motivazione ?? "" : motivazioneGenerale}
+              onChange={(e) => aggiornaMotivazioneRiga(r.cliente_id, e.target.value)}
+              placeholder="Lascia vuoto per ereditare quella generale"
+              className="min-h-20"
+            />
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-muted-foreground">
+                {hasOverride ? "Personalizzata" : "Eredita generale"}
+              </span>
+              {hasOverride && (
+                <Button variant="ghost" size="sm" onClick={() => aggiornaMotivazioneRiga(r.cliente_id, undefined)}>
+                  Reimposta
+                </Button>
+              )}
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
+    );
+  };
+  const renderRimuovi = (r: RigaProposta) => (
+    <Button variant="ghost" size="icon" onClick={() => rimuoviRiga(r.cliente_id)} title="Rimuovi">
+      <X className="size-4" />
+    </Button>
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Proposta fido massiva — {righeVisibiliIncluse.length} clienti</DialogTitle>
+      <DialogContent className="w-[calc(100%-2rem)] max-w-6xl max-h-[90dvh] overflow-y-auto overflow-x-hidden grid-cols-[minmax(0,1fr)] p-4 sm:p-6">
+        <DialogHeader className="pr-8 text-left">
+          <DialogTitle className="break-words">Proposta fido massiva — {righeVisibiliIncluse.length} clienti</DialogTitle>
           <DialogDescription>
             L'importo proposto è il fido teorico calcolato dal sistema (fatturato + condizione di pagamento).
           </DialogDescription>
@@ -2554,7 +2649,55 @@ function ProposteFidoMassivoDialog({
           </p>
         </div>
 
-        <div className="border rounded-md">
+        {/* Mobile: schede */}
+        <ElencoSchede>
+          {righeVisibili.map((r) => {
+            const scost = r.proponibile ? r.fido_proposto - r.fido_attuale : 0;
+            return (
+              <SchedaLista
+                key={r.cliente_id}
+                className={`${!r.proponibile ? "opacity-60" : ""} ${
+                  r.proponibile && r.richiede_verifica ? "bg-warning/10 border-l-2 border-l-warning" : ""
+                }`}
+                selezione={{ checked: r.incluso && r.proponibile, onChange: () => { if (r.proponibile) toggleIncluso(r.cliente_id); } }}
+                titolo={renderCliente(r)}
+                badge={
+                  <div className="flex shrink-0 items-center">
+                    {renderMotivazione(r)}
+                    {renderRimuovi(r)}
+                  </div>
+                }
+                campi={[
+                  { etichetta: "Fido attuale", valore: fmtEuro(r.fido_attuale) },
+                  { etichetta: "Esposizione", valore: fmtEuro(r.esposizione) },
+                  {
+                    etichetta: "Scostamento",
+                    valore: (
+                      <span className={`tabular-nums ${scost > 0 ? "text-success" : scost < 0 ? "text-warning" : "text-muted-foreground"}`}>
+                        {r.proponibile ? `${scost > 0 ? "+" : ""}${fmtEuro(scost)}` : "—"}
+                      </span>
+                    ),
+                  },
+                  { etichetta: "Regola", valore: <span className="text-xs">{renderRegola(r)}</span> },
+                ]}
+                footer={
+                  <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2">
+                    <div className="min-w-0 space-y-1">
+                      <Label className="text-xs text-muted-foreground font-normal">Fido proposto</Label>
+                      {renderImporto(r, "h-10 w-full text-right")}
+                    </div>
+                    <div className="min-w-0 space-y-1">
+                      <Label className="text-xs text-muted-foreground font-normal">Tipo</Label>
+                      {renderTipo(r, "h-10 w-full")}
+                    </div>
+                  </div>
+                }
+              />
+            );
+          })}
+        </ElencoSchede>
+
+        <div className="hidden md:block min-w-0 border rounded-md">
           <Table>
             <TableHeader>
               <TableRow>
@@ -2572,7 +2715,6 @@ function ProposteFidoMassivoDialog({
             </TableHeader>
             <TableBody>
               {righeVisibili.map((r) => {
-                const hasOverride = r.motivazione !== undefined;
                 const scost = r.proponibile ? r.fido_proposto - r.fido_attuale : 0;
                 return (
                   <TableRow
@@ -2588,103 +2730,17 @@ function ProposteFidoMassivoDialog({
                         onCheckedChange={() => toggleIncluso(r.cliente_id)}
                       />
                     </TableCell>
-                    <TableCell className="font-medium text-sm">
-                      {r.ragione_sociale}
-                      {r.richiede_verifica && (
-                        <Badge className="ml-2 bg-warning/15 text-warning hover:bg-warning/20">Da verificare</Badge>
-                      )}
-                      {r.nota_proposta && (
-                        <p className="text-xs font-normal text-muted-foreground mt-0.5 max-w-[380px]">{r.nota_proposta}</p>
-                      )}
-                      {r.richiestaInCorso && (
-                        <div className={`mt-1 inline-block max-w-[380px] whitespace-normal break-words rounded px-2 py-0.5 text-xs font-medium ${STATO_TONE[r.richiestaInCorso.stato as StatoRichiesta] ?? "bg-muted text-muted-foreground"}`}>
-                          Richiesta già in corso: {STATO_LABEL[r.richiestaInCorso.stato as StatoRichiesta] ?? r.richiestaInCorso.stato}
-                          {" · "}{TIPO_LABEL[r.richiestaInCorso.tipo as TipoRichiesta] ?? r.richiestaInCorso.tipo} {fmtEuro(r.richiestaInCorso.importo)}
-                          {" · del "}{formatDate(r.richiestaInCorso.created_at)}
-                        </div>
-                      )}
-                    </TableCell>
+                    <TableCell className="font-medium text-sm">{renderCliente(r)}</TableCell>
                     <TableCell className="text-right text-sm">{fmtEuro(r.fido_attuale)}</TableCell>
                     <TableCell className="text-right text-sm">{fmtEuro(r.esposizione)}</TableCell>
-                    <TableCell className="text-right">
-                      <Input
-                        type="number"
-                        className="h-8 text-right w-32 ml-auto"
-                        value={r.fido_proposto}
-                        disabled={!r.proponibile}
-                        onChange={(e) => aggiornaImporto(r.cliente_id, Number(e.target.value) || 0)}
-                      />
-                    </TableCell>
+                    <TableCell className="text-right">{renderImporto(r, "h-8 text-right w-32 ml-auto")}</TableCell>
                     <TableCell className={`text-right text-sm tabular-nums ${scost > 0 ? "text-success" : scost < 0 ? "text-warning" : "text-muted-foreground"}`}>
                       {r.proponibile ? `${scost > 0 ? "+" : ""}${fmtEuro(scost)}` : "—"}
                     </TableCell>
-                    <TableCell className="text-xs">
-                      {r.proponibile ? (
-                        <span className="text-muted-foreground">{REGOLA_LABEL[r.regola] ?? r.regola ?? "—"}</span>
-                      ) : (
-                        <span className="text-warning" title={MOTIVO_NON_PROPONIBILE[r.regola] ?? ""}>
-                          {MOTIVO_NON_PROPONIBILE[r.regola] ?? REGOLA_LABEL[r.regola] ?? "Non proponibile"}
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Select value={r.tipo} disabled={!r.proponibile} onValueChange={(v) => aggiornaTipo(r.cliente_id, v as RigaProposta["tipo"])}>
-                        <SelectTrigger className="h-8 w-36"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {TIPI_PROPOSTA.map((t) => <SelectItem key={t} value={t}>{TIPO_LABEL[t]}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                      {Number(r.fido_proposto) === 0 && (r.tipo === "diminuzione" || r.tipo === "rinnovo") && (
-                        <div className={`mt-1 text-xs ${r.tipo === "diminuzione" ? "text-warning" : "text-muted-foreground"}`}>
-                          {etichettaTipoRichiesta(r.tipo, 0)}
-                        </div>
-                      )}
-                    </TableCell>
-
-                    <TableCell>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className={hasOverride ? "text-primary" : ""}
-                            title={hasOverride ? "Motivazione personalizzata" : "Eredita motivazione generale"}
-                          >
-                            <MessageSquare className="size-4" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-80" align="end">
-                          <div className="space-y-2">
-                            <Label className="text-xs">Motivazione per questo cliente</Label>
-                            <Textarea
-                              value={hasOverride ? r.motivazione ?? "" : motivazioneGenerale}
-                              onChange={(e) => aggiornaMotivazioneRiga(r.cliente_id, e.target.value)}
-                              placeholder="Lascia vuoto per ereditare quella generale"
-                              className="min-h-20"
-                            />
-                            <div className="flex justify-between items-center">
-                              <span className="text-xs text-muted-foreground">
-                                {hasOverride ? "Personalizzata" : "Eredita generale"}
-                              </span>
-                              {hasOverride && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => aggiornaMotivazioneRiga(r.cliente_id, undefined)}
-                                >
-                                  Reimposta
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-                    </TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="icon" onClick={() => rimuoviRiga(r.cliente_id)} title="Rimuovi">
-                        <X className="size-4" />
-                      </Button>
-                    </TableCell>
+                    <TableCell className="text-xs">{renderRegola(r)}</TableCell>
+                    <TableCell>{renderTipo(r, "h-8 w-36")}</TableCell>
+                    <TableCell>{renderMotivazione(r)}</TableCell>
+                    <TableCell>{renderRimuovi(r)}</TableCell>
                   </TableRow>
                 );
               })}
@@ -2692,19 +2748,21 @@ function ProposteFidoMassivoDialog({
           </Table>
         </div>
 
-        <div className="text-sm font-medium">
-          Totale fido proposto: <strong>{fmtEuro(totale)}</strong> · {righeVisibiliIncluse.length} richieste da creare
-          {righeEscluse.length > 0 && (
-            <span className="text-muted-foreground font-normal"> · {righeEscluse.length} esclusi</span>
-          )}
+        <div className="sticky bottom-0 -mx-4 sm:-mx-6 -mb-4 sm:-mb-6 min-w-0 space-y-3 border-t bg-background px-4 sm:px-6 py-3">
+          <div className="text-sm font-medium break-words">
+            Totale fido proposto: <strong>{fmtEuro(totale)}</strong> · {righeVisibiliIncluse.length} richieste da creare
+            {righeEscluse.length > 0 && (
+              <span className="text-muted-foreground font-normal"> · {righeEscluse.length} esclusi</span>
+            )}
+          </div>
+          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row">
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => onOpenChange(false)} disabled={submitting}>Annulla</Button>
+            <Button className="w-full sm:w-auto" onClick={creaRichieste} disabled={submitting || righeVisibiliIncluse.length === 0}>
+              {submitting ? "Creazione…" : `Crea ${righeVisibiliIncluse.length} richieste`}
+            </Button>
+          </DialogFooter>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>Annulla</Button>
-          <Button onClick={creaRichieste} disabled={submitting || righeVisibiliIncluse.length === 0}>
-            {submitting ? "Creazione…" : `Crea ${righeVisibiliIncluse.length} richieste`}
-          </Button>
-        </DialogFooter>
 
       </DialogContent>
     </Dialog>
