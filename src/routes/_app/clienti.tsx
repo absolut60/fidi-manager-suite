@@ -167,6 +167,7 @@ function ClientiPage() {
   const [filtroTipoSoggetto, setFiltroTipoSoggetto] = useState<"tutti" | "fisica" | "giuridica">("giuridica");
   const [filtroAgente, setFiltroAgente] = useState<string>("tutti");
   const [filtroMestiere, setFiltroMestiere] = useState<string>("tutti");
+  const [filtroRichiesta, setFiltroRichiesta] = useState<"tutti" | "escludi" | "solo">("tutti");
   const [scadenziarioFiltro, setScadenziarioFiltro] = useState<string>("tutti");
   const [totaleRischioFiltro, setTotaleRischioFiltro] = useState<string>("tutti");
   const [fatturatoFiltro, setFatturatoFiltro] = useState<string>("tutti");
@@ -534,9 +535,38 @@ function ClientiPage() {
     return ids;
   }, [semaforoMap, semaforoFiltro]);
 
+  // Clienti con richiesta fido in corso — regola unica: isRichiestaAttiva (fidi.ts)
+  const needsRichiesteAttive = filtroRichiesta !== "tutti" || statoFido.has("in_revisione");
+  const { data: richiesteAttiveIds } = useQuery({
+    queryKey: ["clienti-richieste-fido-attive"],
+    queryFn: async () => {
+      const set = new Set<string>();
+      let off = 0;
+      const size = 1000;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await supabase
+          .from("richieste_fido")
+          .select("id, cliente_id, stato, stato_export")
+          .order("id", { ascending: true })
+          .range(off, off + size - 1);
+        if (error) throw error;
+        const batch = (data ?? []) as Array<{ cliente_id: string | null; stato: string; stato_export: string | null }>;
+        for (const r of batch) if (r.cliente_id && isRichiestaAttiva(r)) set.add(r.cliente_id);
+        if (batch.length < size) break;
+        off += size;
+        if (off > 200000) break;
+      }
+      return Array.from(set);
+    },
+    enabled: isListRoute && needsRichiesteAttive,
+  });
+  const richiesteReady = !needsRichiesteAttive || !!richiesteAttiveIds;
+
   // ID set per filtro stato fido (server-side via .in)
   const statoFidoIds = useMemo<string[] | null>(() => {
     if (statoFido.size === 0 || !classifList) return null;
+    const richiesteSet = new Set(richiesteAttiveIds ?? []);
     return classifList.filter((c: any) => {
       const fido = Number(c.fido ?? 0);
       const scaduto = Number(c.scaduto ?? 0);
@@ -545,9 +575,10 @@ function ClientiPage() {
       if (scaduto > 0) matches.add("scaduto");
       if (!fido) matches.add("non_assegnato");
       else if (!c.bloccato && scaduto === 0) matches.add("attivo");
+      if (richiesteSet.has(c.id)) matches.add("in_revisione");
       return Array.from(statoFido).some((s) => matches.has(s));
     }).map((c: any) => c.id);
-  }, [classifList, statoFido]);
+  }, [classifList, statoFido, richiesteAttiveIds]);
 
   // ID set per filtro "esposizione oltre il fido" (rischio + da evadere > fido gestionale)
   const oltreFidoIds = useMemo<string[] | null>(() => {
@@ -614,7 +645,7 @@ function ClientiPage() {
   // Reset pagina ogni volta che cambia un filtro o l'ordinamento
   useEffect(() => {
     setPage(1);
-  }, [search, statoCliente, statoAttivita, storeFiltro, statoFido, semaforoFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, filtroMestiere, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, fasciaConcesso]);
+  }, [search, statoCliente, statoAttivita, storeFiltro, statoFido, semaforoFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, filtroMestiere, filtroRichiesta, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, fasciaConcesso]);
 
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -710,6 +741,10 @@ function ClientiPage() {
     if (scadenziarioIdsFilter?.mode === "exclude" && scadenziarioIdsFilter.ids.length > 0) {
       q = q.not("id", "in", `(${scadenziarioIdsFilter.ids.join(",")})`);
     }
+    // Exclude clienti con richiesta fido in corso
+    if (filtroRichiesta === "escludi" && richiesteAttiveIds && richiesteAttiveIds.length > 0) {
+      q = q.not("id", "in", `(${richiesteAttiveIds.join(",")})`);
+    }
 
     const term = search.replace(/[(),]/g, " ").trim();
     if (term) {
@@ -761,7 +796,7 @@ function ClientiPage() {
 
   const privacyFilterReady = privacyFiltro === "tutti" || (scadReady && classifReady && isConfigReady && virtualSortReady && scostamentoReady && insolutiReady && fermiReady);
   const { data: privacyFilterMap } = useQuery({
-    queryKey: ["clienti-privacy-filter", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, filtroMestiere, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, fasciaConcesso, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
+    queryKey: ["clienti-privacy-filter", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, filtroMestiere, filtroRichiesta, richiesteN: richiesteAttiveIds?.length ?? null, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, fasciaConcesso, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
     enabled: isListRoute && privacyFiltro !== "tutti" && privacyFilterReady,
     staleTime: 5 * 60_000,
     queryFn: async () => {
@@ -896,7 +931,7 @@ function ClientiPage() {
       if (error) throw error;
       return { rows: data ?? [], count: count ?? (data?.length ?? 0) };
     },
-    enabled: isListRoute && scadReady && classifReady && isConfigReady && virtualSortReady && scostamentoReady && insolutiReady && fermiReady,
+    enabled: isListRoute && scadReady && classifReady && isConfigReady && virtualSortReady && scostamentoReady && insolutiReady && fermiReady && richiesteReady,
   });
   const clienti = (clientiResp?.rows ?? []) as any[];
   const totaleClienti = clientiResp?.count ?? 0;
@@ -998,6 +1033,7 @@ function ClientiPage() {
     (filtroTipoSoggetto !== "giuridica" ? 1 : 0) +
     (filtroAgente !== "tutti" ? 1 : 0) +
     (filtroMestiere !== "tutti" ? 1 : 0) +
+    (filtroRichiesta !== "tutti" ? 1 : 0) +
     (scadenziarioFiltro !== "tutti" ? 1 : 0) +
     (totaleRischioFiltro !== "tutti" ? 1 : 0) +
     (aScadereFiltro !== "tutti" ? 1 : 0) +
@@ -1039,6 +1075,7 @@ function ClientiPage() {
     setFiltroLegale("tutti");
     setFiltroTipoSoggetto("giuridica");
     setFiltroMestiere("tutti");
+    setFiltroRichiesta("tutti");
     setFiltroAgente("tutti");
     setScadenziarioFiltro("tutti");
     setTotaleRischioFiltro("tutti");
@@ -1175,6 +1212,17 @@ function ClientiPage() {
         <SelectItem value="attivi">Solo attivi</SelectItem>
         <SelectItem value="non_attivi">Solo non attivi</SelectItem>
         <SelectItem value="tutti">Tutti</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+
+  const RichiestaFidoSelect = (
+    <Select value={filtroRichiesta} onValueChange={(v) => setFiltroRichiesta(v as typeof filtroRichiesta)}>
+      <SelectTrigger className="w-full"><SelectValue placeholder="Richiesta fido" /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="tutti">Richiesta fido: tutte</SelectItem>
+        <SelectItem value="escludi">Escludi con richiesta in corso</SelectItem>
+        <SelectItem value="solo">Solo con richiesta in corso</SelectItem>
       </SelectContent>
     </Select>
   );
@@ -1416,6 +1464,9 @@ function ClientiPage() {
     const desc = filtroMestiere === "__none__" ? "Senza mestiere" : ((mestieriFiltro ?? []).find((m) => m.id === filtroMestiere)?.label ?? filtroMestiere);
     activeChips.push({ key: "mestiere", label: `Mestiere: ${desc}`, onRemove: () => setFiltroMestiere("tutti") });
   }
+  if (filtroRichiesta !== "tutti") {
+    activeChips.push({ key: "richiesta", label: filtroRichiesta === "escludi" ? "Esclusi con richiesta in corso" : "Solo con richiesta in corso", onRemove: () => setFiltroRichiesta("tutti") });
+  }
   if (sliderCommitted[0] !== FIDO_RANGE_MIN || sliderCommitted[1] !== FIDO_RANGE_MAX) {
     activeChips.push({ key: "slider", label: `Fido slider: ${fmtEuro(sliderCommitted[0])} → ${fmtEuro(sliderCommitted[1])}`, onRemove: () => { setSliderDisplay([FIDO_RANGE_MIN, FIDO_RANGE_MAX]); setSliderCommitted([FIDO_RANGE_MIN, FIDO_RANGE_MAX]); } });
   }
@@ -1498,6 +1549,7 @@ function ClientiPage() {
             {TotaleRischioSelect}
             {FatturatoSelect}
             {StatoAttivitaSelect}
+            {RichiestaFidoSelect}
             {ScostamentoSelect}
             {FidoTeoricoToggle}
           </div>
@@ -1532,6 +1584,7 @@ function ClientiPage() {
           {TotaleRischioSelect}
           {FatturatoSelect}
           {StatoAttivitaSelect}
+          {RichiestaFidoSelect}
           {AdvFilterBtn}
         </div>
         {/* Livello 3 — fido teorico (colonne opzionali + filtro scostamento) */}
@@ -1708,6 +1761,25 @@ function ClientiPage() {
         ) : (
           <>
           {/* Mobile: schede al posto della tabella */}
+          {!isAgente && totaleClienti > 0 && (
+            <div className="md:hidden mb-2">
+              {selectedIds.size >= totaleClienti ? (
+                <Button variant="outline" className="w-full h-10" onClick={clearSelection}>
+                  Deseleziona tutto
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  className="w-full h-10 gap-2"
+                  onClick={selezionaTuttiFiltrati}
+                  disabled={loadingSelection}
+                >
+                  {loadingSelection && <Loader2 className="size-4 animate-spin" />}
+                  Seleziona tutti i {totaleClienti} filtrati
+                </Button>
+              )}
+            </div>
+          )}
           <ElencoSchede>
             {clienti.map((c: any) => {
               const sc = (scadenziarioMap ?? scadenziarioDisplayMap)?.get(c.id);
