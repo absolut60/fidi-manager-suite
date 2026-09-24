@@ -108,6 +108,7 @@ const NAV: NavItem[] = [
   { to: "/approvazioni", label: "Approvazioni", icon: CheckCheck, roles: ["admin", "approvatore"], group: "fidi" },
   { to: "/fidi-processare", label: "Fidi da processare", icon: ClipboardCheck, roles: ["admin", "approvatore"], group: "fidi" },
   { to: "/assicurazioni", label: "Assicurazioni", icon: ShieldCheck, roles: ["admin", "approvatore", "store_manager"], group: "fidi" },
+  { to: "/clienti-variazioni-blocco", label: "Variazioni blocco", icon: AlertTriangle, roles: ["admin", "store_manager"], group: "fidi" },
   // INCASSI
   { to: "/scadenziario", label: "Scadenziario", icon: CalendarClock, roles: ["admin", "approvatore", "store_manager", "amministrazione"], group: "incassi" },
   { to: "/cruscotto-incassi", label: "Cruscotto incassi", icon: LineChart, roles: ["admin", "approvatore", "store_manager", "amministrazione"], group: "incassi" },
