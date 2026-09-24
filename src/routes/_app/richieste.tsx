@@ -45,6 +45,7 @@ import {
 import {
   STATO_LABEL, STATO_TONE, TIPO_LABEL, TIPO_TONE, calcolaLivello,
   formatEuro, formatDate, type TipoRichiesta, isRichiestaAttiva,
+  determinaTipoRichiesta, importoRichiestaValido,
 } from "@/lib/fidi";
 import { getFidoAttuale } from "@/lib/fido-cliente";
 import { RICHIESTA_FIDO_SELECT } from "@/lib/richieste-fido-data";
@@ -1270,11 +1271,25 @@ function TuttoTab({ rows, loading, msgCounts }: { rows: any[]; loading: boolean;
 const formSchema = z.object({
   cliente_id: z.string().uuid("Seleziona un cliente"),
   tipo: z.enum(["nuovo", "nuovo_fido", "aumento", "diminuzione", "rinnovo"]),
-  importo_richiesto: z.coerce.number().positive("Importo > 0").max(99999999),
+  importo_richiesto: z.union([z.literal(""), z.coerce.number().max(99999999)]),
   durata_mesi: z.coerce.number().int().min(1).max(120).default(12),
   motivazione: z.string().trim().max(2000),
   note: z.string().trim().max(2000).optional().or(z.literal("")),
   condizione_pagamento_cod: z.string().trim().max(20).optional().or(z.literal("")),
+}).superRefine((v, ctx) => {
+  if (v.importo_richiesto === "") {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["importo_richiesto"],
+      message: "Inserisci l'importo richiesto",
+    });
+  } else if (!importoRichiestaValido(v.tipo, v.importo_richiesto)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["importo_richiesto"],
+      message: "Importo 0 ammesso solo per diminuzione (azzeramento) o rinnovo",
+    });
+  }
 });
 type FormVals = z.infer<typeof formSchema>;
 
@@ -1286,7 +1301,7 @@ function RichiestaFormDialog({
   const [form, setForm] = useState<FormVals>({
     cliente_id: seed?.cliente_id ?? "",
     tipo: (seed?.tipo as any) ?? "nuovo",
-    importo_richiesto: seed ? Number(seed.importo_richiesto) : 0,
+    importo_richiesto: seed ? Number(seed.importo_richiesto) : "",
     durata_mesi: seed?.durata_mesi ?? 12,
     motivazione: seed?.motivazione ?? "",
     note: seed?.note ?? "",
@@ -1371,16 +1386,12 @@ function RichiestaFormDialog({
   });
 
   // Auto-calcolo TIPO in base al confronto Importo richiesto vs Fido attuale.
-  // Regola: fido=0 -> nuovo_fido; importo>fido -> aumento; importo<fido -> diminuzione;
-  // importo=fido -> aumento (default ragionevole, variazione 0).
+  // Regola condivisa: determinaTipoRichiesta di src/lib/fidi.ts (0 -> 0 = rinnovo).
   // Se l'utente ha gia' modificato il campo a mano (tipoTouched), NON sovrascriviamo.
   useEffect(() => {
     if (tipoTouched) return;
-    if (!form.cliente_id || !form.importo_richiesto || form.importo_richiesto <= 0) return;
-    const tipoAuto: FormVals["tipo"] =
-      fidoAttuale <= 0 ? "nuovo_fido"
-      : form.importo_richiesto < fidoAttuale ? "diminuzione"
-      : "aumento";
+    if (!form.cliente_id || form.importo_richiesto === "") return;
+    const tipoAuto = determinaTipoRichiesta(fidoAttuale, Number(form.importo_richiesto));
     if (form.tipo !== tipoAuto) setForm((f) => ({ ...f, tipo: tipoAuto }));
   }, [fidoAttuale, form.importo_richiesto, form.cliente_id, tipoTouched, form.tipo]);
 
@@ -1443,12 +1454,14 @@ function RichiestaFormDialog({
   const disallineato = ultimoApprovatoImp != null
     && Math.abs(ultimoApprovatoImp - fidoAttuale) > 0.01;
 
-  const variazione = fidoAttuale > 0 && form.importo_richiesto > 0
-    ? ((form.importo_richiesto - fidoAttuale) / fidoAttuale) * 100
+  const importoNum = form.importo_richiesto === "" ? null : Number(form.importo_richiesto);
+  const importoValido = importoNum != null && Number.isFinite(importoNum);
+  const variazione = fidoAttuale > 0 && importoValido
+    ? ((importoNum - fidoAttuale) / fidoAttuale) * 100
     : null;
   const config = useConfig();
   const soglie = { liv1: config.soglia_livello_1, liv2: config.soglia_livello_2 };
-  const livelloPreview = form.importo_richiesto > 0 ? calcolaLivello(Number(form.importo_richiesto), soglie) : null;
+  const livelloPreview = importoValido ? calcolaLivello(importoNum, soglie) : null;
   const allResults = clientiSearch ?? [];
   const hasMore = allResults.length > LIMIT;
   const filteredClienti = allResults.slice(0, LIMIT);
