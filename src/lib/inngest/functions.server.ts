@@ -3503,6 +3503,21 @@ export const processBloccoFidoImport = inngest.createFunction(
           .eq("id", importazioneId);
       });
 
+      // Aggancio alert variazioni blocco: emette l'evento di rilevazione DOPO che
+      // tutte le scritture su clienti di questo import sono terminate.
+      // Un errore di emissione NON fa fallire l'import.
+      await step.run("emetti-rilevazione-variazioni-blocco", async () => {
+        try {
+          await sendInngestEvents([
+            { name: "clienti/blocco.variazioni.rileva", data: { importazioneId } },
+          ]);
+        } catch (e) {
+          logger.warn(
+            `Emissione rilevazione variazioni blocco fallita: ${e instanceof Error ? e.message : String(e)}`,
+          );
+        }
+        return true;
+      });
 
       logger.info(
         `Blocco fido done: agg=${aggiornati}, azzerati=${azzerati}, anom=${anomalieTotali}, blk=${bloccati}, sblk=${sbloccati}, nonAtt=${nonAttivi}, pol=${polizze}, noteLeg=${noteImportate}, miss=${nonTrovatiCount}, err=${errorsCount + errors.length}`,
