@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, Fragment, useEffect } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
-import { AlertTriangle, Calendar, FileText, Ban, CalendarClock, Scale, ChevronDown, ChevronUp, Megaphone, Mail, Bell, ChevronLeft, ChevronRight, HandCoins, ArrowUp, ArrowDown, Download, Loader2, SlidersHorizontal, RotateCcw, Eye } from "lucide-react";
+import { AlertTriangle, Calendar, FileText, Ban, CalendarClock, Scale, ChevronDown, ChevronUp, Megaphone, Mail, Bell, ChevronLeft, ChevronRight, HandCoins, ArrowUp, ArrowDown, Download, Loader2, SlidersHorizontal, RotateCcw } from "lucide-react";
 import * as XLSX from "xlsx";
 import { scaricaWorkbook } from "@/lib/fido-teorico-export";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
@@ -237,6 +237,7 @@ function ScadenziarioPage() {
   const minImp = Number(importoMin) || 0;
   const minAScad = Number(importoMinAScadere) || 0;
   const avanzatiAttivi = [
+    situazione !== "con_scaduto",
     agenteFiltro !== "tutti",
     fascia !== "tutte",
     minImp > 0,
@@ -278,8 +279,15 @@ function ScadenziarioPage() {
     setMostraACredito(false);
     setSituazione(sit);
   }
-  const vediTutto = () => resetFiltri("tutte");
   const azzeraFiltri = () => resetFiltri("con_scaduto");
+  // "Vedi tutto" è derivato, non uno state: si spegne da solo se l'utente cambia a mano uno dei 4 valori.
+  const vediTuttoAttivo = situazione === "tutte" && !escludiBonifici && !escludiLegale && mostraACredito;
+  const attivaVediTutto = () => {
+    resetFiltri("tutte");
+    setEscludiBonifici(false);
+    setEscludiLegale(false);
+    setMostraACredito(true);
+  };
 
   const commonParams = useMemo(() => ({
     p_search: searchDebounced || null,
@@ -659,17 +667,11 @@ function ScadenziarioPage() {
               {avanzatiAttivi > 0 && <Badge className="ml-1 h-5 px-1.5">{avanzatiAttivi}</Badge>}
               {avanzatiOpen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
             </Button>
-            <Button type="button" size="sm" variant="outline" className="h-10 gap-1.5" onClick={vediTutto}>
-              <Eye className="size-4" /> Vedi tutto
-            </Button>
             {!filtriDefault && (
               <Button type="button" size="sm" variant="ghost" className="h-10 gap-1.5" onClick={azzeraFiltri}>
                 <RotateCcw className="size-4" /> Azzera filtri
               </Button>
             )}
-            <Button type="button" size="sm" variant="outline" className="h-10 gap-1.5" onClick={() => void esportaExcel()} disabled={exporting}>
-              {exporting ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />} Esporta Excel
-            </Button>
           </div>
 
           <div className="md:hidden">
@@ -768,6 +770,23 @@ function ScadenziarioPage() {
                     </span>
                   )}
                 </div>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t">
+                <div className="flex items-start gap-2 min-w-0">
+                  <Switch
+                    id="vedi-tutto"
+                    checked={vediTuttoAttivo}
+                    onCheckedChange={(v) => { if (v) attivaVediTutto(); else azzeraFiltri(); }}
+                    className="mt-0.5 shrink-0"
+                  />
+                  <div className="min-w-0">
+                    <Label htmlFor="vedi-tutto" className="text-sm cursor-pointer">Vedi tutto</Label>
+                    <p className="text-xs text-muted-foreground">Tutte le scadenze aperte, inclusi BOS, gestione legale e clienti a credito</p>
+                  </div>
+                </div>
+                <Button type="button" size="sm" variant="outline" className="h-10 gap-1.5 shrink-0" onClick={() => void esportaExcel()} disabled={exporting}>
+                  {exporting ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />} Esporta Excel
+                </Button>
               </div>
             </CollapsibleContent>
           </Collapsible>
