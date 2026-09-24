@@ -282,6 +282,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (item.roles.includes("store_manager") && (isAdmin || isApprovatore || isStoreManager)) return true;
     if (item.roles.includes("amministrazione") && isAmministrazione) return true;
     if (item.roles.includes("amministrazione_strumenti") && isAmministrazioneStrumenti) return true;
+    if (item.roles.includes("direzione") && isDirezione) return true;
     if (item.roles.includes("marketing") && isMarketing) return true;
     if (item.roles.includes("marketing_eventi") && isMarketingEventi) return true;
     if (item.roles.includes("responsabile_agenti") && isResponsabileAgenti) return true;
