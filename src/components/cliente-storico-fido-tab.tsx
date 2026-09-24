@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import {
   STATO_LABEL, STATO_TONE, TIPO_LABEL, TIPO_TONE, formatEuro, formatDate, determinaTipoRichiesta,
+  importoRichiestaValido,
   type TipoRichiesta, type StatoRichiesta,
 } from "@/lib/fidi";
 import { useConfig } from "@/hooks/use-config";
@@ -34,10 +35,18 @@ const STATI_STORICO: StatoRichiesta[] = ["approvata", "rifiutata", "annullata"];
 
 const richiestaSchema = z.object({
   tipo: z.enum(["nuovo_fido", "aumento", "diminuzione", "rinnovo"]),
-  importo_richiesto: z.coerce.number().positive("Importo > 0").max(99999999),
+  importo_richiesto: z.coerce.number().max(99999999),
   durata_mesi: z.coerce.number().int().min(1).max(120).default(12),
   motivazione: z.string().trim().max(1000).optional().or(z.literal("")),
   note: z.string().trim().max(1000).optional().or(z.literal("")),
+}).superRefine((v, ctx) => {
+  if (!importoRichiestaValido(v.tipo, v.importo_richiesto)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["importo_richiesto"],
+      message: "Importo 0 ammesso solo per diminuzione (azzeramento) o rinnovo",
+    });
+  }
 });
 type RichiestaForm = z.infer<typeof richiestaSchema>;
 
