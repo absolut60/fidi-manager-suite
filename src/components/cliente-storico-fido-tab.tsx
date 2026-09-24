@@ -353,7 +353,7 @@ function RichiestaDialog({
           .from("richieste_fido")
           .update({
             tipo: parsed.tipo,
-            importo_richiesto: parsed.importo_richiesto,
+            importo_richiesto: parsed.importo_richiesto as number,
             durata_mesi: parsed.durata_mesi,
             motivazione: parsed.motivazione || null,
             note: parsed.note || null,
@@ -367,7 +367,7 @@ function RichiestaDialog({
           cliente_id: clienteId,
           tipo: parsed.tipo,
           store_id: cli?.store_id ?? null,
-          importo_richiesto: parsed.importo_richiesto,
+          importo_richiesto: parsed.importo_richiesto as number,
           durata_mesi: parsed.durata_mesi,
           motivazione: parsed.motivazione || null,
           note: parsed.note || null,
