@@ -3,17 +3,17 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import type { Constants, Database } from "@/integrations/supabase/types";
+import { Constants, type Database } from "@/integrations/supabase/types";
 
 type AppRole = Database["public"]["Enums"]["app_role"];
 
 // Lista derivata dall'enum generato (Constants.public.Enums.app_role): un nuovo valore
 // aggiunto sul DB + rigenerazione tipi è automaticamente accettato qui, senza liste a mano.
-const RUOLI_VALIDI = Constants.public.Enums.app_role as [AppRole, ...AppRole[]];
+const RUOLI_VALIDI = Constants.public.Enums.app_role as unknown as [AppRole, ...AppRole[]];
 
 // Rete di sicurezza a compilazione: se la lista generata non copre TUTTI i valori
 // dell'enum, questo file non compila (types.ts disallineato rispetto al DB).
-const _coperturaEnum: AppRole extends (typeof RUOLI_VALIDI)[number] ? true : never = true;
+const _coperturaEnum: AppRole extends (typeof Constants.public.Enums.app_role)[number] ? true : never = true;
 void _coperturaEnum;
 
 async function assertAgenteEsiste(codice: string) {
