@@ -6528,6 +6528,18 @@ export type Database = {
         Args: { _preventivo_id: string }
         Returns: boolean
       }
+      auth_vede_preventivo: {
+        Args: {
+          _agente_codice: string
+          _cantiere_id: string
+          _cliente_id: string
+        }
+        Returns: boolean
+      }
+      auth_vede_preventivo_id: {
+        Args: { _preventivo_id: string }
+        Returns: boolean
+      }
       auto_collega_iscritto_whatsapp: { Args: { _id: string }; Returns: string }
       backfill_contatti_iscritti_whatsapp: { Args: never; Returns: Json }
       bulk_update_clienti_bfa: { Args: { _payloads: Json }; Returns: number }
