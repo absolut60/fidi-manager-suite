@@ -35,7 +35,6 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { SignaturePad, getCanvasDataURL } from "@/components/signature-pad";
 import { generaSchedaCliente } from "@/lib/scheda-pdf";
 import { useAuth } from "@/hooks/use-auth";
