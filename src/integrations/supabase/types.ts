@@ -6535,6 +6535,16 @@ export type Database = {
         }[]
       }
       can_manage_email_assets: { Args: never; Returns: boolean }
+      categoria_scadenza: {
+        Args: {
+          _data_pagamento_effettiva: string
+          _data_scadenza: string
+          _giorni_ritardo: number
+          _oggi: string
+          _stato_contabile: string
+        }
+        Returns: string
+      }
       cerca_candidati_riconciliazione: {
         Args: { _partecipante_id: string }
         Returns: {
@@ -7322,8 +7332,10 @@ export type Database = {
           p_escludi_legale?: boolean
           p_fascia?: string
           p_importo_min?: number
+          p_importo_min_a_scadere?: number
           p_mostra_a_credito?: boolean
           p_search?: string
+          p_situazione?: string
           p_stato_blocco?: string
           p_stato_legale?: string
           p_store_id?: string
@@ -7342,10 +7354,12 @@ export type Database = {
           p_escludi_legale?: boolean
           p_fascia?: string
           p_importo_min?: number
+          p_importo_min_a_scadere?: number
           p_mostra_a_credito?: boolean
           p_page?: number
           p_page_size?: number
           p_search?: string
+          p_situazione?: string
           p_sort_by?: string
           p_sort_dir?: string
           p_stato_blocco?: string
@@ -7394,8 +7408,10 @@ export type Database = {
           p_escludi_legale?: boolean
           p_fascia?: string
           p_importo_min?: number
+          p_importo_min_a_scadere?: number
           p_mostra_a_credito?: boolean
           p_search?: string
+          p_situazione?: string
           p_stato_blocco?: string
           p_stato_legale?: string
           p_store_id?: string
