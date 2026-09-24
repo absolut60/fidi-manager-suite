@@ -794,7 +794,7 @@ function ClientiPage() {
   const insolutiReady = !soloInsoluti || !!classifList;
   const fermiReady = !soloFermi || !!fermiIds;
 
-  const privacyFilterReady = privacyFiltro === "tutti" || (scadReady && classifReady && isConfigReady && virtualSortReady && scostamentoReady && insolutiReady && fermiReady);
+  const privacyFilterReady = privacyFiltro === "tutti" || (scadReady && classifReady && isConfigReady && virtualSortReady && scostamentoReady && insolutiReady && fermiReady && richiesteReady);
   const { data: privacyFilterMap } = useQuery({
     queryKey: ["clienti-privacy-filter", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, filtroMestiere, filtroRichiesta, richiesteN: richiesteAttiveIds?.length ?? null, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, fasciaConcesso, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
     enabled: isListRoute && privacyFiltro !== "tutti" && privacyFilterReady,
