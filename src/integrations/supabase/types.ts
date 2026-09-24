@@ -1863,6 +1863,118 @@ export type Database = {
           },
         ]
       }
+      clienti_blocco_stato: {
+        Row: {
+          aggiornato_at: string
+          bloccato: boolean
+          cliente_id: string
+        }
+        Insert: {
+          aggiornato_at?: string
+          bloccato: boolean
+          cliente_id: string
+        }
+        Update: {
+          aggiornato_at?: string
+          bloccato?: boolean
+          cliente_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clienti_blocco_stato_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: true
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clienti_blocco_stato_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: true
+            referencedRelation: "clienti_con_rischio"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clienti_blocco_stato_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: true
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+        ]
+      }
+      clienti_blocco_variazioni: {
+        Row: {
+          cliente_id: string
+          codice_gestionale: string | null
+          id: string
+          importazione_id: string | null
+          notificato_at: string | null
+          ragione_sociale: string | null
+          rilevato_at: string
+          store_id: string | null
+          tipo: string
+        }
+        Insert: {
+          cliente_id: string
+          codice_gestionale?: string | null
+          id?: string
+          importazione_id?: string | null
+          notificato_at?: string | null
+          ragione_sociale?: string | null
+          rilevato_at?: string
+          store_id?: string | null
+          tipo: string
+        }
+        Update: {
+          cliente_id?: string
+          codice_gestionale?: string | null
+          id?: string
+          importazione_id?: string | null
+          notificato_at?: string | null
+          ragione_sociale?: string | null
+          rilevato_at?: string
+          store_id?: string | null
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clienti_blocco_variazioni_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clienti_blocco_variazioni_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti_con_rischio"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clienti_blocco_variazioni_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "clienti_blocco_variazioni_importazione_id_fkey"
+            columns: ["importazione_id"]
+            isOneToOne: false
+            referencedRelation: "importazioni"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clienti_blocco_variazioni_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       codici_pagamento: {
         Row: {
           cod: string
@@ -7604,6 +7716,10 @@ export type Database = {
           _partecipante_id: string
         }
         Returns: Json
+      }
+      rileva_variazioni_blocco: {
+        Args: { _importazione_id?: string }
+        Returns: number
       }
       rimatch_iscritti_whatsapp: { Args: never; Returns: Json }
       rimuovi_orfani_scadenze: {
