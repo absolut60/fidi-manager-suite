@@ -87,10 +87,61 @@ type UserRow = {
   store_nome: string | null;
 };
 
+type OrdinaChiave = "nome" | "email" | "store" | "stato";
+type OrdinaDir = "asc" | "desc";
+
+/** Codice numerico del negozio dal label "codice — nome"; non numerico → fondo lista. */
+function codiceNumericoPuntoVendita(label: string): number {
+  const n = parseInt(label, 10);
+  return Number.isFinite(n) ? n : Number.POSITIVE_INFINITY;
+}
+
+function IntestazioneOrdinabile({
+  label, chiave, ordina, onOrdina,
+}: {
+  label: string;
+  chiave: OrdinaChiave;
+  ordina: { chiave: OrdinaChiave; dir: OrdinaDir };
+  onOrdina: (c: OrdinaChiave) => void;
+}) {
+  const attivo = ordina.chiave === chiave;
+  return (
+    <TableHead>
+      <button
+        type="button"
+        onClick={() => onOrdina(chiave)}
+        className="inline-flex items-center gap-1 hover:text-foreground"
+        aria-label={attivo
+          ? `Ordina per ${label}, ${ordina.dir === "asc" ? "decrescente" : "crescente"}`
+          : `Ordina per ${label}`}
+      >
+        {label}
+        {attivo && (ordina.dir === "asc" ? <ArrowUp className="size-3.5" /> : <ArrowDown className="size-3.5" />)}
+      </button>
+    </TableHead>
+  );
+}
+
+const OPZIONI_ORDINA_MOBILE: { value: string; label: string }[] = [
+  { value: "nome:asc", label: "Nome (A→Z)" },
+  { value: "nome:desc", label: "Nome (Z→A)" },
+  { value: "email:asc", label: "Email (A→Z)" },
+  { value: "email:desc", label: "Email (Z→A)" },
+  { value: "store:asc", label: "Punto vendita (codice)" },
+  { value: "store:desc", label: "Punto vendita (codice inverso)" },
+  { value: "stato:asc", label: "Stato (attivi prima)" },
+  { value: "stato:desc", label: "Stato (inattivi prima)" },
+];
+
 function UtentiPage() {
   const { role, loading } = useAuth();
   const [editing, setEditing] = useState<UserRow | null>(null);
   const [creating, setCreating] = useState(false);
+  const [search, setSearch] = useState("");
+  const [filtroRuolo, setFiltroRuolo] = useState<AppRole | "tutti">("tutti");
+  const [filtroStore, setFiltroStore] = useState("tutti");
+  const [filtroStato, setFiltroStato] = useState("tutti");
+  const [ordina, setOrdina] = useState<{ chiave: OrdinaChiave; dir: OrdinaDir }>({ chiave: "nome", dir: "asc" });
 
   const { data: utenti, isLoading } = useQuery({
     queryKey: ["utenti"],
@@ -116,9 +167,80 @@ function UtentiPage() {
     },
   });
 
+  const filtriAttivi = [
+    search.trim() !== "",
+    filtroRuolo !== "tutti",
+    filtroStore !== "tutti",
+    filtroStato !== "tutti",
+  ].filter(Boolean).length;
+
+  const opzioniStore = useMemo(() => {
+    const m = new Map<string, string>();
+    (utenti ?? []).forEach((u) => {
+      if (u.store_id && u.store_nome) m.set(u.store_id, u.store_nome);
+    });
+    return Array.from(m.entries()).sort(
+      (a, b) => codiceNumericoPuntoVendita(a[1]) - codiceNumericoPuntoVendita(b[1]),
+    );
+  }, [utenti]);
+
+  const filtrati = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return (utenti ?? []).filter((u) => {
+      if (filtroRuolo !== "tutti" && !u.ruoli.includes(filtroRuolo)) return false;
+      if (filtroStore === "nessuno" && u.store_id !== null) return false;
+      if (filtroStore !== "tutti" && filtroStore !== "nessuno" && u.store_id !== filtroStore) return false;
+      if (filtroStato === "attivi" && !u.attivo) return false;
+      if (filtroStato === "inattivi" && u.attivo) return false;
+      if (q) {
+        const hay = `${u.nome ?? ""} ${u.cognome ?? ""} ${u.email ?? ""}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [utenti, search, filtroRuolo, filtroStore, filtroStato]);
+
+  const ordinati = useMemo(() => {
+    const dir = ordina.dir === "asc" ? 1 : -1;
+    return [...filtrati].sort((a, b) => {
+      if (ordina.chiave === "nome") {
+        const c = (a.cognome ?? "").localeCompare(b.cognome ?? "", "it", { sensitivity: "base" });
+        if (c !== 0) return c * dir;
+        return (a.nome ?? "").localeCompare(b.nome ?? "", "it", { sensitivity: "base" }) * dir;
+      }
+      if (ordina.chiave === "email") {
+        return (a.email ?? "").localeCompare(b.email ?? "", "it", { sensitivity: "base" }) * dir;
+      }
+      if (ordina.chiave === "store") {
+        if (!a.store_id) return 1;
+        if (!b.store_id) return -1;
+        return codiceNumericoPuntoVendita(a.store_nome ?? "") - codiceNumericoPuntoVendita(b.store_nome ?? "");
+      }
+      // stato: asc = attivi prima
+      return (Number(b.attivo) - Number(a.attivo)) * dir;
+    });
+  }, [filtrati, ordina]);
+
+  const handleOrdina = (chiave: OrdinaChiave) => {
+    setOrdina((o) =>
+      o.chiave === chiave
+        ? { chiave, dir: o.dir === "asc" ? "desc" : "asc" }
+        : { chiave, dir: "asc" },
+    );
+  };
+
+  const azzeraFiltri = () => {
+    setSearch("");
+    setFiltroRuolo("tutti");
+    setFiltroStore("tutti");
+    setFiltroStato("tutti");
+  };
+
   if (!loading && role !== "amministratore") {
     return <Card className="p-8 text-center"><p className="font-medium">Accesso riservato agli amministratori</p></Card>;
   }
+
+  const totale = utenti?.length ?? 0;
 
   return (
     <div className="space-y-6">
@@ -134,51 +256,173 @@ function UtentiPage() {
 
       <Card className="p-4 sm:p-5">
         <h2 className="font-semibold mb-3 flex items-center gap-2">
-          <UsersRound className="size-4" /> Tutti gli utenti ({utenti?.length ?? 0})
+          <UsersRound className="size-4" />
+          {filtriAttivi > 0
+            ? `Utenti (${ordinati.length} di ${totale})`
+            : `Tutti gli utenti (${totale})`}
         </h2>
         {isLoading ? (
           <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
         ) : !utenti?.length ? (
           <div className="text-center py-10"><p className="text-sm">Nessun utente registrato</p></div>
         ) : (
-          <div className="">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Ruoli</TableHead>
-                  <TableHead>Punto vendita</TableHead>
-                  <TableHead>Stato</TableHead>
-                  <TableHead className="text-right">Azioni</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {utenti.map((u) => (
-                  <TableRow key={u.id}>
-                    <TableCell className="font-medium">{[u.nome, u.cognome].filter(Boolean).join(" ") || "—"}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{u.email}</TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {u.ruoli.length === 0 ? (
-                          <span className="text-muted-foreground text-sm">—</span>
-                        ) : (
-                          u.ruoli.map((r) => (
-                            <Badge key={r} variant="outline">{RUOLI_LABEL[r]}</Badge>
-                          ))
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-sm">{u.store_nome || <span className="text-muted-foreground">—</span>}</TableCell>
-                    <TableCell><Badge variant={u.attivo ? "default" : "secondary"}>{u.attivo ? "Attivo" : "Inattivo"}</Badge></TableCell>
-                    <TableCell className="text-right">
-                      <Button size="icon" variant="ghost" onClick={() => setEditing(u)}><Pencil className="size-4" /></Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+          <>
+            <FiltriCollassabili
+              attivi={filtriAttivi}
+              azioni={
+                <Button variant="ghost" size="sm" onClick={azzeraFiltri}>
+                  Azzera filtri
+                </Button>
+              }
+            >
+              <div className="flex flex-wrap gap-2">
+                <div className="relative flex-1 min-w-[200px] sm:flex-none sm:w-72">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                  <Input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Cerca nome, cognome o email..."
+                    className="pl-9"
+                  />
+                </div>
+                <div className="flex-1 min-w-[160px] sm:flex-none sm:w-auto sm:min-w-[11rem]">
+                  <Select value={filtroRuolo} onValueChange={setFiltroRuolo}>
+                    <SelectTrigger className="w-full"><SelectValue placeholder="Ruolo" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="tutti">Tutti i ruoli</SelectItem>
+                      {ORDINE_GRUPPI.map((r) => (
+                        <SelectItem key={r} value={r}>{RUOLI_LABEL[r]}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex-1 min-w-[160px] sm:flex-none sm:w-auto sm:min-w-[11rem]">
+                  <Select value={filtroStore} onValueChange={setFiltroStore}>
+                    <SelectTrigger className="w-full"><SelectValue placeholder="Punto vendita" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="tutti">Tutti</SelectItem>
+                      <SelectItem value="nessuno">Senza punto vendita</SelectItem>
+                      {opzioniStore.map(([id, label]) => (
+                        <SelectItem key={id} value={id}>{label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex-1 min-w-[160px] sm:flex-none sm:w-auto sm:min-w-[9rem]">
+                  <Select value={filtroStato} onValueChange={setFiltroStato}>
+                    <SelectTrigger className="w-full"><SelectValue placeholder="Stato" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="tutti">Tutti</SelectItem>
+                      <SelectItem value="attivi">Attivi</SelectItem>
+                      <SelectItem value="inattivi">Inattivi</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </FiltriCollassabili>
+
+            {/* Ordinamento su mobile: Select sempre visibile */}
+            <div className="mb-3 flex items-center gap-2 md:hidden">
+              <span className="text-sm text-muted-foreground shrink-0">Ordina per</span>
+              <Select
+                value={`${ordina.chiave}:${ordina.dir}`}
+                onValueChange={(v) => {
+                  const [chiave, dir] = v.split(":") as [OrdinaChiave, OrdinaDir];
+                  setOrdina({ chiave, dir });
+                }}
+              >
+                <SelectTrigger className="min-w-0 flex-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {OPZIONI_ORDINA_MOBILE.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {ordinati.length === 0 ? (
+              <div className="text-center py-10"><p className="text-sm text-muted-foreground">Nessun utente trovato</p></div>
+            ) : (
+              <>
+                {/* Mobile: schede al posto della tabella */}
+                <ElencoSchede>
+                  {ordinati.map((u) => (
+                    <SchedaLista
+                      key={u.id}
+                      badge={<Badge variant={u.attivo ? "default" : "secondary"}>{u.attivo ? "Attivo" : "Inattivo"}</Badge>}
+                      titolo={<span className="min-w-0 break-words">{[u.nome, u.cognome].filter(Boolean).join(" ") || "—"}</span>}
+                      campi={[
+                        {
+                          etichetta: "Email",
+                          valore: u.email ? <span className="break-all">{u.email}</span> : "—",
+                        },
+                        { etichetta: "Punto vendita", valore: u.store_nome ?? "—" },
+                        {
+                          etichetta: "Ruoli",
+                          valore: u.ruoli.length === 0 ? "—" : (
+                            <span className="flex flex-wrap gap-1">
+                              {u.ruoli.map((r) => (
+                                <Badge key={r} variant="outline">{RUOLI_LABEL[r]}</Badge>
+                              ))}
+                            </span>
+                          ),
+                        },
+                      ]}
+                      footer={
+                        <Button size="sm" className="h-10 gap-2" onClick={() => setEditing(u)}>
+                          <Pencil className="size-4" /> Modifica
+                        </Button>
+                      }
+                    />
+                  ))}
+                </ElencoSchede>
+
+                {/* Desktop: tabella con intestazioni ordinabili */}
+                <div className="hidden md:block">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <IntestazioneOrdinabile label="Nome" chiave="nome" ordina={ordina} onOrdina={handleOrdina} />
+                        <IntestazioneOrdinabile label="Email" chiave="email" ordina={ordina} onOrdina={handleOrdina} />
+                        <TableHead>Ruoli</TableHead>
+                        <IntestazioneOrdinabile label="Punto vendita" chiave="store" ordina={ordina} onOrdina={handleOrdina} />
+                        <IntestazioneOrdinabile label="Stato" chiave="stato" ordina={ordina} onOrdina={handleOrdina} />
+                        <TableHead className="text-right">Azioni</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {ordinati.map((u) => (
+                        <TableRow key={u.id}>
+                          <TableCell className="font-medium">
+                            <span className="break-words">{[u.nome, u.cognome].filter(Boolean).join(" ") || "—"}</span>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            <span className="break-all">{u.email ?? "—"}</span>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1">
+                              {u.ruoli.length === 0 ? (
+                                <span className="text-muted-foreground text-sm">—</span>
+                              ) : (
+                                u.ruoli.map((r) => (
+                                  <Badge key={r} variant="outline">{RUOLI_LABEL[r]}</Badge>
+                                ))
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-sm">{u.store_nome || <span className="text-muted-foreground">—</span>}</TableCell>
+                          <TableCell><Badge variant={u.attivo ? "default" : "secondary"}>{u.attivo ? "Attivo" : "Inattivo"}</Badge></TableCell>
+                          <TableCell className="text-right">
+                            <Button size="icon" variant="ghost" onClick={() => setEditing(u)} aria-label={`Modifica ${[u.nome, u.cognome].filter(Boolean).join(" ") || u.email ?? ""}`}><Pencil className="size-4" /></Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
+            )}
+          </>
         )}
       </Card>
 
