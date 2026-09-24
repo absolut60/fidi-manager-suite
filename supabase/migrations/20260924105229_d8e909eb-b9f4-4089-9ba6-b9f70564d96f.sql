@@ -1,0 +1,1 @@
+INSERT INTO public.configurazioni (chiave, valore, descrizione) VALUES ('variazioni_blocco_email_test', 'a.giani@gruppomade.com', 'Modalità test avvisi variazioni blocco: se valorizzata, mail e notifiche in app vanno SOLO a questo indirizzo (e all''utente con questa email) invece che agli store manager. Svuotare per andare in produzione.') ON CONFLICT (chiave) DO NOTHING;
