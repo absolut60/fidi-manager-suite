@@ -14,8 +14,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
 import {
-  STATO_LABEL, STATO_TONE, TIPO_LABEL, TIPO_TONE, LIVELLO_LABEL,
+  STATO_LABEL, STATO_TONE, TIPO_TONE, LIVELLO_LABEL,
   formatEuro, formatDate, type TipoRichiesta, importoRichiestaValido,
+  etichettaTipoRichiesta,
 } from "@/lib/fidi";
 
 import { ComunicazioniRichiestaPanel } from "@/components/comunicazioni-richiesta-panel";
@@ -161,7 +162,7 @@ function RichiestaDetail() {
 
   const badgeTipo = (
     <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>
-      {TIPO_LABEL[r.tipo as TipoRichiesta]}
+      {etichettaTipoRichiesta(r.tipo, Number(r.importo_approvato ?? r.importo_richiesto))}
     </span>
   );
   const badgeStato = (
