@@ -212,9 +212,18 @@ function UtentiPage() {
         return (a.email ?? "").localeCompare(b.email ?? "", "it", { sensitivity: "base" }) * dir;
       }
       if (ordina.chiave === "store") {
+        if (!a.store_id && !b.store_id) {
+          return (a.cognome ?? "").localeCompare(b.cognome ?? "", "it", { sensitivity: "base" })
+            || (a.nome ?? "").localeCompare(b.nome ?? "", "it", { sensitivity: "base" });
+        }
+        // Chi non ha punto vendita va sempre in fondo, in entrambe le direzioni.
         if (!a.store_id) return 1;
         if (!b.store_id) return -1;
-        return codiceNumericoPuntoVendita(a.store_nome ?? "") - codiceNumericoPuntoVendita(b.store_nome ?? "");
+        const diff = codiceNumericoPuntoVendita(a.store_nome ?? "") - codiceNumericoPuntoVendita(b.store_nome ?? "");
+        if (diff !== 0) return diff * dir;
+        // Stesso negozio: cognome poi nome, sempre crescenti.
+        return (a.cognome ?? "").localeCompare(b.cognome ?? "", "it", { sensitivity: "base" })
+          || (a.nome ?? "").localeCompare(b.nome ?? "", "it", { sensitivity: "base" });
       }
       // stato: asc = attivi prima
       return (Number(b.attivo) - Number(a.attivo)) * dir;
