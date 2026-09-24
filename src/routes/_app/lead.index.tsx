@@ -28,7 +28,7 @@ import {
   LEAD_STATI, LEAD_STATO_LABEL, LEAD_STATO_CLASS,
   LEAD_TIPI, LEAD_TIPO_LABEL, LEAD_FONTI, LEAD_FONTE_LABEL,
   LEAD_PRIORITA, LEAD_PRIORITA_LABEL, LEAD_PRIORITA_CLASS,
-  nomeLead, formatData, puoAccedereLead,
+  nomeLead, formatData, puoAccedereLead, puoGestireLead,
 } from "@/lib/lead-costanti";
 
 export const Route = createFileRoute("/_app/lead/")({
@@ -69,6 +69,7 @@ function LeadListaPage() {
   const navigate = useNavigate();
   const { roles, loading: authLoading } = useAuth();
   const canSee = useMemo(() => puoAccedereLead(roles as string[]), [roles]);
+  const canManage = useMemo(() => puoGestireLead(roles as string[]), [roles]);
 
   const [tab, setTab] = useState<Vista>("attivi");
   const [search, setSearch] = useState("");
@@ -413,6 +414,7 @@ function LeadListaPage() {
               </SelectContent>
             </Select>
           </div>
+          {canManage && (<>
           <div>
             <Label className="text-xs">Agente</Label>
             <Select value={agente} onValueChange={(v) => { setAgente(v); setPage(1); }}>
@@ -441,6 +443,7 @@ function LeadListaPage() {
               </SelectContent>
             </Select>
           </div>
+          </>)}
           {tab === "ricontattare" && (
             <div>
               <Label className="text-xs">Finestra</Label>

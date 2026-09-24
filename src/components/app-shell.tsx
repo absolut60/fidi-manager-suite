@@ -75,7 +75,7 @@ type NavItem = {
   to: string;
   label: string;
   icon: typeof LayoutDashboard;
-  roles?: Array<"admin" | "approvatore" | "store_manager" | "responsabile_agenti" | "amministrazione" | "amministrazione_strumenti" | "direzione" | "marketing" | "marketing_eventi" | "preventivi_read" | "preventivi_write" | "preventivi_manage">;
+  roles?: Array<"admin" | "agente" | "approvatore" | "store_manager" | "responsabile_agenti" | "amministrazione" | "amministrazione_strumenti" | "direzione" | "marketing" | "marketing_eventi" | "preventivi_read" | "preventivi_write" | "preventivi_manage">;
   group: NavGroupKey;
   richiesteScope?: RichiesteScope;
   exact?: boolean;
@@ -88,12 +88,12 @@ const NAV: NavItem[] = [
   { to: "/contatti", label: "Contatti", icon: Users, group: "generale" },
   { to: "/chat", label: "Chat", icon: MessagesSquare, group: "generale" },
   { to: "/task", label: "Task attività", icon: ListChecks, group: "generale" },
-  { to: "/lead", label: "Lead", icon: UserPlus, roles: ["admin", "amministrazione", "direzione", "marketing", "responsabile_agenti"], group: "generale" },
+  { to: "/lead", label: "Lead", icon: UserPlus, roles: ["admin", "agente", "amministrazione", "direzione", "marketing", "responsabile_agenti"], group: "generale" },
   // COMMERCIALE
-  { to: "/dashboard-commerciale", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "direzione", "marketing", "responsabile_agenti"], group: "commerciale" },
-  { to: "/opportunita", label: "Opportunità", icon: Target, roles: ["admin", "direzione", "marketing", "responsabile_agenti"], group: "commerciale" },
-  { to: "/calendario-commerciale", label: "Calendario", icon: CalendarDays, roles: ["admin", "direzione", "marketing", "responsabile_agenti"], group: "commerciale" },
-  { to: "/cantieri", label: "Cantieri", icon: Building2, roles: ["admin", "direzione", "marketing", "responsabile_agenti"], group: "commerciale" },
+  { to: "/dashboard-commerciale", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "agente", "direzione", "marketing", "responsabile_agenti"], group: "commerciale" },
+  { to: "/opportunita", label: "Opportunità", icon: Target, roles: ["admin", "agente", "direzione", "marketing", "responsabile_agenti"], group: "commerciale" },
+  { to: "/calendario-commerciale", label: "Calendario", icon: CalendarDays, roles: ["admin", "agente", "direzione", "marketing", "responsabile_agenti"], group: "commerciale" },
+  { to: "/cantieri", label: "Cantieri", icon: Building2, roles: ["admin", "agente", "direzione", "marketing", "responsabile_agenti"], group: "commerciale" },
   // PREVENTIVI
   { to: "/preventivatore/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi" },
   { to: "/preventivatore", label: "Preventivi", icon: Calculator, roles: ["admin", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi", exact: true },
@@ -234,6 +234,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const AGENTE_WHITELIST = new Set<string>([
     "/clienti",
+    "/lead",
     "/chat",
     "/task",
     "/contatti",
@@ -267,7 +268,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const canManageRich = isAdmin || isApprovatoreRichLiv1 || isApprovatoreRichLiv2 || isGestoreRich || isEsecutoreRich || isAmministrazione;
   const canGestioneRich = isAdmin || isGestoreRich || isEsecutoreRich || isAmministrazione;
 
-  const visibleNav = NAV.filter((item) => {
+  const visibleNavRaw = NAV.filter((item) => {
     if (item.group === "richieste_interne") {
       if (!canSeeRichiesteInterne) return false;
       if (item.richiesteScope === "approve") return canApproveRich;
@@ -279,6 +280,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (isOnlyAgente) return AGENTE_WHITELIST.has(item.to);
     if (!item.roles) return true;
     if (item.roles.includes("admin") && isAdmin) return true;
+    if (item.roles.includes("agente") && isAgente) return true;
     if (item.roles.includes("approvatore") && (isAdmin || isApprovatore)) return true;
     if (item.roles.includes("store_manager") && (isAdmin || isApprovatore || isStoreManager)) return true;
     if (item.roles.includes("amministrazione") && isAmministrazione) return true;
@@ -290,6 +292,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (item.roles.includes("preventivi_read") && hasAccessoPreventivi) return true;
     return false;
   });
+  // Evita il doppione "Cantieri": se è visibile la voce commerciale, nascondi quella del gruppo preventivi.
+  const haCantieriCommerciale = visibleNavRaw.some((i) => i.to === "/cantieri" && i.group === "commerciale");
+  const visibleNav = haCantieriCommerciale
+    ? visibleNavRaw.filter((i) => i.id !== "cantieri-preventivi")
+    : visibleNavRaw;
 
   const generaleItems = visibleNav.filter((i) => i.group === "generale");
   const blocchiKeys: Array<Exclude<NavGroupKey, "generale">> = [

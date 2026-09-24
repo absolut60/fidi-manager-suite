@@ -19,7 +19,7 @@ import {
 import {
   LEAD_FONTI, LEAD_FONTE_LABEL, LEAD_PRIORITA, LEAD_PRIORITA_LABEL,
   LEAD_TIPI, LEAD_TIPO_LABEL,
-  type LeadFonte, type LeadPriorita, type LeadTipo,
+  type LeadFonte, type LeadPriorita, type LeadTipo, puoGestireLead,
 } from "@/lib/lead-costanti";
 import { creaLead } from "@/lib/lead-crea";
 import { cercaDuplicati, DEDUP_CAMPO_LABEL, type DedupMatch } from "@/lib/lead-dedup";
@@ -62,7 +62,10 @@ const NESSUNO = "__none__";
 export function NuovoLeadDialog({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, roles, profilo } = useAuth();
+  // Agente senza ruoli di gestione: il lead è sempre assegnato a sé stesso (RLS lo richiede).
+  const agenteVincolato = roles.includes("agente") && !puoGestireLead(roles as string[]);
+  const mioCodiceAgente = profilo?.codice_agente ?? null;
   const [f, setF] = useState<Form>(EMPTY);
   const [duplicati, setDuplicati] = useState<DedupMatch[]>([]);
   const [checking, setChecking] = useState(false);
@@ -111,9 +114,16 @@ export function NuovoLeadDialog({ onClose }: { onClose: () => void }) {
   const valido =
     f.ragione_sociale.trim().length > 0 || (f.nome.trim().length > 0 && f.cognome.trim().length > 0);
 
+  useEffect(() => {
+    if (agenteVincolato && mioCodiceAgente) setF((p) => ({ ...p, agente_codice: mioCodiceAgente }));
+  }, [agenteVincolato, mioCodiceAgente]);
+
   const mut = useMutation({
-    mutationFn: () =>
-      creaLead({
+    mutationFn: () => {
+      if (agenteVincolato && !mioCodiceAgente) {
+        throw new Error("Profilo senza codice agente: contatta l'amministrazione");
+      }
+      return creaLead({
         tipo_soggetto: f.tipo_soggetto,
         ragione_sociale: f.ragione_sociale,
         nome: f.nome,
@@ -132,11 +142,12 @@ export function NuovoLeadDialog({ onClose }: { onClose: () => void }) {
         tipo_lead: f.tipo_lead,
         priorita: f.priorita,
         store_id: f.store_id,
-        agente_codice: f.agente_codice,
+        agente_codice: agenteVincolato ? mioCodiceAgente : f.agente_codice,
         note: f.note,
         createdBy: user?.id ?? null,
         notaStorico: "Lead creato manualmente",
-      }),
+      });
+    },
 
     onSuccess: (data) => {
       toast.success("Lead creato", {
@@ -312,7 +323,11 @@ export function NuovoLeadDialog({ onClose }: { onClose: () => void }) {
         </div>
         <div>
           <Label className="text-xs">Agente</Label>
-          <Select value={f.agente_codice || NESSUNO} onValueChange={(v) => set("agente_codice", v === NESSUNO ? "" : v)}>
+          <Select
+            value={f.agente_codice || NESSUNO}
+            onValueChange={(v) => set("agente_codice", v === NESSUNO ? "" : v)}
+            disabled={agenteVincolato}
+          >
             <SelectTrigger><SelectValue placeholder="Nessuno" /></SelectTrigger>
             <SelectContent>
               <SelectItem value={NESSUNO}>Nessuno</SelectItem>
@@ -321,6 +336,11 @@ export function NuovoLeadDialog({ onClose }: { onClose: () => void }) {
               ))}
             </SelectContent>
           </Select>
+          {agenteVincolato && !mioCodiceAgente && (
+            <p className="mt-1 text-xs text-destructive">
+              Profilo senza codice agente: contatta l'amministrazione
+            </p>
+          )}
         </div>
         <div className="sm:col-span-2">
           <Label className="text-xs">Note</Label>
@@ -330,7 +350,7 @@ export function NuovoLeadDialog({ onClose }: { onClose: () => void }) {
 
       <DialogFooter>
         <Button variant="outline" onClick={onClose}>Annulla</Button>
-        <Button disabled={!valido || mut.isPending} onClick={() => mut.mutate()}>
+        <Button disabled={!valido || mut.isPending || (agenteVincolato && !mioCodiceAgente)} onClick={() => mut.mutate()}>
           {mut.isPending && <Loader2 className="size-4 animate-spin mr-1" />}
           Crea lead
         </Button>

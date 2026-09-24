@@ -81,6 +81,7 @@ import {
   nomeLead,
   formatData,
   puoAccedereLead,
+  puoGestireLead,
   type LeadTipo,
   type LeadFonte,
   type LeadPriorita,
@@ -125,6 +126,7 @@ function LeadDettaglioPage() {
   const qc = useQueryClient();
   const { roles, loading: authLoading, user } = useAuth();
   const canSee = useMemo(() => puoAccedereLead(roles as string[]), [roles]);
+  const canManage = useMemo(() => puoGestireLead(roles as string[]), [roles]);
 
   const { data: lead, isLoading } = useQuery({
     queryKey: ["lead", leadId],
@@ -437,6 +439,7 @@ function LeadDettaglioPage() {
               Annulla conversione
             </Button>
           )}
+          {canManage && (
           <Button
             variant="outline"
             className="gap-1.5 text-destructive"
@@ -451,6 +454,7 @@ function LeadDettaglioPage() {
           >
             <Trash2 className="size-4" /> Elimina
           </Button>
+          )}
           {editMode ? (
             <>
               <Button
