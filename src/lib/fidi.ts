@@ -28,6 +28,23 @@ export function determinaTipoRichiesta(
   return "diminuzione";
 }
 
+/**
+ * Validità importo richiesta fido — gemello del CHECK richieste_fido_importo_richiesto_check.
+ * Ammesso: importo > 0 per ogni tipo; importo = 0 solo per diminuzione (azzeramento) o rinnovo.
+ */
+export function importoRichiestaValido(tipo: string, importo: number | null | undefined): boolean {
+  if (typeof importo !== "number" || !Number.isFinite(importo)) return false;
+  if (importo > 0) return true;
+  return importo === 0 && (tipo === "diminuzione" || tipo === "rinnovo");
+}
+
+/** Etichetta del tipo richiesta che distingue i casi a importo 0. */
+export function etichettaTipoRichiesta(tipo: string, importo: number | null | undefined): string {
+  if (importo === 0 && tipo === "diminuzione") return "Azzeramento fido";
+  if (importo === 0 && tipo === "rinnovo") return "Rinnovo a zero";
+  return TIPO_LABEL[tipo as TipoRichiesta] ?? tipo;
+}
+
 export const TIPO_TONE: Record<TipoRichiesta, string> = {
   nuovo: "bg-primary/10 text-primary",
   nuovo_fido: "bg-primary/10 text-primary",

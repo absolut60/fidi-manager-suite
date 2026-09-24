@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getFidoAttuale, FIDO_CLIENTE_SELECT } from "@/lib/fido-cliente";
 import {
   determinaTipoRichiesta, isRichiestaAttiva, TIPO_LABEL, STATO_LABEL, STATO_TONE, formatDate,
+  importoRichiestaValido, etichettaTipoRichiesta,
   type StatoRichiesta, type TipoRichiesta,
 } from "@/lib/fidi";
 import {
@@ -2296,6 +2297,24 @@ function ProposteFidoMassivoDialog({
   async function creaRichieste() {
     if (righeVisibiliIncluse.length === 0) { toast.error("Nessuna riga da creare"); return; }
     if (!userId) { toast.error("Utente non autenticato"); return; }
+    // Validazione preventiva (gemella del CHECK DB): se una riga non è valida non si crea nulla.
+    const elencoNomi = (rs: typeof righeVisibiliIncluse) => {
+      const nomi = rs.slice(0, 5).map((r) => r.ragione_sociale).join(", ");
+      return rs.length > 5 ? `${nomi} (e altri ${rs.length - 5})` : nomi;
+    };
+    const nonNumeriche = righeVisibiliIncluse.filter((r) => {
+      const v = r.fido_proposto as unknown;
+      return typeof v !== "number" || !Number.isFinite(v) || v < 0;
+    });
+    if (nonNumeriche.length > 0) {
+      toast.error(`Impossibile creare le richieste: importo mancante o non valido. Controlla: ${elencoNomi(nonNumeriche)}`);
+      return;
+    }
+    const nonValide = righeVisibiliIncluse.filter((r) => !importoRichiestaValido(r.tipo, r.fido_proposto));
+    if (nonValide.length > 0) {
+      toast.error(`Impossibile creare le richieste: importo 0 ammesso solo per diminuzione o rinnovo. Controlla: ${elencoNomi(nonValide)}`);
+      return;
+    }
     setSubmitting(true);
     try {
       const stato = modalitaInvio === "bozza" ? "bozza" : "in_attesa_liv1";
@@ -2322,7 +2341,12 @@ function ProposteFidoMassivoDialog({
       toast.success(`${righeVisibiliIncluse.length} richieste create`);
       onSuccess();
     } catch (e: any) {
-      toast.error(e?.message ?? "Errore nella creazione");
+      const msg = String(e?.message ?? "");
+      if (msg.includes("richieste_fido_importo_richiesto_check")) {
+        toast.error("Impossibile creare le richieste: importo 0 ammesso solo per diminuzione o rinnovo.");
+      } else {
+        toast.error("Errore nella creazione delle richieste: " + (msg || "errore sconosciuto"));
+      }
     } finally {
       setSubmitting(false);
     }
@@ -2537,6 +2561,11 @@ function ProposteFidoMassivoDialog({
                           {TIPI_PROPOSTA.map((t) => <SelectItem key={t} value={t}>{TIPO_LABEL[t]}</SelectItem>)}
                         </SelectContent>
                       </Select>
+                      {Number(r.fido_proposto) === 0 && (r.tipo === "diminuzione" || r.tipo === "rinnovo") && (
+                        <div className={`mt-1 text-xs ${r.tipo === "diminuzione" ? "text-warning" : "text-muted-foreground"}`}>
+                          {etichettaTipoRichiesta(r.tipo, 0)}
+                        </div>
+                      )}
                     </TableCell>
 
                     <TableCell>
