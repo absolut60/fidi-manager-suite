@@ -218,6 +218,7 @@ function RoleCheckboxes({ value, onChange }: { value: AppRole[]; onChange: (v: A
       {renderGroup("Richieste interne", RUOLI_RICHIESTE)}
       {renderGroup("Marketing", RUOLI_MARKETING)}
       {renderGroup("Preventivi", RUOLI_PREVENTIVI)}
+      {ALTRI_RUOLI.length > 0 && renderGroup("Altri ruoli", ALTRI_RUOLI)}
     </div>
   );
 }
