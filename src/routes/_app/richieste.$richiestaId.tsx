@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 import {
   STATO_LABEL, STATO_TONE, TIPO_LABEL, TIPO_TONE, LIVELLO_LABEL,
-  formatEuro, formatDate, type TipoRichiesta,
+  formatEuro, formatDate, type TipoRichiesta, importoRichiestaValido,
 } from "@/lib/fidi";
 
 import { ComunicazioniRichiestaPanel } from "@/components/comunicazioni-richiesta-panel";
@@ -451,6 +451,14 @@ function ApprovaForm({ richiesta }: { richiesta: any; userId: string }) {
   const decide = useMutation({
     mutationFn: async (esito: "approvata" | "rifiutata") => {
       const importoNum = Number(importo);
+      if (esito === "approvata") {
+        if (importo.trim() === "" || !Number.isFinite(importoNum)) {
+          throw new Error("Inserisci l'importo approvato");
+        }
+        if (!importoRichiestaValido(richiesta.tipo, importoNum)) {
+          throw new Error("Importo 0 ammesso solo per diminuzione (azzeramento) o rinnovo");
+        }
+      }
       const { error } = await (supabase as any).rpc("processa_richiesta_fido", {
         _richiesta_id: richiesta.id,
         _esito: esito,

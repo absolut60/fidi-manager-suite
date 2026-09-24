@@ -710,7 +710,7 @@ function InApprovazioneTab({
               richiesta_id: r.id,
               importo_precedente: fidoPrec,
               importo_nuovo: imp,
-              tipo_variazione: r.tipo === "diminuzione" ? "diminuzione" : (fidoPrec > 0 ? "aumento" : "nuovo"),
+              tipo_variazione: r.tipo === "diminuzione" ? "diminuzione" : r.tipo === "rinnovo" ? "rinnovo" : (fidoPrec > 0 ? "aumento" : "nuovo"),
               eseguito_da: user.id,
               note: note || null,
             } as any);
@@ -970,12 +970,22 @@ function InApprovazioneTab({
                 (action?.kind === "integrazioni" && note.trim().length < 5)
               }
               className={action?.kind === "approva" ? "bg-success text-success-foreground hover:bg-success/90" : action?.kind === "rifiuta" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
-              onClick={() => action && decisionMut.mutate({
-                kind: action.kind,
-                rows: action.rows,
-                note,
-                importoApprovato: action.kind === "approva" && action.rows.length === 1 ? Number(importoApprovato) : undefined,
-              })}
+              onClick={() => {
+                if (!action) return;
+                let imp: number | undefined;
+                if (action.kind === "approva" && action.rows.length === 1) {
+                  if (importoApprovato.trim() === "" || !Number.isFinite(Number(importoApprovato))) {
+                    toast.error("Inserisci l'importo approvato");
+                    return;
+                  }
+                  imp = Number(importoApprovato);
+                  if (!importoRichiestaValido(action.rows[0].tipo, imp)) {
+                    toast.error("Importo 0 ammesso solo per diminuzione (azzeramento) o rinnovo");
+                    return;
+                  }
+                }
+                decisionMut.mutate({ kind: action.kind, rows: action.rows, note, importoApprovato: imp });
+              }}
             >
               {decisionMut.isPending ? "Elaborazione..." :
                 action?.kind === "approva" ? "Conferma approvazione" :
@@ -1672,8 +1682,8 @@ function RichiestaFormDialog({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label>Importo richiesto (€) *</Label>
-            <Input type="number" step="0.01" min="0" value={form.importo_richiesto || ""}
-              onChange={(e) => setForm({ ...form, importo_richiesto: Number(e.target.value) })} />
+            <Input type="number" step="0.01" min="0" value={form.importo_richiesto}
+              onChange={(e) => setForm({ ...form, importo_richiesto: e.target.value === "" ? "" : Number(e.target.value) })} />
             {errors.importo_richiesto && <p className="text-xs text-destructive">{errors.importo_richiesto}</p>}
           </div>
           <div className="space-y-1.5">
