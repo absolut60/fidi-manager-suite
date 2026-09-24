@@ -6451,6 +6451,18 @@ export type Database = {
         Args: { _cliente_id: string; _isc_id: string }
         Returns: string
       }
+      agente_codice_corrente: { Args: never; Returns: string }
+      agente_vede_record: {
+        Args: {
+          _agente_codice: string
+          _cantiere_id: string
+          _cliente_id: string
+          _created_by: string
+          _lead_id: string
+          _opportunita_id?: string
+        }
+        Returns: boolean
+      }
       aggiorna_stato_messaggio_whatsapp: {
         Args: {
           _errore?: string
