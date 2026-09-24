@@ -1,7 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, Fragment, useEffect } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
-import { AlertTriangle, Calendar, FileText, Ban, CalendarClock, Scale, ChevronDown, ChevronUp, Megaphone, Mail, Bell, ChevronLeft, ChevronRight, HandCoins } from "lucide-react";
+import { AlertTriangle, Calendar, FileText, Ban, CalendarClock, Scale, ChevronDown, ChevronUp, Megaphone, Mail, Bell, ChevronLeft, ChevronRight, HandCoins, ArrowUp, ArrowDown, Download, Loader2, SlidersHorizontal, RotateCcw, Eye } from "lucide-react";
+import * as XLSX from "xlsx";
+import { scaricaWorkbook } from "@/lib/fido-teorico-export";
+import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { InvioMassivoDialog } from "@/components/invio-massivo-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
@@ -116,15 +119,82 @@ function legaleBadge(c: { in_gestione_legale: boolean }) {
 
 const PAGE_SIZE = 25;
 
+type Situazione = "con_scaduto" | "tutte" | "solo_a_scadere" | "scaduto_e_a_scadere";
+const SITUAZIONE_LABEL: Record<Situazione, string> = {
+  con_scaduto: "Con scaduto",
+  tutte: "Tutte le scadenze aperte",
+  solo_a_scadere: "Solo a scadere",
+  scaduto_e_a_scadere: "Scaduto e a scadere",
+};
+
+type SortKey =
+  | "tot_scaduto" | "tot_a_scadere" | "ragione_sociale" | "max_gg"
+  | "codice_gestionale" | "store_nome" | "bloccato" | "fatturato_cur" | "fatturato_prec"
+  | "n_scadute" | "n_a_scadere" | "prossima_scadenza";
+const SORT_LABEL: Record<SortKey, string> = {
+  tot_scaduto: "Totale scaduto",
+  tot_a_scadere: "Totale a scadere",
+  ragione_sociale: "Cliente",
+  max_gg: "Giorni ritardo",
+  codice_gestionale: "Cod. gestionale",
+  store_nome: "Store",
+  bloccato: "Stato blocco",
+  fatturato_cur: "Fatturato anno corrente",
+  fatturato_prec: "Fatturato anno precedente",
+  n_scadute: "N. fatture scadute",
+  n_a_scadere: "N. fatture a scadere",
+  prossima_scadenza: "Prossima scadenza",
+};
+const SORT_TESTUALI = new Set<SortKey>(["ragione_sociale", "codice_gestionale", "store_nome"]);
+
+const FASCIA_LABEL: Record<string, string> = {
+  tutte: "Tutte le fasce", "0_30": "1–30 giorni", "31_60": "31–60 giorni", oltre_60: "oltre 60 giorni",
+};
+const FASCIA_BADGE_LABEL: Record<"0_30" | "31_60" | "oltre_60", string> = {
+  "0_30": "1–30gg", "31_60": "31–60gg", oltre_60: "oltre 60gg",
+};
+const BLOCCO_LABEL = { tutti: "Tutti", bloccati: "Solo bloccati", non_bloccati: "Solo non bloccati" } as const;
+const LEGALE_LABEL = { tutti: "Tutti", in_legale: "In gestione legale", non_in_legale: "Non in gestione legale" } as const;
+const AVVISATO_LABEL = {
+  tutti: "Tutti", con_azioni: "Con azioni sullo scaduto attuale", senza_azioni: "Senza azioni (da contattare)",
+} as const;
+
+/** "AAAA-MM-GG" → Date locale (per celle data Excel). */
+function dataExcel(v: string | null | undefined): Date | null {
+  if (!v) return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(v);
+  if (!m) return null;
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+}
+
+function toSelRow(r: ScadRow): SelRow {
+  return {
+    cliente: {
+      id: r.cliente_id,
+      ragione_sociale: r.ragione_sociale,
+      codice_gestionale: r.codice_gestionale,
+      store_id: r.store_id,
+      bloccato: r.bloccato,
+      ind_blocco: r.ind_blocco,
+      in_gestione_legale: r.in_gestione_legale,
+    },
+    totScad: Number(r.tot_scaduto ?? 0),
+    scaduteIds: r.scadute_ids ?? [],
+  };
+}
+
 function ScadenziarioPage() {
   const navigate = useNavigate();
   const { role, profilo, user } = useAuth();
   const isStoreManager = role === "store_manager";
   const myStoreId = profilo?.store_id ?? null;
-  const [storeId, setStoreId] = useState(isStoreManager && myStoreId ? myStoreId : "all");
+  const storeDefault = isStoreManager && myStoreId ? myStoreId : "all";
+  const [storeId, setStoreId] = useState(storeDefault);
   const [agenteFiltro, setAgenteFiltro] = useState<string>("tutti");
   const [fascia, setFascia] = useState<string>("tutte");
   const [importoMin, setImportoMin] = useState("");
+  const [importoMinAScadere, setImportoMinAScadere] = useState("");
+  const [situazione, setSituazione] = useState<Situazione>("con_scaduto");
   const [statoBlocco, setStatoBlocco] = useState<"tutti" | "bloccati" | "non_bloccati">("tutti");
   const [statoLegale, setStatoLegale] = useState<"tutti" | "in_legale" | "non_in_legale">("tutti");
   const [escludiBonifici, setEscludiBonifici] = useState(true);
@@ -134,13 +204,17 @@ function ScadenziarioPage() {
   const [search, setSearch] = useState("");
   const [searchDebounced, setSearchDebounced] = useState("");
   const [page, setPage] = useState(1);
-  const [sortBy, setSortBy] = useState<"tot_scaduto" | "tot_a_scadere" | "ragione_sociale" | "max_gg">("tot_scaduto");
+  const [sortBy, setSortBy] = useState<SortKey>("tot_scaduto");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [expandedClienteId, setExpandedClienteId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [dialogOpen, setDialogOpen] = useState(false);
   const [invioMassivoOpen, setInvioMassivoOpen] = useState(false);
   const [loadingAllIds, setLoadingAllIds] = useState(false);
+  const [avanzatiOpen, setAvanzatiOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [righeDialog, setRigheDialog] = useState<ScadRow[]>([]);
+  const [loadingDialogRows, setLoadingDialogRows] = useState(false);
 
   // Debounce ricerca
   useEffect(() => {
@@ -152,7 +226,7 @@ function ScadenziarioPage() {
   useEffect(() => {
     setSelectedIds(new Set());
     setPage(1);
-  }, [storeId, agenteFiltro, fascia, importoMin, statoBlocco, statoLegale, escludiBonifici, escludiLegale, avvisatoFilter, mostraACredito, searchDebounced, sortBy, sortDir]);
+  }, [storeId, agenteFiltro, fascia, importoMin, importoMinAScadere, situazione, statoBlocco, statoLegale, escludiBonifici, escludiLegale, avvisatoFilter, mostraACredito, searchDebounced, sortBy, sortDir]);
 
   useEffect(() => {
     if (statoLegale === "in_legale") setEscludiLegale(false);
@@ -161,18 +235,51 @@ function ScadenziarioPage() {
   const annoCorrente = useMemo(() => new Date().getFullYear(), []);
   const annoPrec = annoCorrente - 1;
   const minImp = Number(importoMin) || 0;
-  const filtriAttivi = [
-    searchDebounced !== "",
-    !isStoreManager && storeId !== "all",
+  const minAScad = Number(importoMinAScadere) || 0;
+  const avanzatiAttivi = [
     agenteFiltro !== "tutti",
     fascia !== "tutte",
     minImp > 0,
+    minAScad > 0,
+    statoBlocco !== "tutti",
+    statoLegale !== "tutti",
+    avvisatoFilter !== "tutti",
+    mostraACredito,
+    !escludiBonifici,
+    !escludiLegale,
+  ].filter(Boolean).length;
+  const filtriAttivi = [
+    searchDebounced !== "",
+    !isStoreManager && storeId !== "all",
+    situazione !== "con_scaduto",
+    agenteFiltro !== "tutti",
+    fascia !== "tutte",
+    minImp > 0,
+    minAScad > 0,
     statoBlocco !== "tutti",
     statoLegale !== "tutti",
     avvisatoFilter !== "tutti",
     mostraACredito,
   ].filter(Boolean).length;
+  const filtriDefault = filtriAttivi === 0 && search.trim() === "" && escludiBonifici && escludiLegale;
 
+  function resetFiltri(sit: Situazione) {
+    setSearch(""); setSearchDebounced("");
+    setStoreId(storeDefault);
+    setAgenteFiltro("tutti");
+    setFascia("tutte");
+    setImportoMin("");
+    setImportoMinAScadere("");
+    setStatoBlocco("tutti");
+    setStatoLegale("tutti");
+    setEscludiBonifici(true);
+    setEscludiLegale(true);
+    setAvvisatoFilter("tutti");
+    setMostraACredito(false);
+    setSituazione(sit);
+  }
+  const vediTutto = () => resetFiltri("tutte");
+  const azzeraFiltri = () => resetFiltri("con_scaduto");
 
   const commonParams = useMemo(() => ({
     p_search: searchDebounced || null,
@@ -186,7 +293,9 @@ function ScadenziarioPage() {
     p_importo_min: minImp,
     p_mostra_a_credito: mostraACredito,
     p_agente: agenteFiltro === "tutti" ? null : agenteFiltro,
-  }), [searchDebounced, storeId, fascia, statoBlocco, statoLegale, escludiBonifici, escludiLegale, avvisatoFilter, minImp, mostraACredito, agenteFiltro]);
+    p_situazione: situazione,
+    p_importo_min_a_scadere: minAScad,
+  }), [searchDebounced, storeId, fascia, statoBlocco, statoLegale, escludiBonifici, escludiLegale, avvisatoFilter, minImp, mostraACredito, agenteFiltro, situazione, minAScad]);
 
   const { data: rows, isLoading } = useQuery({
     queryKey: ["scadenziario-paginata-v1", commonParams, sortBy, sortDir, page, annoCorrente, annoPrec],
@@ -298,6 +407,157 @@ function ScadenziarioPage() {
   const bonificiCount = Number(totali?.n_bonifici_esclusi ?? 0);
   const legaleEsclusiCount = Number(totali?.n_legale_esclusi ?? 0);
 
+  // Tutte le righe della vista corrente (tutte le pagine), opzionalmente ristrette a un insieme di id.
+  async function caricaTutteLeRighe(soloIds?: Set<string>): Promise<ScadRow[]> {
+    const out: ScadRow[] = [];
+    const SIZE = 500;
+    for (let p = 1; p <= 1000; p++) {
+      const { data, error } = await supabase.rpc("get_scadenziario_lista_paginata" as never, {
+        ...commonParams,
+        p_anno_corrente: annoCorrente,
+        p_anno_prec: annoPrec,
+        p_sort_by: sortBy,
+        p_sort_dir: sortDir,
+        p_page: p,
+        p_page_size: SIZE,
+      } as never);
+      if (error) throw error;
+      const batch = (data ?? []) as unknown as ScadRow[];
+      for (const r of batch) if (!soloIds || soloIds.has(r.cliente_id)) out.push(r);
+      const tot = Number(batch[0]?.total_count ?? 0);
+      if (batch.length < SIZE || p * SIZE >= tot) break;
+      if (soloIds && out.length >= soloIds.size) break;
+    }
+    return out;
+  }
+
+  async function apriAzioneRecupero() {
+    const inPagina = pageRows.filter((r) => selectedIds.has(r.cliente_id));
+    if (inPagina.length === selectedIds.size) {
+      setRigheDialog(inPagina);
+      setDialogOpen(true);
+      return;
+    }
+    setLoadingDialogRows(true);
+    try {
+      const tutte = await caricaTutteLeRighe(selectedIds);
+      setRigheDialog(tutte);
+      setDialogOpen(true);
+    } catch (e) {
+      toast.error("Impossibile caricare i clienti selezionati");
+      console.error(e);
+    } finally {
+      setLoadingDialogRows(false);
+    }
+  }
+
+  async function esportaExcel() {
+    setExporting(true);
+    try {
+      const righe = await caricaTutteLeRighe();
+      const estrattoIl = new Date();
+      const intest = [
+        "Cliente", "Cod. gestionale", "Store", "Bloccato", "In legale",
+        `Fatturato ${annoCorrente}`, `Fatturato ${annoPrec}`, "N. fatture scadute", "Totale scaduto",
+        "N. fatture a scadere", "Totale a scadere", "Prossima scadenza", "Giorni ritardo max", "Fascia",
+        "Azioni di recupero", "Promessa pagamento", "Piano di rientro",
+      ];
+      const aoa: unknown[][] = [intest, ...righe.map((r) => [
+        r.ragione_sociale,
+        r.codice_gestionale ?? "",
+        r.store_nome ?? "",
+        r.bloccato ? "Sì" : Number(r.ind_blocco ?? 0) === 1 ? "Rev." : "No",
+        r.in_gestione_legale ? "Sì" : "No",
+        Number(r.fatturato_cur ?? 0),
+        Number(r.fatturato_prec ?? 0),
+        Number(r.n_scadute ?? 0),
+        Number(r.tot_scaduto ?? 0),
+        Number(r.n_a_scadere ?? 0),
+        Number(r.tot_a_scadere ?? 0),
+        dataExcel(r.prossima_scadenza),
+        Number(r.max_gg_ritardo ?? 0),
+        r.fascia ? FASCIA_BADGE_LABEL[r.fascia] : "",
+        Number(r.avvisato_n ?? 0),
+        r.ha_promessa ? dataExcel(r.data_promessa) ?? "Sì" : null,
+        r.ha_piano_rientro ? "Sì" : "No",
+      ])];
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      const EURO = new Set([5, 6, 8, 10]);
+      const DATE = new Set([11, 15]);
+      for (let ri = 1; ri <= righe.length; ri++) {
+        for (let c = 0; c < intest.length; c++) {
+          const cell = ws[XLSX.utils.encode_cell({ r: ri, c })];
+          if (!cell) continue;
+          if (c === 1) { cell.t = "s"; cell.v = String(cell.v ?? ""); cell.z = "@"; }
+          else if (EURO.has(c) && typeof cell.v === "number") cell.z = "#,##0.00";
+          else if (DATE.has(c) && cell.t === "n") cell.z = "dd/mm/yyyy";
+        }
+      }
+      ws["!cols"] = intest.map((h, i) => ({ wch: i === 0 ? 40 : Math.max(12, h.length + 2) }));
+      ws["!autofilter"] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: righe.length, c: intest.length - 1 } }) };
+
+      const storeNome = storeId === "all" ? "Tutti gli store" : (stores ?? []).find((s) => s.id === storeId)?.nome ?? storeId;
+      const agenteNome = agenteFiltro === "tutti" ? "Tutti gli agenti" : agenteFiltro === "__none__" ? "Senza agente" : (agenti ?? []).find((a) => a.codice === agenteFiltro)?.descrizione ?? agenteFiltro;
+      const filtriAoa: unknown[][] = [
+        ["Voce", "Valore"],
+        ["Estrazione", estrattoIl.toLocaleString("it-IT")],
+        ["Utente", [profilo?.nome, profilo?.cognome].filter(Boolean).join(" ") || user?.email || "—"],
+        ["Righe esportate", righe.length],
+        ["Ricerca", searchDebounced || "—"],
+        ["Situazione", SITUAZIONE_LABEL[situazione]],
+        ["Store", storeNome],
+        ["Agente", agenteNome],
+        ["Fascia scaduto", FASCIA_LABEL[fascia] ?? fascia],
+        ["Stato blocco", BLOCCO_LABEL[statoBlocco]],
+        ["Stato legale", LEGALE_LABEL[statoLegale]],
+        ["Importo minimo scaduto €", minImp],
+        ["Importo minimo a scadere €", minAScad],
+        ["Azioni di recupero", AVVISATO_LABEL[avvisatoFilter]],
+        ["Escludi BOS", escludiBonifici ? "Sì" : "No"],
+        ["Escludi gestione legale", escludiLegale ? "Sì" : "No"],
+        ["Mostra clienti a credito", mostraACredito ? "Sì" : "No"],
+        ["Ordinamento", `${SORT_LABEL[sortBy]} ${sortDir === "asc" ? "crescente" : "decrescente"}`],
+      ];
+      const wsF = XLSX.utils.aoa_to_sheet(filtriAoa);
+      wsF["!cols"] = [{ wch: 30 }, { wch: 50 }];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Scadenziario");
+      XLSX.utils.book_append_sheet(wb, wsF, "Filtri");
+      (wb as unknown as { __grassetto: Record<number, number[]> }).__grassetto = { 1: [1], 2: [1] };
+      const p2 = (n: number) => String(n).padStart(2, "0");
+      const d = estrattoIl;
+      scaricaWorkbook(wb, `Scadenziario_${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}_${p2(d.getHours())}${p2(d.getMinutes())}.xlsx`);
+      toast.success(`Esportate ${righe.length} righe`);
+    } catch (e) {
+      toast.error("Esportazione non riuscita");
+      console.error(e);
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  function ordinaPer(k: SortKey) {
+    if (sortBy === k) setSortDir(sortDir === "asc" ? "desc" : "asc");
+    else { setSortBy(k); setSortDir(SORT_TESTUALI.has(k) ? "asc" : "desc"); }
+  }
+
+  function sortHead(k: SortKey, label: string, right = false) {
+    const attivo = sortBy === k;
+    return (
+      <TableHead className={right ? "text-right" : undefined}>
+        <button
+          type="button"
+          onClick={() => ordinaPer(k)}
+          className={`inline-flex items-center gap-1 hover:text-foreground ${right ? "flex-row-reverse" : ""} ${attivo ? "text-foreground font-semibold" : ""}`}
+        >
+          <span>{label}</span>
+          {attivo && (sortDir === "asc" ? <ArrowUp className="size-3.5" /> : <ArrowDown className="size-3.5" />)}
+        </button>
+      </TableHead>
+    );
+  }
+
   function apriCliente(id: string) {
     navigate({ to: "/clienti/$clienteId", params: { clienteId: id }, search: { tab: "insoluti", insolutiTab: "scadenziario" } as never });
   }
@@ -362,124 +622,155 @@ function ScadenziarioPage() {
       {/* Filtri */}
       <Card className="p-4">
         <FiltriCollassabili attivi={filtriAttivi}>
-        <div className="space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
-          <div className="lg:col-span-2">
-            <label className="text-xs font-medium text-muted-foreground">Cerca cliente</label>
-            <Input className="mt-1" placeholder="Ragione sociale o codice gestionale" value={search} onChange={(e) => setSearch(e.target.value)} />
-          </div>
-          {!isStoreManager && (
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="sm:col-span-2">
+              <label className="text-xs font-medium text-muted-foreground">Cerca cliente</label>
+              <Input className="mt-1" placeholder="Ragione sociale o codice gestionale" value={search} onChange={(e) => setSearch(e.target.value)} />
+            </div>
+            {!isStoreManager && (
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Store</label>
+                <Select value={storeId} onValueChange={setStoreId}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tutti gli store</SelectItem>
+                    {(stores ?? []).map((s) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Store</label>
-              <Select value={storeId} onValueChange={setStoreId}>
+              <label className="text-xs font-medium text-muted-foreground">Situazione</label>
+              <Select value={situazione} onValueChange={(v) => setSituazione(v as Situazione)}>
                 <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tutti gli store</SelectItem>
-                  {(stores ?? []).map((s) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
+                  {(Object.keys(SITUAZIONE_LABEL) as Situazione[]).map((k) => (
+                    <SelectItem key={k} value={k}>{SITUAZIONE_LABEL[k]}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
-          )}
-          <div>
-            <label className="text-xs font-medium text-muted-foreground">Agente</label>
-            <Select value={agenteFiltro} onValueChange={setAgenteFiltro}>
-              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="tutti">Tutti gli agenti</SelectItem>
-                <SelectItem value="__none__">Senza agente</SelectItem>
-                {(agenti ?? []).map((a) => <SelectItem key={a.codice} value={a.codice}>{a.descrizione}</SelectItem>)}
-              </SelectContent>
-            </Select>
           </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground">Fascia scaduto</label>
-            <Select value={fascia} onValueChange={setFascia}>
-              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="tutte">Tutte le fasce</SelectItem>
-                <SelectItem value="0_30">1–30 giorni</SelectItem>
-                <SelectItem value="31_60">31–60 giorni</SelectItem>
-                <SelectItem value="oltre_60">oltre 60 giorni</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground">Stato blocco</label>
-            <Select value={statoBlocco} onValueChange={(v) => setStatoBlocco(v as typeof statoBlocco)}>
-              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="tutti">Tutti</SelectItem>
-                <SelectItem value="bloccati">Solo bloccati</SelectItem>
-                <SelectItem value="non_bloccati">Solo non bloccati</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground">Stato legale</label>
-            <Select value={statoLegale} onValueChange={(v) => setStatoLegale(v as typeof statoLegale)}>
-              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="tutti">Tutti</SelectItem>
-                <SelectItem value="in_legale">In gestione legale</SelectItem>
-                <SelectItem value="non_in_legale">Non in gestione legale</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground">Importo minimo €</label>
-            <Input className="mt-1" type="number" inputMode="numeric" value={importoMin} onChange={(e) => setImportoMin(e.target.value)} placeholder="0" />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground">Azioni di recupero</label>
-            <Select value={avvisatoFilter} onValueChange={(v) => setAvvisatoFilter(v as typeof avvisatoFilter)}>
-              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="tutti">Tutti</SelectItem>
-                <SelectItem value="con_azioni">Con azioni sullo scaduto attuale</SelectItem>
-                <SelectItem value="senza_azioni">Senza azioni (da contattare)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground">Ordina per</label>
-            <Select value={`${sortBy}:${sortDir}`} onValueChange={(v) => { const [b, d] = v.split(":"); setSortBy(b as typeof sortBy); setSortDir(d as typeof sortDir); }}>
-              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="tot_scaduto:desc">Scaduto ↓</SelectItem>
-                <SelectItem value="tot_scaduto:asc">Scaduto ↑</SelectItem>
-                <SelectItem value="tot_a_scadere:desc">A scadere ↓</SelectItem>
-                <SelectItem value="max_gg:desc">Giorni ritardo ↓</SelectItem>
-                <SelectItem value="ragione_sociale:asc">Ragione sociale A→Z</SelectItem>
-                <SelectItem value="ragione_sociale:desc">Ragione sociale Z→A</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t">
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Switch id="escl-bonif" checked={escludiBonifici} onCheckedChange={setEscludiBonifici} />
-              <Label htmlFor="escl-bonif" className="text-sm cursor-pointer">Escludi BOS (cod. pagamento = BOS)</Label>
-            </div>
-            <div className="flex items-center gap-2">
-              <Switch id="escl-legale" checked={escludiLegale} onCheckedChange={(v) => { setEscludiLegale(v); if (v) setStatoLegale("tutti"); }} />
-              <Label htmlFor="escl-legale" className="text-sm cursor-pointer">Escludi gestione legale</Label>
-            </div>
-            <div className="flex items-center gap-2">
-              <Switch id="mostra-credito" checked={mostraACredito} onCheckedChange={setMostraACredito} />
-              <Label htmlFor="mostra-credito" className="text-sm cursor-pointer">Mostra anche clienti a credito (note di credito aperte)</Label>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-            {escludiBonifici && <span>Esclusi {bonificiCount} BOS</span>}
-            {escludiLegale && <span>Esclusi {legaleEsclusiCount} legale</span>}
-            {mostraACredito && kpi.nCrediti > 0 && (
-              <span className="text-emerald-700 dark:text-emerald-400 font-medium">
-                Note di credito aperte: {kpi.nCrediti} clienti, totale {fmtEuro(kpi.totCrediti)}
-              </span>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" size="sm" variant={avanzatiOpen ? "secondary" : "outline"} className="h-10 gap-1.5" onClick={() => setAvanzatiOpen((v) => !v)}>
+              <SlidersHorizontal className="size-4" /> Filtri avanzati
+              {avanzatiAttivi > 0 && <Badge className="ml-1 h-5 px-1.5">{avanzatiAttivi}</Badge>}
+              {avanzatiOpen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+            </Button>
+            <Button type="button" size="sm" variant="outline" className="h-10 gap-1.5" onClick={vediTutto}>
+              <Eye className="size-4" /> Vedi tutto
+            </Button>
+            {!filtriDefault && (
+              <Button type="button" size="sm" variant="ghost" className="h-10 gap-1.5" onClick={azzeraFiltri}>
+                <RotateCcw className="size-4" /> Azzera filtri
+              </Button>
             )}
+            <Button type="button" size="sm" variant="outline" className="h-10 gap-1.5" onClick={() => void esportaExcel()} disabled={exporting}>
+              {exporting ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />} Esporta Excel
+            </Button>
           </div>
-        </div>
+
+          <div className="md:hidden">
+            <label className="text-xs font-medium text-muted-foreground">Ordina per</label>
+            <Select value={`${sortBy}:${sortDir}`} onValueChange={(v) => { const [b, d] = v.split(":"); setSortBy(b as SortKey); setSortDir(d as "asc" | "desc"); }}>
+              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {(Object.keys(SORT_LABEL) as SortKey[]).flatMap((k) => [
+                  <SelectItem key={`${k}:asc`} value={`${k}:asc`}>{SORT_LABEL[k]} ↑</SelectItem>,
+                  <SelectItem key={`${k}:desc`} value={`${k}:desc`}>{SORT_LABEL[k]} ↓</SelectItem>,
+                ])}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Collapsible open={avanzatiOpen} onOpenChange={setAvanzatiOpen}>
+            <CollapsibleContent className="space-y-4 pt-3 border-t">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Agente</label>
+                  <Select value={agenteFiltro} onValueChange={setAgenteFiltro}>
+                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="tutti">Tutti gli agenti</SelectItem>
+                      <SelectItem value="__none__">Senza agente</SelectItem>
+                      {(agenti ?? []).map((a) => <SelectItem key={a.codice} value={a.codice}>{a.descrizione}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Fascia scaduto</label>
+                  <Select value={fascia} onValueChange={setFascia}>
+                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(FASCIA_LABEL).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Stato blocco</label>
+                  <Select value={statoBlocco} onValueChange={(v) => setStatoBlocco(v as typeof statoBlocco)}>
+                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(BLOCCO_LABEL).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Stato legale</label>
+                  <Select value={statoLegale} onValueChange={(v) => setStatoLegale(v as typeof statoLegale)}>
+                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(LEGALE_LABEL).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Importo minimo scaduto €</label>
+                  <Input className="mt-1" type="number" inputMode="numeric" value={importoMin} onChange={(e) => setImportoMin(e.target.value)} placeholder="0" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Importo minimo a scadere €</label>
+                  <Input className="mt-1" type="number" inputMode="numeric" value={importoMinAScadere} onChange={(e) => setImportoMinAScadere(e.target.value)} placeholder="0" />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="text-xs font-medium text-muted-foreground">Azioni di recupero</label>
+                  <Select value={avvisatoFilter} onValueChange={(v) => setAvvisatoFilter(v as typeof avvisatoFilter)}>
+                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(AVVISATO_LABEL).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t">
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <Switch id="escl-bonif" checked={escludiBonifici} onCheckedChange={setEscludiBonifici} />
+                    <Label htmlFor="escl-bonif" className="text-sm cursor-pointer">Escludi BOS (cod. pagamento = BOS)</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch id="escl-legale" checked={escludiLegale} onCheckedChange={(v) => { setEscludiLegale(v); if (v) setStatoLegale("tutti"); }} />
+                    <Label htmlFor="escl-legale" className="text-sm cursor-pointer">Escludi gestione legale</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch id="mostra-credito" checked={mostraACredito} onCheckedChange={setMostraACredito} />
+                    <Label htmlFor="mostra-credito" className="text-sm cursor-pointer">Mostra anche clienti a credito (note di credito aperte)</Label>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                  {escludiBonifici && <span>Esclusi {bonificiCount} BOS</span>}
+                  {escludiLegale && <span>Esclusi {legaleEsclusiCount} legale</span>}
+                  {mostraACredito && kpi.nCrediti > 0 && (
+                    <span className="text-emerald-700 dark:text-emerald-400 font-medium">
+                      Note di credito aperte: {kpi.nCrediti} clienti, totale {fmtEuro(kpi.totCrediti)}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         </div>
         </FiltriCollassabili>
       </Card>
@@ -515,8 +806,8 @@ function ScadenziarioPage() {
             >
               Deseleziona
             </button>
-            <Button size="sm" onClick={() => setDialogOpen(true)}>
-              <Megaphone className="size-4" /> Avvia azione di recupero
+            <Button size="sm" onClick={() => void apriAzioneRecupero()} disabled={loadingDialogRows}>
+              {loadingDialogRows ? <Loader2 className="size-4 animate-spin" /> : <Megaphone className="size-4" />} Avvia azione di recupero
             </Button>
           </div>
         </Card>
@@ -606,19 +897,19 @@ function ScadenziarioPage() {
                     />
                   </TableHead>
                   <TableHead className="w-8 text-center px-1">Az.</TableHead>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Cod. Gestionale</TableHead>
-                  <TableHead>Store</TableHead>
-                  <TableHead>Stato blocco</TableHead>
+                  {sortHead("ragione_sociale", "Cliente")}
+                  {sortHead("codice_gestionale", "Cod. Gestionale")}
+                  {sortHead("store_nome", "Store")}
+                  {sortHead("bloccato", "Stato blocco")}
                   <TableHead>Legale</TableHead>
-                  <TableHead className="text-right">Fatt. {annoCorrente} (IVA escl.)</TableHead>
-                  <TableHead className="text-right">Fatt. {annoPrec} (IVA escl.)</TableHead>
-                  <TableHead className="text-right">N. Fatt. scadute</TableHead>
-                  <TableHead className="text-right">Totale scaduto</TableHead>
-                  <TableHead className="text-right">N. Fatt. a scadere</TableHead>
-                  <TableHead className="text-right">Totale a scadere</TableHead>
-                  <TableHead>Prossima scad.</TableHead>
-                  <TableHead>Fascia</TableHead>
+                  {sortHead("fatturato_cur", `Fatt. ${annoCorrente} (IVA escl.)`, true)}
+                  {sortHead("fatturato_prec", `Fatt. ${annoPrec} (IVA escl.)`, true)}
+                  {sortHead("n_scadute", "N. Fatt. scadute", true)}
+                  {sortHead("tot_scaduto", "Totale scaduto", true)}
+                  {sortHead("n_a_scadere", "N. Fatt. a scadere", true)}
+                  {sortHead("tot_a_scadere", "Totale a scadere", true)}
+                  {sortHead("prossima_scadenza", "Prossima scad.")}
+                  {sortHead("max_gg", "Fascia")}
                   <TableHead className="w-8"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -768,21 +1059,7 @@ function ScadenziarioPage() {
       <AzioneRecuperoDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        selectedRows={pageRows
-          .filter((r) => selectedIds.has(r.cliente_id))
-          .map((r) => ({
-            cliente: {
-              id: r.cliente_id,
-              ragione_sociale: r.ragione_sociale,
-              codice_gestionale: r.codice_gestionale,
-              store_id: r.store_id,
-              bloccato: r.bloccato,
-              ind_blocco: r.ind_blocco,
-              in_gestione_legale: r.in_gestione_legale,
-            },
-            totScad: Number(r.tot_scaduto ?? 0),
-            scaduteIds: r.scadute_ids ?? [],
-          }))}
+        selectedRows={righeDialog.map(toSelRow)}
         userId={user?.id ?? null}
         onDone={() => { setSelectedIds(new Set()); setDialogOpen(false); }}
       />
