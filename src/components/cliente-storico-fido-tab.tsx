@@ -22,7 +22,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  STATO_LABEL, STATO_TONE, TIPO_LABEL, TIPO_TONE, formatEuro, formatDate,
+  STATO_LABEL, STATO_TONE, TIPO_LABEL, TIPO_TONE, formatEuro, formatDate, determinaTipoRichiesta,
   type TipoRichiesta, type StatoRichiesta,
 } from "@/lib/fidi";
 import { useConfig } from "@/hooks/use-config";
@@ -295,12 +295,8 @@ function RichiestaDialog({
   const proponibile = isProponibile(teorico?.regola_applicata);
   const fidoProposto = teorico && proponibile ? teorico.fido_proposto : 0;
 
-  function determinaTipo(attuale: number, proposto: number): RichiestaForm["tipo"] {
-    if (!attuale || attuale === 0) return "nuovo_fido";
-    if (proposto > attuale) return "aumento";
-    if (proposto < attuale) return "diminuzione";
-    return "rinnovo";
-  }
+  const determinaTipo = (attuale: number, proposto: number): RichiestaForm["tipo"] =>
+    determinaTipoRichiesta(attuale, proposto);
 
   const isEdit = !!richiesta;
   const [form, setForm] = useState<RichiestaForm>({

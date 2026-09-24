@@ -11,6 +11,10 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { getFidoAttuale, FIDO_CLIENTE_SELECT } from "@/lib/fido-cliente";
 import {
+  determinaTipoRichiesta, isRichiestaAttiva, TIPO_LABEL, STATO_LABEL, STATO_TONE, formatDate,
+  type StatoRichiesta, type TipoRichiesta,
+} from "@/lib/fidi";
+import {
   fetchFidoTeorico, fetchFidoTeoricoTutti, isProponibile,
   REGOLA_LABEL, MOTIVO_NON_PROPONIBILE, type FidoTeoricoRow,
 } from "@/lib/fido-teorico";
@@ -31,7 +35,6 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { SignaturePad, getCanvasDataURL } from "@/components/signature-pad";
 import { generaSchedaCliente } from "@/lib/scheda-pdf";
 import { useAuth } from "@/hooks/use-auth";
@@ -103,16 +106,6 @@ type ScadenziarioState = {
   ha_scaduto: boolean;
   ha_a_scadere: boolean;
 };
-
-function determinaTipoRichiesta(
-  fidoAttuale: number,
-  fidoProposto: number,
-): "nuovo_fido" | "aumento" | "diminuzione" | "rinnovo" {
-  if (!fidoAttuale || fidoAttuale === 0) return "nuovo_fido";
-  if (fidoProposto > fidoAttuale) return "aumento";
-  if (fidoProposto < fidoAttuale) return "diminuzione";
-  return "rinnovo";
-}
 
 /** Colonne ordinabili non presenti nella tabella clienti (ordinamento in memoria). */
 const VIRTUAL_SORT_COLS = ["scaduto", "a_scadere", "fido_proposto", "scostamento"];
@@ -963,7 +956,7 @@ function ClientiPage() {
 
   // Fetch di tutti gli id filtrati (per "Seleziona tutti i filtrati")
   async function fetchAllFilteredRows(): Promise<any[]> {
-    const cols = `id, ragione_sociale, ${FIDO_CLIENTE_SELECT}, totale_rischio`;
+    const cols = `id, ragione_sociale, store_id, ${FIDO_CLIENTE_SELECT}, totale_rischio`;
     const built = buildBaseQuery(cols, undefined);
     if ("empty" in built) return [];
     const all: any[] = [];
@@ -2098,7 +2091,56 @@ type RigaProposta = {
   tipo: "nuovo_fido" | "aumento" | "diminuzione" | "rinnovo";
   // Override motivazione per-riga. undefined = eredita la motivazione generale.
   motivazione?: string;
+  /** Richiesta fido attiva piu' recente (isRichiestaAttiva), se esiste. */
+  richiestaInCorso?: { stato: string; tipo: string; importo: number; created_at: string };
 };
+
+type TipoProposta = RigaProposta["tipo"];
+const TIPI_PROPOSTA: TipoProposta[] = ["nuovo_fido", "aumento", "diminuzione", "rinnovo"];
+const TIPI_DEFAULT: TipoProposta[] = ["nuovo_fido", "aumento", "diminuzione"];
+type Tri = "escludi" | "includi" | "solo";
+const FILTRI_DEFAULT = { pagImm: "escludi" as Tri, fidoZero: "includi" as Tri, inCorso: "escludi" as Tri };
+
+async function fetchRichiesteInCorso(ids: string[]): Promise<Map<string, NonNullable<RigaProposta["richiestaInCorso"]>>> {
+  const map = new Map<string, NonNullable<RigaProposta["richiestaInCorso"]>>();
+  const uniq = Array.from(new Set(ids.filter(Boolean)));
+  for (let i = 0; i < uniq.length; i += 500) {
+    const chunk = uniq.slice(i, i + 500);
+    const { data, error } = await supabase
+      .from("richieste_fido")
+      .select("cliente_id, stato, stato_export, tipo, importo_richiesto, created_at")
+      .in("cliente_id", chunk);
+    if (error) throw error;
+    for (const r of (data ?? []) as any[]) {
+      if (!r.cliente_id || !isRichiestaAttiva(r)) continue;
+      const prev = map.get(r.cliente_id);
+      if (!prev || String(r.created_at) > prev.created_at) {
+        map.set(r.cliente_id, {
+          stato: String(r.stato), tipo: String(r.tipo),
+          importo: Number(r.importo_richiesto ?? 0), created_at: String(r.created_at),
+        });
+      }
+    }
+  }
+  return map;
+}
+
+function TriSelect({ label, value, onChange, options }: {
+  label: string; value: Tri; onChange: (v: Tri) => void;
+  options: { value: Tri; label: string }[];
+}) {
+  return (
+    <div className="min-w-0 space-y-1">
+      <Label className="text-xs text-muted-foreground font-normal">{label}</Label>
+      <Select value={value} onValueChange={(v) => onChange(v as Tri)}>
+        <SelectTrigger className="h-9 w-full"><SelectValue /></SelectTrigger>
+        <SelectContent>
+          {options.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
 
 const MOTIVAZIONE_DEFAULT = "Revisione fido massiva";
 
@@ -2116,9 +2158,10 @@ function ProposteFidoMassivoDialog({
   const [tipoForzato, setTipoForzato] = useState<"auto" | "nuovo_fido" | "aumento" | "diminuzione" | "rinnovo">("auto");
   const [motivazioneGenerale, setMotivazioneGenerale] = useState<string>(MOTIVAZIONE_DEFAULT);
   const [righe, setRighe] = useState<RigaProposta[]>([]);
-  const [filtroRinnovi, setFiltroRinnovi] = useState<"escludi" | "tutti" | "solo">("escludi");
-  const [filtroPagImmediato, setFiltroPagImmediato] = useState<"escludi" | "tutti" | "solo">("escludi");
-  const [filtroFidoZero, setFiltroFidoZero] = useState<"escludi" | "tutti" | "solo">("tutti");
+  const [filtroTipi, setFiltroTipi] = useState<TipoProposta[]>(TIPI_DEFAULT);
+  const [filtroPagImmediato, setFiltroPagImmediato] = useState<Tri>(FILTRI_DEFAULT.pagImm);
+  const [filtroFidoZero, setFiltroFidoZero] = useState<Tri>(FILTRI_DEFAULT.fidoZero);
+  const [filtroInCorso, setFiltroInCorso] = useState<Tri>(FILTRI_DEFAULT.inCorso);
   const [submitting, setSubmitting] = useState(false);
 
   // Fido proposto = SEMPRE la RPC canonica get_fido_teorico (nessun calcolo locale)
@@ -2128,6 +2171,12 @@ function ProposteFidoMassivoDialog({
     enabled: open && ids.length > 0,
     staleTime: 5 * 60_000,
     queryFn: () => fetchFidoTeorico(ids),
+  });
+  const { data: inCorsoMap } = useQuery({
+    queryKey: ["richieste-in-corso-massivo", [...ids].sort().join(",")],
+    enabled: open && ids.length > 0,
+    staleTime: 60_000,
+    queryFn: () => fetchRichiesteInCorso(ids),
   });
 
   // Inizializza/aggiorna righe quando cambia la selezione o arriva il calcolo
@@ -2198,11 +2247,19 @@ function ProposteFidoMassivoDialog({
     }
   }, [tipoForzato]);
 
+  const righeConInCorso = useMemo(
+    () => righe.map((r) => ({ ...r, richiestaInCorso: inCorsoMap?.get(r.cliente_id) })),
+    [righe, inCorsoMap],
+  );
+
   const righeVisibili = useMemo(() => {
-    return righe.filter((r) => {
-      // Filtro rinnovi
-      if (filtroRinnovi === "escludi" && r.tipo === "rinnovo") return false;
-      if (filtroRinnovi === "solo" && r.tipo !== "rinnovo") return false;
+    return righeConInCorso.filter((r) => {
+      // Filtro tipo proposta (tipo effettivo della riga)
+      if (!filtroTipi.includes(r.tipo)) return false;
+      // Filtro richiesta gia' in corso
+      const inCorso = !!r.richiestaInCorso;
+      if (filtroInCorso === "escludi" && inCorso) return false;
+      if (filtroInCorso === "solo" && !inCorso) return false;
       // Filtro pagamento immediato
       const isPagImmediato = r.regola === "pagamento_immediato";
       if (filtroPagImmediato === "escludi" && isPagImmediato) return false;
@@ -2213,12 +2270,26 @@ function ProposteFidoMassivoDialog({
       if (filtroFidoZero === "solo" && !isFidoZero) return false;
       return true;
     });
-  }, [righe, filtroRinnovi, filtroPagImmediato, filtroFidoZero]);
+  }, [righeConInCorso, filtroTipi, filtroPagImmediato, filtroFidoZero, filtroInCorso]);
 
   const righeVisibiliIncluse = righeVisibili.filter((r) => r.proponibile && r.incluso);
   const righeEscluse = righe.filter((r) => !r.proponibile);
   const totale = righeVisibiliIncluse.reduce((acc, r) => acc + (Number(r.fido_proposto) || 0), 0);
-  const rinnoviCount = righe.filter((r) => r.tipo === "rinnovo").length;
+  const tipoCount = (t: TipoProposta) => righe.filter((r) => r.tipo === t).length;
+  const inCorsoCount = righeConInCorso.filter((r) => !!r.richiestaInCorso).length;
+  const filtriModificati =
+    filtroTipi.length !== TIPI_DEFAULT.length || !TIPI_DEFAULT.every((t) => filtroTipi.includes(t)) ||
+    filtroPagImmediato !== FILTRI_DEFAULT.pagImm || filtroFidoZero !== FILTRI_DEFAULT.fidoZero ||
+    filtroInCorso !== FILTRI_DEFAULT.inCorso;
+  function ripristinaFiltri() {
+    setFiltroTipi(TIPI_DEFAULT);
+    setFiltroPagImmediato(FILTRI_DEFAULT.pagImm);
+    setFiltroFidoZero(FILTRI_DEFAULT.fidoZero);
+    setFiltroInCorso(FILTRI_DEFAULT.inCorso);
+  }
+  function toggleTipo(t: TipoProposta) {
+    setFiltroTipi((prev) => prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]);
+  }
   const pagImmediatoCount = righe.filter((r) => r.regola === "pagamento_immediato").length;
   const fidoZeroCount = righe.filter((r) => Number(r.fido_proposto) === 0).length;
 
@@ -2282,52 +2353,69 @@ function ProposteFidoMassivoDialog({
           </div>
         )}
 
-        <div className="flex flex-wrap items-start gap-4">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-            <ToggleGroup
-              type="single"
-              value={filtroRinnovi}
-              onValueChange={(v) => v && setFiltroRinnovi(v as typeof filtroRinnovi)}
-              className="justify-start"
-            >
-              <ToggleGroupItem value="escludi" aria-label="Escludi rinnovi">Escludi rinnovi</ToggleGroupItem>
-              <ToggleGroupItem value="tutti" aria-label="Mostra tutti">Mostra tutti</ToggleGroupItem>
-              <ToggleGroupItem value="solo" aria-label="Solo rinnovi">Solo rinnovi</ToggleGroupItem>
-            </ToggleGroup>
-            {filtroRinnovi === "escludi" && rinnoviCount > 0 && (
-              <span className="text-xs text-muted-foreground">{rinnoviCount} rinnovi nascosti</span>
-            )}
-          </div>
-
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-            <ToggleGroup
-              type="single"
+        <div className="rounded-md border p-3 space-y-3">
+          <div className="text-sm font-medium">Filtri</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="min-w-0 space-y-1">
+              <Label className="text-xs text-muted-foreground font-normal">Tipo proposta</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {TIPI_PROPOSTA.map((t) => {
+                  const attivo = filtroTipi.includes(t);
+                  return (
+                    <Button
+                      key={t}
+                      type="button"
+                      size="sm"
+                      variant={attivo ? "default" : "outline"}
+                      aria-pressed={attivo}
+                      className="h-9 px-2.5 text-xs"
+                      onClick={() => toggleTipo(t)}
+                    >
+                      {TIPO_LABEL[t]} ({tipoCount(t)})
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+            <TriSelect
+              label="Pagamento immediato"
               value={filtroPagImmediato}
-              onValueChange={(v) => v && setFiltroPagImmediato(v as typeof filtroPagImmediato)}
-              className="justify-start"
-            >
-              <ToggleGroupItem value="escludi" aria-label="Escludi pagamento immediato">Escludi pag. immediato</ToggleGroupItem>
-              <ToggleGroupItem value="tutti" aria-label="Mostra tutti">Mostra tutti</ToggleGroupItem>
-              <ToggleGroupItem value="solo" aria-label="Solo pagamento immediato">Solo pag. immediato</ToggleGroupItem>
-            </ToggleGroup>
-            {filtroPagImmediato === "escludi" && pagImmediatoCount > 0 && (
-              <span className="text-xs text-muted-foreground">{pagImmediatoCount} pagamenti immediati nascosti</span>
-            )}
-          </div>
-
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-            <ToggleGroup
-              type="single"
+              onChange={setFiltroPagImmediato}
+              options={[
+                { value: "escludi", label: `Escludi (${pagImmediatoCount})` },
+                { value: "includi", label: "Includi" },
+                { value: "solo", label: `Solo (${pagImmediatoCount})` },
+              ]}
+            />
+            <TriSelect
+              label="Fido proposto a zero"
               value={filtroFidoZero}
-              onValueChange={(v) => v && setFiltroFidoZero(v as typeof filtroFidoZero)}
-              className="justify-start"
-            >
-              <ToggleGroupItem value="escludi" aria-label="Escludi fido zero">Escludi fido zero</ToggleGroupItem>
-              <ToggleGroupItem value="tutti" aria-label="Mostra tutti">Mostra tutti</ToggleGroupItem>
-              <ToggleGroupItem value="solo" aria-label="Solo fido zero">Solo fido zero</ToggleGroupItem>
-            </ToggleGroup>
-            {filtroFidoZero === "escludi" && fidoZeroCount > 0 && (
-              <span className="text-xs text-muted-foreground">{fidoZeroCount} fido zero nascosti</span>
+              onChange={setFiltroFidoZero}
+              options={[
+                { value: "includi", label: "Includi" },
+                { value: "escludi", label: `Escludi (${fidoZeroCount})` },
+                { value: "solo", label: `Solo (${fidoZeroCount})` },
+              ]}
+            />
+            <TriSelect
+              label="Richiesta in corso"
+              value={filtroInCorso}
+              onChange={setFiltroInCorso}
+              options={[
+                { value: "escludi", label: `Escludi (${inCorsoCount})` },
+                { value: "includi", label: "Mostra" },
+                { value: "solo", label: `Solo (${inCorsoCount})` },
+              ]}
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <span>
+              Mostrati {righeVisibili.length} di {righe.length} clienti · {righeVisibiliIncluse.length} inclusi nella creazione
+            </span>
+            {filtriModificati && (
+              <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs" onClick={ripristinaFiltri}>
+                Ripristina filtri
+              </Button>
             )}
           </div>
         </div>
@@ -2350,10 +2438,7 @@ function ProposteFidoMassivoDialog({
               <SelectTrigger className="mt-2"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="auto">Automatico (in base al fido attuale)</SelectItem>
-                <SelectItem value="nuovo_fido">Nuovo fido</SelectItem>
-                <SelectItem value="aumento">Aumento fido</SelectItem>
-                <SelectItem value="diminuzione">Diminuzione fido</SelectItem>
-                <SelectItem value="rinnovo">Rinnovo fido</SelectItem>
+                {TIPI_PROPOSTA.map((t) => <SelectItem key={t} value={t}>{TIPO_LABEL[t]}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -2414,6 +2499,13 @@ function ProposteFidoMassivoDialog({
                       {r.nota_proposta && (
                         <p className="text-xs font-normal text-muted-foreground mt-0.5 max-w-[380px]">{r.nota_proposta}</p>
                       )}
+                      {r.richiestaInCorso && (
+                        <div className={`mt-1 inline-block max-w-[380px] whitespace-normal break-words rounded px-2 py-0.5 text-xs font-medium ${STATO_TONE[r.richiestaInCorso.stato as StatoRichiesta] ?? "bg-muted text-muted-foreground"}`}>
+                          Richiesta già in corso: {STATO_LABEL[r.richiestaInCorso.stato as StatoRichiesta] ?? r.richiestaInCorso.stato}
+                          {" · "}{TIPO_LABEL[r.richiestaInCorso.tipo as TipoRichiesta] ?? r.richiestaInCorso.tipo} {fmtEuro(r.richiestaInCorso.importo)}
+                          {" · del "}{formatDate(r.richiestaInCorso.created_at)}
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell className="text-right text-sm">{fmtEuro(r.fido_attuale)}</TableCell>
                     <TableCell className="text-right text-sm">{fmtEuro(r.esposizione)}</TableCell>
@@ -2442,10 +2534,7 @@ function ProposteFidoMassivoDialog({
                       <Select value={r.tipo} disabled={!r.proponibile} onValueChange={(v) => aggiornaTipo(r.cliente_id, v as RigaProposta["tipo"])}>
                         <SelectTrigger className="h-8 w-36"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="nuovo_fido">Nuovo fido</SelectItem>
-                          <SelectItem value="aumento">Aumento</SelectItem>
-                          <SelectItem value="diminuzione">Diminuzione</SelectItem>
-                          <SelectItem value="rinnovo">Rinnovo</SelectItem>
+                          {TIPI_PROPOSTA.map((t) => <SelectItem key={t} value={t}>{TIPO_LABEL[t]}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </TableCell>

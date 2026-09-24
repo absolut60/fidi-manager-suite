@@ -11,6 +11,23 @@ export const TIPO_LABEL: Record<TipoRichiesta, string> = {
   rinnovo: "Rinnovo fido",
 };
 
+/**
+ * Tipo richiesta automatico da fido attuale -> proposto. FONTE UNICA.
+ * Ordine: uguali (anche 0 = 0) -> rinnovo; attuale 0 e proposto > 0 -> nuovo_fido;
+ * proposto > attuale -> aumento; proposto < attuale -> diminuzione.
+ */
+export function determinaTipoRichiesta(
+  fidoAttuale: number | null | undefined,
+  fidoProposto: number | null | undefined,
+): "nuovo_fido" | "aumento" | "diminuzione" | "rinnovo" {
+  const a = Number(fidoAttuale ?? 0) || 0;
+  const p = Number(fidoProposto ?? 0) || 0;
+  if (p === a) return "rinnovo";
+  if (a === 0 && p > 0) return "nuovo_fido";
+  if (p > a) return "aumento";
+  return "diminuzione";
+}
+
 export const TIPO_TONE: Record<TipoRichiesta, string> = {
   nuovo: "bg-primary/10 text-primary",
   nuovo_fido: "bg-primary/10 text-primary",
