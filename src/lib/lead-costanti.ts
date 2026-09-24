@@ -7,7 +7,7 @@ export type LeadPriorita = Database["public"]["Enums"]["lead_priorita"];
 export type LeadRichiestaTipo = Database["public"]["Enums"]["lead_richiesta_tipo"];
 export type LeadRichiestaStato = Database["public"]["Enums"]["lead_richiesta_stato"];
 
-/** Stessi ruoli della funzione DB has_lead_module_access(). */
+/** Ruoli di GESTIONE lead, gemello di has_lead_module_access() (DB). */
 export const LEAD_ROLES = new Set<string>([
   "amministratore",
   "amministrazione",
@@ -16,8 +16,17 @@ export const LEAD_ROLES = new Set<string>([
   "responsabile_agenti",
 ]);
 
-export function puoAccedereLead(roles: readonly string[]): boolean {
+/** Gestione completa lead (filtri trasversali, eliminazione, assegnazione libera). */
+export function puoGestireLead(roles: readonly string[]): boolean {
   return roles.some((r) => LEAD_ROLES.has(r));
+}
+
+/**
+ * Accesso al modulo lead. L'agente vede solo i suoi lead:
+ * il filtro è fatto dalla RLS (agente_vede_record).
+ */
+export function puoAccedereLead(roles: readonly string[]): boolean {
+  return puoGestireLead(roles) || roles.includes("agente");
 }
 
 export const LEAD_STATI: LeadStato[] = [

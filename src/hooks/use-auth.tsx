@@ -11,6 +11,7 @@ export type Profilo = {
   cognome: string | null;
   email: string | null;
   store_id: string | null;
+  codice_agente?: string | null;
   attivo: boolean;
   deve_cambiare_password?: boolean;
 };
