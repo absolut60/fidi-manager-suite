@@ -24,6 +24,7 @@ import { emailHealthCheck } from "@/lib/inngest/email-health.server";
 import { processEventiPartecipantiImport } from "@/lib/inngest/eventi-import.server";
 import { refreshFatturatoMensileCron } from "@/lib/inngest/fatturato-mensile.server";
 import { ricalcolaFidoTeorico } from "@/lib/inngest/fido-teorico-ricalcolo.server";
+import { notificaVariazioniBlocco } from "@/lib/inngest/variazioni-blocco.server";
 
 
 
@@ -52,6 +53,7 @@ const handler = serve({
     processEventiPartecipantiImport,
     refreshFatturatoMensileCron,
     ricalcolaFidoTeorico,
+    notificaVariazioniBlocco,
 
 
 
