@@ -75,7 +75,7 @@ type NavItem = {
   to: string;
   label: string;
   icon: typeof LayoutDashboard;
-  roles?: Array<"admin" | "approvatore" | "store_manager" | "responsabile_agenti" | "amministrazione" | "direzione" | "marketing" | "marketing_eventi" | "preventivi_read" | "preventivi_write" | "preventivi_manage">;
+  roles?: Array<"admin" | "approvatore" | "store_manager" | "responsabile_agenti" | "amministrazione" | "amministrazione_strumenti" | "direzione" | "marketing" | "marketing_eventi" | "preventivi_read" | "preventivi_write" | "preventivi_manage">;
   group: NavGroupKey;
   richiesteScope?: RichiesteScope;
   exact?: boolean;
@@ -90,10 +90,10 @@ const NAV: NavItem[] = [
   { to: "/task", label: "Task attività", icon: ListChecks, group: "generale" },
   { to: "/lead", label: "Lead", icon: UserPlus, roles: ["admin", "amministrazione", "direzione", "marketing", "responsabile_agenti"], group: "generale" },
   // COMMERCIALE
-  { to: "/dashboard-commerciale", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "amministrazione", "direzione", "marketing", "responsabile_agenti"], group: "commerciale" },
-  { to: "/opportunita", label: "Opportunità", icon: Target, roles: ["admin", "amministrazione", "direzione", "marketing", "responsabile_agenti"], group: "commerciale" },
-  { to: "/calendario-commerciale", label: "Calendario", icon: CalendarDays, roles: ["admin", "amministrazione", "direzione", "marketing", "responsabile_agenti"], group: "commerciale" },
-  { to: "/cantieri", label: "Cantieri", icon: Building2, roles: ["admin", "amministrazione", "direzione", "marketing", "responsabile_agenti"], group: "commerciale" },
+  { to: "/dashboard-commerciale", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "direzione", "marketing", "responsabile_agenti"], group: "commerciale" },
+  { to: "/opportunita", label: "Opportunità", icon: Target, roles: ["admin", "direzione", "marketing", "responsabile_agenti"], group: "commerciale" },
+  { to: "/calendario-commerciale", label: "Calendario", icon: CalendarDays, roles: ["admin", "direzione", "marketing", "responsabile_agenti"], group: "commerciale" },
+  { to: "/cantieri", label: "Cantieri", icon: Building2, roles: ["admin", "direzione", "marketing", "responsabile_agenti"], group: "commerciale" },
   // PREVENTIVI
   { to: "/preventivatore/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi" },
   { to: "/preventivatore", label: "Preventivi", icon: Calculator, roles: ["admin", "preventivi_read", "preventivi_write", "preventivi_manage"], group: "preventivi", exact: true },
@@ -109,16 +109,16 @@ const NAV: NavItem[] = [
   { to: "/fidi-processare", label: "Fidi da processare", icon: ClipboardCheck, roles: ["admin", "approvatore"], group: "fidi" },
   { to: "/assicurazioni", label: "Assicurazioni", icon: ShieldCheck, roles: ["admin", "approvatore", "store_manager"], group: "fidi" },
   // INCASSI
-  { to: "/scadenziario", label: "Scadenziario", icon: CalendarClock, roles: ["admin", "approvatore", "store_manager"], group: "incassi" },
-  { to: "/cruscotto-incassi", label: "Cruscotto incassi", icon: LineChart, roles: ["admin", "approvatore", "store_manager"], group: "incassi" },
-  { to: "/recupero-crediti-promemoria", label: "Promemoria scadenza", icon: CalendarClock, roles: ["admin", "approvatore", "store_manager"], group: "incassi" },
+  { to: "/scadenziario", label: "Scadenziario", icon: CalendarClock, roles: ["admin", "approvatore", "store_manager", "amministrazione"], group: "incassi" },
+  { to: "/cruscotto-incassi", label: "Cruscotto incassi", icon: LineChart, roles: ["admin", "approvatore", "store_manager", "amministrazione"], group: "incassi" },
+  { to: "/recupero-crediti-promemoria", label: "Promemoria scadenza", icon: CalendarClock, roles: ["admin", "approvatore", "store_manager", "amministrazione"], group: "incassi" },
   // RECUPERO CREDITI
-  { to: "/recupero-crediti", label: "Recupero Crediti", icon: HandCoins, roles: ["admin", "approvatore", "store_manager"], group: "recupero" },
-  { to: "/recupero-crediti-calendario", label: "Calendario Recupero", icon: CalendarClock, roles: ["admin", "approvatore", "store_manager"], group: "recupero" },
-  { to: "/piani-rientro", label: "Piani di rientro", icon: CalendarClock, roles: ["admin", "approvatore", "store_manager"], group: "recupero" },
-  { to: "/recupero-crediti-campagne", label: "Invii massivi", icon: Megaphone, roles: ["admin", "approvatore", "store_manager"], group: "recupero" },
-  { to: "/legali", label: "Pratiche Legali", icon: Gavel, roles: ["admin", "approvatore", "store_manager"], group: "recupero" },
-  { to: "/recupero-crediti-andamento", label: "Andamento / Storico", icon: TrendingUp, roles: ["admin", "approvatore", "store_manager"], group: "recupero" },
+  { to: "/recupero-crediti", label: "Recupero Crediti", icon: HandCoins, roles: ["admin", "approvatore", "store_manager", "amministrazione"], group: "recupero" },
+  { to: "/recupero-crediti-calendario", label: "Calendario Recupero", icon: CalendarClock, roles: ["admin", "approvatore", "store_manager", "amministrazione"], group: "recupero" },
+  { to: "/piani-rientro", label: "Piani di rientro", icon: CalendarClock, roles: ["admin", "approvatore", "store_manager", "amministrazione"], group: "recupero" },
+  { to: "/recupero-crediti-campagne", label: "Invii massivi", icon: Megaphone, roles: ["admin", "approvatore", "store_manager", "amministrazione"], group: "recupero" },
+  { to: "/legali", label: "Pratiche Legali", icon: Gavel, roles: ["admin", "approvatore", "store_manager", "amministrazione"], group: "recupero" },
+  { to: "/recupero-crediti-andamento", label: "Andamento / Storico", icon: TrendingUp, roles: ["admin", "approvatore", "store_manager", "amministrazione"], group: "recupero" },
   // RICHIESTE INTERNE
   { to: "/richieste-interne", label: "Richieste — Dashboard", icon: LayoutDashboard, group: "richieste_interne", richiesteScope: "all", exact: true },
   { to: "/richieste-interne/mie", label: "Le mie richieste", icon: FileText, group: "richieste_interne", richiesteScope: "all" },
@@ -127,15 +127,15 @@ const NAV: NavItem[] = [
   { to: "/richieste-interne/tutte", label: "Tutte le richieste", icon: FileSpreadsheet, group: "richieste_interne", richiesteScope: "manage" },
   { to: "/richieste-interne/archivio", label: "Archivio", icon: ScrollText, group: "richieste_interne", richiesteScope: "manage" },
   // MARKETING
-  { to: "/eventi", label: "Eventi", icon: CalendarDays, roles: ["admin", "amministrazione", "direzione", "marketing", "marketing_eventi"], group: "marketing" },
-  { to: "/marketing/segmenti", label: "Segmenti", icon: Sparkles, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "marketing" },
- { to: "/marketing/campagne", label: "Campagne email", icon: Mail, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "marketing" },
- { to: "/marketing/invii", label: "Invii massivi", icon: Megaphone, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "marketing" },
-  { to: "/marketing/disiscrizioni", label: "Disiscrizioni", icon: UserX, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "marketing" },
-  { to: "/marketing/qr-whatsapp", label: "QR WhatsApp", icon: QrCode, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "marketing" },
-  { to: "/marketing/iscritti-whatsapp", label: "Iscritti WhatsApp", icon: MessageCircle, roles: ["admin", "amministrazione", "direzione", "marketing"], group: "marketing" },
+  { to: "/eventi", label: "Eventi", icon: CalendarDays, roles: ["admin", "direzione", "marketing", "marketing_eventi"], group: "marketing" },
+  { to: "/marketing/segmenti", label: "Segmenti", icon: Sparkles, roles: ["admin", "direzione", "marketing"], group: "marketing" },
+ { to: "/marketing/campagne", label: "Campagne email", icon: Mail, roles: ["admin", "direzione", "marketing"], group: "marketing" },
+ { to: "/marketing/invii", label: "Invii massivi", icon: Megaphone, roles: ["admin", "direzione", "marketing"], group: "marketing" },
+  { to: "/marketing/disiscrizioni", label: "Disiscrizioni", icon: UserX, roles: ["admin", "direzione", "marketing"], group: "marketing" },
+  { to: "/marketing/qr-whatsapp", label: "QR WhatsApp", icon: QrCode, roles: ["admin", "direzione", "marketing"], group: "marketing" },
+  { to: "/marketing/iscritti-whatsapp", label: "Iscritti WhatsApp", icon: MessageCircle, roles: ["admin", "direzione", "marketing"], group: "marketing" },
   // STRUMENTI
-  { to: "/import-export", label: "Import / Export", icon: FileSpreadsheet, roles: ["admin", "amministrazione"], group: "strumenti" },
+  { to: "/import-export", label: "Import / Export", icon: FileSpreadsheet, roles: ["admin", "amministrazione_strumenti"], group: "strumenti" },
   { to: "/whatsapp", label: "WhatsApp", icon: MessageCircle, roles: ["admin"], group: "strumenti" },
   { to: "/privacy", label: "Privacy", icon: FileSignature, roles: ["admin", "approvatore", "store_manager"], group: "strumenti" },
   // AMMINISTRAZIONE
@@ -218,6 +218,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isApprovatore = userRoles.some((r) => r.startsWith("approvatore_liv"));
   const isStoreManager = hasUserRole("store_manager");
   const isAmministrazione = hasUserRole("amministrazione");
+  const isAmministrazioneStrumenti = hasUserRole("amministrazione_strumenti");
   const isDirezione = hasUserRole("direzione");
   const isMarketing = hasUserRole("marketing");
   const isMarketingEventi = hasUserRole("marketing_eventi");
@@ -256,14 +257,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const hasAnyRichiesteRole = RICHIESTE_ROLES.some((r) => hasUserRole(r));
   const isOnlyMarketingEventi =
     isMarketingEventi && !isAdmin && !isApprovatore && !isStoreManager && !isAmministrazione && !isDirezione && !isMarketing && !isAgente && !hasAccessoPreventivi && !hasAnyRichiesteRole;
-  const canSeeRichiesteInterne = isAdmin || hasAnyRichiesteRole;
+  const canSeeRichiesteInterne = isAdmin || hasAnyRichiesteRole || isAmministrazione;
   const isApprovatoreRichLiv1 = hasUserRole("approvatore_richieste_liv1");
   const isApprovatoreRichLiv2 = hasUserRole("approvatore_richieste_liv2");
   const isGestoreRich = hasUserRole("gestore_richieste");
   const isEsecutoreRich = hasUserRole("esecutore_richieste");
   const canApproveRich = isAdmin || isApprovatoreRichLiv1 || isApprovatoreRichLiv2;
-  const canManageRich = isAdmin || isApprovatoreRichLiv1 || isApprovatoreRichLiv2 || isGestoreRich || isEsecutoreRich;
-  const canGestioneRich = isAdmin || isGestoreRich || isEsecutoreRich;
+  const canManageRich = isAdmin || isApprovatoreRichLiv1 || isApprovatoreRichLiv2 || isGestoreRich || isEsecutoreRich || isAmministrazione;
+  const canGestioneRich = isAdmin || isGestoreRich || isEsecutoreRich || isAmministrazione;
 
   const visibleNav = NAV.filter((item) => {
     if (item.group === "richieste_interne") {
@@ -280,6 +281,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (item.roles.includes("approvatore") && (isAdmin || isApprovatore)) return true;
     if (item.roles.includes("store_manager") && (isAdmin || isApprovatore || isStoreManager)) return true;
     if (item.roles.includes("amministrazione") && isAmministrazione) return true;
+    if (item.roles.includes("amministrazione_strumenti") && isAmministrazioneStrumenti) return true;
     if (item.roles.includes("direzione") && isDirezione) return true;
     if (item.roles.includes("marketing") && isMarketing) return true;
     if (item.roles.includes("marketing_eventi") && isMarketingEventi) return true;
