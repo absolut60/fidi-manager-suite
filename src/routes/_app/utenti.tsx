@@ -31,27 +31,12 @@ export const Route = createFileRoute("/_app/utenti")({
   component: UtentiPage,
 });
 
-const ORDINE_RUOLI: AppRole[] = [
-  "amministratore",
-  "approvatore_liv3",
-  "approvatore_liv2",
-  "approvatore_liv1",
-  "direzione",
-  "responsabile_agenti",
-  "store_manager",
-  "marketing",
-  "agente",
-  "approvatore_richieste_liv2",
-  "approvatore_richieste_liv1",
-  "gestore_richieste",
-  "esecutore_richieste",
-  "richiedente",
-];
-
 const RUOLI_CREDITO: AppRole[] = [
   "amministratore",
   "direzione",
+  "responsabile_agenti",
   "amministrazione",
+  "amministrazione_strumenti",
   "store_manager",
   "approvatore_liv1",
   "approvatore_liv2",
@@ -70,6 +55,23 @@ const RUOLI_RICHIESTE: AppRole[] = [
 const RUOLI_MARKETING: AppRole[] = ["marketing", "marketing_eventi"];
 
 const RUOLI_PREVENTIVI: AppRole[] = ["preventivi_read", "preventivi_write", "preventivi_manage"];
+
+const GRUPPI_RUOLI: AppRole[][] = [RUOLI_CREDITO, RUOLI_RICHIESTE, RUOLI_MARKETING, RUOLI_PREVENTIVI];
+
+// Rete di sicurezza: qualunque ruolo futuro dell'enum, presente in RUOLI_LABEL
+// (Record<AppRole, string>, quindi completo per costruzione), finisce qui e resta visibile.
+const ALTRI_RUOLI: AppRole[] = (Object.keys(RUOLI_LABEL) as AppRole[]).filter(
+  (r) => !GRUPPI_RUOLI.some((g) => g.includes(r)),
+);
+
+// Ordine badge in tabella: gruppi appiattiti (credito, richieste, marketing, preventivi, altri).
+const ORDINE_GRUPPI: AppRole[] = [
+  ...RUOLI_CREDITO,
+  ...RUOLI_RICHIESTE,
+  ...RUOLI_MARKETING,
+  ...RUOLI_PREVENTIVI,
+  ...ALTRI_RUOLI,
+];
 
 type UserRow = {
   id: string;
@@ -101,7 +103,7 @@ function UtentiPage() {
         const userRoles = (roles ?? [])
           .filter((r) => r.user_id === p.id)
           .map((r) => r.role as AppRole)
-          .sort((a, b) => ORDINE_RUOLI.indexOf(a) - ORDINE_RUOLI.indexOf(b));
+          .sort((a, b) => ORDINE_GRUPPI.indexOf(a) - ORDINE_GRUPPI.indexOf(b));
         const store = stores?.find((s) => s.id === p.store_id);
         return {
           ...p,
@@ -216,6 +218,7 @@ function RoleCheckboxes({ value, onChange }: { value: AppRole[]; onChange: (v: A
       {renderGroup("Richieste interne", RUOLI_RICHIESTE)}
       {renderGroup("Marketing", RUOLI_MARKETING)}
       {renderGroup("Preventivi", RUOLI_PREVENTIVI)}
+      {ALTRI_RUOLI.length > 0 && renderGroup("Altri ruoli", ALTRI_RUOLI)}
     </div>
   );
 }
