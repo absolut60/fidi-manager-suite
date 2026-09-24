@@ -127,6 +127,11 @@ function LeadDettaglioPage() {
   const { roles, loading: authLoading, user } = useAuth();
   const canSee = useMemo(() => puoAccedereLead(roles as string[]), [roles]);
   const canManage = useMemo(() => puoGestireLead(roles as string[]), [roles]);
+  // Agente senza permessi di gestione: non può riassegnare il lead ad altri
+  const agenteVincolato = useMemo(
+    () => (roles as string[]).includes("agente") && !canManage,
+    [roles, canManage],
+  );
 
   const { data: lead, isLoading } = useQuery({
     queryKey: ["lead", leadId],
@@ -240,7 +245,8 @@ function LeadDettaglioPage() {
         priorita: f.priorita,
         mestiere_id: f.mestiere_id || null,
         store_id: f.store_id || null,
-        agente_codice: f.agente_codice || null,
+        // L'agente vincolato non riassegna: agente_codice resta invariato
+        ...(agenteVincolato ? {} : { agente_codice: f.agente_codice || null }),
         prossima_azione_il: f.prossima_azione_il || null,
         prossima_azione_tipo: f.prossima_azione_tipo.trim() || null,
         prossima_azione_nota: f.prossima_azione_nota.trim() || null,
@@ -875,6 +881,7 @@ function LeadDettaglioPage() {
                   <Select
                     value={f.agente_codice || NESSUNO}
                     onValueChange={(v) => set("agente_codice", v === NESSUNO ? "" : v)}
+                    disabled={agenteVincolato}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Nessuno" />
