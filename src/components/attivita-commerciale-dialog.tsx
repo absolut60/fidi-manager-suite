@@ -123,9 +123,12 @@ export function AttivitaCommercialeDialog({
       return;
     }
     setSaving(true);
-    const agenteCodice = forzaAgente
-      ? (mioCodice || null)
-      : (soggetto ? soggettoMeta.agente_codice : (contesto.agente_codice ?? null));
+    // In modifica l'agente resta quello salvato; la forzatura vale solo in creazione
+    const agenteCodice = attivita
+      ? (attivita.agente_codice ?? null)
+      : forzaAgente
+        ? (mioCodice || null)
+        : (soggetto ? soggettoMeta.agente_codice : (contesto.agente_codice ?? null));
     const payload = {
       opportunita_id: opportunitaId,
       cliente_id: clienteId,

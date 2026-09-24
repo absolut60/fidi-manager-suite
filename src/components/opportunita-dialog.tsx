@@ -157,10 +157,10 @@ export function OpportunitaDialog({
     return () => { annullato = true; };
   }, [open, soggetto]);
 
-  // Agente forzato per l'utente agente-only
+  // Agente forzato per l'utente agente-only (solo in creazione: in modifica resta il valore salvato)
   useEffect(() => {
-    if (forzaAgente && mioCodice) setAgenteCodice(mioCodice);
-  }, [forzaAgente, mioCodice]);
+    if (forzaAgente && mioCodice && !opportunita) setAgenteCodice(mioCodice);
+  }, [forzaAgente, mioCodice, opportunita]);
 
   // Cantieri del soggetto
   const { data: cantieri = [] } = useQuery({
@@ -217,7 +217,12 @@ export function OpportunitaDialog({
     };
     try {
       if (opportunita?.id) {
-        const { error } = await supabase.from("opportunita").update(payload).eq("id", opportunita.id);
+        // In modifica l'agente-only non deve mai riscrivere agente_codice
+        const { agente_codice: _omesso, ...payloadSenzaAgente } = payload;
+        const { error } = await supabase
+          .from("opportunita")
+          .update(forzaAgente ? payloadSenzaAgente : payload)
+          .eq("id", opportunita.id);
         if (error) throw error;
         toast.success("Opportunità aggiornata");
       } else {
