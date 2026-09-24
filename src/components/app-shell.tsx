@@ -218,6 +218,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isApprovatore = userRoles.some((r) => r.startsWith("approvatore_liv"));
   const isStoreManager = hasUserRole("store_manager");
   const isAmministrazione = hasUserRole("amministrazione");
+  const isAmministrazioneStrumenti = hasUserRole("amministrazione_strumenti");
   const isDirezione = hasUserRole("direzione");
   const isMarketing = hasUserRole("marketing");
   const isMarketingEventi = hasUserRole("marketing_eventi");
@@ -256,14 +257,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const hasAnyRichiesteRole = RICHIESTE_ROLES.some((r) => hasUserRole(r));
   const isOnlyMarketingEventi =
     isMarketingEventi && !isAdmin && !isApprovatore && !isStoreManager && !isAmministrazione && !isDirezione && !isMarketing && !isAgente && !hasAccessoPreventivi && !hasAnyRichiesteRole;
-  const canSeeRichiesteInterne = isAdmin || hasAnyRichiesteRole;
+  const canSeeRichiesteInterne = isAdmin || hasAnyRichiesteRole || isAmministrazione;
   const isApprovatoreRichLiv1 = hasUserRole("approvatore_richieste_liv1");
   const isApprovatoreRichLiv2 = hasUserRole("approvatore_richieste_liv2");
   const isGestoreRich = hasUserRole("gestore_richieste");
   const isEsecutoreRich = hasUserRole("esecutore_richieste");
   const canApproveRich = isAdmin || isApprovatoreRichLiv1 || isApprovatoreRichLiv2;
-  const canManageRich = isAdmin || isApprovatoreRichLiv1 || isApprovatoreRichLiv2 || isGestoreRich || isEsecutoreRich;
-  const canGestioneRich = isAdmin || isGestoreRich || isEsecutoreRich;
+  const canManageRich = isAdmin || isApprovatoreRichLiv1 || isApprovatoreRichLiv2 || isGestoreRich || isEsecutoreRich || isAmministrazione;
+  const canGestioneRich = isAdmin || isGestoreRich || isEsecutoreRich || isAmministrazione;
 
   const visibleNav = NAV.filter((item) => {
     if (item.group === "richieste_interne") {
@@ -280,7 +281,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (item.roles.includes("approvatore") && (isAdmin || isApprovatore)) return true;
     if (item.roles.includes("store_manager") && (isAdmin || isApprovatore || isStoreManager)) return true;
     if (item.roles.includes("amministrazione") && isAmministrazione) return true;
-    if (item.roles.includes("direzione") && isDirezione) return true;
+    if (item.roles.includes("amministrazione_strumenti") && isAmministrazioneStrumenti) return true;
     if (item.roles.includes("marketing") && isMarketing) return true;
     if (item.roles.includes("marketing_eventi") && isMarketingEventi) return true;
     if (item.roles.includes("responsabile_agenti") && isResponsabileAgenti) return true;
