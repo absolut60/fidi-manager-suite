@@ -22,7 +22,7 @@ import {
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
 } from "@/components/ui/sheet";
-import { formatEuro, formatDate, TIPO_LABEL, TIPO_TONE, type TipoRichiesta } from "@/lib/fidi";
+import { formatEuro, formatDate, TIPO_TONE, type TipoRichiesta, etichettaTipoRichiesta } from "@/lib/fidi";
 import { getFidoAttuale } from "@/lib/fido-cliente";
 import { RICHIESTA_FIDO_SELECT } from "@/lib/richieste-fido-data";
 import { semaforoUI, semaforoDaCliente } from "@/lib/semaforo-ui";
@@ -481,7 +481,7 @@ function ApprovazioniPage() {
                             <ExternalLink className="size-3 opacity-60" />
                           </Link>
                           <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>
-                            {TIPO_LABEL[r.tipo as TipoRichiesta]}
+                            {etichettaTipoRichiesta(r.tipo, Number(r.importo_approvato ?? r.importo_richiesto))}
                           </span>
                           <Badge variant="outline">Liv. richiesto {r.livello_richiesto}</Badge>
                           {!canAct && (
@@ -556,7 +556,7 @@ function ApprovazioniPage() {
                     <div className="grid grid-cols-2 gap-3 text-sm">
                       <Field label="Tipo">
                         <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[detail.tipo as TipoRichiesta]}`}>
-                          {TIPO_LABEL[detail.tipo as TipoRichiesta]}
+                          {etichettaTipoRichiesta(detail.tipo, Number(detail.importo_approvato ?? detail.importo_richiesto))}
                         </span>
                       </Field>
                       <Field label="Importo richiesto"><strong className="tabular-nums">{formatEuro(Number(detail.importo_richiesto))}</strong></Field>

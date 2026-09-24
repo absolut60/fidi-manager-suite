@@ -43,9 +43,9 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  STATO_LABEL, STATO_TONE, TIPO_LABEL, TIPO_TONE, calcolaLivello,
+  STATO_LABEL, STATO_TONE, TIPO_TONE, calcolaLivello,
   formatEuro, formatDate, type TipoRichiesta, isRichiestaAttiva,
-  determinaTipoRichiesta, importoRichiestaValido,
+  determinaTipoRichiesta, importoRichiestaValido, etichettaTipoRichiesta,
 } from "@/lib/fidi";
 import { getFidoAttuale } from "@/lib/fido-cliente";
 import { RICHIESTA_FIDO_SELECT } from "@/lib/richieste-fido-data";
@@ -487,7 +487,7 @@ function BozzeTab({
             colonneCampi={2}
             selezione={{ checked: selected.has(r.id), onChange: () => toggle(r.id) }}
             titolo={r.clienti?.ragione_sociale ?? "—"}
-            badge={<span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{TIPO_LABEL[r.tipo as TipoRichiesta]}</span>}
+            badge={<span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{etichettaTipoRichiesta(r.tipo, Number(r.importo_approvato ?? r.importo_richiesto))}</span>}
             campi={[
               { etichetta: "Importo rich.", valore: <span className="tabular-nums">{formatEuro(Number(r.importo_richiesto))}</span> },
               { etichetta: "Fido attuale", valore: <span className="tabular-nums">{formatEuro(getFidoAttuale(r.clienti))}</span> },
@@ -538,7 +538,7 @@ function BozzeTab({
               </TableCell>
               <TableCell>
                 <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>
-                  {TIPO_LABEL[r.tipo as TipoRichiesta]}
+                  {etichettaTipoRichiesta(r.tipo, Number(r.importo_approvato ?? r.importo_richiesto))}
                 </span>
               </TableCell>
               <TableCell className="text-right tabular-nums">{formatEuro(Number(r.importo_richiesto))}</TableCell>
@@ -794,7 +794,7 @@ function InApprovazioneTab({
                   colonneCampi={2}
                   selezione={livMio ? { checked: selected.has(r.id), onChange: () => toggle(r.id) } : undefined}
                   titolo={r.clienti?.ragione_sociale ?? "—"}
-                  badge={<span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{TIPO_LABEL[r.tipo as TipoRichiesta]}</span>}
+                  badge={<span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{etichettaTipoRichiesta(r.tipo, Number(r.importo_approvato ?? r.importo_richiesto))}</span>}
                   campi={[
                     { etichetta: "Importo", valore: <span className="tabular-nums font-medium">{formatEuro(Number(r.importo_richiesto))}</span> },
                     { etichetta: "Fido attuale", valore: <span className="tabular-nums">{formatEuro(getFidoAttuale(r.clienti))}</span> },
@@ -858,7 +858,7 @@ function InApprovazioneTab({
                       </div>
                     </TableCell>
                     {!isStoreManagerView(canApprove) && <TableCell className="text-sm text-muted-foreground">{r.clienti?.stores?.nome ?? "—"}</TableCell>}
-                    <TableCell><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{TIPO_LABEL[r.tipo as TipoRichiesta]}</span></TableCell>
+                    <TableCell><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{etichettaTipoRichiesta(r.tipo, Number(r.importo_approvato ?? r.importo_richiesto))}</span></TableCell>
                     <TableCell className="text-right tabular-nums font-medium">{formatEuro(Number(r.importo_richiesto))}</TableCell>
                     <TableCell className="text-right tabular-nums text-muted-foreground">{formatEuro(getFidoAttuale(r.clienti))}</TableCell>
                     <TableCell className="text-right tabular-nums text-muted-foreground">{formatEuro(Number(r.clienti?.totale_rischio ?? 0))}</TableCell>
@@ -1070,7 +1070,7 @@ function StoricoTab({
                   onClick={() => navigate({ to: "/richieste/$richiestaId", params: { richiestaId: r.id } })}
                   colonneCampi={2}
                   titolo={r.clienti?.ragione_sociale ?? "—"}
-                  badge={<span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{TIPO_LABEL[r.tipo as TipoRichiesta]}</span>}
+                  badge={<span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{etichettaTipoRichiesta(r.tipo, Number(r.importo_approvato ?? r.importo_richiesto))}</span>}
                   campi={[
                     { etichetta: "Importo rich.", valore: <span className="tabular-nums">{formatEuro(Number(r.importo_richiesto))}</span> },
                     ...(kind === "approvata" ? [{ etichetta: "Importo appr.", valore: <span className="tabular-nums text-success font-medium">{formatEuro(Number(r.importo_approvato ?? r.importo_richiesto))}</span> }] : []),
@@ -1130,7 +1130,7 @@ function StoricoTab({
                       )}
                     </div>
                   </TableCell>
-                  <TableCell><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{TIPO_LABEL[r.tipo as TipoRichiesta]}</span></TableCell>
+                  <TableCell><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{etichettaTipoRichiesta(r.tipo, Number(r.importo_approvato ?? r.importo_richiesto))}</span></TableCell>
                   <TableCell className="text-right tabular-nums">{formatEuro(Number(r.importo_richiesto))}</TableCell>
                   {kind === "approvata" && <TableCell className="text-right tabular-nums text-success font-medium">{formatEuro(Number(r.importo_approvato ?? r.importo_richiesto))}</TableCell>}
                   {kind === "approvata" && (
@@ -1219,7 +1219,7 @@ function TuttoTab({ rows, loading, msgCounts }: { rows: any[]; loading: boolean;
               ]}
               footer={
                 <>
-                  <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{TIPO_LABEL[r.tipo as TipoRichiesta]}</span>
+                  <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{etichettaTipoRichiesta(r.tipo, Number(r.importo_approvato ?? r.importo_richiesto))}</span>
                   {(msgCounts?.[r.id] ?? 0) > 0 && <span className="inline-flex items-center gap-1 rounded-md bg-info/15 text-info px-2 py-0.5 text-xs font-medium"><MessageSquare className="size-3" />{msgCounts![r.id]}</span>}
                 </>
               }
@@ -1260,7 +1260,7 @@ function TuttoTab({ rows, loading, msgCounts }: { rows: any[]; loading: boolean;
                   </div>
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">{r.clienti?.stores?.nome ?? "—"}</TableCell>
-                <TableCell><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{TIPO_LABEL[r.tipo as TipoRichiesta]}</span></TableCell>
+                <TableCell><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{etichettaTipoRichiesta(r.tipo, Number(r.importo_approvato ?? r.importo_richiesto))}</span></TableCell>
                 <TableCell className="text-right tabular-nums">{formatEuro(Number(r.importo_richiesto))}</TableCell>
                 <TableCell><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${STATO_TONE[r.stato as keyof typeof STATO_TONE]}`}>{STATO_LABEL[r.stato as keyof typeof STATO_LABEL]}</span></TableCell>
                 <TableCell><Badge variant="outline">L{r.livello_corrente}/{r.livello_richiesto}</Badge></TableCell>
@@ -1650,7 +1650,7 @@ function RichiestaFormDialog({
             </p>
             {altreRichiesteAttive.map((r) => (
               <div key={r.id} className="flex items-center justify-between gap-2">
-                <span>{TIPO_LABEL[r.tipo as TipoRichiesta]} · {STATO_LABEL[r.stato as keyof typeof STATO_LABEL]} · {formatEuro(Number(r.importo_richiesto))}</span>
+                <span>{etichettaTipoRichiesta(r.tipo, Number(r.importo_richiesto))} · {STATO_LABEL[r.stato as keyof typeof STATO_LABEL]} · {formatEuro(Number(r.importo_richiesto))}</span>
                 <Link to="/richieste/$richiestaId" params={{ richiestaId: r.id }} target="_blank" rel="noopener" className="text-primary underline shrink-0">Apri ↗</Link>
               </div>
             ))}

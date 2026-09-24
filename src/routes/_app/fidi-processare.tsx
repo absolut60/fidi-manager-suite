@@ -25,7 +25,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { formatEuro, formatDate, TIPO_LABEL, TIPO_TONE, type TipoRichiesta } from "@/lib/fidi";
+import { formatEuro, formatDate, TIPO_TONE, type TipoRichiesta, etichettaTipoRichiesta } from "@/lib/fidi";
 import {
   STATO_EXPORT_LABEL, STATO_EXPORT_TONE,
   type StatoExport,
@@ -463,7 +463,7 @@ function GestireTab({
                     <TableCell className="text-xs">{r.stores?.nome ?? "—"}</TableCell>
                     <TableCell>
                       <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>
-                        {TIPO_LABEL[r.tipo as TipoRichiesta]}
+                        {etichettaTipoRichiesta(r.tipo, Number(r.importo_approvato ?? r.importo_richiesto))}
                       </span>
                     </TableCell>
                     <TableCell className="text-right tabular-nums text-success font-medium">
@@ -672,7 +672,7 @@ function StoricoTab({
                   <TableCell className="font-medium">{r.clienti?.ragione_sociale ?? "—"}</TableCell>
                   <TableCell>
                     <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>
-                      {TIPO_LABEL[r.tipo as TipoRichiesta]}
+                      {etichettaTipoRichiesta(r.tipo, Number(r.importo_approvato ?? r.importo_richiesto))}
                     </span>
                   </TableCell>
                   <TableCell className="text-right tabular-nums text-success font-medium">
