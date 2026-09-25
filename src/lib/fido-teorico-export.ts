@@ -95,24 +95,48 @@ const num = (v: unknown) => Number(v ?? 0) || 0;
 export async function raccogliDatiFidoTeorico(
   mesiAttiviMap: Record<string, number>,
   onProgress: OnProgress,
+  clienteIds?: string[],
 ): Promise<{ righe: RigaExport[]; mesiRolling: number | null }> {
+  // Filtro opzionale sugli id: lettura a blocchi di 200 id (.in ha un limite di URL)
+  const BLOCCO_ID = 200;
+  const soloIds = clienteIds ? new Set(clienteIds) : null;
+  if (soloIds && soloIds.size === 0) {
+    return { righe: [], mesiRolling: null };
+  }
+
   // 1) Motore fido teorico (mirror persistente già calcolato)
   onProgress({ fase: "Lettura fido teorico...", percentuale: 5 });
   const teorico = new Map<string, any>();
-  for (let off = 0; ; off += PAGE) {
-    const { data, error } = await supabase
-      .from("fido_teorico_cliente")
-      .select("*")
-      .range(off, off + PAGE - 1);
-    if (error) throw error;
-    const batch = (data ?? []) as any[];
-    for (const r of batch) teorico.set(String(r.cliente_id), r);
-    onProgress({
-      fase: `Lettura fido teorico: ${teorico.size} clienti...`,
-      percentuale: Math.min(45, 5 + teorico.size / 400),
-    });
-    if (batch.length < PAGE) break;
-    if (off > 200_000) break;
+  if (soloIds) {
+    const ids = [...soloIds];
+    for (let i = 0; i < ids.length; i += BLOCCO_ID) {
+      const { data, error } = await supabase
+        .from("fido_teorico_cliente")
+        .select("*")
+        .in("cliente_id", ids.slice(i, i + BLOCCO_ID));
+      if (error) throw error;
+      for (const r of (data ?? []) as any[]) teorico.set(String(r.cliente_id), r);
+      onProgress({
+        fase: `Lettura fido teorico: ${teorico.size} clienti...`,
+        percentuale: Math.min(45, 5 + (i / ids.length) * 40),
+      });
+    }
+  } else {
+    for (let off = 0; ; off += PAGE) {
+      const { data, error } = await supabase
+        .from("fido_teorico_cliente")
+        .select("*")
+        .range(off, off + PAGE - 1);
+      if (error) throw error;
+      const batch = (data ?? []) as any[];
+      for (const r of batch) teorico.set(String(r.cliente_id), r);
+      onProgress({
+        fase: `Lettura fido teorico: ${teorico.size} clienti...`,
+        percentuale: Math.min(45, 5 + teorico.size / 400),
+      });
+      if (batch.length < PAGE) break;
+      if (off > 200_000) break;
+    }
   }
 
   // 2) Anagrafica clienti
@@ -122,17 +146,33 @@ export async function raccogliDatiFidoTeorico(
     "id, codice_gestionale, ragione_sociale, partita_iva, agente, categoria, " +
     "condizione_pagamento_cod, condizione_pagamento_desc, scaduto, a_scadere, totale_rischio, " +
     "doc_da_fatturare, doc_da_evadere, num_insoluti, bloccato, attivo, fido_gestionale, stores(nome)";
-  for (let off = 0; ; off += PAGE) {
-    const { data, error } = await supabase.from("clienti").select(SELECT).range(off, off + PAGE - 1);
-    if (error) throw error;
-    const batch = (data ?? []) as any[];
-    for (const c of batch) clienti.set(String(c.id), c);
-    onProgress({
-      fase: `Lettura anagrafica clienti: ${clienti.size}...`,
-      percentuale: Math.min(75, 50 + clienti.size / 500),
-    });
-    if (batch.length < PAGE) break;
-    if (off > 200_000) break;
+  if (soloIds) {
+    const ids = [...soloIds];
+    for (let i = 0; i < ids.length; i += BLOCCO_ID) {
+      const { data, error } = await supabase
+        .from("clienti")
+        .select(SELECT)
+        .in("id", ids.slice(i, i + BLOCCO_ID));
+      if (error) throw error;
+      for (const c of (data ?? []) as any[]) clienti.set(String(c.id), c);
+      onProgress({
+        fase: `Lettura anagrafica clienti: ${clienti.size}...`,
+        percentuale: Math.min(75, 50 + (i / ids.length) * 25),
+      });
+    }
+  } else {
+    for (let off = 0; ; off += PAGE) {
+      const { data, error } = await supabase.from("clienti").select(SELECT).range(off, off + PAGE - 1);
+      if (error) throw error;
+      const batch = (data ?? []) as any[];
+      for (const c of batch) clienti.set(String(c.id), c);
+      onProgress({
+        fase: `Lettura anagrafica clienti: ${clienti.size}...`,
+        percentuale: Math.min(75, 50 + clienti.size / 500),
+      });
+      if (batch.length < PAGE) break;
+      if (off > 200_000) break;
+    }
   }
 
   // 3) Fatturato anno corrente / precedente
@@ -141,21 +181,38 @@ export async function raccogliDatiFidoTeorico(
   const annoPrec = annoCorrente - 1;
   const fattCur = new Map<string, number>();
   const fattPrev = new Map<string, number>();
-  for (let off = 0; ; off += PAGE) {
-    const { data, error } = await supabase
-      .from("fatturato_clienti")
-      .select("cliente_id, anno, fatturato")
-      .in("anno", [annoCorrente, annoPrec])
-      .range(off, off + PAGE - 1);
-    if (error) throw error;
-    const batch = (data ?? []) as any[];
-    for (const r of batch) {
-      if (!r.cliente_id) continue;
-      const target = Number(r.anno) === annoCorrente ? fattCur : fattPrev;
-      target.set(String(r.cliente_id), num(r.fatturato));
+  if (soloIds) {
+    const ids = [...soloIds];
+    for (let i = 0; i < ids.length; i += BLOCCO_ID) {
+      const { data, error } = await supabase
+        .from("fatturato_clienti")
+        .select("cliente_id, anno, fatturato")
+        .in("anno", [annoCorrente, annoPrec])
+        .in("cliente_id", ids.slice(i, i + BLOCCO_ID));
+      if (error) throw error;
+      for (const r of (data ?? []) as any[]) {
+        if (!r.cliente_id) continue;
+        const target = Number(r.anno) === annoCorrente ? fattCur : fattPrev;
+        target.set(String(r.cliente_id), num(r.fatturato));
+      }
     }
-    if (batch.length < PAGE) break;
-    if (off > 500_000) break;
+  } else {
+    for (let off = 0; ; off += PAGE) {
+      const { data, error } = await supabase
+        .from("fatturato_clienti")
+        .select("cliente_id, anno, fatturato")
+        .in("anno", [annoCorrente, annoPrec])
+        .range(off, off + PAGE - 1);
+      if (error) throw error;
+      const batch = (data ?? []) as any[];
+      for (const r of batch) {
+        if (!r.cliente_id) continue;
+        const target = Number(r.anno) === annoCorrente ? fattCur : fattPrev;
+        target.set(String(r.cliente_id), num(r.fatturato));
+      }
+      if (batch.length < PAGE) break;
+      if (off > 500_000) break;
+    }
   }
 
   // 4) Finestra di calcolo configurata
