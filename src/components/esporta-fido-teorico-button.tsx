@@ -21,9 +21,12 @@ import {
 export function EsportaFidoTeoricoButton({
   className,
   variant = "outline",
+  caricaClienteIds,
 }: {
   className?: string;
   variant?: "outline" | "secondary" | "default";
+  /** Se presente, l'export si limita ai clienti restituiti (es. filtri a schermo). */
+  caricaClienteIds?: () => Promise<string[]>;
 }) {
   const mesiAttiviFn = useServerFn(getMesiAttiviUltimi12);
   const [busy, setBusy] = useState(false);
@@ -34,7 +37,16 @@ export function EsportaFidoTeoricoButton({
     setProg({ fase: "Preparazione...", percentuale: 2 });
     try {
       const mesiAttivi = (await mesiAttiviFn({ data: undefined } as any)) as Record<string, number>;
-      const { righe, mesiRolling } = await raccogliDatiFidoTeorico(mesiAttivi, setProg);
+      let clienteIds: string[] | undefined;
+      if (caricaClienteIds) {
+        setProg({ fase: "Lettura clienti filtrati...", percentuale: 3 });
+        clienteIds = await caricaClienteIds();
+        if (clienteIds.length === 0) {
+          toast.error("Nessun cliente con i filtri attuali");
+          return;
+        }
+      }
+      const { righe, mesiRolling } = await raccogliDatiFidoTeorico(mesiAttivi, setProg, clienteIds);
       if (righe.length === 0) {
         toast.error("Nessun cliente da esportare");
         return;
@@ -43,7 +55,11 @@ export function EsportaFidoTeoricoButton({
       const wb = costruisciWorkbook(righe, { estrattoIl, mesiRolling });
       setProg({ fase: "Scrittura del file...", percentuale: 97 });
       scaricaWorkbook(wb, nomeFileExport(estrattoIl));
-      toast.success(`Esportati ${righe.length.toLocaleString("it-IT")} clienti`);
+      toast.success(
+        caricaClienteIds
+          ? `Esportati ${righe.length.toLocaleString("it-IT")} clienti (filtri attuali)`
+          : `Esportati ${righe.length.toLocaleString("it-IT")} clienti`,
+      );
     } catch (e: any) {
       toast.error(e?.message ?? "Errore durante l'esportazione");
     } finally {

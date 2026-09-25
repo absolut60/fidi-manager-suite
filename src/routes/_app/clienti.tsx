@@ -1655,7 +1655,11 @@ function ClientiPage() {
           </p>
         </div>
         <div className="flex flex-col sm:flex-row sm:items-start gap-2">
-          {!isAgente && <EsportaFidoTeoricoButton />}
+          {!isAgente && (
+            <EsportaFidoTeoricoButton
+              caricaClienteIds={async () => (await fetchAllFilteredRows()).map((r) => r.id as string)}
+            />
+          )}
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button className="gap-1.5 w-full sm:w-auto">
