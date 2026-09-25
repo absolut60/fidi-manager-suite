@@ -7,7 +7,9 @@ export type Notifica = {
   messaggio: string | null;
   link: string | null;
   letta: boolean;
+  conteggio: number;
   created_at: string;
+  aggiornata_at: string;
 };
 
 export const notificheNonLetteQueryKey = (userId: string | undefined) => [

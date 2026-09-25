@@ -15,6 +15,11 @@
 - [x] Produttori fidi senza destinatari duplicati e con metadati negozio
 - [x] Compatibilità degli inserimenti applicativi verificata
 
+## Notifiche — interfaccia raggruppata
+- [x] Conteggio e ultimo aggiornamento nella riga condivisa
+- [x] Ordinamento per ultimo aggiornamento in tutti gli elenchi
+- [x] Aggiornamenti realtime silenziosi nella campanella
+- [x] Verifica TypeScript e compilazione
 ## Notifiche — contatore e archivio
 - [x] Riga notifica e conteggio non lette condivisi
 - [x] Scroll corretto in Dashboard e campanella

@@ -51,9 +51,9 @@ function NotifichePage() {
       if (!user?.id) return { righe: [] as Notifica[], totale: 0 };
       let query = supabase
         .from("notifiche")
-        .select("id, tipo, titolo, messaggio, link, letta, created_at", { count: "exact" })
+        .select("id, tipo, titolo, messaggio, link, letta, conteggio, created_at, aggiornata_at", { count: "exact" })
         .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
+        .order("aggiornata_at", { ascending: false })
         .range(pagina * PER_PAGE, pagina * PER_PAGE + PER_PAGE - 1);
       if (filtro === "non-lette") query = query.eq("letta", false);
       const { data: righe, count, error } = await query;

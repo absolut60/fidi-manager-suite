@@ -60,9 +60,9 @@ function DashboardPage() {
     const load = async () => {
       const { data } = await supabase
         .from("notifiche")
-        .select("*")
+        .select("id, tipo, titolo, messaggio, link, letta, conteggio, created_at, aggiornata_at")
         .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
+        .order("aggiornata_at", { ascending: false })
         .limit(20);
       if (active && data) setNotifiche(data as Notifica[]);
     };

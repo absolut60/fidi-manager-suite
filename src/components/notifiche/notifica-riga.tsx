@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
+import { Badge } from "@/components/ui/badge";
 import type { Notifica } from "@/lib/notifiche";
 import { cn } from "@/lib/utils";
 
@@ -50,14 +51,21 @@ export function NotificaRiga({
       <div className="flex items-start gap-2">
         {!notifica.letta && <span className="mt-1.5 size-2 shrink-0 rounded-full bg-primary" />}
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-medium break-words">{notifica.titolo}</div>
+          <div className="flex min-w-0 items-start gap-2">
+            <div className="min-w-0 flex-1 break-words text-sm font-medium">{notifica.titolo}</div>
+            {notifica.conteggio > 1 && (
+              <Badge variant="secondary" className="h-5 min-w-5 shrink-0 justify-center px-1.5 text-[10px] tabular-nums">
+                {notifica.conteggio}
+              </Badge>
+            )}
+          </div>
           {notifica.messaggio && (
             <div className="mt-0.5 text-xs text-muted-foreground break-words">
               {notifica.messaggio}
             </div>
           )}
           <div className="mt-1 text-[10px] text-muted-foreground">
-            {formatDistanceToNow(new Date(notifica.created_at), { addSuffix: true, locale: it })}
+            {formatDistanceToNow(new Date(notifica.aggiornata_at), { addSuffix: true, locale: it })}
           </div>
         </div>
         {notifica.link && <ChevronRight className="mt-0.5 size-4 shrink-0 text-muted-foreground" />}
