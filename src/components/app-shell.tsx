@@ -54,6 +54,8 @@ import { useAuth, RUOLI_LABEL } from "@/hooks/use-auth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { NotificationsBell } from "@/components/notifications-bell";
+import { contaNonLette, notificheNonLetteQueryKey } from "@/lib/notifiche";
+import { useBadgeNotifiche } from "@/hooks/use-badge-notifiche";
 import { toast } from "sonner";
 
 type NavGroupKey =
@@ -186,6 +188,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { profilo, role, roles, user } = useAuth();
   const navigate = useNavigate();
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
+
+  // Stessa query (chiave condivisa) della campanella: nessun conteggio duplicato.
+  const { data: notificheNonLette = 0 } = useQuery({
+    queryKey: notificheNonLetteQueryKey(user?.id),
+    enabled: Boolean(user?.id),
+    refetchInterval: 30_000,
+    queryFn: () => contaNonLette(user?.id ?? ""),
+  });
+  useBadgeNotifiche(user?.id ? notificheNonLette : 0);
 
   const { data: nonLetti } = useQuery({
     queryKey: ["menu", "non-letti", user?.id],

@@ -110,19 +110,19 @@ export function NotificationsBell() {
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
-          const atualizada = payload.new as Notifica;
-          if (!atualizada?.id) return;
+          const aggiornata = payload.new as Notifica;
+          if (!aggiornata?.id) return;
 
           setNotifiche((prev) => {
-            const anterior = prev.find((n) => n.id === atualizada.id);
-            // Mudou apenas letta (atualizada_at igual): mantém a posição.
-            if (anterior && anterior.aggiornata_at === atualizada.aggiornata_at) {
-              return prev.map((n) => (n.id === atualizada.id ? atualizada : n));
+            const precedente = prev.find((n) => n.id === aggiornata.id);
+            // Cambiato solo letta (aggiornata_at uguale): mantiene la posizione.
+            if (precedente && precedente.aggiornata_at === aggiornata.aggiornata_at) {
+              return prev.map((n) => (n.id === aggiornata.id ? aggiornata : n));
             }
-            // Novo elemento no grupo (ou fora da lista): sobe para o topo.
-            return [atualizada, ...prev.filter((n) => n.id !== atualizada.id)].slice(0, 30);
+            // Nuovo elemento nel gruppo (o fuori lista): sale in cima.
+            return [aggiornata, ...prev.filter((n) => n.id !== aggiornata.id)].slice(0, 30);
           });
-          if (!atualizada.letta) {
+          if (!aggiornata.letta) {
             void queryClient.invalidateQueries({ queryKey: notificheNonLetteQueryKey(user.id) });
           }
         }
