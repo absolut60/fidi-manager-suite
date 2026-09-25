@@ -56,9 +56,9 @@ export function NotificationsBell() {
     const load = async () => {
       const { data } = await supabase
         .from("notifiche")
-        .select("*")
+        .select("id, tipo, titolo, messaggio, link, letta, conteggio, created_at, aggiornata_at")
         .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
+        .order("aggiornata_at", { ascending: false })
         .limit(30);
       if (active && data) setNotifiche(data as Notifica[]);
     };
@@ -81,7 +81,7 @@ export function NotificationsBell() {
 
           setNotifiche((prev) => {
             if (prev.some((n) => n.id === nuova.id)) return prev;
-            return [nuova, ...prev];
+            return [nuova, ...prev].slice(0, 30);
           });
           if (!nuova.letta) {
             void queryClient.invalidateQueries({ queryKey: notificheNonLetteQueryKey(user.id) });
@@ -99,6 +99,24 @@ export function NotificationsBell() {
           });
 
           playNotificationBeep();
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "notifiche",
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const aggiornata = payload.new as Notifica;
+          if (!aggiornata?.id) return;
+
+          setNotifiche((prev) => [aggiornata, ...prev.filter((n) => n.id !== aggiornata.id)].slice(0, 30));
+          if (!aggiornata.letta) {
+            void queryClient.invalidateQueries({ queryKey: notificheNonLetteQueryKey(user.id) });
+          }
         }
       )
       .subscribe();
