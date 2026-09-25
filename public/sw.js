@@ -20,14 +20,32 @@ self.addEventListener("push", (event) => {
   const tag = payload.tag || "default";
   const icon = payload.icon || "/icons/made-any.png";
 
+  // Badge sull'icona app con il numero di non lette ricevuto dal server.
+  const aggiornaBadge = async () => {
+    try {
+      if (typeof payload.badge === "number" && "setAppBadge" in self.navigator) {
+        if (payload.badge > 0) await self.navigator.setAppBadge(payload.badge);
+        else await self.navigator.clearAppBadge();
+      }
+    } catch {
+      // badge non supportato: si ignora
+    }
+  };
+
   event.waitUntil(
-    self.registration.showNotification(title, {
-      body,
-      tag,
-      icon,
-      badge: "/icons/made-any.png",
-      data: { url },
-    })
+    Promise.all([
+      self.registration.showNotification(title, {
+        body,
+        tag,
+        icon,
+        badge: "/icons/made-any.png",
+        data: { url },
+        vibrate: [200, 100, 200],
+        requireInteraction: true,
+        renotify: true,
+      }),
+      aggiornaBadge(),
+    ])
   );
 });
 

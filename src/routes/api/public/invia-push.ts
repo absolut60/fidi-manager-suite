@@ -174,8 +174,22 @@ export const Route = createFileRoute("/api/public/invia-push")({
             return json(200, { ok: true, sent: 0, failed: 0, removed: 0 });
           }
 
+          // Numero di non lette per il badge dell'icona app: se fallisce, si invia senza badge.
+          let badge: number | undefined;
+          try {
+            const { count, error: countErr } = await supabaseAdmin
+              .from("notifiche")
+              .select("id", { count: "exact", head: true })
+              .eq("user_id", userId)
+              .eq("letta", false);
+            if (!countErr && typeof count === "number") badge = count;
+          } catch {
+            badge = undefined;
+          }
+
           const message = {
             data: {
+              ...(badge !== undefined ? { badge } : {}),
               title,
               body: payload.body ?? "",
               url: payload.url || "/",
