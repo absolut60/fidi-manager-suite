@@ -84,7 +84,7 @@ export function NotificationsBell() {
             return [nuova, ...prev];
           });
           if (!nuova.letta) {
-            queryClient.setQueryData<number>(notificheNonLetteQueryKey(user.id), (corrente = 0) => corrente + 1);
+            void queryClient.invalidateQueries({ queryKey: notificheNonLetteQueryKey(user.id) });
           }
 
           toast(nuova.titolo, {
@@ -147,7 +147,7 @@ export function NotificationsBell() {
           {nonLette > 0 && (
             <Badge
               variant="destructive"
-              className="absolute -top-1 -right-1 size-5 p-0 flex items-center justify-center text-[10px]"
+              className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center px-1 text-[10px]"
             >
               {nonLette > 99 ? "99+" : nonLette}
             </Badge>
