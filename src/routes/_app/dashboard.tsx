@@ -1,30 +1,19 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth, RUOLI_LABEL } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { formatDistanceToNow } from "date-fns";
-import { it } from "date-fns/locale";
+import { NotificaRiga } from "@/components/notifiche/notifica-riga";
+import { contaNonLette, notificheNonLetteQueryKey, type Notifica } from "@/lib/notifiche";
 import {
-  Plus, UserPlus, Upload, Bell, Check, CheckCheck, CalendarClock, HandCoins, ChevronRight,
+  Plus, UserPlus, Upload, Bell, Check, CheckCheck, CalendarClock, HandCoins,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_app/dashboard")({
   component: DashboardPage,
 });
-
-type Notifica = {
-  id: string;
-  tipo: string;
-  titolo: string;
-  messaggio: string | null;
-  link: string | null;
-  letta: boolean;
-  created_at: string;
-};
 
 const STATI_RICHIESTA_APERTE = [
   "in_approvazione", "in_attesa_liv1", "in_attesa_liv2", "in_attesa_liv3", "integrazioni_richieste",
@@ -41,6 +30,7 @@ function traNGiorniISO(n: number) {
 
 function DashboardPage() {
   const { profilo, role, user } = useAuth();
+  const queryClient = useQueryClient();
   const [notifiche, setNotifiche] = useState<Notifica[]>([]);
 
   // Contatori operativi (query leggere di solo conteggio)
@@ -81,16 +71,28 @@ function DashboardPage() {
     return () => { active = false; window.clearInterval(t); };
   }, [user?.id]);
 
-  const nonLette = notifiche.filter((n) => !n.letta).length;
+  const { data: nonLette = 0 } = useQuery({
+    queryKey: notificheNonLetteQueryKey(user?.id),
+    enabled: Boolean(user?.id),
+    refetchInterval: 30_000,
+    queryFn: () => contaNonLette(user?.id ?? ""),
+  });
 
   async function segnaLetta(id: string) {
-    await supabase.from("notifiche").update({ letta: true }).eq("id", id);
+    const eraNonLetta = notifiche.some((n) => n.id === id && !n.letta);
+    const { error } = await supabase.from("notifiche").update({ letta: true }).eq("id", id);
+    if (error) throw error;
     setNotifiche((prev) => prev.map((n) => (n.id === id ? { ...n, letta: true } : n)));
+    if (eraNonLetta && user?.id) {
+      queryClient.setQueryData<number>(notificheNonLetteQueryKey(user.id), (corrente = 0) => Math.max(0, corrente - 1));
+    }
   }
   async function segnaTutteLette() {
     if (!user?.id) return;
-    await supabase.from("notifiche").update({ letta: true }).eq("user_id", user.id).eq("letta", false);
+    const { error } = await supabase.from("notifiche").update({ letta: true }).eq("user_id", user.id).eq("letta", false);
+    if (error) throw error;
     setNotifiche((prev) => prev.map((n) => ({ ...n, letta: true })));
+    queryClient.setQueryData(notificheNonLetteQueryKey(user.id), 0);
   }
 
   return (
@@ -163,43 +165,26 @@ function DashboardPage() {
             </Button>
           )}
         </div>
-        <ScrollArea className="max-h-[28rem]">
+        <div className="max-h-[28rem] overflow-y-auto">
           {notifiche.length === 0 ? (
             <div className="px-5 py-12 text-center text-sm text-muted-foreground">
               Nessuna notifica al momento.
             </div>
           ) : (
             <ul className="divide-y">
-              {notifiche.map((n) => {
-                const body = (
-                  <div
-                    className={`px-5 py-3 hover:bg-muted/50 cursor-pointer ${!n.letta ? "bg-accent/5" : ""}`}
-                    onClick={() => { if (!n.letta) segnaLetta(n.id); }}
-                  >
-                    <div className="flex items-start gap-2">
-                      {!n.letta && <div className="size-2 rounded-full bg-primary mt-1.5 shrink-0" />}
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium">{n.titolo}</div>
-                        {n.messaggio && (
-                          <div className="text-xs text-muted-foreground mt-0.5">{n.messaggio}</div>
-                        )}
-                        <div className="text-[10px] text-muted-foreground mt-1">
-                          {formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: it })}
-                        </div>
-                      </div>
-                      {n.link && <ChevronRight className="size-4 text-muted-foreground shrink-0 mt-0.5" />}
-                    </div>
-                  </div>
-                );
-                return (
-                  <li key={n.id}>
-                    {n.link ? <Link to={n.link}>{body}</Link> : body}
-                  </li>
-                );
-              })}
+              {notifiche.map((n) => (
+                <li key={n.id}>
+                  <NotificaRiga notifica={n} onSegnaLetta={segnaLetta} className="px-5" />
+                </li>
+              ))}
             </ul>
           )}
-        </ScrollArea>
+        </div>
+        <div className="border-t px-4 py-2 text-center">
+          <Button asChild variant="ghost" size="sm" className="min-h-10">
+            <Link to="/notifiche">Vedi tutte</Link>
+          </Button>
+        </div>
       </Card>
     </div>
   );
