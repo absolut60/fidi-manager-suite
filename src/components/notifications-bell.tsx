@@ -116,7 +116,7 @@ export function NotificationsBell() {
           setNotifiche((prev) => {
             const anterior = prev.find((n) => n.id === atualizada.id);
             // Mudou apenas letta (atualizada_at igual): mantém a posição.
-            if (anterior && anterior.atualizada_at === atualizada.atualizada_at) {
+            if (anterior && anterior.aggiornata_at === atualizada.aggiornata_at) {
               return prev.map((n) => (n.id === atualizada.id ? atualizada : n));
             }
             // Novo elemento no grupo (ou fora da lista): sobe para o topo.
