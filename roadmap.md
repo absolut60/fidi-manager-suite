@@ -9,3 +9,9 @@
 - [x] Fetta 1 — scheletro DB (clienti_blocco_stato, clienti_blocco_variazioni, RPC rileva_variazioni_blocco non invocata)
 - [x] Fetta 2 — pagina "Variazioni blocco clienti" + voce menu (clienti-variazioni-blocco.tsx, app-shell.tsx)
 - [ ] Fetta 3 — notifiche al completamento dell'import (aggancio da definire con l'utente)
+## Notifiche — contatore e archivio
+- [x] Riga notifica e conteggio non lette condivisi
+- [x] Scroll corretto in Dashboard e campanella
+- [x] Pagina /notifiche paginata con filtro e azioni di lettura
+- [x] Verifica TypeScript e compilazione; viewport autenticati non provabili senza account del richiedente
+

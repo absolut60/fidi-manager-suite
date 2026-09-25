@@ -1,29 +1,19 @@
 import { useEffect, useId, useState } from "react";
 import { Bell, Check } from "lucide-react";
 import { Link, useNavigate } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
+import { NotificaRiga } from "@/components/notifiche/notifica-riga";
+import { contaNonLette, notificheNonLetteQueryKey, type Notifica } from "@/lib/notifiche";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { formatDistanceToNow } from "date-fns";
-import { it } from "date-fns/locale";
 import { toast } from "sonner";
-
-type Notifica = {
-  id: string;
-  tipo: string;
-  titolo: string;
-  messaggio: string | null;
-  link: string | null;
-  letta: boolean;
-  created_at: string;
-};
 
 function playNotificationBeep() {
   if (typeof window === "undefined") return;
@@ -51,6 +41,7 @@ function playNotificationBeep() {
 export function NotificationsBell() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   // Il componente può essere montato più volte (sidebar desktop + drawer mobile):
   // ogni istanza deve avere un topic realtime unico, altrimenti supabase-js riusa
   // il channel già sottoscritto e `.on()` lancia un errore che rompe la pagina.
@@ -92,6 +83,9 @@ export function NotificationsBell() {
             if (prev.some((n) => n.id === nuova.id)) return prev;
             return [nuova, ...prev];
           });
+          if (!nuova.letta) {
+            void queryClient.invalidateQueries({ queryKey: notificheNonLetteQueryKey(user.id) });
+          }
 
           toast(nuova.titolo, {
             description: nuova.messaggio ?? undefined,
@@ -114,23 +108,35 @@ export function NotificationsBell() {
       window.clearInterval(refreshTimer);
       supabase.removeChannel(channel);
     };
-  }, [user?.id, navigate, instanceId]);
+  }, [user?.id, navigate, instanceId, queryClient]);
 
-  const nonLette = notifiche.filter((n) => !n.letta).length;
+  const { data: nonLette = 0 } = useQuery({
+    queryKey: notificheNonLetteQueryKey(user?.id),
+    enabled: Boolean(user?.id),
+    refetchInterval: 30_000,
+    queryFn: () => contaNonLette(user?.id ?? ""),
+  });
 
   async function segnaLetta(id: string) {
-    await supabase.from("notifiche").update({ letta: true }).eq("id", id);
+    const eraNonLetta = notifiche.some((n) => n.id === id && !n.letta);
+    const { error } = await supabase.from("notifiche").update({ letta: true }).eq("id", id);
+    if (error) throw error;
     setNotifiche((prev) => prev.map((n) => (n.id === id ? { ...n, letta: true } : n)));
+    if (eraNonLetta && user?.id) {
+      queryClient.setQueryData<number>(notificheNonLetteQueryKey(user.id), (corrente = 0) => Math.max(0, corrente - 1));
+    }
   }
 
   async function segnaTutteLette() {
     if (!user?.id) return;
-    await supabase
+    const { error } = await supabase
       .from("notifiche")
       .update({ letta: true })
       .eq("user_id", user.id)
       .eq("letta", false);
+    if (error) throw error;
     setNotifiche((prev) => prev.map((n) => ({ ...n, letta: true })));
+    queryClient.setQueryData(notificheNonLetteQueryKey(user.id), 0);
   }
 
   return (
@@ -141,14 +147,14 @@ export function NotificationsBell() {
           {nonLette > 0 && (
             <Badge
               variant="destructive"
-              className="absolute -top-1 -right-1 size-5 p-0 flex items-center justify-center text-[10px]"
+              className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center px-1 text-[10px]"
             >
-              {nonLette > 9 ? "9+" : nonLette}
+              {nonLette > 99 ? "99+" : nonLette}
             </Badge>
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-96 p-0">
+      <PopoverContent align="end" className="w-[calc(100vw-2rem)] p-0 sm:w-96">
         <div className="flex items-center justify-between px-4 py-3 border-b">
           <div className="font-semibold text-sm">Notifiche</div>
           {nonLette > 0 && (
@@ -157,54 +163,26 @@ export function NotificationsBell() {
             </Button>
           )}
         </div>
-        <ScrollArea className="max-h-96">
+        <div className="max-h-[60dvh] overflow-y-auto">
           {notifiche.length === 0 ? (
             <div className="px-4 py-8 text-center text-sm text-muted-foreground">
               Nessuna notifica
             </div>
           ) : (
             <ul className="divide-y">
-              {notifiche.map((n) => {
-                const body = (
-                  <div
-                    className={`px-4 py-3 hover:bg-muted/50 cursor-pointer ${
-                      !n.letta ? "bg-accent/5" : ""
-                    }`}
-                    onClick={() => {
-                      if (!n.letta) segnaLetta(n.id);
-                      setOpen(false);
-                    }}
-                  >
-                    <div className="flex items-start gap-2">
-                      {!n.letta && (
-                        <div className="size-2 rounded-full bg-primary mt-1.5 shrink-0" />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium">{n.titolo}</div>
-                        {n.messaggio && (
-                          <div className="text-xs text-muted-foreground mt-0.5">
-                            {n.messaggio}
-                          </div>
-                        )}
-                        <div className="text-[10px] text-muted-foreground mt-1">
-                          {formatDistanceToNow(new Date(n.created_at), {
-                            addSuffix: true,
-                            locale: it,
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-                return (
-                  <li key={n.id}>
-                    {n.link ? <Link to={n.link}>{body}</Link> : body}
-                  </li>
-                );
-              })}
+              {notifiche.map((n) => (
+                <li key={n.id}>
+                  <NotificaRiga notifica={n} onSegnaLetta={segnaLetta} onAttivata={() => setOpen(false)} />
+                </li>
+              ))}
             </ul>
           )}
-        </ScrollArea>
+        </div>
+        <div className="border-t px-4 py-2 text-center">
+          <Button asChild variant="ghost" size="sm" className="min-h-10">
+            <Link to="/notifiche" onClick={() => setOpen(false)}>Vedi tutte</Link>
+          </Button>
+        </div>
       </PopoverContent>
     </Popover>
   );
