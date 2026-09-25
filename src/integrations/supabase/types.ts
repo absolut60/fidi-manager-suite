@@ -7683,6 +7683,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      profilo_store_id_corrente: { Args: never; Returns: string }
       prossimo_numero_ordine: { Args: { p_anno: number }; Returns: number }
       prossimo_numero_preventivo: { Args: { p_anno: number }; Returns: number }
       refresh_fatturato_mensile: { Args: never; Returns: string }
