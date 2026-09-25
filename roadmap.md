@@ -10,8 +10,8 @@
 - [x] Fetta 2 — pagina "Variazioni blocco clienti" + voce menu (clienti-variazioni-blocco.tsx, app-shell.tsx)
 - [ ] Fetta 3 — notifiche al completamento dell'import (aggancio da definire con l'utente)
 ## Notifiche — contatore e archivio
-- [ ] Riga notifica e conteggio non lette condivisi
-- [ ] Scroll corretto in Dashboard e campanella
-- [ ] Pagina /notifiche paginata con filtro e azioni di lettura
-- [ ] Verifica TypeScript, compilazione e viewport
+- [x] Riga notifica e conteggio non lette condivisi
+- [x] Scroll corretto in Dashboard e campanella
+- [x] Pagina /notifiche paginata con filtro e azioni di lettura
+- [x] Verifica TypeScript e compilazione; viewport autenticati non provabili senza account del richiedente
 
