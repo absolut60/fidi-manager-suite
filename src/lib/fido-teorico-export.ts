@@ -226,7 +226,10 @@ export async function raccogliDatiFidoTeorico(
   onProgress({ fase: "Composizione del file...", percentuale: 90 });
   const righe: RigaExport[] = [];
   for (const [id, t] of teorico) {
-    const c = clienti.get(id) ?? {};
+    const c = clienti.get(id);
+    // Riga solo se il cliente è visibile all'utente (RLS) e ha il fido teorico:
+    // mai righe con codice/ragione sociale vuoti.
+    if (!c) continue;
     const cur = fattCur.get(id) ?? 0;
     const prev = fattPrev.get(id) ?? 0;
     const totaleRischio = num(c.totale_rischio);
