@@ -3738,6 +3738,9 @@ export type Database = {
       }
       notifiche: {
         Row: {
+          aggiornata_at: string
+          chiave_gruppo: string | null
+          conteggio: number
           created_at: string
           id: string
           letta: boolean
@@ -3749,6 +3752,9 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          aggiornata_at?: string
+          chiave_gruppo?: string | null
+          conteggio?: number
           created_at?: string
           id?: string
           letta?: boolean
@@ -3760,6 +3766,9 @@ export type Database = {
           user_id: string
         }
         Update: {
+          aggiornata_at?: string
+          chiave_gruppo?: string | null
+          conteggio?: number
           created_at?: string
           id?: string
           letta?: boolean
@@ -3769,6 +3778,33 @@ export type Database = {
           tipo?: string
           titolo?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      notifiche_tipi: {
+        Row: {
+          chiave_metadata: string | null
+          link_gruppo: string | null
+          raggruppa: boolean
+          tipo: string
+          titolo_gruppo: string
+          updated_at: string
+        }
+        Insert: {
+          chiave_metadata?: string | null
+          link_gruppo?: string | null
+          raggruppa?: boolean
+          tipo: string
+          titolo_gruppo: string
+          updated_at?: string
+        }
+        Update: {
+          chiave_metadata?: string | null
+          link_gruppo?: string | null
+          raggruppa?: boolean
+          tipo?: string
+          titolo_gruppo?: string
+          updated_at?: string
         }
         Relationships: []
       }
