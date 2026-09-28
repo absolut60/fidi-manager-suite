@@ -62,3 +62,18 @@ export function useAzioniRecuperoCliente(clienteId: string | null) {
 
   return { azioni, isLoading, dataUpdatedAt, daFare, concluse, prossima, ultimaFatta, inRitardo };
 }
+
+// Elenco operatori (profili) per mostrare i nomi nelle azioni di recupero.
+// Stessa queryKey ovunque → una sola cache condivisa.
+export function useOperatoriAttivita() {
+  return useQuery({
+    queryKey: ["operatori-list-attivita"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profili")
+        .select("id, nome, cognome, email");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
