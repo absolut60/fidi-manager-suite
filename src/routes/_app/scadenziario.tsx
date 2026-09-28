@@ -24,7 +24,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
-import { useAzioniRecuperoCliente } from "@/hooks/use-azioni-recupero-cliente";
+import { useAzioniRecuperoCliente, useOperatoriAttivita } from "@/hooks/use-azioni-recupero-cliente";
+import { TIPO_AZIONE_ICON, TIPO_AZIONE_LABEL } from "@/lib/azioni-recupero-ui";
+import { StadioSollecitoBadge } from "@/components/stadio-sollecito-badge";
 import { ClienteAttivitaRecuperoTab } from "@/components/cliente-attivita-recupero-tab";
 
 export const Route = createFileRoute("/_app/scadenziario")({
@@ -1151,14 +1153,6 @@ type RischioData = {
   codice_agente?: string | null; agente?: string | null;
 } | null | undefined;
 
-const TIPO_AZIONE_LABEL: Record<string, string> = {
-  email: "Email", telefonata: "Telefonata", promemoria: "Promemoria",
-  nota: "Nota", lettera: "Lettera", promemoria_scadenza: "Promemoria scadenza",
-};
-const TIPO_AZIONE_ICON: Record<string, typeof Mail> = {
-  email: Mail, telefonata: Phone, promemoria: Bell, nota: StickyNote,
-  lettera: FileText, promemoria_scadenza: CalendarClock,
-};
 function fmtDataOra(v: string): string {
   return new Date(v).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
@@ -1173,12 +1167,14 @@ function RecuperoStriscia({ clienteId, pianoRientro, aperto, onToggle, onApriSch
   const qc = useQueryClient();
   const { azioni, isLoading, dataUpdatedAt, daFare, prossima, ultimaFatta, inRitardo } = useAzioniRecuperoCliente(clienteId);
   // Stessa query (e chiave) del tab attività: nessun caricamento aggiuntivo.
-  const { data: operatori } = useQuery({
-    queryKey: ["operatori-list-attivita"],
+  const { data: operatori } = useOperatoriAttivita();
+  // Stadio di sollecito del cliente (0 o 1 riga dalla RPC aggregata).
+  const { data: stadioRow, isLoading: stadioLoading } = useQuery({
+    queryKey: ["recupero-stadio-cliente", clienteId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("profili").select("id, nome, cognome, email");
+      const { data, error } = await supabase.rpc("get_recupero_clienti_aggregato", { _cliente_id: clienteId });
       if (error) throw error;
-      return data ?? [];
+      return (data?.[0] ?? null) as { stadio_sollecito: number; stadio_data: string | null; stadio_giorni: number | null } | null;
     },
   });
   const nomeOperatore = (id: string | null) => {
@@ -1197,8 +1193,9 @@ function RecuperoStriscia({ clienteId, pianoRientro, aperto, onToggle, onApriSch
       primoAggiornamento.current = dataUpdatedAt;
       void qc.invalidateQueries({ queryKey: ["scadenziario-paginata-v1"] });
       void qc.invalidateQueries({ queryKey: ["scadenziario-totali-v1"] });
+      void qc.invalidateQueries({ queryKey: ["recupero-stadio-cliente", clienteId] });
     }
-  }, [dataUpdatedAt, qc]);
+  }, [dataUpdatedAt, qc, clienteId]);
 
   if (isLoading) return <Skeleton className="h-20 w-full" />;
   const UltimaIcon = ultimaFatta ? (TIPO_AZIONE_ICON[ultimaFatta.tipo] ?? FileText) : null;
@@ -1231,6 +1228,15 @@ function RecuperoStriscia({ clienteId, pianoRientro, aperto, onToggle, onApriSch
         <div className="min-w-0">
           <div className="text-xs text-muted-foreground">Azioni</div>
           <div className="text-sm font-medium tabular-nums">{azioni?.length ?? 0} totali · {daFare.length} da fare</div>
+          {!stadioLoading && (
+            <div className="mt-1">
+              <StadioSollecitoBadge
+                stadio={stadioRow?.stadio_sollecito ?? 0}
+                data={stadioRow?.stadio_data ?? null}
+                giorni={stadioRow?.stadio_giorni ?? null}
+              />
+            </div>
+          )}
           {pianoRientro && (
             <Badge variant="outline" className="mt-1 text-emerald-600 border-emerald-300">
               Piano di rientro {pianoRientro.pagate}/{pianoRientro.totali}

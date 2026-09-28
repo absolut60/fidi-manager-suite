@@ -32,7 +32,8 @@ import { EmailInviataView } from "@/components/email-inviata-view";
 import { ModificaAzioneDialog, type AzioneModificabile } from "@/components/modifica-azione-dialog";
 import { LetteraPdfDialog } from "@/components/lettera-pdf-dialog";
 import type { TipoAzione } from "@/components/reminder-controls";
-import { useAzioniRecuperoCliente, type Azione } from "@/hooks/use-azioni-recupero-cliente";
+import { useAzioniRecuperoCliente, useOperatoriAttivita, type Azione } from "@/hooks/use-azioni-recupero-cliente";
+import { TIPO_AZIONE_ICON, TIPO_AZIONE_LABEL } from "@/lib/azioni-recupero-ui";
 
 type Esito = "da_fare" | "fatto" | "nessuna_risposta" | "promessa_pagamento" | "contestazione" | "pagato";
 
@@ -45,23 +46,8 @@ const ESITI: { value: Esito; label: string }[] = [
   { value: "pagato", label: "Pagato" },
 ];
 
-const TIPO_ICON: Record<string, typeof Mail> = {
-  email: Mail,
-  telefonata: Phone,
-  promemoria: Bell,
-  nota: StickyNote,
-  lettera: FileText,
-  promemoria_scadenza: CalendarClock,
-};
-
-const TIPO_LABEL: Record<string, string> = {
-  email: "Email",
-  telefonata: "Telefonata",
-  promemoria: "Promemoria",
-  nota: "Nota",
-  lettera: "Lettera",
-  promemoria_scadenza: "Promemoria scadenza",
-};
+const TIPO_ICON = TIPO_AZIONE_ICON;
+const TIPO_LABEL = TIPO_AZIONE_LABEL;
 
 function esitoBadge(e: Esito) {
   const map: Record<Esito, string> = {
@@ -123,17 +109,8 @@ export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string })
     },
   });
 
-  // Operatori (per mostrare nomi)
-  const { data: operatori } = useQuery({
-    queryKey: ["operatori-list-attivita"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profili")
-        .select("id, nome, cognome, email");
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
+  // Operatori (per mostrare nomi) — hook condiviso, stessa queryKey.
+  const { data: operatori } = useOperatoriAttivita();
   const operatoreMap = useMemo(() => {
     const m: Record<string, string> = {};
     for (const o of operatori ?? []) {
