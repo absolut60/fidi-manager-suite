@@ -1051,26 +1051,28 @@ function ScadenziarioPage() {
                       {isExpanded && (
                         <TableRow key={`${r.cliente_id}-exp`} className="bg-muted/40 hover:bg-muted/40">
                           <TableCell colSpan={16} className="px-4 py-3 space-y-3 whitespace-normal" onClick={(e) => e.stopPropagation()}>
-                            <RecuperoStriscia
-                              clienteId={r.cliente_id}
-                              pianoRientro={r.ha_piano_rientro ? { pagate: r.piano_rate_pagate ?? 0, totali: r.piano_rate_totali ?? 0 } : null}
-                              aperto={recuperoApertoId === r.cliente_id}
-                              onToggle={() => setRecuperoApertoId(recuperoApertoId === r.cliente_id ? null : r.cliente_id)}
-                              onApriScheda={() => navigate({
-                                to: "/clienti/$clienteId",
-                                params: { clienteId: r.cliente_id },
-                                search: { tab: "attivita" } as never,
-                              })}
-                            />
-                            {recuperoApertoId === r.cliente_id && (
-                              <ClienteAttivitaRecuperoTab clienteId={r.cliente_id} />
-                            )}
                             {r.ha_promessa && <PromesseAttiveBlock clienteId={r.cliente_id} />}
                             <ExpandedRischioPanel
                               loading={loadingRischio}
                               data={rischioExpanded}
                               onApri={(e: React.MouseEvent) => { e.stopPropagation(); apriCliente(r.cliente_id); }}
                             />
+                            <div className="pt-3 border-t">
+                              <RecuperoStriscia
+                                clienteId={r.cliente_id}
+                                pianoRientro={r.ha_piano_rientro ? { pagate: r.piano_rate_pagate ?? 0, totali: r.piano_rate_totali ?? 0 } : null}
+                                aperto={recuperoApertoId === r.cliente_id}
+                                onToggle={() => setRecuperoApertoId(recuperoApertoId === r.cliente_id ? null : r.cliente_id)}
+                                onApriScheda={() => navigate({
+                                  to: "/clienti/$clienteId",
+                                  params: { clienteId: r.cliente_id },
+                                  search: { tab: "attivita" } as never,
+                                })}
+                              />
+                            </div>
+                            {recuperoApertoId === r.cliente_id && (
+                              <ClienteAttivitaRecuperoTab clienteId={r.cliente_id} />
+                            )}
                           </TableCell>
                         </TableRow>
                       )}
