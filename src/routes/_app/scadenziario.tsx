@@ -21,6 +21,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
@@ -123,6 +124,39 @@ function legaleBadge(c: { in_gestione_legale: boolean }) {
 
 const PAGE_SIZE = 25;
 
+function useRischioCliente(clienteId: string | null) {
+  return useQuery({
+    queryKey: ["rischio-expanded", clienteId],
+    enabled: !!clienteId,
+    queryFn: async () => {
+      if (!clienteId) return null;
+      const { data, error } = await supabase
+        .from("clienti")
+        .select("fido_gestionale, fido_residuo, totale_rischio, doc_da_fatturare, doc_da_evadere, effetti_a_rischio, num_insoluti, dilazione_concordata, dilazione_effettiva, condizione_pagamento_cod, codice_agente, agente")
+        .eq("id", clienteId)
+        .maybeSingle();
+      if (error) throw error;
+      let condizione_pagamento_desc_db: string | null = null;
+      const cod = (data as { condizione_pagamento_cod: string | null } | null)?.condizione_pagamento_cod ?? null;
+      if (cod) {
+        const { data: cp } = await supabase
+          .from("codici_pagamento")
+          .select("descrizione")
+          .eq("cod", cod)
+          .maybeSingle();
+        condizione_pagamento_desc_db = (cp as { descrizione: string } | null)?.descrizione ?? null;
+      }
+      return data ? { ...(data as object), condizione_pagamento_desc_db } as {
+        fido_gestionale: number | null; fido_residuo: number | null; totale_rischio: number | null;
+        doc_da_fatturare: number | null; doc_da_evadere: number | null; effetti_a_rischio: number | null;
+        num_insoluti: number | null; dilazione_concordata: number | null; dilazione_effettiva: number | null;
+        condizione_pagamento_cod: string | null; condizione_pagamento_desc_db: string | null;
+        codice_agente: string | null; agente: string | null;
+      } : null;
+    },
+  });
+}
+
 type Situazione = "con_scaduto" | "tutte" | "solo_a_scadere" | "scaduto_e_a_scadere" | "portafoglio";
 const SITUAZIONE_LABEL: Record<Situazione, string> = {
   con_scaduto: "Con scaduto",
@@ -212,8 +246,10 @@ function ScadenziarioPage() {
   const [sortBy, setSortBy] = useState<SortKey>("tot_scaduto");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [expandedClienteId, setExpandedClienteId] = useState<string | null>(null);
+  const [schedaMobileId, setSchedaMobileId] = useState<string | null>(null);
   const [recuperoApertoId, setRecuperoApertoId] = useState<string | null>(null);
   useEffect(() => { setRecuperoApertoId(null); }, [expandedClienteId]);
+  useEffect(() => { setRecuperoApertoId(null); }, [schedaMobileId]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [dialogOpen, setDialogOpen] = useState(false);
   const [invioMassivoOpen, setInvioMassivoOpen] = useState(false);
@@ -372,35 +408,8 @@ function ScadenziarioPage() {
   });
   const allFilteredIds = allFilteredIdsData ?? null;
 
-  const { data: rischioExpanded, isLoading: loadingRischio } = useQuery({
-    queryKey: ["rischio-expanded", expandedClienteId],
-    enabled: !!expandedClienteId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("clienti")
-        .select("fido_gestionale, fido_residuo, totale_rischio, doc_da_fatturare, doc_da_evadere, effetti_a_rischio, num_insoluti, dilazione_concordata, dilazione_effettiva, condizione_pagamento_cod, codice_agente, agente")
-        .eq("id", expandedClienteId!)
-        .maybeSingle();
-      if (error) throw error;
-      let condizione_pagamento_desc_db: string | null = null;
-      const cod = (data as { condizione_pagamento_cod: string | null } | null)?.condizione_pagamento_cod ?? null;
-      if (cod) {
-        const { data: cp } = await supabase
-          .from("codici_pagamento")
-          .select("descrizione")
-          .eq("cod", cod)
-          .maybeSingle();
-        condizione_pagamento_desc_db = (cp as { descrizione: string } | null)?.descrizione ?? null;
-      }
-      return data ? { ...(data as object), condizione_pagamento_desc_db } as {
-        fido_gestionale: number | null; fido_residuo: number | null; totale_rischio: number | null;
-        doc_da_fatturare: number | null; doc_da_evadere: number | null; effetti_a_rischio: number | null;
-        num_insoluti: number | null; dilazione_concordata: number | null; dilazione_effettiva: number | null;
-        condizione_pagamento_cod: string | null; condizione_pagamento_desc_db: string | null;
-        codice_agente: string | null; agente: string | null;
-      } : null;
-    },
-  });
+  const { data: rischioExpanded, isLoading: loadingRischio } = useRischioCliente(expandedClienteId);
+  const { data: rischioMobile, isLoading: loadingRischioMobile } = useRischioCliente(schedaMobileId);
 
 
   const totalCount = Number(rows?.[0]?.total_count ?? totali?.n_clienti_totali ?? 0);
@@ -593,6 +602,7 @@ function ScadenziarioPage() {
   }
 
   const pageRows = rows ?? [];
+  const schedaMobile = pageRows.find((r) => r.cliente_id === schedaMobileId);
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -861,11 +871,7 @@ function ScadenziarioPage() {
                   return (
                     <SchedaLista
                       key={r.cliente_id}
-                      onClick={() => navigate({
-                        to: "/clienti/$clienteId",
-                        params: { clienteId: r.cliente_id },
-                        search: { tab: "attivita" } as never,
-                      })}
+                      onClick={() => setSchedaMobileId(r.cliente_id)}
                       colonneCampi={2}
                       selezione={{
                         checked: selectedIds.has(r.cliente_id),
@@ -1102,6 +1108,48 @@ function ScadenziarioPage() {
         )}
       </section>
 
+      <Sheet open={!!schedaMobileId} onOpenChange={(v) => { if (!v) setSchedaMobileId(null); }}>
+        <SheetContent side="bottom" className="h-[90dvh] overflow-y-auto p-4">
+          {schedaMobile && (
+            <div className="min-w-0 space-y-3">
+              <SheetHeader className="min-w-0 pr-8 text-left">
+                <SheetTitle className="break-words">{schedaMobile.ragione_sociale}</SheetTitle>
+                <SheetDescription className="break-words">
+                  {schedaMobile.codice_gestionale ?? "—"} · {schedaMobile.store_nome ?? "—"}
+                </SheetDescription>
+                <div className="flex flex-wrap items-center gap-2">
+                  {blockBadge(schedaMobile)}
+                  {legaleBadge(schedaMobile)}
+                  {fasciaBadge(schedaMobile.fascia)}
+                </div>
+              </SheetHeader>
+              {schedaMobile.ha_promessa && <PromesseAttiveBlock clienteId={schedaMobile.cliente_id} />}
+              <ExpandedRischioPanel
+                loading={loadingRischioMobile}
+                data={rischioMobile}
+                onApri={(e) => { e.stopPropagation(); apriCliente(schedaMobile.cliente_id); }}
+              />
+              <div className="pt-3 border-t">
+                <RecuperoStriscia
+                  clienteId={schedaMobile.cliente_id}
+                  pianoRientro={schedaMobile.ha_piano_rientro ? { pagate: schedaMobile.piano_rate_pagate ?? 0, totali: schedaMobile.piano_rate_totali ?? 0 } : null}
+                  aperto={recuperoApertoId === schedaMobile.cliente_id}
+                  onToggle={() => setRecuperoApertoId(recuperoApertoId === schedaMobile.cliente_id ? null : schedaMobile.cliente_id)}
+                  onApriScheda={() => navigate({
+                    to: "/clienti/$clienteId",
+                    params: { clienteId: schedaMobile.cliente_id },
+                    search: { tab: "attivita" } as never,
+                  })}
+                />
+              </div>
+              {recuperoApertoId === schedaMobile.cliente_id && (
+                <ClienteAttivitaRecuperoTab clienteId={schedaMobile.cliente_id} />
+              )}
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
+
       <AzioneRecuperoDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
@@ -1246,8 +1294,8 @@ function RecuperoStriscia({ clienteId, pianoRientro, aperto, onToggle, onApriSch
           )}
         </div>
         <div className="min-w-0 flex flex-col items-start gap-2">
-          <Button type="button" variant="outline" size="sm" className="gap-1.5 min-h-10" onClick={(e) => { e.stopPropagation(); onToggle(); }}>
-            {aperto ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+          <Button type="button" variant="outline" size="sm" className="gap-1.5 min-h-10 max-w-full h-auto whitespace-normal text-left" onClick={(e) => { e.stopPropagation(); onToggle(); }}>
+            {aperto ? <ChevronUp className="size-4 shrink-0" /> : <ChevronDown className="size-4 shrink-0" />}
             {aperto ? "Nascondi recupero crediti" : "Mostra recupero crediti"}
           </Button>
           <button type="button" className="text-sm text-primary hover:underline text-left" onClick={(e) => { e.stopPropagation(); onApriScheda(); }}>
