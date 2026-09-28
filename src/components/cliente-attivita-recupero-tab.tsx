@@ -143,7 +143,7 @@ export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string })
   }, [operatori]);
 
   // Azioni del cliente (fonte unica condivisa)
-  const { isLoading, daFare, concluse, prossima, ultimaFatta } = useAzioniRecuperoCliente(clienteId);
+  const { azioni, isLoading, daFare, concluse, prossima, ultimaFatta } = useAzioniRecuperoCliente(clienteId);
 
   async function updateEsito(id: string, nextEsito: Esito) {
     const { error } = await supabase
