@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState, Fragment, useEffect } from "react";
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { useMemo, useState, Fragment, useEffect, useRef } from "react";
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { AlertTriangle, Calendar, FileText, Ban, CalendarClock, Scale, ChevronDown, ChevronUp, Megaphone, Mail, Bell, ChevronLeft, ChevronRight, HandCoins, ArrowUp, ArrowDown, Download, Loader2, SlidersHorizontal, RotateCcw, Phone, StickyNote } from "lucide-react";
 import * as XLSX from "xlsx";
 import { scaricaWorkbook } from "@/lib/fido-teorico-export";
@@ -26,8 +26,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
 import { useAzioniRecuperoCliente } from "@/hooks/use-azioni-recupero-cliente";
 import { ClienteAttivitaRecuperoTab } from "@/components/cliente-attivita-recupero-tab";
-import { useQueryClient } from "@tanstack/react-query";
-import { useRef } from "react";
 
 export const Route = createFileRoute("/_app/scadenziario")({
   component: ScadenziarioPage,
