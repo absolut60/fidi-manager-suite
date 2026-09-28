@@ -32,6 +32,7 @@ import { EmailInviataView } from "@/components/email-inviata-view";
 import { ModificaAzioneDialog, type AzioneModificabile } from "@/components/modifica-azione-dialog";
 import { LetteraPdfDialog } from "@/components/lettera-pdf-dialog";
 import type { TipoAzione } from "@/components/reminder-controls";
+import { useAzioniRecuperoCliente, type Azione } from "@/hooks/use-azioni-recupero-cliente";
 
 type Esito = "da_fare" | "fatto" | "nessuna_risposta" | "promessa_pagamento" | "contestazione" | "pagato";
 
@@ -87,22 +88,6 @@ function fmtDateTime(v: unknown) {
   } catch { return String(v); }
 }
 
-type Azione = {
-  id: string;
-  cliente_id: string;
-  operatore_id: string | null;
-  tipo: TipoAzione | "promemoria_scadenza";
-  esito: Esito;
-  data_azione: string;
-  data_promessa_pagamento: string | null;
-  importo_riferimento: number | null;
-  note: string | null;
-  email_oggetto: string | null;
-  email_corpo_html: string | null;
-  email_destinatario: string | null;
-  livello_sollecito: number | null;
-  created_at: string;
-};
 
 export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string }) {
   const qc = useQueryClient();
@@ -157,35 +142,8 @@ export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string })
     return m;
   }, [operatori]);
 
-  // Azioni del cliente
-  const { data: azioni, isLoading } = useQuery({
-    queryKey: ["azioni-recupero-cliente", clienteId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("azioni_recupero")
-        .select("id, cliente_id, operatore_id, tipo, esito, data_azione, data_promessa_pagamento, importo_riferimento, note, email_oggetto, email_corpo_html, email_destinatario, livello_sollecito, created_at")
-        .eq("cliente_id", clienteId)
-        .order("data_azione", { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as unknown as Azione[];
-    },
-  });
-
-  const daFare = useMemo(
-    () => (azioni ?? []).filter((a) => a.esito === "da_fare")
-      .sort((a, b) => new Date(a.data_azione).getTime() - new Date(b.data_azione).getTime()),
-    [azioni],
-  );
-  const concluse = useMemo(
-    () => (azioni ?? []).filter((a) => a.esito !== "da_fare"),
-    [azioni],
-  );
-
-  const prossima = daFare[0] ?? null;
-  const ultimaFatta = useMemo(
-    () => concluse.find((a) => a.esito === "fatto") ?? null,
-    [concluse],
-  );
+  // Azioni del cliente (fonte unica condivisa)
+  const { azioni, isLoading, daFare, concluse, prossima, ultimaFatta } = useAzioniRecuperoCliente(clienteId);
 
   async function updateEsito(id: string, nextEsito: Esito) {
     const { error } = await supabase

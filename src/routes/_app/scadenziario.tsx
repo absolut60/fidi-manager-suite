@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState, Fragment, useEffect } from "react";
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
-import { AlertTriangle, Calendar, FileText, Ban, CalendarClock, Scale, ChevronDown, ChevronUp, Megaphone, Mail, Bell, ChevronLeft, ChevronRight, HandCoins, ArrowUp, ArrowDown, Download, Loader2, SlidersHorizontal, RotateCcw } from "lucide-react";
+import { useMemo, useState, Fragment, useEffect, useRef } from "react";
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
+import { AlertTriangle, Calendar, FileText, Ban, CalendarClock, Scale, ChevronDown, ChevronUp, Megaphone, Mail, Bell, ChevronLeft, ChevronRight, HandCoins, ArrowUp, ArrowDown, Download, Loader2, SlidersHorizontal, RotateCcw, Phone, StickyNote } from "lucide-react";
 import * as XLSX from "xlsx";
 import { scaricaWorkbook } from "@/lib/fido-teorico-export";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
@@ -24,6 +24,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
+import { useAzioniRecuperoCliente } from "@/hooks/use-azioni-recupero-cliente";
+import { ClienteAttivitaRecuperoTab } from "@/components/cliente-attivita-recupero-tab";
 
 export const Route = createFileRoute("/_app/scadenziario")({
   component: ScadenziarioPage,
@@ -208,6 +210,8 @@ function ScadenziarioPage() {
   const [sortBy, setSortBy] = useState<SortKey>("tot_scaduto");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [expandedClienteId, setExpandedClienteId] = useState<string | null>(null);
+  const [recuperoApertoId, setRecuperoApertoId] = useState<string | null>(null);
+  useEffect(() => { setRecuperoApertoId(null); }, [expandedClienteId]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [dialogOpen, setDialogOpen] = useState(false);
   const [invioMassivoOpen, setInvioMassivoOpen] = useState(false);
@@ -855,7 +859,11 @@ function ScadenziarioPage() {
                   return (
                     <SchedaLista
                       key={r.cliente_id}
-                      onClick={() => apriCliente(r.cliente_id)}
+                      onClick={() => navigate({
+                        to: "/clienti/$clienteId",
+                        params: { clienteId: r.cliente_id },
+                        search: { tab: "attivita" } as never,
+                      })}
                       colonneCampi={2}
                       selezione={{
                         checked: selectedIds.has(r.cliente_id),
@@ -1040,7 +1048,21 @@ function ScadenziarioPage() {
                       </TableRow>
                       {isExpanded && (
                         <TableRow key={`${r.cliente_id}-exp`} className="bg-muted/40 hover:bg-muted/40">
-                          <TableCell colSpan={16} className="px-4 py-3 space-y-3">
+                          <TableCell colSpan={16} className="px-4 py-3 space-y-3 whitespace-normal" onClick={(e) => e.stopPropagation()}>
+                            <RecuperoStriscia
+                              clienteId={r.cliente_id}
+                              pianoRientro={r.ha_piano_rientro ? { pagate: r.piano_rate_pagate ?? 0, totali: r.piano_rate_totali ?? 0 } : null}
+                              aperto={recuperoApertoId === r.cliente_id}
+                              onToggle={() => setRecuperoApertoId(recuperoApertoId === r.cliente_id ? null : r.cliente_id)}
+                              onApriScheda={() => navigate({
+                                to: "/clienti/$clienteId",
+                                params: { clienteId: r.cliente_id },
+                                search: { tab: "attivita" } as never,
+                              })}
+                            />
+                            {recuperoApertoId === r.cliente_id && (
+                              <ClienteAttivitaRecuperoTab clienteId={r.cliente_id} />
+                            )}
                             {r.ha_promessa && <PromesseAttiveBlock clienteId={r.cliente_id} />}
                             <ExpandedRischioPanel
                               loading={loadingRischio}
@@ -1128,6 +1150,106 @@ type RischioData = {
   condizione_pagamento_cod?: string | null; condizione_pagamento_desc_db?: string | null;
   codice_agente?: string | null; agente?: string | null;
 } | null | undefined;
+
+const TIPO_AZIONE_LABEL: Record<string, string> = {
+  email: "Email", telefonata: "Telefonata", promemoria: "Promemoria",
+  nota: "Nota", lettera: "Lettera", promemoria_scadenza: "Promemoria scadenza",
+};
+const TIPO_AZIONE_ICON: Record<string, typeof Mail> = {
+  email: Mail, telefonata: Phone, promemoria: Bell, nota: StickyNote,
+  lettera: FileText, promemoria_scadenza: CalendarClock,
+};
+function fmtDataOra(v: string): string {
+  return new Date(v).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+function RecuperoStriscia({ clienteId, pianoRientro, aperto, onToggle, onApriScheda }: {
+  clienteId: string;
+  pianoRientro: { pagate: number; totali: number } | null;
+  aperto: boolean;
+  onToggle: () => void;
+  onApriScheda: () => void;
+}) {
+  const qc = useQueryClient();
+  const { azioni, isLoading, dataUpdatedAt, daFare, prossima, ultimaFatta, inRitardo } = useAzioniRecuperoCliente(clienteId);
+  // Stessa query (e chiave) del tab attività: nessun caricamento aggiuntivo.
+  const { data: operatori } = useQuery({
+    queryKey: ["operatori-list-attivita"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("profili").select("id, nome, cognome, email");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const nomeOperatore = (id: string | null) => {
+    if (!id) return null;
+    const o = (operatori ?? []).find((x) => x.id === id);
+    if (!o) return null;
+    return `${o.nome ?? ""} ${o.cognome ?? ""}`.trim() || o.email || null;
+  };
+
+  // Allineamento riga: se le azioni cambiano dopo il primo caricamento, ricarica lista e totali.
+  const primoAggiornamento = useRef<number | null>(null);
+  useEffect(() => {
+    if (!dataUpdatedAt) return;
+    if (primoAggiornamento.current === null) { primoAggiornamento.current = dataUpdatedAt; return; }
+    if (dataUpdatedAt !== primoAggiornamento.current) {
+      primoAggiornamento.current = dataUpdatedAt;
+      void qc.invalidateQueries({ queryKey: ["scadenziario-paginata-v1"] });
+      void qc.invalidateQueries({ queryKey: ["scadenziario-totali-v1"] });
+    }
+  }, [dataUpdatedAt, qc]);
+
+  if (isLoading) return <Skeleton className="h-20 w-full" />;
+  const UltimaIcon = ultimaFatta ? (TIPO_AZIONE_ICON[ultimaFatta.tipo] ?? FileText) : null;
+  const operatore = ultimaFatta ? nomeOperatore(ultimaFatta.operatore_id) : null;
+
+  return (
+    <div className="border rounded-md p-3 bg-background space-y-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="min-w-0">
+          <div className="text-xs text-muted-foreground">Ultima azione fatta</div>
+          {ultimaFatta && UltimaIcon ? (
+            <div className="text-sm break-words">
+              <div className="font-medium flex items-center gap-1.5"><UltimaIcon className="size-4 shrink-0" />{TIPO_AZIONE_LABEL[ultimaFatta.tipo] ?? ultimaFatta.tipo}</div>
+              <div className="text-muted-foreground">{fmtDataOra(ultimaFatta.data_azione)}{operatore ? ` · ${operatore}` : ""}</div>
+            </div>
+          ) : <div className="text-sm text-muted-foreground">Nessuna azione</div>}
+        </div>
+        <div className="min-w-0">
+          <div className="text-xs text-muted-foreground">Prossima pianificata</div>
+          {prossima ? (
+            <div className={`text-sm break-words ${inRitardo ? "text-destructive" : ""}`}>
+              <div className="font-medium flex flex-wrap items-center gap-1.5">
+                {TIPO_AZIONE_LABEL[prossima.tipo] ?? prossima.tipo}
+                {inRitardo && <Badge variant="destructive">In ritardo</Badge>}
+              </div>
+              <div>{fmtDataOra(prossima.data_azione)}</div>
+            </div>
+          ) : <div className="text-sm text-muted-foreground">—</div>}
+        </div>
+        <div className="min-w-0">
+          <div className="text-xs text-muted-foreground">Azioni</div>
+          <div className="text-sm font-medium tabular-nums">{azioni?.length ?? 0} totali · {daFare.length} da fare</div>
+          {pianoRientro && (
+            <Badge variant="outline" className="mt-1 text-emerald-600 border-emerald-300">
+              Piano di rientro {pianoRientro.pagate}/{pianoRientro.totali}
+            </Badge>
+          )}
+        </div>
+        <div className="min-w-0 flex flex-col items-start gap-2">
+          <Button type="button" variant="outline" size="sm" className="gap-1.5 min-h-10" onClick={(e) => { e.stopPropagation(); onToggle(); }}>
+            {aperto ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+            {aperto ? "Nascondi recupero crediti" : "Mostra recupero crediti"}
+          </Button>
+          <button type="button" className="text-sm text-primary hover:underline text-left" onClick={(e) => { e.stopPropagation(); onApriScheda(); }}>
+            Apri recupero nella scheda cliente →
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function PromesseAttiveBlock({ clienteId }: { clienteId: string }) {
   const { data } = useQuery({
