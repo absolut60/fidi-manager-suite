@@ -129,10 +129,11 @@ function useRischioCliente(clienteId: string | null) {
     queryKey: ["rischio-expanded", clienteId],
     enabled: !!clienteId,
     queryFn: async () => {
+      if (!clienteId) return null;
       const { data, error } = await supabase
         .from("clienti")
         .select("fido_gestionale, fido_residuo, totale_rischio, doc_da_fatturare, doc_da_evadere, effetti_a_rischio, num_insoluti, dilazione_concordata, dilazione_effettiva, condizione_pagamento_cod, codice_agente, agente")
-        .eq("id", clienteId!)
+        .eq("id", clienteId)
         .maybeSingle();
       if (error) throw error;
       let condizione_pagamento_desc_db: string | null = null;
