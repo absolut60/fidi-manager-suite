@@ -7344,6 +7344,7 @@ export type Database = {
       }
       get_recupero_clienti_aggregato: {
         Args: {
+          _cliente_id?: string
           _data_a?: string
           _data_da?: string
           _esiti?: string[]
