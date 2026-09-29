@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Outlet, useMatchRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import {
@@ -353,7 +353,7 @@ function RichiestePage() {
   );
 }
 
-function KpiCard({ icon: Icon, tone, label, value, extra }: { icon: any; tone: string; label: string; value: string; extra?: React.ReactNode }) {
+function KpiCard({ icon: Icon, tone, label, value, extra }: { icon: any; tone: string; label: string; value: string; extra?: ReactNode }) {
   return (
     <Card className="p-4">
       <div className="flex items-center gap-2 min-w-0">
