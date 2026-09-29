@@ -91,22 +91,32 @@ function semaforoCli(c: any) {
 
 /** Stato unico dei filtri della pagina Richieste fido. */
 type FiltriRichieste = {
+  cerca: string; agente: string;
   store: string; tipo: string; rischio: string;
   importoMin: string; importoMax: string; giorniMin: string;
 };
-const FILTRI_VUOTI: FiltriRichieste = { store: "tutti", tipo: "tutti", rischio: "tutti", importoMin: "", importoMax: "", giorniMin: "" };
+const FILTRI_VUOTI: FiltriRichieste = { cerca: "", agente: "tutti", store: "tutti", tipo: "tutti", rischio: "tutti", importoMin: "", importoMax: "", giorniMin: "" };
 const STADI_RISCHIO = ["verde", "giallo", "arancione", "rosso", "spento"] as const;
 
 function filtriAttivi(f: FiltriRichieste): boolean {
-  return f.store !== "tutti" || f.tipo !== "tutti" || f.rischio !== "tutti" || !!f.importoMin || !!f.importoMax || !!f.giorniMin;
+  return !!f.cerca.trim() || f.agente !== "tutti" || f.store !== "tutti" || f.tipo !== "tutti" || f.rischio !== "tutti" || !!f.importoMin || !!f.importoMax || !!f.giorniMin;
 }
 
 /**
  * Fonte unica del filtro: usata da lista, KPI e contatori delle schede.
  * "Giorni attesa" vale solo per le richieste in attesa di decisione.
  */
+/** Minuscolo, senza accenti, spazi multipli ridotti. */
+function normalizzaRicerca(v: unknown): string {
+  return String(v ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+}
+
 function filtraRichieste(righe: any[], f: FiltriRichieste): any[] {
+  const q = normalizzaRicerca(f.cerca);
   return righe.filter((r) => {
+    const c = r.clienti;
+    if (q && ![c?.ragione_sociale, c?.partita_iva, c?.codice_fiscale, c?.codice_gestionale].some((v) => normalizzaRicerca(v).includes(q))) return false;
+    if (f.agente === "__none__" ? !!c?.codice_agente : f.agente !== "tutti" && c?.codice_agente !== f.agente) return false;
     if (f.store !== "tutti" && r.clienti?.store_id !== f.store) return false;
     if (f.tipo !== "tutti" && r.tipo !== f.tipo) return false;
     if (f.rischio !== "tutti" && semaforoDaCliente(r.clienti).stadio !== f.rischio) return false;
@@ -119,8 +129,43 @@ function filtraRichieste(righe: any[], f: FiltriRichieste): any[] {
 
 function FiltriRichiesteBar({ filtri, onChange, stores }: { filtri: FiltriRichieste; onChange: (f: FiltriRichieste) => void; stores: [string, string][] }) {
   const set = (k: keyof FiltriRichieste, v: string) => onChange({ ...filtri, [k]: v });
+  // Stessa query (e cache) del filtro Agente dello scadenziario.
+  const { data: agenti } = useQuery({
+    queryKey: ["agenti-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("agenti").select("codice, descrizione").order("descrizione");
+      if (error) throw error;
+      return (data ?? []) as { codice: string; descrizione: string }[];
+    },
+    staleTime: 5 * 60_000,
+  });
+  // Ricerca con debounce 300 ms: l'input e' locale, il filtro si aggiorna dopo.
+  const [cercaInput, setCercaInput] = useState(filtri.cerca);
+  useEffect(() => { setCercaInput(filtri.cerca); }, [filtri.cerca]);
+  const filtriRef = useRef(filtri);
+  filtriRef.current = filtri;
+  useEffect(() => {
+    if (cercaInput === filtriRef.current.cerca) return;
+    const t = setTimeout(() => onChange({ ...filtriRef.current, cerca: cercaInput }), 300);
+    return () => clearTimeout(t);
+  }, [cercaInput, onChange]);
+  const attivi = filtriAttivi(filtri) || !!cercaInput.trim();
   return (
     <Card className="p-3 flex flex-wrap gap-2 items-center">
+      <Input
+        className="flex-1 min-w-[220px] sm:min-w-[260px]"
+        placeholder="Cerca ragione sociale, P.IVA, C.F., codice…"
+        value={cercaInput}
+        onChange={(e) => setCercaInput(e.target.value)}
+      />
+      <Select value={filtri.agente} onValueChange={(v) => set("agente", v)}>
+        <SelectTrigger className="flex-1 min-w-[160px] sm:flex-none sm:w-48"><SelectValue placeholder="Agente" /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="tutti">Tutti gli agenti</SelectItem>
+          <SelectItem value="__none__">Senza agente</SelectItem>
+          {(agenti ?? []).map((a) => <SelectItem key={a.codice} value={a.codice}>{a.descrizione}</SelectItem>)}
+        </SelectContent>
+      </Select>
       {stores.length > 1 && (
         <Select value={filtri.store} onValueChange={(v) => set("store", v)}>
           <SelectTrigger className="flex-1 min-w-[160px] sm:flex-none sm:w-44"><SelectValue placeholder="Store" /></SelectTrigger>
@@ -160,8 +205,8 @@ function FiltriRichiesteBar({ filtri, onChange, stores }: { filtri: FiltriRichie
       <Input className="flex-1 min-w-[140px] sm:flex-none sm:min-w-0 sm:w-28" type="number" placeholder="Importo min" value={filtri.importoMin} onChange={(e) => set("importoMin", e.target.value)} />
       <Input className="flex-1 min-w-[140px] sm:flex-none sm:min-w-0 sm:w-28" type="number" placeholder="Importo max" value={filtri.importoMax} onChange={(e) => set("importoMax", e.target.value)} />
       <Input className="flex-1 min-w-[140px] sm:flex-none sm:min-w-0 sm:w-32" type="number" placeholder="Giorni attesa ≥" title="Vale solo per le richieste in attesa di decisione" value={filtri.giorniMin} onChange={(e) => set("giorniMin", e.target.value)} />
-      {filtriAttivi(filtri) && (
-        <Button variant="ghost" size="sm" className="h-10" onClick={() => onChange(FILTRI_VUOTI)}>Azzera filtri</Button>
+      {attivi && (
+        <Button variant="ghost" size="sm" className="h-10" onClick={() => { setCercaInput(""); onChange(FILTRI_VUOTI); }}>Azzera filtri</Button>
       )}
     </Card>
   );
