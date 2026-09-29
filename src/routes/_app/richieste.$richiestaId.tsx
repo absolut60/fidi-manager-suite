@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Check, X, Send, Trash2, Lock } from "lucide-react";
+import { Check, X, Send, Trash2, Lock, Pencil, Ban, RotateCcw } from "lucide-react";
 import { BackButton } from "@/components/back-button";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,6 +24,7 @@ import { AllegatiSection } from "@/components/allegati-section";
 import { RICHIESTA_FIDO_SELECT } from "@/lib/richieste-fido-data";
 import { getFidoAttuale } from "@/lib/fido-cliente";
 import { PannelloRischioCliente } from "@/components/pannello-rischio-cliente";
+import { ModificaRichiestaFidoDialog, useAnnullaRichiestaFido } from "@/components/richiesta-fido-form-dialog";
 import { semaforoUI, semaforoDaCliente } from "@/lib/semaforo-ui";
 
 export const Route = createFileRoute("/_app/richieste/$richiestaId")({
@@ -100,6 +101,22 @@ function RichiestaDetail() {
   const isOwner = !!user?.id && r?.created_by === user.id;
   const canDelete = isAdmin || isAmministrazione || isOwner;
   const canSubmit = r?.stato === "bozza" && r?.created_by === user?.id;
+  // Azioni spostate dalla lista (stesse condizioni dei pulsanti di riga tolti):
+  // Modifica: bozza, oppure richiesta creata dall'utente.
+  const canEdit = r?.stato === "bozza" || isOwner;
+  // Annulla: richiesta in integrazioni e utente che NON puo' decidere a quel livello.
+  const puoDecidereLivello = isAdmin || (livelloUtente > 0 && livelloUtente >= (r?.livello_richiesto ?? 99));
+  const canAnnulla = r?.stato === "integrazioni_richieste" && !puoDecidereLivello;
+  // Ri-invia: richiesta rifiutata o annullata (nuovo modulo precompilato).
+  const canRiinvia = r?.stato === "rifiutata" || r?.stato === "annullata";
+  const [modificaAperta, setModificaAperta] = useState(false);
+  const [riinvioAperto, setRiinvioAperto] = useState(false);
+  const aggiornaDopoAzione = () => {
+    qc.invalidateQueries({ queryKey: ["richiesta", richiestaId] });
+    qc.invalidateQueries({ queryKey: ["richieste"] });
+    qc.invalidateQueries({ queryKey: ["approvazioni-queue"] });
+  };
+  const annullaMut = useAnnullaRichiestaFido(aggiornaDopoAzione);
 
   const submitMutation = useMutation({
     mutationFn: async () => {
@@ -189,13 +206,32 @@ function RichiestaDetail() {
               </p>
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
             <div className="hidden items-center gap-2 sm:flex">{badgeTipo}{badgeStato}</div>
+            {canEdit && (
+              <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground"
+                title="Modifica richiesta" aria-label="Modifica richiesta" onClick={() => setModificaAperta(true)}>
+                <Pencil className="size-4" />
+              </Button>
+            )}
+            {canRiinvia && (
+              <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground"
+                title="Ri-invia (nuova richiesta precompilata)" aria-label="Ri-invia richiesta" onClick={() => setRiinvioAperto(true)}>
+                <RotateCcw className="size-4" />
+              </Button>
+            )}
+            {canAnnulla && (
+              <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-destructive"
+                title="Annulla richiesta" aria-label="Annulla richiesta" disabled={annullaMut.isPending}
+                onClick={() => annullaMut.mutate({ id: r.id })}>
+                <Ban className="size-4" />
+              </Button>
+            )}
             {canDelete && (
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                className="h-9 w-9 text-muted-foreground hover:text-destructive"
                 title="Elimina richiesta"
                 onClick={() => {
                   const msg = r.stato === "approvata"
@@ -289,6 +325,9 @@ function RichiestaDetail() {
           </dl>
         </Card>
       </div>
+
+      <ModificaRichiestaFidoDialog richiesta={r} open={modificaAperta} onOpenChange={setModificaAperta} onSaved={aggiornaDopoAzione} />
+      <ModificaRichiestaFidoDialog richiesta={r} riinvia open={riinvioAperto} onOpenChange={setRiinvioAperto} onSaved={aggiornaDopoAzione} />
 
       {/* Motivazione — riga compatta */}
       {r.motivazione && <MotivazioneRiga testo={r.motivazione} />}
