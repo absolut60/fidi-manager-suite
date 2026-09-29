@@ -353,7 +353,7 @@ function RichiestePage() {
   );
 }
 
-function KpiCard({ icon: Icon, tone, label, value }: { icon: any; tone: string; label: string; value: string }) {
+function KpiCard({ icon: Icon, tone, label, value, extra }: { icon: any; tone: string; label: string; value: string; extra?: React.ReactNode }) {
   return (
     <Card className="p-4">
       <div className="flex items-center gap-2 min-w-0">
@@ -361,6 +361,7 @@ function KpiCard({ icon: Icon, tone, label, value }: { icon: any; tone: string; 
         <p className="text-xs text-muted-foreground min-w-0">{label}</p>
       </div>
       <p className="text-xl sm:text-2xl font-bold mt-2 tabular-nums break-words">{value}</p>
+      {extra}
     </Card>
   );
 }
