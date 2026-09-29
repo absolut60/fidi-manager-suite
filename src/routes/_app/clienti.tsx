@@ -2397,7 +2397,7 @@ function ProposteFidoMassivoDialog({
     }
     setSubmitting(true);
     try {
-      const stato = modalitaInvio === "bozza" ? "bozza" : "in_attesa_liv1";
+      const stato = modalitaInvio === "bozza" ? "bozza" : "in_approvazione";
       // Motivazione: override per-riga se valorizzato (anche stringa vuota = override "vuoto"),
       // altrimenti motivazione generale. Stringhe vuote -> null nel DB.
       const motivazioneGeneraleNorm = motivazioneGenerale.trim() === "" ? null : motivazioneGenerale;
