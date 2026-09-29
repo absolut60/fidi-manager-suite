@@ -223,7 +223,7 @@ function RichiestaDetail() {
             {canAnnulla && (
               <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-destructive"
                 title="Annulla richiesta" aria-label="Annulla richiesta" disabled={annullaMut.isPending}
-                onClick={() => { if (confirm("Annullare questa richiesta?")) annullaMut.mutate({ id: r.id }); }}>
+                onClick={() => annullaMut.mutate({ id: r.id })}>
                 <Ban className="size-4" />
               </Button>
             )}
