@@ -177,11 +177,15 @@ function RichiestePage() {
       ? inAttesa.filter((r) => r.livello_corrente === livello).length
       : inAttesa.length;
     const approvateMese = all.filter((r) => r.stato === "approvata" && r.data_chiusura && r.data_chiusura >= inizioMese).length;
-    const valoreInAttesa = (isApprovatore && !hasFullVisibility
+    const insiemeInAttesa = isApprovatore && !hasFullVisibility
       ? inAttesa.filter((r) => r.livello_corrente === livello)
-      : inAttesa
-    ).reduce((s, r) => s + Number(r.importo_richiesto ?? 0), 0);
-    return { bozze, inAttesaCount, approvateMese, valoreInAttesa };
+      : inAttesa;
+    const valoreInAttesa = insiemeInAttesa.reduce((s, r) => s + Number(r.importo_richiesto ?? 0), 0);
+    // Stesso insieme: somma del fido attuale dei clienti, contato una volta
+    // per richiesta (un cliente con piu' richieste pesa per ogni richiesta).
+    const fidoAttualeInAttesa = insiemeInAttesa.reduce((s, r) => s + getFidoAttuale(r.clienti), 0);
+    const differenzaInAttesa = valoreInAttesa - fidoAttualeInAttesa;
+    return { bozze, inAttesaCount, approvateMese, valoreInAttesa, fidoAttualeInAttesa, differenzaInAttesa };
   }, [all, user?.id, isStoreManager, isApprovatore, hasFullVisibility, livello, inizioMese]);
 
   const bozze = all.filter((r) => r.stato === "bozza");
