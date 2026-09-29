@@ -1,11 +1,11 @@
 import { createFileRoute, useNavigate, Outlet, useMatchRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import {
   Plus, Search, FileText, Pencil, Trash2, Send, Check, X, AlertCircle,
   Clock, CheckCircle2, Wallet, RotateCcw, MessageSquareWarning, Ban, MessageSquare,
-  ChevronsUpDown, Paperclip,
+  ChevronsUpDown, Paperclip, Banknote, TrendingUp,
 } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import {
@@ -243,30 +243,30 @@ function RichiestePage() {
       </div>
 
       {/* KPI */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2 sm:gap-3">
         <KpiCard icon={FileText} tone="text-muted-foreground" label="Bozze da inviare" value={String(kpi.bozze)} />
         <KpiCard icon={Clock} tone="text-info" label="In attesa approvazione" value={String(kpi.inAttesaCount)} />
         <KpiCard icon={CheckCircle2} tone="text-success" label="Approvate questo mese" value={String(kpi.approvateMese)} />
         <KpiCard
           icon={Wallet}
+          tone="text-muted-foreground"
+          label="Fido attuale (in approvazione)"
+          value={formatEuro(kpi.fidoAttualeInAttesa)}
+          title="Fido attuale e differenza sono calcolati per richiesta: un cliente con più richieste in approvazione è contato una volta per ogni richiesta."
+        />
+        <KpiCard
+          icon={Banknote}
           tone="text-primary"
           label="Valore in approvazione"
           value={formatEuro(kpi.valoreInAttesa)}
-          extra={
-            <div className="mt-1.5 space-y-0.5 text-xs sm:text-sm tabular-nums" title="Fido attuale e differenza sono calcolati per richiesta: un cliente con più richieste in approvazione è contato una volta per ogni richiesta.">
-              <div className="flex flex-wrap items-baseline justify-between gap-x-2 min-w-0">
-                <span className="text-muted-foreground">Fido attuale</span>
-                <span className="break-words">{formatEuro(kpi.fidoAttualeInAttesa)}</span>
-              </div>
-              <div className="flex flex-wrap items-baseline justify-between gap-x-2 min-w-0">
-                <span className="text-muted-foreground">Differenza</span>
-                <span className={`break-words font-medium ${kpi.differenzaInAttesa >= 0 ? "text-info" : "text-destructive"}`}>
-                  {kpi.differenzaInAttesa >= 0 ? "+" : "−"}{formatEuro(Math.abs(kpi.differenzaInAttesa))}
-                </span>
-              </div>
-              <p className="text-[11px] text-muted-foreground/80">calcolato per richiesta</p>
-            </div>
-          }
+        />
+        <KpiCard
+          icon={TrendingUp}
+          tone={kpi.differenzaInAttesa >= 0 ? "text-info" : "text-destructive"}
+          label="Differenza"
+          value={`${kpi.differenzaInAttesa >= 0 ? "+" : "−"}${formatEuro(Math.abs(kpi.differenzaInAttesa))}`}
+          valueClassName={kpi.differenzaInAttesa >= 0 ? "text-info" : "text-destructive"}
+          title="Fido attuale e differenza sono calcolati per richiesta: un cliente con più richieste in approvazione è contato una volta per ogni richiesta."
         />
       </div>
 
@@ -353,15 +353,14 @@ function RichiestePage() {
   );
 }
 
-function KpiCard({ icon: Icon, tone, label, value, extra }: { icon: any; tone: string; label: string; value: string; extra?: ReactNode }) {
+function KpiCard({ icon: Icon, tone, label, value, valueClassName, title }: { icon: any; tone: string; label: string; value: string; valueClassName?: string; title?: string }) {
   return (
-    <Card className="p-4">
-      <div className="flex items-center gap-2 min-w-0">
-        <Icon className={`size-4 shrink-0 ${tone}`} />
-        <p className="text-xs text-muted-foreground min-w-0">{label}</p>
+    <Card className="p-3">
+      <div className="flex items-start gap-1.5 min-w-0">
+        <Icon className={`size-4 shrink-0 mt-0.5 ${tone}`} />
+        <p className="text-[11px] sm:text-xs text-muted-foreground leading-tight">{label}</p>
       </div>
-      <p className="text-xl sm:text-2xl font-bold mt-2 tabular-nums break-words">{value}</p>
-      {extra}
+      <p className={`text-lg sm:text-xl font-bold tabular-nums break-words mt-1 ${valueClassName ?? ""}`} title={title}>{value}</p>
     </Card>
   );
 }
