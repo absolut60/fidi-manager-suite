@@ -356,6 +356,7 @@ function ApprovazioniPage() {
                 <SelectItem value="giallo">Giallo</SelectItem>
                 <SelectItem value="arancione">Arancione</SelectItem>
                 <SelectItem value="rosso">Rosso</SelectItem>
+                <SelectItem value="spento">Spento</SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -42,7 +42,7 @@ import { MARKETING_ROLES } from "@/lib/ruoli-marketing";
 
 // Stato filtri — stessi nomi/valori usati nella pagina Clienti (fonte unica),
 // serializzabile su segmenti_marketing.filtri (jsonb).
-type SemaforoValue = "tutti" | "rosso" | "arancione" | "giallo" | "verde";
+type SemaforoValue = "tutti" | "rosso" | "arancione" | "giallo" | "verde" | "spento";
 type ConsensoFiltro = "tutti" | "marketing_diretto" | "marketing_media" | "profilazione";
 
 const CONSENSO_COLONNA: Record<Exclude<ConsensoFiltro, "tutti">, string> = {
@@ -1017,6 +1017,7 @@ function MarketingSegmentiPage() {
                 <SelectItem value="giallo">Giallo — scaduto</SelectItem>
                 <SelectItem value="arancione">Arancione — fido quasi esaurito</SelectItem>
                 <SelectItem value="rosso">Rosso — critici</SelectItem>
+                <SelectItem value="spento">Spento — nessun pagamento</SelectItem>
               </SelectContent>
             </Select>
           </div>

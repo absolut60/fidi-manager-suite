@@ -6,7 +6,7 @@
  * Qui si mappa solo lo stadio alle classi/label della UI.
  */
 
-export type SemaforoStadio = "rosso" | "arancione" | "giallo" | "verde" | null;
+export type SemaforoStadio = "rosso" | "arancione" | "giallo" | "verde" | "spento" | null;
 
 export interface SemaforoUI {
   stadio: SemaforoStadio;
@@ -42,6 +42,12 @@ const MAP: Record<Exclude<SemaforoStadio, null>, Omit<SemaforoUI, "stadio" | "mo
     textClass: "text-success",
     label: "Verde",
   },
+  spento: {
+    dotClass: "bg-muted-foreground/40 ring-1 ring-muted-foreground/40",
+    toneClass: "bg-muted text-muted-foreground",
+    textClass: "text-muted-foreground",
+    label: "Spento",
+  },
 };
 
 const NEUTRO: Omit<SemaforoUI, "stadio" | "motivo"> = {
@@ -65,6 +71,6 @@ export function semaforoDaCliente(
   const raw = cliente?.fido_teorico_cliente;
   const ftc: FtcLike | null = Array.isArray(raw) ? (raw[0] ?? null) : (raw ?? null);
   const s = ftc?.semaforo_stadio ?? null;
-  const stadio = (s === "rosso" || s === "arancione" || s === "giallo" || s === "verde" ? s : null) as SemaforoStadio;
+  const stadio = (s === "rosso" || s === "arancione" || s === "giallo" || s === "verde" || s === "spento" ? s : null) as SemaforoStadio;
   return { stadio, motivo: ftc?.semaforo_motivo ?? null };
 }
