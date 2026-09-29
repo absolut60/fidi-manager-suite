@@ -52,6 +52,7 @@ import { RICHIESTA_FIDO_SELECT } from "@/lib/richieste-fido-data";
 import { PannelloRischioCliente } from "@/components/pannello-rischio-cliente";
 import { semaforoUI, semaforoDaCliente } from "@/lib/semaforo-ui";
 import { SchedaLista, ElencoSchede } from "@/components/lista-responsive";
+import { RichiestaFormDialog } from "@/components/richiesta-fido-form-dialog";
 
 export const Route = createFileRoute("/_app/richieste")({
   component: RichiestePage,
