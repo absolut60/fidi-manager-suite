@@ -481,8 +481,7 @@ function RichiestePage() {
             righeCodaNonFiltrate={tutteRichieste.filter(inCodaUtente)}
             loading={isLoading}
             canApprove={isAdmin || isApprovatore}
-            livelloUtente={livello}
-            isAdmin={isAdmin}
+            ordina={filtri.ordina}
             onChanged={qcInvalidate}
           />
         </TabsContent>
@@ -664,17 +663,21 @@ function BozzeTab({
 
 /* ====================== IN APPROVAZIONE TAB ====================== */
 function InApprovazioneTab({
-  rows, righeCodaNonFiltrate, loading, canApprove, livelloUtente, isAdmin, onChanged,
+  rows, righeCodaNonFiltrate, loading, canApprove, ordina, onChanged,
 }: {
-  rows: any[]; righeCodaNonFiltrate: any[]; loading: boolean; canApprove: boolean; livelloUtente: number; isAdmin: boolean; onChanged: () => void;
+  rows: any[]; righeCodaNonFiltrate: any[]; loading: boolean; canApprove: boolean; ordina: OrdinaRichieste; onChanged: () => void;
 }) {
 
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
   const navigate = useNavigate();
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [action, setAction] = useState<{ kind: "approva" | "rifiuta" | "integrazioni"; rows: any[] } | null>(null);
-  const [importoApprovato, setImportoApprovato] = useState<string>("");
+  const [action, setAction] = useState<{ kind: "approva" | "rifiuta"; rows: any[] } | null>(null);
   const [note, setNote] = useState("");
+  // Decidibile = stato "in_approvazione" (l'unico accettato da processa_richiesta_fido)
+  // e livello consentito (fonte unica puoDecidereRichiesta).
+  const decidibile = (r: any) => r.stato === "in_approvazione" && puoDecidereRichiesta(roles, r.livello_richiesto);
+  const motivoNonDecidibile = (r: any) =>
+    r.stato !== "in_approvazione" ? `Stato "${STATO_LABEL[r.stato as keyof typeof STATO_LABEL] ?? r.stato}": non decidibile` : `Richiede liv. ${r.livello_richiesto}`;
 
   const { data: msgNonLetti } = useQuery({
     queryKey: ["comunicazioni-non-lette", user?.id],
@@ -696,8 +699,8 @@ function InApprovazioneTab({
   });
 
   // rows arriva gia' filtrato dalla pagina (filtraRichieste): qui solo ordinamento.
-  const filtered = [...rows]
-    .sort((a, b) => Number(b.importo_richiesto) - Number(a.importo_richiesto));
+  const filtered = ordinaRichieste(rows, ordina);
+  const decidibili = filtered.filter(decidibile);
 
   const clienteIdsInCoda = useMemo(() => Array.from(new Set(righeCodaNonFiltrate.map((r) => r.cliente_id))), [righeCodaNonFiltrate]);
   const { data: altreApprovateNonEsportate } = useQuery({
@@ -728,75 +731,35 @@ function InApprovazioneTab({
     next.has(id) ? next.delete(id) : next.add(id);
     setSelected(next);
   }
-  const allSel = filtered.length > 0 && filtered.every((r) => selected.has(r.id));
+  const allSel = decidibili.length > 0 && decidibili.every((r) => selected.has(r.id));
 
+  // Stessa logica di approvazioni.tsx: una chiamata alla RPC (SECURITY DEFINER,
+  // valida livello e stato) per ogni richiesta; importo approvato = richiesto.
+  async function processaRichiesta(r: any, esito: "approvata" | "rifiutata", noteDecisione: string | null) {
+    if (!user) throw new Error("Utente non autenticato");
+    if (!decidibile(r)) {
+      throw new Error(`${r.clienti?.ragione_sociale ?? "Richiesta"}: ${motivoNonDecidibile(r)}`);
+    }
+    const { error } = await (supabase as any).rpc("processa_richiesta_fido", {
+      _richiesta_id: r.id,
+      _esito: esito,
+      _note: noteDecisione || null,
+      _importo_approvato: esito === "approvata" ? Number(r.importo_richiesto) : null,
+    });
+    if (error) throw error;
+  }
 
   const decisionMut = useMutation({
-    mutationFn: async (input: { kind: "approva" | "rifiuta" | "integrazioni"; rows: any[]; note: string; importoApprovato?: number }) => {
-      if (!user) throw new Error("Non autenticato");
-      const { kind, rows: targets, note, importoApprovato } = input;
-      for (const r of targets) {
-        const livDecisione = r.livello_corrente;
-        if (kind === "integrazioni") {
-          const { error } = await supabase.from("richieste_fido")
-            .update({ stato: "integrazioni_richieste" })
-            .eq("id", r.id);
-          if (error) throw error;
-          // log come approvazione "rifiutata" con nota? meglio audit_log via insert
-          await supabase.from("approvazioni").insert({
-            richiesta_id: r.id, approvatore_id: user.id, livello: livDecisione,
-            esito: "rifiutata", note: `[Integrazioni richieste] ${note}`,
-          });
-          continue;
-        }
-        const esito = kind === "approva" ? "approvata" : "rifiutata";
-        const imp = importoApprovato ?? Number(r.importo_richiesto);
-        const { error: e1 } = await supabase.from("approvazioni").insert({
-          richiesta_id: r.id, approvatore_id: user.id, livello: livDecisione,
-          esito, importo_approvato: kind === "approva" ? imp : null, note: note || null,
-        });
-        if (e1) throw e1;
-
-        if (kind === "rifiuta") {
-          const { error } = await supabase.from("richieste_fido")
-            .update({ stato: "rifiutata", approvato_da: user.id, data_approvazione: new Date().toISOString() }).eq("id", r.id);
-          if (error) throw error;
-        } else {
-          const nextLiv = livDecisione + 1;
-          if (nextLiv > r.livello_richiesto) {
-            // approvazione finale
-            const fidoPrec = getFidoAttuale(r.clienti);
-            const { error } = await supabase.from("richieste_fido")
-              .update({ stato: "approvata", importo_approvato: imp, approvato_da: user.id, data_approvazione: new Date().toISOString() }).eq("id", r.id);
-            if (error) throw error;
-            // aggiorna fido cliente
-            await supabase.from("clienti")
-              .update({ fido_aziendale_concesso: imp, data_affidamento_aziendale: new Date().toISOString().slice(0, 10) })
-              .eq("id", r.cliente_id);
-            // storico fido
-            await supabase.from("storico_fido").insert({
-              cliente_id: r.cliente_id,
-              richiesta_id: r.id,
-              importo_precedente: fidoPrec,
-              importo_nuovo: imp,
-              tipo_variazione: r.tipo === "diminuzione" ? "diminuzione" : r.tipo === "rinnovo" ? "rinnovo" : (fidoPrec > 0 ? "aumento" : "nuovo"),
-              eseguito_da: user.id,
-              note: note || null,
-            } as any);
-          } else {
-            const { error } = await supabase.from("richieste_fido")
-              .update({ livello_corrente: nextLiv }).eq("id", r.id);
-            if (error) throw error;
-          }
-        }
-      }
+    mutationFn: async (input: { kind: "approva" | "rifiuta"; rows: any[]; note: string }) => {
+      const esito = input.kind === "approva" ? "approvata" : "rifiutata";
+      for (const r of input.rows) await processaRichiesta(r, esito, input.note.trim() || null);
     },
     onSuccess: (_d, v) => {
-      toast.success(`${v.rows.length} richieste · ${v.kind === "approva" ? "approvate" : v.kind === "rifiuta" ? "rifiutate" : "integrazioni richieste"}`);
-      setAction(null); setNote(""); setImportoApprovato(""); setSelected(new Set());
+      toast.success(`${v.rows.length} richieste ${v.kind === "approva" ? "approvate" : "rifiutate"}`);
+      setAction(null); setNote(""); setSelected(new Set());
       onChanged();
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => { toast.error(e.message); onChanged(); },
   });
 
   if (loading) return <SkeletonTable />;
@@ -828,7 +791,7 @@ function InApprovazioneTab({
           <ElencoSchede>
             {filtered.map((r) => {
               const g = giorniDa(r.data_invio);
-              const livMio = canApprove && (isAdmin || livelloUtente >= Number(r.livello_richiesto ?? 99));
+              const livMio = canApprove && decidibile(r);
               const unread = msgNonLetti?.[r.id] ?? 0;
               const nAltre = altreAttiveMap.get(r.cliente_id) ?? 0;
               return (
@@ -863,7 +826,7 @@ function InApprovazioneTab({
           <Table className="min-w-[1300px]">
             <TableHeader>
               <TableRow>
-                {canApprove && <TableHead className="w-8"><Checkbox checked={allSel} onCheckedChange={() => setSelected(allSel ? new Set() : new Set(filtered.map((r) => r.id)))} /></TableHead>}
+                {canApprove && <TableHead className="w-8"><Checkbox checked={allSel} disabled={decidibili.length === 0} title="Seleziona tutte le richieste su cui puoi decidere" onCheckedChange={() => setSelected(allSel ? new Set() : new Set(decidibili.map((r) => r.id)))} /></TableHead>}
                 <TableHead>Cliente</TableHead>
                 <TableHead className="w-16 text-center">Rischio</TableHead>
                 {!isStoreManagerView(canApprove) && <TableHead>Store</TableHead>}
@@ -881,7 +844,7 @@ function InApprovazioneTab({
             <TableBody>
               {filtered.map((r) => {
                 const g = giorniDa(r.data_invio);
-                const livMio = canApprove && (isAdmin || livelloUtente >= Number(r.livello_richiesto ?? 99));
+                const livMio = canApprove && decidibile(r);
                 const unread = msgNonLetti?.[r.id] ?? 0;
                 const nAltre = altreAttiveMap.get(r.cliente_id) ?? 0;
                 return (
@@ -892,7 +855,16 @@ function InApprovazioneTab({
                   >
                     {canApprove && (
                       <TableCell onClick={(e) => e.stopPropagation()}>
-                        <Checkbox checked={selected.has(r.id)} onCheckedChange={() => toggle(r.id)} disabled={!livMio} />
+                        {livMio ? (
+                          <Checkbox checked={selected.has(r.id)} onCheckedChange={() => toggle(r.id)} />
+                        ) : (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex"><Checkbox checked={false} disabled /></span>
+                            </TooltipTrigger>
+                            <TooltipContent>{motivoNonDecidibile(r)}</TooltipContent>
+                          </Tooltip>
+                        )}
                       </TableCell>
                     )}
                     <TableCell className="font-medium">
@@ -927,84 +899,44 @@ function InApprovazioneTab({
         </Card>
       )}
 
-      {/* Dialog azione */}
+      {/* Dialog conferma (stessa struttura di approvazioni.tsx) */}
       <Dialog open={!!action} onOpenChange={(o) => !o && setAction(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="w-[calc(100%-2rem)] max-w-lg">
           <DialogHeader>
-            <DialogTitle>
-              {action?.kind === "approva" ? "Conferma approvazione"
-                : action?.kind === "rifiuta" ? "Conferma rifiuto"
-                : "Richiedi integrazioni"}
-            </DialogTitle>
+            <DialogTitle>{action?.kind === "approva" ? "Conferma approvazione" : "Conferma rifiuto"}</DialogTitle>
             <DialogDescription>
-              {action?.rows.length === 1
-                ? <>Cliente: <strong>{action.rows[0].clienti?.ragione_sociale}</strong></>
-                : <>{action?.rows.length} richieste · totale {formatEuro((action?.rows ?? []).reduce((s, r) => s + Number(r.importo_richiesto), 0))}</>}
+              Stai per {action?.kind === "approva" ? "approvare" : "rifiutare"} <strong>{action?.rows.length ?? 0}</strong> richieste
+              {" "}per un totale di <strong>{formatEuro((action?.rows ?? []).reduce((s, r) => s + Number(r.importo_richiesto), 0))}</strong>.
+              {action?.kind === "approva" && " L'importo approvato è quello richiesto."} L'operazione è irreversibile.
             </DialogDescription>
           </DialogHeader>
-
-          {action?.rows.length === 1 && (
-            <div className="rounded-md border p-3 text-xs space-y-1 bg-muted/30">
-              <div className="flex justify-between"><span>Fido attuale</span><span className="tabular-nums">{formatEuro(getFidoAttuale(action.rows[0].clienti))}</span></div>
-              <div className="flex justify-between"><span>Scaduto</span><span className="tabular-nums">{formatEuro(Number(action.rows[0].clienti?.scaduto ?? 0))}</span></div>
-              <div className="flex justify-between"><span>Totale rischio</span><span className="tabular-nums">{formatEuro(Number(action.rows[0].clienti?.totale_rischio ?? 0))}</span></div>
-              <div className="flex justify-between"><span>Semaforo</span>
-                <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${semaforoCli(action.rows[0].clienti).toneClass}`}>
-                  {semaforoCli(action.rows[0].clienti).label}
-                </span>
+          <div className="max-h-56 overflow-y-auto rounded-md border bg-muted/30 p-2 text-xs space-y-1">
+            {(action?.rows ?? []).map((r) => (
+              <div key={r.id} className="flex justify-between gap-2">
+                <span className="min-w-0 break-words">{r.clienti?.ragione_sociale ?? "—"}</span>
+                <span className="tabular-nums shrink-0">{formatEuro(Number(r.importo_richiesto))}</span>
               </div>
-            </div>
-          )}
-
-          {action?.kind === "approva" && action.rows.length === 1 && (
-            <div className="space-y-1.5">
-              <Label>Importo approvato (€)</Label>
-              <Input type="number" step="0.01" value={importoApprovato} onChange={(e) => setImportoApprovato(e.target.value)} />
-            </div>
-          )}
-
-          <div className="space-y-1.5">
-            <Label>
-              {action?.kind === "rifiuta" ? "Motivo rifiuto (min 20 caratteri) *"
-                : action?.kind === "integrazioni" ? "Cosa serve integrare *"
-                : "Note approvazione"}
-            </Label>
-            <Textarea rows={3} value={note} onChange={(e) => setNote(e.target.value)} />
-            {action?.kind === "rifiuta" && note.length > 0 && note.length < 20 && (
-              <p className="text-xs text-destructive">Minimo 20 caratteri</p>
-            )}
+            ))}
           </div>
-
-          <DialogFooter>
+          {action?.kind === "approva" ? (
+            <div className="space-y-1.5">
+              <Label className="text-xs">Note (opzionali, applicate a tutte)</Label>
+              <Textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              <Label className="text-xs">Motivo del rifiuto <span className="text-destructive">*</span></Label>
+              <Textarea rows={3} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Specifica il motivo (obbligatorio)" />
+            </div>
+          )}
+          <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setAction(null)} disabled={decisionMut.isPending}>Annulla</Button>
             <Button
-              disabled={
-                decisionMut.isPending ||
-                (action?.kind === "rifiuta" && note.length < 20) ||
-                (action?.kind === "integrazioni" && note.trim().length < 5)
-              }
-              className={action?.kind === "approva" ? "bg-success text-success-foreground hover:bg-success/90" : action?.kind === "rifiuta" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
-              onClick={() => {
-                if (!action) return;
-                let imp: number | undefined;
-                if (action.kind === "approva" && action.rows.length === 1) {
-                  if (importoApprovato.trim() === "" || !Number.isFinite(Number(importoApprovato))) {
-                    toast.error("Inserisci l'importo approvato");
-                    return;
-                  }
-                  imp = Number(importoApprovato);
-                  if (!importoRichiestaValido(action.rows[0].tipo, imp)) {
-                    toast.error("Importo 0 ammesso solo per diminuzione (azzeramento) o rinnovo");
-                    return;
-                  }
-                }
-                decisionMut.mutate({ kind: action.kind, rows: action.rows, note, importoApprovato: imp });
-              }}
+              disabled={decisionMut.isPending || (action?.kind === "rifiuta" && !note.trim())}
+              className={action?.kind === "approva" ? "bg-success text-success-foreground hover:bg-success/90" : "bg-destructive text-destructive-foreground hover:bg-destructive/90"}
+              onClick={() => { if (action) decisionMut.mutate({ kind: action.kind, rows: action.rows, note }); }}
             >
-              {decisionMut.isPending ? "Elaborazione..." :
-                action?.kind === "approva" ? "Conferma approvazione" :
-                action?.kind === "rifiuta" ? "Conferma rifiuto" :
-                "Invia richiesta integrazioni"}
+              {decisionMut.isPending ? "Elaborazione..." : action?.kind === "approva" ? "Conferma approvazione" : "Conferma rifiuto"}
             </Button>
           </DialogFooter>
         </DialogContent>
