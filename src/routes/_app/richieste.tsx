@@ -49,7 +49,6 @@ import {
 } from "@/lib/fidi";
 import { getFidoAttuale } from "@/lib/fido-cliente";
 import { RICHIESTA_FIDO_SELECT } from "@/lib/richieste-fido-data";
-import { NuovaComunicazioneDialog } from "@/components/nuova-comunicazione-dialog";
 import { PannelloRischioCliente } from "@/components/pannello-rischio-cliente";
 import { semaforoUI, semaforoDaCliente } from "@/lib/semaforo-ui";
 import { SchedaLista, ElencoSchede } from "@/components/lista-responsive";
@@ -69,6 +68,18 @@ function attesaTone(g: number): string {
   if (g < 7) return "bg-success/15 text-success";
   if (g <= 14) return "bg-warning/15 text-warning";
   return "bg-destructive/15 text-destructive";
+}
+
+/** Pallino rischio (semaforo affidabilita') con tooltip label + motivo. */
+function SemaforoPallino({ cliente, className = "" }: { cliente: any; className?: string }) {
+  const sem = semaforoCli(cliente);
+  return (
+    <span
+      className={`inline-block size-2.5 shrink-0 rounded-full ${sem.dotClass} ${className}`}
+      title={`Rischio: ${sem.label} — ${sem.motivo}`}
+      aria-label={`Rischio: ${sem.label}`}
+    />
+  );
 }
 
 /** Semaforo dal valore materializzato in fido_teorico_cliente (fonte unica). */
@@ -486,7 +497,7 @@ function BozzeTab({
             onClick={() => navigate({ to: "/richieste/$richiestaId", params: { richiestaId: r.id } })}
             colonneCampi={2}
             selezione={{ checked: selected.has(r.id), onChange: () => toggle(r.id) }}
-            titolo={r.clienti?.ragione_sociale ?? "—"}
+            titolo={<span className="inline-flex items-start gap-2 min-w-0"><SemaforoPallino cliente={r.clienti} className="mt-1.5" /><span className="min-w-0 break-words">{r.clienti?.ragione_sociale ?? "—"}</span></span>}
             badge={<span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{etichettaTipoRichiesta(r.tipo, Number(r.importo_approvato ?? r.importo_richiesto))}</span>}
             campi={[
               { etichetta: "Importo rich.", valore: <span className="tabular-nums">{formatEuro(Number(r.importo_richiesto))}</span> },
@@ -506,6 +517,7 @@ function BozzeTab({
           <TableRow>
             <TableHead className="w-8"><Checkbox checked={allSel} onCheckedChange={() => setSelected(allSel ? new Set() : new Set(rows.map((r) => r.id)))} /></TableHead>
             <TableHead>Cliente</TableHead>
+                <TableHead className="w-16 text-center">Rischio</TableHead>
             <TableHead>Tipo</TableHead>
             <TableHead className="text-right">Importo richiesto</TableHead>
             <TableHead className="text-right">Fido attuale</TableHead>
@@ -536,6 +548,7 @@ function BozzeTab({
                   )}
                 </div>
               </TableCell>
+              <TableCell className="text-center"><SemaforoPallino cliente={r.clienti} /></TableCell>
               <TableCell>
                 <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>
                   {etichettaTipoRichiesta(r.tipo, Number(r.importo_approvato ?? r.importo_richiesto))}
@@ -583,7 +596,6 @@ function InApprovazioneTab({
   const [action, setAction] = useState<{ kind: "approva" | "rifiuta" | "integrazioni"; rows: any[] } | null>(null);
   const [importoApprovato, setImportoApprovato] = useState<string>("");
   const [note, setNote] = useState("");
-  const [comunicazioneFor, setComunicazioneFor] = useState<any | null>(null);
 
   const { data: msgNonLetti } = useQuery({
     queryKey: ["comunicazioni-non-lette", user?.id],
@@ -793,7 +805,7 @@ function InApprovazioneTab({
                   onClick={() => navigate({ to: "/richieste/$richiestaId", params: { richiestaId: r.id } })}
                   colonneCampi={2}
                   selezione={livMio ? { checked: selected.has(r.id), onChange: () => toggle(r.id) } : undefined}
-                  titolo={r.clienti?.ragione_sociale ?? "—"}
+                  titolo={<span className="inline-flex items-start gap-2 min-w-0"><SemaforoPallino cliente={r.clienti} className="mt-1.5" /><span className="min-w-0 break-words">{r.clienti?.ragione_sociale ?? "—"}</span></span>}
                   badge={<span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{etichettaTipoRichiesta(r.tipo, Number(r.importo_approvato ?? r.importo_richiesto))}</span>}
                   campi={[
                     { etichetta: "Importo", valore: <span className="tabular-nums font-medium">{formatEuro(Number(r.importo_richiesto))}</span> },
@@ -821,6 +833,7 @@ function InApprovazioneTab({
               <TableRow>
                 {canApprove && <TableHead className="w-8"><Checkbox checked={allSel} onCheckedChange={() => setSelected(allSel ? new Set() : new Set(filtered.map((r) => r.id)))} /></TableHead>}
                 <TableHead>Cliente</TableHead>
+                <TableHead className="w-16 text-center">Rischio</TableHead>
                 {!isStoreManagerView(canApprove) && <TableHead>Store</TableHead>}
                 <TableHead>Tipo</TableHead>
                 <TableHead className="text-right">Importo</TableHead>
@@ -857,6 +870,7 @@ function InApprovazioneTab({
                         {nAltre > 0 && <Badge variant="outline" className="text-warning border-warning/40 gap-1 text-xs" title="Altra richiesta attiva o approvata-non-esportata per lo stesso cliente"><AlertCircle className="size-3" /> +{nAltre}</Badge>}
                       </div>
                     </TableCell>
+                    <TableCell className="text-center"><SemaforoPallino cliente={r.clienti} /></TableCell>
                     {!isStoreManagerView(canApprove) && <TableCell className="text-sm text-muted-foreground">{r.clienti?.stores?.nome ?? "—"}</TableCell>}
                     <TableCell><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{etichettaTipoRichiesta(r.tipo, Number(r.importo_approvato ?? r.importo_richiesto))}</span></TableCell>
                     <TableCell className="text-right tabular-nums font-medium">{formatEuro(Number(r.importo_richiesto))}</TableCell>
@@ -875,19 +889,7 @@ function InApprovazioneTab({
                             {unread}
                           </span>
                         )}
-                        {canApprove && livMio ? (
-                          <>
-                            <Button size="sm" variant="ghost" className="text-success h-8" onClick={() => { setImportoApprovato(String(r.importo_richiesto)); setAction({ kind: "approva", rows: [r] }); }}>
-                              <Check className="size-4" /> Approva
-                            </Button>
-                            <Button size="sm" variant="ghost" className="text-info h-8" onClick={() => setComunicazioneFor(r)} title="Invia comunicazione (richiedi integrazioni)">
-                              <MessageSquareWarning className="size-4" />
-                            </Button>
-                            <Button size="sm" variant="ghost" className="text-destructive h-8" onClick={() => setAction({ kind: "rifiuta", rows: [r] })}>
-                              <X className="size-4" /> Rifiuta
-                            </Button>
-                          </>
-                        ) : (r.stato === "integrazioni_richieste" || r.stato === "bozza") ? (
+                        {!(canApprove && livMio) && (r.stato === "integrazioni_richieste" || r.stato === "bozza") ? (
                           <Button size="sm" variant="ghost" className="text-destructive h-8" onClick={() => annullaMut.mutate(r)}>
                             <Ban className="size-4" /> Annulla
                           </Button>
@@ -996,13 +998,6 @@ function InApprovazioneTab({
         </DialogContent>
       </Dialog>
 
-      <NuovaComunicazioneDialog
-        open={!!comunicazioneFor}
-        onOpenChange={(o) => !o && setComunicazioneFor(null)}
-        richiestaId={comunicazioneFor?.id ?? ""}
-        clienteRagioneSociale={comunicazioneFor?.clienti?.ragione_sociale}
-        defaultDestinatario="richiedente"
-      />
     </div>
   );
 }
@@ -1069,7 +1064,7 @@ function StoricoTab({
                   key={r.id}
                   onClick={() => navigate({ to: "/richieste/$richiestaId", params: { richiestaId: r.id } })}
                   colonneCampi={2}
-                  titolo={r.clienti?.ragione_sociale ?? "—"}
+                  titolo={<span className="inline-flex items-start gap-2 min-w-0"><SemaforoPallino cliente={r.clienti} className="mt-1.5" /><span className="min-w-0 break-words">{r.clienti?.ragione_sociale ?? "—"}</span></span>}
                   badge={<span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{etichettaTipoRichiesta(r.tipo, Number(r.importo_approvato ?? r.importo_richiesto))}</span>}
                   campi={[
                     { etichetta: "Importo rich.", valore: <span className="tabular-nums">{formatEuro(Number(r.importo_richiesto))}</span> },
@@ -1094,6 +1089,7 @@ function StoricoTab({
             <TableHeader>
               <TableRow>
                 <TableHead>Cliente</TableHead>
+                <TableHead className="w-16 text-center">Rischio</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead className="text-right">Importo richiesto</TableHead>
                 {kind === "approvata" && <TableHead className="text-right">Importo approvato</TableHead>}
@@ -1130,6 +1126,7 @@ function StoricoTab({
                       )}
                     </div>
                   </TableCell>
+                  <TableCell className="text-center"><SemaforoPallino cliente={r.clienti} /></TableCell>
                   <TableCell><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{etichettaTipoRichiesta(r.tipo, Number(r.importo_approvato ?? r.importo_richiesto))}</span></TableCell>
                   <TableCell className="text-right tabular-nums">{formatEuro(Number(r.importo_richiesto))}</TableCell>
                   {kind === "approvata" && <TableCell className="text-right tabular-nums text-success font-medium">{formatEuro(Number(r.importo_approvato ?? r.importo_richiesto))}</TableCell>}
@@ -1207,7 +1204,7 @@ function TuttoTab({ rows, loading, msgCounts }: { rows: any[]; loading: boolean;
               key={r.id}
               onClick={() => navigate({ to: "/richieste/$richiestaId", params: { richiestaId: r.id } })}
               colonneCampi={2}
-              titolo={r.clienti?.ragione_sociale ?? "—"}
+              titolo={<span className="inline-flex items-start gap-2 min-w-0"><SemaforoPallino cliente={r.clienti} className="mt-1.5" /><span className="min-w-0 break-words">{r.clienti?.ragione_sociale ?? "—"}</span></span>}
               badge={<span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${STATO_TONE[r.stato as keyof typeof STATO_TONE]}`}>{STATO_LABEL[r.stato as keyof typeof STATO_LABEL]}</span>}
               campi={[
                 { etichetta: "Store", valore: r.clienti?.stores?.nome ?? "—" },
@@ -1231,6 +1228,7 @@ function TuttoTab({ rows, loading, msgCounts }: { rows: any[]; loading: boolean;
           <TableHeader>
             <TableRow>
               <TableHead>Cliente</TableHead>
+                <TableHead className="w-16 text-center">Rischio</TableHead>
               <TableHead>Store</TableHead>
               <TableHead>Tipo</TableHead>
               <TableHead className="text-right">Importo</TableHead>
@@ -1259,6 +1257,7 @@ function TuttoTab({ rows, loading, msgCounts }: { rows: any[]; loading: boolean;
                     )}
                   </div>
                 </TableCell>
+                <TableCell className="text-center"><SemaforoPallino cliente={r.clienti} /></TableCell>
                 <TableCell className="text-sm text-muted-foreground">{r.clienti?.stores?.nome ?? "—"}</TableCell>
                 <TableCell><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>{etichettaTipoRichiesta(r.tipo, Number(r.importo_approvato ?? r.importo_richiesto))}</span></TableCell>
                 <TableCell className="text-right tabular-nums">{formatEuro(Number(r.importo_richiesto))}</TableCell>
