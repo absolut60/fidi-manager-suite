@@ -17,39 +17,24 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { getFidoAttuale } from "@/lib/fido-cliente";
 import { formatEuro, formatDate } from "@/lib/fidi";
+import { semaforoUI, type SemaforoStadio } from "@/lib/semaforo-ui";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-type Stadio = "verde" | "giallo" | "arancione" | "rosso";
-
-const STADIO_UI: Record<Stadio, { dot: string; text: string; label: string; legenda: string }> = {
-  verde: {
-    dot: "bg-success",
-    text: "text-success",
-    label: "Verde",
-    legenda: "Affidabile — pagamenti regolari",
-  },
-  giallo: {
-    dot: "bg-warning",
-    text: "text-warning",
-    label: "Giallo",
-    legenda: "Da tenere d'occhio — ritardi sistematici ma nessuna sofferenza",
-  },
-  arancione: {
-    dot: "bg-orange-500",
-    text: "text-orange-600",
-    label: "Arancione",
-    legenda: "A rischio — scaduto fermo oltre 60 giorni, importo contenuto",
-  },
-  rosso: {
-    dot: "bg-destructive",
-    text: "text-destructive",
-    label: "Rosso",
-    legenda: "Critico — insoluti, scaduto grave, blocco o gestione legale",
-  },
+/** Solo la frase di legenda del tooltip: colori e label vengono da semaforoUI (fonte unica). */
+const LEGENDA_STADIO: Record<Exclude<SemaforoStadio, null>, string> = {
+  verde: "Affidabile — pagamenti regolari",
+  giallo: "Da tenere d'occhio — ritardi sistematici ma nessuna sofferenza",
+  arancione: "A rischio — scaduto fermo oltre 60 giorni, importo contenuto",
+  rosso: "Critico — insoluti, scaduto grave, blocco o gestione legale",
+  spento: "Nessuna esperienza di pagamento — cliente nuovo o senza storico",
 };
 
+function normalizzaStadio(s: unknown): SemaforoStadio {
+  return s === "rosso" || s === "arancione" || s === "giallo" || s === "verde" || s === "spento" ? s : null;
+}
+
 type SemaforoData = {
-  stadio: Stadio;
+  stadio: SemaforoStadio;
   motivo: string;
   ritardoMedioRitardi: number;
   eurScadutoGrave: number;
@@ -57,7 +42,8 @@ type SemaforoData = {
 
 export function SemaforoAffidabilita({ sem }: { sem: SemaforoData }) {
   if (!sem) return <span className="text-muted-foreground">—</span>;
-  const ui = STADIO_UI[sem.stadio] ?? STADIO_UI.verde;
+  const ui = semaforoUI(sem.stadio, sem.motivo);
+  const legenda = sem.stadio ? LEGENDA_STADIO[sem.stadio] : null;
   const numero =
     sem.stadio === "arancione" || sem.stadio === "rosso"
       ? sem.eurScadutoGrave > 0
@@ -70,14 +56,16 @@ export function SemaforoAffidabilita({ sem }: { sem: SemaforoData }) {
       <Tooltip>
         <TooltipTrigger asChild>
           <span className="inline-flex items-center gap-2 cursor-help">
-            <span className={`h-2.5 w-2.5 rounded-full ${ui.dot}`} aria-hidden />
-            <span className={`font-medium ${ui.text}`}>{ui.label}</span>
-            <span className="text-muted-foreground tabular-nums">· {numero}</span>
+            <span className={`h-2.5 w-2.5 rounded-full ${ui.dotClass}`} aria-hidden />
+            <span className={`font-medium ${ui.textClass}`}>{ui.label}</span>
+            {sem.stadio && sem.stadio !== "spento" && (
+              <span className="text-muted-foreground tabular-nums">· {numero}</span>
+            )}
           </span>
         </TooltipTrigger>
         <TooltipContent className="max-w-[260px]">
           <p className="font-medium">{sem.motivo}</p>
-          <p className="text-xs opacity-80 mt-0.5">{ui.legenda}</p>
+          {legenda && <p className="text-xs opacity-80 mt-0.5">{legenda}</p>}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -102,7 +90,7 @@ export function SemaforoAffidabilitaBadge({ clienteId }: { clienteId?: string | 
       const row = Array.isArray(data) ? data[0] : data;
       if (!row) return null;
       return {
-        stadio: (row.stadio ?? "verde") as Stadio,
+        stadio: normalizzaStadio(row.stadio),
         motivo: String(row.motivo ?? ""),
         ritardoMedioRitardi: Number(row.ritardo_medio_ritardi ?? 0),
         eurScadutoGrave: Number(row.eur_scaduto_grave ?? 0),
@@ -195,7 +183,7 @@ export function PannelloRischioCliente({
       const row = Array.isArray(data) ? data[0] : data;
       if (!row) return null;
       return {
-        stadio: (row.stadio ?? "verde") as Stadio,
+        stadio: normalizzaStadio(row.stadio),
         motivo: String(row.motivo ?? ""),
         ritardoMedioRitardi: Number(row.ritardo_medio_ritardi ?? 0),
         eurScadutoGrave: Number(row.eur_scaduto_grave ?? 0),
