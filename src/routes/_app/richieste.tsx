@@ -286,7 +286,8 @@ function RichiestePage() {
     // tramite link diretto se serve consultare gli altri livelli).
     if (isApprovatore && !hasFullVisibility) return r.livello_corrente === livello;
     return true;
-  });  const inApprovazione = all.filter(inCodaUtente);
+  };
+  const inApprovazione = all.filter(inCodaUtente);
 
   const approvate = all.filter((r) => r.stato === "approvata");
   const rifiutate = all.filter((r) => r.stato === "rifiutata" || r.stato === "annullata");
