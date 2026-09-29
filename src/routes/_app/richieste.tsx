@@ -277,7 +277,7 @@ function RichiestePage() {
   }, [all, user?.id, isStoreManager, isApprovatore, hasFullVisibility, livello, inizioMese]);
 
   const bozze = all.filter((r) => r.stato === "bozza");
-  const inApprovazione = all.filter((r) => {
+  const inCodaUtente = (r: any) => {
     if (!STATI_IN_APPROVAZIONE.includes(r.stato)) return false;
     // Visibilita': admin/amministrazione/direzione vedono tutto.
     // Un approvatore puro vede tutte le richieste del proprio livello corrente
@@ -286,7 +286,8 @@ function RichiestePage() {
     // tramite link diretto se serve consultare gli altri livelli).
     if (isApprovatore && !hasFullVisibility) return r.livello_corrente === livello;
     return true;
-  });
+  });  const inApprovazione = all.filter(inCodaUtente);
+
   const approvate = all.filter((r) => r.stato === "approvata");
   const rifiutate = all.filter((r) => r.stato === "rifiutata" || r.stato === "annullata");
 
@@ -393,7 +394,7 @@ function RichiestePage() {
         <TabsContent value="in_approvazione" className="mt-4">
           <InApprovazioneTab
             rows={inApprovazione}
-            righeCodaNonFiltrate={tutteRichieste.filter((r: any) => STATI_IN_APPROVAZIONE.includes(r.stato))}
+            righeCodaNonFiltrate={tutteRichieste.filter(inCodaUtente)}
             loading={isLoading}
             canApprove={isAdmin || isApprovatore}
             livelloUtente={livello}
