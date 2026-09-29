@@ -46,6 +46,7 @@ import {
   STATO_LABEL, STATO_TONE, TIPO_TONE, calcolaLivello,
   formatEuro, formatDate, type TipoRichiesta, isRichiestaAttiva,
   determinaTipoRichiesta, importoRichiestaValido, etichettaTipoRichiesta,
+  livelloApprovatore, puoDecidereRichiesta,
 } from "@/lib/fidi";
 import { getFidoAttuale } from "@/lib/fido-cliente";
 import { RICHIESTA_FIDO_SELECT } from "@/lib/richieste-fido-data";
@@ -53,8 +54,17 @@ import { PannelloRischioCliente } from "@/components/pannello-rischio-cliente";
 import { semaforoUI, semaforoDaCliente } from "@/lib/semaforo-ui";
 import { SchedaLista, ElencoSchede } from "@/components/lista-responsive";
 import { RichiestaFormDialog } from "@/components/richiesta-fido-form-dialog";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+
+const TAB_RICHIESTE = ["bozze", "in_approvazione", "approvate", "rifiutate", "tutto"] as const;
 
 export const Route = createFileRoute("/_app/richieste")({
+  validateSearch: (s: Record<string, unknown>): { tab?: (typeof TAB_RICHIESTE)[number] } => {
+    const t = s.tab;
+    return typeof t === "string" && (TAB_RICHIESTE as readonly string[]).includes(t)
+      ? { tab: t as (typeof TAB_RICHIESTE)[number] }
+      : {};
+  },
   component: RichiestePage,
 });
 
@@ -90,16 +100,19 @@ function semaforoCli(c: any) {
 }
 
 /** Stato unico dei filtri della pagina Richieste fido. */
+type OrdinaRichieste = "importo" | "data_invio" | "giorni";
 type FiltriRichieste = {
   cerca: string; agente: string;
-  store: string; tipo: string; rischio: string;
+  store: string; tipo: string; rischio: string; livello: string;
   importoMin: string; importoMax: string; giorniMin: string;
+  /** Ordinamento della lista "In approvazione" (non e' un filtro). */
+  ordina: OrdinaRichieste;
 };
-const FILTRI_VUOTI: FiltriRichieste = { cerca: "", agente: "tutti", store: "tutti", tipo: "tutti", rischio: "tutti", importoMin: "", importoMax: "", giorniMin: "" };
+const FILTRI_VUOTI: FiltriRichieste = { cerca: "", agente: "tutti", store: "tutti", tipo: "tutti", rischio: "tutti", livello: "tutti", importoMin: "", importoMax: "", giorniMin: "", ordina: "importo" };
 const STADI_RISCHIO = ["verde", "giallo", "arancione", "rosso", "spento"] as const;
 
 function filtriAttivi(f: FiltriRichieste): boolean {
-  return !!f.cerca.trim() || f.agente !== "tutti" || f.store !== "tutti" || f.tipo !== "tutti" || f.rischio !== "tutti" || !!f.importoMin || !!f.importoMax || !!f.giorniMin;
+  return !!f.cerca.trim() || f.agente !== "tutti" || f.store !== "tutti" || f.tipo !== "tutti" || f.rischio !== "tutti" || f.livello !== "tutti" || !!f.importoMin || !!f.importoMax || !!f.giorniMin;
 }
 
 /**
@@ -118,13 +131,23 @@ function filtraRichieste(righe: any[], f: FiltriRichieste): any[] {
     if (q && ![c?.ragione_sociale, c?.partita_iva, c?.codice_fiscale, c?.codice_gestionale].some((v) => normalizzaRicerca(v).includes(q))) return false;
     if (f.agente === "__none__" ? !!c?.codice_agente : f.agente !== "tutti" && c?.codice_agente !== f.agente) return false;
     if (f.store !== "tutti" && r.clienti?.store_id !== f.store) return false;
-    if (f.tipo !== "tutti" && r.tipo !== f.tipo) return false;
+    // "Nuovo fido": l'enum ha anche il valore storico "nuovo" (stessa etichetta).
+    if (f.tipo !== "tutti" && !(r.tipo === f.tipo || (f.tipo === "nuovo_fido" && r.tipo === "nuovo"))) return false;
     if (f.rischio !== "tutti" && semaforoDaCliente(r.clienti).stadio !== f.rischio) return false;
+    if (f.livello !== "tutti" && Number(r.livello_richiesto) !== Number(f.livello)) return false;
     if (f.importoMin && Number(r.importo_richiesto) < Number(f.importoMin)) return false;
     if (f.importoMax && Number(r.importo_richiesto) > Number(f.importoMax)) return false;
     if (f.giorniMin && STATI_IN_APPROVAZIONE.includes(r.stato) && giorniDa(r.data_invio) < Number(f.giorniMin)) return false;
     return true;
   });
+}
+
+function ordinaRichieste(righe: any[], ordina: OrdinaRichieste): any[] {
+  const tsInvio = (r: any) => new Date(r.data_invio ?? r.created_at ?? 0).getTime();
+  const copia = [...righe];
+  if (ordina === "data_invio") return copia.sort((a, b) => tsInvio(a) - tsInvio(b));
+  if (ordina === "giorni") return copia.sort((a, b) => giorniDa(b.data_invio) - giorniDa(a.data_invio));
+  return copia.sort((a, b) => Number(b.importo_richiesto) - Number(a.importo_richiesto));
 }
 
 function FiltriRichiesteBar({ filtri, onChange, stores }: { filtri: FiltriRichieste; onChange: (f: FiltriRichieste) => void; stores: [string, string][] }) {
@@ -179,7 +202,7 @@ function FiltriRichiesteBar({ filtri, onChange, stores }: { filtri: FiltriRichie
         <SelectTrigger className="flex-1 min-w-[160px] sm:flex-none sm:w-40"><SelectValue placeholder="Tipo" /></SelectTrigger>
         <SelectContent>
           <SelectItem value="tutti">Tutti i tipi</SelectItem>
-          <SelectItem value="nuovo">Nuovo fido</SelectItem>
+          <SelectItem value="nuovo_fido">Nuovo fido</SelectItem>
           <SelectItem value="aumento">Aumento</SelectItem>
           <SelectItem value="diminuzione">Diminuzione</SelectItem>
           <SelectItem value="rinnovo">Rinnovo</SelectItem>
@@ -202,11 +225,28 @@ function FiltriRichiesteBar({ filtri, onChange, stores }: { filtri: FiltriRichie
           })}
         </SelectContent>
       </Select>
+      <Select value={filtri.livello} onValueChange={(v) => set("livello", v)}>
+        <SelectTrigger className="flex-1 min-w-[140px] sm:flex-none sm:w-32"><SelectValue placeholder="Livello" /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="tutti">Tutti i livelli</SelectItem>
+          <SelectItem value="1">Liv. 1</SelectItem>
+          <SelectItem value="2">Liv. 2</SelectItem>
+          <SelectItem value="3">Liv. 3</SelectItem>
+        </SelectContent>
+      </Select>
       <Input className="flex-1 min-w-[140px] sm:flex-none sm:min-w-0 sm:w-28" type="number" placeholder="Importo min" value={filtri.importoMin} onChange={(e) => set("importoMin", e.target.value)} />
       <Input className="flex-1 min-w-[140px] sm:flex-none sm:min-w-0 sm:w-28" type="number" placeholder="Importo max" value={filtri.importoMax} onChange={(e) => set("importoMax", e.target.value)} />
       <Input className="flex-1 min-w-[140px] sm:flex-none sm:min-w-0 sm:w-32" type="number" placeholder="Giorni attesa ≥" title="Vale solo per le richieste in attesa di decisione" value={filtri.giorniMin} onChange={(e) => set("giorniMin", e.target.value)} />
+      <Select value={filtri.ordina} onValueChange={(v) => onChange({ ...filtri, ordina: v as OrdinaRichieste })}>
+        <SelectTrigger className="flex-1 min-w-[180px] sm:flex-none sm:w-52" title="Ordinamento della lista In approvazione"><SelectValue placeholder="Ordina" /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="importo">Ordina: Importo (decrescente)</SelectItem>
+          <SelectItem value="data_invio">Ordina: Data invio (più vecchie)</SelectItem>
+          <SelectItem value="giorni">Ordina: Giorni in attesa</SelectItem>
+        </SelectContent>
+      </Select>
       {attivi && (
-        <Button variant="ghost" size="sm" className="h-10" onClick={() => { setCercaInput(""); onChange(FILTRI_VUOTI); }}>Azzera filtri</Button>
+        <Button variant="ghost" size="sm" className="h-10" onClick={() => { setCercaInput(""); onChange({ ...FILTRI_VUOTI, ordina: filtri.ordina }); }}>Azzera filtri</Button>
       )}
     </Card>
   );
@@ -222,10 +262,7 @@ function RichiestePage() {
   const { user, role, roles, profilo } = useAuth();
   // Multi-ruolo: un utente puo' avere piu' ruoli, usiamo sempre roles.includes(...)
   const isAdmin = roles.includes("amministratore");
-  const livello =
-    roles.includes("approvatore_liv3") ? 3 :
-    roles.includes("approvatore_liv2") ? 2 :
-    roles.includes("approvatore_liv1") ? 1 : 0;
+  const livello = livelloApprovatore(roles);
   const isApprovatore = livello > 0;
   const isAmministrazione = roles.includes("amministrazione");
   const isDirezione = roles.includes("direzione");
@@ -239,7 +276,8 @@ function RichiestePage() {
     isAdmin || isApprovatore || isAmministrazione || roles.includes("store_manager");
 
   const defaultTab = isApprovatore && !isAdmin ? "in_approvazione" : "bozze";
-  const [tab, setTab] = useState<string>(defaultTab);
+  const { tab: tabIniziale } = Route.useSearch();
+  const [tab, setTab] = useState<string>(tabIniziale ?? defaultTab);
   const [openNew, setOpenNew] = useState(false);
 
 
