@@ -283,7 +283,6 @@ function RichiestePage() {
             livelloUtente={livello}
             isAdmin={isAdmin}
             onChanged={qcInvalidate}
-            currentUserId={user?.id}
           />
         </TabsContent>
 
@@ -300,7 +299,6 @@ function RichiestePage() {
             loading={isLoading}
             kind="approvata"
             msgCounts={msgCounts}
-            currentUserId={user?.id}
           />
         </TabsContent>
 
@@ -310,7 +308,6 @@ function RichiestePage() {
             loading={isLoading}
             kind="rifiutata"
             msgCounts={msgCounts}
-            currentUserId={user?.id}
           />
         </TabsContent>
 
@@ -345,8 +342,8 @@ function KpiCard({ icon: Icon, tone, label, value }: { icon: any; tone: string; 
 
 /* ============================ BOZZE TAB ============================ */
 function BozzeTab({
-  rows, loading, onEdit, onDelete, onChanged, msgCounts,
-}: { rows: any[]; loading: boolean; onEdit: (r: any) => void; onDelete: (r: any) => void; onChanged: () => void; msgCounts?: Record<string, number> }) {
+  rows, loading, onChanged, msgCounts,
+}: { rows: any[]; loading: boolean; onChanged: () => void; msgCounts?: Record<string, number> }) {
   const navigate = useNavigate();
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
@@ -419,7 +416,6 @@ function BozzeTab({
             <TableHead className="text-right">Fido attuale</TableHead>
             <TableHead>Richiesto da</TableHead>
             <TableHead>Data creazione</TableHead>
-            <TableHead className="text-right">Azioni</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -456,13 +452,6 @@ function BozzeTab({
               </TableCell>
               <TableCell className="text-sm">{userName((r as any).richiedente)}</TableCell>
               <TableCell className="text-sm text-muted-foreground">{formatDate(r.created_at)}</TableCell>
-              <TableCell className="text-right">
-                <div className="inline-flex gap-1">
-                  <Button size="icon" variant="ghost" className="size-8" onClick={() => onEdit(r)} title="Modifica"><Pencil className="size-4" /></Button>
-                  <Button size="icon" variant="ghost" className="size-8 text-success" onClick={() => invioMut.mutate([r.id])} title="Invia"><Send className="size-4" /></Button>
-                  <Button size="icon" variant="ghost" className="size-8 text-destructive" onClick={() => onDelete(r)} title="Elimina"><Trash2 className="size-4" /></Button>
-                </div>
-              </TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -475,10 +464,8 @@ function BozzeTab({
 /* ====================== IN APPROVAZIONE TAB ====================== */
 function InApprovazioneTab({
   rows, loading, canApprove, livelloUtente, isAdmin, onChanged,
-  currentUserId, onEditOwn, onDeleteOwn,
 }: {
   rows: any[]; loading: boolean; canApprove: boolean; livelloUtente: number; isAdmin: boolean; onChanged: () => void;
-  currentUserId?: string; onEditOwn?: (r: any) => void; onDeleteOwn?: (r: any) => void;
 }) {
 
   const { user } = useAuth();
@@ -561,14 +548,6 @@ function InApprovazioneTab({
   }
   const allSel = filtered.length > 0 && filtered.every((r) => selected.has(r.id));
 
-  const annullaMut = useMutation({
-    mutationFn: async (r: any) => {
-      const { error } = await supabase.from("richieste_fido").update({ stato: "annullata" }).eq("id", r.id);
-      if (error) throw error;
-    },
-    onSuccess: () => { toast.success("Richiesta annullata"); onChanged(); },
-    onError: (e: Error) => toast.error(e.message),
-  });
 
   const decisionMut = useMutation({
     mutationFn: async (input: { kind: "approva" | "rifiuta" | "integrazioni"; rows: any[]; note: string; importoApprovato?: number }) => {
@@ -740,7 +719,6 @@ function InApprovazioneTab({
                 <TableHead>Richiesto da</TableHead>
                 <TableHead>Data invio</TableHead>
                 <TableHead>Giorni</TableHead>
-                {(canApprove || true) && <TableHead className="text-right">Azioni</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -763,6 +741,12 @@ function InApprovazioneTab({
                     <TableCell className="font-medium">
                       <div className="inline-flex items-center gap-2">
                         {r.clienti?.ragione_sociale ?? "—"}
+                        {unread > 0 && (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-info/15 text-info px-2 py-0.5 text-xs font-medium">
+                            <MessageSquare className="size-3" />
+                            {unread}
+                          </span>
+                        )}
                         {nAltre > 0 && <Badge variant="outline" className="text-warning border-warning/40 gap-1 text-xs" title="Altra richiesta attiva o approvata-non-esportata per lo stesso cliente"><AlertCircle className="size-3" /> +{nAltre}</Badge>}
                       </div>
                     </TableCell>
@@ -777,31 +761,6 @@ function InApprovazioneTab({
                     <TableCell className="text-sm">{userName((r as any).richiedente)}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{formatDate(r.data_invio ?? (r.stato !== "bozza" ? r.created_at : null))}</TableCell>
                     <TableCell><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${attesaTone(g)}`}>{g}gg</span></TableCell>
-                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                      <div className="inline-flex items-center gap-1">
-                        {unread > 0 && (
-                          <span className="inline-flex items-center gap-1 rounded-md bg-info/15 text-info px-2 py-0.5 text-xs font-medium">
-                            <MessageSquare className="size-3" />
-                            {unread}
-                          </span>
-                        )}
-                        {!(canApprove && livMio) && (r.stato === "integrazioni_richieste" || r.stato === "bozza") ? (
-                          <Button size="sm" variant="ghost" className="text-destructive h-8" onClick={() => annullaMut.mutate(r)}>
-                            <Ban className="size-4" /> Annulla
-                          </Button>
-                        ) : null}
-                        {currentUserId && r.created_by === currentUserId && onEditOwn && onDeleteOwn && (
-                          <>
-                            <Button size="icon" variant="ghost" className="size-8" onClick={() => onEditOwn(r)} title="Modifica"><Pencil className="size-4" /></Button>
-                            <Button size="icon" variant="ghost" className="size-8 text-destructive" onClick={() => onDeleteOwn(r)} title="Elimina"><Trash2 className="size-4" /></Button>
-                          </>
-                        )}
-                        {!(canApprove && livMio) && !(r.stato === "integrazioni_richieste" || r.stato === "bozza") && !(currentUserId && r.created_by === currentUserId) && unread === 0 && (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        )}
-
-                      </div>
-                    </TableCell>
                   </TableRow>
                 );
               })}
@@ -902,8 +861,8 @@ function isStoreManagerView(canApprove: boolean): boolean { return !canApprove; 
 
 /* ============================ STORICO TAB ============================ */
 function StoricoTab({
-  rows, loading, kind, onRiinvia, msgCounts, currentUserId, onEditOwn, onDeleteOwn,
-}: { rows: any[]; loading: boolean; kind: "approvata" | "rifiutata"; onRiinvia: ((r: any) => void) | null; msgCounts?: Record<string, number>; currentUserId?: string; onEditOwn?: (r: any) => void; onDeleteOwn?: (r: any) => void; }) {
+  rows, loading, kind, msgCounts,
+}: { rows: any[]; loading: boolean; kind: "approvata" | "rifiutata"; msgCounts?: Record<string, number> }) {
 
   const navigate = useNavigate();
   const [meseFiltro, setMeseFiltro] = useState<string>("ultimi3");
@@ -994,7 +953,6 @@ function StoricoTab({
                 <TableHead>Richiesto da</TableHead>
                 <TableHead>{kind === "approvata" ? "Approvato da" : "Decisione di"}</TableHead>
                 <TableHead>Data</TableHead>
-                {(onRiinvia || (onEditOwn && onDeleteOwn)) && <TableHead className="text-right">Azioni</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1035,21 +993,6 @@ function StoricoTab({
                   <TableCell className="text-sm">{userName((r as any).richiedente)}</TableCell>
                   <TableCell className="text-sm">{userName((r as any).approvatore)}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{formatDate(r.data_chiusura ?? r.created_at)}</TableCell>
-                  {(onRiinvia || (onEditOwn && onDeleteOwn)) && (
-                    <TableCell className="text-right">
-                      <div className="inline-flex gap-1 justify-end">
-                        {onRiinvia && (
-                          <Button size="sm" variant="outline" onClick={() => onRiinvia(r)}><RotateCcw className="size-4" /> Ri-invia</Button>
-                        )}
-                        {currentUserId && r.created_by === currentUserId && onEditOwn && onDeleteOwn && (
-                          <>
-                            <Button size="icon" variant="ghost" className="size-8" onClick={() => onEditOwn(r)} title="Modifica"><Pencil className="size-4" /></Button>
-                            <Button size="icon" variant="ghost" className="size-8 text-destructive" onClick={() => onDeleteOwn(r)} title="Elimina"><Trash2 className="size-4" /></Button>
-                          </>
-                        )}
-                      </div>
-                    </TableCell>
-                  )}
 
                 </TableRow>
                 );
