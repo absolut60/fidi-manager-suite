@@ -75,13 +75,14 @@ const FASCE_CONCESSO: Record<string, { min: number; max: number | null; label: s
   oltre_50000: { min: 50000, max: null, label: "Oltre 50.000 €" },
 };
 
-type SemaforoColor = "rosso" | "arancione" | "giallo" | "verde";
+type SemaforoColor = "rosso" | "arancione" | "giallo" | "verde" | "spento";
 
 const SEMAFORO_DOT: Record<SemaforoColor, string> = {
   rosso: "bg-destructive",
   arancione: "bg-orange-500",
   giallo: "bg-warning",
   verde: "bg-success",
+  spento: "bg-muted-foreground/40 ring-1 ring-muted-foreground/40",
 };
 
 const SEMAFORO_LABEL: Record<SemaforoColor, string> = {
@@ -89,6 +90,7 @@ const SEMAFORO_LABEL: Record<SemaforoColor, string> = {
   arancione: "A rischio — scaduto fermo oltre 60 giorni, importo contenuto",
   giallo: "Da tenere d'occhio — ritardi sistematici ma nessuna sofferenza",
   verde: "Affidabile — pagamenti regolari",
+  spento: "Nessuna esperienza di pagamento",
 };
 
 type SemaforoPre = { stadio: SemaforoColor | null; motivo: string | null; numero: number | null };
@@ -1202,6 +1204,7 @@ function ClientiPage() {
         <SelectItem value="giallo">🟡 Giallo</SelectItem>
         <SelectItem value="arancione">🟠 Arancione</SelectItem>
         <SelectItem value="rosso">🔴 Rosso</SelectItem>
+        <SelectItem value="spento">⚪ Spento</SelectItem>
       </SelectContent>
     </Select>
   );
