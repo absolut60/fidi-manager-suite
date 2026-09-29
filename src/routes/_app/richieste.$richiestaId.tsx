@@ -172,7 +172,7 @@ function RichiestaDetail() {
   );
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3">
       {/* 1) TESTATA COMPATTA — una riga su desktop, due su mobile */}
       <div className="space-y-2">
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 sm:flex sm:items-center">
@@ -214,26 +214,26 @@ function RichiestaDetail() {
         <div className="flex flex-wrap items-center gap-2 sm:hidden">{badgeTipo}{badgeStato}</div>
       </div>
 
-      {/* 2) TRE CARD IN EVIDENZA */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="p-5 border-info/40 bg-info/5">
+      {/* 2) QUATTRO RIQUADRI COMPATTI */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <Card className="col-span-2 lg:col-span-1 min-w-0 p-3 sm:p-4 border-info/40 bg-info/5">
           <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
             Importo richiesto
           </p>
-          <p className="mt-2 text-2xl sm:text-3xl font-bold tabular-nums text-info break-words">
+          <p className="mt-1 text-xl sm:text-2xl font-bold tabular-nums text-info break-words">
             {formatEuro(Number(r.importo_richiesto))}
           </p>
-          <p className="mt-2 text-xs text-muted-foreground">
+          <p className="mt-1 text-xs text-muted-foreground">
             Fido attuale <span className="font-medium text-foreground tabular-nums">{formatEuro(fidoAttuale)}</span>
             {" · "}durata <span className="font-medium text-foreground">{r.durata_mesi} mesi</span>
           </p>
           {r.importo_approvato != null && (
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="mt-0.5 text-xs text-muted-foreground">
               Approvato: <span className="font-medium text-foreground tabular-nums">{formatEuro(Number(r.importo_approvato))}</span>
             </p>
           )}
           {condPagCod && (
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="mt-0.5 text-xs text-muted-foreground break-words">
               Cond. pagamento:{" "}
               <span className="font-medium text-foreground">
                 <span className="font-mono">{condPagCod}</span>
@@ -243,13 +243,12 @@ function RichiestaDetail() {
           )}
         </Card>
 
-
-        <Card className="p-5">
+        <Card className="min-w-0 p-3 sm:p-4">
           <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
             Livello richiesto
           </p>
-          <p className="mt-2 text-2xl font-bold">{LIVELLO_LABEL[r.livello_richiesto]}</p>
-          <p className="mt-2 text-xs text-muted-foreground">
+          <p className="mt-1 text-xl sm:text-2xl font-bold break-words">{LIVELLO_LABEL[r.livello_richiesto]}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
             {r.stato === "in_approvazione"
               ? <>In attesa · livello corrente <span className="font-medium text-foreground">Liv. {r.livello_corrente}</span></>
               : r.stato === "bozza"
@@ -258,17 +257,41 @@ function RichiestaDetail() {
           </p>
         </Card>
 
-        <Card className="p-5">
+        <Card className="min-w-0 p-3 sm:p-4">
           <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
             Semaforo rischio
           </p>
-          <div className="mt-2 flex items-center gap-2.5">
-            <span className={`inline-block size-3.5 rounded-full ${sem.dotClass}`} />
-            <span className={`text-2xl font-bold ${sem.textClass}`}>{sem.label}</span>
+          <div className="mt-1 flex items-center gap-2">
+            <span className={`inline-block size-3 shrink-0 rounded-full ${sem.dotClass}`} />
+            <span className={`text-xl sm:text-2xl font-bold ${sem.textClass}`}>{sem.label}</span>
           </div>
-          <p className="mt-2 text-xs text-muted-foreground">{sem.motivo}</p>
+          <p className="mt-1 text-xs text-muted-foreground break-words">{sem.motivo}</p>
+        </Card>
+
+        <Card className="col-span-2 lg:col-span-1 min-w-0 p-3 sm:p-4">
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+            Richiesta
+          </p>
+          <dl className="mt-1 space-y-0.5 text-xs sm:text-sm">
+            <Info label="Richiesto da" value={userNameDet((r as any).richiedente)} />
+            <Info label="Inviata il" value={formatDate(dataInvio)} />
+            <Info label="Punto vendita" value={storeNome} />
+            <Info label="Scadenza fido" value={formatDate(r.data_scadenza)} />
+            {(r.stato === "approvata" || r.stato === "rifiutata") && (
+              <Info
+                label={r.stato === "approvata" ? "Approvato da" : "Rifiutato da"}
+                value={`${userNameDet((r as any).approvatore)}${(r as any).data_approvazione ? ` · ${formatDate((r as any).data_approvazione)}` : r.data_chiusura ? ` · ${formatDate(r.data_chiusura)}` : ""}`}
+              />
+            )}
+            {r.data_chiusura && (
+              <Info label="Chiusa il" value={formatDate(r.data_chiusura)} />
+            )}
+          </dl>
         </Card>
       </div>
+
+      {/* Motivazione — riga compatta */}
+      {r.motivazione && <MotivazioneRiga testo={r.motivazione} />}
 
       {/* 3) BOX DECISIONE — subito sotto, raggiungibile senza scrollare */}
       {r.stato === "in_approvazione" && (
@@ -286,32 +309,22 @@ function RichiestaDetail() {
         </div>
       )}
 
-      {/* Motivazione */}
-      {r.motivazione && (
-        <Card className="p-5">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
-            Motivazione
-          </p>
-          <p className="text-sm whitespace-pre-wrap">{r.motivazione}</p>
-        </Card>
-      )}
-
       {/* 4) QUADRO CLIENTE — variante estesa con metric card */}
       {cliente && (
-        <Card className="p-5">
+        <Card className="p-4">
           <PannelloRischioCliente cliente={cliente} variant="extended" />
         </Card>
       )}
 
-      {/* 5) WORKFLOW + DATI RICHIESTA */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card className="p-5 space-y-3">
-          <h2 className="font-semibold">Workflow approvazione</h2>
+      {/* 5) WORKFLOW (step orizzontali) + STORICO DECISIONI */}
+      <Card className="p-4 space-y-3">
+        <h2 className="font-semibold">Workflow approvazione</h2>
+        <ol className="flex flex-wrap gap-x-6 gap-y-3">
           {[1, 2, 3].slice(0, r.livello_richiesto).map((liv) => {
             const done = approvazioni?.find((a) => a.livello === liv);
             const isCurrent = r.stato === "in_approvazione" && r.livello_corrente === liv;
             return (
-              <div key={liv} className="flex items-start gap-3">
+              <li key={liv} className="flex min-w-0 items-start gap-2">
                 <div className={`size-7 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 ${
                   done?.esito === "approvata" ? "bg-success/15 text-success" :
                   done?.esito === "rifiutata" ? "bg-destructive/15 text-destructive" :
@@ -320,10 +333,10 @@ function RichiestaDetail() {
                   {done?.esito === "approvata" ? <Check className="size-3.5" /> :
                    done?.esito === "rifiutata" ? <X className="size-3.5" /> : liv}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">Livello {liv}</p>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium leading-tight">Livello {liv}</p>
                   {done ? (
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground break-words">
                       {done.esito === "approvata" ? "Approvato" : "Rifiutato"} da {(done as any).profili?.nome ?? "—"} {(done as any).profili?.cognome ?? ""} il {formatDate(done.created_at)}
                     </p>
                   ) : isCurrent ? (
@@ -332,75 +345,55 @@ function RichiestaDetail() {
                     <p className="text-xs text-muted-foreground">Da svolgere</p>
                   )}
                 </div>
-              </div>
+              </li>
             );
           })}
-        </Card>
+        </ol>
 
-        <Card className="p-5 space-y-3">
-          <h2 className="font-semibold">Dati richiesta</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-            <Info label="Richiesto da" value={userNameDet((r as any).richiedente)} />
-            <Info label="Inviata il" value={formatDate(dataInvio)} />
-            <Info label="Punto vendita" value={storeNome} />
-            <Info label="Scadenza fido" value={formatDate(r.data_scadenza)} />
-            {(r.stato === "approvata" || r.stato === "rifiutata") && (
-              <Info
-                label={r.stato === "approvata" ? "Approvato da" : "Rifiutato da"}
-                value={`${userNameDet((r as any).approvatore)}${(r as any).data_approvazione ? ` · ${formatDate((r as any).data_approvazione)}` : r.data_chiusura ? ` · ${formatDate(r.data_chiusura)}` : ""}`}
-              />
-            )}
-            {r.data_chiusura && (
-              <Info label="Chiusa il" value={formatDate(r.data_chiusura)} />
-            )}
+        {approvazioni && approvazioni.length > 0 && (
+          <div className="border-t pt-3">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Storico decisioni</h3>
+            <ul className="space-y-1">
+              {approvazioni.map((a) => (
+                <li key={a.id} className="text-sm border-l-2 pl-2 break-words"
+                  style={{ borderColor: a.esito === "approvata" ? "var(--success)" : "var(--destructive)" }}>
+                  <strong>Liv. {a.livello}</strong> — {a.esito === "approvata" ? "Approvata" : "Rifiutata"}
+                  {a.importo_approvato && ` · ${formatEuro(Number(a.importo_approvato))}`}
+                  <span className="text-xs text-muted-foreground">
+                    {" · "}{(a as any).profili?.nome ?? ""} {(a as any).profili?.cognome ?? ""} · {formatDate(a.created_at)}
+                  </span>
+                  {a.note && <span className="text-xs"> — {a.note}</span>}
+                </li>
+              ))}
+            </ul>
           </div>
-        </Card>
-      </div>
-
-      {/* Storico decisioni (se ci sono) */}
-      {approvazioni && approvazioni.length > 0 && (
-        <Card className="p-5">
-          <h2 className="font-semibold mb-3">Storico decisioni</h2>
-          <div className="space-y-3">
-            {approvazioni.map((a) => (
-              <div key={a.id} className="flex items-start gap-3 text-sm border-l-2 pl-3"
-                style={{ borderColor: a.esito === "approvata" ? "var(--success)" : "var(--destructive)" }}>
-                <div className="flex-1">
-                  <p>
-                    <strong>Liv. {a.livello}</strong> — {a.esito === "approvata" ? "Approvata" : "Rifiutata"}
-                    {a.importo_approvato && ` · ${formatEuro(Number(a.importo_approvato))}`}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {(a as any).profili?.nome ?? ""} {(a as any).profili?.cognome ?? ""} · {formatDate(a.created_at)}
-                  </p>
-                  {a.note && <p className="text-xs mt-1">{a.note}</p>}
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
-
-      {/* 6) ALLEGATI + COMUNICAZIONI (invariati) */}
-      <Card className="p-5">
-        <AllegatiSection
-          entitaTipo="richiesta_fido"
-          entitaId={r.id}
-          clienteId={r.cliente_id}
-          title="Allegati richiesta"
-          canEdit={
-            isAdmin ||
-            isAmministrazione ||
-            roles.includes("direzione") ||
-            livelloUtente > 0 ||
-            isOwner
-          }
-        />
+        )}
       </Card>
 
-      {r.stato !== "bozza" && r.created_by && (
-        <ComunicazioniRichiestaPanel richiestaId={r.id} richiestaCreatedBy={r.created_by} />
-      )}
+      {/* 6) ALLEGATI + COMUNICAZIONI (affiancati su xl) */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-start">
+        <Card className="p-4 min-w-0">
+          <AllegatiSection
+            entitaTipo="richiesta_fido"
+            entitaId={r.id}
+            clienteId={r.cliente_id}
+            title="Allegati richiesta"
+            canEdit={
+              isAdmin ||
+              isAmministrazione ||
+              roles.includes("direzione") ||
+              livelloUtente > 0 ||
+              isOwner
+            }
+          />
+        </Card>
+
+        {r.stato !== "bozza" && r.created_by && (
+          <div className="min-w-0">
+            <ComunicazioniRichiestaPanel richiestaId={r.id} richiestaCreatedBy={r.created_by} />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -413,9 +406,27 @@ function userNameDet(p: any): string {
 
 function Info({ label, value }: { label: string; value: string }) {
   return (
-    <div>
-      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</p>
-      <p className="font-medium mt-0.5">{value}</p>
+    <div className="flex min-w-0 gap-1.5">
+      <dt className="shrink-0 text-muted-foreground">{label}:</dt>
+      <dd className="min-w-0 font-medium break-words">{value}</dd>
+    </div>
+  );
+}
+
+function MotivazioneRiga({ testo }: { testo: string }) {
+  const [aperta, setAperta] = useState(false);
+  const lunga = testo.length > 240 || testo.split("\n").length > 3;
+  return (
+    <div className="text-sm min-w-0">
+      <p className={`whitespace-pre-wrap break-words ${!aperta && lunga ? "line-clamp-3" : ""}`}>
+        <span className="font-medium text-muted-foreground">Motivazione: </span>
+        {testo}
+      </p>
+      {lunga && (
+        <button type="button" className="text-xs text-primary hover:underline mt-0.5" onClick={() => setAperta((v) => !v)}>
+          {aperta ? "mostra meno" : "mostra tutto"}
+        </button>
+      )}
     </div>
   );
 }
@@ -425,7 +436,7 @@ function DecisioneReadOnly({
   livelloUtente,
 }: { livelloRichiesto: number; livelloUtente: number }) {
   return (
-    <Card className="p-5 border-muted bg-muted/30">
+    <Card className="p-4 border-muted bg-muted/30">
       <div className="flex items-start gap-3">
         <div className="size-9 rounded-full bg-muted flex items-center justify-center shrink-0">
           <Lock className="size-4 text-muted-foreground" />
@@ -479,8 +490,8 @@ function ApprovaForm({ richiesta }: { richiesta: any; userId: string }) {
   });
 
   return (
-    <Card className="p-5 border-info/40 bg-info/5">
-      <h2 className="font-semibold mb-3">
+    <Card className="p-4 border-info/40 bg-info/5">
+      <h2 className="font-semibold mb-2">
         Decisione <span className="text-xs font-normal text-muted-foreground">(richiede livello {richiesta.livello_richiesto})</span>
       </h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
