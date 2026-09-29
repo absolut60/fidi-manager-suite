@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Outlet, useMatchRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import {
@@ -177,11 +177,15 @@ function RichiestePage() {
       ? inAttesa.filter((r) => r.livello_corrente === livello).length
       : inAttesa.length;
     const approvateMese = all.filter((r) => r.stato === "approvata" && r.data_chiusura && r.data_chiusura >= inizioMese).length;
-    const valoreInAttesa = (isApprovatore && !hasFullVisibility
+    const insiemeInAttesa = isApprovatore && !hasFullVisibility
       ? inAttesa.filter((r) => r.livello_corrente === livello)
-      : inAttesa
-    ).reduce((s, r) => s + Number(r.importo_richiesto ?? 0), 0);
-    return { bozze, inAttesaCount, approvateMese, valoreInAttesa };
+      : inAttesa;
+    const valoreInAttesa = insiemeInAttesa.reduce((s, r) => s + Number(r.importo_richiesto ?? 0), 0);
+    // Stesso insieme: somma del fido attuale dei clienti, contato una volta
+    // per richiesta (un cliente con piu' richieste pesa per ogni richiesta).
+    const fidoAttualeInAttesa = insiemeInAttesa.reduce((s, r) => s + getFidoAttuale(r.clienti), 0);
+    const differenzaInAttesa = valoreInAttesa - fidoAttualeInAttesa;
+    return { bozze, inAttesaCount, approvateMese, valoreInAttesa, fidoAttualeInAttesa, differenzaInAttesa };
   }, [all, user?.id, isStoreManager, isApprovatore, hasFullVisibility, livello, inizioMese]);
 
   const bozze = all.filter((r) => r.stato === "bozza");
@@ -243,7 +247,27 @@ function RichiestePage() {
         <KpiCard icon={FileText} tone="text-muted-foreground" label="Bozze da inviare" value={String(kpi.bozze)} />
         <KpiCard icon={Clock} tone="text-info" label="In attesa approvazione" value={String(kpi.inAttesaCount)} />
         <KpiCard icon={CheckCircle2} tone="text-success" label="Approvate questo mese" value={String(kpi.approvateMese)} />
-        <KpiCard icon={Wallet} tone="text-primary" label="Valore in approvazione" value={formatEuro(kpi.valoreInAttesa)} />
+        <KpiCard
+          icon={Wallet}
+          tone="text-primary"
+          label="Valore in approvazione"
+          value={formatEuro(kpi.valoreInAttesa)}
+          extra={
+            <div className="mt-1.5 space-y-0.5 text-xs sm:text-sm tabular-nums" title="Fido attuale e differenza sono calcolati per richiesta: un cliente con più richieste in approvazione è contato una volta per ogni richiesta.">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-2 min-w-0">
+                <span className="text-muted-foreground">Fido attuale</span>
+                <span className="break-words">{formatEuro(kpi.fidoAttualeInAttesa)}</span>
+              </div>
+              <div className="flex flex-wrap items-baseline justify-between gap-x-2 min-w-0">
+                <span className="text-muted-foreground">Differenza</span>
+                <span className={`break-words font-medium ${kpi.differenzaInAttesa >= 0 ? "text-info" : "text-destructive"}`}>
+                  {kpi.differenzaInAttesa >= 0 ? "+" : "−"}{formatEuro(Math.abs(kpi.differenzaInAttesa))}
+                </span>
+              </div>
+              <p className="text-[11px] text-muted-foreground/80">calcolato per richiesta</p>
+            </div>
+          }
+        />
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
@@ -329,7 +353,7 @@ function RichiestePage() {
   );
 }
 
-function KpiCard({ icon: Icon, tone, label, value }: { icon: any; tone: string; label: string; value: string }) {
+function KpiCard({ icon: Icon, tone, label, value, extra }: { icon: any; tone: string; label: string; value: string; extra?: ReactNode }) {
   return (
     <Card className="p-4">
       <div className="flex items-center gap-2 min-w-0">
@@ -337,6 +361,7 @@ function KpiCard({ icon: Icon, tone, label, value }: { icon: any; tone: string; 
         <p className="text-xs text-muted-foreground min-w-0">{label}</p>
       </div>
       <p className="text-xl sm:text-2xl font-bold mt-2 tabular-nums break-words">{value}</p>
+      {extra}
     </Card>
   );
 }
