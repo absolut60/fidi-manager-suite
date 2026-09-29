@@ -27,7 +27,6 @@ import { getFidoAttuale } from "@/lib/fido-cliente";
 import { RICHIESTA_FIDO_SELECT } from "@/lib/richieste-fido-data";
 import { semaforoUI, semaforoDaCliente } from "@/lib/semaforo-ui";
 import { FiltriCollassabili } from "@/components/lista-responsive";
-import { NuovaComunicazioneDialog } from "@/components/nuova-comunicazione-dialog";
 
 export const Route = createFileRoute("/_app/approvazioni")({
   component: ApprovazioniPage,
@@ -74,10 +73,6 @@ function ApprovazioniPage() {
   const [action, setAction] = useState<"approva" | "rifiuta" | null>(null);
   const [bulkNote, setBulkNote] = useState("");
   const [bulkMotivo, setBulkMotivo] = useState("");
-  const [detail, setDetail] = useState<any | null>(null);
-  const [singleAction, setSingleAction] = useState<"approva" | "rifiuta" | "integrazioni" | null>(null);
-  const [comunicazioneFor, setComunicazioneFor] = useState<any | null>(null);
-  const [singleNote, setSingleNote] = useState("");
 
   // Filtri
   const [fStore, setFStore] = useState("all");
@@ -251,38 +246,6 @@ function ApprovazioniPage() {
     onSuccess: (_d, esito) => {
       toast.success(`${selectedRichieste.length} richieste ${esito === "approvata" ? "approvate" : "rifiutate"}`);
       setSelected(new Set()); setAction(null); setBulkNote(""); setBulkMotivo("");
-      qc.invalidateQueries({ queryKey: ["approvazioni-queue"] });
-      qc.invalidateQueries({ queryKey: ["richieste"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const single = useMutation({
-    mutationFn: async (esito: "approvata" | "rifiutata") => {
-      if (!detail) throw new Error("Nessuna richiesta");
-      await processaRichiesta(detail, esito, singleNote);
-    },
-    onSuccess: (_d, esito) => {
-      toast.success(`Richiesta ${esito === "approvata" ? "approvata" : "rifiutata"}`);
-      setDetail(null); setSingleAction(null); setSingleNote("");
-      qc.invalidateQueries({ queryKey: ["approvazioni-queue"] });
-      qc.invalidateQueries({ queryKey: ["richieste"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const integrazioni = useMutation({
-    mutationFn: async () => {
-      if (!detail || !user) throw new Error("Errore");
-      if (!singleNote.trim()) throw new Error("Specifica le integrazioni richieste");
-      const { error } = await supabase.from("richieste_fido")
-        .update({ stato: "integrazioni_richieste", note: singleNote })
-        .eq("id", detail.id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Integrazioni richieste");
-      setDetail(null); setSingleAction(null); setSingleNote("");
       qc.invalidateQueries({ queryKey: ["approvazioni-queue"] });
       qc.invalidateQueries({ queryKey: ["richieste"] });
     },
@@ -468,7 +431,7 @@ function ApprovazioniPage() {
                     <div className="flex items-start justify-between gap-3 flex-wrap">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className={`inline-block size-2.5 rounded-full ${sem.dotClass}`} title={`Semaforo: ${sem.label}`} />
+                          <span className={`inline-block size-2.5 shrink-0 rounded-full ${sem.dotClass}`} title={`Rischio: ${sem.label} — ${sem.motivo}`} aria-label={`Rischio: ${sem.label}`} />
                           <Link
                             to="/clienti/$clienteId"
                             params={{ clienteId: r.cliente_id }}
@@ -523,192 +486,6 @@ function ApprovazioniPage() {
         </div>
       )}
 
-      {/* DETTAGLIO SHEET */}
-      <Sheet open={detail !== null} onOpenChange={(o) => { if (!o) { setDetail(null); setSingleAction(null); setSingleNote(""); } }}>
-        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
-          {detail && (() => {
-            const c = detail.clienti ?? {};
-            const sem = semaforoCli(c);
-            const residuo = Number(c.fido_residuo ?? 0);
-            const scaduto = Number(c.scaduto ?? 0);
-            const creatore = (detail as any).richiedente ?? (detail as any).profilo;
-            return (
-              <>
-                <SheetHeader>
-                  <SheetTitle className="flex items-center gap-2">
-                    <span className={`inline-block size-3 rounded-full ${sem.dotClass}`} />
-                    {c.ragione_sociale ?? "—"}
-                  </SheetTitle>
-                  <SheetDescription>
-                    <Link
-                      to="/clienti/$clienteId"
-                      params={{ clienteId: detail.cliente_id }}
-                      search={{ from: "approvazioni" }}
-                      className="text-primary hover:underline inline-flex items-center gap-1"
-                    >
-                      Apri scheda cliente completa <ExternalLink className="size-3" />
-                    </Link>
-                  </SheetDescription>
-                </SheetHeader>
-
-                <div className="mt-6 space-y-5">
-                  <section>
-                    <h3 className="text-sm font-semibold mb-2">Dati richiesta</h3>
-                    <div className="grid grid-cols-2 gap-3 text-sm">
-                      <Field label="Tipo">
-                        <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[detail.tipo as TipoRichiesta]}`}>
-                          {etichettaTipoRichiesta(detail.tipo, Number(detail.importo_approvato ?? detail.importo_richiesto))}
-                        </span>
-                      </Field>
-                      <Field label="Importo richiesto"><strong className="tabular-nums">{formatEuro(Number(detail.importo_richiesto))}</strong></Field>
-                      <Field label="Durata">{detail.durata_mesi} mesi</Field>
-                      <Field label="Livello">{detail.livello_corrente}/{detail.livello_richiesto}</Field>
-                      <Field label="Store">{(detail.clienti as any)?.stores?.nome ?? "—"}</Field>
-                      <Field label="Data creazione">{formatDate(detail.created_at)}</Field>
-                      <Field label="Data invio">{formatDate(detail.data_invio)}</Field>
-                      <Field label="Creata da">
-                        {creatore ? `${creatore.nome ?? ""} ${creatore.cognome ?? ""}`.trim() || creatore.email : "—"}
-                      </Field>
-                    </div>
-                    {detail.motivazione && (
-                      <div className="mt-3">
-                        <p className="text-xs text-muted-foreground">Motivazione</p>
-                        <p className="text-sm whitespace-pre-wrap">{detail.motivazione}</p>
-                      </div>
-                    )}
-                    {detail.note && (
-                      <div className="mt-3">
-                        <p className="text-xs text-muted-foreground">Note</p>
-                        <p className="text-sm whitespace-pre-wrap">{detail.note}</p>
-                      </div>
-                    )}
-                  </section>
-
-                  <section className="border-t pt-4">
-                    <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
-                      Dati rischio cliente
-                      <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${sem.toneClass}`}>{sem.label}</span>
-                    </h3>
-                    <div className="grid grid-cols-2 gap-3 text-sm">
-                      <Field label="Fido gestionale">{formatEuro(Number(c.fido_gestionale ?? 0))}</Field>
-                      <Field label="Totale rischio">{formatEuro(Number(c.totale_rischio ?? 0))}</Field>
-                      <Field label="Fido residuo"><span className={residuo < 0 ? "text-destructive font-medium" : ""}>{formatEuro(residuo)}</span></Field>
-                      <Field label="Scaduto"><span className={scaduto > 0 ? "text-destructive font-medium" : ""}>{formatEuro(scaduto)}</span></Field>
-                      <Field label="A scadere">{formatEuro(Number(c.a_scadere ?? 0))}</Field>
-                      <Field label="DDT da fatturare">
-                        <span className={Number(c.doc_da_fatturare ?? 0) > 0 ? "text-primary font-medium" : ""}>
-                          {formatEuro(Number(c.doc_da_fatturare ?? 0))}
-                        </span>
-                      </Field>
-                      <Field label="Effetti a rischio (RB)">
-                        <span className={Number(c.effetti_a_rischio ?? 0) > 0 ? "text-warning font-medium" : ""}>
-                          {formatEuro(Number(c.effetti_a_rischio ?? 0))}
-                        </span>
-                      </Field>
-                      <Field label="Ordini da evadere">
-                        <span>{formatEuro(Number(c.doc_da_evadere ?? 0))}</span>
-                        <span className="text-xs text-muted-foreground ml-1">(non concorre al fido)</span>
-                      </Field>
-                      <Field label="Insoluti">
-                        <span className={Number(c.num_insoluti ?? 0) > 0 ? "text-destructive font-medium" : ""}>
-                          {c.num_insoluti ?? 0}
-                        </span>
-                      </Field>
-                      <Field label="Condizione pagamento">{c.condizione_pagamento_desc ?? c.condizioni_pagamento ?? "—"}</Field>
-                      <Field label="Dilazione concordata">{c.dilazione_concordata ?? "—"} gg</Field>
-                      <Field label="Dilazione effettiva">{c.dilazione_effettiva ?? "—"} gg</Field>
-                      {(() => {
-                        const r = ritardoHelper(c.dilazione_concordata, c.dilazione_effettiva);
-                        return (
-                          <Field label="Ritardo medio reale">
-                            <span className={r.cls} title="Differenza tra dilazione effettiva e concordata">{r.text}</span>
-                          </Field>
-                        );
-                      })()}
-                      <Field label="Stato">
-                        {c.bloccato ? <Badge className="bg-destructive/15 text-destructive">Bloccato</Badge>
-                          : c.in_gestione_legale ? <Badge className="bg-destructive/15 text-destructive">Legale</Badge>
-                          : c.cliente_attivo ? <Badge className="bg-success/15 text-success">Attivo</Badge>
-                          : <Badge variant="secondary">Non attivo</Badge>}
-                      </Field>
-                    </div>
-                    {c.ultima_sincronizzazione && (
-                      <p className="text-xs text-muted-foreground mt-3">
-                        Ultima sincronizzazione: {new Date(c.ultima_sincronizzazione).toLocaleString("it-IT")}
-                      </p>
-                    )}
-                  </section>
-
-                  <section className="border-t pt-4 space-y-3">
-                    <h3 className="text-sm font-semibold">Azioni</h3>
-                    {!canApproveRow(detail) && (
-                      <p className="text-xs rounded-md bg-warning/10 text-warning border border-warning/30 p-2">
-                        Richiede livello {detail.livello_richiesto}: puoi solo consultare la richiesta. L'approvazione e' riservata ad un approvatore di livello {detail.livello_richiesto} o superiore.
-                      </p>
-                    )}
-                    {singleAction && (
-                      <Textarea
-                        placeholder={
-                          singleAction === "integrazioni" ? "Specifica quali integrazioni richiedere (obbligatorio)"
-                            : singleAction === "rifiuta" ? "Motivo del rifiuto (consigliato)"
-                            : "Note (opzionali)"
-                        }
-                        value={singleNote}
-                        onChange={(e) => setSingleNote(e.target.value)}
-                        rows={3}
-                      />
-                    )}
-                    <div className="flex flex-wrap gap-2">
-                      {singleAction === null ? (
-                        <>
-                          <Button
-                            className="bg-success text-success-foreground hover:bg-success/90"
-                            onClick={() => setSingleAction("approva")}
-                            disabled={!canApproveRow(detail)}
-                          ><Check className="size-4" /> Approva</Button>
-                          <Button
-                            variant="outline" className="text-destructive border-destructive/30"
-                            onClick={() => setSingleAction("rifiuta")}
-                            disabled={!canApproveRow(detail)}
-                          ><X className="size-4" /> Rifiuta</Button>
-                          <Button
-                            variant="outline"
-                            onClick={() => setComunicazioneFor(detail)}
-                          ><MessageSquare className="size-4" /> Richiedi integrazioni</Button>
-                        </>
-                      ) : (
-                        <>
-                          <Button variant="ghost" onClick={() => { setSingleAction(null); setSingleNote(""); }}>Annulla</Button>
-                          {singleAction === "approva" && (
-                            <Button
-                              className="bg-success text-success-foreground hover:bg-success/90"
-                              onClick={() => single.mutate("approvata")}
-                              disabled={single.isPending}
-                            >Conferma approvazione</Button>
-                          )}
-                          {singleAction === "rifiuta" && (
-                            <Button
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              onClick={() => single.mutate("rifiutata")}
-                              disabled={single.isPending}
-                            >Conferma rifiuto</Button>
-                          )}
-                          {singleAction === "integrazioni" && (
-                            <Button
-                              onClick={() => integrazioni.mutate()}
-                              disabled={integrazioni.isPending || !singleNote.trim()}
-                            >Invia richiesta integrazioni</Button>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </section>
-                </div>
-              </>
-            );
-          })()}
-        </SheetContent>
-      </Sheet>
 
       {/* DIALOG MASSIVO */}
       <Dialog open={action !== null} onOpenChange={(o) => !o && setAction(null)}>
@@ -760,13 +537,6 @@ function ApprovazioniPage() {
         </DialogContent>
       </Dialog>
 
-      <NuovaComunicazioneDialog
-        open={!!comunicazioneFor}
-        onOpenChange={(o) => !o && setComunicazioneFor(null)}
-        richiestaId={comunicazioneFor?.id ?? ""}
-        clienteRagioneSociale={comunicazioneFor?.clienti?.ragione_sociale}
-        defaultDestinatario="richiedente"
-      />
     </div>
   );
 }

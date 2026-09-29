@@ -49,7 +49,6 @@ import {
 } from "@/lib/fidi";
 import { getFidoAttuale } from "@/lib/fido-cliente";
 import { RICHIESTA_FIDO_SELECT } from "@/lib/richieste-fido-data";
-import { NuovaComunicazioneDialog } from "@/components/nuova-comunicazione-dialog";
 import { PannelloRischioCliente } from "@/components/pannello-rischio-cliente";
 import { semaforoUI, semaforoDaCliente } from "@/lib/semaforo-ui";
 import { SchedaLista, ElencoSchede } from "@/components/lista-responsive";
@@ -506,6 +505,7 @@ function BozzeTab({
           <TableRow>
             <TableHead className="w-8"><Checkbox checked={allSel} onCheckedChange={() => setSelected(allSel ? new Set() : new Set(rows.map((r) => r.id)))} /></TableHead>
             <TableHead>Cliente</TableHead>
+                <TableHead className="w-16 text-center">Rischio</TableHead>
             <TableHead>Tipo</TableHead>
             <TableHead className="text-right">Importo richiesto</TableHead>
             <TableHead className="text-right">Fido attuale</TableHead>
@@ -583,7 +583,6 @@ function InApprovazioneTab({
   const [action, setAction] = useState<{ kind: "approva" | "rifiuta" | "integrazioni"; rows: any[] } | null>(null);
   const [importoApprovato, setImportoApprovato] = useState<string>("");
   const [note, setNote] = useState("");
-  const [comunicazioneFor, setComunicazioneFor] = useState<any | null>(null);
 
   const { data: msgNonLetti } = useQuery({
     queryKey: ["comunicazioni-non-lette", user?.id],
@@ -821,6 +820,7 @@ function InApprovazioneTab({
               <TableRow>
                 {canApprove && <TableHead className="w-8"><Checkbox checked={allSel} onCheckedChange={() => setSelected(allSel ? new Set() : new Set(filtered.map((r) => r.id)))} /></TableHead>}
                 <TableHead>Cliente</TableHead>
+                <TableHead className="w-16 text-center">Rischio</TableHead>
                 {!isStoreManagerView(canApprove) && <TableHead>Store</TableHead>}
                 <TableHead>Tipo</TableHead>
                 <TableHead className="text-right">Importo</TableHead>
@@ -875,19 +875,7 @@ function InApprovazioneTab({
                             {unread}
                           </span>
                         )}
-                        {canApprove && livMio ? (
-                          <>
-                            <Button size="sm" variant="ghost" className="text-success h-8" onClick={() => { setImportoApprovato(String(r.importo_richiesto)); setAction({ kind: "approva", rows: [r] }); }}>
-                              <Check className="size-4" /> Approva
-                            </Button>
-                            <Button size="sm" variant="ghost" className="text-info h-8" onClick={() => setComunicazioneFor(r)} title="Invia comunicazione (richiedi integrazioni)">
-                              <MessageSquareWarning className="size-4" />
-                            </Button>
-                            <Button size="sm" variant="ghost" className="text-destructive h-8" onClick={() => setAction({ kind: "rifiuta", rows: [r] })}>
-                              <X className="size-4" /> Rifiuta
-                            </Button>
-                          </>
-                        ) : (r.stato === "integrazioni_richieste" || r.stato === "bozza") ? (
+                        {!(canApprove && livMio) && (r.stato === "integrazioni_richieste" || r.stato === "bozza") ? (
                           <Button size="sm" variant="ghost" className="text-destructive h-8" onClick={() => annullaMut.mutate(r)}>
                             <Ban className="size-4" /> Annulla
                           </Button>
@@ -996,13 +984,6 @@ function InApprovazioneTab({
         </DialogContent>
       </Dialog>
 
-      <NuovaComunicazioneDialog
-        open={!!comunicazioneFor}
-        onOpenChange={(o) => !o && setComunicazioneFor(null)}
-        richiestaId={comunicazioneFor?.id ?? ""}
-        clienteRagioneSociale={comunicazioneFor?.clienti?.ragione_sociale}
-        defaultDestinatario="richiedente"
-      />
     </div>
   );
 }
@@ -1094,6 +1075,7 @@ function StoricoTab({
             <TableHeader>
               <TableRow>
                 <TableHead>Cliente</TableHead>
+                <TableHead className="w-16 text-center">Rischio</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead className="text-right">Importo richiesto</TableHead>
                 {kind === "approvata" && <TableHead className="text-right">Importo approvato</TableHead>}
@@ -1231,6 +1213,7 @@ function TuttoTab({ rows, loading, msgCounts }: { rows: any[]; loading: boolean;
           <TableHeader>
             <TableRow>
               <TableHead>Cliente</TableHead>
+                <TableHead className="w-16 text-center">Rischio</TableHead>
               <TableHead>Store</TableHead>
               <TableHead>Tipo</TableHead>
               <TableHead className="text-right">Importo</TableHead>
