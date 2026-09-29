@@ -86,6 +86,24 @@ export function calcolaLivello(importo: number, soglie: SoglieFido = SOGLIE_DEFA
   return 3;
 }
 
+/** Livello approvatore dell'utente dai ruoli: 3 > 2 > 1, 0 se nessuno. */
+export function livelloApprovatore(roles: readonly string[]): 0 | 1 | 2 | 3 {
+  if (roles.includes("approvatore_liv3")) return 3;
+  if (roles.includes("approvatore_liv2")) return 2;
+  if (roles.includes("approvatore_liv1")) return 1;
+  return 0;
+}
+
+/**
+ * FONTE UNICA: l'utente puo' decidere (approvare/rifiutare) una richiesta
+ * del livello indicato? Amministratore sempre; altrimenti livello approvatore
+ * >= livello richiesto. Lo stato della richiesta va controllato a parte.
+ */
+export function puoDecidereRichiesta(roles: readonly string[], livelloRichiesto: number | null | undefined): boolean {
+  if (roles.includes("amministratore")) return true;
+  return livelloApprovatore(roles) >= Number(livelloRichiesto ?? 99);
+}
+
 export function livelloLabel(liv: number, soglie: SoglieFido = SOGLIE_DEFAULT): string {
   if (liv === 1) return `Liv. 1 (≤ ${formatEuroCompact(soglie.liv1)})`;
   if (liv === 2) return `Liv. 2 (≤ ${formatEuroCompact(soglie.liv2)})`;

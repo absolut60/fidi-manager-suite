@@ -97,7 +97,7 @@ function RichiestaDetail() {
     roles.includes("approvatore_liv1") ? 1 : 0;
 
   const canApprove = r?.stato === "in_approvazione" &&
-    (isAdmin || livelloUtente >= (r?.livello_richiesto ?? 99));
+    puoDecidereRichiesta(roles, r?.livello_richiesto ?? 99);
   const isOwner = !!user?.id && r?.created_by === user.id;
   const canDelete = isAdmin || isAmministrazione || isOwner;
   const canSubmit = r?.stato === "bozza" && r?.created_by === user?.id;
