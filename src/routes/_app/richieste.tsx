@@ -89,6 +89,84 @@ function semaforoCli(c: any) {
   return semaforoUI(stadio, motivo);
 }
 
+/** Stato unico dei filtri della pagina Richieste fido. */
+type FiltriRichieste = {
+  store: string; tipo: string; rischio: string;
+  importoMin: string; importoMax: string; giorniMin: string;
+};
+const FILTRI_VUOTI: FiltriRichieste = { store: "tutti", tipo: "tutti", rischio: "tutti", importoMin: "", importoMax: "", giorniMin: "" };
+const STADI_RISCHIO = ["verde", "giallo", "arancione", "rosso", "spento"] as const;
+
+function filtriAttivi(f: FiltriRichieste): boolean {
+  return f.store !== "tutti" || f.tipo !== "tutti" || f.rischio !== "tutti" || !!f.importoMin || !!f.importoMax || !!f.giorniMin;
+}
+
+/**
+ * Fonte unica del filtro: usata da lista, KPI e contatori delle schede.
+ * "Giorni attesa" vale solo per le richieste in attesa di decisione.
+ */
+function filtraRichieste(righe: any[], f: FiltriRichieste): any[] {
+  return righe.filter((r) => {
+    if (f.store !== "tutti" && r.clienti?.store_id !== f.store) return false;
+    if (f.tipo !== "tutti" && r.tipo !== f.tipo) return false;
+    if (f.rischio !== "tutti" && semaforoDaCliente(r.clienti).stadio !== f.rischio) return false;
+    if (f.importoMin && Number(r.importo_richiesto) < Number(f.importoMin)) return false;
+    if (f.importoMax && Number(r.importo_richiesto) > Number(f.importoMax)) return false;
+    if (f.giorniMin && STATI_IN_APPROVAZIONE.includes(r.stato) && giorniDa(r.data_invio) < Number(f.giorniMin)) return false;
+    return true;
+  });
+}
+
+function FiltriRichiesteBar({ filtri, onChange, stores }: { filtri: FiltriRichieste; onChange: (f: FiltriRichieste) => void; stores: [string, string][] }) {
+  const set = (k: keyof FiltriRichieste, v: string) => onChange({ ...filtri, [k]: v });
+  return (
+    <Card className="p-3 flex flex-wrap gap-2 items-center">
+      {stores.length > 1 && (
+        <Select value={filtri.store} onValueChange={(v) => set("store", v)}>
+          <SelectTrigger className="flex-1 min-w-[160px] sm:flex-none sm:w-44"><SelectValue placeholder="Store" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="tutti">Tutti gli store</SelectItem>
+            {stores.map(([id, nome]) => <SelectItem key={id} value={id}>{nome}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      )}
+      <Select value={filtri.tipo} onValueChange={(v) => set("tipo", v)}>
+        <SelectTrigger className="flex-1 min-w-[160px] sm:flex-none sm:w-40"><SelectValue placeholder="Tipo" /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="tutti">Tutti i tipi</SelectItem>
+          <SelectItem value="nuovo">Nuovo fido</SelectItem>
+          <SelectItem value="aumento">Aumento</SelectItem>
+          <SelectItem value="diminuzione">Diminuzione</SelectItem>
+          <SelectItem value="rinnovo">Rinnovo</SelectItem>
+        </SelectContent>
+      </Select>
+      <Select value={filtri.rischio} onValueChange={(v) => set("rischio", v)}>
+        <SelectTrigger className="flex-1 min-w-[160px] sm:flex-none sm:w-40"><SelectValue placeholder="Rischio" /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="tutti">Tutti i rischi</SelectItem>
+          {STADI_RISCHIO.map((st) => {
+            const ui = semaforoUI(st);
+            return (
+              <SelectItem key={st} value={st}>
+                <span className="inline-flex items-center gap-2">
+                  <span className={`size-2.5 shrink-0 rounded-full ${ui.dotClass}`} />
+                  {ui.label}
+                </span>
+              </SelectItem>
+            );
+          })}
+        </SelectContent>
+      </Select>
+      <Input className="flex-1 min-w-[140px] sm:flex-none sm:min-w-0 sm:w-28" type="number" placeholder="Importo min" value={filtri.importoMin} onChange={(e) => set("importoMin", e.target.value)} />
+      <Input className="flex-1 min-w-[140px] sm:flex-none sm:min-w-0 sm:w-28" type="number" placeholder="Importo max" value={filtri.importoMax} onChange={(e) => set("importoMax", e.target.value)} />
+      <Input className="flex-1 min-w-[140px] sm:flex-none sm:min-w-0 sm:w-32" type="number" placeholder="Giorni attesa ≥" title="Vale solo per le richieste in attesa di decisione" value={filtri.giorniMin} onChange={(e) => set("giorniMin", e.target.value)} />
+      {filtriAttivi(filtri) && (
+        <Button variant="ghost" size="sm" className="h-10" onClick={() => onChange(FILTRI_VUOTI)}>Azzera filtri</Button>
+      )}
+    </Card>
+  );
+}
+
 function userName(p: any): string {
   if (!p) return "—";
   const n = `${p.nome ?? ""} ${p.cognome ?? ""}`.trim();
@@ -161,7 +239,17 @@ function RichiestePage() {
     },
   });
 
-  const all = richieste ?? [];
+  const tutteRichieste = richieste ?? [];
+  const [filtri, setFiltri] = useState<FiltriRichieste>(FILTRI_VUOTI);
+  const storesFiltro = useMemo(() => {
+    const map = new Map<string, string>();
+    tutteRichieste.forEach((r: any) => {
+      if (r.clienti?.store_id && r.clienti?.stores?.nome) map.set(r.clienti.store_id, r.clienti.stores.nome);
+    });
+    return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1], "it"));
+  }, [tutteRichieste]);
+  // Righe filtrate: base unica per KPI, contatori schede e liste.
+  const all = useMemo(() => filtraRichieste(tutteRichieste, filtri), [tutteRichieste, filtri]);
 
   // KPI calcoli
   const oraMese = new Date();
@@ -189,7 +277,7 @@ function RichiestePage() {
   }, [all, user?.id, isStoreManager, isApprovatore, hasFullVisibility, livello, inizioMese]);
 
   const bozze = all.filter((r) => r.stato === "bozza");
-  const inApprovazione = all.filter((r) => {
+  const inCodaUtente = (r: any) => {
     if (!STATI_IN_APPROVAZIONE.includes(r.stato)) return false;
     // Visibilita': admin/amministrazione/direzione vedono tutto.
     // Un approvatore puro vede tutte le richieste del proprio livello corrente
@@ -198,7 +286,9 @@ function RichiestePage() {
     // tramite link diretto se serve consultare gli altri livelli).
     if (isApprovatore && !hasFullVisibility) return r.livello_corrente === livello;
     return true;
-  });
+  };
+  const inApprovazione = all.filter(inCodaUtente);
+
   const approvate = all.filter((r) => r.stato === "approvata");
   const rifiutate = all.filter((r) => r.stato === "rifiutata" || r.stato === "annullata");
 
@@ -270,6 +360,8 @@ function RichiestePage() {
         />
       </div>
 
+      <FiltriRichiesteBar filtri={filtri} onChange={setFiltri} stores={storesFiltro} />
+
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           {!isApprovatore || isAdmin ? (
@@ -303,6 +395,7 @@ function RichiestePage() {
         <TabsContent value="in_approvazione" className="mt-4">
           <InApprovazioneTab
             rows={inApprovazione}
+            righeCodaNonFiltrate={tutteRichieste.filter(inCodaUtente)}
             loading={isLoading}
             canApprove={isAdmin || isApprovatore}
             livelloUtente={livello}
@@ -488,19 +581,14 @@ function BozzeTab({
 
 /* ====================== IN APPROVAZIONE TAB ====================== */
 function InApprovazioneTab({
-  rows, loading, canApprove, livelloUtente, isAdmin, onChanged,
+  rows, righeCodaNonFiltrate, loading, canApprove, livelloUtente, isAdmin, onChanged,
 }: {
-  rows: any[]; loading: boolean; canApprove: boolean; livelloUtente: number; isAdmin: boolean; onChanged: () => void;
+  rows: any[]; righeCodaNonFiltrate: any[]; loading: boolean; canApprove: boolean; livelloUtente: number; isAdmin: boolean; onChanged: () => void;
 }) {
 
   const { user } = useAuth();
   const navigate = useNavigate();
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [storeFilter, setStoreFilter] = useState("tutti");
-  const [tipoFilter, setTipoFilter] = useState("tutti");
-  const [importoMin, setImportoMin] = useState("");
-  const [importoMax, setImportoMax] = useState("");
-  const [giorniMin, setGiorniMin] = useState("");
   const [action, setAction] = useState<{ kind: "approva" | "rifiuta" | "integrazioni"; rows: any[] } | null>(null);
   const [importoApprovato, setImportoApprovato] = useState<string>("");
   const [note, setNote] = useState("");
@@ -524,25 +612,11 @@ function InApprovazioneTab({
     refetchInterval: 30000,
   });
 
-  const stores = useMemo(() => {
-    const map = new Map<string, string>();
-    rows.forEach((r) => {
-      const cStoreId = r.clienti?.store_id;
-      const cStoreNome = r.clienti?.stores?.nome;
-      if (cStoreId && cStoreNome) map.set(cStoreId, cStoreNome);
-    });
-    return Array.from(map.entries());
-  }, [rows]);
-
-  const filtered = rows
-    .filter((r) => storeFilter === "tutti" || r.clienti?.store_id === storeFilter)
-    .filter((r) => tipoFilter === "tutti" || r.tipo === tipoFilter)
-    .filter((r) => !importoMin || Number(r.importo_richiesto) >= Number(importoMin))
-    .filter((r) => !importoMax || Number(r.importo_richiesto) <= Number(importoMax))
-    .filter((r) => !giorniMin || giorniDa(r.data_invio) >= Number(giorniMin))
+  // rows arriva gia' filtrato dalla pagina (filtraRichieste): qui solo ordinamento.
+  const filtered = [...rows]
     .sort((a, b) => Number(b.importo_richiesto) - Number(a.importo_richiesto));
 
-  const clienteIdsInCoda = useMemo(() => Array.from(new Set(rows.map((r) => r.cliente_id))), [rows]);
+  const clienteIdsInCoda = useMemo(() => Array.from(new Set(righeCodaNonFiltrate.map((r) => r.cliente_id))), [righeCodaNonFiltrate]);
   const { data: altreApprovateNonEsportate } = useQuery({
     queryKey: ["altre-approvate-non-esportate", clienteIdsInCoda.slice().sort().join(",")],
     enabled: clienteIdsInCoda.length > 0,
@@ -560,11 +634,11 @@ function InApprovazioneTab({
   const altreAttiveMap = useMemo(() => {
     const map = new Map<string, number>();
     const countByCliente = new Map<string, number>();
-    rows.forEach((r) => countByCliente.set(r.cliente_id, (countByCliente.get(r.cliente_id) ?? 0) + 1));
+    righeCodaNonFiltrate.forEach((r) => countByCliente.set(r.cliente_id, (countByCliente.get(r.cliente_id) ?? 0) + 1));
     countByCliente.forEach((n, cid) => { if (n > 1) map.set(cid, (map.get(cid) ?? 0) + n - 1); });
     (altreApprovateNonEsportate ?? []).forEach((r) => map.set(r.cliente_id, (map.get(r.cliente_id) ?? 0) + 1));
     return map;
-  }, [rows, altreApprovateNonEsportate]);
+  }, [righeCodaNonFiltrate, altreApprovateNonEsportate]);
 
   function toggle(id: string) {
     const next = new Set(selected);
@@ -646,31 +720,6 @@ function InApprovazioneTab({
 
   return (
     <div className="space-y-3">
-      {/* Filtri */}
-      <Card className="p-3 flex flex-wrap gap-2 items-center">
-        {stores.length > 1 && (
-          <Select value={storeFilter} onValueChange={setStoreFilter}>
-            <SelectTrigger className="flex-1 min-w-[160px] sm:flex-none sm:w-44"><SelectValue placeholder="Store" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="tutti">Tutti gli store</SelectItem>
-              {stores.map(([id, nome]) => <SelectItem key={id} value={id}>{nome}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        )}
-        <Select value={tipoFilter} onValueChange={setTipoFilter}>
-          <SelectTrigger className="flex-1 min-w-[160px] sm:flex-none sm:w-40"><SelectValue placeholder="Tipo" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="tutti">Tutti i tipi</SelectItem>
-            <SelectItem value="nuovo">Nuovo fido</SelectItem>
-            <SelectItem value="aumento">Aumento</SelectItem>
-            <SelectItem value="diminuzione">Diminuzione</SelectItem>
-            <SelectItem value="rinnovo">Rinnovo</SelectItem>
-          </SelectContent>
-        </Select>
-        <Input className="flex-1 min-w-[140px] sm:flex-none sm:min-w-0 sm:w-28" type="number" placeholder="Importo min" value={importoMin} onChange={(e) => setImportoMin(e.target.value)} />
-        <Input className="flex-1 min-w-[140px] sm:flex-none sm:min-w-0 sm:w-28" type="number" placeholder="Importo max" value={importoMax} onChange={(e) => setImportoMax(e.target.value)} />
-        <Input className="flex-1 min-w-[140px] sm:flex-none sm:min-w-0 sm:w-32" type="number" placeholder="Giorni attesa ≥" value={giorniMin} onChange={(e) => setGiorniMin(e.target.value)} />
-      </Card>
 
       {filtered.length === 0 ? (
         <Empty label="Nessuna richiesta in approvazione" hint="" />
