@@ -16,14 +16,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { useConfig } from "@/hooks/use-config";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { STATO_LABEL, calcolaLivello, formatEuro, isRichiestaAttiva, determinaTipoRichiesta, importoRichiestaValido, etichettaTipoRichiesta } from "@/lib/fidi";
 import { getFidoAttuale } from "@/lib/fido-cliente";
 import { PannelloRischioCliente } from "@/components/pannello-rischio-cliente";
-import { useAuth as _ua } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/use-auth";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const STATI_IN_APPROVAZIONE_FORM = ["in_approvazione", "in_attesa_liv1", "in_attesa_liv2", "in_attesa_liv3", "integrazioni_richieste"];
 

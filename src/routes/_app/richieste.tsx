@@ -117,23 +117,7 @@ function RichiestePage() {
   const defaultTab = isApprovatore && !isAdmin ? "in_approvazione" : "bozze";
   const [tab, setTab] = useState<string>(defaultTab);
   const [openNew, setOpenNew] = useState(false);
-  const [editing, setEditing] = useState<any | null>(null);
-  const [editConfirm, setEditConfirm] = useState<any | null>(null);
-  const [deleting, setDeleting] = useState<any | null>(null);
 
-  const isOwn = (r: any) => !!user?.id && r?.created_by === user.id;
-  const canEditOrDeleteRow = (r: any) => isAdmin || isAmministrazione || isOwn(r);
-
-  function handleEdit(r: any) {
-    if (r.stato === "bozza" || !canEditOrDeleteRow(r)) {
-      setEditing(r);
-    } else {
-      setEditConfirm(r);
-    }
-  }
-  function handleDelete(r: any) {
-    if (canEditOrDeleteRow(r)) setDeleting(r);
-  }
 
 
   const { data: richieste, isLoading } = useQuery({
@@ -213,18 +197,6 @@ function RichiestePage() {
   const approvate = all.filter((r) => r.stato === "approvata");
   const rifiutate = all.filter((r) => r.stato === "rifiutata" || r.stato === "annullata");
 
-  const deleteMut = useMutation({
-    mutationFn: async (r: any) => {
-      const { error } = await supabase.from("richieste_fido").delete().eq("id", r.id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Richiesta eliminata");
-      qcInvalidate();
-      setDeleting(null);
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
 
   const qc = useQueryClient();
   // Invalidazione + refetch IMMEDIATO di tutte le query osservate che
@@ -298,8 +270,6 @@ function RichiestePage() {
           <BozzeTab
             rows={bozze}
             loading={isLoading}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
             onChanged={qcInvalidate}
             msgCounts={msgCounts}
           />
@@ -314,8 +284,6 @@ function RichiestePage() {
             isAdmin={isAdmin}
             onChanged={qcInvalidate}
             currentUserId={user?.id}
-            onEditOwn={handleEdit}
-            onDeleteOwn={handleDelete}
           />
         </TabsContent>
 
@@ -331,11 +299,8 @@ function RichiestePage() {
             rows={approvate}
             loading={isLoading}
             kind="approvata"
-            onRiinvia={null}
             msgCounts={msgCounts}
             currentUserId={user?.id}
-            onEditOwn={handleEdit}
-            onDeleteOwn={handleDelete}
           />
         </TabsContent>
 
@@ -344,11 +309,8 @@ function RichiestePage() {
             rows={rifiutate}
             loading={isLoading}
             kind="rifiutata"
-            onRiinvia={(r) => setEditing({ ...r, _riinvia: true })}
             msgCounts={msgCounts}
             currentUserId={user?.id}
-            onEditOwn={handleEdit}
-            onDeleteOwn={handleDelete}
           />
         </TabsContent>
 
@@ -364,73 +326,7 @@ function RichiestePage() {
         {openNew && <RichiestaFormDialog onClose={() => setOpenNew(false)} onSaved={qcInvalidate} />}
       </Dialog>
 
-      <Dialog open={!!editing} onOpenChange={(v) => !v && setEditing(null)}>
-        {editing && (
-          <RichiestaFormDialog
-            richiesta={editing._riinvia ? undefined : editing}
-            cloneFrom={editing._riinvia ? editing : undefined}
-            onClose={() => setEditing(null)}
-            onSaved={qcInvalidate}
-          />
-        )}
-      </Dialog>
-
-      <AlertDialog open={!!editConfirm} onOpenChange={(v) => !v && setEditConfirm(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {editConfirm?.stato === "approvata"
-                ? "⚠️ Modificare una richiesta GIÀ APPROVATA?"
-                : STATI_IN_APPROVAZIONE.includes(editConfirm?.stato)
-                ? "Modificare una richiesta IN APPROVAZIONE?"
-                : "Modificare la richiesta?"}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {editConfirm?.stato === "approvata"
-                ? "Questa richiesta è già stata approvata e potrebbe essere già stata esportata nel gestionale. Modificarla può creare disallineamenti con il fido già concesso. Procedere?"
-                : STATI_IN_APPROVAZIONE.includes(editConfirm?.stato)
-                ? "Questa richiesta è in approvazione: modificandola l'iter potrebbe essere interrotto o ripartire da capo. Procedere?"
-                : "Stai modificando una richiesta non più in bozza. Procedere?"}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Annulla</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => { e.preventDefault(); const r = editConfirm; setEditConfirm(null); if (r) setEditing(r); }}
-            >Procedi con la modifica</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={!!deleting} onOpenChange={(v) => !v && setDeleting(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {deleting?.stato === "approvata"
-                ? "⚠️ Eliminare una richiesta GIÀ APPROVATA?"
-                : STATI_IN_APPROVAZIONE.includes(deleting?.stato)
-                ? "Eliminare una richiesta IN APPROVAZIONE?"
-                : "Eliminare la richiesta?"}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {deleting?.stato === "approvata"
-                ? "Questa richiesta è già stata approvata e potrebbe essere già stata esportata nel gestionale. Eliminarla può creare disallineamenti. L'operazione è irreversibile. Procedere?"
-                : STATI_IN_APPROVAZIONE.includes(deleting?.stato)
-                ? "Questa richiesta è in approvazione: eliminandola l'iter verrà interrotto. L'operazione è irreversibile. Procedere?"
-                : "L'operazione è irreversibile."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Annulla</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={(e) => { e.preventDefault(); if (deleting) deleteMut.mutate(deleting); }}
-              disabled={deleteMut.isPending}
-            >Elimina</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
+ 
     </div>
   );
 }
