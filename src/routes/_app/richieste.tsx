@@ -247,7 +247,27 @@ function RichiestePage() {
         <KpiCard icon={FileText} tone="text-muted-foreground" label="Bozze da inviare" value={String(kpi.bozze)} />
         <KpiCard icon={Clock} tone="text-info" label="In attesa approvazione" value={String(kpi.inAttesaCount)} />
         <KpiCard icon={CheckCircle2} tone="text-success" label="Approvate questo mese" value={String(kpi.approvateMese)} />
-        <KpiCard icon={Wallet} tone="text-primary" label="Valore in approvazione" value={formatEuro(kpi.valoreInAttesa)} />
+        <KpiCard
+          icon={Wallet}
+          tone="text-primary"
+          label="Valore in approvazione"
+          value={formatEuro(kpi.valoreInAttesa)}
+          extra={
+            <div className="mt-1.5 space-y-0.5 text-xs sm:text-sm tabular-nums" title="Fido attuale e differenza sono calcolati per richiesta: un cliente con più richieste in approvazione è contato una volta per ogni richiesta.">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-2 min-w-0">
+                <span className="text-muted-foreground">Fido attuale</span>
+                <span className="break-words">{formatEuro(kpi.fidoAttualeInAttesa)}</span>
+              </div>
+              <div className="flex flex-wrap items-baseline justify-between gap-x-2 min-w-0">
+                <span className="text-muted-foreground">Differenza</span>
+                <span className={`break-words font-medium ${kpi.differenzaInAttesa >= 0 ? "text-info" : "text-destructive"}`}>
+                  {kpi.differenzaInAttesa >= 0 ? "+" : "−"}{formatEuro(Math.abs(kpi.differenzaInAttesa))}
+                </span>
+              </div>
+              <p className="text-[11px] text-muted-foreground/80">calcolato per richiesta</p>
+            </div>
+          }
+        />
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
