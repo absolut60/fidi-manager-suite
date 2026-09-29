@@ -123,7 +123,8 @@ function DashboardPage() {
       {/* Contatori operativi cliccabili */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <ContatoreCard
-          to="/richieste?tab=in_approvazione"
+          to="/richieste"
+          search={{ tab: "in_approvazione" }}
           icon={CheckCheck}
           label="Richieste da approvare"
           valore={contatori?.richiesteDaApprovare}
@@ -191,9 +192,10 @@ function DashboardPage() {
 }
 
 function ContatoreCard({
-  to, icon: Icon, label, valore, tone = "muted", isAnchor,
+  to, search, icon: Icon, label, valore, tone = "muted", isAnchor,
 }: {
   to: string;
+  search?: Record<string, string>;
   icon: typeof Bell;
   label: string;
   valore: number | undefined;
@@ -216,5 +218,5 @@ function ContatoreCard({
   );
 
   if (isAnchor) return <a href={to} className="block">{inner}</a>;
-  return <Link to={to} className="block">{inner}</Link>;
+  return <Link to={to} search={search as any} className="block">{inner}</Link>;
 }
