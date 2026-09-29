@@ -214,8 +214,8 @@ export function PannelloRischioCliente({
           </span>
         </div>
 
-        {/* 4 metric card in evidenza */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* Metriche quadro + esperienza pagamento in un'unica griglia */}
+        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-2">
           <MetricCard label="Totale rischio" value={formatEuro(totRischio)} />
           <MetricCard
             label="Scaduto"
@@ -231,10 +231,11 @@ export function PannelloRischioCliente({
             label={`Fatturato ${annoPrec}`}
             value={fatt ? formatEuro(fatt.prev) : "—"}
           />
+          <EsperienzaPagamentoCards esp={esp} />
         </div>
 
         {/* Dettaglio raggruppato in 2 colonne */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-0 text-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-x-6 gap-y-0 text-sm">
           <DetailRow label="Fido gestionale">
             <span className="tabular-nums font-medium">{formatEuro(fidoAttuale)}</span>
             {ultimoApprovatoImp != null && (
@@ -276,17 +277,23 @@ export function PannelloRischioCliente({
               {cliente.dilazione_effettiva != null ? " gg" : ""}
             </span>
           </DetailRow>
-          <DetailRow label="Semaforo affidabilità">
-            <SemaforoAffidabilita sem={sem ?? null} />
-          </DetailRow>
-
         </div>
 
-        <EsperienzaPagamentoBlock esp={esp} variant="extended" />
-        <ValutazioneEsternaBlock cliente={cliente} variant="extended" />
-
-
-        <div className="border-t pt-3 flex flex-wrap items-center gap-2 text-xs">
+        <div className="border-t pt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="text-muted-foreground">Valutazione esterna:</span>
+            {cliente?.rating_esterno ? (
+              <span className="text-sm font-medium break-words">{cliente.rating_esterno}</span>
+            ) : (
+              <span className="text-muted-foreground">Non disponibile</span>
+            )}
+            {cliente?.rating_esterno_fonte && (
+              <span className="text-[11px] text-muted-foreground">
+                ({cliente.rating_esterno_fonte}{cliente.rating_esterno_data ? ` · ${formatDate(cliente.rating_esterno_data)}` : ""})
+              </span>
+            )}
+          </div>
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
           <span className="text-muted-foreground">Stato:</span>
           {cliente.bloccato ? (
             <span className="inline-flex rounded-md px-2 py-0.5 font-medium bg-destructive/15 text-destructive">
@@ -312,6 +319,7 @@ export function PannelloRischioCliente({
               · Ultima fatt. {formatDate(cliente.ultima_data_fatturazione)}
             </span>
           )}
+          </div>
         </div>
       </div>
     );
@@ -399,9 +407,9 @@ function MetricCard({
     tone === "info" ? "text-info" :
     tone === "success" ? "text-success" : "";
   return (
-    <div className="rounded-md bg-secondary px-3 py-2.5">
-      <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{label}</p>
-      <p className={`mt-1 text-base sm:text-lg font-semibold tabular-nums ${valueTone}`}>{value}</p>
+    <div className="min-w-0 rounded-md bg-secondary px-2.5 py-2">
+      <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide break-words">{label}</p>
+      <p className={`mt-0.5 text-base font-semibold tabular-nums break-words ${valueTone}`}>{value}</p>
       {subtext && (
         <p className="mt-0.5 text-[11px] text-muted-foreground">{subtext}</p>
       )}
@@ -411,10 +419,47 @@ function MetricCard({
 
 function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-3 py-1.5 border-b last:border-b-0 border-border/50">
+    <div className="flex items-center justify-between gap-3 py-1 border-b last:border-b-0 border-border/50">
       <span className="text-xs text-muted-foreground">{label}</span>
       <span className="text-right text-foreground font-medium">{children}</span>
     </div>
+  );
+}
+
+/** Variante extended: le 4 card esperienza dentro la griglia unica del quadro. */
+function EsperienzaPagamentoCards({ esp }: { esp: EspData }) {
+  if (!esp || esp.nPagate === 0) {
+    return (
+      <div className="col-span-2 min-w-0 rounded-md border border-dashed px-2.5 py-2">
+        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Esperienza pagamento</p>
+        <p className="mt-0.5 text-sm text-muted-foreground">Nessuno storico pagamenti</p>
+      </div>
+    );
+  }
+  const ritMedio = esp.ritardoMedio ?? 0;
+  const pct = esp.pctInRitardo ?? 0;
+  // Stesse soglie indicative di EsperienzaPagamentoBlock (NON è il semaforo)
+  const toneMedio: "neutral" | "destructive" | "success" =
+    ritMedio > 20 ? "destructive" : ritMedio > 5 ? "neutral" : "success";
+  const tonePct: "neutral" | "destructive" | "success" =
+    pct > 50 ? "destructive" : pct > 20 ? "neutral" : "success";
+  const pre = "Esp. ·";
+  return (
+    <>
+      <div className="col-span-2 md:col-span-4 xl:hidden border-t pt-2 text-[11px] text-muted-foreground">
+        Esperienza pagamento (su {esp.nPagate} scadenze pagate)
+      </div>
+      <div className="contents" title={`Esperienza pagamento (su ${esp.nPagate} scadenze pagate)`}>
+        <MetricCard label={`${pre} Ritardo medio`} value={`${ritMedio.toFixed(1)} gg`} tone={toneMedio} />
+        <MetricCard label={`${pre} Pagate in ritardo`} value={`${pct.toFixed(1)}%`} tone={tonePct} />
+        <MetricCard label={`${pre} N. ritardi`} value={`${esp.nInRitardo} su ${esp.nPagate}`} />
+        <MetricCard
+          label={`${pre} Ritardo massimo`}
+          value={`${esp.maxRitardo ?? 0} gg`}
+          tone={esp.maxRitardo != null && esp.maxRitardo > 60 ? "destructive" : "neutral"}
+        />
+      </div>
+    </>
   );
 }
 
