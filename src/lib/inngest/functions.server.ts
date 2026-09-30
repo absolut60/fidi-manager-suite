@@ -2209,6 +2209,23 @@ export const finalizeScadenziarioImport = inngest.createFunction(
         return true;
       });
 
+      // FM36: rilevazione clienti oltre 60gg → promemoria agenzia di recupero.
+      // Un errore di emissione NON fa fallire l'import.
+      await step.run("emetti-rilevazione-agenzia-recupero", async () => {
+        try {
+          await sendInngestEvents([
+            { name: "clienti/agenzia-recupero.rileva", data: { importazioneId } },
+          ]);
+        } catch (e) {
+          logger.error(
+            `Emissione rilevazione agenzia recupero fallita: ${e instanceof Error ? e.message : String(e)}`,
+          );
+        }
+        return true;
+      });
+
+
+
 
 
 
@@ -2700,6 +2717,20 @@ export const processScadAssicImport = inngest.createFunction(
         })
         .eq("id", importazioneId);
 
+      // FM36: rilevazione clienti oltre 60gg → promemoria agenzia di recupero.
+      // Un errore di emissione NON fa fallire l'import.
+      await step.run("emetti-rilevazione-agenzia-recupero", async () => {
+        try {
+          await sendInngestEvents([
+            { name: "clienti/agenzia-recupero.rileva", data: { importazioneId } },
+          ]);
+        } catch (e) {
+          logger.error(
+            `Emissione rilevazione agenzia recupero fallita: ${e instanceof Error ? e.message : String(e)}`,
+          );
+        }
+        return true;
+      });
 
       return { scadCreated, scadUpdated, assicCreated, assicUpdated };
     } catch (err) {
