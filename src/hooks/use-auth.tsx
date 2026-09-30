@@ -16,7 +16,7 @@ export type Profilo = {
   deve_cambiare_password?: boolean;
 };
 
-const ORDINE_RUOLI: AppRole[] = ["amministratore", "approvatore_liv3", "approvatore_liv2", "approvatore_liv1", "direzione", "responsabile_agenti", "store_manager", "marketing", "agente", "preventivi_manage", "preventivi_write", "preventivi_read", "approvatore_richieste_liv2", "approvatore_richieste_liv1", "gestore_richieste", "esecutore_richieste", "richiedente"];
+const ORDINE_RUOLI: AppRole[] = ["amministratore", "approvatore_liv3", "approvatore_liv2", "approvatore_liv1", "direzione", "responsabile_agenti", "store_manager", "marketing", "agente", "preventivi_manage", "preventivi_write", "preventivi_read", "approvatore_richieste_liv2", "approvatore_richieste_liv1", "gestore_richieste", "esecutore_richieste", "richiedente", "recupero_crediti"];
 
 type AuthContextValue = {
   session: Session | null;
@@ -167,4 +167,9 @@ export const RUOLI_LABEL: Record<AppRole, string> = {
   preventivi_manage: "Preventivi — Gestione",
   marketing_eventi: "Marketing Eventi",
   recupero_crediti: "Recupero crediti",
+};
+
+/** Descrizioni brevi opzionali, mostrate sotto l'etichetta nella scelta ruoli. */
+export const RUOLI_DESCRIZIONE: Partial<Record<AppRole, string>> = {
+  recupero_crediti: "Riceve i promemoria per il passaggio all'agenzia di recupero",
 };
