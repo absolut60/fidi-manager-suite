@@ -31,3 +31,9 @@
 - [x] Pagina /notifiche paginata con filtro e azioni di lettura
 - [x] Verifica TypeScript e compilazione; viewport autenticati non provabili senza account del richiedente
 
+## Richieste fido — interruttore "Solo quelle che posso decidere" (FM36 fetta 16)
+- [x] FiltriRichieste.soloDecidibili con valore iniziale per approvatori limitati (Liv. 1/2, non admin)
+- [x] filtraRichieste riceve roles: esclude solo le in attesa non decidibili (puoDecidereRichiesta, fonte unica)
+- [x] Switch in FiltriRichiesteBar con contatore decidibili in attesa su righe non filtrate
+- [x] "Azzera filtri" riporta il valore iniziale; filtriAttivi non conta l'interruttore
+- [x] Nota Liv. N in scheda "In approvazione" con interruttore spento; typecheck pulito

@@ -26,6 +26,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -107,8 +108,10 @@ type FiltriRichieste = {
   importoMin: string; importoMax: string; giorniMin: string;
   /** Ordinamento della lista "In approvazione" (non e' un filtro). */
   ordina: OrdinaRichieste;
+  /** Interruttore approvatori limitati: nasconde le richieste in attesa di livelli superiori (non e' un filtro). */
+  soloDecidibili: boolean;
 };
-const FILTRI_VUOTI: FiltriRichieste = { cerca: "", agente: "tutti", store: "tutti", tipo: "tutti", rischio: "tutti", livello: "tutti", importoMin: "", importoMax: "", giorniMin: "", ordina: "importo" };
+const FILTRI_VUOTI: FiltriRichieste = { cerca: "", agente: "tutti", store: "tutti", tipo: "tutti", rischio: "tutti", livello: "tutti", importoMin: "", importoMax: "", giorniMin: "", ordina: "importo", soloDecidibili: false };
 const STADI_RISCHIO = ["verde", "giallo", "arancione", "rosso", "spento"] as const;
 
 function filtriAttivi(f: FiltriRichieste): boolean {
@@ -124,7 +127,7 @@ function normalizzaRicerca(v: unknown): string {
   return String(v ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
 }
 
-function filtraRichieste(righe: any[], f: FiltriRichieste): any[] {
+function filtraRichieste(righe: any[], f: FiltriRichieste, roles: readonly string[]): any[] {
   const q = normalizzaRicerca(f.cerca);
   return righe.filter((r) => {
     const c = r.clienti;
@@ -138,6 +141,10 @@ function filtraRichieste(righe: any[], f: FiltriRichieste): any[] {
     if (f.importoMin && Number(r.importo_richiesto) < Number(f.importoMin)) return false;
     if (f.importoMax && Number(r.importo_richiesto) > Number(f.importoMax)) return false;
     if (f.giorniMin && STATI_IN_APPROVAZIONE.includes(r.stato) && giorniDa(r.data_invio) < Number(f.giorniMin)) return false;
+    // Interruttore "Solo quelle che posso decidere": nasconde solo le richieste
+    // in attesa di decisione su cui l'utente non puo' pronunciarsi (fonte unica
+    // puoDecidereRichiesta); bozze/approvate/rifiutate restano visibili.
+    if (f.soloDecidibili && STATI_IN_APPROVAZIONE.includes(r.stato) && !puoDecidereRichiesta(roles, r.livello_richiesto)) return false;
     return true;
   });
 }
@@ -150,7 +157,10 @@ function ordinaRichieste(righe: any[], ordina: OrdinaRichieste): any[] {
   return copia.sort((a, b) => Number(b.importo_richiesto) - Number(a.importo_richiesto));
 }
 
-function FiltriRichiesteBar({ filtri, onChange, stores }: { filtri: FiltriRichieste; onChange: (f: FiltriRichieste) => void; stores: [string, string][] }) {
+function FiltriRichiesteBar({ filtri, onChange, stores, approvatoreLimitato, soloDecidibiliIniziale, decidibiliInAttesa }: {
+  filtri: FiltriRichieste; onChange: (f: FiltriRichieste) => void; stores: [string, string][];
+  approvatoreLimitato: boolean; soloDecidibiliIniziale: boolean; decidibiliInAttesa: number;
+}) {
   const set = (k: keyof FiltriRichieste, v: string) => onChange({ ...filtri, [k]: v });
   // Stessa query (e cache) del filtro Agente dello scadenziario.
   const { data: agenti } = useQuery({
@@ -245,8 +255,27 @@ function FiltriRichiesteBar({ filtri, onChange, stores }: { filtri: FiltriRichie
           <SelectItem value="giorni">Ordina: Giorni in attesa</SelectItem>
         </SelectContent>
       </Select>
+      {/* Interruttore solo per approvatori con livello limitato: non e' un filtro,
+          quindi non compare in "Azzera filtri" e filtriAttivi non lo conta. */}
+      {approvatoreLimitato && (
+        <label className="flex items-center gap-2 flex-1 min-w-[200px] sm:flex-none h-10 cursor-pointer select-none">
+          <Switch
+            checked={filtri.soloDecidibili}
+            onCheckedChange={(v) => onChange({ ...filtri, soloDecidibili: v })}
+            aria-label="Solo quelle che posso decidere"
+          />
+          <span className="text-sm leading-tight min-w-0">
+            Solo quelle che posso decidere{" "}
+            <span className="text-muted-foreground whitespace-nowrap">({decidibiliInAttesa})</span>
+          </span>
+        </label>
+      )}
       {attivi && (
-        <Button variant="ghost" size="sm" className="h-10" onClick={() => { setCercaInput(""); onChange({ ...FILTRI_VUOTI, ordina: filtri.ordina }); }}>Azzera filtri</Button>
+        <Button variant="ghost" size="sm" className="h-10" onClick={() => {
+          setCercaInput("");
+          // "Azzera filtri" riporta l'interruttore al valore iniziale dell'utente.
+          onChange({ ...FILTRI_VUOTI, ordina: filtri.ordina, soloDecidibili: soloDecidibiliIniziale });
+        }}>Azzera filtri</Button>
       )}
     </Card>
   );
@@ -271,6 +300,9 @@ function RichiestePage() {
   const hasFullVisibility = isAdmin || isAmministrazione || isDirezione;
   // "Vede solo le proprie" = chi non ha visibilita' totale e non e' approvatore (= store_manager)
   const isStoreManager = !hasFullVisibility && !isApprovatore;
+  // Approvatore con livello limitato (Liv. 1 o 2, non admin): vede la scheda
+  // "In approvazione" con anche richieste che non puo' decidere → interruttore.
+  const approvatoreLimitato = !isAdmin && livello > 0 && livello < 3;
   // Puo' creare/inviare richieste: admin, store_manager, amministrazione, approvatori
   const canCreateRichiesta =
     isAdmin || isApprovatore || isAmministrazione || roles.includes("store_manager");
@@ -323,7 +355,7 @@ function RichiestePage() {
   });
 
   const tutteRichieste = richieste ?? [];
-  const [filtri, setFiltri] = useState<FiltriRichieste>(FILTRI_VUOTI);
+  const [filtri, setFiltri] = useState<FiltriRichieste>(() => ({ ...FILTRI_VUOTI, soloDecidibili: approvatoreLimitato }));
   const storesFiltro = useMemo(() => {
     const map = new Map<string, string>();
     tutteRichieste.forEach((r: any) => {
@@ -332,7 +364,13 @@ function RichiestePage() {
     return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1], "it"));
   }, [tutteRichieste]);
   // Righe filtrate: base unica per KPI, contatori schede e liste.
-  const all = useMemo(() => filtraRichieste(tutteRichieste, filtri), [tutteRichieste, filtri]);
+  const all = useMemo(() => filtraRichieste(tutteRichieste, filtri, roles), [tutteRichieste, filtri, roles]);
+  // Richieste in attesa che l'utente puo' decidere, sulle righe non filtrate
+  // (contatore tra parentesi dell'interruttore).
+  const decidibiliInAttesa = useMemo(
+    () => tutteRichieste.filter((r) => STATI_IN_APPROVAZIONE.includes(r.stato) && puoDecidereRichiesta(roles, r.livello_richiesto)).length,
+    [tutteRichieste, roles],
+  );
 
   // KPI calcoli
   const oraMese = new Date();
@@ -443,7 +481,7 @@ function RichiestePage() {
         />
       </div>
 
-      <FiltriRichiesteBar filtri={filtri} onChange={setFiltri} stores={storesFiltro} />
+      <FiltriRichiesteBar filtri={filtri} onChange={setFiltri} stores={storesFiltro} approvatoreLimitato={approvatoreLimitato} soloDecidibiliIniziale={approvatoreLimitato} decidibiliInAttesa={decidibiliInAttesa} />
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
@@ -476,6 +514,11 @@ function RichiestePage() {
         </TabsContent>
 
         <TabsContent value="in_approvazione" className="mt-4">
+          {approvatoreLimitato && !filtri.soloDecidibili && (
+            <p className="text-xs text-muted-foreground mb-2">
+              Le richieste con la casella grigia sono di un livello superiore al tuo (Liv. {livello}): puoi consultarle ma non deciderle.
+            </p>
+          )}
           <InApprovazioneTab
             rows={inApprovazione}
             righeCodaNonFiltrate={tutteRichieste.filter(inCodaUtente)}
