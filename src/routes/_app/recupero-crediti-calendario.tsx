@@ -245,6 +245,7 @@ function CalendarioPage() {
 
   const events = useMemo(() => {
     const now = Date.now();
+    const today = new Date().toLocaleDateString("sv-SE");
     const azEvents = (azioniQuery.data ?? []).map((a) => {
       const tipoCfg = TIPI.find((t) => t.value === a.tipo);
       const color = tipoCfg?.color ?? "#6b7280";
@@ -252,53 +253,75 @@ function CalendarioPage() {
       const isOverdue = start.getTime() < now;
       return {
         id: a.id,
-        title: `${a.cliente?.ragione_sociale ?? "—"} · ${tipoCfg?.label ?? a.tipo}`,
+        title: `${isOverdue ? "! " : ""}${a.cliente?.ragione_sociale ?? "—"}`,
         start: a.data_azione,
-        backgroundColor: isOverdue ? hexToRgba(color, 0.35) : color,
-        borderColor: isOverdue ? "#dc2626" : color,
-        textColor: isOverdue ? "#7f1d1d" : "#ffffff",
+        backgroundColor: color,
+        borderColor: color,
+        textColor: "#ffffff",
         classNames: isOverdue ? ["azione-arretrata"] : [],
-        extendedProps: { azione: a, isOverdue, kind: "azione" as const },
+        extendedProps: { azione: a, isOverdue, kind: "azione" as const, cliente: a.cliente?.ragione_sociale ?? "—", tipoLabel: tipoCfg?.label ?? a.tipo, note: a.note, importo: a.importo_riferimento },
       };
     });
     const rateEvents = (rateQuery.data ?? []).map((r) => {
-      const start = new Date(r.data_rata + "T09:00:00");
-      const isOverdue = start.getTime() < now;
+      const isOverdue = r.data_rata < today;
       const color = "#0ea5e9"; // sky-500 per differenziare
-      const importoFmt = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(Number(r.importo));
       return {
         id: `rata-${r.id}`,
-        title: `Rata #${r.numero_rata} · ${r.piano.cliente.ragione_sociale} · ${importoFmt}`,
-        start: start.toISOString(),
-        backgroundColor: isOverdue ? hexToRgba(color, 0.35) : color,
-        borderColor: isOverdue ? "#dc2626" : color,
-        textColor: isOverdue ? "#7f1d1d" : "#ffffff",
+        title: `${isOverdue ? "! " : ""}Rata #${r.numero_rata} · ${r.piano.cliente.ragione_sociale}`,
+        start: r.data_rata,
+        allDay: true,
+        backgroundColor: color,
+        borderColor: color,
+        textColor: "#ffffff",
         classNames: isOverdue ? ["azione-arretrata"] : [],
         editable: false,
-        extendedProps: { kind: "rata_piano" as const, rata: r },
+        extendedProps: { kind: "rata_piano" as const, rata: r, isOverdue, cliente: r.piano.cliente.ragione_sociale, tipoLabel: `Rata #${r.numero_rata}`, note: null, importo: r.importo },
       };
     });
     const promesseEvents = (promesseQuery.data ?? []).map((p) => {
-      const start = new Date(p.data_promessa_pagamento + "T09:00:00");
-      const isOverdue = start.getTime() < now;
+      const isOverdue = p.data_promessa_pagamento < today;
       const color = "#16a34a"; // green-600
       const importoFmt = p.importo_riferimento != null
-        ? " · " + new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(Number(p.importo_riferimento))
+        ? " · " + fmtEuro(p.importo_riferimento)
         : "";
       return {
         id: `promessa-${p.id}`,
-        title: `Promessa · ${p.cliente?.ragione_sociale ?? "—"}${importoFmt}`,
-        start: start.toISOString(),
-        backgroundColor: isOverdue ? hexToRgba(color, 0.35) : color,
-        borderColor: isOverdue ? "#dc2626" : color,
-        textColor: isOverdue ? "#7f1d1d" : "#ffffff",
+        title: `${isOverdue ? "! " : ""}${p.cliente?.ragione_sociale ?? "—"}${importoFmt}`,
+        start: p.data_promessa_pagamento,
+        allDay: true,
+        backgroundColor: color,
+        borderColor: color,
+        textColor: "#ffffff",
         classNames: isOverdue ? ["azione-arretrata"] : [],
         editable: false,
-        extendedProps: { kind: "promessa" as const, promessa: p },
+        extendedProps: { kind: "promessa" as const, promessa: p, isOverdue, cliente: p.cliente?.ragione_sociale ?? "—", tipoLabel: "Promessa di pagamento", note: p.note, importo: p.importo_riferimento },
       };
     });
     return [...azEvents, ...rateEvents, ...promesseEvents];
   }, [azioniQuery.data, rateQuery.data, promesseQuery.data]);
+
+  const visibleEvents = useMemo(() => events.filter((event) => {
+    if (soloMie && (event.extendedProps.kind !== "azione" || event.extendedProps.azione?.operatore_id !== user?.id)) return false;
+    if (soloArretrate && !event.extendedProps.isOverdue) return false;
+    if (cercaCliente.trim() && !event.extendedProps.cliente.toLocaleLowerCase("it-IT").includes(cercaCliente.trim().toLocaleLowerCase("it-IT"))) return false;
+    return true;
+  }), [events, soloMie, soloArretrate, cercaCliente, user?.id]);
+
+  function renderEventContent(info: EventContentArg) {
+    if (info.view.type !== "listWeek") return <span className="block truncate">{info.event.title}</span>;
+    const props = info.event.extendedProps;
+    return (
+      <div className="min-w-0 text-foreground text-sm">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+          <span className="font-semibold break-words">{props.isOverdue ? "! " : ""}{props.cliente}</span>
+          <span className="text-muted-foreground">{props.tipoLabel}</span>
+          {props.importo != null && <span className="tabular-nums">{fmtEuro(props.importo)}</span>}
+          {props.isOverdue && <span className="rounded-sm bg-destructive/10 px-1.5 py-0.5 text-xs font-medium text-destructive">In ritardo</span>}
+        </div>
+        {props.note && <div className="line-clamp-1 text-xs text-muted-foreground">{props.note}</div>}
+      </div>
+    );
+  }
 
   function handleDatesSet(arg: DatesSetArg) {
     const next = { start: arg.start.toISOString(), end: arg.end.toISOString() };
@@ -324,6 +347,7 @@ function CalendarioPage() {
     }
     toast.success("Attività riprogrammata");
     qc.invalidateQueries({ queryKey: ["azioni-calendario"] });
+    qc.invalidateQueries({ queryKey: ["azioni-calendario-arretrate"] });
     qc.invalidateQueries({ queryKey: ["azioni-recupero"] });
   }
 
@@ -376,6 +400,7 @@ function CalendarioPage() {
 
   function invalidateAzioniQueries() {
     qc.invalidateQueries({ queryKey: ["azioni-calendario"] });
+    qc.invalidateQueries({ queryKey: ["azioni-calendario-arretrate"] });
     qc.invalidateQueries({ queryKey: ["azioni-recupero"] });
     qc.invalidateQueries({ queryKey: ["recupero-clienti"] });
     qc.invalidateQueries({ queryKey: ["clienti-avvisati"] });
