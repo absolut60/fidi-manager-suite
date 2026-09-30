@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { NotificaRiga } from "@/components/notifiche/notifica-riga";
-import { contaNonLette, notificheNonLetteQueryKey, type Notifica } from "@/lib/notifiche";
+import { chiudiAvvisiNotifiche, chiudiTuttiGliAvvisi, contaNonLette, notificheNonLetteQueryKey, type Notifica } from "@/lib/notifiche";
 import {
   Popover,
   PopoverContent,
@@ -122,9 +122,9 @@ export function NotificationsBell() {
             // Nuovo elemento nel gruppo (o fuori lista): sale in cima.
             return [aggiornata, ...prev.filter((n) => n.id !== aggiornata.id)].slice(0, 30);
           });
-          if (!aggiornata.letta) {
-            void queryClient.invalidateQueries({ queryKey: notificheNonLetteQueryKey(user.id) });
-          }
+          // Sempre: una lettura fatta su un altro dispositivo si riflette subito qui.
+          void queryClient.invalidateQueries({ queryKey: notificheNonLetteQueryKey(user.id) });
+          if (aggiornata.letta) void chiudiAvvisiNotifiche([aggiornata.id]);
         }
       )
       .subscribe();
@@ -151,6 +151,7 @@ export function NotificationsBell() {
     if (eraNonLetta && user?.id) {
       queryClient.setQueryData<number>(notificheNonLetteQueryKey(user.id), (corrente = 0) => Math.max(0, corrente - 1));
     }
+    void chiudiAvvisiNotifiche([id]);
   }
 
   async function segnaTutteLette() {
@@ -163,6 +164,7 @@ export function NotificationsBell() {
     if (error) throw error;
     setNotifiche((prev) => prev.map((n) => ({ ...n, letta: true })));
     queryClient.setQueryData(notificheNonLetteQueryKey(user.id), 0);
+    void chiudiTuttiGliAvvisi();
   }
 
   return (

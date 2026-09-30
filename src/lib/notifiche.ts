@@ -28,3 +28,49 @@ export async function contaNonLette(userId: string): Promise<number> {
   if (error) throw error;
   return count ?? 0;
 }
+
+async function registrazioneSw(): Promise<ServiceWorkerRegistration | null> {
+  if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return null;
+  try {
+    return await navigator.serviceWorker.ready;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Chiude sul dispositivo gli avvisi di sistema delle notifiche indicate
+ * (tag 'notifica-<id>', come impostato dall'invio push). Mai bloccante.
+ */
+export async function chiudiAvvisiNotifiche(ids: string[]): Promise<void> {
+  try {
+    if (ids.length === 0) return;
+    const reg = await registrazioneSw();
+    if (!reg) return;
+    for (const id of ids) {
+      const avvisi = await reg.getNotifications({ tag: `notifica-${id}` });
+      avvisi.forEach((a) => a.close());
+    }
+  } catch {
+    // non supportato: si ignora
+  }
+}
+
+/** Chiude tutti gli avvisi di sistema dell'app e azzera il numero sull'icona. Mai bloccante. */
+export async function chiudiTuttiGliAvvisi(): Promise<void> {
+  try {
+    const reg = await registrazioneSw();
+    if (reg) {
+      const avvisi = await reg.getNotifications();
+      avvisi.forEach((a) => a.close());
+    }
+  } catch {
+    // non supportato: si ignora
+  }
+  try {
+    const nav = navigator as Navigator & { clearAppBadge?: () => Promise<void> };
+    await nav.clearAppBadge?.();
+  } catch {
+    // non supportato: si ignora
+  }
+}
