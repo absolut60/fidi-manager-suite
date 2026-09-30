@@ -1,26 +1,28 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
+import listPlugin from "@fullcalendar/list";
 import itLocale from "@fullcalendar/core/locales/it";
-import type { DatesSetArg, EventClickArg, EventDropArg, DateSelectArg } from "@fullcalendar/core";
+import type { DatesSetArg, EventClickArg, EventDropArg, DateSelectArg, EventContentArg } from "@fullcalendar/core";
 import type { DateClickArg } from "@fullcalendar/interaction";
-import { CalendarClock, ExternalLink, ChevronDown, Plus, HandCoins, Search } from "lucide-react";
+import { CalendarClock, ExternalLink, ChevronDown, Plus, HandCoins, Search, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CreaAzioneDialog } from "@/components/crea-azione-dialog";
 import { ModificaAzioneDialog, type AzioneModificabile } from "@/components/modifica-azione-dialog";
 import { RegistraPromessaDialog } from "@/components/registra-promessa-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { useEffect } from "react";
 import {
   Select,
   SelectContent,
@@ -37,6 +39,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export const Route = createFileRoute("/_app/recupero-crediti-calendario")({
+  head: () => ({ meta: [
+    { title: "Calendario recupero crediti | FidiManager" },
+    { name: "description", content: "Attività, promesse e rate del recupero crediti nel calendario." },
+    { property: "og:title", content: "Calendario recupero crediti | FidiManager" },
+    { property: "og:description", content: "Attività, promesse e rate del recupero crediti nel calendario." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: CalendarioPage,
 });
 
@@ -100,16 +110,8 @@ function fmtDateTime(v: unknown): string {
   } catch { return String(v); }
 }
 
-function hexToRgba(hex: string, alpha: number): string {
-  const h = hex.replace("#", "");
-  const r = parseInt(h.substring(0, 2), 16);
-  const g = parseInt(h.substring(2, 4), 16);
-  const b = parseInt(h.substring(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
-
 function CalendarioPage() {
-  const { role, profilo } = useAuth();
+  const { role, profilo, user } = useAuth();
   const isStoreManager = role === "store_manager";
   const myStoreId = profilo?.store_id ?? null;
   const navigate = useNavigate();
@@ -121,11 +123,19 @@ function CalendarioPage() {
     isStoreManager && myStoreId ? myStoreId : "all"
   );
   const [tipoFilter, setTipoFilter] = useState<Set<Tipo>>(new Set());
+  const [soloMie, setSoloMie] = useState(false);
+  const [soloArretrate, setSoloArretrate] = useState(false);
+  const [cercaCliente, setCercaCliente] = useState("");
+  const [arretrateOpen, setArretrateOpen] = useState(false);
   const [openAzione, setOpenAzione] = useState<AzioneRow | null>(null);
   const [creaOpen, setCreaOpen] = useState(false);
   const [creaData, setCreaData] = useState<Date | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [promessaTarget, setPromessaTarget] = useState<{ id: string; ragione_sociale: string } | null>(null);
+
+  useEffect(() => {
+    if (window.innerWidth < 768) calendarRef.current?.getApi().changeView("listWeek");
+  }, []);
 
   const { data: stores } = useQuery({
     queryKey: ["stores-list"],
@@ -162,6 +172,29 @@ function CalendarioPage() {
       if (error) throw error;
       return (data ?? []) as unknown as AzioneRow[];
     },
+  });
+
+  // Indipendente dal periodo del calendario: serve sia al contatore sia al pannello.
+  const arretrateQuery = useQuery({
+    queryKey: ["azioni-calendario-arretrate", storeId],
+    queryFn: async () => {
+      const rows: AzioneRow[] = [];
+      const cutoff = new Date().toISOString();
+      for (let offset = 0; ; offset += 500) {
+        let q = supabase.from("azioni_recupero")
+          .select("id, cliente_id, tipo, esito, data_azione, data_promessa_pagamento, importo_riferimento, note, email_oggetto, email_corpo_html, email_destinatario, livello_sollecito, operatore_id, cliente:clienti!inner(id, ragione_sociale, store_id)")
+          .eq("esito", "da_fare").lt("data_azione", cutoff)
+          .order("data_azione", { ascending: true }).range(offset, offset + 499);
+        if (storeId !== "all") q = q.eq("cliente.store_id", storeId);
+        const { data, error } = await q;
+        if (error) throw error;
+        const batch = (data ?? []) as unknown as AzioneRow[];
+        rows.push(...batch);
+        if (batch.length < 500) break;
+      }
+      return rows;
+    },
+    refetchInterval: 60_000,
   });
 
   // Query separata: rate piano di rientro da pagare nel range visibile.
@@ -212,6 +245,7 @@ function CalendarioPage() {
 
   const events = useMemo(() => {
     const now = Date.now();
+    const today = new Date().toLocaleDateString("sv-SE");
     const azEvents = (azioniQuery.data ?? []).map((a) => {
       const tipoCfg = TIPI.find((t) => t.value === a.tipo);
       const color = tipoCfg?.color ?? "#6b7280";
@@ -219,53 +253,75 @@ function CalendarioPage() {
       const isOverdue = start.getTime() < now;
       return {
         id: a.id,
-        title: `${a.cliente?.ragione_sociale ?? "—"} · ${tipoCfg?.label ?? a.tipo}`,
+        title: `${isOverdue ? "! " : ""}${a.cliente?.ragione_sociale ?? "—"}`,
         start: a.data_azione,
-        backgroundColor: isOverdue ? hexToRgba(color, 0.35) : color,
-        borderColor: isOverdue ? "#dc2626" : color,
-        textColor: isOverdue ? "#7f1d1d" : "#ffffff",
+        backgroundColor: color,
+        borderColor: color,
+        textColor: "#ffffff",
         classNames: isOverdue ? ["azione-arretrata"] : [],
-        extendedProps: { azione: a, isOverdue, kind: "azione" as const },
+        extendedProps: { azione: a, isOverdue, kind: "azione" as const, cliente: a.cliente?.ragione_sociale ?? "—", tipoLabel: tipoCfg?.label ?? a.tipo, note: a.note, importo: a.importo_riferimento },
       };
     });
     const rateEvents = (rateQuery.data ?? []).map((r) => {
-      const start = new Date(r.data_rata + "T09:00:00");
-      const isOverdue = start.getTime() < now;
+      const isOverdue = r.data_rata < today;
       const color = "#0ea5e9"; // sky-500 per differenziare
-      const importoFmt = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(Number(r.importo));
       return {
         id: `rata-${r.id}`,
-        title: `Rata #${r.numero_rata} · ${r.piano.cliente.ragione_sociale} · ${importoFmt}`,
-        start: start.toISOString(),
-        backgroundColor: isOverdue ? hexToRgba(color, 0.35) : color,
-        borderColor: isOverdue ? "#dc2626" : color,
-        textColor: isOverdue ? "#7f1d1d" : "#ffffff",
+        title: `${isOverdue ? "! " : ""}Rata #${r.numero_rata} · ${r.piano.cliente.ragione_sociale}`,
+        start: r.data_rata,
+        allDay: true,
+        backgroundColor: color,
+        borderColor: color,
+        textColor: "#ffffff",
         classNames: isOverdue ? ["azione-arretrata"] : [],
         editable: false,
-        extendedProps: { kind: "rata_piano" as const, rata: r },
+        extendedProps: { kind: "rata_piano" as const, rata: r, isOverdue, cliente: r.piano.cliente.ragione_sociale, tipoLabel: `Rata #${r.numero_rata}`, note: null, importo: r.importo },
       };
     });
     const promesseEvents = (promesseQuery.data ?? []).map((p) => {
-      const start = new Date(p.data_promessa_pagamento + "T09:00:00");
-      const isOverdue = start.getTime() < now;
+      const isOverdue = p.data_promessa_pagamento < today;
       const color = "#16a34a"; // green-600
       const importoFmt = p.importo_riferimento != null
-        ? " · " + new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(Number(p.importo_riferimento))
+        ? " · " + fmtEuro(p.importo_riferimento)
         : "";
       return {
         id: `promessa-${p.id}`,
-        title: `Promessa · ${p.cliente?.ragione_sociale ?? "—"}${importoFmt}`,
-        start: start.toISOString(),
-        backgroundColor: isOverdue ? hexToRgba(color, 0.35) : color,
-        borderColor: isOverdue ? "#dc2626" : color,
-        textColor: isOverdue ? "#7f1d1d" : "#ffffff",
+        title: `${isOverdue ? "! " : ""}${p.cliente?.ragione_sociale ?? "—"}${importoFmt}`,
+        start: p.data_promessa_pagamento,
+        allDay: true,
+        backgroundColor: color,
+        borderColor: color,
+        textColor: "#ffffff",
         classNames: isOverdue ? ["azione-arretrata"] : [],
         editable: false,
-        extendedProps: { kind: "promessa" as const, promessa: p },
+        extendedProps: { kind: "promessa" as const, promessa: p, isOverdue, cliente: p.cliente?.ragione_sociale ?? "—", tipoLabel: "Promessa di pagamento", note: p.note, importo: p.importo_riferimento },
       };
     });
     return [...azEvents, ...rateEvents, ...promesseEvents];
   }, [azioniQuery.data, rateQuery.data, promesseQuery.data]);
+
+  const visibleEvents = useMemo(() => events.filter((event) => {
+    if (soloMie && (event.extendedProps.kind !== "azione" || !("azione" in event.extendedProps) || event.extendedProps.azione.operatore_id !== user?.id)) return false;
+    if (soloArretrate && !event.extendedProps.isOverdue) return false;
+    if (cercaCliente.trim() && !event.extendedProps.cliente.toLocaleLowerCase("it-IT").includes(cercaCliente.trim().toLocaleLowerCase("it-IT"))) return false;
+    return true;
+  }), [events, soloMie, soloArretrate, cercaCliente, user?.id]);
+
+  function renderEventContent(info: EventContentArg) {
+    if (info.view.type !== "listWeek") return <span className="block truncate">{info.event.title}</span>;
+    const props = info.event.extendedProps;
+    return (
+      <div className="min-w-0 text-foreground text-sm">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+          <span className="font-semibold break-words">{props.isOverdue ? "! " : ""}{props.cliente}</span>
+          <span className="text-muted-foreground">{props.tipoLabel}</span>
+          {props.importo != null && <span className="tabular-nums">{fmtEuro(props.importo)}</span>}
+          {props.isOverdue && <span className="rounded-sm bg-destructive/10 px-1.5 py-0.5 text-xs font-medium text-destructive">In ritardo</span>}
+        </div>
+        {props.note && <div className="line-clamp-1 text-xs text-muted-foreground">{props.note}</div>}
+      </div>
+    );
+  }
 
   function handleDatesSet(arg: DatesSetArg) {
     const next = { start: arg.start.toISOString(), end: arg.end.toISOString() };
@@ -291,6 +347,7 @@ function CalendarioPage() {
     }
     toast.success("Attività riprogrammata");
     qc.invalidateQueries({ queryKey: ["azioni-calendario"] });
+    qc.invalidateQueries({ queryKey: ["azioni-calendario-arretrate"] });
     qc.invalidateQueries({ queryKey: ["azioni-recupero"] });
   }
 
@@ -335,7 +392,9 @@ function CalendarioPage() {
 
   // Selezione SLOT (viste settimana/giorno): apre il dialog con data/ora dello slot
   function handleSelect(info: DateSelectArg) {
-    setCreaData(new Date(info.start));
+    const d = new Date(info.start);
+    if (info.allDay) d.setHours(9, 0, 0, 0);
+    setCreaData(d);
     setCreaOpen(true);
     // Smuovi la selezione visiva dopo l'apertura
     info.view.calendar.unselect();
@@ -343,6 +402,7 @@ function CalendarioPage() {
 
   function invalidateAzioniQueries() {
     qc.invalidateQueries({ queryKey: ["azioni-calendario"] });
+    qc.invalidateQueries({ queryKey: ["azioni-calendario-arretrate"] });
     qc.invalidateQueries({ queryKey: ["azioni-recupero"] });
     qc.invalidateQueries({ queryKey: ["recupero-clienti"] });
     qc.invalidateQueries({ queryKey: ["clienti-avvisati"] });
@@ -364,11 +424,19 @@ function CalendarioPage() {
         .fc .fc-button-primary:not(:disabled).fc-button-active,
         .fc .fc-button-primary:not(:disabled):active { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); border-color: hsl(var(--primary)); }
         .fc .fc-event { cursor: pointer; padding: 2px 4px; font-size: 12px; }
-        .fc .azione-arretrata { font-style: italic; }
+        .fc .azione-arretrata { border-left: 4px solid var(--destructive) !important; }
+        .fc .fc-list-event .fc-list-event-title { white-space: normal; }
+        .fc .fc-header-toolbar { flex-wrap: wrap; gap: 8px; }
+        .fc .fc-toolbar-chunk { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+        @media (max-width: 639px) {
+          .fc .fc-header-toolbar { align-items: flex-start; }
+          .fc .fc-toolbar-chunk:last-child { width: 100%; }
+          .fc .fc-toolbar-title { font-size: 1rem; }
+        }
       `}</style>
 
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           <CalendarClock className="size-7 text-primary" />
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Calendario Recupero Crediti</h1>
@@ -377,7 +445,10 @@ function CalendarioPage() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" onClick={() => setArretrateOpen(true)} className="gap-1.5" aria-label={`Arretrate (${arretrateQuery.data?.length ?? 0})`}>
+            <AlertTriangle className="size-4" /> Arretrate ({arretrateQuery.data?.length ?? "…"})
+          </Button>
           <Button
             variant="outline"
             onClick={() => { setCreaData(new Date()); setCreaOpen(true); }}
@@ -446,9 +517,24 @@ function CalendarioPage() {
             </Select>
           )}
 
+          <label className="flex min-h-10 items-center gap-2 text-sm whitespace-nowrap">
+            <Checkbox checked={soloMie} onCheckedChange={(value) => setSoloMie(value === true)} /> Solo le mie
+          </label>
+          <label className="flex min-h-10 items-center gap-2 text-sm whitespace-nowrap">
+            <Checkbox checked={soloArretrate} onCheckedChange={(value) => setSoloArretrate(value === true)} /> Solo arretrate
+          </label>
+          <Input
+            aria-label="Cerca cliente"
+            placeholder="Cerca cliente…"
+            value={cercaCliente}
+            onChange={(e) => setCercaCliente(e.target.value)}
+            className="min-w-0 flex-1 sm:flex-none sm:w-52"
+          />
+
           {azioniQuery.isFetching && (
             <span className="text-xs text-muted-foreground">Caricamento…</span>
           )}
+          {arretrateQuery.isError && <span className="text-xs text-destructive">Arretrate non disponibili</span>}
         </div>
 
         {/* Legenda */}
@@ -469,8 +555,8 @@ function CalendarioPage() {
             Promessa di pagamento
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <span className="inline-block size-3 rounded-sm border-2 border-red-600 bg-red-200" />
-            Arretrate (data passata)
+            <span className="inline-block size-3 rounded-sm border-l-4 border-destructive bg-muted" />
+            ! In ritardo (barra rossa)
           </span>
         </div>
       </Card>
@@ -481,17 +567,22 @@ function CalendarioPage() {
         ) : (
           <FullCalendar
             ref={calendarRef}
-            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
             initialView="timeGridWeek"
             locale={itLocale}
             firstDay={1}
             headerToolbar={{
               left: "prev,next today",
               center: "title",
-              right: "dayGridMonth,timeGridWeek,timeGridDay",
+              right: "dayGridMonth,timeGridWeek,timeGridDay,listWeek",
             }}
-            buttonText={{ today: "Oggi", month: "Mese", week: "Settimana", day: "Giorno" }}
-            allDaySlot={false}
+            buttonText={{ today: "Oggi", month: "Mese", week: "Settimana", day: "Giorno", list: "Agenda" }}
+            allDaySlot={true}
+            allDayText="Tutto il giorno"
+            dayMaxEvents={4}
+            eventMaxStack={3}
+            moreLinkClick="popover"
+            moreLinkText={(n) => `+${n} altre`}
             slotMinTime="07:00:00"
             slotMaxTime="20:00:00"
             slotLabelFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
@@ -500,7 +591,13 @@ function CalendarioPage() {
             editable
             eventDurationEditable={false}
             height="auto"
-            events={events}
+            events={visibleEvents}
+            eventContent={renderEventContent}
+            eventDidMount={(info) => {
+              const p = info.event.extendedProps;
+              info.el.title = [p.cliente, p.tipoLabel, info.event.allDay ? fmtDate(info.event.start) + " · Tutto il giorno" : fmtDateTime(info.event.start), p.importo != null ? fmtEuro(p.importo) : null, p.note].filter(Boolean).join("\n");
+            }}
+            eventAllow={(dropInfo, draggedEvent) => !draggedEvent || draggedEvent.extendedProps.kind !== "azione" || !dropInfo.allDay}
             datesSet={handleDatesSet}
             eventClick={handleEventClick}
             eventDrop={handleEventDrop}
@@ -513,6 +610,29 @@ function CalendarioPage() {
           />
         )}
       </Card>
+
+      <Sheet open={arretrateOpen} onOpenChange={setArretrateOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-lg">
+          <SheetHeader className="text-left pr-8">
+            <SheetTitle>Arretrate ({arretrateQuery.data?.length ?? "…"})</SheetTitle>
+            <SheetDescription>Attività da fare, dalla più vecchia.</SheetDescription>
+          </SheetHeader>
+          {arretrateQuery.isLoading && <p className="text-sm text-muted-foreground mt-4">Caricamento…</p>}
+          {arretrateQuery.isError && <p className="text-sm text-destructive mt-4">Impossibile caricare le arretrate.</p>}
+          {arretrateQuery.data?.length === 0 && <p className="text-sm text-muted-foreground mt-4">Nessuna attività arretrata.</p>}
+          <div className="mt-4 divide-y">
+            {(arretrateQuery.data ?? []).map((a) => (
+              <Button key={a.id} variant="ghost" className="h-auto w-full min-w-0 justify-start whitespace-normal rounded-none py-3 text-left" onClick={() => { setArretrateOpen(false); setOpenAzione(a); }}>
+                <span className="min-w-0 w-full space-y-1">
+                  <span className="block text-xs text-muted-foreground">{fmtDateTime(a.data_azione)} · {TIPI.find((t) => t.value === a.tipo)?.label ?? a.tipo}</span>
+                  <span className="block break-words font-medium">{a.cliente?.ragione_sociale ?? "—"}</span>
+                  {a.note && <span className="block line-clamp-2 text-xs text-muted-foreground">{a.note}</span>}
+                </span>
+              </Button>
+            ))}
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {openAzione && (
         <ModificaAzioneDialog
@@ -545,6 +665,7 @@ function CalendarioPage() {
         tipoIniziale="promemoria"
         onCreated={() => {
           qc.invalidateQueries({ queryKey: ["azioni-calendario"] });
+          qc.invalidateQueries({ queryKey: ["azioni-calendario-arretrate"] });
           qc.invalidateQueries({ queryKey: ["azioni-recupero"] });
         }}
       />
