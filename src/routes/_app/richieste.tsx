@@ -299,6 +299,9 @@ function RichiestePage() {
   const hasFullVisibility = isAdmin || isAmministrazione || isDirezione;
   // "Vede solo le proprie" = chi non ha visibilita' totale e non e' approvatore (= store_manager)
   const isStoreManager = !hasFullVisibility && !isApprovatore;
+  // Approvatore con livello limitato (Liv. 1 o 2, non admin): vede la scheda
+  // "In approvazione" con anche richieste che non puo' decidere → interruttore.
+  const approvatoreLimitato = !isAdmin && livello > 0 && livello < 3;
   // Puo' creare/inviare richieste: admin, store_manager, amministrazione, approvatori
   const canCreateRichiesta =
     isAdmin || isApprovatore || isAmministrazione || roles.includes("store_manager");
@@ -351,7 +354,7 @@ function RichiestePage() {
   });
 
   const tutteRichieste = richieste ?? [];
-  const [filtri, setFiltri] = useState<FiltriRichieste>(FILTRI_VUOTI);
+  const [filtri, setFiltri] = useState<FiltriRichieste>(() => ({ ...FILTRI_VUOTI, soloDecidibili: approvatoreLimitato }));
   const storesFiltro = useMemo(() => {
     const map = new Map<string, string>();
     tutteRichieste.forEach((r: any) => {
@@ -360,7 +363,13 @@ function RichiestePage() {
     return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1], "it"));
   }, [tutteRichieste]);
   // Righe filtrate: base unica per KPI, contatori schede e liste.
-  const all = useMemo(() => filtraRichieste(tutteRichieste, filtri), [tutteRichieste, filtri]);
+  const all = useMemo(() => filtraRichieste(tutteRichieste, filtri, roles), [tutteRichieste, filtri, roles]);
+  // Richieste in attesa che l'utente puo' decidere, sulle righe non filtrate
+  // (contatore tra parentesi dell'interruttore).
+  const decidibiliInAttesa = useMemo(
+    () => tutteRichieste.filter((r) => STATI_IN_APPROVAZIONE.includes(r.stato) && puoDecidereRichiesta(roles, r.livello_richiesto)).length,
+    [tutteRichieste, roles],
+  );
 
   // KPI calcoli
   const oraMese = new Date();
@@ -471,7 +480,7 @@ function RichiestePage() {
         />
       </div>
 
-      <FiltriRichiesteBar filtri={filtri} onChange={setFiltri} stores={storesFiltro} />
+      <FiltriRichiesteBar filtri={filtri} onChange={setFiltri} stores={storesFiltro} approvatoreLimitato={approvatoreLimitato} soloDecidibiliIniziale={approvatoreLimitato} decidibiliInAttesa={decidibiliInAttesa} />
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
