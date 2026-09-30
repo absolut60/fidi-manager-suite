@@ -392,7 +392,9 @@ function CalendarioPage() {
 
   // Selezione SLOT (viste settimana/giorno): apre il dialog con data/ora dello slot
   function handleSelect(info: DateSelectArg) {
-    setCreaData(new Date(info.start));
+    const d = new Date(info.start);
+    if (info.allDay) d.setHours(9, 0, 0, 0);
+    setCreaData(d);
     setCreaOpen(true);
     // Smuovi la selezione visiva dopo l'apertura
     info.view.calendar.unselect();
@@ -532,6 +534,7 @@ function CalendarioPage() {
           {azioniQuery.isFetching && (
             <span className="text-xs text-muted-foreground">Caricamento…</span>
           )}
+          {arretrateQuery.isError && <span className="text-xs text-destructive">Arretrate non disponibili</span>}
         </div>
 
         {/* Legenda */}
