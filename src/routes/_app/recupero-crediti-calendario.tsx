@@ -301,7 +301,7 @@ function CalendarioPage() {
   }, [azioniQuery.data, rateQuery.data, promesseQuery.data]);
 
   const visibleEvents = useMemo(() => events.filter((event) => {
-    if (soloMie && (event.extendedProps.kind !== "azione" || event.extendedProps.azione?.operatore_id !== user?.id)) return false;
+    if (soloMie && (event.extendedProps.kind !== "azione" || !("azione" in event.extendedProps) || event.extendedProps.azione.operatore_id !== user?.id)) return false;
     if (soloArretrate && !event.extendedProps.isOverdue) return false;
     if (cercaCliente.trim() && !event.extendedProps.cliente.toLocaleLowerCase("it-IT").includes(cercaCliente.trim().toLocaleLowerCase("it-IT"))) return false;
     return true;
@@ -619,7 +619,7 @@ function CalendarioPage() {
           {arretrateQuery.data?.length === 0 && <p className="text-sm text-muted-foreground mt-4">Nessuna attività arretrata.</p>}
           <div className="mt-4 divide-y">
             {(arretrateQuery.data ?? []).map((a) => (
-              <Button key={a.id} variant="ghost" className="h-auto w-full min-w-0 justify-start rounded-none py-3 text-left" onClick={() => { setArretrateOpen(false); setOpenAzione(a); }}>
+              <Button key={a.id} variant="ghost" className="h-auto w-full min-w-0 justify-start whitespace-normal rounded-none py-3 text-left" onClick={() => { setArretrateOpen(false); setOpenAzione(a); }}>
                 <span className="min-w-0 w-full space-y-1">
                   <span className="block text-xs text-muted-foreground">{fmtDateTime(a.data_azione)} · {TIPI.find((t) => t.value === a.tipo)?.label ?? a.tipo}</span>
                   <span className="block break-words font-medium">{a.cliente?.ragione_sociale ?? "—"}</span>
