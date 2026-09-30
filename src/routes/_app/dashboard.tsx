@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { NotificaRiga } from "@/components/notifiche/notifica-riga";
-import { contaNonLette, notificheNonLetteQueryKey, type Notifica } from "@/lib/notifiche";
+import { chiudiAvvisiNotifiche, chiudiTuttiGliAvvisi, contaNonLette, notificheNonLetteQueryKey, type Notifica } from "@/lib/notifiche";
 import {
   Plus, UserPlus, Upload, Bell, Check, CheckCheck, CalendarClock, HandCoins,
 } from "lucide-react";
@@ -86,6 +86,7 @@ function DashboardPage() {
     if (eraNonLetta && user?.id) {
       queryClient.setQueryData<number>(notificheNonLetteQueryKey(user.id), (corrente = 0) => Math.max(0, corrente - 1));
     }
+    void chiudiAvvisiNotifiche([id]);
   }
   async function segnaTutteLette() {
     if (!user?.id) return;
@@ -93,6 +94,7 @@ function DashboardPage() {
     if (error) throw error;
     setNotifiche((prev) => prev.map((n) => ({ ...n, letta: true })));
     queryClient.setQueryData(notificheNonLetteQueryKey(user.id), 0);
+    void chiudiTuttiGliAvvisi();
   }
 
   return (

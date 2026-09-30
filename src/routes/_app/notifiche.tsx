@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { contaNonLette, notificheNonLetteQueryKey, type Notifica } from "@/lib/notifiche";
+import { chiudiAvvisiNotifiche, chiudiTuttiGliAvvisi, contaNonLette, notificheNonLetteQueryKey, type Notifica } from "@/lib/notifiche";
 
 export const Route = createFileRoute("/_app/notifiche")({
   head: () => ({
@@ -79,6 +79,7 @@ function NotifichePage() {
     if (user?.id) {
       queryClient.setQueryData<number>(notificheNonLetteQueryKey(user.id), (corrente = 0) => Math.max(0, corrente - 1));
     }
+    void chiudiAvvisiNotifiche([id]);
     await refetch();
   }
 
@@ -93,6 +94,7 @@ function NotifichePage() {
         .eq("letta", false);
       if (error) throw error;
       queryClient.setQueryData(notificheNonLetteQueryKey(user.id), 0);
+      void chiudiTuttiGliAvvisi();
       setPagina(0);
       await queryClient.invalidateQueries({ queryKey: ["notifiche", "elenco", user.id] });
       toast.success("Tutte le notifiche sono state segnate come lette");

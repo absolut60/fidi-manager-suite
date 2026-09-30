@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { chiudiTuttiGliAvvisi } from "@/lib/notifiche";
 
 // Prefisso "(n) " applicato al titolo della scheda.
 const PREFISSO_RE = /^\(\d+\+?\)\s/;
@@ -16,14 +17,17 @@ export function useBadgeNotifiche(nonLette: number) {
   // Badge dell'icona app (PWA installata / browser che lo supportano).
   useEffect(() => {
     if (typeof navigator === "undefined") return;
+    // Nessuna non letta: chiude anche gli avvisi di sistema rimasti (e azzera il badge).
+    if (nonLette === 0) {
+      void chiudiTuttiGliAvvisi();
+      return;
+    }
     const nav = navigator as Navigator & {
       setAppBadge?: (n?: number) => Promise<void>;
-      clearAppBadge?: () => Promise<void>;
     };
-    if (!("setAppBadge" in nav) || typeof nav.setAppBadge !== "function") return;
+    if (typeof nav.setAppBadge !== "function") return;
     try {
-      const esito = nonLette > 0 ? nav.setAppBadge(nonLette) : nav.clearAppBadge?.();
-      void esito?.catch(() => undefined);
+      void nav.setAppBadge(nonLette)?.catch(() => undefined);
     } catch {
       // Non supportato o negato: si ignora.
     }

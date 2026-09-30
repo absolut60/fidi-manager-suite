@@ -46,7 +46,7 @@ import {
   UserX,
   QrCode,
 } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { LOGO_MADE_SIDEBAR_BASE64 } from "@/lib/logo-made-sidebar-base64";
 import { useAuth, RUOLI_LABEL } from "@/hooks/use-auth";
@@ -190,13 +190,28 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
 
   // Stessa query (chiave condivisa) della campanella: nessun conteggio duplicato.
+  const queryClient = useQueryClient();
   const { data: notificheNonLette = 0 } = useQuery({
     queryKey: notificheNonLetteQueryKey(user?.id),
     enabled: Boolean(user?.id),
     refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
     queryFn: () => contaNonLette(user?.id ?? ""),
   });
   useBadgeNotifiche(user?.id ? notificheNonLette : 0);
+
+  // Tornando sull'app (anche PWA dal background) riallinea subito il contatore.
+  useEffect(() => {
+    if (!user?.id || typeof document === "undefined") return;
+    const userId = user.id;
+    const onVisibile = () => {
+      if (document.visibilityState === "visible") {
+        void queryClient.invalidateQueries({ queryKey: notificheNonLetteQueryKey(userId) });
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibile);
+    return () => document.removeEventListener("visibilitychange", onVisibile);
+  }, [user?.id, queryClient]);
 
   const { data: nonLetti } = useQuery({
     queryKey: ["menu", "non-letti", user?.id],
