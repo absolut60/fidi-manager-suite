@@ -5,7 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { UsersRound, Pencil, UserPlus, Eye, EyeOff, Mail, Bell, ArrowUp, ArrowDown, Search } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth, RUOLI_LABEL } from "@/hooks/use-auth";
+import { useAuth, RUOLI_LABEL, RUOLI_DESCRIZIONE } from "@/hooks/use-auth";
 import { creaUtente, updateUtenteRuoli, aggiornaPassword, inviaCredenziali, inviaIstruzioniNotifiche } from "@/lib/utenti.functions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -460,12 +460,18 @@ function RoleCheckboxes({ value, onChange }: { value: AppRole[]; onChange: (v: A
       <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{titolo}</div>
       <div className="space-y-1.5 pl-1">
         {ruoli.map((r) => (
-          <label key={r} className="flex items-center gap-2 text-sm cursor-pointer">
+          <label key={r} className="flex items-start gap-2 text-sm cursor-pointer">
             <Checkbox
+              className="mt-0.5 shrink-0"
               checked={value.includes(r)}
               onCheckedChange={(c) => toggle(r, c === true)}
             />
-            {RUOLI_LABEL[r]}
+            <span className="min-w-0">
+              <span className="block">{RUOLI_LABEL[r]}</span>
+              {RUOLI_DESCRIZIONE[r] && (
+                <span className="block text-xs text-muted-foreground break-words">{RUOLI_DESCRIZIONE[r]}</span>
+              )}
+            </span>
           </label>
         ))}
       </div>

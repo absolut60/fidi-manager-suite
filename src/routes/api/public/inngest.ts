@@ -25,6 +25,7 @@ import { processEventiPartecipantiImport } from "@/lib/inngest/eventi-import.ser
 import { refreshFatturatoMensileCron } from "@/lib/inngest/fatturato-mensile.server";
 import { ricalcolaFidoTeorico } from "@/lib/inngest/fido-teorico-ricalcolo.server";
 import { notificaVariazioniBlocco } from "@/lib/inngest/variazioni-blocco.server";
+import { rilevaAgenziaRecupero } from "@/lib/inngest/agenzia-recupero.server";
 
 
 
@@ -54,6 +55,7 @@ const handler = serve({
     refreshFatturatoMensileCron,
     ricalcolaFidoTeorico,
     notificaVariazioniBlocco,
+    rilevaAgenziaRecupero,
 
 
 
