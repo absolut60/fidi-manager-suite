@@ -513,6 +513,11 @@ function RichiestePage() {
         </TabsContent>
 
         <TabsContent value="in_approvazione" className="mt-4">
+          {approvatoreLimitato && !filtri.soloDecidibili && (
+            <p className="text-xs text-muted-foreground mb-2">
+              Le richieste con la casella grigia sono di un livello superiore al tuo (Liv. {livello}): puoi consultarle ma non deciderle.
+            </p>
+          )}
           <InApprovazioneTab
             rows={inApprovazione}
             righeCodaNonFiltrate={tutteRichieste.filter(inCodaUtente)}
