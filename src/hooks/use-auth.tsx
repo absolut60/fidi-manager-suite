@@ -166,4 +166,5 @@ export const RUOLI_LABEL: Record<AppRole, string> = {
   preventivi_write: "Preventivi — Scrittura",
   preventivi_manage: "Preventivi — Gestione",
   marketing_eventi: "Marketing Eventi",
+  recupero_crediti: "Recupero Crediti",
 };

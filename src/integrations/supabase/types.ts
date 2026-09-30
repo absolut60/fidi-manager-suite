@@ -1975,6 +1975,131 @@ export type Database = {
           },
         ]
       }
+      clienti_scaduto60_ingressi: {
+        Row: {
+          azione_id: string | null
+          cliente_id: string
+          codice_gestionale: string | null
+          id: string
+          importazione_id: string | null
+          max_gg: number
+          notificato_at: string | null
+          ragione_sociale: string | null
+          rilevato_at: string
+          store_id: string | null
+          tot_scaduto: number
+        }
+        Insert: {
+          azione_id?: string | null
+          cliente_id: string
+          codice_gestionale?: string | null
+          id?: string
+          importazione_id?: string | null
+          max_gg: number
+          notificato_at?: string | null
+          ragione_sociale?: string | null
+          rilevato_at?: string
+          store_id?: string | null
+          tot_scaduto: number
+        }
+        Update: {
+          azione_id?: string | null
+          cliente_id?: string
+          codice_gestionale?: string | null
+          id?: string
+          importazione_id?: string | null
+          max_gg?: number
+          notificato_at?: string | null
+          ragione_sociale?: string | null
+          rilevato_at?: string
+          store_id?: string | null
+          tot_scaduto?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clienti_scaduto60_ingressi_azione_id_fkey"
+            columns: ["azione_id"]
+            isOneToOne: false
+            referencedRelation: "azioni_recupero"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clienti_scaduto60_ingressi_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clienti_scaduto60_ingressi_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clienti_con_rischio"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clienti_scaduto60_ingressi_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "clienti_scaduto60_ingressi_importazione_id_fkey"
+            columns: ["importazione_id"]
+            isOneToOne: false
+            referencedRelation: "importazioni"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clienti_scaduto60_ingressi_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clienti_scaduto60_stato: {
+        Row: {
+          aggiornato_at: string
+          cliente_id: string
+          oltre60: boolean
+        }
+        Insert: {
+          aggiornato_at?: string
+          cliente_id: string
+          oltre60: boolean
+        }
+        Update: {
+          aggiornato_at?: string
+          cliente_id?: string
+          oltre60?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clienti_scaduto60_stato_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: true
+            referencedRelation: "clienti"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clienti_scaduto60_stato_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: true
+            referencedRelation: "clienti_con_rischio"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clienti_scaduto60_stato_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: true
+            referencedRelation: "riepilogo_insoluti"
+            referencedColumns: ["cliente_id"]
+          },
+        ]
+      }
       codici_pagamento: {
         Row: {
           cod: string
@@ -6620,6 +6745,14 @@ export type Database = {
         Returns: Json
       }
       classifica_iscritto_whatsapp: { Args: { _id: string }; Returns: Json }
+      clienti_scaduto_oltre_60: {
+        Args: never
+        Returns: {
+          cliente_id: string
+          max_gg: number
+          tot_scaduto: number
+        }[]
+      }
       coefficiente_comportamento: {
         Args: {
           _giorni_oltre: number
@@ -7795,6 +7928,10 @@ export type Database = {
         }
         Returns: Json
       }
+      rileva_ingressi_scaduto_60: {
+        Args: { _importazione_id?: string }
+        Returns: number
+      }
       rileva_variazioni_blocco: {
         Args: { _importazione_id?: string }
         Returns: number
@@ -7908,6 +8045,7 @@ export type Database = {
         | "responsabile_agenti"
         | "marketing_eventi"
         | "amministrazione_strumenti"
+        | "recupero_crediti"
       categoria_allegato:
         | "capitolato"
         | "disegni"
@@ -8223,6 +8361,7 @@ export const Constants = {
         "responsabile_agenti",
         "marketing_eventi",
         "amministrazione_strumenti",
+        "recupero_crediti",
       ],
       categoria_allegato: [
         "capitolato",
