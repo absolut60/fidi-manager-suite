@@ -1,5 +1,10 @@
 # Roadmap
 
+## FM36 fetta 14 — Calendario recupero crediti
+- [ ] Promesse e rate senza orario, sovrapposizioni limitate, vista Agenda e titoli leggibili
+- [ ] Filtri locali ed elenco arretrate su tutti i periodi
+- [ ] Verifica tipi e visualizzazione mobile/desktop
+
 - [x] Strato 2b WhatsApp: server function `sincronizzaStatiTemplate` + bottone "Sincronizza stati" nel tab template
 - [x] Messaggio chiaro su errori temporanei 5xx (502/503/504/522) — incluso nella nuova funzione di sync
 

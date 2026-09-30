@@ -1,26 +1,28 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
+import listPlugin from "@fullcalendar/list";
 import itLocale from "@fullcalendar/core/locales/it";
-import type { DatesSetArg, EventClickArg, EventDropArg, DateSelectArg } from "@fullcalendar/core";
+import type { DatesSetArg, EventClickArg, EventDropArg, DateSelectArg, EventContentArg } from "@fullcalendar/core";
 import type { DateClickArg } from "@fullcalendar/interaction";
-import { CalendarClock, ExternalLink, ChevronDown, Plus, HandCoins, Search } from "lucide-react";
+import { CalendarClock, ExternalLink, ChevronDown, Plus, HandCoins, Search, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CreaAzioneDialog } from "@/components/crea-azione-dialog";
 import { ModificaAzioneDialog, type AzioneModificabile } from "@/components/modifica-azione-dialog";
 import { RegistraPromessaDialog } from "@/components/registra-promessa-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { useEffect } from "react";
 import {
   Select,
   SelectContent,
@@ -37,6 +39,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export const Route = createFileRoute("/_app/recupero-crediti-calendario")({
+  head: () => ({ meta: [
+    { title: "Calendario recupero crediti | FidiManager" },
+    { name: "description", content: "Attività, promesse e rate del recupero crediti nel calendario." },
+    { property: "og:title", content: "Calendario recupero crediti | FidiManager" },
+    { property: "og:description", content: "Attività, promesse e rate del recupero crediti nel calendario." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: CalendarioPage,
 });
 
@@ -100,16 +110,8 @@ function fmtDateTime(v: unknown): string {
   } catch { return String(v); }
 }
 
-function hexToRgba(hex: string, alpha: number): string {
-  const h = hex.replace("#", "");
-  const r = parseInt(h.substring(0, 2), 16);
-  const g = parseInt(h.substring(2, 4), 16);
-  const b = parseInt(h.substring(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
-
 function CalendarioPage() {
-  const { role, profilo } = useAuth();
+  const { role, profilo, user } = useAuth();
   const isStoreManager = role === "store_manager";
   const myStoreId = profilo?.store_id ?? null;
   const navigate = useNavigate();
@@ -121,11 +123,19 @@ function CalendarioPage() {
     isStoreManager && myStoreId ? myStoreId : "all"
   );
   const [tipoFilter, setTipoFilter] = useState<Set<Tipo>>(new Set());
+  const [soloMie, setSoloMie] = useState(false);
+  const [soloArretrate, setSoloArretrate] = useState(false);
+  const [cercaCliente, setCercaCliente] = useState("");
+  const [arretrateOpen, setArretrateOpen] = useState(false);
   const [openAzione, setOpenAzione] = useState<AzioneRow | null>(null);
   const [creaOpen, setCreaOpen] = useState(false);
   const [creaData, setCreaData] = useState<Date | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [promessaTarget, setPromessaTarget] = useState<{ id: string; ragione_sociale: string } | null>(null);
+
+  useEffect(() => {
+    if (window.innerWidth < 768) calendarRef.current?.getApi().changeView("listWeek");
+  }, []);
 
   const { data: stores } = useQuery({
     queryKey: ["stores-list"],
@@ -162,6 +172,29 @@ function CalendarioPage() {
       if (error) throw error;
       return (data ?? []) as unknown as AzioneRow[];
     },
+  });
+
+  // Indipendente dal periodo del calendario: serve sia al contatore sia al pannello.
+  const arretrateQuery = useQuery({
+    queryKey: ["azioni-calendario-arretrate", storeId],
+    queryFn: async () => {
+      const rows: AzioneRow[] = [];
+      const cutoff = new Date().toISOString();
+      for (let offset = 0; ; offset += 500) {
+        let q = supabase.from("azioni_recupero")
+          .select("id, cliente_id, tipo, esito, data_azione, data_promessa_pagamento, importo_riferimento, note, email_oggetto, email_corpo_html, email_destinatario, livello_sollecito, operatore_id, cliente:clienti!inner(id, ragione_sociale, store_id)")
+          .eq("esito", "da_fare").lt("data_azione", cutoff)
+          .order("data_azione", { ascending: true }).range(offset, offset + 499);
+        if (storeId !== "all") q = q.eq("cliente.store_id", storeId);
+        const { data, error } = await q;
+        if (error) throw error;
+        const batch = (data ?? []) as unknown as AzioneRow[];
+        rows.push(...batch);
+        if (batch.length < 500) break;
+      }
+      return rows;
+    },
+    refetchInterval: 60_000,
   });
 
   // Query separata: rate piano di rientro da pagare nel range visibile.
