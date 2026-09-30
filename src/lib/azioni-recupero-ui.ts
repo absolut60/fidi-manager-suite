@@ -19,3 +19,15 @@ export const TIPO_AZIONE_ICON: Record<string, typeof Mail> = {
   lettera: FileText,
   promemoria_scadenza: CalendarClock,
 };
+
+// Esiti di un'azione di recupero (fonte unica per i dialog di modifica/chiusura).
+export type EsitoAzione = "da_fare" | "fatto" | "nessuna_risposta" | "promessa_pagamento" | "contestazione" | "pagato";
+
+export const ESITI_AZIONE: { value: EsitoAzione; label: string }[] = [
+  { value: "da_fare", label: "Da fare" },
+  { value: "fatto", label: "Fatto" },
+  { value: "nessuna_risposta", label: "Nessuna risposta" },
+  { value: "promessa_pagamento", label: "Promessa pagamento" },
+  { value: "contestazione", label: "Contestazione" },
+  { value: "pagato", label: "Pagato" },
+];

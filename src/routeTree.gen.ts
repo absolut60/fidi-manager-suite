@@ -30,6 +30,7 @@ import { Route as AppRecuperoCreditiCampagneRouteImport } from './routes/_app/re
 import { Route as AppRecuperoCreditiCalendarioRouteImport } from './routes/_app/recupero-crediti-calendario'
 import { Route as AppRecuperoCreditiAndamentoRouteImport } from './routes/_app/recupero-crediti-andamento'
 import { Route as AppRecuperoCreditiRouteImport } from './routes/_app/recupero-crediti'
+import { Route as AppRecuperoAgenziaRouteImport } from './routes/_app/recupero-agenzia'
 import { Route as AppPrivacyRouteImport } from './routes/_app/privacy'
 import { Route as AppPianiRientroRouteImport } from './routes/_app/piani-rientro'
 import { Route as AppOpportunitaRouteImport } from './routes/_app/opportunita'
@@ -205,6 +206,11 @@ const AppRecuperoCreditiAndamentoRoute =
 const AppRecuperoCreditiRoute = AppRecuperoCreditiRouteImport.update({
   id: '/recupero-crediti',
   path: '/recupero-crediti',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRecuperoAgenziaRoute = AppRecuperoAgenziaRouteImport.update({
+  id: '/recupero-agenzia',
+  path: '/recupero-agenzia',
   getParentRoute: () => AppRoute,
 } as any)
 const AppPrivacyRoute = AppPrivacyRouteImport.update({
@@ -599,6 +605,7 @@ export interface FileRoutesByFullPath {
   '/opportunita': typeof AppOpportunitaRouteWithChildren
   '/piani-rientro': typeof AppPianiRientroRoute
   '/privacy': typeof AppPrivacyRoute
+  '/recupero-agenzia': typeof AppRecuperoAgenziaRoute
   '/recupero-crediti': typeof AppRecuperoCreditiRoute
   '/recupero-crediti-andamento': typeof AppRecuperoCreditiAndamentoRoute
   '/recupero-crediti-calendario': typeof AppRecuperoCreditiCalendarioRoute
@@ -687,6 +694,7 @@ export interface FileRoutesByTo {
   '/notifiche': typeof AppNotificheRoute
   '/piani-rientro': typeof AppPianiRientroRoute
   '/privacy': typeof AppPrivacyRoute
+  '/recupero-agenzia': typeof AppRecuperoAgenziaRoute
   '/recupero-crediti': typeof AppRecuperoCreditiRoute
   '/recupero-crediti-andamento': typeof AppRecuperoCreditiAndamentoRoute
   '/recupero-crediti-calendario': typeof AppRecuperoCreditiCalendarioRoute
@@ -778,6 +786,7 @@ export interface FileRoutesById {
   '/_app/opportunita': typeof AppOpportunitaRouteWithChildren
   '/_app/piani-rientro': typeof AppPianiRientroRoute
   '/_app/privacy': typeof AppPrivacyRoute
+  '/_app/recupero-agenzia': typeof AppRecuperoAgenziaRoute
   '/_app/recupero-crediti': typeof AppRecuperoCreditiRoute
   '/_app/recupero-crediti-andamento': typeof AppRecuperoCreditiAndamentoRoute
   '/_app/recupero-crediti-calendario': typeof AppRecuperoCreditiCalendarioRoute
@@ -870,6 +879,7 @@ export interface FileRouteTypes {
     | '/opportunita'
     | '/piani-rientro'
     | '/privacy'
+    | '/recupero-agenzia'
     | '/recupero-crediti'
     | '/recupero-crediti-andamento'
     | '/recupero-crediti-calendario'
@@ -958,6 +968,7 @@ export interface FileRouteTypes {
     | '/notifiche'
     | '/piani-rientro'
     | '/privacy'
+    | '/recupero-agenzia'
     | '/recupero-crediti'
     | '/recupero-crediti-andamento'
     | '/recupero-crediti-calendario'
@@ -1048,6 +1059,7 @@ export interface FileRouteTypes {
     | '/_app/opportunita'
     | '/_app/piani-rientro'
     | '/_app/privacy'
+    | '/_app/recupero-agenzia'
     | '/_app/recupero-crediti'
     | '/_app/recupero-crediti-andamento'
     | '/_app/recupero-crediti-calendario'
@@ -1274,6 +1286,13 @@ declare module '@tanstack/react-router' {
       path: '/recupero-crediti'
       fullPath: '/recupero-crediti'
       preLoaderRoute: typeof AppRecuperoCreditiRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/recupero-agenzia': {
+      id: '/_app/recupero-agenzia'
+      path: '/recupero-agenzia'
+      fullPath: '/recupero-agenzia'
+      preLoaderRoute: typeof AppRecuperoAgenziaRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/privacy': {
@@ -1847,6 +1866,7 @@ interface AppRouteChildren {
   AppOpportunitaRoute: typeof AppOpportunitaRouteWithChildren
   AppPianiRientroRoute: typeof AppPianiRientroRoute
   AppPrivacyRoute: typeof AppPrivacyRoute
+  AppRecuperoAgenziaRoute: typeof AppRecuperoAgenziaRoute
   AppRecuperoCreditiRoute: typeof AppRecuperoCreditiRoute
   AppRecuperoCreditiAndamentoRoute: typeof AppRecuperoCreditiAndamentoRoute
   AppRecuperoCreditiCalendarioRoute: typeof AppRecuperoCreditiCalendarioRoute
@@ -1912,6 +1932,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppOpportunitaRoute: AppOpportunitaRouteWithChildren,
   AppPianiRientroRoute: AppPianiRientroRoute,
   AppPrivacyRoute: AppPrivacyRoute,
+  AppRecuperoAgenziaRoute: AppRecuperoAgenziaRoute,
   AppRecuperoCreditiRoute: AppRecuperoCreditiRoute,
   AppRecuperoCreditiAndamentoRoute: AppRecuperoCreditiAndamentoRoute,
   AppRecuperoCreditiCalendarioRoute: AppRecuperoCreditiCalendarioRoute,

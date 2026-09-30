@@ -77,7 +77,7 @@ type NavItem = {
   to: string;
   label: string;
   icon: typeof LayoutDashboard;
-  roles?: Array<"admin" | "agente" | "approvatore" | "store_manager" | "responsabile_agenti" | "amministrazione" | "amministrazione_strumenti" | "direzione" | "marketing" | "marketing_eventi" | "preventivi_read" | "preventivi_write" | "preventivi_manage">;
+  roles?: Array<"admin" | "agente" | "approvatore" | "store_manager" | "responsabile_agenti" | "amministrazione" | "amministrazione_strumenti" | "direzione" | "marketing" | "marketing_eventi" | "preventivi_read" | "preventivi_write" | "preventivi_manage" | "recupero_crediti">;
   group: NavGroupKey;
   richiesteScope?: RichiesteScope;
   exact?: boolean;
@@ -117,6 +117,7 @@ const NAV: NavItem[] = [
   // RECUPERO CREDITI
   { to: "/recupero-crediti", label: "Recupero Crediti", icon: HandCoins, roles: ["admin", "approvatore", "store_manager", "amministrazione"], group: "recupero" },
   { to: "/recupero-crediti-calendario", label: "Calendario Recupero", icon: CalendarClock, roles: ["admin", "approvatore", "store_manager", "amministrazione"], group: "recupero" },
+  { to: "/recupero-agenzia", label: "Da passare all'agenzia", icon: Gavel, roles: ["admin", "direzione", "amministrazione", "recupero_crediti"], group: "recupero" },
   { to: "/piani-rientro", label: "Piani di rientro", icon: CalendarClock, roles: ["admin", "approvatore", "store_manager", "amministrazione"], group: "recupero" },
   { to: "/recupero-crediti-campagne", label: "Invii massivi", icon: Megaphone, roles: ["admin", "approvatore", "store_manager", "amministrazione"], group: "recupero" },
   { to: "/legali", label: "Pratiche Legali", icon: Gavel, roles: ["admin", "approvatore", "store_manager", "amministrazione"], group: "recupero" },
@@ -215,7 +216,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     .filter((r) => r.tipo !== "task")
     .reduce((s, r) => s + Number(r.non_letti ?? 0), 0);
 
+  const vedeAgenzia = (["amministratore", "direzione", "amministrazione", "recupero_crediti"] as string[]).some((r) =>
+    (roles as string[]).includes(r),
+  );
+  const { data: agenziaDaGestire = 0 } = useQuery({
+    queryKey: ["menu", "agenzia-da-gestire", user?.id],
+    enabled: !!user?.id && vedeAgenzia,
+    refetchInterval: 30000,
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("clienti_scaduto60_ingressi")
+        .select("id, azioni_recupero!azione_id!inner(esito)", { count: "exact", head: true })
+        .eq("azioni_recupero.esito", "da_fare");
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+
   function badgePerVoce(to: string) {
+    if (to === "/recupero-agenzia") return agenziaDaGestire;
     if (to === "/chat") return totaleChat;
     if (to === "/task") return totaleTask;
     return undefined;
@@ -298,6 +317,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (item.roles.includes("direzione") && isDirezione) return true;
     if (item.roles.includes("marketing") && isMarketing) return true;
     if (item.roles.includes("marketing_eventi") && isMarketingEventi) return true;
+    if (item.roles.includes("recupero_crediti") && hasUserRole("recupero_crediti")) return true;
     if (item.roles.includes("responsabile_agenti") && isResponsabileAgenti) return true;
     if (item.roles.includes("preventivi_read") && hasAccessoPreventivi) return true;
     return false;
