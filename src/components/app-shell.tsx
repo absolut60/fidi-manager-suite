@@ -216,7 +216,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     .filter((r) => r.tipo !== "task")
     .reduce((s, r) => s + Number(r.non_letti ?? 0), 0);
 
-  const vedeAgenzia = isAdmin || isDirezione || isAmministrazione || hasUserRole("recupero_crediti");
+  const vedeAgenzia = (["amministratore", "direzione", "amministrazione", "recupero_crediti"] as string[]).some((r) =>
+    (roles as string[]).includes(r),
+  );
   const { data: agenziaDaGestire = 0 } = useQuery({
     queryKey: ["menu", "agenzia-da-gestire", user?.id],
     enabled: !!user?.id && vedeAgenzia,
