@@ -422,11 +422,19 @@ function CalendarioPage() {
         .fc .fc-button-primary:not(:disabled).fc-button-active,
         .fc .fc-button-primary:not(:disabled):active { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); border-color: hsl(var(--primary)); }
         .fc .fc-event { cursor: pointer; padding: 2px 4px; font-size: 12px; }
-        .fc .azione-arretrata { font-style: italic; }
+        .fc .azione-arretrata { border-left: 4px solid var(--destructive) !important; }
+        .fc .fc-list-event .fc-list-event-title { white-space: normal; }
+        .fc .fc-header-toolbar { flex-wrap: wrap; gap: 8px; }
+        .fc .fc-toolbar-chunk { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+        @media (max-width: 639px) {
+          .fc .fc-header-toolbar { align-items: flex-start; }
+          .fc .fc-toolbar-chunk:last-child { width: 100%; }
+          .fc .fc-toolbar-title { font-size: 1rem; }
+        }
       `}</style>
 
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           <CalendarClock className="size-7 text-primary" />
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Calendario Recupero Crediti</h1>
@@ -435,7 +443,10 @@ function CalendarioPage() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" onClick={() => setArretrateOpen(true)} className="gap-1.5" aria-label={`Arretrate (${arretrateQuery.data?.length ?? 0})`}>
+            <AlertTriangle className="size-4" /> Arretrate ({arretrateQuery.data?.length ?? "…"})
+          </Button>
           <Button
             variant="outline"
             onClick={() => { setCreaData(new Date()); setCreaOpen(true); }}
@@ -504,6 +515,20 @@ function CalendarioPage() {
             </Select>
           )}
 
+          <label className="flex min-h-10 items-center gap-2 text-sm whitespace-nowrap">
+            <Checkbox checked={soloMie} onCheckedChange={(value) => setSoloMie(value === true)} /> Solo le mie
+          </label>
+          <label className="flex min-h-10 items-center gap-2 text-sm whitespace-nowrap">
+            <Checkbox checked={soloArretrate} onCheckedChange={(value) => setSoloArretrate(value === true)} /> Solo arretrate
+          </label>
+          <Input
+            aria-label="Cerca cliente"
+            placeholder="Cerca cliente…"
+            value={cercaCliente}
+            onChange={(e) => setCercaCliente(e.target.value)}
+            className="min-w-0 flex-1 sm:flex-none sm:w-52"
+          />
+
           {azioniQuery.isFetching && (
             <span className="text-xs text-muted-foreground">Caricamento…</span>
           )}
@@ -527,8 +552,8 @@ function CalendarioPage() {
             Promessa di pagamento
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <span className="inline-block size-3 rounded-sm border-2 border-red-600 bg-red-200" />
-            Arretrate (data passata)
+            <span className="inline-block size-3 rounded-sm border-l-4 border-destructive bg-muted" />
+            ! In ritardo (barra rossa)
           </span>
         </div>
       </Card>
@@ -539,17 +564,22 @@ function CalendarioPage() {
         ) : (
           <FullCalendar
             ref={calendarRef}
-            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
             initialView="timeGridWeek"
             locale={itLocale}
             firstDay={1}
             headerToolbar={{
               left: "prev,next today",
               center: "title",
-              right: "dayGridMonth,timeGridWeek,timeGridDay",
+              right: "dayGridMonth,timeGridWeek,timeGridDay,listWeek",
             }}
-            buttonText={{ today: "Oggi", month: "Mese", week: "Settimana", day: "Giorno" }}
-            allDaySlot={false}
+            buttonText={{ today: "Oggi", month: "Mese", week: "Settimana", day: "Giorno", list: "Agenda" }}
+            allDaySlot={true}
+            allDayText="Tutto il giorno"
+            dayMaxEvents={4}
+            eventMaxStack={3}
+            moreLinkClick="popover"
+            moreLinkText={(n) => `+${n} altre`}
             slotMinTime="07:00:00"
             slotMaxTime="20:00:00"
             slotLabelFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
@@ -558,7 +588,13 @@ function CalendarioPage() {
             editable
             eventDurationEditable={false}
             height="auto"
-            events={events}
+            events={visibleEvents}
+            eventContent={renderEventContent}
+            eventDidMount={(info) => {
+              const p = info.event.extendedProps;
+              info.el.title = [p.cliente, p.tipoLabel, info.event.allDay ? fmtDate(info.event.start) + " · Tutto il giorno" : fmtDateTime(info.event.start), p.importo != null ? fmtEuro(p.importo) : null, p.note].filter(Boolean).join("\n");
+            }}
+            eventAllow={(dropInfo, draggedEvent) => draggedEvent.extendedProps.kind !== "azione" || !dropInfo.allDay}
             datesSet={handleDatesSet}
             eventClick={handleEventClick}
             eventDrop={handleEventDrop}
@@ -571,6 +607,29 @@ function CalendarioPage() {
           />
         )}
       </Card>
+
+      <Sheet open={arretrateOpen} onOpenChange={setArretrateOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-lg">
+          <SheetHeader className="text-left pr-8">
+            <SheetTitle>Arretrate ({arretrateQuery.data?.length ?? "…"})</SheetTitle>
+            <SheetDescription>Attività da fare, dalla più vecchia.</SheetDescription>
+          </SheetHeader>
+          {arretrateQuery.isLoading && <p className="text-sm text-muted-foreground mt-4">Caricamento…</p>}
+          {arretrateQuery.isError && <p className="text-sm text-destructive mt-4">Impossibile caricare le arretrate.</p>}
+          {arretrateQuery.data?.length === 0 && <p className="text-sm text-muted-foreground mt-4">Nessuna attività arretrata.</p>}
+          <div className="mt-4 divide-y">
+            {(arretrateQuery.data ?? []).map((a) => (
+              <Button key={a.id} variant="ghost" className="h-auto w-full min-w-0 justify-start rounded-none py-3 text-left" onClick={() => { setArretrateOpen(false); setOpenAzione(a); }}>
+                <span className="min-w-0 w-full space-y-1">
+                  <span className="block text-xs text-muted-foreground">{fmtDateTime(a.data_azione)} · {TIPI.find((t) => t.value === a.tipo)?.label ?? a.tipo}</span>
+                  <span className="block break-words font-medium">{a.cliente?.ragione_sociale ?? "—"}</span>
+                  {a.note && <span className="block line-clamp-2 text-xs text-muted-foreground">{a.note}</span>}
+                </span>
+              </Button>
+            ))}
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {openAzione && (
         <ModificaAzioneDialog
@@ -603,6 +662,7 @@ function CalendarioPage() {
         tipoIniziale="promemoria"
         onCreated={() => {
           qc.invalidateQueries({ queryKey: ["azioni-calendario"] });
+          qc.invalidateQueries({ queryKey: ["azioni-calendario-arretrate"] });
           qc.invalidateQueries({ queryKey: ["azioni-recupero"] });
         }}
       />
