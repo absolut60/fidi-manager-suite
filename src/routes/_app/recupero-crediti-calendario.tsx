@@ -594,7 +594,7 @@ function CalendarioPage() {
               const p = info.event.extendedProps;
               info.el.title = [p.cliente, p.tipoLabel, info.event.allDay ? fmtDate(info.event.start) + " · Tutto il giorno" : fmtDateTime(info.event.start), p.importo != null ? fmtEuro(p.importo) : null, p.note].filter(Boolean).join("\n");
             }}
-            eventAllow={(dropInfo, draggedEvent) => draggedEvent.extendedProps.kind !== "azione" || !dropInfo.allDay}
+            eventAllow={(dropInfo, draggedEvent) => !draggedEvent || draggedEvent.extendedProps.kind !== "azione" || !dropInfo.allDay}
             datesSet={handleDatesSet}
             eventClick={handleEventClick}
             eventDrop={handleEventDrop}
