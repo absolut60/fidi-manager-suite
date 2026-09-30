@@ -107,8 +107,10 @@ type FiltriRichieste = {
   importoMin: string; importoMax: string; giorniMin: string;
   /** Ordinamento della lista "In approvazione" (non e' un filtro). */
   ordina: OrdinaRichieste;
+  /** Interruttore approvatori limitati: nasconde le richieste in attesa di livelli superiori (non e' un filtro). */
+  soloDecidibili: boolean;
 };
-const FILTRI_VUOTI: FiltriRichieste = { cerca: "", agente: "tutti", store: "tutti", tipo: "tutti", rischio: "tutti", livello: "tutti", importoMin: "", importoMax: "", giorniMin: "", ordina: "importo" };
+const FILTRI_VUOTI: FiltriRichieste = { cerca: "", agente: "tutti", store: "tutti", tipo: "tutti", rischio: "tutti", livello: "tutti", importoMin: "", importoMax: "", giorniMin: "", ordina: "importo", soloDecidibili: false };
 const STADI_RISCHIO = ["verde", "giallo", "arancione", "rosso", "spento"] as const;
 
 function filtriAttivi(f: FiltriRichieste): boolean {
@@ -124,7 +126,7 @@ function normalizzaRicerca(v: unknown): string {
   return String(v ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
 }
 
-function filtraRichieste(righe: any[], f: FiltriRichieste): any[] {
+function filtraRichieste(righe: any[], f: FiltriRichieste, roles: readonly string[]): any[] {
   const q = normalizzaRicerca(f.cerca);
   return righe.filter((r) => {
     const c = r.clienti;
@@ -138,6 +140,10 @@ function filtraRichieste(righe: any[], f: FiltriRichieste): any[] {
     if (f.importoMin && Number(r.importo_richiesto) < Number(f.importoMin)) return false;
     if (f.importoMax && Number(r.importo_richiesto) > Number(f.importoMax)) return false;
     if (f.giorniMin && STATI_IN_APPROVAZIONE.includes(r.stato) && giorniDa(r.data_invio) < Number(f.giorniMin)) return false;
+    // Interruttore "Solo quelle che posso decidere": nasconde solo le richieste
+    // in attesa di decisione su cui l'utente non puo' pronunciarsi (fonte unica
+    // puoDecidereRichiesta); bozze/approvate/rifiutate restano visibili.
+    if (f.soloDecidibili && STATI_IN_APPROVAZIONE.includes(r.stato) && !puoDecidereRichiesta(roles, r.livello_richiesto)) return false;
     return true;
   });
 }
