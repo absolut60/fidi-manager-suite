@@ -156,7 +156,10 @@ function ordinaRichieste(righe: any[], ordina: OrdinaRichieste): any[] {
   return copia.sort((a, b) => Number(b.importo_richiesto) - Number(a.importo_richiesto));
 }
 
-function FiltriRichiesteBar({ filtri, onChange, stores }: { filtri: FiltriRichieste; onChange: (f: FiltriRichieste) => void; stores: [string, string][] }) {
+function FiltriRichiesteBar({ filtri, onChange, stores, approvatoreLimitato, soloDecidibiliIniziale, decidibiliInAttesa }: {
+  filtri: FiltriRichieste; onChange: (f: FiltriRichieste) => void; stores: [string, string][];
+  approvatoreLimitato: boolean; soloDecidibiliIniziale: boolean; decidibiliInAttesa: number;
+}) {
   const set = (k: keyof FiltriRichieste, v: string) => onChange({ ...filtri, [k]: v });
   // Stessa query (e cache) del filtro Agente dello scadenziario.
   const { data: agenti } = useQuery({
@@ -251,8 +254,27 @@ function FiltriRichiesteBar({ filtri, onChange, stores }: { filtri: FiltriRichie
           <SelectItem value="giorni">Ordina: Giorni in attesa</SelectItem>
         </SelectContent>
       </Select>
+      {/* Interruttore solo per approvatori con livello limitato: non e' un filtro,
+          quindi non compare in "Azzera filtri" e filtriAttivi non lo conta. */}
+      {approvatoreLimitato && (
+        <label className="flex items-center gap-2 flex-1 min-w-[200px] sm:flex-none h-10 cursor-pointer select-none">
+          <Switch
+            checked={filtri.soloDecidibili}
+            onCheckedChange={(v) => onChange({ ...filtri, soloDecidibili: v })}
+            aria-label="Solo quelle che posso decidere"
+          />
+          <span className="text-sm leading-tight min-w-0">
+            Solo quelle che posso decidere{" "}
+            <span className="text-muted-foreground whitespace-nowrap">({decidibiliInAttesa})</span>
+          </span>
+        </label>
+      )}
       {attivi && (
-        <Button variant="ghost" size="sm" className="h-10" onClick={() => { setCercaInput(""); onChange({ ...FILTRI_VUOTI, ordina: filtri.ordina }); }}>Azzera filtri</Button>
+        <Button variant="ghost" size="sm" className="h-10" onClick={() => {
+          setCercaInput("");
+          // "Azzera filtri" riporta l'interruttore al valore iniziale dell'utente.
+          onChange({ ...FILTRI_VUOTI, ordina: filtri.ordina, soloDecidibili: soloDecidibiliIniziale });
+        }}>Azzera filtri</Button>
       )}
     </Card>
   );
