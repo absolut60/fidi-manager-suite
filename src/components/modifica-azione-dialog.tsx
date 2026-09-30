@@ -18,16 +18,7 @@ import {
 } from "@/components/ui/select";
 import { AllegatiSection } from "@/components/allegati-section";
 
-type Esito = "da_fare" | "fatto" | "nessuna_risposta" | "promessa_pagamento" | "contestazione" | "pagato";
-
-const ESITI: { value: Esito; label: string }[] = [
-  { value: "da_fare", label: "Da fare" },
-  { value: "fatto", label: "Fatto" },
-  { value: "nessuna_risposta", label: "Nessuna risposta" },
-  { value: "promessa_pagamento", label: "Promessa pagamento" },
-  { value: "contestazione", label: "Contestazione" },
-  { value: "pagato", label: "Pagato" },
-];
+import { ESITI_AZIONE as ESITI, type EsitoAzione as Esito } from "@/lib/azioni-recupero-ui";
 
 const TIPO_META: Record<string, { label: string; Icon: typeof Mail }> = {
   email: { label: "email", Icon: Mail },
