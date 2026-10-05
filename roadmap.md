@@ -1,5 +1,9 @@
 # Roadmap
 
+## FM38 D4 — Descrizioni condizioni di pagamento
+- [ ] Regola unica, selettori e viste richieste fido con descrizione prima del codice
+- [ ] Verifiche dei casi limite e resa 320/390/768/1280
+
 ## FM36 fetta 14 — Calendario recupero crediti
 - [x] Promesse e rate senza orario, sovrapposizioni limitate, vista Agenda e titoli leggibili
 - [x] Filtri locali ed elenco arretrate su tutti i periodi
