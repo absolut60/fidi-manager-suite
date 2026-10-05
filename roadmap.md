@@ -1,8 +1,9 @@
 # Roadmap
 
 ## FM38 M1 — Impaginazione proposta massiva
-- [ ] Intestazione e footer fissi, impostazioni compatte, elenco a due righe
-- [ ] Verificare 320/768/1024/1280 e invarianza filtri/payload
+- [x] Intestazione e footer fissi, impostazioni compatte, elenco a due righe
+- [x] Prova isolata componenti reali 320/768/1024/1280; filtri e payload identici; compilazione automatica riuscita
+- [ ] Verifica autenticata con dati reali: accesso del richiedente non disponibile; serve login in anteprima
 
 ## FM38 D4 — Descrizioni condizioni di pagamento
 - [x] Regola unica, selettori e viste richieste fido con descrizione prima del codice
