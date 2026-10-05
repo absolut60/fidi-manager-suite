@@ -30,7 +30,10 @@ import {
   STATO_EXPORT_LABEL, STATO_EXPORT_TONE,
   type StatoExport,
 } from "@/lib/fidi-export";
-import { generaTracciatoFidiGestionale } from "@/lib/export-fidi-tracciato";
+import { generaTracciatoFidiGestionale, mappaDescrizioniCodici, TRACCIATO_CLIENTE_CAMPI } from "@/lib/export-fidi-tracciato";
+import { useCodiciPagamento } from "@/components/condizione-pagamento-richiesta-select";
+import { CambioCondizionePagamento } from "@/components/cambio-condizione-pagamento";
+import { mapRichiestaFido, importoPerEtichettaTipo } from "@/lib/richieste-fido-data";
 import { FiltriCollassabili } from "@/components/lista-responsive";
 import { Undo2 } from "lucide-react";
 
@@ -50,6 +53,12 @@ function FidiProcessarePage() {
   const qc = useQueryClient();
 
   const [tab, setTab] = useState("gestire");
+  const { data: codiciPagamento } = useCodiciPagamento();
+  const descrizioniCodici = useMemo(
+    () => (codiciPagamento ? mappaDescrizioniCodici(codiciPagamento) : null),
+    [codiciPagamento],
+  );
+  const exportPronto = !!descrizioniCodici;
 
 
   const { data: richieste, isLoading } = useQuery({
@@ -58,7 +67,7 @@ function FidiProcessarePage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("richieste_fido")
-        .select("*, clienti(ragione_sociale, codice_gestionale, codice_assegnato, partita_iva, fido_aziendale_concesso, condizione_pagamento_cod, condizione_pagamento_desc, condizioni_pagamento, stores(codice)), stores(nome, codice), richiedente:profili!richieste_fido_created_by_fkey(nome, cognome, email), approvatore:profili!richieste_fido_approvato_da_fkey(nome, cognome, email)")
+        .select(`*, clienti(${TRACCIATO_CLIENTE_CAMPI}, codice_assegnato, partita_iva, fido_aziendale_concesso), stores(nome, codice), richiedente:profili!richieste_fido_created_by_fkey(nome, cognome, email), approvatore:profili!richieste_fido_approvato_da_fkey(nome, cognome, email)`)
         .eq("stato", "approvata")
         .not("stato_export", "is", null)
         .order("data_chiusura", { ascending: false });
@@ -159,7 +168,8 @@ function FidiProcessarePage() {
     let result;
     try {
       // FONTE UNICA: stesso file dell'export "Fidi approvati (tracciato gestionale)".
-      result = generaTracciatoFidiGestionale(rows as any[]);
+      if (!descrizioniCodici) throw new Error("Codici di pagamento non ancora caricati");
+      result = generaTracciatoFidiGestionale(rows as any[], { descrizioniCodici });
     } catch (e: any) {
       toast.error(`Errore nella generazione del file: ${e?.message ?? e}`);
       return;
@@ -199,7 +209,8 @@ function FidiProcessarePage() {
   function rigeneraFile(rows: any[]) {
     if (!rows.length) return;
     try {
-      const { rows: out } = generaTracciatoFidiGestionale(rows as any[]);
+      if (!descrizioniCodici) throw new Error("Codici di pagamento non ancora caricati");
+      const { rows: out } = generaTracciatoFidiGestionale(rows as any[], { descrizioniCodici });
       toast.success(`File rigenerato (${out.length} righe).`);
     } catch (e: any) {
       toast.error(`Errore nella generazione del file: ${e?.message ?? e}`);
@@ -250,6 +261,7 @@ function FidiProcessarePage() {
             profiloName={profiloName}
             onGeneraFile={(rows) => { void generaFileEProcessa(rows); }}
             onRigenera={(rows) => rigeneraFile(rows)}
+            exportPronto={exportPronto}
             onSetStato={(ids, stato, note, setProc) =>
               setStatoMutation.mutate({
                 ids,
@@ -302,8 +314,9 @@ function ExportBadge({ stato }: { stato: StatoExport | null }) {
 
 /* ============================ DA GESTIRE TAB ============================ */
 function GestireTab({
-  rows, loading, stores, profiloName, onGeneraFile, onRigenera, onSetStato,
+  rows, loading, stores, profiloName, onGeneraFile, onRigenera, onSetStato, exportPronto,
 }: {
+  exportPronto: boolean;
   rows: any[];
   loading: boolean;
   stores: Array<{ id: string; nome: string }>;
@@ -398,6 +411,7 @@ function GestireTab({
           <div className="flex-1" />
           <Button
             size="sm"
+            disabled={!exportPronto}
             onClick={() => {
               const toExport = selectedRows.filter((r) => r.stato_export === "da_esportare" || r.stato_export === "errore_export");
               if (!toExport.length) { toast.error("Nessuna riga in stato 'da esportare' selezionata"); return; }
@@ -433,6 +447,17 @@ function GestireTab({
         </Card>
       ) : (
         <Card className="p-2 sm:p-3">
+          {(() => {
+            const n = filtered.filter(
+              (r) => (r.stato_export === "da_esportare" || r.stato_export === "errore_export")
+                && mapRichiestaFido(r).esitoCondPag === "approvata" && !!(r.condizione_pagamento_cod ?? "").trim(),
+            ).length;
+            return n > 0 ? (
+              <p className="mb-2 rounded-md border border-success/40 bg-success/10 px-3 py-2 text-sm break-words">
+                {n} {n === 1 ? "fido nel file porterà" : "fidi nel file porteranno"} anche la nuova condizione di pagamento
+              </p>
+            ) : null;
+          })()}
           <Table>
             <TableHeader>
               <TableRow>
@@ -462,12 +487,12 @@ function GestireTab({
                     <TableCell className="text-xs font-mono">{r.clienti?.codice_gestionale ?? r.clienti?.codice_assegnato ?? "—"}</TableCell>
                     <TableCell className="text-xs">{r.stores?.nome ?? "—"}</TableCell>
                     <TableCell>
-                      <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>
-                        {etichettaTipoRichiesta(r.tipo, Number(r.importo_approvato ?? r.importo_richiesto))}
-                      </span>
+                      <span className="inline-flex flex-wrap items-center gap-1"><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>
+                        {etichettaTipoRichiesta(r.tipo, importoPerEtichettaTipo(r))}
+                      </span><CambioCondizionePagamento variant="badge" richiesta={r} /></span>
                     </TableCell>
                     <TableCell className="text-right tabular-nums text-success font-medium">
-                      {formatEuro(Number(r.importo_approvato ?? r.importo_richiesto))}
+                      {mapRichiestaFido(r).soloCondizione ? <span className="text-xs font-normal text-muted-foreground">solo cond. pag.</span> : formatEuro(Number(r.importo_approvato ?? r.importo_richiesto))}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">{formatDate(r.data_chiusura ?? r.updated_at)}</TableCell>
                     <TableCell className="text-xs">{profiloName(r.approvato_da) !== "—" ? profiloName(r.approvato_da) : profiloName(r.created_by)}</TableCell>
@@ -475,13 +500,13 @@ function GestireTab({
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
                         {se === "da_esportare" && (
-                          <Button size="sm" onClick={() => onGeneraFile([r])}>
+                          <Button size="sm" disabled={!exportPronto} onClick={() => onGeneraFile([r])}>
                             <Download className="size-4" /> Genera
                           </Button>
                         )}
                         {se === "esportata" && (
                           <>
-                            <Button size="sm" variant="outline" onClick={() => onRigenera([r])} title="Rigenera file">
+                            <Button size="sm" variant="outline" disabled={!exportPronto} onClick={() => onRigenera([r])} title="Rigenera file">
                               <RefreshCw className="size-4" />
                             </Button>
                             <Button size="sm" variant="default" onClick={() => setProcessaConfirm(r)} title="Conferma processata">
@@ -507,7 +532,7 @@ function GestireTab({
                             >
                               <RefreshCw className="size-4" /> Riprova
                             </Button>
-                            <Button size="sm" variant="outline" onClick={() => onRigenera([r])}>
+                            <Button size="sm" variant="outline" disabled={!exportPronto} onClick={() => onRigenera([r])}>
                               <Download className="size-4" />
                             </Button>
                           </>
@@ -671,12 +696,12 @@ function StoricoTab({
                 <TableRow key={r.id}>
                   <TableCell className="font-medium">{r.clienti?.ragione_sociale ?? "—"}</TableCell>
                   <TableCell>
-                    <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>
-                      {etichettaTipoRichiesta(r.tipo, Number(r.importo_approvato ?? r.importo_richiesto))}
-                    </span>
+                    <span className="inline-flex flex-wrap items-center gap-1"><span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>
+                      {etichettaTipoRichiesta(r.tipo, importoPerEtichettaTipo(r))}
+                    </span><CambioCondizionePagamento variant="badge" richiesta={r} /></span>
                   </TableCell>
                   <TableCell className="text-right tabular-nums text-success font-medium">
-                    {formatEuro(Number(r.importo_approvato ?? r.importo_richiesto))}
+                    {mapRichiestaFido(r).soloCondizione ? <span className="text-xs font-normal text-muted-foreground">solo cond. pag.</span> : formatEuro(Number(r.importo_approvato ?? r.importo_richiesto))}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{formatDate(r.data_chiusura)}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{formatDate(r.data_export)}</TableCell>

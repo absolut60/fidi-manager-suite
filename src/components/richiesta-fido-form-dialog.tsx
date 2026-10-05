@@ -13,6 +13,7 @@ import { Command, CommandInput, CommandList, CommandItem, CommandEmpty, CommandG
 import { toast } from "sonner";
 import { uploadAllegatoFile, validateAllegatoFile, fmtAllegatoBytes } from "@/components/allegati-section";
 import { supabase } from "@/integrations/supabase/client";
+import { fidoConcessoDaRichiesta } from "@/lib/richieste-fido-data";
 import { useConfig } from "@/hooks/use-config";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -221,10 +222,12 @@ export function RichiestaFormDialog({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("richieste_fido")
-        .select("importo_approvato, data_chiusura")
+        .select("importo_approvato, esito_fido, data_chiusura")
         .eq("cliente_id", form.cliente_id)
         .eq("stato", "approvata")
         .not("importo_approvato", "is", null)
+        // esclude le richieste con fido NON concesso (regola: fidoConcessoDaRichiesta)
+        .or("esito_fido.is.null,esito_fido.neq.rifiutata")
         .order("data_chiusura", { ascending: false, nullsFirst: false })
         .limit(1)
         .maybeSingle();
@@ -232,8 +235,7 @@ export function RichiestaFormDialog({
       return data;
     },
   });
-  const ultimoApprovatoImp = ultimoApprovato?.importo_approvato != null
-    ? Number(ultimoApprovato.importo_approvato) : null;
+  const ultimoApprovatoImp = fidoConcessoDaRichiesta(ultimoApprovato);
   const disallineato = ultimoApprovatoImp != null
     && Math.abs(ultimoApprovatoImp - fidoAttuale) > 0.01;
 

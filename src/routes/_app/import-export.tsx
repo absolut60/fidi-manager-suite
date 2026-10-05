@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as XLSX from "xlsx";
 import { z } from "zod";
@@ -18,6 +18,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useCodiciPagamento } from "@/components/condizione-pagamento-richiesta-select";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -49,6 +50,7 @@ import {
 import {
   generaTracciatoFidiGestionale,
   TRACCIATO_FIDI_SELECT,
+  mappaDescrizioniCodici,
 } from "@/lib/export-fidi-tracciato";
 import {
   AlertDialog,
@@ -2938,6 +2940,12 @@ function ExportCard() {
     }
   }
 
+  const { data: codiciPagamento } = useCodiciPagamento();
+  const descrizioniCodici = useMemo(
+    () => (codiciPagamento ? mappaDescrizioniCodici(codiciPagamento) : null),
+    [codiciPagamento],
+  );
+
   async function exportFidiGestionale() {
     setBusy("fidi_gestionale");
     try {
@@ -2949,7 +2957,8 @@ function ExportCard() {
         .order("data_chiusura", { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false });
       if (error) throw error;
-      const { fileName, rows } = generaTracciatoFidiGestionale((data ?? []) as any[]);
+      if (!descrizioniCodici) throw new Error("Codici di pagamento non ancora caricati");
+      const { fileName, rows } = generaTracciatoFidiGestionale((data ?? []) as any[], { descrizioniCodici });
       await logEsportazione(fileName, rows.length);
       toast.success(`Esportati ${rows.length} fidi approvati`);
     } catch (e) {
@@ -3028,7 +3037,7 @@ function ExportCard() {
         <Button
           variant="outline"
           className="w-full justify-between"
-          disabled={busy !== null}
+          disabled={busy !== null || !descrizioniCodici}
           onClick={exportFidiGestionale}
         >
           <span className="flex items-center gap-2">

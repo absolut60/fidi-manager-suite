@@ -183,6 +183,19 @@ export function importoPerEtichettaTipo(r: AnyRecord): number {
   return v.soloCondizione || v.importoApprovato == null ? v.importo : v.importoApprovato;
 }
 
+/**
+ * Fido effettivamente CONCESSO da una richiesta (regola unica).
+ * null se il fido è stato rifiutato (esito_fido = 'rifiutata', es. approvata solo
+ * la condizione di pagamento: importo_approvato lì è il fido già esistente).
+ * Altrimenti importo_approvato (anche per le richieste storiche con esito_fido NULL).
+ */
+export function fidoConcessoDaRichiesta(
+  r: { esito_fido?: string | null; importo_approvato?: number | string | null } | null | undefined,
+): number | null {
+  if (!r || r.esito_fido === "rifiutata" || r.importo_approvato == null) return null;
+  return Number(r.importo_approvato);
+}
+
 export function mapRichiesteFido(rows: AnyRecord[] | null | undefined): RichiestaFidoView[] {
   return (rows ?? []).map(mapRichiestaFido);
 }
