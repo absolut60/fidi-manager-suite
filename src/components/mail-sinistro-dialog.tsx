@@ -104,15 +104,16 @@ export function MailSinistroDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, polizzaId]);
 
+  const importoNum = parseNumeroIt(importo);
   const anteprimaHtml = useMemo(
     () =>
       wrapEmailHtml(
-        testoToHtml(corpo),
+        testoToHtml(risolviImporto(corpo, importoNum, false)),
         null,
         { nome: nomeMittente, email: emailMittente },
         { senzaBande: true, sottotitolo: "Assicurazione crediti" },
       ),
-    [corpo, nomeMittente, emailMittente],
+    [corpo, importoNum, nomeMittente, emailMittente],
   );
 
   async function inviaEApri() {
@@ -123,6 +124,15 @@ export function MailSinistroDialog({
     }
     if (!corpo.trim()) {
       toast.error("Il corpo della mail non può essere vuoto");
+      return;
+    }
+    if (importoNum == null || importoNum <= 0) {
+      toast.error("Inserisci l'importo del sinistro");
+      return;
+    }
+    const corpoInvio = risolviImporto(corpo, importoNum, true);
+    if (corpoInvio.includes(PLACEHOLDER_IMPORTO)) {
+      toast.error("Inserisci l'importo del sinistro");
       return;
     }
     setSending(true);
