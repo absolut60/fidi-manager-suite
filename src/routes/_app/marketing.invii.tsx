@@ -370,6 +370,11 @@ function InviiMarketingPage() {
                     })
                   : { livello: "nd" as const, secondiDaUltimo: null };
                 const durata = fmtDurataBreve(salute.secondiDaUltimo);
+                const ultimoInvioMs = p?.ultimo_invio_at ? new Date(p.ultimo_invio_at).getTime() : null;
+                const puoRiprendere =
+                  isAttiva &&
+                  c.totale_destinatari - processati > 0 &&
+                  (ultimoInvioMs == null || (progressoAggiornatoAt || Date.now()) - ultimoInvioMs > 10 * 60_000);
                 const apri = () => setOpenDettaglio(c.id);
                 return (
                   <TableRow key={c.id} className="hover:bg-muted/50">
@@ -428,7 +433,7 @@ function InviiMarketingPage() {
                         <Progress value={pct} className="h-2" />
                         <span className="text-xs text-muted-foreground tabular-nums w-10">{pct}%</span>
                       </div>
-                      {salute.livello === "bloccata" && (
+                      {puoRiprendere && (
                         <Button
                           size="sm"
                           variant="destructive"
@@ -450,7 +455,7 @@ function InviiMarketingPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          {isAttiva && (
+                          {puoRiprendere && (
                             <>
                               <DropdownMenuItem
                                 onClick={() => doRiprendi(c.id)}
