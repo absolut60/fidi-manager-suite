@@ -2621,24 +2621,25 @@ function ProposteFidoMassivoDialog({
         onChange={(cod) => aggiornaCondizione(r.cliente_id, cod)} />
     </div>
   );
-  const renderDettagli = (r: RigaProposta) => (
-    <div className="grid grid-cols-1 gap-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] text-xs">
-      {r.nota_proposta && <details className="min-w-0 group">
-        <summary className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 cursor-pointer list-none">
-          <span className="truncate text-muted-foreground" title={r.nota_proposta}>{r.nota_proposta}</span>
-          <span className="text-primary whitespace-nowrap group-open:hidden">Mostra tutto</span>
-          <span className="text-primary whitespace-nowrap hidden group-open:block">Mostra meno</span>
-        </summary>
-        <p className="pt-1 break-words text-muted-foreground">{r.nota_proposta}</p>
-      </details>}
-      {condizionePagamentoCambiata(r.cond_proposta, r.cond_attuale) && (
-        <div className="min-w-0 break-words text-info xl:text-right">
-          <CambioCondizionePagamento variant="badge" codAttuale={r.cond_attuale} codProposta={r.cond_proposta} descAttuale={r.cond_attuale_desc} />
-          {" "}<CondizionePagamentoTesto cod={r.cond_attuale} descFallback={r.cond_attuale_desc} /> → <CondizionePagamentoTesto cod={r.cond_proposta} />
-        </div>
-      )}
-    </div>
-  );
+  const renderDettagli = (r: RigaProposta) => {
+    const cambio = condizionePagamentoCambiata(r.cond_proposta, r.cond_attuale);
+    if (!r.nota_proposta && !cambio) return null;
+    return (
+      <div className={`grid grid-cols-1 gap-2 text-xs ${cambio ? "xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]" : ""}`}>
+        {r.nota_proposta && (
+          <div className="min-w-0">
+            <NotaPropostaDettaglio nota={r.nota_proposta} />
+          </div>
+        )}
+        {cambio && (
+          <div className="min-w-0 break-words text-info xl:text-right">
+            <CambioCondizionePagamento variant="badge" codAttuale={r.cond_attuale} codProposta={r.cond_proposta} descAttuale={r.cond_attuale_desc} />
+            {" "}<CondizionePagamentoTesto cod={r.cond_attuale} descFallback={r.cond_attuale_desc} /> → <CondizionePagamentoTesto cod={r.cond_proposta} />
+          </div>
+        )}
+      </div>
+    );
+  };
   const renderRimuovi = (r: RigaProposta) => (
     <Button variant="ghost" size="icon" onClick={() => rimuoviRiga(r.cliente_id)} title="Rimuovi">
       <X className="size-4" />
