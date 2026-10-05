@@ -188,6 +188,8 @@ export type Database = {
           approvatore_id: string
           created_at: string
           esito: Database["public"]["Enums"]["esito_approvazione"]
+          esito_condizione_pagamento: string | null
+          esito_fido: string | null
           id: string
           importo_approvato: number | null
           livello: number
@@ -198,6 +200,8 @@ export type Database = {
           approvatore_id: string
           created_at?: string
           esito: Database["public"]["Enums"]["esito_approvazione"]
+          esito_condizione_pagamento?: string | null
+          esito_fido?: string | null
           id?: string
           importo_approvato?: number | null
           livello: number
@@ -208,6 +212,8 @@ export type Database = {
           approvatore_id?: string
           created_at?: string
           esito?: Database["public"]["Enums"]["esito_approvazione"]
+          esito_condizione_pagamento?: string | null
+          esito_fido?: string | null
           id?: string
           importo_approvato?: number | null
           livello?: number
@@ -4756,6 +4762,7 @@ export type Database = {
           approvato_da: string | null
           cliente_id: string
           condizione_pagamento_cod: string | null
+          condizione_pagamento_precedente_cod: string | null
           created_at: string
           created_by: string | null
           data_approvazione: string | null
@@ -4765,6 +4772,8 @@ export type Database = {
           data_processata: string | null
           data_scadenza: string | null
           durata_mesi: number
+          esito_condizione_pagamento: string | null
+          esito_fido: string | null
           esportata_da: string | null
           id: string
           importo_approvato: number | null
@@ -4785,6 +4794,7 @@ export type Database = {
           approvato_da?: string | null
           cliente_id: string
           condizione_pagamento_cod?: string | null
+          condizione_pagamento_precedente_cod?: string | null
           created_at?: string
           created_by?: string | null
           data_approvazione?: string | null
@@ -4794,6 +4804,8 @@ export type Database = {
           data_processata?: string | null
           data_scadenza?: string | null
           durata_mesi?: number
+          esito_condizione_pagamento?: string | null
+          esito_fido?: string | null
           esportata_da?: string | null
           id?: string
           importo_approvato?: number | null
@@ -4814,6 +4826,7 @@ export type Database = {
           approvato_da?: string | null
           cliente_id?: string
           condizione_pagamento_cod?: string | null
+          condizione_pagamento_precedente_cod?: string | null
           created_at?: string
           created_by?: string | null
           data_approvazione?: string | null
@@ -4823,6 +4836,8 @@ export type Database = {
           data_processata?: string | null
           data_scadenza?: string | null
           durata_mesi?: number
+          esito_condizione_pagamento?: string | null
+          esito_fido?: string | null
           esportata_da?: string | null
           id?: string
           importo_approvato?: number | null
@@ -6784,6 +6799,10 @@ export type Database = {
           saltate: number
         }[]
       }
+      condizione_pagamento_cambiata: {
+        Args: { _attuale: string; _proposta: string }
+        Returns: boolean
+      }
       conta_contattabili_canale: {
         Args: { _canale: string; _filtri: Json }
         Returns: number
@@ -7828,6 +7847,8 @@ export type Database = {
       processa_richiesta_fido: {
         Args: {
           _esito: string
+          _esito_condizione?: string
+          _esito_fido?: string
           _importo_approvato?: number
           _note?: string
           _richiesta_id: string
@@ -7836,6 +7857,7 @@ export type Database = {
           approvato_da: string | null
           cliente_id: string
           condizione_pagamento_cod: string | null
+          condizione_pagamento_precedente_cod: string | null
           created_at: string
           created_by: string | null
           data_approvazione: string | null
@@ -7845,6 +7867,8 @@ export type Database = {
           data_processata: string | null
           data_scadenza: string | null
           durata_mesi: number
+          esito_condizione_pagamento: string | null
+          esito_fido: string | null
           esportata_da: string | null
           id: string
           importo_approvato: number | null
