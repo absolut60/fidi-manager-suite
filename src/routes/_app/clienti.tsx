@@ -10,9 +10,10 @@ import * as RadixSlider from "@radix-ui/react-slider";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { getFidoAttuale, FIDO_CLIENTE_SELECT } from "@/lib/fido-cliente";
+import { CondizionePagamentoRichiestaSelect, useCodiciPagamento } from "@/components/condizione-pagamento-richiesta-select";
 import {
   determinaTipoRichiesta, isRichiestaAttiva, TIPO_LABEL, STATO_LABEL, STATO_TONE, formatDate,
-  importoRichiestaValido, etichettaTipoRichiesta,
+  importoRichiestaValido, etichettaTipoRichiesta, condizionePagamentoCambiata,
   type StatoRichiesta, type TipoRichiesta,
 } from "@/lib/fidi";
 import {
@@ -2174,6 +2175,12 @@ type RigaProposta = {
   motivazione?: string;
   /** Richiesta fido attiva piu' recente (isRichiestaAttiva), se esiste. */
   richiestaInCorso?: { stato: string; tipo: string; importo: number; created_at: string };
+  /** Condizione di pagamento ATTUALE del cliente (gestionale), può essere vuota. */
+  cond_attuale: string;
+  /** Condizione di pagamento PROPOSTA con la richiesta ("" = nessuna). */
+  cond_proposta: string;
+  /** true quando cond_attuale/cond_proposta sono state inizializzate dai dati. */
+  cond_init: boolean;
 };
 
 type TipoProposta = RigaProposta["tipo"];
@@ -2202,6 +2209,22 @@ async function fetchRichiesteInCorso(ids: string[]): Promise<Map<string, NonNull
         });
       }
     }
+  }
+  return map;
+}
+
+/** Condizione di pagamento attuale dei clienti, a blocchi di 500 (la lista non la carica sempre). */
+async function fetchCondizioniClienti(ids: string[]): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  const uniq = Array.from(new Set(ids.filter(Boolean)));
+  for (let i = 0; i < uniq.length; i += 500) {
+    const chunk = uniq.slice(i, i + 500);
+    const { data, error } = await supabase
+      .from("clienti")
+      .select("id, condizione_pagamento_cod")
+      .in("id", chunk);
+    if (error) throw error;
+    for (const r of (data ?? []) as any[]) map.set(r.id, String(r.condizione_pagamento_cod ?? "").trim());
   }
   return map;
 }
@@ -2259,6 +2282,29 @@ function ProposteFidoMassivoDialog({
     staleTime: 60_000,
     queryFn: () => fetchRichiesteInCorso(ids),
   });
+  const { data: condMap } = useQuery({
+    queryKey: ["condizioni-clienti-massivo", [...ids].sort().join(",")],
+    enabled: open && ids.length > 0,
+    staleTime: 60_000,
+    queryFn: () => fetchCondizioniClienti(ids),
+  });
+  const { data: codiciPagamento } = useCodiciPagamento();
+
+  // Condizione attuale/proposta: inizializzata una sola volta per riga quando arrivano
+  // condizioni cliente e codici (stessa regola del modulo singolo: proposta = attuale
+  // se presente in tabella codici, altrimenti vuota). Non sovrascrive scelte dell'utente.
+  useEffect(() => {
+    if (!condMap || !codiciPagamento) return;
+    const codici = new Set(codiciPagamento.map((c) => c.cod));
+    setRighe((prev) => {
+      if (!prev.some((r) => !r.cond_init)) return prev;
+      return prev.map((r) => {
+        if (r.cond_init) return r;
+        const att = condMap.get(r.cliente_id) ?? "";
+        return { ...r, cond_attuale: att, cond_proposta: att && codici.has(att) ? att : "", cond_init: true };
+      });
+    });
+  }, [condMap, codiciPagamento, righe.length]);
 
   // Inizializza/aggiorna righe quando cambia la selezione o arriva il calcolo
   useEffect(() => {
@@ -2290,6 +2336,9 @@ function ProposteFidoMassivoDialog({
           proponibile,
           incluso: proponibile,
           tipo: determinaTipoRichiesta(attuale, proposto),
+          cond_attuale: "",
+          cond_proposta: "",
+          cond_init: false,
         };
       });
     });
@@ -2313,6 +2362,9 @@ function ProposteFidoMassivoDialog({
   }
   function aggiornaMotivazioneRiga(id: string, valore: string | undefined) {
     setRighe((prev) => prev.map((r) => r.cliente_id === id ? { ...r, motivazione: valore } : r));
+  }
+  function aggiornaCondizione(id: string, cod: string) {
+    setRighe((prev) => prev.map((r) => r.cliente_id === id ? { ...r, cond_proposta: cod, cond_init: true } : r));
   }
   function rimuoviRiga(id: string) {
     setRighe((prev) => prev.filter((r) => r.cliente_id !== id));
@@ -2414,6 +2466,7 @@ function ProposteFidoMassivoDialog({
           stato,
           created_by: userId,
           motivazione: m,
+          condizione_pagamento_cod: r.cond_proposta || null,
         };
       });
       const { error } = await supabase.from("richieste_fido").insert(payload as any);
@@ -2519,6 +2572,28 @@ function ProposteFidoMassivoDialog({
           </div>
         </PopoverContent>
       </Popover>
+    );
+  };
+  const renderCondizione = (r: RigaProposta) => {
+    const cambio = condizionePagamentoCambiata(r.cond_proposta, r.cond_attuale);
+    return (
+      <div className={`min-w-0 space-y-1 ${cambio ? "rounded-md bg-info/10 p-1" : ""}`}>
+        <div className="flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground">
+          {cambio ? (
+            <>
+              <Badge className="h-5 bg-info/15 px-1.5 text-[10px] text-info hover:bg-info/20">Cambio</Badge>
+              <span className="font-mono break-all">{r.cond_attuale || "—"} → {r.cond_proposta}</span>
+            </>
+          ) : (
+            <span>Attuale: <span className="font-mono">{r.cond_attuale || "—"}</span></span>
+          )}
+        </div>
+        <CondizionePagamentoRichiestaSelect
+          size="sm"
+          value={r.cond_proposta}
+          onChange={(cod) => aggiornaCondizione(r.cliente_id, cod)}
+        />
+      </div>
     );
   };
   const renderRimuovi = (r: RigaProposta) => (
@@ -2656,6 +2731,15 @@ function ProposteFidoMassivoDialog({
           </p>
         </div>
 
+        {(() => {
+          const nCambi = righeVisibiliIncluse.filter((r) => condizionePagamentoCambiata(r.cond_proposta, r.cond_attuale)).length;
+          return nCambi > 0 ? (
+            <div className="rounded-md border border-info/30 bg-info/10 px-3 py-2 text-xs text-info break-words">
+              {nCambi} {nCambi === 1 ? "richiesta propone" : "richieste propongono"} un cambio di condizione di pagamento
+            </div>
+          ) : null;
+        })()}
+
         {/* Mobile: schede */}
         <ElencoSchede>
           {righeVisibili.map((r) => {
@@ -2697,6 +2781,10 @@ function ProposteFidoMassivoDialog({
                       <Label className="text-xs text-muted-foreground font-normal">Tipo</Label>
                       {renderTipo(r, "h-10 w-full")}
                     </div>
+                    <div className="min-w-0 space-y-1 sm:col-span-2">
+                      <Label className="text-xs text-muted-foreground font-normal">Cond. pagamento</Label>
+                      {renderCondizione(r)}
+                    </div>
                   </div>
                 }
               />
@@ -2714,6 +2802,7 @@ function ProposteFidoMassivoDialog({
                 <TableHead className="text-right">Esposizione</TableHead>
                 <TableHead className="text-right">Fido proposto</TableHead>
                 <TableHead className="text-right">Scostamento</TableHead>
+                <TableHead className="w-36">Cond. pagamento</TableHead>
                 <TableHead>Regola</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead className="w-10">Mot.</TableHead>
@@ -2744,6 +2833,7 @@ function ProposteFidoMassivoDialog({
                     <TableCell className={`text-right text-sm tabular-nums ${scost > 0 ? "text-success" : scost < 0 ? "text-warning" : "text-muted-foreground"}`}>
                       {r.proponibile ? `${scost > 0 ? "+" : ""}${fmtEuro(scost)}` : "—"}
                     </TableCell>
+                    <TableCell className="w-36 min-w-[8rem]">{renderCondizione(r)}</TableCell>
                     <TableCell className="text-xs">{renderRegola(r)}</TableCell>
                     <TableCell>{renderTipo(r, "h-8 w-36")}</TableCell>
                     <TableCell>{renderMotivazione(r)}</TableCell>

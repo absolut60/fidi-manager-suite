@@ -45,6 +45,20 @@ export function etichettaTipoRichiesta(tipo: string, importo: number | null | un
   return TIPO_LABEL[tipo as TipoRichiesta] ?? tipo;
 }
 
+/**
+ * FONTE UNICA: la richiesta propone un CAMBIO di condizione di pagamento?
+ * true solo se la proposta è valorizzata ed è diversa dall'attuale
+ * (confronto su trim, maiuscole/minuscole ignorate). Proposta vuota = nessun cambio.
+ */
+export function condizionePagamentoCambiata(
+  codProposta: string | null | undefined,
+  codAttuale: string | null | undefined,
+): boolean {
+  const p = (codProposta ?? "").trim().toUpperCase();
+  if (!p) return false;
+  return p !== (codAttuale ?? "").trim().toUpperCase();
+}
+
 export const TIPO_TONE: Record<TipoRichiesta, string> = {
   nuovo: "bg-primary/10 text-primary",
   nuovo_fido: "bg-primary/10 text-primary",
