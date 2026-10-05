@@ -169,6 +169,39 @@ function statoRiconciliazione(p: PartecipanteRow): "riconciliato" | "da_riconcil
  * Titolo della riga: nome della persona (prima riga) e, se presente e diverso,
  * la ragione sociale collegata (seconda riga più piccola).
  */
+type EsitoRiconciliazioneVoce = {
+  partecipanteId: string;
+  nome: string;
+  tipo: "non_collegato" | "avviso";
+  motivo: string;
+  candidati: Array<{ tipo: "cliente" | "lead"; id: string; etichetta: string; forte: boolean; motivi: string[] }>;
+};
+
+/** Frase in chiaro per una voce "Da controllare" della riconciliazione automatica. */
+function fraseEsito(v: EsitoRiconciliazioneVoce): string {
+  if (v.tipo === "avviso") {
+    return v.motivo === "impresa_dichiarata_diversa"
+      ? "Collegato in automatico, ma l'impresa dichiarata nel modulo è diversa dal cliente trovato: verifica."
+      : `Collegato in automatico con avviso: ${v.motivo}`;
+  }
+  switch (v.motivo) {
+    case "nessun_candidato":
+      return "Nessuna corrispondenza con clienti o lead: da collegare a mano o trasformare in lead.";
+    case "piu_candidati":
+      return (
+        "Più corrispondenze possibili: " +
+        v.candidati
+          .filter((c) => c.forte)
+          .map((c) => (c.motivi.length ? `${c.etichetta} (${c.motivi.join(", ")})` : c.etichetta))
+          .join("; ")
+      );
+    case "piu_imprese_omonime":
+      return "Più clienti con la stessa ragione sociale: " + v.candidati.map((c) => c.etichetta).join("; ");
+    default:
+      return "Non riconciliato: " + v.motivo;
+  }
+}
+
 function nomePersonaEragione(p: PartecipanteRow): { persona: string; ragione: string | null } {
   const persona =
     `${p.nome ?? ""} ${p.cognome ?? ""}`.trim() ||
@@ -322,6 +355,7 @@ function EventoDettaglioPage() {
   const [modifica, setModifica] = useState(false);
   const [tab, setTab] = useState("partecipanti");
   const [dettaglio, setDettaglio] = useState<PartecipanteRow | null>(null);
+  const [esitoRiconciliazione, setEsitoRiconciliazione] = useState<EsitoRiconciliazioneVoce[]>([]);
 
 
 
@@ -614,30 +648,61 @@ function EventoDettaglioPage() {
       (p) => statoRiconciliazione(p) === "da_riconciliare",
     );
     let riconciliati = 0;
+    let conAvviso = 0;
     let senzaMatch = 0;
     let saltati = 0;
     let errori = 0;
+    const voci: EsitoRiconciliazioneVoce[] = [];
+    const nomeDi = (p: PartecipanteRow) => {
+      const t = nomePersonaEragione(p);
+      return t.ragione ? `${t.persona} · ${t.ragione}` : t.persona;
+    };
 
-    setTab("partecipanti");
+    setEsitoRiconciliazione([]);
     setRiconciliaInCorso(true);
     try {
       for (const p of righe) {
         try {
           const res = await riconciliaFn({ data: { partecipanteId: p.id } });
-          if (res.ok === true) riconciliati++;
-          else if (res.errore === "match_non_univoco") senzaMatch++;
-          else if (res.errore === "gia_riconciliato") saltati++;
-          else errori++;
-        } catch {
+          if (res.ok === true) {
+            riconciliati++;
+            if (res.avviso) {
+              conAvviso++;
+              voci.push({ partecipanteId: p.id, nome: nomeDi(p), tipo: "avviso", motivo: res.avviso, candidati: [] });
+            }
+          } else if (res.errore === "gia_riconciliato") {
+            saltati++;
+          } else {
+            if (res.errore === "match_non_univoco") senzaMatch++;
+            else errori++;
+            voci.push({
+              partecipanteId: p.id,
+              nome: nomeDi(p),
+              tipo: "non_collegato",
+              motivo: res.errore === "match_non_univoco" ? (res.motivo ?? "match_non_univoco") : (res.errore ?? "errore"),
+              candidati: res.candidati ?? [],
+            });
+          }
+        } catch (e) {
           errori++;
+          voci.push({
+            partecipanteId: p.id,
+            nome: nomeDi(p),
+            tipo: "non_collegato",
+            motivo: e instanceof Error ? e.message : "errore",
+            candidati: [],
+          });
         }
         await new Promise((r) => setTimeout(r, 250));
       }
     } finally {
       setRiconciliaInCorso(false);
     }
+    setEsitoRiconciliazione(voci);
+    if (voci.length === 0) setTab("partecipanti");
 
     const parti = [`${riconciliati} riconciliati`];
+    if (conAvviso) parti.push(`${conAvviso} collegati con avviso`);
     if (senzaMatch) parti.push(`${senzaMatch} senza corrispondenza univoca (da fare a mano)`);
     if (saltati) parti.push(`${saltati} già riconciliati`);
     if (errori) parti.push(`${errori} in errore`);
@@ -1274,7 +1339,7 @@ function EventoDettaglioPage() {
 
           <RiconciliaImportCard eventoId={eventoId} />
 
-          {riepilogo.daRiconciliare > 0 && (
+          {(riepilogo.daRiconciliare > 0 || esitoRiconciliazione.length > 0) && (
             <Card className="p-4 sm:p-5 space-y-3">
               <div>
                 <h3 className="text-base font-semibold">Riconciliazione partecipanti</h3>
@@ -1282,15 +1347,53 @@ function EventoDettaglioPage() {
                   Prova a collegare automaticamente i partecipanti non ancora riconciliati ai clienti esistenti.
                 </p>
               </div>
-              <Button
-                variant="outline"
-                className="gap-1.5"
-                disabled={riconciliaInCorso}
-                onClick={() => void riconciliaAutomatica()}
-              >
-                <Link2 className="size-4" />
-                {riconciliaInCorso ? "Riconciliazione…" : "Riconcilia automaticamente"}
-              </Button>
+              {riepilogo.daRiconciliare > 0 && (
+                <Button
+                  variant="outline"
+                  className="gap-1.5"
+                  disabled={riconciliaInCorso}
+                  onClick={() => void riconciliaAutomatica()}
+                >
+                  <Link2 className="size-4" />
+                  {riconciliaInCorso ? "Riconciliazione…" : "Riconcilia automaticamente"}
+                </Button>
+              )}
+              {esitoRiconciliazione.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-sm font-semibold">Da controllare ({esitoRiconciliazione.length})</h4>
+                  <ul className="divide-y rounded-md border">
+                    {esitoRiconciliazione.map((v) => {
+                      const riga = (partecipanti ?? []).find((p) => p.id === v.partecipanteId);
+                      return (
+                        <li key={v.partecipanteId} className="flex flex-col gap-2 p-3 sm:flex-row sm:items-start">
+                          <div className="min-w-0 flex-1 space-y-0.5">
+                            <p className="font-medium break-words">{v.nome}</p>
+                            <p
+                              className={
+                                v.tipo === "avviso"
+                                  ? "text-sm break-words text-amber-700 dark:text-amber-400"
+                                  : "text-sm break-words text-muted-foreground"
+                              }
+                            >
+                              {fraseEsito(v)}
+                            </p>
+                          </div>
+                          {riga && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="min-h-10 sm:min-h-0 shrink-0 self-start"
+                              onClick={() => setDettaglio(riga)}
+                            >
+                              Apri
+                            </Button>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
             </Card>
           )}
 

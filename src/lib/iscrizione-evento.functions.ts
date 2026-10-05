@@ -40,7 +40,10 @@ const MESSAGGI: Record<string, string> = {
  * Registra l'iscrizione pubblica: la RPC crea lead provvisorio + contatto +
  * partecipante; poi la privacy viene finalizzata sul contatto con lo stesso
  * percorso degli iscritti sul posto (finalizzaRaccoltaPrivacy). La
- * finalizzazione non è mai fatale per l'iscrizione.
+ * finalizzazione non è mai fatale per l'iscrizione. A privacy finalizzata
+ * parte la riconciliazione automatica (riconcilia_partecipante, modo
+ * automatico): anch'essa mai fatale, esito solo nei log (la pagina pubblica
+ * non deve sapere se la persona è già cliente).
  */
 export const iscriviEventoPubblico = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
@@ -55,6 +58,7 @@ export const iscriviEventoPubblico = createServerFn({ method: "POST" })
         consenso_whatsapp: z.boolean().default(false),
         consenso_marketing: z.boolean().default(false),
         consenso_profilazione: z.boolean().default(false),
+        consenso_media: z.boolean().default(false),
         secondi_permanenza: z.number().int().min(0).max(86400).nullable().optional(),
       })
       .parse(d),
@@ -96,11 +100,10 @@ export const iscriviEventoPubblico = createServerFn({ method: "POST" })
           dichiarante: { nome, cognome, societa: azienda || undefined, email, cellulare },
           consensi: {
             profilazione: data.consenso_profilazione,
-            marketing_media: false,
+            marketing_media: data.consenso_media,
             marketing_diretto: data.consenso_marketing,
           },
           consensoWhatsapp: data.consenso_whatsapp,
-          mostraConsensoMedia: false,
           secondi_permanenza: data.secondi_permanenza,
           origine: "link_pubblico",
           note: `Iscrizione online all'evento: ${r.nome_evento ?? ""}`,
@@ -110,6 +113,25 @@ export const iscriviEventoPubblico = createServerFn({ method: "POST" })
         emailInviata = esito.emailInviata;
       } catch (e) {
         console.error("[iscrizione-evento] privacy non finalizzata", e);
+      }
+      try {
+        const { data: part, error: pErr } = await supabaseAdmin
+          .from("eventi_partecipanti")
+          .select("id")
+          .eq("contatto_id", r.contatto_id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (pErr) throw pErr;
+        if (part?.id) {
+          const { data: esito, error: rErr } = await supabaseAdmin.rpc("riconcilia_partecipante", {
+            _partecipante_id: part.id,
+          });
+          if (rErr) throw rErr;
+          console.log("[iscrizione-evento] riconciliazione automatica", esito);
+        }
+      } catch (e) {
+        console.error("[iscrizione-evento] riconciliazione automatica non riuscita", e);
       }
     }
     return { ok: true as const, giaPresente: false, privacyArchiviata, emailInviata };
