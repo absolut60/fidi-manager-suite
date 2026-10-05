@@ -22,7 +22,9 @@ import { puoDecidereRichiesta } from "@/lib/fidi";
 
 import { ComunicazioniRichiestaPanel } from "@/components/comunicazioni-richiesta-panel";
 import { AllegatiSection } from "@/components/allegati-section";
-import { RICHIESTA_FIDO_SELECT } from "@/lib/richieste-fido-data";
+import { CambioCondizionePagamento } from "@/components/cambio-condizione-pagamento";
+import { useCodiciPagamento } from "@/components/condizione-pagamento-richiesta-select";
+import { RICHIESTA_FIDO_SELECT, mapRichiestaFido } from "@/lib/richieste-fido-data";
 import { getFidoAttuale } from "@/lib/fido-cliente";
 import { PannelloRischioCliente } from "@/components/pannello-rischio-cliente";
 import { ModificaRichiestaFidoDialog, useAnnullaRichiestaFido } from "@/components/richiesta-fido-form-dialog";
@@ -52,22 +54,11 @@ function RichiestaDetail() {
     },
   });
 
-  // Lookup descrizione condizione di pagamento scelta sulla richiesta.
+  // Condizione di pagamento proposta (descrizione dal hook unico dei codici).
   const condPagCod = (r as any)?.condizione_pagamento_cod as string | null | undefined;
-  const { data: condPagRow } = useQuery({
-    queryKey: ["codici-pagamento", "single", condPagCod],
-    enabled: !!condPagCod,
-    staleTime: 5 * 60 * 1000,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("codici_pagamento")
-        .select("cod, descrizione")
-        .eq("cod", condPagCod!)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-  });
+  const { data: codiciPagamento } = useCodiciPagamento();
+  const condPagRow = (codiciPagamento ?? []).find((c) => c.cod === condPagCod) ?? null;
+  const vistaR = r ? mapRichiestaFido(r) : null;
 
   const { data: approvazioni } = useQuery({
     queryKey: ["approvazioni", richiestaId],
@@ -269,9 +260,9 @@ function RichiestaDetail() {
               Approvato: <span className="font-medium text-foreground tabular-nums">{formatEuro(Number(r.importo_approvato))}</span>
             </p>
           )}
-          {condPagCod && (
+          {condPagCod && vistaR?.cambioCondPag && (
             <p className="mt-0.5 text-xs text-muted-foreground break-words">
-              Cond. pagamento:{" "}
+              Cond. pagamento proposta:{" "}
               <span className="font-medium text-foreground">
                 <span className="font-mono">{condPagCod}</span>
                 {condPagRow?.descrizione ? ` — ${condPagRow.descrizione}` : ""}
@@ -326,6 +317,8 @@ function RichiestaDetail() {
           </dl>
         </Card>
       </div>
+
+      <CambioCondizionePagamento variant="blocco" richiesta={r} />
 
       <ModificaRichiestaFidoDialog richiesta={r} open={modificaAperta} onOpenChange={setModificaAperta} onSaved={aggiornaDopoAzione} />
       <ModificaRichiestaFidoDialog richiesta={r} riinvia open={riinvioAperto} onOpenChange={setRiinvioAperto} onSaved={aggiornaDopoAzione} />
@@ -534,6 +527,7 @@ function ApprovaForm({ richiesta }: { richiesta: any; userId: string }) {
       <h2 className="font-semibold mb-2">
         Decisione <span className="text-xs font-normal text-muted-foreground">(richiede livello {richiesta.livello_richiesto})</span>
       </h2>
+      <CambioCondizionePagamento variant="riga" richiesta={richiesta} className="mb-3" />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <Label htmlFor="importo_app">Importo da approvare (€)</Label>

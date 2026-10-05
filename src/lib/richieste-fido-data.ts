@@ -17,9 +17,14 @@
  *  - richiedente    = profili (FK richieste_fido_created_by_fkey)
  *  - approvatore    = profili (FK richieste_fido_approvato_da_fkey)
  *  - livelloRichiesto / livelloCorrente / stato / tipo / motivazione
+ *  - condPagProposta    = richieste_fido.condizione_pagamento_cod (proposta)
+ *  - condPagAttuale     = clienti.condizione_pagamento_cod (attuale, gestionale)
+ *  - condPagAttualeDesc = clienti.condizione_pagamento_desc ?? clienti.condizioni_pagamento
+ *  - cambioCondPag      = condizionePagamentoCambiata(proposta, attuale) (src/lib/fidi.ts)
  */
 
 import { getFidoAttuale, FIDO_CLIENTE_SELECT } from "@/lib/fido-cliente";
+import { condizionePagamentoCambiata } from "@/lib/fidi";
 import { semaforoDaCliente, type SemaforoStadio } from "@/lib/semaforo-ui";
 
 /** Frammento di SELECT PostgREST condiviso (join cliente + store + profili). */
@@ -44,6 +49,7 @@ export const RICHIESTA_FIDO_SELECT = `
     effetti_a_rischio,
     condizioni_pagamento,
     condizione_pagamento_desc,
+    condizione_pagamento_cod,
     dilazione_concordata,
     dilazione_effettiva,
     bloccato,
@@ -94,6 +100,10 @@ export interface RichiestaFidoView {
   /** Semaforo affidabilita' materializzato (fido_teorico_cliente). */
   semaforoStadio: SemaforoStadio;
   semaforoMotivo: string | null;
+  condPagProposta: string | null;
+  condPagAttuale: string | null;
+  condPagAttualeDesc: string | null;
+  cambioCondPag: boolean;
 }
 
 /**
@@ -133,6 +143,10 @@ export function mapRichiestaFido(r: AnyRecord): RichiestaFidoView {
     approvatoreLabel: userLabel(r?.approvatore ?? null),
     semaforoStadio: sem.stadio,
     semaforoMotivo: sem.motivo,
+    condPagProposta: r?.condizione_pagamento_cod ?? null,
+    condPagAttuale: c?.condizione_pagamento_cod ?? null,
+    condPagAttualeDesc: c?.condizione_pagamento_desc ?? c?.condizioni_pagamento ?? null,
+    cambioCondPag: condizionePagamentoCambiata(r?.condizione_pagamento_cod, c?.condizione_pagamento_cod),
   };
 }
 

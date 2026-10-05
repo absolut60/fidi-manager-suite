@@ -260,7 +260,7 @@ export function PannelloRischioCliente({
           <DetailRow label="Insoluti">
             <span className="tabular-nums">{Number(cliente.num_insoluti ?? 0)}</span>
           </DetailRow>
-          <DetailRow label="Cond. pagamento">
+          <DetailRow label="Cond. pagamento attuale">
             <span className="truncate text-right">
               {cliente.condizione_pagamento_desc ?? cliente.condizioni_pagamento ?? "—"}
             </span>
@@ -351,7 +351,7 @@ export function PannelloRischioCliente({
         <div className="flex justify-between"><span className="text-muted-foreground">Scaduto</span><span className={`tabular-nums ${scaduto > 0 ? "text-destructive font-medium" : ""}`}>{formatEuro(scaduto)}</span></div>
         <div className="flex justify-between"><span className="text-muted-foreground">A scadere</span><span className="tabular-nums">{formatEuro(Number(cliente.a_scadere ?? 0))}</span></div>
         <div className="flex justify-between"><span className="text-muted-foreground">Insoluti</span><span className="tabular-nums">{Number(cliente.num_insoluti ?? 0)}</span></div>
-        <div className="flex justify-between"><span className="text-muted-foreground">Cond. pagamento</span><span className="truncate ml-2">{cliente.condizione_pagamento_desc ?? cliente.condizioni_pagamento ?? "—"}</span></div>
+        <div className="flex justify-between"><span className="text-muted-foreground">Cond. pagamento attuale</span><span className="truncate ml-2">{cliente.condizione_pagamento_desc ?? cliente.condizioni_pagamento ?? "—"}</span></div>
         <div className="flex justify-between"><span className="text-muted-foreground">Dilaz. concordata</span><span className="tabular-nums">{cliente.dilazione_concordata ?? "—"}{cliente.dilazione_concordata != null ? " gg" : ""}</span></div>
         <div className="flex justify-between"><span className="text-muted-foreground">Dilaz. effettiva</span><span className="tabular-nums">{cliente.dilazione_effettiva ?? "—"}{cliente.dilazione_effettiva != null ? " gg" : ""}</span></div>
         {showFatturato && (
