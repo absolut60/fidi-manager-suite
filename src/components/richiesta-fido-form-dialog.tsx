@@ -20,10 +20,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { STATO_LABEL, calcolaLivello, formatEuro, isRichiestaAttiva, determinaTipoRichiesta, importoRichiestaValido, etichettaTipoRichiesta } from "@/lib/fidi";
+import { STATO_LABEL, calcolaLivello, formatEuro, isRichiestaAttiva, determinaTipoRichiesta, importoRichiestaValido, condizionePagamentoCambiata, etichettaTipoRichiesta } from "@/lib/fidi";
 import { getFidoAttuale } from "@/lib/fido-cliente";
 import { fetchFidoTeorico, isProponibile, MOTIVO_NON_PROPONIBILE } from "@/lib/fido-teorico";
 import { CondizionePagamentoRichiestaSelect, useCodiciPagamento } from "@/components/condizione-pagamento-richiesta-select";
+import { CambioCondizionePagamento } from "@/components/cambio-condizione-pagamento";
 import { PannelloRischioCliente } from "@/components/pannello-rischio-cliente";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -81,7 +82,8 @@ export function RichiestaFormDialog({
     note: seed?.note ?? "",
     condizione_pagamento_cod: seed?.condizione_pagamento_cod ?? "",
   });
-  const [condPagTouched, setCondPagTouched] = useState<boolean>(!!seed);
+  // Toccata solo se il seed porta già una condizione: altrimenti parte da quella del cliente.
+  const [condPagTouched, setCondPagTouched] = useState<boolean>(!!seed?.condizione_pagamento_cod);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -501,7 +503,7 @@ export function RichiestaFormDialog({
         )}
 
         <div className="space-y-1.5">
-          <Label>Condizione di pagamento</Label>
+          <Label>Condizione di pagamento proposta</Label>
           <CondizionePagamentoRichiestaSelect
             value={form.condizione_pagamento_cod ?? ""}
             onChange={(cod) => {
@@ -509,11 +511,26 @@ export function RichiestaFormDialog({
               setForm((f) => ({ ...f, condizione_pagamento_cod: cod }));
             }}
           />
-          {clienteSel && (clienteSel as any).condizione_pagamento_cod && (
-            <p className="text-[11px] text-muted-foreground">
-              Cliente attuale: <span className="font-mono">{(clienteSel as any).condizione_pagamento_cod}</span>
-              {" "}— modificabile solo per questa richiesta.
-            </p>
+          {clienteSel && (
+            condizionePagamentoCambiata(form.condizione_pagamento_cod, (clienteSel as any).condizione_pagamento_cod) ? (
+              <CambioCondizionePagamento
+                variant="blocco"
+                codProposta={form.condizione_pagamento_cod}
+                codAttuale={(clienteSel as any).condizione_pagamento_cod}
+                descAttuale={(clienteSel as any).condizione_pagamento_desc ?? (clienteSel as any).condizioni_pagamento}
+              />
+            ) : (clienteSel as any).condizione_pagamento_cod ? (
+              <p className="text-[11px] text-muted-foreground break-words">
+                Attuale (gestionale): <span className="font-mono">{(clienteSel as any).condizione_pagamento_cod}</span>
+                {(() => {
+                  const cod = (clienteSel as any).condizione_pagamento_cod as string;
+                  const d = (codiciPagamento ?? []).find((c) => c.cod === cod)?.descrizione
+                    ?? (clienteSel as any).condizione_pagamento_desc ?? (clienteSel as any).condizioni_pagamento;
+                  return d ? ` — ${d}` : "";
+                })()}
+                . Cambiala solo se vuoi proporre una nuova condizione.
+              </p>
+            ) : null
           )}
         </div>
 

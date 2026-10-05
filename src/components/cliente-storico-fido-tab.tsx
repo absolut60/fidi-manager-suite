@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Plus, FileText, Pencil, Ban, Send, History, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { CambioCondizionePagamento } from "@/components/cambio-condizione-pagamento";
 import { FidoTeoricoBlocco } from "@/components/fido-teorico-blocco";
 import { RichiestaFormDialog, ModificaRichiestaFidoDialog } from "@/components/richiesta-fido-form-dialog";
 import { Button } from "@/components/ui/button";
@@ -45,7 +46,7 @@ export function ClienteStoricoFidoTab({ clienteId }: { clienteId: string }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clienti")
-        .select("fido_gestionale, ind_blocco, assicurazione_attiva, ultima_data_fatturazione, cliente_attivo, totale_rischio, scaduto, fido_residuo")
+        .select("fido_gestionale, ind_blocco, assicurazione_attiva, ultima_data_fatturazione, cliente_attivo, totale_rischio, scaduto, fido_residuo, condizione_pagamento_cod, condizione_pagamento_desc")
         .eq("id", clienteId)
         .maybeSingle();
       if (error) throw error;
@@ -130,6 +131,12 @@ export function ClienteStoricoFidoTab({ clienteId }: { clienteId: string }) {
                       <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>
                         {TIPO_LABEL[r.tipo as TipoRichiesta]}
                       </span>
+                      <CambioCondizionePagamento
+                        variant="badge"
+                        codProposta={r.condizione_pagamento_cod}
+                        codAttuale={cliente?.condizione_pagamento_cod}
+                        descAttuale={cliente?.condizione_pagamento_desc}
+                      />
                       <span className="text-lg font-bold tabular-nums">{formatEuro(Number(r.importo_richiesto))}</span>
                       <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${STATO_TONE[r.stato as StatoRichiesta]}`}>
                         {STATO_LABEL[r.stato as StatoRichiesta]}
@@ -181,6 +188,12 @@ export function ClienteStoricoFidoTab({ clienteId }: { clienteId: string }) {
                       <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>
                         {TIPO_LABEL[r.tipo as TipoRichiesta]}
                       </span>
+                      <CambioCondizionePagamento
+                        variant="badge"
+                        codProposta={r.condizione_pagamento_cod}
+                        codAttuale={cliente?.condizione_pagamento_cod}
+                        descAttuale={cliente?.condizione_pagamento_desc}
+                      />
                       <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${STATO_TONE[r.stato as StatoRichiesta]}`}>
                         {STATO_LABEL[r.stato as StatoRichiesta]}
                       </span>
