@@ -7,6 +7,10 @@ export type LeadPriorita = Database["public"]["Enums"]["lead_priorita"];
 export type LeadRichiestaTipo = Database["public"]["Enums"]["lead_richiesta_tipo"];
 export type LeadRichiestaStato = Database["public"]["Enums"]["lead_richiesta_stato"];
 
+export type LeadAmbito = "commerciale" | "eventi";
+export const LEAD_AMBITI: LeadAmbito[] = ["commerciale", "eventi"];
+export const LEAD_AMBITO_LABEL: Record<LeadAmbito, string> = { commerciale: "Commerciali", eventi: "Da eventi" };
+
 /** Ruoli di GESTIONE lead, gemello di has_lead_module_access() (DB). */
 export const LEAD_ROLES = new Set<string>([
   "amministratore",
