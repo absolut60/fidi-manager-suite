@@ -109,6 +109,20 @@ function IscrizioneEventoPage() {
         <Skeleton className="h-10 w-full" />
       </Card>
     );
+  } else if (isError) {
+    contenuto = (
+      <Card className="p-8 text-center">
+        <h2 className="text-lg font-semibold">
+          Non è stato possibile caricare l&apos;evento
+        </h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Controlla la connessione e riprova.
+        </p>
+        <Button variant="outline" className="mt-4" onClick={() => refetch()}>
+          Riprova
+        </Button>
+      </Card>
+    );
   } else if (!evento || !evento.trovato) {
     contenuto = (
       <Card className="p-8 text-center">
