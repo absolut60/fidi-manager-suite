@@ -98,6 +98,7 @@ export function NuovoPreventivoDialog({
       if (c.fascia_listino_default) setFascia(c.fascia_listino_default);
       // Write-only: l'agente resta quello del profilo (policy INSERT), non quello del cliente.
       if (!isWriteOnly && c.codice_agente) setAgenteId(c.codice_agente);
+      if (!clienteCambiato) return;
       setCantiereId(null);
       setCantiereDescrizione("");
       setNuovoCantNome("");
@@ -106,7 +107,7 @@ export function NuovoPreventivoDialog({
       setNuovoCantProvincia("");
       setModoCantiere("seleziona");
     });
-  }, [clienteId]);
+  }, [clienteId, isWriteOnly, profiloCodiceAgente]);
 
   const creaCantiere = useMutation({
     mutationFn: async () => {
