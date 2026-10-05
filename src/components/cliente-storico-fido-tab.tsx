@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Plus, FileText, Pencil, Ban, Send, History, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { CambioCondizionePagamento } from "@/components/cambio-condizione-pagamento";
+import { mapRichiestaFido } from "@/lib/richieste-fido-data";
 import { FidoTeoricoBlocco } from "@/components/fido-teorico-blocco";
 import { RichiestaFormDialog, ModificaRichiestaFidoDialog } from "@/components/richiesta-fido-form-dialog";
 import { Button } from "@/components/ui/button";
@@ -131,12 +132,7 @@ export function ClienteStoricoFidoTab({ clienteId }: { clienteId: string }) {
                       <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>
                         {TIPO_LABEL[r.tipo as TipoRichiesta]}
                       </span>
-                      <CambioCondizionePagamento
-                        variant="badge"
-                        codProposta={r.condizione_pagamento_cod}
-                        codAttuale={cliente?.condizione_pagamento_cod}
-                        descAttuale={cliente?.condizione_pagamento_desc}
-                      />
+                      <CambioCondizionePagamento variant="badge" richiesta={{ ...r, clienti: cliente ?? null }} />
                       <span className="text-lg font-bold tabular-nums">{formatEuro(Number(r.importo_richiesto))}</span>
                       <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${STATO_TONE[r.stato as StatoRichiesta]}`}>
                         {STATO_LABEL[r.stato as StatoRichiesta]}
@@ -188,19 +184,16 @@ export function ClienteStoricoFidoTab({ clienteId }: { clienteId: string }) {
                       <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>
                         {TIPO_LABEL[r.tipo as TipoRichiesta]}
                       </span>
-                      <CambioCondizionePagamento
-                        variant="badge"
-                        codProposta={r.condizione_pagamento_cod}
-                        codAttuale={cliente?.condizione_pagamento_cod}
-                        descAttuale={cliente?.condizione_pagamento_desc}
-                      />
+                      <CambioCondizionePagamento variant="badge" richiesta={{ ...r, clienti: cliente ?? null }} />
                       <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${STATO_TONE[r.stato as StatoRichiesta]}`}>
                         {STATO_LABEL[r.stato as StatoRichiesta]}
                       </span>
                     </div>
-                    <div className="flex items-center gap-4 text-sm">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
                       <span>Richiesto: <strong className="tabular-nums">{formatEuro(Number(r.importo_richiesto))}</strong></span>
-                      {r.importo_approvato != null && (
+                      {mapRichiestaFido(r).soloCondizione ? (
+                        <span className="text-muted-foreground">Approvato: solo cond. pag.</span>
+                      ) : r.importo_approvato != null && (
                         <span>Approvato: <strong className="tabular-nums text-success">{formatEuro(Number(r.importo_approvato))}</strong></span>
                       )}
                     </div>
