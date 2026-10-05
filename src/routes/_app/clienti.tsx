@@ -51,6 +51,13 @@ import { INFORMATIVA_FULL, CONSENSO_TESTI } from "@/lib/consensi-testi";
 type ClientiSearch = { preset?: string; edit?: 1; store?: string; fascia?: string };
 
 export const Route = createFileRoute("/_app/clienti")({
+  head: () => ({ meta: [
+    { title: "Clienti e proposte fido | FidiManager" },
+    { name: "description", content: "Anagrafiche clienti MADE e proposte fido con condizioni di pagamento." },
+    { property: "og:title", content: "Clienti e proposte fido | FidiManager" },
+    { property: "og:description", content: "Anagrafiche clienti MADE e proposte fido con condizioni di pagamento." },
+    { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" },
+  ] }),
   validateSearch: (search: Record<string, unknown>): ClientiSearch => {
     const out: ClientiSearch = {};
     if (typeof search.preset === "string") out.preset = search.preset;
@@ -2742,7 +2749,8 @@ function ProposteFidoMassivoDialog({
           ) : null;
         })()}
 
-        {/* Mobile: schede */}
+        {/* Schede anche su tablet: la tabella estesa richiede spazio desktop. */}
+        <div className="[&>div]:block xl:hidden">
         <ElencoSchede>
           {righeVisibili.map((r) => {
             const scost = r.proponibile ? r.fido_proposto - r.fido_attuale : 0;
@@ -2793,9 +2801,10 @@ function ProposteFidoMassivoDialog({
             );
           })}
         </ElencoSchede>
+        </div>
 
-        <div className="hidden md:block min-w-0 border rounded-md">
-          <Table>
+        <div className="hidden xl:block min-w-0 border rounded-md">
+          <Table className="table-fixed w-full [&_th]:whitespace-normal [&_td]:whitespace-normal [&_td]:break-words">
             <TableHeader>
               <TableRow>
                 <TableHead className="w-10"></TableHead>
@@ -2831,13 +2840,13 @@ function ProposteFidoMassivoDialog({
                     <TableCell className="font-medium text-sm">{renderCliente(r)}</TableCell>
                     <TableCell className="text-right text-sm">{fmtEuro(r.fido_attuale)}</TableCell>
                     <TableCell className="text-right text-sm">{fmtEuro(r.esposizione)}</TableCell>
-                    <TableCell className="text-right">{renderImporto(r, "h-8 text-right w-32 ml-auto")}</TableCell>
+                    <TableCell className="text-right">{renderImporto(r, "h-8 text-right w-full min-w-0")}</TableCell>
                     <TableCell className={`text-right text-sm tabular-nums ${scost > 0 ? "text-success" : scost < 0 ? "text-warning" : "text-muted-foreground"}`}>
                       {r.proponibile ? `${scost > 0 ? "+" : ""}${fmtEuro(scost)}` : "—"}
                     </TableCell>
                     <TableCell className="w-56 max-w-56 whitespace-normal">{renderCondizione(r)}</TableCell>
                     <TableCell className="text-xs">{renderRegola(r)}</TableCell>
-                    <TableCell>{renderTipo(r, "h-8 w-36")}</TableCell>
+                    <TableCell>{renderTipo(r, "h-8 w-full min-w-0")}</TableCell>
                     <TableCell>{renderMotivazione(r)}</TableCell>
                     <TableCell>{renderRimuovi(r)}</TableCell>
                   </TableRow>
