@@ -33,6 +33,8 @@ import { DettaglioPartecipanteDialog } from "@/components/eventi/dettaglio-parte
 import { useServerFn } from "@tanstack/react-start";
 import { inviaRichiestaFirmaPrivacy, riconciliaPartecipante } from "@/lib/firma-privacy.functions";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import { QrCard } from "@/components/qr-card";
 import { Filter, Search, X } from "lucide-react";
 import { SchedaLista, ElencoSchede } from "@/components/lista-responsive";
 
@@ -197,6 +199,9 @@ function BadgeRiconciliazione({ p }: { p: PartecipanteRow }) {
       {p.origine === "import" && (
         <Badge variant="outline" className="text-xs">Da importazione</Badge>
       )}
+      {p.origine === "iscrizione_online" && (
+        <Badge variant="outline" className="text-xs">Iscrizione online</Badge>
+      )}
     </>
   );
 }
@@ -206,6 +211,85 @@ function BadgeRiconciliazione({ p }: { p: PartecipanteRow }) {
 
 
 
+
+function IscrizioniOnlineCard({
+  eventoId,
+  nomeEvento,
+  dataEvento,
+  codicePubblico,
+  aperte,
+}: {
+  eventoId: string;
+  nomeEvento: string;
+  dataEvento: string | null;
+  codicePubblico: string | null;
+  aperte: boolean;
+}) {
+  const queryClient = useQueryClient();
+  const [origin, setOrigin] = useState("");
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
+
+  const imposta = useMutation({
+    mutationFn: async (valore: boolean) => {
+      const { error } = await supabase.rpc("imposta_iscrizioni_evento", {
+        _evento_id: eventoId,
+        _aperte: valore,
+      });
+      if (error) throw new Error(error.message);
+      return valore;
+    },
+    onSuccess: (valore) => {
+      queryClient.invalidateQueries({ queryKey: ["evento", eventoId] });
+      toast.success(valore ? "Iscrizioni aperte" : "Iscrizioni chiuse");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const oggi = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Rome" });
+  const eventoPassato = !!dataEvento && dataEvento < oggi;
+
+  return (
+    <Card className="p-4 sm:p-6 space-y-4 min-w-0">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <h2 className="text-lg font-semibold min-w-0 break-words">Iscrizioni online (QR e link)</h2>
+        <label className="flex items-center gap-2 text-sm cursor-pointer shrink-0 min-h-10">
+          <Switch
+            checked={aperte}
+            disabled={imposta.isPending}
+            onCheckedChange={(v) => imposta.mutate(v)}
+          />
+          Iscrizioni aperte
+        </label>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        Chi inquadra il QR compila un modulo e compare tra i partecipanti come atteso. Le iscrizioni si
+        chiudono da sole il giorno dopo la data dell&apos;evento.
+      </p>
+      {aperte && eventoPassato && (
+        <p className="text-sm text-amber-600">L&apos;evento è passato: le iscrizioni sono chiuse in automatico.</p>
+      )}
+      {!codicePubblico ? (
+        <p className="text-sm">Accendi l&apos;interruttore per generare il QR.</p>
+      ) : (
+        <div className="space-y-2 max-w-sm mx-auto w-full min-w-0">
+          {!aperte && (
+            <p className="text-sm text-amber-600">
+              Iscrizioni chiuse: il QR porta a una pagina che non accetta iscrizioni.
+            </p>
+          )}
+          <QrCard
+            titolo="Iscrizione evento"
+            descrizione={nomeEvento}
+            url={origin ? `${origin}/iscrizione-evento/${codicePubblico}` : ""}
+            nomeFile="qr-iscrizione-evento.png"
+          />
+        </div>
+      )}
+    </Card>
+  );
+}
 
 function EventoDettaglioPage() {
   const { eventoId } = Route.useParams();
@@ -250,7 +334,7 @@ function EventoDettaglioPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("eventi")
-        .select("id, nome, data_evento, luogo, note")
+        .select("id, nome, data_evento, luogo, note, codice_pubblico, iscrizioni_aperte")
         .eq("id", eventoId)
         .maybeSingle();
       if (error) throw error;
@@ -1177,6 +1261,14 @@ function EventoDettaglioPage() {
               </>
             )}
           </Card>
+
+          <IscrizioniOnlineCard
+            eventoId={eventoId}
+            nomeEvento={evento.nome}
+            dataEvento={evento.data_evento}
+            codicePubblico={evento.codice_pubblico}
+            aperte={evento.iscrizioni_aperte}
+          />
 
           <ImportPartecipantiCard eventoId={eventoId} />
 
