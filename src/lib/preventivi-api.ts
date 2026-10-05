@@ -84,14 +84,23 @@ export async function searchClienti(q: string): Promise<ClienteRow[]> {
   return ((data as unknown as ClienteLiteRpc[] | null) ?? []).map(mapLite);
 }
 
-/** Risolve i nomi cliente per una lista di documenti usando la RPC lite. */
+/** Risolve i nomi cliente per una lista di documenti con UNA chiamata RPC (a blocchi di 500 id). */
 async function popolaClientiLite(items: PreventivoListItem[]): Promise<void> {
   const ids = [...new Set(items.map((i) => i.cliente_id).filter((v): v is string => !!v))];
   if (ids.length === 0) return;
-  const rows = await Promise.all(ids.map((id) => fetchClienteLite(id)));
+  const liteRows: ClienteLiteRpc[] = [];
+  for (let i = 0; i < ids.length; i += 500) {
+    const chunk = ids.slice(i, i + 500);
+    const { data, error } = await supabase.rpc("get_clienti_lite_by_ids" as never, {
+      _ids: chunk,
+    } as never);
+    if (error) throw error;
+    liteRows.push(...((data as unknown as ClienteLiteRpc[] | null) ?? []));
+  }
   const map = new Map<string, { id: string; ragione_sociale: string }>();
-  for (const r of rows) {
-    if (r) map.set(r.id, { id: r.id, ragione_sociale: r.ragione_sociale ?? "—" });
+  for (const row of liteRows) {
+    const r = mapLite(row);
+    map.set(r.id, { id: r.id, ragione_sociale: r.ragione_sociale ?? "—" });
   }
   for (const it of items) {
     it.cliente = it.cliente_id ? (map.get(it.cliente_id) ?? null) : null;
