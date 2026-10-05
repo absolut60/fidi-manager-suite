@@ -171,7 +171,7 @@ function RichiestaDetail() {
 
   const badgeTipo = (
     <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>
-      {etichettaTipoRichiesta(r.tipo, Number(r.importo_approvato ?? r.importo_richiesto))}
+      {etichettaTipoRichiesta(r.tipo, Number(vistaR?.soloCondizione ? r.importo_richiesto : (r.importo_approvato ?? r.importo_richiesto)))}
     </span>
   );
   const badgeStato = (
@@ -255,9 +255,14 @@ function RichiestaDetail() {
             Fido attuale <span className="font-medium text-foreground tabular-nums">{formatEuro(fidoAttuale)}</span>
             {" · "}durata <span className="font-medium text-foreground">{r.durata_mesi} mesi</span>
           </p>
-          {r.importo_approvato != null && (
-            <p className="mt-0.5 text-xs text-muted-foreground">
+          {vistaR?.soloCondizione ? (
+            <p className="mt-0.5 text-xs font-medium text-foreground break-words">
+              Fido non approvato · approvato solo il cambio di condizione di pagamento
+            </p>
+          ) : r.importo_approvato != null && (
+            <p className="mt-0.5 text-xs text-muted-foreground break-words">
               Approvato: <span className="font-medium text-foreground tabular-nums">{formatEuro(Number(r.importo_approvato))}</span>
+              {vistaR?.esitoFido === "approvata" && vistaR?.esitoCondPag === "rifiutata" && " · condizione di pagamento non cambiata"}
             </p>
           )}
           {condPagCod && vistaR?.cambioCondPag && (
@@ -390,8 +395,22 @@ function RichiestaDetail() {
               {approvazioni.map((a) => (
                 <li key={a.id} className="text-sm border-l-2 pl-2 break-words"
                   style={{ borderColor: a.esito === "approvata" ? "var(--success)" : "var(--destructive)" }}>
-                  <strong>Liv. {a.livello}</strong> — {a.esito === "approvata" ? "Approvata" : "Rifiutata"}
-                  {a.importo_approvato && ` · ${formatEuro(Number(a.importo_approvato))}`}
+                  <strong>Liv. {a.livello}</strong> —{" "}
+                  {(a as any).esito_fido ? (
+                    <>
+                      Fido: {(a as any).esito_fido === "approvata"
+                        ? `approvato ${formatEuro(Number(a.importo_approvato ?? 0))}`
+                        : "non approvato"}
+                      {(a as any).esito_condizione_pagamento && (
+                        <> · Condizione: {(a as any).esito_condizione_pagamento === "approvata" ? "approvata" : "non approvata"}</>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {a.esito === "approvata" ? "Approvata" : "Rifiutata"}
+                      {a.importo_approvato && ` · ${formatEuro(Number(a.importo_approvato))}`}
+                    </>
+                  )}
                   <span className="text-xs text-muted-foreground">
                     {" · "}{(a as any).profili?.nome ?? ""} {(a as any).profili?.cognome ?? ""} · {formatDate(a.created_at)}
                   </span>
@@ -488,7 +507,149 @@ function DecisioneReadOnly({
   );
 }
 
-function ApprovaForm({ richiesta }: { richiesta: any; userId: string }) {
+function ApprovaForm({ richiesta, userId }: { richiesta: any; userId: string }) {
+  const vista = mapRichiestaFido(richiesta);
+  if (vista.cambioCondPag) return <ApprovaDoppiaForm richiesta={richiesta} />;
+  return <ApprovaSempliceForm richiesta={richiesta} userId={userId} />;
+}
+
+function useInvalidaDopoDecisione(richiestaId: string) {
+  const qc = useQueryClient();
+  return () => {
+    qc.invalidateQueries({ queryKey: ["richiesta", richiestaId] });
+    qc.invalidateQueries({ queryKey: ["approvazioni", richiestaId] });
+    qc.invalidateQueries({ queryKey: ["richieste"] });
+    qc.invalidateQueries({ queryKey: ["approvazioni-queue"] });
+  };
+}
+
+type Scelta = "approvata" | "rifiutata" | null;
+
+/** Box decisione per richieste con cambio di condizione: due decisioni distinte. */
+function ApprovaDoppiaForm({ richiesta }: { richiesta: any }) {
+  const vista = mapRichiestaFido(richiesta);
+  const invalida = useInvalidaDopoDecisione(richiesta.id);
+  const [importo, setImporto] = useState<string>(String(richiesta.importo_richiesto));
+  const [note, setNote] = useState("");
+  const [sceltaFido, setSceltaFido] = useState<Scelta>(null);
+  const [sceltaCond, setSceltaCond] = useState<Scelta>(null);
+  const attuale = (vista.condPagRiferimento ?? "").trim() || "—";
+  const proposta = (vista.condPagProposta ?? "").trim();
+  const importoNum = Number(importo);
+  const complete = sceltaFido !== null && sceltaCond !== null;
+
+  const riepilogo = !complete
+    ? "Scegli una decisione per il fido e una per la condizione di pagamento."
+    : `${sceltaFido === "approvata"
+        ? `Fido approvato per ${Number.isFinite(importoNum) && importo.trim() !== "" ? formatEuro(importoNum) : "—"}`
+        : "Fido NON approvato"} · condizione di pagamento ${sceltaCond === "approvata" ? `cambiata in ${proposta}` : "NON cambiata"}`;
+
+  const decide = useMutation({
+    mutationFn: async () => {
+      if (!sceltaFido || !sceltaCond) throw new Error("Completa entrambe le decisioni");
+      if (sceltaFido === "approvata") {
+        if (importo.trim() === "" || !Number.isFinite(importoNum)) {
+          throw new Error("Inserisci l'importo approvato");
+        }
+        if (!importoRichiestaValido(richiesta.tipo, importoNum)) {
+          throw new Error("Importo 0 ammesso solo per diminuzione (azzeramento) o rinnovo");
+        }
+      }
+      const esito = sceltaFido === "approvata" || sceltaCond === "approvata" ? "approvata" : "rifiutata";
+      const { error } = await (supabase as any).rpc("processa_richiesta_fido", {
+        _richiesta_id: richiesta.id,
+        _esito: esito,
+        _note: note || null,
+        _importo_approvato: sceltaFido === "approvata" ? importoNum : null,
+        _esito_fido: sceltaFido,
+        _esito_condizione: sceltaCond,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      const msg =
+        sceltaFido === "approvata" && sceltaCond === "approvata" ? "Fido e cambio condizione approvati"
+        : sceltaFido === "approvata" ? "Fido approvato · condizione di pagamento non cambiata"
+        : sceltaCond === "approvata" ? "Approvato solo il cambio di condizione di pagamento"
+        : "Richiesta rifiutata";
+      toast.success(msg);
+      invalida();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <Card className="p-4 border-info/40 bg-info/5 space-y-4 min-w-0">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="font-semibold">
+          Decisione <span className="text-xs font-normal text-muted-foreground">(richiede livello {richiesta.livello_richiesto})</span>
+        </h2>
+        <div className="grid grid-cols-1 gap-2 sm:flex">
+          <Button type="button" variant="outline" size="sm" className="h-10 sm:h-9"
+            onClick={() => { setSceltaFido("approvata"); setSceltaCond("approvata"); }}>
+            Approva tutto
+          </Button>
+          <Button type="button" variant="outline" size="sm" className="h-10 sm:h-9"
+            onClick={() => { setSceltaFido("rifiutata"); setSceltaCond("rifiutata"); }}>
+            Rifiuta tutto
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="min-w-0 space-y-2 rounded-md border bg-background p-3">
+          <p className="text-sm font-semibold">Fido</p>
+          <SceltaDoppia value={sceltaFido} onChange={setSceltaFido} />
+          <div className="space-y-1.5">
+            <Label htmlFor="importo_app">Importo da approvare (€)</Label>
+            <Input id="importo_app" type="number" step="0.01" value={importo}
+              disabled={sceltaFido !== "approvata"}
+              onChange={(e) => setImporto(e.target.value)} />
+          </div>
+        </div>
+        <div className="min-w-0 space-y-2 rounded-md border bg-background p-3">
+          <p className="text-sm font-semibold break-words">
+            Condizione di pagamento (<span className="font-mono">{attuale}</span> → <span className="font-mono">{proposta}</span>)
+          </p>
+          <SceltaDoppia value={sceltaCond} onChange={setSceltaCond} />
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="note_app">Note</Label>
+        <Textarea id="note_app" rows={1} value={note} onChange={(e) => setNote(e.target.value)}
+          placeholder="Motivazione (opzionale)" />
+      </div>
+
+      <div className="space-y-1.5">
+        <Button className="w-full sm:w-auto gap-1.5" disabled={!complete || decide.isPending}
+          onClick={() => decide.mutate()}>
+          <Check className="size-4" /> Conferma decisione
+        </Button>
+        <p className="text-sm text-muted-foreground break-words">{riepilogo}</p>
+      </div>
+    </Card>
+  );
+}
+
+function SceltaDoppia({ value, onChange }: { value: Scelta; onChange: (v: Scelta) => void }) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      <Button type="button" variant={value === "approvata" ? "default" : "outline"}
+        className={`h-10 gap-1.5 ${value === "approvata" ? "bg-success text-success-foreground hover:bg-success/90" : ""}`}
+        aria-pressed={value === "approvata"} onClick={() => onChange("approvata")}>
+        <Check className="size-4" /> Approva
+      </Button>
+      <Button type="button" variant={value === "rifiutata" ? "default" : "outline"}
+        className={`h-10 gap-1.5 ${value === "rifiutata" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : "text-destructive hover:text-destructive border-destructive/30"}`}
+        aria-pressed={value === "rifiutata"} onClick={() => onChange("rifiutata")}>
+        <X className="size-4" /> Non approvare
+      </Button>
+    </div>
+  );
+}
+
+function ApprovaSempliceForm({ richiesta }: { richiesta: any; userId: string }) {
   const qc = useQueryClient();
   const [importo, setImporto] = useState<string>(String(richiesta.importo_richiesto));
   const [note, setNote] = useState("");
