@@ -18,6 +18,8 @@ import {
   Target,
   Calendar,
   StickyNote,
+  Link2,
+  ArrowLeftRight,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -85,7 +87,10 @@ import {
   type LeadTipo,
   type LeadFonte,
   type LeadPriorita,
+  LEAD_AMBITO_LABEL,
+  type LeadAmbito,
 } from "@/lib/lead-costanti";
+import { CollegaLeadClienteDialog } from "@/components/lead/collega-lead-cliente-dialog";
 
 export const Route = createFileRoute("/_app/lead/$leadId")({
   component: LeadDettaglioPage,
@@ -335,8 +340,26 @@ function LeadDettaglioPage() {
       qc.invalidateQueries({ queryKey: ["lead", leadId] });
       qc.invalidateQueries({ queryKey: ["lead-storico", leadId] });
       qc.invalidateQueries({ queryKey: ["lead-lista"] });
+      qc.invalidateQueries({ queryKey: ["lead-conteggi"] });
     },
     onError: (e: Error) => toast.error(e.message, { duration: 10000 }),
+  });
+
+  const [collegaOpen, setCollegaOpen] = useState(false);
+  const spostaMut = useMutation({
+    mutationFn: async (ambito: LeadAmbito) => {
+      const { error } = await supabase.rpc("sposta_lead_ambito", { _lead_ids: [leadId], _ambito: ambito });
+      if (error) throw error;
+      return ambito;
+    },
+    onSuccess: (ambito) => {
+      toast.success(`Lead spostato in ${LEAD_AMBITO_LABEL[ambito]}`);
+      qc.invalidateQueries({ queryKey: ["lead", leadId] });
+      qc.invalidateQueries({ queryKey: ["lead-storico", leadId] });
+      qc.invalidateQueries({ queryKey: ["lead-lista"] });
+      qc.invalidateQueries({ queryKey: ["lead-conteggi"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const { data: storico } = useQuery({
@@ -383,6 +406,8 @@ function LeadDettaglioPage() {
     );
   }
 
+  const isContattoCliente = lead.conversione_tipo === "contatto_cliente";
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -396,6 +421,7 @@ function LeadDettaglioPage() {
             <Badge className={LEAD_PRIORITA_CLASS[lead.priorita]}>
               {LEAD_PRIORITA_LABEL[lead.priorita]}
             </Badge>
+            <Badge variant="outline">{LEAD_AMBITO_LABEL[lead.ambito as LeadAmbito] ?? lead.ambito}</Badge>
             <span className="text-xs text-muted-foreground">
               {LEAD_TIPO_LABEL[lead.tipo_lead]} · fonte {LEAD_FONTE_LABEL[lead.fonte]} · creato{" "}
               {formatData(lead.created_at)}
@@ -409,7 +435,16 @@ function LeadDettaglioPage() {
                 Cliente collegato
               </Link>
             )}
+            {lead.cliente_id && isContattoCliente && (
+              <span className="text-xs text-muted-foreground">collegato come contatto</span>
+            )}
           </div>
+          <CollegaLeadClienteDialog
+            leadId={leadId}
+            nomeLead={nomeLead(lead)}
+            open={collegaOpen}
+            onOpenChange={setCollegaOpen}
+          />
         </div>
         <div className="flex flex-wrap gap-2">
           {isAdmin && lead.stato !== "convertito" && (
@@ -433,7 +468,13 @@ function LeadDettaglioPage() {
               className="gap-1.5"
               disabled={annullaMut.isPending}
               onClick={() => {
-                if (confirm("Annullare la conversione ed eliminare il cliente creato?"))
+                if (
+                  confirm(
+                    isContattoCliente
+                      ? "Annullare il collegamento al cliente? Il cliente non viene toccato; eventuali contatti già uniti restano nel cliente."
+                      : "Annullare la conversione ed eliminare il cliente creato?",
+                  )
+                )
                   annullaMut.mutate();
               }}
             >
@@ -442,7 +483,23 @@ function LeadDettaglioPage() {
               ) : (
                 <Undo2 className="size-4" />
               )}
-              Annulla conversione
+              {isContattoCliente ? "Annulla collegamento" : "Annulla conversione"}
+            </Button>
+          )}
+          {canManage && lead.stato !== "convertito" && (
+            <Button
+              variant="outline"
+              className="gap-1.5"
+              disabled={spostaMut.isPending}
+              onClick={() => spostaMut.mutate(lead.ambito === "eventi" ? "commerciale" : "eventi")}
+            >
+              {spostaMut.isPending ? <Loader2 className="size-4 animate-spin" /> : <ArrowLeftRight className="size-4" />}
+              {lead.ambito === "eventi" ? "Sposta in Commerciali" : "Sposta in Da eventi"}
+            </Button>
+          )}
+          {canManage && lead.stato !== "convertito" && (
+            <Button variant="outline" className="gap-1.5" onClick={() => setCollegaOpen(true)}>
+              <Link2 className="size-4" /> Collega a un cliente
             </Button>
           )}
           {canManage && (
