@@ -22,6 +22,24 @@ function testoToHtml(testo: string): string {
     .join("");
 }
 
+const PLACEHOLDER_IMPORTO = "{{importo}}";
+
+function formattaImporto(v: number): string {
+  return new Intl.NumberFormat("it-IT", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(v);
+}
+
+/** Sostituisce {{importo}}; se manca, lo evidenzia nell'anteprima. */
+function risolviImporto(testo: string, importo: number | null, perInvio: boolean): string {
+  if (importo != null && importo > 0) return testo.split(PLACEHOLDER_IMPORTO).join(formattaImporto(importo));
+  if (perInvio) return testo;
+  return testo
+    .split(PLACEHOLDER_IMPORTO)
+    .join('<mark style="background:#fde68a;padding:0 2px;border-radius:2px">{{importo}}</mark>');
+}
+
 async function fileToBase64(file: File): Promise<string> {
   const buf = await file.arrayBuffer();
   const bytes = new Uint8Array(buf);
