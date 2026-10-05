@@ -22,6 +22,13 @@
       "when": 1791189005937,
       "tag": "0002_fm38_iscrizione_pubblica_evento",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791189684185,
+      "tag": "0003_fm38_fix_riconcilia_partecipante_lead_rowtype",
+      "breakpoints": true
     }
   ]
 }
