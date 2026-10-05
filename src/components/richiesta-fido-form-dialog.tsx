@@ -22,6 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { STATO_LABEL, calcolaLivello, formatEuro, isRichiestaAttiva, determinaTipoRichiesta, importoRichiestaValido, etichettaTipoRichiesta } from "@/lib/fidi";
 import { getFidoAttuale } from "@/lib/fido-cliente";
+import { fetchFidoTeorico, isProponibile, MOTIVO_NON_PROPONIBILE } from "@/lib/fido-teorico";
 import { PannelloRischioCliente } from "@/components/pannello-rischio-cliente";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -58,12 +59,19 @@ const formSchema = z.object({
 type FormVals = z.infer<typeof formSchema>;
 
 export function RichiestaFormDialog({
-  richiesta, cloneFrom, onClose, onSaved,
-}: { richiesta?: any; cloneFrom?: any; onClose: () => void; onSaved: () => void }) {
+  richiesta, cloneFrom, onClose, onSaved, clienteIdFisso,
+}: {
+  richiesta?: any;
+  cloneFrom?: any;
+  onClose: () => void;
+  onSaved: () => void;
+  /** Nuova richiesta da scheda cliente: cliente fisso, in sola lettura. */
+  clienteIdFisso?: string;
+}) {
   const qc = useQueryClient();
   const seed = richiesta ?? cloneFrom;
   const [form, setForm] = useState<FormVals>({
-    cliente_id: seed?.cliente_id ?? "",
+    cliente_id: seed?.cliente_id ?? clienteIdFisso ?? "",
     tipo: (seed?.tipo as any) ?? "nuovo",
     importo_richiesto: seed ? Number(seed.importo_richiesto) : "",
     durata_mesi: seed?.durata_mesi ?? 12,
@@ -85,6 +93,8 @@ export function RichiestaFormDialog({
   const [tipoTouched, setTipoTouched] = useState<boolean>(!!seed);
 
   const isEdit = !!richiesta;
+  const isNuova = !richiesta && !cloneFrom;
+  const clienteBloccato = isEdit || (isNuova && !!clienteIdFisso);
 
   // Debounce search input (~300ms)
   useEffect(() => {
@@ -102,7 +112,7 @@ export function RichiestaFormDialog({
   //   limit 51   (51 to detect "ci sono altri risultati")
   const { data: clientiSearch, isFetching: isSearching } = useQuery({
     queryKey: ["clienti", "search-richiesta", debouncedSearch],
-    enabled: !isEdit && openCliente && debouncedSearch.length >= 2,
+    enabled: !clienteBloccato && openCliente && debouncedSearch.length >= 2,
     queryFn: async () => {
       const term = debouncedSearch.replace(/[%_,]/g, (m) => `\\${m}`);
       const { data, error } = await supabase
@@ -134,6 +144,30 @@ export function RichiestaFormDialog({
 
   const clienteSel: any = clienteEdit ?? clientiSearch?.find((c) => c.id === form.cliente_id);
   const fidoAttuale = getFidoAttuale(clienteSel);
+
+  // Proposta fido teorico (fonte unica src/lib/fido-teorico.ts) — solo su NUOVA richiesta.
+  const { data: teorico } = useQuery({
+    queryKey: ["fido-teorico", form.cliente_id],
+    enabled: isNuova && !!form.cliente_id,
+    staleTime: 5 * 60_000,
+    queryFn: async () => (await fetchFidoTeorico([form.cliente_id])).get(form.cliente_id) ?? null,
+  });
+  const proponibile = isProponibile(teorico?.regola_applicata);
+  const fidoProposto = isNuova && teorico && proponibile ? teorico.fido_proposto : 0;
+  const importoToccato = useRef(false);
+  const importoAuto = useRef(false);
+  // Precompila (o aggiorna al cambio cliente) finché l'utente non tocca l'importo.
+  // Il tipo resta calcolato dalla regola unica qui sotto (determinaTipoRichiesta).
+  useEffect(() => {
+    if (!isNuova || importoToccato.current) return;
+    if (fidoProposto > 0) {
+      importoAuto.current = true;
+      setForm((f) => (f.importo_richiesto === fidoProposto ? f : { ...f, importo_richiesto: fidoProposto }));
+    } else if (importoAuto.current) {
+      importoAuto.current = false;
+      setForm((f) => ({ ...f, importo_richiesto: "" }));
+    }
+  }, [fidoProposto, form.cliente_id, isNuova]);
 
   const { data: altreRichiesteAttive } = useQuery({
     queryKey: ["richieste-attive-cliente", form.cliente_id, richiesta?.id],
@@ -322,7 +356,7 @@ export function RichiestaFormDialog({
       <div className="space-y-4 overflow-y-auto flex-1 pr-1 -mr-1">
         <div className="space-y-1.5">
           <Label>Cliente *</Label>
-          {isEdit ? (
+          {clienteBloccato ? (
             <Input value={clienteSel?.ragione_sociale ?? richiesta?.clienti?.ragione_sociale ?? "Caricamento…"} readOnly disabled />
           ) : (
             <>
@@ -435,9 +469,20 @@ export function RichiestaFormDialog({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label>Importo richiesto (€) *</Label>
+            <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+              <Label>Importo richiesto (€) *</Label>
+              {fidoProposto > 0 && fidoProposto !== form.importo_richiesto && (
+                <button
+                  type="button"
+                  className="text-xs text-primary hover:underline"
+                  onClick={() => { importoToccato.current = true; setForm({ ...form, importo_richiesto: fidoProposto }); }}
+                >
+                  Usa proposta ({formatEuro(fidoProposto)})
+                </button>
+              )}
+            </div>
             <Input type="number" step="0.01" min="0" value={form.importo_richiesto}
-              onChange={(e) => setForm({ ...form, importo_richiesto: e.target.value === "" ? "" : Number(e.target.value) })} />
+              onChange={(e) => { importoToccato.current = true; setForm({ ...form, importo_richiesto: e.target.value === "" ? "" : Number(e.target.value) }); }} />
             {errors.importo_richiesto && <p className="text-xs text-destructive">{errors.importo_richiesto}</p>}
           </div>
           <div className="space-y-1.5">
@@ -445,6 +490,19 @@ export function RichiestaFormDialog({
             <Input value={formatEuro(fidoAttuale)} disabled />
           </div>
         </div>
+
+        {fidoProposto > 0 && (
+          <p className="text-xs text-primary break-words">
+            💡 Fido teorico proposto: <strong>{formatEuro(fidoProposto)}</strong>{" "}
+            (calcolo su fatturato e condizione di pagamento)
+          </p>
+        )}
+        {isNuova && teorico && !proponibile && (
+          <p className="text-xs text-warning break-words">
+            ⚠ {MOTIVO_NON_PROPONIBILE[teorico.regola_applicata] ?? "Fido teorico non disponibile"} —
+            inserisci l'importo manualmente.
+          </p>
+        )}
 
         {variazione !== null && (
           <div className="rounded-md bg-muted/50 px-3 py-2 text-xs flex justify-between">
