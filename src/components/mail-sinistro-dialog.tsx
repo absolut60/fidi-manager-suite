@@ -13,6 +13,7 @@ import { sendEmailDetailed } from "@/lib/send-email";
 import { wrapEmailHtml } from "@/lib/template-email";
 import { escapeHtml } from "@/lib/template-email-render";
 import { isEmailValida } from "@/lib/email-validazione";
+import { parseNumeroIt } from "@/lib/numero-it";
 import { useAuth } from "@/hooks/use-auth";
 
 function testoToHtml(testo: string): string {
@@ -149,7 +150,7 @@ export function MailSinistroDialog({
         to: dest,
         subject: oggetto,
         html: wrapEmailHtml(
-          testoToHtml(corpo),
+          testoToHtml(corpoInvio),
           null,
           { nome: nomeMittente, email: emailMittente },
           { senzaBande: true, sottotitolo: "Assicurazione crediti", useCid: true },
@@ -166,7 +167,7 @@ export function MailSinistroDialog({
 
       const { error } = await (supabase.rpc as any)("apri_sinistro_pouey", {
         _polizza_id: polizzaId,
-        _importo_sinistro: Number(importoSuggerito ?? 0),
+        _importo_sinistro: importoNum,
         _nota: notaInterna.trim() || null,
       });
       if (error) {
@@ -205,6 +206,16 @@ export function MailSinistroDialog({
               value={destinatario}
               onChange={(e) => setDestinatario(e.target.value)}
               placeholder="email ufficio sinistri POUEY"
+            />
+          </div>
+          <div className="w-full">
+            <Label>Importo sinistro (€)</Label>
+            <Input
+              type="text"
+              inputMode="decimal"
+              value={importo}
+              onChange={(e) => setImporto(e.target.value)}
+              placeholder="es. 1.234,56"
             />
           </div>
           <div>
