@@ -23,7 +23,7 @@ import { puoDecidereRichiesta } from "@/lib/fidi";
 import { ComunicazioniRichiestaPanel } from "@/components/comunicazioni-richiesta-panel";
 import { AllegatiSection } from "@/components/allegati-section";
 import { CambioCondizionePagamento } from "@/components/cambio-condizione-pagamento";
-import { useCodiciPagamento } from "@/components/condizione-pagamento-richiesta-select";
+import { CondizionePagamentoTesto, etichettaCondizionePagamento, useCodiciPagamento } from "@/components/condizione-pagamento-richiesta-select";
 import { RICHIESTA_FIDO_SELECT, mapRichiestaFido, importoPerEtichettaTipo } from "@/lib/richieste-fido-data";
 import { getFidoAttuale } from "@/lib/fido-cliente";
 import { PannelloRischioCliente } from "@/components/pannello-rischio-cliente";
@@ -31,6 +31,13 @@ import { ModificaRichiestaFidoDialog, useAnnullaRichiestaFido } from "@/componen
 import { semaforoUI, semaforoDaCliente } from "@/lib/semaforo-ui";
 
 export const Route = createFileRoute("/_app/richieste/$richiestaId")({
+  head: () => ({ meta: [
+    { title: "Decisione richiesta fido | FidiManager" },
+    { name: "description", content: "Dettaglio e decisioni su fido e condizioni di pagamento della richiesta MADE." },
+    { property: "og:title", content: "Decisione richiesta fido | FidiManager" },
+    { property: "og:description", content: "Dettaglio e decisioni su fido e condizioni di pagamento della richiesta MADE." },
+    { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" },
+  ] }),
   component: RichiestaDetail,
 });
 
@@ -56,8 +63,6 @@ function RichiestaDetail() {
 
   // Condizione di pagamento proposta (descrizione dal hook unico dei codici).
   const condPagCod = (r as any)?.condizione_pagamento_cod as string | null | undefined;
-  const { data: codiciPagamento } = useCodiciPagamento();
-  const condPagRow = (codiciPagamento ?? []).find((c) => c.cod === condPagCod) ?? null;
   const vistaR = r ? mapRichiestaFido(r) : null;
 
   const { data: approvazioni } = useQuery({
@@ -269,8 +274,7 @@ function RichiestaDetail() {
             <p className="mt-0.5 text-xs text-muted-foreground break-words">
               Cond. pagamento proposta:{" "}
               <span className="font-medium text-foreground">
-                <span className="font-mono">{condPagCod}</span>
-                {condPagRow?.descrizione ? ` — ${condPagRow.descrizione}` : ""}
+                <CondizionePagamentoTesto cod={condPagCod} />
               </span>
             </p>
           )}
@@ -533,8 +537,8 @@ function ApprovaDoppiaForm({ richiesta }: { richiesta: any }) {
   const [note, setNote] = useState("");
   const [sceltaFido, setSceltaFido] = useState<Scelta>(null);
   const [sceltaCond, setSceltaCond] = useState<Scelta>(null);
-  const attuale = (vista.condPagRiferimento ?? "").trim() || "—";
-  const proposta = (vista.condPagProposta ?? "").trim();
+  const { data: codiciPagamento } = useCodiciPagamento();
+  const proposta = etichettaCondizionePagamento(codiciPagamento, vista.condPagProposta);
   const importoNum = Number(importo);
   const complete = sceltaFido !== null && sceltaCond !== null;
 
@@ -568,9 +572,9 @@ function ApprovaDoppiaForm({ richiesta }: { richiesta: any }) {
     },
     onSuccess: () => {
       const msg =
-        sceltaFido === "approvata" && sceltaCond === "approvata" ? "Fido e cambio condizione approvati"
+        sceltaFido === "approvata" && sceltaCond === "approvata" ? `Fido approvato · condizione di pagamento cambiata in ${proposta}`
         : sceltaFido === "approvata" ? "Fido approvato · condizione di pagamento non cambiata"
-        : sceltaCond === "approvata" ? "Approvato solo il cambio di condizione di pagamento"
+        : sceltaCond === "approvata" ? `Approvato solo il cambio di condizione di pagamento in ${proposta}`
         : "Richiesta rifiutata";
       toast.success(msg);
       invalida();
@@ -609,7 +613,7 @@ function ApprovaDoppiaForm({ richiesta }: { richiesta: any }) {
         </div>
         <div className="min-w-0 space-y-2 rounded-md border bg-background p-3">
           <p className="text-sm font-semibold break-words">
-            Condizione di pagamento (<span className="font-mono">{attuale}</span> → <span className="font-mono">{proposta}</span>)
+            Condizione di pagamento (<CondizionePagamentoTesto cod={vista.condPagRiferimento} descFallback={vista.condPagPrecedente ? null : vista.condPagAttualeDesc} /> → <CondizionePagamentoTesto cod={vista.condPagProposta} />)
           </p>
           <SceltaDoppia value={sceltaCond} onChange={setSceltaCond} />
         </div>
