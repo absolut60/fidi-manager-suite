@@ -50,6 +50,13 @@
       "when": 1791195306557,
       "tag": "0006_fm38_lead_ambito",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791196149940,
+      "tag": "0007_fm38_lead_evento_provvisorio_fonte_unica",
+      "breakpoints": true
     }
   ]
 }
