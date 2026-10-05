@@ -78,6 +78,13 @@
       "when": 1791197380888,
       "tag": "0010_fm38_collega_lead_a_cliente",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791209416429,
+      "tag": "0011_fm38_doppia_decisione_fido_condizione",
+      "breakpoints": true
     }
   ]
 }
