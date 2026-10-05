@@ -85,9 +85,14 @@ export function NuovoPreventivoDialog({
     }
   }, [open, tipo, isWriteOnly, profiloCodiceAgente]);
 
-  // Quando cambia il cliente: precompila fascia e agente
+  // Quando cambia il cliente: precompila fascia e agente.
+  // Il reset del cantiere riparte solo se cambia davvero il cliente (ref),
+  // non al variare di isWriteOnly/profiloCodiceAgente.
+  const ultimoClienteRef = useRef<string | null>(null);
   useEffect(() => {
     if (!clienteId) return;
+    const clienteCambiato = ultimoClienteRef.current !== clienteId;
+    ultimoClienteRef.current = clienteId;
     fetchCliente(clienteId).then((c) => {
       if (!c) return;
       if (c.fascia_listino_default) setFascia(c.fascia_listino_default);
