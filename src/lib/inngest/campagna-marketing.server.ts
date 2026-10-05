@@ -88,6 +88,7 @@ export const invioCampagnaMarketing = inngest.createFunction(
     id: "invio-campagna-marketing",
     name: "Invio campagna email marketing",
     retries: 2,
+    concurrency: { limit: 1, key: "event.data.campagna_id" },
     timeouts: { finish: "30m" },
     triggers: [{ event: "campagna-marketing/invio.requested" }],
     onFailure: async ({ event: failedEvent, error }) => {

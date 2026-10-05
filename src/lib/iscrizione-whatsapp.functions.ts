@@ -138,11 +138,24 @@ export const iscriviWhatsapp = createServerFn({ method: "POST" })
           .createSignedUrl(pdfPath, 60 * 60 * 24 * 365 * 10);
         if (eSigned) throw new Error(eSigned.message);
 
-        const { error: eUpd } = await supabaseAdmin
+        // FM37: non sostituire un documento privacy già presente o firmato.
+        const { data: contEsistente, error: eCont } = await supabaseAdmin
           .from("contatti")
-          .update({ pdf_privacy_url: pdfSigned.signedUrl, pdf_privacy_path: pdfPath })
-          .eq("id", contattoId);
-        if (eUpd) console.error("[iscrizione-whatsapp] update contatto PDF fallito:", eUpd.message);
+          .select("pdf_privacy_path, privacy_firmata")
+          .eq("id", contattoId)
+          .maybeSingle();
+        if (eCont) console.error("[iscrizione-whatsapp] lettura contatto fallita:", eCont.message);
+        const giaPresente =
+          !!eCont || !!contEsistente?.pdf_privacy_path || contEsistente?.privacy_firmata === true;
+        if (giaPresente) {
+          console.log(`[iscrizione-whatsapp] contatto ${contattoId}: documento privacy esistente preservato`);
+        } else {
+          const { error: eUpd } = await supabaseAdmin
+            .from("contatti")
+            .update({ pdf_privacy_url: pdfSigned.signedUrl, pdf_privacy_path: pdfPath })
+            .eq("id", contattoId);
+          if (eUpd) console.error("[iscrizione-whatsapp] update contatto PDF fallito:", eUpd.message);
+        }
 
         const { error: eLog } = await supabaseAdmin
           .from("consensi_log")
