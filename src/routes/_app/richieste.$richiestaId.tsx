@@ -24,7 +24,7 @@ import { ComunicazioniRichiestaPanel } from "@/components/comunicazioni-richiest
 import { AllegatiSection } from "@/components/allegati-section";
 import { CambioCondizionePagamento } from "@/components/cambio-condizione-pagamento";
 import { useCodiciPagamento } from "@/components/condizione-pagamento-richiesta-select";
-import { RICHIESTA_FIDO_SELECT } from "@/lib/richieste-fido-data";
+import { RICHIESTA_FIDO_SELECT, mapRichiestaFido } from "@/lib/richieste-fido-data";
 import { getFidoAttuale } from "@/lib/fido-cliente";
 import { PannelloRischioCliente } from "@/components/pannello-rischio-cliente";
 import { ModificaRichiestaFidoDialog, useAnnullaRichiestaFido } from "@/components/richiesta-fido-form-dialog";
