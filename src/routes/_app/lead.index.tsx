@@ -1,9 +1,16 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
-  Plus, Search, Users, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown, X, CalendarClock,
+  Plus, Search, Users, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown, X, CalendarClock, ArrowRightLeft,
 } from "lucide-react";
+import { FiltroMultiplo } from "@/components/filtro-multiplo";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { FiltriCollassabili, SchedaLista, ElencoSchede } from "@/components/lista-responsive";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -29,6 +36,7 @@ import {
   LEAD_TIPI, LEAD_TIPO_LABEL, LEAD_FONTI, LEAD_FONTE_LABEL,
   LEAD_PRIORITA, LEAD_PRIORITA_LABEL, LEAD_PRIORITA_CLASS,
   nomeLead, formatData, puoAccedereLead, puoGestireLead,
+  LEAD_AMBITI, LEAD_AMBITO_LABEL, type LeadAmbito,
 } from "@/lib/lead-costanti";
 
 export const Route = createFileRoute("/_app/lead/")({
@@ -356,6 +364,15 @@ function LeadListaPage() {
   const rows = data?.rows ?? [];
   const totale = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(totale / pageSize));
+  const tuttaPaginaSel = rows.length > 0 && rows.every((r) => selezionati.has(r.id));
+  const qualcunoPaginaSel = rows.some((r) => selezionati.has(r.id));
+  function selezionaPagina(v: boolean) {
+    setSelezionati((prev) => {
+      const n = new Set(prev);
+      rows.forEach((r) => (v ? n.add(r.id) : n.delete(r.id)));
+      return n;
+    });
+  }
 
   function toggleSort(col: string) {
     if (sortBy === col) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
