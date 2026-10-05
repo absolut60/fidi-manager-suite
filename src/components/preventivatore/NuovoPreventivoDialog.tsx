@@ -91,7 +91,8 @@ export function NuovoPreventivoDialog({
     fetchCliente(clienteId).then((c) => {
       if (!c) return;
       if (c.fascia_listino_default) setFascia(c.fascia_listino_default);
-      if (c.codice_agente) setAgenteId(c.codice_agente);
+      // Write-only: l'agente resta quello del profilo (policy INSERT), non quello del cliente.
+      if (!isWriteOnly && c.codice_agente) setAgenteId(c.codice_agente);
       setCantiereId(null);
       setCantiereDescrizione("");
       setNuovoCantNome("");
