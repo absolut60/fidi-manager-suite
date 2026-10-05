@@ -18,11 +18,14 @@ export function SoggettoCombobox({
   placeholder = "Cerca cliente o lead…",
   autoFocus = false,
   selectedId = null,
+  soloClienti = false,
 }: {
   onSelect: (s: SoggettoSelezionato) => void;
   placeholder?: string;
   autoFocus?: boolean;
   selectedId?: string | null;
+  /** Se true mostra solo i clienti (esclude i lead). Default false: comportamento invariato. */
+  soloClienti?: boolean;
 }) {
   const [testo, setTesto] = useState("");
   const [debounced, setDebounced] = useState("");
@@ -39,7 +42,7 @@ export function SoggettoCombobox({
     staleTime: 30_000,
   });
 
-  const risultati: SoggettoTrovato[] = data ?? [];
+  const risultati: SoggettoTrovato[] = (data ?? []).filter((s) => !soloClienti || s.tipo === "cliente");
 
   return (
     <Command shouldFilter={false} className="rounded-md border">
