@@ -173,6 +173,16 @@ export function mapRichiestaFido(r: AnyRecord): RichiestaFidoView {
   };
 }
 
+/**
+ * Importo da usare per l'etichetta del tipo (etichettaTipoRichiesta):
+ * approvato se presente, altrimenti richiesto. Nel caso "solo condizione"
+ * l'importo approvato è il fido del cliente, non un fido concesso: si usa il richiesto.
+ */
+export function importoPerEtichettaTipo(r: AnyRecord): number {
+  const v = mapRichiestaFido(r);
+  return v.soloCondizione || v.importoApprovato == null ? v.importo : v.importoApprovato;
+}
+
 export function mapRichiesteFido(rows: AnyRecord[] | null | undefined): RichiestaFidoView[] {
   return (rows ?? []).map(mapRichiestaFido);
 }
