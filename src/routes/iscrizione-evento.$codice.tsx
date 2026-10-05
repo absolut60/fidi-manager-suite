@@ -21,7 +21,6 @@ import {
   getEventoIscrizionePubblica,
   iscriviEventoPubblico,
 } from "@/lib/iscrizione-evento.functions";
-import { iscriviWhatsapp } from "@/lib/iscrizione-whatsapp.functions";
 import { INFORMATIVA_FULL } from "@/lib/consensi-testi";
 import { LOGO_MADE_BASE64 } from "@/lib/logo-made-base64";
 import { formatDataEvento } from "@/lib/eventi-costanti";
@@ -45,7 +44,6 @@ function IscrizioneEventoPage() {
   const { codice } = Route.useParams();
   const getEvento = useServerFn(getEventoIscrizionePubblica);
   const iscrivi = useServerFn(iscriviEventoPubblico);
-  const iscriviWa = useServerFn(iscriviWhatsapp);
   const apertaAl = useRef<number>(Date.now());
 
   const codiceValido = /^[a-z0-9]{6,40}$/.test(codice);
@@ -62,42 +60,37 @@ function IscrizioneEventoPage() {
   const [azienda, setAzienda] = useState("");
   const [email, setEmail] = useState("");
   const [whatsapp, setWhatsapp] = useState(false);
-  const [esito, setEsito] = useState<{ giaPresente: boolean } | null>(null);
+  const [marketing, setMarketing] = useState(false);
+  const [profilazione, setProfilazione] = useState(false);
+  const [esito, setEsito] = useState<{ giaPresente: boolean; emailInviata: boolean } | null>(
+    null,
+  );
 
   const submit = useMutation({
-    mutationFn: async () => {
-      const r = await iscrivi({
-        data: { codice, nome, cognome, cellulare, azienda, email },
-      });
-      if (whatsapp) {
-        try {
-          await iscriviWa({
-            data: {
-              numero: cellulare,
-              nome,
-              cognome,
-              azienda,
-              email,
-              consenso: true as const,
-              consenso_marketing: false,
-              consenso_profilazione: false,
-              origine: "qr_pagina",
-              secondi_permanenza: Math.round((Date.now() - apertaAl.current) / 1000),
-            },
-          });
-        } catch {
-          toast.warning(
-            "Iscrizione all'evento registrata. Non è stato possibile attivare le offerte WhatsApp.",
-          );
-        }
-      }
-      return r;
-    },
-    onSuccess: (r) => setEsito({ giaPresente: r.giaPresente }),
+    mutationFn: () =>
+      iscrivi({
+        data: {
+          codice,
+          nome,
+          cognome,
+          cellulare,
+          email,
+          azienda,
+          consenso_whatsapp: whatsapp,
+          consenso_marketing: marketing,
+          consenso_profilazione: profilazione,
+          secondi_permanenza: Math.round((Date.now() - apertaAl.current) / 1000),
+        },
+      }),
+    onSuccess: (r) => setEsito({ giaPresente: r.giaPresente, emailInviata: r.emailInviata }),
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const canSubmit = nome.trim() && cognome.trim() && cellulare.trim().length >= 6;
+  const canSubmit =
+    !!nome.trim() &&
+    !!cognome.trim() &&
+    cellulare.trim().length >= 6 &&
+    /^\S+@\S+\.\S+$/.test(email.trim());
 
   let contenuto: React.ReactNode;
   if (codiceValido && isLoading) {
@@ -141,6 +134,11 @@ function IscrizioneEventoPage() {
         <p className="text-sm text-muted-foreground mt-1">
           {esito.giaPresente ? "Risulti già iscritto a questo evento." : "Ti aspettiamo."}
         </p>
+        {esito.emailInviata && (
+          <p className="text-sm text-muted-foreground mt-1">
+            Ti abbiamo inviato via email la copia dell&apos;informativa privacy.
+          </p>
+        )}
       </Card>
     );
   } else if (!evento.aperte) {
@@ -171,22 +169,36 @@ function IscrizioneEventoPage() {
             id="ie-cell"
             type="tel"
             inputMode="tel"
+            placeholder="es. 340 1234567"
             value={cellulare}
             onChange={(e) => setCellulare(e.target.value)}
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="ie-azienda">Impresa (facoltativo)</Label>
-          <Input id="ie-azienda" value={azienda} onChange={(e) => setAzienda(e.target.value)} />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="ie-email">Email (facoltativa)</Label>
+          <Label htmlFor="ie-email">Email *</Label>
           <Input
             id="ie-email"
             type="email"
+            placeholder="es. nome@azienda.it"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
+          <p className="text-xs text-muted-foreground">
+            Ti inviamo qui la copia dell&apos;informativa privacy.
+          </p>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="ie-azienda">Impresa</Label>
+          <Input
+            id="ie-azienda"
+            placeholder="es. Rossi Costruzioni Srl"
+            value={azienda}
+            onChange={(e) => setAzienda(e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">
+            Se partecipi per conto di un&apos;azienda scrivi qui il suo nome: ci serve per
+            collegare la tua iscrizione all&apos;impresa.
+          </p>
         </div>
         <label className="flex items-start gap-2 text-sm cursor-pointer rounded-md border p-3">
           <Checkbox
@@ -194,7 +206,23 @@ function IscrizioneEventoPage() {
             onCheckedChange={(v) => setWhatsapp(v === true)}
             className="mt-0.5"
           />
-          <span>Sì, voglio ricevere anche le offerte e le novità MADE su WhatsApp.</span>
+          <span>Sì, voglio ricevere le offerte e le novità MADE comodamente su WhatsApp.</span>
+        </label>
+        <label className="flex items-start gap-2 text-sm cursor-pointer rounded-md border p-3">
+          <Checkbox
+            checked={marketing}
+            onCheckedChange={(v) => setMarketing(v === true)}
+            className="mt-0.5"
+          />
+          <span>Vorrei restare aggiornato sulle promozioni MADE anche via email o tramite i nostri contatti.</span>
+        </label>
+        <label className="flex items-start gap-2 text-sm cursor-pointer rounded-md border p-3">
+          <Checkbox
+            checked={profilazione}
+            onCheckedChange={(v) => setProfilazione(v === true)}
+            className="mt-0.5"
+          />
+          <span>Mi piacerebbe ricevere proposte e offerte pensate su misura per me, in base ai prodotti che seguo di più.</span>
         </label>
         <Button
           onClick={() => submit.mutate()}
@@ -221,6 +249,10 @@ function IscrizioneEventoPage() {
               </div>
             </DialogContent>
           </Dialog>
+        </p>
+        <p className="text-xs text-muted-foreground text-center">
+          Inviando il modulo dichiari di aver letto l&apos;informativa privacy. Puoi revocare i
+          consensi in qualsiasi momento; per WhatsApp basta rispondere STOP.
         </p>
       </Card>
     );

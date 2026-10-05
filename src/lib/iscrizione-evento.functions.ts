@@ -36,7 +36,12 @@ const MESSAGGI: Record<string, string> = {
   numero_non_valido: "Il numero di cellulare non sembra valido.",
 };
 
-/** Registra l'iscrizione pubblica: nessun lead/contatto/consenso creato qui. */
+/**
+ * Registra l'iscrizione pubblica: la RPC crea lead provvisorio + contatto +
+ * partecipante; poi la privacy viene finalizzata sul contatto con lo stesso
+ * percorso degli iscritti sul posto (finalizzaRaccoltaPrivacy). La
+ * finalizzazione non è mai fatale per l'iscrizione.
+ */
 export const iscriviEventoPubblico = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
     z
@@ -45,32 +50,67 @@ export const iscriviEventoPubblico = createServerFn({ method: "POST" })
         nome: z.string().trim().min(1, "Nome obbligatorio").max(100),
         cognome: z.string().trim().min(1, "Cognome obbligatorio").max(100),
         cellulare: z.string().trim().min(6, "Numero non valido").max(40),
+        email: z.string().trim().toLowerCase().email("Email non valida").max(150),
         azienda: z.string().trim().max(150).optional(),
-        email: z
-          .string()
-          .trim()
-          .toLowerCase()
-          .email("Email non valida")
-          .max(150),
+        consenso_whatsapp: z.boolean().default(false),
+        consenso_marketing: z.boolean().default(false),
+        consenso_profilazione: z.boolean().default(false),
+        secondi_permanenza: z.number().int().min(0).max(86400).nullable().optional(),
       })
       .parse(d),
   )
   .handler(async ({ data }) => {
+    const { nome, cognome, cellulare, email, azienda } = data;
     const { data: rows, error } = await supabaseAdmin.rpc("registra_iscrizione_evento_pubblica", {
       _codice: data.codice,
-      _nome: data.nome,
-      _cognome: data.cognome,
-      _cellulare: data.cellulare,
-      _azienda: data.azienda || undefined,
-      _email: data.email,
+      _nome: nome,
+      _cognome: cognome,
+      _cellulare: cellulare,
+      _email: email,
+      _azienda: azienda || undefined,
     });
     if (error) {
       console.error("[iscrizione-evento] errore RPC", error.message);
       throw new Error("Non è stato possibile registrare l'iscrizione. Riprova.");
     }
     const r = (rows ?? [])[0];
-    if (r?.ok) return { ok: true as const, giaPresente: r.gia_presente === true };
-    throw new Error(
-      MESSAGGI[r?.motivo ?? ""] ?? "Non è stato possibile registrare l'iscrizione. Riprova.",
-    );
+    if (!r?.ok) {
+      throw new Error(
+        MESSAGGI[r?.motivo ?? ""] ?? "Non è stato possibile registrare l'iscrizione. Riprova.",
+      );
+    }
+    if (r.gia_presente === true) {
+      return { ok: true as const, giaPresente: true, privacyArchiviata: false, emailInviata: false };
+    }
+
+    let privacyArchiviata = false;
+    let emailInviata = false;
+    if (r.contatto_id) {
+      try {
+        const { finalizzaRaccoltaPrivacy } = await import("./firma-privacy-finalizza.server");
+        const esito = await finalizzaRaccoltaPrivacy({
+          contattoId: r.contatto_id,
+          contattoNome: nome,
+          contattoCognome: cognome,
+          soggetto: { ragione_sociale: azienda || `${nome} ${cognome}` },
+          dichiarante: { nome, cognome, societa: azienda || undefined, email, cellulare },
+          consensi: {
+            profilazione: data.consenso_profilazione,
+            marketing_media: false,
+            marketing_diretto: data.consenso_marketing,
+          },
+          consensoWhatsapp: data.consenso_whatsapp,
+          mostraConsensoMedia: false,
+          secondi_permanenza: data.secondi_permanenza,
+          origine: "link_pubblico",
+          note: `Iscrizione online all'evento: ${r.nome_evento ?? ""}`,
+          invalidaToken: false,
+        });
+        privacyArchiviata = true;
+        emailInviata = esito.emailInviata;
+      } catch (e) {
+        console.error("[iscrizione-evento] privacy non finalizzata", e);
+      }
+    }
+    return { ok: true as const, giaPresente: false, privacyArchiviata, emailInviata };
   });
