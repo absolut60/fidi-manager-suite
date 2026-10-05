@@ -3168,6 +3168,7 @@ export type Database = {
       lead: {
         Row: {
           agente_codice: string | null
+          ambito: string
           assegnato_a: string | null
           assegnato_il: string | null
           cap: string | null
@@ -3206,6 +3207,7 @@ export type Database = {
         }
         Insert: {
           agente_codice?: string | null
+          ambito?: string
           assegnato_a?: string | null
           assegnato_il?: string | null
           cap?: string | null
@@ -3244,6 +3246,7 @@ export type Database = {
         }
         Update: {
           agente_codice?: string | null
+          ambito?: string
           assegnato_a?: string | null
           assegnato_il?: string | null
           cap?: string | null
