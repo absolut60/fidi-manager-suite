@@ -15,6 +15,13 @@
       "when": 1791188099118,
       "tag": "0001_get_clienti_lite_by_ids",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791189005937,
+      "tag": "0002_fm38_iscrizione_pubblica_evento",
+      "breakpoints": true
     }
   ]
 }
