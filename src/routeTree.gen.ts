@@ -16,6 +16,7 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as RecessoTokenRouteImport } from './routes/recesso.$token'
 import { Route as RTokenRouteImport } from './routes/r.$token'
+import { Route as IscrizioneEventoCodiceRouteImport } from './routes/iscrizione-evento.$codice'
 import { Route as FirmaPrivacyTokenRouteImport } from './routes/firma-privacy.$token'
 import { Route as ConsensiTokenRouteImport } from './routes/consensi.$token'
 import { Route as AppWhatsappRouteImport } from './routes/_app/whatsapp'
@@ -132,6 +133,11 @@ const RecessoTokenRoute = RecessoTokenRouteImport.update({
 const RTokenRoute = RTokenRouteImport.update({
   id: '/r/$token',
   path: '/r/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IscrizioneEventoCodiceRoute = IscrizioneEventoCodiceRouteImport.update({
+  id: '/iscrizione-evento/$codice',
+  path: '/iscrizione-evento/$codice',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FirmaPrivacyTokenRoute = FirmaPrivacyTokenRouteImport.update({
@@ -620,6 +626,7 @@ export interface FileRoutesByFullPath {
   '/whatsapp': typeof AppWhatsappRoute
   '/consensi/$token': typeof ConsensiTokenRoute
   '/firma-privacy/$token': typeof FirmaPrivacyTokenRoute
+  '/iscrizione-evento/$codice': typeof IscrizioneEventoCodiceRoute
   '/r/$token': typeof RTokenRoute
   '/recesso/$token': typeof RecessoTokenRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -708,6 +715,7 @@ export interface FileRoutesByTo {
   '/whatsapp': typeof AppWhatsappRoute
   '/consensi/$token': typeof ConsensiTokenRoute
   '/firma-privacy/$token': typeof FirmaPrivacyTokenRoute
+  '/iscrizione-evento/$codice': typeof IscrizioneEventoCodiceRoute
   '/r/$token': typeof RTokenRoute
   '/recesso/$token': typeof RecessoTokenRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -801,6 +809,7 @@ export interface FileRoutesById {
   '/_app/whatsapp': typeof AppWhatsappRoute
   '/consensi/$token': typeof ConsensiTokenRoute
   '/firma-privacy/$token': typeof FirmaPrivacyTokenRoute
+  '/iscrizione-evento/$codice': typeof IscrizioneEventoCodiceRoute
   '/r/$token': typeof RTokenRoute
   '/recesso/$token': typeof RecessoTokenRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -894,6 +903,7 @@ export interface FileRouteTypes {
     | '/whatsapp'
     | '/consensi/$token'
     | '/firma-privacy/$token'
+    | '/iscrizione-evento/$codice'
     | '/r/$token'
     | '/recesso/$token'
     | '/.lovable/oauth/consent'
@@ -982,6 +992,7 @@ export interface FileRouteTypes {
     | '/whatsapp'
     | '/consensi/$token'
     | '/firma-privacy/$token'
+    | '/iscrizione-evento/$codice'
     | '/r/$token'
     | '/recesso/$token'
     | '/.lovable/oauth/consent'
@@ -1074,6 +1085,7 @@ export interface FileRouteTypes {
     | '/_app/whatsapp'
     | '/consensi/$token'
     | '/firma-privacy/$token'
+    | '/iscrizione-evento/$codice'
     | '/r/$token'
     | '/recesso/$token'
     | '/.lovable/oauth/consent'
@@ -1127,6 +1139,7 @@ export interface RootRouteChildren {
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   ConsensiTokenRoute: typeof ConsensiTokenRoute
   FirmaPrivacyTokenRoute: typeof FirmaPrivacyTokenRoute
+  IscrizioneEventoCodiceRoute: typeof IscrizioneEventoCodiceRoute
   RTokenRoute: typeof RTokenRoute
   RecessoTokenRoute: typeof RecessoTokenRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
@@ -1188,6 +1201,13 @@ declare module '@tanstack/react-router' {
       path: '/r/$token'
       fullPath: '/r/$token'
       preLoaderRoute: typeof RTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/iscrizione-evento/$codice': {
+      id: '/iscrizione-evento/$codice'
+      path: '/iscrizione-evento/$codice'
+      fullPath: '/iscrizione-evento/$codice'
+      preLoaderRoute: typeof IscrizioneEventoCodiceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/firma-privacy/$token': {
@@ -1983,6 +2003,7 @@ const rootRouteChildren: RootRouteChildren = {
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   ConsensiTokenRoute: ConsensiTokenRoute,
   FirmaPrivacyTokenRoute: FirmaPrivacyTokenRoute,
+  IscrizioneEventoCodiceRoute: IscrizioneEventoCodiceRoute,
   RTokenRoute: RTokenRoute,
   RecessoTokenRoute: RecessoTokenRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
