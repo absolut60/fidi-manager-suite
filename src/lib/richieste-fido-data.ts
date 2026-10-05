@@ -20,7 +20,15 @@
  *  - condPagProposta    = richieste_fido.condizione_pagamento_cod (proposta)
  *  - condPagAttuale     = clienti.condizione_pagamento_cod (attuale, gestionale)
  *  - condPagAttualeDesc = clienti.condizione_pagamento_desc ?? clienti.condizioni_pagamento
- *  - cambioCondPag      = condizionePagamentoCambiata(proposta, attuale) (src/lib/fidi.ts)
+ *  - condPagPrecedente  = richieste_fido.condizione_pagamento_precedente_cod
+ *                       (condizione del cliente AL MOMENTO della decisione; NULL se non decisa
+ *                        o se decisa prima della doppia decisione FM38)
+ *  - condPagRiferimento = condPagPrecedente ?? condPagAttuale
+ *  - cambioCondPag      = condizionePagamentoCambiata(proposta, riferimento) (src/lib/fidi.ts)
+ *  - esitoFido / esitoCondPag = richieste_fido.esito_fido / esito_condizione_pagamento
+ *                       ('approvata'|'rifiutata'|NULL; NULL = richiesta storica o non decisa)
+ *  - soloCondizione     = stato approvata && esitoFido rifiutata && esitoCondPag approvata
+ *                       (importo_approvato = fido del cliente al momento, NON un fido concesso)
  */
 
 import { getFidoAttuale, FIDO_CLIENTE_SELECT } from "@/lib/fido-cliente";
@@ -103,7 +111,12 @@ export interface RichiestaFidoView {
   condPagProposta: string | null;
   condPagAttuale: string | null;
   condPagAttualeDesc: string | null;
+  condPagPrecedente: string | null;
+  condPagRiferimento: string | null;
   cambioCondPag: boolean;
+  esitoFido: string | null;
+  esitoCondPag: string | null;
+  soloCondizione: boolean;
 }
 
 /**
@@ -115,6 +128,11 @@ export function mapRichiestaFido(r: AnyRecord): RichiestaFidoView {
   const store = c?.stores ?? null;
   const stato = String(r?.stato ?? "");
   const sem = semaforoDaCliente(c);
+  const condPagPrecedente: string | null = r?.condizione_pagamento_precedente_cod ?? null;
+  const condPagAttuale: string | null = c?.condizione_pagamento_cod ?? null;
+  const condPagRiferimento = condPagPrecedente ?? condPagAttuale;
+  const esitoFido: string | null = r?.esito_fido ?? null;
+  const esitoCondPag: string | null = r?.esito_condizione_pagamento ?? null;
   const dataInvio =
     r?.data_invio ?? (stato && stato !== "bozza" ? r?.created_at ?? null : null);
   return {
@@ -144,9 +162,14 @@ export function mapRichiestaFido(r: AnyRecord): RichiestaFidoView {
     semaforoStadio: sem.stadio,
     semaforoMotivo: sem.motivo,
     condPagProposta: r?.condizione_pagamento_cod ?? null,
-    condPagAttuale: c?.condizione_pagamento_cod ?? null,
+    condPagAttuale,
     condPagAttualeDesc: c?.condizione_pagamento_desc ?? c?.condizioni_pagamento ?? null,
-    cambioCondPag: condizionePagamentoCambiata(r?.condizione_pagamento_cod, c?.condizione_pagamento_cod),
+    condPagPrecedente,
+    condPagRiferimento,
+    cambioCondPag: condizionePagamentoCambiata(r?.condizione_pagamento_cod, condPagRiferimento),
+    esitoFido,
+    esitoCondPag,
+    soloCondizione: stato === "approvata" && esitoFido === "rifiutata" && esitoCondPag === "approvata",
   };
 }
 
