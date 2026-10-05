@@ -71,6 +71,7 @@ export function MailSinistroDialog({
   onDone?: () => void;
 }) {
   const [destinatario, setDestinatario] = useState("");
+  const [importo, setImporto] = useState("");
   const [fromName, setFromName] = useState("MADE Distribuzione");
   const [oggetto, setOggetto] = useState("");
   const [corpo, setCorpo] = useState("");
@@ -84,21 +85,19 @@ export function MailSinistroDialog({
 
   useEffect(() => {
     if (!open) return;
-    const importo =
-      importoSuggerito == null
-        ? ""
-        : new Intl.NumberFormat("it-IT", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          }).format(Number(importoSuggerito));
     const rigaPromessa = promessaData
       ? `Il cliente ha promesso un pagamento entro il ${fmtDate ? fmtDate(promessaData) : promessaData}.`
       : "";
     setDestinatario("");
+    setImporto(
+      importoSuggerito != null && Number(importoSuggerito) > 0
+        ? formattaImporto(Number(importoSuggerito))
+        : "",
+    );
     setFromName("MADE Distribuzione");
     setOggetto(`Apertura sinistro - ${ragioneSociale ?? ""}`);
     setCorpo(
-      `Buongiorno,\n\ncon la presente siamo a chiedervi apertura del sinistro per il nostro cliente ${ragioneSociale ?? ""} per un importo di ${importo} €\n\nTrasmettiamo in allegato:\nScheda contabile\nFattura insoluta\n\nDichiariamo che siete gli unici assicuratori a intervenire per questo cliente.\n\n${rigaPromessa}\n\nIn attesa di un riscontro o di richiesta ulteriori chiarimenti, porgo cordiali saluti`,
+      `Buongiorno,\n\ncon la presente siamo a chiedervi apertura del sinistro per il nostro cliente ${ragioneSociale ?? ""} per un importo di ${PLACEHOLDER_IMPORTO} €\n\nTrasmettiamo in allegato:\nScheda contabile\nFattura insoluta\n\nDichiariamo che siete gli unici assicuratori a intervenire per questo cliente.\n\n${rigaPromessa}\n\nIn attesa di un riscontro o di richiesta ulteriori chiarimenti, porgo cordiali saluti`,
     );
     setNotaInterna("");
     setFiles([]);
