@@ -72,6 +72,38 @@ export const Route = createFileRoute("/_app/clienti")({
 
 
 
+function NotaPropostaDettaglio({ nota }: { nota: string }) {
+  const [troncato, setTroncato] = useState(false);
+  const testoRef = useRef<HTMLSpanElement | null>(null);
+  useEffect(() => {
+    const el = testoRef.current;
+    if (!el) return;
+    const verifica = () => setTroncato(el.scrollWidth > el.clientWidth + 1);
+    verifica();
+    const ro = new ResizeObserver(verifica);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [nota]);
+  return (
+    <details className="min-w-0 group" data-nota-troncata={troncato || undefined}>
+      <summary
+        className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 list-none"
+        style={{ cursor: troncato ? "pointer" : "default" }}
+        onClick={(e) => { if (!troncato) e.preventDefault(); }}
+      >
+        <span ref={testoRef} className="truncate text-muted-foreground" title={nota}>{nota}</span>
+        {troncato && (
+          <>
+            <span className="text-primary whitespace-nowrap group-open:hidden">Mostra tutto</span>
+            <span className="text-primary whitespace-nowrap hidden group-open:block">Mostra meno</span>
+          </>
+        )}
+      </summary>
+      {troncato && <p className="pt-1 break-words text-muted-foreground">{nota}</p>}
+    </details>
+  );
+}
+
 const FASCE_CONCESSO: Record<string, { min: number; max: number | null; label: string }> = {
   nessuno: { min: 0, max: 0, label: "Nessun fido" },
   "0_500": { min: 0, max: 500, label: "Fino a 500 €" },
