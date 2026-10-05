@@ -3177,6 +3177,7 @@ export type Database = {
           cliente_id: string | null
           codice_fiscale: string | null
           cognome: string | null
+          conversione_tipo: string | null
           convertito_da: string | null
           convertito_il: string | null
           created_at: string
@@ -3216,6 +3217,7 @@ export type Database = {
           cliente_id?: string | null
           codice_fiscale?: string | null
           cognome?: string | null
+          conversione_tipo?: string | null
           convertito_da?: string | null
           convertito_il?: string | null
           created_at?: string
@@ -3255,6 +3257,7 @@ export type Database = {
           cliente_id?: string | null
           codice_fiscale?: string | null
           cognome?: string | null
+          conversione_tipo?: string | null
           convertito_da?: string | null
           convertito_il?: string | null
           created_at?: string
@@ -6769,6 +6772,10 @@ export type Database = {
           _patologico: boolean
         }
         Returns: number
+      }
+      collega_lead_a_cliente: {
+        Args: { _cliente_id: string; _lead_id: string }
+        Returns: Json
       }
       collega_righe_import: {
         Args: { _riga_ids: string[] }
