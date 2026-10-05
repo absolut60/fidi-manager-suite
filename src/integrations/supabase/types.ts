@@ -8016,6 +8016,10 @@ export type Database = {
         }[]
       }
       segna_canale_letto: { Args: { _canale_id: string }; Returns: undefined }
+      sposta_lead_ambito: {
+        Args: { _ambito: string; _lead_ids: string[] }
+        Returns: number
+      }
       stato_privacy_contatto: {
         Args: { _contatto_id: string }
         Returns: {

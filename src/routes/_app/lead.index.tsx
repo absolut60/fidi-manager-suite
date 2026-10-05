@@ -1,9 +1,16 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
-  Plus, Search, Users, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown, X, CalendarClock,
+  Plus, Search, Users, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown, X, CalendarClock, ArrowRightLeft,
 } from "lucide-react";
+import { FiltroMultiplo } from "@/components/filtro-multiplo";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { FiltriCollassabili, SchedaLista, ElencoSchede } from "@/components/lista-responsive";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -29,6 +36,7 @@ import {
   LEAD_TIPI, LEAD_TIPO_LABEL, LEAD_FONTI, LEAD_FONTE_LABEL,
   LEAD_PRIORITA, LEAD_PRIORITA_LABEL, LEAD_PRIORITA_CLASS,
   nomeLead, formatData, puoAccedereLead, puoGestireLead,
+  LEAD_AMBITI, LEAD_AMBITO_LABEL, type LeadAmbito,
 } from "@/lib/lead-costanti";
 
 export const Route = createFileRoute("/_app/lead/")({
@@ -65,28 +73,54 @@ type LeadRow = {
   cliente?: { id: string; ragione_sociale: string | null } | null;
 };
 
+// La query supabase cambia tipo in base al select: i filtri sono applicati in modo
+// strutturale e il tipo originale viene restituito invariato.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type QueryLibera = any;
+
+/** Elenco multiplo con eventuale "__none__" → .in / .is null / .or(in, is null). */
+function filtroMultiplo(q: QueryLibera, col: string, valori: string[]): QueryLibera {
+  if (valori.length === 0) return q;
+  const veri = valori.filter((v) => v !== NESSUNO);
+  const conNull = veri.length !== valori.length;
+  if (!conNull) return q.in(col, veri);
+  if (veri.length === 0) return q.is(col, null);
+  return q.or(`${col}.in.(${veri.join(",")}),${col}.is.null`);
+}
+
+const BLOCCO_SPOSTA = 200;
+const BLOCCO_ID = 1000;
+
 function LeadListaPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { roles, loading: authLoading } = useAuth();
   const canSee = useMemo(() => puoAccedereLead(roles as string[]), [roles]);
   const canManage = useMemo(() => puoGestireLead(roles as string[]), [roles]);
 
+  const [ambito, setAmbito] = useState<LeadAmbito>("commerciale");
   const [tab, setTab] = useState<Vista>("attivi");
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
-  const [stato, setStato] = useState(TUTTI);
+  const [stato, setStato] = useState<string[]>([]);
   const [tipoLead, setTipoLead] = useState(TUTTI);
   const [fonte, setFonte] = useState(TUTTI);
   const [priorita, setPriorita] = useState(TUTTI);
   const [mestiere, setMestiere] = useState(TUTTI);
-  const [storeFiltro, setStoreFiltro] = useState(TUTTI);
-  const [agente, setAgente] = useState(TUTTI);
-  const [assegnatario, setAssegnatario] = useState(TUTTI);
+  const [storeFiltro, setStoreFiltro] = useState<string[]>([]);
+  const [agente, setAgente] = useState<string[]>([]);
+  const [assegnatario, setAssegnatario] = useState<string[]>([]);
+  const [evento, setEvento] = useState(TUTTI);
   const [giorni, setGiorni] = useState("0");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [sortBy, setSortBy] = useState("created_at");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [selezionati, setSelezionati] = useState<Set<string>>(new Set());
+  const [caricandoTutti, setCaricandoTutti] = useState(false);
+  const [confermaSposta, setConfermaSposta] = useState(false);
+  const [spostando, setSpostando] = useState(false);
+  const ambitoDestinazione: LeadAmbito = ambito === "eventi" ? "commerciale" : "eventi";
 
 
   const { data: stores } = useQuery({
@@ -113,6 +147,16 @@ function LeadListaPage() {
     staleTime: 5 * 60_000,
   });
   const { data: mestieriFiltro } = useCategorieSegmento("mestiere");
+  const { data: eventiNomi } = useQuery({
+    queryKey: ["lead-eventi-nomi"],
+    enabled: canSee && ambito === "eventi",
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("eventi").select("nome").order("data_evento", { ascending: false });
+      if (error) return [] as string[];
+      return Array.from(new Set((data ?? []).map((e) => e.nome).filter((n): n is string => !!n?.trim())));
+    },
+  });
 
   const nomeProfilo = (id: string | null) => {
     if (!id) return "—";
@@ -121,13 +165,22 @@ function LeadListaPage() {
   };
   const nomeStore = (id: string | null) => stores?.find((s) => s.id === id)?.nome ?? "—";
 
-  const attiviCount = [stato, tipoLead, fonte, priorita, mestiere, storeFiltro, agente, assegnatario]
-    .filter((v) => v !== TUTTI).length + (search ? 1 : 0);
+  const attiviCount =
+    [tipoLead, fonte, priorita, mestiere, evento].filter((v) => v !== TUTTI).length +
+    [stato, storeFiltro, agente, assegnatario].filter((v) => v.length > 0).length +
+    (search ? 1 : 0);
 
   function resetFiltri() {
-    setStato(TUTTI); setTipoLead(TUTTI); setFonte(TUTTI); setPriorita(TUTTI);
-    setStoreFiltro(TUTTI); setAgente(TUTTI); setAssegnatario(TUTTI); setMestiere(TUTTI);
+    setStato([]); setTipoLead(TUTTI); setFonte(TUTTI); setPriorita(TUTTI);
+    setStoreFiltro([]); setAgente([]); setAssegnatario([]); setMestiere(TUTTI); setEvento(TUTTI);
     setSearch(""); setSearchInput(""); setPage(1);
+  }
+
+  function cambiaAmbito(a: LeadAmbito) {
+    if (a === ambito) return;
+    setAmbito(a);
+    resetFiltri();
+    setSelezionati(new Set());
   }
 
   const limiteData = useMemo(() => {
@@ -137,66 +190,69 @@ function LeadListaPage() {
   }, [giorni]);
 
   /** Il filtro Stato ha la precedenza sul set di stati di default della vista. */
-  const statoEsplicito = stato !== TUTTI;
-  /** Colonne/campi di conversione: vista Convertiti oppure filtro Stato = Convertito. */
-  const mostraConversione = stato === "convertito" || (!statoEsplicito && tab === "convertiti");
+  const statoEsplicito = stato.length > 0;
+  /** Colonne/campi di conversione: vista Convertiti oppure filtro Stato = solo Convertito. */
+  const mostraConversione =
+    (stato.length === 1 && stato[0] === "convertito") || (!statoEsplicito && tab === "convertiti");
+
+  /** FONTE UNICA dei filtri della pagina: usata dalla lista e da "Seleziona tutti i filtrati". */
+  function applicaFiltri<T>(q0: T): T {
+    let q = q0 as QueryLibera;
+    q = q.eq("ambito", ambito);
+    if (search.trim()) {
+      const s = search.trim().replace(/[,()]/g, " ");
+      q = q.or(
+        [
+          `ragione_sociale.ilike.%${s}%`,
+          `nome.ilike.%${s}%`,
+          `cognome.ilike.%${s}%`,
+          `email.ilike.%${s}%`,
+          `partita_iva.ilike.%${s}%`,
+          `citta.ilike.%${s}%`,
+        ].join(","),
+      );
+    }
+    if (statoEsplicito) q = q.in("stato", stato);
+    else if (tab === "convertiti") q = q.eq("stato", "convertito");
+    else if (tab === "persi") q = q.eq("stato", "perso");
+    else if (tab === "attivi") q = q.not("stato", "in", `(${STATI_NON_ATTIVI.join(",")})`);
+
+    if (tipoLead !== TUTTI) q = q.eq("tipo_lead", tipoLead);
+    if (fonte !== TUTTI) q = q.eq("fonte", fonte);
+    if (priorita !== TUTTI) q = q.eq("priorita", priorita);
+    if (mestiere !== TUTTI) {
+      if (mestiere === NESSUNO) q = q.is("mestiere_id", null);
+      else q = q.eq("mestiere_id", mestiere);
+    }
+    q = filtroMultiplo(q, "store_id", storeFiltro);
+    q = filtroMultiplo(q, "agente_codice", agente);
+    q = filtroMultiplo(q, "assegnato_a", assegnatario);
+    if (ambito === "eventi" && evento !== TUTTI) q = q.eq("fonte_dettaglio", evento);
+    if (tab === "ricontattare") {
+      q = q.not("prossima_azione_il", "is", null).lte("prossima_azione_il", limiteData);
+    }
+    return q as T;
+  }
 
   const queryKey = [
-    "lead-lista", tab, search, stato, tipoLead, fonte, priorita, mestiere, storeFiltro, agente,
-    assegnatario, page, pageSize, sortBy, sortDir, tab === "ricontattare" ? limiteData : null,
+    "lead-lista", ambito, tab, search, stato, tipoLead, fonte, priorita, mestiere, storeFiltro, agente,
+    assegnatario, evento, page, pageSize, sortBy, sortDir, tab === "ricontattare" ? limiteData : null,
   ];
 
   const { data, isLoading } = useQuery({
     queryKey,
     enabled: canSee,
     queryFn: async () => {
-      let q = supabase
-        .from("lead")
-        .select(
-          "id, ragione_sociale, nome, cognome, tipo_soggetto, stato, tipo_lead, priorita, fonte, citta, provincia, store_id, agente_codice, assegnato_a, prossima_azione_il, created_at, cliente_id, convertito_il, cliente:clienti!lead_cliente_id_fkey(id, ragione_sociale)",
-          { count: "exact" },
-        );
-
-      if (search.trim()) {
-        const s = search.trim().replace(/[,()]/g, " ");
-        q = q.or(
-          [
-            `ragione_sociale.ilike.%${s}%`,
-            `nome.ilike.%${s}%`,
-            `cognome.ilike.%${s}%`,
-            `email.ilike.%${s}%`,
-            `partita_iva.ilike.%${s}%`,
-            `citta.ilike.%${s}%`,
-          ].join(","),
-        );
-      }
-      if (statoEsplicito) q = q.eq("stato", stato as LeadRow["stato"]);
-      else if (tab === "convertiti") q = q.eq("stato", "convertito");
-      else if (tab === "persi") q = q.eq("stato", "perso");
-      else if (tab === "attivi") q = q.not("stato", "in", `(${STATI_NON_ATTIVI.join(",")})`);
-
-      if (tipoLead !== TUTTI) q = q.eq("tipo_lead", tipoLead as LeadRow["tipo_lead"]);
-      if (fonte !== TUTTI) q = q.eq("fonte", fonte as LeadRow["fonte"]);
-      if (priorita !== TUTTI) q = q.eq("priorita", priorita as LeadRow["priorita"]);
-      if (mestiere !== TUTTI) {
-        if (mestiere === NESSUNO) q = q.is("mestiere_id", null);
-        else q = q.eq("mestiere_id", mestiere);
-      }
-      if (storeFiltro !== TUTTI) {
-        if (storeFiltro === NESSUNO) q = q.is("store_id", null);
-        else q = q.eq("store_id", storeFiltro);
-      }
-      if (agente !== TUTTI) {
-        if (agente === NESSUNO) q = q.is("agente_codice", null);
-        else q = q.eq("agente_codice", agente);
-      }
-      if (assegnatario !== TUTTI) {
-        if (assegnatario === NESSUNO) q = q.is("assegnato_a", null);
-        else q = q.eq("assegnato_a", assegnatario);
-      }
+      let q = applicaFiltri(
+        supabase
+          .from("lead")
+          .select(
+            "id, ragione_sociale, nome, cognome, tipo_soggetto, stato, tipo_lead, priorita, fonte, citta, provincia, store_id, agente_codice, assegnato_a, prossima_azione_il, created_at, cliente_id, convertito_il, cliente:clienti!lead_cliente_id_fkey(id, ragione_sociale)",
+            { count: "exact" },
+          ),
+      );
 
       if (tab === "ricontattare") {
-        q = q.not("prossima_azione_il", "is", null).lte("prossima_azione_il", limiteData);
         q = q.order("prossima_azione_il", { ascending: true });
       } else if (tab === "convertiti" && sortBy === "created_at") {
         q = q.order("convertito_il", { ascending: false, nullsFirst: false });
@@ -211,12 +267,12 @@ function LeadListaPage() {
     },
   });
 
-  /** Conteggi dei riquadri: query leggere solo di conteggio. */
+  /** Conteggi dei riquadri: query leggere solo di conteggio, per l'ambito corrente. */
   const { data: conteggi } = useQuery({
-    queryKey: ["lead-conteggi", limiteData],
+    queryKey: ["lead-conteggi", ambito, limiteData],
     enabled: canSee,
     queryFn: async () => {
-      const base = () => supabase.from("lead").select("id", { count: "exact", head: true });
+      const base = () => supabase.from("lead").select("id", { count: "exact", head: true }).eq("ambito", ambito);
       const [attivi, ricontattare, convertiti, persi] = await Promise.all([
         base().not("stato", "in", `(${STATI_NON_ATTIVI.join(",")})`),
         base().not("prossima_azione_il", "is", null).lte("prossima_azione_il", limiteData),
@@ -232,10 +288,91 @@ function LeadListaPage() {
     },
   });
 
+  /** Lead attivi per ciascun ambito (selettore Commerciali / Da eventi). */
+  const { data: attiviPerAmbito } = useQuery({
+    queryKey: ["lead-conteggi", "ambiti"],
+    enabled: canSee,
+    queryFn: async () => {
+      const res = await Promise.all(
+        LEAD_AMBITI.map((a) =>
+          supabase
+            .from("lead")
+            .select("id", { count: "exact", head: true })
+            .eq("ambito", a)
+            .not("stato", "in", `(${STATI_NON_ATTIVI.join(",")})`),
+        ),
+      );
+      return Object.fromEntries(LEAD_AMBITI.map((a, i) => [a, res[i].count ?? 0])) as Record<LeadAmbito, number>;
+    },
+  });
+
+  function toggleSel(id: string, v: boolean) {
+    setSelezionati((prev) => {
+      const n = new Set(prev);
+      if (v) n.add(id); else n.delete(id);
+      return n;
+    });
+  }
+
+  async function selezionaTuttiFiltrati() {
+    setCaricandoTutti(true);
+    try {
+      const ids: string[] = [];
+      for (let from = 0; ; from += BLOCCO_ID) {
+        const { data, error } = await applicaFiltri(supabase.from("lead").select("id"))
+          .order("id")
+          .range(from, from + BLOCCO_ID - 1);
+        if (error) throw error;
+        const blocco = (data ?? []).map((r) => r.id);
+        ids.push(...blocco);
+        if (blocco.length < BLOCCO_ID) break;
+      }
+      setSelezionati(new Set(ids));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Selezione non riuscita");
+    } finally {
+      setCaricandoTutti(false);
+    }
+  }
+
+  async function spostaSelezionati() {
+    const ids = Array.from(selezionati);
+    setSpostando(true);
+    let spostati = 0;
+    try {
+      for (let i = 0; i < ids.length; i += BLOCCO_SPOSTA) {
+        const { data, error } = await supabase.rpc("sposta_lead_ambito", {
+          _lead_ids: ids.slice(i, i + BLOCCO_SPOSTA),
+          _ambito: ambitoDestinazione,
+        });
+        if (error) throw error;
+        spostati += data ?? 0;
+      }
+      toast.success(`${spostati} lead spostati`);
+      setSelezionati(new Set());
+      setConfermaSposta(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : (e as { message?: string })?.message ?? "Spostamento non riuscito");
+    } finally {
+      setSpostando(false);
+      void queryClient.invalidateQueries({ queryKey: ["lead-lista"] });
+      void queryClient.invalidateQueries({ queryKey: ["lead-conteggi"] });
+    }
+  }
+
 
   const rows = data?.rows ?? [];
   const totale = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(totale / pageSize));
+  const tuttaPaginaSel = rows.length > 0 && rows.every((r) => selezionati.has(r.id));
+  const qualcunoPaginaSel = rows.some((r) => selezionati.has(r.id));
+  function selezionaPagina(v: boolean) {
+    setSelezionati((prev) => {
+      const n = new Set(prev);
+      rows.forEach((r) => (v ? n.add(r.id) : n.delete(r.id)));
+      return n;
+    });
+  }
 
   function toggleSort(col: string) {
     if (sortBy === col) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -296,6 +433,35 @@ function LeadListaPage() {
         </Dialog>
       </div>
 
+      <div className="space-y-2">
+        <div
+          role="radiogroup"
+          aria-label="Ambito dei lead"
+          className="inline-flex max-w-full flex-wrap gap-1 rounded-lg border bg-muted/40 p-1"
+        >
+          {LEAD_AMBITI.map((a) => (
+            <Button
+              key={a}
+              type="button"
+              role="radio"
+              aria-checked={ambito === a}
+              size="sm"
+              variant={ambito === a ? "default" : "ghost"}
+              className="min-h-10 gap-1.5"
+              onClick={() => cambiaAmbito(a)}
+            >
+              {LEAD_AMBITO_LABEL[a]}
+              <span className="text-xs opacity-70">{attiviPerAmbito?.[a] ?? "—"}</span>
+            </Button>
+          ))}
+        </div>
+        {ambito === "eventi" && (
+          <p className="text-sm text-muted-foreground">
+            Anagrafica nata dagli eventi: persone da reinvitare e riqualificare. Non compare nella lista commerciale.
+          </p>
+        )}
+      </div>
+
       <Tabs value={tab} onValueChange={(v) => { setTab(v as Vista); setPage(1); }}>
         <TabsList className="w-full justify-start overflow-x-auto sm:w-auto">
           <TabsTrigger value="attivi" className="gap-1.5">
@@ -312,16 +478,55 @@ function LeadListaPage() {
             Persi <span className="text-xs opacity-70">{conteggi?.persi ?? "—"}</span>
           </TabsTrigger>
         </TabsList>
-
       </Tabs>
 
       {statoEsplicito && tab !== "ricontattare" && (
         <p className="text-xs text-muted-foreground -mt-3">
           Filtro Stato attivo: la lista mostra solo i lead in stato{" "}
-          <strong className="text-foreground">{LEAD_STATO_LABEL[stato as LeadRow["stato"]]}</strong>{" "}
+          <strong className="text-foreground">{stato.map((s) => LEAD_STATO_LABEL[s as LeadRow["stato"]]).join(", ")}</strong>{" "}
           e ignora la vista selezionata.
         </p>
       )}
+
+      {canManage && selezionati.size > 0 && (
+        <Card className="flex flex-wrap items-center gap-2 p-3">
+          <span className="min-w-0 text-sm font-medium">
+            {selezionati.size} {selezionati.size === 1 ? "selezionato" : "selezionati"}
+          </span>
+          <div className="ml-auto flex flex-wrap gap-2">
+            <Button size="sm" className="min-h-10" disabled={spostando} onClick={() => setConfermaSposta(true)}>
+              <ArrowRightLeft className="size-4" />
+              Sposta in {LEAD_AMBITO_LABEL[ambitoDestinazione]}
+            </Button>
+            <Button size="sm" variant="ghost" className="min-h-10" disabled={spostando} onClick={() => setSelezionati(new Set())}>
+              Annulla selezione
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      <AlertDialog open={confermaSposta} onOpenChange={(o) => { if (!spostando) setConfermaSposta(o); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Spostare {selezionati.size} lead in "{LEAD_AMBITO_LABEL[ambitoDestinazione]}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {ambitoDestinazione === "commerciale"
+                ? "I lead entreranno nella lista commerciale di lavoro quotidiano."
+                : "I lead usciranno dalla lista commerciale e resteranno consultabili in \"Da eventi\"."}{" "}
+              Lo spostamento viene registrato nello storico di ogni lead.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={spostando}>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={spostando}
+              onClick={(e) => { e.preventDefault(); void spostaSelezionati(); }}
+            >
+              {spostando ? "Spostamento…" : "Sposta"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
 
 
@@ -352,13 +557,12 @@ function LeadListaPage() {
           </div>
           <div>
             <Label className="text-xs">Stato</Label>
-            <Select value={stato} onValueChange={(v) => { setStato(v); setPage(1); }}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value={TUTTI}>Tutti</SelectItem>
-                {LEAD_STATI.map((s) => <SelectItem key={s} value={s}>{LEAD_STATO_LABEL[s]}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Stato"
+              opzioni={LEAD_STATI.map((s) => ({ valore: s, label: LEAD_STATO_LABEL[s] }))}
+              selezionati={stato}
+              onChange={(v) => { setStato(v); setPage(1); }}
+            />
           </div>
           <div>
             <Label className="text-xs">Tipo lead</Label>
@@ -405,45 +609,48 @@ function LeadListaPage() {
           </div>
           <div>
             <Label className="text-xs">Sede</Label>
-            <Select value={storeFiltro} onValueChange={(v) => { setStoreFiltro(v); setPage(1); }}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value={TUTTI}>Tutte</SelectItem>
-                <SelectItem value={NESSUNO}>Senza sede</SelectItem>
-                {(stores ?? []).map((s) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Sede"
+              testoTutti="Tutte"
+              opzioni={[{ valore: NESSUNO, label: "Senza sede" }, ...(stores ?? []).map((s) => ({ valore: s.id, label: s.nome }))]}
+              selezionati={storeFiltro}
+              onChange={(v) => { setStoreFiltro(v); setPage(1); }}
+            />
           </div>
           {canManage && (<>
           <div>
             <Label className="text-xs">Agente</Label>
-            <Select value={agente} onValueChange={(v) => { setAgente(v); setPage(1); }}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value={TUTTI}>Tutti</SelectItem>
-                <SelectItem value={NESSUNO}>Senza agente</SelectItem>
-                {(agenti ?? []).map((a) => (
-                  <SelectItem key={a.codice} value={a.codice}>{a.descrizione || a.codice}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Agente"
+              cercabile
+              opzioni={[{ valore: NESSUNO, label: "Senza agente" }, ...(agenti ?? []).map((a) => ({ valore: a.codice, label: a.descrizione || a.codice }))]}
+              selezionati={agente}
+              onChange={(v) => { setAgente(v); setPage(1); }}
+            />
           </div>
           <div>
             <Label className="text-xs">Assegnatario</Label>
-            <Select value={assegnatario} onValueChange={(v) => { setAssegnatario(v); setPage(1); }}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value={TUTTI}>Tutti</SelectItem>
-                <SelectItem value={NESSUNO}>Non assegnati</SelectItem>
-                {(profili ?? []).map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {`${p.nome ?? ""} ${p.cognome ?? ""}`.trim() || p.id}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Assegnatario"
+              cercabile
+              opzioni={[{ valore: NESSUNO, label: "Non assegnati" }, ...(profili ?? []).map((p) => ({ valore: p.id, label: `${p.nome ?? ""} ${p.cognome ?? ""}`.trim() || p.id }))]}
+              selezionati={assegnatario}
+              onChange={(v) => { setAssegnatario(v); setPage(1); }}
+            />
           </div>
           </>)}
+          {ambito === "eventi" && (eventiNomi?.length ?? 0) > 0 && (
+            <div>
+              <Label className="text-xs">Evento</Label>
+              <Select value={evento} onValueChange={(v) => { setEvento(v); setPage(1); }}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={TUTTI}>Tutti</SelectItem>
+                  {(eventiNomi ?? []).map((n) => <SelectItem key={n} value={n}>{n}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           {tab === "ricontattare" && (
             <div>
               <Label className="text-xs">Finestra</Label>
@@ -466,6 +673,16 @@ function LeadListaPage() {
             Pagina <strong className="text-foreground">{page}</strong> di <strong className="text-foreground">{totalPages}</strong>
             <span className="ml-1">— <strong className="text-foreground">{totale}</strong> lead</span>
           </span>
+          {canManage && totale > 0 && selezionati.size < totale && (
+            <button
+              type="button"
+              className="text-primary hover:underline disabled:opacity-60"
+              disabled={caricandoTutti}
+              onClick={() => void selezionaTuttiFiltrati()}
+            >
+              {caricandoTutti ? "Selezione in corso…" : `Seleziona tutti i ${totale} filtrati`}
+            </button>
+          )}
           <span className="ml-auto flex items-center gap-2">
             <span className="text-xs">Per pagina:</span>
             <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}>
@@ -497,6 +714,7 @@ function LeadListaPage() {
                 key={l.id}
                 onClick={() => navigate({ to: "/lead/$leadId", params: { leadId: l.id } })}
                 titolo={nomeLead(l)}
+                selezione={canManage ? { checked: selezionati.has(l.id), onChange: (v) => toggleSel(l.id, v) } : undefined}
                 badge={
                   <Badge className={`${LEAD_STATO_CLASS[l.stato]} shrink-0`}>{LEAD_STATO_LABEL[l.stato]}</Badge>
                 }
@@ -531,6 +749,15 @@ function LeadListaPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  {canManage && (
+                    <TableHead className="w-10">
+                      <Checkbox
+                        aria-label="Seleziona tutta la pagina"
+                        checked={tuttaPaginaSel ? true : qualcunoPaginaSel ? "indeterminate" : false}
+                        onCheckedChange={(v) => selezionaPagina(v === true)}
+                      />
+                    </TableHead>
+                  )}
                   <TableHead><SortHeader col="ragione_sociale" label="Nominativo" /></TableHead>
                   <TableHead>Tipo soggetto</TableHead>
                   <TableHead><SortHeader col="stato" label="Stato" /></TableHead>
@@ -559,6 +786,15 @@ function LeadListaPage() {
                     className="cursor-pointer"
                     onClick={() => navigate({ to: "/lead/$leadId", params: { leadId: l.id } })}
                   >
+                    {canManage && (
+                      <TableCell className="w-10" onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          aria-label={`Seleziona ${nomeLead(l)}`}
+                          checked={selezionati.has(l.id)}
+                          onCheckedChange={(v) => toggleSel(l.id, v === true)}
+                        />
+                      </TableCell>
+                    )}
                     <TableCell className="font-medium">{nomeLead(l)}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">
                       {l.tipo_soggetto === "persona_fisica" ? "Persona fisica" : l.tipo_soggetto === "azienda" ? "Azienda" : "—"}
