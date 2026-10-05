@@ -2825,9 +2825,10 @@ function ProposteFidoMassivoDialog({
             <TableBody>
               {righeVisibili.map((r) => {
                 const scost = r.proponibile ? r.fido_proposto - r.fido_attuale : 0;
+                const dettagli = renderDettagli(r);
                 return (
                   <Fragment key={r.cliente_id}>
-                    <TableRow className={`${!r.proponibile ? "opacity-60" : ""} ${r.proponibile && r.richiede_verifica ? "bg-warning/10" : ""} border-0`}>
+                    <TableRow className={`${!r.proponibile ? "opacity-60" : ""} ${r.proponibile && r.richiede_verifica ? "bg-warning/10" : ""} ${dettagli ? "border-0" : "border-b-2 border-border"}`}>
                       <TableCell><Checkbox checked={r.incluso && r.proponibile} disabled={!r.proponibile} onCheckedChange={() => toggleIncluso(r.cliente_id)} /></TableCell>
                       <TableCell className="min-w-0 font-medium">{renderCliente(r)}<div className="mt-0.5 text-[11px] font-normal">{renderRegola(r)}</div></TableCell>
                       <TableCell className="text-right break-words tabular-nums">{fmtEuro(r.fido_attuale)}</TableCell>
@@ -2839,7 +2840,7 @@ function ProposteFidoMassivoDialog({
                       <TableCell><div className="[&_button]:w-8 [&_button]:h-10">{renderMotivazione(r)}</div></TableCell>
                       <TableCell><div className="[&_button]:w-8 [&_button]:h-10">{renderRimuovi(r)}</div></TableCell>
                     </TableRow>
-                    <TableRow className={`${!r.proponibile ? "opacity-60" : ""} ${r.proponibile && r.richiede_verifica ? "bg-warning/10" : ""} border-b-2 border-border`}><TableCell colSpan={10} className="pt-0 pb-2">{renderDettagli(r)}</TableCell></TableRow>
+                    {dettagli && <TableRow className={`${!r.proponibile ? "opacity-60" : ""} ${r.proponibile && r.richiede_verifica ? "bg-warning/10" : ""} border-b-2 border-border`}><TableCell colSpan={10} className="pt-0 pb-2">{dettagli}</TableCell></TableRow>}
                   </Fragment>
                 );
               })}
