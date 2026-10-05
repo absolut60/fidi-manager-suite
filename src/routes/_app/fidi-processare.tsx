@@ -314,8 +314,9 @@ function ExportBadge({ stato }: { stato: StatoExport | null }) {
 
 /* ============================ DA GESTIRE TAB ============================ */
 function GestireTab({
-  rows, loading, stores, profiloName, onGeneraFile, onRigenera, onSetStato,
+  rows, loading, stores, profiloName, onGeneraFile, onRigenera, onSetStato, exportPronto,
 }: {
+  exportPronto: boolean;
   rows: any[];
   loading: boolean;
   stores: Array<{ id: string; nome: string }>;
@@ -410,6 +411,7 @@ function GestireTab({
           <div className="flex-1" />
           <Button
             size="sm"
+            disabled={!exportPronto}
             onClick={() => {
               const toExport = selectedRows.filter((r) => r.stato_export === "da_esportare" || r.stato_export === "errore_export");
               if (!toExport.length) { toast.error("Nessuna riga in stato 'da esportare' selezionata"); return; }
@@ -445,6 +447,17 @@ function GestireTab({
         </Card>
       ) : (
         <Card className="p-2 sm:p-3">
+          {(() => {
+            const n = filtered.filter(
+              (r) => (r.stato_export === "da_esportare" || r.stato_export === "errore_export")
+                && mapRichiestaFido(r).esitoCondPag === "approvata" && !!(r.condizione_pagamento_cod ?? "").trim(),
+            ).length;
+            return n > 0 ? (
+              <p className="mb-2 rounded-md border border-success/40 bg-success/10 px-3 py-2 text-sm break-words">
+                {n} {n === 1 ? "fido nel file porterà" : "fidi nel file porteranno"} anche la nuova condizione di pagamento
+              </p>
+            ) : null;
+          })()}
           <Table>
             <TableHeader>
               <TableRow>
@@ -487,13 +500,13 @@ function GestireTab({
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
                         {se === "da_esportare" && (
-                          <Button size="sm" onClick={() => onGeneraFile([r])}>
+                          <Button size="sm" disabled={!exportPronto} onClick={() => onGeneraFile([r])}>
                             <Download className="size-4" /> Genera
                           </Button>
                         )}
                         {se === "esportata" && (
                           <>
-                            <Button size="sm" variant="outline" onClick={() => onRigenera([r])} title="Rigenera file">
+                            <Button size="sm" variant="outline" disabled={!exportPronto} onClick={() => onRigenera([r])} title="Rigenera file">
                               <RefreshCw className="size-4" />
                             </Button>
                             <Button size="sm" variant="default" onClick={() => setProcessaConfirm(r)} title="Conferma processata">
@@ -519,7 +532,7 @@ function GestireTab({
                             >
                               <RefreshCw className="size-4" /> Riprova
                             </Button>
-                            <Button size="sm" variant="outline" onClick={() => onRigenera([r])}>
+                            <Button size="sm" variant="outline" disabled={!exportPronto} onClick={() => onRigenera([r])}>
                               <Download className="size-4" />
                             </Button>
                           </>
