@@ -1,3 +1,4 @@
+import { fidoConcessoDaRichiesta } from "@/lib/richieste-fido-data";
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
@@ -38,8 +39,10 @@ export const Route = createFileRoute("/api/public/hooks/check-scadenze")({
           // Trova richieste approvate in scadenza
           const { data: richieste, error } = await supabaseAdmin
             .from("richieste_fido")
-            .select("id, cliente_id, importo_approvato, data_scadenza, created_by, store_id, clienti(ragione_sociale)")
+            .select("id, cliente_id, importo_approvato, esito_fido, data_scadenza, created_by, store_id, clienti(ragione_sociale)")
             .eq("stato", "approvata")
+            // nessun promemoria se il fido non è stato concesso (regola: fidoConcessoDaRichiesta)
+            .or("esito_fido.is.null,esito_fido.neq.rifiutata")
             .not("data_scadenza", "is", null)
             .lte("data_scadenza", limit.toISOString())
             .gte("data_scadenza", now.toISOString());
@@ -83,7 +86,7 @@ export const Route = createFileRoute("/api/public/hooks/check-scadenze")({
                 titolo: urgente
                   ? `⚠️ Fido in scadenza tra ${giorniMancanti}gg`
                   : `Fido in scadenza tra ${giorniMancanti}gg`,
-                messaggio: `${clienteNome} — € ${r.importo_approvato ?? 0}`,
+                messaggio: `${clienteNome} — € ${fidoConcessoDaRichiesta(r) ?? 0}`,
                 link: `/richieste/${r.id}`,
                 metadata: {
                   richiesta_id: r.id,
