@@ -49,7 +49,7 @@ function IscrizioneEventoPage() {
   const apertaAl = useRef<number>(Date.now());
 
   const codiceValido = /^[a-z0-9]{6,40}$/.test(codice);
-  const { data: evento, isLoading } = useQuery({
+  const { data: evento, isLoading, isError, refetch } = useQuery({
     queryKey: ["iscrizione-evento", codice],
     enabled: codiceValido,
     queryFn: () => getEvento({ data: { codice } }),
