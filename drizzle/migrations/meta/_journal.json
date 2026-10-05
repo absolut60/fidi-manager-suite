@@ -71,6 +71,13 @@
       "when": 1791197038738,
       "tag": "0009_fm38_helpers_contatto_privacy",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791197380888,
+      "tag": "0010_fm38_collega_lead_a_cliente",
+      "breakpoints": true
     }
   ]
 }
