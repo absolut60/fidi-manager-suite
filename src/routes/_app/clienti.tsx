@@ -72,6 +72,38 @@ export const Route = createFileRoute("/_app/clienti")({
 
 
 
+function NotaPropostaDettaglio({ nota }: { nota: string }) {
+  const [troncato, setTroncato] = useState(false);
+  const testoRef = useRef<HTMLSpanElement | null>(null);
+  useEffect(() => {
+    const el = testoRef.current;
+    if (!el) return;
+    const verifica = () => setTroncato(el.scrollWidth > el.clientWidth + 1);
+    verifica();
+    const ro = new ResizeObserver(verifica);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [nota]);
+  return (
+    <details className="min-w-0 group" data-nota-troncata={troncato || undefined}>
+      <summary
+        className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 list-none"
+        style={{ cursor: troncato ? "pointer" : "default" }}
+        onClick={(e) => { if (!troncato) e.preventDefault(); }}
+      >
+        <span ref={testoRef} className="truncate text-muted-foreground" title={nota}>{nota}</span>
+        {troncato && (
+          <>
+            <span className="text-primary whitespace-nowrap group-open:hidden">Mostra tutto</span>
+            <span className="text-primary whitespace-nowrap hidden group-open:block">Mostra meno</span>
+          </>
+        )}
+      </summary>
+      {troncato && <p className="pt-1 break-words text-muted-foreground">{nota}</p>}
+    </details>
+  );
+}
+
 const FASCE_CONCESSO: Record<string, { min: number; max: number | null; label: string }> = {
   nessuno: { min: 0, max: 0, label: "Nessun fido" },
   "0_500": { min: 0, max: 500, label: "Fino a 500 €" },
@@ -2589,24 +2621,25 @@ function ProposteFidoMassivoDialog({
         onChange={(cod) => aggiornaCondizione(r.cliente_id, cod)} />
     </div>
   );
-  const renderDettagli = (r: RigaProposta) => (
-    <div className="grid grid-cols-1 gap-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] text-xs">
-      {r.nota_proposta && <details className="min-w-0 group">
-        <summary className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 cursor-pointer list-none">
-          <span className="truncate text-muted-foreground" title={r.nota_proposta}>{r.nota_proposta}</span>
-          <span className="text-primary whitespace-nowrap group-open:hidden">Mostra tutto</span>
-          <span className="text-primary whitespace-nowrap hidden group-open:block">Mostra meno</span>
-        </summary>
-        <p className="pt-1 break-words text-muted-foreground">{r.nota_proposta}</p>
-      </details>}
-      {condizionePagamentoCambiata(r.cond_proposta, r.cond_attuale) && (
-        <div className="min-w-0 break-words text-info xl:text-right">
-          <CambioCondizionePagamento variant="badge" codAttuale={r.cond_attuale} codProposta={r.cond_proposta} descAttuale={r.cond_attuale_desc} />
-          {" "}<CondizionePagamentoTesto cod={r.cond_attuale} descFallback={r.cond_attuale_desc} /> → <CondizionePagamentoTesto cod={r.cond_proposta} />
-        </div>
-      )}
-    </div>
-  );
+  const renderDettagli = (r: RigaProposta) => {
+    const cambio = condizionePagamentoCambiata(r.cond_proposta, r.cond_attuale);
+    if (!r.nota_proposta && !cambio) return null;
+    return (
+      <div className={`grid grid-cols-1 gap-2 text-xs ${cambio ? "xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]" : ""}`}>
+        {r.nota_proposta && (
+          <div className="min-w-0">
+            <NotaPropostaDettaglio nota={r.nota_proposta} />
+          </div>
+        )}
+        {cambio && (
+          <div className="min-w-0 break-words text-info xl:text-right">
+            <CambioCondizionePagamento variant="badge" codAttuale={r.cond_attuale} codProposta={r.cond_proposta} descAttuale={r.cond_attuale_desc} />
+            {" "}<CondizionePagamentoTesto cod={r.cond_attuale} descFallback={r.cond_attuale_desc} /> → <CondizionePagamentoTesto cod={r.cond_proposta} />
+          </div>
+        )}
+      </div>
+    );
+  };
   const renderRimuovi = (r: RigaProposta) => (
     <Button variant="ghost" size="icon" onClick={() => rimuoviRiga(r.cliente_id)} title="Rimuovi">
       <X className="size-4" />
@@ -2767,7 +2800,7 @@ function ProposteFidoMassivoDialog({
                       <Label className="text-xs text-muted-foreground font-normal">Cond. pagamento</Label>
                       {renderCondizione(r)}
                     </div>
-                    <div className="min-w-0 sm:col-span-2">{renderDettagli(r)}</div>
+                    {renderDettagli(r) ? <div className="min-w-0 sm:col-span-2">{renderDettagli(r)}</div> : null}
                   </div>
                 }
               />
@@ -2792,9 +2825,10 @@ function ProposteFidoMassivoDialog({
             <TableBody>
               {righeVisibili.map((r) => {
                 const scost = r.proponibile ? r.fido_proposto - r.fido_attuale : 0;
+                const dettagli = renderDettagli(r);
                 return (
                   <Fragment key={r.cliente_id}>
-                    <TableRow className={`${!r.proponibile ? "opacity-60" : ""} ${r.proponibile && r.richiede_verifica ? "bg-warning/10" : ""} border-0`}>
+                    <TableRow className={`${!r.proponibile ? "opacity-60" : ""} ${r.proponibile && r.richiede_verifica ? "bg-warning/10" : ""} ${dettagli ? "border-0" : "border-b-2 border-border"}`}>
                       <TableCell><Checkbox checked={r.incluso && r.proponibile} disabled={!r.proponibile} onCheckedChange={() => toggleIncluso(r.cliente_id)} /></TableCell>
                       <TableCell className="min-w-0 font-medium">{renderCliente(r)}<div className="mt-0.5 text-[11px] font-normal">{renderRegola(r)}</div></TableCell>
                       <TableCell className="text-right break-words tabular-nums">{fmtEuro(r.fido_attuale)}</TableCell>
@@ -2806,7 +2840,7 @@ function ProposteFidoMassivoDialog({
                       <TableCell><div className="[&_button]:w-8 [&_button]:h-10">{renderMotivazione(r)}</div></TableCell>
                       <TableCell><div className="[&_button]:w-8 [&_button]:h-10">{renderRimuovi(r)}</div></TableCell>
                     </TableRow>
-                    <TableRow className={`${!r.proponibile ? "opacity-60" : ""} ${r.proponibile && r.richiede_verifica ? "bg-warning/10" : ""} border-b-2 border-border`}><TableCell colSpan={10} className="pt-0 pb-2">{renderDettagli(r)}</TableCell></TableRow>
+                    {dettagli && <TableRow className={`${!r.proponibile ? "opacity-60" : ""} ${r.proponibile && r.richiede_verifica ? "bg-warning/10" : ""} border-b-2 border-border`}><TableCell colSpan={10} className="pt-0 pb-2">{dettagli}</TableCell></TableRow>}
                   </Fragment>
                 );
               })}
