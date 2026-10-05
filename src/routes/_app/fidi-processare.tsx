@@ -67,7 +67,7 @@ function FidiProcessarePage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("richieste_fido")
-        .select(`*, clienti(${TRACCIATO_CLIENTE_CAMPI}, codice_assegnato, partita_iva, fido_aziendale_concesso), stores(nome, codice), richiedente:profili!richieste_fido_created_by_fkey(nome, cognome, email), approvatore:profili!richieste_fido_approvato_da_fkey(nome, cognome, email)")
+        .select(`*, clienti(${TRACCIATO_CLIENTE_CAMPI}, codice_assegnato, partita_iva, fido_aziendale_concesso), stores(nome, codice), richiedente:profili!richieste_fido_created_by_fkey(nome, cognome, email), approvatore:profili!richieste_fido_approvato_da_fkey(nome, cognome, email)`)
         .eq("stato", "approvata")
         .not("stato_export", "is", null)
         .order("data_chiusura", { ascending: false });
