@@ -62,6 +62,7 @@ function IscrizioneEventoPage() {
   const [whatsapp, setWhatsapp] = useState(false);
   const [marketing, setMarketing] = useState(false);
   const [profilazione, setProfilazione] = useState(false);
+  const [media, setMedia] = useState(false);
   const [esito, setEsito] = useState<{ giaPresente: boolean; emailInviata: boolean } | null>(
     null,
   );
@@ -79,6 +80,7 @@ function IscrizioneEventoPage() {
           consenso_whatsapp: whatsapp,
           consenso_marketing: marketing,
           consenso_profilazione: profilazione,
+          consenso_media: media,
           secondi_permanenza: Math.round((Date.now() - apertaAl.current) / 1000),
         },
       }),
@@ -223,6 +225,14 @@ function IscrizioneEventoPage() {
             className="mt-0.5"
           />
           <span>Mi piacerebbe ricevere proposte e offerte pensate su misura per me, in base ai prodotti che seguo di più.</span>
+        </label>
+        <label className="flex items-start gap-2 text-sm cursor-pointer rounded-md border p-3">
+          <Checkbox
+            checked={media}
+            onCheckedChange={(v) => setMedia(v === true)}
+            className="mt-0.5"
+          />
+          <span>Acconsento alla pubblicazione di foto e riprese dell'evento in cui potrei comparire, su sito, social e materiali MADE.</span>
         </label>
         <Button
           onClick={() => submit.mutate()}
