@@ -2584,11 +2584,13 @@ function ProposteFidoMassivoDialog({
     );
   };
   const renderCondizione = (r: RigaProposta) => (
-    <CondizionePagamentoRichiestaSelect size="sm" value={r.cond_proposta}
-      onChange={(cod) => aggiornaCondizione(r.cliente_id, cod)} />
+    <div className="min-w-0 [&_button[role=combobox]]:h-auto [&_button[role=combobox]]:min-h-10 [&_button[role=combobox]]:whitespace-normal [&_button[role=combobox]>span]:flex-wrap [&_button[role=combobox]>span>span:first-child]:whitespace-normal [&_button[role=combobox]>span>span:first-child]:text-left">
+      <CondizionePagamentoRichiestaSelect size="sm" value={r.cond_proposta}
+        onChange={(cod) => aggiornaCondizione(r.cliente_id, cod)} />
+    </div>
   );
   const renderDettagli = (r: RigaProposta) => (
-    <div className="grid grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] text-xs">
+    <div className="grid grid-cols-1 gap-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] text-xs">
       {r.nota_proposta && <details className="min-w-0 group">
         <summary className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 cursor-pointer list-none">
           <span className="truncate text-muted-foreground" title={r.nota_proposta}>{r.nota_proposta}</span>
@@ -2598,7 +2600,7 @@ function ProposteFidoMassivoDialog({
         <p className="pt-1 break-words text-muted-foreground">{r.nota_proposta}</p>
       </details>}
       {condizionePagamentoCambiata(r.cond_proposta, r.cond_attuale) && (
-        <div className="min-w-0 break-words text-info lg:text-right">
+        <div className="min-w-0 break-words text-info xl:text-right">
           <CambioCondizionePagamento variant="badge" codAttuale={r.cond_attuale} codProposta={r.cond_proposta} descAttuale={r.cond_attuale_desc} />
           {" "}<CondizionePagamentoTesto cod={r.cond_attuale} descFallback={r.cond_attuale_desc} /> → <CondizionePagamentoTesto cod={r.cond_proposta} />
         </div>
@@ -2613,8 +2615,8 @@ function ProposteFidoMassivoDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[96vw] max-w-[96rem] h-[90dvh] max-h-[90dvh] overflow-hidden flex flex-col gap-0 p-0">
-        <div className="shrink-0 min-w-0 border-b px-3 py-2 sm:px-4">
+      <DialogContent className="w-[96vw] max-w-7xl h-[90dvh] max-h-[90dvh] overflow-hidden flex flex-col gap-0 p-0">
+        <div className="shrink-0 min-w-0 border-b px-3 py-2 sm:px-4 sm:py-2">
         <DialogHeader className="pr-8 text-left">
           <DialogTitle className="break-words">Proposta fido massiva — {righeVisibiliIncluse.length} clienti</DialogTitle>
           <DialogDescription>
@@ -2718,9 +2720,9 @@ function ProposteFidoMassivoDialog({
         </div>
         </div>
         </div>
-        <div data-proposte-elenco className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-2 sm:px-4">
+        <div data-proposte-elenco className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-2 sm:px-4 sm:py-2">
         {/* Schede anche su tablet: la tabella estesa richiede spazio desktop. */}
-        <div className="[&>div]:block lg:hidden">
+        <div className="[&>div]:block xl:hidden [&>div>div>div:first-child]:grid [&>div>div>div:first-child]:grid-cols-1 [&>div>div>div:first-child>div:last-child]:justify-end">
         <ElencoSchede>
           {righeVisibili.map((r) => {
             const scost = r.proponibile ? r.fido_proposto - r.fido_attuale : 0;
@@ -2774,11 +2776,11 @@ function ProposteFidoMassivoDialog({
         </ElencoSchede>
         </div>
 
-        <div className="hidden lg:block min-w-0 [&>div]:overflow-x-visible">
+        <div className="hidden xl:block min-w-0 [&>div]:overflow-x-visible">
           <Table className="table-fixed w-full text-xs [&_th]:px-1 [&_td]:px-1 [&_th]:whitespace-normal [&_td]:whitespace-normal">
             <colgroup>
               <col className="w-8" /><col /><col className="w-16" /><col className="w-16" />
-              <col className="w-20" /><col className="w-16" /><col className="w-64" />
+              <col className="w-20" /><col className="w-20" /><col className="w-64" />
               <col className="w-36" /><col className="w-8" /><col className="w-8" />
             </colgroup>
             <TableHeader><TableRow>
@@ -2813,7 +2815,7 @@ function ProposteFidoMassivoDialog({
         </div>
         </div>
 
-        <div className="shrink-0 min-w-0 border-t bg-background px-3 py-2 sm:px-4 grid grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+        <div className="shrink-0 min-w-0 border-t bg-background px-3 py-2 sm:px-4 sm:py-2 grid grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
           <div className="text-sm font-medium break-words">
             Totale fido proposto: <strong>{fmtEuro(totale)}</strong> · {righeVisibiliIncluse.length} richieste da creare
             {righeEscluse.length > 0 && (
