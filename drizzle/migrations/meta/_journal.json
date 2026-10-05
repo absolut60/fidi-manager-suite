@@ -29,6 +29,13 @@
       "when": 1791189684185,
       "tag": "0003_fm38_fix_riconcilia_partecipante_lead_rowtype",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791190791267,
+      "tag": "0004_fm38_consensi_batch_whatsapp_e_iscrizione_evento_completa",
+      "breakpoints": true
     }
   ]
 }

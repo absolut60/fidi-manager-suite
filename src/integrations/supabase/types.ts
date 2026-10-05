@@ -7889,6 +7889,7 @@ export type Database = {
           _prova_path?: string
           _secondi_permanenza?: number
           _user_agent?: string
+          _whatsapp?: boolean
         }
         Returns: undefined
       }
@@ -7929,12 +7930,14 @@ export type Database = {
           _cellulare: string
           _codice: string
           _cognome: string
-          _email?: string
+          _email: string
           _nome: string
         }
         Returns: {
+          contatto_id: string
           gia_presente: boolean
           motivo: string
+          nome_evento: string
           ok: boolean
         }[]
       }
