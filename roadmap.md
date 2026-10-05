@@ -1,5 +1,9 @@
 # Roadmap
 
+## FM38 M1 — Impaginazione proposta massiva
+- [ ] Intestazione e footer fissi, impostazioni compatte, elenco a due righe
+- [ ] Verificare 320/768/1024/1280 e invarianza filtri/payload
+
 ## FM38 D4 — Descrizioni condizioni di pagamento
 - [x] Regola unica, selettori e viste richieste fido con descrizione prima del codice
 - [x] Quattro test regola e prova isolata dei componenti reali 320/390/768/1280 (ricerca, selezione, tooltip, assenza overflow)

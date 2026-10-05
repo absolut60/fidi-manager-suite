@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { ChevronDown, SlidersHorizontal } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 /**
  * Intestazione filtri unificata per le liste.
@@ -11,29 +12,36 @@ export function FiltriCollassabili({
   attivi = 0,
   azioni,
   children,
+  ancheDesktop = false,
+  riepilogo,
 }: {
   attivi?: number;
   azioni?: ReactNode;
   children: ReactNode;
+  ancheDesktop?: boolean;
+  riepilogo?: ReactNode;
 }) {
   const [aperto, setAperto] = useState(false);
 
   return (
     <div>
       {/* Sotto md: intestazione cliccabile */}
-      <div className="flex items-center justify-between gap-2 mb-3 md:hidden">
-        <button
+      <div className={`grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2 ${ancheDesktop ? "" : "mb-3 md:hidden"}`}>
+        <Button
           type="button"
+          variant="ghost"
+          aria-expanded={aperto}
           onClick={() => setAperto((v) => !v)}
-          className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground"
+          className="h-10 px-1 gap-1.5 text-sm font-medium text-muted-foreground"
         >
           <SlidersHorizontal className="size-4" />
           Filtri
           <ChevronDown
             className={`size-4 transition-transform ${aperto ? "rotate-180" : ""}`}
           />
-        </button>
-        <div className="flex items-center gap-2">
+        </Button>
+        <div className="min-w-0 flex flex-wrap items-center justify-end gap-2">
+          {riepilogo}
           {attivi > 0 && (
             <Badge variant="secondary" className="h-6">
               {attivi} {attivi === 1 ? "filtro attivo" : "filtri attivi"}
@@ -44,7 +52,7 @@ export function FiltriCollassabili({
       </div>
 
       {/* Da md in su: nessuna intestazione, solo le azioni (se previste) */}
-      {azioni && attivi > 0 && (
+      {!ancheDesktop && azioni && attivi > 0 && (
         <div className="hidden md:flex items-center justify-end gap-2 mb-3">
           <Badge variant="secondary" className="h-6">
             {attivi} {attivi === 1 ? "filtro attivo" : "filtri attivi"}
@@ -53,7 +61,7 @@ export function FiltriCollassabili({
         </div>
       )}
 
-      <div className={`${aperto ? "block" : "hidden"} md:block mb-4`}>{children}</div>
+      <div className={`${aperto ? "block" : "hidden"} ${ancheDesktop ? "max-h-[30dvh] overflow-y-auto pt-2" : "md:block mb-4"}`}>{children}</div>
     </div>
   );
 }
