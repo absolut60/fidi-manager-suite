@@ -7001,6 +7001,20 @@ export type Database = {
           cliente_id: string
         }[]
       }
+      get_clienti_lite_by_ids: {
+        Args: { _ids: string[] }
+        Returns: {
+          cap: string
+          citta: string
+          codice_agente: string
+          fascia_listino_default: string
+          id: string
+          indirizzo: string
+          partita_iva: string
+          provincia: string
+          ragione_sociale: string
+        }[]
+      }
       get_clienti_lite_search: {
         Args: { _q: string }
         Returns: {

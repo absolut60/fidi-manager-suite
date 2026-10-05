@@ -8,6 +8,13 @@
       "when": 1791187466817,
       "tag": "0000_fm37_adesione_whatsapp_flusso",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791188099118,
+      "tag": "0001_get_clienti_lite_by_ids",
+      "breakpoints": true
     }
   ]
 }
