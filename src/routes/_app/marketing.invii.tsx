@@ -370,6 +370,12 @@ function InviiMarketingPage() {
                     })
                   : { livello: "nd" as const, secondiDaUltimo: null };
                 const durata = fmtDurataBreve(salute.secondiDaUltimo);
+                const ultimoInvioMs = p?.ultimo_invio_at ? new Date(p.ultimo_invio_at).getTime() : null;
+                const puoRiprendere =
+                  isAttiva &&
+                  !!p &&
+                  c.totale_destinatari - processati > 0 &&
+                  (ultimoInvioMs == null || (progressoAggiornatoAt || Date.now()) - ultimoInvioMs > 10 * 60_000);
                 const apri = () => setOpenDettaglio(c.id);
                 return (
                   <TableRow key={c.id} className="hover:bg-muted/50">
@@ -428,7 +434,7 @@ function InviiMarketingPage() {
                         <Progress value={pct} className="h-2" />
                         <span className="text-xs text-muted-foreground tabular-nums w-10">{pct}%</span>
                       </div>
-                      {salute.livello === "bloccata" && (
+                      {puoRiprendere && (
                         <Button
                           size="sm"
                           variant="destructive"
@@ -452,12 +458,14 @@ function InviiMarketingPage() {
                         <DropdownMenuContent align="end">
                           {isAttiva && (
                             <>
-                              <DropdownMenuItem
-                                onClick={() => doRiprendi(c.id)}
-                                disabled={resumingId === c.id}
-                              >
-                                <Play className="size-4 mr-2" /> Riprendi invio
-                              </DropdownMenuItem>
+                              {puoRiprendere && (
+                                <DropdownMenuItem
+                                  onClick={() => doRiprendi(c.id)}
+                                  disabled={resumingId === c.id}
+                                >
+                                  <Play className="size-4 mr-2" /> Riprendi invio
+                                </DropdownMenuItem>
+                              )}
                               <DropdownMenuItem onClick={() => setConfermaAnnulla(c.id)}>
                                 <Ban className="size-4 mr-2" /> Annulla invio
                               </DropdownMenuItem>

@@ -35,10 +35,15 @@ function formattaImporto(v: number): string {
 /** Sostituisce {{importo}}; se manca, lo evidenzia nell'anteprima. */
 function risolviImporto(testo: string, importo: number | null, perInvio: boolean): string {
   if (importo != null && importo > 0) return testo.split(PLACEHOLDER_IMPORTO).join(formattaImporto(importo));
-  if (perInvio) return testo;
-  return testo
-    .split(PLACEHOLDER_IMPORTO)
-    .join('<mark style="background:#fde68a;padding:0 2px;border-radius:2px">{{importo}}</mark>');
+  return testo;
+}
+
+/** Evidenzia il segnaposto nell'HTML già "escapato" (solo anteprima). */
+function evidenziaSegnaposto(html: string): string {
+  const esc = escapeHtml(PLACEHOLDER_IMPORTO);
+  return html
+    .split(esc)
+    .join(`<mark style="background:#fde68a;padding:0 2px;border-radius:2px">${esc}</mark>`);
 }
 
 async function fileToBase64(file: File): Promise<string> {
@@ -109,7 +114,7 @@ export function MailSinistroDialog({
   const anteprimaHtml = useMemo(
     () =>
       wrapEmailHtml(
-        testoToHtml(risolviImporto(corpo, importoNum, false)),
+        evidenziaSegnaposto(testoToHtml(risolviImporto(corpo, importoNum, false))),
         null,
         { nome: nomeMittente, email: emailMittente },
         { senzaBande: true, sottotitolo: "Assicurazione crediti" },

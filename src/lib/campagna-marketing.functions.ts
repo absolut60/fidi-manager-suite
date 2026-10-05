@@ -126,6 +126,29 @@ export const riprendiInvioCampagnaMarketing = createServerFn({ method: "POST" })
     const daInviare = count ?? 0;
     if (daInviare === 0) return { ok: true, riemesso: false, daInviare: 0 };
 
+    // FM37: se l'invio sta ancora procedendo non riemettere l'evento (evita doppi invii).
+    const { data: camp, error: eCamp } = await supabase
+      .from("campagne_email_marketing")
+      .select("stato")
+      .eq("id", data.campagnaId)
+      .maybeSingle();
+    if (eCamp) throw new Error(eCamp.message);
+    if ((camp as { stato?: string } | null)?.stato === "in_corso") {
+      const { data: ultimo, error: eUlt } = await supabase
+        .from("campagne_email_destinatari")
+        .select("inviato_at")
+        .eq("campagna_id", data.campagnaId)
+        .not("inviato_at", "is", null)
+        .order("inviato_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (eUlt) throw new Error(eUlt.message);
+      const at = (ultimo as { inviato_at?: string | null } | null)?.inviato_at;
+      if (at && Date.now() - new Date(at).getTime() < 10 * 60_000) {
+        throw new Error("L'invio sta ancora procedendo: riprova tra qualche minuto se resta fermo");
+      }
+    }
+
     const { error: eUpd } = await supabase
       .from("campagne_email_marketing")
       .update({ stato: "in_corso", operatore_id: userId, note: null } as never)
