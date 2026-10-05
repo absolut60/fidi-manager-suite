@@ -191,7 +191,7 @@ function BadgeRiconciliazione({ p }: { p: PartecipanteRow }) {
           Da riconciliare
         </Badge>
       )}
-      {p.origine === "sul_posto" && (
+      {p.registrato_sul_posto === true && (
         <Badge variant="outline" className="text-xs">Sul posto</Badge>
       )}
       {p.origine === "import" && (

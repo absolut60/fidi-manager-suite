@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -85,13 +85,20 @@ export function NuovoPreventivoDialog({
     }
   }, [open, tipo, isWriteOnly, profiloCodiceAgente]);
 
-  // Quando cambia il cliente: precompila fascia e agente
+  // Quando cambia il cliente: precompila fascia e agente.
+  // Il reset del cantiere riparte solo se cambia davvero il cliente (ref),
+  // non al variare di isWriteOnly/profiloCodiceAgente.
+  const ultimoClienteRef = useRef<string | null>(null);
   useEffect(() => {
     if (!clienteId) return;
+    const clienteCambiato = ultimoClienteRef.current !== clienteId;
+    ultimoClienteRef.current = clienteId;
     fetchCliente(clienteId).then((c) => {
       if (!c) return;
       if (c.fascia_listino_default) setFascia(c.fascia_listino_default);
-      if (c.codice_agente) setAgenteId(c.codice_agente);
+      // Write-only: l'agente resta quello del profilo (policy INSERT), non quello del cliente.
+      if (!isWriteOnly && c.codice_agente) setAgenteId(c.codice_agente);
+      if (!clienteCambiato) return;
       setCantiereId(null);
       setCantiereDescrizione("");
       setNuovoCantNome("");
@@ -100,7 +107,7 @@ export function NuovoPreventivoDialog({
       setNuovoCantProvincia("");
       setModoCantiere("seleziona");
     });
-  }, [clienteId]);
+  }, [clienteId, isWriteOnly, profiloCodiceAgente]);
 
   const creaCantiere = useMutation({
     mutationFn: async () => {

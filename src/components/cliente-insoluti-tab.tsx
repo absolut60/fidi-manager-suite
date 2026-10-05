@@ -1287,6 +1287,16 @@ function AssicurazioniSection({ clienteId, canManage, canEditAllegati }: { clien
   });
 
 
+  // Scaduto canonico per precompilare la mail sinistro (stessa queryKey della card sinistri).
+  const { data: sinistriDaAprire } = useQuery({
+    queryKey: ["sinistri-da-aprire"],
+    queryFn: async () => {
+      const { data, error } = await (supabase.rpc as any)("get_sinistri_da_aprire");
+      if (error) throw error;
+      return (data ?? []) as { polizza_id: string; scaduto_eur: number | null; promessa_data: string | null }[];
+    },
+  });
+
   const { data: polizze, isLoading } = useQuery({
     queryKey: ["assicurazioni", clienteId],
     queryFn: async () => {
@@ -1401,7 +1411,9 @@ function AssicurazioniSection({ clienteId, canManage, canEditAllegati }: { clien
                                       onOpenChange={(v) => { if (!v) setOpenMailSinistro(null); }}
                                       polizzaId={p.id}
                                       ragioneSociale={clienteInfo?.ragione_sociale ?? null}
-                                      importoSuggerito={null}
+                                      importoSuggerito={sinistriDaAprire?.find((s) => s.polizza_id === p.id)?.scaduto_eur ?? null}
+                                      promessaData={sinistriDaAprire?.find((s) => s.polizza_id === p.id)?.promessa_data ?? null}
+                                      fmtDate={fmtDate}
                                       onDone={invalidate}
                                     />
                                   )}

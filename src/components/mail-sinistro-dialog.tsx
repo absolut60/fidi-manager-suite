@@ -13,6 +13,7 @@ import { sendEmailDetailed } from "@/lib/send-email";
 import { wrapEmailHtml } from "@/lib/template-email";
 import { escapeHtml } from "@/lib/template-email-render";
 import { isEmailValida } from "@/lib/email-validazione";
+import { parseNumeroIt } from "@/lib/numero-it";
 import { useAuth } from "@/hooks/use-auth";
 
 function testoToHtml(testo: string): string {
@@ -20,6 +21,24 @@ function testoToHtml(testo: string): string {
     .split(/\n{2,}/)
     .map((p) => `<p>${escapeHtml(p).replace(/\n/g, "<br/>")}</p>`)
     .join("");
+}
+
+const PLACEHOLDER_IMPORTO = "{{importo}}";
+
+function formattaImporto(v: number): string {
+  return new Intl.NumberFormat("it-IT", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(v);
+}
+
+/** Sostituisce {{importo}}; se manca, lo evidenzia nell'anteprima. */
+function risolviImporto(testo: string, importo: number | null, perInvio: boolean): string {
+  if (importo != null && importo > 0) return testo.split(PLACEHOLDER_IMPORTO).join(formattaImporto(importo));
+  if (perInvio) return testo;
+  return testo
+    .split(PLACEHOLDER_IMPORTO)
+    .join('<mark style="background:#fde68a;padding:0 2px;border-radius:2px">{{importo}}</mark>');
 }
 
 async function fileToBase64(file: File): Promise<string> {
@@ -53,6 +72,7 @@ export function MailSinistroDialog({
   onDone?: () => void;
 }) {
   const [destinatario, setDestinatario] = useState("");
+  const [importo, setImporto] = useState("");
   const [fromName, setFromName] = useState("MADE Distribuzione");
   const [oggetto, setOggetto] = useState("");
   const [corpo, setCorpo] = useState("");
@@ -66,36 +86,35 @@ export function MailSinistroDialog({
 
   useEffect(() => {
     if (!open) return;
-    const importo =
-      importoSuggerito == null
-        ? ""
-        : new Intl.NumberFormat("it-IT", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          }).format(Number(importoSuggerito));
     const rigaPromessa = promessaData
       ? `Il cliente ha promesso un pagamento entro il ${fmtDate ? fmtDate(promessaData) : promessaData}.`
       : "";
     setDestinatario("");
+    setImporto(
+      importoSuggerito != null && Number(importoSuggerito) > 0
+        ? formattaImporto(Number(importoSuggerito))
+        : "",
+    );
     setFromName("MADE Distribuzione");
     setOggetto(`Apertura sinistro - ${ragioneSociale ?? ""}`);
     setCorpo(
-      `Buongiorno,\n\ncon la presente siamo a chiedervi apertura del sinistro per il nostro cliente ${ragioneSociale ?? ""} per un importo di ${importo} €\n\nTrasmettiamo in allegato:\nScheda contabile\nFattura insoluta\n\nDichiariamo che siete gli unici assicuratori a intervenire per questo cliente.\n\n${rigaPromessa}\n\nIn attesa di un riscontro o di richiesta ulteriori chiarimenti, porgo cordiali saluti`,
+      `Buongiorno,\n\ncon la presente siamo a chiedervi apertura del sinistro per il nostro cliente ${ragioneSociale ?? ""} per un importo di ${PLACEHOLDER_IMPORTO} €\n\nTrasmettiamo in allegato:\nScheda contabile\nFattura insoluta\n\nDichiariamo che siete gli unici assicuratori a intervenire per questo cliente.\n\n${rigaPromessa}\n\nIn attesa di un riscontro o di richiesta ulteriori chiarimenti, porgo cordiali saluti`,
     );
     setNotaInterna("");
     setFiles([]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, polizzaId]);
 
+  const importoNum = parseNumeroIt(importo);
   const anteprimaHtml = useMemo(
     () =>
       wrapEmailHtml(
-        testoToHtml(corpo),
+        testoToHtml(risolviImporto(corpo, importoNum, false)),
         null,
         { nome: nomeMittente, email: emailMittente },
         { senzaBande: true, sottotitolo: "Assicurazione crediti" },
       ),
-    [corpo, nomeMittente, emailMittente],
+    [corpo, importoNum, nomeMittente, emailMittente],
   );
 
   async function inviaEApri() {
@@ -106,6 +125,15 @@ export function MailSinistroDialog({
     }
     if (!corpo.trim()) {
       toast.error("Il corpo della mail non può essere vuoto");
+      return;
+    }
+    if (importoNum == null || importoNum <= 0) {
+      toast.error("Inserisci l'importo del sinistro");
+      return;
+    }
+    const corpoInvio = risolviImporto(corpo, importoNum, true);
+    if (corpoInvio.includes(PLACEHOLDER_IMPORTO)) {
+      toast.error("Inserisci l'importo del sinistro");
       return;
     }
     setSending(true);
@@ -122,7 +150,7 @@ export function MailSinistroDialog({
         to: dest,
         subject: oggetto,
         html: wrapEmailHtml(
-          testoToHtml(corpo),
+          testoToHtml(corpoInvio),
           null,
           { nome: nomeMittente, email: emailMittente },
           { senzaBande: true, sottotitolo: "Assicurazione crediti", useCid: true },
@@ -139,7 +167,7 @@ export function MailSinistroDialog({
 
       const { error } = await (supabase.rpc as any)("apri_sinistro_pouey", {
         _polizza_id: polizzaId,
-        _importo_sinistro: Number(importoSuggerito ?? 0),
+        _importo_sinistro: importoNum,
         _nota: notaInterna.trim() || null,
       });
       if (error) {
@@ -178,6 +206,16 @@ export function MailSinistroDialog({
               value={destinatario}
               onChange={(e) => setDestinatario(e.target.value)}
               placeholder="email ufficio sinistri POUEY"
+            />
+          </div>
+          <div className="w-full">
+            <Label>Importo sinistro (€)</Label>
+            <Input
+              type="text"
+              inputMode="decimal"
+              value={importo}
+              onChange={(e) => setImporto(e.target.value)}
+              placeholder="es. 1.234,56"
             />
           </div>
           <div>
