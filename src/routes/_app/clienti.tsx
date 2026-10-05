@@ -2800,7 +2800,7 @@ function ProposteFidoMassivoDialog({
                       <Label className="text-xs text-muted-foreground font-normal">Cond. pagamento</Label>
                       {renderCondizione(r)}
                     </div>
-                    <div className="min-w-0 sm:col-span-2">{renderDettagli(r)}</div>
+                    {renderDettagli(r) ? <div className="min-w-0 sm:col-span-2">{renderDettagli(r)}</div> : null}
                   </div>
                 }
               />
