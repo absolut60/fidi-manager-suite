@@ -11,6 +11,12 @@ export type LeadAmbito = "commerciale" | "eventi";
 export const LEAD_AMBITI: LeadAmbito[] = ["commerciale", "eventi"];
 export const LEAD_AMBITO_LABEL: Record<LeadAmbito, string> = { commerciale: "Commerciali", eventi: "Da eventi" };
 
+export type LeadConversioneTipo = "nuovo_cliente" | "contatto_cliente";
+export const LEAD_CONVERSIONE_LABEL: Record<LeadConversioneTipo, string> = {
+  nuovo_cliente: "Convertito in nuovo cliente",
+  contatto_cliente: "Collegato come contatto di un cliente",
+};
+
 /** Ruoli di GESTIONE lead, gemello di has_lead_module_access() (DB). */
 export const LEAD_ROLES = new Set<string>([
   "amministratore",

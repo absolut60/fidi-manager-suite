@@ -68,6 +68,7 @@ type LeadRow = {
   assegnato_a: string | null;
   prossima_azione_il: string | null;
   created_at: string;
+  conversione_tipo: string | null;
   cliente_id: string | null;
   convertito_il: string | null;
   cliente?: { id: string; ragione_sociale: string | null } | null;
@@ -247,7 +248,7 @@ function LeadListaPage() {
         supabase
           .from("lead")
           .select(
-            "id, ragione_sociale, nome, cognome, tipo_soggetto, stato, tipo_lead, priorita, fonte, citta, provincia, store_id, agente_codice, assegnato_a, prossima_azione_il, created_at, cliente_id, convertito_il, cliente:clienti!lead_cliente_id_fkey(id, ragione_sociale)",
+            "id, ragione_sociale, nome, cognome, tipo_soggetto, stato, tipo_lead, priorita, fonte, citta, provincia, store_id, agente_codice, assegnato_a, prossima_azione_il, created_at, cliente_id, convertito_il, conversione_tipo, cliente:clienti!lead_cliente_id_fkey(id, ragione_sociale)",
             { count: "exact" },
           ),
       );
@@ -727,9 +728,16 @@ function LeadListaPage() {
                         { etichetta: "Convertito il", valore: formatData(l.convertito_il) },
                         {
                           etichetta: "Cliente",
-                          valore: l.cliente_id
-                            ? l.cliente?.ragione_sociale ?? "Scheda cliente"
-                            : "Cliente non collegato",
+                          valore: l.cliente_id ? (
+                            <span className="min-w-0 break-words">
+                              {l.cliente?.ragione_sociale ?? "Scheda cliente"}
+                              {l.conversione_tipo === "contatto_cliente" && (
+                                <span className="block text-xs text-muted-foreground">come contatto</span>
+                              )}
+                            </span>
+                          ) : (
+                            "Cliente non collegato"
+                          ),
                         },
                       ]
                     : [{ etichetta: "Prossima azione", valore: formatData(l.prossima_azione_il) }]),
@@ -822,7 +830,11 @@ function LeadListaPage() {
                             >
                               {l.cliente?.ragione_sociale ?? "Scheda cliente"}
                             </Link>
-                          ) : (
+                          ) : null}
+                          {l.cliente_id && l.conversione_tipo === "contatto_cliente" && (
+                            <div className="text-xs text-muted-foreground">come contatto</div>
+                          )}
+                          {l.cliente_id ? null : (
                             <span className="text-muted-foreground">Cliente non collegato</span>
                           )}
                         </TableCell>
