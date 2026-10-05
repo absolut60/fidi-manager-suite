@@ -36,6 +36,13 @@
       "when": 1791190791267,
       "tag": "0004_fm38_consensi_batch_whatsapp_e_iscrizione_evento_completa",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791193624926,
+      "tag": "0005_fm38_riconciliazione_regole_e_privacy",
+      "breakpoints": true
     }
   ]
 }
