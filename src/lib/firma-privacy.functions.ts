@@ -418,6 +418,10 @@ export const riconciliaPartecipante = createServerFn({ method: "POST" })
       lead_id?: string;
       contatto_id?: string;
       modo?: string;
+      regola?: string | null;
+      avviso?: string | null;
+      motivo?: string;
+      candidati?: Array<{ tipo: "cliente" | "lead"; id: string; etichetta: string; forte: boolean; motivi: string[] }>;
     };
   });
 
