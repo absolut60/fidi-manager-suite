@@ -1,60 +1,24 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { z } from "zod";
 import { toast } from "sonner";
 import { Plus, FileText, Pencil, Ban, Send, History, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { getFidoAttuale } from "@/lib/fido-cliente";
 import { FidoTeoricoBlocco } from "@/components/fido-teorico-blocco";
-import { fetchFidoTeorico, isProponibile, MOTIVO_NON_PROPONIBILE } from "@/lib/fido-teorico";
-
+import { RichiestaFormDialog, ModificaRichiestaFidoDialog } from "@/components/richiesta-fido-form-dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Dialog } from "@/components/ui/dialog";
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import {
-  STATO_LABEL, STATO_TONE, TIPO_LABEL, TIPO_TONE, formatEuro, formatDate, determinaTipoRichiesta,
-  importoRichiestaValido,
+  STATO_LABEL, STATO_TONE, TIPO_LABEL, TIPO_TONE, formatEuro, formatDate,
   type TipoRichiesta, type StatoRichiesta,
 } from "@/lib/fidi";
-import { useConfig } from "@/hooks/use-config";
 import { useAuth } from "@/hooks/use-auth";
 
 const STATI_IN_CORSO: StatoRichiesta[] = ["bozza", "in_approvazione", "in_attesa_liv1", "in_attesa_liv2", "in_attesa_liv3", "integrazioni_richieste"];
 const STATI_MODIFICABILI: StatoRichiesta[] = ["bozza", "integrazioni_richieste"];
 const STATI_STORICO: StatoRichiesta[] = ["approvata", "rifiutata", "annullata"];
-
-const richiestaSchema = z.object({
-  tipo: z.enum(["nuovo_fido", "aumento", "diminuzione", "rinnovo"]),
-  importo_richiesto: z.union([z.literal(""), z.coerce.number().max(99999999)]),
-  durata_mesi: z.coerce.number().int().min(1).max(120).default(12),
-  motivazione: z.string().trim().max(1000).optional().or(z.literal("")),
-  note: z.string().trim().max(1000).optional().or(z.literal("")),
-}).superRefine((v, ctx) => {
-  if (v.importo_richiesto === "") {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["importo_richiesto"],
-      message: "Inserisci l'importo richiesto",
-    });
-  } else if (!importoRichiestaValido(v.tipo, v.importo_richiesto)) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["importo_richiesto"],
-      message: "Importo 0 ammesso solo per diminuzione (azzeramento) o rinnovo",
-    });
-  }
-});
-type RichiestaForm = z.infer<typeof richiestaSchema>;
 
 export function ClienteStoricoFidoTab({ clienteId }: { clienteId: string }) {
   const qc = useQueryClient();
@@ -90,7 +54,11 @@ export function ClienteStoricoFidoTab({ clienteId }: { clienteId: string }) {
   });
 
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["richieste-cliente", clienteId] });
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["richieste-cliente", clienteId] });
+    qc.invalidateQueries({ queryKey: ["richieste"] });
+    qc.invalidateQueries({ queryKey: ["approvazioni-queue"] });
+  };
 
   const annullaMut = useMutation({
     mutationFn: async (id: string) => {
@@ -236,294 +204,24 @@ export function ClienteStoricoFidoTab({ clienteId }: { clienteId: string }) {
       </section>
 
       <Dialog open={openNew} onOpenChange={setOpenNew}>
-        <RichiestaDialog
-          clienteId={clienteId}
-          clienteData={cliente}
-          ultimoApprovatoImp={(() => {
-            const r = (richieste ?? []).find(
-              (x) => x.stato === "approvata" && x.importo_approvato != null,
-            );
-            return r ? Number(r.importo_approvato) : null;
-          })()}
-          onClose={() => setOpenNew(false)}
+        {openNew && (
+          <RichiestaFormDialog
+            clienteIdFisso={clienteId}
+            onClose={() => setOpenNew(false)}
+            onSaved={invalidate}
+          />
+        )}
+      </Dialog>
+
+      {editing && (
+        <ModificaRichiestaFidoDialog
+          richiesta={editing}
+          open={!!editing}
+          onOpenChange={(v) => !v && setEditing(null)}
           onSaved={invalidate}
         />
-      </Dialog>
-
-      <Dialog open={!!editing} onOpenChange={(v) => !v && setEditing(null)}>
-        {editing && (
-          <RichiestaDialog
-            clienteId={clienteId}
-            clienteData={cliente}
-            ultimoApprovatoImp={(() => {
-              const r = (richieste ?? []).find(
-                (x) => x.stato === "approvata" && x.importo_approvato != null,
-              );
-              return r ? Number(r.importo_approvato) : null;
-            })()}
-            richiesta={editing}
-            onClose={() => setEditing(null)}
-            onSaved={invalidate}
-          />
-        )}
-      </Dialog>
-
-      <Dialog open={!!editing} onOpenChange={(v) => !v && setEditing(null)}>
-        {editing && (
-          <RichiestaDialog
-            clienteId={clienteId}
-            clienteData={cliente}
-            richiesta={editing}
-            onClose={() => setEditing(null)}
-            onSaved={invalidate}
-          />
-        )}
-      </Dialog>
+      )}
     </div>
-  );
-}
-
-function RichiestaDialog({
-  clienteId, richiesta, onClose, onSaved, clienteData, ultimoApprovatoImp,
-}: {
-  clienteId: string;
-  richiesta?: any;
-  onClose: () => void;
-  onSaved: () => void;
-  clienteData?: any;
-  ultimoApprovatoImp?: number | null;
-}) {
-  const config = useConfig();
-  const fidoAttuale = getFidoAttuale(clienteData);
-  const totaleRischio = Number(clienteData?.totale_rischio ?? 0);
-  const scaduto = Number(clienteData?.scaduto ?? 0);
-  const fidoResiduo = clienteData?.fido_residuo != null
-    ? Number(clienteData.fido_residuo) : null;
-
-  // Importo proposto = fido teorico canonico (RPC get_fido_teorico).
-  const { data: teorico } = useQuery({
-    queryKey: ["fido-teorico", clienteId],
-    enabled: !!clienteId,
-    staleTime: 5 * 60_000,
-    queryFn: async () => (await fetchFidoTeorico([clienteId])).get(clienteId) ?? null,
-  });
-  const proponibile = isProponibile(teorico?.regola_applicata);
-  const fidoProposto = teorico && proponibile ? teorico.fido_proposto : 0;
-
-  const determinaTipo = (attuale: number, proposto: number): RichiestaForm["tipo"] =>
-    determinaTipoRichiesta(attuale, proposto);
-
-  const isEdit = !!richiesta;
-  const [form, setForm] = useState<RichiestaForm>({
-    tipo: (richiesta?.tipo === "nuovo" ? "nuovo_fido" : richiesta?.tipo)
-      ?? determinaTipo(fidoAttuale, 0),
-    importo_richiesto: richiesta?.importo_richiesto != null ? Number(richiesta.importo_richiesto) : "",
-    durata_mesi: richiesta?.durata_mesi ?? config.durata_default_mesi,
-    motivazione: richiesta?.motivazione ?? "",
-    note: richiesta?.note ?? "",
-  });
-
-  // Precompila l'importo con il fido proposto appena la RPC risponde,
-  // solo su nuova richiesta e finché l'utente non ha toccato il campo.
-  const importoToccato = useRef(false);
-  useEffect(() => {
-    if (isEdit || importoToccato.current || !fidoProposto) return;
-    setForm((f) => ({
-      ...f,
-      importo_richiesto: fidoProposto,
-      tipo: determinaTipo(fidoAttuale, fidoProposto),
-    }));
-  }, [fidoProposto, isEdit, fidoAttuale]);
-
-
-  function handleImportoChange(v: number | "") {
-    importoToccato.current = true;
-    const tipoAuto = determinaTipo(fidoAttuale, v === "" ? 0 : v);
-    setForm(f => ({ ...f, importo_richiesto: v, tipo: tipoAuto }));
-  }
-
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const save = useMutation({
-    mutationFn: async (invia: boolean) => {
-      const parsed = richiestaSchema.parse(form);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (isEdit) {
-        const { error } = await supabase
-          .from("richieste_fido")
-          .update({
-            tipo: parsed.tipo,
-            importo_richiesto: parsed.importo_richiesto as number,
-            durata_mesi: parsed.durata_mesi,
-            motivazione: parsed.motivazione || null,
-            note: parsed.note || null,
-            ...(invia ? { stato: "in_approvazione", data_invio: new Date().toISOString() } : {}),
-          })
-          .eq("id", richiesta.id);
-        if (error) throw error;
-      } else {
-        const { data: cli } = await supabase.from("clienti").select("store_id").eq("id", clienteId).maybeSingle();
-        const { error } = await supabase.from("richieste_fido").insert({
-          cliente_id: clienteId,
-          tipo: parsed.tipo,
-          store_id: cli?.store_id ?? null,
-          importo_richiesto: parsed.importo_richiesto as number,
-          durata_mesi: parsed.durata_mesi,
-          motivazione: parsed.motivazione || null,
-          note: parsed.note || null,
-          created_by: user?.id,
-          stato: invia ? "in_approvazione" : "bozza",
-          data_invio: invia ? new Date().toISOString() : null,
-        });
-        if (error) throw error;
-      }
-    },
-    onSuccess: (_d, invia) => {
-      toast.success(invia ? "Richiesta inviata" : "Salvata come bozza");
-      onSaved(); onClose();
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  function handleSubmit(invia: boolean) {
-    const r = richiestaSchema.safeParse(form);
-    if (!r.success) {
-      const errs: Record<string, string> = {};
-      r.error.issues.forEach((i) => { errs[i.path[0] as string] = i.message; });
-      setErrors(errs);
-      return;
-    }
-    setErrors({});
-    save.mutate(invia);
-  }
-
-  return (
-    <DialogContent className="max-w-xl">
-      <DialogHeader>
-        <DialogTitle>{isEdit ? "Modifica richiesta fido" : "Nuova richiesta fido"}</DialogTitle>
-        <DialogDescription>Compila i dati della richiesta.</DialogDescription>
-      </DialogHeader>
-      <div className="space-y-4">
-        {clienteData && (
-          <div className="rounded-md border bg-muted/30 p-3 space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Situazione attuale
-            </p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-              <div>
-                <p className="text-xs text-muted-foreground">Fido gestionale</p>
-                <p className="font-semibold tabular-nums">{formatEuro(fidoAttuale)}</p>
-                {ultimoApprovatoImp != null && (
-                  <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1 flex-wrap">
-                    Ultimo approv. in app: <span className="font-medium tabular-nums">{formatEuro(ultimoApprovatoImp)}</span>
-                    {Math.abs(ultimoApprovatoImp - fidoAttuale) > 0.01 && (
-                      <span className="inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium bg-warning/15 text-warning border border-warning/30">Da allineare</span>
-                    )}
-                  </p>
-                )}
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Totale rischio</p>
-                <p className={`font-semibold tabular-nums ${totaleRischio > fidoAttuale ? "text-destructive" : ""}`}>
-                  {formatEuro(totaleRischio)}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Fido residuo</p>
-                <p className="font-semibold tabular-nums">
-                  {fidoResiduo != null ? formatEuro(fidoResiduo) : "—"}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Scaduto</p>
-                <p className={`font-semibold tabular-nums ${scaduto > 0 ? "text-destructive" : ""}`}>
-                  {formatEuro(scaduto)}
-                </p>
-              </div>
-            </div>
-            {!isEdit && fidoProposto > 0 && (
-              <p className="text-xs text-primary pt-1 border-t">
-                💡 Fido teorico proposto: <strong>{formatEuro(fidoProposto)}</strong>{" "}
-                (calcolo su fatturato e condizione di pagamento)
-              </p>
-            )}
-            {!isEdit && teorico && !proponibile && (
-              <p className="text-xs text-warning pt-1 border-t">
-                ⚠ {MOTIVO_NON_PROPONIBILE[teorico.regola_applicata] ?? "Fido teorico non disponibile"} —
-                inserisci l'importo manualmente.
-              </p>
-            )}
-
-          </div>
-        )}
-        <div className="space-y-1.5">
-          <Label>Tipo richiesta *</Label>
-          <Select value={form.tipo} onValueChange={(v) => setForm({ ...form, tipo: v as any })}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="nuovo_fido">Nuovo fido</SelectItem>
-              <SelectItem value="aumento">Aumento fido</SelectItem>
-              <SelectItem value="diminuzione">Diminuzione fido</SelectItem>
-              <SelectItem value="rinnovo">Rinnovo fido</SelectItem>
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground">
-            Determinato automaticamente in base al fido attuale e all'importo richiesto.
-          </p>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between gap-2">
-              <Label>Importo richiesto (€) *</Label>
-              {!isEdit && fidoProposto > 0 && fidoProposto !== form.importo_richiesto && (
-                <button
-                  type="button"
-                  className="text-xs text-primary hover:underline"
-                  onClick={() => handleImportoChange(fidoProposto)}
-                >
-                  Usa proposta ({formatEuro(fidoProposto)})
-                </button>
-              )}
-            </div>
-            <Input type="number" step="0.01" min="0"
-              value={form.importo_richiesto}
-              onChange={(e) => handleImportoChange(e.target.value === "" ? "" : Number(e.target.value))} />
-            {errors.importo_richiesto && <p className="text-xs text-destructive">{errors.importo_richiesto}</p>}
-          </div>
-          <div className="space-y-1.5">
-            <Label>Durata (mesi)</Label>
-            <Input type="number" min="1" max="120"
-              value={form.durata_mesi}
-              onChange={(e) => setForm({ ...form, durata_mesi: Number(e.target.value) })} />
-          </div>
-        </div>
-        <div className="space-y-1.5">
-          <Label>Motivazione</Label>
-          <Textarea rows={2} value={form.motivazione}
-            onChange={(e) => setForm({ ...form, motivazione: e.target.value })} />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Note</Label>
-          <Textarea rows={2} value={form.note}
-            onChange={(e) => setForm({ ...form, note: e.target.value })} />
-        </div>
-      </div>
-      <DialogFooter>
-        <Button type="button" variant="outline" onClick={onClose}>Annulla</Button>
-        {(!isEdit || STATI_MODIFICABILI.includes(richiesta?.stato as StatoRichiesta)) && (
-          <>
-            <Button type="button" variant="secondary" disabled={save.isPending}
-              onClick={() => handleSubmit(false)}>
-              Salva come bozza
-            </Button>
-            <Button type="button" disabled={save.isPending}
-              onClick={() => handleSubmit(true)}>
-              Invia subito
-            </Button>
-          </>
-        )}
-      </DialogFooter>
-    </DialogContent>
   );
 }
 
