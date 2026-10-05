@@ -296,6 +296,35 @@ function LeadListaPage() {
         </Dialog>
       </div>
 
+      <div className="space-y-2">
+        <div
+          role="radiogroup"
+          aria-label="Ambito dei lead"
+          className="inline-flex max-w-full flex-wrap gap-1 rounded-lg border bg-muted/40 p-1"
+        >
+          {LEAD_AMBITI.map((a) => (
+            <Button
+              key={a}
+              type="button"
+              role="radio"
+              aria-checked={ambito === a}
+              size="sm"
+              variant={ambito === a ? "default" : "ghost"}
+              className="min-h-10 gap-1.5"
+              onClick={() => cambiaAmbito(a)}
+            >
+              {LEAD_AMBITO_LABEL[a]}
+              <span className="text-xs opacity-70">{attiviPerAmbito?.[a] ?? "—"}</span>
+            </Button>
+          ))}
+        </div>
+        {ambito === "eventi" && (
+          <p className="text-sm text-muted-foreground">
+            Anagrafica nata dagli eventi: persone da reinvitare e riqualificare. Non compare nella lista commerciale.
+          </p>
+        )}
+      </div>
+
       <Tabs value={tab} onValueChange={(v) => { setTab(v as Vista); setPage(1); }}>
         <TabsList className="w-full justify-start overflow-x-auto sm:w-auto">
           <TabsTrigger value="attivi" className="gap-1.5">
@@ -312,16 +341,55 @@ function LeadListaPage() {
             Persi <span className="text-xs opacity-70">{conteggi?.persi ?? "—"}</span>
           </TabsTrigger>
         </TabsList>
-
       </Tabs>
 
       {statoEsplicito && tab !== "ricontattare" && (
         <p className="text-xs text-muted-foreground -mt-3">
           Filtro Stato attivo: la lista mostra solo i lead in stato{" "}
-          <strong className="text-foreground">{LEAD_STATO_LABEL[stato as LeadRow["stato"]]}</strong>{" "}
+          <strong className="text-foreground">{stato.map((s) => LEAD_STATO_LABEL[s as LeadRow["stato"]]).join(", ")}</strong>{" "}
           e ignora la vista selezionata.
         </p>
       )}
+
+      {canManage && selezionati.size > 0 && (
+        <Card className="flex flex-wrap items-center gap-2 p-3">
+          <span className="min-w-0 text-sm font-medium">
+            {selezionati.size} {selezionati.size === 1 ? "selezionato" : "selezionati"}
+          </span>
+          <div className="ml-auto flex flex-wrap gap-2">
+            <Button size="sm" className="min-h-10" disabled={spostando} onClick={() => setConfermaSposta(true)}>
+              <ArrowRightLeft className="size-4" />
+              Sposta in {LEAD_AMBITO_LABEL[ambitoDestinazione]}
+            </Button>
+            <Button size="sm" variant="ghost" className="min-h-10" disabled={spostando} onClick={() => setSelezionati(new Set())}>
+              Annulla selezione
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      <AlertDialog open={confermaSposta} onOpenChange={(o) => { if (!spostando) setConfermaSposta(o); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Spostare {selezionati.size} lead in "{LEAD_AMBITO_LABEL[ambitoDestinazione]}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {ambitoDestinazione === "commerciale"
+                ? "I lead entreranno nella lista commerciale di lavoro quotidiano."
+                : "I lead usciranno dalla lista commerciale e resteranno consultabili in \"Da eventi\"."}{" "}
+              Lo spostamento viene registrato nello storico di ogni lead.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={spostando}>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={spostando}
+              onClick={(e) => { e.preventDefault(); void spostaSelezionati(); }}
+            >
+              {spostando ? "Spostamento…" : "Sposta"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
 
 
@@ -352,13 +420,12 @@ function LeadListaPage() {
           </div>
           <div>
             <Label className="text-xs">Stato</Label>
-            <Select value={stato} onValueChange={(v) => { setStato(v); setPage(1); }}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value={TUTTI}>Tutti</SelectItem>
-                {LEAD_STATI.map((s) => <SelectItem key={s} value={s}>{LEAD_STATO_LABEL[s]}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Stato"
+              opzioni={LEAD_STATI.map((s) => ({ valore: s, label: LEAD_STATO_LABEL[s] }))}
+              selezionati={stato}
+              onChange={(v) => { setStato(v); setPage(1); }}
+            />
           </div>
           <div>
             <Label className="text-xs">Tipo lead</Label>
@@ -405,45 +472,48 @@ function LeadListaPage() {
           </div>
           <div>
             <Label className="text-xs">Sede</Label>
-            <Select value={storeFiltro} onValueChange={(v) => { setStoreFiltro(v); setPage(1); }}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value={TUTTI}>Tutte</SelectItem>
-                <SelectItem value={NESSUNO}>Senza sede</SelectItem>
-                {(stores ?? []).map((s) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Sede"
+              testoTutti="Tutte"
+              opzioni={[{ valore: NESSUNO, label: "Senza sede" }, ...(stores ?? []).map((s) => ({ valore: s.id, label: s.nome }))]}
+              selezionati={storeFiltro}
+              onChange={(v) => { setStoreFiltro(v); setPage(1); }}
+            />
           </div>
           {canManage && (<>
           <div>
             <Label className="text-xs">Agente</Label>
-            <Select value={agente} onValueChange={(v) => { setAgente(v); setPage(1); }}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value={TUTTI}>Tutti</SelectItem>
-                <SelectItem value={NESSUNO}>Senza agente</SelectItem>
-                {(agenti ?? []).map((a) => (
-                  <SelectItem key={a.codice} value={a.codice}>{a.descrizione || a.codice}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Agente"
+              cercabile
+              opzioni={[{ valore: NESSUNO, label: "Senza agente" }, ...(agenti ?? []).map((a) => ({ valore: a.codice, label: a.descrizione || a.codice }))]}
+              selezionati={agente}
+              onChange={(v) => { setAgente(v); setPage(1); }}
+            />
           </div>
           <div>
             <Label className="text-xs">Assegnatario</Label>
-            <Select value={assegnatario} onValueChange={(v) => { setAssegnatario(v); setPage(1); }}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value={TUTTI}>Tutti</SelectItem>
-                <SelectItem value={NESSUNO}>Non assegnati</SelectItem>
-                {(profili ?? []).map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {`${p.nome ?? ""} ${p.cognome ?? ""}`.trim() || p.id}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FiltroMultiplo
+              etichetta="Assegnatario"
+              cercabile
+              opzioni={[{ valore: NESSUNO, label: "Non assegnati" }, ...(profili ?? []).map((p) => ({ valore: p.id, label: `${p.nome ?? ""} ${p.cognome ?? ""}`.trim() || p.id }))]}
+              selezionati={assegnatario}
+              onChange={(v) => { setAssegnatario(v); setPage(1); }}
+            />
           </div>
           </>)}
+          {ambito === "eventi" && (eventiNomi?.length ?? 0) > 0 && (
+            <div>
+              <Label className="text-xs">Evento</Label>
+              <Select value={evento} onValueChange={(v) => { setEvento(v); setPage(1); }}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={TUTTI}>Tutti</SelectItem>
+                  {(eventiNomi ?? []).map((n) => <SelectItem key={n} value={n}>{n}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           {tab === "ricontattare" && (
             <div>
               <Label className="text-xs">Finestra</Label>
@@ -466,6 +536,16 @@ function LeadListaPage() {
             Pagina <strong className="text-foreground">{page}</strong> di <strong className="text-foreground">{totalPages}</strong>
             <span className="ml-1">— <strong className="text-foreground">{totale}</strong> lead</span>
           </span>
+          {canManage && totale > 0 && selezionati.size < totale && (
+            <button
+              type="button"
+              className="text-primary hover:underline disabled:opacity-60"
+              disabled={caricandoTutti}
+              onClick={() => void selezionaTuttiFiltrati()}
+            >
+              {caricandoTutti ? "Selezione in corso…" : `Seleziona tutti i ${totale} filtrati`}
+            </button>
+          )}
           <span className="ml-auto flex items-center gap-2">
             <span className="text-xs">Per pagina:</span>
             <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}>
