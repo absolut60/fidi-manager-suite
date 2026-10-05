@@ -23,6 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { STATO_LABEL, calcolaLivello, formatEuro, isRichiestaAttiva, determinaTipoRichiesta, importoRichiestaValido, etichettaTipoRichiesta } from "@/lib/fidi";
 import { getFidoAttuale } from "@/lib/fido-cliente";
 import { fetchFidoTeorico, isProponibile, MOTIVO_NON_PROPONIBILE } from "@/lib/fido-teorico";
+import { CondizionePagamentoRichiestaSelect, useCodiciPagamento } from "@/components/condizione-pagamento-richiesta-select";
 import { PannelloRischioCliente } from "@/components/pannello-rischio-cliente";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -69,18 +70,17 @@ export function RichiestaFormDialog({
   clienteIdFisso?: string;
 }) {
   const qc = useQueryClient();
+  const config = useConfig();
   const seed = richiesta ?? cloneFrom;
   const [form, setForm] = useState<FormVals>({
     cliente_id: seed?.cliente_id ?? clienteIdFisso ?? "",
     tipo: (seed?.tipo as any) ?? "nuovo",
     importo_richiesto: seed ? Number(seed.importo_richiesto) : "",
-    durata_mesi: seed?.durata_mesi ?? 12,
+    durata_mesi: seed?.durata_mesi ?? config.durata_default_mesi,
     motivazione: seed?.motivazione ?? "",
     note: seed?.note ?? "",
     condizione_pagamento_cod: seed?.condizione_pagamento_cod ?? "",
   });
-  const [openCondPag, setOpenCondPag] = useState(false);
-  const [searchCondPag, setSearchCondPag] = useState("");
   const [condPagTouched, setCondPagTouched] = useState<boolean>(!!seed);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [search, setSearch] = useState("");
@@ -193,19 +193,8 @@ export function RichiestaFormDialog({
     if (form.tipo !== tipoAuto) setForm((f) => ({ ...f, tipo: tipoAuto }));
   }, [fidoAttuale, form.importo_richiesto, form.cliente_id, tipoTouched, form.tipo]);
 
-  // Lista codici di pagamento (fonte autoritativa = tabella DB).
-  const { data: codiciPagamento } = useQuery({
-    queryKey: ["codici-pagamento", "all"],
-    staleTime: 5 * 60 * 1000,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("codici_pagamento")
-        .select("cod, descrizione")
-        .order("cod", { ascending: true });
-      if (error) throw error;
-      return (data ?? []) as { cod: string; descrizione: string | null }[];
-    },
-  });
+  // Lista codici di pagamento (fonte autoritativa = tabella DB, hook condiviso).
+  const { data: codiciPagamento } = useCodiciPagamento();
   const codiciSet = new Set((codiciPagamento ?? []).map((c) => c.cod));
 
   // Default condizione: alla selezione cliente precompila con la sua condizione
@@ -220,12 +209,6 @@ export function RichiestaFormDialog({
     }
   }, [clienteSel, codiciPagamento, condPagTouched]);
 
-  const condPagFiltered = (codiciPagamento ?? []).filter((c) => {
-    const q = searchCondPag.trim().toLowerCase();
-    if (!q) return true;
-    return c.cod.toLowerCase().includes(q) || (c.descrizione ?? "").toLowerCase().includes(q);
-  });
-  const condPagSel = (codiciPagamento ?? []).find((c) => c.cod === form.condizione_pagamento_cod) ?? null;
 
 
 
@@ -257,7 +240,6 @@ export function RichiestaFormDialog({
   const variazione = fidoAttuale > 0 && importoValido
     ? ((importoNum - fidoAttuale) / fidoAttuale) * 100
     : null;
-  const config = useConfig();
   const soglie = { liv1: config.soglia_livello_1, liv2: config.soglia_livello_2 };
   const livelloPreview = importoValido ? calcolaLivello(importoNum, soglie) : null;
   const allResults = clientiSearch ?? [];
@@ -520,68 +502,13 @@ export function RichiestaFormDialog({
 
         <div className="space-y-1.5">
           <Label>Condizione di pagamento</Label>
-          <Popover open={openCondPag} onOpenChange={setOpenCondPag}>
-            <PopoverTrigger asChild>
-              <Button
-                type="button"
-                variant="outline"
-                role="combobox"
-                aria-expanded={openCondPag}
-                className="w-full justify-between font-normal"
-              >
-                <span className={condPagSel ? "truncate" : "text-muted-foreground"}>
-                  {condPagSel
-                    ? `${condPagSel.cod} — ${condPagSel.descrizione ?? ""}`
-                    : "Seleziona condizione di pagamento…"}
-                </span>
-                <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-              <Command shouldFilter={false}>
-                <CommandInput
-                  placeholder="Cerca per codice o descrizione…"
-                  value={searchCondPag}
-                  onValueChange={setSearchCondPag}
-                />
-                <CommandList>
-                  <CommandEmpty>Nessun codice trovato</CommandEmpty>
-                  <CommandGroup>
-                    {form.condizione_pagamento_cod && (
-                      <CommandItem
-                        value="__clear__"
-                        onSelect={() => {
-                          setCondPagTouched(true);
-                          setForm((f) => ({ ...f, condizione_pagamento_cod: "" }));
-                          setOpenCondPag(false);
-                          setSearchCondPag("");
-                        }}
-                        className="text-muted-foreground italic"
-                      >
-                        — Nessuna —
-                      </CommandItem>
-                    )}
-                    {condPagFiltered.map((c) => (
-                      <CommandItem
-                        key={c.cod}
-                        value={c.cod}
-                        onSelect={() => {
-                          setCondPagTouched(true);
-                          setForm((f) => ({ ...f, condizione_pagamento_cod: c.cod }));
-                          setOpenCondPag(false);
-                          setSearchCondPag("");
-                        }}
-                        className="flex items-baseline gap-2"
-                      >
-                        <span className="font-mono text-xs shrink-0">{c.cod}</span>
-                        <span className="text-sm truncate text-muted-foreground">— {c.descrizione ?? ""}</span>
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
+          <CondizionePagamentoRichiestaSelect
+            value={form.condizione_pagamento_cod ?? ""}
+            onChange={(cod) => {
+              setCondPagTouched(true);
+              setForm((f) => ({ ...f, condizione_pagamento_cod: cod }));
+            }}
+          />
           {clienteSel && (clienteSel as any).condizione_pagamento_cod && (
             <p className="text-[11px] text-muted-foreground">
               Cliente attuale: <span className="font-mono">{(clienteSel as any).condizione_pagamento_cod}</span>
