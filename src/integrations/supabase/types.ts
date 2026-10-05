@@ -2508,30 +2508,36 @@ export type Database = {
       }
       eventi: {
         Row: {
+          codice_pubblico: string | null
           created_at: string
           created_by: string | null
           data_evento: string | null
           id: string
+          iscrizioni_aperte: boolean
           luogo: string | null
           nome: string
           note: string | null
           updated_at: string
         }
         Insert: {
+          codice_pubblico?: string | null
           created_at?: string
           created_by?: string | null
           data_evento?: string | null
           id?: string
+          iscrizioni_aperte?: boolean
           luogo?: string | null
           nome: string
           note?: string | null
           updated_at?: string
         }
         Update: {
+          codice_pubblico?: string | null
           created_at?: string
           created_by?: string | null
           data_evento?: string | null
           id?: string
+          iscrizioni_aperte?: boolean
           luogo?: string | null
           nome?: string
           note?: string | null
@@ -6876,6 +6882,10 @@ export type Database = {
           storage_path: string
         }[]
       }
+      evento_iscrizioni_aperte: {
+        Args: { _aperte: boolean; _data_evento: string }
+        Returns: boolean
+      }
       export_iscritti_whatsapp: {
         Args: { _origine?: string; _q?: string; _stato?: string }
         Returns: {
@@ -7315,6 +7325,15 @@ export type Database = {
           ritardo_medio_gg: number
         }[]
       }
+      get_evento_iscrizione_pubblica: {
+        Args: { _codice: string }
+        Returns: {
+          aperte: boolean
+          data_evento: string
+          luogo: string
+          nome: string
+        }[]
+      }
       get_fatturato_clienti_scadenziario: {
         Args: { _anno_corrente: number; _anno_prec: number }
         Returns: {
@@ -7738,6 +7757,13 @@ export type Database = {
         Returns: boolean
       }
       ignora_iscritto_whatsapp: { Args: { _id: string }; Returns: Json }
+      imposta_iscrizioni_evento: {
+        Args: { _aperte: boolean; _evento_id: string }
+        Returns: {
+          codice_pubblico: string
+          iscrizioni_aperte: boolean
+        }[]
+      }
       increment_importazione_counters:
         | {
             Args: {
@@ -7896,6 +7922,21 @@ export type Database = {
           _user_agent?: string
         }
         Returns: Json
+      }
+      registra_iscrizione_evento_pubblica: {
+        Args: {
+          _azienda?: string
+          _cellulare: string
+          _codice: string
+          _cognome: string
+          _email?: string
+          _nome: string
+        }
+        Returns: {
+          gia_presente: boolean
+          motivo: string
+          ok: boolean
+        }[]
       }
       registra_opt_out_manuale: {
         Args: { _email: string; _note?: string }
