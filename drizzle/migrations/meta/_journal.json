@@ -43,6 +43,13 @@
       "when": 1791193624926,
       "tag": "0005_fm38_riconciliazione_regole_e_privacy",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791195306557,
+      "tag": "0006_fm38_lead_ambito",
+      "breakpoints": true
     }
   ]
 }
