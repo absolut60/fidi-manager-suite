@@ -8033,8 +8033,24 @@ export type Database = {
       }
       storage_path_cliente_id: { Args: { _name: string }; Returns: string }
       store_id_effettivo: { Args: { _store_id: string }; Returns: string }
+      trasferisci_privacy_contatto: {
+        Args: { _a: string; _da: string }
+        Returns: undefined
+      }
       trasforma_preventivo_in_ordine: {
         Args: { p_preventivo_id: string; p_selezione: Json }
+        Returns: string
+      }
+      trova_contatto_equivalente: {
+        Args: {
+          _cellulare: string
+          _cliente_id: string
+          _codice_fiscale: string
+          _cognome: string
+          _email: string
+          _lead_id: string
+          _nome: string
+        }
         Returns: string
       }
       trova_corrispondenze_soggetto: {
