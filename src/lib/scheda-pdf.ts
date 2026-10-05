@@ -23,6 +23,8 @@ export interface SchedaPdfInput {
   dataOraRaccolta?: string;
   /** Default true: stampa anche il blocco consenso "media". Il QR non lo raccoglie → passare false. */
   mostraConsensoMedia?: boolean;
+  /** Riga facoltativa stampata sotto il blocco marketing diretto (es. canali scelti). Se assente il PDF è identico a prima. */
+  dettaglioCanaliMarketing?: string;
 }
 
 function toBool(v: unknown): boolean {
@@ -342,6 +344,12 @@ export async function generaSchedaCliente(input: SchedaPdfInput): Promise<Uint8A
     "al trattamento, ivi compresa la comunicazione ai soggetti di cui al punto 9 e la cessione al di fuori dell'Unione Europea, dei dati personali, ivi compresi quelli sensibili di cui all'art. 9 GDPR e le immagini dell'interessato per le finalita' di invio di informative per finalita' pubblicitarie e di marketing, anche via e-mail, sms, whatsapp.",
     toBool(input.consensoMarketingDiretto),
   );
+
+  if (input.dettaglioCanaliMarketing) {
+    const hDett = drawWrapped(page2, input.dettaglioCanaliMarketing, ML, y2, CW, 8, bold);
+    y2 -= hDett + 6;
+  }
+
 
   const firmaY = MB + 108;
   page2.drawText(`Li ${fmtFirma(input.dataFirma)} _______________`, { x: ML, y: firmaY, size: 8, font, color: BLACK });

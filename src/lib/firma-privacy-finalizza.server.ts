@@ -28,7 +28,9 @@ export type SoggettoIntestazione = {
  * 3 consensi, privacy_firmata), riga nel registro consensi e invio della
  * copia PDF al firmatario (non fatale).
  * Usata sia dal link pubblico (`origine: 'link_pubblico'`/'firma_grafica')
- * sia dal canale "Compila di persona" (`origine: 'di_persona'`).
+ * sia dal canale "Compila di persona" (`origine: 'di_persona'`),
+ * sia dall'iscrizione online a un evento (`origine: 'link_pubblico'`, con
+ * consenso WhatsApp separato via `consensoWhatsapp`).
  */
 export async function finalizzaRaccoltaPrivacy(opts: {
   contattoId: string;
@@ -44,12 +46,15 @@ export async function finalizzaRaccoltaPrivacy(opts: {
   note: string;
   operatoreId?: string | undefined;
   invalidaToken: boolean;
+  consensoWhatsapp?: boolean | undefined;
+  mostraConsensoMedia?: boolean | undefined;
 }): Promise<{ ok: true; pdfUrl: string; pdfPath: string; emailInviata: boolean }> {
   const {
     contattoId, soggetto, dichiarante, consensi, firmaDataUrl,
     origine, note, invalidaToken,
   } = opts;
 
+  const whatsappSeparato = typeof opts.consensoWhatsapp === "boolean";
   const emailDich = dichiarante.email.trim();
   const now = new Date();
   const nomeCompleto =
@@ -99,7 +104,15 @@ export async function finalizzaRaccoltaPrivacy(opts: {
     cellulareDich: dichiarante.cellulare || undefined,
     consensoProfilazione: consensi.profilazione ? "si" : "no",
     consensoMarketingMedia: consensi.marketing_media ? "si" : "no",
-    consensoMarketingDiretto: consensi.marketing_diretto ? "si" : "no",
+    consensoMarketingDiretto: whatsappSeparato
+      ? (consensi.marketing_diretto || opts.consensoWhatsapp) ? "si" : "no"
+      : consensi.marketing_diretto ? "si" : "no",
+    ...(whatsappSeparato
+      ? {
+          dettaglioCanaliMarketing: `Canali scelti dall'interessato: WhatsApp ${opts.consensoWhatsapp ? "SI" : "NO"} - e-mail e altri contatti ${consensi.marketing_diretto ? "SI" : "NO"}.`,
+        }
+      : {}),
+    ...(opts.mostraConsensoMedia === false ? { mostraConsensoMedia: false } : {}),
     dataFirma: opts.data_firma || now,
     ...(firmaDataUrl
       ? { firmaPngDataUrl: firmaDataUrl }
@@ -167,6 +180,7 @@ export async function finalizzaRaccoltaPrivacy(opts: {
       ...(ua ? { _user_agent: ua } : {}),
       ...(typeof opts.secondi_permanenza === "number" ? { _secondi_permanenza: opts.secondi_permanenza } : {}),
       _note: note,
+      ...(whatsappSeparato ? { _whatsapp: opts.consensoWhatsapp } : {}),
     });
     if (eLog) console.error("[privacy] registra_consensi_batch fallito:", eLog.message);
   } catch (e) {
@@ -174,7 +188,7 @@ export async function finalizzaRaccoltaPrivacy(opts: {
   }
 
   // 3-ter) Iscritto WhatsApp — solo con consenso marketing diretto, mai fatale
-  if (consensi.marketing_diretto) {
+  if (whatsappSeparato ? opts.consensoWhatsapp === true : consensi.marketing_diretto) {
     try {
       const { error: eIscr } = await supabaseAdmin.rpc("upsert_iscritto_da_contatto", {
         _contatto_id: contattoId,
