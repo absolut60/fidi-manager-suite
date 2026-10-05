@@ -24,7 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { STATO_LABEL, calcolaLivello, formatEuro, isRichiestaAttiva, determinaTipoRichiesta, importoRichiestaValido, condizionePagamentoCambiata, etichettaTipoRichiesta } from "@/lib/fidi";
 import { getFidoAttuale } from "@/lib/fido-cliente";
 import { fetchFidoTeorico, isProponibile, MOTIVO_NON_PROPONIBILE } from "@/lib/fido-teorico";
-import { CondizionePagamentoRichiestaSelect, useCodiciPagamento } from "@/components/condizione-pagamento-richiesta-select";
+import { CondizionePagamentoRichiestaSelect, CondizionePagamentoTesto, useCodiciPagamento } from "@/components/condizione-pagamento-richiesta-select";
 import { CambioCondizionePagamento } from "@/components/cambio-condizione-pagamento";
 import { PannelloRischioCliente } from "@/components/pannello-rischio-cliente";
 import { useAuth } from "@/hooks/use-auth";
@@ -523,13 +523,7 @@ export function RichiestaFormDialog({
               />
             ) : (clienteSel as any).condizione_pagamento_cod ? (
               <p className="text-[11px] text-muted-foreground break-words">
-                Attuale (gestionale): <span className="font-mono">{(clienteSel as any).condizione_pagamento_cod}</span>
-                {(() => {
-                  const cod = (clienteSel as any).condizione_pagamento_cod as string;
-                  const d = (codiciPagamento ?? []).find((c) => c.cod === cod)?.descrizione
-                    ?? (clienteSel as any).condizione_pagamento_desc ?? (clienteSel as any).condizioni_pagamento;
-                  return d ? ` — ${d}` : "";
-                })()}
+                Attuale (gestionale): <CondizionePagamentoTesto cod={(clienteSel as any).condizione_pagamento_cod} descFallback={(clienteSel as any).condizione_pagamento_desc ?? (clienteSel as any).condizioni_pagamento} />
                 . Cambiala solo se vuoi proporre una nuova condizione.
               </p>
             ) : null

@@ -19,6 +19,7 @@ import { getFidoAttuale } from "@/lib/fido-cliente";
 import { formatEuro, formatDate } from "@/lib/fidi";
 import { semaforoUI, type SemaforoStadio } from "@/lib/semaforo-ui";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { CondizionePagamentoTesto } from "@/components/condizione-pagamento-richiesta-select";
 
 /** Solo la frase di legenda del tooltip: colori e label vengono da semaforoUI (fonte unica). */
 const LEGENDA_STADIO: Record<Exclude<SemaforoStadio, null>, string> = {
@@ -261,8 +262,8 @@ export function PannelloRischioCliente({
             <span className="tabular-nums">{Number(cliente.num_insoluti ?? 0)}</span>
           </DetailRow>
           <DetailRow label="Cond. pagamento attuale">
-            <span className="truncate text-right">
-              {cliente.condizione_pagamento_desc ?? cliente.condizioni_pagamento ?? "—"}
+            <span className="min-w-0 break-words text-right">
+              <CondizionePagamentoTesto cod={cliente.condizione_pagamento_cod} descFallback={cliente.condizione_pagamento_desc ?? cliente.condizioni_pagamento} />
             </span>
           </DetailRow>
           <DetailRow label="Dilaz. concordata">
@@ -351,7 +352,7 @@ export function PannelloRischioCliente({
         <div className="flex justify-between"><span className="text-muted-foreground">Scaduto</span><span className={`tabular-nums ${scaduto > 0 ? "text-destructive font-medium" : ""}`}>{formatEuro(scaduto)}</span></div>
         <div className="flex justify-between"><span className="text-muted-foreground">A scadere</span><span className="tabular-nums">{formatEuro(Number(cliente.a_scadere ?? 0))}</span></div>
         <div className="flex justify-between"><span className="text-muted-foreground">Insoluti</span><span className="tabular-nums">{Number(cliente.num_insoluti ?? 0)}</span></div>
-        <div className="flex justify-between"><span className="text-muted-foreground">Cond. pagamento attuale</span><span className="truncate ml-2">{cliente.condizione_pagamento_desc ?? cliente.condizioni_pagamento ?? "—"}</span></div>
+        <div className="col-span-2 flex flex-col gap-1 sm:flex-row sm:justify-between"><span className="text-muted-foreground shrink-0">Cond. pagamento attuale</span><span className="min-w-0 break-words sm:text-right"><CondizionePagamentoTesto cod={cliente.condizione_pagamento_cod} descFallback={cliente.condizione_pagamento_desc ?? cliente.condizioni_pagamento} /></span></div>
         <div className="flex justify-between"><span className="text-muted-foreground">Dilaz. concordata</span><span className="tabular-nums">{cliente.dilazione_concordata ?? "—"}{cliente.dilazione_concordata != null ? " gg" : ""}</span></div>
         <div className="flex justify-between"><span className="text-muted-foreground">Dilaz. effettiva</span><span className="tabular-nums">{cliente.dilazione_effettiva ?? "—"}{cliente.dilazione_effettiva != null ? " gg" : ""}</span></div>
         {showFatturato && (

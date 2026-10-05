@@ -1,5 +1,10 @@
 # Roadmap
 
+## FM38 D4 — Descrizioni condizioni di pagamento
+- [x] Regola unica, selettori e viste richieste fido con descrizione prima del codice
+- [x] Quattro test regola e prova isolata dei componenti reali 320/390/768/1280 (ricerca, selezione, tooltip, assenza overflow)
+- [ ] Verifica delle pagine con dati reali: bloccata dall’assenza di account del richiedente; serve login in anteprima
+
 ## FM36 fetta 14 — Calendario recupero crediti
 - [x] Promesse e rate senza orario, sovrapposizioni limitate, vista Agenda e titoli leggibili
 - [x] Filtri locali ed elenco arretrate su tutti i periodi

@@ -10,7 +10,7 @@ import * as RadixSlider from "@radix-ui/react-slider";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { getFidoAttuale, FIDO_CLIENTE_SELECT } from "@/lib/fido-cliente";
-import { CondizionePagamentoRichiestaSelect, useCodiciPagamento } from "@/components/condizione-pagamento-richiesta-select";
+import { CondizionePagamentoRichiestaSelect, CondizionePagamentoTesto, useCodiciPagamento } from "@/components/condizione-pagamento-richiesta-select";
 import {
   determinaTipoRichiesta, isRichiestaAttiva, TIPO_LABEL, STATO_LABEL, STATO_TONE, formatDate,
   importoRichiestaValido, etichettaTipoRichiesta, condizionePagamentoCambiata,
@@ -51,6 +51,13 @@ import { INFORMATIVA_FULL, CONSENSO_TESTI } from "@/lib/consensi-testi";
 type ClientiSearch = { preset?: string; edit?: 1; store?: string; fascia?: string };
 
 export const Route = createFileRoute("/_app/clienti")({
+  head: () => ({ meta: [
+    { title: "Clienti e proposte fido | FidiManager" },
+    { name: "description", content: "Anagrafiche clienti MADE e proposte fido con condizioni di pagamento." },
+    { property: "og:title", content: "Clienti e proposte fido | FidiManager" },
+    { property: "og:description", content: "Anagrafiche clienti MADE e proposte fido con condizioni di pagamento." },
+    { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" },
+  ] }),
   validateSearch: (search: Record<string, unknown>): ClientiSearch => {
     const out: ClientiSearch = {};
     if (typeof search.preset === "string") out.preset = search.preset;
@@ -2177,6 +2184,7 @@ type RigaProposta = {
   richiestaInCorso?: { stato: string; tipo: string; importo: number; created_at: string };
   /** Condizione di pagamento ATTUALE del cliente (gestionale), può essere vuota. */
   cond_attuale: string;
+  cond_attuale_desc?: string | null;
   /** Condizione di pagamento PROPOSTA con la richiesta ("" = nessuna). */
   cond_proposta: string;
   /** true quando cond_attuale/cond_proposta sono state inizializzate dai dati. */
@@ -2214,17 +2222,17 @@ async function fetchRichiesteInCorso(ids: string[]): Promise<Map<string, NonNull
 }
 
 /** Condizione di pagamento attuale dei clienti, a blocchi di 500 (la lista non la carica sempre). */
-async function fetchCondizioniClienti(ids: string[]): Promise<Map<string, string>> {
-  const map = new Map<string, string>();
+async function fetchCondizioniClienti(ids: string[]): Promise<Map<string, { cod: string; desc: string | null }>> {
+  const map = new Map<string, { cod: string; desc: string | null }>();
   const uniq = Array.from(new Set(ids.filter(Boolean)));
   for (let i = 0; i < uniq.length; i += 500) {
     const chunk = uniq.slice(i, i + 500);
     const { data, error } = await supabase
       .from("clienti")
-      .select("id, condizione_pagamento_cod")
+      .select("id, condizione_pagamento_cod, condizione_pagamento_desc, condizioni_pagamento")
       .in("id", chunk);
     if (error) throw error;
-    for (const r of (data ?? []) as any[]) map.set(r.id, String(r.condizione_pagamento_cod ?? "").trim());
+    for (const r of (data ?? []) as any[]) map.set(r.id, { cod: String(r.condizione_pagamento_cod ?? "").trim(), desc: r.condizione_pagamento_desc ?? r.condizioni_pagamento ?? null });
   }
   return map;
 }
@@ -2300,8 +2308,9 @@ function ProposteFidoMassivoDialog({
       if (!prev.some((r) => !r.cond_init)) return prev;
       return prev.map((r) => {
         if (r.cond_init) return r;
-        const att = condMap.get(r.cliente_id) ?? "";
-        return { ...r, cond_attuale: att, cond_proposta: att && codici.has(att) ? att : "", cond_init: true };
+        const condizione = condMap.get(r.cliente_id);
+        const att = condizione?.cod ?? "";
+        return { ...r, cond_attuale: att, cond_attuale_desc: condizione?.desc, cond_proposta: att && codici.has(att) ? att : "", cond_init: true };
       });
     });
   }, [condMap, codiciPagamento, righe.length]);
@@ -2582,10 +2591,10 @@ function ProposteFidoMassivoDialog({
           {cambio ? (
             <>
               <Badge className="h-5 bg-info/15 px-1.5 text-[10px] text-info hover:bg-info/20">Cambio</Badge>
-              <span className="font-mono break-all">{r.cond_attuale || "—"} → {r.cond_proposta}</span>
+              <span className="min-w-0 break-words"><CondizionePagamentoTesto cod={r.cond_attuale} descFallback={r.cond_attuale_desc} /> → <CondizionePagamentoTesto cod={r.cond_proposta} /></span>
             </>
           ) : (
-            <span>Attuale: <span className="font-mono">{r.cond_attuale || "—"}</span></span>
+            <span className="min-w-0 break-words">Attuale: <CondizionePagamentoTesto cod={r.cond_attuale} descFallback={r.cond_attuale_desc} /></span>
           )}
         </div>
         <CondizionePagamentoRichiestaSelect
@@ -2740,7 +2749,8 @@ function ProposteFidoMassivoDialog({
           ) : null;
         })()}
 
-        {/* Mobile: schede */}
+        {/* Schede anche su tablet: la tabella estesa richiede spazio desktop. */}
+        <div className="[&>div]:block xl:hidden">
         <ElencoSchede>
           {righeVisibili.map((r) => {
             const scost = r.proponibile ? r.fido_proposto - r.fido_attuale : 0;
@@ -2791,9 +2801,10 @@ function ProposteFidoMassivoDialog({
             );
           })}
         </ElencoSchede>
+        </div>
 
-        <div className="hidden md:block min-w-0 border rounded-md">
-          <Table>
+        <div className="hidden xl:block min-w-0 border rounded-md">
+          <Table className="table-fixed w-full [&_th]:whitespace-normal [&_td]:whitespace-normal [&_td]:break-words">
             <TableHeader>
               <TableRow>
                 <TableHead className="w-10"></TableHead>
@@ -2802,7 +2813,7 @@ function ProposteFidoMassivoDialog({
                 <TableHead className="text-right">Esposizione</TableHead>
                 <TableHead className="text-right">Fido proposto</TableHead>
                 <TableHead className="text-right">Scostamento</TableHead>
-                <TableHead className="w-36">Cond. pagamento</TableHead>
+                <TableHead className="w-56 whitespace-normal">Cond. pagamento</TableHead>
                 <TableHead>Regola</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead className="w-10">Mot.</TableHead>
@@ -2829,13 +2840,13 @@ function ProposteFidoMassivoDialog({
                     <TableCell className="font-medium text-sm">{renderCliente(r)}</TableCell>
                     <TableCell className="text-right text-sm">{fmtEuro(r.fido_attuale)}</TableCell>
                     <TableCell className="text-right text-sm">{fmtEuro(r.esposizione)}</TableCell>
-                    <TableCell className="text-right">{renderImporto(r, "h-8 text-right w-32 ml-auto")}</TableCell>
+                    <TableCell className="text-right">{renderImporto(r, "h-8 text-right w-full min-w-0")}</TableCell>
                     <TableCell className={`text-right text-sm tabular-nums ${scost > 0 ? "text-success" : scost < 0 ? "text-warning" : "text-muted-foreground"}`}>
                       {r.proponibile ? `${scost > 0 ? "+" : ""}${fmtEuro(scost)}` : "—"}
                     </TableCell>
-                    <TableCell className="w-36 min-w-[8rem]">{renderCondizione(r)}</TableCell>
+                    <TableCell className="w-56 max-w-56 whitespace-normal">{renderCondizione(r)}</TableCell>
                     <TableCell className="text-xs">{renderRegola(r)}</TableCell>
-                    <TableCell>{renderTipo(r, "h-8 w-36")}</TableCell>
+                    <TableCell>{renderTipo(r, "h-8 w-full min-w-0")}</TableCell>
                     <TableCell>{renderMotivazione(r)}</TableCell>
                     <TableCell>{renderRimuovi(r)}</TableCell>
                   </TableRow>
