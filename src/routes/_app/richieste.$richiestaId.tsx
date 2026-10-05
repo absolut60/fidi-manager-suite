@@ -24,7 +24,7 @@ import { ComunicazioniRichiestaPanel } from "@/components/comunicazioni-richiest
 import { AllegatiSection } from "@/components/allegati-section";
 import { CambioCondizionePagamento } from "@/components/cambio-condizione-pagamento";
 import { useCodiciPagamento } from "@/components/condizione-pagamento-richiesta-select";
-import { RICHIESTA_FIDO_SELECT, mapRichiestaFido } from "@/lib/richieste-fido-data";
+import { RICHIESTA_FIDO_SELECT, mapRichiestaFido, importoPerEtichettaTipo } from "@/lib/richieste-fido-data";
 import { getFidoAttuale } from "@/lib/fido-cliente";
 import { PannelloRischioCliente } from "@/components/pannello-rischio-cliente";
 import { ModificaRichiestaFidoDialog, useAnnullaRichiestaFido } from "@/components/richiesta-fido-form-dialog";
@@ -171,7 +171,7 @@ function RichiestaDetail() {
 
   const badgeTipo = (
     <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${TIPO_TONE[r.tipo as TipoRichiesta]}`}>
-      {etichettaTipoRichiesta(r.tipo, Number(vistaR?.soloCondizione ? r.importo_richiesto : (r.importo_approvato ?? r.importo_richiesto)))}
+      {etichettaTipoRichiesta(r.tipo, importoPerEtichettaTipo(r))}
     </span>
   );
   const badgeStato = (

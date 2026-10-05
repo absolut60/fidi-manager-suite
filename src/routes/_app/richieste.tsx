@@ -50,7 +50,7 @@ import {
   livelloApprovatore, puoDecidereRichiesta,
 } from "@/lib/fidi";
 import { getFidoAttuale } from "@/lib/fido-cliente";
-import { RICHIESTA_FIDO_SELECT } from "@/lib/richieste-fido-data";
+import { RICHIESTA_FIDO_SELECT, mapRichiestaFido, importoPerEtichettaTipo } from "@/lib/richieste-fido-data";
 import { CambioCondizionePagamento } from "@/components/cambio-condizione-pagamento";
 import { PannelloRischioCliente } from "@/components/pannello-rischio-cliente";
 import { semaforoUI, semaforoDaCliente } from "@/lib/semaforo-ui";
