@@ -181,11 +181,26 @@ export const Route = createFileRoute("/api/webhooks/d360/$token")({
             try {
               const { data, error } = await supabaseAdmin.rpc(
                 "registra_adesione_evento_whatsapp",
-                { _numero_raw: m.mittente } as never,
+                { _numero_raw: m.mittente, _testo_bottone: m.bottoneTesto } as never,
               );
-              if (!error && data?.[0]?.ok) adesioni += 1;
-              else if (error)
+              if (error) {
                 console.error("[d360-webhook] adesione rpc errore", error.message);
+              } else {
+                const r = (data as Array<{ ok: boolean; gia_presente: boolean; motivo: string | null }> | null)?.[0];
+                if (r?.ok) {
+                  if (!r.gia_presente) adesioni += 1;
+                } else {
+                  console.log("[d360-webhook] adesione non registrata:", r?.motivo ?? "nessuna risposta");
+                  if (r?.motivo === "disiscrizione") {
+                    const { error: eStop } = await supabaseAdmin.rpc(
+                      "registra_stop_whatsapp",
+                      { _numero_raw: m.mittente } as never,
+                    );
+                    if (!eStop) stop += 1;
+                    else console.error("[d360-webhook] rpc errore", eStop.message);
+                  }
+                }
+              }
             } catch (e) {
               console.error("[d360-webhook] adesione rpc eccezione", e);
             }

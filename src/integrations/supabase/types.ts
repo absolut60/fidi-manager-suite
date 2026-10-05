@@ -7822,7 +7822,7 @@ export type Database = {
       prossimo_numero_preventivo: { Args: { p_anno: number }; Returns: number }
       refresh_fatturato_mensile: { Args: never; Returns: string }
       registra_adesione_evento_whatsapp: {
-        Args: { _numero_raw: string }
+        Args: { _numero_raw: string; _testo_bottone?: string }
         Returns: {
           evento_id: string
           gia_presente: boolean
