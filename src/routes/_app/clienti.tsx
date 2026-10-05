@@ -1,5 +1,5 @@
 import { createFileRoute, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { Plus, Search, Building, MapPin, Shield, ShieldOff, ArrowLeft, ArrowRight, Check, Pencil, PenTool, FileText, SlidersHorizontal, X, AlertCircle, Clock, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown, MessageSquare, Loader2 } from "lucide-react";
@@ -10,6 +10,7 @@ import * as RadixSlider from "@radix-ui/react-slider";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { getFidoAttuale, FIDO_CLIENTE_SELECT } from "@/lib/fido-cliente";
+import { CambioCondizionePagamento } from "@/components/cambio-condizione-pagamento";
 import { CondizionePagamentoRichiestaSelect, CondizionePagamentoTesto, useCodiciPagamento } from "@/components/condizione-pagamento-richiesta-select";
 import {
   determinaTipoRichiesta, isRichiestaAttiva, TIPO_LABEL, STATO_LABEL, STATO_TONE, formatDate,
@@ -2497,13 +2498,12 @@ function ProposteFidoMassivoDialog({
   // Pezzi condivisi tra tabella desktop e schede mobile (stessi handler)
   const renderCliente = (r: RigaProposta) => (
     <>
-      <span className="break-words">{r.ragione_sociale}</span>
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-1">
+      <span className="min-w-0 break-words line-clamp-2" title={r.ragione_sociale}>{r.ragione_sociale}</span>
       {r.richiede_verifica && (
-        <Badge className="ml-2 bg-warning/15 text-warning hover:bg-warning/20">Da verificare</Badge>
+        <Badge className="shrink-0 whitespace-nowrap px-1 text-[10px] bg-warning/15 text-warning hover:bg-warning/20">Da verificare</Badge>
       )}
-      {r.nota_proposta && (
-        <p className="text-xs font-normal text-muted-foreground mt-0.5 max-w-[380px] break-words">{r.nota_proposta}</p>
-      )}
+      </div>
       {r.richiestaInCorso && (
         <div className={`mt-1 inline-block max-w-full md:max-w-[380px] whitespace-normal break-words rounded px-2 py-0.5 text-xs font-medium ${STATO_TONE[r.richiestaInCorso.stato as StatoRichiesta] ?? "bg-muted text-muted-foreground"}`}>
           Richiesta già in corso: {STATO_LABEL[r.richiestaInCorso.stato as StatoRichiesta] ?? r.richiestaInCorso.stato}
@@ -2583,28 +2583,28 @@ function ProposteFidoMassivoDialog({
       </Popover>
     );
   };
-  const renderCondizione = (r: RigaProposta) => {
-    const cambio = condizionePagamentoCambiata(r.cond_proposta, r.cond_attuale);
-    return (
-      <div className={`min-w-0 space-y-1 ${cambio ? "rounded-md bg-info/10 p-1" : ""}`}>
-        <div className="flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground">
-          {cambio ? (
-            <>
-              <Badge className="h-5 bg-info/15 px-1.5 text-[10px] text-info hover:bg-info/20">Cambio</Badge>
-              <span className="min-w-0 break-words"><CondizionePagamentoTesto cod={r.cond_attuale} descFallback={r.cond_attuale_desc} /> → <CondizionePagamentoTesto cod={r.cond_proposta} /></span>
-            </>
-          ) : (
-            <span className="min-w-0 break-words">Attuale: <CondizionePagamentoTesto cod={r.cond_attuale} descFallback={r.cond_attuale_desc} /></span>
-          )}
+  const renderCondizione = (r: RigaProposta) => (
+    <CondizionePagamentoRichiestaSelect size="sm" value={r.cond_proposta}
+      onChange={(cod) => aggiornaCondizione(r.cliente_id, cod)} />
+  );
+  const renderDettagli = (r: RigaProposta) => (
+    <div className="grid grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] text-xs">
+      {r.nota_proposta && <details className="min-w-0 group">
+        <summary className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 cursor-pointer list-none">
+          <span className="truncate text-muted-foreground" title={r.nota_proposta}>{r.nota_proposta}</span>
+          <span className="text-primary whitespace-nowrap group-open:hidden">Mostra tutto</span>
+          <span className="text-primary whitespace-nowrap hidden group-open:block">Mostra meno</span>
+        </summary>
+        <p className="pt-1 break-words text-muted-foreground">{r.nota_proposta}</p>
+      </details>}
+      {condizionePagamentoCambiata(r.cond_proposta, r.cond_attuale) && (
+        <div className="min-w-0 break-words text-info lg:text-right">
+          <CambioCondizionePagamento variant="badge" codAttuale={r.cond_attuale} codProposta={r.cond_proposta} descAttuale={r.cond_attuale_desc} />
+          {" "}<CondizionePagamentoTesto cod={r.cond_attuale} descFallback={r.cond_attuale_desc} /> → <CondizionePagamentoTesto cod={r.cond_proposta} />
         </div>
-        <CondizionePagamentoRichiestaSelect
-          size="sm"
-          value={r.cond_proposta}
-          onChange={(cod) => aggiornaCondizione(r.cliente_id, cod)}
-        />
-      </div>
-    );
-  };
+      )}
+    </div>
+  );
   const renderRimuovi = (r: RigaProposta) => (
     <Button variant="ghost" size="icon" onClick={() => rimuoviRiga(r.cliente_id)} title="Rimuovi">
       <X className="size-4" />
@@ -2613,7 +2613,8 @@ function ProposteFidoMassivoDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100%-2rem)] max-w-6xl max-h-[90dvh] overflow-y-auto overflow-x-hidden grid-cols-[minmax(0,1fr)] p-4 sm:p-6">
+      <DialogContent className="w-[96vw] max-w-[96rem] h-[90dvh] max-h-[90dvh] overflow-hidden flex flex-col gap-0 p-0">
+        <div className="shrink-0 min-w-0 border-b px-3 py-2 sm:px-4">
         <DialogHeader className="pr-8 text-left">
           <DialogTitle className="break-words">Proposta fido massiva — {righeVisibiliIncluse.length} clienti</DialogTitle>
           <DialogDescription>
@@ -2636,8 +2637,11 @@ function ProposteFidoMassivoDialog({
           </div>
         )}
 
-        <div className="rounded-md border p-3 space-y-3">
-          <div className="text-sm font-medium">Filtri</div>
+        <FiltriCollassabili ancheDesktop
+          attivi={Number(filtroTipi.length !== TIPI_DEFAULT.length || !TIPI_DEFAULT.every((t) => filtroTipi.includes(t))) + Number(filtroPagImmediato !== FILTRI_DEFAULT.pagImm) + Number(filtroFidoZero !== FILTRI_DEFAULT.fidoZero) + Number(filtroInCorso !== FILTRI_DEFAULT.inCorso)}
+          riepilogo={<span className="text-xs text-muted-foreground break-words">Mostrati {righeVisibili.length} di {righe.length} clienti · {righeVisibiliIncluse.length} inclusi nella creazione</span>}
+          azioni={filtriModificati && <Button type="button" variant="link" size="sm" onClick={ripristinaFiltri}>Ripristina filtri</Button>}>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="min-w-0 space-y-1">
               <Label className="text-xs text-muted-foreground font-normal">Tipo proposta</Label>
@@ -2691,66 +2695,32 @@ function ProposteFidoMassivoDialog({
               ]}
             />
           </div>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-            <span>
-              Mostrati {righeVisibili.length} di {righe.length} clienti · {righeVisibiliIncluse.length} inclusi nella creazione
-            </span>
-            {filtriModificati && (
-              <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs" onClick={ripristinaFiltri}>
-                Ripristina filtri
-              </Button>
-            )}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label className="text-xs">Modalità invio</Label>
-            <RadioGroup value={modalitaInvio} onValueChange={(v) => setModalitaInvio(v as any)} className="mt-2">
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <RadioGroupItem value="bozza" /> Salva come bozza
-              </label>
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <RadioGroupItem value="invia" /> Invia subito all'approvazione
-              </label>
-            </RadioGroup>
-          </div>
-          <div>
+        </FiltriCollassabili>
+        <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-2">
+          <div className="min-w-0">
             <Label className="text-xs">Tipo richiesta applicato a tutti</Label>
             <Select value={tipoForzato} onValueChange={(v) => setTipoForzato(v as any)}>
-              <SelectTrigger className="mt-2"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="mt-1 h-10 w-full min-w-0"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="auto">Automatico (in base al fido attuale)</SelectItem>
                 {TIPI_PROPOSTA.map((t) => <SelectItem key={t} value={t}>{TIPO_LABEL[t]}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
-        </div>
-
-        <div>
+        <div className="min-w-0">
           <Label className="text-xs">Motivazione (applicata a tutti)</Label>
           <Textarea
             value={motivazioneGenerale}
             onChange={(e) => setMotivazioneGenerale(e.target.value)}
             placeholder="Motivazione comune a tutte le richieste del batch"
-            className="mt-2 min-h-16"
+            rows={1} className="mt-1 h-10 min-h-10 focus:h-20 resize-none"
           />
-          <p className="text-xs text-muted-foreground mt-1">
-            Opzionale. Puoi sovrascriverla per singolo cliente dall'icona <MessageSquare className="inline size-3" /> sulla riga.
-          </p>
         </div>
-
-        {(() => {
-          const nCambi = righeVisibiliIncluse.filter((r) => condizionePagamentoCambiata(r.cond_proposta, r.cond_attuale)).length;
-          return nCambi > 0 ? (
-            <div className="rounded-md border border-info/30 bg-info/10 px-3 py-2 text-xs text-info break-words">
-              {nCambi} {nCambi === 1 ? "richiesta propone" : "richieste propongono"} un cambio di condizione di pagamento
-            </div>
-          ) : null;
-        })()}
-
+        </div>
+        </div>
+        <div data-proposte-elenco className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-2 sm:px-4">
         {/* Schede anche su tablet: la tabella estesa richiede spazio desktop. */}
-        <div className="[&>div]:block xl:hidden">
+        <div className="[&>div]:block lg:hidden">
         <ElencoSchede>
           {righeVisibili.map((r) => {
             const scost = r.proponibile ? r.fido_proposto - r.fido_attuale : 0;
@@ -2795,6 +2765,7 @@ function ProposteFidoMassivoDialog({
                       <Label className="text-xs text-muted-foreground font-normal">Cond. pagamento</Label>
                       {renderCondizione(r)}
                     </div>
+                    <div className="min-w-0 sm:col-span-2">{renderDettagli(r)}</div>
                   </div>
                 }
               />
@@ -2803,67 +2774,64 @@ function ProposteFidoMassivoDialog({
         </ElencoSchede>
         </div>
 
-        <div className="hidden xl:block min-w-0 border rounded-md">
-          <Table className="table-fixed w-full [&_th]:whitespace-normal [&_td]:whitespace-normal [&_td]:break-words">
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-10"></TableHead>
-                <TableHead>Cliente</TableHead>
-                <TableHead className="text-right">Fido attuale</TableHead>
-                <TableHead className="text-right">Esposizione</TableHead>
-                <TableHead className="text-right">Fido proposto</TableHead>
-                <TableHead className="text-right">Scostamento</TableHead>
-                <TableHead className="w-56 whitespace-normal">Cond. pagamento</TableHead>
-                <TableHead>Regola</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead className="w-10">Mot.</TableHead>
-                <TableHead className="w-10"></TableHead>
-              </TableRow>
-            </TableHeader>
+        <div className="hidden lg:block min-w-0 [&>div]:overflow-x-visible">
+          <Table className="table-fixed w-full text-xs [&_th]:px-1 [&_td]:px-1 [&_th]:whitespace-normal [&_td]:whitespace-normal">
+            <colgroup>
+              <col className="w-8" /><col /><col className="w-16" /><col className="w-16" />
+              <col className="w-20" /><col className="w-16" /><col className="w-64" />
+              <col className="w-36" /><col className="w-8" /><col className="w-8" />
+            </colgroup>
+            <TableHeader><TableRow>
+              <TableHead /><TableHead>Cliente</TableHead><TableHead className="text-right">Fido attuale</TableHead>
+              <TableHead className="text-right">Esposizione</TableHead><TableHead className="text-right">Fido proposto</TableHead>
+              <TableHead className="text-right">Scostamento</TableHead><TableHead>Condizione di pagamento</TableHead>
+              <TableHead>Tipo</TableHead><TableHead>Mot.</TableHead><TableHead />
+            </TableRow></TableHeader>
             <TableBody>
               {righeVisibili.map((r) => {
                 const scost = r.proponibile ? r.fido_proposto - r.fido_attuale : 0;
                 return (
-                  <TableRow
-                    key={r.cliente_id}
-                    className={`${!r.proponibile ? "opacity-60" : ""} ${
-                      r.proponibile && r.richiede_verifica ? "bg-warning/10 border-l-2 border-l-warning" : ""
-                    }`}
-                  >
-                    <TableCell>
-                      <Checkbox
-                        checked={r.incluso && r.proponibile}
-                        disabled={!r.proponibile}
-                        onCheckedChange={() => toggleIncluso(r.cliente_id)}
-                      />
-                    </TableCell>
-                    <TableCell className="font-medium text-sm">{renderCliente(r)}</TableCell>
-                    <TableCell className="text-right text-sm">{fmtEuro(r.fido_attuale)}</TableCell>
-                    <TableCell className="text-right text-sm">{fmtEuro(r.esposizione)}</TableCell>
-                    <TableCell className="text-right">{renderImporto(r, "h-8 text-right w-full min-w-0")}</TableCell>
-                    <TableCell className={`text-right text-sm tabular-nums ${scost > 0 ? "text-success" : scost < 0 ? "text-warning" : "text-muted-foreground"}`}>
-                      {r.proponibile ? `${scost > 0 ? "+" : ""}${fmtEuro(scost)}` : "—"}
-                    </TableCell>
-                    <TableCell className="w-56 max-w-56 whitespace-normal">{renderCondizione(r)}</TableCell>
-                    <TableCell className="text-xs">{renderRegola(r)}</TableCell>
-                    <TableCell>{renderTipo(r, "h-8 w-full min-w-0")}</TableCell>
-                    <TableCell>{renderMotivazione(r)}</TableCell>
-                    <TableCell>{renderRimuovi(r)}</TableCell>
-                  </TableRow>
+                  <Fragment key={r.cliente_id}>
+                    <TableRow className={`${!r.proponibile ? "opacity-60" : ""} ${r.proponibile && r.richiede_verifica ? "bg-warning/10" : ""} border-0`}>
+                      <TableCell><Checkbox checked={r.incluso && r.proponibile} disabled={!r.proponibile} onCheckedChange={() => toggleIncluso(r.cliente_id)} /></TableCell>
+                      <TableCell className="min-w-0 font-medium">{renderCliente(r)}<div className="mt-0.5 text-[11px] font-normal">{renderRegola(r)}</div></TableCell>
+                      <TableCell className="text-right break-words tabular-nums">{fmtEuro(r.fido_attuale)}</TableCell>
+                      <TableCell className="text-right break-words tabular-nums">{fmtEuro(r.esposizione)}</TableCell>
+                      <TableCell>{renderImporto(r, "h-10 w-full min-w-0 px-1 text-xs text-right")}</TableCell>
+                      <TableCell className={`text-right break-words tabular-nums ${scost > 0 ? "text-success" : scost < 0 ? "text-warning" : "text-muted-foreground"}`}>{r.proponibile ? `${scost > 0 ? "+" : ""}${fmtEuro(scost)}` : "—"}</TableCell>
+                      <TableCell>{renderCondizione(r)}</TableCell>
+                      <TableCell>{renderTipo(r, "h-10 w-full min-w-0 px-1 text-xs")}</TableCell>
+                      <TableCell><div className="[&_button]:w-8 [&_button]:h-10">{renderMotivazione(r)}</div></TableCell>
+                      <TableCell><div className="[&_button]:w-8 [&_button]:h-10">{renderRimuovi(r)}</div></TableCell>
+                    </TableRow>
+                    <TableRow className={`${!r.proponibile ? "opacity-60" : ""} ${r.proponibile && r.richiede_verifica ? "bg-warning/10" : ""} border-b-2 border-border`}><TableCell colSpan={10} className="pt-0 pb-2">{renderDettagli(r)}</TableCell></TableRow>
+                  </Fragment>
                 );
               })}
             </TableBody>
           </Table>
         </div>
+        </div>
 
-        <div className="sticky bottom-0 -mx-4 sm:-mx-6 -mb-4 sm:-mb-6 min-w-0 space-y-3 border-t bg-background px-4 sm:px-6 py-3">
+        <div className="shrink-0 min-w-0 border-t bg-background px-3 py-2 sm:px-4 grid grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
           <div className="text-sm font-medium break-words">
             Totale fido proposto: <strong>{fmtEuro(totale)}</strong> · {righeVisibiliIncluse.length} richieste da creare
             {righeEscluse.length > 0 && (
               <span className="text-muted-foreground font-normal"> · {righeEscluse.length} esclusi</span>
             )}
           </div>
-          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row">
+          <div className="text-xs text-info lg:col-start-1">
+            {righeVisibiliIncluse.filter((r) => condizionePagamentoCambiata(r.cond_proposta, r.cond_attuale)).length > 0 &&
+              <>{righeVisibiliIncluse.filter((r) => condizionePagamentoCambiata(r.cond_proposta, r.cond_attuale)).length} con cambio di condizione di pagamento</>}
+          </div>
+          <DialogFooter className="grid grid-cols-2 gap-2 sm:flex sm:items-center lg:col-start-2 lg:row-start-1 lg:row-span-2">
+            <div className="col-span-2 min-w-0">
+              <Label className="text-xs">Modalità invio</Label>
+              <div className="grid grid-cols-2 gap-0.5 rounded-md border p-0.5" role="group" aria-label="Modalità invio">
+                <Button type="button" size="sm" variant={modalitaInvio === "bozza" ? "secondary" : "ghost"} aria-pressed={modalitaInvio === "bozza"} className="h-10 px-2 text-xs" onClick={() => setModalitaInvio("bozza")}>Salva come bozza</Button>
+                <Button type="button" size="sm" variant={modalitaInvio === "invia" ? "secondary" : "ghost"} aria-pressed={modalitaInvio === "invia"} className="h-10 px-2 text-xs" onClick={() => setModalitaInvio("invia")}>Invia subito<span className="sr-only"> all'approvazione</span></Button>
+              </div>
+            </div>
             <Button variant="outline" className="w-full sm:w-auto" onClick={() => onOpenChange(false)} disabled={submitting}>Annulla</Button>
             <Button className="w-full sm:w-auto" onClick={creaRichieste} disabled={submitting || righeVisibiliIncluse.length === 0}>
               {submitting ? "Creazione…" : `Crea ${righeVisibiliIncluse.length} richieste`}
