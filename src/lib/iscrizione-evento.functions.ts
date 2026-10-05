@@ -32,6 +32,7 @@ const MESSAGGI: Record<string, string> = {
   evento_non_trovato: "Evento non trovato.",
   iscrizioni_chiuse: "Le iscrizioni a questo evento sono chiuse.",
   dati_mancanti: "Inserisci nome e cognome.",
+  email_non_valida: "Inserisci un indirizzo email valido.",
   numero_non_valido: "Il numero di cellulare non sembra valido.",
 };
 
@@ -50,9 +51,7 @@ export const iscriviEventoPubblico = createServerFn({ method: "POST" })
           .trim()
           .toLowerCase()
           .email("Email non valida")
-          .max(150)
-          .optional()
-          .or(z.literal("")),
+          .max(150),
       })
       .parse(d),
   )
@@ -63,7 +62,7 @@ export const iscriviEventoPubblico = createServerFn({ method: "POST" })
       _cognome: data.cognome,
       _cellulare: data.cellulare,
       _azienda: data.azienda || undefined,
-      _email: data.email || undefined,
+      _email: data.email,
     });
     if (error) {
       console.error("[iscrizione-evento] errore RPC", error.message);
