@@ -497,6 +497,7 @@ function LeadListaPage() {
                 key={l.id}
                 onClick={() => navigate({ to: "/lead/$leadId", params: { leadId: l.id } })}
                 titolo={nomeLead(l)}
+                selezione={canManage ? { checked: selezionati.has(l.id), onChange: (v) => toggleSel(l.id, v) } : undefined}
                 badge={
                   <Badge className={`${LEAD_STATO_CLASS[l.stato]} shrink-0`}>{LEAD_STATO_LABEL[l.stato]}</Badge>
                 }
@@ -531,6 +532,15 @@ function LeadListaPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  {canManage && (
+                    <TableHead className="w-10">
+                      <Checkbox
+                        aria-label="Seleziona tutta la pagina"
+                        checked={tuttaPaginaSel ? true : qualcunoPaginaSel ? "indeterminate" : false}
+                        onCheckedChange={(v) => selezionaPagina(v === true)}
+                      />
+                    </TableHead>
+                  )}
                   <TableHead><SortHeader col="ragione_sociale" label="Nominativo" /></TableHead>
                   <TableHead>Tipo soggetto</TableHead>
                   <TableHead><SortHeader col="stato" label="Stato" /></TableHead>
@@ -559,6 +569,15 @@ function LeadListaPage() {
                     className="cursor-pointer"
                     onClick={() => navigate({ to: "/lead/$leadId", params: { leadId: l.id } })}
                   >
+                    {canManage && (
+                      <TableCell className="w-10" onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          aria-label={`Seleziona ${nomeLead(l)}`}
+                          checked={selezionati.has(l.id)}
+                          onCheckedChange={(v) => toggleSel(l.id, v === true)}
+                        />
+                      </TableCell>
+                    )}
                     <TableCell className="font-medium">{nomeLead(l)}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">
                       {l.tipo_soggetto === "persona_fisica" ? "Persona fisica" : l.tipo_soggetto === "azienda" ? "Azienda" : "—"}
