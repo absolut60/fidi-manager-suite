@@ -28,6 +28,8 @@ export function CambioCondizionePagamento({ variant, codProposta, codAttuale, de
   let att = codAttuale ?? null;
   let attDesc = descAttuale ?? null;
   let esito: string | null = esitoProp;
+  let modificata = false;
+  let richiestaOrig: string | null = null;
   if (richiesta) {
     const v = mapRichiestaFido(richiesta);
     prop = v.condPagProposta;
@@ -35,6 +37,8 @@ export function CambioCondizionePagamento({ variant, codProposta, codAttuale, de
     // la descrizione del gestionale vale solo se il riferimento è la condizione di oggi
     attDesc = v.condPagPrecedente ? null : v.condPagAttualeDesc;
     esito = v.esitoCondPag;
+    modificata = v.condPagModificata;
+    richiestaOrig = v.condPagRichiestaOrig;
   }
   const approvato = esito === "approvata";
   const rifiutato = esito === "rifiutata";
@@ -54,7 +58,7 @@ export function CambioCondizionePagamento({ variant, codProposta, codAttuale, de
               ? "border-destructive/30 bg-destructive/5 text-destructive"
               : "border-warning/40 bg-warning/10 text-warning"
         } ${className}`}
-        title={`${attuale} → ${proposta}`}
+        title={`${attuale} → ${proposta}${modificata ? (richiestaOrig ? ` — proposta dal richiedente: ${etichettaCondizionePagamento(codici, richiestaOrig)}` : " — decisa in approvazione") : ""}`}
       >
         {approvato ? "Cond. pag. approvata" : rifiutato ? "Cond. pag. rifiutata" : "Cambio cond. pag."}
       </Badge>
@@ -90,8 +94,13 @@ export function CambioCondizionePagamento({ variant, codProposta, codAttuale, de
       <p className="min-w-0 break-words text-xs">
         <span className="text-xs text-muted-foreground">{esito ? "Precedente" : "Attuale"}: </span>
         <CondizionePagamentoTesto cod={att} descFallback={attDesc} />
-        {" → "}<span className="text-xs text-muted-foreground">Nuova proposta: </span>
+        {" → "}<span className="text-xs text-muted-foreground">{modificata ? "Approvata" : "Nuova proposta"}: </span>
         <CondizionePagamentoTesto cod={prop} />
+        {modificata && (
+          <span className="text-xs text-muted-foreground">
+            {richiestaOrig ? <>{" · proposta dal richiedente: "}<CondizionePagamentoTesto cod={richiestaOrig} /></> : " · il richiedente non aveva proposto alcun cambio"}
+          </span>
+        )}
       </p>
     </div>
   );

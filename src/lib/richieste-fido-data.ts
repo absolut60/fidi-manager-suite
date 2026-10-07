@@ -29,6 +29,12 @@
  *                       ('approvata'|'rifiutata'|NULL; NULL = richiesta storica o non decisa)
  *  - soloCondizione     = stato approvata && esitoFido rifiutata && esitoCondPag approvata
  *                       (importo_approvato = fido del cliente al momento, NON un fido concesso)
+ *  - condPagModificata  = richieste_fido.condizione_pagamento_modificata === true
+ *                       (in approvazione è stata approvata una condizione diversa dalla proposta;
+ *                        in quel caso condPagProposta contiene la condizione APPROVATA)
+ *  - condPagRichiestaOrig = richieste_fido.condizione_pagamento_richiesta_cod
+ *                       (proposta originaria del richiedente; significativa solo se condPagModificata;
+ *                        NULL = la richiesta non proponeva alcun cambio)
  */
 
 import { getFidoAttuale, FIDO_CLIENTE_SELECT } from "@/lib/fido-cliente";
@@ -117,6 +123,8 @@ export interface RichiestaFidoView {
   esitoFido: string | null;
   esitoCondPag: string | null;
   soloCondizione: boolean;
+  condPagModificata: boolean;
+  condPagRichiestaOrig: string | null;
 }
 
 /**
@@ -170,6 +178,8 @@ export function mapRichiestaFido(r: AnyRecord): RichiestaFidoView {
     esitoFido,
     esitoCondPag,
     soloCondizione: stato === "approvata" && esitoFido === "rifiutata" && esitoCondPag === "approvata",
+    condPagModificata: r?.condizione_pagamento_modificata === true,
+    condPagRichiestaOrig: r?.condizione_pagamento_richiesta_cod ?? null,
   };
 }
 
