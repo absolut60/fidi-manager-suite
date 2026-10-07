@@ -457,7 +457,7 @@ function RichiestaDetail() {
         </Card>
 
         {r.stato !== "bozza" && r.created_by && (
-          <div className="min-w-0 [&>[data-slot=card]]:p-3">
+          <div className="min-w-0 [&>div:first-child]:p-3">
             <ComunicazioniRichiestaPanel richiestaId={r.id} richiestaCreatedBy={r.created_by} />
           </div>
         )}
