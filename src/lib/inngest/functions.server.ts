@@ -1970,6 +1970,7 @@ export const processScadenziarioChunk = inngest.createFunction(
           logger.info(`[chunk ${chunkIndex}] C.start upsert-scadenze sotto-blocco ${n}/${tot} rows=${rows.length}`);
           let ultimoErr: string | null = null;
           let ok = false;
+          let upRows: Array<{ created_at: string }> | null = null;
           for (let tentativo = 1; tentativo <= SCAD_UPSERT_TENTATIVI; tentativo++) {
             try {
               const { data: upData, error: upErr } = await withTimeout(
@@ -1995,6 +1996,7 @@ export const processScadenziarioChunk = inngest.createFunction(
                 `chunk ${chunkIndex} upsert-scadenze sotto-blocco ${n}/${tot} rows=${rows.length}`,
               );
               if (upErr) throw new Error(upErr.message);
+              upRows = upData;
               ok = true;
               break;
             } catch (e) {
