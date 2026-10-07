@@ -201,6 +201,30 @@ export function buildRiferimentiBancariHtml(): string {
           </table>`;
 }
 
+// =============================================================================
+// AVVISO SOSPENSIONE FORNITURE (fonte UNICA — modifica qui per aggiornarlo ovunque)
+// =============================================================================
+// Iniettato in wrapEmailHtml SOLO per i solleciti veri e propri (1, 2, messa in
+// mora). NON compare in promemoria_scadenza, reminder_rata_piano, libero o
+// negli altri tipi.
+export const AVVISO_SOSPENSIONE_FORNITURE =
+  "Si segnala che le forniture risulteranno sospese sino al saldo";
+
+function tipoRichiedeAvvisoSospensione(tipo: string | null | undefined): boolean {
+  return tipo === "sollecito_1" || tipo === "sollecito_2" || tipo === "messa_in_mora";
+}
+
+export function buildAvvisoSospensioneHtml(): string {
+  return `
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:20px;border-collapse:separate;">
+            <tr>
+              <td style="background:#fef2f2;border:1px solid #dc2626;border-left:4px solid #dc2626;border-radius:4px;padding:14px 16px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5;color:#991b1b;font-weight:700;">
+                &#9888;&nbsp; ${escapeHtml(AVVISO_SOSPENSIONE_FORNITURE)}
+              </td>
+            </tr>
+          </table>`;
+}
+
 function tipoRichiedeRiferimentiBancari(tipo: string | null | undefined): boolean {
   return (
     tipo === "promemoria_scadenza" ||
@@ -460,6 +484,7 @@ export function wrapEmailHtml(
       <tr>
         <td style="padding:24px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.55;color:#1f2937;">
           ${corpoRenderizzato}
+          ${!opts?.senzaBande && tipoRichiedeAvvisoSospensione(opts?.tipo ?? null) ? buildAvvisoSospensioneHtml() : ""}
           ${opts?.senzaBande ? "" : boxHtml}
           ${!opts?.senzaBande && tipoRichiedeRiferimentiBancari(opts?.tipo ?? null) ? buildRiferimentiBancariHtml() : ""}
           <div style="margin-top:24px;padding-top:12px;border-top:1px solid #e5e7eb;font-size:13px;color:#374151;">
