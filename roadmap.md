@@ -1,5 +1,12 @@
 # Roadmap
 
+## FM38 — Pagina richiesta fido (impaginazione)
+- [x] Tre giri: struttura in 4 blocchi, fascia dati su una riga, Decisione doppia/semplice compatte, Quadro cliente a griglia unica, Workflow in linea
+- [x] Cella "Ordini in corso" (doc_da_evadere) dopo "A scadere" nel Quadro cliente, con title "Ordini da evadere — non concorrono al fido"; MetricCard accetta title opzionale
+- [x] tsgo --noEmit pulito; prova isolata componenti reali 320/390/768/1024/1280/1600 senza scorrimento orizzontale; variante compact invariata
+- [ ] Verifica autenticata con dati reali: accesso del richiedente non disponibile; serve login in anteprima
+
+
 ## FM38 M1 — Impaginazione proposta massiva
 - [x] Intestazione e footer fissi, impostazioni compatte, elenco a due righe
 - [x] Prova isolata componenti reali 320/768/1024/1280; filtri e payload identici; compilazione automatica riuscita

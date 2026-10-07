@@ -251,6 +251,8 @@ export function PannelloRischioCliente({
           <MetricCard label="Totale rischio" value={formatEuro(totRischio)} />
           <MetricCard label="Scaduto" value={formatEuro(scaduto)} tone={scaduto > 0 ? "destructive" : "success"} />
           <MetricCard label="A scadere" value={formatEuro(Number(cliente.a_scadere ?? 0))} />
+          <MetricCard label="Ordini in corso" value={formatEuro(Number(cliente.doc_da_evadere ?? 0))} title="Ordini da evadere — non concorrono al fido" />
+
           <QuadroCell label="Fido gestionale">
             {formatEuro(fidoAttuale)}
             {ultimoApprovatoImp != null && (
@@ -356,18 +358,21 @@ function MetricCard({
   value,
   tone = "neutral",
   subtext,
+  title,
 }: {
   label: string;
   value: string;
   tone?: "neutral" | "destructive" | "info" | "success";
   subtext?: string;
+  title?: string;
 }) {
+
   const valueTone =
     tone === "destructive" ? "text-destructive" :
     tone === "info" ? "text-info" :
     tone === "success" ? "text-success" : "";
   return (
-    <QuadroCell label={label}>
+    <QuadroCell label={label} title={title}>
       <span className={valueTone}>{value}</span>
       {subtext && (
         <p className="mt-0.5 text-[11px] text-muted-foreground">{subtext}</p>
