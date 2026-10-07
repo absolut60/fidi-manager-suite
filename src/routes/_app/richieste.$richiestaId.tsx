@@ -430,7 +430,7 @@ function RichiestaDetail() {
         </Card>
 
         {r.stato !== "bozza" && r.created_by && (
-          <div className="min-w-0 [&>div:first-child]:p-2.5 [&_h3]:text-sm">
+          <div className="min-w-0 [&>div:first-child]:p-2.5 [&_h2]:text-sm">
             <ComunicazioniRichiestaPanel richiestaId={r.id} richiestaCreatedBy={r.created_by} />
           </div>
         )}
@@ -477,7 +477,7 @@ function DecisioneReadOnly({
   livelloUtente,
 }: { livelloRichiesto: number; livelloUtente: number }) {
   return (
-    <Card className="p-4 border-muted bg-muted/30">
+    <Card className="p-2.5 border-muted bg-muted/30">
       <div className="flex items-start gap-3">
         <div className="size-9 rounded-full bg-muted flex items-center justify-center shrink-0">
           <Lock className="size-4 text-muted-foreground" />
