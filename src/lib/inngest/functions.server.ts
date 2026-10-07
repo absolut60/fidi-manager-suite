@@ -1953,46 +1953,9 @@ export const processScadenziarioChunk = inngest.createFunction(
       }
       const validRows = Array.from(deduped.values());
 
-      // Pre-fetch chiavi esistenti per distinguere create vs update
-      const cids = Array.from(new Set(matched));
-      const existingKeys = new Set<string>();
-      if (cids.length) {
-        const tPF = Date.now();
-        logger.info(`[chunk ${chunkIndex}] C.start prefetch-scadenze cids=${cids.length}`);
-        const PAGE = 1000;
-        let got = 0;
-        for (let from = 0; ; from += PAGE) {
-          const { data: edata, error: pfErr } = await withTimeout(
-            supabaseAdmin
-              .from("scadenze" as never)
-              .select("id, cliente_id, key_documento, data_scadenza, key_tipo_effetto, importo_scadenza")
-              .in("cliente_id", cids)
-              .order("id", { ascending: true })
-              .range(from, from + PAGE - 1),
-            60_000,
-            `chunk ${chunkIndex} prefetch-scadenze cids=${cids.length} from=${from}`,
-          );
-          if (pfErr) {
-            logger.warn(`[chunk ${chunkIndex}] prefetch-scadenze pagina from=${from} errore: ${pfErr.message}`);
-            break;
-          }
-          const page = (edata ?? []) as Array<{
-            cliente_id: string;
-            key_documento: string | null;
-            data_scadenza: string | null;
-            key_tipo_effetto: number | null;
-            importo_scadenza: number | null;
-          }>;
-          page.forEach((s) => {
-            existingKeys.add(
-              `${s.cliente_id}|${s.key_documento ?? "NULL"}|${s.data_scadenza ?? "NULL"}|${s.key_tipo_effetto != null ? String(s.key_tipo_effetto) : "NULL"}|${s.importo_scadenza != null ? String(s.importo_scadenza) : "NULL"}`,
-            );
-          });
-          got += page.length;
-          if (page.length < PAGE) break;
-        }
-        logger.info(`[chunk ${chunkIndex}] C.end prefetch-scadenze in ${Date.now() - tPF}ms got=${got}`);
-      }
+      // Create vs update dedotte da created_at restituito dall'upsert:
+      // una riga è "creata" se created_at >= inizio import, altrimenti "aggiornata".
+      const tInizioMs = new Date(timestampInizio).getTime();
 
       let c = 0;
       let u = 0;
