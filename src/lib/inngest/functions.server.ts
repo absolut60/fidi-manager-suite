@@ -1952,7 +1952,6 @@ export const processScadenziarioChunk = inngest.createFunction(
         }
       }
       const validRows = Array.from(deduped.values());
-      const validKeys = new Set(deduped.keys());
 
       // Pre-fetch chiavi esistenti per distinguere create vs update
       const cids = Array.from(new Set(matched));
