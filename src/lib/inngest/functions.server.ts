@@ -1778,6 +1778,9 @@ type ChunkEventData = {
   timestampInizio: string;
 };
 
+const SCAD_UPSERT_SUBBATCH = 250;
+const SCAD_UPSERT_TENTATIVI = 3;
+
 export const processScadenziarioChunk = inngest.createFunction(
   {
     id: "process-scadenziario-chunk",
@@ -1949,7 +1952,6 @@ export const processScadenziarioChunk = inngest.createFunction(
         }
       }
       const validRows = Array.from(deduped.values());
-      const validKeys = new Set(deduped.keys());
 
       // Pre-fetch chiavi esistenti per distinguere create vs update
       const cids = Array.from(new Set(matched));
@@ -1957,60 +1959,110 @@ export const processScadenziarioChunk = inngest.createFunction(
       if (cids.length) {
         const tPF = Date.now();
         logger.info(`[chunk ${chunkIndex}] C.start prefetch-scadenze cids=${cids.length}`);
-        const { data: edata } = await withTimeout(
-          supabaseAdmin
-            .from("scadenze" as never)
-            .select("cliente_id, key_documento, data_scadenza, key_tipo_effetto, importo_scadenza")
-            .in("cliente_id", cids),
-          60_000,
-          `chunk ${chunkIndex} prefetch-scadenze cids=${cids.length}`,
-        );
-        (
-          (edata ?? []) as Array<{
+        const PAGE = 1000;
+        let got = 0;
+        for (let from = 0; ; from += PAGE) {
+          const { data: edata, error: pfErr } = await withTimeout(
+            supabaseAdmin
+              .from("scadenze" as never)
+              .select("id, cliente_id, key_documento, data_scadenza, key_tipo_effetto, importo_scadenza")
+              .in("cliente_id", cids)
+              .order("id", { ascending: true })
+              .range(from, from + PAGE - 1),
+            60_000,
+            `chunk ${chunkIndex} prefetch-scadenze cids=${cids.length} from=${from}`,
+          );
+          if (pfErr) {
+            logger.warn(`[chunk ${chunkIndex}] prefetch-scadenze pagina from=${from} errore: ${pfErr.message}`);
+            break;
+          }
+          const page = (edata ?? []) as Array<{
             cliente_id: string;
             key_documento: string | null;
             data_scadenza: string | null;
             key_tipo_effetto: number | null;
             importo_scadenza: number | null;
-          }>
-        ).forEach((s) => {
-          existingKeys.add(
-            `${s.cliente_id}|${s.key_documento ?? "NULL"}|${s.data_scadenza ?? "NULL"}|${s.key_tipo_effetto != null ? String(s.key_tipo_effetto) : "NULL"}|${s.importo_scadenza != null ? String(s.importo_scadenza) : "NULL"}`,
-          );
-        });
-        logger.info(`[chunk ${chunkIndex}] C.end prefetch-scadenze in ${Date.now() - tPF}ms got=${(edata ?? []).length}`);
+          }>;
+          page.forEach((s) => {
+            existingKeys.add(
+              `${s.cliente_id}|${s.key_documento ?? "NULL"}|${s.data_scadenza ?? "NULL"}|${s.key_tipo_effetto != null ? String(s.key_tipo_effetto) : "NULL"}|${s.importo_scadenza != null ? String(s.importo_scadenza) : "NULL"}`,
+            );
+          });
+          got += page.length;
+          if (page.length < PAGE) break;
+        }
+        logger.info(`[chunk ${chunkIndex}] C.end prefetch-scadenze in ${Date.now() - tPF}ms got=${got}`);
       }
 
       let c = 0;
       let u = 0;
       if (validRows.length) {
-        const tUp = Date.now();
-        logger.info(`[chunk ${chunkIndex}] C.start upsert-scadenze rows=${validRows.length}`);
-        const { error: upErr } = await withTimeout(
-          (
-            supabaseAdmin.from("scadenze" as never) as never as {
-              upsert: (
-                rows: unknown,
-                opts: { onConflict: string; ignoreDuplicates: boolean },
-              ) => Promise<{ error: { message: string } | null }>;
+        const entries = Array.from(deduped.entries());
+        const tot = Math.ceil(entries.length / SCAD_UPSERT_SUBBATCH);
+        for (let b = 0; b < tot; b++) {
+          const n = b + 1;
+          const slice = entries.slice(b * SCAD_UPSERT_SUBBATCH, (b + 1) * SCAD_UPSERT_SUBBATCH);
+          const rows = slice.map(([, r]) => r);
+          const tUp = Date.now();
+          logger.info(`[chunk ${chunkIndex}] C.start upsert-scadenze sotto-blocco ${n}/${tot} rows=${rows.length}`);
+          let ultimoErr: string | null = null;
+          let ok = false;
+          for (let tentativo = 1; tentativo <= SCAD_UPSERT_TENTATIVI; tentativo++) {
+            try {
+              const { error: upErr } = await withTimeout(
+                (
+                  supabaseAdmin.from("scadenze" as never) as never as {
+                    upsert: (
+                      rows: unknown,
+                      opts: { onConflict: string; ignoreDuplicates: boolean },
+                    ) => Promise<{ error: { message: string } | null }>;
+                  }
+                ).upsert(rows, {
+                  onConflict: "cliente_id,key_documento,data_scadenza,key_tipo_effetto,importo_scadenza",
+                  ignoreDuplicates: false,
+                }),
+                60_000,
+                `chunk ${chunkIndex} upsert-scadenze sotto-blocco ${n}/${tot} rows=${rows.length}`,
+              );
+              if (upErr) throw new Error(upErr.message);
+              ok = true;
+              break;
+            } catch (e) {
+              ultimoErr = e instanceof Error ? e.message : String(e);
+              logger.warn(
+                `[chunk ${chunkIndex}] upsert sotto-blocco ${n}/${tot} tentativo ${tentativo}/${SCAD_UPSERT_TENTATIVI} fallito: ${ultimoErr}`,
+              );
+              if (tentativo < SCAD_UPSERT_TENTATIVI) {
+                await new Promise((res) => setTimeout(res, tentativo === 1 ? 2000 : 5000));
+              }
             }
-          ).upsert(validRows, {
-            onConflict: "cliente_id,key_documento,data_scadenza,key_tipo_effetto,importo_scadenza",
-            ignoreDuplicates: false,
-          }),
-          120_000,
-          `chunk ${chunkIndex} upsert-scadenze rows=${validRows.length}`,
-        );
-        logger.info(`[chunk ${chunkIndex}] C.end upsert-scadenze in ${Date.now() - tUp}ms err=${upErr ? upErr.message : "ok"}`);
-        if (upErr) {
-          batchErrs.push({
-            riga: chunkIndex,
-            errore: `Upsert chunk ${chunkIndex}: ${upErr.message}`,
-          });
-        } else {
-          for (const key of validKeys) {
-            if (existingKeys.has(key)) u++;
-            else c++;
+          }
+          logger.info(
+            `[chunk ${chunkIndex}] C.end upsert-scadenze sotto-blocco ${n}/${tot} in ${Date.now() - tUp}ms err=${ok ? "ok" : ultimoErr}`,
+          );
+          if (ok) {
+            for (const [key] of slice) {
+              if (existingKeys.has(key)) u++;
+              else c++;
+            }
+          } else {
+            const messaggio = ultimoErr ?? "errore sconosciuto";
+            batchErrs.push({
+              riga: chunkIndex,
+              errore: `Upsert chunk ${chunkIndex} sotto-blocco ${n}/${tot} (${rows.length} righe) fallito dopo ${SCAD_UPSERT_TENTATIVI} tentativi: ${messaggio}`,
+            });
+            const { error: anErr } = await supabaseAdmin.from("anomalie_import" as never).insert({
+              importazione_id: importazioneId,
+              tipo_anomalia: "upsert_chunk_fallito",
+              campo: "scadenze",
+              codice_gestionale: "",
+              valore_attuale: `chunk ${chunkIndex} sotto-blocco ${n}/${tot}: ${rows.length} righe non scritte`,
+              valore_nuovo: messaggio.slice(0, 300),
+              stato: "in_attesa",
+            } as never);
+            if (anErr) {
+              logger.error(`[chunk ${chunkIndex}] insert anomalia upsert_chunk_fallito fallito: ${anErr.message}`);
+            }
           }
         }
       }
@@ -2190,17 +2242,36 @@ export const finalizeScadenziarioImport = inngest.createFunction(
       // parziali) e preserva i frazionamenti legittimi (entrambe le righe nel file
       // vengono upsertate ed entrambe restano). Eseguito UNA volta dopo l'upsert
       // di tutti i chunk. Le righe orfane sono loggate in anomalie_import per audit.
-      reconc.orfaniRimossi = await step.run("rimuovi-orfani-scadenze", async () => {
-        const { data, error } = await (
-          supabaseAdmin.rpc as unknown as (
-            fn: string,
-            args: Record<string, unknown>,
-          ) => Promise<{ data: number | null; error: { message: string } | null }>
-        )("rimuovi_orfani_scadenze", { _importazione_id: importazioneId });
-        if (error) throw new Error(`rimuovi_orfani_scadenze: ${error.message}`);
-        return (data as number | null) ?? 0;
+      // Verifica completezza: se qualche sotto-blocco non è stato scritto,
+      // la pulizia orfani potrebbe cancellare righe valide → va saltata.
+      const sottoBlocchiFalliti = await step.run("verifica-completezza", async () => {
+        const { count, error } = await supabaseAdmin
+          .from("anomalie_import" as never)
+          .select("id", { count: "exact", head: true })
+          .eq("importazione_id", importazioneId)
+          .eq("tipo_anomalia", "upsert_chunk_fallito");
+        if (error) throw new Error(`verifica-completezza: ${error.message}`);
+        return count ?? 0;
       });
-      logger.info(`Finalize ${importazioneId}: orfani rimossi=${reconc.orfaniRimossi}`);
+      const pulizia_saltata = sottoBlocchiFalliti > 0;
+
+      if (!pulizia_saltata) {
+        reconc.orfaniRimossi = await step.run("rimuovi-orfani-scadenze", async () => {
+          const { data, error } = await (
+            supabaseAdmin.rpc as unknown as (
+              fn: string,
+              args: Record<string, unknown>,
+            ) => Promise<{ data: number | null; error: { message: string } | null }>
+          )("rimuovi_orfani_scadenze", { _importazione_id: importazioneId });
+          if (error) throw new Error(`rimuovi_orfani_scadenze: ${error.message}`);
+          return (data as number | null) ?? 0;
+        });
+        logger.info(`Finalize ${importazioneId}: orfani rimossi=${reconc.orfaniRimossi}`);
+      } else {
+        logger.warn(
+          `Finalize ${importazioneId}: ${sottoBlocchiFalliti} sotto-blocchi non scritti, pulizia orfani SALTATA`,
+        );
+      }
 
       // Aggiorna il precalcolo del fatturato mensile (base del fido teorico).
       await step.run("refresh-fatturato-mensile", async () => {
@@ -2224,12 +2295,6 @@ export const finalizeScadenziarioImport = inngest.createFunction(
         return true;
       });
 
-
-
-
-
-
-
       // Aggiornamento finale dello stato
       await step.run("set-final-state", async () => {
         const { data: cur } = await supabaseAdmin
@@ -2239,17 +2304,22 @@ export const finalizeScadenziarioImport = inngest.createFunction(
           .single();
         const errs = (cur?.righe_errore as number | null) ?? 0;
         const existing = (cur?.log_errori as Array<{ riga: number; errore: string }> | null) ?? [];
-        const summary = [
-          {
+        const summary: Array<{ riga: number; errore: string }> = [];
+        if (pulizia_saltata) {
+          summary.push({
             riga: 0,
-            errore: `Reconciliation: chiuse ${reconc.totChiuse} scadenze su ${reconc.totClienti} clienti; orfani rimossi (rettifiche): ${reconc.orfaniRimossi}`,
-          },
-        ];
+            errore: `ATTENZIONE: ${sottoBlocchiFalliti} sotto-blocchi non scritti dopo ${SCAD_UPSERT_TENTATIVI} tentativi. Pulizia scadenze orfane NON eseguita per sicurezza. Ripetere l'import.`,
+          });
+        }
+        summary.push({
+          riga: 0,
+          errore: `Reconciliation: chiuse ${reconc.totChiuse} scadenze su ${reconc.totClienti} clienti; orfani rimossi (rettifiche): ${reconc.orfaniRimossi}`,
+        });
 
         await supabaseAdmin
           .from("importazioni")
           .update({
-            stato: errs > 0 ? "completata_con_errori" : "completata",
+            stato: errs > 0 || pulizia_saltata ? "completata_con_errori" : "completata",
             completata_at: new Date().toISOString(),
             log_errori: [...summary, ...existing].slice(0, 500),
           } as never)
