@@ -17,12 +17,12 @@ import {
   formatEuro, formatDate, type TipoRichiesta, importoRichiestaValido,
   etichettaTipoRichiesta,
 } from "@/lib/fidi";
-import { puoDecidereRichiesta } from "@/lib/fidi";
+import { puoDecidereRichiesta, condizionePagamentoCambiata } from "@/lib/fidi";
 
 import { ComunicazioniRichiestaPanel } from "@/components/comunicazioni-richiesta-panel";
 import { AllegatiSection } from "@/components/allegati-section";
 import { CambioCondizionePagamento } from "@/components/cambio-condizione-pagamento";
-import { CondizionePagamentoTesto, etichettaCondizionePagamento, useCodiciPagamento } from "@/components/condizione-pagamento-richiesta-select";
+import { CondizionePagamentoTesto, CondizionePagamentoRichiestaSelect, etichettaCondizionePagamento, useCodiciPagamento } from "@/components/condizione-pagamento-richiesta-select";
 import { RICHIESTA_FIDO_SELECT, mapRichiestaFido, importoPerEtichettaTipo } from "@/lib/richieste-fido-data";
 import { getFidoAttuale } from "@/lib/fido-cliente";
 import { PannelloRischioCliente } from "@/components/pannello-rischio-cliente";
@@ -475,8 +475,11 @@ function DecisioneReadOnly({
 
 function ApprovaForm({ richiesta, userId }: { richiesta: any; userId: string }) {
   const vista = mapRichiestaFido(richiesta);
-  if (vista.cambioCondPag) return <ApprovaDoppiaForm richiesta={richiesta} />;
-  return <ApprovaSempliceForm richiesta={richiesta} userId={userId} />;
+  const [aggiungiCondizione, setAggiungiCondizione] = useState(false);
+  if (vista.cambioCondPag || aggiungiCondizione) {
+    return <ApprovaDoppiaForm richiesta={richiesta} senzaProposta={!vista.cambioCondPag} onAnnullaCondizione={() => setAggiungiCondizione(false)} />;
+  }
+  return <ApprovaSempliceForm richiesta={richiesta} userId={userId} onAggiungiCondizione={() => setAggiungiCondizione(true)} />;
 }
 
 function useInvalidaDopoDecisione(richiestaId: string) {
@@ -492,7 +495,7 @@ function useInvalidaDopoDecisione(richiestaId: string) {
 type Scelta = "approvata" | "rifiutata" | null;
 
 /** Box decisione per richieste con cambio di condizione: due decisioni distinte. */
-function ApprovaDoppiaForm({ richiesta }: { richiesta: any }) {
+function ApprovaDoppiaForm({ richiesta, senzaProposta = false, onAnnullaCondizione }: { richiesta: any; senzaProposta?: boolean; onAnnullaCondizione?: () => void }) {
   const vista = mapRichiestaFido(richiesta);
   const invalida = useInvalidaDopoDecisione(richiesta.id);
   const [importo, setImporto] = useState<string>(String(richiesta.importo_richiesto));
@@ -501,21 +504,30 @@ function ApprovaDoppiaForm({ richiesta }: { richiesta: any }) {
   const [sceltaCond, setSceltaCond] = useState<Scelta>(null);
   const { data: codiciPagamento } = useCodiciPagamento();
   const proposta = etichettaCondizionePagamento(codiciPagamento, vista.condPagProposta);
+  const [condScelta, setCondScelta] = useState<string>(!senzaProposta ? vista.condPagProposta ?? "" : "");
+  const condAttuale = vista.condPagAttuale;
+  const condValida = condScelta.trim() !== "" && condizionePagamentoCambiata(condScelta, condAttuale);
+  const condModificata = !senzaProposta && condizionePagamentoCambiata(condScelta, vista.condPagProposta) && condScelta.trim() !== "";
+  const sceltaCondEff: Scelta = senzaProposta ? (condValida ? "approvata" : null) : sceltaCond;
+  const etichettaScelta = etichettaCondizionePagamento(codiciPagamento, condScelta);
   const importoNum = Number(importo);
-  const complete = sceltaFido !== null && sceltaCond !== null;
+  const complete = sceltaFido !== null && sceltaCondEff !== null && (sceltaCondEff !== "approvata" || condValida);
   const richiestoNum = Number(richiesta.importo_richiesto);
   const diversoDalRichiesto =
     importo.trim() !== "" && Number.isFinite(importoNum) && Number.isFinite(richiestoNum) && importoNum !== richiestoNum;
 
   const riepilogo = !complete
-    ? "Scegli una decisione per il fido e una per la condizione di pagamento."
+    ? senzaProposta
+      ? "Scegli una decisione per il fido e la nuova condizione di pagamento."
+      : "Scegli una decisione per il fido e una per la condizione di pagamento."
     : `${sceltaFido === "approvata"
         ? `Fido approvato per ${Number.isFinite(importoNum) && importo.trim() !== "" ? formatEuro(importoNum) : "—"}`
-        : "Fido NON approvato"} · condizione di pagamento ${sceltaCond === "approvata" ? `cambiata in ${proposta}` : "NON cambiata"}`;
+        : "Fido NON approvato"} · condizione di pagamento ${sceltaCondEff === "approvata" ? `cambiata in ${etichettaScelta}` : "NON cambiata"}`;
 
   const decide = useMutation({
     mutationFn: async () => {
-      if (!sceltaFido || !sceltaCond) throw new Error("Completa entrambe le decisioni");
+      if (!sceltaFido || !sceltaCondEff) throw new Error("Completa entrambe le decisioni");
+      if (sceltaCondEff === "approvata" && !condValida) throw new Error("Scegli una condizione di pagamento diversa da quella attuale");
       if (sceltaFido === "approvata") {
         if (importo.trim() === "" || !Number.isFinite(importoNum)) {
           throw new Error("Inserisci l'importo approvato");
@@ -524,22 +536,23 @@ function ApprovaDoppiaForm({ richiesta }: { richiesta: any }) {
           throw new Error("Importo 0 ammesso solo per diminuzione (azzeramento) o rinnovo");
         }
       }
-      const esito = sceltaFido === "approvata" || sceltaCond === "approvata" ? "approvata" : "rifiutata";
+      const esito = sceltaFido === "approvata" || sceltaCondEff === "approvata" ? "approvata" : "rifiutata";
       const { error } = await (supabase as any).rpc("processa_richiesta_fido", {
         _richiesta_id: richiesta.id,
         _esito: esito,
         _note: note || null,
         _importo_approvato: sceltaFido === "approvata" ? importoNum : null,
         _esito_fido: sceltaFido,
-        _esito_condizione: sceltaCond,
+        _esito_condizione: sceltaCondEff,
+        _condizione_approvata_cod: sceltaCondEff === "approvata" ? condScelta.trim() : null,
       });
       if (error) throw error;
     },
     onSuccess: () => {
       const msg =
-        sceltaFido === "approvata" && sceltaCond === "approvata" ? `Fido approvato · condizione di pagamento cambiata in ${proposta}`
+        sceltaFido === "approvata" && sceltaCondEff === "approvata" ? `Fido approvato · condizione di pagamento cambiata in ${etichettaScelta}`
         : sceltaFido === "approvata" ? "Fido approvato · condizione di pagamento non cambiata"
-        : sceltaCond === "approvata" ? `Approvato solo il cambio di condizione di pagamento in ${proposta}`
+        : sceltaCondEff === "approvata" ? `Approvato solo il cambio di condizione di pagamento in ${etichettaScelta}`
         : "Richiesta rifiutata";
       toast.success(msg);
       invalida();
@@ -564,7 +577,7 @@ function ApprovaDoppiaForm({ richiesta }: { richiesta: any }) {
             <SceltaDoppia value={sceltaFido} onChange={setSceltaFido} />
           </div>
         </div>
-        <div className={`min-w-0 rounded-md border p-2.5 space-y-2 ${sceltaCond === "approvata" ? "border-success bg-success/5" : sceltaCond === "rifiutata" ? "border-destructive bg-destructive/5" : "bg-background"}`}>
+        <div className={`min-w-0 rounded-md border p-2.5 space-y-2 ${sceltaCondEff === "approvata" ? "border-success bg-success/5" : sceltaCondEff === "rifiutata" ? "border-destructive bg-destructive/5" : "bg-background"}`}>
           <h3 className="text-[11px] uppercase font-semibold text-muted-foreground">2 · Condizione di pagamento</h3>
           <div className="grid min-w-0 grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
             <div className="min-w-0 rounded bg-muted/50 px-2 py-1">
@@ -572,22 +585,42 @@ function ApprovaDoppiaForm({ richiesta }: { richiesta: any }) {
               <p className="text-sm text-muted-foreground break-words"><CondizionePagamentoTesto cod={vista.condPagRiferimento} descFallback={vista.condPagPrecedente ? null : vista.condPagAttualeDesc} /></p>
             </div>
             <span className="text-sm text-muted-foreground justify-self-center" aria-hidden>→</span>
-            <div className="min-w-0 rounded border border-warning/50 bg-warning/10 px-2 py-1">
-              <p className="text-[10px] uppercase text-muted-foreground">Proposta</p>
-              <p className="text-sm font-semibold break-words"><CondizionePagamentoTesto cod={vista.condPagProposta} /></p>
+            <div className="min-w-0 rounded border border-warning/50 bg-warning/10 px-2 py-1 space-y-1">
+              <p className="text-[10px] uppercase text-muted-foreground">
+                {senzaProposta ? "Nuova condizione" : condModificata ? "Modificata in approvazione" : "Proposta"}
+              </p>
+              <div className={`min-w-0 w-full [&>button]:w-full ${sceltaCond === "rifiutata" ? "pointer-events-none opacity-60" : ""}`}>
+                <CondizionePagamentoRichiestaSelect value={condScelta} onChange={setCondScelta} size="sm" />
+              </div>
             </div>
           </div>
-          <SceltaDoppia value={sceltaCond} onChange={setSceltaCond} />
+          {condModificata && (
+            <div className="flex min-w-0 flex-wrap items-center gap-x-2">
+              <p className="min-w-0 break-words text-xs text-warning">Diversa dalla proposta del richiedente: {proposta}</p>
+              <Button type="button" variant="link" className="h-10 sm:h-auto p-0 text-xs" onClick={() => setCondScelta(vista.condPagProposta ?? "")}>Ripristina proposta</Button>
+            </div>
+          )}
+          {condScelta.trim() !== "" && !condValida && (
+            <p className="min-w-0 break-words text-xs text-destructive">Coincide con la condizione attuale del cliente: scegline un'altra oppure usa Non approvare</p>
+          )}
+          {senzaProposta && (
+            <Button type="button" variant="link" className="h-10 sm:h-auto p-0 text-xs" onClick={() => onAnnullaCondizione?.()}>Annulla cambio condizione</Button>
+          )}
+          {!senzaProposta && <SceltaDoppia value={sceltaCond} onChange={setSceltaCond} />}
         </div>
       </div>
       <div className="border-t pt-2 space-y-2">
         <p className={`min-w-0 break-words tabular-nums ${complete ? "text-sm font-medium text-foreground" : "text-xs text-muted-foreground"}`}>{riepilogo}</p>
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <Input id="note_app" value={note} onChange={(e) => setNote(e.target.value)} className="min-w-0 flex-1 basis-48 h-10 sm:h-8 text-sm" aria-label="Note" placeholder="Note / motivazione (opzionale)" />
-          <Button type="button" variant="outline" size="sm" className="h-10 sm:h-8 text-xs px-3 border-success/40 text-success hover:text-success"
-            onClick={() => { setSceltaFido("approvata"); setSceltaCond("approvata"); }}>Approva tutto</Button>
-          <Button type="button" variant="outline" size="sm" className="h-10 sm:h-8 text-xs px-3 border-destructive/30 text-destructive hover:text-destructive"
-            onClick={() => { setSceltaFido("rifiutata"); setSceltaCond("rifiutata"); }}>Rifiuta tutto</Button>
+          {!senzaProposta && (
+            <>
+              <Button type="button" variant="outline" size="sm" className="h-10 sm:h-8 text-xs px-3 border-success/40 text-success hover:text-success"
+                onClick={() => { setSceltaFido("approvata"); setSceltaCond("approvata"); }}>Approva tutto</Button>
+              <Button type="button" variant="outline" size="sm" className="h-10 sm:h-8 text-xs px-3 border-destructive/30 text-destructive hover:text-destructive"
+                onClick={() => { setSceltaFido("rifiutata"); setSceltaCond("rifiutata"); }}>Rifiuta tutto</Button>
+            </>
+          )}
           <Button className="h-10 sm:h-8 text-xs px-3 gap-1 sm:ml-2" disabled={!complete || decide.isPending} onClick={() => decide.mutate()}>
             <Check className="size-4" /> Conferma decisione
           </Button>
@@ -633,7 +666,7 @@ function SceltaDoppia({ value, onChange }: { value: Scelta; onChange: (v: Scelta
   );
 }
 
-function ApprovaSempliceForm({ richiesta }: { richiesta: any; userId: string }) {
+function ApprovaSempliceForm({ richiesta, onAggiungiCondizione }: { richiesta: any; userId: string; onAggiungiCondizione?: () => void }) {
   const qc = useQueryClient();
   const [importo, setImporto] = useState<string>(String(richiesta.importo_richiesto));
   const [note, setNote] = useState("");
@@ -680,6 +713,11 @@ function ApprovaSempliceForm({ richiesta }: { richiesta: any; userId: string }) 
           <Button onClick={() => decide.mutate("approvata")} disabled={decide.isPending} className="h-10 sm:h-8 text-xs px-3 gap-1 bg-success text-success-foreground hover:bg-success/90"><Check className="size-4" /> Approva</Button>
           <Button variant="outline" onClick={() => decide.mutate("rifiutata")} disabled={decide.isPending} className="h-10 sm:h-8 text-xs px-3 gap-1 text-destructive hover:text-destructive border-destructive/30"><X className="size-4" /> Rifiuta</Button>
         </div>
+        {onAggiungiCondizione && (
+          <Button type="button" variant="link" className="h-10 sm:h-auto p-0 text-xs justify-start whitespace-normal text-left" onClick={onAggiungiCondizione}>
+            Cambia anche la condizione di pagamento
+          </Button>
+        )}
       </div>
     </Card>
   );
