@@ -457,7 +457,7 @@ function RichiestaDetail() {
         </Card>
 
         {r.stato !== "bozza" && r.created_by && (
-          <div className="min-w-0">
+          <div className="min-w-0 [&>[data-slot=card]]:p-3">
             <ComunicazioniRichiestaPanel richiestaId={r.id} richiestaCreatedBy={r.created_by} />
           </div>
         )}
@@ -603,8 +603,8 @@ function ApprovaDoppiaForm({ richiesta }: { richiesta: any }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <div className="min-w-0 space-y-1">
           <p className="text-xs font-semibold">Fido</p>
-          <div className="grid min-w-0 grid-cols-1 items-end gap-2 sm:grid-cols-[10rem_minmax(0,1fr)]">
-            <div className="min-w-0 space-y-1">
+          <div className="flex min-w-0 flex-wrap items-end gap-2">
+            <div className="min-w-0 w-full sm:w-40 space-y-1">
               <Label htmlFor="importo_app" className="text-xs">Importo da approvare (€)</Label>
               <Input id="importo_app" type="number" step="0.01" value={importo}
                 className="h-10 sm:h-9 tabular-nums"
@@ -650,7 +650,7 @@ function ApprovaDoppiaForm({ richiesta }: { richiesta: any }) {
 
 function SceltaDoppia({ value, onChange }: { value: Scelta; onChange: (v: Scelta) => void }) {
   return (
-    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)] gap-2">
+    <div className="grid min-w-0 w-full flex-1 basis-60 grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)] gap-2">
       <Button type="button" variant={value === "approvata" ? "default" : "outline"}
         className={`h-10 sm:h-9 min-w-0 px-2 text-xs gap-1 ${value === "approvata" ? "bg-success text-success-foreground hover:bg-success/90" : ""}`}
         aria-pressed={value === "approvata"} onClick={() => onChange("approvata")}>
