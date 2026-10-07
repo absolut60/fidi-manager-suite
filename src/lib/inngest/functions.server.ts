@@ -2013,9 +2013,9 @@ export const processScadenziarioChunk = inngest.createFunction(
             `[chunk ${chunkIndex}] C.end upsert-scadenze sotto-blocco ${n}/${tot} in ${Date.now() - tUp}ms err=${ok ? "ok" : ultimoErr}`,
           );
           if (ok) {
-            for (const [key] of slice) {
-              if (existingKeys.has(key)) u++;
-              else c++;
+            for (const r of upRows ?? []) {
+              if (new Date(r.created_at).getTime() >= tInizioMs) c++;
+              else u++;
             }
           } else {
             const messaggio = ultimoErr ?? "errore sconosciuto";
