@@ -92,6 +92,13 @@
       "when": 1791363771965,
       "tag": "0012_richieste_fido_condizione_approvata",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1791382892364,
+      "tag": "0013_audit_clienti_campi_significativi",
+      "breakpoints": true
     }
   ]
 }
