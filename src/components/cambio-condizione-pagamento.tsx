@@ -5,7 +5,6 @@
  * Con la richiesta intera confronta con condPagRiferimento (condizione al momento della decisione)
  * e, se esito_condizione_pagamento è valorizzato, mostra l'esito della decisione.
  */
-import { ArrowRight } from "lucide-react";
 import { condizionePagamentoCambiata } from "@/lib/fidi";
 import { mapRichiestaFido } from "@/lib/richieste-fido-data";
 import { CondizionePagamentoTesto, etichettaCondizionePagamento, useCodiciPagamento } from "@/components/condizione-pagamento-richiesta-select";
@@ -73,7 +72,7 @@ export function CambioCondizionePagamento({ variant, codProposta, codAttuale, de
 
   return (
     <div
-      className={`min-w-0 rounded-md border p-3 space-y-2 ${
+      className={`grid min-w-0 grid-cols-1 gap-1 rounded-md border px-3 py-2 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-baseline sm:gap-3 ${
         approvato
           ? "border-success/40 bg-success/10"
           : rifiutato
@@ -81,24 +80,19 @@ export function CambioCondizionePagamento({ variant, codProposta, codAttuale, de
             : "border-warning/40 bg-warning/10"
       } ${className}`}
     >
-      <p className={`text-sm font-semibold ${approvato ? "text-success" : rifiutato ? "text-destructive" : "text-warning"}`}>
+      <p className={`min-w-0 break-words text-sm font-semibold ${approvato ? "text-success" : rifiutato ? "text-destructive" : "text-warning"}`}>
         {approvato
           ? "Cambio condizione APPROVATO"
           : rifiutato
             ? "Cambio condizione NON approvato"
             : "Richiesta di cambio condizioni di pagamento"}
       </p>
-      <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-2 text-sm">
-        <div className="min-w-0 break-words">
-          <p className="text-xs text-muted-foreground">{esito ? "Precedente (al momento della decisione)" : "Attuale (gestionale)"}</p>
-          <p><CondizionePagamentoTesto cod={att} descFallback={attDesc} /></p>
-        </div>
-        <ArrowRight className="hidden sm:block size-4 mt-5 text-warning" />
-        <div className="min-w-0 break-words">
-          <p className="text-xs text-muted-foreground">Nuova proposta</p>
-          <p><CondizionePagamentoTesto cod={prop} /></p>
-        </div>
-      </div>
+      <p className="min-w-0 break-words text-sm">
+        <span className="text-xs text-muted-foreground">{esito ? "Precedente" : "Attuale"}: </span>
+        <CondizionePagamentoTesto cod={att} descFallback={attDesc} />
+        {" → "}<span className="text-xs text-muted-foreground">Nuova proposta: </span>
+        <CondizionePagamentoTesto cod={prop} />
+      </p>
     </div>
   );
 }
