@@ -99,6 +99,13 @@
       "when": 1791382892364,
       "tag": "0013_audit_clienti_campi_significativi",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1791385690372,
+      "tag": "0014_bulk_update_clienti_anagrafica",
+      "breakpoints": true
     }
   ]
 }

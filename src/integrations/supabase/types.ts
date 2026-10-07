@@ -6736,6 +6736,7 @@ export type Database = {
       }
       auto_collega_iscritto_whatsapp: { Args: { _id: string }; Returns: string }
       backfill_contatti_iscritti_whatsapp: { Args: never; Returns: Json }
+      bulk_update_clienti_anagrafica: { Args: { _rows: Json }; Returns: number }
       bulk_update_clienti_bfa: { Args: { _payloads: Json }; Returns: number }
       calcola_fido_base: {
         Args: { _fatturato_lordo: number; _giorni: number }

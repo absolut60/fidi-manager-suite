@@ -162,6 +162,7 @@ async function sendInngestEvents(events: object[]): Promise<void> {
 
 const ANAG_CHUNK_SIZE = 500;
 const ANAG_UPDATE_CONCURRENCY = 20;
+const ANAG_BULK_SUBBATCH = 250;
 const ANAG_MAX_LOG_ERRORI = 500;
 
 type AnagRow = Record<string, unknown> & { __row: number };
@@ -897,6 +898,7 @@ export const processAnagraficaChunk = inngest.createFunction(
         existId: string | null;
       };
       const prepared: Prepared[] = [];
+      const sediNonTrovate = new Map<string, number>();
       for (const r0 of rows) {
         const r = r0 as Record<string, unknown> & { __row: number };
         try {
@@ -909,10 +911,7 @@ export const processAnagraficaChunk = inngest.createFunction(
               if (idx >= 0 && idx < storesByIndex.length) storeId = storesByIndex[idx].id;
             }
             if (!storeId) {
-              errs.push({
-                riga: r.__row,
-                errore: `Store '${storeCodice}' non trovato (warning)`,
-              });
+              sediNonTrovate.set(storeCodice, (sediNonTrovate.get(storeCodice) ?? 0) + 1);
             }
           }
           const codMacro = toStr(r.codice_macrocategoria);
@@ -1085,9 +1084,9 @@ export const processAnagraficaChunk = inngest.createFunction(
         }
       }
 
-      // UPDATE con concorrenza
+      // UPDATE in blocco (RPC) con ripiego per-riga
       if (toUpdate.length) {
-        await runWithConcurrency(toUpdate, ANAG_UPDATE_CONCURRENCY, async (c) => {
+        const updateRiga = async (c: Prepared) => {
           try {
             const { error } = await supabaseAdmin
               .from("clienti")
@@ -1113,11 +1112,79 @@ export const processAnagraficaChunk = inngest.createFunction(
             });
             skipped++;
           }
-        });
+        };
+
+        type GruppoUpdate = {
+          existId: string;
+          righe: Prepared[];
+          payload: Record<string, unknown>;
+        };
+        const gruppiMap = new Map<string, Prepared[]>();
+        for (const c of toUpdate) {
+          const k = c.existId!;
+          const arr = gruppiMap.get(k);
+          if (arr) arr.push(c);
+          else gruppiMap.set(k, [c]);
+        }
+        const gruppi: GruppoUpdate[] = Array.from(gruppiMap.entries()).map(
+          ([existId, righe]) => ({
+            existId,
+            righe,
+            payload: Object.assign({}, ...righe.map((r) => r.payload)) as Record<
+              string,
+              unknown
+            >,
+          }),
+        );
+
+        const rpcBulk = supabaseAdmin.rpc as unknown as (
+          fn: string,
+          args: Record<string, unknown>,
+        ) => Promise<{ data: number | null; error: { message: string } | null }>;
+        const totSub = Math.ceil(gruppi.length / ANAG_BULK_SUBBATCH);
+        for (let s = 0; s < gruppi.length; s += ANAG_BULK_SUBBATCH) {
+          const sub = gruppi.slice(s, s + ANAG_BULK_SUBBATCH);
+          const n = Math.floor(s / ANAG_BULK_SUBBATCH) + 1;
+          let messaggio: string | null = null;
+          try {
+            const { data, error } = await withTimeout(
+              rpcBulk.call(supabaseAdmin, "bulk_update_clienti_anagrafica", {
+                _rows: sub.map((g) => ({ id: g.existId, ...g.payload })),
+              }),
+              60_000,
+              `anagrafica chunk ${chunkIndex} bulk-update`,
+            );
+            if (error) messaggio = error.message;
+            else if (Number(data) !== sub.length)
+              messaggio = `conteggio aggiornati ${data ?? "null"} diverso da ${sub.length}`;
+          } catch (e) {
+            messaggio = e instanceof Error ? e.message : String(e);
+          }
+          if (messaggio === null) {
+            updated += sub.reduce((acc, g) => acc + g.righe.length, 0);
+          } else {
+            logger.warn(
+              `[anagrafica chunk ${chunkIndex}] bulk-update sotto-blocco ${n}/${totSub} fallito, ripiego per-riga: ${messaggio}`,
+            );
+            const righe = sub.flatMap((g) => g.righe);
+            await runWithConcurrency(righe, ANAG_UPDATE_CONCURRENCY, updateRiga);
+          }
+        }
       }
 
       // Voci puramente informative: NON sono errori, non entrano nel conteggio
       const infos: Array<{ riga: number; errore: string; livello: "info" }> = [];
+      if (sediNonTrovate.size) {
+        const totale = Array.from(sediNonTrovate.values()).reduce((a, b) => a + b, 0);
+        const codici = Array.from(sediNonTrovate.keys())
+          .map((k) => `'${k}'`)
+          .join(", ");
+        infos.push({
+          riga: 0,
+          livello: "info",
+          errore: `Sede non riconosciuta chunk ${chunkIndex + 1}/${totalChunks}: ${totale} clienti con codice sede ${codici} non presente tra le sedi (di norma '0' = nessuna sede nel gestionale): sede lasciata invariata.`,
+        });
+      }
 
       // Persisti anomalie email/pec del chunk + log riassuntivo
       if (anomalieEmail.length) {
