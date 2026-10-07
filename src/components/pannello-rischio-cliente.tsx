@@ -211,8 +211,8 @@ export function PannelloRischioCliente({
   if (variant === "extended") {
     return (
       <div className="space-y-1.5">
-        <div className="grid min-w-0 grid-cols-1 items-center gap-1">
-          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+          <div className="contents">
             <h2 className="min-w-0 break-words text-sm font-semibold">Quadro cliente</h2>
             {linkScadenze}
           {cliente.bloccato ? (
@@ -245,7 +245,7 @@ export function PannelloRischioCliente({
             {cliente?.rating_esterno_fonte && <span className="text-[11px] font-normal text-muted-foreground"> {"("}{cliente.rating_esterno_fonte}{cliente.rating_esterno_data ? ` · ${formatDate(cliente.rating_esterno_data)}` : ""}{")"}</span>}
           </span>
           </div>
-          <span className="min-w-0 break-words text-[11px] text-muted-foreground">Sincronizzato: {ultimaSync}</span>
+          <span className="ml-auto min-w-0 break-words text-[11px] text-muted-foreground">Sincronizzato: {ultimaSync}</span>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 2xl:grid-cols-4 gap-x-3 gap-y-1">
           <MetricCard label="Totale rischio" value={formatEuro(totRischio)} />
