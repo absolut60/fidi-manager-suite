@@ -503,6 +503,9 @@ function ApprovaDoppiaForm({ richiesta }: { richiesta: any }) {
   const proposta = etichettaCondizionePagamento(codiciPagamento, vista.condPagProposta);
   const importoNum = Number(importo);
   const complete = sceltaFido !== null && sceltaCond !== null;
+  const richiestoNum = Number(richiesta.importo_richiesto);
+  const diversoDalRichiesto =
+    importo.trim() !== "" && Number.isFinite(importoNum) && Number.isFinite(richiestoNum) && importoNum !== richiestoNum;
 
   const riepilogo = !complete
     ? "Scegli una decisione per il fido e una per la condizione di pagamento."
@@ -553,8 +556,11 @@ function ApprovaDoppiaForm({ richiesta }: { richiesta: any }) {
           <ConfrontoFido richiesta={richiesta} />
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <Label htmlFor="importo_app" className="text-xs">Importo da approvare</Label>
-            <Input id="importo_app" type="number" step="0.01" value={importo} className="w-32 h-10 sm:h-8 text-sm tabular-nums"
-              aria-label="Importo da approvare (€)" placeholder="Importo €" disabled={sceltaFido !== "approvata"} onChange={(e) => setImporto(e.target.value)} />
+            <Input id="importo_app" type="number" step="0.01" value={importo} className="w-32 h-10 sm:h-8 text-sm tabular-nums bg-background border-input"
+              aria-label="Importo da approvare (€)" placeholder="Importo €" disabled={sceltaFido === "rifiutata"} onChange={(e) => setImporto(e.target.value)} />
+            {diversoDalRichiesto && (
+              <span className="text-xs text-warning break-words">diverso dal richiesto ({formatEuro(richiestoNum)})</span>
+            )}
             <SceltaDoppia value={sceltaFido} onChange={setSceltaFido} />
           </div>
         </div>
