@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Check, X, Send, Trash2, Lock, Pencil, Ban, RotateCcw } from "lucide-react";
+import { Check, X, Send, Trash2, Lock, Pencil, Ban, RotateCcw, ExternalLink } from "lucide-react";
 import { BackButton } from "@/components/back-button";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -186,15 +186,18 @@ function RichiestaDetail() {
   );
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {/* 1) TESTATA COMPATTA — una riga su desktop, due su mobile */}
       <div className="space-y-2">
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 sm:flex sm:items-center">
           <div className="flex min-w-0 items-start gap-2 sm:flex-1 sm:items-center sm:gap-3">
             <BackButton fallbackTo="/richieste" fallbackLabel="Richieste" iconOnly />
             <div className="min-w-0">
-              <h1 className="text-lg sm:text-2xl font-bold leading-tight line-clamp-2">
-                {cliente?.ragione_sociale ?? "—"}
+              <h1 className="text-lg sm:text-xl font-bold leading-tight break-words">
+                <Link to="/clienti/$clienteId" params={{ clienteId: r.cliente_id }} className="hover:underline">
+                  {cliente?.ragione_sociale ?? "—"}{" "}
+                  <ExternalLink className="inline size-3.5 shrink-0 align-baseline" aria-hidden />
+                </Link>
               </h1>
               <p className="text-xs text-muted-foreground leading-snug">
                 Richiesta del {formatDate(r.created_at)}
@@ -206,19 +209,19 @@ function RichiestaDetail() {
           <div className="flex shrink-0 items-center gap-1 sm:gap-2">
             <div className="hidden items-center gap-2 sm:flex">{badgeTipo}{badgeStato}</div>
             {canEdit && (
-              <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground"
+              <Button variant="ghost" size="icon" className="h-10 w-10 sm:h-9 sm:w-9 text-muted-foreground hover:text-foreground"
                 title="Modifica richiesta" aria-label="Modifica richiesta" onClick={() => setModificaAperta(true)}>
                 <Pencil className="size-4" />
               </Button>
             )}
             {canRiinvia && (
-              <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground"
+              <Button variant="ghost" size="icon" className="h-10 w-10 sm:h-9 sm:w-9 text-muted-foreground hover:text-foreground"
                 title="Ri-invia (nuova richiesta precompilata)" aria-label="Ri-invia richiesta" onClick={() => setRiinvioAperto(true)}>
                 <RotateCcw className="size-4" />
               </Button>
             )}
             {canAnnulla && (
-              <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-destructive"
+              <Button variant="ghost" size="icon" className="h-10 w-10 sm:h-9 sm:w-9 text-muted-foreground hover:text-destructive"
                 title="Annulla richiesta" aria-label="Annulla richiesta" disabled={annullaMut.isPending}
                 onClick={() => annullaMut.mutate({ id: r.id })}>
                 <Ban className="size-4" />
@@ -228,7 +231,7 @@ function RichiestaDetail() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-9 w-9 text-muted-foreground hover:text-destructive"
+                className="h-10 w-10 sm:h-9 sm:w-9 text-muted-foreground hover:text-destructive"
                 title="Elimina richiesta"
                 onClick={() => {
                   const msg = r.stato === "approvata"
@@ -247,13 +250,13 @@ function RichiestaDetail() {
         <div className="flex flex-wrap items-center gap-2 sm:hidden">{badgeTipo}{badgeStato}</div>
       </div>
 
-      {/* 2) QUATTRO RIQUADRI COMPATTI */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Card className="col-span-2 lg:col-span-1 min-w-0 p-3 sm:p-4 border-info/40 bg-info/5">
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+      {/* 2) DATI DELLA RICHIESTA — fascia compatta */}
+      <Card className="grid grid-cols-1 gap-0 p-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="min-w-0 border-b pb-2 sm:pr-3 lg:border-b-0 lg:border-r lg:pb-0">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase">
             Importo richiesto
           </p>
-          <p className="mt-1 text-xl sm:text-2xl font-bold tabular-nums text-info break-words">
+          <p className="mt-1 text-lg font-bold tabular-nums text-info break-words">
             {formatEuro(Number(r.importo_richiesto))}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
@@ -278,13 +281,13 @@ function RichiestaDetail() {
               </span>
             </p>
           )}
-        </Card>
+        </div>
 
-        <Card className="min-w-0 p-3 sm:p-4">
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+        <div className="min-w-0 border-b py-2 sm:pl-3 sm:pt-0 lg:border-b-0 lg:border-r lg:pr-3 lg:pb-0">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase">
             Livello richiesto
           </p>
-          <p className="mt-1 text-xl sm:text-2xl font-bold break-words">{LIVELLO_LABEL[r.livello_richiesto]}</p>
+          <p className="mt-1 text-base font-semibold break-words">{LIVELLO_LABEL[r.livello_richiesto]}</p>
           <p className="mt-1 text-xs text-muted-foreground">
             {r.stato === "in_approvazione"
               ? <>In attesa · livello corrente <span className="font-medium text-foreground">Liv. {r.livello_corrente}</span></>
@@ -292,24 +295,24 @@ function RichiestaDetail() {
                 ? "Da inviare in approvazione"
                 : <>Livello corrente <span className="font-medium text-foreground">Liv. {r.livello_corrente}</span></>}
           </p>
-        </Card>
+        </div>
 
-        <Card className="min-w-0 p-3 sm:p-4">
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+        <div className="min-w-0 border-b py-2 sm:border-b-0 sm:pr-3 lg:border-r lg:py-0 lg:pl-3">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase">
             Semaforo rischio
           </p>
           <div className="mt-1 flex items-center gap-2">
             <span className={`inline-block size-3 shrink-0 rounded-full ${sem.dotClass}`} />
-            <span className={`text-xl sm:text-2xl font-bold ${sem.textClass}`}>{sem.label}</span>
+            <span className={`text-base font-semibold ${sem.textClass}`}>{sem.label}</span>
           </div>
           <p className="mt-1 text-xs text-muted-foreground break-words">{sem.motivo}</p>
-        </Card>
+        </div>
 
-        <Card className="col-span-2 lg:col-span-1 min-w-0 p-3 sm:p-4">
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+        <div className="min-w-0 pt-2 sm:pl-3 lg:pt-0">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase">
             Richiesta
           </p>
-          <dl className="mt-1 space-y-0.5 text-xs sm:text-sm">
+          <dl className="mt-1 space-y-0.5 text-xs">
             <Info label="Richiesto da" value={userNameDet((r as any).richiedente)} />
             <Info label="Inviata il" value={formatDate(dataInvio)} />
             <Info label="Punto vendita" value={storeNome} />
@@ -324,8 +327,8 @@ function RichiestaDetail() {
               <Info label="Chiusa il" value={formatDate(r.data_chiusura)} />
             )}
           </dl>
-        </Card>
-      </div>
+        </div>
+      </Card>
 
       <CambioCondizionePagamento variant="blocco" richiesta={r} />
 
@@ -353,15 +356,24 @@ function RichiestaDetail() {
 
       {/* 4) QUADRO CLIENTE — variante estesa con metric card */}
       {cliente && (
-        <Card className="p-4">
-          <PannelloRischioCliente cliente={cliente} variant="extended" />
+        <Card className="p-3">
+          <PannelloRischioCliente cliente={cliente} variant="extended"
+            linkScadenze={
+              <Button asChild variant="outline" size="sm" className="min-h-10 max-w-full whitespace-normal text-xs">
+                <Link to="/clienti/$clienteId" params={{ clienteId: r.cliente_id }}
+                  search={{ tab: "insoluti", insolutiTab: "scadenziario" }}>
+                  <ExternalLink className="size-3.5 shrink-0" /> Apri scadenze del cliente
+                </Link>
+              </Button>
+            }
+          />
         </Card>
       )}
 
       {/* 5) WORKFLOW (step orizzontali) + STORICO DECISIONI */}
-      <Card className="p-4 space-y-3">
-        <h2 className="font-semibold">Workflow approvazione</h2>
-        <ol className="flex flex-wrap gap-x-6 gap-y-3">
+      <Card className="p-3 space-y-2">
+        <h2 className="text-sm font-semibold">Workflow approvazione</h2>
+        <ol className="flex flex-wrap gap-x-4 gap-y-2">
           {[1, 2, 3].slice(0, r.livello_richiesto).map((liv) => {
             const done = approvazioni?.find((a) => a.livello === liv);
             const isCurrent = r.stato === "in_approvazione" && r.livello_corrente === liv;
@@ -393,7 +405,7 @@ function RichiestaDetail() {
         </ol>
 
         {approvazioni && approvazioni.length > 0 && (
-          <div className="border-t pt-3">
+          <div className="border-t pt-2">
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Storico decisioni</h3>
             <ul className="space-y-1">
               {approvazioni.map((a) => (
@@ -426,9 +438,9 @@ function RichiestaDetail() {
         )}
       </Card>
 
-      {/* 6) ALLEGATI + COMUNICAZIONI (affiancati su xl) */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-start">
-        <Card className="p-4 min-w-0">
+      {/* 6) ALLEGATI + COMUNICAZIONI (affiancati su lg) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 items-start">
+        <Card className="p-3 min-w-0">
           <AllegatiSection
             entitaTipo="richiesta_fido"
             entitaId={r.id}
@@ -583,69 +595,69 @@ function ApprovaDoppiaForm({ richiesta }: { richiesta: any }) {
   });
 
   return (
-    <Card className="p-4 border-info/40 bg-info/5 space-y-4 min-w-0">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="font-semibold">
-          Decisione <span className="text-xs font-normal text-muted-foreground">(richiede livello {richiesta.livello_richiesto})</span>
-        </h2>
-        <div className="grid grid-cols-1 gap-2 sm:flex">
-          <Button type="button" variant="outline" size="sm" className="h-10 sm:h-9"
-            onClick={() => { setSceltaFido("approvata"); setSceltaCond("approvata"); }}>
-            Approva tutto
-          </Button>
-          <Button type="button" variant="outline" size="sm" className="h-10 sm:h-9"
-            onClick={() => { setSceltaFido("rifiutata"); setSceltaCond("rifiutata"); }}>
-            Rifiuta tutto
-          </Button>
-        </div>
-      </div>
+    <Card className="p-3 border-info/40 bg-info/5 space-y-2 min-w-0">
+      <h2 className="text-sm font-semibold">
+        Decisione <span className="text-xs font-normal text-muted-foreground">(richiede livello {richiesta.livello_richiesto})</span>
+      </h2>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="min-w-0 space-y-2 rounded-md border bg-background p-3">
-          <p className="text-sm font-semibold">Fido</p>
-          <SceltaDoppia value={sceltaFido} onChange={setSceltaFido} />
-          <div className="space-y-1.5">
-            <Label htmlFor="importo_app">Importo da approvare (€)</Label>
-            <Input id="importo_app" type="number" step="0.01" value={importo}
-              disabled={sceltaFido !== "approvata"}
-              onChange={(e) => setImporto(e.target.value)} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <div className="min-w-0 space-y-1">
+          <p className="text-xs font-semibold">Fido</p>
+          <div className="grid min-w-0 grid-cols-1 items-end gap-2 sm:grid-cols-[10rem_minmax(0,1fr)]">
+            <div className="min-w-0 space-y-1">
+              <Label htmlFor="importo_app" className="text-xs">Importo da approvare (€)</Label>
+              <Input id="importo_app" type="number" step="0.01" value={importo}
+                className="h-10 sm:h-9 tabular-nums"
+                disabled={sceltaFido !== "approvata"}
+                onChange={(e) => setImporto(e.target.value)} />
+            </div>
+            <SceltaDoppia value={sceltaFido} onChange={setSceltaFido} />
           </div>
         </div>
-        <div className="min-w-0 space-y-2 rounded-md border bg-background p-3">
-          <p className="text-sm font-semibold break-words">
+        <div className="min-w-0 space-y-1">
+          <p className="text-xs font-semibold break-words">
             Condizione di pagamento (<CondizionePagamentoTesto cod={vista.condPagRiferimento} descFallback={vista.condPagPrecedente ? null : vista.condPagAttualeDesc} /> → <CondizionePagamentoTesto cod={vista.condPagProposta} />)
           </p>
           <SceltaDoppia value={sceltaCond} onChange={setSceltaCond} />
         </div>
       </div>
 
-      <div className="space-y-1.5">
-        <Label htmlFor="note_app">Note</Label>
-        <Textarea id="note_app" rows={1} value={note} onChange={(e) => setNote(e.target.value)}
-          placeholder="Motivazione (opzionale)" />
+      <div className="grid min-w-0 grid-cols-1 items-end gap-2 lg:grid-cols-[minmax(0,1fr)_auto]">
+        <div className="min-w-0 space-y-1">
+          <Label htmlFor="note_app" className="text-xs">Note</Label>
+          <Textarea id="note_app" rows={1} value={note} onChange={(e) => setNote(e.target.value)}
+            className="min-h-10 h-10 resize-y py-2" placeholder="Motivazione (opzionale)" />
+        </div>
+        <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap lg:flex-nowrap">
+          <Button type="button" variant="outline" size="sm" className="h-10 sm:h-9 border-success/40 text-success hover:text-success"
+            onClick={() => { setSceltaFido("approvata"); setSceltaCond("approvata"); }}>
+            Approva tutto
+          </Button>
+          <Button type="button" variant="outline" size="sm" className="h-10 sm:h-9 border-destructive/30 text-destructive hover:text-destructive"
+            onClick={() => { setSceltaFido("rifiutata"); setSceltaCond("rifiutata"); }}>
+            Rifiuta tutto
+          </Button>
+          <Button className="h-10 sm:h-9 gap-1.5" disabled={!complete || decide.isPending}
+            onClick={() => decide.mutate()}>
+            <Check className="size-4" /> Conferma decisione
+          </Button>
+        </div>
       </div>
-
-      <div className="space-y-1.5">
-        <Button className="w-full sm:w-auto gap-1.5" disabled={!complete || decide.isPending}
-          onClick={() => decide.mutate()}>
-          <Check className="size-4" /> Conferma decisione
-        </Button>
-        <p className="text-sm text-muted-foreground break-words">{riepilogo}</p>
-      </div>
+      <p className="text-xs text-muted-foreground break-words tabular-nums">{riepilogo}</p>
     </Card>
   );
 }
 
 function SceltaDoppia({ value, onChange }: { value: Scelta; onChange: (v: Scelta) => void }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)] gap-2">
       <Button type="button" variant={value === "approvata" ? "default" : "outline"}
-        className={`h-10 gap-1.5 ${value === "approvata" ? "bg-success text-success-foreground hover:bg-success/90" : ""}`}
+        className={`h-10 sm:h-9 min-w-0 px-2 text-xs gap-1 ${value === "approvata" ? "bg-success text-success-foreground hover:bg-success/90" : ""}`}
         aria-pressed={value === "approvata"} onClick={() => onChange("approvata")}>
         <Check className="size-4" /> Approva
       </Button>
       <Button type="button" variant={value === "rifiutata" ? "default" : "outline"}
-        className={`h-10 gap-1.5 ${value === "rifiutata" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : "text-destructive hover:text-destructive border-destructive/30"}`}
+        className={`h-10 sm:h-9 min-w-0 px-2 text-xs gap-1 ${value === "rifiutata" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : "text-destructive hover:text-destructive border-destructive/30"}`}
         aria-pressed={value === "rifiutata"} onClick={() => onChange("rifiutata")}>
         <X className="size-4" /> Non approvare
       </Button>
@@ -688,38 +700,39 @@ function ApprovaSempliceForm({ richiesta }: { richiesta: any; userId: string }) 
   });
 
   return (
-    <Card className="p-4 border-info/40 bg-info/5">
-      <h2 className="font-semibold mb-2">
+    <Card className="p-3 border-info/40 bg-info/5">
+      <h2 className="text-sm font-semibold mb-2">
         Decisione <span className="text-xs font-normal text-muted-foreground">(richiede livello {richiesta.livello_richiesto})</span>
       </h2>
       <CambioCondizionePagamento variant="riga" richiesta={richiesta} className="mb-3" />
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <Label htmlFor="importo_app">Importo da approvare (€)</Label>
+      <div className="grid min-w-0 grid-cols-1 items-end gap-2 lg:grid-cols-[10rem_minmax(0,1fr)_auto]">
+        <div className="min-w-0 space-y-1">
+          <Label htmlFor="importo_app" className="text-xs">Importo da approvare (€)</Label>
           <Input
             id="importo_app"
+            className="h-10 sm:h-9 tabular-nums"
             type="number"
             step="0.01"
             value={importo}
             onChange={(e) => setImporto(e.target.value)}
           />
         </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="note_app">Note</Label>
+        <div className="min-w-0 space-y-1">
+          <Label htmlFor="note_app" className="text-xs">Note</Label>
           <Textarea
             id="note_app"
+            className="min-h-10 h-10 resize-y py-2"
             rows={1}
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Motivazione (opzionale)"
           />
         </div>
-      </div>
-      <div className="flex flex-wrap gap-2 mt-4">
+        <div className="flex min-w-0 flex-wrap gap-2">
         <Button
           onClick={() => decide.mutate("approvata")}
           disabled={decide.isPending}
-          className="gap-1.5 bg-success text-success-foreground hover:bg-success/90"
+          className="h-10 sm:h-9 gap-1.5 bg-success text-success-foreground hover:bg-success/90"
         >
           <Check className="size-4" /> Approva
         </Button>
@@ -727,10 +740,11 @@ function ApprovaSempliceForm({ richiesta }: { richiesta: any; userId: string }) 
           variant="outline"
           onClick={() => decide.mutate("rifiutata")}
           disabled={decide.isPending}
-          className="gap-1.5 text-destructive hover:text-destructive border-destructive/30"
+          className="h-10 sm:h-9 gap-1.5 text-destructive hover:text-destructive border-destructive/30"
         >
           <X className="size-4" /> Rifiuta
         </Button>
+        </div>
       </div>
     </Card>
   );
