@@ -211,7 +211,7 @@ export function PannelloRischioCliente({
   if (variant === "extended") {
     return (
       <div className="space-y-1.5">
-        <div className="grid min-w-0 grid-cols-1 items-center gap-1 sm:grid-cols-[minmax(0,1fr)_auto]">
+        <div className="grid min-w-0 grid-cols-1 items-center gap-1">
           <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs">
             <h2 className="min-w-0 break-words text-sm font-semibold">Quadro cliente</h2>
             {linkScadenze}
@@ -240,10 +240,14 @@ export function PannelloRischioCliente({
             </span>
           )}
 
+          <span className="min-w-0 text-xs break-words">
+            Valutazione esterna: {cliente?.rating_esterno || "n.d."}
+            {cliente?.rating_esterno_fonte && <span className="text-[11px] font-normal text-muted-foreground"> {"("}{cliente.rating_esterno_fonte}{cliente.rating_esterno_data ? ` · ${formatDate(cliente.rating_esterno_data)}` : ""}{")"}</span>}
+          </span>
           </div>
           <span className="min-w-0 break-words text-[11px] text-muted-foreground">Sincronizzato: {ultimaSync}</span>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8 gap-x-3 gap-y-1">
+        <div className="grid grid-cols-2 sm:grid-cols-3 2xl:grid-cols-4 gap-x-3 gap-y-1">
           <MetricCard label="Totale rischio" value={formatEuro(totRischio)} />
           <MetricCard label="Scaduto" value={formatEuro(scaduto)} tone={scaduto > 0 ? "destructive" : "success"} />
           <MetricCard label="A scadere" value={formatEuro(Number(cliente.a_scadere ?? 0))} />
@@ -266,10 +270,7 @@ export function PannelloRischioCliente({
           <QuadroCell label="Dilaz. concordata">{cliente.dilazione_concordata ?? "—"}{cliente.dilazione_concordata != null ? " gg" : ""}</QuadroCell>
           <QuadroCell label="Dilaz. effettiva">{cliente.dilazione_effettiva ?? "—"}{cliente.dilazione_effettiva != null ? " gg" : ""}</QuadroCell>
           <EsperienzaPagamentoCards esp={esp} />
-          <QuadroCell label="Valutazione esterna">
-            {cliente?.rating_esterno || "n.d."}
-            {cliente?.rating_esterno_fonte && <span className="text-[11px] font-normal text-muted-foreground"> {"("}{cliente.rating_esterno_fonte}{cliente.rating_esterno_data ? ` · ${formatDate(cliente.rating_esterno_data)}` : ""}{")"}</span>}
-          </QuadroCell>
+
         </div>
       </div>
     );
