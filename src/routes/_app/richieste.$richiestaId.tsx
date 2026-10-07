@@ -250,8 +250,8 @@ function RichiestaDetail() {
       </div>
 
       {/* 2) DATI DELLA RICHIESTA — una fascia, senza ripetizioni */}
-      <Card className="grid grid-cols-1 md:grid-cols-3 xl:flex xl:flex-wrap gap-x-3 gap-y-1 p-2.5 [&>div]:min-w-0 [&>div]:xl:flex-1 [&>div]:xl:border-r [&>div]:xl:pr-3 [&>div:last-child]:border-r-0">
-        <div className="xl:basis-64">
+      <Card className="grid grid-cols-1 md:grid-cols-3 xl:flex xl:flex-wrap gap-x-3 gap-y-1 p-2.5 [&>div]:min-w-0 [&>div]:xl:grow [&>div]:xl:border-r [&>div]:xl:pr-3 [&>div:last-child]:border-r-0">
+        <div className="xl:basis-72">
           <p className="text-[10px] uppercase text-muted-foreground">Importo richiesto</p>
           <p className="text-base font-bold text-info tabular-nums break-words">
             {formatEuro(Number(r.importo_richiesto))}{" "}
@@ -359,7 +359,7 @@ function RichiestaDetail() {
                   {done?.esito === "approvata" ? <Check className="size-3.5" /> :
                    done?.esito === "rifiutata" ? <X className="size-3.5" /> : liv}
                 </div>
-                <div className="min-w-0">
+                <div className="flex min-w-0 flex-wrap items-baseline gap-x-1">
                   <p className="text-xs font-medium leading-tight">Livello {liv}</p>
                   {done ? (
                     <p className="text-xs text-muted-foreground break-words">
