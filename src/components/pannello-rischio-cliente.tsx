@@ -121,6 +121,8 @@ interface Props {
   showFatturato?: boolean;
   /** Presentazione: compatta (dialog creazione) o estesa (dettaglio richiesta). */
   variant?: "compact" | "extended";
+  /** Collegamento opzionale nell'intestazione della sola variante estesa. */
+  linkScadenze?: React.ReactNode;
 }
 
 export function PannelloRischioCliente({
@@ -128,6 +130,7 @@ export function PannelloRischioCliente({
   ultimoApprovatoImp = null,
   showFatturato = true,
   variant = "compact",
+  linkScadenze,
 }: Props) {
   const annoCorrente = new Date().getFullYear();
   const annoPrec = annoCorrente - 1;
@@ -207,16 +210,19 @@ export function PannelloRischioCliente({
 
   if (variant === "extended") {
     return (
-      <div className="space-y-4">
-        <div className="flex items-end justify-between gap-2 flex-wrap">
-          <h2 className="font-semibold">Quadro cliente</h2>
-          <span className="text-xs text-muted-foreground">
+      <div className="space-y-2">
+        <div className="grid min-w-0 grid-cols-1 items-center gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <h2 className="min-w-0 break-words text-sm font-semibold">Quadro cliente</h2>
+            {linkScadenze}
+          </div>
+          <span className="min-w-0 break-words text-xs text-muted-foreground">
             Ultima sincronizzazione: {ultimaSync}
           </span>
         </div>
 
         {/* Metriche quadro + esperienza pagamento in un'unica griglia */}
-        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-2">
           <MetricCard label="Totale rischio" value={formatEuro(totRischio)} />
           <MetricCard
             label="Scaduto"
@@ -236,7 +242,7 @@ export function PannelloRischioCliente({
         </div>
 
         {/* Dettaglio raggruppato in 2 colonne */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-x-6 gap-y-0 text-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-x-4 gap-y-0 text-sm">
           <DetailRow label="Fido gestionale">
             <span className="tabular-nums font-medium">{formatEuro(fidoAttuale)}</span>
             {ultimoApprovatoImp != null && (
@@ -280,7 +286,7 @@ export function PannelloRischioCliente({
           </DetailRow>
         </div>
 
-        <div className="border-t pt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
+        <div className="border-t pt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
           <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
             <span className="text-muted-foreground">Valutazione esterna:</span>
             {cliente?.rating_esterno ? (
@@ -408,9 +414,9 @@ function MetricCard({
     tone === "info" ? "text-info" :
     tone === "success" ? "text-success" : "";
   return (
-    <div className="min-w-0 rounded-md bg-secondary px-2.5 py-2">
+    <div className="min-w-0 rounded-md bg-secondary px-2 py-1.5">
       <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide break-words">{label}</p>
-      <p className={`mt-0.5 text-base font-semibold tabular-nums break-words ${valueTone}`}>{value}</p>
+      <p className={`mt-0.5 text-sm font-semibold tabular-nums break-words ${valueTone}`}>{value}</p>
       {subtext && (
         <p className="mt-0.5 text-[11px] text-muted-foreground">{subtext}</p>
       )}
@@ -420,9 +426,9 @@ function MetricCard({
 
 function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-3 py-1 border-b last:border-b-0 border-border/50">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="text-right text-foreground font-medium">{children}</span>
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-center gap-2 py-0.5 border-b last:border-b-0 border-border/50">
+      <span className="min-w-0 break-words text-xs text-muted-foreground">{label}</span>
+      <span className="min-w-0 break-words text-right text-foreground font-medium">{children}</span>
     </div>
   );
 }
@@ -431,7 +437,7 @@ function DetailRow({ label, children }: { label: string; children: React.ReactNo
 function EsperienzaPagamentoCards({ esp }: { esp: EspData }) {
   if (!esp || esp.nPagate === 0) {
     return (
-      <div className="col-span-2 min-w-0 rounded-md border border-dashed px-2.5 py-2">
+      <div className="sm:col-span-2 min-w-0 rounded-md border border-dashed px-2 py-1.5">
         <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Esperienza pagamento</p>
         <p className="mt-0.5 text-sm text-muted-foreground">Nessuno storico pagamenti</p>
       </div>
@@ -447,7 +453,7 @@ function EsperienzaPagamentoCards({ esp }: { esp: EspData }) {
   const pre = "Esp. ·";
   return (
     <>
-      <div className="col-span-2 md:col-span-4 xl:hidden border-t pt-2 text-[11px] text-muted-foreground">
+      <div className="sm:col-span-2 md:col-span-4 xl:hidden border-t pt-2 text-[11px] text-muted-foreground">
         Esperienza pagamento (su {esp.nPagate} scadenze pagate)
       </div>
       <div className="contents" title={`Esperienza pagamento (su ${esp.nPagate} scadenze pagate)`}>
