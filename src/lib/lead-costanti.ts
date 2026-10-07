@@ -94,6 +94,22 @@ export const LEAD_TIPO_LABEL: Record<LeadTipo, string> = {
   richiesta_specifica: "Richiesta specifica",
 };
 
+/** Tipo di soggetto del lead: valori reali di lead.tipo_soggetto (text). */
+export type LeadTipoSoggetto = "azienda" | "persona_fisica";
+export const LEAD_TIPI_SOGGETTO: LeadTipoSoggetto[] = ["azienda", "persona_fisica"];
+export const LEAD_TIPO_SOGGETTO_LABEL: Record<LeadTipoSoggetto, string> = {
+  azienda: "Azienda",
+  persona_fisica: "Persona fisica",
+};
+
+/** Etichetta del tipo soggetto; "—" se il valore è assente o non riconosciuto. */
+export function etichettaTipoSoggetto(v?: string | null): string {
+  return (LEAD_TIPI_SOGGETTO as string[]).includes(v ?? "")
+    ? LEAD_TIPO_SOGGETTO_LABEL[v as LeadTipoSoggetto]
+    : "—";
+}
+
+
 export const LEAD_FONTI: LeadFonte[] = ["web", "hubspot", "manuale", "fiera", "evento", "altro"];
 export const LEAD_FONTE_LABEL: Record<LeadFonte, string> = {
   web: "Web",
