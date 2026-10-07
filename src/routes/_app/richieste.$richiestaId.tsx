@@ -267,14 +267,30 @@ function RichiestaDetail() {
         </div>
         <div className="xl:basis-56">
           <p className="text-[10px] uppercase text-muted-foreground">Livello</p>
-          <p className="text-sm font-semibold break-words">{LIVELLO_LABEL[r.livello_richiesto]}{" "}
-            <span className="text-xs font-normal text-muted-foreground">
-              {r.stato === "in_approvazione"
-                ? <>In attesa · livello corrente <span className="font-medium text-foreground">Liv. {r.livello_corrente}</span></>
-                : r.stato === "bozza" ? "Da inviare in approvazione"
-                : <>Livello corrente <span className="font-medium text-foreground">Liv. {r.livello_corrente}</span></>}
-            </span>
-          </p>
+          <p className="text-sm font-semibold break-words">{LIVELLO_LABEL[r.livello_richiesto]}</p>
+          <ol className="flex min-w-0 flex-wrap items-center gap-1 mt-0.5" aria-label="Workflow approvazione">
+            {[1, 2, 3].slice(0, r.livello_richiesto).map((liv) => {
+              const done = approvazioni?.find((a) => a.livello === liv);
+              const isCurrent = r.stato === "in_approvazione" && r.livello_corrente === liv;
+              const dettaglio = `Livello ${liv} — ${done
+                ? `${done.esito === "approvata" ? "Approvato" : "Rifiutato"} da ${(done as any).profili?.nome ?? "—"} ${(done as any).profili?.cognome ?? ""} il ${formatDate(done.created_at)}`
+                : isCurrent ? "In attesa di decisione" : "Da svolgere"}`;
+              return (
+                <li key={liv} className="shrink-0">
+                  <span title={dettaglio} aria-label={dettaglio} className={`size-5 rounded-full flex items-center justify-center text-xs font-semibold ${
+                    done?.esito === "approvata" ? "bg-success/15 text-success" :
+                    done?.esito === "rifiutata" ? "bg-destructive/15 text-destructive" :
+                    isCurrent ? "bg-info/15 text-info" : "bg-muted text-muted-foreground"
+                  }`}>
+                    {done?.esito === "approvata" ? <Check className="size-3.5" /> :
+                      done?.esito === "rifiutata" ? <X className="size-3.5" /> : liv}
+                  </span>
+                </li>
+              );
+            })}
+            {r.stato === "in_approvazione" && <li className="min-w-0 text-xs text-info break-words">Liv. {r.livello_corrente} in attesa di decisione</li>}
+            {r.stato === "bozza" && <li className="min-w-0 text-xs text-muted-foreground break-words">Da inviare in approvazione</li>}
+          </ol>
         </div>
         <div className="xl:basis-56">
           <p className="text-[10px] uppercase text-muted-foreground">Semaforo</p>
@@ -325,7 +341,9 @@ function RichiestaDetail() {
         </div>
       )}
 
-      {/* 4) QUADRO CLIENTE — variante estesa con metric card */}
+      {/* Quadro, storico e allegati a sinistra; comunicazioni allineate in alto. */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 items-start">
+        <div className={`min-w-0 space-y-2 ${r.stato !== "bozza" && r.created_by ? "lg:col-span-7" : "lg:col-span-12"}`}>
       {cliente && (
         <Card className="p-2.5">
           <PannelloRischioCliente cliente={cliente} variant="extended"
@@ -340,45 +358,8 @@ function RichiestaDetail() {
           />
         </Card>
       )}
-
-      {/* 5) WORKFLOW (step orizzontali) + STORICO DECISIONI */}
-      <Card className="p-2.5 space-y-1.5">
-        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-        <h2 className="text-xs font-semibold">Workflow</h2>
-        <ol className="flex min-w-0 flex-wrap gap-x-4 gap-y-1">
-          {[1, 2, 3].slice(0, r.livello_richiesto).map((liv) => {
-            const done = approvazioni?.find((a) => a.livello === liv);
-            const isCurrent = r.stato === "in_approvazione" && r.livello_corrente === liv;
-            return (
-              <li key={liv} className="flex min-w-0 items-start gap-2">
-                <div className={`size-5 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 ${
-                  done?.esito === "approvata" ? "bg-success/15 text-success" :
-                  done?.esito === "rifiutata" ? "bg-destructive/15 text-destructive" :
-                  isCurrent ? "bg-info/15 text-info" : "bg-muted text-muted-foreground"
-                }`}>
-                  {done?.esito === "approvata" ? <Check className="size-3.5" /> :
-                   done?.esito === "rifiutata" ? <X className="size-3.5" /> : liv}
-                </div>
-                <div className="flex min-w-0 flex-wrap items-baseline gap-x-1">
-                  <p className="text-xs font-medium leading-tight">Livello {liv}</p>
-                  {done ? (
-                    <p className="text-xs text-muted-foreground break-words">
-                      {done.esito === "approvata" ? "Approvato" : "Rifiutato"} da {(done as any).profili?.nome ?? "—"} {(done as any).profili?.cognome ?? ""} il {formatDate(done.created_at)}
-                    </p>
-                  ) : isCurrent ? (
-                    <p className="text-xs text-info">In attesa di decisione</p>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">Da svolgere</p>
-                  )}
-                </div>
-              </li>
-            );
-          })}
-        </ol>
-        </div>
-
         {approvazioni && approvazioni.length > 0 && (
-          <div className="border-t pt-2">
+          <Card className="p-2.5 min-w-0">
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Storico decisioni</h3>
             <ul className="space-y-1">
               {approvazioni.map((a) => (
@@ -407,12 +388,8 @@ function RichiestaDetail() {
                 </li>
               ))}
             </ul>
-          </div>
+          </Card>
         )}
-      </Card>
-
-      {/* 6) ALLEGATI + COMUNICAZIONI (affiancati su lg) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 items-start">
         <Card className="p-2.5 min-w-0 [&_h3]:text-sm">
           <AllegatiSection
             entitaTipo="richiesta_fido"
@@ -428,10 +405,10 @@ function RichiestaDetail() {
             }
           />
         </Card>
-
+        </div>
         {r.stato !== "bozza" && r.created_by && (
-          <div className="min-w-0 [&>div:first-child]:p-2.5 [&_h2]:text-sm">
-            <ComunicazioniRichiestaPanel richiestaId={r.id} richiestaCreatedBy={r.created_by} />
+          <div className="min-w-0 lg:col-span-5">
+            <ComunicazioniRichiestaPanel richiestaId={r.id} richiestaCreatedBy={r.created_by} compatto />
           </div>
         )}
       </div>
@@ -568,36 +545,68 @@ function ApprovaDoppiaForm({ richiesta }: { richiesta: any }) {
   });
 
   return (
-    <Card className="p-2.5 border-info/40 bg-info/5 space-y-1.5 min-w-0">
-      <div className="grid min-w-0 grid-cols-1 gap-1 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-baseline">
-        <h2 className="text-sm font-semibold">Decisione <span className="text-xs font-normal text-muted-foreground">(richiede livello {richiesta.livello_richiesto})</span></h2>
-        <p className="min-w-0 text-xs text-muted-foreground break-words tabular-nums sm:text-right">{riepilogo}</p>
-      </div>
-      <div className="flex min-w-0 flex-col gap-2 xl:flex-row xl:items-center">
-        <div className="flex min-w-0 shrink-0 flex-wrap items-center gap-2">
-          <Label htmlFor="importo_app" className="text-xs">Fido</Label>
-          <Input id="importo_app" type="number" step="0.01" value={importo} className="w-28 h-10 sm:h-8 text-sm tabular-nums"
-            aria-label="Importo da approvare (€)" placeholder="Importo €" disabled={sceltaFido !== "approvata"} onChange={(e) => setImporto(e.target.value)} />
-          <SceltaDoppia value={sceltaFido} onChange={setSceltaFido} />
+    <Card className="p-2.5 border-info/40 bg-info/5 space-y-2 min-w-0">
+      <h2 className="text-sm font-semibold">Decisione <span className="text-xs font-normal text-muted-foreground">(richiede livello {richiesta.livello_richiesto})</span></h2>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 min-w-0">
+        <div className={`min-w-0 rounded-md border p-2.5 space-y-2 ${sceltaFido === "approvata" ? "border-success bg-success/5" : sceltaFido === "rifiutata" ? "border-destructive bg-destructive/5" : "bg-background"}`}>
+          <h3 className="text-[11px] uppercase font-semibold text-muted-foreground">1 · Fido</h3>
+          <ConfrontoFido richiesta={richiesta} />
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <Label htmlFor="importo_app" className="text-xs">Importo da approvare</Label>
+            <Input id="importo_app" type="number" step="0.01" value={importo} className="w-32 h-10 sm:h-8 text-sm tabular-nums"
+              aria-label="Importo da approvare (€)" placeholder="Importo €" disabled={sceltaFido !== "approvata"} onChange={(e) => setImporto(e.target.value)} />
+            <SceltaDoppia value={sceltaFido} onChange={setSceltaFido} />
+          </div>
         </div>
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 xl:border-l xl:pl-3">
-          <p className="min-w-0 flex-1 basis-56 text-xs break-words">
-            Cond. pagamento: <CondizionePagamentoTesto cod={vista.condPagRiferimento} descFallback={vista.condPagPrecedente ? null : vista.condPagAttualeDesc} /> → <CondizionePagamentoTesto cod={vista.condPagProposta} />
-          </p>
+        <div className={`min-w-0 rounded-md border p-2.5 space-y-2 ${sceltaCond === "approvata" ? "border-success bg-success/5" : sceltaCond === "rifiutata" ? "border-destructive bg-destructive/5" : "bg-background"}`}>
+          <h3 className="text-[11px] uppercase font-semibold text-muted-foreground">2 · Condizione di pagamento</h3>
+          <div className="grid min-w-0 grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
+            <div className="min-w-0 rounded bg-muted/50 px-2 py-1">
+              <p className="text-[10px] uppercase text-muted-foreground">Attuale</p>
+              <p className="text-sm text-muted-foreground break-words"><CondizionePagamentoTesto cod={vista.condPagRiferimento} descFallback={vista.condPagPrecedente ? null : vista.condPagAttualeDesc} /></p>
+            </div>
+            <span className="text-sm text-muted-foreground justify-self-center" aria-hidden>→</span>
+            <div className="min-w-0 rounded border border-warning/50 bg-warning/10 px-2 py-1">
+              <p className="text-[10px] uppercase text-muted-foreground">Proposta</p>
+              <p className="text-sm font-semibold break-words"><CondizionePagamentoTesto cod={vista.condPagProposta} /></p>
+            </div>
+          </div>
           <SceltaDoppia value={sceltaCond} onChange={setSceltaCond} />
         </div>
       </div>
-      <div className="flex min-w-0 flex-wrap items-center gap-2">
-        <Input id="note_app" value={note} onChange={(e) => setNote(e.target.value)} className="min-w-0 flex-1 basis-48 h-10 sm:h-8 text-sm" aria-label="Note" placeholder="Note / motivazione (opzionale)" />
-        <Button type="button" variant="outline" size="sm" className="h-10 sm:h-8 text-xs px-3 border-success/40 text-success hover:text-success"
-          onClick={() => { setSceltaFido("approvata"); setSceltaCond("approvata"); }}>Approva tutto</Button>
-        <Button type="button" variant="outline" size="sm" className="h-10 sm:h-8 text-xs px-3 border-destructive/30 text-destructive hover:text-destructive"
-          onClick={() => { setSceltaFido("rifiutata"); setSceltaCond("rifiutata"); }}>Rifiuta tutto</Button>
-        <Button className="h-10 sm:h-8 text-xs px-3 gap-1" disabled={!complete || decide.isPending} onClick={() => decide.mutate()}>
-          <Check className="size-4" /> Conferma decisione
-        </Button>
+      <div className="border-t pt-2 space-y-2">
+        <p className={`min-w-0 break-words tabular-nums ${complete ? "text-sm font-medium text-foreground" : "text-xs text-muted-foreground"}`}>{riepilogo}</p>
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <Input id="note_app" value={note} onChange={(e) => setNote(e.target.value)} className="min-w-0 flex-1 basis-48 h-10 sm:h-8 text-sm" aria-label="Note" placeholder="Note / motivazione (opzionale)" />
+          <Button type="button" variant="outline" size="sm" className="h-10 sm:h-8 text-xs px-3 border-success/40 text-success hover:text-success"
+            onClick={() => { setSceltaFido("approvata"); setSceltaCond("approvata"); }}>Approva tutto</Button>
+          <Button type="button" variant="outline" size="sm" className="h-10 sm:h-8 text-xs px-3 border-destructive/30 text-destructive hover:text-destructive"
+            onClick={() => { setSceltaFido("rifiutata"); setSceltaCond("rifiutata"); }}>Rifiuta tutto</Button>
+          <Button className="h-10 sm:h-8 text-xs px-3 gap-1 sm:ml-2" disabled={!complete || decide.isPending} onClick={() => decide.mutate()}>
+            <Check className="size-4" /> Conferma decisione
+          </Button>
+        </div>
       </div>
     </Card>
+  );
+}
+
+/** Confronto solo visivo: il valore gestionale non modifica l'importo da approvare. */
+function ConfrontoFido({ richiesta }: { richiesta: any }) {
+  const attuale = getFidoAttuale(richiesta.clienti);
+  const richiesto = Number(richiesta.importo_richiesto);
+  const differenza = richiesto - attuale;
+  return (
+    <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 tabular-nums">
+      <span className="text-sm text-muted-foreground">{formatEuro(attuale)}</span>
+      <span className="text-sm text-muted-foreground" aria-hidden>→</span>
+      <strong className="text-base font-bold">{formatEuro(richiesto)}</strong>
+      {differenza !== 0 && (
+        <span className={`inline-flex max-w-full rounded-md border px-1.5 py-0.5 text-xs font-medium ${differenza > 0 ? "border-success/30 bg-success/10 text-success" : "border-warning/30 bg-warning/10 text-warning"}`}>
+          {differenza > 0 ? "+" : ""}{formatEuro(differenza)}
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -655,8 +664,9 @@ function ApprovaSempliceForm({ richiesta }: { richiesta: any; userId: string }) 
   return (
     <Card className="p-2.5 border-info/40 bg-info/5 space-y-1.5">
       <CambioCondizionePagamento variant="riga" richiesta={richiesta} />
-      <div className="flex min-w-0 flex-col gap-2 lg:flex-row lg:items-center">
+      <div className="flex min-w-0 flex-col gap-2 lg:flex-row lg:flex-wrap lg:items-center">
         <h2 className="text-sm font-semibold shrink-0">Decisione <span className="text-xs font-normal text-muted-foreground">(livello {richiesta.livello_richiesto})</span></h2>
+        <ConfrontoFido richiesta={richiesta} />
         <Input id="importo_app" className="w-28 h-10 sm:h-8 text-sm tabular-nums" type="number" step="0.01" value={importo}
           aria-label="Importo da approvare (€)" placeholder="Importo €" onChange={(e) => setImporto(e.target.value)} />
         <Input id="note_app" className="min-w-0 flex-1 h-10 sm:h-8 text-sm" value={note} onChange={(e) => setNote(e.target.value)} aria-label="Note" placeholder="Note / motivazione (opzionale)" />

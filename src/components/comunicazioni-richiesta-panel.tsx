@@ -19,6 +19,8 @@ import {
 interface Props {
   richiestaId: string;
   richiestaCreatedBy: string;
+  /** Presentazione compatta opzionale; gli altri utilizzi restano invariati. */
+  compatto?: boolean;
 }
 
 function iniziali(nome?: string | null, cognome?: string | null): string {
@@ -36,7 +38,7 @@ function formatTs(iso: string): string {
   }) + ", " + d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
 }
 
-export function ComunicazioniRichiestaPanel({ richiestaId, richiestaCreatedBy }: Props) {
+export function ComunicazioniRichiestaPanel({ richiestaId, richiestaCreatedBy, compatto = false }: Props) {
   const { user, roles } = useAuth();
   const qc = useQueryClient();
   const [destinatario, setDestinatario] = useState<DestinatarioComunicazione>("approvatore");
@@ -131,13 +133,13 @@ export function ComunicazioniRichiestaPanel({ richiestaId, richiestaCreatedBy }:
   });
 
   return (
-    <Card className="p-5">
-      <div className="flex items-center gap-2 mb-4">
+    <Card className={compatto ? "p-2.5 min-w-0 [&_button]:min-h-10 sm:[&_button]:min-h-0" : "p-5"}>
+      <div className={cn("flex items-center gap-2", compatto ? "mb-2" : "mb-4")}>
         <MessageCircle className="size-5 text-primary" />
-        <h2 className="font-semibold">Comunicazioni</h2>
+        <h2 className={cn("font-semibold", compatto && "text-sm")}>Comunicazioni</h2>
       </div>
 
-      <div className="space-y-3 mb-5">
+      <div className={cn("space-y-3", compatto ? "max-h-80 overflow-y-auto mb-3" : "mb-5")}>
         {isLoading ? (
           <Skeleton className="h-20 w-full" />
         ) : !messaggi || messaggi.length === 0 ? (
@@ -158,7 +160,7 @@ export function ComunicazioniRichiestaPanel({ richiestaId, richiestaCreatedBy }:
                 >
                   {iniziali(a?.nome, a?.cognome)}
                 </div>
-                <div className={cn("flex-1 rounded-lg border p-3", isMine ? "bg-accent/40" : "bg-card")}>
+                <div className={cn("flex-1 rounded-lg border p-3", compatto && "min-w-0 break-words", isMine ? "bg-accent/40" : "bg-card")}>
                   <div className="flex items-center gap-2 flex-wrap mb-1">
                     <span className="text-sm font-medium">
                       {[a?.nome, a?.cognome].filter(Boolean).join(" ") || "Utente"}
@@ -237,7 +239,7 @@ export function ComunicazioniRichiestaPanel({ richiestaId, richiestaCreatedBy }:
         )}
       </div>
 
-      <div className="border-t pt-4 space-y-3">
+      <div className={cn("border-t", compatto ? "pt-2 space-y-2" : "pt-4 space-y-3")}>
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs font-medium text-muted-foreground">Destinatario:</span>
           {(["richiedente", "approvatore", "tutti"] as DestinatarioComunicazione[]).map((d) => (
@@ -260,7 +262,7 @@ export function ComunicazioniRichiestaPanel({ richiestaId, richiestaCreatedBy }:
           placeholder="Scrivi un messaggio..."
           value={testo}
           onChange={(e) => setTesto(e.target.value)}
-          rows={3}
+          rows={compatto ? 2 : 3}
         />
         <div className="flex justify-end">
           <Button
