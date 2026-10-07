@@ -1885,7 +1885,6 @@ export const processScadenziarioChunk = inngest.createFunction(
         ...missing.map((idx) => ({ riga: idx, errore: "COD_CLI mancante" })),
       ];
       const batchErrs: Array<{ riga: number; errore: string }> = [];
-      const matched: string[] = [];
       const rawValidRows: Array<Record<string, unknown>> = [];
       let skipped = 0;
       // Dettagli completi dei codici non trovati (senza cap): codice -> { ragione_sociale, count }
