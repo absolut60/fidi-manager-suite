@@ -1915,7 +1915,6 @@ export const processScadenziarioChunk = inngest.createFunction(
             importato_da: importazioneId,
             ultima_sincronizzazione: timestampInizio,
           };
-          matched.push(cid);
           rawValidRows.push(enriched);
         } catch (err) {
           // Skip isolato per la singola riga: l'errore NON ferma il batch
