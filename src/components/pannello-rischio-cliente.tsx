@@ -210,98 +210,11 @@ export function PannelloRischioCliente({
 
   if (variant === "extended") {
     return (
-      <div className="space-y-2">
-        <div className="grid min-w-0 grid-cols-1 items-center gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
+      <div className="space-y-1.5">
+        <div className="grid min-w-0 grid-cols-1 items-center gap-1 sm:grid-cols-[minmax(0,1fr)_auto]">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs">
             <h2 className="min-w-0 break-words text-sm font-semibold">Quadro cliente</h2>
             {linkScadenze}
-          </div>
-          <span className="min-w-0 break-words text-xs text-muted-foreground">
-            Ultima sincronizzazione: {ultimaSync}
-          </span>
-        </div>
-
-        {/* Metriche quadro + esperienza pagamento in un'unica griglia */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-2">
-          <MetricCard label="Totale rischio" value={formatEuro(totRischio)} />
-          <MetricCard
-            label="Scaduto"
-            value={formatEuro(scaduto)}
-            tone={scaduto > 0 ? "destructive" : "success"}
-            subtext={scaduto === 0 ? "nessuno scaduto" : undefined}
-          />
-          <MetricCard
-            label={`Fatturato ${annoCorrente}`}
-            value={fatt ? formatEuro(fatt.cur) : "—"}
-          />
-          <MetricCard
-            label={`Fatturato ${annoPrec}`}
-            value={fatt ? formatEuro(fatt.prev) : "—"}
-          />
-          <EsperienzaPagamentoCards esp={esp} />
-        </div>
-
-        {/* Dettaglio raggruppato in 2 colonne */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-x-4 gap-y-0 text-sm">
-          <DetailRow label="Fido gestionale">
-            <span className="tabular-nums font-medium">{formatEuro(fidoAttuale)}</span>
-            {ultimoApprovatoImp != null && (
-              <span className="ml-2 text-xs text-muted-foreground">
-                · ultimo in app: <span className="tabular-nums">{formatEuro(ultimoApprovatoImp)}</span>
-                {disallineato && (
-                  <span className="ml-1 inline-flex rounded-md px-1.5 py-0.5 font-medium bg-warning/15 text-warning border border-warning/30">
-                    Da allineare
-                  </span>
-                )}
-              </span>
-            )}
-          </DetailRow>
-          <DetailRow label="Fido residuo">
-            <span className={`tabular-nums ${fidoResiduo < 0 ? "text-destructive font-medium" : ""}`}>
-              {formatEuro(fidoResiduo)}
-            </span>
-          </DetailRow>
-          <DetailRow label="A scadere">
-            <span className="tabular-nums">{formatEuro(Number(cliente.a_scadere ?? 0))}</span>
-          </DetailRow>
-          <DetailRow label="Insoluti">
-            <span className="tabular-nums">{Number(cliente.num_insoluti ?? 0)}</span>
-          </DetailRow>
-          <DetailRow label="Cond. pagamento attuale">
-            <span className="min-w-0 break-words text-right">
-              <CondizionePagamentoTesto cod={cliente.condizione_pagamento_cod} descFallback={cliente.condizione_pagamento_desc ?? cliente.condizioni_pagamento} />
-            </span>
-          </DetailRow>
-          <DetailRow label="Dilaz. concordata">
-            <span className="tabular-nums">
-              {cliente.dilazione_concordata ?? "—"}
-              {cliente.dilazione_concordata != null ? " gg" : ""}
-            </span>
-          </DetailRow>
-          <DetailRow label="Dilaz. effettiva">
-            <span className="tabular-nums">
-              {cliente.dilazione_effettiva ?? "—"}
-              {cliente.dilazione_effettiva != null ? " gg" : ""}
-            </span>
-          </DetailRow>
-        </div>
-
-        <div className="border-t pt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
-          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="text-muted-foreground">Valutazione esterna:</span>
-            {cliente?.rating_esterno ? (
-              <span className="text-sm font-medium break-words">{cliente.rating_esterno}</span>
-            ) : (
-              <span className="text-muted-foreground">Non disponibile</span>
-            )}
-            {cliente?.rating_esterno_fonte && (
-              <span className="text-[11px] text-muted-foreground">
-                ({cliente.rating_esterno_fonte}{cliente.rating_esterno_data ? ` · ${formatDate(cliente.rating_esterno_data)}` : ""})
-              </span>
-            )}
-          </div>
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <span className="text-muted-foreground">Stato:</span>
           {cliente.bloccato ? (
             <span className="inline-flex rounded-md px-2 py-0.5 font-medium bg-destructive/15 text-destructive">
               Bloccato{cliente.motivo_blocco ? ` — ${cliente.motivo_blocco}` : ""}
@@ -326,7 +239,37 @@ export function PannelloRischioCliente({
               · Ultima fatt. {formatDate(cliente.ultima_data_fatturazione)}
             </span>
           )}
+
           </div>
+          <span className="min-w-0 break-words text-[11px] text-muted-foreground">Sincronizzato: {ultimaSync}</span>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8 gap-x-3 gap-y-1">
+          <MetricCard label="Totale rischio" value={formatEuro(totRischio)} />
+          <MetricCard label="Scaduto" value={formatEuro(scaduto)} tone={scaduto > 0 ? "destructive" : "success"} />
+          <MetricCard label="A scadere" value={formatEuro(Number(cliente.a_scadere ?? 0))} />
+          <QuadroCell label="Fido gestionale">
+            {formatEuro(fidoAttuale)}
+            {ultimoApprovatoImp != null && (
+              <span className="text-xs font-normal text-muted-foreground">
+                {" · "}ultimo in app: <span className="tabular-nums">{formatEuro(ultimoApprovatoImp)}</span>
+                {disallineato && <span className="ml-1 inline-flex rounded-md px-1.5 py-0.5 font-medium bg-warning/15 text-warning border border-warning/30">Da allineare</span>}
+              </span>
+            )}
+          </QuadroCell>
+          <MetricCard label="Fido residuo" value={formatEuro(fidoResiduo)} tone={fidoResiduo < 0 ? "destructive" : "neutral"} />
+          <MetricCard label="Insoluti" value={String(Number(cliente.num_insoluti ?? 0))} />
+          <MetricCard label={`Fatturato ${annoCorrente}`} value={fatt ? formatEuro(fatt.cur) : "—"} />
+          <MetricCard label={`Fatturato ${annoPrec}`} value={fatt ? formatEuro(fatt.prev) : "—"} />
+          <QuadroCell label="Cond. pagamento attuale" className="col-span-2">
+            <CondizionePagamentoTesto cod={cliente.condizione_pagamento_cod} descFallback={cliente.condizione_pagamento_desc ?? cliente.condizioni_pagamento} />
+          </QuadroCell>
+          <QuadroCell label="Dilaz. concordata">{cliente.dilazione_concordata ?? "—"}{cliente.dilazione_concordata != null ? " gg" : ""}</QuadroCell>
+          <QuadroCell label="Dilaz. effettiva">{cliente.dilazione_effettiva ?? "—"}{cliente.dilazione_effettiva != null ? " gg" : ""}</QuadroCell>
+          <EsperienzaPagamentoCards esp={esp} />
+          <QuadroCell label="Valutazione esterna">
+            {cliente?.rating_esterno || "n.d."}
+            {cliente?.rating_esterno_fonte && <span className="text-[11px] font-normal text-muted-foreground"> {"("}{cliente.rating_esterno_fonte}{cliente.rating_esterno_data ? ` · ${formatDate(cliente.rating_esterno_data)}` : ""}{")"}</span>}
+          </QuadroCell>
         </div>
       </div>
     );
@@ -398,6 +341,15 @@ export function PannelloRischioCliente({
   );
 }
 
+function QuadroCell({ label, children, className = "", title }: { label: string; children: React.ReactNode; className?: string; title?: string }) {
+  return (
+    <div className={`min-w-0 px-2 py-1 ${className}`} title={title}>
+      <p className="text-[10px] leading-tight font-medium text-muted-foreground uppercase break-words">{label}</p>
+      <div className="text-sm leading-tight font-semibold tabular-nums break-words">{children}</div>
+    </div>
+  );
+}
+
 function MetricCard({
   label,
   value,
@@ -414,13 +366,12 @@ function MetricCard({
     tone === "info" ? "text-info" :
     tone === "success" ? "text-success" : "";
   return (
-    <div className="min-w-0 rounded-md bg-secondary px-2 py-1.5">
-      <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide break-words">{label}</p>
-      <p className={`mt-0.5 text-sm font-semibold tabular-nums break-words ${valueTone}`}>{value}</p>
+    <QuadroCell label={label}>
+      <span className={valueTone}>{value}</span>
       {subtext && (
         <p className="mt-0.5 text-[11px] text-muted-foreground">{subtext}</p>
       )}
-	</div>
+    </QuadroCell>
   );
 }
 
@@ -437,10 +388,7 @@ function DetailRow({ label, children }: { label: string; children: React.ReactNo
 function EsperienzaPagamentoCards({ esp }: { esp: EspData }) {
   if (!esp || esp.nPagate === 0) {
     return (
-      <div className="sm:col-span-2 min-w-0 rounded-md border border-dashed px-2 py-1.5">
-        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Esperienza pagamento</p>
-        <p className="mt-0.5 text-sm text-muted-foreground">Nessuno storico pagamenti</p>
-      </div>
+      <QuadroCell label="Esperienza pagamento">Nessuno storico</QuadroCell>
     );
   }
   const ritMedio = esp.ritardoMedio ?? 0;
@@ -453,9 +401,6 @@ function EsperienzaPagamentoCards({ esp }: { esp: EspData }) {
   const pre = "Esp. ·";
   return (
     <>
-      <div className="sm:col-span-2 md:col-span-4 xl:hidden border-t pt-2 text-[11px] text-muted-foreground">
-        Esperienza pagamento (su {esp.nPagate} scadenze pagate)
-      </div>
       <div className="contents" title={`Esperienza pagamento (su ${esp.nPagate} scadenze pagate)`}>
         <MetricCard label={`${pre} Ritardo medio`} value={`${ritMedio.toFixed(1)} gg`} tone={toneMedio} />
         <MetricCard label={`${pre} Pagate in ritardo`} value={`${pct.toFixed(1)}%`} tone={tonePct} />

@@ -72,7 +72,7 @@ export function CambioCondizionePagamento({ variant, codProposta, codAttuale, de
 
   return (
     <div
-      className={`grid min-w-0 grid-cols-1 gap-1 rounded-md border px-3 py-2 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-baseline sm:gap-3 ${
+      className={`grid min-w-0 grid-cols-1 gap-1 rounded-md border px-3 py-1.5 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-baseline sm:gap-3 ${
         approvato
           ? "border-success/40 bg-success/10"
           : rifiutato
@@ -80,14 +80,14 @@ export function CambioCondizionePagamento({ variant, codProposta, codAttuale, de
             : "border-warning/40 bg-warning/10"
       } ${className}`}
     >
-      <p className={`min-w-0 break-words text-sm font-semibold ${approvato ? "text-success" : rifiutato ? "text-destructive" : "text-warning"}`}>
+      <p className={`min-w-0 break-words text-xs font-semibold ${approvato ? "text-success" : rifiutato ? "text-destructive" : "text-warning"}`}>
         {approvato
           ? "Cambio condizione APPROVATO"
           : rifiutato
             ? "Cambio condizione NON approvato"
             : "Richiesta di cambio condizioni di pagamento"}
       </p>
-      <p className="min-w-0 break-words text-sm">
+      <p className="min-w-0 break-words text-xs">
         <span className="text-xs text-muted-foreground">{esito ? "Precedente" : "Attuale"}: </span>
         <CondizionePagamentoTesto cod={att} descFallback={attDesc} />
         {" → "}<span className="text-xs text-muted-foreground">Nuova proposta: </span>
