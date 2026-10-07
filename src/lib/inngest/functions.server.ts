@@ -1979,14 +1979,14 @@ export const processScadenziarioChunk = inngest.createFunction(
                     upsert: (
                       rows: unknown,
                       opts: { onConflict: string; ignoreDuplicates: boolean },
-                    ) => {
+                    ) => ({
                       select: (
                         cols: string,
                       ) => Promise<{
                         data: Array<{ created_at: string }> | null;
                         error: { message: string } | null;
                       }>;
-                    };
+                    });
                   }
                 ).upsert(rows, {
                   onConflict: "cliente_id,key_documento,data_scadenza,key_tipo_effetto,importo_scadenza",
