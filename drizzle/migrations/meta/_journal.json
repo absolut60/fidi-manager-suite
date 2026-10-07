@@ -85,6 +85,13 @@
       "when": 1791209416429,
       "tag": "0011_fm38_doppia_decisione_fido_condizione",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791363771965,
+      "tag": "0012_richieste_fido_condizione_approvata",
+      "breakpoints": true
     }
   ]
 }
