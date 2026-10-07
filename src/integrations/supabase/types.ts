@@ -4762,7 +4762,9 @@ export type Database = {
           approvato_da: string | null
           cliente_id: string
           condizione_pagamento_cod: string | null
+          condizione_pagamento_modificata: boolean
           condizione_pagamento_precedente_cod: string | null
+          condizione_pagamento_richiesta_cod: string | null
           created_at: string
           created_by: string | null
           data_approvazione: string | null
@@ -4794,7 +4796,9 @@ export type Database = {
           approvato_da?: string | null
           cliente_id: string
           condizione_pagamento_cod?: string | null
+          condizione_pagamento_modificata?: boolean
           condizione_pagamento_precedente_cod?: string | null
+          condizione_pagamento_richiesta_cod?: string | null
           created_at?: string
           created_by?: string | null
           data_approvazione?: string | null
@@ -4826,7 +4830,9 @@ export type Database = {
           approvato_da?: string | null
           cliente_id?: string
           condizione_pagamento_cod?: string | null
+          condizione_pagamento_modificata?: boolean
           condizione_pagamento_precedente_cod?: string | null
+          condizione_pagamento_richiesta_cod?: string | null
           created_at?: string
           created_by?: string | null
           data_approvazione?: string | null
@@ -7846,6 +7852,7 @@ export type Database = {
       peso_mese_fido: { Args: { _eta: number }; Returns: number }
       processa_richiesta_fido: {
         Args: {
+          _condizione_approvata_cod?: string
           _esito: string
           _esito_condizione?: string
           _esito_fido?: string
@@ -7857,7 +7864,9 @@ export type Database = {
           approvato_da: string | null
           cliente_id: string
           condizione_pagamento_cod: string | null
+          condizione_pagamento_modificata: boolean
           condizione_pagamento_precedente_cod: string | null
+          condizione_pagamento_richiesta_cod: string | null
           created_at: string
           created_by: string | null
           data_approvazione: string | null

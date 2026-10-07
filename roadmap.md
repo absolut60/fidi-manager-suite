@@ -60,3 +60,7 @@
 - eventi.$eventoId.tsx: badge "Sul posto" su registrato_sul_posto === true (fonte unica), "Da importazione" invariato
 - NuovoPreventivoDialog.tsx: al cambio cliente l agente non viene sovrascritto per isWriteOnly; reset cantiere solo se cambia davvero il cliente (ref)
 - mail-sinistro-dialog.tsx: campo Importo sinistro obbligatorio (>0), segnaposto {{importo}} nel corpo, anteprima con segnaposto evidenziato se mancante, blocco invio con toast, RPC apri_sinistro_pouey con l importo del campo; cliente-insoluti-tab.tsx precompila con scaduto_eur/promessa_data da get_sinistri_da_aprire (queryKey ["sinistri-da-aprire"])
+
+## FM39 — Condizione di pagamento approvata diversa dalla proposta
+- [ ] Fetta 1 — migrazione DB: colonne richieste_fido.condizione_pagamento_richiesta_cod e condizione_pagamento_modificata, nuova firma processa_richiesta_fido con _condizione_approvata_cod; poi elenco chiamate all'RPC da riportare (nessuna modifica)
+- [ ] Fetta 2 — interfaccia: in approvazione l'approvatore può scegliere una condizione diversa da quella proposta (attesa istruzioni)
