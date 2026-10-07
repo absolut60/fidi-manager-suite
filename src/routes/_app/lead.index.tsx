@@ -34,10 +34,12 @@ import { useCategorieSegmento } from "@/lib/use-categorie-segmento";
 import {
   LEAD_STATI, LEAD_STATO_LABEL, LEAD_STATO_CLASS,
   LEAD_TIPI, LEAD_TIPO_LABEL, LEAD_FONTI, LEAD_FONTE_LABEL,
+  LEAD_TIPI_SOGGETTO, LEAD_TIPO_SOGGETTO_LABEL, etichettaTipoSoggetto,
   LEAD_PRIORITA, LEAD_PRIORITA_LABEL, LEAD_PRIORITA_CLASS,
   nomeLead, formatData, puoAccedereLead, puoGestireLead,
   LEAD_AMBITI, LEAD_AMBITO_LABEL, type LeadAmbito,
 } from "@/lib/lead-costanti";
+
 
 export const Route = createFileRoute("/_app/lead/")({
   component: LeadListaPage,
@@ -105,6 +107,8 @@ function LeadListaPage() {
   const [searchInput, setSearchInput] = useState("");
   const [stato, setStato] = useState<string[]>([]);
   const [tipoLead, setTipoLead] = useState(TUTTI);
+  const [tipoSoggetto, setTipoSoggetto] = useState(TUTTI);
+
   const [fonte, setFonte] = useState(TUTTI);
   const [priorita, setPriorita] = useState(TUTTI);
   const [mestiere, setMestiere] = useState(TUTTI);
@@ -167,12 +171,12 @@ function LeadListaPage() {
   const nomeStore = (id: string | null) => stores?.find((s) => s.id === id)?.nome ?? "—";
 
   const attiviCount =
-    [tipoLead, fonte, priorita, mestiere, evento].filter((v) => v !== TUTTI).length +
+    [tipoLead, tipoSoggetto, fonte, priorita, mestiere, evento].filter((v) => v !== TUTTI).length +
     [stato, storeFiltro, agente, assegnatario].filter((v) => v.length > 0).length +
     (search ? 1 : 0);
 
   function resetFiltri() {
-    setStato([]); setTipoLead(TUTTI); setFonte(TUTTI); setPriorita(TUTTI);
+    setStato([]); setTipoLead(TUTTI); setTipoSoggetto(TUTTI); setFonte(TUTTI); setPriorita(TUTTI);
     setStoreFiltro([]); setAgente([]); setAssegnatario([]); setMestiere(TUTTI); setEvento(TUTTI);
     setSearch(""); setSearchInput(""); setPage(1);
   }
@@ -219,6 +223,8 @@ function LeadListaPage() {
     else if (tab === "attivi") q = q.not("stato", "in", `(${STATI_NON_ATTIVI.join(",")})`);
 
     if (tipoLead !== TUTTI) q = q.eq("tipo_lead", tipoLead);
+    if (tipoSoggetto !== TUTTI) q = q.eq("tipo_soggetto", tipoSoggetto);
+
     if (fonte !== TUTTI) q = q.eq("fonte", fonte);
     if (priorita !== TUTTI) q = q.eq("priorita", priorita);
     if (mestiere !== TUTTI) {
@@ -236,9 +242,10 @@ function LeadListaPage() {
   }
 
   const queryKey = [
-    "lead-lista", ambito, tab, search, stato, tipoLead, fonte, priorita, mestiere, storeFiltro, agente,
+    "lead-lista", ambito, tab, search, stato, tipoLead, tipoSoggetto, fonte, priorita, mestiere, storeFiltro, agente,
     assegnatario, evento, page, pageSize, sortBy, sortDir, tab === "ricontattare" ? limiteData : null,
   ];
+
 
   const { data, isLoading } = useQuery({
     queryKey,
@@ -576,6 +583,17 @@ function LeadListaPage() {
             </Select>
           </div>
           <div>
+            <Label className="text-xs">Tipo soggetto</Label>
+            <Select value={tipoSoggetto} onValueChange={(v) => { setTipoSoggetto(v); setPage(1); }}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={TUTTI}>Tutti</SelectItem>
+                {LEAD_TIPI_SOGGETTO.map((s) => <SelectItem key={s} value={s}>{LEAD_TIPO_SOGGETTO_LABEL[s]}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
             <Label className="text-xs">Fonte</Label>
             <Select value={fonte} onValueChange={(v) => { setFonte(v); setPage(1); }}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -720,7 +738,9 @@ function LeadListaPage() {
                   <Badge className={`${LEAD_STATO_CLASS[l.stato]} shrink-0`}>{LEAD_STATO_LABEL[l.stato]}</Badge>
                 }
                 campi={[
+                  { etichetta: "Tipo soggetto", valore: etichettaTipoSoggetto(l.tipo_soggetto) },
                   { etichetta: "Città", valore: `${l.citta ?? "—"}${l.provincia ? ` (${l.provincia})` : ""}` },
+
                   { etichetta: "Fonte", valore: LEAD_FONTE_LABEL[l.fonte] },
                   { etichetta: "Assegnato a", valore: nomeProfilo(l.assegnato_a) },
                   ...(mostraConversione
@@ -805,8 +825,9 @@ function LeadListaPage() {
                     )}
                     <TableCell className="font-medium">{nomeLead(l)}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">
-                      {l.tipo_soggetto === "persona_fisica" ? "Persona fisica" : l.tipo_soggetto === "azienda" ? "Azienda" : "—"}
+                      {etichettaTipoSoggetto(l.tipo_soggetto)}
                     </TableCell>
+
                     <TableCell><Badge className={LEAD_STATO_CLASS[l.stato]}>{LEAD_STATO_LABEL[l.stato]}</Badge></TableCell>
                     <TableCell className="text-xs">{LEAD_TIPO_LABEL[l.tipo_lead]}</TableCell>
                     <TableCell><Badge className={LEAD_PRIORITA_CLASS[l.priorita]}>{LEAD_PRIORITA_LABEL[l.priorita]}</Badge></TableCell>
