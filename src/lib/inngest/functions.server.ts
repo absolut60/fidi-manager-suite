@@ -1972,18 +1972,25 @@ export const processScadenziarioChunk = inngest.createFunction(
           let ok = false;
           for (let tentativo = 1; tentativo <= SCAD_UPSERT_TENTATIVI; tentativo++) {
             try {
-              const { error: upErr } = await withTimeout(
+              const { data: upData, error: upErr } = await withTimeout(
                 (
                   supabaseAdmin.from("scadenze" as never) as never as {
                     upsert: (
                       rows: unknown,
                       opts: { onConflict: string; ignoreDuplicates: boolean },
-                    ) => Promise<{ error: { message: string } | null }>;
+                    ) => {
+                      select: (
+                        cols: string,
+                      ) => Promise<{
+                        data: Array<{ created_at: string }> | null;
+                        error: { message: string } | null;
+                      }>;
+                    };
                   }
                 ).upsert(rows, {
                   onConflict: "cliente_id,key_documento,data_scadenza,key_tipo_effetto,importo_scadenza",
                   ignoreDuplicates: false,
-                }),
+                }).select("created_at"),
                 60_000,
                 `chunk ${chunkIndex} upsert-scadenze sotto-blocco ${n}/${tot} rows=${rows.length}`,
               );
