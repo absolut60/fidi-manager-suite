@@ -34,8 +34,7 @@ type StoreOpt = { id: string; nome: string };
 
 /** Ruoli che vedono tutte le sedi (specchio server-side di effective_store_filter). */
 function useStorePerimetro() {
-  const { profilo, hasAnyRole, roles } = useAuth();
-  const puoInviare = puoInviareComunicazioniRecupero(roles as string[]);
+  const { profilo, hasAnyRole } = useAuth();
   const trasversale = hasAnyRole(
     "amministratore",
     "amministrazione",
@@ -152,6 +151,8 @@ function fmtPct(n: number) {
 }
 
 function CruscottoIncassiPage() {
+  const { roles } = useAuth();
+  const puoInviare = puoInviareComunicazioniRecupero(roles as string[]);
   const oggi = new Date();
   const meseCorrente = oggi.getMonth() + 1;
   const annoCorrente = oggi.getFullYear();
