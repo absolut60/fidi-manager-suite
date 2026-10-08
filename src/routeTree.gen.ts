@@ -9,7 +9,6 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as McpRouteImport } from './routes/mcp'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as IscrizioneWhatsappRouteImport } from './routes/iscrizione-whatsapp'
 import { Route as AppRouteImport } from './routes/_app'
@@ -59,8 +58,6 @@ import { Route as AppAttivaNotificheRouteImport } from './routes/_app/attiva-not
 import { Route as AppAssicurazioniRouteImport } from './routes/_app/assicurazioni'
 import { Route as AppAreeRouteImport } from './routes/_app/aree'
 import { Route as AppApprovazioniRouteImport } from './routes/_app/approvazioni'
-import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
-import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as AppTaskIndexRouteImport } from './routes/_app/task.index'
 import { Route as AppRichiesteInterneIndexRouteImport } from './routes/_app/richieste-interne.index'
 import { Route as AppPreventivatoreIndexRouteImport } from './routes/_app/preventivatore.index'
@@ -94,18 +91,11 @@ import { Route as AppKitIdRouteImport } from './routes/_app/kit.$id'
 import { Route as AppEventiEventoIdRouteImport } from './routes/_app/eventi.$eventoId'
 import { Route as AppClientiClienteIdRouteImport } from './routes/_app/clienti.$clienteId'
 import { Route as AppArticoliIdRouteImport } from './routes/_app/articoli.$id'
-import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
-import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as ApiWebhooksD360TokenRouteImport } from './routes/api/webhooks/d360/$token'
 import { Route as ApiPublicHooksCheckScadenzeRouteImport } from './routes/api/public/hooks/check-scadenze'
 import { Route as ApiPublicHooksCheckReminderRitardiRouteImport } from './routes/api/public/hooks/check-reminder-ritardi'
 import { Route as ApiPublicEmailImgSplatRouteImport } from './routes/api/public/email-img/$'
 
-const McpRoute = McpRouteImport.update({
-  id: '/mcp',
-  path: '/mcp',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -356,18 +346,6 @@ const AppApprovazioniRoute = AppApprovazioniRouteImport.update({
   path: '/approvazioni',
   getParentRoute: () => AppRoute,
 } as any)
-const Char91DotwellKnownChar93OauthProtectedResourceRoute =
-  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
-    id: '/.well-known/oauth-protected-resource',
-    path: '/.well-known/oauth-protected-resource',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const Char91DotmcpChar93ListToolsRoute =
-  Char91DotmcpChar93ListToolsRouteImport.update({
-    id: '/.mcp/list-tools',
-    path: '/.mcp/list-tools',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const AppTaskIndexRoute = AppTaskIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -543,17 +521,6 @@ const AppArticoliIdRoute = AppArticoliIdRouteImport.update({
   path: '/articoli/$id',
   getParentRoute: () => AppRoute,
 } as any)
-const Char91DotmcpChar93InvokeToolToolRoute =
-  Char91DotmcpChar93InvokeToolToolRouteImport.update({
-    id: '/.mcp/invoke-tool/$tool',
-    path: '/.mcp/invoke-tool/$tool',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
-  id: '/.lovable/oauth/consent',
-  path: '/.lovable/oauth/consent',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiWebhooksD360TokenRoute = ApiWebhooksD360TokenRouteImport.update({
   id: '/api/webhooks/d360/$token',
   path: '/api/webhooks/d360/$token',
@@ -581,9 +548,6 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
-  '/mcp': typeof McpRoute
-  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
-  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/approvazioni': typeof AppApprovazioniRoute
   '/aree': typeof AppAreeRoute
   '/assicurazioni': typeof AppAssicurazioniRoute
@@ -629,8 +593,6 @@ export interface FileRoutesByFullPath {
   '/iscrizione-evento/$codice': typeof IscrizioneEventoCodiceRoute
   '/r/$token': typeof RTokenRoute
   '/recesso/$token': typeof RecessoTokenRoute
-  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
-  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/articoli/$id': typeof AppArticoliIdRoute
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
   '/eventi/$eventoId': typeof AppEventiEventoIdRoute
@@ -673,9 +635,6 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
-  '/mcp': typeof McpRoute
-  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
-  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/approvazioni': typeof AppApprovazioniRoute
   '/aree': typeof AppAreeRoute
   '/assicurazioni': typeof AppAssicurazioniRoute
@@ -718,8 +677,6 @@ export interface FileRoutesByTo {
   '/iscrizione-evento/$codice': typeof IscrizioneEventoCodiceRoute
   '/r/$token': typeof RTokenRoute
   '/recesso/$token': typeof RecessoTokenRoute
-  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
-  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/articoli/$id': typeof AppArticoliIdRoute
   '/clienti/$clienteId': typeof AppClientiClienteIdRoute
   '/eventi/$eventoId': typeof AppEventiEventoIdRoute
@@ -764,9 +721,6 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
-  '/mcp': typeof McpRoute
-  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
-  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/_app/approvazioni': typeof AppApprovazioniRoute
   '/_app/aree': typeof AppAreeRoute
   '/_app/assicurazioni': typeof AppAssicurazioniRoute
@@ -812,8 +766,6 @@ export interface FileRoutesById {
   '/iscrizione-evento/$codice': typeof IscrizioneEventoCodiceRoute
   '/r/$token': typeof RTokenRoute
   '/recesso/$token': typeof RecessoTokenRoute
-  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
-  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_app/articoli/$id': typeof AppArticoliIdRoute
   '/_app/clienti/$clienteId': typeof AppClientiClienteIdRoute
   '/_app/eventi/$eventoId': typeof AppEventiEventoIdRoute
@@ -858,9 +810,6 @@ export interface FileRouteTypes {
     | '/'
     | '/iscrizione-whatsapp'
     | '/login'
-    | '/mcp'
-    | '/.mcp/list-tools'
-    | '/.well-known/oauth-protected-resource'
     | '/approvazioni'
     | '/aree'
     | '/assicurazioni'
@@ -906,8 +855,6 @@ export interface FileRouteTypes {
     | '/iscrizione-evento/$codice'
     | '/r/$token'
     | '/recesso/$token'
-    | '/.lovable/oauth/consent'
-    | '/.mcp/invoke-tool/$tool'
     | '/articoli/$id'
     | '/clienti/$clienteId'
     | '/eventi/$eventoId'
@@ -950,9 +897,6 @@ export interface FileRouteTypes {
     | '/'
     | '/iscrizione-whatsapp'
     | '/login'
-    | '/mcp'
-    | '/.mcp/list-tools'
-    | '/.well-known/oauth-protected-resource'
     | '/approvazioni'
     | '/aree'
     | '/assicurazioni'
@@ -995,8 +939,6 @@ export interface FileRouteTypes {
     | '/iscrizione-evento/$codice'
     | '/r/$token'
     | '/recesso/$token'
-    | '/.lovable/oauth/consent'
-    | '/.mcp/invoke-tool/$tool'
     | '/articoli/$id'
     | '/clienti/$clienteId'
     | '/eventi/$eventoId'
@@ -1040,9 +982,6 @@ export interface FileRouteTypes {
     | '/_app'
     | '/iscrizione-whatsapp'
     | '/login'
-    | '/mcp'
-    | '/.mcp/list-tools'
-    | '/.well-known/oauth-protected-resource'
     | '/_app/approvazioni'
     | '/_app/aree'
     | '/_app/assicurazioni'
@@ -1088,8 +1027,6 @@ export interface FileRouteTypes {
     | '/iscrizione-evento/$codice'
     | '/r/$token'
     | '/recesso/$token'
-    | '/.lovable/oauth/consent'
-    | '/.mcp/invoke-tool/$tool'
     | '/_app/articoli/$id'
     | '/_app/clienti/$clienteId'
     | '/_app/eventi/$eventoId'
@@ -1134,16 +1071,11 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   IscrizioneWhatsappRoute: typeof IscrizioneWhatsappRoute
   LoginRoute: typeof LoginRoute
-  McpRoute: typeof McpRoute
-  Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
-  Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   ConsensiTokenRoute: typeof ConsensiTokenRoute
   FirmaPrivacyTokenRoute: typeof FirmaPrivacyTokenRoute
   IscrizioneEventoCodiceRoute: typeof IscrizioneEventoCodiceRoute
   RTokenRoute: typeof RTokenRoute
   RecessoTokenRoute: typeof RecessoTokenRoute
-  DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
-  Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiPublicInngestRoute: typeof ApiPublicInngestRoute
   ApiPublicInviaPushRoute: typeof ApiPublicInviaPushRoute
   ApiPublicEmailImgSplatRoute: typeof ApiPublicEmailImgSplatRoute
@@ -1154,13 +1086,6 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/mcp': {
-      id: '/mcp'
-      path: '/mcp'
-      fullPath: '/mcp'
-      preLoaderRoute: typeof McpRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -1504,20 +1429,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppApprovazioniRouteImport
       parentRoute: typeof AppRoute
     }
-    '/.well-known/oauth-protected-resource': {
-      id: '/.well-known/oauth-protected-resource'
-      path: '/.well-known/oauth-protected-resource'
-      fullPath: '/.well-known/oauth-protected-resource'
-      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/.mcp/list-tools': {
-      id: '/.mcp/list-tools'
-      path: '/.mcp/list-tools'
-      fullPath: '/.mcp/list-tools'
-      preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_app/task/': {
       id: '/_app/task/'
       path: '/'
@@ -1748,20 +1659,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/articoli/$id'
       preLoaderRoute: typeof AppArticoliIdRouteImport
       parentRoute: typeof AppRoute
-    }
-    '/.mcp/invoke-tool/$tool': {
-      id: '/.mcp/invoke-tool/$tool'
-      path: '/.mcp/invoke-tool/$tool'
-      fullPath: '/.mcp/invoke-tool/$tool'
-      preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/.lovable/oauth/consent': {
-      id: '/.lovable/oauth/consent'
-      path: '/.lovable/oauth/consent'
-      fullPath: '/.lovable/oauth/consent'
-      preLoaderRoute: typeof DotlovableOauthConsentRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/api/webhooks/d360/$token': {
       id: '/api/webhooks/d360/$token'
@@ -1997,17 +1894,11 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   IscrizioneWhatsappRoute: IscrizioneWhatsappRoute,
   LoginRoute: LoginRoute,
-  McpRoute: McpRoute,
-  Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
-  Char91DotwellKnownChar93OauthProtectedResourceRoute:
-    Char91DotwellKnownChar93OauthProtectedResourceRoute,
   ConsensiTokenRoute: ConsensiTokenRoute,
   FirmaPrivacyTokenRoute: FirmaPrivacyTokenRoute,
   IscrizioneEventoCodiceRoute: IscrizioneEventoCodiceRoute,
   RTokenRoute: RTokenRoute,
   RecessoTokenRoute: RecessoTokenRoute,
-  DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
-  Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiPublicInngestRoute: ApiPublicInngestRoute,
   ApiPublicInviaPushRoute: ApiPublicInviaPushRoute,
   ApiPublicEmailImgSplatRoute: ApiPublicEmailImgSplatRoute,
