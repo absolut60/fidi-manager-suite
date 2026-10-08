@@ -23,6 +23,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { InvioMassivoDialog } from "@/components/invio-massivo-dialog";
+import { puoInviareComunicazioniRecupero } from "@/lib/recupero-permessi";
 import { ClienteAttivitaRecuperoTab } from "@/components/cliente-attivita-recupero-tab";
 import { StadioSollecitoBadge } from "@/components/stadio-sollecito-badge";
 import { RegistraPromessaDialog } from "@/components/registra-promessa-dialog";
@@ -158,7 +159,8 @@ type StadioFilter = "all" | "0" | "1" | "2" | "3";
 
 
 function RecuperoCreditiPage() {
-  const { role, profilo } = useAuth();
+  const { role, profilo, roles } = useAuth();
+  const puoInviare = puoInviareComunicazioniRecupero(roles as string[]);
   const isStoreManager = role === "store_manager";
   const isAgente = role === "agente";
   const isRistretto = isStoreManager || isAgente;
@@ -434,9 +436,11 @@ function RecuperoCreditiPage() {
               <CalendarClockIcon className="size-4" /> Promemoria di scadenza
             </Link>
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setInvioMassivoOpen(true)} className="gap-1.5">
-            <Send className="size-4" /> Invio massivo solleciti
-          </Button>
+          {puoInviare && (
+            <Button variant="outline" size="sm" onClick={() => setInvioMassivoOpen(true)} className="gap-1.5">
+              <Send className="size-4" /> Invio massivo solleciti
+            </Button>
+          )}
         </div>
       </div>
 

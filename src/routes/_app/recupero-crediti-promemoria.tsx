@@ -40,6 +40,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { InvioMassivoDialog } from "@/components/invio-massivo-dialog";
+import { puoInviareComunicazioniRecupero } from "@/lib/recupero-permessi";
 
 type SortKey = "ragione_sociale" | "store_nome" | "n_scadenze" | "totale_a_scadere" | "prima_scadenza";
 type SortDir = "asc" | "desc";
@@ -107,7 +108,8 @@ type ClientePromemoria = {
 };
 
 function PromemoriaScadenzaPage() {
-  const { role, profilo } = useAuth();
+  const { role, profilo, roles } = useAuth();
+  const puoInviare = puoInviareComunicazioniRecupero(roles as string[]);
   const isStoreManager = role === "store_manager";
   const myStoreId = profilo?.store_id ?? null;
 
@@ -362,15 +364,17 @@ function PromemoriaScadenzaPage() {
                 Azzera selezione
               </Button>
             )}
-            <Button
-              size="sm"
-              onClick={() => setInvioOpen(true)}
-              disabled={rows.length === 0}
-              className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
-            >
-              <Send className="size-4" />
-              Invia promemoria di scadenza
-            </Button>
+            {puoInviare && (
+              <Button
+                size="sm"
+                onClick={() => setInvioOpen(true)}
+                disabled={rows.length === 0}
+                className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                <Send className="size-4" />
+                Invia promemoria di scadenza
+              </Button>
+            )}
           </div>
         </div>
         <div className="">

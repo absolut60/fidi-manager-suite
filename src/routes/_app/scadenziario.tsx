@@ -6,6 +6,7 @@ import * as XLSX from "xlsx";
 import { scaricaWorkbook } from "@/lib/fido-teorico-export";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { InvioMassivoDialog } from "@/components/invio-massivo-dialog";
+import { puoInviareComunicazioniRecupero } from "@/lib/recupero-permessi";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -224,7 +225,8 @@ function toSelRow(r: ScadRow): SelRow {
 
 function ScadenziarioPage() {
   const navigate = useNavigate();
-  const { role, profilo, user } = useAuth();
+  const { role, profilo, user, roles } = useAuth();
+  const puoInviare = puoInviareComunicazioniRecupero(roles as string[]);
   const isStoreManager = role === "store_manager";
   const myStoreId = profilo?.store_id ?? null;
   const storeDefault = isStoreManager && myStoreId ? myStoreId : "all";
@@ -855,9 +857,11 @@ function ScadenziarioPage() {
           <h2 className="text-sm font-semibold uppercase text-foreground flex items-center gap-2">
             <FileText className="size-4" /> {situazione === "portafoglio" ? "Portafoglio clienti" : "Clienti con scadenze aperte"} ({totalCount})
           </h2>
-          <Button size="sm" variant="outline" onClick={() => setInvioMassivoOpen(true)} className="gap-1.5">
-            <Mail className="size-4" /> Invio massivo solleciti
-          </Button>
+          {puoInviare && (
+            <Button size="sm" variant="outline" onClick={() => setInvioMassivoOpen(true)} className="gap-1.5">
+              <Mail className="size-4" /> Invio massivo solleciti
+            </Button>
+          )}
         </div>
         {isLoading && pageRows.length === 0 ? <Skeleton className="h-40" /> : pageRows.length === 0 ? (
           <Card className="p-8 text-center text-sm text-muted-foreground">Nessun cliente con scadenze aperte</Card>

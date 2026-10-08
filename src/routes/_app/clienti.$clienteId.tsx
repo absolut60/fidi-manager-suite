@@ -27,6 +27,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { BackButton } from "@/components/back-button";
 import { InviaSollecitoDialog } from "@/components/invia-sollecito-dialog";
+import { puoInviareComunicazioniRecupero } from "@/lib/recupero-permessi";
 import { useRef } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -280,7 +281,8 @@ function ClienteDetail() {
   const { edit, tab, insolutiTab } = Route.useSearch();
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const { role, hasRole } = useAuth();
+  const { role, hasRole, roles } = useAuth();
+  const puoInviare = puoInviareComunicazioniRecupero(roles as string[]);
   const isAdmin = role === "amministratore";
   const isStoreManager = role === "store_manager";
   // Retro-compatibilita': i vecchi link ?tab=insoluti&insolutiTab=x puntano ora al tab promosso
@@ -481,14 +483,16 @@ function ClienteDetail() {
                 <ShieldOff className="size-3" /> Privacy da richiedere
               </Badge>
             )}
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1.5"
-              onClick={() => setOpenSollecito(true)}
-            >
-              <Send className="size-4" /> Invia sollecito
-            </Button>
+            {puoInviare && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5"
+                onClick={() => setOpenSollecito(true)}
+              >
+                <Send className="size-4" /> Invia sollecito
+              </Button>
+            )}
             <InviaSollecitoDialog
               open={openSollecito}
               onOpenChange={setOpenSollecito}
