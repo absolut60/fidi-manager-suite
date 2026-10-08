@@ -31,6 +31,7 @@ import { CreaAzioneDialog } from "@/components/crea-azione-dialog";
 import { EmailInviataView } from "@/components/email-inviata-view";
 import { ModificaAzioneDialog, type AzioneModificabile } from "@/components/modifica-azione-dialog";
 import { LetteraPdfDialog } from "@/components/lettera-pdf-dialog";
+import { puoInviareComunicazioniRecupero } from "@/lib/recupero-permessi";
 import type { TipoAzione } from "@/components/reminder-controls";
 import { useAzioniRecuperoCliente, useOperatoriAttivita, type Azione } from "@/hooks/use-azioni-recupero-cliente";
 import { TIPO_AZIONE_ICON, TIPO_AZIONE_LABEL } from "@/lib/azioni-recupero-ui";
@@ -78,6 +79,7 @@ function fmtDateTime(v: unknown) {
 export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string }) {
   const qc = useQueryClient();
   const { user, roles } = useAuth();
+  const puoInviare = puoInviareComunicazioniRecupero(roles as string[]);
   const canManageAll =
     roles.includes("amministratore") ||
     roles.includes("amministrazione") ||
@@ -229,12 +231,16 @@ export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string })
 
       {/* Azioni dirette */}
       <div className="flex flex-wrap gap-2">
-        <Button size="sm" onClick={() => setSollecitoOpen(true)} className="gap-1.5">
-          <Send className="size-4" /> Invia sollecito
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => setEmailLiberaOpen(true)} className="gap-1.5">
-          <Mail className="size-4" /> Email libera
-        </Button>
+        {puoInviare && (
+          <Button size="sm" onClick={() => setSollecitoOpen(true)} className="gap-1.5">
+            <Send className="size-4" /> Invia sollecito
+          </Button>
+        )}
+        {puoInviare && (
+          <Button size="sm" variant="outline" onClick={() => setEmailLiberaOpen(true)} className="gap-1.5">
+            <Mail className="size-4" /> Email libera
+          </Button>
+        )}
         <Button size="sm" variant="outline" onClick={() => openNuova("promemoria")} className="gap-1.5">
           <Bell className="size-4" /> Nuovo promemoria
         </Button>
@@ -247,9 +253,11 @@ export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string })
         <Button size="sm" variant="outline" onClick={() => setPromessaOpen(true)} className="gap-1.5">
           <HandCoins className="size-4" /> Registra promessa
         </Button>
-        <Button size="sm" variant="ghost" onClick={() => setLetteraOpen(true)} className="gap-1.5">
-          <FileText className="size-4" /> Lettera
-        </Button>
+        {puoInviare && (
+          <Button size="sm" variant="ghost" onClick={() => setLetteraOpen(true)} className="gap-1.5">
+            <FileText className="size-4" /> Lettera
+          </Button>
+        )}
       </div>
 
       <LetteraPdfDialog
