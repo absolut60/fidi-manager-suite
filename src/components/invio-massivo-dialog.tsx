@@ -10,6 +10,7 @@ import { classificaScadenza } from "@/lib/scadenze";
 import { renderTemplate, wrapEmailHtml, caricaSedeCliente, type TemplateEmail, type DatiTemplate } from "@/lib/template-email";
 import { livelloSollecitoFromTipo } from "@/lib/template-email-render";
 import { useAuth } from "@/hooks/use-auth";
+import { puoInviareComunicazioniRecupero } from "@/lib/recupero-permessi";
 import { avviaCampagnaSollecito } from "@/lib/sollecito-massivo.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,7 +50,8 @@ export function InvioMassivoDialog({
   const qc = useQueryClient();
   const navigate = useNavigate();
   const cfg = useConfig();
-  const { user, profilo } = useAuth();
+  const { user, profilo, roles } = useAuth();
+  const puoInviare = puoInviareComunicazioniRecupero(roles as string[]);
   const nomeOperatore = `${profilo?.nome ?? ""} ${profilo?.cognome ?? ""}`.trim() || "Operatore";
   const avvia = useServerFn(avviaCampagnaSollecito);
 
@@ -119,7 +121,7 @@ export function InvioMassivoDialog({
       if (error) throw error;
       return data as TemplateEmail[];
     },
-    enabled: open,
+    enabled: open && puoInviare,
   });
 
   useEffect(() => {
@@ -148,7 +150,7 @@ export function InvioMassivoDialog({
 
   const { data: coerenza } = useQuery<Record<string, CoerenzaRow>>({
     queryKey: ["sollecito-massivo-coerenza", livelloPrecedente, clienteIdsKey],
-    enabled: open && livelloPrecedente !== null && clienteIds.length > 0,
+    enabled: open && puoInviare && livelloPrecedente !== null && clienteIds.length > 0,
     staleTime: 60_000,
     queryFn: async () => {
       const out: Record<string, CoerenzaRow> = {};
@@ -191,7 +193,7 @@ export function InvioMassivoDialog({
   const mesiKey = useMemo(() => [...mesi].sort().join(","), [mesi]);
   const { data: clientePreview, isFetching: loadingPreview } = useQuery<ClientePreviewData | null>({
     queryKey: ["sollecito-massivo-cliente", clienteCorrenteId, tipoCampagna, mesiKey],
-    enabled: open && !!clienteCorrenteId,
+    enabled: open && !!clienteCorrenteId && puoInviare,
     staleTime: 60_000,
     queryFn: async () => {
       const id = clienteCorrenteId!;
@@ -286,7 +288,7 @@ export function InvioMassivoDialog({
   const { data: sedeCorrente } = useQuery({
     queryKey: ["sollecito-massivo-sede", clienteCorrenteId],
     queryFn: () => caricaSedeCliente(clienteCorrenteId!),
-    enabled: open && !!clienteCorrenteId,
+    enabled: open && !!clienteCorrenteId && puoInviare,
     staleTime: 60_000,
   });
 
@@ -356,6 +358,7 @@ export function InvioMassivoDialog({
   }
 
   async function handleAvvia() {
+    if (!puoInviare) return;
     if (!selectedTemplate) return;
     if (totale === 0) {
       toast.error("Nessun cliente selezionato");
@@ -415,6 +418,17 @@ export function InvioMassivoDialog({
           </DialogDescription>
         </DialogHeader>
 
+        {!puoInviare ? (
+          <div className="space-y-4 py-2">
+            <div className="rounded-md border border-border bg-muted/30 px-4 py-3 text-sm">
+              L'invio delle comunicazioni di recupero è riservato al Recupero crediti.
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => onOpenChange(false)}>Chiudi</Button>
+            </DialogFooter>
+          </div>
+        ) : (
+        <>
         <div className="space-y-4 py-2">
           {/* Modalità destinatari */}
           <div className="space-y-2">
@@ -724,6 +738,8 @@ export function InvioMassivoDialog({
           </Button>
 
         </DialogFooter>
+        </>
+        )}
       </DialogContent>
     </Dialog>
   );
