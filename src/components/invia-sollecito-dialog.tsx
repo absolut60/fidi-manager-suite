@@ -305,6 +305,17 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
           </DialogDescription>
         </DialogHeader>
 
+        {!puoInviare ? (
+          <div className="space-y-4 py-2">
+            <div className="rounded-md border border-border bg-muted/30 px-4 py-3 text-sm">
+              L'invio delle comunicazioni di recupero è riservato al Recupero crediti.
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => onOpenChange(false)}>Chiudi</Button>
+            </DialogFooter>
+          </div>
+        ) : (
+        <>
         <div className="space-y-4 py-2">
           {/* Template */}
           <div className="space-y-1.5">
@@ -387,6 +398,8 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
             <Send className="size-4" /> {sending ? "Invio in corso..." : "Invia"}
           </Button>
         </DialogFooter>
+        </>
+        )}
       </DialogContent>
     </Dialog>
   );
