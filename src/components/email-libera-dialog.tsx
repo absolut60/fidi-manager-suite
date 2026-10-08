@@ -28,6 +28,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { isEmailValida } from "@/lib/email-validazione";
 import { useConfig } from "@/hooks/use-config";
+import { puoInviareComunicazioniRecupero } from "@/lib/recupero-permessi";
 
 type Props = {
   open: boolean;
@@ -40,7 +41,8 @@ type ClienteInfo = { id: string; ragione_sociale: string; email: string | null; 
 
 export function EmailLiberaDialog({ open, onOpenChange, clienteId, onSent }: Props) {
   const qc = useQueryClient();
-  const { user, profilo } = useAuth();
+  const { user, profilo, roles } = useAuth();
+  const puoInviare = puoInviareComunicazioniRecupero(roles as string[]);
   const appCfg = useConfig();
   const speseUnit = appCfg.spese_insoluto_riba_eur;
   const nomeOperatore = `${profilo?.nome ?? ""} ${profilo?.cognome ?? ""}`.trim() || "Operatore";
@@ -75,7 +77,7 @@ export function EmailLiberaDialog({ open, onOpenChange, clienteId, onSent }: Pro
       if (error) throw error;
       return data as ClienteInfo | null;
     },
-    enabled: open && !!clienteId,
+    enabled: open && !!clienteId && puoInviare,
   });
 
   const { data: templates } = useQuery({
@@ -89,7 +91,7 @@ export function EmailLiberaDialog({ open, onOpenChange, clienteId, onSent }: Pro
       if (error) throw error;
       return data as TemplateEmail[];
     },
-    enabled: open,
+    enabled: open && puoInviare,
   });
 
   useEffect(() => {
@@ -102,13 +104,13 @@ export function EmailLiberaDialog({ open, onOpenChange, clienteId, onSent }: Pro
   const { data: datiTemplate, isFetching: datiLoading } = useQuery({
     queryKey: ["email-libera-dati", clienteId, nomeOperatore],
     queryFn: () => caricaDatiCliente(clienteId, nomeOperatore),
-    enabled: open && !!clienteId,
+    enabled: open && !!clienteId && puoInviare,
   });
 
   const { data: datiSede } = useQuery({
     queryKey: ["email-libera-sede", clienteId],
     queryFn: () => caricaSedeCliente(clienteId),
-    enabled: open && !!clienteId,
+    enabled: open && !!clienteId && puoInviare,
   });
 
   const { data: scaduteIds } = useQuery({
@@ -123,7 +125,7 @@ export function EmailLiberaDialog({ open, onOpenChange, clienteId, onSent }: Pro
         .filter((s: any) => classificaScadenza(s) === "scaduto")
         .map((s: any) => s.id as string);
     },
-    enabled: open && !!clienteId,
+    enabled: open && !!clienteId && puoInviare,
   });
 
   function precaricaDaTemplate(id: string) {
@@ -163,6 +165,7 @@ export function EmailLiberaDialog({ open, onOpenChange, clienteId, onSent }: Pro
   const senzaIndirizzo = !!cliente && !cliente.email && !cliente.pec;
 
   async function handleInvia() {
+    if (!puoInviare) return;
     if (!cliente || !rendered) return;
     const dest = destEmail.trim();
     if (!isValidEmail(dest)) {
@@ -262,6 +265,17 @@ export function EmailLiberaDialog({ open, onOpenChange, clienteId, onSent }: Pro
           </DialogDescription>
         </DialogHeader>
 
+        {!puoInviare ? (
+          <div className="space-y-4 py-2">
+            <div className="rounded-md border border-border bg-muted/30 px-4 py-3 text-sm">
+              L'invio delle comunicazioni di recupero è riservato al Recupero crediti.
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => onOpenChange(false)}>Chiudi</Button>
+            </DialogFooter>
+          </div>
+        ) : (
+        <>
         <div className="space-y-4 py-2">
           {/* Parti da template (opzionale) */}
           <div className="space-y-1.5">
@@ -366,6 +380,8 @@ export function EmailLiberaDialog({ open, onOpenChange, clienteId, onSent }: Pro
             <Mail className="size-4" /> {sending ? "Invio in corso..." : "Invia email"}
           </Button>
         </DialogFooter>
+        </>
+        )}
       </DialogContent>
     </Dialog>
   );
