@@ -106,6 +106,13 @@
       "when": 1791385690372,
       "tag": "0014_bulk_update_clienti_anagrafica",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1791491514246,
+      "tag": "0015_fido_teorico_cliente_rls_clienti_visibili",
+      "breakpoints": true
     }
   ]
 }
