@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { InvioMassivoDialog } from "@/components/invio-massivo-dialog";
+import { puoInviareComunicazioniRecupero } from "@/lib/recupero-permessi";
 import { RegistraPromessaDialog } from "@/components/registra-promessa-dialog";
 import { isRiBa } from "@/lib/spese-insoluto";
 import { useAuth } from "@/hooks/use-auth";
@@ -33,7 +34,8 @@ type StoreOpt = { id: string; nome: string };
 
 /** Ruoli che vedono tutte le sedi (specchio server-side di effective_store_filter). */
 function useStorePerimetro() {
-  const { profilo, hasAnyRole } = useAuth();
+  const { profilo, hasAnyRole, roles } = useAuth();
+  const puoInviare = puoInviareComunicazioniRecupero(roles as string[]);
   const trasversale = hasAnyRole(
     "amministratore",
     "amministrazione",
@@ -469,21 +471,23 @@ function CruscottoIncassiPage() {
               const nSel = selezionatiValidi.length;
               return (
                 <div className="flex flex-wrap items-center gap-2 pt-1">
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      if (nSel === 0) {
-                        toast.info("Seleziona almeno un cliente");
-                        return;
-                      }
-                      apriSollecita(selezionatiValidi);
-                    }}
-                    disabled={loadingLista || nSel === 0}
-                    className="gap-1.5"
-                    title={nSel === 0 ? "Seleziona almeno un cliente" : undefined}
-                  >
-                    <Send className="size-4" /> Sollecita selezionati ({nSel})
-                  </Button>
+                  {puoInviare && (
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        if (nSel === 0) {
+                          toast.info("Seleziona almeno un cliente");
+                          return;
+                        }
+                        apriSollecita(selezionatiValidi);
+                      }}
+                      disabled={loadingLista || nSel === 0}
+                      className="gap-1.5"
+                      title={nSel === 0 ? "Seleziona almeno un cliente" : undefined}
+                    >
+                      <Send className="size-4" /> Sollecita selezionati ({nSel})
+                    </Button>
+                  )}
                   <Button size="sm" variant="outline" disabled className="gap-1.5" title="Funzione in arrivo — considera tutti i clienti del mese">
                     <Mail className="size-4" /> Invia riepilogo via mail
                   </Button>
@@ -511,6 +515,7 @@ function CruscottoIncassiPage() {
                 righe={scadenzeFiltrate}
                 vista={vista}
                 onSollecita={(id) => apriSollecita([id])}
+                puoSollecitare={puoInviare}
                 onPromessa={(clienteId, ragione) => {
                   setPromessaClienteId(clienteId);
                   setPromessaLabel(ragione);
@@ -581,13 +586,14 @@ type GruppoCliente = {
 };
 
 function ScadenzeGroupedLista({
-  righe, vista, onSollecita, onPromessa,
+  righe, vista, onSollecita, onPromessa, puoSollecitare,
   sortKey, sortDir, onSort,
   selezionati, onToggleSelezionato, onToggleAll,
 }: {
   righe: RigaScadenzaVista[];
   vista: VistaDettaglio;
   onSollecita: (clienteId: string) => void;
+  puoSollecitare: boolean;
   onPromessa: (clienteId: string, ragione: string) => void;
   sortKey: DettSortKey;
   sortDir: SortDir;
@@ -763,11 +769,13 @@ function ScadenzeGroupedLista({
                   {showActions && (
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-1">
-                        <IconAction
-                          label="Sollecita"
-                          onClick={() => onSollecita(g.cliente_id)}
-                          icon={<Send className="size-4" />}
-                        />
+                        {puoSollecitare && (
+                          <IconAction
+                            label="Sollecita"
+                            onClick={() => onSollecita(g.cliente_id)}
+                            icon={<Send className="size-4" />}
+                          />
+                        )}
                         <IconAction
                           label="Registra promessa di pagamento"
                           onClick={() => onPromessa(g.cliente_id, g.ragione_sociale)}
