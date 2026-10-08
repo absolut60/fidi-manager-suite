@@ -28,6 +28,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ReminderControls, defaultReminderFor, creaFollowUp, type ReminderState } from "@/components/reminder-controls";
 import { isEmailValida } from "@/lib/email-validazione";
 import { useConfig } from "@/hooks/use-config";
+import { puoInviareComunicazioniRecupero } from "@/lib/recupero-permessi";
 
 type Props = {
   open: boolean;
@@ -42,7 +43,8 @@ type ClienteInfo = { id: string; ragione_sociale: string; email: string | null; 
 
 export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsistenteId, onSent }: Props) {
   const qc = useQueryClient();
-  const { user, profilo } = useAuth();
+  const { user, profilo, roles } = useAuth();
+  const puoInviare = puoInviareComunicazioniRecupero(roles as string[]);
   const appCfg = useConfig();
   const speseUnit = appCfg.spese_insoluto_riba_eur;
   const nomeOperatore = `${profilo?.nome ?? ""} ${profilo?.cognome ?? ""}`.trim() || "Operatore";
@@ -74,7 +76,7 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
       if (error) throw error;
       return data as ClienteInfo | null;
     },
-    enabled: open && !!clienteId,
+    enabled: open && !!clienteId && puoInviare,
   });
 
   // Templates attivi
@@ -89,7 +91,7 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
       if (error) throw error;
       return data as TemplateEmail[];
     },
-    enabled: open,
+    enabled: open && puoInviare,
   });
 
   // Imposta destinatario di default su email→pec→custom quando arriva il cliente
@@ -116,13 +118,13 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
   const { data: datiTemplate, isFetching: datiLoading } = useQuery({
     queryKey: ["sollecito-dati", clienteId, nomeOperatore],
     queryFn: () => caricaDatiCliente(clienteId, nomeOperatore),
-    enabled: open && !!clienteId,
+    enabled: open && !!clienteId && puoInviare,
   });
 
   const { data: datiSede } = useQuery({
     queryKey: ["sollecito-sede", clienteId],
     queryFn: () => caricaSedeCliente(clienteId),
-    enabled: open && !!clienteId,
+    enabled: open && !!clienteId && puoInviare,
   });
 
   // ID delle scadenze scadute da linkare
@@ -138,7 +140,7 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
         .filter((s: any) => classificaScadenza(s) === "scaduto")
         .map((s: any) => s.id as string);
     },
-    enabled: open && !!clienteId,
+    enabled: open && !!clienteId && puoInviare,
   });
 
   const rendered = useMemo(() => {
@@ -168,6 +170,7 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
   const senzaIndirizzo = !!cliente && !cliente.email && !cliente.pec;
 
   async function handleInvia() {
+    if (!puoInviare) return;
     if (!cliente || !selectedTemplate || !rendered) return;
     const dest = destEmail.trim();
     if (!isValidEmail(dest)) {
@@ -302,6 +305,17 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
           </DialogDescription>
         </DialogHeader>
 
+        {!puoInviare ? (
+          <div className="space-y-4 py-2">
+            <div className="rounded-md border border-border bg-muted/30 px-4 py-3 text-sm">
+              L'invio delle comunicazioni di recupero è riservato al Recupero crediti.
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => onOpenChange(false)}>Chiudi</Button>
+            </DialogFooter>
+          </div>
+        ) : (
+        <>
         <div className="space-y-4 py-2">
           {/* Template */}
           <div className="space-y-1.5">
@@ -384,6 +398,8 @@ export function InviaSollecitoDialog({ open, onOpenChange, clienteId, azioneEsis
             <Send className="size-4" /> {sending ? "Invio in corso..." : "Invia"}
           </Button>
         </DialogFooter>
+        </>
+        )}
       </DialogContent>
     </Dialog>
   );

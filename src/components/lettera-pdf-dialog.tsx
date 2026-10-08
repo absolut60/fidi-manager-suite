@@ -18,6 +18,7 @@ import {
 import { caricaDatiClienteLettera, renderLettera, type TemplateLettera } from "@/lib/template-lettera";
 import { generaLetteraPdf } from "@/lib/lettera-pdf.functions";
 import { useConfig } from "@/hooks/use-config";
+import { puoInviareComunicazioniRecupero } from "@/lib/recupero-permessi";
 
 type Props = {
   open: boolean;
@@ -32,7 +33,8 @@ export function LetteraPdfDialog({
   open, onOpenChange, clienteId, ragioneSociale, attachToAzioneId, onGenerated,
 }: Props) {
   const qc = useQueryClient();
-  const { user, profilo } = useAuth();
+  const { user, profilo, roles } = useAuth();
+  const puoInviare = puoInviareComunicazioniRecupero(roles as string[]);
   const appCfg = useConfig();
   const speseUnit = appCfg.spese_insoluto_riba_eur;
   const genera = useServerFn(generaLetteraPdf);
@@ -53,7 +55,7 @@ export function LetteraPdfDialog({
       if (error) throw error;
       return (data ?? []) as TemplateLettera[];
     },
-    enabled: open,
+    enabled: open && puoInviare,
   });
 
   // Reset alla riapertura
@@ -94,6 +96,7 @@ export function LetteraPdfDialog({
   const canGen = !!templateId && !!corpo.trim() && (!isLibera || !!oggetto.trim()) && !busy;
 
   async function handleGenera() {
+    if (!puoInviare) return;
     if (!canGen) return;
     setBusy(true);
     try {
@@ -145,6 +148,17 @@ export function LetteraPdfDialog({
           </DialogDescription>
         </DialogHeader>
 
+        {!puoInviare ? (
+          <div className="space-y-4">
+            <div className="rounded-md border border-border bg-muted/30 px-4 py-3 text-sm">
+              L'invio delle comunicazioni di recupero è riservato al Recupero crediti.
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>Chiudi</Button>
+            </DialogFooter>
+          </div>
+        ) : (
+        <>
         <div className="space-y-4">
           <div className="space-y-1.5">
             <Label>Modello lettera</Label>
@@ -195,6 +209,8 @@ export function LetteraPdfDialog({
             Genera PDF
           </Button>
         </DialogFooter>
+        </>
+        )}
       </DialogContent>
     </Dialog>
   );

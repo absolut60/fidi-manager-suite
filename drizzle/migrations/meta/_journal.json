@@ -113,6 +113,13 @@
       "when": 1791491514246,
       "tag": "0015_fido_teorico_cliente_rls_clienti_visibili",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1791493768753,
+      "tag": "0016_auth_puo_inviare_recupero",
+      "breakpoints": true
     }
   ]
 }
