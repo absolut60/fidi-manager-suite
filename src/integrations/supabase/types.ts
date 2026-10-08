@@ -6710,6 +6710,7 @@ export type Database = {
       auth_ha_accesso_preventivi: { Args: never; Returns: boolean }
       auth_ha_ruolo_globale_clienti: { Args: never; Returns: boolean }
       auth_puo_gestire_anagrafiche_prev: { Args: never; Returns: boolean }
+      auth_puo_inviare_recupero: { Args: never; Returns: boolean }
       auth_puo_scrivere_blocco: {
         Args: { _blocco_id: string }
         Returns: boolean
