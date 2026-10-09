@@ -169,6 +169,13 @@
       "when": 1791552046529,
       "tag": "0023_fm41_funzioni_solo_server",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1791552361739,
+      "tag": "0024_fm41_guardia_funzioni_marketing",
+      "breakpoints": true
     }
   ]
 }
