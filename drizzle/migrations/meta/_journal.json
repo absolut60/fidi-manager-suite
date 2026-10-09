@@ -176,6 +176,13 @@
       "when": 1791552361739,
       "tag": "0024_fm41_guardia_funzioni_marketing",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1791553379366,
+      "tag": "0025_fm41_guardia_sinistri_campagne_entita",
+      "breakpoints": true
     }
   ]
 }
