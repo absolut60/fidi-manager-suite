@@ -5,6 +5,7 @@ import {
   buildNotificaComunicazioneEmail,
   RUOLI_DESTINATARI_COMUNICAZIONE_FIDO,
 } from "@/lib/comunicazioni-richiesta-email";
+import { etichettaTipoRichiesta } from "@/lib/fidi";
 
 const FINESTRA_INVIO_MS = 10 * 60 * 1000;
 
@@ -125,6 +126,7 @@ export const inviaEmailComunicazioneRichiesta = createServerFn({ method: "POST" 
             richiestaId: com.richiesta_id,
             testo: com.testo,
             appUrl,
+            riferimento,
           }),
         });
         if (esito.ok) inviate++;
