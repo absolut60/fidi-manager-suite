@@ -5,6 +5,7 @@ import {
   buildNotificaComunicazioneEmail,
   RUOLI_DESTINATARI_COMUNICAZIONE_FIDO,
 } from "@/lib/comunicazioni-richiesta-email";
+import { etichettaTipoRichiesta } from "@/lib/fidi";
 
 const FINESTRA_INVIO_MS = 10 * 60 * 1000;
 
@@ -42,13 +43,40 @@ export const inviaEmailComunicazioneRichiesta = createServerFn({ method: "POST" 
       return { ok: true, inviate: 0, saltate: 0, motivo: "scaduta" as const };
     }
 
-    // d) richiesta
+    // d) richiesta (con riferimenti per l'email)
     const { data: richiesta, error: rErr } = await supabaseAdmin
       .from("richieste_fido")
-      .select("id, created_by")
+      .select("id, created_by, tipo, importo_richiesto, store_id, cliente:clienti(ragione_sociale, codice_gestionale)")
       .eq("id", com.richiesta_id)
       .maybeSingle();
     if (rErr) throw new Error(rErr.message);
+
+    let puntoVendita: string | null = null;
+    if (richiesta?.store_id) {
+      const { data: store } = await supabaseAdmin
+        .from("stores")
+        .select("nome")
+        .eq("id", richiesta.store_id)
+        .maybeSingle();
+      puntoVendita = store?.nome ?? null;
+    }
+
+    const clienteRel = Array.isArray(richiesta?.cliente) ? richiesta?.cliente[0] : richiesta?.cliente;
+    const importoFormattato =
+      richiesta?.importo_richiesto != null
+        ? new Intl.NumberFormat("it-IT", {
+            style: "currency",
+            currency: "EUR",
+            maximumFractionDigits: 0,
+          }).format(richiesta.importo_richiesto)
+        : null;
+    const riferimento = {
+      cliente: clienteRel?.ragione_sociale ?? "Cliente non indicato",
+      codiceCliente: clienteRel?.codice_gestionale ?? null,
+      tipo: etichettaTipoRichiesta(richiesta?.tipo ?? "", richiesta?.importo_richiesto),
+      importo: importoFormattato,
+      puntoVendita,
+    };
 
     // e) validazione destinatari
     const richiesti = Array.from(new Set(data.destinatariIds));
@@ -98,6 +126,7 @@ export const inviaEmailComunicazioneRichiesta = createServerFn({ method: "POST" 
             richiestaId: com.richiesta_id,
             testo: com.testo,
             appUrl,
+            riferimento,
           }),
         });
         if (esito.ok) inviate++;
