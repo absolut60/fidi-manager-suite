@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { sendNotificaComunicazione } from "@/lib/send-email";
+import { inviaEmailComunicazioneRichiesta } from "@/lib/comunicazioni-richiesta.functions";
 
 export type DestinatarioComunicazione = "richiedente" | "approvatore" | "tutti";
 
@@ -13,7 +13,7 @@ export const DESTINATARIO_LABEL: Record<DestinatarioComunicazione, string> = {
  * Sistema unificato di invio comunicazioni su richiesta fido.
  * - Salva il messaggio nello storico (comunicazioni_richiesta) tramite RPC SECURITY DEFINER.
  * - Crea notifiche in-app (tabella notifiche) per i destinatari giusti.
- * - Invia email (best-effort, non bloccante).
+ * - Invia email (best-effort, non bloccante) tramite server function.
  *
  * I destinatari vengono risolti server-side dalla RPC, in base al ruolo:
  *   - "richiedente"  -> created_by della richiesta
@@ -27,7 +27,7 @@ export async function inviaComunicazioneRichiesta(opts: {
   autoreId: string;
   autoreEmail?: string | null;
 }): Promise<{ comunicazioneId: string; destinatariCount: number }> {
-  const { richiestaId, destinatario, testo, autoreId, autoreEmail } = opts;
+  const { richiestaId, destinatario, testo } = opts;
   const testoTrim = testo.trim();
   if (!testoTrim) throw new Error("Testo vuoto");
 
@@ -46,31 +46,11 @@ export async function inviaComunicazioneRichiesta(opts: {
   };
   const destinatariIds = result?.destinatari_user_ids ?? [];
 
-  // 2) Email best-effort (non bloccante, non rompe il save se fallisce)
-  if (destinatariIds.length > 0) {
-    try {
-      const [{ data: meProfilo }, { data: profs }] = await Promise.all([
-        supabase.from("profili").select("nome, cognome").eq("id", autoreId).maybeSingle(),
-        supabase.from("profili").select("id, nome, cognome, email").in("id", destinatariIds),
-      ]);
-      const autoreNome =
-        [meProfilo?.nome, meProfilo?.cognome].filter(Boolean).join(" ") || "Un utente";
-      const appUrl = typeof window !== "undefined" ? window.location.origin : "";
-      for (const p of profs ?? []) {
-        if (p.email && p.email !== autoreEmail) {
-          sendNotificaComunicazione({
-            toEmail: p.email,
-            toName: [p.nome, p.cognome].filter(Boolean).join(" ") || "Utente",
-            autoreNome,
-            richiestaId,
-            testo: testoTrim,
-            appUrl,
-          }).catch((e) => console.error("Errore email comunicazione:", e));
-        }
-      }
-    } catch (e) {
-      console.error("Errore preparazione email comunicazioni:", e);
-    }
+  // 2) Email best-effort dal server (FM41 fetta 1): non bloccante, non rompe il save.
+  if (destinatariIds.length > 0 && result?.comunicazione_id) {
+    inviaEmailComunicazioneRichiesta({
+      data: { comunicazioneId: result.comunicazione_id, destinatariIds },
+    }).catch((e) => console.error("Errore email comunicazione:", e));
   }
 
   return {
