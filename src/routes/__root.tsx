@@ -6,6 +6,7 @@ import {
   useRouter,
   HeadContent,
   Scripts,
+  type ErrorComponentProps,
 } from "@tanstack/react-router";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/hooks/use-auth";
@@ -35,7 +36,9 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+function ErrorComponent({ error: erroreGrezzo, reset }: ErrorComponentProps) {
+  const error =
+    erroreGrezzo instanceof Error ? erroreGrezzo : new Error(String(erroreGrezzo));
   console.error("[RootErrorBoundary]", {
     name: error?.name,
     message: error?.message,
