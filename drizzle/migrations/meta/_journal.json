@@ -134,6 +134,13 @@
       "when": 1791526535199,
       "tag": "0018_fm40_rls_lettura_template",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1791541522484,
+      "tag": "0019_fm41_rls_lettura_comunicazioni_richiesta",
+      "breakpoints": true
     }
   ]
 }
