@@ -3,7 +3,10 @@
 // job `inviaEmailRichiesta` (src/lib/inngest/richieste-email.server.ts) —
 // fonte unica. Qui validiamo l'input e ritorniamo subito.
 //
-// Autorizzazione: richiede sessione utente (requireSupabaseAuth).
+// Autorizzazione (FM41): richiede sessione utente (requireSupabaseAuth) e che
+// l'utente VEDA la richiesta interna (lettura con il suo client, sotto RLS);
+// altrimenti non si accoda nulla. Il mittente (actor) è SEMPRE l'utente della
+// sessione, letto dal profilo sul server: l'actor inviato dal browser è ignorato.
 // Il chiamante NON deve MAI bloccare l'azione principale sull'esito.
 
 import { createServerFn } from "@tanstack/react-start";
@@ -26,11 +29,14 @@ const EVENTS = [
 const InputSchema = z.object({
   event: z.enum(EVENTS),
   richiestaId: z.string().uuid(),
-  actor: z.object({
-    id: z.string().uuid().nullable().optional(),
-    nome: z.string().max(200).optional().default(""),
-    email: z.string().email().nullable().optional(),
-  }),
+  // ignorato: il mittente è sempre l'utente della sessione (FM41)
+  actor: z
+    .object({
+      id: z.string().uuid().nullable().optional(),
+      nome: z.string().max(200).optional().default(""),
+      email: z.string().email().nullable().optional(),
+    })
+    .optional(),
   extra: z
     .object({
       by: z.string().max(200).nullable().optional(),
@@ -44,12 +50,41 @@ const InputSchema = z.object({
 export const notifyRichiestaEvento = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: z.input<typeof InputSchema>) => InputSchema.parse(d))
-  .handler(async ({ data }): Promise<{ ok: boolean; queued: boolean; err?: string }> => {
+  .handler(async ({ data, context }): Promise<{ ok: boolean; queued: boolean; err?: string }> => {
     try {
+      // Accesso: l'utente deve vedere la richiesta (client utente, RLS).
+      const { data: visibile, error: visErr } = await context.supabase
+        .from("richieste_interne")
+        .select("id")
+        .eq("id", data.richiestaId)
+        .maybeSingle();
+      if (visErr || !visibile) {
+        return { ok: false, queued: false, err: "non_autorizzato" };
+      }
+
+      // Mittente reale dal profilo dell'utente della sessione.
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: profilo } = await supabaseAdmin
+        .from("profili")
+        .select("id, nome, cognome, email")
+        .eq("id", context.userId)
+        .maybeSingle();
+      if (!profilo) {
+        return { ok: false, queued: false, err: "profilo_non_trovato" };
+      }
+      const actor = {
+        id: context.userId,
+        nome: [profilo.nome, profilo.cognome]
+          .filter((v): v is string => typeof v === "string" && v.trim() !== "")
+          .map((v) => v.trim())
+          .join(" "),
+        email: profilo.email ?? null,
+      };
+
       await sendInngestEvent("richieste/notifica", {
         event: data.event,
         richiestaId: data.richiestaId,
-        actor: data.actor,
+        actor,
         extra: data.extra,
       });
       return { ok: true, queued: true };
