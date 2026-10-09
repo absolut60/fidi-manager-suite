@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { sendInngestEvent } from "./inngest/client";
+import { assertImportazioneEsiste, assertPuoImportareGamma } from "./import-permessi.server";
 
 const FonteEnum = z.enum([
   "anagrafica",
@@ -26,6 +27,8 @@ export const triggerImport = createServerFn({ method: "POST" })
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
+    await assertPuoImportareGamma(context.supabase, context.userId);
+    await assertImportazioneEsiste(context.supabase, data.importazioneId);
     await sendInngestEvent(`import/${data.fonte}.requested`, {
       importazioneId: data.importazioneId,
       filePath: data.filePath,
@@ -44,6 +47,8 @@ export const triggerAnagraficaImport = createServerFn({ method: "POST" })
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
+    await assertPuoImportareGamma(context.supabase, context.userId);
+    await assertImportazioneEsiste(context.supabase, data.importazioneId);
     await sendInngestEvent("import/anagrafica.requested", {
       importazioneId: data.importazioneId,
       filePath: data.filePath,

@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { sendInngestEvent } from "./inngest/client";
+import { assertImportazioneEsiste, assertPuoImportareEventi } from "./import-permessi.server";
 
 /**
  * Avvia l'import dei partecipanti di un evento in background (Inngest).
@@ -21,6 +22,8 @@ export const triggerEventiPartecipantiImport = createServerFn({ method: "POST" }
       .parse(input),
   )
   .handler(async ({ data, context }) => {
+    await assertPuoImportareEventi(context.supabase, context.userId);
+    await assertImportazioneEsiste(context.supabase, data.importazioneId, "eventi_partecipanti");
     await sendInngestEvent("import/eventi_partecipanti.requested", {
       importazioneId: data.importazioneId,
       eventoId: data.eventoId,
