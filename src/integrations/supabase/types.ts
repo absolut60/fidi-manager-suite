@@ -6709,6 +6709,7 @@ export type Database = {
       arrotonda_fido_proposto: { Args: { _fido_base: number }; Returns: number }
       auth_ha_accesso_preventivi: { Args: never; Returns: boolean }
       auth_ha_ruolo_globale_clienti: { Args: never; Returns: boolean }
+      auth_puo_accedere_marketing: { Args: never; Returns: boolean }
       auth_puo_gestire_anagrafiche_prev: { Args: never; Returns: boolean }
       auth_puo_inviare_recupero: { Args: never; Returns: boolean }
       auth_puo_scrivere_blocco: {
