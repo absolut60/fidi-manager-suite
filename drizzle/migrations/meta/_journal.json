@@ -162,6 +162,13 @@
       "when": 1791549709248,
       "tag": "0022_fm41_revoca_esecuzione_funzioni_anon",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1791552046529,
+      "tag": "0023_fm41_funzioni_solo_server",
+      "breakpoints": true
     }
   ]
 }
