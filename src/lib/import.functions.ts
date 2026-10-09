@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { sendInngestEvent } from "./inngest/client";
-import { assertImportazioneEsiste, assertPuoImportareGamma } from "./import-permessi.server";
+import { assertImportazioneEsiste, assertPuoImportareGamma } from "@/lib/import-permessi.server";
 
 const FonteEnum = z.enum([
   "anagrafica",

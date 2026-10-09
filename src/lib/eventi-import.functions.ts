@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { sendInngestEvent } from "./inngest/client";
-import { assertImportazioneEsiste, assertPuoImportareEventi } from "./import-permessi.server";
+import { assertImportazioneEsiste, assertPuoImportareEventi } from "@/lib/import-permessi.server";
 
 /**
  * Avvia l'import dei partecipanti di un evento in background (Inngest).
