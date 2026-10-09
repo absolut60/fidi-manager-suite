@@ -17,7 +17,7 @@ import {
   formatEuro, formatDate, type TipoRichiesta, importoRichiestaValido,
   etichettaTipoRichiesta,
 } from "@/lib/fidi";
-import { puoDecidereRichiesta, condizionePagamentoCambiata } from "@/lib/fidi";
+import { puoDecidereRichiesta, condizionePagamentoCambiata, puoModificareRichiestaFido, puoEliminareRichiestaFido } from "@/lib/fidi";
 
 import { ComunicazioniRichiestaPanel } from "@/components/comunicazioni-richiesta-panel";
 import { AllegatiSection } from "@/components/allegati-section";
