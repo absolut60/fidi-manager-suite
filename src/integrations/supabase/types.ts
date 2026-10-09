@@ -6724,6 +6724,10 @@ export type Database = {
         Args: { _preventivo_id: string }
         Returns: boolean
       }
+      auth_vede_campagne_entita: {
+        Args: { _cliente_id: string; _lead_id: string }
+        Returns: boolean
+      }
       auth_vede_preventivo: {
         Args: {
           _agente_codice: string
@@ -6734,6 +6738,10 @@ export type Database = {
       }
       auth_vede_preventivo_id: {
         Args: { _preventivo_id: string }
+        Returns: boolean
+      }
+      auth_vede_sinistro_cliente: {
+        Args: { _cliente_id: string }
         Returns: boolean
       }
       auto_collega_iscritto_whatsapp: { Args: { _id: string }; Returns: string }
