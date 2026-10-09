@@ -112,6 +112,9 @@
   },
   "overrides": {
     "seroval": "^1.6.8",
-    "seroval-plugins": "^1.6.8"
+    "seroval-plugins": "^1.6.8",
+    "protobufjs": "^7.6.6",
+    "@grpc/grpc-js": "^1.14.6",
+    "@opentelemetry/propagator-jaeger": "^2.12.0"
   }
 }
