@@ -649,16 +649,12 @@ export function ModificaRichiestaFidoDialog({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {richiesta?.stato === "approvata"
-                ? "⚠️ Modificare una richiesta GIÀ APPROVATA?"
-                : STATI_IN_APPROVAZIONE_FORM.includes(richiesta?.stato)
+              {STATI_IN_APPROVAZIONE_FORM.includes(richiesta?.stato)
                 ? "Modificare una richiesta IN APPROVAZIONE?"
                 : "Modificare la richiesta?"}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {richiesta?.stato === "approvata"
-                ? "Questa richiesta è già stata approvata e potrebbe essere già stata esportata nel gestionale. Modificarla può creare disallineamenti con il fido già concesso. Procedere?"
-                : STATI_IN_APPROVAZIONE_FORM.includes(richiesta?.stato)
+              {STATI_IN_APPROVAZIONE_FORM.includes(richiesta?.stato)
                 ? "Questa richiesta è in approvazione: modificandola l'iter potrebbe essere interrotto o ripartire da capo. Procedere?"
                 : "Procedere con la modifica?"}
             </AlertDialogDescription>

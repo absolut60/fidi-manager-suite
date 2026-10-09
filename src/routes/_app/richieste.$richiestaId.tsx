@@ -17,7 +17,7 @@ import {
   formatEuro, formatDate, type TipoRichiesta, importoRichiestaValido,
   etichettaTipoRichiesta,
 } from "@/lib/fidi";
-import { puoDecidereRichiesta, condizionePagamentoCambiata } from "@/lib/fidi";
+import { puoDecidereRichiesta, condizionePagamentoCambiata, puoModificareRichiestaFido, puoEliminareRichiestaFido } from "@/lib/fidi";
 
 import { ComunicazioniRichiestaPanel } from "@/components/comunicazioni-richiesta-panel";
 import { AllegatiSection } from "@/components/allegati-section";
@@ -95,11 +95,11 @@ function RichiestaDetail() {
   const canApprove = r?.stato === "in_approvazione" &&
     puoDecidereRichiesta(roles, r?.livello_richiesto ?? 99);
   const isOwner = !!user?.id && r?.created_by === user.id;
-  const canDelete = isAdmin || isAmministrazione || isOwner;
+  const canDelete = puoEliminareRichiestaFido({ stato: r?.stato, roles, isOwner });
   const canSubmit = r?.stato === "bozza" && r?.created_by === user?.id;
   // Azioni spostate dalla lista (stesse condizioni dei pulsanti di riga tolti):
-  // Modifica: bozza, oppure richiesta creata dall'utente.
-  const canEdit = r?.stato === "bozza" || isOwner;
+  // Modifica: solo stati modificabili (fonte unica) e, come prima, bozza oppure richiesta creata dall'utente.
+  const canEdit = !!r && puoModificareRichiestaFido(r) && (r.stato === "bozza" || isOwner);
   // Annulla: richiesta in integrazioni e utente che NON puo' decidere a quel livello.
   const puoDecidereLivello = isAdmin || (livelloUtente > 0 && livelloUtente >= (r?.livello_richiesto ?? 99));
   const canAnnulla = r?.stato === "integrazioni_richieste" && !puoDecidereLivello;

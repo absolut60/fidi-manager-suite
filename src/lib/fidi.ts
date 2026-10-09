@@ -118,6 +118,29 @@ export function puoDecidereRichiesta(roles: readonly string[], livelloRichiesto:
   return livelloApprovatore(roles) >= Number(livelloRichiesto ?? 99);
 }
 
+/**
+ * FONTE UNICA (schermo): il contenuto della richiesta è modificabile?
+ * Solo in "bozza" o "integrazioni_richieste".
+ * Gemello SQL: guardia public.richieste_fido_guardia() (trigger a_richieste_fido_guardia).
+ */
+export function puoModificareRichiestaFido(r: { stato: string | null | undefined }): boolean {
+  return r.stato === "bozza" || r.stato === "integrazioni_richieste";
+}
+
+/**
+ * FONTE UNICA (schermo): la richiesta si può eliminare?
+ * Amministratore o amministrazione sempre; altrimenti solo il creatore e solo in bozza.
+ * Gemello SQL: guardia public.richieste_fido_guardia() (ramo DELETE).
+ */
+export function puoEliminareRichiestaFido(p: {
+  stato: string | null | undefined;
+  roles: readonly string[];
+  isOwner: boolean;
+}): boolean {
+  if (p.roles.includes("amministratore") || p.roles.includes("amministrazione")) return true;
+  return p.isOwner && p.stato === "bozza";
+}
+
 export function livelloLabel(liv: number, soglie: SoglieFido = SOGLIE_DEFAULT): string {
   if (liv === 1) return `Liv. 1 (≤ ${formatEuroCompact(soglie.liv1)})`;
   if (liv === 2) return `Liv. 2 (≤ ${formatEuroCompact(soglie.liv2)})`;

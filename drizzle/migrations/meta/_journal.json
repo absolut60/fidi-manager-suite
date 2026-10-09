@@ -148,6 +148,13 @@
       "when": 1791541709579,
       "tag": "0020_fm41_rls_modifica_comunicazioni_richiesta",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1791547755369,
+      "tag": "0021_fm41_guardia_richieste_fido",
+      "breakpoints": true
     }
   ]
 }

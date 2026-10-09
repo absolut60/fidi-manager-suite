@@ -13,13 +13,12 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog } from "@/components/ui/dialog";
 import {
-  STATO_LABEL, STATO_TONE, TIPO_LABEL, TIPO_TONE, formatEuro, formatDate,
+  STATO_LABEL, STATO_TONE, TIPO_LABEL, TIPO_TONE, formatEuro, formatDate, puoModificareRichiestaFido,
   type TipoRichiesta, type StatoRichiesta,
 } from "@/lib/fidi";
 import { useAuth } from "@/hooks/use-auth";
 
 const STATI_IN_CORSO: StatoRichiesta[] = ["bozza", "in_approvazione", "in_attesa_liv1", "in_attesa_liv2", "in_attesa_liv3", "integrazioni_richieste"];
-const STATI_MODIFICABILI: StatoRichiesta[] = ["bozza", "integrazioni_richieste"];
 const STATI_STORICO: StatoRichiesta[] = ["approvata", "rifiutata", "annullata"];
 
 export function ClienteStoricoFidoTab({ clienteId }: { clienteId: string }) {
@@ -145,7 +144,7 @@ export function ClienteStoricoFidoTab({ clienteId }: { clienteId: string }) {
                     </p>
                     {r.motivazione && <p className="text-sm text-muted-foreground">{r.motivazione}</p>}
                   </div>
-                  {STATI_MODIFICABILI.includes(r.stato as StatoRichiesta) && !isAgente && (
+                  {puoModificareRichiestaFido(r) && !isAgente && (
                     <div className="flex gap-1.5 shrink-0">
                       <Button size="sm" variant="outline" className="gap-1" onClick={() => setEditing(r)}>
                         <Pencil className="size-3.5" /> Modifica
