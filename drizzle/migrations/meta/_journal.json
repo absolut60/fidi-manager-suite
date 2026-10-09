@@ -120,6 +120,13 @@
       "when": 1791493768753,
       "tag": "0016_auth_puo_inviare_recupero",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1791526295353,
+      "tag": "0017_fm40_rls_invio_recupero_campagne",
+      "breakpoints": true
     }
   ]
 }
