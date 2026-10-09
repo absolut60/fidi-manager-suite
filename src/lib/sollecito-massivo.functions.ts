@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { assertPuoInviareRecupero } from "@/lib/recupero-permessi.server";
 
 const AvviaSchema = z.object({
   templateId: z.string().uuid(),
@@ -24,6 +25,7 @@ export const avviaCampagnaSollecito = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => AvviaSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    await assertPuoInviareRecupero(supabase);
 
     const clienteIds = Array.from(new Set(data.clienteIds));
     if (clienteIds.length === 0) {
@@ -156,6 +158,7 @@ export const riprovaCampagnaFalliti = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => RiprovaSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { supabase } = context;
+    await assertPuoInviareRecupero(supabase);
 
     const { data: camp, error: ec } = await supabase
       .from("campagne_sollecito")

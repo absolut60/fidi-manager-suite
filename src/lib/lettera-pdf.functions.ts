@@ -4,6 +4,7 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { assertPuoInviareRecupero } from "@/lib/recupero-permessi.server";
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import {
   formatDateIt,
@@ -203,6 +204,7 @@ export const generaLetteraPdf = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    await assertPuoInviareRecupero(supabase);
 
     // 1) Carica template (se presente)
     let tpl: { id: string; nome: string; oggetto: string; corpo: string } | null = null;
