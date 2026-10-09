@@ -357,8 +357,11 @@ function anagraficaSheetToObjects(
 }
 
 function ImportExportPage() {
+  const { roles, loading: authLoading } = useAuth();
+  const canSee = useMemo(() => puoImportareGamma(roles as string[]), [roles]);
   const queryClient = useQueryClient();
   useEffect(() => {
+    if (!canSee) return;
     // Marca automaticamente come falliti gli import bloccati da più di 4 ore
     const cutoff = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
     supabase
@@ -374,7 +377,17 @@ function ImportExportPage() {
         queryClient.invalidateQueries({ queryKey: ["storico-import-export", "importazioni"] });
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [canSee]);
+  if (authLoading) return <div className="p-6 text-muted-foreground">Caricamento...</div>;
+  if (!canSee)
+    return (
+      <Card className="p-8 text-center">
+        <p className="font-medium">Accesso riservato</p>
+        <p className="text-sm text-muted-foreground mt-1">
+          Questa sezione è riservata ad Amministrazione — Strumenti e Amministratore.
+        </p>
+      </Card>
+    );
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
