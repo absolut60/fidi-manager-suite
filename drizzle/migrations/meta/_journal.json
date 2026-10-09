@@ -155,6 +155,13 @@
       "when": 1791547755369,
       "tag": "0021_fm41_guardia_richieste_fido",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1791549709248,
+      "tag": "0022_fm41_revoca_esecuzione_funzioni_anon",
+      "breakpoints": true
     }
   ]
 }
