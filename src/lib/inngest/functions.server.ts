@@ -57,7 +57,8 @@ async function setImportazioneError(importazioneId: string, message: string) {
       stato: "completata_con_errori",
       completata_at: new Date().toISOString(),
       log_errori: [{ riga: 0, errore: `Errore fatale: ${message}` }],
-    })
+      problemi: [`Errore fatale: ${message}`],
+    } as never)
     .eq("id", importazioneId);
 }
 
@@ -474,6 +475,7 @@ async function setAnagraficaFinalState(
       stato,
       completata_at: new Date().toISOString(),
       log_errori: capped.length ? capped : null,
+      ...(stato === "fallita" ? { problemi: ["Import anagrafica fallito"] } : {}),
     } as never)
     .eq("id", importazioneId);
 }
@@ -2370,6 +2372,15 @@ export const finalizeScadenziarioImport = inngest.createFunction(
             stato: errs > 0 || pulizia_saltata ? "completata_con_errori" : "completata",
             completata_at: new Date().toISOString(),
             log_errori: [...summary, ...existing].slice(0, 500),
+            problemi: puliziaSottoSoglia
+              ? [
+                  "Righe scritte inferiori al 90% delle scadenze presenti: pulizia non eseguita, verificare il file",
+                ]
+              : sottoBlocchiFalliti > 0
+                ? [
+                    `${sottoBlocchiFalliti} blocchi di scadenze non scritti dopo ${SCAD_UPSERT_TENTATIVI} tentativi: pulizia non eseguita`,
+                  ]
+                : [],
           } as never)
           .eq("id", importazioneId);
       });
@@ -3648,6 +3659,11 @@ export const processBloccoFidoImport = inngest.createFunction(
             completata_at: new Date().toISOString(),
             log_errori: [...summary, ...existing].slice(0, 500),
             report_saltati: { ...existingReport, quadratura } as never,
+            problemi: quadOk
+              ? []
+              : [
+                  `QUADRATURA KO: attesi=${quadratura.atteso}, aggiornati nel DB=${quadratura.aggiornati_db}, GAP=${quadratura.gap} righe perse`,
+                ],
           } as never)
           .eq("id", importazioneId);
       });

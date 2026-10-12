@@ -9,3 +9,4 @@ Quando arrivano in blocco, le notifiche si raggruppano; mai una notifica (e una 
 - Regole per tipo nel catalogo `notifiche_tipi`; un nuovo tipo va registrato lì (default: raggruppa per tipo).
 - Chi crea notifiche: metadata con la chiave di gruppo (es. `store_id` + `gruppo_etichetta`) e `SELECT DISTINCT user_id`. Non contare sulla riga restituita dall'insert.
 - UI: ordina per `aggiornata_at`, mostra `conteggio`, `NotificaRiga`, `contaNonLette` (mai contare solo le righe caricate); a ogni lettura `chiudiAvvisiNotifiche`/`chiudiTuttiGliAvvisi`. Nessun toast sugli aggiornamenti di gruppo.
+- Esito import: il job Inngest `importazioni-esito-notifica` (ogni 2 minuti) manda notifica (tipo `esito_import`, non raggruppato) ed email a chi ha lanciato ogni import concluso e non ancora notificato. Un import segnala un problema vero solo scrivendolo in `importazioni.problemi` nello stesso update di `completata_at`; il testo è composto solo in `src/lib/esito-import-messaggio.ts`.

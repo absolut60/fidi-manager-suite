@@ -26,6 +26,7 @@ import { refreshFatturatoMensileCron } from "@/lib/inngest/fatturato-mensile.ser
 import { ricalcolaFidoTeorico } from "@/lib/inngest/fido-teorico-ricalcolo.server";
 import { notificaVariazioniBlocco } from "@/lib/inngest/variazioni-blocco.server";
 import { rilevaAgenziaRecupero } from "@/lib/inngest/agenzia-recupero.server";
+import { notificaEsitoImport } from "@/lib/inngest/esito-import.server";
 
 
 
@@ -56,6 +57,7 @@ const handler = serve({
     ricalcolaFidoTeorico,
     notificaVariazioniBlocco,
     rilevaAgenziaRecupero,
+    notificaEsitoImport,
 
 
 

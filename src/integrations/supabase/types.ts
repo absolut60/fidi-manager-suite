@@ -2895,12 +2895,14 @@ export type Database = {
           created_at: string
           dimensione_bytes: number | null
           eseguita_da: string | null
+          esito_notificato_at: string | null
           evento_id: string | null
           file_path: string | null
           fonte: string | null
           id: string
           log_errori: Json | null
           nome_file: string
+          problemi: string[]
           report_saltati: Json | null
           righe_aggiornate: number | null
           righe_create: number | null
@@ -2918,12 +2920,14 @@ export type Database = {
           created_at?: string
           dimensione_bytes?: number | null
           eseguita_da?: string | null
+          esito_notificato_at?: string | null
           evento_id?: string | null
           file_path?: string | null
           fonte?: string | null
           id?: string
           log_errori?: Json | null
           nome_file: string
+          problemi?: string[]
           report_saltati?: Json | null
           righe_aggiornate?: number | null
           righe_create?: number | null
@@ -2941,12 +2945,14 @@ export type Database = {
           created_at?: string
           dimensione_bytes?: number | null
           eseguita_da?: string | null
+          esito_notificato_at?: string | null
           evento_id?: string | null
           file_path?: string | null
           fonte?: string | null
           id?: string
           log_errori?: Json | null
           nome_file?: string
+          problemi?: string[]
           report_saltati?: Json | null
           righe_aggiornate?: number | null
           righe_create?: number | null
