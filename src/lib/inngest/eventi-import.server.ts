@@ -304,6 +304,7 @@ export const processEventiPartecipantiImport = inngest.createFunction(
           stato: "completata_con_errori",
           completata_at: new Date().toISOString(),
           log_errori: [{ riga: 0, errore: `Errore fatale: ${message}` }] as never,
+          problemi: [`Errore fatale: ${message}`],
         })
         .eq("id", importazioneId);
       throw e;
