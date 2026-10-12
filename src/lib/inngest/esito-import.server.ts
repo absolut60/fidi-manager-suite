@@ -1,6 +1,7 @@
 // Job Inngest: avviso di fine import a chi l'ha lanciato (notifica in app + email).
-// Un solo punto per tutti gli import: ogni 2 minuti prende le importazioni
-// concluse (completata_at) e non ancora notificate (esito_notificato_at NULL).
+// Si attiva con l'evento `import/esito.notifica` { importazioneId }, emesso da
+// chiudiImportazione (functions.server.ts), l'unico punto che chiude un import.
+// Lavora solo su quell'importazione; idempotente su esito_notificato_at.
 // Il testo è composto solo in src/lib/esito-import-messaggio.ts.
 // La push parte dal trigger esistente su `notifiche`.
 import { inngest } from "./client";
@@ -37,22 +38,14 @@ export const notificaEsitoImport = inngest.createFunction(
   {
     id: "importazioni-esito-notifica",
     name: "Importazioni: avviso di esito a chi ha lanciato l'import",
-    retries: 2,
-    concurrency: { limit: 1 },
-    triggers: [{ cron: "*/2 * * * *" }],
+    retries: 3,
+    concurrency: { limit: 1, key: "event.data.importazioneId" },
+    triggers: [{ event: "import/esito.notifica" }],
   },
-  async ({ step, logger }) => {
-    const ids = await step.run("leggi-da-notificare", async () => {
-      const { data, error } = await supabaseAdmin
-        .from("importazioni")
-        .select("id")
-        .not("completata_at", "is", null)
-        .is("esito_notificato_at", null)
-        .order("completata_at", { ascending: true })
-        .limit(50);
-      if (error) throw new Error(`leggi importazioni: ${error.message}`);
-      return (data ?? []).map((r) => r.id as string);
-    });
+  async ({ event, step, logger }) => {
+    const importazioneId = (event.data as { importazioneId?: string } | undefined)?.importazioneId;
+    if (!importazioneId) return { notificato: false, motivo: "senza_id" };
+    const ids = [importazioneId];
 
     let notificate = 0;
     for (const id of ids) {
@@ -138,6 +131,6 @@ export const notificaEsitoImport = inngest.createFunction(
       if (esito === "notificato") notificate++;
     }
 
-    return { trovate: ids.length, notificate };
+    return { notificato: notificate > 0 };
   },
 );

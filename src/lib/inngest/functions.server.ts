@@ -50,16 +50,40 @@ async function downloadWorkbook(filePath: string, sheets?: string[]) {
   });
 }
 
-async function setImportazioneError(importazioneId: string, message: string) {
-  await supabaseAdmin
+/**
+ * Unico punto che chiude un import: scrive la riga di `importazioni` con i
+ * campi passati (stato, completata_at, log_errori, problemi, ...) e subito dopo
+ * lancia l'evento `import/esito.notifica` per l'avviso a chi l'ha avviato
+ * (job notificaEsitoImport). Emissione best-effort: errore nei log, mai throw.
+ */
+export async function chiudiImportazione(
+  importazioneId: string,
+  campi: Record<string, unknown>,
+  opzioni?: { soloSeStato?: string },
+): Promise<void> {
+  // soloSeStato: chiude solo se la riga è ancora in quello stato (onFailure).
+  let q = supabaseAdmin
     .from("importazioni")
-    .update({
+    .update(campi as never)
+    .eq("id", importazioneId);
+  if (opzioni?.soloSeStato) q = q.eq("stato", opzioni.soloSeStato as never);
+  await q;
+  try {
+    await sendInngestEvents([{ name: "import/esito.notifica", data: { importazioneId } }]);
+  } catch (e) {
+    console.error(
+      `[chiudiImportazione] emissione esito ${importazioneId} fallita: ${e instanceof Error ? e.message : String(e)}`,
+    );
+  }
+}
+
+async function setImportazioneError(importazioneId: string, message: string) {
+  await chiudiImportazione(importazioneId, {
       stato: "completata_con_errori",
       completata_at: new Date().toISOString(),
       log_errori: [{ riga: 0, errore: `Errore fatale: ${message}` }],
       problemi: [`Errore fatale: ${message}`],
-    } as never)
-    .eq("id", importazioneId);
+    });
 }
 
 /**
@@ -469,15 +493,12 @@ async function setAnagraficaFinalState(
       errore: `... (${merged.length - ANAG_MAX_LOG_ERRORI + 1} ulteriori errori troncati per limite payload)`,
     };
   }
-  await supabaseAdmin
-    .from("importazioni")
-    .update({
+  await chiudiImportazione(importazioneId, {
       stato,
       completata_at: new Date().toISOString(),
       log_errori: capped.length ? capped : null,
       ...(stato === "fallita" ? { problemi: ["Import anagrafica fallito"] } : {}),
-    } as never)
-    .eq("id", importazioneId);
+    });
 }
 
 // === INIT: parse file, chunk su storage, fan-out ===
@@ -516,15 +537,13 @@ export const processAnagraficaImport = inngest.createFunction(
       });
 
       if (init.totRows === 0) {
-        await supabaseAdmin
-          .from("importazioni")
-          .update({
+        await chiudiImportazione(importazioneId, {
             righe_totali: 0,
             stato: "completata_con_errori",
             completata_at: new Date().toISOString(),
             log_errori: [{ riga: 0, errore: "Nessuna riga dati nel foglio Anagrafica" }],
-          } as never)
-          .eq("id", importazioneId);
+            problemi: ["Il file non contiene righe da importare"],
+          });
         return { totRows: 0, chunkCount: 0 };
       }
 
@@ -1351,13 +1370,10 @@ export const finalizeAnagraficaImport = inngest.createFunction(
         const stato: "completata" | "completata_con_errori" =
           errs > 0 ? "completata_con_errori" : "completata";
 
-        await supabaseAdmin
-          .from("importazioni")
-          .update({
+        await chiudiImportazione(importazioneId, {
             stato,
             completata_at: new Date().toISOString(),
-          } as never)
-          .eq("id", importazioneId);
+          });
         return {
           stato,
           creati: (cur?.righe_create as number | null) ?? 0,
@@ -1411,18 +1427,19 @@ export const processRischioImport = inngest.createFunction(
       const importazioneId =
         (failedEvent.data as any)?.importazioneId ?? null;
       if (!importazioneId) return;
-      await supabaseAdmin
-        .from("importazioni")
-        .update({
+      await chiudiImportazione(
+        importazioneId,
+        {
           stato: "completata_con_errori",
           completata_at: new Date().toISOString(),
           log_errori: [{
             riga: 0,
             errore: `Import fallito dopo tutti i retry: ${error?.message ?? "errore sconosciuto"}`,
           }],
-        } as never)
-        .eq("id", importazioneId)
-        .eq("stato", "in_elaborazione");
+          problemi: ["Import fallito dopo tutti i tentativi automatici"],
+        },
+        { soloSeStato: "in_elaborazione" },
+      );
     },
   },
   async ({ event, step }) => {
@@ -1624,9 +1641,7 @@ export const processRischioImport = inngest.createFunction(
           `${stagingBase}/lookup.json`,
         ]);
 
-        await supabaseAdmin
-          .from("importazioni")
-          .update({
+        await chiudiImportazione(importazioneId, {
             righe_elaborate: totaleElaborate,
             righe_create: 0,
             righe_aggiornate: allRes.aggiornati,
@@ -1635,8 +1650,7 @@ export const processRischioImport = inngest.createFunction(
             stato: statoFinale,
             completata_at: new Date().toISOString(),
             log_errori: logFinale,
-          } as never)
-          .eq("id", importazioneId);
+          });
         return { ok: true };
       });
 
@@ -2366,9 +2380,7 @@ export const finalizeScadenziarioImport = inngest.createFunction(
           errore: `Reconciliation: chiuse ${reconc.totChiuse} scadenze su ${reconc.totClienti} clienti; scadenze non più presenti nel file rimosse: ${reconc.orfaniRimossi}`,
         });
 
-        await supabaseAdmin
-          .from("importazioni")
-          .update({
+        await chiudiImportazione(importazioneId, {
             stato: errs > 0 || pulizia_saltata ? "completata_con_errori" : "completata",
             completata_at: new Date().toISOString(),
             log_errori: [...summary, ...existing].slice(0, 500),
@@ -2381,8 +2393,7 @@ export const finalizeScadenziarioImport = inngest.createFunction(
                     `${sottoBlocchiFalliti} blocchi di scadenze non scritti dopo ${SCAD_UPSERT_TENTATIVI} tentativi: pulizia non eseguita`,
                   ]
                 : [],
-          } as never)
-          .eq("id", importazioneId);
+          });
       });
 
       logger.info(
@@ -2831,9 +2842,7 @@ export const processScadAssicImport = inngest.createFunction(
       const dettaglioEsistente = (curLog?.log_errori as Array<{ messaggio: string }> | null) ?? [];
       const fullLog = [...summary, ...log].map((m) => ({ messaggio: m }));
 
-      await supabaseAdmin
-        .from("importazioni")
-        .update({
+      await chiudiImportazione(importazioneId, {
           righe_elaborate: scadRows.length + assicRows.length,
           righe_create: scadCreated + assicCreated,
           righe_aggiornate: scadUpdated + assicUpdated,
@@ -2843,8 +2852,7 @@ export const processScadAssicImport = inngest.createFunction(
           stato: totErrori > 0 ? "completata_con_errori" : "completata",
           completata_at: new Date().toISOString(),
           log_errori: [...fullLog, ...dettaglioEsistente].slice(0, 500),
-        })
-        .eq("id", importazioneId);
+        });
 
       // FM36: rilevazione clienti oltre 60gg → promemoria agenzia di recupero.
       // Un errore di emissione NON fa fallire l'import.
@@ -3091,14 +3099,12 @@ export const processBloccoFidoImport = inngest.createFunction(
 
       if (!parsed.length) {
         await step.run("finalize-empty", async () => {
-          await supabaseAdmin
-            .from("importazioni")
-            .update({
+          await chiudiImportazione(importazioneId, {
               stato: "completata_con_errori",
               completata_at: new Date().toISOString(),
               log_errori: [{ riga: 0, errore: "Nessuna riga da processare" }] as never,
-            } as never)
-            .eq("id", importazioneId);
+              problemi: ["Il file non contiene righe da importare"],
+            });
         });
         return { rows: 0 };
       }
@@ -3652,9 +3658,7 @@ export const processBloccoFidoImport = inngest.createFunction(
         const existingReport = (cur?.report_saltati as Record<string, unknown> | null) ?? {};
         const statoFinale =
           !quadOk || errorsCount + errors.length > 0 ? "completata_con_errori" : "completata";
-        await supabaseAdmin
-          .from("importazioni")
-          .update({
+        await chiudiImportazione(importazioneId, {
             stato: statoFinale,
             completata_at: new Date().toISOString(),
             log_errori: [...summary, ...existing].slice(0, 500),
@@ -3664,8 +3668,7 @@ export const processBloccoFidoImport = inngest.createFunction(
               : [
                   `QUADRATURA KO: attesi=${quadratura.atteso}, aggiornati nel DB=${quadratura.aggiornati_db}, GAP=${quadratura.gap} righe perse`,
                 ],
-          } as never)
-          .eq("id", importazioneId);
+          });
       });
 
       // Aggancio alert variazioni blocco: emette l'evento di rilevazione DOPO che

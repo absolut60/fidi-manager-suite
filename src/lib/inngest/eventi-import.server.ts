@@ -3,6 +3,7 @@ import { inngest } from "./client";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { normalize, toStr } from "./parsers.server";
 import { formattaNomeProprio, formattaRagioneSociale } from "@/lib/formato-nomi";
+import { chiudiImportazione } from "./functions.server";
 
 type EventiImportEventData = {
   importazioneId: string;
@@ -155,14 +156,12 @@ export const processEventiPartecipantiImport = inngest.createFunction(
 
       if (!righe.length) {
         await step.run("finalize-empty", async () => {
-          await supabaseAdmin
-            .from("importazioni")
-            .update({
+          await chiudiImportazione(importazioneId, {
               stato: "completata_con_errori",
               completata_at: new Date().toISOString(),
               log_errori: [{ riga: 0, errore: "Nessuna riga da processare" }] as never,
-            })
-            .eq("id", importazioneId);
+              problemi: ["Il file non contiene righe da importare"],
+            });
         });
         return { righe: 0 };
       }
@@ -282,14 +281,11 @@ export const processEventiPartecipantiImport = inngest.createFunction(
       });
 
       await step.run("finalize", async () => {
-        await supabaseAdmin
-          .from("importazioni")
-          .update({
+        await chiudiImportazione(importazioneId, {
             stato: "completata",
             completata_at: new Date().toISOString(),
             log_errori: (esito.errori.length ? esito.errori : []) as never,
-          })
-          .eq("id", importazioneId);
+          });
       });
 
       logger.info(
@@ -298,15 +294,12 @@ export const processEventiPartecipantiImport = inngest.createFunction(
       return { righe: righe.length, inSospeso: esito.create, scartate: esito.scartate };
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
-      await supabaseAdmin
-        .from("importazioni")
-        .update({
+      await chiudiImportazione(importazioneId, {
           stato: "completata_con_errori",
           completata_at: new Date().toISOString(),
           log_errori: [{ riga: 0, errore: `Errore fatale: ${message}` }] as never,
           problemi: [`Errore fatale: ${message}`],
-        })
-        .eq("id", importazioneId);
+        });
       throw e;
     }
   },

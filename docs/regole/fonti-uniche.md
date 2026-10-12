@@ -8,6 +8,7 @@ Estratto dal knowledge di progetto il 08/10/2026 (sessione 40). Si aggiorna modi
 - **Lead/eventi:** `lead_evento_provvisorio`, `trova_contatto_equivalente`, `trasferisci_privacy_contatto`, `sposta_lead_ambito` (unico modo di cambiare `lead.ambito`), `collega_lead_a_cliente`; filtri lead in `applicaFiltri`.
 - **Import** (`functions.server.ts`): scritture a sotto-blocchi da 250 con 3 tentativi; verifica di completezza a fine import e, se incompleto, NIENTE pulizie distruttive (orfani). Anagrafica via RPC `bulk_update_clienti_anagrafica` (chiave presente = scrive anche null) con ripiego per riga: nuova colonna = aggiornare entrambi. Limiti: `statement_timeout` 8 s, 1.000 righe per chiamata PostgREST.
   - Scadenziario: il file Gamma è completo. Dopo un import verificato completo (nessun `upsert_chunk_fallito` e almeno il 90% delle righe scritte) `rimuovi_orfani_scadenze` toglie ogni scadenza non scritta da quell'import e la registra in `anomalie_import` come `scadenza_non_nel_file`.
+  - Chiusura: un import nuovo si chiude con `chiudiImportazione` (`functions.server.ts`): scrive stato/`completata_at`/`problemi` e lancia l'evento `import/esito.notifica` per l'avviso a chi l'ha avviato.
 - **Audit clienti:** `audit_clienti()` registra solo i campi cambiati (`dettagli.campi {campo:{da,a}}`), mai la riga intera.
 - **Email solleciti:** avviso rosso "forniture sospese" solo in `wrapEmailHtml` (sollecito_1/2, messa_in_mora).
 - **RLS:** funzioni che dipendono solo dall'utente come `(SELECT f())` (initPlan).
