@@ -2354,12 +2354,14 @@ export const finalizeScadenziarioImport = inngest.createFunction(
         if (pulizia_saltata) {
           summary.push({
             riga: 0,
-            errore: `ATTENZIONE: ${sottoBlocchiFalliti} sotto-blocchi non scritti dopo ${SCAD_UPSERT_TENTATIVI} tentativi. Pulizia scadenze orfane NON eseguita per sicurezza. Ripetere l'import.`,
+            errore: puliziaSottoSoglia
+              ? "ATTENZIONE: pulizia scadenze non eseguita: righe scritte dall'import inferiori al 90% delle scadenze presenti. Verificare il file."
+              : `ATTENZIONE: ${sottoBlocchiFalliti} sotto-blocchi non scritti dopo ${SCAD_UPSERT_TENTATIVI} tentativi. Pulizia scadenze orfane NON eseguita per sicurezza. Ripetere l'import.`,
           });
         }
         summary.push({
           riga: 0,
-          errore: `Reconciliation: chiuse ${reconc.totChiuse} scadenze su ${reconc.totClienti} clienti; orfani rimossi (rettifiche): ${reconc.orfaniRimossi}`,
+          errore: `Reconciliation: chiuse ${reconc.totChiuse} scadenze su ${reconc.totClienti} clienti; scadenze non più presenti nel file rimosse: ${reconc.orfaniRimossi}`,
         });
 
         await supabaseAdmin
