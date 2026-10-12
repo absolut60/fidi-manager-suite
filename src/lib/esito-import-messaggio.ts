@@ -71,7 +71,7 @@ export function dettaglioScartateImport(report: unknown, codici: string[] | null
     for (const errore of r.errori_riga) {
       const e = record(errore);
       if (typeof e?.errore !== "string") continue;
-      scartate.push({ codice: typeof e.codice_gestionale === "string" ? e.codice_gestionale : "—", motivo: e.errore, righe: 1 });
+      scartate.push({ codice: typeof e.codice_gestionale === "string" ? e.codice_gestionale : "—", motivo: typeof e.riga === "number" ? `Riga ${n(e.riga)}: ${e.errore}` : e.errore, righe: 1 });
     }
   }
   return scartate;
@@ -175,13 +175,13 @@ ${riga("Scadenze tolte perché non più nel file", n(d.scadenzeTolte))}
     righe.map((r) => `<tr>${r.map((v) => `<td style="padding:6px;border-bottom:1px solid #e5e7eb;overflow-wrap:anywhere;">${escHtml(v)}</td>`).join("")}</tr>`).join("") + "</table>";
   const titoloSezione = (t: string) => `<h2 style="font-size:17px;margin:24px 0 10px;">${escHtml(t)}</h2>`;
   const righeScartate = d.scartate.length
-    ? titoloSezione("Righe scartate") + tabellaDettagli(["Codice cliente", "Motivo", "Righe"], d.scartate.map((r) => [r.codice, r.motivo, n(r.righe)])) +
-      (d.scartate.some((r) => r.motivo === MOTIVO_CLIENTE) ? "<p>Lancia l'import dell'anagrafica e ripeti questo import per includerle.</p>" : "")
+    ? titoloSezione("Righe scartate") + tabellaDettagli(["Codice cliente", "Motivo", "Righe"], d.scartate.slice(0, 30).map((r) => [r.codice, r.motivo, n(r.righe)])) +
+      (d.scartate.length > 30 ? `<p>e altre ${n(d.scartate.length - 30)} voci (${n(d.scartate.slice(30).reduce((tot, r) => tot + r.righe, 0))} righe)</p>` : "")
     : "";
   const anomalie = d.anomalie.length
     ? titoloSezione("Anomalie da controllare") + d.anomalie.map((a) =>
         `<h3 style="font-size:15px;margin:16px 0 8px;">${escHtml(etichettaAnomalia(a.tipo))} (${n(a.totale)})</h3>` +
-        tabellaDettagli(["Codice", "Ragione sociale"], a.righe.slice(0, 30).map((r) => [r.codice_gestionale ?? "—", r.ragione_sociale ?? "—"])) +
+        tabellaDettagli(["Codice", "Ragione sociale", "Prima", "Dopo"], a.righe.slice(0, 30).map((r) => [r.codice_gestionale ?? "—", r.ragione_sociale ?? "—", valoreAnomalia(r.valore_attuale), valoreAnomalia(r.valore_nuovo)])) +
         (a.totale > 30 ? `<p>e altre ${n(a.totale - 30)}</p>` : "")
       ).join("")
     : "";
