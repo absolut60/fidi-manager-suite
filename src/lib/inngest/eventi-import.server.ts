@@ -160,6 +160,7 @@ export const processEventiPartecipantiImport = inngest.createFunction(
               stato: "completata_con_errori",
               completata_at: new Date().toISOString(),
               log_errori: [{ riga: 0, errore: "Nessuna riga da processare" }] as never,
+              problemi: ["Il file non contiene righe da importare"],
             });
         });
         return { righe: 0 };

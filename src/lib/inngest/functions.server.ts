@@ -59,11 +59,15 @@ async function downloadWorkbook(filePath: string, sheets?: string[]) {
 export async function chiudiImportazione(
   importazioneId: string,
   campi: Record<string, unknown>,
+  opzioni?: { soloSeStato?: string },
 ): Promise<void> {
-  await supabaseAdmin
+  // soloSeStato: chiude solo se la riga è ancora in quello stato (onFailure).
+  let q = supabaseAdmin
     .from("importazioni")
     .update(campi as never)
     .eq("id", importazioneId);
+  if (opzioni?.soloSeStato) q = q.eq("stato", opzioni.soloSeStato as never);
+  await q;
   try {
     await sendInngestEvents([{ name: "import/esito.notifica", data: { importazioneId } }]);
   } catch (e) {
@@ -538,6 +542,7 @@ export const processAnagraficaImport = inngest.createFunction(
             stato: "completata_con_errori",
             completata_at: new Date().toISOString(),
             log_errori: [{ riga: 0, errore: "Nessuna riga dati nel foglio Anagrafica" }],
+            problemi: ["Il file non contiene righe da importare"],
           });
         return { totRows: 0, chunkCount: 0 };
       }
@@ -1422,18 +1427,19 @@ export const processRischioImport = inngest.createFunction(
       const importazioneId =
         (failedEvent.data as any)?.importazioneId ?? null;
       if (!importazioneId) return;
-      await supabaseAdmin
-        .from("importazioni")
-        .update({
+      await chiudiImportazione(
+        importazioneId,
+        {
           stato: "completata_con_errori",
           completata_at: new Date().toISOString(),
           log_errori: [{
             riga: 0,
             errore: `Import fallito dopo tutti i retry: ${error?.message ?? "errore sconosciuto"}`,
           }],
-        } as never)
-        .eq("id", importazioneId)
-        .eq("stato", "in_elaborazione");
+          problemi: ["Import fallito dopo tutti i tentativi automatici"],
+        },
+        { soloSeStato: "in_elaborazione" },
+      );
     },
   },
   async ({ event, step }) => {
@@ -3097,6 +3103,7 @@ export const processBloccoFidoImport = inngest.createFunction(
               stato: "completata_con_errori",
               completata_at: new Date().toISOString(),
               log_errori: [{ riga: 0, errore: "Nessuna riga da processare" }] as never,
+              problemi: ["Il file non contiene righe da importare"],
             });
         });
         return { rows: 0 };
