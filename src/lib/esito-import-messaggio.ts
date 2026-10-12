@@ -5,6 +5,13 @@ import { buildEmailTemplate, escHtml } from "@/lib/email-template";
 
 export type LivelloEsitoImport = "completato" | "da_verificare";
 
+export type RigaAnomaliaImport = {
+  codice_gestionale: string | null;
+  ragione_sociale: string | null;
+  valore_attuale: string | null;
+  valore_nuovo?: string | null;
+};
+
 export type DatiEsitoImport = {
   nomeFile: string | null;
   fonte: string | null;
@@ -16,6 +23,9 @@ export type DatiEsitoImport = {
   righeSaltate: number | null;
   problemi: string[];
   scadenzeTolte: number;
+  scartate: Array<{ codice: string; motivo: string; righe: number }>;
+  anomalie: Array<{ tipo: string; totale: number; righe: RigaAnomaliaImport[] }>;
+  scadenzeTolteElenco: RigaAnomaliaImport[];
   createdAt: string | null;
   completataAt: string | null;
 };
@@ -39,6 +49,40 @@ export function livelloEsitoImport(d: Pick<DatiEsitoImport, "problemi" | "stato"
 
 const n = (v: number | null) => new Intl.NumberFormat("it-IT").format(v ?? 0);
 
+const MOTIVO_CLIENTE = "Cliente non presente in anagrafica";
+const FONT = "font-family:Arial,Helvetica,sans-serif;";
+
+function record(v: unknown): Record<string, unknown> | null {
+  return typeof v === "object" && v !== null && !Array.isArray(v) ? v as Record<string, unknown> : null;
+}
+
+/** Normalizzazione pura dei report Gamma: nessuna selezione o scrittura di dati. */
+export function dettaglioScartateImport(report: unknown, codici: string[] | null): DatiEsitoImport["scartate"] {
+  const r = record(report);
+  const clienti = record(r?.cliente_non_trovato);
+  const scartate: DatiEsitoImport["scartate"] = clienti
+    ? Object.entries(clienti).map(([codice, info]) => ({
+        codice,
+        motivo: MOTIVO_CLIENTE,
+        righe: typeof record(info)?.count === "number" ? Number(record(info)?.count) : 1,
+      }))
+    : (codici ?? []).map((codice) => ({ codice, motivo: MOTIVO_CLIENTE, righe: 1 }));
+  if (Array.isArray(r?.errori_riga)) {
+    for (const errore of r.errori_riga) {
+      const e = record(errore);
+      if (typeof e?.errore !== "string") continue;
+      scartate.push({ codice: typeof e.codice_gestionale === "string" ? e.codice_gestionale : "—", motivo: e.errore, righe: 1 });
+    }
+  }
+  return scartate;
+}
+
+function etichettaAnomalia(tipo: string): string {
+  if (tipo === "perde_assicurazione") return "Perde l'assicurazione";
+  if (tipo === "perde_gestione_legale") return "Esce dalla gestione legale";
+  return tipo.replace(/_/g, " ");
+}
+
 function scartate(d: DatiEsitoImport): number {
   return (d.righeSaltate ?? 0) + (d.righeErrore ?? 0);
 }
@@ -54,6 +98,18 @@ export function messaggioEsitoImport(d: DatiEsitoImport): string {
   const parti = [
     `Righe lette ${n(d.righeTotali)}, create ${n(d.righeCreate)}, aggiornate ${n(d.righeAggiornate)}, scartate ${n(scartate(d))}`,
   ];
+  const motivi: string[] = [];
+  const clienti = d.scartate.filter((r) => r.motivo === MOTIVO_CLIENTE);
+  if (clienti.length) {
+    const codici = [...new Set(clienti.map((r) => r.codice))];
+    const altri = codici.length > 5 ? ` e altri ${n(codici.length - 5)}` : "";
+    motivi.push(`${n(clienti.reduce((tot, r) => tot + r.righe, 0))} scartate: clienti non in anagrafica (${codici.slice(0, 5).join(", ")}${altri})`);
+  }
+  const totaleAnomalie = d.anomalie.reduce((tot, a) => tot + a.totale, 0);
+  if (totaleAnomalie) motivi.push(`${n(totaleAnomalie)} anomalie da controllare`);
+  const errore = d.scartate.find((r) => r.motivo !== MOTIVO_CLIENTE);
+  if (errore) motivi.push(errore.motivo.replace(/\s+/g, " ").slice(0, 160));
+  parti.push(...motivi.slice(0, 2));
   if (d.scadenzeTolte > 0) parti.push(`${n(d.scadenzeTolte)} scadenze tolte perché non più nel file`);
   if (livelloEsitoImport(d) === "da_verificare") {
     parti.push(d.problemi[0] ?? "Import fallito");
@@ -113,12 +169,51 @@ ${riga("Scadenze tolte perché non più nel file", n(d.scadenzeTolte))}
 <p style="margin:0;font-weight:600;">Ripeti l'import o verifica il file.</p>
 </div>`
     : "";
-  const body = `<p>Import <strong>${escHtml(etichettaFonteImport(d.fonte))}</strong> concluso.</p>${tabella}${riquadro}`;
-  const html = buildEmailTemplate({
+  const tabellaDettagli = (titoli: string[], righe: string[][]) =>
+    `<table cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;font-size:14px;">` +
+    `<tr>${titoli.map((t) => `<td style="padding:6px;border-bottom:1px solid #e5e7eb;font-weight:700;">${escHtml(t)}</td>`).join("")}</tr>` +
+    righe.map((r) => `<tr>${r.map((v) => `<td style="padding:6px;border-bottom:1px solid #e5e7eb;overflow-wrap:anywhere;">${escHtml(v)}</td>`).join("")}</tr>`).join("") + "</table>";
+  const titoloSezione = (t: string) => `<h2 style="font-size:17px;margin:24px 0 10px;">${escHtml(t)}</h2>`;
+  const righeScartate = d.scartate.length
+    ? titoloSezione("Righe scartate") + tabellaDettagli(["Codice cliente", "Motivo", "Righe"], d.scartate.map((r) => [r.codice, r.motivo, n(r.righe)])) +
+      (d.scartate.some((r) => r.motivo === MOTIVO_CLIENTE) ? "<p>Lancia l'import dell'anagrafica e ripeti questo import per includerle.</p>" : "")
+    : "";
+  const anomalie = d.anomalie.length
+    ? titoloSezione("Anomalie da controllare") + d.anomalie.map((a) =>
+        `<h3 style="font-size:15px;margin:16px 0 8px;">${escHtml(etichettaAnomalia(a.tipo))} (${n(a.totale)})</h3>` +
+        tabellaDettagli(["Codice", "Ragione sociale"], a.righe.slice(0, 30).map((r) => [r.codice_gestionale ?? "—", r.ragione_sociale ?? "—"])) +
+        (a.totale > 30 ? `<p>e altre ${n(a.totale - 30)}</p>` : "")
+      ).join("")
+    : "";
+  const dataScadenza = (v: string) => {
+    const iso = /^(\d{4})-(\d{2})-(\d{2})(?:$|T| )/.exec(v);
+    return iso ? `${iso[3]}/${iso[2]}/${iso[1]}` : v || "—";
+  };
+  const importo = (v: string) => {
+    const normalizzato = v.includes(",") ? v.replace(/\./g, "").replace(",", ".") : v;
+    const valore = Number(normalizzato);
+    return v && Number.isFinite(valore) ? new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(valore) : v || "—";
+  };
+  const scadenze = d.scadenzeTolteElenco.length
+    ? titoloSezione("Scadenze tolte perché non più nel file") + tabellaDettagli(["Cliente", "Documento", "Scadenza", "Importo", "Stato"], d.scadenzeTolteElenco.slice(0, 30).map((r) => {
+        const [documento = "", , data = "", valore = "", stato = ""] = (r.valore_attuale ?? "").split(" | ").map((v) => v.trim());
+        return [[r.codice_gestionale, r.ragione_sociale].filter(Boolean).join(" — ") || "—", documento || "—", dataScadenza(data), importo(valore), stato || "—"];
+      })) + (d.scadenzeTolte > 30 ? `<p>e altre ${n(d.scadenzeTolte - 30)}</p>` : "")
+    : "";
+  const body = `<p>Import <strong>${escHtml(etichettaFonteImport(d.fonte))}</strong> concluso.</p>${tabella}${righeScartate}${anomalie}${scadenze}${riquadro}`;
+  const template = buildEmailTemplate({
     title: subject,
     body,
     ctaText: "Apri Import/Export",
     ctaUrl: `${appUrl.replace(/\/+$/, "")}/import-export`,
+  });
+  // Solo questa email: font esplicito anche nelle celle/header/footer del wrapper,
+  // che Outlook non sempre eredita dal body. Il wrapper contiene già charset UTF-8.
+  const html = template.replace(/<(td|th|p|li|h[1-6]|a|div|strong)\b([^>]*)>/gi, (_tag, nome: string, attributi: string) => {
+    const attrs = /style="/.test(attributi)
+      ? attributi.replace(/style="/, `style="${FONT}`)
+      : `${attributi} style="${FONT}"`;
+    return `<${nome}${attrs}>`;
   });
   return { subject, html };
 }
