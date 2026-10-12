@@ -183,6 +183,13 @@
       "when": 1791553379366,
       "tag": "0025_fm41_guardia_sinistri_campagne_entita",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1791804763036,
+      "tag": "0026_scadenziario_rimuovi_scadenze_non_nel_file",
+      "breakpoints": true
     }
   ]
 }

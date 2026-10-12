@@ -2267,20 +2267,17 @@ export const finalizeScadenziarioImport = inngest.createFunction(
     try {
       // Le righe pagate vengono ora MANTENUTE: hanno data_pagamento_effettiva
       // valorizzata e vengono filtrate downstream (queries scaduto/recupero).
-      // Nessuna reconciliation: il file potrebbe non contenere tutte le scadenze
-      // ancora valide (es. a scadere) e non vogliamo chiuderle erroneamente.
       const reconc = { totChiuse: 0, totClienti: 0, orfaniRimossi: 0 };
       void timestampInizio;
 
-      // STEP anti-orfani: per ogni tripla naturale presente nell'import corrente,
-      // rimuove le righe scadenze in DB con stessa tripla ma importo NON aggiornato
-      // dall'import corrente (rettifica importo lato gestionale → riga vecchia orfana).
-      // Agisce SOLO su triple effettivamente presenti nel file (protegge da export
-      // parziali) e preserva i frazionamenti legittimi (entrambe le righe nel file
-      // vengono upsertate ed entrambe restano). Eseguito UNA volta dopo l'upsert
-      // di tutti i chunk. Le righe orfane sono loggate in anomalie_import per audit.
+      // STEP pulizia: il file Gamma è lo scadenziario COMPLETO. Dopo un import
+      // verificato completo, rimuovi_orfani_scadenze toglie ogni scadenza non
+      // scritta da questo import e la registra in anomalie_import
+      // (scadenza_non_nel_file). Guardia nella funzione: se l'import ha scritto
+      // meno del 90% delle scadenze presenti non cancella nulla e restituisce -1.
+      // Eseguito UNA volta dopo l'upsert di tutti i chunk.
       // Verifica completezza: se qualche sotto-blocco non è stato scritto,
-      // la pulizia orfani potrebbe cancellare righe valide → va saltata.
+      // la pulizia potrebbe cancellare righe valide → va saltata.
       const sottoBlocchiFalliti = await step.run("verifica-completezza", async () => {
         const { count, error } = await supabaseAdmin
           .from("anomalie_import" as never)
@@ -2290,10 +2287,11 @@ export const finalizeScadenziarioImport = inngest.createFunction(
         if (error) throw new Error(`verifica-completezza: ${error.message}`);
         return count ?? 0;
       });
-      const pulizia_saltata = sottoBlocchiFalliti > 0;
+      let pulizia_saltata = sottoBlocchiFalliti > 0;
+      let puliziaSottoSoglia = false;
 
       if (!pulizia_saltata) {
-        reconc.orfaniRimossi = await step.run("rimuovi-orfani-scadenze", async () => {
+        const esito = await step.run("rimuovi-orfani-scadenze", async () => {
           const { data, error } = await (
             supabaseAdmin.rpc as unknown as (
               fn: string,
@@ -2303,7 +2301,18 @@ export const finalizeScadenziarioImport = inngest.createFunction(
           if (error) throw new Error(`rimuovi_orfani_scadenze: ${error.message}`);
           return (data as number | null) ?? 0;
         });
-        logger.info(`Finalize ${importazioneId}: orfani rimossi=${reconc.orfaniRimossi}`);
+        if (esito === -1) {
+          pulizia_saltata = true;
+          puliziaSottoSoglia = true;
+          logger.warn(
+            `Finalize ${importazioneId}: righe scritte sotto il 90% delle scadenze, pulizia SALTATA`,
+          );
+        } else {
+          reconc.orfaniRimossi = esito;
+          logger.info(
+            `Finalize ${importazioneId}: scadenze non più nel file rimosse=${reconc.orfaniRimossi}`,
+          );
+        }
       } else {
         logger.warn(
           `Finalize ${importazioneId}: ${sottoBlocchiFalliti} sotto-blocchi non scritti, pulizia orfani SALTATA`,
@@ -2345,12 +2354,14 @@ export const finalizeScadenziarioImport = inngest.createFunction(
         if (pulizia_saltata) {
           summary.push({
             riga: 0,
-            errore: `ATTENZIONE: ${sottoBlocchiFalliti} sotto-blocchi non scritti dopo ${SCAD_UPSERT_TENTATIVI} tentativi. Pulizia scadenze orfane NON eseguita per sicurezza. Ripetere l'import.`,
+            errore: puliziaSottoSoglia
+              ? "ATTENZIONE: pulizia scadenze non eseguita: righe scritte dall'import inferiori al 90% delle scadenze presenti. Verificare il file."
+              : `ATTENZIONE: ${sottoBlocchiFalliti} sotto-blocchi non scritti dopo ${SCAD_UPSERT_TENTATIVI} tentativi. Pulizia scadenze orfane NON eseguita per sicurezza. Ripetere l'import.`,
           });
         }
         summary.push({
           riga: 0,
-          errore: `Reconciliation: chiuse ${reconc.totChiuse} scadenze su ${reconc.totClienti} clienti; orfani rimossi (rettifiche): ${reconc.orfaniRimossi}`,
+          errore: `Reconciliation: chiuse ${reconc.totChiuse} scadenze su ${reconc.totClienti} clienti; scadenze non più presenti nel file rimosse: ${reconc.orfaniRimossi}`,
         });
 
         await supabaseAdmin
