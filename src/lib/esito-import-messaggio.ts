@@ -83,6 +83,13 @@ function etichettaAnomalia(tipo: string): string {
   return tipo.replace(/_/g, " ");
 }
 
+function valoreAnomalia(v: string | null | undefined): string {
+  if (v === "true") return "Sì";
+  if (v === "false") return "No";
+  const data = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v ?? "");
+  return data ? `${data[3]}/${data[2]}/${data[1]}` : v || "—";
+}
+
 function scartate(d: DatiEsitoImport): number {
   return (d.righeSaltate ?? 0) + (d.righeErrore ?? 0);
 }
