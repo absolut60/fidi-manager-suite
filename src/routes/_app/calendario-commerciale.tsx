@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { AttivitaCommercialeDialog } from "@/components/attivita-commerciale-dialog";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { TooltipDettaglio } from "@/components/tooltip-dettaglio";
 import { TIPO_ATTIVITA_LABEL, fmtDataOra, type AttivitaRow, type TipoAttivita } from "@/lib/attivita-commerciale";
 
 export const Route = createFileRoute("/_app/calendario-commerciale")({
@@ -38,6 +39,8 @@ export const Route = createFileRoute("/_app/calendario-commerciale")({
       { name: "description", content: "Appuntamenti, visite e attività commerciali pianificate su clienti e lead." },
       { property: "og:title", content: "Calendario commerciale — FidiManager" },
       { property: "og:description", content: "Appuntamenti, visite e attività commerciali pianificate su clienti e lead." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: CalendarioCommercialePage,
@@ -324,6 +327,31 @@ function CalendarioCommercialePage() {
             eventDurationEditable={false}
             height="auto"
             events={events}
+            eventContent={(info) => {
+              const a = (info.event.extendedProps as { attivita?: AttivitaCalendario }).attivita;
+              if (!a) return true;
+              const assegnatario = agenti.find((agente) => agente.codice === a.agente_codice);
+              return (
+                <TooltipDettaglio contenuto={() => (
+                  <div className="space-y-1 text-left">
+                    <div className="font-medium">{TIPO_ATTIVITA_LABEL[a.tipo]} · {fmtDataOra(a.data_pianificata)}</div>
+                    <div>{nomeSoggettoAttivita(a)}</div>
+                    <div>{a.titolo}</div>
+                    {a.agente_codice && <div>Assegnatario: {assegnatario?.descrizione || a.agente_codice}</div>}
+                    <div>Stato: {a.completata ? "Fatto" : "Da fare"}</div>
+                    {a.esito && <div>Esito: {a.esito}</div>}
+                    <div className="line-clamp-6 whitespace-pre-line break-words opacity-90">
+                      {[a.descrizione?.trim(), a.note?.trim()].filter(Boolean).join("\n") || "Nessuna descrizione o nota"}
+                    </div>
+                  </div>
+                )}>
+                  <div className="min-w-0 w-full">
+                    {info.timeText && <span className="fc-event-time">{info.timeText} </span>}
+                    <span className="fc-event-title">{info.event.title}</span>
+                  </div>
+                </TooltipDettaglio>
+              );
+            }}
             datesSet={handleDatesSet}
             eventClick={handleEventClick}
             eventDrop={handleEventDrop}

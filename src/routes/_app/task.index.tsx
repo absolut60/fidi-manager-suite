@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import type { Database } from "@/integrations/supabase/types";
 import { STATI, STATO_LABEL, STATO_BADGE } from "@/lib/task-stato";
+import { TooltipDettaglio } from "@/components/tooltip-dettaglio";
 
 type TaskRow = Database["public"]["Tables"]["task"]["Row"];
 
@@ -194,8 +195,18 @@ function TaskPage() {
                     isBefore(new Date(t.scadenza), startOfDay(new Date()));
                   const badge = STATO_BADGE[t.stato];
                   return (
+                    <TooltipDettaglio key={t.id} contenuto={() => (
+                      <div className="space-y-1 text-left">
+                        <div className="font-medium">{t.titolo}</div>
+                        <div className="line-clamp-6 whitespace-pre-line break-words opacity-90">
+                          {t.descrizione?.trim() || "Nessuna descrizione"}
+                        </div>
+                        <div>Scadenza: {t.scadenza ? format(new Date(t.scadenza), "dd/MM/yyyy") : "—"}</div>
+                        <div>Assegnatario: {t.esecutore_id ? nomeUtente(t.esecutore_id) : "Non assegnato"}</div>
+                        <div>Stato: {STATO_LABEL[t.stato]}</div>
+                      </div>
+                    )}>
                     <TableRow
-                      key={t.id}
                       className="cursor-pointer hover:bg-muted/50 transition-colors"
                       onClick={() => navigate({ to: "/task/$id", params: { id: t.id } })}
                     >
@@ -220,6 +231,7 @@ function TaskPage() {
                         {t.scadenza ? format(new Date(t.scadenza), "d MMM yyyy", { locale: it }) : "—"}
                       </TableCell>
                     </TableRow>
+                    </TooltipDettaglio>
                   );
                 })}
               </TableBody>
