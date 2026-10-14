@@ -8,6 +8,7 @@ import { AlertTriangle, Building2, MapPin, Pencil, Plus, Search } from "lucide-r
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -55,17 +56,25 @@ function CantieriPage() {
   const { tab, focus } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const qc = useQueryClient();
-  const { roles } = useAuth();
+  const { roles, user } = useAuth();
   const { puoEliminareCantiere } = usePermessiCommerciale();
   const isTrasversale = roles.some((r) =>
     ["amministratore", "amministrazione", "direzione", "marketing", "store_manager", "responsabile_agenti"].includes(r),
   );
 
-  const [search, setSearch] = useState("");
-  const [geoF, setGeoF] = useState("tutti");
-  const [agenteF, setAgenteF] = useState("tutti");
-  const [attivoF, setAttivoF] = useState("tutti");
-  const [categoriaF, setCategoriaF] = useState("tutte");
+  // Filtri conservati (useFiltriPagina). Con ?focus= nell'URL si parte dai default,
+  // cosi' il cantiere richiesto non resta nascosto da filtri salvati.
+  const { filtri: FC, setCampo: setCampoCantieri } = useFiltriPagina("cantieri", {
+    search: "", geoF: "tutti", agenteF: "tutti", attivoF: "tutti", categoriaF: "tutte",
+  }, { userId: user?.id, partiDaiDefault: !!focus });
+  const { search, geoF, attivoF, categoriaF } = FC;
+  // Filtro agente visibile solo ai trasversali: altrimenti il salvato non si applica.
+  const agenteF = isTrasversale ? FC.agenteF : "tutti";
+  const setSearch = (v: string) => setCampoCantieri("search", v);
+  const setGeoF = (v: string) => setCampoCantieri("geoF", v);
+  const setAgenteF = (v: string) => setCampoCantieri("agenteF", v);
+  const setAttivoF = (v: string) => setCampoCantieri("attivoF", v);
+  const setCategoriaF = (v: string) => setCampoCantieri("categoriaF", v);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [inModifica, setInModifica] = useState<CantiereRow | null>(null);
 

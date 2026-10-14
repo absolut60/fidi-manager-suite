@@ -7,6 +7,7 @@ import { format, isBefore, startOfDay } from "date-fns";
 import { it } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -55,8 +56,13 @@ function TaskPage() {
   const userId = user?.id ?? null;
 
   const [creating, setCreating] = useState(false);
-  const [filtroStato, setFiltroStato] = useState<string>(TUTTI);
-  const [soloMiei, setSoloMiei] = useState(false);
+  // Filtri conservati con la fonte unica useFiltriPagina ("Solo miei" restringe soltanto).
+  const { filtri: FT, setCampo: setCampoTask } = useFiltriPagina("task", {
+    filtroStato: TUTTI as string, soloMiei: false,
+  }, { userId });
+  const { filtroStato, soloMiei } = FT;
+  const setFiltroStato = (v: string) => setCampoTask("filtroStato", v);
+  const setSoloMiei = (v: boolean) => setCampoTask("soloMiei", v);
 
   const { data: task, isLoading } = useQuery({
     queryKey: ["task"],
