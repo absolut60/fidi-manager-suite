@@ -211,6 +211,13 @@
       "when": 1791970761982,
       "tag": "0029_esperienza_pagamento_escludi_riba",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1791990828624,
+      "tag": "0030_get_nomi_utenti",
+      "breakpoints": true
     }
   ]
 }

@@ -7466,6 +7466,14 @@ export type Database = {
           scadenza_id: string
         }[]
       }
+      get_nomi_utenti: {
+        Args: never
+        Returns: {
+          cognome: string
+          id: string
+          nome: string
+        }[]
+      }
       get_privacy_base_clienti: {
         Args: { _cliente_ids: string[] }
         Returns: {
