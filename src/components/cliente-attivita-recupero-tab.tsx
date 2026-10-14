@@ -10,7 +10,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { AllegatiSection, ALLEGATI_BUCKET } from "@/components/allegati-section";
 
-import { classificaScadenza, sommaScadutoCliente } from "@/lib/scadenze";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,8 +32,14 @@ import { ModificaAzioneDialog, type AzioneModificabile } from "@/components/modi
 import { LetteraPdfDialog } from "@/components/lettera-pdf-dialog";
 import { puoInviareComunicazioniRecupero } from "@/lib/recupero-permessi";
 import type { TipoAzione } from "@/components/reminder-controls";
-import { useAzioniRecuperoCliente, useOperatoriAttivita, type Azione } from "@/hooks/use-azioni-recupero-cliente";
-import { TIPO_AZIONE_ICON, TIPO_AZIONE_LABEL } from "@/lib/azioni-recupero-ui";
+import { useAzioniRecuperoCliente, useOperatoriAttivita, useStadioSollecitoCliente, type Azione } from "@/hooks/use-azioni-recupero-cliente";
+import { TIPO_AZIONE_ICON, TIPO_AZIONE_LABEL, testoAzione } from "@/lib/azioni-recupero-ui";
+import { StadioSollecitoBadge } from "@/components/stadio-sollecito-badge";
+
+function fmtData(v: string) {
+  const d = v.slice(0, 10).split("-");
+  return d.length === 3 ? `${d[2]}/${d[1]}/${d[0]}` : v;
+}
 
 type Esito = "da_fare" | "fatto" | "nessuna_risposta" | "promessa_pagamento" | "contestazione" | "pagato";
 
@@ -96,21 +101,6 @@ export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string })
   const [deleteAzione, setDeleteAzione] = useState<Azione | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // Totale scaduto attuale
-  const { data: totaleScaduto } = useQuery({
-    queryKey: ["attivita-totale-scaduto", clienteId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("scadenze")
-        .select("importo_scadenza, giorni_ritardo, stato_contabile, tempi_scadenza, data_scadenza, data_pagamento_effettiva, numero_documento")
-        .eq("cliente_id", clienteId);
-      if (error) throw error;
-      const scadute = (data ?? []).filter((s: any) => classificaScadenza(s) === "scaduto");
-      // Anticipi sottratti + clamp a 0 (fonte di verita': src/lib/scadenze.ts).
-      return sommaScadutoCliente(scadute as any);
-    },
-  });
-
   // Operatori (per mostrare nomi) — hook condiviso, stessa queryKey.
   const { data: operatori } = useOperatoriAttivita();
   const operatoreMap = useMemo(() => {
@@ -123,6 +113,24 @@ export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string })
 
   // Azioni del cliente (fonte unica condivisa)
   const { azioni, isLoading, daFare, concluse, prossima, ultimaFatta } = useAzioniRecuperoCliente(clienteId);
+  // Stadio sollecito: stessa query/chiave della striscia dello scadenziario.
+  const { data: stadioRow, isLoading: stadioLoading } = useStadioSollecitoCliente(clienteId);
+  // Ultima promessa: dalle azioni già caricate, data promessa più recente.
+  const ultimaPromessa = useMemo(() => {
+    let best: Azione | null = null;
+    for (const a of azioni ?? []) {
+      if (a.esito !== "promessa_pagamento" || !a.data_promessa_pagamento) continue;
+      if (!best || a.data_promessa_pagamento > (best.data_promessa_pagamento ?? "")) best = a;
+    }
+    return best;
+  }, [azioni]);
+  const promessaScaduta = useMemo(() => {
+    if (!ultimaPromessa?.data_promessa_pagamento) return false;
+    const oggi = new Date(); oggi.setHours(0, 0, 0, 0);
+    return new Date(ultimaPromessa.data_promessa_pagamento.slice(0, 10) + "T00:00:00") < oggi;
+  }, [ultimaPromessa]);
+  const testoProssima = prossima ? testoAzione(prossima) : null;
+  const testoUltima = ultimaFatta ? testoAzione(ultimaFatta) : null;
 
   async function updateEsito(id: string, nextEsito: Esito) {
     const { error } = await supabase
@@ -151,7 +159,7 @@ export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string })
     qc.invalidateQueries({ queryKey: ["azioni-calendario"] });
     qc.invalidateQueries({ queryKey: ["recupero-clienti"] });
     qc.invalidateQueries({ queryKey: ["clienti-avvisati"] });
-    qc.invalidateQueries({ queryKey: ["attivita-totale-scaduto", clienteId] });
+    qc.invalidateQueries({ queryKey: ["recupero-stadio-cliente", clienteId] });
   }
 
   async function handleDelete() {
@@ -199,28 +207,69 @@ export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string })
   return (
     <div className="space-y-5">
       {/* Mini riepilogo */}
-      <Card className="p-4">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <StatBlock label="Totale scaduto" value={fmtEuro(totaleScaduto ?? 0)} tone="destructive" />
+      <Card className="p-4 space-y-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatBlock label="Azioni totali" value={String(azioni?.length ?? 0)} />
           <StatBlock label="Da fare" value={String(daFare.length)} tone="warning" />
-          <div>
-            <div className="text-xs uppercase tracking-wider text-muted-foreground">Prossima pianificata</div>
-            {prossima ? (
-              <div className="mt-1 text-sm">
-                <div className="font-medium">{TIPO_LABEL[prossima.tipo]}</div>
-                <div className="text-muted-foreground">{fmtDateTime(prossima.data_azione)}</div>
+          <div className="min-w-0">
+            <div className="text-xs uppercase tracking-wider text-muted-foreground">Stadio sollecito</div>
+            <div className="mt-1">
+              {stadioLoading ? <Skeleton className="h-6 w-24" /> : (
+                <StadioSollecitoBadge
+                  stadio={stadioRow?.stadio_sollecito ?? 0}
+                  data={stadioRow?.stadio_data ?? null}
+                  giorni={stadioRow?.stadio_giorni ?? null}
+                />
+              )}
+            </div>
+          </div>
+          <div className="min-w-0">
+            <div className="text-xs uppercase tracking-wider text-muted-foreground">Ultima promessa</div>
+            {ultimaPromessa?.data_promessa_pagamento ? (
+              <div className="mt-1 text-sm break-words">
+                {ultimaPromessa.importo_riferimento != null && (
+                  <div className="font-medium tabular-nums">{fmtEuro(ultimaPromessa.importo_riferimento)}</div>
+                )}
+                <div className="flex flex-wrap items-center gap-1.5 text-muted-foreground">
+                  entro il {fmtData(ultimaPromessa.data_promessa_pagamento)}
+                  {promessaScaduta && <Badge variant="destructive">Scaduta</Badge>}
+                </div>
               </div>
             ) : (
               <div className="mt-1 text-sm text-muted-foreground">—</div>
             )}
           </div>
-          <div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="min-w-0">
+            <div className="text-xs uppercase tracking-wider text-muted-foreground">Prossima pianificata</div>
+            {prossima ? (
+              <div className="mt-1 text-sm break-words">
+                <div className="font-medium">{TIPO_LABEL[prossima.tipo]}</div>
+                <div className="text-muted-foreground">
+                  {fmtDateTime(prossima.data_azione)}
+                  {prossima.operatore_id && operatoreMap[prossima.operatore_id] ? ` · ${operatoreMap[prossima.operatore_id]}` : ""}
+                </div>
+                {testoProssima && (
+                  <p className="mt-1 whitespace-pre-wrap break-words line-clamp-2" title={testoProssima}>{testoProssima}</p>
+                )}
+              </div>
+            ) : (
+              <div className="mt-1 text-sm text-muted-foreground">—</div>
+            )}
+          </div>
+          <div className="min-w-0">
             <div className="text-xs uppercase tracking-wider text-muted-foreground">Ultima azione fatta</div>
             {ultimaFatta ? (
-              <div className="mt-1 text-sm">
+              <div className="mt-1 text-sm break-words">
                 <div className="font-medium">{TIPO_LABEL[ultimaFatta.tipo]}</div>
-                <div className="text-muted-foreground">{fmtDateTime(ultimaFatta.data_azione)}</div>
+                <div className="text-muted-foreground">
+                  {fmtDateTime(ultimaFatta.data_azione)}
+                  {ultimaFatta.operatore_id && operatoreMap[ultimaFatta.operatore_id] ? ` · ${operatoreMap[ultimaFatta.operatore_id]}` : ""}
+                </div>
+                {testoUltima && (
+                  <p className="mt-1 whitespace-pre-wrap break-words line-clamp-3" title={testoUltima}>{testoUltima}</p>
+                )}
               </div>
             ) : (
               <div className="mt-1 text-sm text-muted-foreground">—</div>
@@ -266,7 +315,6 @@ export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string })
         clienteId={clienteId}
         onGenerated={() => {
           qc.invalidateQueries({ queryKey: ["azioni-recupero-cliente", clienteId] });
-          qc.invalidateQueries({ queryKey: ["attivita-totale-scaduto", clienteId] });
         }}
       />
 
