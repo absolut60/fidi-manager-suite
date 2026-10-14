@@ -81,11 +81,6 @@ function ClientiVariazioniBloccoPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
 
-  const attiviCount = [
-    tipo !== "tutte",
-    qApplied !== "",
-    storeId !== "all",
-  ].filter(Boolean).length;
 
   // Negozi presenti nei dati visibili (scoped dalle RLS): il filtro Negozio
   // compare solo se compaiono più negozi (per uno store manager non serve).
@@ -107,6 +102,12 @@ function ClientiVariazioniBloccoPage() {
   const showStoreFilter = (negozi?.length ?? 0) > 1;
   // Filtro negozio non visibile (un solo negozio): il valore salvato non si applica.
   const storeId = showStoreFilter ? FV.storeId : "all";
+
+  const attiviCount = [
+    tipo !== "tutte",
+    qApplied !== "",
+    storeId !== "all",
+  ].filter(Boolean).length;
 
   const { data, isLoading } = useQuery({
     queryKey: ["clienti-variazioni-blocco", tipo, qApplied, storeId, pagina],
