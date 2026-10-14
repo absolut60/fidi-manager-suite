@@ -101,7 +101,7 @@ export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda }: { client
   const operatoreMap = useMemo(() => {
     const m: Record<string, string> = {};
     for (const o of operatori ?? []) {
-      m[o.id] = `${o.nome ?? ""} ${o.cognome ?? ""}`.trim() || o.email || "—";
+      m[o.id] = `${o.nome ?? ""} ${o.cognome ?? ""}`.trim() || "—";
     }
     return m;
   }, [operatori]);

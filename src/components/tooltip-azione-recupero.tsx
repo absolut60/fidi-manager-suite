@@ -70,7 +70,7 @@ function Dettaglio({ criterio, intestazione, etichetta }: {
     if (!azione?.operatore_id) return null;
     const o = (operatori ?? []).find((x) => x.id === azione.operatore_id);
     if (!o) return null;
-    return `${o.nome ?? ""} ${o.cognome ?? ""}`.trim() || o.email || null;
+    return `${o.nome ?? ""} ${o.cognome ?? ""}`.trim() || null;
   })();
 
   const isPromessa = "promessaData" in criterio;

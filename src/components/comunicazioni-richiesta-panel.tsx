@@ -64,10 +64,7 @@ export function ComunicazioniRichiestaPanel({ richiestaId, richiestaCreatedBy, c
       const autoreIds = Array.from(new Set(rows.map((m) => m.autore_id).filter(Boolean)));
       if (autoreIds.length === 0) return rows.map((m) => ({ ...m, autore: null }));
 
-      const { data: profili, error: profiliError } = await supabase
-        .from("profili")
-        .select("id, nome, cognome, email")
-        .in("id", autoreIds);
+      const { data: profili, error: profiliError } = await supabase.rpc("get_nomi_utenti" as never);
       console.log("[ComunicazioniRichiestaPanel] profili", profili?.length ?? 0, "errore", profiliError);
 
       const profiliById = new Map((profili ?? []).map((p: any) => [p.id, p]));
