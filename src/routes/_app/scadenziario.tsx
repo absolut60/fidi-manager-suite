@@ -1023,18 +1023,7 @@ function ScadenziarioPage() {
                             {totScad < 0 && (
                               <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">A credito</Badge>
                             )}
-                            {r.ha_promessa && (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span className="inline-flex items-center text-orange-600" onClick={(e) => e.stopPropagation()}>
-                                    <HandCoins className="size-4" />
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  Promessa di pagamento{r.data_promessa ? ` entro il ${fmtDate(r.data_promessa)}` : ""}
-                                </TooltipContent>
-                              </Tooltip>
-                            )}
+                            {r.ha_promessa && <PromessaIcon clienteId={r.cliente_id} dataPromessa={r.data_promessa} />}
                             {r.ha_piano_rientro && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -1458,31 +1447,115 @@ type AvvisatoInfo = {
   ultima_data: string | null;
 } | null;
 
+// Nome operatore dal profilo (stessa query/chiave del tab attività).
+function useNomeOperatore() {
+  const { data: operatori } = useOperatoriAttivita();
+  return (id: string | null) => {
+    if (!id) return null;
+    const o = (operatori ?? []).find((x) => x.id === id);
+    if (!o) return null;
+    return `${o.nome ?? ""} ${o.cognome ?? ""}`.trim() || o.email || null;
+  };
+}
+
+// Contenuto del tooltip "Az.": montato solo quando il tooltip è aperto.
+function AvvisatoTooltipDettaglio({ info, intestazione }: { info: NonNullable<AvvisatoInfo>; intestazione: string }) {
+  const { azioni, isLoading } = useAzioniRecuperoCliente(info.cliente_id);
+  const nomeOperatore = useNomeOperatore();
+  const azione = useMemo(() => {
+    if (!info.ultima_tipo || !azioni) return null;
+    const stessoTipo = azioni.filter((a) => a.tipo === info.ultima_tipo);
+    const t = info.ultima_data ? new Date(info.ultima_data).getTime() : NaN;
+    const esatta = Number.isNaN(t) ? undefined : stessoTipo.find((a) => new Date(a.data_azione).getTime() === t);
+    if (esatta) return esatta;
+    return [...stessoTipo].sort((a, b) => new Date(b.data_azione).getTime() - new Date(a.data_azione).getTime())[0] ?? null;
+  }, [azioni, info.ultima_tipo, info.ultima_data]);
+  const tipoLabel = info.ultima_tipo ? (TIPO_AZIONE_LABEL[info.ultima_tipo] ?? info.ultima_tipo) : null;
+  const istante = azione?.data_azione ?? info.ultima_data;
+  const dataOra = istante ? fmtDataOra(istante) : "";
+  const operatore = azione ? nomeOperatore(azione.operatore_id) : null;
+  const testo = azione ? testoAzione(azione) : null;
+  return (
+    <div className="space-y-1 text-left">
+      <div className="font-medium">{intestazione}</div>
+      {tipoLabel && (
+        <div>Ultima: {tipoLabel}{dataOra ? ` del ${dataOra}` : ""}{operatore ? ` · ${operatore}` : ""}</div>
+      )}
+      {isLoading ? (
+        <div className="opacity-80">Caricamento…</div>
+      ) : testo ? (
+        <div className="line-clamp-6 whitespace-pre-line break-words opacity-90">{testo}</div>
+      ) : null}
+    </div>
+  );
+}
+
 function AvvisatoIcon({ info, onClick }: { info: AvvisatoInfo; onClick: () => void }) {
+  const [aperto, setAperto] = useState(false);
   const attivo = !!info && info.n_azioni > 0;
   if (!attivo) return null;
 
   const haEmail = info!.ha_email;
   const Icon = haEmail ? Mail : Bell;
   const colorClass = haEmail ? "text-teal-600" : "text-amber-500";
-  const tooltip = `${info!.n_azioni} azion${info!.n_azioni === 1 ? "e" : "i"} sullo scaduto attuale${info!.ultima_tipo ? ` — ultima: ${info!.ultima_tipo}${info!.ultima_data ? " " + fmtDate(info!.ultima_data) : ""}` : ""}`;
+  const intestazione = `${info!.n_azioni} azion${info!.n_azioni === 1 ? "e" : "i"} sullo scaduto attuale`;
 
   return (
     <TooltipProvider delayDuration={200}>
-      <Tooltip>
+      <Tooltip open={aperto} onOpenChange={setAperto}>
         <TooltipTrigger asChild>
           <button
             type="button"
             onClick={onClick}
-            aria-label={tooltip}
+            aria-label={intestazione}
             className={`inline-flex items-center justify-center rounded p-1 hover:bg-muted transition-colors ${colorClass}`}
           >
             <Icon className="size-5" strokeWidth={2.5} />
           </button>
         </TooltipTrigger>
-        <TooltipContent side="top">{tooltip}</TooltipContent>
+        <TooltipContent side="top" className="max-w-[320px] whitespace-normal">
+          {aperto && <AvvisatoTooltipDettaglio info={info!} intestazione={intestazione} />}
+        </TooltipContent>
       </Tooltip>
     </TooltipProvider>
+  );
+}
+
+// Contenuto del tooltip promessa: montato solo quando il tooltip è aperto.
+function PromessaTooltipDettaglio({ clienteId, dataPromessa }: { clienteId: string; dataPromessa: string | null | undefined }) {
+  const { azioni, isLoading } = useAzioniRecuperoCliente(clienteId);
+  const promessa = useMemo(() => {
+    if (!azioni || !dataPromessa) return null;
+    const giorno = dataPromessa.slice(0, 10);
+    return azioni.find((a) => a.esito === "promessa_pagamento" && (a.data_promessa_pagamento ?? "").slice(0, 10) === giorno) ?? null;
+  }, [azioni, dataPromessa]);
+  const testo = promessa ? testoAzione(promessa) : null;
+  return (
+    <div className="space-y-1 text-left">
+      <div className="font-medium">Promessa di pagamento{dataPromessa ? ` entro il ${fmtDate(dataPromessa)}` : ""}</div>
+      {promessa?.importo_riferimento != null && <div>Importo: {fmtEuro(promessa.importo_riferimento)}</div>}
+      {isLoading ? (
+        <div className="opacity-80">Caricamento…</div>
+      ) : testo ? (
+        <div className="line-clamp-6 whitespace-pre-line break-words opacity-90">{testo}</div>
+      ) : null}
+    </div>
+  );
+}
+
+function PromessaIcon({ clienteId, dataPromessa }: { clienteId: string; dataPromessa: string | null | undefined }) {
+  const [aperto, setAperto] = useState(false);
+  return (
+    <Tooltip open={aperto} onOpenChange={setAperto}>
+      <TooltipTrigger asChild>
+        <span className="inline-flex items-center text-orange-600" onClick={(e) => e.stopPropagation()}>
+          <HandCoins className="size-4" />
+        </span>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-[320px] whitespace-normal">
+        {aperto && <PromessaTooltipDettaglio clienteId={clienteId} dataPromessa={dataPromessa} />}
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
