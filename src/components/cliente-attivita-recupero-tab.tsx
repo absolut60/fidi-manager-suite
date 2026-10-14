@@ -81,7 +81,7 @@ function fmtDateTime(v: unknown) {
 }
 
 
-export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string }) {
+export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda }: { clienteId: string; onApriScheda?: () => void }) {
   const qc = useQueryClient();
   const { user, roles } = useAuth();
   const puoInviare = puoInviareComunicazioniRecupero(roles as string[]);
@@ -279,7 +279,7 @@ export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string })
       </Card>
 
       {/* Azioni dirette */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {puoInviare && (
           <Button size="sm" onClick={() => setSollecitoOpen(true)} className="gap-1.5">
             <Send className="size-4" /> Invia sollecito
@@ -306,6 +306,15 @@ export function ClienteAttivitaRecuperoTab({ clienteId }: { clienteId: string })
           <Button size="sm" variant="ghost" onClick={() => setLetteraOpen(true)} className="gap-1.5">
             <FileText className="size-4" /> Lettera
           </Button>
+        )}
+        {onApriScheda && (
+          <button
+            type="button"
+            onClick={onApriScheda}
+            className="inline-flex min-h-10 items-center text-sm text-primary hover:underline text-left sm:ml-auto"
+          >
+            Apri recupero nella scheda cliente →
+          </button>
         )}
       </div>
 
