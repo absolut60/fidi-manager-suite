@@ -568,7 +568,7 @@ function LeadListaPage() {
         <FiltriCollassabili
           attivi={attiviCount}
           azioni={
-            <Button variant="ghost" size="sm" onClick={resetFiltri} className="gap-1 h-7">
+            <Button variant="ghost" size="sm" onClick={() => resetFiltri()} className="gap-1 h-7">
               <X className="size-3.5" /> Azzera tutti
             </Button>
           }
