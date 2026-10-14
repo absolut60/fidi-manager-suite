@@ -1096,15 +1096,17 @@ function ScadenziarioPage() {
                                 pianoRientro={r.ha_piano_rientro ? { pagate: r.piano_rate_pagate ?? 0, totali: r.piano_rate_totali ?? 0 } : null}
                                 aperto={recuperoApertoId === r.cliente_id}
                                 onToggle={() => setRecuperoApertoId(recuperoApertoId === r.cliente_id ? null : r.cliente_id)}
+                              />
+                            </div>
+                            {recuperoApertoId === r.cliente_id && (
+                              <ClienteAttivitaRecuperoTab
+                                clienteId={r.cliente_id}
                                 onApriScheda={() => navigate({
                                   to: "/clienti/$clienteId",
                                   params: { clienteId: r.cliente_id },
                                   search: { tab: "attivita" } as never,
                                 })}
                               />
-                            </div>
-                            {recuperoApertoId === r.cliente_id && (
-                              <ClienteAttivitaRecuperoTab clienteId={r.cliente_id} />
                             )}
                           </TableCell>
                         </TableRow>
@@ -1163,15 +1165,17 @@ function ScadenziarioPage() {
                   pianoRientro={schedaMobile.ha_piano_rientro ? { pagate: schedaMobile.piano_rate_pagate ?? 0, totali: schedaMobile.piano_rate_totali ?? 0 } : null}
                   aperto={recuperoApertoId === schedaMobile.cliente_id}
                   onToggle={() => setRecuperoApertoId(recuperoApertoId === schedaMobile.cliente_id ? null : schedaMobile.cliente_id)}
+                />
+              </div>
+              {recuperoApertoId === schedaMobile.cliente_id && (
+                <ClienteAttivitaRecuperoTab
+                  clienteId={schedaMobile.cliente_id}
                   onApriScheda={() => navigate({
                     to: "/clienti/$clienteId",
                     params: { clienteId: schedaMobile.cliente_id },
                     search: { tab: "attivita" } as never,
                   })}
                 />
-              </div>
-              {recuperoApertoId === schedaMobile.cliente_id && (
-                <ClienteAttivitaRecuperoTab clienteId={schedaMobile.cliente_id} />
               )}
             </div>
           )}
@@ -1235,12 +1239,11 @@ function fmtDataOra(v: string): string {
   return new Date(v).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
-function RecuperoStriscia({ clienteId, pianoRientro, aperto, onToggle, onApriScheda }: {
+function RecuperoStriscia({ clienteId, pianoRientro, aperto, onToggle }: {
   clienteId: string;
   pianoRientro: { pagate: number; totali: number } | null;
   aperto: boolean;
   onToggle: () => void;
-  onApriScheda: () => void;
 }) {
   const qc = useQueryClient();
   const { azioni, isLoading, dataUpdatedAt, daFare, prossima, ultimaFatta, inRitardo } = useAzioniRecuperoCliente(clienteId);
@@ -1327,9 +1330,6 @@ function RecuperoStriscia({ clienteId, pianoRientro, aperto, onToggle, onApriSch
             {aperto ? <ChevronUp className="size-4 shrink-0" /> : <ChevronDown className="size-4 shrink-0" />}
             {aperto ? "Nascondi recupero crediti" : "Mostra recupero crediti"}
           </Button>
-          <button type="button" className="text-sm text-primary hover:underline text-left" onClick={(e) => { e.stopPropagation(); onApriScheda(); }}>
-            Apri recupero nella scheda cliente →
-          </button>
         </div>
       </div>
     </div>
