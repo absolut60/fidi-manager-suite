@@ -726,7 +726,7 @@ const CONFIG_FIELDS: {
   { chiave: "soglia_livello_2", label: "Soglia Livello 2", suffix: "€", hint: "Importo massimo gestito dal liv. 2 (oltre serve liv. 3)" },
   { chiave: "durata_default_mesi", label: "Durata di default", suffix: "mesi", hint: "Durata del fido proposta nelle nuove richieste" },
   { chiave: "reminder_giorni_scadenza", label: "Reminder scadenza", suffix: "giorni", hint: "Giorni di anticipo per segnalare i fidi in scadenza" },
-  { chiave: "tolleranza_ritardo_pagamento_gg", label: "Tolleranza ritardo pagamenti", suffix: "giorni", hint: "Un pagamento conta come in ritardo solo se arriva oltre questi giorni dopo la scadenza (bonifico o RiBa). Usato in Scadenziario, scheda cliente e quadro richieste fido." },
+  { chiave: "tolleranza_ritardo_pagamento_gg", label: "Tolleranza ritardo pagamenti", suffix: "giorni", hint: "Un pagamento non RiBa (bonifico, rimessa…) conta come in ritardo solo se arriva oltre questi giorni dopo la scadenza. Le RiBa non pagate sono contate negli insoluti. Usato in Scadenziario, scheda cliente e quadro richieste fido." },
   {
     chiave: "cutoff_cliente_attivo_anno",
     label: "Anno attività cliente",
