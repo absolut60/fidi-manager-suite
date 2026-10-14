@@ -183,52 +183,130 @@ function ClientiPage() {
   const navigate = useNavigate();
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
   const isListRoute = currentPath === "/clienti";
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
-  useEffect(() => {
-    const t = setTimeout(() => setSearch(searchInput), 400);
-    return () => clearTimeout(t);
-  }, [searchInput]);
-  const [statoCliente, setStatoCliente] = useState<"attivi" | "disattivati" | "tutti">("attivi");
-  const [statoAttivita, setStatoAttivita] = useState<"tutti" | "attivi" | "non_attivi">("attivi");
-  const { role: _roleEarly, profilo: _profiloEarly, hasRole: _hasRoleEarly } = useAuth();
+  const { role: _roleEarly, profilo: _profiloEarly, hasRole: _hasRoleEarly, user: _userEarly } = useAuth();
   const isStoreManager = _roleEarly === "store_manager";
   const isAgente = _hasRoleEarly("agente");
   const config = useConfig();
   const isConfigReady = useConfigReady();
   const myStoreId = _profiloEarly?.store_id ?? null;
-  const [storeFiltro, setStoreFiltro] = useState<string>(
-    isStoreManager && myStoreId ? myStoreId : "tutti"
-  );
-  const [statoFido, setStatoFido] = useState<Set<string>>(new Set());
-  const [semaforoFiltro, setSemaforoFiltro] = useState<string>("tutti");
-  const [filtroBlocco, setFiltroBlocco] = useState<"tutti" | "bloccati" | "non_bloccati">("tutti");
-  const [privacyFiltro, setPrivacyFiltro] = useState<"tutti" | "ok" | "da_richiedere">("tutti");
-  const [filtroAssic, setFiltroAssic] = useState<"tutti" | "assicurati" | "non_assicurati">("tutti");
-  const [filtroLegale, setFiltroLegale] = useState<"tutti" | "in_legale" | "non_in_legale">("tutti");
-  // Default: "giuridica" → mostra solo Imprese, esclude i Privati (persona_fisica)
-  const [filtroTipoSoggetto, setFiltroTipoSoggetto] = useState<"tutti" | "fisica" | "giuridica">("giuridica");
-  const [filtroAgente, setFiltroAgente] = useState<string>("tutti");
-  const [filtroMestiere, setFiltroMestiere] = useState<string>("tutti");
-  const [filtroRichiesta, setFiltroRichiesta] = useState<"tutti" | "escludi" | "solo">("tutti");
-  const [scadenziarioFiltro, setScadenziarioFiltro] = useState<string>("tutti");
-  const [totaleRischioFiltro, setTotaleRischioFiltro] = useState<string>("tutti");
-  const [fatturatoFiltro, setFatturatoFiltro] = useState<string>("tutti");
-  // Colonne "Fido proposto"/"Scostamento": opzionali (una sola chiamata alla RPC)
-  const [mostraFidoTeorico, setMostraFidoTeorico] = useState(false);
-  const [scostamentoFiltro, setScostamentoFiltro] = useState<"tutti" | "positivo" | "negativo" | "nullo">("tutti");
-  // Filtro "solo posizioni da verificare" (attivabile dai riquadri della dashboard)
-  const [soloDaVerificare, setSoloDaVerificare] = useState(false);
-  // Filtro "solo esposizione oltre il fido" (riquadro dashboard)
-  const [soloOltreFido, setSoloOltreFido] = useState(false);
-  // Filtro "solo clienti con fido gestionale attivo" (bonifica bloccati con fido)
-  const [soloConFidoAttivo, setSoloConFidoAttivo] = useState(false);
-  // Preset "insoluti in corso" e "clienti fermi" dai riquadri dashboard
-  const [soloInsoluti, setSoloInsoluti] = useState(false);
-  const [soloFermi, setSoloFermi] = useState(false);
-  const [aScadereFiltro, setAScadereFiltro] = useState<string>("tutti");
-  // Fascia di fido CONCESSO (fido_gestionale), usata dalla tabella "per fasce" della dashboard
-  const [fasciaConcesso, setFasciaConcesso] = useState<string>("tutti");
+
+  // === Filtri avanzati (modal) — APPLIED state (commit dopo "Applica") ===
+  type AdvOp = "none" | "lt" | "lte" | "gt" | "eq" | "between";
+  type AdvApplied = {
+    fidoOp: AdvOp; fidoVal: number | null; fidoFrom: number | null; fidoTo: number | null;
+    percConsumato: number | null;
+    dataFattPrima: string; dataFattDopo: string;
+    presetScopertoInsoluto: boolean;
+  };
+  const ADV_EMPTY: AdvApplied = {
+    fidoOp: "none", fidoVal: null, fidoFrom: null, fidoTo: null,
+    percConsumato: null, dataFattPrima: "", dataFattDopo: "",
+    presetScopertoInsoluto: false,
+  };
+
+  // Filtri conservati (fonte unica useFiltriPagina). I link con filtri nell'URL
+  // (riquadri dashboard) partono dai default; il preset poi diventa lo stato salvato.
+  const _searchUrl = Route.useSearch();
+  const _linkConFiltri = !!(_searchUrl.preset || _searchUrl.store || _searchUrl.fascia);
+  const numOrNull = (v: unknown) => v === null || typeof v === "number";
+  const { filtri: F, setCampo, setParziale, reset: resetFiltriSalvati } = useFiltriPagina("clienti", {
+    searchInput: "",
+    statoCliente: "attivi" as "attivi" | "disattivati" | "tutti",
+    statoAttivita: "attivi" as "tutti" | "attivi" | "non_attivi",
+    storeFiltro: "tutti" as string,
+    statoFido: [] as string[],
+    semaforoFiltro: "tutti" as string,
+    filtroBlocco: "tutti" as "tutti" | "bloccati" | "non_bloccati",
+    privacyFiltro: "tutti" as "tutti" | "ok" | "da_richiedere",
+    filtroAssic: "tutti" as "tutti" | "assicurati" | "non_assicurati",
+    filtroLegale: "tutti" as "tutti" | "in_legale" | "non_in_legale",
+    // Default: "giuridica" → mostra solo Imprese, esclude i Privati (persona_fisica)
+    filtroTipoSoggetto: "giuridica" as "tutti" | "fisica" | "giuridica",
+    filtroAgente: "tutti" as string,
+    filtroMestiere: "tutti" as string,
+    filtroRichiesta: "tutti" as "tutti" | "escludi" | "solo",
+    scadenziarioFiltro: "tutti" as string,
+    totaleRischioFiltro: "tutti" as string,
+    fatturatoFiltro: "tutti" as string,
+    // Colonne "Fido proposto"/"Scostamento": opzionali (una sola chiamata alla RPC)
+    mostraFidoTeorico: false,
+    scostamentoFiltro: "tutti" as "tutti" | "positivo" | "negativo" | "nullo",
+    soloDaVerificare: false,
+    soloOltreFido: false,
+    soloConFidoAttivo: false,
+    soloInsoluti: false,
+    soloFermi: false,
+    aScadereFiltro: "tutti" as string,
+    // Fascia di fido CONCESSO (fido_gestionale), usata dalla tabella "per fasce" della dashboard
+    fasciaConcesso: "tutti" as string,
+    fidoFascia: "tutti" as string,
+    sliderCommitted: [FIDO_RANGE_MIN, FIDO_RANGE_MAX] as [number, number],
+    advApplied: ADV_EMPTY,
+    page: 1,
+    pageSize: 25,
+    sortBy: "ragione_sociale" as string,
+    sortDir: "asc" as "asc" | "desc",
+  }, {
+    userId: _userEarly?.id,
+    partiDaiDefault: _linkConFiltri,
+    valida: {
+      statoFido: (v) => Array.isArray(v) && v.every((x) => typeof x === "string"),
+      sliderCommitted: (v) => Array.isArray(v) && v.length === 2 && v.every((x) => typeof x === "number" && Number.isFinite(x)),
+      advApplied: (v) => {
+        const o = v as Record<string, unknown>;
+        return !!o && typeof o === "object" && typeof o.fidoOp === "string"
+          && numOrNull(o.fidoVal) && numOrNull(o.fidoFrom) && numOrNull(o.fidoTo) && numOrNull(o.percConsumato)
+          && typeof o.dataFattPrima === "string" && typeof o.dataFattDopo === "string"
+          && typeof o.presetScopertoInsoluto === "boolean";
+      },
+    },
+  });
+  const { searchInput, statoCliente, statoAttivita, semaforoFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, filtroMestiere, filtroRichiesta, scadenziarioFiltro, totaleRischioFiltro, fatturatoFiltro, mostraFidoTeorico, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, aScadereFiltro, fasciaConcesso, fidoFascia, sliderCommitted, advApplied, page, pageSize, sortBy, sortDir } = F;
+  // Store manager: sempre il proprio negozio, qualunque valore sia salvato.
+  const storeFiltro = isStoreManager && myStoreId ? myStoreId : F.storeFiltro;
+  // Set ricostruito al confine (salvato come array di stringhe).
+  const statoFido = useMemo(() => new Set(F.statoFido), [F.statoFido]);
+  const setSearchInput = (v: string) => setCampo("searchInput", v);
+  const setStatoCliente = (v: typeof statoCliente) => setCampo("statoCliente", v);
+  const setStatoAttivita = (v: typeof statoAttivita) => setCampo("statoAttivita", v);
+  const setStoreFiltro = (v: string) => setCampo("storeFiltro", v);
+  const setStatoFido = (v: Set<string> | ((prev: Set<string>) => Set<string>)) =>
+    setCampo("statoFido", (prev) => Array.from(typeof v === "function" ? v(new Set(prev)) : v));
+  const setSemaforoFiltro = (v: string) => setCampo("semaforoFiltro", v);
+  const setFiltroBlocco = (v: typeof filtroBlocco) => setCampo("filtroBlocco", v);
+  const setPrivacyFiltro = (v: typeof privacyFiltro) => setCampo("privacyFiltro", v);
+  const setFiltroAssic = (v: typeof filtroAssic) => setCampo("filtroAssic", v);
+  const setFiltroLegale = (v: typeof filtroLegale) => setCampo("filtroLegale", v);
+  const setFiltroTipoSoggetto = (v: typeof filtroTipoSoggetto) => setCampo("filtroTipoSoggetto", v);
+  const setFiltroAgente = (v: string) => setCampo("filtroAgente", v);
+  const setFiltroMestiere = (v: string) => setCampo("filtroMestiere", v);
+  const setFiltroRichiesta = (v: typeof filtroRichiesta) => setCampo("filtroRichiesta", v);
+  const setScadenziarioFiltro = (v: string) => setCampo("scadenziarioFiltro", v);
+  const setTotaleRischioFiltro = (v: string) => setCampo("totaleRischioFiltro", v);
+  const setFatturatoFiltro = (v: string) => setCampo("fatturatoFiltro", v);
+  const setMostraFidoTeorico = (v: boolean) => setCampo("mostraFidoTeorico", v);
+  const setScostamentoFiltro = (v: typeof scostamentoFiltro) => setCampo("scostamentoFiltro", v);
+  const setSoloDaVerificare = (v: boolean) => setCampo("soloDaVerificare", v);
+  const setSoloOltreFido = (v: boolean) => setCampo("soloOltreFido", v);
+  const setSoloConFidoAttivo = (v: boolean) => setCampo("soloConFidoAttivo", v);
+  const setSoloInsoluti = (v: boolean) => setCampo("soloInsoluti", v);
+  const setSoloFermi = (v: boolean) => setCampo("soloFermi", v);
+  const setAScadereFiltro = (v: string) => setCampo("aScadereFiltro", v);
+  const setFasciaConcesso = (v: string) => setCampo("fasciaConcesso", v);
+  const setFidoFascia = (v: string) => setCampo("fidoFascia", v);
+  const setSliderCommitted = (v: [number, number]) => setCampo("sliderCommitted", v);
+  const setAdvApplied = (v: AdvApplied | ((prev: AdvApplied) => AdvApplied)) => setCampo("advApplied", v);
+  const setPage = (v: number | ((p: number) => number)) => setCampo("page", v);
+  const setPageSize = (v: number) => setCampo("pageSize", v);
+  const setSortBy = (v: string) => setCampo("sortBy", v);
+  const setSortDir = (v: "asc" | "desc") => setCampo("sortDir", v);
+  void setParziale;
+  // La ricerca applicata parte già uguale a quella ripristinata.
+  const [search, setSearch] = useState(() => searchInput);
+  useEffect(() => {
+    const t = setTimeout(() => setSearch(searchInput), 400);
+    return () => clearTimeout(t);
+  }, [searchInput]);
 
   // Preset filtri via URL (?preset=...), usati dai riquadri della dashboard
   const presetSearch = Route.useSearch().preset;
@@ -283,30 +361,9 @@ function ClientiPage() {
   }, [presetSearch]);
 
   const [open, setOpen] = useState(false);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
-  const [sortBy, setSortBy] = useState("ragione_sociale");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  // Slider: valore visualizzato locale, parte uguale al valore applicato ripristinato.
+  const [sliderDisplay, setSliderDisplay] = useState<[number, number]>(() => sliderCommitted);
 
-  // Filtro Fido residuo (fascia + range slider, cumulativi)
-  const [fidoFascia, setFidoFascia] = useState<string>("tutti");
-  const [sliderDisplay, setSliderDisplay] = useState<[number, number]>([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
-  const [sliderCommitted, setSliderCommitted] = useState<[number, number]>([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
-
-  // === Filtri avanzati (modal) — APPLIED state (commit dopo "Applica") ===
-  type AdvOp = "none" | "lt" | "lte" | "gt" | "eq" | "between";
-  type AdvApplied = {
-    fidoOp: AdvOp; fidoVal: number | null; fidoFrom: number | null; fidoTo: number | null;
-    percConsumato: number | null;
-    dataFattPrima: string; dataFattDopo: string;
-    presetScopertoInsoluto: boolean;
-  };
-  const ADV_EMPTY: AdvApplied = {
-    fidoOp: "none", fidoVal: null, fidoFrom: null, fidoTo: null,
-    percConsumato: null, dataFattPrima: "", dataFattDopo: "",
-    presetScopertoInsoluto: false,
-  };
-  const [advApplied, setAdvApplied] = useState<AdvApplied>(ADV_EMPTY);
   const [advOpen, setAdvOpen] = useState(false);
 
 
@@ -685,10 +742,15 @@ function ClientiPage() {
 
 
 
-  // Reset pagina ogni volta che cambia un filtro o l'ordinamento
+  // Reset pagina SOLO quando un filtro cambia davvero dopo il montaggio (firma precedente).
+  const firmaFiltri = JSON.stringify([search, statoCliente, statoAttivita, storeFiltro, F.statoFido, semaforoFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, filtroMestiere, filtroRichiesta, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, fasciaConcesso]);
+  const firmaPrecedente = useRef(firmaFiltri);
   useEffect(() => {
+    if (firmaPrecedente.current === firmaFiltri) return;
+    firmaPrecedente.current = firmaFiltri;
     setPage(1);
-  }, [search, statoCliente, statoAttivita, storeFiltro, statoFido, semaforoFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, filtroMestiere, filtroRichiesta, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, fasciaConcesso]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [firmaFiltri]);
 
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -1106,32 +1168,13 @@ function ClientiPage() {
     ((sliderCommitted[0] !== FIDO_RANGE_MIN || sliderCommitted[1] !== FIDO_RANGE_MAX) ? 1 : 0);
 
   function resetFiltri() {
-    setSearchInput(""); setSearch("");
-    setStatoCliente("attivi");
-    setStatoAttivita("attivi");
-    setStoreFiltro("tutti");
-    setFasciaConcesso("tutti");
-    setStatoFido(new Set());
-    setSemaforoFiltro("tutti");
-    setFiltroBlocco("tutti");
-    setPrivacyFiltro("tutti");
-    setFiltroAssic("tutti");
-    setFiltroLegale("tutti");
-    setFiltroTipoSoggetto("giuridica");
-    setFiltroMestiere("tutti");
-    setFiltroRichiesta("tutti");
-    setFiltroAgente("tutti");
-    setScadenziarioFiltro("tutti");
-    setTotaleRischioFiltro("tutti");
-    setAScadereFiltro("tutti");
-    setFatturatoFiltro("tutti");
-    setFidoFascia("tutti");
+    setSearch("");
     setSliderDisplay([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
-    setSliderCommitted([FIDO_RANGE_MIN, FIDO_RANGE_MAX]);
-    setScostamentoFiltro("tutti");
-    setAdvApplied(ADV_EMPTY);
-    setSoloInsoluti(false);
-    setSoloFermi(false);
+    // Come prima: ordinamento, pagina, dimensione pagina e filtri preset dashboard non toccati.
+    resetFiltriSalvati({
+      sortBy, sortDir, page, pageSize,
+      mostraFidoTeorico, soloDaVerificare, soloOltreFido, soloConFidoAttivo,
+    });
   }
 
   function toggleSort(colonna: string) {
