@@ -290,11 +290,17 @@ function ScadenziarioPage() {
     return () => clearTimeout(t);
   }, [search]);
 
-  // Reset selezione + pagina ai cambi filtro
+  // Reset selezione + pagina SOLO quando un filtro cambia davvero dopo il montaggio
+  // (confronto con la firma precedente: al montaggio, anche in StrictMode, la pagina ripristinata resta).
+  const firmaFiltri = JSON.stringify([storeId, agenteFiltro, fascia, importoMin, importoMinAScadere, situazione, statoBlocco, statoLegale, escludiBonifici, escludiLegale, avvisatoFilter, mostraACredito, searchDebounced, sortBy, sortDir]);
+  const firmaPrecedente = useRef(firmaFiltri);
   useEffect(() => {
+    if (firmaPrecedente.current === firmaFiltri) return;
+    firmaPrecedente.current = firmaFiltri;
     setSelectedIds(new Set());
     setPage(1);
-  }, [storeId, agenteFiltro, fascia, importoMin, importoMinAScadere, situazione, statoBlocco, statoLegale, escludiBonifici, escludiLegale, avvisatoFilter, mostraACredito, searchDebounced, sortBy, sortDir]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [firmaFiltri]);
 
   useEffect(() => {
     if (statoLegale === "in_legale") setEscludiLegale(false);
@@ -335,17 +341,8 @@ function ScadenziarioPage() {
   function resetFiltri(sit: Situazione) {
     setSearch(""); setSearchDebounced("");
     setStoreId(storeDefault);
-    setAgenteFiltro("tutti");
-    setFascia("tutte");
-    setImportoMin("");
-    setImportoMinAScadere("");
-    setStatoBlocco("tutti");
-    setStatoLegale("tutti");
-    setEscludiBonifici(true);
-    setEscludiLegale(true);
-    setAvvisatoFilter("tutti");
-    setMostraACredito(false);
-    setSituazione(sit);
+    // Ordinamento e pagina restano come prima; la pagina torna a 1 se un filtro cambia.
+    resetFiltriSalvati({ situazione: sit, sortBy, sortDir, page });
   }
   const azzeraFiltri = () => resetFiltri("con_scaduto");
   // "Vedi tutto" è derivato, non uno state: si spegne da solo se l'utente cambia a mano uno dei 4 valori.
