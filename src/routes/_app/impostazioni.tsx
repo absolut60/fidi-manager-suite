@@ -857,7 +857,7 @@ function ConfigurazioniCard() {
       }
       const tollRaw = String(values.tolleranza_ritardo_pagamento_gg ?? "").trim();
       const toll = Number(tollRaw);
-      if (tollRaw === "" || !Number.isInteger(toll) || toll < 0) {
+      if (tollRaw !== "" && (!Number.isInteger(toll) || toll < 0)) {
         throw new Error("Tolleranza ritardo pagamenti non valida (numero intero di giorni ≥ 0)");
       }
       const updates = CONFIG_FIELDS.map((f) =>
