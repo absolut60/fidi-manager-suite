@@ -9,96 +9,100 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as IscrizioneWhatsappRouteImport } from './routes/iscrizione-whatsapp'
-import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as RecessoTokenRouteImport } from './routes/recesso.$token'
-import { Route as RTokenRouteImport } from './routes/r.$token'
-import { Route as IscrizioneEventoCodiceRouteImport } from './routes/iscrizione-evento.$codice'
-import { Route as FirmaPrivacyTokenRouteImport } from './routes/firma-privacy.$token'
-import { Route as ConsensiTokenRouteImport } from './routes/consensi.$token'
-import { Route as AppWhatsappRouteImport } from './routes/_app/whatsapp'
-import { Route as AppUtentiRouteImport } from './routes/_app/utenti'
-import { Route as AppTemplateLetteraRouteImport } from './routes/_app/template-lettera'
-import { Route as AppTemplateEmailRouteImport } from './routes/_app/template-email'
-import { Route as AppTaskRouteImport } from './routes/_app/task'
-import { Route as AppScadenziarioRouteImport } from './routes/_app/scadenziario'
-import { Route as AppRichiesteRouteImport } from './routes/_app/richieste'
-import { Route as AppRecuperoCreditiPromemoriaRouteImport } from './routes/_app/recupero-crediti-promemoria'
-import { Route as AppRecuperoCreditiCampagneRouteImport } from './routes/_app/recupero-crediti-campagne'
-import { Route as AppRecuperoCreditiCalendarioRouteImport } from './routes/_app/recupero-crediti-calendario'
-import { Route as AppRecuperoCreditiAndamentoRouteImport } from './routes/_app/recupero-crediti-andamento'
-import { Route as AppRecuperoCreditiRouteImport } from './routes/_app/recupero-crediti'
-import { Route as AppRecuperoAgenziaRouteImport } from './routes/_app/recupero-agenzia'
-import { Route as AppPrivacyRouteImport } from './routes/_app/privacy'
-import { Route as AppPianiRientroRouteImport } from './routes/_app/piani-rientro'
-import { Route as AppOpportunitaRouteImport } from './routes/_app/opportunita'
-import { Route as AppNotificheRouteImport } from './routes/_app/notifiche'
-import { Route as AppListiniRouteImport } from './routes/_app/listini'
-import { Route as AppLegaliRouteImport } from './routes/_app/legali'
-import { Route as AppLeadRouteImport } from './routes/_app/lead'
-import { Route as AppImpostazioniRouteImport } from './routes/_app/impostazioni'
-import { Route as AppImportExportRouteImport } from './routes/_app/import-export'
-import { Route as AppIlMioProfiloRouteImport } from './routes/_app/il-mio-profilo'
-import { Route as AppFidiProcessareRouteImport } from './routes/_app/fidi-processare'
-import { Route as AppFidiDashboardRouteImport } from './routes/_app/fidi-dashboard'
-import { Route as AppDashboardCommercialeRouteImport } from './routes/_app/dashboard-commerciale'
-import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
-import { Route as AppCruscottoIncassiRouteImport } from './routes/_app/cruscotto-incassi'
-import { Route as AppContattiRouteImport } from './routes/_app/contatti'
-import { Route as AppClientiVariazioniBloccoRouteImport } from './routes/_app/clienti-variazioni-blocco'
-import { Route as AppClientiRouteImport } from './routes/_app/clienti'
-import { Route as AppChatRouteImport } from './routes/_app/chat'
-import { Route as AppCantieriRouteImport } from './routes/_app/cantieri'
-import { Route as AppCambiaPasswordRouteImport } from './routes/_app/cambia-password'
-import { Route as AppCalendarioCommercialeRouteImport } from './routes/_app/calendario-commerciale'
-import { Route as AppAuditRouteImport } from './routes/_app/audit'
-import { Route as AppAttivaNotificheRouteImport } from './routes/_app/attiva-notifiche'
-import { Route as AppAssicurazioniRouteImport } from './routes/_app/assicurazioni'
-import { Route as AppAreeRouteImport } from './routes/_app/aree'
+import { Route as AppRouteImport } from './routes/_app'
+import { Route as IscrizioneWhatsappRouteImport } from './routes/iscrizione-whatsapp'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppApprovazioniRouteImport } from './routes/_app/approvazioni'
-import { Route as AppTaskIndexRouteImport } from './routes/_app/task.index'
-import { Route as AppRichiesteInterneIndexRouteImport } from './routes/_app/richieste-interne.index'
-import { Route as AppPreventivatoreIndexRouteImport } from './routes/_app/preventivatore.index'
-import { Route as AppOrdiniIndexRouteImport } from './routes/_app/ordini.index'
-import { Route as AppOpportunitaIndexRouteImport } from './routes/_app/opportunita.index'
-import { Route as AppLeadIndexRouteImport } from './routes/_app/lead.index'
-import { Route as AppKitIndexRouteImport } from './routes/_app/kit.index'
-import { Route as AppEventiIndexRouteImport } from './routes/_app/eventi.index'
+import { Route as AppAreeRouteImport } from './routes/_app/aree'
+import { Route as AppAssicurazioniRouteImport } from './routes/_app/assicurazioni'
+import { Route as AppAttivaNotificheRouteImport } from './routes/_app/attiva-notifiche'
+import { Route as AppAuditRouteImport } from './routes/_app/audit'
+import { Route as AppCalendarioCommercialeRouteImport } from './routes/_app/calendario-commerciale'
+import { Route as AppCambiaPasswordRouteImport } from './routes/_app/cambia-password'
+import { Route as AppCantieriRouteImport } from './routes/_app/cantieri'
+import { Route as AppChatRouteImport } from './routes/_app/chat'
+import { Route as AppClientiRouteImport } from './routes/_app/clienti'
+import { Route as AppClientiVariazioniBloccoRouteImport } from './routes/_app/clienti-variazioni-blocco'
+import { Route as AppContattiRouteImport } from './routes/_app/contatti'
+import { Route as AppCruscottoIncassiRouteImport } from './routes/_app/cruscotto-incassi'
+import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
+import { Route as AppDashboardCommercialeRouteImport } from './routes/_app/dashboard-commerciale'
+import { Route as AppFidiDashboardRouteImport } from './routes/_app/fidi-dashboard'
+import { Route as AppFidiProcessareRouteImport } from './routes/_app/fidi-processare'
+import { Route as AppIlMioProfiloRouteImport } from './routes/_app/il-mio-profilo'
+import { Route as AppImportExportRouteImport } from './routes/_app/import-export'
+import { Route as AppImpostazioniRouteImport } from './routes/_app/impostazioni'
+import { Route as AppLeadRouteImport } from './routes/_app/lead'
+import { Route as AppLegaliRouteImport } from './routes/_app/legali'
+import { Route as AppListiniRouteImport } from './routes/_app/listini'
+import { Route as AppNotificheRouteImport } from './routes/_app/notifiche'
+import { Route as AppOpportunitaRouteImport } from './routes/_app/opportunita'
+import { Route as AppPianiRientroRouteImport } from './routes/_app/piani-rientro'
+import { Route as AppPrivacyRouteImport } from './routes/_app/privacy'
+import { Route as AppRecuperoAgenziaRouteImport } from './routes/_app/recupero-agenzia'
+import { Route as AppRecuperoCreditiRouteImport } from './routes/_app/recupero-crediti'
+import { Route as AppRecuperoCreditiAndamentoRouteImport } from './routes/_app/recupero-crediti-andamento'
+import { Route as AppRecuperoCreditiCalendarioRouteImport } from './routes/_app/recupero-crediti-calendario'
+import { Route as AppRecuperoCreditiCampagneRouteImport } from './routes/_app/recupero-crediti-campagne'
+import { Route as AppRecuperoCreditiPromemoriaRouteImport } from './routes/_app/recupero-crediti-promemoria'
+import { Route as AppRichiesteRouteImport } from './routes/_app/richieste'
+import { Route as AppScadenziarioRouteImport } from './routes/_app/scadenziario'
+import { Route as AppTaskRouteImport } from './routes/_app/task'
+import { Route as AppTemplateEmailRouteImport } from './routes/_app/template-email'
+import { Route as AppTemplateLetteraRouteImport } from './routes/_app/template-lettera'
+import { Route as AppUtentiRouteImport } from './routes/_app/utenti'
+import { Route as AppWhatsappRouteImport } from './routes/_app/whatsapp'
+import { Route as ConsensiTokenRouteImport } from './routes/consensi.$token'
+import { Route as FirmaPrivacyTokenRouteImport } from './routes/firma-privacy.$token'
+import { Route as IscrizioneEventoCodiceRouteImport } from './routes/iscrizione-evento.$codice'
+import { Route as RTokenRouteImport } from './routes/r.$token'
+import { Route as RecessoTokenRouteImport } from './routes/recesso.$token'
 import { Route as AppArticoliIndexRouteImport } from './routes/_app/articoli.index'
-import { Route as ApiPublicInviaPushRouteImport } from './routes/api/public/invia-push'
-import { Route as ApiPublicInngestRouteImport } from './routes/api/public/inngest'
-import { Route as AppTaskIdRouteImport } from './routes/_app/task.$id'
-import { Route as AppRichiesteRichiestaIdRouteImport } from './routes/_app/richieste.$richiestaId'
-import { Route as AppRichiesteInterneTutteRouteImport } from './routes/_app/richieste-interne.tutte'
-import { Route as AppRichiesteInterneMieRouteImport } from './routes/_app/richieste-interne.mie'
-import { Route as AppRichiesteInterneGestioneRouteImport } from './routes/_app/richieste-interne.gestione'
-import { Route as AppRichiesteInterneArchivioRouteImport } from './routes/_app/richieste-interne.archivio'
-import { Route as AppRichiesteInterneApprovaRouteImport } from './routes/_app/richieste-interne.approva'
-import { Route as AppRichiesteInterneRichiestaIdRouteImport } from './routes/_app/richieste-interne.$richiestaId'
-import { Route as AppPreventivatoreDashboardRouteImport } from './routes/_app/preventivatore.dashboard'
-import { Route as AppPreventivatoreIdRouteImport } from './routes/_app/preventivatore.$id'
-import { Route as AppOpportunitaOpportunitaIdRouteImport } from './routes/_app/opportunita.$opportunitaId'
-import { Route as AppMarketingSegmentiRouteImport } from './routes/_app/marketing.segmenti'
-import { Route as AppMarketingQrWhatsappRouteImport } from './routes/_app/marketing/qr-whatsapp'
-import { Route as AppMarketingIscrittiWhatsappRouteImport } from './routes/_app/marketing/iscritti-whatsapp'
-import { Route as AppMarketingInviiRouteImport } from './routes/_app/marketing.invii'
-import { Route as AppMarketingDisiscrizioniRouteImport } from './routes/_app/marketing.disiscrizioni'
-import { Route as AppMarketingCampagneRouteImport } from './routes/_app/marketing.campagne'
-import { Route as AppLeadLeadIdRouteImport } from './routes/_app/lead.$leadId'
-import { Route as AppKitIdRouteImport } from './routes/_app/kit.$id'
-import { Route as AppEventiEventoIdRouteImport } from './routes/_app/eventi.$eventoId'
-import { Route as AppClientiClienteIdRouteImport } from './routes/_app/clienti.$clienteId'
 import { Route as AppArticoliIdRouteImport } from './routes/_app/articoli.$id'
-import { Route as ApiWebhooksD360TokenRouteImport } from './routes/api/webhooks/d360/$token'
-import { Route as ApiPublicHooksCheckScadenzeRouteImport } from './routes/api/public/hooks/check-scadenze'
-import { Route as ApiPublicHooksCheckReminderRitardiRouteImport } from './routes/api/public/hooks/check-reminder-ritardi'
+import { Route as AppClientiClienteIdRouteImport } from './routes/_app/clienti.$clienteId'
+import { Route as AppEventiIndexRouteImport } from './routes/_app/eventi.index'
+import { Route as AppEventiEventoIdRouteImport } from './routes/_app/eventi.$eventoId'
+import { Route as AppKitIndexRouteImport } from './routes/_app/kit.index'
+import { Route as AppKitIdRouteImport } from './routes/_app/kit.$id'
+import { Route as AppLeadIndexRouteImport } from './routes/_app/lead.index'
+import { Route as AppLeadLeadIdRouteImport } from './routes/_app/lead.$leadId'
+import { Route as AppMarketingCampagneRouteImport } from './routes/_app/marketing.campagne'
+import { Route as AppMarketingDisiscrizioniRouteImport } from './routes/_app/marketing.disiscrizioni'
+import { Route as AppMarketingInviiRouteImport } from './routes/_app/marketing.invii'
+import { Route as AppMarketingIscrittiWhatsappRouteImport } from './routes/_app/marketing/iscritti-whatsapp'
+import { Route as AppMarketingQrWhatsappRouteImport } from './routes/_app/marketing/qr-whatsapp'
+import { Route as AppMarketingSegmentiRouteImport } from './routes/_app/marketing.segmenti'
+import { Route as AppOpportunitaIndexRouteImport } from './routes/_app/opportunita.index'
+import { Route as AppOpportunitaOpportunitaIdRouteImport } from './routes/_app/opportunita.$opportunitaId'
+import { Route as AppOrdiniIndexRouteImport } from './routes/_app/ordini.index'
+import { Route as AppPreventivatoreIndexRouteImport } from './routes/_app/preventivatore.index'
+import { Route as AppPreventivatoreIdRouteImport } from './routes/_app/preventivatore.$id'
+import { Route as AppPreventivatoreDashboardRouteImport } from './routes/_app/preventivatore.dashboard'
+import { Route as AppRichiesteInterneIndexRouteImport } from './routes/_app/richieste-interne.index'
+import { Route as AppRichiesteInterneRichiestaIdRouteImport } from './routes/_app/richieste-interne.$richiestaId'
+import { Route as AppRichiesteInterneApprovaRouteImport } from './routes/_app/richieste-interne.approva'
+import { Route as AppRichiesteInterneArchivioRouteImport } from './routes/_app/richieste-interne.archivio'
+import { Route as AppRichiesteInterneGestioneRouteImport } from './routes/_app/richieste-interne.gestione'
+import { Route as AppRichiesteInterneMieRouteImport } from './routes/_app/richieste-interne.mie'
+import { Route as AppRichiesteInterneTutteRouteImport } from './routes/_app/richieste-interne.tutte'
+import { Route as AppRichiesteRichiestaIdRouteImport } from './routes/_app/richieste.$richiestaId'
+import { Route as AppTaskIndexRouteImport } from './routes/_app/task.index'
+import { Route as AppTaskIdRouteImport } from './routes/_app/task.$id'
+import { Route as ApiPublicInngestRouteImport } from './routes/api/public/inngest'
+import { Route as ApiPublicInviaPushRouteImport } from './routes/api/public/invia-push'
 import { Route as ApiPublicEmailImgSplatRouteImport } from './routes/api/public/email-img/$'
+import { Route as ApiPublicHooksCheckReminderRitardiRouteImport } from './routes/api/public/hooks/check-reminder-ritardi'
+import { Route as ApiPublicHooksCheckScadenzeRouteImport } from './routes/api/public/hooks/check-scadenze'
+import { Route as ApiWebhooksD360TokenRouteImport } from './routes/api/webhooks/d360/$token'
 
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IscrizioneWhatsappRoute = IscrizioneWhatsappRouteImport.update({
@@ -106,213 +110,34 @@ const IscrizioneWhatsappRoute = IscrizioneWhatsappRouteImport.update({
   path: '/iscrizione-whatsapp',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppRoute = AppRouteImport.update({
-  id: '/_app',
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RecessoTokenRoute = RecessoTokenRouteImport.update({
-  id: '/recesso/$token',
-  path: '/recesso/$token',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RTokenRoute = RTokenRouteImport.update({
-  id: '/r/$token',
-  path: '/r/$token',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const IscrizioneEventoCodiceRoute = IscrizioneEventoCodiceRouteImport.update({
-  id: '/iscrizione-evento/$codice',
-  path: '/iscrizione-evento/$codice',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FirmaPrivacyTokenRoute = FirmaPrivacyTokenRouteImport.update({
-  id: '/firma-privacy/$token',
-  path: '/firma-privacy/$token',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ConsensiTokenRoute = ConsensiTokenRouteImport.update({
-  id: '/consensi/$token',
-  path: '/consensi/$token',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AppWhatsappRoute = AppWhatsappRouteImport.update({
-  id: '/whatsapp',
-  path: '/whatsapp',
+const AppApprovazioniRoute = AppApprovazioniRouteImport.update({
+  id: '/approvazioni',
+  path: '/approvazioni',
   getParentRoute: () => AppRoute,
 } as any)
-const AppUtentiRoute = AppUtentiRouteImport.update({
-  id: '/utenti',
-  path: '/utenti',
+const AppAreeRoute = AppAreeRouteImport.update({
+  id: '/aree',
+  path: '/aree',
   getParentRoute: () => AppRoute,
 } as any)
-const AppTemplateLetteraRoute = AppTemplateLetteraRouteImport.update({
-  id: '/template-lettera',
-  path: '/template-lettera',
+const AppAssicurazioniRoute = AppAssicurazioniRouteImport.update({
+  id: '/assicurazioni',
+  path: '/assicurazioni',
   getParentRoute: () => AppRoute,
 } as any)
-const AppTemplateEmailRoute = AppTemplateEmailRouteImport.update({
-  id: '/template-email',
-  path: '/template-email',
+const AppAttivaNotificheRoute = AppAttivaNotificheRouteImport.update({
+  id: '/attiva-notifiche',
+  path: '/attiva-notifiche',
   getParentRoute: () => AppRoute,
 } as any)
-const AppTaskRoute = AppTaskRouteImport.update({
-  id: '/task',
-  path: '/task',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppScadenziarioRoute = AppScadenziarioRouteImport.update({
-  id: '/scadenziario',
-  path: '/scadenziario',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppRichiesteRoute = AppRichiesteRouteImport.update({
-  id: '/richieste',
-  path: '/richieste',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppRecuperoCreditiPromemoriaRoute =
-  AppRecuperoCreditiPromemoriaRouteImport.update({
-    id: '/recupero-crediti-promemoria',
-    path: '/recupero-crediti-promemoria',
-    getParentRoute: () => AppRoute,
-  } as any)
-const AppRecuperoCreditiCampagneRoute =
-  AppRecuperoCreditiCampagneRouteImport.update({
-    id: '/recupero-crediti-campagne',
-    path: '/recupero-crediti-campagne',
-    getParentRoute: () => AppRoute,
-  } as any)
-const AppRecuperoCreditiCalendarioRoute =
-  AppRecuperoCreditiCalendarioRouteImport.update({
-    id: '/recupero-crediti-calendario',
-    path: '/recupero-crediti-calendario',
-    getParentRoute: () => AppRoute,
-  } as any)
-const AppRecuperoCreditiAndamentoRoute =
-  AppRecuperoCreditiAndamentoRouteImport.update({
-    id: '/recupero-crediti-andamento',
-    path: '/recupero-crediti-andamento',
-    getParentRoute: () => AppRoute,
-  } as any)
-const AppRecuperoCreditiRoute = AppRecuperoCreditiRouteImport.update({
-  id: '/recupero-crediti',
-  path: '/recupero-crediti',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppRecuperoAgenziaRoute = AppRecuperoAgenziaRouteImport.update({
-  id: '/recupero-agenzia',
-  path: '/recupero-agenzia',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppPrivacyRoute = AppPrivacyRouteImport.update({
-  id: '/privacy',
-  path: '/privacy',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppPianiRientroRoute = AppPianiRientroRouteImport.update({
-  id: '/piani-rientro',
-  path: '/piani-rientro',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppOpportunitaRoute = AppOpportunitaRouteImport.update({
-  id: '/opportunita',
-  path: '/opportunita',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppNotificheRoute = AppNotificheRouteImport.update({
-  id: '/notifiche',
-  path: '/notifiche',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppListiniRoute = AppListiniRouteImport.update({
-  id: '/listini',
-  path: '/listini',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppLegaliRoute = AppLegaliRouteImport.update({
-  id: '/legali',
-  path: '/legali',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppLeadRoute = AppLeadRouteImport.update({
-  id: '/lead',
-  path: '/lead',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppImpostazioniRoute = AppImpostazioniRouteImport.update({
-  id: '/impostazioni',
-  path: '/impostazioni',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppImportExportRoute = AppImportExportRouteImport.update({
-  id: '/import-export',
-  path: '/import-export',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppIlMioProfiloRoute = AppIlMioProfiloRouteImport.update({
-  id: '/il-mio-profilo',
-  path: '/il-mio-profilo',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppFidiProcessareRoute = AppFidiProcessareRouteImport.update({
-  id: '/fidi-processare',
-  path: '/fidi-processare',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppFidiDashboardRoute = AppFidiDashboardRouteImport.update({
-  id: '/fidi-dashboard',
-  path: '/fidi-dashboard',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppDashboardCommercialeRoute = AppDashboardCommercialeRouteImport.update({
-  id: '/dashboard-commerciale',
-  path: '/dashboard-commerciale',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppDashboardRoute = AppDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppCruscottoIncassiRoute = AppCruscottoIncassiRouteImport.update({
-  id: '/cruscotto-incassi',
-  path: '/cruscotto-incassi',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppContattiRoute = AppContattiRouteImport.update({
-  id: '/contatti',
-  path: '/contatti',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppClientiVariazioniBloccoRoute =
-  AppClientiVariazioniBloccoRouteImport.update({
-    id: '/clienti-variazioni-blocco',
-    path: '/clienti-variazioni-blocco',
-    getParentRoute: () => AppRoute,
-  } as any)
-const AppClientiRoute = AppClientiRouteImport.update({
-  id: '/clienti',
-  path: '/clienti',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppChatRoute = AppChatRouteImport.update({
-  id: '/chat',
-  path: '/chat',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppCantieriRoute = AppCantieriRouteImport.update({
-  id: '/cantieri',
-  path: '/cantieri',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppCambiaPasswordRoute = AppCambiaPasswordRouteImport.update({
-  id: '/cambia-password',
-  path: '/cambia-password',
+const AppAuditRoute = AppAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
   getParentRoute: () => AppRoute,
 } as any)
 const AppCalendarioCommercialeRoute =
@@ -321,168 +146,254 @@ const AppCalendarioCommercialeRoute =
     path: '/calendario-commerciale',
     getParentRoute: () => AppRoute,
   } as any)
-const AppAuditRoute = AppAuditRouteImport.update({
-  id: '/audit',
-  path: '/audit',
+const AppCambiaPasswordRoute = AppCambiaPasswordRouteImport.update({
+  id: '/cambia-password',
+  path: '/cambia-password',
   getParentRoute: () => AppRoute,
 } as any)
-const AppAttivaNotificheRoute = AppAttivaNotificheRouteImport.update({
-  id: '/attiva-notifiche',
-  path: '/attiva-notifiche',
+const AppCantieriRoute = AppCantieriRouteImport.update({
+  id: '/cantieri',
+  path: '/cantieri',
   getParentRoute: () => AppRoute,
 } as any)
-const AppAssicurazioniRoute = AppAssicurazioniRouteImport.update({
-  id: '/assicurazioni',
-  path: '/assicurazioni',
+const AppChatRoute = AppChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
   getParentRoute: () => AppRoute,
 } as any)
-const AppAreeRoute = AppAreeRouteImport.update({
-  id: '/aree',
-  path: '/aree',
+const AppClientiRoute = AppClientiRouteImport.update({
+  id: '/clienti',
+  path: '/clienti',
   getParentRoute: () => AppRoute,
 } as any)
-const AppApprovazioniRoute = AppApprovazioniRouteImport.update({
-  id: '/approvazioni',
-  path: '/approvazioni',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppTaskIndexRoute = AppTaskIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AppTaskRoute,
-} as any)
-const AppRichiesteInterneIndexRoute =
-  AppRichiesteInterneIndexRouteImport.update({
-    id: '/richieste-interne/',
-    path: '/richieste-interne/',
+const AppClientiVariazioniBloccoRoute =
+  AppClientiVariazioniBloccoRouteImport.update({
+    id: '/clienti-variazioni-blocco',
+    path: '/clienti-variazioni-blocco',
     getParentRoute: () => AppRoute,
   } as any)
-const AppPreventivatoreIndexRoute = AppPreventivatoreIndexRouteImport.update({
-  id: '/preventivatore/',
-  path: '/preventivatore/',
+const AppContattiRoute = AppContattiRouteImport.update({
+  id: '/contatti',
+  path: '/contatti',
   getParentRoute: () => AppRoute,
 } as any)
-const AppOrdiniIndexRoute = AppOrdiniIndexRouteImport.update({
-  id: '/ordini/',
-  path: '/ordini/',
+const AppCruscottoIncassiRoute = AppCruscottoIncassiRouteImport.update({
+  id: '/cruscotto-incassi',
+  path: '/cruscotto-incassi',
   getParentRoute: () => AppRoute,
 } as any)
-const AppOpportunitaIndexRoute = AppOpportunitaIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AppOpportunitaRoute,
-} as any)
-const AppLeadIndexRoute = AppLeadIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AppLeadRoute,
-} as any)
-const AppKitIndexRoute = AppKitIndexRouteImport.update({
-  id: '/kit/',
-  path: '/kit/',
+const AppDashboardRoute = AppDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
   getParentRoute: () => AppRoute,
 } as any)
-const AppEventiIndexRoute = AppEventiIndexRouteImport.update({
-  id: '/eventi/',
-  path: '/eventi/',
+const AppDashboardCommercialeRoute = AppDashboardCommercialeRouteImport.update({
+  id: '/dashboard-commerciale',
+  path: '/dashboard-commerciale',
   getParentRoute: () => AppRoute,
+} as any)
+const AppFidiDashboardRoute = AppFidiDashboardRouteImport.update({
+  id: '/fidi-dashboard',
+  path: '/fidi-dashboard',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppFidiProcessareRoute = AppFidiProcessareRouteImport.update({
+  id: '/fidi-processare',
+  path: '/fidi-processare',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppIlMioProfiloRoute = AppIlMioProfiloRouteImport.update({
+  id: '/il-mio-profilo',
+  path: '/il-mio-profilo',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppImportExportRoute = AppImportExportRouteImport.update({
+  id: '/import-export',
+  path: '/import-export',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppImpostazioniRoute = AppImpostazioniRouteImport.update({
+  id: '/impostazioni',
+  path: '/impostazioni',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppLeadRoute = AppLeadRouteImport.update({
+  id: '/lead',
+  path: '/lead',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppLegaliRoute = AppLegaliRouteImport.update({
+  id: '/legali',
+  path: '/legali',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppListiniRoute = AppListiniRouteImport.update({
+  id: '/listini',
+  path: '/listini',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppNotificheRoute = AppNotificheRouteImport.update({
+  id: '/notifiche',
+  path: '/notifiche',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppOpportunitaRoute = AppOpportunitaRouteImport.update({
+  id: '/opportunita',
+  path: '/opportunita',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPianiRientroRoute = AppPianiRientroRouteImport.update({
+  id: '/piani-rientro',
+  path: '/piani-rientro',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPrivacyRoute = AppPrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRecuperoAgenziaRoute = AppRecuperoAgenziaRouteImport.update({
+  id: '/recupero-agenzia',
+  path: '/recupero-agenzia',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRecuperoCreditiRoute = AppRecuperoCreditiRouteImport.update({
+  id: '/recupero-crediti',
+  path: '/recupero-crediti',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRecuperoCreditiAndamentoRoute =
+  AppRecuperoCreditiAndamentoRouteImport.update({
+    id: '/recupero-crediti-andamento',
+    path: '/recupero-crediti-andamento',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppRecuperoCreditiCalendarioRoute =
+  AppRecuperoCreditiCalendarioRouteImport.update({
+    id: '/recupero-crediti-calendario',
+    path: '/recupero-crediti-calendario',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppRecuperoCreditiCampagneRoute =
+  AppRecuperoCreditiCampagneRouteImport.update({
+    id: '/recupero-crediti-campagne',
+    path: '/recupero-crediti-campagne',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppRecuperoCreditiPromemoriaRoute =
+  AppRecuperoCreditiPromemoriaRouteImport.update({
+    id: '/recupero-crediti-promemoria',
+    path: '/recupero-crediti-promemoria',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppRichiesteRoute = AppRichiesteRouteImport.update({
+  id: '/richieste',
+  path: '/richieste',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppScadenziarioRoute = AppScadenziarioRouteImport.update({
+  id: '/scadenziario',
+  path: '/scadenziario',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTaskRoute = AppTaskRouteImport.update({
+  id: '/task',
+  path: '/task',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTemplateEmailRoute = AppTemplateEmailRouteImport.update({
+  id: '/template-email',
+  path: '/template-email',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTemplateLetteraRoute = AppTemplateLetteraRouteImport.update({
+  id: '/template-lettera',
+  path: '/template-lettera',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppUtentiRoute = AppUtentiRouteImport.update({
+  id: '/utenti',
+  path: '/utenti',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppWhatsappRoute = AppWhatsappRouteImport.update({
+  id: '/whatsapp',
+  path: '/whatsapp',
+  getParentRoute: () => AppRoute,
+} as any)
+const ConsensiTokenRoute = ConsensiTokenRouteImport.update({
+  id: '/consensi/$token',
+  path: '/consensi/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FirmaPrivacyTokenRoute = FirmaPrivacyTokenRouteImport.update({
+  id: '/firma-privacy/$token',
+  path: '/firma-privacy/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IscrizioneEventoCodiceRoute = IscrizioneEventoCodiceRouteImport.update({
+  id: '/iscrizione-evento/$codice',
+  path: '/iscrizione-evento/$codice',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RTokenRoute = RTokenRouteImport.update({
+  id: '/r/$token',
+  path: '/r/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RecessoTokenRoute = RecessoTokenRouteImport.update({
+  id: '/recesso/$token',
+  path: '/recesso/$token',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AppArticoliIndexRoute = AppArticoliIndexRouteImport.update({
   id: '/articoli/',
   path: '/articoli/',
   getParentRoute: () => AppRoute,
 } as any)
-const ApiPublicInviaPushRoute = ApiPublicInviaPushRouteImport.update({
-  id: '/api/public/invia-push',
-  path: '/api/public/invia-push',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicInngestRoute = ApiPublicInngestRouteImport.update({
-  id: '/api/public/inngest',
-  path: '/api/public/inngest',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AppTaskIdRoute = AppTaskIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => AppTaskRoute,
-} as any)
-const AppRichiesteRichiestaIdRoute = AppRichiesteRichiestaIdRouteImport.update({
-  id: '/$richiestaId',
-  path: '/$richiestaId',
-  getParentRoute: () => AppRichiesteRoute,
-} as any)
-const AppRichiesteInterneTutteRoute =
-  AppRichiesteInterneTutteRouteImport.update({
-    id: '/richieste-interne/tutte',
-    path: '/richieste-interne/tutte',
-    getParentRoute: () => AppRoute,
-  } as any)
-const AppRichiesteInterneMieRoute = AppRichiesteInterneMieRouteImport.update({
-  id: '/richieste-interne/mie',
-  path: '/richieste-interne/mie',
+const AppArticoliIdRoute = AppArticoliIdRouteImport.update({
+  id: '/articoli/$id',
+  path: '/articoli/$id',
   getParentRoute: () => AppRoute,
 } as any)
-const AppRichiesteInterneGestioneRoute =
-  AppRichiesteInterneGestioneRouteImport.update({
-    id: '/richieste-interne/gestione',
-    path: '/richieste-interne/gestione',
-    getParentRoute: () => AppRoute,
-  } as any)
-const AppRichiesteInterneArchivioRoute =
-  AppRichiesteInterneArchivioRouteImport.update({
-    id: '/richieste-interne/archivio',
-    path: '/richieste-interne/archivio',
-    getParentRoute: () => AppRoute,
-  } as any)
-const AppRichiesteInterneApprovaRoute =
-  AppRichiesteInterneApprovaRouteImport.update({
-    id: '/richieste-interne/approva',
-    path: '/richieste-interne/approva',
-    getParentRoute: () => AppRoute,
-  } as any)
-const AppRichiesteInterneRichiestaIdRoute =
-  AppRichiesteInterneRichiestaIdRouteImport.update({
-    id: '/richieste-interne/$richiestaId',
-    path: '/richieste-interne/$richiestaId',
-    getParentRoute: () => AppRoute,
-  } as any)
-const AppPreventivatoreDashboardRoute =
-  AppPreventivatoreDashboardRouteImport.update({
-    id: '/preventivatore/dashboard',
-    path: '/preventivatore/dashboard',
-    getParentRoute: () => AppRoute,
-  } as any)
-const AppPreventivatoreIdRoute = AppPreventivatoreIdRouteImport.update({
-  id: '/preventivatore/$id',
-  path: '/preventivatore/$id',
+const AppClientiClienteIdRoute = AppClientiClienteIdRouteImport.update({
+  id: '/$clienteId',
+  path: '/$clienteId',
+  getParentRoute: () => AppClientiRoute,
+} as any)
+const AppEventiIndexRoute = AppEventiIndexRouteImport.update({
+  id: '/eventi/',
+  path: '/eventi/',
   getParentRoute: () => AppRoute,
 } as any)
-const AppOpportunitaOpportunitaIdRoute =
-  AppOpportunitaOpportunitaIdRouteImport.update({
-    id: '/$opportunitaId',
-    path: '/$opportunitaId',
-    getParentRoute: () => AppOpportunitaRoute,
-  } as any)
-const AppMarketingSegmentiRoute = AppMarketingSegmentiRouteImport.update({
-  id: '/marketing/segmenti',
-  path: '/marketing/segmenti',
+const AppEventiEventoIdRoute = AppEventiEventoIdRouteImport.update({
+  id: '/eventi/$eventoId',
+  path: '/eventi/$eventoId',
   getParentRoute: () => AppRoute,
 } as any)
-const AppMarketingQrWhatsappRoute = AppMarketingQrWhatsappRouteImport.update({
-  id: '/marketing/qr-whatsapp',
-  path: '/marketing/qr-whatsapp',
+const AppKitIndexRoute = AppKitIndexRouteImport.update({
+  id: '/kit/',
+  path: '/kit/',
   getParentRoute: () => AppRoute,
 } as any)
-const AppMarketingIscrittiWhatsappRoute =
-  AppMarketingIscrittiWhatsappRouteImport.update({
-    id: '/marketing/iscritti-whatsapp',
-    path: '/marketing/iscritti-whatsapp',
-    getParentRoute: () => AppRoute,
-  } as any)
-const AppMarketingInviiRoute = AppMarketingInviiRouteImport.update({
-  id: '/marketing/invii',
-  path: '/marketing/invii',
+const AppKitIdRoute = AppKitIdRouteImport.update({
+  id: '/kit/$id',
+  path: '/kit/$id',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppLeadIndexRoute = AppLeadIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppLeadRoute,
+} as any)
+const AppLeadLeadIdRoute = AppLeadLeadIdRouteImport.update({
+  id: '/$leadId',
+  path: '/$leadId',
+  getParentRoute: () => AppLeadRoute,
+} as any)
+const AppMarketingCampagneRoute = AppMarketingCampagneRouteImport.update({
+  id: '/marketing/campagne',
+  path: '/marketing/campagne',
   getParentRoute: () => AppRoute,
 } as any)
 const AppMarketingDisiscrizioniRoute =
@@ -491,56 +402,145 @@ const AppMarketingDisiscrizioniRoute =
     path: '/marketing/disiscrizioni',
     getParentRoute: () => AppRoute,
   } as any)
-const AppMarketingCampagneRoute = AppMarketingCampagneRouteImport.update({
-  id: '/marketing/campagne',
-  path: '/marketing/campagne',
+const AppMarketingInviiRoute = AppMarketingInviiRouteImport.update({
+  id: '/marketing/invii',
+  path: '/marketing/invii',
   getParentRoute: () => AppRoute,
 } as any)
-const AppLeadLeadIdRoute = AppLeadLeadIdRouteImport.update({
-  id: '/$leadId',
-  path: '/$leadId',
-  getParentRoute: () => AppLeadRoute,
-} as any)
-const AppKitIdRoute = AppKitIdRouteImport.update({
-  id: '/kit/$id',
-  path: '/kit/$id',
+const AppMarketingIscrittiWhatsappRoute =
+  AppMarketingIscrittiWhatsappRouteImport.update({
+    id: '/marketing/iscritti-whatsapp',
+    path: '/marketing/iscritti-whatsapp',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppMarketingQrWhatsappRoute = AppMarketingQrWhatsappRouteImport.update({
+  id: '/marketing/qr-whatsapp',
+  path: '/marketing/qr-whatsapp',
   getParentRoute: () => AppRoute,
 } as any)
-const AppEventiEventoIdRoute = AppEventiEventoIdRouteImport.update({
-  id: '/eventi/$eventoId',
-  path: '/eventi/$eventoId',
+const AppMarketingSegmentiRoute = AppMarketingSegmentiRouteImport.update({
+  id: '/marketing/segmenti',
+  path: '/marketing/segmenti',
   getParentRoute: () => AppRoute,
 } as any)
-const AppClientiClienteIdRoute = AppClientiClienteIdRouteImport.update({
-  id: '/$clienteId',
-  path: '/$clienteId',
-  getParentRoute: () => AppClientiRoute,
+const AppOpportunitaIndexRoute = AppOpportunitaIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppOpportunitaRoute,
 } as any)
-const AppArticoliIdRoute = AppArticoliIdRouteImport.update({
-  id: '/articoli/$id',
-  path: '/articoli/$id',
+const AppOpportunitaOpportunitaIdRoute =
+  AppOpportunitaOpportunitaIdRouteImport.update({
+    id: '/$opportunitaId',
+    path: '/$opportunitaId',
+    getParentRoute: () => AppOpportunitaRoute,
+  } as any)
+const AppOrdiniIndexRoute = AppOrdiniIndexRouteImport.update({
+  id: '/ordini/',
+  path: '/ordini/',
   getParentRoute: () => AppRoute,
 } as any)
-const ApiWebhooksD360TokenRoute = ApiWebhooksD360TokenRouteImport.update({
-  id: '/api/webhooks/d360/$token',
-  path: '/api/webhooks/d360/$token',
+const AppPreventivatoreIndexRoute = AppPreventivatoreIndexRouteImport.update({
+  id: '/preventivatore/',
+  path: '/preventivatore/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPreventivatoreIdRoute = AppPreventivatoreIdRouteImport.update({
+  id: '/preventivatore/$id',
+  path: '/preventivatore/$id',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPreventivatoreDashboardRoute =
+  AppPreventivatoreDashboardRouteImport.update({
+    id: '/preventivatore/dashboard',
+    path: '/preventivatore/dashboard',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppRichiesteInterneIndexRoute =
+  AppRichiesteInterneIndexRouteImport.update({
+    id: '/richieste-interne/',
+    path: '/richieste-interne/',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppRichiesteInterneRichiestaIdRoute =
+  AppRichiesteInterneRichiestaIdRouteImport.update({
+    id: '/richieste-interne/$richiestaId',
+    path: '/richieste-interne/$richiestaId',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppRichiesteInterneApprovaRoute =
+  AppRichiesteInterneApprovaRouteImport.update({
+    id: '/richieste-interne/approva',
+    path: '/richieste-interne/approva',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppRichiesteInterneArchivioRoute =
+  AppRichiesteInterneArchivioRouteImport.update({
+    id: '/richieste-interne/archivio',
+    path: '/richieste-interne/archivio',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppRichiesteInterneGestioneRoute =
+  AppRichiesteInterneGestioneRouteImport.update({
+    id: '/richieste-interne/gestione',
+    path: '/richieste-interne/gestione',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppRichiesteInterneMieRoute = AppRichiesteInterneMieRouteImport.update({
+  id: '/richieste-interne/mie',
+  path: '/richieste-interne/mie',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRichiesteInterneTutteRoute =
+  AppRichiesteInterneTutteRouteImport.update({
+    id: '/richieste-interne/tutte',
+    path: '/richieste-interne/tutte',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppRichiesteRichiestaIdRoute = AppRichiesteRichiestaIdRouteImport.update({
+  id: '/$richiestaId',
+  path: '/$richiestaId',
+  getParentRoute: () => AppRichiesteRoute,
+} as any)
+const AppTaskIndexRoute = AppTaskIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppTaskRoute,
+} as any)
+const AppTaskIdRoute = AppTaskIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppTaskRoute,
+} as any)
+const ApiPublicInngestRoute = ApiPublicInngestRouteImport.update({
+  id: '/api/public/inngest',
+  path: '/api/public/inngest',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicHooksCheckScadenzeRoute =
-  ApiPublicHooksCheckScadenzeRouteImport.update({
-    id: '/api/public/hooks/check-scadenze',
-    path: '/api/public/hooks/check-scadenze',
-    getParentRoute: () => rootRouteImport,
-  } as any)
+const ApiPublicInviaPushRoute = ApiPublicInviaPushRouteImport.update({
+  id: '/api/public/invia-push',
+  path: '/api/public/invia-push',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicEmailImgSplatRoute = ApiPublicEmailImgSplatRouteImport.update({
+  id: '/api/public/email-img/$',
+  path: '/api/public/email-img/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicHooksCheckReminderRitardiRoute =
   ApiPublicHooksCheckReminderRitardiRouteImport.update({
     id: '/api/public/hooks/check-reminder-ritardi',
     path: '/api/public/hooks/check-reminder-ritardi',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiPublicEmailImgSplatRoute = ApiPublicEmailImgSplatRouteImport.update({
-  id: '/api/public/email-img/$',
-  path: '/api/public/email-img/$',
+const ApiPublicHooksCheckScadenzeRoute =
+  ApiPublicHooksCheckScadenzeRouteImport.update({
+    id: '/api/public/hooks/check-scadenze',
+    path: '/api/public/hooks/check-scadenze',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiWebhooksD360TokenRoute = ApiWebhooksD360TokenRouteImport.update({
+  id: '/api/webhooks/d360/$token',
+  path: '/api/webhooks/d360/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -1086,18 +1086,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/iscrizione-whatsapp': {
-      id: '/iscrizione-whatsapp'
-      path: '/iscrizione-whatsapp'
-      fullPath: '/iscrizione-whatsapp'
-      preLoaderRoute: typeof IscrizioneWhatsappRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app': {
@@ -1107,312 +1100,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/iscrizione-whatsapp': {
+      id: '/iscrizione-whatsapp'
+      path: '/iscrizione-whatsapp'
+      fullPath: '/iscrizione-whatsapp'
+      preLoaderRoute: typeof IscrizioneWhatsappRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/recesso/$token': {
-      id: '/recesso/$token'
-      path: '/recesso/$token'
-      fullPath: '/recesso/$token'
-      preLoaderRoute: typeof RecessoTokenRouteImport
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/r/$token': {
-      id: '/r/$token'
-      path: '/r/$token'
-      fullPath: '/r/$token'
-      preLoaderRoute: typeof RTokenRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/iscrizione-evento/$codice': {
-      id: '/iscrizione-evento/$codice'
-      path: '/iscrizione-evento/$codice'
-      fullPath: '/iscrizione-evento/$codice'
-      preLoaderRoute: typeof IscrizioneEventoCodiceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/firma-privacy/$token': {
-      id: '/firma-privacy/$token'
-      path: '/firma-privacy/$token'
-      fullPath: '/firma-privacy/$token'
-      preLoaderRoute: typeof FirmaPrivacyTokenRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/consensi/$token': {
-      id: '/consensi/$token'
-      path: '/consensi/$token'
-      fullPath: '/consensi/$token'
-      preLoaderRoute: typeof ConsensiTokenRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_app/whatsapp': {
-      id: '/_app/whatsapp'
-      path: '/whatsapp'
-      fullPath: '/whatsapp'
-      preLoaderRoute: typeof AppWhatsappRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/utenti': {
-      id: '/_app/utenti'
-      path: '/utenti'
-      fullPath: '/utenti'
-      preLoaderRoute: typeof AppUtentiRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/template-lettera': {
-      id: '/_app/template-lettera'
-      path: '/template-lettera'
-      fullPath: '/template-lettera'
-      preLoaderRoute: typeof AppTemplateLetteraRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/template-email': {
-      id: '/_app/template-email'
-      path: '/template-email'
-      fullPath: '/template-email'
-      preLoaderRoute: typeof AppTemplateEmailRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/task': {
-      id: '/_app/task'
-      path: '/task'
-      fullPath: '/task'
-      preLoaderRoute: typeof AppTaskRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/scadenziario': {
-      id: '/_app/scadenziario'
-      path: '/scadenziario'
-      fullPath: '/scadenziario'
-      preLoaderRoute: typeof AppScadenziarioRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/richieste': {
-      id: '/_app/richieste'
-      path: '/richieste'
-      fullPath: '/richieste'
-      preLoaderRoute: typeof AppRichiesteRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/recupero-crediti-promemoria': {
-      id: '/_app/recupero-crediti-promemoria'
-      path: '/recupero-crediti-promemoria'
-      fullPath: '/recupero-crediti-promemoria'
-      preLoaderRoute: typeof AppRecuperoCreditiPromemoriaRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/recupero-crediti-campagne': {
-      id: '/_app/recupero-crediti-campagne'
-      path: '/recupero-crediti-campagne'
-      fullPath: '/recupero-crediti-campagne'
-      preLoaderRoute: typeof AppRecuperoCreditiCampagneRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/recupero-crediti-calendario': {
-      id: '/_app/recupero-crediti-calendario'
-      path: '/recupero-crediti-calendario'
-      fullPath: '/recupero-crediti-calendario'
-      preLoaderRoute: typeof AppRecuperoCreditiCalendarioRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/recupero-crediti-andamento': {
-      id: '/_app/recupero-crediti-andamento'
-      path: '/recupero-crediti-andamento'
-      fullPath: '/recupero-crediti-andamento'
-      preLoaderRoute: typeof AppRecuperoCreditiAndamentoRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/recupero-crediti': {
-      id: '/_app/recupero-crediti'
-      path: '/recupero-crediti'
-      fullPath: '/recupero-crediti'
-      preLoaderRoute: typeof AppRecuperoCreditiRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/recupero-agenzia': {
-      id: '/_app/recupero-agenzia'
-      path: '/recupero-agenzia'
-      fullPath: '/recupero-agenzia'
-      preLoaderRoute: typeof AppRecuperoAgenziaRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/privacy': {
-      id: '/_app/privacy'
-      path: '/privacy'
-      fullPath: '/privacy'
-      preLoaderRoute: typeof AppPrivacyRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/piani-rientro': {
-      id: '/_app/piani-rientro'
-      path: '/piani-rientro'
-      fullPath: '/piani-rientro'
-      preLoaderRoute: typeof AppPianiRientroRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/opportunita': {
-      id: '/_app/opportunita'
-      path: '/opportunita'
-      fullPath: '/opportunita'
-      preLoaderRoute: typeof AppOpportunitaRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/notifiche': {
-      id: '/_app/notifiche'
-      path: '/notifiche'
-      fullPath: '/notifiche'
-      preLoaderRoute: typeof AppNotificheRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/listini': {
-      id: '/_app/listini'
-      path: '/listini'
-      fullPath: '/listini'
-      preLoaderRoute: typeof AppListiniRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/legali': {
-      id: '/_app/legali'
-      path: '/legali'
-      fullPath: '/legali'
-      preLoaderRoute: typeof AppLegaliRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/lead': {
-      id: '/_app/lead'
-      path: '/lead'
-      fullPath: '/lead'
-      preLoaderRoute: typeof AppLeadRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/impostazioni': {
-      id: '/_app/impostazioni'
-      path: '/impostazioni'
-      fullPath: '/impostazioni'
-      preLoaderRoute: typeof AppImpostazioniRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/import-export': {
-      id: '/_app/import-export'
-      path: '/import-export'
-      fullPath: '/import-export'
-      preLoaderRoute: typeof AppImportExportRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/il-mio-profilo': {
-      id: '/_app/il-mio-profilo'
-      path: '/il-mio-profilo'
-      fullPath: '/il-mio-profilo'
-      preLoaderRoute: typeof AppIlMioProfiloRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/fidi-processare': {
-      id: '/_app/fidi-processare'
-      path: '/fidi-processare'
-      fullPath: '/fidi-processare'
-      preLoaderRoute: typeof AppFidiProcessareRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/fidi-dashboard': {
-      id: '/_app/fidi-dashboard'
-      path: '/fidi-dashboard'
-      fullPath: '/fidi-dashboard'
-      preLoaderRoute: typeof AppFidiDashboardRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/dashboard-commerciale': {
-      id: '/_app/dashboard-commerciale'
-      path: '/dashboard-commerciale'
-      fullPath: '/dashboard-commerciale'
-      preLoaderRoute: typeof AppDashboardCommercialeRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/dashboard': {
-      id: '/_app/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof AppDashboardRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/cruscotto-incassi': {
-      id: '/_app/cruscotto-incassi'
-      path: '/cruscotto-incassi'
-      fullPath: '/cruscotto-incassi'
-      preLoaderRoute: typeof AppCruscottoIncassiRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/contatti': {
-      id: '/_app/contatti'
-      path: '/contatti'
-      fullPath: '/contatti'
-      preLoaderRoute: typeof AppContattiRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/clienti-variazioni-blocco': {
-      id: '/_app/clienti-variazioni-blocco'
-      path: '/clienti-variazioni-blocco'
-      fullPath: '/clienti-variazioni-blocco'
-      preLoaderRoute: typeof AppClientiVariazioniBloccoRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/clienti': {
-      id: '/_app/clienti'
-      path: '/clienti'
-      fullPath: '/clienti'
-      preLoaderRoute: typeof AppClientiRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/chat': {
-      id: '/_app/chat'
-      path: '/chat'
-      fullPath: '/chat'
-      preLoaderRoute: typeof AppChatRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/cantieri': {
-      id: '/_app/cantieri'
-      path: '/cantieri'
-      fullPath: '/cantieri'
-      preLoaderRoute: typeof AppCantieriRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/cambia-password': {
-      id: '/_app/cambia-password'
-      path: '/cambia-password'
-      fullPath: '/cambia-password'
-      preLoaderRoute: typeof AppCambiaPasswordRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/calendario-commerciale': {
-      id: '/_app/calendario-commerciale'
-      path: '/calendario-commerciale'
-      fullPath: '/calendario-commerciale'
-      preLoaderRoute: typeof AppCalendarioCommercialeRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/audit': {
-      id: '/_app/audit'
-      path: '/audit'
-      fullPath: '/audit'
-      preLoaderRoute: typeof AppAuditRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/attiva-notifiche': {
-      id: '/_app/attiva-notifiche'
-      path: '/attiva-notifiche'
-      fullPath: '/attiva-notifiche'
-      preLoaderRoute: typeof AppAttivaNotificheRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/assicurazioni': {
-      id: '/_app/assicurazioni'
-      path: '/assicurazioni'
-      fullPath: '/assicurazioni'
-      preLoaderRoute: typeof AppAssicurazioniRouteImport
+    '/_app/approvazioni': {
+      id: '/_app/approvazioni'
+      path: '/approvazioni'
+      fullPath: '/approvazioni'
+      preLoaderRoute: typeof AppApprovazioniRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/aree': {
@@ -1422,68 +1128,306 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAreeRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/approvazioni': {
-      id: '/_app/approvazioni'
-      path: '/approvazioni'
-      fullPath: '/approvazioni'
-      preLoaderRoute: typeof AppApprovazioniRouteImport
+    '/_app/assicurazioni': {
+      id: '/_app/assicurazioni'
+      path: '/assicurazioni'
+      fullPath: '/assicurazioni'
+      preLoaderRoute: typeof AppAssicurazioniRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/task/': {
-      id: '/_app/task/'
-      path: '/'
-      fullPath: '/task/'
-      preLoaderRoute: typeof AppTaskIndexRouteImport
-      parentRoute: typeof AppTaskRoute
-    }
-    '/_app/richieste-interne/': {
-      id: '/_app/richieste-interne/'
-      path: '/richieste-interne'
-      fullPath: '/richieste-interne/'
-      preLoaderRoute: typeof AppRichiesteInterneIndexRouteImport
+    '/_app/attiva-notifiche': {
+      id: '/_app/attiva-notifiche'
+      path: '/attiva-notifiche'
+      fullPath: '/attiva-notifiche'
+      preLoaderRoute: typeof AppAttivaNotificheRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/preventivatore/': {
-      id: '/_app/preventivatore/'
-      path: '/preventivatore'
-      fullPath: '/preventivatore/'
-      preLoaderRoute: typeof AppPreventivatoreIndexRouteImport
+    '/_app/audit': {
+      id: '/_app/audit'
+      path: '/audit'
+      fullPath: '/audit'
+      preLoaderRoute: typeof AppAuditRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/ordini/': {
-      id: '/_app/ordini/'
-      path: '/ordini'
-      fullPath: '/ordini/'
-      preLoaderRoute: typeof AppOrdiniIndexRouteImport
+    '/_app/calendario-commerciale': {
+      id: '/_app/calendario-commerciale'
+      path: '/calendario-commerciale'
+      fullPath: '/calendario-commerciale'
+      preLoaderRoute: typeof AppCalendarioCommercialeRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/opportunita/': {
-      id: '/_app/opportunita/'
-      path: '/'
-      fullPath: '/opportunita/'
-      preLoaderRoute: typeof AppOpportunitaIndexRouteImport
-      parentRoute: typeof AppOpportunitaRoute
-    }
-    '/_app/lead/': {
-      id: '/_app/lead/'
-      path: '/'
-      fullPath: '/lead/'
-      preLoaderRoute: typeof AppLeadIndexRouteImport
-      parentRoute: typeof AppLeadRoute
-    }
-    '/_app/kit/': {
-      id: '/_app/kit/'
-      path: '/kit'
-      fullPath: '/kit/'
-      preLoaderRoute: typeof AppKitIndexRouteImport
+    '/_app/cambia-password': {
+      id: '/_app/cambia-password'
+      path: '/cambia-password'
+      fullPath: '/cambia-password'
+      preLoaderRoute: typeof AppCambiaPasswordRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/eventi/': {
-      id: '/_app/eventi/'
-      path: '/eventi'
-      fullPath: '/eventi/'
-      preLoaderRoute: typeof AppEventiIndexRouteImport
+    '/_app/cantieri': {
+      id: '/_app/cantieri'
+      path: '/cantieri'
+      fullPath: '/cantieri'
+      preLoaderRoute: typeof AppCantieriRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/_app/chat': {
+      id: '/_app/chat'
+      path: '/chat'
+      fullPath: '/chat'
+      preLoaderRoute: typeof AppChatRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/clienti': {
+      id: '/_app/clienti'
+      path: '/clienti'
+      fullPath: '/clienti'
+      preLoaderRoute: typeof AppClientiRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/clienti-variazioni-blocco': {
+      id: '/_app/clienti-variazioni-blocco'
+      path: '/clienti-variazioni-blocco'
+      fullPath: '/clienti-variazioni-blocco'
+      preLoaderRoute: typeof AppClientiVariazioniBloccoRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/contatti': {
+      id: '/_app/contatti'
+      path: '/contatti'
+      fullPath: '/contatti'
+      preLoaderRoute: typeof AppContattiRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/cruscotto-incassi': {
+      id: '/_app/cruscotto-incassi'
+      path: '/cruscotto-incassi'
+      fullPath: '/cruscotto-incassi'
+      preLoaderRoute: typeof AppCruscottoIncassiRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/dashboard': {
+      id: '/_app/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AppDashboardRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/dashboard-commerciale': {
+      id: '/_app/dashboard-commerciale'
+      path: '/dashboard-commerciale'
+      fullPath: '/dashboard-commerciale'
+      preLoaderRoute: typeof AppDashboardCommercialeRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/fidi-dashboard': {
+      id: '/_app/fidi-dashboard'
+      path: '/fidi-dashboard'
+      fullPath: '/fidi-dashboard'
+      preLoaderRoute: typeof AppFidiDashboardRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/fidi-processare': {
+      id: '/_app/fidi-processare'
+      path: '/fidi-processare'
+      fullPath: '/fidi-processare'
+      preLoaderRoute: typeof AppFidiProcessareRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/il-mio-profilo': {
+      id: '/_app/il-mio-profilo'
+      path: '/il-mio-profilo'
+      fullPath: '/il-mio-profilo'
+      preLoaderRoute: typeof AppIlMioProfiloRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/import-export': {
+      id: '/_app/import-export'
+      path: '/import-export'
+      fullPath: '/import-export'
+      preLoaderRoute: typeof AppImportExportRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/impostazioni': {
+      id: '/_app/impostazioni'
+      path: '/impostazioni'
+      fullPath: '/impostazioni'
+      preLoaderRoute: typeof AppImpostazioniRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/lead': {
+      id: '/_app/lead'
+      path: '/lead'
+      fullPath: '/lead'
+      preLoaderRoute: typeof AppLeadRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/legali': {
+      id: '/_app/legali'
+      path: '/legali'
+      fullPath: '/legali'
+      preLoaderRoute: typeof AppLegaliRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/listini': {
+      id: '/_app/listini'
+      path: '/listini'
+      fullPath: '/listini'
+      preLoaderRoute: typeof AppListiniRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/notifiche': {
+      id: '/_app/notifiche'
+      path: '/notifiche'
+      fullPath: '/notifiche'
+      preLoaderRoute: typeof AppNotificheRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/opportunita': {
+      id: '/_app/opportunita'
+      path: '/opportunita'
+      fullPath: '/opportunita'
+      preLoaderRoute: typeof AppOpportunitaRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/piani-rientro': {
+      id: '/_app/piani-rientro'
+      path: '/piani-rientro'
+      fullPath: '/piani-rientro'
+      preLoaderRoute: typeof AppPianiRientroRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/privacy': {
+      id: '/_app/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof AppPrivacyRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/recupero-agenzia': {
+      id: '/_app/recupero-agenzia'
+      path: '/recupero-agenzia'
+      fullPath: '/recupero-agenzia'
+      preLoaderRoute: typeof AppRecuperoAgenziaRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/recupero-crediti': {
+      id: '/_app/recupero-crediti'
+      path: '/recupero-crediti'
+      fullPath: '/recupero-crediti'
+      preLoaderRoute: typeof AppRecuperoCreditiRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/recupero-crediti-andamento': {
+      id: '/_app/recupero-crediti-andamento'
+      path: '/recupero-crediti-andamento'
+      fullPath: '/recupero-crediti-andamento'
+      preLoaderRoute: typeof AppRecuperoCreditiAndamentoRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/recupero-crediti-calendario': {
+      id: '/_app/recupero-crediti-calendario'
+      path: '/recupero-crediti-calendario'
+      fullPath: '/recupero-crediti-calendario'
+      preLoaderRoute: typeof AppRecuperoCreditiCalendarioRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/recupero-crediti-campagne': {
+      id: '/_app/recupero-crediti-campagne'
+      path: '/recupero-crediti-campagne'
+      fullPath: '/recupero-crediti-campagne'
+      preLoaderRoute: typeof AppRecuperoCreditiCampagneRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/recupero-crediti-promemoria': {
+      id: '/_app/recupero-crediti-promemoria'
+      path: '/recupero-crediti-promemoria'
+      fullPath: '/recupero-crediti-promemoria'
+      preLoaderRoute: typeof AppRecuperoCreditiPromemoriaRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/richieste': {
+      id: '/_app/richieste'
+      path: '/richieste'
+      fullPath: '/richieste'
+      preLoaderRoute: typeof AppRichiesteRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/scadenziario': {
+      id: '/_app/scadenziario'
+      path: '/scadenziario'
+      fullPath: '/scadenziario'
+      preLoaderRoute: typeof AppScadenziarioRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/task': {
+      id: '/_app/task'
+      path: '/task'
+      fullPath: '/task'
+      preLoaderRoute: typeof AppTaskRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/template-email': {
+      id: '/_app/template-email'
+      path: '/template-email'
+      fullPath: '/template-email'
+      preLoaderRoute: typeof AppTemplateEmailRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/template-lettera': {
+      id: '/_app/template-lettera'
+      path: '/template-lettera'
+      fullPath: '/template-lettera'
+      preLoaderRoute: typeof AppTemplateLetteraRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/utenti': {
+      id: '/_app/utenti'
+      path: '/utenti'
+      fullPath: '/utenti'
+      preLoaderRoute: typeof AppUtentiRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/whatsapp': {
+      id: '/_app/whatsapp'
+      path: '/whatsapp'
+      fullPath: '/whatsapp'
+      preLoaderRoute: typeof AppWhatsappRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/consensi/$token': {
+      id: '/consensi/$token'
+      path: '/consensi/$token'
+      fullPath: '/consensi/$token'
+      preLoaderRoute: typeof ConsensiTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/firma-privacy/$token': {
+      id: '/firma-privacy/$token'
+      path: '/firma-privacy/$token'
+      fullPath: '/firma-privacy/$token'
+      preLoaderRoute: typeof FirmaPrivacyTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/iscrizione-evento/$codice': {
+      id: '/iscrizione-evento/$codice'
+      path: '/iscrizione-evento/$codice'
+      fullPath: '/iscrizione-evento/$codice'
+      preLoaderRoute: typeof IscrizioneEventoCodiceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/r/$token': {
+      id: '/r/$token'
+      path: '/r/$token'
+      fullPath: '/r/$token'
+      preLoaderRoute: typeof RTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/recesso/$token': {
+      id: '/recesso/$token'
+      path: '/recesso/$token'
+      fullPath: '/recesso/$token'
+      preLoaderRoute: typeof RecessoTokenRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_app/articoli/': {
       id: '/_app/articoli/'
@@ -1492,158 +1436,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppArticoliIndexRouteImport
       parentRoute: typeof AppRoute
     }
-    '/api/public/invia-push': {
-      id: '/api/public/invia-push'
-      path: '/api/public/invia-push'
-      fullPath: '/api/public/invia-push'
-      preLoaderRoute: typeof ApiPublicInviaPushRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/inngest': {
-      id: '/api/public/inngest'
-      path: '/api/public/inngest'
-      fullPath: '/api/public/inngest'
-      preLoaderRoute: typeof ApiPublicInngestRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_app/task/$id': {
-      id: '/_app/task/$id'
-      path: '/$id'
-      fullPath: '/task/$id'
-      preLoaderRoute: typeof AppTaskIdRouteImport
-      parentRoute: typeof AppTaskRoute
-    }
-    '/_app/richieste/$richiestaId': {
-      id: '/_app/richieste/$richiestaId'
-      path: '/$richiestaId'
-      fullPath: '/richieste/$richiestaId'
-      preLoaderRoute: typeof AppRichiesteRichiestaIdRouteImport
-      parentRoute: typeof AppRichiesteRoute
-    }
-    '/_app/richieste-interne/tutte': {
-      id: '/_app/richieste-interne/tutte'
-      path: '/richieste-interne/tutte'
-      fullPath: '/richieste-interne/tutte'
-      preLoaderRoute: typeof AppRichiesteInterneTutteRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/richieste-interne/mie': {
-      id: '/_app/richieste-interne/mie'
-      path: '/richieste-interne/mie'
-      fullPath: '/richieste-interne/mie'
-      preLoaderRoute: typeof AppRichiesteInterneMieRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/richieste-interne/gestione': {
-      id: '/_app/richieste-interne/gestione'
-      path: '/richieste-interne/gestione'
-      fullPath: '/richieste-interne/gestione'
-      preLoaderRoute: typeof AppRichiesteInterneGestioneRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/richieste-interne/archivio': {
-      id: '/_app/richieste-interne/archivio'
-      path: '/richieste-interne/archivio'
-      fullPath: '/richieste-interne/archivio'
-      preLoaderRoute: typeof AppRichiesteInterneArchivioRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/richieste-interne/approva': {
-      id: '/_app/richieste-interne/approva'
-      path: '/richieste-interne/approva'
-      fullPath: '/richieste-interne/approva'
-      preLoaderRoute: typeof AppRichiesteInterneApprovaRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/richieste-interne/$richiestaId': {
-      id: '/_app/richieste-interne/$richiestaId'
-      path: '/richieste-interne/$richiestaId'
-      fullPath: '/richieste-interne/$richiestaId'
-      preLoaderRoute: typeof AppRichiesteInterneRichiestaIdRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/preventivatore/dashboard': {
-      id: '/_app/preventivatore/dashboard'
-      path: '/preventivatore/dashboard'
-      fullPath: '/preventivatore/dashboard'
-      preLoaderRoute: typeof AppPreventivatoreDashboardRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/preventivatore/$id': {
-      id: '/_app/preventivatore/$id'
-      path: '/preventivatore/$id'
-      fullPath: '/preventivatore/$id'
-      preLoaderRoute: typeof AppPreventivatoreIdRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/opportunita/$opportunitaId': {
-      id: '/_app/opportunita/$opportunitaId'
-      path: '/$opportunitaId'
-      fullPath: '/opportunita/$opportunitaId'
-      preLoaderRoute: typeof AppOpportunitaOpportunitaIdRouteImport
-      parentRoute: typeof AppOpportunitaRoute
-    }
-    '/_app/marketing/segmenti': {
-      id: '/_app/marketing/segmenti'
-      path: '/marketing/segmenti'
-      fullPath: '/marketing/segmenti'
-      preLoaderRoute: typeof AppMarketingSegmentiRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/marketing/qr-whatsapp': {
-      id: '/_app/marketing/qr-whatsapp'
-      path: '/marketing/qr-whatsapp'
-      fullPath: '/marketing/qr-whatsapp'
-      preLoaderRoute: typeof AppMarketingQrWhatsappRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/marketing/iscritti-whatsapp': {
-      id: '/_app/marketing/iscritti-whatsapp'
-      path: '/marketing/iscritti-whatsapp'
-      fullPath: '/marketing/iscritti-whatsapp'
-      preLoaderRoute: typeof AppMarketingIscrittiWhatsappRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/marketing/invii': {
-      id: '/_app/marketing/invii'
-      path: '/marketing/invii'
-      fullPath: '/marketing/invii'
-      preLoaderRoute: typeof AppMarketingInviiRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/marketing/disiscrizioni': {
-      id: '/_app/marketing/disiscrizioni'
-      path: '/marketing/disiscrizioni'
-      fullPath: '/marketing/disiscrizioni'
-      preLoaderRoute: typeof AppMarketingDisiscrizioniRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/marketing/campagne': {
-      id: '/_app/marketing/campagne'
-      path: '/marketing/campagne'
-      fullPath: '/marketing/campagne'
-      preLoaderRoute: typeof AppMarketingCampagneRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/lead/$leadId': {
-      id: '/_app/lead/$leadId'
-      path: '/$leadId'
-      fullPath: '/lead/$leadId'
-      preLoaderRoute: typeof AppLeadLeadIdRouteImport
-      parentRoute: typeof AppLeadRoute
-    }
-    '/_app/kit/$id': {
-      id: '/_app/kit/$id'
-      path: '/kit/$id'
-      fullPath: '/kit/$id'
-      preLoaderRoute: typeof AppKitIdRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/eventi/$eventoId': {
-      id: '/_app/eventi/$eventoId'
-      path: '/eventi/$eventoId'
-      fullPath: '/eventi/$eventoId'
-      preLoaderRoute: typeof AppEventiEventoIdRouteImport
+    '/_app/articoli/$id': {
+      id: '/_app/articoli/$id'
+      path: '/articoli/$id'
+      fullPath: '/articoli/$id'
+      preLoaderRoute: typeof AppArticoliIdRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/clienti/$clienteId': {
@@ -1653,25 +1450,221 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppClientiClienteIdRouteImport
       parentRoute: typeof AppClientiRoute
     }
-    '/_app/articoli/$id': {
-      id: '/_app/articoli/$id'
-      path: '/articoli/$id'
-      fullPath: '/articoli/$id'
-      preLoaderRoute: typeof AppArticoliIdRouteImport
+    '/_app/eventi/': {
+      id: '/_app/eventi/'
+      path: '/eventi'
+      fullPath: '/eventi/'
+      preLoaderRoute: typeof AppEventiIndexRouteImport
       parentRoute: typeof AppRoute
     }
-    '/api/webhooks/d360/$token': {
-      id: '/api/webhooks/d360/$token'
-      path: '/api/webhooks/d360/$token'
-      fullPath: '/api/webhooks/d360/$token'
-      preLoaderRoute: typeof ApiWebhooksD360TokenRouteImport
+    '/_app/eventi/$eventoId': {
+      id: '/_app/eventi/$eventoId'
+      path: '/eventi/$eventoId'
+      fullPath: '/eventi/$eventoId'
+      preLoaderRoute: typeof AppEventiEventoIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/kit/': {
+      id: '/_app/kit/'
+      path: '/kit'
+      fullPath: '/kit/'
+      preLoaderRoute: typeof AppKitIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/kit/$id': {
+      id: '/_app/kit/$id'
+      path: '/kit/$id'
+      fullPath: '/kit/$id'
+      preLoaderRoute: typeof AppKitIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/lead/': {
+      id: '/_app/lead/'
+      path: '/'
+      fullPath: '/lead/'
+      preLoaderRoute: typeof AppLeadIndexRouteImport
+      parentRoute: typeof AppLeadRoute
+    }
+    '/_app/lead/$leadId': {
+      id: '/_app/lead/$leadId'
+      path: '/$leadId'
+      fullPath: '/lead/$leadId'
+      preLoaderRoute: typeof AppLeadLeadIdRouteImport
+      parentRoute: typeof AppLeadRoute
+    }
+    '/_app/marketing/campagne': {
+      id: '/_app/marketing/campagne'
+      path: '/marketing/campagne'
+      fullPath: '/marketing/campagne'
+      preLoaderRoute: typeof AppMarketingCampagneRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/marketing/disiscrizioni': {
+      id: '/_app/marketing/disiscrizioni'
+      path: '/marketing/disiscrizioni'
+      fullPath: '/marketing/disiscrizioni'
+      preLoaderRoute: typeof AppMarketingDisiscrizioniRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/marketing/invii': {
+      id: '/_app/marketing/invii'
+      path: '/marketing/invii'
+      fullPath: '/marketing/invii'
+      preLoaderRoute: typeof AppMarketingInviiRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/marketing/iscritti-whatsapp': {
+      id: '/_app/marketing/iscritti-whatsapp'
+      path: '/marketing/iscritti-whatsapp'
+      fullPath: '/marketing/iscritti-whatsapp'
+      preLoaderRoute: typeof AppMarketingIscrittiWhatsappRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/marketing/qr-whatsapp': {
+      id: '/_app/marketing/qr-whatsapp'
+      path: '/marketing/qr-whatsapp'
+      fullPath: '/marketing/qr-whatsapp'
+      preLoaderRoute: typeof AppMarketingQrWhatsappRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/marketing/segmenti': {
+      id: '/_app/marketing/segmenti'
+      path: '/marketing/segmenti'
+      fullPath: '/marketing/segmenti'
+      preLoaderRoute: typeof AppMarketingSegmentiRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/opportunita/': {
+      id: '/_app/opportunita/'
+      path: '/'
+      fullPath: '/opportunita/'
+      preLoaderRoute: typeof AppOpportunitaIndexRouteImport
+      parentRoute: typeof AppOpportunitaRoute
+    }
+    '/_app/opportunita/$opportunitaId': {
+      id: '/_app/opportunita/$opportunitaId'
+      path: '/$opportunitaId'
+      fullPath: '/opportunita/$opportunitaId'
+      preLoaderRoute: typeof AppOpportunitaOpportunitaIdRouteImport
+      parentRoute: typeof AppOpportunitaRoute
+    }
+    '/_app/ordini/': {
+      id: '/_app/ordini/'
+      path: '/ordini'
+      fullPath: '/ordini/'
+      preLoaderRoute: typeof AppOrdiniIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/preventivatore/': {
+      id: '/_app/preventivatore/'
+      path: '/preventivatore'
+      fullPath: '/preventivatore/'
+      preLoaderRoute: typeof AppPreventivatoreIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/preventivatore/$id': {
+      id: '/_app/preventivatore/$id'
+      path: '/preventivatore/$id'
+      fullPath: '/preventivatore/$id'
+      preLoaderRoute: typeof AppPreventivatoreIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/preventivatore/dashboard': {
+      id: '/_app/preventivatore/dashboard'
+      path: '/preventivatore/dashboard'
+      fullPath: '/preventivatore/dashboard'
+      preLoaderRoute: typeof AppPreventivatoreDashboardRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/richieste-interne/': {
+      id: '/_app/richieste-interne/'
+      path: '/richieste-interne'
+      fullPath: '/richieste-interne/'
+      preLoaderRoute: typeof AppRichiesteInterneIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/richieste-interne/$richiestaId': {
+      id: '/_app/richieste-interne/$richiestaId'
+      path: '/richieste-interne/$richiestaId'
+      fullPath: '/richieste-interne/$richiestaId'
+      preLoaderRoute: typeof AppRichiesteInterneRichiestaIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/richieste-interne/approva': {
+      id: '/_app/richieste-interne/approva'
+      path: '/richieste-interne/approva'
+      fullPath: '/richieste-interne/approva'
+      preLoaderRoute: typeof AppRichiesteInterneApprovaRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/richieste-interne/archivio': {
+      id: '/_app/richieste-interne/archivio'
+      path: '/richieste-interne/archivio'
+      fullPath: '/richieste-interne/archivio'
+      preLoaderRoute: typeof AppRichiesteInterneArchivioRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/richieste-interne/gestione': {
+      id: '/_app/richieste-interne/gestione'
+      path: '/richieste-interne/gestione'
+      fullPath: '/richieste-interne/gestione'
+      preLoaderRoute: typeof AppRichiesteInterneGestioneRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/richieste-interne/mie': {
+      id: '/_app/richieste-interne/mie'
+      path: '/richieste-interne/mie'
+      fullPath: '/richieste-interne/mie'
+      preLoaderRoute: typeof AppRichiesteInterneMieRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/richieste-interne/tutte': {
+      id: '/_app/richieste-interne/tutte'
+      path: '/richieste-interne/tutte'
+      fullPath: '/richieste-interne/tutte'
+      preLoaderRoute: typeof AppRichiesteInterneTutteRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/richieste/$richiestaId': {
+      id: '/_app/richieste/$richiestaId'
+      path: '/$richiestaId'
+      fullPath: '/richieste/$richiestaId'
+      preLoaderRoute: typeof AppRichiesteRichiestaIdRouteImport
+      parentRoute: typeof AppRichiesteRoute
+    }
+    '/_app/task/': {
+      id: '/_app/task/'
+      path: '/'
+      fullPath: '/task/'
+      preLoaderRoute: typeof AppTaskIndexRouteImport
+      parentRoute: typeof AppTaskRoute
+    }
+    '/_app/task/$id': {
+      id: '/_app/task/$id'
+      path: '/$id'
+      fullPath: '/task/$id'
+      preLoaderRoute: typeof AppTaskIdRouteImport
+      parentRoute: typeof AppTaskRoute
+    }
+    '/api/public/inngest': {
+      id: '/api/public/inngest'
+      path: '/api/public/inngest'
+      fullPath: '/api/public/inngest'
+      preLoaderRoute: typeof ApiPublicInngestRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/hooks/check-scadenze': {
-      id: '/api/public/hooks/check-scadenze'
-      path: '/api/public/hooks/check-scadenze'
-      fullPath: '/api/public/hooks/check-scadenze'
-      preLoaderRoute: typeof ApiPublicHooksCheckScadenzeRouteImport
+    '/api/public/invia-push': {
+      id: '/api/public/invia-push'
+      path: '/api/public/invia-push'
+      fullPath: '/api/public/invia-push'
+      preLoaderRoute: typeof ApiPublicInviaPushRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/email-img/$': {
+      id: '/api/public/email-img/$'
+      path: '/api/public/email-img/$'
+      fullPath: '/api/public/email-img/$'
+      preLoaderRoute: typeof ApiPublicEmailImgSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/hooks/check-reminder-ritardi': {
@@ -1681,11 +1674,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksCheckReminderRitardiRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/email-img/$': {
-      id: '/api/public/email-img/$'
-      path: '/api/public/email-img/$'
-      fullPath: '/api/public/email-img/$'
-      preLoaderRoute: typeof ApiPublicEmailImgSplatRouteImport
+    '/api/public/hooks/check-scadenze': {
+      id: '/api/public/hooks/check-scadenze'
+      path: '/api/public/hooks/check-scadenze'
+      fullPath: '/api/public/hooks/check-scadenze'
+      preLoaderRoute: typeof ApiPublicHooksCheckScadenzeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/webhooks/d360/$token': {
+      id: '/api/webhooks/d360/$token'
+      path: '/api/webhooks/d360/$token'
+      fullPath: '/api/webhooks/d360/$token'
+      preLoaderRoute: typeof ApiWebhooksD360TokenRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
