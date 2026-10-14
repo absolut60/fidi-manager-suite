@@ -27,8 +27,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
-import { useAzioniRecuperoCliente, useOperatoriAttivita } from "@/hooks/use-azioni-recupero-cliente";
-import { TIPO_AZIONE_ICON, TIPO_AZIONE_LABEL } from "@/lib/azioni-recupero-ui";
+import { useAzioniRecuperoCliente, useOperatoriAttivita, useStadioSollecitoCliente } from "@/hooks/use-azioni-recupero-cliente";
+import { TIPO_AZIONE_ICON, TIPO_AZIONE_LABEL, testoAzione } from "@/lib/azioni-recupero-ui";
 import { StadioSollecitoBadge } from "@/components/stadio-sollecito-badge";
 import { ClienteAttivitaRecuperoTab } from "@/components/cliente-attivita-recupero-tab";
 
@@ -1243,15 +1243,8 @@ function RecuperoStriscia({ clienteId, pianoRientro, aperto, onToggle, onApriSch
   const { azioni, isLoading, dataUpdatedAt, daFare, prossima, ultimaFatta, inRitardo } = useAzioniRecuperoCliente(clienteId);
   // Stessa query (e chiave) del tab attività: nessun caricamento aggiuntivo.
   const { data: operatori } = useOperatoriAttivita();
-  // Stadio di sollecito del cliente (0 o 1 riga dalla RPC aggregata).
-  const { data: stadioRow, isLoading: stadioLoading } = useQuery({
-    queryKey: ["recupero-stadio-cliente", clienteId],
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_recupero_clienti_aggregato", { _cliente_id: clienteId });
-      if (error) throw error;
-      return (data?.[0] ?? null) as { stadio_sollecito: number; stadio_data: string | null; stadio_giorni: number | null } | null;
-    },
-  });
+  // Stadio di sollecito del cliente: hook condiviso col tab attività (stessa chiave).
+  const { data: stadioRow, isLoading: stadioLoading } = useStadioSollecitoCliente(clienteId);
   const nomeOperatore = (id: string | null) => {
     if (!id) return null;
     const o = (operatori ?? []).find((x) => x.id === id);
@@ -1275,6 +1268,8 @@ function RecuperoStriscia({ clienteId, pianoRientro, aperto, onToggle, onApriSch
   if (isLoading) return <Skeleton className="h-20 w-full" />;
   const UltimaIcon = ultimaFatta ? (TIPO_AZIONE_ICON[ultimaFatta.tipo] ?? FileText) : null;
   const operatore = ultimaFatta ? nomeOperatore(ultimaFatta.operatore_id) : null;
+  const testoUltima = ultimaFatta ? testoAzione(ultimaFatta) : null;
+  const testoProssima = prossima ? testoAzione(prossima) : null;
 
   return (
     <div className="border rounded-md p-3 bg-background space-y-3">
@@ -1285,6 +1280,9 @@ function RecuperoStriscia({ clienteId, pianoRientro, aperto, onToggle, onApriSch
             <div className="text-sm break-words">
               <div className="font-medium flex items-center gap-1.5"><UltimaIcon className="size-4 shrink-0" />{TIPO_AZIONE_LABEL[ultimaFatta.tipo] ?? ultimaFatta.tipo}</div>
               <div className="text-muted-foreground">{fmtDataOra(ultimaFatta.data_azione)}{operatore ? ` · ${operatore}` : ""}</div>
+              {testoUltima && (
+                <p className="mt-1 whitespace-pre-wrap break-words line-clamp-3" title={testoUltima}>{testoUltima}</p>
+              )}
             </div>
           ) : <div className="text-sm text-muted-foreground">Nessuna azione</div>}
         </div>
@@ -1297,6 +1295,9 @@ function RecuperoStriscia({ clienteId, pianoRientro, aperto, onToggle, onApriSch
                 {inRitardo && <Badge variant="destructive">In ritardo</Badge>}
               </div>
               <div>{fmtDataOra(prossima.data_azione)}</div>
+              {testoProssima && (
+                <p className="mt-1 whitespace-pre-wrap break-words line-clamp-2" title={testoProssima}>{testoProssima}</p>
+              )}
             </div>
           ) : <div className="text-sm text-muted-foreground">—</div>}
         </div>

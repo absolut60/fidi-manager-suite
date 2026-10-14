@@ -77,3 +77,16 @@ export function useOperatoriAttivita() {
     },
   });
 }
+
+// Stadio di sollecito del cliente (0 o 1 riga dalla RPC aggregata).
+// Fonte unica: striscia recupero dello scadenziario e riepilogo del tab attività.
+export function useStadioSollecitoCliente(clienteId: string) {
+  return useQuery({
+    queryKey: ["recupero-stadio-cliente", clienteId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_recupero_clienti_aggregato", { _cliente_id: clienteId });
+      if (error) throw error;
+      return (data?.[0] ?? null) as { stadio_sollecito: number; stadio_data: string | null; stadio_giorni: number | null } | null;
+    },
+  });
+}
