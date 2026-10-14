@@ -2,8 +2,8 @@
 // Le azioni si caricano solo all'apertura: il contenuto è montato solo a tooltip aperto,
 // quindi useAzioniRecuperoCliente non parte al caricamento della pagina. Stessa cache
 // del tab attività e della striscia dello scadenziario.
-import { useMemo, useState, type ReactNode } from "react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useMemo, type ReactNode } from "react";
+import { TooltipDettaglio } from "@/components/tooltip-dettaglio";
 import { useAzioniRecuperoCliente, useOperatoriAttivita, type Azione } from "@/hooks/use-azioni-recupero-cliente";
 import { ESITO_AZIONE_LABEL, TIPO_AZIONE_LABEL, testoAzione } from "@/lib/azioni-recupero-ui";
 import { formatEuro } from "@/lib/fidi";
@@ -116,15 +116,9 @@ export function TooltipAzioneRecupero({ criterio, children, intestazione, etiche
   etichetta?: string;
   side?: "top" | "bottom" | "left" | "right";
 }) {
-  const [aperto, setAperto] = useState(false);
   return (
-    <TooltipProvider delayDuration={200}>
-      <Tooltip open={aperto} onOpenChange={setAperto}>
-        <TooltipTrigger asChild>{children}</TooltipTrigger>
-        <TooltipContent side={side} className="max-w-[320px] whitespace-normal">
-          {aperto && <Dettaglio criterio={criterio} intestazione={intestazione} etichetta={etichetta} />}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <TooltipDettaglio side={side} contenuto={() => <Dettaglio criterio={criterio} intestazione={intestazione} etichetta={etichetta} />}>
+      {children}
+    </TooltipDettaglio>
   );
 }

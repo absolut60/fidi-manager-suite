@@ -1,5 +1,9 @@
 # Roadmap
 
+## Tooltip calendario commerciale e Task
+- [x] Riusare i testi già caricati e condividere il montaggio all'apertura con i tooltip recupero
+- [ ] Verificare compilazione e interazioni senza cambiare clic o tocco
+
 ## FM38 — Pagina richiesta fido (impaginazione)
 - [x] Tre giri: struttura in 4 blocchi, fascia dati su una riga, Decisione doppia/semplice compatte, Quadro cliente a griglia unica, Workflow in linea
 - [x] Cella "Ordini in corso" (doc_da_evadere) dopo "A scadere" nel Quadro cliente, con title "Ordini da evadere — non concorrono al fido"; MetricCard accetta title opzionale
