@@ -230,23 +230,46 @@ function ScadenziarioPage() {
   const isStoreManager = role === "store_manager";
   const myStoreId = profilo?.store_id ?? null;
   const storeDefault = isStoreManager && myStoreId ? myStoreId : "all";
-  const [storeId, setStoreId] = useState(storeDefault);
-  const [agenteFiltro, setAgenteFiltro] = useState<string>("tutti");
-  const [fascia, setFascia] = useState<string>("tutte");
-  const [importoMin, setImportoMin] = useState("");
-  const [importoMinAScadere, setImportoMinAScadere] = useState("");
-  const [situazione, setSituazione] = useState<Situazione>("con_scaduto");
-  const [statoBlocco, setStatoBlocco] = useState<"tutti" | "bloccati" | "non_bloccati">("tutti");
-  const [statoLegale, setStatoLegale] = useState<"tutti" | "in_legale" | "non_in_legale">("tutti");
-  const [escludiBonifici, setEscludiBonifici] = useState(true);
-  const [escludiLegale, setEscludiLegale] = useState(true);
-  const [avvisatoFilter, setAvvisatoFilter] = useState<"tutti" | "con_azioni" | "senza_azioni">("tutti");
-  const [mostraACredito, setMostraACredito] = useState(false);
-  const [search, setSearch] = useState("");
-  const [searchDebounced, setSearchDebounced] = useState("");
-  const [page, setPage] = useState(1);
-  const [sortBy, setSortBy] = useState<SortKey>("tot_scaduto");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  // Filtri conservati per utente e scheda del browser (fonte unica useFiltriPagina).
+  const { filtri, setCampo, reset: resetFiltriSalvati } = useFiltriPagina("scadenziario", {
+    storeId: "all" as string,
+    agenteFiltro: "tutti" as string,
+    fascia: "tutte" as string,
+    importoMin: "",
+    importoMinAScadere: "",
+    situazione: "con_scaduto" as Situazione,
+    statoBlocco: "tutti" as "tutti" | "bloccati" | "non_bloccati",
+    statoLegale: "tutti" as "tutti" | "in_legale" | "non_in_legale",
+    escludiBonifici: true,
+    escludiLegale: true,
+    avvisatoFilter: "tutti" as "tutti" | "con_azioni" | "senza_azioni",
+    mostraACredito: false,
+    search: "",
+    page: 1,
+    sortBy: "tot_scaduto" as SortKey,
+    sortDir: "desc" as "asc" | "desc",
+  }, { userId: user?.id });
+  // Store manager: sempre il proprio negozio, qualunque valore sia salvato (anche se il profilo arriva dopo).
+  const storeId = isStoreManager ? (myStoreId ?? "all") : filtri.storeId;
+  const { agenteFiltro, fascia, importoMin, importoMinAScadere, situazione, statoBlocco, statoLegale, escludiBonifici, escludiLegale, avvisatoFilter, mostraACredito, search, page, sortBy, sortDir } = filtri;
+  const setStoreId = (v: string) => setCampo("storeId", v);
+  const setAgenteFiltro = (v: string) => setCampo("agenteFiltro", v);
+  const setFascia = (v: string) => setCampo("fascia", v);
+  const setImportoMin = (v: string) => setCampo("importoMin", v);
+  const setImportoMinAScadere = (v: string) => setCampo("importoMinAScadere", v);
+  const setSituazione = (v: Situazione) => setCampo("situazione", v);
+  const setStatoBlocco = (v: typeof statoBlocco) => setCampo("statoBlocco", v);
+  const setStatoLegale = (v: typeof statoLegale) => setCampo("statoLegale", v);
+  const setEscludiBonifici = (v: boolean) => setCampo("escludiBonifici", v);
+  const setEscludiLegale = (v: boolean) => setCampo("escludiLegale", v);
+  const setAvvisatoFilter = (v: typeof avvisatoFilter) => setCampo("avvisatoFilter", v);
+  const setMostraACredito = (v: boolean) => setCampo("mostraACredito", v);
+  const setSearch = (v: string) => setCampo("search", v);
+  const setPage = (v: number | ((p: number) => number)) => setCampo("page", v);
+  const setSortBy = (v: SortKey) => setCampo("sortBy", v);
+  const setSortDir = (v: "asc" | "desc") => setCampo("sortDir", v);
+  // Parte già uguale alla ricerca ripristinata: nessuna attesa del debounce al rientro.
+  const [searchDebounced, setSearchDebounced] = useState(() => search.trim());
   const [expandedClienteId, setExpandedClienteId] = useState<string | null>(null);
   const [schedaMobileId, setSchedaMobileId] = useState<string | null>(null);
   const [recuperoApertoId, setRecuperoApertoId] = useState<string | null>(null);
