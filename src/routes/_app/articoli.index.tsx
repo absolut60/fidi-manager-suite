@@ -1,5 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
+import { useAuth } from "@/hooks/use-auth";
+import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { useQuery } from "@tanstack/react-query";
 import * as XLSX from "xlsx";
 import { Input } from "@/components/ui/input";
@@ -33,12 +35,22 @@ const ANY = "__any";
 
 function ArticoliListPage() {
   const navigate = useNavigate();
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [categoria, setCategoria] = useState<string | null>(null);
-  const [tipologia, setTipologia] = useState<string | null>(null);
-  const [fornitoreId, setFornitoreId] = useState<string | null>(null);
-  const [stato, setStato] = useState<StatoArticolo | null>(null);
+  // Filtri e pagina conservati (useFiltriPagina); null salvato come "".
+  const { user } = useAuth();
+  const { filtri: FA, setCampo } = useFiltriPagina("articoli", {
+    search: "", categoria: "", tipologia: "", fornitoreId: "", stato: "", page: 1,
+  }, { userId: user?.id });
+  const search = FA.search;
+  const categoria = FA.categoria || null;
+  const tipologia = FA.tipologia || null;
+  const fornitoreId = FA.fornitoreId || null;
+  const stato = (FA.stato || null) as StatoArticolo | null;
+  const setSearch = (v: string) => setCampo("search", v);
+  const setCategoria = (v: string | null) => setCampo("categoria", v ?? "");
+  const setTipologia = (v: string | null) => setCampo("tipologia", v ?? "");
+  const setFornitoreId = (v: string | null) => setCampo("fornitoreId", v ?? "");
+  const setStato = (v: StatoArticolo | null) => setCampo("stato", v ?? "");
+  const [debouncedSearch, setDebouncedSearch] = useState(() => FA.search);
   const [importOpen, setImportOpen] = useState(false);
   const [mostraFiltri, setMostraFiltri] = useState(false);
   const nFiltriAttivi = [categoria, tipologia, fornitoreId, stato].filter(Boolean).length;
@@ -60,13 +72,19 @@ function ArticoliListPage() {
     [debouncedSearch, categoria, tipologia, fornitoreId, stato],
   );
 
-  const [page, setPage] = useState(1);
+  const page = FA.page;
+  const setPage = (v: number | ((p: number) => number)) => setCampo("page", v);
   const pageSize = 100;
 
-  // Reset to page 1 when filters change
+  // Reset a pagina 1 SOLO ai cambi veri dei filtri dopo il montaggio (firma precedente).
+  const firmaFiltri = JSON.stringify([debouncedSearch, categoria, tipologia, fornitoreId, stato]);
+  const firmaPrecedente = useRef(firmaFiltri);
   useEffect(() => {
+    if (firmaPrecedente.current === firmaFiltri) return;
+    firmaPrecedente.current = firmaFiltri;
     setPage(1);
-  }, [debouncedSearch, categoria, tipologia, fornitoreId, stato]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [firmaFiltri]);
 
   const { data: result, isLoading, refetch } = useQuery({
     queryKey: ["articoli", filters, page, pageSize],

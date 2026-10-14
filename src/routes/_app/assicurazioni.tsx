@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ShieldCheck, Search, ShieldAlert, Clock, Wallet, AlertCircle, CalendarDays } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -41,12 +42,18 @@ export default function AssicurazioniPage() {
   const puoAprireSinistri = roles.includes("amministratore") || roles.includes("amministrazione");
   const myStoreId = profilo?.store_id ?? null;
 
-  const [stato, setStato] = useState<StatoFilter>("tutti");
-  const [storeId, setStoreId] = useState<string>(
-    isStoreManager && myStoreId ? myStoreId : "all"
-  );
-  const [q, setQ] = useState("");
-  const [scadenza30, setScadenza30] = useState(false);
+  // Filtri conservati (useFiltriPagina).
+  const { user } = useAuth();
+  const { filtri: FS, setCampo } = useFiltriPagina("assicurazioni", {
+    stato: "tutti" as StatoFilter, storeId: "all", q: "", scadenza30: false,
+  }, { userId: user?.id });
+  const { stato, q, scadenza30 } = FS;
+  // Store manager: sempre il proprio negozio, qualunque valore sia salvato.
+  const storeId = isStoreManager && myStoreId ? myStoreId : FS.storeId;
+  const setStato = (v: StatoFilter) => setCampo("stato", v);
+  const setStoreId = (v: string) => setCampo("storeId", v);
+  const setQ = (v: string) => setCampo("q", v);
+  const setScadenza30 = (v: boolean | ((p: boolean) => boolean)) => setCampo("scadenza30", v);
 
   const { data: stores } = useQuery({
     queryKey: ["stores-list"],
