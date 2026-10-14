@@ -1408,9 +1408,10 @@ function ExpandedRischioPanel({ loading, data, onApri, clienteId }: { loading: b
         <CellInfo label="DDT da fatturare" value={fmtEuro(ddt)} cls={ddt > 0 ? "text-primary font-medium" : ""} />
         <CellInfo label="Ordini aperti" value={fmtEuro(ord)} hint="(non concorre)" />
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 text-sm">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3 text-sm">
         <CellInfo label="Insoluti storici" value={ni == null ? "—" : String(ni)} cls={ni != null && Number(ni) > 0 ? "text-destructive font-medium" : ""} />
-        <div className="min-w-0" title={pr.titolo}>
+        {/* Sotto lg: riga intera in fondo (niente cella orfana); da lg subito dopo Insoluti. */}
+        <div className="min-w-0 col-span-2 sm:col-span-4 lg:col-span-1 order-last lg:order-none" title={pr.titolo}>
           <p className="text-[10px] font-medium text-muted-foreground uppercase truncate">{pr.label}</p>
           <p className={`tabular-nums break-words ${pr.inRitardo ? "text-destructive font-medium" : ""}`}>{pr.valore}</p>
           {pr.dettaglio && <p className="text-[11px] text-muted-foreground break-words">{pr.dettaglio}</p>}
