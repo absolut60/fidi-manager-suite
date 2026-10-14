@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import {
   Download, RefreshCw, Check, X, AlertTriangle, FileSpreadsheet, Inbox, FileCheck2,
 } from "lucide-react";
+import { useNomiUtenti } from "@/hooks/use-nomi-utenti";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
@@ -88,20 +89,8 @@ function FidiProcessarePage() {
     },
   });
 
-  const { data: profili } = useQuery({
-    queryKey: ["profili-tutti"],
-    queryFn: async () => {
-      const { data } = await supabase.from("profili").select("id, nome, cognome, email");
-      return data ?? [];
-    },
-  });
-
-  const profiloName = (id: string | null | undefined): string => {
-    if (!id) return "—";
-    const p = profili?.find((x) => x.id === id);
-    if (!p) return "—";
-    return `${p.nome ?? ""} ${p.cognome ?? ""}`.trim() || (p.email ?? "—");
-  };
+  const { nomeUtente } = useNomiUtenti();
+  const profiloName = (id: string | null | undefined): string => nomeUtente(id) ?? "—";
 
   const all = richieste ?? [];
 

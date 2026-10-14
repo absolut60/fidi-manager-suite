@@ -5,6 +5,7 @@ import { ListChecks, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { format, isBefore, startOfDay } from "date-fns";
 import { it } from "date-fns/locale";
+import { useNomiUtenti } from "@/hooks/use-nomi-utenti";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
@@ -104,11 +105,11 @@ function TaskPage() {
     },
   });
 
+  // Nomi da fonte unica (anche utenti non attivi o non leggibili da profili).
+  const { nomeUtente: nomeDi } = useNomiUtenti();
   function nomeUtente(id: string | null) {
     if (!id) return null;
-    const p = (profili ?? []).find((x) => x.id === id);
-    if (!p) return "—";
-    return [p.nome, p.cognome].filter(Boolean).join(" ") || "—";
+    return nomeDi(id) ?? "—";
   }
 
   const righe = useMemo(() => {

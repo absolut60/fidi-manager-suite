@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useNomiUtentiQuery } from "@/hooks/use-nomi-utenti";
 import type { TipoAzione } from "@/components/reminder-controls";
 
 export type EsitoAzione =
@@ -63,19 +64,10 @@ export function useAzioniRecuperoCliente(clienteId: string | null) {
   return { azioni, isLoading, dataUpdatedAt, daFare, concluse, prossima, ultimaFatta, inRitardo };
 }
 
-// Elenco operatori (profili) per mostrare i nomi nelle azioni di recupero.
-// Stessa queryKey ovunque → una sola cache condivisa.
+// Elenco operatori per mostrare i nomi nelle azioni di recupero.
+// Sopra la fonte unica get_nomi_utenti (id, nome, cognome; niente email).
 export function useOperatoriAttivita() {
-  return useQuery({
-    queryKey: ["operatori-list-attivita"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profili")
-        .select("id, nome, cognome, email");
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
+  return useNomiUtentiQuery();
 }
 
 // Stadio di sollecito del cliente (0 o 1 riga dalla RPC aggregata).

@@ -69,3 +69,5 @@
 ## FM39 — Condizione di pagamento approvata diversa dalla proposta
 - [x] Fetta 1 — migrazione DB applicata (0012_richieste_fido_condizione_approvata.sql): colonne condizione_pagamento_richiesta_cod e condizione_pagamento_modificata, RPC processa_richiesta_fido con _condizione_approvata_cod; chiamate esistenti (richieste.tsx:790, richieste.$richiestaId.tsx:528 e :652) non modificate
 - [ ] Fetta 2 — interfaccia: in approvazione l'approvatore può scegliere una condizione diversa da quella proposta (attesa istruzioni)
+
+- [x] Fetta B: notifica a ogni nuova nota di recupero

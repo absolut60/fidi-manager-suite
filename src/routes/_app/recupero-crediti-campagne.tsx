@@ -124,8 +124,8 @@ function CampagnePage() {
       const opIds = Array.from(new Set(rows.map((r) => r.operatore_id).filter(Boolean) as string[]));
       const opMap: Record<string, { nome: string | null; cognome: string | null }> = {};
       if (opIds.length) {
-        const { data: profs } = await supabase.from("profili").select("id, nome, cognome").in("id", opIds);
-        (profs ?? []).forEach((p) => { opMap[p.id] = { nome: p.nome, cognome: p.cognome }; });
+        const { data: profs } = await supabase.rpc("get_nomi_utenti" as never);
+        ((profs ?? []) as unknown as Array<{ id: string; nome: string | null; cognome: string | null }>).filter((p) => opIds.includes(p.id)).forEach((p) => { opMap[p.id] = { nome: p.nome, cognome: p.cognome }; });
       }
       return rows.map((r) => ({
         ...r,

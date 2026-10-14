@@ -1245,7 +1245,7 @@ function RecuperoStriscia({ clienteId, pianoRientro, aperto, onToggle }: {
     if (!id) return null;
     const o = (operatori ?? []).find((x) => x.id === id);
     if (!o) return null;
-    return `${o.nome ?? ""} ${o.cognome ?? ""}`.trim() || o.email || null;
+    return `${o.nome ?? ""} ${o.cognome ?? ""}`.trim() || null;
   };
 
   // Allineamento riga: se le azioni cambiano dopo il primo caricamento, ricarica lista e totali.

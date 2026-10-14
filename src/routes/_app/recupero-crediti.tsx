@@ -29,6 +29,7 @@ import { StadioSollecitoBadge } from "@/components/stadio-sollecito-badge";
 import { RegistraPromessaDialog } from "@/components/registra-promessa-dialog";
 import { RegistraPromessaSelectorDialog } from "@/components/registra-promessa-selector-dialog";
 import { cn } from "@/lib/utils";
+import { useNomiUtentiQuery } from "@/hooks/use-nomi-utenti";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
@@ -256,21 +257,12 @@ function RecuperoCreditiPage() {
   });
 
   // Operatori
-  const { data: operatori } = useQuery({
-    queryKey: ["operatori-list"],
-    enabled: !isRistretto,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profili")
-        .select("id, nome, cognome, email")
-        .order("cognome");
-      if (error) {
-        console.warn("[recupero-crediti] operatori query failed:", error.message);
-        return [];
-      }
-      return data ?? [];
-    },
-  });
+  // Nomi operatori: fonte unica get_nomi_utenti (la policy di profili mostra solo il proprio).
+  const { data: operatoriTutti } = useNomiUtentiQuery();
+  const operatori = useMemo(
+    () => (isRistretto ? [] : [...(operatoriTutti ?? [])].sort((a, b) => (a.cognome ?? "").localeCompare(b.cognome ?? ""))),
+    [operatoriTutti, isRistretto],
+  );
 
   const filtersKey = [
     Array.from(esitoFilter).sort(),
@@ -348,7 +340,7 @@ function RecuperoCreditiPage() {
     const m: Record<string, string> = {};
     for (const o of operatori ?? []) {
       const nome = `${o.nome ?? ""} ${o.cognome ?? ""}`.trim();
-      m[o.id] = nome || o.email || "—";
+      m[o.id] = nome || "—";
     }
     return m;
   }, [operatori]);
