@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Gavel, Search, FileText, Hammer, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -73,13 +74,19 @@ function PraticheLegaliPage() {
   const isStoreManager = role === "store_manager";
   const myStoreId = profilo?.store_id ?? null;
 
-  const [stato, setStato] = useState<string>("tutti");
-  const [storeId, setStoreId] = useState<string>(
-    isStoreManager && myStoreId ? myStoreId : "all"
-  );
-  const [tipoFilter, setTipoFilter] = useState<string>("tutti");
-  const [origine, setOrigine] = useState<string>("tutte");
-  const [q, setQ] = useState("");
+  // Filtri conservati (useFiltriPagina).
+  const { user } = useAuth();
+  const { filtri: FL, setCampo } = useFiltriPagina("legali", {
+    stato: "tutti", storeId: "all", tipoFilter: "tutti", origine: "tutte", q: "",
+  }, { userId: user?.id });
+  const { stato, tipoFilter, origine, q } = FL;
+  // Store manager: sempre il proprio negozio, qualunque valore sia salvato.
+  const storeId = isStoreManager && myStoreId ? myStoreId : FL.storeId;
+  const setStato = (v: string) => setCampo("stato", v);
+  const setStoreId = (v: string) => setCampo("storeId", v);
+  const setTipoFilter = (v: string) => setCampo("tipoFilter", v);
+  const setOrigine = (v: string) => setCampo("origine", v);
+  const setQ = (v: string) => setCampo("q", v);
 
   const { data: stores } = useQuery({
     queryKey: ["stores-list"],
