@@ -26,6 +26,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
+import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { useAzioniRecuperoCliente, useOperatoriAttivita } from "@/hooks/use-azioni-recupero-cliente";
 import { TIPO_AZIONE_ICON, TIPO_AZIONE_LABEL } from "@/lib/azioni-recupero-ui";
 import { StadioSollecitoBadge } from "@/components/stadio-sollecito-badge";
@@ -339,8 +340,8 @@ function ScadenziarioPage() {
   const filtriDefault = filtriAttivi === 0 && search.trim() === "" && escludiBonifici && escludiLegale;
 
   function resetFiltri(sit: Situazione) {
-    setSearch(""); setSearchDebounced("");
-    setStoreId(storeDefault);
+    setSearchDebounced("");
+    // storeId torna a "all"; per lo store manager resta comunque il suo negozio (storeDefault).
     // Ordinamento e pagina restano come prima; la pagina torna a 1 se un filtro cambia.
     resetFiltriSalvati({ situazione: sit, sortBy, sortDir, page });
   }
