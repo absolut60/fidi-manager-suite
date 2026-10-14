@@ -31,3 +31,12 @@ export const ESITI_AZIONE: { value: EsitoAzione; label: string }[] = [
   { value: "contestazione", label: "Contestazione" },
   { value: "pagato", label: "Pagato" },
 ];
+
+/** Testo leggibile di un'azione (fonte unica): nota, altrimenti oggetto email, altrimenti null. */
+export function testoAzione(a: { note: string | null; email_oggetto: string | null; tipo: string }): string | null {
+  const nota = a.note?.trim();
+  if (nota) return nota;
+  const oggetto = a.email_oggetto?.trim();
+  if (a.tipo === "email" && oggetto) return `Oggetto: ${oggetto}`;
+  return null;
+}
