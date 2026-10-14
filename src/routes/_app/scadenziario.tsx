@@ -1447,13 +1447,6 @@ type AvvisatoInfo = {
   ultima_data: string | null;
 } | null;
 
-function fmtDataOra(iso: string | null | undefined): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
-}
-
 // Nome operatore dal profilo (stessa query/chiave del tab attività).
 function useNomeOperatore() {
   const { data: operatori } = useOperatoriAttivita();
@@ -1478,7 +1471,8 @@ function AvvisatoTooltipDettaglio({ info, intestazione }: { info: NonNullable<Av
     return [...stessoTipo].sort((a, b) => new Date(b.data_azione).getTime() - new Date(a.data_azione).getTime())[0] ?? null;
   }, [azioni, info.ultima_tipo, info.ultima_data]);
   const tipoLabel = info.ultima_tipo ? (TIPO_AZIONE_LABEL[info.ultima_tipo] ?? info.ultima_tipo) : null;
-  const dataOra = fmtDataOra(azione?.data_azione ?? info.ultima_data);
+  const istante = azione?.data_azione ?? info.ultima_data;
+  const dataOra = istante ? fmtDataOra(istante) : "";
   const operatore = azione ? nomeOperatore(azione.operatore_id) : null;
   const testo = azione ? testoAzione(azione) : null;
   return (
