@@ -33,7 +33,7 @@ import { LetteraPdfDialog } from "@/components/lettera-pdf-dialog";
 import { puoInviareComunicazioniRecupero } from "@/lib/recupero-permessi";
 import type { TipoAzione } from "@/components/reminder-controls";
 import { useAzioniRecuperoCliente, useOperatoriAttivita, useStadioSollecitoCliente, type Azione } from "@/hooks/use-azioni-recupero-cliente";
-import { TIPO_AZIONE_ICON, TIPO_AZIONE_LABEL, testoAzione } from "@/lib/azioni-recupero-ui";
+import { ESITO_AZIONE_LABEL, TIPO_AZIONE_ICON, TIPO_AZIONE_LABEL, testoAzione } from "@/lib/azioni-recupero-ui";
 import { StadioSollecitoBadge } from "@/components/stadio-sollecito-badge";
 
 function fmtData(v: string) {
@@ -43,14 +43,9 @@ function fmtData(v: string) {
 
 type Esito = "da_fare" | "fatto" | "nessuna_risposta" | "promessa_pagamento" | "contestazione" | "pagato";
 
-const ESITI: { value: Esito; label: string }[] = [
-  { value: "da_fare", label: "Da fare" },
-  { value: "fatto", label: "Fatto" },
-  { value: "nessuna_risposta", label: "Nessuna risposta" },
-  { value: "promessa_pagamento", label: "Promessa pagamento" },
-  { value: "contestazione", label: "Contestazione" },
-  { value: "pagato", label: "Pagato" },
-];
+const ESITI: { value: Esito; label: string }[] = (
+  ["da_fare", "fatto", "nessuna_risposta", "promessa_pagamento", "contestazione", "pagato"] as Esito[]
+).map((value) => ({ value, label: ESITO_AZIONE_LABEL[value] }));
 
 const TIPO_ICON = TIPO_AZIONE_ICON;
 const TIPO_LABEL = TIPO_AZIONE_LABEL;
