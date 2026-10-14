@@ -33,7 +33,7 @@ function TutteRichieste() {
         <h1 className="text-2xl font-semibold">Tutte le richieste</h1>
         <p className="text-sm text-muted-foreground">Elenco completo (esclusi archivi)</p>
       </div>
-      <RichiesteTable rows={data} isLoading={isLoading} unreadIds={unreadIds} />
+      <RichiesteTable chiaveFiltri="richieste-interne:tutte" rows={data} isLoading={isLoading} unreadIds={unreadIds} />
     </div>
   );
 }

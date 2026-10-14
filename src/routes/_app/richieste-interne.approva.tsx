@@ -61,7 +61,7 @@ function ApprovaRichieste() {
           <span className="font-semibold text-foreground">{data?.length ?? 0}</span> in attesa
         </div>
       </div>
-      <RichiesteTable rows={data} isLoading={isLoading} showAdminBadge={false} emptyLabel="Nessuna richiesta da approvare" unreadIds={unreadIds} />
+      <RichiesteTable chiaveFiltri="richieste-interne:approva" rows={data} isLoading={isLoading} showAdminBadge={false} emptyLabel="Nessuna richiesta da approvare" unreadIds={unreadIds} />
     </div>
   );
 }

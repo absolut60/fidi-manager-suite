@@ -101,7 +101,7 @@ function GestionePage() {
         </div>
       )}
 
-      <RichiesteTable
+      <RichiesteTable chiaveFiltri="richieste-interne:gestione"
         rows={filtered}
         isLoading={isLoading}
         unreadIds={unreadIds}

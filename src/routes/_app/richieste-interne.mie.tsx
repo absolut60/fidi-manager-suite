@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,10 +49,15 @@ function MieRichieste() {
   const navigate = useNavigate();
   const openDetail = (id: string) => navigate({ to: "/richieste-interne/$richiestaId", params: { richiestaId: id } });
   const unreadIds = useRichiesteNonLette();
-  const [filtro, setFiltro] = useState<FiltroStato>("tutte");
-  const [q, setQ] = useState("");
-  const [sortKey, setSortKey] = useState<SortKey>("updated_at");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  // Filtri e ordinamento conservati (useFiltriPagina).
+  const { filtri: FM, setCampo } = useFiltriPagina("richieste-interne:mie", {
+    filtro: "tutte" as FiltroStato, q: "", sortKey: "updated_at" as SortKey, sortDir: "desc" as "asc" | "desc",
+  }, { userId: user?.id });
+  const { filtro, q, sortKey, sortDir } = FM;
+  const setFiltro = (v: FiltroStato) => setCampo("filtro", v);
+  const setQ = (v: string) => setCampo("q", v);
+  const setSortKey = (v: SortKey) => setCampo("sortKey", v);
+  const setSortDir = (v: "asc" | "desc" | ((d: "asc" | "desc") => "asc" | "desc")) => setCampo("sortDir", v);
 
   const { data, isLoading } = useQuery({
     queryKey: ["richieste-interne", "mie", uid],

@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
+import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { useNavigate } from "@tanstack/react-router";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -78,6 +80,7 @@ export function RichiesteTable({
   onGestisci,
   onRipristina,
   gestisciLabel = "Gestisci",
+  chiaveFiltri,
 }: {
   rows: RichiestaRow[] | undefined;
   isLoading: boolean;
@@ -89,13 +92,21 @@ export function RichiesteTable({
   onGestisci?: (r: RichiestaRow) => void;
   onRipristina?: (r: RichiestaRow) => void;
   gestisciLabel?: string;
+  /** Chiave distinta per vista per conservare i filtri (es. "richieste-interne:tutte"). */
+  chiaveFiltri: string;
 }) {
   const navigate = useNavigate();
   const openDetail = (id: string) => navigate({ to: "/richieste-interne/$richiestaId", params: { richiestaId: id } });
-  const [q, setQ] = useState("");
-  const [periodo, setPeriodo] = useState<Periodo>("tutto");
-  const [sortKey, setSortKey] = useState<SortKey>(defaultSortKey);
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  // Filtri e ordinamento conservati (useFiltriPagina), una chiave per vista.
+  const { user } = useAuth();
+  const { filtri: FR, setCampo } = useFiltriPagina(chiaveFiltri, {
+    q: "", periodo: "tutto" as Periodo, sortKey: defaultSortKey as SortKey, sortDir: "desc" as "asc" | "desc",
+  }, { userId: user?.id });
+  const { q, periodo, sortKey, sortDir } = FR;
+  const setQ = (v: string) => setCampo("q", v);
+  const setPeriodo = (v: Periodo) => setCampo("periodo", v);
+  const setSortKey = (v: SortKey) => setCampo("sortKey", v);
+  const setSortDir = (v: "asc" | "desc" | ((d: "asc" | "desc") => "asc" | "desc")) => setCampo("sortDir", v);
 
   function toggleSort(k: SortKey) {
     if (sortKey === k) setSortDir((d) => (d === "asc" ? "desc" : "asc"));

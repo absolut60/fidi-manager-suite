@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -52,7 +53,10 @@ function FidiProcessarePage() {
   const hasAccess = isAdmin || isApprovatore || isAmministrazione;
   const qc = useQueryClient();
 
-  const [tab, setTab] = useState("gestire");
+  // Scheda conservata (useFiltriPagina).
+  const { filtri: FT, setCampo: setCampoTab } = useFiltriPagina("fidi-processare", { tab: "gestire" }, { userId: user?.id });
+  const tab = FT.tab === "storico" ? "storico" : "gestire";
+  const setTab = (v: string) => setCampoTab("tab", v);
   const { data: codiciPagamento } = useCodiciPagamento();
   const descrizioniCodici = useMemo(
     () => (codiciPagamento ? mappaDescrizioniCodici(codiciPagamento) : null),
@@ -325,11 +329,20 @@ function GestireTab({
   onRigenera: (rows: any[]) => void;
   onSetStato: (ids: string[], stato: StatoExport, note: string | null | undefined, setProcessata: boolean) => void;
 }) {
-  const [storeFilter, setStoreFilter] = useState<string>("all");
-  const [statoFilter, setStatoFilter] = useState<string>("all");
-  const [dataDa, setDataDa] = useState("");
-  const [dataA, setDataA] = useState("");
-  const [search, setSearch] = useState("");
+  // Filtri conservati (useFiltriPagina); date gia' stringhe "AAAA-MM-GG".
+  const { user: utenteFiltri } = useAuth();
+  const { filtri: FG, setCampo, reset: resetFiltri } = useFiltriPagina("fidi-processare:gestire", {
+    storeFilter: "all", statoFilter: "all", dataDa: "", dataA: "", search: "",
+  }, { userId: utenteFiltri?.id, valida: {
+    dataDa: (v) => v === "" || /^\d{4}-\d{2}-\d{2}$/.test(String(v)),
+    dataA: (v) => v === "" || /^\d{4}-\d{2}-\d{2}$/.test(String(v)),
+  } });
+  const { storeFilter, statoFilter, dataDa, dataA, search } = FG;
+  const setStoreFilter = (v: string) => setCampo("storeFilter", v);
+  const setStatoFilter = (v: string) => setCampo("statoFilter", v);
+  const setDataDa = (v: string) => setCampo("dataDa", v);
+  const setDataA = (v: string) => setCampo("dataA", v);
+  const setSearch = (v: string) => setCampo("search", v);
 
   const filtriAttivi = [search.trim() !== "", storeFilter !== "all", statoFilter !== "all", !!dataDa, !!dataA].filter(Boolean).length;
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -375,7 +388,7 @@ function GestireTab({
       <Card className="p-3">
         <FiltriCollassabili
           attivi={filtriAttivi}
-          azioni={<Button variant="ghost" size="sm" onClick={() => { setSearch(""); setStoreFilter("all"); setStatoFilter("all"); setDataDa(""); setDataA(""); }} className="h-7 text-xs">Reset</Button>}
+          azioni={<Button variant="ghost" size="sm" onClick={() => resetFiltri()} className="h-7 text-xs">Reset</Button>}
         >
           <div className="flex flex-wrap items-center gap-2">
             <Input placeholder="Cerca ragione sociale, cod. gestionale o P.IVA..." value={search} onChange={(e) => setSearch(e.target.value)} className="flex-1 min-w-[220px]" />
@@ -620,8 +633,14 @@ function StoricoTab({
   profiloName: (id: string | null | undefined) => string;
   onRiportaDaGestire: (ids: string[]) => void;
 }) {
-  const [storeFilter, setStoreFilter] = useState<string>("all");
-  const [meseFiltro, setMeseFiltro] = useState<string>("ultimi3");
+  // Filtri conservati (useFiltriPagina); "mostra tutto" non si conserva.
+  const { user: utenteFiltri } = useAuth();
+  const { filtri: FS, setCampo } = useFiltriPagina("fidi-processare:storico", {
+    storeFilter: "all", meseFiltro: "ultimi3",
+  }, { userId: utenteFiltri?.id });
+  const { storeFilter, meseFiltro } = FS;
+  const setStoreFilter = (v: string) => setCampo("storeFilter", v);
+  const setMeseFiltro = (v: string) => setCampo("meseFiltro", v);
   const [mostraTutto, setMostraTutto] = useState(false);
 
   const cutoff = useMemo(() => {
