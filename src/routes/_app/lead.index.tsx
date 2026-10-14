@@ -15,6 +15,7 @@ import { FiltriCollassabili, SchedaLista, ElencoSchede } from "@/components/list
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -101,26 +102,53 @@ function LeadListaPage() {
   const canSee = useMemo(() => puoAccedereLead(roles as string[]), [roles]);
   const canManage = useMemo(() => puoGestireLead(roles as string[]), [roles]);
 
-  const [ambito, setAmbito] = useState<LeadAmbito>("commerciale");
-  const [tab, setTab] = useState<Vista>("attivi");
-  const [search, setSearch] = useState("");
-  const [searchInput, setSearchInput] = useState("");
-  const [stato, setStato] = useState<string[]>([]);
-  const [tipoLead, setTipoLead] = useState(TUTTI);
-  const [tipoSoggetto, setTipoSoggetto] = useState(TUTTI);
-
-  const [fonte, setFonte] = useState(TUTTI);
-  const [priorita, setPriorita] = useState(TUTTI);
-  const [mestiere, setMestiere] = useState(TUTTI);
-  const [storeFiltro, setStoreFiltro] = useState<string[]>([]);
-  const [agente, setAgente] = useState<string[]>([]);
-  const [assegnatario, setAssegnatario] = useState<string[]>([]);
-  const [evento, setEvento] = useState(TUTTI);
-  const [giorni, setGiorni] = useState("0");
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
-  const [sortBy, setSortBy] = useState("created_at");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  // Filtri conservati con la fonte unica useFiltriPagina (array validati al ripristino).
+  const { user: utenteFiltri } = useAuth();
+  const arrayStringhe = (v: unknown) => Array.isArray(v) && v.every((x) => typeof x === "string");
+  const { filtri: F, setCampo, reset: resetFiltriSalvati } = useFiltriPagina("lead", {
+    ambito: "commerciale" as LeadAmbito,
+    tab: "attivi" as Vista,
+    searchInput: "",
+    search: "",
+    stato: [] as string[],
+    tipoLead: TUTTI as string,
+    tipoSoggetto: TUTTI as string,
+    fonte: TUTTI as string,
+    priorita: TUTTI as string,
+    mestiere: TUTTI as string,
+    storeFiltro: [] as string[],
+    agente: [] as string[],
+    assegnatario: [] as string[],
+    evento: TUTTI as string,
+    giorni: "0",
+    page: 1,
+    pageSize: 25,
+    sortBy: "created_at" as string,
+    sortDir: "desc" as "asc" | "desc",
+  }, {
+    userId: utenteFiltri?.id,
+    valida: { stato: arrayStringhe, storeFiltro: arrayStringhe, agente: arrayStringhe, assegnatario: arrayStringhe },
+  });
+  const { ambito, tab, search, searchInput, stato, tipoLead, tipoSoggetto, fonte, priorita, mestiere, storeFiltro, agente, assegnatario, evento, giorni, page, pageSize, sortBy, sortDir } = F;
+  const setAmbito = (v: LeadAmbito) => setCampo("ambito", v);
+  const setTab = (v: Vista) => setCampo("tab", v);
+  const setSearch = (v: string) => setCampo("search", v);
+  const setSearchInput = (v: string) => setCampo("searchInput", v);
+  const setStato = (v: string[]) => setCampo("stato", v);
+  const setTipoLead = (v: string) => setCampo("tipoLead", v);
+  const setTipoSoggetto = (v: string) => setCampo("tipoSoggetto", v);
+  const setFonte = (v: string) => setCampo("fonte", v);
+  const setPriorita = (v: string) => setCampo("priorita", v);
+  const setMestiere = (v: string) => setCampo("mestiere", v);
+  const setStoreFiltro = (v: string[]) => setCampo("storeFiltro", v);
+  const setAgente = (v: string[]) => setCampo("agente", v);
+  const setAssegnatario = (v: string[]) => setCampo("assegnatario", v);
+  const setEvento = (v: string) => setCampo("evento", v);
+  const setGiorni = (v: string) => setCampo("giorni", v);
+  const setPage = (v: number | ((p: number) => number)) => setCampo("page", v);
+  const setPageSize = (v: number) => setCampo("pageSize", v);
+  const setSortBy = (v: string) => setCampo("sortBy", v);
+  const setSortDir = (v: "asc" | "desc" | ((d: "asc" | "desc") => "asc" | "desc")) => setCampo("sortDir", v);
   const [selezionati, setSelezionati] = useState<Set<string>>(new Set());
   const [caricandoTutti, setCaricandoTutti] = useState(false);
   const [confermaSposta, setConfermaSposta] = useState(false);
@@ -175,16 +203,14 @@ function LeadListaPage() {
     [stato, storeFiltro, agente, assegnatario].filter((v) => v.length > 0).length +
     (search ? 1 : 0);
 
-  function resetFiltri() {
-    setStato([]); setTipoLead(TUTTI); setTipoSoggetto(TUTTI); setFonte(TUTTI); setPriorita(TUTTI);
-    setStoreFiltro([]); setAgente([]); setAssegnatario([]); setMestiere(TUTTI); setEvento(TUTTI);
-    setSearch(""); setSearchInput(""); setPage(1);
+  // Azzera: default dell'hook, mantenendo ambito, tab, ordinamento e dimensione pagina.
+  function resetFiltri(ambitoDopo: LeadAmbito = ambito) {
+    resetFiltriSalvati({ ambito: ambitoDopo, tab, sortBy, sortDir, pageSize });
   }
 
   function cambiaAmbito(a: LeadAmbito) {
     if (a === ambito) return;
-    setAmbito(a);
-    resetFiltri();
+    resetFiltri(a);
     setSelezionati(new Set());
   }
 
@@ -542,7 +568,7 @@ function LeadListaPage() {
         <FiltriCollassabili
           attivi={attiviCount}
           azioni={
-            <Button variant="ghost" size="sm" onClick={resetFiltri} className="gap-1 h-7">
+            <Button variant="ghost" size="sm" onClick={() => resetFiltri()} className="gap-1 h-7">
               <X className="size-3.5" /> Azzera tutti
             </Button>
           }

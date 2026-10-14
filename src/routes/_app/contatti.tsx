@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Search, Users, Star, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 
@@ -33,12 +34,19 @@ function fmtDate(v: unknown): string {
 function ContattiPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { role } = useAuth();
+  const { role, user } = useAuth();
   const isStoreManager = role === "store_manager";
-  const [search, setSearch] = useState("");
-  const [storeId, setStoreId] = useState("all");
-  const [clienteId, setClienteId] = useState("all");
-  const [statoConsenso, setStatoConsenso] = useState("tutti");
+  // Filtri conservati con la fonte unica useFiltriPagina.
+  const { filtri: F, setCampo } = useFiltriPagina("contatti", {
+    search: "", storeId: "all", clienteId: "all", statoConsenso: "tutti",
+  }, { userId: user?.id });
+  const { search, clienteId, statoConsenso } = F;
+  // Store manager: filtro negozio non visibile, il valore salvato non si applica mai.
+  const storeId = isStoreManager ? "all" : F.storeId;
+  const setSearch = (v: string) => setCampo("search", v);
+  const setStoreId = (v: string) => setCampo("storeId", v);
+  const setClienteId = (v: string) => setCampo("clienteId", v);
+  const setStatoConsenso = (v: string) => setCampo("statoConsenso", v);
   const [wizardOpen, setWizardOpen] = useState(false);
 
   const attiviCount = [

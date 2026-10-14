@@ -6,6 +6,7 @@ import { Search, Plus, Pencil, Target } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -40,15 +41,22 @@ const PAGINA = 1000;
 function OpportunitaPage() {
   const qc = useQueryClient();
   const { puoEliminareOpportunita } = usePermessiCommerciale();
-  const { roles } = useAuth();
+  const { roles, user } = useAuth();
   const isTrasversale = roles.some((r) =>
     ["amministratore", "amministrazione", "direzione", "marketing", "store_manager", "responsabile_agenti"].includes(r),
   );
 
-  const [search, setSearch] = useState("");
-  const [statoF, setStatoF] = useState<string>("tutti");
-  const [tipoF, setTipoF] = useState<string>("tutti");
-  const [agenteF, setAgenteF] = useState<string>("tutti");
+  // Filtri conservati con la fonte unica useFiltriPagina.
+  const { filtri: F, setCampo, reset: resetFiltri } = useFiltriPagina("opportunita", {
+    search: "", statoF: "tutti" as string, tipoF: "tutti" as string, agenteF: "tutti" as string,
+  }, { userId: user?.id });
+  const { search, statoF, tipoF } = F;
+  // Filtro agente non visibile (non trasversale): il valore salvato non si applica.
+  const agenteF = isTrasversale ? F.agenteF : "tutti";
+  const setSearch = (v: string) => setCampo("search", v);
+  const setStatoF = (v: string) => setCampo("statoF", v);
+  const setTipoF = (v: string) => setCampo("tipoF", v);
+  const setAgenteF = (v: string) => setCampo("agenteF", v);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [inModifica, setInModifica] = useState<OpportunitaRow | null>(null);
 
@@ -174,7 +182,7 @@ function OpportunitaPage() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => { setSearch(""); setStatoF("tutti"); setTipoF("tutti"); setAgenteF("tutti"); }}
+              onClick={() => resetFiltri()}
             >
               Azzera
             </Button>
