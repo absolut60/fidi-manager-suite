@@ -10,6 +10,7 @@ export interface AppConfig {
   sollecito_massivo_blocco: number;
   sollecito_massivo_pausa_sec: number;
   spese_insoluto_riba_eur: number;
+  tolleranza_ritardo_pagamento_gg: number;
 }
 
 const DEFAULTS: AppConfig = {
@@ -21,6 +22,7 @@ const DEFAULTS: AppConfig = {
   sollecito_massivo_blocco: 12,
   sollecito_massivo_pausa_sec: 60,
   spese_insoluto_riba_eur: 3,
+  tolleranza_ritardo_pagamento_gg: 5,
 };
 
 export function useConfig(): AppConfig {

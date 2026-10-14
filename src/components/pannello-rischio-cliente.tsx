@@ -15,6 +15,7 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useEsperienzaPagamentoCliente } from "@/hooks/use-esperienza-pagamento";
 import { getFidoAttuale } from "@/lib/fido-cliente";
 import { formatEuro, formatDate } from "@/lib/fidi";
 import { semaforoUI, type SemaforoStadio } from "@/lib/semaforo-ui";
@@ -152,27 +153,7 @@ export function PannelloRischioCliente({
     },
   });
 
-  const { data: esp } = useQuery({
-    queryKey: ["esperienza-pagamento", cliente?.id],
-    staleTime: 5 * 60_000,
-    gcTime: 30 * 60_000,
-    enabled: !!cliente?.id,
-    queryFn: async () => {
-      const { data, error } = await (supabase as any).rpc("get_esperienza_pagamento_cliente", {
-        p_cliente_id: cliente.id,
-      });
-      if (error) throw error;
-      const row = Array.isArray(data) ? data[0] : data;
-      if (!row) return null;
-      return {
-        nPagate: Number(row.n_pagate ?? 0),
-        nInRitardo: Number(row.n_in_ritardo ?? 0),
-        pctInRitardo: row.perc_in_ritardo != null ? Number(row.perc_in_ritardo) : null,
-        ritardoMedio: row.ritardo_medio_gg != null ? Number(row.ritardo_medio_gg) : null,
-        maxRitardo: row.max_ritardo_gg != null ? Number(row.max_ritardo_gg) : null,
-      };
-    },
-  });
+  const { data: esp } = useEsperienzaPagamentoCliente(cliente?.id);
 
   const { data: sem } = useQuery<SemaforoData>({
     queryKey: ["semaforo-affidabilita", cliente?.id],

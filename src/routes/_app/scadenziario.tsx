@@ -27,6 +27,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
+import { useEsperienzaPagamentoCliente, testiPagateInRitardo } from "@/hooks/use-esperienza-pagamento";
 import { useAzioniRecuperoCliente, useOperatoriAttivita, useStadioSollecitoCliente } from "@/hooks/use-azioni-recupero-cliente";
 import { TIPO_AZIONE_ICON, TIPO_AZIONE_LABEL, testoAzione } from "@/lib/azioni-recupero-ui";
 import { StadioSollecitoBadge } from "@/components/stadio-sollecito-badge";
@@ -1086,6 +1087,7 @@ function ScadenziarioPage() {
                             <ExpandedRischioPanel
                               loading={loadingRischio}
                               data={rischioExpanded}
+                              clienteId={r.cliente_id}
                               onApri={(e: React.MouseEvent) => { e.stopPropagation(); apriCliente(r.cliente_id); }}
                             />
                             <div className="pt-3 border-t">
@@ -1152,6 +1154,7 @@ function ScadenziarioPage() {
               <ExpandedRischioPanel
                 loading={loadingRischioMobile}
                 data={rischioMobile}
+                clienteId={schedaMobile.cliente_id}
                 onApri={(e) => { e.stopPropagation(); apriCliente(schedaMobile.cliente_id); }}
               />
               <div className="pt-3 border-t">
@@ -1377,7 +1380,10 @@ function PromesseAttiveBlock({ clienteId }: { clienteId: string }) {
 }
 
 
-function ExpandedRischioPanel({ loading, data, onApri }: { loading: boolean; data: RischioData; onApri: (e: React.MouseEvent) => void }) {
+function ExpandedRischioPanel({ loading, data, onApri, clienteId }: { loading: boolean; data: RischioData; onApri: (e: React.MouseEvent) => void; clienteId: string }) {
+  // Montato solo con la riga espansa: la query parte solo allora.
+  const { data: esp } = useEsperienzaPagamentoCliente(clienteId);
+  const pr = testiPagateInRitardo(esp);
   if (loading) {
     return (
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -1402,8 +1408,14 @@ function ExpandedRischioPanel({ loading, data, onApri }: { loading: boolean; dat
         <CellInfo label="DDT da fatturare" value={fmtEuro(ddt)} cls={ddt > 0 ? "text-primary font-medium" : ""} />
         <CellInfo label="Ordini aperti" value={fmtEuro(ord)} hint="(non concorre)" />
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3 text-sm">
         <CellInfo label="Insoluti storici" value={ni == null ? "—" : String(ni)} cls={ni != null && Number(ni) > 0 ? "text-destructive font-medium" : ""} />
+        {/* Sotto lg: riga intera in fondo (niente cella orfana); da lg subito dopo Insoluti. */}
+        <div className="min-w-0 col-span-2 sm:col-span-4 lg:col-span-1 order-last lg:order-none" title={pr.titolo}>
+          <p className="text-[10px] font-medium text-muted-foreground uppercase truncate">{pr.label}</p>
+          <p className={`tabular-nums break-words ${pr.inRitardo ? "text-destructive font-medium" : ""}`}>{pr.valore}</p>
+          {pr.dettaglio && <p className="text-[11px] text-muted-foreground break-words">{pr.dettaglio}</p>}
+        </div>
         <CellInfo label="Effetti a rischio" value={fmtEuro(eff)} cls={eff > 0 ? "text-orange-600 font-medium" : ""} />
         <CellInfo label="Dilaz. concordata" value={d.dilazione_concordata != null ? `${d.dilazione_concordata} gg` : "—"} />
         <CellInfo label="Ritardo medio" value={r.text} cls={r.cls} />

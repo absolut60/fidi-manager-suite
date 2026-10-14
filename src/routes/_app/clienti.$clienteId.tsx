@@ -63,6 +63,7 @@ import { OpportunitaSoggettoLista } from "@/components/opportunita-soggetto-list
 import { ClienteCantieriTab } from "@/components/cliente-cantieri-tab";
 import { ClienteStoricoFidoTab } from "@/components/cliente-storico-fido-tab";
 import { ClienteInsolutiTab } from "@/components/cliente-insoluti-tab";
+import { useEsperienzaPagamentoCliente, testiPagateInRitardo } from "@/hooks/use-esperienza-pagamento";
 import { ClienteAttivitaRecuperoTab } from "@/components/cliente-attivita-recupero-tab";
 import { AllegatiSection } from "@/components/allegati-section";
 import { ClienteFatturato } from "@/components/cliente-fatturato";
@@ -933,6 +934,8 @@ function fmtDateIt(v: unknown): string {
 function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string }) {
   const config = useConfig();
   const navigate = useNavigate();
+  const { data: espPag } = useEsperienzaPagamentoCliente(clienteId);
+  const pagRit = testiPagateInRitardo(espPag);
   const vaiAlTab = (tab: string) =>
     navigate({
       to: "/clienti/$clienteId",
@@ -1252,18 +1255,25 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
           const ni = cliente.num_insoluti;
           const dc = cliente.dilazione_concordata;
           const de = cliente.dilazione_effettiva;
-          if (ni == null && dc == null && de == null) return null;
+          if (ni == null && dc == null && de == null && !(espPag && espPag.nPagate > 0)) return null;
           const r = ritardoHelper(dc, de);
           return (
             <Card className="p-4 rounded-xl border-l-[3px] border-l-slate-400">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-700 flex items-center gap-1.5 mb-3">
                 <Clock className="size-3.5" /> Comportamento pagamento
               </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
                 <MiniStat
                   label="Insoluti storici"
                   value={ni == null ? "—" : String(ni)}
                   tone={ni != null && Number(ni) > 0 ? "destructive" : "default"}
+                />
+                <MiniStat
+                  label={pagRit.label}
+                  value={pagRit.valore}
+                  tone={pagRit.inRitardo ? "destructive" : "default"}
+                  hint={pagRit.dettaglio}
+                  title={pagRit.titolo}
                 />
                 <MiniStat label="Dilazione concordata" value={dc != null ? `${dc} gg` : "—"} />
                 <MiniStat

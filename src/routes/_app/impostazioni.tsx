@@ -726,6 +726,7 @@ const CONFIG_FIELDS: {
   { chiave: "soglia_livello_2", label: "Soglia Livello 2", suffix: "€", hint: "Importo massimo gestito dal liv. 2 (oltre serve liv. 3)" },
   { chiave: "durata_default_mesi", label: "Durata di default", suffix: "mesi", hint: "Durata del fido proposta nelle nuove richieste" },
   { chiave: "reminder_giorni_scadenza", label: "Reminder scadenza", suffix: "giorni", hint: "Giorni di anticipo per segnalare i fidi in scadenza" },
+  { chiave: "tolleranza_ritardo_pagamento_gg", label: "Tolleranza ritardo pagamenti", suffix: "giorni", hint: "Un pagamento conta come in ritardo solo se arriva oltre questi giorni dopo la scadenza (bonifico o RiBa). Usato in Scadenziario, scheda cliente e quadro richieste fido." },
   {
     chiave: "cutoff_cliente_attivo_anno",
     label: "Anno attività cliente",
@@ -854,6 +855,11 @@ function ConfigurazioniCard() {
       if (!isFinite(mesi) || !Number.isInteger(mesi) || mesi < 1 || mesi > 36) {
         throw new Error("Finestra fido teorico non valida (1–36 mesi)");
       }
+      const tollRaw = String(values.tolleranza_ritardo_pagamento_gg ?? "").trim();
+      const toll = Number(tollRaw);
+      if (tollRaw !== "" && (!Number.isInteger(toll) || toll < 0)) {
+        throw new Error("Tolleranza ritardo pagamenti non valida (numero intero di giorni ≥ 0)");
+      }
       const updates = CONFIG_FIELDS.map((f) =>
         supabase.from("configurazioni").update({ valore: values[f.chiave] ?? "" }).eq("chiave", f.chiave)
       );
@@ -865,6 +871,7 @@ function ConfigurazioniCard() {
     onSuccess: () => {
       toast.success("Parametri aggiornati");
       qc.invalidateQueries({ queryKey: ["configurazioni"] });
+      qc.invalidateQueries({ queryKey: ["esperienza-pagamento"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
