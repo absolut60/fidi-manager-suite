@@ -213,7 +213,7 @@ function RecuperoCreditiPage() {
   const setDataDa = (d: Date | undefined) => setCampo("dataDa", d ? format(d, "yyyy-MM-dd") : "");
   const setDataA = (d: Date | undefined) => setCampo("dataA", d ? format(d, "yyyy-MM-dd") : "");
   const setTab = (v: TabKey) => setCampo("tab", v);
-  const setSoloRitardo = (v: boolean) => setCampo("soloRitardo", v);
+  const setSoloRitardo = (v: boolean | ((p: boolean) => boolean)) => setCampo("soloRitardo", v);
   const setStadioFilter = (v: StadioFilter) => setCampo("stadioFilter", v);
   const setSortKey = (v: SortKey) => setCampo("sortKey", v);
   const setSortDir = (v: "asc" | "desc" | ((d: "asc" | "desc") => "asc" | "desc")) => setCampo("sortDir", v);
