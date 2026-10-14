@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { ChevronDown, ChevronUp, Users, Euro, CalendarClock, Gavel, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { formatEuro, formatDate } from "@/lib/fidi";
 import { classificaScadenza, isAnticipo } from "@/lib/scadenze";
@@ -119,15 +120,20 @@ function RecuperoAgenziaPage() {
   const tab: Tab = tabRaw === "storico" ? "storico" : "da_gestire";
   const navigate = useNavigate({ from: "/recupero-agenzia" });
   const isMobile = useIsMobile();
-  const { roles } = useAuth();
+  const { roles, user } = useAuth();
   const puoChiudere = (["amministratore", "direzione", "amministrazione"] as string[]).some((r) =>
     (roles as string[]).includes(r),
   );
 
   const { data: righe = [], isLoading, error } = useIngressi();
-  const [cerca, setCerca] = useState("");
-  const [negozio, setNegozio] = useState("tutti");
-  const [ordina, setOrdina] = useState<Ordina>("rilevato");
+  // Filtri e ordinamento conservati (useFiltriPagina); la scheda resta nell'URL (?tab=).
+  const { filtri: FA, setCampo } = useFiltriPagina("recupero-agenzia", {
+    cerca: "", negozio: "tutti", ordina: "rilevato" as Ordina,
+  }, { userId: user?.id });
+  const { cerca, negozio, ordina } = FA;
+  const setCerca = (v: string) => setCampo("cerca", v);
+  const setNegozio = (v: string) => setCampo("negozio", v);
+  const setOrdina = (v: Ordina) => setCampo("ordina", v);
   const [espansaId, setEspansaId] = useState<string | null>(null);
   const [chiudi, setChiudi] = useState<Riga | null>(null);
 

@@ -1,5 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
+import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { AlertTriangle, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -53,19 +55,30 @@ function BadgeVariazione({ tipo }: { tipo: string | null }) {
 
 function ClientiVariazioniBloccoPage() {
   const navigate = useNavigate();
-  const [tipo, setTipo] = useState<"tutte" | "bloccato" | "sbloccato">("tutte");
-  const [search, setSearch] = useState("");
-  const [qApplied, setQApplied] = useState("");
-  const [storeId, setStoreId] = useState("all");
-  const [pagina, setPagina] = useState(0);
+  // Filtri e pagina conservati (useFiltriPagina).
+  const { user } = useAuth();
+  const { filtri: FV, setCampo } = useFiltriPagina("clienti-variazioni-blocco", {
+    tipo: "tutte" as "tutte" | "bloccato" | "sbloccato", search: "", storeId: "all", pagina: 0,
+  }, { userId: user?.id });
+  const { tipo, search, pagina } = FV;
+  const setTipo = (v: typeof tipo) => setCampo("tipo", v);
+  const setSearch = (v: string) => setCampo("search", v);
+  const setStoreId = (v: string) => setCampo("storeId", v);
+  const setPagina = (v: number | ((p: number) => number)) => setCampo("pagina", v);
+  const [qApplied, setQApplied] = useState(() => FV.search.trim());
 
-  // Ricerca con debounce: aggiorna la query lato server solo dopo una pausa
+  // Ricerca con debounce: aggiorna la query lato server solo dopo una pausa.
+  // La pagina torna a 0 solo se la ricerca applicata cambia davvero (non al montaggio).
   useEffect(() => {
     const t = setTimeout(() => {
-      setQApplied(search.trim());
-      setPagina(0);
+      const nuova = search.trim();
+      setQApplied((prev) => {
+        if (prev !== nuova) setPagina(0);
+        return nuova;
+      });
     }, 300);
     return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
 
   const attiviCount = [
@@ -92,6 +105,8 @@ function ClientiVariazioniBloccoPage() {
     },
   });
   const showStoreFilter = (negozi?.length ?? 0) > 1;
+  // Filtro negozio non visibile (un solo negozio): il valore salvato non si applica.
+  const storeId = showStoreFilter ? FV.storeId : "all";
 
   const { data, isLoading } = useQuery({
     queryKey: ["clienti-variazioni-blocco", tipo, qApplied, storeId, pagina],

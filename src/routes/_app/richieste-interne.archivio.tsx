@@ -51,7 +51,7 @@ function ArchivioRichieste() {
         <h1 className="text-2xl font-semibold">Archivio richieste</h1>
         <p className="text-sm text-muted-foreground">Richieste archiviate (sola lettura)</p>
       </div>
-      <RichiesteTable
+      <RichiesteTable chiaveFiltri="richieste-interne:archivio"
         rows={data}
         isLoading={isLoading}
         showArchivedColumns
