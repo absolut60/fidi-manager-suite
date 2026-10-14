@@ -51,6 +51,43 @@ async function downloadWorkbook(filePath: string, sheets?: string[]) {
 }
 
 /**
+ * Unica regola di sostituzione delle anomalie (tutti gli import): cancella SOLO
+ * le anomalie con stato 'in_attesa' appartenenti a import PRECEDENTI della
+ * STESSA fonte (importazioni.fonte), escluso l'import corrente. Non tocca mai
+ * anomalie risolte/gestite (es. registro 'scadenza_non_nel_file'), con
+ * importazione_id NULL o di altre fonti. Filtro lato DB; errore non bloccante.
+ * Va chiamata una sola volta all'avvio dentro uno step.run (replay-safe).
+ */
+export async function resetAnomalieAperteFonte(
+  fonte: string,
+  importazioneIdCorrente: string,
+): Promise<void> {
+  try {
+    const { data: imp, error: impErr } = await supabaseAdmin
+      .from("importazioni")
+      .select("id")
+      .eq("fonte", fonte as never)
+      .neq("id", importazioneIdCorrente)
+      .limit(5000);
+    if (impErr) {
+      console.warn(`reset anomalie ${fonte}: lettura importazioni fallita: ${impErr.message}`);
+      return;
+    }
+    const ids = ((imp ?? []) as { id: string }[]).map((r) => r.id);
+    for (let i = 0; i < ids.length; i += 200) {
+      const { error } = await supabaseAdmin
+        .from("anomalie_import" as never)
+        .delete()
+        .eq("stato", "in_attesa" as never)
+        .in("importazione_id", ids.slice(i, i + 200) as never);
+      if (error) console.warn(`reset anomalie ${fonte} fallito: ${error.message}`);
+    }
+  } catch (e) {
+    console.warn(`reset anomalie ${fonte} fallito: ${e instanceof Error ? e.message : String(e)}`);
+  }
+}
+
+/**
  * Unico punto che chiude un import: scrive la riga di `importazioni` con i
  * campi passati (stato, completata_at, log_errori, problemi, ...) e subito dopo
  * lancia l'evento `import/esito.notifica` per l'avviso a chi l'ha avviato
@@ -571,18 +608,11 @@ export const processAnagraficaImport = inngest.createFunction(
           .eq("id", importazioneId);
       });
 
-      // STEP 2.5: svuotamento anomalie_import (una sola volta, prima dei chunk)
-      // A regime: la tabella contiene SOLO la fotografia dell'import corrente.
-      // Eseguito qui nel setup -> NON dentro il loop dei chunk.
-      await step.run("reset-anomalie-import", async () => {
-        const { error } = await supabaseAdmin
-          .from("anomalie_import" as never)
-          .delete()
-          .gte("created_at", "1900-01-01");
-        if (error) {
-          logger.warn(`reset anomalie_import fallito: ${error.message}`);
-        }
-      });
+      // STEP 2.5: sostituisce solo le anomalie aperte dei precedenti import
+      // anagrafica (una sola volta, prima dei chunk). Storico e altre fonti restano.
+      await step.run("reset-anomalie-aperte-fonte", () =>
+        resetAnomalieAperteFonte("anagrafica", importazioneId),
+      );
 
       // STEP 2.6: anomalia informativa per le intestazioni non riconosciute
       const colonneIgnorate = (init as { colonneIgnorate?: string[] }).colonneIgnorate ?? [];
@@ -1446,6 +1476,9 @@ export const processRischioImport = inngest.createFunction(
     const { importazioneId, filePath } = event.data as EventData;
     const stagingBase = `_rischio_staging/${importazioneId}`;
     try {
+      await step.run("reset-anomalie-aperte-fonte", () =>
+        resetAnomalieAperteFonte("analisi_rischio", importazioneId),
+      );
       // STEP 1 — parse + staging su Storage (memoizzato)
       const initResult = await step.run("parse-and-stage", async () => {
         const wb = await downloadWorkbook(filePath);
@@ -1712,6 +1745,10 @@ export const processScadenziarioImport = inngest.createFunction(
   async ({ event, step, logger }) => {
     const { importazioneId, filePath, userId } = event.data as EventData;
     try {
+      // Una sola volta nel job padre (mai nei chunk), prima che i chunk scrivano anomalie.
+      await step.run("reset-anomalie-aperte-fonte", () =>
+        resetAnomalieAperteFonte("scadenziario", importazioneId),
+      );
       if (filePath.startsWith("_staging/") && filePath.endsWith("/manifest.json")) {
         const manifest = await step.run("load-staged-manifest", async () => {
           return downloadJsonFromStorage<StagedScadenziarioManifest>(filePath);
@@ -2423,6 +2460,9 @@ export const processScadAssicImport = inngest.createFunction(
   async ({ event, step, logger }) => {
     const { importazioneId, filePath, userId } = event.data as EventData;
     try {
+      await step.run("reset-anomalie-aperte-fonte", () =>
+        resetAnomalieAperteFonte("scadenziario_assicurazioni", importazioneId),
+      );
       // Parse fuori da step.run: workbook può eccedere il limite ~4MB
       const wb = await downloadWorkbook(filePath);
       const findSheet = (kw: string) => {
@@ -3075,6 +3115,10 @@ export const processBloccoFidoImport = inngest.createFunction(
       // STEP 2: init-importazione — REPLAY-SAFE
       // - genera timestampInizio UNA SOLA VOLTA (cached da Inngest tra i replay)
       // - resetta i contatori UNA SOLA VOLTA (non più riazzerati a ogni replay)
+      await step.run("reset-anomalie-aperte-fonte", () =>
+        resetAnomalieAperteFonte("blocco_fido_assicurazione", importazioneId),
+      );
+
       const init = await step.run("init-importazione", async () => {
         const ts = new Date().toISOString();
         logger.info(
