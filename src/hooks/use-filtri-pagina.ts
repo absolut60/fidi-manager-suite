@@ -12,7 +12,9 @@ import { useCallback, useEffect, useState } from "react";
  */
 type Aggiornamento<V> = V | ((prev: V) => V);
 
-function leggi<T extends Record<string, unknown>>(chiave: string, defaults: T): T {
+type Validatori<T> = { [K in keyof T]?: (v: unknown) => boolean };
+
+function leggi<T extends Record<string, unknown>>(chiave: string, defaults: T, valida?: Validatori<T>): T {
   if (typeof window === "undefined") return { ...defaults };
   try {
     const raw = window.sessionStorage.getItem(chiave);
@@ -23,7 +25,13 @@ function leggi<T extends Record<string, unknown>>(chiave: string, defaults: T): 
     for (const k of Object.keys(defaults)) {
       const v = (salvati as Record<string, unknown>)[k];
       // Ignora valori assenti o di tipo diverso dal default
-      if (v !== undefined && typeof v === typeof defaults[k] && v !== null) out[k] = v;
+      if (v === undefined || v === null || typeof v !== typeof defaults[k]) continue;
+      // Array salvati solo se anche il default è un array
+      if (Array.isArray(defaults[k]) !== Array.isArray(v)) continue;
+      // Oggetti/tuple: forma verificata dal validatore della pagina, altrimenti default
+      const check = valida?.[k as keyof T];
+      if (check && !check(v)) continue;
+      out[k] = v;
     }
     return out as T;
   } catch {
@@ -45,16 +53,26 @@ function scrivi<T extends Record<string, unknown>>(chiave: string, valori: T, de
 export function useFiltriPagina<T extends Record<string, unknown>>(
   chiavePagina: string,
   defaults: T,
-  opzioni?: { userId?: string | null },
+  opzioni?: {
+    userId?: string | null;
+    /** Al montaggio parte dai defaults ignorando i salvati (es. link con filtri nell'URL). */
+    partiDaiDefault?: boolean;
+    /** Validatori di forma per oggetti/tuple/array salvati. */
+    valida?: Validatori<T>;
+  },
 ) {
   const chiave = `filtri:${opzioni?.userId ?? "anon"}:${chiavePagina}`;
   const [defaultsIniziali] = useState(defaults);
-  const [stato, setStato] = useState(() => ({ chiave, valori: leggi(chiave, defaultsIniziali) }));
+  const [valida] = useState(() => opzioni?.valida);
+  const [stato, setStato] = useState(() => ({
+    chiave,
+    valori: opzioni?.partiDaiDefault ? { ...defaultsIniziali } : leggi(chiave, defaultsIniziali, valida),
+  }));
 
   // Cambio utente/chiave: ricarica subito i valori della nuova chiave (durante il render).
   let corrente = stato;
   if (stato.chiave !== chiave) {
-    corrente = { chiave, valori: leggi(chiave, defaultsIniziali) };
+    corrente = { chiave, valori: leggi(chiave, defaultsIniziali, valida) };
     setStato(corrente);
   }
 
@@ -71,8 +89,11 @@ export function useFiltriPagina<T extends Record<string, unknown>>(
     });
   }, []);
 
-  const setParziale = useCallback((parziale: Partial<T>) => {
-    setStato((s) => ({ chiave: s.chiave, valori: { ...s.valori, ...parziale } }));
+  const setParziale = useCallback((parziale: Partial<T> | ((prev: T) => Partial<T>)) => {
+    setStato((s) => ({
+      chiave: s.chiave,
+      valori: { ...s.valori, ...(typeof parziale === "function" ? parziale(s.valori) : parziale) },
+    }));
   }, []);
 
   /** Torna ai defaults (con eventuali eccezioni) e cancella la memoria. */
