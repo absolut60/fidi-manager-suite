@@ -42,7 +42,7 @@ export function RegistraPromessaDialog({
   const qc = useQueryClient();
   const { user } = useAuth();
 
-  const [dataPromessa, setDataPromessa] = useState<string>(todayISO());
+  const [dataPromessa, setDataPromessa] = useState<string>("");
   const [importo, setImporto] = useState<string>("");
   const [note, setNote] = useState<string>("");
   const [saving, setSaving] = useState(false);
@@ -51,7 +51,7 @@ export function RegistraPromessaDialog({
 
   useEffect(() => {
     if (open) {
-      setDataPromessa(todayISO());
+      setDataPromessa("");
       setImporto("");
       setNote("");
       setSaving(false);
@@ -87,6 +87,10 @@ export function RegistraPromessaDialog({
     if (saving) return;
     if (!dataPromessa) {
       toast.error("Indica la data della promessa");
+      return;
+    }
+    if (dataPromessa < todayISO()) {
+      toast.error("La data della promessa non può essere nel passato");
       return;
     }
     const importoNum = importo.trim() ? Number(importo.replace(",", ".")) : null;
@@ -161,9 +165,13 @@ export function RegistraPromessaDialog({
               <Input
                 id="promessa-data"
                 type="date"
+                min={todayISO()}
                 value={dataPromessa}
                 onChange={(e) => setDataPromessa(e.target.value)}
               />
+              <p className="text-xs text-muted-foreground">
+                Entro quando il cliente ha promesso di pagare
+              </p>
             </div>
             <div className="space-y-1.5">
               <div className="flex items-center justify-between gap-2">
