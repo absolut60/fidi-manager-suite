@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, Fragment } from "react";
+import { useEffect, useMemo, useRef, useState, Fragment } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, CalendarClock as CalendarClockIcon } from "lucide-react";
 import { FiltriCollassabili, SchedaLista, ElencoSchede } from "@/components/lista-responsive";
@@ -31,6 +31,7 @@ import { RegistraPromessaSelectorDialog } from "@/components/registra-promessa-s
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -158,31 +159,66 @@ type ClienteAgg = {
 type StadioFilter = "all" | "0" | "1" | "2" | "3";
 
 
+/** "AAAA-MM-GG" → Date locale a mezzanotte (come quella del selettore); "" o non valida → undefined. */
+function daIsoGiorno(v: string): Date | undefined {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
+  if (!m) return undefined;
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return Number.isNaN(d.getTime()) ? undefined : d;
+}
+
 function RecuperoCreditiPage() {
-  const { role, profilo, roles } = useAuth();
+  const { role, profilo, roles, user } = useAuth();
   const puoInviare = puoInviareComunicazioniRecupero(roles as string[]);
   const isStoreManager = role === "store_manager";
   const isAgente = role === "agente";
   const isRistretto = isStoreManager || isAgente;
   const myStoreId = profilo?.store_id ?? null;
 
-  // Filters
-  const [storeId, setStoreId] = useState<string>(
-    isStoreManager && myStoreId ? myStoreId : "all"
-  );
-  const [esitoFilter, setEsitoFilter] = useState<Set<Esito>>(new Set());
-  const [tipoFilter, setTipoFilter] = useState<Set<Tipo>>(new Set());
-  const [operatoreId, setOperatoreId] = useState<string>("all");
-  const [search, setSearch] = useState("");
-  const [searchDebounced, setSearchDebounced] = useState("");
-  const [dataDa, setDataDa] = useState<Date | undefined>();
-  const [dataA, setDataA] = useState<Date | undefined>();
-  const [tab, setTab] = useState<TabKey>("aperti");
-  const [soloRitardo, setSoloRitardo] = useState(false);
-  const [stadioFilter, setStadioFilter] = useState<StadioFilter>("all");
-  const [sortKey, setSortKey] = useState<SortKey>("priorita");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
-  const [page, setPage] = useState(1);
+  // Filters — conservati con la fonte unica useFiltriPagina.
+  // Set salvati come array di stringhe, date come "AAAA-MM-GG" ("" = nessuna).
+  const arrayStringhe = (v: unknown) => Array.isArray(v) && v.every((x) => typeof x === "string");
+  const { filtri: F, setCampo } = useFiltriPagina("recupero-crediti", {
+    storeId: "all" as string,
+    esitoFilter: [] as string[],
+    tipoFilter: [] as string[],
+    operatoreId: "all" as string,
+    search: "",
+    dataDa: "",
+    dataA: "",
+    tab: "aperti" as TabKey,
+    soloRitardo: false,
+    stadioFilter: "all" as StadioFilter,
+    sortKey: "priorita" as SortKey,
+    sortDir: "asc" as "asc" | "desc",
+    page: 1,
+  }, {
+    userId: user?.id,
+    valida: { esitoFilter: arrayStringhe, tipoFilter: arrayStringhe },
+  });
+  const { search, tab, soloRitardo, stadioFilter, sortKey, sortDir, page } = F;
+  // Store manager: sempre il proprio negozio, qualunque valore sia salvato.
+  const storeId = isStoreManager && myStoreId ? myStoreId : F.storeId;
+  // Agente/store manager: l'operatore salvato non viene mai applicato (come prima).
+  const operatoreId = isRistretto ? "all" : F.operatoreId;
+  const esitoFilter = useMemo(() => new Set(F.esitoFilter as Esito[]), [F.esitoFilter]);
+  const tipoFilter = useMemo(() => new Set(F.tipoFilter as Tipo[]), [F.tipoFilter]);
+  const dataDa = useMemo(() => daIsoGiorno(F.dataDa), [F.dataDa]);
+  const dataA = useMemo(() => daIsoGiorno(F.dataA), [F.dataA]);
+  const setStoreId = (v: string) => setCampo("storeId", v);
+  const setEsitoFilter = (v: Set<Esito>) => setCampo("esitoFilter", Array.from(v));
+  const setTipoFilter = (v: Set<Tipo>) => setCampo("tipoFilter", Array.from(v));
+  const setOperatoreId = (v: string) => setCampo("operatoreId", v);
+  const setSearch = (v: string) => setCampo("search", v);
+  const setDataDa = (d: Date | undefined) => setCampo("dataDa", d ? format(d, "yyyy-MM-dd") : "");
+  const setDataA = (d: Date | undefined) => setCampo("dataA", d ? format(d, "yyyy-MM-dd") : "");
+  const setTab = (v: TabKey) => setCampo("tab", v);
+  const setSoloRitardo = (v: boolean | ((p: boolean) => boolean)) => setCampo("soloRitardo", v);
+  const setStadioFilter = (v: StadioFilter) => setCampo("stadioFilter", v);
+  const setSortKey = (v: SortKey) => setCampo("sortKey", v);
+  const setSortDir = (v: "asc" | "desc" | ((d: "asc" | "desc") => "asc" | "desc")) => setCampo("sortDir", v);
+  const setPage = (v: number | ((p: number) => number)) => setCampo("page", v);
+  const [searchDebounced, setSearchDebounced] = useState(() => search.trim());
   const [expandedClienteId, setExpandedClienteId] = useState<string | null>(null);
   const [invioMassivoOpen, setInvioMassivoOpen] = useState(false);
   const [nuovaAzioneOpen, setNuovaAzioneOpen] = useState(false);
@@ -195,9 +231,15 @@ function RecuperoCreditiPage() {
     return () => clearTimeout(t);
   }, [search]);
 
+  // Reset pagina SOLO quando un filtro cambia davvero dopo il montaggio (firma precedente).
+  const firmaFiltri = JSON.stringify([storeId, F.esitoFilter, F.tipoFilter, operatoreId, searchDebounced, F.dataDa, F.dataA, tab, soloRitardo, stadioFilter, sortKey, sortDir]);
+  const firmaPrecedente = useRef(firmaFiltri);
   useEffect(() => {
+    if (firmaPrecedente.current === firmaFiltri) return;
+    firmaPrecedente.current = firmaFiltri;
     setPage(1);
-  }, [storeId, esitoFilter, tipoFilter, operatoreId, searchDebounced, dataDa, dataA, tab, soloRitardo, stadioFilter, sortKey, sortDir]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [firmaFiltri]);
 
   // Stores
   const { data: stores } = useQuery({
