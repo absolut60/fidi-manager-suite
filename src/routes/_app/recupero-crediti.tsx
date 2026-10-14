@@ -38,6 +38,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { TooltipAzioneRecupero } from "@/components/tooltip-azione-recupero";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -637,17 +638,17 @@ function RecuperoCreditiPage() {
                     ) },
                     { etichetta: "Aperte", valore: r.azioni_aperte > 0 ? String(r.azioni_aperte) : "—" },
                     { etichetta: "Prossima", valore: r.prossima_data ? (
-                      <span className="inline-flex items-center gap-1">{tipoLabel(r.prossima_tipo)} <span className={r.in_ritardo ? "text-destructive" : ""}>{fmtDateTime(r.prossima_data)}</span></span>
+                      <TooltipAzioneRecupero criterio={{ clienteId: r.cliente_id, prossima: true }} etichetta="Prossima"><span className="inline-flex items-center gap-1">{tipoLabel(r.prossima_tipo)} <span className={r.in_ritardo ? "text-destructive" : ""}>{fmtDateTime(r.prossima_data)}</span></span></TooltipAzioneRecupero>
                     ) : "—" },
                     { etichetta: "Ultima", valore: r.ultima_fatta_data ? (
-                      <span className="inline-flex items-center gap-1">{tipoLabel(r.ultima_fatta_tipo)} {fmtDateTime(r.ultima_fatta_data)}</span>
+                      <TooltipAzioneRecupero criterio={{ clienteId: r.cliente_id, ultimaFatta: true }} etichetta="Ultima fatta"><span className="inline-flex items-center gap-1">{tipoLabel(r.ultima_fatta_tipo)} {fmtDateTime(r.ultima_fatta_data)}</span></TooltipAzioneRecupero>
                     ) : "—" },
                     { etichetta: "Store", valore: r.store_nome ?? "—" },
                   ]}
                   footer={
                     <>
                       <StadioSollecitoBadge stadio={r.stadio_sollecito} data={r.stadio_data} giorni={r.stadio_giorni} />
-                      {r.ha_promessa && <Badge className="bg-orange-500 text-white hover:bg-orange-500">Promessa {r.data_promessa ? fmtDate(r.data_promessa) : ""}</Badge>}
+                      {r.ha_promessa && <TooltipAzioneRecupero criterio={{ clienteId: r.cliente_id, promessaData: r.data_promessa }}><Badge className="bg-orange-500 text-white hover:bg-orange-500">Promessa {r.data_promessa ? fmtDate(r.data_promessa) : ""}</Badge></TooltipAzioneRecupero>}
                     </>
                   }
                 />
@@ -723,9 +724,11 @@ function RecuperoCreditiPage() {
                             {r.ragione_sociale}
                           </Link>
                           {r.ha_promessa && (
-                            <Badge className="bg-orange-500 text-white hover:bg-orange-500 whitespace-nowrap">
-                              Promessa {r.data_promessa ? fmtDate(r.data_promessa) : ""}
-                            </Badge>
+                            <TooltipAzioneRecupero criterio={{ clienteId: r.cliente_id, promessaData: r.data_promessa }}>
+                              <Badge className="bg-orange-500 text-white hover:bg-orange-500 whitespace-nowrap">
+                                Promessa {r.data_promessa ? fmtDate(r.data_promessa) : ""}
+                              </Badge>
+                            </TooltipAzioneRecupero>
                           )}
                         </div>
                       </TableCell>
@@ -749,22 +752,26 @@ function RecuperoCreditiPage() {
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-sm">
                         {r.prossima_data ? (
+                          <TooltipAzioneRecupero criterio={{ clienteId: r.cliente_id, prossima: true }} etichetta="Prossima">
                           <div className="flex items-center gap-2">
                             {tipoLabel(r.prossima_tipo)}
                             <span className={cn(prossimaInRitardo ? "text-destructive font-medium" : "text-muted-foreground")}>
                               {fmtDateTime(r.prossima_data)}
                             </span>
                           </div>
+                          </TooltipAzioneRecupero>
                         ) : (
                           <span className="text-muted-foreground">—</span>
                         )}
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-sm">
                         {r.ultima_fatta_data ? (
+                          <TooltipAzioneRecupero criterio={{ clienteId: r.cliente_id, ultimaFatta: true }} etichetta="Ultima fatta">
                           <div className="flex items-center gap-2">
                             {tipoLabel(r.ultima_fatta_tipo)}
                             <span className="text-muted-foreground">{fmtDateTime(r.ultima_fatta_data)}</span>
                           </div>
+                          </TooltipAzioneRecupero>
                         ) : (
                           <span className="text-muted-foreground">—</span>
                         )}

@@ -11,6 +11,15 @@ export const TIPO_AZIONE_LABEL: Record<string, string> = {
   promemoria_scadenza: "Promemoria scadenza",
 };
 
+export const ESITO_AZIONE_LABEL: Record<string, string> = {
+  da_fare: "Da fare",
+  fatto: "Fatto",
+  nessuna_risposta: "Nessuna risposta",
+  promessa_pagamento: "Promessa pagamento",
+  contestazione: "Contestazione",
+  pagato: "Pagato",
+};
+
 export const TIPO_AZIONE_ICON: Record<string, typeof Mail> = {
   email: Mail,
   telefonata: Phone,
