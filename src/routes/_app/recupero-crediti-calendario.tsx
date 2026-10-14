@@ -259,7 +259,7 @@ function CalendarioPage() {
         borderColor: color,
         textColor: "#ffffff",
         classNames: isOverdue ? ["azione-arretrata"] : [],
-        extendedProps: { azione: a, isOverdue, kind: "azione" as const, cliente: a.cliente?.ragione_sociale ?? "—", tipoLabel: tipoCfg?.label ?? a.tipo, note: a.note, importo: a.importo_riferimento },
+        extendedProps: { azione: a, isOverdue, kind: "azione" as const, cliente: a.cliente?.ragione_sociale ?? "—", tipoLabel: tipoCfg?.label ?? a.tipo, note: testoAzione(a), importo: a.importo_riferimento },
       };
     });
     const rateEvents = (rateQuery.data ?? []).map((r) => {
