@@ -1,5 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, useEffect } from "react";
+import { useAuth } from "@/hooks/use-auth";
+import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -39,11 +41,21 @@ export function PreventiviListView({ tipo }: { tipo: TipoDocumento }) {
   const labelNuovo = isOrdine ? "Nuovo ordine" : "Nuovo preventivo";
   const labelEmpty = isOrdine ? "Nessun ordine." : "Nessun preventivo.";
 
-  const [search, setSearch] = useState("");
-  const [dSearch, setDSearch] = useState("");
-  const [clienteId, setClienteId] = useState<string | null>(null);
-  const [stato, setStato] = useState<StatoPreventivo | null>(null);
-  const [tipoDoc, setTipoDoc] = useState<TipoDoc | null>(null);
+  // Filtri conservati (useFiltriPagina), chiave distinta per preventivi e ordini.
+  // null salvato come "" perche' l'hook scarta i valori null.
+  const { user } = useAuth();
+  const { filtri: FV, setCampo: setCampoLista } = useFiltriPagina(isOrdine ? "ordini" : "preventivatore", {
+    search: "", clienteId: "", stato: "", tipoDoc: "",
+  }, { userId: user?.id });
+  const search = FV.search;
+  const clienteId = FV.clienteId || null;
+  const stato = (FV.stato || null) as StatoPreventivo | null;
+  const tipoDoc = (FV.tipoDoc || null) as TipoDoc | null;
+  const setSearch = (v: string) => setCampoLista("search", v);
+  const setClienteId = (v: string | null) => setCampoLista("clienteId", v ?? "");
+  const setStato = (v: StatoPreventivo | null) => setCampoLista("stato", v ?? "");
+  const setTipoDoc = (v: TipoDoc | null) => setCampoLista("tipoDoc", v ?? "");
+  const [dSearch, setDSearch] = useState(() => FV.search);
   const [openNew, setOpenNew] = useState(false);
   const [mostraFiltri, setMostraFiltri] = useState(false);
   const nFiltriAttivi = [clienteId, stato, tipoDoc].filter(Boolean).length;

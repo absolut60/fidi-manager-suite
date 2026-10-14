@@ -7,6 +7,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarClock, Search, AlertTriangle, CheckCircle2, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -52,14 +53,20 @@ type SortKey = "cliente" | "stato" | "livello" | "rate" | "prossima" | "ritardo"
 
 function PianiRientroPage() {
   const navigate = useNavigate();
-  const [statoF, setStatoF] = useState<string>("tutti");
-  const [livelloF, setLivelloF] = useState<string>("tutti");
-  const [search, setSearch] = useState("");
-  const [sortKey, setSortKey] = useState<SortKey>("prossima");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [nuovoPianoOpen, setNuovoPianoOpen] = useState(false);
   const qc = useQueryClient();
-  const { roles } = useAuth();
+  const { roles, user } = useAuth();
+  // Filtri e ordinamento conservati con la fonte unica useFiltriPagina.
+  const { filtri: FP, setCampo: setCampoPiani } = useFiltriPagina("piani-rientro", {
+    statoF: "tutti" as string, livelloF: "tutti" as string, search: "",
+    sortKey: "prossima" as SortKey, sortDir: "asc" as "asc" | "desc",
+  }, { userId: user?.id });
+  const { statoF, livelloF, search, sortKey, sortDir } = FP;
+  const setStatoF = (v: string) => setCampoPiani("statoF", v);
+  const setLivelloF = (v: string) => setCampoPiani("livelloF", v);
+  const setSearch = (v: string) => setCampoPiani("search", v);
+  const setSortKey = (v: SortKey) => setCampoPiani("sortKey", v);
+  const setSortDir = (v: "asc" | "desc" | ((d: "asc" | "desc") => "asc" | "desc")) => setCampoPiani("sortDir", v);
   const canManage = roles.some((r) =>
     ["amministratore", "amministrazione", "direzione", "approvatore_liv1", "approvatore_liv2", "approvatore_liv3"].includes(r),
   );

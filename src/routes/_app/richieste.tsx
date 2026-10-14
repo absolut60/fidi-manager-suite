@@ -19,6 +19,7 @@ import {
 } from "@/components/allegati-section";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { useConfig } from "@/hooks/use-config";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -310,7 +311,27 @@ function RichiestePage() {
 
   const defaultTab = isApprovatore && !isAdmin ? "in_approvazione" : "bozze";
   const { tab: tabIniziale } = Route.useSearch();
-  const [tab, setTab] = useState<string>(tabIniziale ?? defaultTab);
+  // Filtri e scheda conservati (useFiltriPagina). Con ?tab= nell'URL si parte dai default.
+  const { filtri: FS, setCampo: setCampoRichieste } = useFiltriPagina("richieste", {
+    tab: defaultTab as string,
+    filtri: { ...FILTRI_VUOTI, soloDecidibili: approvatoreLimitato } as FiltriRichieste,
+  }, {
+    userId: user?.id,
+    partiDaiDefault: !!tabIniziale,
+    valida: {
+      tab: (v) => typeof v === "string" && (TAB_RICHIESTE as readonly string[]).includes(v),
+      filtri: (v) => {
+        const o = v as Record<string, unknown>;
+        if (!o || typeof o !== "object") return false;
+        return (Object.keys(FILTRI_VUOTI) as (keyof FiltriRichieste)[]).every((k) => typeof o[k] === typeof FILTRI_VUOTI[k]);
+      },
+    },
+  });
+  // Scheda non visibile per il ruolo (Tutto solo admin; Bozze non per approvatori non admin): default.
+  const tabSalvata = tabIniziale ?? FS.tab;
+  const tabNonVisibile = (tabSalvata === "tutto" && !isAdmin) || (tabSalvata === "bozze" && isApprovatore && !isAdmin);
+  const tab = tabNonVisibile ? defaultTab : tabSalvata;
+  const setTab = (v: string) => setCampoRichieste("tab", v);
   const [openNew, setOpenNew] = useState(false);
 
 
@@ -356,7 +377,6 @@ function RichiestePage() {
   });
 
   const tutteRichieste = richieste ?? [];
-  const [filtri, setFiltri] = useState<FiltriRichieste>(() => ({ ...FILTRI_VUOTI, soloDecidibili: approvatoreLimitato }));
   const storesFiltro = useMemo(() => {
     const map = new Map<string, string>();
     tutteRichieste.forEach((r: any) => {
@@ -364,6 +384,14 @@ function RichiestePage() {
     });
     return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1], "it"));
   }, [tutteRichieste]);
+  // Filtri non visibili per l'utente non si applicano: negozio solo se il selettore
+  // compare (piu' di un punto vendita), interruttore solo per approvatori limitati.
+  const filtri = useMemo<FiltriRichieste>(() => ({
+    ...FS.filtri,
+    store: storesFiltro.length > 1 ? FS.filtri.store : "tutti",
+    soloDecidibili: approvatoreLimitato ? FS.filtri.soloDecidibili : false,
+  }), [FS.filtri, storesFiltro.length, approvatoreLimitato]);
+  const setFiltri = (f: FiltriRichieste) => setCampoRichieste("filtri", f);
   // Righe filtrate: base unica per KPI, contatori schede e liste.
   const all = useMemo(() => filtraRichieste(tutteRichieste, filtri, roles), [tutteRichieste, filtri, roles]);
   // Richieste in attesa che l'utente puo' decidere, sulle righe non filtrate
