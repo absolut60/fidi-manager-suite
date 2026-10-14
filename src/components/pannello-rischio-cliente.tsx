@@ -388,7 +388,7 @@ function EsperienzaPagamentoCards({ esp }: { esp: EspData }) {
   const pre = "Esp. ·";
   return (
     <>
-      <div className="contents" title={`Esperienza pagamento (su ${esp.nPagate} scadenze pagate)`}>
+      <div className="contents" title={`Esperienza pagamento (su ${esp.nPagate} scadenze pagate, escluse RiBa)`}>
         <MetricCard label={`${pre} Ritardo medio`} value={`${ritMedio.toFixed(1)} gg`} tone={toneMedio} />
         <MetricCard label={`${pre} Pagate in ritardo`} value={`${pct.toFixed(1)}%`} tone={tonePct} />
         <MetricCard label={`${pre} N. ritardi`} value={`${esp.nInRitardo} su ${esp.nPagate}`} />
@@ -419,7 +419,7 @@ function EsperienzaPagamentoBlock({ esp, variant }: { esp: EspData; variant: "co
       </h3>
       {!noStorico && (
         <span className="text-[11px] text-muted-foreground">
-          su {esp!.nPagate} scadenze pagate
+          su {esp!.nPagate} scadenze pagate (escluse RiBa)
         </span>
       )}
     </div>

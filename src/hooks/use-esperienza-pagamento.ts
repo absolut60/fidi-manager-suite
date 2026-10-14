@@ -46,8 +46,8 @@ export function useEsperienzaPagamentoCliente(clienteId: string | null | undefin
 export function testiPagateInRitardo(esp: EsperienzaPagamento | null | undefined) {
   const label = "Pagate in ritardo";
   if (!esp) return { label, valore: "—", dettaglio: undefined, titolo: undefined, inRitardo: false };
-  const titolo = `Scadenze pagate oltre ${esp.tolleranza} giorni dalla scadenza, bonifico o RiBa, su tutto lo storico disponibile`;
-  if (esp.nPagate === 0) return { label, valore: "Nessuno storico", dettaglio: undefined, titolo, inRitardo: false };
+  const titolo = `Scadenze pagate oltre ${esp.tolleranza} giorni dalla scadenza (bonifici e altri pagamenti non RiBa; le RiBa non pagate sono negli insoluti), su tutto lo storico disponibile`;
+  if (esp.nPagate === 0) return { label, valore: "Nessun pagamento non RiBa", dettaglio: undefined, titolo, inRitardo: false };
   const media = esp.ritardoMedioRitardi != null
     ? ` · media +${esp.ritardoMedioRitardi.toLocaleString("it-IT", { maximumFractionDigits: 1 })} gg`
     : "";
