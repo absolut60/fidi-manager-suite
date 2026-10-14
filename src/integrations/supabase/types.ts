@@ -7372,9 +7372,12 @@ export type Database = {
         Returns: {
           max_ritardo_gg: number
           n_in_ritardo: number
+          n_in_ritardo_12m: number
           n_pagate: number
           perc_in_ritardo: number
           ritardo_medio_gg: number
+          ritardo_medio_ritardi_gg: number
+          tolleranza_gg: number
         }[]
       }
       get_evento_iscrizione_pubblica: {
