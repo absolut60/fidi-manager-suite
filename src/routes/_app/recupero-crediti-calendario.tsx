@@ -1,3 +1,4 @@
+import { testoAzione } from "@/lib/azioni-recupero-ui";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -626,7 +627,7 @@ function CalendarioPage() {
                 <span className="min-w-0 w-full space-y-1">
                   <span className="block text-xs text-muted-foreground">{fmtDateTime(a.data_azione)} · {TIPI.find((t) => t.value === a.tipo)?.label ?? a.tipo}</span>
                   <span className="block break-words font-medium">{a.cliente?.ragione_sociale ?? "—"}</span>
-                  {a.note && <span className="block line-clamp-2 text-xs text-muted-foreground">{a.note}</span>}
+                  {testoAzione(a) && <span className="block line-clamp-2 text-xs text-muted-foreground">{testoAzione(a)}</span>}
                 </span>
               </Button>
             ))}
