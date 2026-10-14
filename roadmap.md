@@ -71,3 +71,8 @@
 - [ ] Fetta 2 — interfaccia: in approvazione l'approvatore può scegliere una condizione diversa da quella proposta (attesa istruzioni)
 
 - [x] Fetta B: notifica a ogni nuova nota di recupero
+
+## Registra promessa — data non precompilata e vincolo al futuro
+- [x] Data promessa vuota all'apertura, sempre obbligatoria, min = oggi, rifiuto al salvataggio se nel passato, testo d'aiuto sotto il campo
+- [x] Verificato (senza modifiche) che ModificaAzioneDialog permette di correggere data_promessa_pagamento di una promessa esistente
+- [x] tsgo --noEmit exit 0; build OK
