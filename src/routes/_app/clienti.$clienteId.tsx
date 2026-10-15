@@ -640,8 +640,9 @@ function ClienteDetail() {
 
               <SectionCard title="Contatti" icon={Phone} variant="violet">
                 <div className="grid grid-cols-1 gap-3">
-                  <Field label="Telefono" value={cliente.telefono} />
-                  <Field label="Telefono 2" value={(cliente as any).telefono_2} />
+                  <Field label="Telefono" value={cliente.telefono} tel />
+                  <Field label="Cellulare" value={(cliente as any).cellulare} tel />
+                  <Field label="Telefono 2" value={(cliente as any).telefono_2} tel />
                   <Field label="Email" value={cliente.email} />
                   <Field label="PEC" value={(cliente as any).pec} />
                 </div>
@@ -870,16 +871,29 @@ function Field({
   label,
   value,
   highlight,
+  tel,
 }: {
   label: string;
   value?: string | null;
   highlight?: boolean;
+  /** Se true e il valore è presente, rende il valore come link tel: (come il cellulare dei contatti). */
+  tel?: boolean;
 }) {
   return (
     <div>
       <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</dt>
       <dd className={`mt-0.5 ${highlight ? "font-semibold" : ""}`}>
-        {value || <span className="text-muted-foreground">—</span>}
+        {value ? (
+          tel ? (
+            <a href={`tel:${value}`} className="text-primary hover:underline">
+              {value}
+            </a>
+          ) : (
+            value
+          )
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        )}
       </dd>
     </div>
   );
@@ -1791,6 +1805,7 @@ const editSchema = z.object({
   condizione_pagamento_cod: z.string().trim().max(20).optional().or(z.literal("")),
   condizione_pagamento_desc: z.string().trim().max(200).optional().or(z.literal("")),
   telefono_2: z.string().trim().max(30).optional().or(z.literal("")),
+  cellulare: z.string().trim().max(30).optional().or(z.literal("")),
   forma_giuridica: z.string().trim().max(100).optional().or(z.literal("")),
   codice_macrocategoria: z.string().trim().max(10).optional().or(z.literal("")),
   macrocategoria: z.string().trim().max(100).optional().or(z.literal("")),
@@ -1834,6 +1849,7 @@ function EditClienteDialog({
     condizione_pagamento_cod: cliente.condizione_pagamento_cod ?? "",
     condizione_pagamento_desc: cliente.condizione_pagamento_desc ?? "",
     telefono_2: (cliente as any).telefono_2 ?? "",
+    cellulare: (cliente as any).cellulare ?? "",
     forma_giuridica: (cliente as any).forma_giuridica ?? "",
     codice_macrocategoria: (cliente as any).codice_macrocategoria ?? "",
     macrocategoria: (cliente as any).macrocategoria ?? "",
@@ -2034,6 +2050,10 @@ function EditClienteDialog({
             <div className="space-y-1.5">
               <Label>Telefono</Label>
               <Input value={form.telefono} onChange={(e) => set("telefono", e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Cellulare</Label>
+              <Input value={form.cellulare} onChange={(e) => set("cellulare", e.target.value)} />
             </div>
             <div className="space-y-1.5">
               <Label>Telefono 2</Label>
