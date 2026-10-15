@@ -59,8 +59,8 @@ function analizza(raw: string): { pezzi: Pezzo[]; normalizzato: string } {
   }
   const pezzi = token.map(({ p, sep, prev: pr }) => {
     const c = correggiIndirizzo(p);
-    let valido = isEmailValida(c.valore);
-    if (valido && (isSegnaposto(c.valore))) {
+    const valido = isEmailValida(c.valore);
+    if (valido && isSegnaposto(c.valore)) {
       return { originale: p, valore: c.valore, correzioni: [], valido: false };
     }
     if (valido && isParolaAttaccata(pr, sep, p)) {
@@ -72,7 +72,6 @@ function analizza(raw: string): { pezzi: Pezzo[]; normalizzato: string } {
     if (valido && !raw.includes(p)) {
       return { originale: raw, valore: c.valore, correzioni: ["normalizzazione_campo", ...c.correzioni], valido };
     }
-    valido = valido && true;
     return { originale: p, valore: c.valore, correzioni: c.correzioni, valido };
   });
   return { pezzi, normalizzato };
