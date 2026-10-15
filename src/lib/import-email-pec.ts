@@ -47,7 +47,14 @@ function analizza(raw: string): { pezzi: Pezzo[]; normalizzato: string } {
   const normalizzato = normalizzaCampoEmail(raw);
   const pezzi = splitEmailsMultiple(normalizzato).map((p) => {
     const c = correggiIndirizzo(p);
-    return { originale: p, valore: c.valore, correzioni: c.correzioni, valido: isEmailValida(c.valore) };
+    const valido = isEmailValida(c.valore);
+    // Pezzo nato dalla normalizzazione del campo (spazi, virgola nel dominio):
+    // non compare così nel valore di Gamma, quindi è una correzione da tracciare
+    // con il valore originale del campo.
+    if (valido && !raw.includes(p)) {
+      return { originale: raw, valore: c.valore, correzioni: ["normalizzazione_campo", ...c.correzioni], valido };
+    }
+    return { originale: p, valore: c.valore, correzioni: c.correzioni, valido };
   });
   return { pezzi, normalizzato };
 }
