@@ -21,6 +21,7 @@ import {
   isTelefonoValido,
   classificaTelefono,
 } from "@/lib/email-validazione";
+import { calcolaEmailPecImport } from "@/lib/import-email-pec";
 
 
 type EventData = { importazioneId: string; filePath: string; userId?: string };
