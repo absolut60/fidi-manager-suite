@@ -27,6 +27,7 @@ import {
   inviaRichiestaFirmaPrivacy, registraConsensoDiPersona,
   type CanalePrivacy, type ModuloConsensoPayload,
 } from "@/components/privacy-post-creazione";
+import { usePuoScrivereContattiCliente, erroreScritturaContatto } from "@/lib/contatti-permessi";
 
 export type ClienteInfoWizard = {
   id: string;
@@ -106,6 +107,10 @@ export function NuovoContattoWizard({
     },
   });
 
+  const permessoCliente = usePuoScrivereContattiCliente(showClienteStep ? selectedCliente?.id : null);
+  const clienteNonScrivibile = showClienteStep && !!selectedCliente && permessoCliente.data === false;
+  const permessoInVerifica = showClienteStep && !!selectedCliente && permessoCliente.isLoading;
+
   const steps = useMemo(() => {
     const s: string[] = [];
     if (showClienteStep) s.push("Cliente");
@@ -123,6 +128,7 @@ export function NuovoContattoWizard({
     const errs: Record<string, string> = {};
     if (currentLabel === "Cliente") {
       if (!selectedCliente) errs.cliente = "Seleziona un cliente";
+      else if (permessoInVerifica || clienteNonScrivibile) return false;
     }
     if (currentLabel === "Contatto") {
       const p = contattoFormSchema.safeParse({ nome: contatto.nome, cognome: contatto.cognome });
@@ -150,7 +156,7 @@ export function NuovoContattoWizard({
     };
     const { data, error } = await supabase
       .from("contatti").insert(payload).select("id").maybeSingle();
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(erroreScritturaContatto(error, "creare"));
     if (!data) throw new Error("Inserimento non riuscito");
     return data.id;
   }
@@ -340,6 +346,9 @@ export function NuovoContattoWizard({
               </PopoverContent>
             </Popover>
             {errors.cliente && <p className="text-xs text-destructive">{errors.cliente}</p>}
+            {clienteNonScrivibile && (
+              <p className="text-xs text-destructive">Non puoi aggiungere contatti a questo cliente</p>
+            )}
           </div>
         )}
 
@@ -434,7 +443,8 @@ export function NuovoContattoWizard({
           </Button>
         )}
         {!isLast ? (
-          <Button type="button" onClick={handleAvanti} disabled={saving}>
+          <Button type="button" onClick={handleAvanti}
+            disabled={saving || (currentLabel === "Cliente" && (permessoInVerifica || clienteNonScrivibile))}>
             {saving ? "Attendere..." : <>Avanti <ArrowRight className="size-4 ml-1" /></>}
           </Button>
         ) : (
