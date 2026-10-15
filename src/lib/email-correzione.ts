@@ -50,10 +50,15 @@ export function normalizzaCampoEmail(raw: string): string {
   v = v.replace(/\s*@\s*/g, "@");
   // Spazi attorno al punto tra due caratteri di parola ("gmail .com", "x. it").
   v = v.replace(/(\w)(?:\s+\.\s*|\s*\.\s+)(?=\w)/g, "$1.");
-  // Virgola al posto del punto nel dominio ("@gmail,com"): solo se il dominio
-  // non ha ancora punti e dopo la virgola c'è un suffisso senza @ (altrimenti
-  // è il separatore tra due indirizzi). Serve qui perché lo split spezza sulle virgole.
-  v = v.replace(/(@[^\s@,;.]+),(?=[a-z]{2,6}(?![^\s,;]*@))/gi, "$1.");
+  // Virgola al posto del punto nel dominio ("@gmail,com", "@pec.abc,it",
+  // "@comune.casorezzo,mi.it"): solo se dopo la virgola ci sono etichette di
+  // dominio che finiscono con un'estensione nota e subito dopo un separatore
+  // (quindi nessuna altra @: altrimenti è il separatore tra due indirizzi).
+  // Serve qui perché lo split spezza sulle virgole.
+  v = v.replace(
+    /(@[^\s@,;]+),(?=(?:[a-z0-9-]+\.)*(?:co\.uk|it|com|net|org|eu|info|biz|ch|de|fr|es|uk|me|io)(?=$|[\s;,>\])]))/gi,
+    "$1.",
+  );
   // ":" o "/" usati come separatore tra due indirizzi (una @ prima e una dopo).
   v = v.replace(/(@[^\s@:/;,]+)\s*[:/]\s*(?=[^\s@:/;,]+@)/g, "$1;");
   return v;
@@ -123,4 +128,20 @@ export function correggiIndirizzo(piece: string): EsitoCorrezioneIndirizzo {
 /** Pezzo "con aspetto di email" (contiene @ o ò). */
 export function sembraEmail(piece: string): boolean {
   return piece.includes("@") || piece.includes("ò");
+}
+
+/** Segnaposto: parte locale di 1 carattere e nome di dominio di 1 carattere ("I@I.IT"). */
+export function isSegnaposto(email: string): boolean {
+  return /^[^@]@[^@.]\./.test(email.trim());
+}
+
+/**
+ * Parola attaccata: il pezzo è preceduto da UNA parola di sole lettere/cifre
+ * separata da UN SOLO spazio ("rsediliziae costruzioni@gmail.com"). L'indirizzo
+ * vero potrebbe comprendere la parola: ambiguo. Non vale per indirizzi tra < > o [ ].
+ */
+export function isParolaAttaccata(prev: string | null, sep: string, piece: string): boolean {
+  if (prev == null || sep !== " ") return false;
+  if (/^[<[]/.test(piece)) return false;
+  return /^[\p{L}\p{N}]+$/u.test(prev);
 }

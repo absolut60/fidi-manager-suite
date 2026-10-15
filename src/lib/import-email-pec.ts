@@ -20,8 +20,8 @@
  *    valido; cella vuota/non valida → NULL; colonna assente → non toccata.
  *  - Gli invii usano SOLO clienti.email: email_2/email_3 sono solo informative.
  */
-import { classificaEmail, isEmailValida, splitEmailsMultiple } from "@/lib/email-validazione";
-import { correggiIndirizzo, normalizzaCampoEmail, sembraEmail } from "@/lib/email-correzione";
+import { classificaEmail, isEmailValida } from "@/lib/email-validazione";
+import { correggiIndirizzo, isParolaAttaccata, isSegnaposto, normalizzaCampoEmail, sembraEmail } from "@/lib/email-correzione";
 
 type CampoEmail = "email" | "email_2" | "email_3" | "pec";
 
@@ -45,15 +45,34 @@ type Pezzo = { originale: string; valore: string; correzioni: string[]; valido: 
 
 function analizza(raw: string): { pezzi: Pezzo[]; normalizzato: string } {
   const normalizzato = normalizzaCampoEmail(raw);
-  const pezzi = splitEmailsMultiple(normalizzato).map((p) => {
+  // Stessi pezzi di splitEmailsMultiple (separatori ; , e spazi), ma con il
+  // separatore e il pezzo precedenti, per riconoscere la "parola attaccata".
+  const token: { p: string; sep: string; prev: string | null }[] = [];
+  const re = /[^;,\s]+/g;
+  let m: RegExpExecArray | null;
+  let fine = 0;
+  let prev: string | null = null;
+  while ((m = re.exec(normalizzato))) {
+    token.push({ p: m[0], sep: normalizzato.slice(fine, m.index), prev });
+    prev = m[0];
+    fine = m.index + m[0].length;
+  }
+  const pezzi = token.map(({ p, sep, prev: pr }) => {
     const c = correggiIndirizzo(p);
-    const valido = isEmailValida(c.valore);
+    let valido = isEmailValida(c.valore);
+    if (valido && (isSegnaposto(c.valore))) {
+      return { originale: p, valore: c.valore, correzioni: [], valido: false };
+    }
+    if (valido && isParolaAttaccata(pr, sep, p)) {
+      return { originale: `${pr} ${p}`, valore: c.valore, correzioni: [], valido: false };
+    }
     // Pezzo nato dalla normalizzazione del campo (spazi, virgola nel dominio):
     // non compare così nel valore di Gamma, quindi è una correzione da tracciare
     // con il valore originale del campo.
     if (valido && !raw.includes(p)) {
       return { originale: raw, valore: c.valore, correzioni: ["normalizzazione_campo", ...c.correzioni], valido };
     }
+    valido = valido && true;
     return { originale: p, valore: c.valore, correzioni: c.correzioni, valido };
   });
   return { pezzi, normalizzato };
