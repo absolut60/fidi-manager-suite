@@ -31,7 +31,7 @@ import { puoInviareComunicazioniRecupero } from "@/lib/recupero-permessi";
 import { useRef } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { usePuoScrivereContattiCliente, usePuoEliminareContattiClienti, erroreScritturaContatto } from "@/lib/contatti-permessi";
+import { usePuoScrivereContattiCliente, usePuoEliminareContattiClienti, useContattiModificabili, erroreScritturaContatto } from "@/lib/contatti-permessi";
 import { ContattoPrivacyAzioni } from "@/components/contatto-privacy-azioni";
 import { BadgeConsensiContatto, useStatoConsensi } from "@/components/badge-consensi";
 import { getFidoAttuale } from "@/lib/fido-cliente";
@@ -391,6 +391,7 @@ function ClienteDetail() {
   }, [statoConsensiMap]);
 
   const { data: puoScrivereContatti = false } = usePuoScrivereContattiCliente(clienteId);
+  const { data: contattiModificabili } = useContattiModificabili(clienteId);
   const { data: puoEliminareContatti = false } = usePuoEliminareContattiClienti();
 
   const deleteContatto = useMutation({
@@ -402,6 +403,7 @@ function ClienteDetail() {
     onSuccess: () => {
       toast.success("Contatto eliminato");
       qc.invalidateQueries({ queryKey: ["contatti", clienteId] });
+      qc.invalidateQueries({ queryKey: ["permessi-contatti", "modificabili", clienteId] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -792,7 +794,7 @@ function ClienteDetail() {
                   cliente={cliente}
                   clienteId={clienteId}
                   contatto={c}
-                  puoModificare={puoScrivereContatti}
+                  puoModificare={contattiModificabili?.has(c.id) ?? false}
                   puoEliminare={puoEliminareContatti}
                   onDelete={() => {
                     if (confirm("Eliminare questo contatto?")) deleteContatto.mutate(c.id);
@@ -1514,6 +1516,7 @@ function NewContattoDialog({ clienteId, onClose }: { clienteId: string; onClose:
     onSuccess: () => {
       toast.success("Contatto aggiunto");
       qc.invalidateQueries({ queryKey: ["contatti", clienteId] });
+      qc.invalidateQueries({ queryKey: ["permessi-contatti", "modificabili", clienteId] });
       onClose();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -1591,6 +1594,7 @@ function EditContattoDialog({ contatto, onClose }: { contatto: any; onClose: () 
       toast.success("Contatto aggiornato");
       qc.invalidateQueries({ queryKey: ["contatti", contatto.cliente_id] });
       qc.invalidateQueries({ queryKey: ["contatti-all"] });
+      qc.invalidateQueries({ queryKey: ["permessi-contatti", "modificabili", contatto.cliente_id] });
       onClose();
     },
     onError: (e: Error) => toast.error(e.message),

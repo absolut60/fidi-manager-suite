@@ -31,6 +31,23 @@ export function usePuoEliminareContattiClienti() {
   });
 }
 
+// FM44 parte 2: id dei contatti del cliente che l'utente può modificare
+// (fonte unica DB: auth_puo_modificare_contatto).
+export function useContattiModificabili(clienteId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["permessi-contatti", "modificabili", clienteId],
+    enabled: !!clienteId,
+    staleTime: 300_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("contatti_modificabili_ids", {
+        _cliente_id: clienteId!,
+      });
+      if (error) throw error;
+      return new Set<string>(((data ?? []) as unknown[]).map((x) => String(x)));
+    },
+  });
+}
+
 type AzioneContatto = "creare" | "modificare" | "eliminare";
 
 export function erroreScritturaContatto(
