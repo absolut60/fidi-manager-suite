@@ -1624,6 +1624,8 @@ export type Database = {
           doc_da_fatturare: number | null
           effetti_a_rischio: number | null
           email: string | null
+          email_2: string | null
+          email_3: string | null
           fascia_listino_default:
             | Database["public"]["Enums"]["fascia_listino"]
             | null
@@ -1712,6 +1714,8 @@ export type Database = {
           doc_da_fatturare?: number | null
           effetti_a_rischio?: number | null
           email?: string | null
+          email_2?: string | null
+          email_3?: string | null
           fascia_listino_default?:
             | Database["public"]["Enums"]["fascia_listino"]
             | null
@@ -1800,6 +1804,8 @@ export type Database = {
           doc_da_fatturare?: number | null
           effetti_a_rischio?: number | null
           email?: string | null
+          email_2?: string | null
+          email_3?: string | null
           fascia_listino_default?:
             | Database["public"]["Enums"]["fascia_listino"]
             | null
