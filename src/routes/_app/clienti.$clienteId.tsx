@@ -31,6 +31,7 @@ import { puoInviareComunicazioniRecupero } from "@/lib/recupero-permessi";
 import { useRef } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { usePuoScrivereContattiCliente, usePuoEliminareContattiClienti, erroreScritturaContatto } from "@/lib/contatti-permessi";
 import { ContattoPrivacyAzioni } from "@/components/contatto-privacy-azioni";
 import { BadgeConsensiContatto, useStatoConsensi } from "@/components/badge-consensi";
 import { getFidoAttuale } from "@/lib/fido-cliente";
@@ -389,10 +390,14 @@ function ClienteDetail() {
     return false;
   }, [statoConsensiMap]);
 
+  const { data: puoScrivereContatti = false } = usePuoScrivereContattiCliente(clienteId);
+  const { data: puoEliminareContatti = false } = usePuoEliminareContattiClienti();
+
   const deleteContatto = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("contatti").delete().eq("id", id);
-      if (error) throw error;
+      const { data, error } = await supabase.from("contatti").delete().eq("id", id).select("id");
+      if (error) throw new Error(erroreScritturaContatto(error, "eliminare"));
+      if (!data || data.length === 0) throw new Error("Non hai il permesso di eliminare questo contatto");
     },
     onSuccess: () => {
       toast.success("Contatto eliminato");
@@ -741,6 +746,7 @@ function ClienteDetail() {
 
         <TabsContent value="contatti" className="space-y-4">
           <SectionErrorBoundary nome="Contatti">
+          {puoScrivereContatti && (
           <div className="flex justify-end">
             <Dialog open={openNew} onOpenChange={setOpenNew}>
               <DialogTrigger asChild>
@@ -763,6 +769,7 @@ function ClienteDetail() {
               )}
             </Dialog>
           </div>
+          )}
 
           {loadingContatti ? (
             <div className="space-y-2">
@@ -785,6 +792,8 @@ function ClienteDetail() {
                   cliente={cliente}
                   clienteId={clienteId}
                   contatto={c}
+                  puoModificare={puoScrivereContatti}
+                  puoEliminare={puoEliminareContatti}
                   onDelete={() => {
                     if (confirm("Eliminare questo contatto?")) deleteContatto.mutate(c.id);
                   }}
@@ -1500,7 +1509,7 @@ function NewContattoDialog({ clienteId, onClose }: { clienteId: string; onClose:
       const parsed = contattoSchema.parse(input);
       const payload = { cliente_id: clienteId, ...contattoFormToPayload(parsed) };
       const { error } = await supabase.from("contatti").insert(payload);
-      if (error) throw error;
+      if (error) throw new Error(erroreScritturaContatto(error, "creare"));
     },
     onSuccess: () => {
       toast.success("Contatto aggiunto");
@@ -1570,11 +1579,13 @@ function EditContattoDialog({ contatto, onClose }: { contatto: any; onClose: () 
   const mutation = useMutation({
     mutationFn: async (input: ContattoForm) => {
       const parsed = contattoSchema.parse(input);
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("contatti")
         .update(contattoFormToPayload(parsed))
-        .eq("id", contatto.id);
-      if (error) throw error;
+        .eq("id", contatto.id)
+        .select("id");
+      if (error) throw new Error(erroreScritturaContatto(error, "modificare"));
+      if (!data || data.length === 0) throw new Error("Non hai il permesso di modificare questo contatto");
     },
     onSuccess: () => {
       toast.success("Contatto aggiornato");
@@ -1629,11 +1640,15 @@ function ContattoCard({
   cliente,
   clienteId,
   contatto,
+  puoModificare,
+  puoEliminare,
   onDelete,
 }: {
   cliente: any;
   clienteId: string;
   contatto: any;
+  puoModificare: boolean;
+  puoEliminare: boolean;
   onDelete: () => void;
 }) {
   const qc = useQueryClient();
@@ -1663,6 +1678,7 @@ function ContattoCard({
           )}
         </div>
         <div className="flex">
+          {puoModificare && (
           <Dialog open={openEdit} onOpenChange={setOpenEdit}>
             <DialogTrigger asChild>
               <Button
@@ -1677,6 +1693,8 @@ function ContattoCard({
               <EditContattoDialog contatto={contatto} onClose={() => setOpenEdit(false)} />
             )}
           </Dialog>
+          )}
+          {puoEliminare && (
           <Button
             variant="ghost"
             size="icon"
@@ -1685,6 +1703,7 @@ function ContattoCard({
           >
             <Trash2 className="size-4" />
           </Button>
+          )}
         </div>
       </div>
       <div className="mt-3 space-y-1.5 text-sm">

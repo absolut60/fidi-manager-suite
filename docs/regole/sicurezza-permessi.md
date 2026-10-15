@@ -46,3 +46,8 @@ Estratto dal knowledge di progetto il 08/10/2026 (sessione 40). Si aggiorna modi
 - **Dipendenze transitive di inngest (FM41):** `inngest` resta 4.4.0; tre voci in `overrides` di `package.json` chiudono gli avvisi di sicurezza sul suo sottoalbero: `"protobufjs": "^7.6.6"`, `"@grpc/grpc-js": "^1.14.6"`, `"@opentelemetry/propagator-jaeger": "^2.12.0"` (stesso metodo di `seroval`).
   - Vincolo: `protobufjs` resta sulla serie 7 (`^`, mai `>=`: esiste la 8.x).
   - Da rimuovere quando una versione di `inngest` porterà da sola queste versioni (o superiori).
+- **Contatti dei clienti (FM44, decisione di Andrea):** oltre alle regole precedenti (invariate), su qualsiasi cliente creano e modificano i contatti anche `recupero_crediti`, `amministrazione`, `direzione`; eliminano i contatti dei clienti `amministratore` e `recupero_crediti`. Migrazione `0033_fm44_permessi_contatti_clienti.sql`.
+  - `public.auth_gestisce_contatti_clienti()`: recupero_crediti, amministrazione, direzione (ramo aggiunto a UPDATE e alla scrittura).
+  - `public.auth_puo_eliminare_contatti_clienti()`: amministratore, recupero_crediti (ramo aggiunto a DELETE per contatti con cliente).
+  - `public.auth_puo_scrivere_contatti_cliente(_cliente_id)`: fonte unica di "chi può creare un contatto per questo cliente", usata dalla policy INSERT e dall'interfaccia (`src/lib/contatti-permessi.ts`, nessun elenco di ruoli in TypeScript).
+  - Interfaccia: "Nuovo contatto"/matita solo se `usePuoScrivereContattiCliente`, cestino solo se `usePuoEliminareContattiClienti`; modifica ed eliminazione usano `.select("id")` e con 0 righe mostrano "Non hai il permesso di …", mai "aggiornato"/"eliminato".
