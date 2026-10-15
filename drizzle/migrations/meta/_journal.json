@@ -239,6 +239,13 @@
       "when": 1792094314349,
       "tag": "0033_fm44_permessi_contatti_clienti",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1792095403998,
+      "tag": "0034_fm44_gerarchia_modifica_contatti",
+      "breakpoints": true
     }
   ]
 }

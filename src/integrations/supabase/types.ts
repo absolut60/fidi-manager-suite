@@ -6726,6 +6726,10 @@ export type Database = {
       auth_puo_eliminare_contatti_clienti: { Args: never; Returns: boolean }
       auth_puo_gestire_anagrafiche_prev: { Args: never; Returns: boolean }
       auth_puo_inviare_recupero: { Args: never; Returns: boolean }
+      auth_puo_modificare_contatto: {
+        Args: { _cliente_id: string; _created_by: string; _lead_id: string }
+        Returns: boolean
+      }
       auth_puo_scrivere_blocco: {
         Args: { _blocco_id: string }
         Returns: boolean
@@ -6841,6 +6845,10 @@ export type Database = {
       conta_contattabili_canale: {
         Args: { _canale: string; _filtri: Json }
         Returns: number
+      }
+      contatti_modificabili_ids: {
+        Args: { _cliente_id: string }
+        Returns: string[]
       }
       converti_lead_in_cliente: {
         Args: { _forza_duplicato?: boolean; _lead_id: string }
