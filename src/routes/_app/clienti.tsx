@@ -3073,6 +3073,7 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
       citta: c.citta ?? "",
       provincia: c.provincia ?? "",
       telefono: c.telefono ?? "",
+      cellulare: c.cellulare ?? "",
       email: c.email ?? "",
       partita_iva: c.partita_iva ?? "",
       codice_fiscale: c.codice_fiscale ?? "",
