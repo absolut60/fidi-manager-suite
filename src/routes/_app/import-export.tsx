@@ -2784,7 +2784,7 @@ async function downloadAnomalieXlsx(
 function ExportCard() {
   const qc = useQueryClient();
   const [busy, setBusy] = useState<
-    null | "clienti" | "richieste" | "senza_email" | "fidi_gestionale" | "anomalie_all"
+    null | "clienti" | "richieste" | "senza_email" | "fidi_gestionale" | "anomalie_all" | "email_gamma"
   >(null);
 
 
@@ -3013,6 +3013,62 @@ function ExportCard() {
 
 
 
+  async function exportEmailDaCorreggere() {
+    setBusy("email_gamma");
+    try {
+      const { data: imp, error: iErr } = await (supabase as any)
+        .from("importazioni")
+        .select("id, created_at")
+        .eq("fonte", "anagrafica")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (iErr) throw iErr;
+      if (!imp) {
+        toast.info("Nessun import anagrafica trovato");
+        return;
+      }
+      const rows: AnomaliaExportRow[] = [];
+      for (let offset = 0; ; offset += 1000) {
+        const { data, error } = await (supabase as any)
+          .from("anomalie_import")
+          .select("codice_gestionale, ragione_sociale, campo, valore_attuale, valore_nuovo, tipo_anomalia, created_at")
+          .eq("importazione_id", imp.id)
+          .in("tipo_anomalia", ["email_corretta", "email_da_verificare"])
+          .order("id")
+          .range(offset, offset + 999);
+        if (error) throw error;
+        rows.push(...((data ?? []) as AnomaliaExportRow[]));
+        if ((data?.length ?? 0) < 1000) break;
+      }
+      if (rows.length === 0) {
+        toast.info("Nessuna email da correggere nell'ultimo import anagrafica");
+        return;
+      }
+      rows.sort((a, b) => (a.ragione_sociale ?? "").localeCompare(b.ragione_sociale ?? "", "it"));
+      const etichettaCampo: Record<string, string> = { email: "Email", email_2: "Email 2", email_3: "Email 3", pec: "PEC" };
+      const header = ["Codice cliente", "Ragione sociale", "Campo", "Valore in Gamma", "Valore corretto"];
+      const body = rows.map((r) => [
+        r.codice_gestionale ?? "",
+        r.ragione_sociale ?? "",
+        etichettaCampo[r.campo ?? ""] ?? r.campo ?? "",
+        r.valore_attuale ?? "",
+        r.tipo_anomalia === "email_corretta" ? r.valore_nuovo ?? "" : "Da verificare",
+      ]);
+      const ws = XLSX.utils.aoa_to_sheet([header, ...body]);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Email da correggere");
+      const fname = `email_da_correggere_gamma_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      XLSX.writeFile(wb, fname);
+      await logEsportazione(fname, rows.length);
+      toast.success(`Esportate ${rows.length} email`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Errore export");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
     <Card className="p-5">
       <h2 className="font-semibold flex items-center gap-2 mb-1">
@@ -3090,6 +3146,21 @@ function ExportCard() {
             <FileSpreadsheet className="size-4" /> Anomalie import (tutte)
           </span>
           {busy === "anomalie_all" ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <Download className="size-4" />
+          )}
+        </Button>
+        <Button
+          variant="outline"
+          className="w-full justify-between"
+          disabled={busy !== null}
+          onClick={exportEmailDaCorreggere}
+        >
+          <span className="flex items-center gap-2">
+            <FileSpreadsheet className="size-4" /> Email da correggere in Gamma
+          </span>
+          {busy === "email_gamma" ? (
             <Loader2 className="size-4 animate-spin" />
           ) : (
             <Download className="size-4" />

@@ -731,6 +731,7 @@ export const processAnagraficaChunk = inngest.createFunction(
       // Barriera anti-sporco email/pec: registro anomalie del chunk
       const anomalieEmail: Array<Record<string, unknown>> = [];
       let emailAzzerate = 0;
+      let emailCorrette = 0;
       let emailSplittate = 0;
 
       // Regola email/email_2/email_3/pec: fonte unica calcolaEmailPecImport.
