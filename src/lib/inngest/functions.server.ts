@@ -21,6 +21,7 @@ import {
   isTelefonoValido,
   classificaTelefono,
 } from "@/lib/email-validazione";
+import { calcolaEmailPecImport } from "@/lib/import-email-pec";
 
 
 type EventData = { importazioneId: string; filePath: string; userId?: string };
@@ -732,99 +733,33 @@ export const processAnagraficaChunk = inngest.createFunction(
       let emailAzzerate = 0;
       let emailSplittate = 0;
 
+      // Regola email/email_2/email_3/pec: fonte unica calcolaEmailPecImport.
+      const haColEmail = colonneFile.has("email");
+      const haColPec = colonneFile.has("pec");
       function applyEmailPec(
         payload: Record<string, unknown>,
         rawEmail: unknown,
         rawPec: unknown,
         meta: { __row: number; codice_gestionale: string | null; ragione_sociale: string | null },
       ) {
-        const eRaw = rawEmail == null ? "" : String(rawEmail).trim();
-        const pRaw = rawPec == null ? "" : String(rawPec).trim();
-        const eClass = classificaEmail(eRaw);
-        let pecFromSplit: string | null = null;
-
-        if (eClass === "ok") {
-          payload.email = eRaw;
-        } else if (eClass === "vuota") {
-          // niente da scrivere, nessuna anomalia
-        } else if (eClass === "multipla") {
-          // Tieni solo i pezzi VALIDI (scarta garbage tipo "info" o "mario @").
-          // 1ª valida → email; 2ª valida → candidata pec (solo se pec attuale non è valida).
-          const validParts = splitEmailsMultiple(eRaw).filter((p) => isEmailValida(p));
-          if (validParts.length === 0) {
-            // nessun pezzo valido (es. "mario @ gmail.com") → azzera
-            payload.email = null;
-          } else {
-            payload.email = validParts[0];
-            if (validParts[1]) pecFromSplit = validParts[1];
-          }
-
-          emailSplittate++;
+        const esito = calcolaEmailPecImport(rawEmail, rawPec, {
+          email: haColEmail,
+          pec: haColPec,
+        });
+        Object.assign(payload, esito.campi);
+        emailSplittate += esito.splittate;
+        emailAzzerate += esito.azzerate;
+        for (const a of esito.anomalie) {
           anomalieEmail.push({
             importazione_id: importazioneId,
             codice_gestionale: meta.codice_gestionale ?? "",
             ragione_sociale: meta.ragione_sociale,
-            tipo_anomalia: "multipla",
-            campo: "email",
-            valore_attuale: eRaw.slice(0, 500),
-            valore_nuovo: "splittato_pec",
-            stato: "in_attesa",
-          });
-        } else {
-          // non_email | malformata → azzera realmente il campo nel DB
-          payload.email = null;
-          emailAzzerate++;
-          anomalieEmail.push({
-            importazione_id: importazioneId,
-            codice_gestionale: meta.codice_gestionale ?? "",
-            ragione_sociale: meta.ragione_sociale,
-            tipo_anomalia: eClass,
-            campo: "email",
-            valore_attuale: eRaw.slice(0, 500),
-            valore_nuovo: "azzerato",
-            stato: "in_attesa",
-          });
-        }
-
-        const pClass = classificaEmail(pRaw);
-        if (pClass === "ok") {
-          payload.pec = pRaw;
-        } else if (pClass === "vuota") {
-          if (pecFromSplit) payload.pec = pecFromSplit;
-        } else if (pClass === "multipla") {
-          const parts = splitEmailsMultiple(pRaw);
-          const first = parts.find((p) => isEmailValida(p));
-          if (first) payload.pec = first;
-          else if (pecFromSplit) payload.pec = pecFromSplit;
-          else payload.pec = null;
-          emailSplittate++;
-          anomalieEmail.push({
-            importazione_id: importazioneId,
-            codice_gestionale: meta.codice_gestionale ?? "",
-            ragione_sociale: meta.ragione_sociale,
-            tipo_anomalia: "multipla",
-            campo: "pec",
-            valore_attuale: pRaw.slice(0, 500),
-            valore_nuovo: "splittato_pec",
-            stato: "in_attesa",
-          });
-        } else {
-          // non_email | malformata → azzera (salvo il pec recuperato dallo split email)
-          if (pecFromSplit) payload.pec = pecFromSplit;
-          else payload.pec = null;
-          emailAzzerate++;
-          anomalieEmail.push({
-            importazione_id: importazioneId,
-            codice_gestionale: meta.codice_gestionale ?? "",
-            ragione_sociale: meta.ragione_sociale,
-            tipo_anomalia: pClass,
-            campo: "pec",
-            valore_attuale: pRaw.slice(0, 500),
-            valore_nuovo: "azzerato",
+            ...a,
             stato: "in_attesa",
           });
         }
       }
+
 
 
       // Barriera anti-sporco telefono/cellulare/telefono_2: stesso pattern di applyEmailPec.
