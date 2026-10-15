@@ -80,6 +80,8 @@ export function dettaglioScartateImport(report: unknown, codici: string[] | null
 function etichettaAnomalia(tipo: string): string {
   if (tipo === "perde_assicurazione") return "Perde l'assicurazione";
   if (tipo === "perde_gestione_legale") return "Esce dalla gestione legale";
+  if (tipo === "email_corretta") return "Email corretta automaticamente";
+  if (tipo === "email_da_verificare") return "Email da verificare in Gamma";
   return tipo.replace(/_/g, " ");
 }
 
@@ -117,6 +119,8 @@ export function messaggioEsitoImport(d: DatiEsitoImport): string {
   const errore = d.scartate.find((r) => r.motivo !== MOTIVO_CLIENTE);
   if (errore) motivi.push(errore.motivo.replace(/\s+/g, " ").slice(0, 160));
   parti.push(...motivi.slice(0, 2));
+  const emailCorrette = d.anomalie.find((a) => a.tipo === "email_corretta")?.totale ?? 0;
+  if (emailCorrette > 0) parti.push(`${n(emailCorrette)} ${emailCorrette === 1 ? "email corretta" : "email corrette"} automaticamente`);
   if (d.scadenzeTolte > 0) parti.push(`${n(d.scadenzeTolte)} scadenze tolte perché non più nel file`);
   if (livelloEsitoImport(d) === "da_verificare") {
     parti.push(d.problemi[0] ?? "Import fallito");
