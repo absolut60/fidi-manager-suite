@@ -12,6 +12,11 @@
  *  - PEC solo dalla colonna PEC (mai dallo split delle email). Colonna presente e
  *    cella vuota/non valida → pec = NULL. PEC multipla → primo indirizzo valido.
  *    Colonna PEC assente → pec non toccata.
+ *  - malformata/non_email con ALMENO un indirizzo VALIDO dentro (es. "a@x.it, ufficio",
+ *    "Mario Rossi a@x.it"): si tengono solo i pezzi VALIDI (stessa regola delle
+ *    multiple: email/email_2/email_3, PEC = primo valido), anomalia con la
+ *    classificazione originale e valore_nuovo "tenuto_solo_validi". Nessun pezzo
+ *    valido → comportamento attuale (NULL e "azzerato").
  *  - Gli invii usano SOLO clienti.email: email_2/email_3 sono solo informative.
  */
 import { classificaEmail, isEmailValida, splitEmailsMultiple } from "@/lib/email-validazione";
@@ -73,17 +78,40 @@ export function calcolaEmailPecImport(
         });
       }
     } else {
-      // non_email | malformata → azzera, come oggi
-      campi.email = null;
-      campi.email_2 = null;
-      campi.email_3 = null;
-      azzerate++;
-      anomalie.push({
-        tipo_anomalia: eClass,
-        campo: "email",
-        valore_attuale: eRaw.slice(0, 500),
-        valore_nuovo: "azzerato",
-      });
+      // non_email | malformata: se dentro c'è almeno un pezzo VALIDO, tieni solo
+      // quelli (stessa regola delle multiple) e scarta il testo; altrimenti azzera.
+      const validi = splitEmailsMultiple(eRaw).filter((p) => isEmailValida(p));
+      if (validi.length > 0) {
+        campi.email = validi[0] ?? null;
+        campi.email_2 = validi[1] ?? null;
+        campi.email_3 = validi[2] ?? null;
+        if (validi.length >= 2) splittate++;
+        anomalie.push({
+          tipo_anomalia: eClass,
+          campo: "email",
+          valore_attuale: eRaw.slice(0, 500),
+          valore_nuovo: "tenuto_solo_validi",
+        });
+        if (validi.length > 3) {
+          anomalie.push({
+            tipo_anomalia: eClass,
+            campo: "email",
+            valore_attuale: validi.slice(3).join("; ").slice(0, 500),
+            valore_nuovo: "scartati_oltre_terzo",
+          });
+        }
+      } else {
+        campi.email = null;
+        campi.email_2 = null;
+        campi.email_3 = null;
+        azzerate++;
+        anomalie.push({
+          tipo_anomalia: eClass,
+          campo: "email",
+          valore_attuale: eRaw.slice(0, 500),
+          valore_nuovo: "azzerato",
+        });
+      }
     }
   }
 
@@ -105,14 +133,27 @@ export function calcolaEmailPecImport(
         valore_nuovo: "tenuto_primo_valido",
       });
     } else {
-      campi.pec = null;
-      azzerate++;
-      anomalie.push({
-        tipo_anomalia: pClass,
-        campo: "pec",
-        valore_attuale: pRaw.slice(0, 500),
-        valore_nuovo: "azzerato",
-      });
+      // non_email | malformata: primo pezzo VALIDO se c'è (scarta il testo),
+      // altrimenti NULL come oggi.
+      const primoValido = splitEmailsMultiple(pRaw).find((p) => isEmailValida(p));
+      if (primoValido) {
+        campi.pec = primoValido;
+        anomalie.push({
+          tipo_anomalia: pClass,
+          campo: "pec",
+          valore_attuale: pRaw.slice(0, 500),
+          valore_nuovo: "tenuto_solo_validi",
+        });
+      } else {
+        campi.pec = null;
+        azzerate++;
+        anomalie.push({
+          tipo_anomalia: pClass,
+          campo: "pec",
+          valore_attuale: pRaw.slice(0, 500),
+          valore_nuovo: "azzerato",
+        });
+      }
     }
   }
 
