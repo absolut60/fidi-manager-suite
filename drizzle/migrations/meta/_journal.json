@@ -232,6 +232,13 @@
       "when": 1792065814365,
       "tag": "0032_clienti_email_2_3",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1792094314349,
+      "tag": "0033_fm44_permessi_contatti_clienti",
+      "breakpoints": true
     }
   ]
 }
