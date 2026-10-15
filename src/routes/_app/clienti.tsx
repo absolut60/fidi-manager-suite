@@ -2942,6 +2942,7 @@ const schedaSchema = z.object({
   provincia: z.string().trim().max(2).optional().or(z.literal("")),
   telefono: z.string().trim().max(30).optional().or(z.literal("")),
   telefono_2: z.string().trim().max(30).optional().or(z.literal("")),
+  cellulare: z.string().trim().max(30).optional().or(z.literal("")),
   
   codice_macrocategoria: z.string().trim().max(10).optional().or(z.literal("")),
   macrocategoria: z.string().trim().max(100).optional().or(z.literal("")),
@@ -3000,7 +3001,7 @@ const emptyForm: SchedaForm = {
   ragione_sociale: "",
   codice_gestionale: "",
   indirizzo: "", cap: "", citta: "", provincia: "",
-  telefono: "", telefono_2: "", email: "",
+  telefono: "", telefono_2: "", cellulare: "", email: "",
   codice_macrocategoria: "", macrocategoria: "",
   codice_categoria: "", categoria: "",
   partita_iva: "", codice_fiscale: "",
@@ -3227,6 +3228,7 @@ function SchedaClienteDialog({ onClose }: { onClose: () => void }) {
           provincia: parsed.provincia || null,
           telefono: parsed.telefono || null,
           telefono_2: parsed.telefono_2 || null,
+          cellulare: parsed.cellulare || null,
           codice_macrocategoria: parsed.codice_macrocategoria || null,
           macrocategoria: parsed.macrocategoria || null,
           codice_categoria: parsed.codice_categoria || null,
@@ -3826,6 +3828,10 @@ function StepImpresa({
         <div className="space-y-1.5">
           <Label>Telefono</Label>
           <Input value={form.telefono} onChange={(e) => set("telefono", e.target.value)} />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Cellulare</Label>
+          <Input value={form.cellulare} onChange={(e) => set("cellulare", e.target.value)} />
         </div>
         <div className="space-y-1.5">
           <Label>Telefono 2</Label>
