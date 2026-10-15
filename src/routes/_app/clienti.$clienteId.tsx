@@ -643,8 +643,14 @@ function ClienteDetail() {
                   <Field label="Telefono" value={cliente.telefono} tel />
                   <Field label="Cellulare" value={(cliente as any).cellulare} tel />
                   <Field label="Telefono 2" value={(cliente as any).telefono_2} tel />
-                  <Field label="Email" value={cliente.email} />
-                  <Field label="PEC" value={(cliente as any).pec} />
+                  <Field label="Email" value={cliente.email} mail />
+                  {(cliente as any).email_2 && (
+                    <Field label="Email 2" value={(cliente as any).email_2} mail />
+                  )}
+                  {(cliente as any).email_3 && (
+                    <Field label="Email 3" value={(cliente as any).email_3} mail />
+                  )}
+                  <Field label="PEC" value={(cliente as any).pec} mail />
                 </div>
               </SectionCard>
             </div>
@@ -872,10 +878,13 @@ function Field({
   value,
   highlight,
   tel,
+  mail,
 }: {
   label: string;
   value?: string | null;
   highlight?: boolean;
+  /** Se true e il valore è presente, rende il valore come link mailto:. */
+  mail?: boolean;
   /** Se true e il valore è presente, rende il valore come link tel: (come il cellulare dei contatti). */
   tel?: boolean;
 }) {
@@ -884,8 +893,11 @@ function Field({
       <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</dt>
       <dd className={`mt-0.5 ${highlight ? "font-semibold" : ""}`}>
         {value ? (
-          tel ? (
-            <a href={`tel:${value}`} className="text-primary hover:underline">
+          tel || mail ? (
+            <a
+              href={`${tel ? "tel" : "mailto"}:${value}`}
+              className="text-primary hover:underline break-all"
+            >
               {value}
             </a>
           ) : (
@@ -1795,6 +1807,8 @@ const editSchema = z.object({
   provincia: z.string().trim().max(5).optional().or(z.literal("")),
   telefono: z.string().trim().max(30).optional().or(z.literal("")),
   email: z.string().trim().email("Email non valida").max(255).optional().or(z.literal("")),
+  email_2: z.string().trim().email("Email non valida").max(255).optional().or(z.literal("")),
+  email_3: z.string().trim().email("Email non valida").max(255).optional().or(z.literal("")),
   pec: z.string().trim().email("PEC non valida").max(255).optional().or(z.literal("")),
   codice_sdi: z.string().trim().max(10).optional().or(z.literal("")),
   banca: z.string().trim().max(100).optional().or(z.literal("")),
@@ -1839,6 +1853,8 @@ function EditClienteDialog({
     provincia: cliente.provincia ?? "",
     telefono: cliente.telefono ?? "",
     email: cliente.email ?? "",
+    email_2: cliente.email_2 ?? "",
+    email_3: cliente.email_3 ?? "",
     pec: cliente.pec ?? "",
     codice_sdi: cliente.codice_sdi ?? "",
     banca: cliente.banca ?? "",
@@ -2067,6 +2083,16 @@ function EditClienteDialog({
                 onChange={(e) => set("email", e.target.value)}
               />
               {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
+            </div>
+            <div className="space-y-1.5">
+              <Label>Email 2</Label>
+              <Input type="email" value={form.email_2} onChange={(e) => set("email_2", e.target.value)} />
+              {errors.email_2 && <p className="text-xs text-destructive">{errors.email_2}</p>}
+            </div>
+            <div className="space-y-1.5">
+              <Label>Email 3</Label>
+              <Input type="email" value={form.email_3} onChange={(e) => set("email_3", e.target.value)} />
+              {errors.email_3 && <p className="text-xs text-destructive">{errors.email_3}</p>}
             </div>
             <div className="space-y-1.5">
               <Label>PEC</Label>
