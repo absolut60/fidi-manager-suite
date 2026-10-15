@@ -164,6 +164,7 @@ export function NuovoContattoWizard({
   function invalidateAll(cid: string) {
     qc.invalidateQueries({ queryKey: ["contatti", cid] });
     qc.invalidateQueries({ queryKey: ["contatti-all"] });
+    qc.invalidateQueries({ queryKey: ["permessi-contatti", "modificabili", cid] });
   }
 
   async function handleAvanti() {
