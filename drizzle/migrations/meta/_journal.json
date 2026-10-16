@@ -295,6 +295,13 @@
       "when": 1792154851922,
       "tag": "0041_fido_scala_e_residuo_calcolato",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1792156055936,
+      "tag": "0042_policy_has_role_initplan",
+      "breakpoints": true
     }
   ]
 }
