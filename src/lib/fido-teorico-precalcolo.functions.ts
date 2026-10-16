@@ -13,7 +13,7 @@ import { assertPuoImportareGamma } from "@/lib/import-permessi.server";
 export const ricalcolaFidoTeorico = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertPuoImportareGamma(context.supabase, context.userId);
+    await assertPuoImportareGamma(context.supabase, context.userId, context.claims);
     const { sendInngestEvent } = await import("@/lib/inngest/client");
     await sendInngestEvent("fido-teorico/ricalcolo.requested", {});
     return { avviato: true };

@@ -1,8 +1,9 @@
+import { assertSessioneAal2 } from "@/lib/sessione-aal2.server";
 import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-async function assertAdmin(userId: string) {
+async function assertAdmin(userId: string, claims: unknown) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data, error } = await supabaseAdmin
     .from("user_roles")
@@ -12,12 +13,13 @@ async function assertAdmin(userId: string) {
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Accesso riservato agli amministratori");
+  assertSessioneAal2(claims);
 }
 
 export const testConnessioneRichieste = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertAdmin(context.userId);
+    await assertAdmin(context.userId, context.claims);
 
     const url = process.env.RICHIESTE_SUPABASE_URL;
     const key = process.env.RICHIESTE_SERVICE_KEY;
