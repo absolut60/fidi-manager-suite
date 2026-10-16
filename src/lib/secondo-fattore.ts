@@ -62,3 +62,21 @@ export const MESSAGGIO_CODICE_NON_VALIDO = "Codice non valido o scaduto, riprova
 export function srcQr(qr: string): string {
   return qr.startsWith("data:") ? qr : `data:image/svg+xml;utf8,${encodeURIComponent(qr)}`;
 }
+
+/**
+ * FM44 fetta 2: il secondo fattore è obbligatorio per gli amministratori.
+ * Gemello SQL: ramo amministratore di public.auth_mfa_ok().
+ */
+export function obbligatorio(roles: readonly string[]): boolean {
+  return roles.includes("amministratore");
+}
+
+/** Deve attivare la verifica prima di entrare nell'app. */
+export function serveAttivazione(stato: StatoSecondoFattore, roles: readonly string[]): boolean {
+  return obbligatorio(roles) && !stato.haFattoreVerificato;
+}
+
+export const LINK_APP_AUTENTICAZIONE = {
+  appStore: "https://apps.apple.com/app/google-authenticator/id388497605",
+  googlePlay: "https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2",
+} as const;
