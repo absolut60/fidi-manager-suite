@@ -68,7 +68,14 @@ function CambiaPasswordPage() {
       // Aggiornamento ottimistico + rilettura: vince sulla rilettura scatenata da USER_UPDATED.
       await aggiornaProfilo(patch);
       toast.success("Password aggiornata correttamente.");
-      navigate({ to: primoAccesso ? "/attiva-notifiche" : "/dashboard" });
+      // FM44: amministratore senza secondo fattore → percorso guidato.
+      let attivazione = false;
+      try {
+        attivazione = serveAttivazione(await statoSecondoFattore(), roles);
+      } catch {
+        /* la guardia di _app ricontrolla comunque */
+      }
+      navigate({ to: attivazione ? "/attiva-verifica" : primoAccesso ? "/attiva-notifiche" : "/dashboard" });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Errore imprevisto";
       setErrore(msg);
