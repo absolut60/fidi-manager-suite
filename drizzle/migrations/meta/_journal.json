@@ -267,6 +267,13 @@
       "when": 1792143015593,
       "tag": "0037_fm44_secondo_fattore_obbligo_admin",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1792143989547,
+      "tag": "0038_create_has_eventi_flusso_access_mfa_admin",
+      "breakpoints": true
     }
   ]
 }
