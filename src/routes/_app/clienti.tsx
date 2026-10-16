@@ -669,7 +669,7 @@ function ClientiPage() {
     if (statoFido.size === 0 || !classifList) return null;
     const richiesteSet = new Set(richiesteAttiveIds ?? []);
     return classifList.filter((c: any) => {
-      const fido = Number(c.fido ?? 0);
+      const fido = getFidoAttuale(c);
       const scaduto = Number(c.scaduto ?? 0);
       const matches = new Set<string>();
       if (c.bloccato) matches.add("sospeso");
