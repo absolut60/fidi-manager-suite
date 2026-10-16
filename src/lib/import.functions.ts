@@ -27,7 +27,7 @@ export const triggerImport = createServerFn({ method: "POST" })
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    await assertPuoImportareGamma(context.supabase, context.userId);
+    await assertPuoImportareGamma(context.supabase, context.userId, context.claims);
     await assertImportazioneEsiste(context.supabase, data.importazioneId);
     await sendInngestEvent(`import/${data.fonte}.requested`, {
       importazioneId: data.importazioneId,
@@ -47,7 +47,7 @@ export const triggerAnagraficaImport = createServerFn({ method: "POST" })
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    await assertPuoImportareGamma(context.supabase, context.userId);
+    await assertPuoImportareGamma(context.supabase, context.userId, context.claims);
     await assertImportazioneEsiste(context.supabase, data.importazioneId);
     await sendInngestEvent("import/anagrafica.requested", {
       importazioneId: data.importazioneId,

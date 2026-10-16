@@ -1,3 +1,4 @@
+import { assertSessioneAal2, ruoliEffettivi } from "@/lib/sessione-aal2.server";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
@@ -6,7 +7,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 const RUOLI_MARKETING = ["marketing", "amministrazione", "direzione", "amministratore"];
 const BASE_360 = "https://waba-v2.360dialog.io";
 
-async function assertRuoloMarketing(userId: string) {
+async function assertRuoloMarketing(userId: string, claims: unknown) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data, error } = await supabaseAdmin
     .from("user_roles")
@@ -14,7 +15,9 @@ async function assertRuoloMarketing(userId: string) {
     .eq("user_id", userId)
     .in("role", RUOLI_MARKETING as never);
   if (error) throw new Error(error.message);
-  if (!data || data.length === 0) throw new Error("Accesso riservato al team marketing");
+  if (ruoliEffettivi((data ?? []).map((r) => String(r.role)), claims).length === 0) {
+    throw new Error("Accesso riservato al team marketing");
+  }
 }
 
 /** Slug conforme alle regole Meta: minuscolo, solo [a-z0-9_]. */
@@ -88,7 +91,7 @@ export const inviaTemplateInApprovazione = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ templateId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }): Promise<{ ok: boolean; error?: string }> => {
-    await assertRuoloMarketing(context.userId);
+    await assertRuoloMarketing(context.userId, context.claims);
 
     const apiKey = process.env["D360_API_KEY"];
     if (!apiKey || apiKey.trim() === "") {
@@ -275,7 +278,7 @@ function mappaStato(status: string): { stato: string; avviso?: string } | null {
 export const sincronizzaStatiTemplate = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<{ ok: boolean; error?: string; aggiornati?: number; totaleRemoti?: number }> => {
-    await assertRuoloMarketing(context.userId);
+    await assertRuoloMarketing(context.userId, context.claims);
 
     const apiKey = process.env["D360_API_KEY"];
     if (!apiKey || apiKey.trim() === "") {

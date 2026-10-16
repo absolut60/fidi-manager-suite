@@ -5,12 +5,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { puoImportareGamma } from "./import-permessi";
+import { ruoliEffettivi } from "./sessione-aal2.server";
 
 type Client = SupabaseClient<Database>;
 
-export async function assertPuoImportareGamma(supabase: Client, userId: string): Promise<void> {
+export async function assertPuoImportareGamma(supabase: Client, userId: string, claims: unknown): Promise<void> {
   const { data, error } = await supabase.from("user_roles").select("role").eq("user_id", userId);
-  const ruoli = (data ?? []).map((r) => String(r.role));
+  const ruoli = ruoliEffettivi((data ?? []).map((r) => String(r.role)), claims);
   if (error || !puoImportareGamma(ruoli)) {
     throw new Error("L'avvio degli import è riservato ad Amministrazione — Strumenti.");
   }

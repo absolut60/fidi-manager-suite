@@ -1,3 +1,4 @@
+import { assertSessioneAal2, ruoliEffettivi } from "@/lib/sessione-aal2.server";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -34,6 +35,7 @@ export const resetScadenze = createServerFn({ method: "POST" })
     if (rolesErr) throw new Error(`Verifica ruolo fallita: ${rolesErr.message}`);
     const isAdmin = (roles ?? []).some((r) => r.role === "amministratore");
     if (!isAdmin) throw new Error("Permesso negato: operazione riservata agli amministratori.");
+    assertSessioneAal2(context.claims);
 
     // Conta righe prima del reset (riepilogo all'utente)
     const [{ count: nScadenze }, { count: nReminder }, { count: nAzioniLink }] = await Promise.all([

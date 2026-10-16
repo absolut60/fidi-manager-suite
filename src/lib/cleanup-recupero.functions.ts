@@ -1,10 +1,11 @@
+import { assertSessioneAal2, ruoliEffettivi } from "@/lib/sessione-aal2.server";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const CONFIRM_PHRASE = "ELIMINA TUTTO";
 
-async function assertAdmin(supabase: any, userId: string) {
+async function assertAdmin(supabase: any, userId: string, claims: unknown) {
   const { data, error } = await supabase
     .from("user_roles")
     .select("role")
@@ -13,6 +14,7 @@ async function assertAdmin(supabase: any, userId: string) {
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Accesso riservato agli amministratori");
+  assertSessioneAal2(claims);
 }
 
 /** Conta cosa verrebbe eliminato dalla pulizia recupero. */
@@ -20,7 +22,7 @@ export const getCleanupRecuperoCounts = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
+    await assertAdmin(supabase, userId, context.claims);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const [azR, camR, camDR, allR, linkR] = await Promise.all([
@@ -47,7 +49,7 @@ export const eseguiCleanupRecupero = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
+    await assertAdmin(supabase, userId, context.claims);
     if (data.conferma !== CONFIRM_PHRASE) {
       throw new Error(`Frase di conferma errata. Devi digitare esattamente: ${CONFIRM_PHRASE}`);
     }

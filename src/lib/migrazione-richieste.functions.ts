@@ -54,7 +54,7 @@ const DA_CREARE: UtenteDaCreare[] = [
   { email: "maria.fatiga@madepoint.it", nome: "Maria", cognome: "Fatiga", storeId: "9cb773ac-8f95-49aa-9eb2-15a0c1337dca", ruoli: ["store_manager", "richiedente"] },
 ];
 
-async function assertAdmin(userId: string) {
+async function assertAdmin(userId: string, claims: unknown) {
   const { data, error } = await supabaseAdmin
     .from("user_roles")
     .select("role")
@@ -100,7 +100,7 @@ async function aggiungiRuoli(userId: string, ruoli: AppRole[]) {
 export const migrazioneRichiesteCreaUtenti = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertAdmin(context.userId);
+    await assertAdmin(context.userId, context.claims);
 
     const pwd = process.env.MIGRAZIONE_PWD_TEMP;
     if (!pwd || pwd.length < 8) {
@@ -210,7 +210,7 @@ function makeSourceClient() {
   return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false, storage: undefined } });
 }
 
-async function assertAdminUser(userId: string) {
+async function assertAdminUser(userId: string, claims: unknown) {
   const { data, error } = await supabaseAdmin
     .from("user_roles").select("role").eq("user_id", userId).eq("role", "amministratore").maybeSingle();
   if (error) throw new Error(error.message);
@@ -246,7 +246,7 @@ function newAllegatoPath(oldPath: string): string {
 export const migrazioneRichiesteDati = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertAdminUser(context.userId);
+    await assertAdminUser(context.userId, context.claims);
     const src = makeSourceClient();
     const userMap = await loadUserMap();
     const unmapped = new Set<string>();
@@ -407,7 +407,7 @@ export const migrazioneRichiesteDati = createServerFn({ method: "POST" })
 export const migrazioneRichiesteFile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertAdminUser(context.userId);
+    await assertAdminUser(context.userId, context.claims);
     const src = makeSourceClient();
 
     // Legge tutti gli allegati origine (per il path origine) + le righe destinazione (per path nuovo)

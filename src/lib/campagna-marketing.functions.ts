@@ -1,3 +1,4 @@
+import { assertSessioneAal2, ruoliEffettivi } from "@/lib/sessione-aal2.server";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -8,12 +9,13 @@ const MARKETING_ROLES = ["amministratore", "amministrazione", "direzione", "mark
 async function assertRuoloMarketing(
   supabase: { from: (t: string) => any },
   userId: string,
+  claims: unknown,
 ): Promise<void> {
   const { data } = await supabase
     .from("user_roles")
     .select("role")
     .eq("user_id", userId);
-  const ruoli = ((data ?? []) as Array<{ role: string }>).map((r) => r.role);
+  const ruoli = ruoliEffettivi(((data ?? []) as Array<{ role: string }>).map((r) => r.role), claims);
   if (!ruoli.some((r) => (MARKETING_ROLES as readonly string[]).includes(r))) {
     throw new Error("Non autorizzato: servono i permessi Marketing");
   }
@@ -32,7 +34,7 @@ export const avviaInvioCampagnaMarketing = createServerFn({ method: "POST" })
   .inputValidator((i: unknown) => z.object({ campagnaId: z.string().uuid() }).parse(i))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await assertRuoloMarketing(supabase, userId);
+    await assertRuoloMarketing(supabase, userId, context.claims);
 
     const { data: camp, error } = await supabase
       .from("campagne_email_marketing")
@@ -66,7 +68,7 @@ export const annullaInvioCampagnaMarketing = createServerFn({ method: "POST" })
   .inputValidator((i: unknown) => z.object({ campagnaId: z.string().uuid() }).parse(i))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await assertRuoloMarketing(supabase, userId);
+    await assertRuoloMarketing(supabase, userId, context.claims);
     const { error } = await supabase
       .from("campagne_email_marketing")
       .update({ stato: "annullata" } as never)
@@ -81,7 +83,7 @@ export const riprovaCampagnaMarketingFalliti = createServerFn({ method: "POST" }
   .inputValidator((i: unknown) => z.object({ campagnaId: z.string().uuid() }).parse(i))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await assertRuoloMarketing(supabase, userId);
+    await assertRuoloMarketing(supabase, userId, context.claims);
 
     const { data: righe, error } = await supabase
       .from("campagne_email_destinatari")
@@ -115,7 +117,7 @@ export const riprendiInvioCampagnaMarketing = createServerFn({ method: "POST" })
   .inputValidator((i: unknown) => z.object({ campagnaId: z.string().uuid() }).parse(i))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await assertRuoloMarketing(supabase, userId);
+    await assertRuoloMarketing(supabase, userId, context.claims);
 
     const { count, error } = await supabase
       .from("campagne_email_destinatari")
@@ -169,7 +171,7 @@ export const inviaEmailProvaCampagna = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await assertRuoloMarketing(supabase, userId);
+    await assertRuoloMarketing(supabase, userId, context.claims);
 
     const { data: camp, error } = await supabase
       .from("campagne_email_marketing")

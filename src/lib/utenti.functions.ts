@@ -1,4 +1,5 @@
 import { valutaEsitoEmail } from "@/lib/email-esito";
+import { assertSessioneAal2, ruoliEffettivi } from "@/lib/sessione-aal2.server";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { LUNGHEZZA_MINIMA_PASSWORD, messaggioPasswordNonValida } from "@/lib/regole-password";
@@ -40,12 +41,8 @@ async function applicaBanAttivo(userId: string, attivo: boolean) {
   if (error) throw new Error(`Aggiornamento accesso non riuscito: ${error.message}`);
 }
 
-/** FM44: le funzioni del secondo fattore richiedono una sessione amministratore aal2. */
-function assertSessioneAal2(claims: { aal?: unknown } | undefined) {
-  if (claims?.aal !== "aal2") throw new Error("Serve la verifica in due passaggi per questa operazione");
-}
-
-async function assertAdmin(userId: string) {
+/** Unico controllo amministratore (FM44): ruolo + sessione aal2. */
+async function assertAdmin(userId: string, claims: unknown) {
   const { data, error } = await supabaseAdmin
     .from("user_roles")
     .select("role")
@@ -54,6 +51,7 @@ async function assertAdmin(userId: string) {
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Accesso riservato agli amministratori");
+  assertSessioneAal2(claims);
 }
 
 /** Crea un nuovo utente con password e imposta profilo + ruoli. */
@@ -81,7 +79,7 @@ export const creaUtente = createServerFn({ method: "POST" })
     }).parse(d)
   )
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.userId);
+    await assertAdmin(context.userId, context.claims);
 
     if (data.ruoli.includes("store_manager") && !data.storeId) {
       throw new Error("Il ruolo Store Manager richiede un punto vendita");
@@ -152,7 +150,7 @@ export const aggiornaPassword = createServerFn({ method: "POST" })
     }).parse(d)
   )
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.userId);
+    await assertAdmin(context.userId, context.claims);
     const { error } = await supabaseAdmin.auth.admin.updateUserById(data.userId, {
       password: data.password,
     });
@@ -175,7 +173,7 @@ export const inviaCredenziali = createServerFn({ method: "POST" })
     }).parse(d)
   )
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.userId);
+    await assertAdmin(context.userId, context.claims);
 
     const { data: userData, error: eUser } = await supabaseAdmin.auth.admin.getUserById(data.userId);
     if (eUser) throw new Error(eUser.message);
@@ -268,7 +266,7 @@ export const inviaIstruzioniNotifiche = createServerFn({ method: "POST" })
     }).parse(d)
   )
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.userId);
+    await assertAdmin(context.userId, context.claims);
 
     const { data: userData, error: eUser } = await supabaseAdmin.auth.admin.getUserById(data.userId);
     if (eUser) throw new Error(eUser.message);
@@ -371,7 +369,7 @@ export const updateUtenteRuoli = createServerFn({ method: "POST" })
     }).parse(d)
   )
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.userId);
+    await assertAdmin(context.userId, context.claims);
     if (data.attivo === false && data.userId === context.userId) {
       throw new Error("Non puoi disattivare il tuo account");
     }
@@ -422,8 +420,7 @@ export const updateUtenteRuoli = createServerFn({ method: "POST" })
 export const statoSecondoFattoreUtenti = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertAdmin(context.userId);
-    assertSessioneAal2(context.claims as { aal?: unknown });
+    await assertAdmin(context.userId, context.claims);
     const esito: Record<string, boolean> = {};
     for (let page = 1; page <= 50; page++) {
       const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 1000 });
@@ -441,8 +438,7 @@ export const azzeraSecondoFattore = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { userId: string }) => z.object({ userId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.userId);
-    assertSessioneAal2(context.claims as { aal?: unknown });
+    await assertAdmin(context.userId, context.claims);
     if (data.userId === context.userId) throw new Error("Non puoi azzerare la tua verifica");
     const { data: elenco, error } = await supabaseAdmin.auth.admin.mfa.listFactors({ userId: data.userId });
     if (error) throw new Error(error.message);
