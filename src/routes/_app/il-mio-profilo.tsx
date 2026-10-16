@@ -11,9 +11,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { RequisitiPassword } from "@/components/requisiti-password";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { messaggioErroreCambioPassword, messaggioPasswordNonValida } from "@/lib/regole-password";
+import { messaggioErroreCambioPassword, messaggioPasswordNonValida, verificaPassword } from "@/lib/regole-password";
 import { isThisDeviceSubscribed, removeDeviceSubscription } from "@/lib/push";
 
 export const Route = createFileRoute("/_app/il-mio-profilo")({
