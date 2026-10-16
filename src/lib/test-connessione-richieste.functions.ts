@@ -1,3 +1,4 @@
+import { assertSessioneAal2 } from "@/lib/sessione-aal2.server";
 import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -12,6 +13,7 @@ async function assertAdmin(userId: string, claims: unknown) {
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Accesso riservato agli amministratori");
+  assertSessioneAal2(claims);
 }
 
 export const testConnessioneRichieste = createServerFn({ method: "POST" })

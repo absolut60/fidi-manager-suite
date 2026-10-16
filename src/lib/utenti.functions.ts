@@ -1,5 +1,5 @@
 import { valutaEsitoEmail } from "@/lib/email-esito";
-import { assertSessioneAal2, ruoliEffettivi } from "@/lib/sessione-aal2.server";
+import { assertSessioneAal2 } from "@/lib/sessione-aal2.server";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { LUNGHEZZA_MINIMA_PASSWORD, messaggioPasswordNonValida } from "@/lib/regole-password";

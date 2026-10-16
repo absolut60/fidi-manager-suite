@@ -1,3 +1,4 @@
+import { assertSessioneAal2 } from "@/lib/sessione-aal2.server";
 import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
@@ -63,6 +64,7 @@ async function assertAdmin(userId: string, claims: unknown) {
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Accesso riservato agli amministratori");
+  assertSessioneAal2(claims);
 }
 
 async function findUserIdByEmail(email: string): Promise<string | null> {
@@ -215,6 +217,7 @@ async function assertAdminUser(userId: string, claims: unknown) {
     .from("user_roles").select("role").eq("user_id", userId).eq("role", "amministratore").maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Accesso riservato agli amministratori");
+  assertSessioneAal2(claims);
 }
 
 async function loadUserMap(): Promise<Map<string, string>> {

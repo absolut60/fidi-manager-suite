@@ -1,4 +1,4 @@
-import { assertSessioneAal2, ruoliEffettivi } from "@/lib/sessione-aal2.server";
+import { ruoliEffettivi } from "@/lib/sessione-aal2.server";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
