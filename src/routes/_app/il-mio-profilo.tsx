@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { RequisitiPassword } from "@/components/requisiti-password";
+import { VerificaDuePassaggi } from "@/components/verifica-due-passaggi";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { messaggioErroreCambioPassword, messaggioPasswordNonValida, verificaPassword } from "@/lib/regole-password";
@@ -217,6 +218,8 @@ function IlMioProfiloPage() {
           {profilo?.nome} {profilo?.cognome}
         </p>
       </div>
+
+      <VerificaDuePassaggi />
 
       <Card>
         <CardHeader>

@@ -1,5 +1,6 @@
 import { createFileRoute, Link, Navigate, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { serveCodice, statoSecondoFattore, type StatoSecondoFattore } from "@/lib/secondo-fattore";
 import { KeyRound } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/app-shell";
@@ -19,6 +20,17 @@ function ProtectedAppLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const nonAttivo = !loading && !!session && !!profilo && !utenteAttivo(profilo);
+  const [statoMfa, setStatoMfa] = useState<StatoSecondoFattore | null>(null);
+  const tokenSessione = session?.access_token;
+
+  useEffect(() => {
+    if (!tokenSessione) return;
+    let annullato = false;
+    statoSecondoFattore()
+      .then((s) => { if (!annullato) setStatoMfa(s); })
+      .catch(() => { /* in errore non si reindirizza */ });
+    return () => { annullato = true; };
+  }, [tokenSessione]);
 
   useEffect(() => {
     if (!nonAttivo) return;
@@ -45,6 +57,12 @@ function ProtectedAppLayout() {
 
   if (!session) {
     return <Navigate to="/login" />;
+  }
+
+  // Secondo fattore (FM44): sessione che richiede aal2 ma è ancora aal1.
+  // Durante la lettura dello stato non si reindirizza.
+  if (statoMfa && serveCodice(statoMfa)) {
+    return <Navigate to="/verifica-codice" search={{ next: pathname }} replace />;
   }
 
   // Checkpoint obbligatorio (FM44): primo accesso, password reimpostata dall'admin,
