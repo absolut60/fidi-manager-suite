@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session, User } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
@@ -14,6 +14,7 @@ export type Profilo = {
   codice_agente?: string | null;
   attivo: boolean;
   deve_cambiare_password?: boolean;
+  password_cambiata_il?: string | null;
 };
 
 /**
@@ -35,6 +36,12 @@ type AuthContextValue = {
   hasRole: (r: AppRole) => boolean;
   hasAnyRole: (...rs: AppRole[]) => boolean;
   loading: boolean;
+  /**
+   * Rilegge profilo e ruoli dell'utente corrente. Se `patch` è passato, lo applica subito
+   * (aggiornamento ottimistico). Questa rilettura vince sempre su quelle avviate prima
+   * (es. quella scatenata da USER_UPDATED dopo updateUser).
+   */
+  aggiornaProfilo: (patch?: Partial<Profilo>) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -46,6 +53,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<AppRole | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [loading, setLoading] = useState(true);
+  // Contatore delle letture: si applica solo l'ultima avviata (evita che una lettura
+  // vecchia, es. quella da USER_UPDATED, sovrascriva un profilo più recente).
+  const seqRef = useRef(0);
+  const userIdRef = useRef<string | null>(null);
+  const loadRef = useRef<((userId: string) => Promise<void>) | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -54,16 +66,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, 3000);
 
     async function loadUserData(userId: string) {
+      const seq = ++seqRef.current;
       const [{ data: p }, { data: r }] = await Promise.all([
         supabase.from("profili").select("*").eq("id", userId).maybeSingle(),
         supabase.from("user_roles").select("role").eq("user_id", userId),
       ]);
-      if (cancelled) return;
+      if (cancelled || seq !== seqRef.current) return;
       setProfilo(p as Profilo | null);
       const ruoliUtente = (r ?? []).map((x) => x.role as AppRole);
       setRoles(ruoliUtente);
       setRole(ORDINE_RUOLI.find((o) => ruoliUtente.includes(o)) ?? null);
     }
+    loadRef.current = loadUserData;
 
     // Listener: filtra eventi — ricarica dati utente SOLO su identity transitions.
     // Ignora TOKEN_REFRESHED (orario + focus tab) e INITIAL_SESSION (su mount) per
@@ -72,6 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") {
         setSession(newSession);
         setUser(newSession?.user ?? null);
+        userIdRef.current = newSession?.user?.id ?? null;
         if (!newSession?.user) {
           setProfilo(null);
           setRole(null);
@@ -91,6 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (newSession !== undefined) {
           setSession(newSession);
           setUser(newSession?.user ?? null);
+          userIdRef.current = newSession?.user?.id ?? userIdRef.current;
         }
       }
     });
@@ -100,6 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (cancelled) return;
       setSession(s);
       setUser(s?.user ?? null);
+      userIdRef.current = s?.user?.id ?? null;
       if (s?.user) {
         loadUserData(s.user.id).finally(() => {
           if (!cancelled) setLoading(false);
@@ -119,15 +136,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       cancelled = true;
+      loadRef.current = null;
       window.clearTimeout(fallbackTimer);
       subscription.unsubscribe();
     };
   }, []);
 
+  const aggiornaProfilo = useCallback(async (patch?: Partial<Profilo>) => {
+    if (patch) {
+      // Invalida le letture in corso e applica subito i nuovi valori.
+      seqRef.current++;
+      setProfilo((prev) => (prev ? { ...prev, ...patch } : prev));
+    }
+    const uid = userIdRef.current;
+    if (uid && loadRef.current) await loadRef.current(uid);
+  }, []);
+
   const hasRole = (r: AppRole) => roles.includes(r);
   const hasAnyRole = (...rs: AppRole[]) => rs.some((r) => roles.includes(r));
 
-  const value: AuthContextValue = { session, user, profilo, role, roles, hasRole, hasAnyRole, loading };
+  const value: AuthContextValue = { session, user, profilo, role, roles, hasRole, hasAnyRole, loading, aggiornaProfilo };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
@@ -148,6 +176,7 @@ export function useAuth() {
       hasRole: () => false,
       hasAnyRole: () => false,
       loading: false,
+      aggiornaProfilo: async () => {},
     } satisfies AuthContextValue;
   }
   return ctx;
