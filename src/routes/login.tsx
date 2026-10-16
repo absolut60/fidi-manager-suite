@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { LOGO_MADE_BASE64 } from "@/lib/logo-made-base64";
+import { serveCodice, statoSecondoFattore } from "@/lib/secondo-fattore";
 
 function safeNext(next: unknown): string {
   if (typeof next !== "string") return "/dashboard";
@@ -47,6 +48,11 @@ function LoginPage() {
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
+      // Secondo fattore (FM44): la regola sta solo in serveCodice.
+      if (serveCodice(await statoSecondoFattore())) {
+        window.location.href = `/verifica-codice?next=${encodeURIComponent(target)}`;
+        return;
+      }
       toast.success("Accesso effettuato");
       // Uso window.location per far girare i loader di rotte con auth-gate
       // (la sessione appena creata è ancora in fase di hydration).

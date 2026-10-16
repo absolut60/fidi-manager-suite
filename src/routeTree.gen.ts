@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IscrizioneWhatsappRouteImport } from './routes/iscrizione-whatsapp'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as VerificaCodiceRouteImport } from './routes/verifica-codice'
 import { Route as AppApprovazioniRouteImport } from './routes/_app/approvazioni'
 import { Route as AppAreeRouteImport } from './routes/_app/aree'
 import { Route as AppAssicurazioniRouteImport } from './routes/_app/assicurazioni'
@@ -113,6 +114,11 @@ const IscrizioneWhatsappRoute = IscrizioneWhatsappRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VerificaCodiceRoute = VerificaCodiceRouteImport.update({
+  id: '/verifica-codice',
+  path: '/verifica-codice',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppApprovazioniRoute = AppApprovazioniRouteImport.update({
@@ -548,6 +554,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
+  '/verifica-codice': typeof VerificaCodiceRoute
   '/approvazioni': typeof AppApprovazioniRoute
   '/aree': typeof AppAreeRoute
   '/assicurazioni': typeof AppAssicurazioniRoute
@@ -635,6 +642,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
+  '/verifica-codice': typeof VerificaCodiceRoute
   '/approvazioni': typeof AppApprovazioniRoute
   '/aree': typeof AppAreeRoute
   '/assicurazioni': typeof AppAssicurazioniRoute
@@ -721,6 +729,7 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/iscrizione-whatsapp': typeof IscrizioneWhatsappRoute
   '/login': typeof LoginRoute
+  '/verifica-codice': typeof VerificaCodiceRoute
   '/_app/approvazioni': typeof AppApprovazioniRoute
   '/_app/aree': typeof AppAreeRoute
   '/_app/assicurazioni': typeof AppAssicurazioniRoute
@@ -810,6 +819,7 @@ export interface FileRouteTypes {
     | '/'
     | '/iscrizione-whatsapp'
     | '/login'
+    | '/verifica-codice'
     | '/approvazioni'
     | '/aree'
     | '/assicurazioni'
@@ -897,6 +907,7 @@ export interface FileRouteTypes {
     | '/'
     | '/iscrizione-whatsapp'
     | '/login'
+    | '/verifica-codice'
     | '/approvazioni'
     | '/aree'
     | '/assicurazioni'
@@ -982,6 +993,7 @@ export interface FileRouteTypes {
     | '/_app'
     | '/iscrizione-whatsapp'
     | '/login'
+    | '/verifica-codice'
     | '/_app/approvazioni'
     | '/_app/aree'
     | '/_app/assicurazioni'
@@ -1071,6 +1083,7 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   IscrizioneWhatsappRoute: typeof IscrizioneWhatsappRoute
   LoginRoute: typeof LoginRoute
+  VerificaCodiceRoute: typeof VerificaCodiceRoute
   ConsensiTokenRoute: typeof ConsensiTokenRoute
   FirmaPrivacyTokenRoute: typeof FirmaPrivacyTokenRoute
   IscrizioneEventoCodiceRoute: typeof IscrizioneEventoCodiceRoute
@@ -1112,6 +1125,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/verifica-codice': {
+      id: '/verifica-codice'
+      path: '/verifica-codice'
+      fullPath: '/verifica-codice'
+      preLoaderRoute: typeof VerificaCodiceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/approvazioni': {
@@ -1894,6 +1914,7 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   IscrizioneWhatsappRoute: IscrizioneWhatsappRoute,
   LoginRoute: LoginRoute,
+  VerificaCodiceRoute: VerificaCodiceRoute,
   ConsensiTokenRoute: ConsensiTokenRoute,
   FirmaPrivacyTokenRoute: FirmaPrivacyTokenRoute,
   IscrizioneEventoCodiceRoute: IscrizioneEventoCodiceRoute,
