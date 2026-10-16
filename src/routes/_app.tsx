@@ -1,6 +1,8 @@
-import { createFileRoute, Navigate, Outlet, useRouterState } from "@tanstack/react-router";
+import { createFileRoute, Navigate, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/app-shell";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth, utenteAttivo } from "@/hooks/use-auth";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 export const Route = createFileRoute("/_app")({
@@ -10,8 +12,25 @@ export const Route = createFileRoute("/_app")({
 function ProtectedAppLayout() {
   const { session, loading, profilo } = useAuth();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const navigate = useNavigate();
+  const nonAttivo = !loading && !!session && !!profilo && !utenteAttivo(profilo);
+
+  useEffect(() => {
+    if (!nonAttivo) return;
+    supabase.auth.signOut().finally(() => {
+      navigate({ to: "/login", search: { motivo: "non_attivo" }, replace: true });
+    });
+  }, [nonAttivo, navigate]);
 
   if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background text-muted-foreground">
+        Caricamento...
+      </div>
+    );
+  }
+
+  if (nonAttivo) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background text-muted-foreground">
         Caricamento...

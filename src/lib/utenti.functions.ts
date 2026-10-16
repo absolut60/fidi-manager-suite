@@ -26,6 +26,14 @@ async function assertAgenteEsiste(codice: string) {
   if (!data) throw new Error(`Agente con codice "${codice}" non trovato`);
 }
 
+/** FM44: disattivare = ban nel sistema di accesso; riattivare = togli il ban. */
+async function applicaBanAttivo(userId: string, attivo: boolean) {
+  const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+    ban_duration: attivo ? "none" : "876000h",
+  });
+  if (error) throw new Error(`Aggiornamento accesso non riuscito: ${error.message}`);
+}
+
 async function assertAdmin(userId: string) {
   const { data, error } = await supabaseAdmin
     .from("user_roles")
@@ -110,6 +118,7 @@ export const creaUtente = createServerFn({ method: "POST" })
       })
       .eq("id", userId);
     if (eProf) throw new Error(eProf.message);
+    if (data.attivo === false) await applicaBanAttivo(userId, false);
 
     // Sostituisci i ruoli con quelli scelti
     const { error: eDel } = await supabaseAdmin.from("user_roles").delete().eq("user_id", userId);
@@ -351,6 +360,9 @@ export const updateUtenteRuoli = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
+    if (data.attivo === false && data.userId === context.userId) {
+      throw new Error("Non puoi disattivare il tuo account");
+    }
 
     if (data.ruoli.includes("store_manager") && !data.storeId) {
       throw new Error("Il ruolo Store Manager richiede un punto vendita");
@@ -382,6 +394,7 @@ export const updateUtenteRuoli = createServerFn({ method: "POST" })
       .update(profileUpdate)
       .eq("id", data.userId);
     if (eProf) throw new Error(eProf.message);
+    await applicaBanAttivo(data.userId, data.attivo);
 
     const { error: eDel } = await supabaseAdmin.from("user_roles").delete().eq("user_id", data.userId);
     if (eDel) throw new Error(eDel.message);
