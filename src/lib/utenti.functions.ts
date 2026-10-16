@@ -40,6 +40,11 @@ async function applicaBanAttivo(userId: string, attivo: boolean) {
   if (error) throw new Error(`Aggiornamento accesso non riuscito: ${error.message}`);
 }
 
+/** FM44: le funzioni del secondo fattore richiedono una sessione amministratore aal2. */
+function assertSessioneAal2(claims: { aal?: unknown } | undefined) {
+  if (claims?.aal !== "aal2") throw new Error("Serve la verifica in due passaggi per questa operazione");
+}
+
 async function assertAdmin(userId: string) {
   const { data, error } = await supabaseAdmin
     .from("user_roles")
@@ -418,6 +423,7 @@ export const statoSecondoFattoreUtenti = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertAdmin(context.userId);
+    assertSessioneAal2(context.claims as { aal?: unknown });
     const esito: Record<string, boolean> = {};
     for (let page = 1; page <= 50; page++) {
       const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 1000 });
@@ -436,6 +442,7 @@ export const azzeraSecondoFattore = createServerFn({ method: "POST" })
   .inputValidator((d: { userId: string }) => z.object({ userId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
+    assertSessioneAal2(context.claims as { aal?: unknown });
     if (data.userId === context.userId) throw new Error("Non puoi azzerare la tua verifica");
     const { data: elenco, error } = await supabaseAdmin.auth.admin.mfa.listFactors({ userId: data.userId });
     if (error) throw new Error(error.message);
