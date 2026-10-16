@@ -55,7 +55,7 @@ Estratto dal knowledge di progetto il 08/10/2026 (sessione 40). Si aggiorna modi
 
 ## Accesso (FM44)
 
-- **Registrazione libera:** da chiudere (signup disabilitato). Al 16/10/2026 NON ancora applicata: l'impostazione si cambia insieme alla protezione password compromesse, il cui valore attuale non è leggibile; resta in attesa di conferma del proprietario.
+- **Registrazione libera:** chiusa il 16/10/2026 (signup disabilitato); auto-conferma email spenta; accesso anonimo disabilitato; protezione password compromesse (HIBP) attiva.
 - **Nuovi account senza ruolo e non attivi:** `public.handle_new_user()` crea solo la riga in `profili` con `attivo = false` e non inserisce ruoli in `user_roles` (rimosso il ramo "primo utente = amministratore"). Migrazione `0035_fm44_accesso_nuovi_utenti_vista_whatsapp.sql`.
 - **La creazione passa solo dall'amministratore:** `creaUtente` (`src/lib/utenti.functions.ts`, `assertAdmin`) usa `auth.admin.createUser` con `email_confirm: true`, poi imposta esplicitamente `profili.attivo` e sostituisce i ruoli con quelli scelti nella pagina Utenti.
 - **Nota:** oggi `profili.attivo` non blocca il login (né `use-auth` né le guardie di rotta lo controllano); un account non attivo e senza ruoli entra ma non vede dati protetti da ruolo.
