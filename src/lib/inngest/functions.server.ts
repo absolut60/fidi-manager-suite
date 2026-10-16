@@ -2972,6 +2972,7 @@ export const processBloccoFidoImport = inngest.createFunction(
           totaleBlocco: number;
           totaleNote: number;
           foglioNotePresente: boolean;
+          colonnaFidoPresente?: boolean;
           chunkSize: number;
           totalChunks: number;
           chunks?: Array<{ chunkIndex: number; chunkPath: string; rowsCount?: number }>;
@@ -3041,6 +3042,7 @@ export const processBloccoFidoImport = inngest.createFunction(
           noteLegali,
           noteSheetFound: manifest.foglioNotePresente,
           noteHeaderOk: manifest.foglioNotePresente && manifest.totaleNote > 0,
+          colonnaFidoPresente: manifest.colonnaFidoPresente === true,
           warnings,
         };
       });
@@ -3048,6 +3050,7 @@ export const processBloccoFidoImport = inngest.createFunction(
       const parsed = parseResult.rows;
       const noteLegaliFromSheet = parseResult.noteLegali;
       const initialWarnings = parseResult.warnings;
+      const colonnaFidoPresente = parseResult.colonnaFidoPresente;
 
       // STEP 2: init-importazione — REPLAY-SAFE
       // - genera timestampInizio UNA SOLA VOLTA (cached da Inngest tra i replay)
@@ -3096,6 +3099,7 @@ export const processBloccoFidoImport = inngest.createFunction(
         ind_blocco: number | null;
         assicurazione_attiva: boolean | null;
         in_gestione_legale: boolean | null;
+        fido_gestionale?: number | null;
       };
 
       // STEP 3: cutoff config — subito dopo init, PRIMA di qualunque lookup pesante
@@ -3123,6 +3127,7 @@ export const processBloccoFidoImport = inngest.createFunction(
       let nonAttivi = 0;
       let polizze = 0;
       let anomalieTotali = 0;
+      let fidiAzzera = 0;
 
       const CHUNK = 500;
       const totalChunks = Math.ceil(parsed.length / CHUNK);
@@ -3146,7 +3151,7 @@ export const processBloccoFidoImport = inngest.createFunction(
             const { data, error } = await supabaseAdmin
               .from("clienti")
               .select(
-                "id, codice_gestionale, ragione_sociale, ind_blocco, assicurazione_attiva, in_gestione_legale",
+                "id, codice_gestionale, ragione_sociale, ind_blocco, assicurazione_attiva, in_gestione_legale, fido_gestionale",
               )
               .in("codice_gestionale", codiciChunk);
             if (error) throw new Error(`lookup clienti chunk ${ci + 1}: ${error.message}`);
@@ -3156,6 +3161,8 @@ export const processBloccoFidoImport = inngest.createFunction(
                   id: c.id,
                   ragione_sociale: c.ragione_sociale ?? null,
                   ind_blocco: (c as { ind_blocco?: number | null }).ind_blocco ?? null,
+                  fido_gestionale:
+                    (c as { fido_gestionale?: number | null }).fido_gestionale ?? null,
                   assicurazione_attiva:
                     (c as { assicurazione_attiva?: boolean | null }).assicurazione_attiva ?? null,
                   in_gestione_legale:
@@ -3184,7 +3191,8 @@ export const processBloccoFidoImport = inngest.createFunction(
           let cBlk = 0,
             cSblk = 0,
             cNonAtt = 0,
-            cPol = 0;
+            cPol = 0,
+            cFidiAzz = 0;
           const cErr: Array<{ riga: number; errore: string }> = [];
           const cMiss: string[] = [];
           const anomalieBatch: AnomaliaImport[] = [];
@@ -3234,7 +3242,12 @@ export const processBloccoFidoImport = inngest.createFunction(
               payload.cliente_attivo = attivo;
               if (!attivo) cNonAtt++;
 
-              if (r.fido !== null && r.fido !== undefined) {
+              if (colonnaFidoPresente) {
+                // Colonna FIDO presente nel foglio: cella vuota = fido azzerato (decisione Andrea, 16/10/2026).
+                payload.fido_gestionale = r.fido ?? 0;
+                if (r.fido == null && (snap.fido_gestionale ?? 0) > 0) cFidiAzz++;
+              } else if (r.fido !== null && r.fido !== undefined) {
+                // Comportamento precedente (manifest senza colonnaFidoPresente): fido toccato solo se valorizzato.
                 payload.fido_gestionale = r.fido ?? 0;
               }
 
@@ -3373,6 +3386,7 @@ export const processBloccoFidoImport = inngest.createFunction(
             cSblk,
             cNonAtt,
             cPol,
+            cFidiAzz,
             cAnom: anomalieBatch.length,
             cErr: cErr.length,
             cMissCount: cMiss.length,
@@ -3381,6 +3395,7 @@ export const processBloccoFidoImport = inngest.createFunction(
         });
 
         aggiornati += res.cAgg;
+        fidiAzzera += res.cFidiAzz;
         bloccati += res.cBlk;
         sbloccati += res.cSblk;
         nonAttivi += res.cNonAtt;
@@ -3627,8 +3642,11 @@ export const processBloccoFidoImport = inngest.createFunction(
           },
           {
             riga: 0,
-            errore: `Dettaglio: ${bloccati} bloccati, ${sbloccati} sbloccati, ${nonAttivi} non attivi, ${polizze} polizze POUEY, ${noteImportate} note legali`,
+            errore: `Dettaglio: ${bloccati} bloccati, ${sbloccati} sbloccati, ${nonAttivi} non attivi, ${polizze} polizze POUEY, ${noteImportate} note legali${colonnaFidoPresente ? `, ${fidiAzzera} fidi azzerati (cella FIDO vuota)` : ""}`,
           },
+          ...(colonnaFidoPresente
+            ? []
+            : [{ riga: 0, errore: "Colonna FIDO assente: fidi non aggiornati" }]),
         ];
         const { data: cur } = await supabaseAdmin
           .from("importazioni")
