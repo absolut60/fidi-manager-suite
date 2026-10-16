@@ -1080,7 +1080,7 @@ function RiepilogoTab({ cliente, clienteId }: { cliente: any; clienteId: string 
   const maxGg = Number(ins?.max_giorni_ritardo ?? 0);
 
   // Dati rischio
-  const fidoGest = Number(cliente.fido_gestionale ?? cliente.fido ?? 0);
+  const fidoGest = getFidoAttuale(cliente);
   const totRischio = Number(cliente.totale_rischio ?? 0);
   const fidoResiduo = cliente.fido_residuo == null ? null : Number(cliente.fido_residuo);
   const scaduto = Number(cliente.scaduto ?? 0);
