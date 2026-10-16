@@ -302,6 +302,13 @@
       "when": 1792156055936,
       "tag": "0042_policy_has_role_initplan",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1792160592329,
+      "tag": "0043_fm44_profili_trigger_campi_protetti",
+      "breakpoints": true
     }
   ]
 }
