@@ -4492,6 +4492,7 @@ export type Database = {
           email: string | null
           id: string
           nome: string | null
+          password_cambiata_il: string | null
           store_id: string | null
           updated_at: string
         }
@@ -4504,6 +4505,7 @@ export type Database = {
           email?: string | null
           id: string
           nome?: string | null
+          password_cambiata_il?: string | null
           store_id?: string | null
           updated_at?: string
         }
@@ -4516,6 +4518,7 @@ export type Database = {
           email?: string | null
           id?: string
           nome?: string | null
+          password_cambiata_il?: string | null
           store_id?: string | null
           updated_at?: string
         }
