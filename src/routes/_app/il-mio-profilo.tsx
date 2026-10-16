@@ -98,6 +98,8 @@ function IlMioProfiloPage() {
 
   const [pwd, setPwd] = useState("");
   const [pwd2, setPwd2] = useState("");
+  const pwdValida = verificaPassword(pwd).valida;
+  const pwdCoincidenti = pwd.length > 0 && pwd === pwd2;
   const [busy, setBusy] = useState(false);
   const [errore, setErrore] = useState<string | null>(null);
 
