@@ -1,12 +1,12 @@
 import { inngest } from "./client";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
-const DIMENSIONE_BLOCCO = 500;
+const DIMENSIONE_BLOCCO = 1000;
 const MAX_ITERAZIONI = 200;
 
 /**
  * Ricalcolo del precalcolo fido teorico (public.fido_teorico_cliente).
- * Unica funzione Inngest: refresh → loop di blocchi da 500 (uno step per
+ * Unica funzione Inngest: refresh → loop di blocchi da 1000 (uno step per
  * blocco, id univoco così Inngest li memoizza) → finalizzazione.
  * Nessun evento che ri-triggera sé stesso.
  */
