@@ -253,6 +253,13 @@
       "when": 1792134160926,
       "tag": "0035_fm44_accesso_nuovi_utenti_vista_whatsapp",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1792141324521,
+      "tag": "0036_fm44_scadenza_password",
+      "breakpoints": true
     }
   ]
 }

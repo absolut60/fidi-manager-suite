@@ -1,12 +1,20 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Check, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useConfig } from "@/hooks/use-config";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  REQUISITI_PASSWORD,
+  messaggioErroreCambioPassword,
+  passwordScaduta,
+  verificaPassword,
+} from "@/lib/regole-password";
 
 export const Route = createFileRoute("/_app/cambia-password")({
   head: () => ({
@@ -23,37 +31,44 @@ export const Route = createFileRoute("/_app/cambia-password")({
 });
 
 function CambiaPasswordPage() {
-  const { user } = useAuth();
+  const { user, profilo, aggiornaProfilo } = useAuth();
+  const config = useConfig();
   const navigate = useNavigate();
   const [pwd, setPwd] = useState("");
   const [pwd2, setPwd2] = useState("");
   const [errore, setErrore] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const primoAccesso = profilo?.deve_cambiare_password === true;
+  const scaduta = passwordScaduta(profilo, config.scadenza_password_giorni);
+  const { valida } = verificaPassword(pwd);
+  const coincidono = pwd.length > 0 && pwd === pwd2;
+  const puoSalvare = valida && coincidono && !busy;
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErrore(null);
-    if (pwd.length < 8) {
-      setErrore("La password deve contenere almeno 8 caratteri.");
+    if (!valida) {
+      setErrore("La password non rispetta tutti i requisiti.");
       return;
     }
-    if (pwd !== pwd2) {
+    if (!coincidono) {
       setErrore("Le due password non coincidono.");
       return;
     }
     setBusy(true);
     try {
       const { error } = await supabase.auth.updateUser({ password: pwd });
-      if (error) throw new Error(error.message);
+      if (error) throw new Error(messaggioErroreCambioPassword(error));
+      const patch = { deve_cambiare_password: false, password_cambiata_il: new Date().toISOString() };
       if (user?.id) {
-        const { error: eProf } = await supabase
-          .from("profili")
-          .update({ deve_cambiare_password: false })
-          .eq("id", user.id);
+        const { error: eProf } = await supabase.from("profili").update(patch).eq("id", user.id);
         if (eProf) throw new Error(eProf.message);
       }
+      // Aggiornamento ottimistico + rilettura: vince sulla rilettura scatenata da USER_UPDATED.
+      await aggiornaProfilo(patch);
       toast.success("Password aggiornata correttamente.");
-      navigate({ to: "/attiva-notifiche" });
+      navigate({ to: primoAccesso ? "/attiva-notifiche" : "/dashboard" });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Errore imprevisto";
       setErrore(msg);
@@ -64,12 +79,14 @@ function CambiaPasswordPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-md py-10">
+    <div className="mx-auto w-full max-w-md py-6 sm:py-10">
       <Card>
         <CardHeader>
           <CardTitle>Imposta la tua password</CardTitle>
           <CardDescription>
-            Per la tua sicurezza, scegli una nuova password prima di continuare.
+            {scaduta
+              ? "La tua password è scaduta: scegline una nuova."
+              : "Per la tua sicurezza, scegli una nuova password prima di continuare."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -78,12 +95,26 @@ function CambiaPasswordPage() {
               <Label htmlFor="pwd">Nuova password</Label>
               <Input id="pwd" type="password" value={pwd} onChange={(e) => setPwd(e.target.value)} autoComplete="new-password" />
             </div>
+            <ul className="space-y-1 text-sm" aria-label="Requisiti della password">
+              {REQUISITI_PASSWORD.map((r) => {
+                const ok = r.verifica(pwd);
+                return (
+                  <li key={r.id} className={`flex items-start gap-2 ${ok ? "text-primary" : "text-muted-foreground"}`}>
+                    {ok ? <Check className="size-4 shrink-0 mt-0.5" /> : <X className="size-4 shrink-0 mt-0.5" />}
+                    <span className="min-w-0 break-words">{r.etichetta}</span>
+                  </li>
+                );
+              })}
+            </ul>
             <div className="space-y-2">
               <Label htmlFor="pwd2">Conferma password</Label>
               <Input id="pwd2" type="password" value={pwd2} onChange={(e) => setPwd2(e.target.value)} autoComplete="new-password" />
+              {pwd2.length > 0 && !coincidono && (
+                <p className="text-xs text-destructive">Le due password non coincidono.</p>
+              )}
             </div>
             {errore && <p className="text-sm text-destructive">{errore}</p>}
-            <Button type="submit" disabled={busy} className="w-full">
+            <Button type="submit" disabled={!puoSalvare} className="w-full min-h-10">
               {busy ? "Salvataggio..." : "Salva e continua"}
             </Button>
           </form>

@@ -727,6 +727,7 @@ const CONFIG_FIELDS: {
   { chiave: "durata_default_mesi", label: "Durata di default", suffix: "mesi", hint: "Durata del fido proposta nelle nuove richieste" },
   { chiave: "reminder_giorni_scadenza", label: "Reminder scadenza", suffix: "giorni", hint: "Giorni di anticipo per segnalare i fidi in scadenza" },
   { chiave: "tolleranza_ritardo_pagamento_gg", label: "Tolleranza ritardo pagamenti", suffix: "giorni", hint: "Un pagamento non RiBa (bonifico, rimessa…) conta come in ritardo solo se arriva oltre questi giorni dopo la scadenza. Le RiBa non pagate sono contate negli insoluti. Usato in Scadenziario, scheda cliente e quadro richieste fido." },
+  { chiave: "scadenza_password_giorni", label: "Scadenza password (giorni)", suffix: "giorni", hint: "Dopo quanti giorni dall'ultimo cambio ogni utente deve scegliere una nuova password (minimo 30)." },
   {
     chiave: "cutoff_cliente_attivo_anno",
     label: "Anno attività cliente",
@@ -859,6 +860,11 @@ function ConfigurazioniCard() {
       const toll = Number(tollRaw);
       if (tollRaw !== "" && (!Number.isInteger(toll) || toll < 0)) {
         throw new Error("Tolleranza ritardo pagamenti non valida (numero intero di giorni ≥ 0)");
+      }
+      const scadRaw = String(values.scadenza_password_giorni ?? "").trim();
+      const scad = Number(scadRaw);
+      if (!Number.isInteger(scad) || scad < 30) {
+        throw new Error("Scadenza password non valida (numero intero di giorni ≥ 30)");
       }
       const updates = CONFIG_FIELDS.map((f) =>
         supabase.from("configurazioni").update({ valore: values[f.chiave] ?? "" }).eq("chiave", f.chiave)

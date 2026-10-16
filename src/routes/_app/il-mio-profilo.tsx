@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { messaggioErroreCambioPassword, messaggioPasswordNonValida } from "@/lib/regole-password";
 import { isThisDeviceSubscribed, removeDeviceSubscription } from "@/lib/push";
 
 export const Route = createFileRoute("/_app/il-mio-profilo")({
@@ -64,7 +65,7 @@ function IconaPiattaforma({ platform }: { platform: string | null }) {
 }
 
 function IlMioProfiloPage() {
-  const { user, profilo } = useAuth();
+  const { user, profilo, aggiornaProfilo } = useAuth();
   const queryClient = useQueryClient();
   const userId = user?.id ?? null;
 
@@ -172,8 +173,9 @@ function IlMioProfiloPage() {
 
   async function cambiaPassword(e: React.FormEvent) {
     e.preventDefault();
-    if (pwd.length < 8) {
-      setErrore("La password deve contenere almeno 8 caratteri.");
+    const errPwd = messaggioPasswordNonValida(pwd);
+    if (errPwd) {
+      setErrore(errPwd);
       return;
     }
     if (pwd !== pwd2) {
@@ -183,11 +185,22 @@ function IlMioProfiloPage() {
     setErrore(null);
     setBusy(true);
     const { error } = await supabase.auth.updateUser({ password: pwd });
-    setBusy(false);
     if (error) {
-      toast.error(error.message);
+      setBusy(false);
+      toast.error(messaggioErroreCambioPassword(error));
       return;
     }
+    const patch = { deve_cambiare_password: false, password_cambiata_il: new Date().toISOString() };
+    if (user?.id) {
+      const { error: eProf } = await supabase.from("profili").update(patch).eq("id", user.id);
+      if (eProf) {
+        setBusy(false);
+        toast.error(eProf.message);
+        return;
+      }
+    }
+    await aggiornaProfilo(patch);
+    setBusy(false);
     toast.success("Password aggiornata");
     setPwd("");
     setPwd2("");
