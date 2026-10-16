@@ -6815,6 +6815,7 @@ export type Database = {
         Returns: Json
       }
       classifica_iscritto_whatsapp: { Args: { _id: string }; Returns: Json }
+      clienti_ambito_utente_ids: { Args: never; Returns: string[] }
       clienti_scaduto_oltre_60: {
         Args: never
         Returns: {
