@@ -11,9 +11,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { RequisitiPassword } from "@/components/requisiti-password";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { messaggioErroreCambioPassword, messaggioPasswordNonValida } from "@/lib/regole-password";
+import { messaggioErroreCambioPassword, messaggioPasswordNonValida, verificaPassword } from "@/lib/regole-password";
 import { isThisDeviceSubscribed, removeDeviceSubscription } from "@/lib/push";
 
 export const Route = createFileRoute("/_app/il-mio-profilo")({
@@ -97,6 +98,8 @@ function IlMioProfiloPage() {
 
   const [pwd, setPwd] = useState("");
   const [pwd2, setPwd2] = useState("");
+  const pwdValida = verificaPassword(pwd).valida;
+  const pwdCoincidenti = pwd.length > 0 && pwd === pwd2;
   const [busy, setBusy] = useState(false);
   const [errore, setErrore] = useState<string | null>(null);
 
@@ -309,13 +312,14 @@ function IlMioProfiloPage() {
             <div className="space-y-2">
               <Label htmlFor="pwd">Nuova password</Label>
               <Input id="pwd" type="password" value={pwd} onChange={(e) => setPwd(e.target.value)} />
+              <RequisitiPassword pwd={pwd} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="pwd2">Conferma nuova password</Label>
               <Input id="pwd2" type="password" value={pwd2} onChange={(e) => setPwd2(e.target.value)} />
             </div>
             {errore && <p className="text-sm text-destructive">{errore}</p>}
-            <Button type="submit" disabled={busy}>
+            <Button type="submit" disabled={busy || !pwdValida || !pwdCoincidenti}>
               <KeyRound className="size-4" />
               Aggiorna password
             </Button>

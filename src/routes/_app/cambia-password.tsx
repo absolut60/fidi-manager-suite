@@ -1,16 +1,15 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Check, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useConfig } from "@/hooks/use-config";
+import { RequisitiPassword } from "@/components/requisiti-password";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  REQUISITI_PASSWORD,
   messaggioErroreCambioPassword,
   passwordScaduta,
   verificaPassword,
@@ -95,17 +94,7 @@ function CambiaPasswordPage() {
               <Label htmlFor="pwd">Nuova password</Label>
               <Input id="pwd" type="password" value={pwd} onChange={(e) => setPwd(e.target.value)} autoComplete="new-password" />
             </div>
-            <ul className="space-y-1 text-sm" aria-label="Requisiti della password">
-              {REQUISITI_PASSWORD.map((r) => {
-                const ok = r.verifica(pwd);
-                return (
-                  <li key={r.id} className={`flex items-start gap-2 ${ok ? "text-primary" : "text-muted-foreground"}`}>
-                    {ok ? <Check className="size-4 shrink-0 mt-0.5" /> : <X className="size-4 shrink-0 mt-0.5" />}
-                    <span className="min-w-0 break-words">{r.etichetta}</span>
-                  </li>
-                );
-              })}
-            </ul>
+            <RequisitiPassword pwd={pwd} />
             <div className="space-y-2">
               <Label htmlFor="pwd2">Conferma password</Label>
               <Input id="pwd2" type="password" value={pwd2} onChange={(e) => setPwd2(e.target.value)} autoComplete="new-password" />
