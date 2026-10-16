@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { messaggioPasswordNonValida } from "@/lib/regole-password";
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -557,8 +558,9 @@ function EditUtenteDialog({ utente, onClose }: { utente: UserRow; onClose: () =>
   const fnInviaIstrNotifiche = useServerFn(inviaIstruzioniNotifiche);
 
   async function handleAggiornaPwd() {
-    if (nuovaPassword.length < 8) {
-      toast.error("La password deve essere di almeno 8 caratteri");
+    const errPwd = messaggioPasswordNonValida(nuovaPassword);
+    if (errPwd) {
+      toast.error(errPwd);
       return;
     }
     try {
@@ -571,8 +573,9 @@ function EditUtenteDialog({ utente, onClose }: { utente: UserRow; onClose: () =>
   }
 
   async function handleInviaCredenziali() {
-    if (nuovaPassword.length < 8) {
-      toast.error("Inserisci la nuova password (min 8 caratteri) da inviare");
+    const errPwdInvio = messaggioPasswordNonValida(nuovaPassword);
+    if (errPwdInvio) {
+      toast.error(errPwdInvio);
       return;
     }
     try {
@@ -665,7 +668,7 @@ function EditUtenteDialog({ utente, onClose }: { utente: UserRow; onClose: () =>
                   type={mostraPasswordEdit ? "text" : "password"}
                   value={nuovaPassword}
                   onChange={(e) => setNuovaPassword(e.target.value)}
-                  placeholder="Nuova password (min 8 caratteri)"
+                  placeholder="Nuova password (min 10, maiuscola, minuscola, numero, simbolo)"
                   className="pr-10"
                 />
                 <button
@@ -731,7 +734,7 @@ function NewUtenteDialog({ onClose }: { onClose: () => void }) {
   const mutation = useMutation({
     mutationFn: async () => {
       if (!email.trim()) throw new Error("Email obbligatoria");
-      if (password.length < 8) throw new Error("Password minimo 8 caratteri");
+      { const errPwd = messaggioPasswordNonValida(password); if (errPwd) throw new Error(errPwd); }
       if (ruoli.length === 0) throw new Error("Seleziona almeno un ruolo");
       if (richiedeStore && storeId === "_none") throw new Error("Il ruolo Store Manager richiede un punto vendita");
       if (ruoli.includes("agente") && codiceAgente === "_none") throw new Error("Il ruolo Agente richiede un agente collegato");

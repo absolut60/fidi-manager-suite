@@ -1,6 +1,12 @@
 import { valutaEsitoEmail } from "@/lib/email-esito";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { messaggioPasswordNonValida } from "@/lib/regole-password";
+
+const passwordConforme = z.string().max(100).superRefine((p, ctx) => {
+  const m = messaggioPasswordNonValida(p);
+  if (m) ctx.addIssue({ code: z.ZodIssueCode.custom, message: m });
+});
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { Constants, type Database } from "@/integrations/supabase/types";
@@ -60,7 +66,7 @@ export const creaUtente = createServerFn({ method: "POST" })
   }) =>
     z.object({
       email: z.string().email().max(255),
-      password: z.string().min(8, "Password minimo 8 caratteri").max(100),
+      password: passwordConforme,
       nome: z.string().max(100).optional(),
       cognome: z.string().max(100).optional(),
       ruoli: z.array(z.enum(RUOLI_VALIDI)).min(1).max(RUOLI_VALIDI.length),
@@ -137,7 +143,7 @@ export const aggiornaPassword = createServerFn({ method: "POST" })
   .inputValidator((d: { userId: string; password: string }) =>
     z.object({
       userId: z.string().uuid(),
-      password: z.string().min(8, "Password minimo 8 caratteri").max(100),
+      password: passwordConforme,
     }).parse(d)
   )
   .handler(async ({ data, context }) => {
