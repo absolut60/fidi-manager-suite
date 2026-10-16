@@ -40,6 +40,11 @@ async function applicaBanAttivo(userId: string, attivo: boolean) {
   if (error) throw new Error(`Aggiornamento accesso non riuscito: ${error.message}`);
 }
 
+/** FM44: le funzioni del secondo fattore richiedono una sessione amministratore aal2. */
+function assertSessioneAal2(claims: { aal?: unknown } | undefined) {
+  if (claims?.aal !== "aal2") throw new Error("Serve la verifica in due passaggi per questa operazione");
+}
+
 async function assertAdmin(userId: string) {
   const { data, error } = await supabaseAdmin
     .from("user_roles")
@@ -411,4 +416,41 @@ export const updateUtenteRuoli = createServerFn({ method: "POST" })
     if (eIns) throw new Error(eIns.message);
 
     return { ok: true };
+  });
+
+/** FM44: per ogni utente, true se ha un secondo fattore verificato. Una sola lettura paginata. Solo admin. */
+export const statoSecondoFattoreUtenti = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.userId);
+    assertSessioneAal2(context.claims as { aal?: unknown });
+    const esito: Record<string, boolean> = {};
+    for (let page = 1; page <= 50; page++) {
+      const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 1000 });
+      if (error) throw new Error(error.message);
+      for (const u of data.users) {
+        esito[u.id] = (u.factors ?? []).some((f) => f.status === "verified");
+      }
+      if (data.users.length < 1000) break;
+    }
+    return esito;
+  });
+
+/** FM44: rimuove tutti i fattori dell'utente; dovrà riattivare la verifica. Solo admin, mai su sé stessi. */
+export const azzeraSecondoFattore = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { userId: string }) => z.object({ userId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+    assertSessioneAal2(context.claims as { aal?: unknown });
+    if (data.userId === context.userId) throw new Error("Non puoi azzerare la tua verifica");
+    const { data: elenco, error } = await supabaseAdmin.auth.admin.mfa.listFactors({ userId: data.userId });
+    if (error) throw new Error(error.message);
+    let tolti = 0;
+    for (const f of elenco?.factors ?? []) {
+      const { error: eDel } = await supabaseAdmin.auth.admin.mfa.deleteFactor({ id: f.id, userId: data.userId });
+      if (eDel) throw new Error(`Azzeramento non riuscito: ${eDel.message}`);
+      tolti++;
+    }
+    return { tolti };
   });

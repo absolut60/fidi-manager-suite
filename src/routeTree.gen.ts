@@ -18,6 +18,7 @@ import { Route as AppApprovazioniRouteImport } from './routes/_app/approvazioni'
 import { Route as AppAreeRouteImport } from './routes/_app/aree'
 import { Route as AppAssicurazioniRouteImport } from './routes/_app/assicurazioni'
 import { Route as AppAttivaNotificheRouteImport } from './routes/_app/attiva-notifiche'
+import { Route as AppAttivaVerificaRouteImport } from './routes/_app/attiva-verifica'
 import { Route as AppAuditRouteImport } from './routes/_app/audit'
 import { Route as AppCalendarioCommercialeRouteImport } from './routes/_app/calendario-commerciale'
 import { Route as AppCambiaPasswordRouteImport } from './routes/_app/cambia-password'
@@ -139,6 +140,11 @@ const AppAssicurazioniRoute = AppAssicurazioniRouteImport.update({
 const AppAttivaNotificheRoute = AppAttivaNotificheRouteImport.update({
   id: '/attiva-notifiche',
   path: '/attiva-notifiche',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAttivaVerificaRoute = AppAttivaVerificaRouteImport.update({
+  id: '/attiva-verifica',
+  path: '/attiva-verifica',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAuditRoute = AppAuditRouteImport.update({
@@ -559,6 +565,7 @@ export interface FileRoutesByFullPath {
   '/aree': typeof AppAreeRoute
   '/assicurazioni': typeof AppAssicurazioniRoute
   '/attiva-notifiche': typeof AppAttivaNotificheRoute
+  '/attiva-verifica': typeof AppAttivaVerificaRoute
   '/audit': typeof AppAuditRoute
   '/calendario-commerciale': typeof AppCalendarioCommercialeRoute
   '/cambia-password': typeof AppCambiaPasswordRoute
@@ -647,6 +654,7 @@ export interface FileRoutesByTo {
   '/aree': typeof AppAreeRoute
   '/assicurazioni': typeof AppAssicurazioniRoute
   '/attiva-notifiche': typeof AppAttivaNotificheRoute
+  '/attiva-verifica': typeof AppAttivaVerificaRoute
   '/audit': typeof AppAuditRoute
   '/calendario-commerciale': typeof AppCalendarioCommercialeRoute
   '/cambia-password': typeof AppCambiaPasswordRoute
@@ -734,6 +742,7 @@ export interface FileRoutesById {
   '/_app/aree': typeof AppAreeRoute
   '/_app/assicurazioni': typeof AppAssicurazioniRoute
   '/_app/attiva-notifiche': typeof AppAttivaNotificheRoute
+  '/_app/attiva-verifica': typeof AppAttivaVerificaRoute
   '/_app/audit': typeof AppAuditRoute
   '/_app/calendario-commerciale': typeof AppCalendarioCommercialeRoute
   '/_app/cambia-password': typeof AppCambiaPasswordRoute
@@ -824,6 +833,7 @@ export interface FileRouteTypes {
     | '/aree'
     | '/assicurazioni'
     | '/attiva-notifiche'
+    | '/attiva-verifica'
     | '/audit'
     | '/calendario-commerciale'
     | '/cambia-password'
@@ -912,6 +922,7 @@ export interface FileRouteTypes {
     | '/aree'
     | '/assicurazioni'
     | '/attiva-notifiche'
+    | '/attiva-verifica'
     | '/audit'
     | '/calendario-commerciale'
     | '/cambia-password'
@@ -998,6 +1009,7 @@ export interface FileRouteTypes {
     | '/_app/aree'
     | '/_app/assicurazioni'
     | '/_app/attiva-notifiche'
+    | '/_app/attiva-verifica'
     | '/_app/audit'
     | '/_app/calendario-commerciale'
     | '/_app/cambia-password'
@@ -1160,6 +1172,13 @@ declare module '@tanstack/react-router' {
       path: '/attiva-notifiche'
       fullPath: '/attiva-notifiche'
       preLoaderRoute: typeof AppAttivaNotificheRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/attiva-verifica': {
+      id: '/_app/attiva-verifica'
+      path: '/attiva-verifica'
+      fullPath: '/attiva-verifica'
+      preLoaderRoute: typeof AppAttivaVerificaRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/audit': {
@@ -1780,6 +1799,7 @@ interface AppRouteChildren {
   AppAreeRoute: typeof AppAreeRoute
   AppAssicurazioniRoute: typeof AppAssicurazioniRoute
   AppAttivaNotificheRoute: typeof AppAttivaNotificheRoute
+  AppAttivaVerificaRoute: typeof AppAttivaVerificaRoute
   AppAuditRoute: typeof AppAuditRoute
   AppCalendarioCommercialeRoute: typeof AppCalendarioCommercialeRoute
   AppCambiaPasswordRoute: typeof AppCambiaPasswordRoute
@@ -1846,6 +1866,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAreeRoute: AppAreeRoute,
   AppAssicurazioniRoute: AppAssicurazioniRoute,
   AppAttivaNotificheRoute: AppAttivaNotificheRoute,
+  AppAttivaVerificaRoute: AppAttivaVerificaRoute,
   AppAuditRoute: AppAuditRoute,
   AppCalendarioCommercialeRoute: AppCalendarioCommercialeRoute,
   AppCambiaPasswordRoute: AppCambiaPasswordRoute,

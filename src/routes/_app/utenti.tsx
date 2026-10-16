@@ -7,7 +7,11 @@ import { UsersRound, Pencil, UserPlus, Eye, EyeOff, Mail, Bell, ArrowUp, ArrowDo
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, RUOLI_LABEL, RUOLI_DESCRIZIONE } from "@/hooks/use-auth";
-import { creaUtente, updateUtenteRuoli, aggiornaPassword, inviaCredenziali, inviaIstruzioniNotifiche } from "@/lib/utenti.functions";
+import { creaUtente, updateUtenteRuoli, aggiornaPassword, inviaCredenziali, inviaIstruzioniNotifiche, statoSecondoFattoreUtenti, azzeraSecondoFattore } from "@/lib/utenti.functions";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -144,6 +148,15 @@ function UtentiPage() {
   const [filtroStore, setFiltroStore] = useState("tutti");
   const [filtroStato, setFiltroStato] = useState("tutti");
   const [ordina, setOrdina] = useState<{ chiave: OrdinaChiave; dir: OrdinaDir }>({ chiave: "nome", dir: "asc" });
+
+  const fnStatoMfa = useServerFn(statoSecondoFattoreUtenti);
+  const { data: mfaUtenti } = useQuery({
+    queryKey: ["utenti", "secondo-fattore"],
+    queryFn: () => fnStatoMfa(),
+    enabled: role === "amministratore",
+  });
+  const testoMfa = (id: string) =>
+    mfaUtenti ? (mfaUtenti[id] ? "attiva" : "non attiva") : "—";
 
   const { data: utenti, isLoading } = useQuery({
     queryKey: ["utenti"],
@@ -368,6 +381,7 @@ function UtentiPage() {
                           valore: u.email ? <span className="break-all">{u.email}</span> : "—",
                         },
                         { etichetta: "Punto vendita", valore: u.store_nome ?? "—" },
+                        { etichetta: "Verifica in due passaggi", valore: testoMfa(u.id) },
                         {
                           etichetta: "Ruoli",
                           valore: u.ruoli.length === 0 ? "—" : (
@@ -425,7 +439,10 @@ function UtentiPage() {
                             </div>
                           </TableCell>
                           <TableCell className="w-px py-2 text-sm whitespace-nowrap">{u.store_nome || <span className="text-muted-foreground">—</span>}</TableCell>
-                          <TableCell className="w-px py-2 whitespace-nowrap"><Badge variant={u.attivo ? "default" : "secondary"}>{u.attivo ? "Attivo" : "Inattivo"}</Badge></TableCell>
+                          <TableCell className="w-px py-2 whitespace-nowrap">
+                            <Badge variant={u.attivo ? "default" : "secondary"}>{u.attivo ? "Attivo" : "Inattivo"}</Badge>
+                            <span className="block text-xs text-muted-foreground">Verifica in due passaggi: {testoMfa(u.id)}</span>
+                          </TableCell>
                           <TableCell className="w-px py-2 text-right whitespace-nowrap">
                             <Button size="icon" variant="ghost" onClick={() => setEditing(u)} aria-label={`Modifica ${[u.nome, u.cognome].filter(Boolean).join(" ") || (u.email ?? "")}`}><Pencil className="size-4" /></Button>
                           </TableCell>
@@ -441,7 +458,7 @@ function UtentiPage() {
       </Card>
 
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
-        {editing && <EditUtenteDialog utente={editing} onClose={() => setEditing(null)} />}
+        {editing && <EditUtenteDialog utente={editing} haMfa={mfaUtenti ? !!mfaUtenti[editing.id] : null} onClose={() => setEditing(null)} />}
       </Dialog>
 
       <Dialog open={creating} onOpenChange={setCreating}>
@@ -511,9 +528,23 @@ function useAgenti() {
   });
 }
 
-function EditUtenteDialog({ utente, onClose }: { utente: UserRow; onClose: () => void }) {
+function EditUtenteDialog({ utente, haMfa, onClose }: { utente: UserRow; haMfa: boolean | null; onClose: () => void }) {
   const qc = useQueryClient();
-  const { role } = useAuth();
+  const { role, user } = useAuth();
+  const fnAzzeraMfa = useServerFn(azzeraSecondoFattore);
+  const [busyMfa, setBusyMfa] = useState(false);
+  async function handleAzzeraMfa() {
+    setBusyMfa(true);
+    try {
+      const { tolti } = await fnAzzeraMfa({ data: { userId: utente.id } });
+      toast.success(tolti > 0 ? "Verifica azzerata" : "Nessuna verifica da azzerare");
+      qc.invalidateQueries({ queryKey: ["utenti", "secondo-fattore"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Azzeramento non riuscito");
+    } finally {
+      setBusyMfa(false);
+    }
+  }
   const [nome, setNome] = useState(utente.nome ?? "");
   const [cognome, setCognome] = useState(utente.cognome ?? "");
   const [ruoli, setRuoli] = useState<AppRole[]>(utente.ruoli.length ? utente.ruoli : ["store_manager"]);
@@ -696,6 +727,33 @@ function EditUtenteDialog({ utente, onClose }: { utente: UserRow; onClose: () =>
               Inserisci la nuova password, poi clicca "Aggiorna" per cambiarla
               oppure "Invia credenziali" per aggiornarla e inviarla via email.
             </p>
+          </div>
+        )}
+        {role === "amministratore" && (
+          <div className="pt-4 border-t space-y-2">
+            <Label className="text-sm font-semibold">Verifica in due passaggi</Label>
+            <p className="text-sm">
+              Verifica in due passaggi: <span className="font-medium">{haMfa === null ? "—" : haMfa ? "attiva" : "non attiva"}</span>
+            </p>
+            {utente.id !== user?.id && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button type="button" variant="outline" className="w-full min-h-10" disabled={busyMfa || haMfa === false}>
+                    {busyMfa ? "Azzeramento..." : "Azzera verifica"}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Azzerare la verifica in due passaggi?</AlertDialogTitle>
+                    <AlertDialogDescription>L'utente dovrà riattivarla al prossimo accesso.</AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Annulla</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleAzzeraMfa}>Azzera verifica</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </div>
         )}
       </div>

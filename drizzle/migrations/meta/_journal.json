@@ -260,6 +260,13 @@
       "when": 1792141324521,
       "tag": "0036_fm44_scadenza_password",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1792143015593,
+      "tag": "0037_fm44_secondo_fattore_obbligo_admin",
+      "breakpoints": true
     }
   ]
 }

@@ -6725,6 +6725,7 @@ export type Database = {
       auth_gestisce_contatti_clienti: { Args: never; Returns: boolean }
       auth_ha_accesso_preventivi: { Args: never; Returns: boolean }
       auth_ha_ruolo_globale_clienti: { Args: never; Returns: boolean }
+      auth_mfa_ok: { Args: never; Returns: boolean }
       auth_puo_accedere_marketing: { Args: never; Returns: boolean }
       auth_puo_eliminare_contatti_clienti: { Args: never; Returns: boolean }
       auth_puo_gestire_anagrafiche_prev: { Args: never; Returns: boolean }

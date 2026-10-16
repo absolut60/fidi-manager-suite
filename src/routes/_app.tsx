@@ -1,6 +1,6 @@
 import { createFileRoute, Link, Navigate, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { serveCodice, statoSecondoFattore, type StatoSecondoFattore } from "@/lib/secondo-fattore";
+import { serveAttivazione, serveCodice, statoSecondoFattore, type StatoSecondoFattore } from "@/lib/secondo-fattore";
 import { KeyRound } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/app-shell";
@@ -14,21 +14,22 @@ export const Route = createFileRoute("/_app")({
 });
 
 function ProtectedAppLayout() {
-  const { session, loading, profilo } = useAuth();
+  const { session, loading, profilo, roles } = useAuth();
   const config = useConfig();
   const configPronto = useConfigReady();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const nonAttivo = !loading && !!session && !!profilo && !utenteAttivo(profilo);
   const [statoMfa, setStatoMfa] = useState<StatoSecondoFattore | null>(null);
+  const [erroreMfa, setErroreMfa] = useState(false);
   const tokenSessione = session?.access_token;
 
   useEffect(() => {
     if (!tokenSessione) return;
     let annullato = false;
     statoSecondoFattore()
-      .then((s) => { if (!annullato) setStatoMfa(s); })
-      .catch(() => { /* in errore non si reindirizza */ });
+      .then((s) => { if (!annullato) { setStatoMfa(s); setErroreMfa(false); } })
+      .catch(() => { if (!annullato) setErroreMfa(true); /* in errore non si reindirizza */ });
     return () => { annullato = true; };
   }, [tokenSessione]);
 
@@ -38,6 +39,12 @@ function ProtectedAppLayout() {
       navigate({ to: "/login", search: { motivo: "non_attivo" }, replace: true });
     });
   }, [nonAttivo, navigate]);
+
+  const caricamento = (
+    <div className="min-h-screen flex items-center justify-center bg-background text-muted-foreground">
+      Caricamento...
+    </div>
+  );
 
   if (loading) {
     return (
@@ -59,18 +66,23 @@ function ProtectedAppLayout() {
     return <Navigate to="/login" />;
   }
 
-  // Secondo fattore (FM44): sessione che richiede aal2 ma è ancora aal1.
-  // Durante la lettura dello stato non si reindirizza.
-  if (statoMfa && serveCodice(statoMfa)) {
-    return <Navigate to="/verifica-codice" search={{ next: pathname }} replace />;
-  }
-
-  // Checkpoint obbligatorio (FM44): primo accesso, password reimpostata dall'admin,
-  // mai cambiata o scaduta. Durante il caricamento di profilo/configurazione non si reindirizza.
+  // Ordine FM44: sessione → utente attivo → password da cambiare → attivazione obbligatoria
+  // del secondo fattore → codice. Durante il caricamento non si reindirizza.
   const giorni = config.scadenza_password_giorni;
   const pronto = !!profilo && configPronto;
-  if (pronto && passwordDaCambiare(profilo, giorni) && pathname !== "/cambia-password") {
-    return <Navigate to="/cambia-password" replace />;
+  if (pronto && passwordDaCambiare(profilo, giorni)) {
+    if (pathname !== "/cambia-password") return <Navigate to="/cambia-password" replace />;
+  } else {
+    if (!statoMfa && !erroreMfa) return caricamento;
+    if (statoMfa && serveAttivazione(statoMfa, roles)) {
+      if (pathname !== "/attiva-verifica") return <Navigate to="/attiva-verifica" replace />;
+      // Pagina a tutto schermo, senza menu laterale.
+      return <Outlet />;
+    }
+    if (statoMfa && serveCodice(statoMfa)) {
+      return <Navigate to="/verifica-codice" search={{ next: pathname }} replace />;
+    }
+    if (pathname === "/attiva-verifica") return <Navigate to="/dashboard" replace />;
   }
 
   const giorniRestanti = pronto ? giorniAllaScadenza(profilo, giorni) : null;
