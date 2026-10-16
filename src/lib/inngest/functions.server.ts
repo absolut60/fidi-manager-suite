@@ -2072,6 +2072,66 @@ export const processScadenziarioChunk = inngest.createFunction(
               }
             }
           }
+          // Ripiego: sotto-blocco fallito → riscrittura in pezzi da 50 righe,
+          // ciascuno con 3 tentativi e attesa crescente (2 s, 5 s, 10 s).
+          let pezzoFallito: string | null = null;
+          if (!ok) {
+            const PEZZO = 50;
+            const ATTESE = [2000, 5000, 10000];
+            const totPezzi = Math.ceil(rows.length / PEZZO);
+            const righeOk: Array<{ created_at: string }> = [];
+            let tuttiOk = true;
+            for (let p = 0; p < totPezzi; p++) {
+              const pezzo = rows.slice(p * PEZZO, (p + 1) * PEZZO);
+              let pezzoOk = false;
+              for (let t = 1; t <= 3; t++) {
+                try {
+                  const { data: pd, error: pe } = await withTimeout(
+                    (
+                      supabaseAdmin.from("scadenze" as never) as never as {
+                        upsert: (
+                          rows: unknown,
+                          opts: { onConflict: string; ignoreDuplicates: boolean },
+                        ) => ({
+                          select: (
+                            cols: string,
+                          ) => Promise<{
+                            data: Array<{ created_at: string }> | null;
+                            error: { message: string } | null;
+                          }>;
+                        });
+                      }
+                    ).upsert(pezzo, {
+                      onConflict: "cliente_id,key_documento,data_scadenza,key_tipo_effetto,importo_scadenza",
+                      ignoreDuplicates: false,
+                    }).select("created_at"),
+                    60_000,
+                    `chunk ${chunkIndex} upsert-scadenze sotto-blocco ${n}/${tot} pezzo ${p + 1}/${totPezzi}`,
+                  );
+                  if (pe) throw new Error(pe.message);
+                  righeOk.push(...(pd ?? []));
+                  pezzoOk = true;
+                  break;
+                } catch (e) {
+                  ultimoErr = e instanceof Error ? e.message : String(e);
+                  logger.warn(
+                    `[chunk ${chunkIndex}] sotto-blocco ${n}/${tot} pezzo ${p + 1}/${totPezzi} tentativo ${t}/3 fallito: ${ultimoErr}`,
+                  );
+                  if (t < 3) await new Promise((res) => setTimeout(res, ATTESE[t - 1]));
+                }
+              }
+              if (!pezzoOk) {
+                tuttiOk = false;
+                pezzoFallito = `pezzo ${p + 1}/${totPezzi} (${pezzo.length} righe)`;
+                break;
+              }
+            }
+            if (tuttiOk) {
+              ok = true;
+              upRows = righeOk;
+              logger.warn(`chunk ${chunkIndex} sotto-blocco ${n}: riscritto in pezzi da 50 dopo timeout`);
+            }
+          }
           logger.info(
             `[chunk ${chunkIndex}] C.end upsert-scadenze sotto-blocco ${n}/${tot} in ${Date.now() - tUp}ms err=${ok ? "ok" : ultimoErr}`,
           );
@@ -2084,7 +2144,7 @@ export const processScadenziarioChunk = inngest.createFunction(
             const messaggio = ultimoErr ?? "errore sconosciuto";
             batchErrs.push({
               riga: chunkIndex,
-              errore: `Upsert chunk ${chunkIndex} sotto-blocco ${n}/${tot} (${rows.length} righe) fallito dopo ${SCAD_UPSERT_TENTATIVI} tentativi: ${messaggio}`,
+              errore: `Upsert chunk ${chunkIndex} sotto-blocco ${n}/${tot} (${rows.length} righe) fallito dopo ${SCAD_UPSERT_TENTATIVI} tentativi${pezzoFallito ? `, ${pezzoFallito} fallito anche in pezzi da 50` : ""}: ${messaggio}`,
             });
             const { error: anErr } = await supabaseAdmin.from("anomalie_import" as never).insert({
               importazione_id: importazioneId,
