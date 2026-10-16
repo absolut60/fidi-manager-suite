@@ -1567,6 +1567,7 @@ async function parseBloccoFidoFile(file: File): Promise<{
   rowsBlocco: BfaParsedRow[];
   rowsNote: BfaNoteRow[];
   foglioNotePresente: boolean;
+  colonnaFidoPresente: boolean;
   warnings: string[];
 }> {
   const buffer = await file.arrayBuffer();
