@@ -1552,10 +1552,18 @@ export const processRischioImport = inngest.createFunction(
             // Conflitto sulla PK id => solo UPDATE, mai INSERT di nuovi clienti.
             const payloads = validi.map((r) => {
               const cli = lookup[r.codice_gestionale]!;
+              // Fonte unica fido = blocco fido; fido_residuo = trigger DB.
+              // Esclusi anche se arrivano nel payload (es. staging vecchio).
+              const {
+                fido_gestionale: _fg,
+                fido_residuo: _fr,
+                fido: _f,
+                ...payloadAmmesso
+              } = r.payload as Record<string, unknown>;
               return {
                 id: cli.id,
                 ragione_sociale: cli.ragione_sociale,
-                ...r.payload,
+                ...payloadAmmesso,
                 ultima_sincronizzazione: now,
               };
             });
