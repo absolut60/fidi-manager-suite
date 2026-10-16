@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useConfig } from "@/hooks/use-config";
+import { serveAttivazione, statoSecondoFattore } from "@/lib/secondo-fattore";
 import { RequisitiPassword } from "@/components/requisiti-password";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,7 +31,7 @@ export const Route = createFileRoute("/_app/cambia-password")({
 });
 
 function CambiaPasswordPage() {
-  const { user, profilo, aggiornaProfilo } = useAuth();
+  const { user, profilo, roles, aggiornaProfilo } = useAuth();
   const config = useConfig();
   const navigate = useNavigate();
   const [pwd, setPwd] = useState("");

@@ -70,8 +70,7 @@ function ProtectedAppLayout() {
   // del secondo fattore → codice. Durante il caricamento non si reindirizza.
   const giorni = config.scadenza_password_giorni;
   const pronto = !!profilo && configPronto;
-  if (!pronto) return caricamento;
-  if (passwordDaCambiare(profilo, giorni)) {
+  if (pronto && passwordDaCambiare(profilo, giorni)) {
     if (pathname !== "/cambia-password") return <Navigate to="/cambia-password" replace />;
   } else {
     if (!statoMfa && !erroreMfa) return caricamento;
