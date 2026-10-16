@@ -246,6 +246,13 @@
       "when": 1792095403998,
       "tag": "0034_fm44_gerarchia_modifica_contatti",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1792134160926,
+      "tag": "0035_fm44_accesso_nuovi_utenti_vista_whatsapp",
+      "breakpoints": true
     }
   ]
 }
