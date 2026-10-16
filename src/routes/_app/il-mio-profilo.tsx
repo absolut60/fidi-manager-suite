@@ -312,13 +312,14 @@ function IlMioProfiloPage() {
             <div className="space-y-2">
               <Label htmlFor="pwd">Nuova password</Label>
               <Input id="pwd" type="password" value={pwd} onChange={(e) => setPwd(e.target.value)} />
+              <RequisitiPassword pwd={pwd} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="pwd2">Conferma nuova password</Label>
               <Input id="pwd2" type="password" value={pwd2} onChange={(e) => setPwd2(e.target.value)} />
             </div>
             {errore && <p className="text-sm text-destructive">{errore}</p>}
-            <Button type="submit" disabled={busy}>
+            <Button type="submit" disabled={busy || !pwdValida || !pwdCoincidenti}>
               <KeyRound className="size-4" />
               Aggiorna password
             </Button>

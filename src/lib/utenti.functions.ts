@@ -1,7 +1,7 @@
 import { valutaEsitoEmail } from "@/lib/email-esito";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { messaggioPasswordNonValida } from "@/lib/regole-password";
+import { LUNGHEZZA_MINIMA_PASSWORD, messaggioPasswordNonValida } from "@/lib/regole-password";
 
 const passwordConforme = z.string().max(100).superRefine((p, ctx) => {
   const m = messaggioPasswordNonValida(p);
