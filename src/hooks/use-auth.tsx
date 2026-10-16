@@ -16,6 +16,14 @@ export type Profilo = {
   deve_cambiare_password?: boolean;
 };
 
+/**
+ * Fonte unica (FM44): un utente con profilo esplicitamente non attivo non può usare l'app.
+ * Profilo assente/in caricamento → non blocca (evita lampeggi; il blocco vero è il ban lato accesso).
+ */
+export function utenteAttivo(profilo: Pick<Profilo, "attivo"> | null | undefined): boolean {
+  return profilo?.attivo !== false;
+}
+
 const ORDINE_RUOLI: AppRole[] = ["amministratore", "approvatore_liv3", "approvatore_liv2", "approvatore_liv1", "direzione", "responsabile_agenti", "store_manager", "marketing", "agente", "preventivi_manage", "preventivi_write", "preventivi_read", "approvatore_richieste_liv2", "approvatore_richieste_liv1", "gestore_richieste", "esecutore_richieste", "richiedente", "recupero_crediti"];
 
 type AuthContextValue = {

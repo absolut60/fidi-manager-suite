@@ -19,6 +19,7 @@ function safeNext(next: unknown): string {
 
 const loginSearchSchema = z.object({
   next: fallback(z.string().optional(), undefined),
+  motivo: fallback(z.string().optional(), undefined),
 });
 
 export const Route = createFileRoute("/login")({
@@ -28,7 +29,7 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const navigate = useNavigate();
-  const { next } = useSearch({ from: "/login" });
+  const { next, motivo } = useSearch({ from: "/login" });
   const target = safeNext(next);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -54,7 +55,9 @@ function LoginPage() {
       const msg = err instanceof Error ? err.message : "Errore sconosciuto";
       const tradotto = msg.includes("Invalid login credentials")
         ? "Credenziali non valide"
-        : msg;
+        : /banned/i.test(msg)
+          ? "Account non attivo: contatta l'amministratore."
+          : msg;
       toast.error(tradotto);
     } finally {
       setLoading(false);
@@ -73,6 +76,12 @@ function LoginPage() {
           />
           <p className="text-sm text-muted-foreground">FidiManager · Gruppo MADE</p>
         </div>
+
+        {motivo === "non_attivo" && (
+          <p role="alert" className="mb-4 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            Account non attivo: contatta l'amministratore.
+          </p>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
