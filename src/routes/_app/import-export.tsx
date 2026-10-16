@@ -1567,6 +1567,7 @@ async function parseBloccoFidoFile(file: File): Promise<{
   rowsBlocco: BfaParsedRow[];
   rowsNote: BfaNoteRow[];
   foglioNotePresente: boolean;
+  colonnaFidoPresente: boolean;
   warnings: string[];
 }> {
   const buffer = await file.arrayBuffer();
@@ -1652,7 +1653,13 @@ async function parseBloccoFidoFile(file: File): Promise<{
     }
   }
 
-  return { rowsBlocco, rowsNote, foglioNotePresente: !!foglioNote, warnings };
+  return {
+    rowsBlocco,
+    rowsNote,
+    foglioNotePresente: !!foglioNote,
+    colonnaFidoPresente: iFido >= 0,
+    warnings,
+  };
 }
 
 /**
@@ -1697,6 +1704,7 @@ async function avviaImportBloccoFido(file: File): Promise<string> {
     totaleBlocco: parsed.rowsBlocco.length,
     totaleNote: parsed.rowsNote.length,
     foglioNotePresente: parsed.foglioNotePresente,
+    colonnaFidoPresente: parsed.colonnaFidoPresente,
     chunkSize,
     totalChunks,
     chunks,
