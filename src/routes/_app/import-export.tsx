@@ -859,14 +859,10 @@ const RISCHIO_HEADERS: Record<string, string> = {
   "doc da evadere": "doc_da_evadere",
   "eff a rischio": "effetti_a_rischio",
   "effetti a rischio": "effetti_a_rischio",
-  fido: "fido_gestionale",
-  "fido azienda": "fido_gestionale",
-  "fido concesso": "fido_gestionale",
-  "fido gestionale": "fido_gestionale",
+  // FIDO: fonte unica = foglio BLOCCO_FIDO_ASSICURAZIONE. L'analisi rischio non scrive il fido.
   "totale rischio": "totale_rischio",
   "tot rischio": "totale_rischio",
-  "fido residuo": "fido_residuo",
-  residuo: "fido_residuo",
+  // fido_residuo: calcolato dal database (trigger), non letto dal file.
   scaduto: "scaduto",
   "a scadere": "a_scadere",
   "num insoluti": "num_insoluti",

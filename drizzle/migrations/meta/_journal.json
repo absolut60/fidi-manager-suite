@@ -288,6 +288,13 @@
       "when": 1792154182653,
       "tag": "0040_fido_proposto_arrotondamento_scala_eccesso",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1792154851922,
+      "tag": "0041_fido_scala_e_residuo_calcolato",
+      "breakpoints": true
     }
   ]
 }

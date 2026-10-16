@@ -77,7 +77,7 @@ export const REGOLA_DESCRIZIONE: Record<string, string> = {
   nuovo_con_ddt:
     "Nessuno storico di fatturato ma merce già consegnata da fatturare — proposta basata sui documenti da fatturare, da verificare",
   fascia_500: "Fido base ≤ 5.000 € — arrotondato per eccesso (500 fino a 1.000 €, poi 1.000)",
-  fascia_5000: "Fido base > 5.000 € — arrotondato per eccesso (2.500 fino a 20.000 €, 5.000 fino a 50.000 €, poi 10.000)",
+  fascia_5000: "Fido base > 5.000 € — arrotondato per eccesso (5.000 fino a 50.000 €, poi 10.000)",
 };
 
 /** Regole per cui NON si può proporre un fido (né in massa né singolarmente). */
