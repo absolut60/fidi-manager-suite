@@ -281,6 +281,13 @@
       "when": 1792144641453,
       "tag": "0039_fm44_scadenze_select_ambito_una_volta",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1792154182653,
+      "tag": "0040_fido_proposto_arrotondamento_scala_eccesso",
+      "breakpoints": true
     }
   ]
 }

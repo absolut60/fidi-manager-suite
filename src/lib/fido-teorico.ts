@@ -60,8 +60,8 @@ export const REGOLA_LABEL: Record<string, string> = {
   minimo_500: "Minimo 500",
   pagamento_immediato: "Pagamento immediato",
   nuovo_con_ddt: "Nuovo con merce da fatturare",
-  fascia_500: "Fascia 500",
-  fascia_5000: "Fascia 5.000",
+  fascia_500: "Fino a 5.000",
+  fascia_5000: "Oltre 5.000",
 };
 
 /** Descrizione estesa, per il blocco informativo nella scheda cliente. */
@@ -76,8 +76,8 @@ export const REGOLA_DESCRIZIONE: Record<string, string> = {
   pagamento_immediato: "Pagamento immediato (contanti/POS/assegno) — nessuna esposizione, fido non necessario",
   nuovo_con_ddt:
     "Nessuno storico di fatturato ma merce già consegnata da fatturare — proposta basata sui documenti da fatturare, da verificare",
-  fascia_500: "Fido base ≤ 5.000 € — arrotondato per eccesso a 500 €",
-  fascia_5000: "Fido base > 5.000 € — arrotondato al multiplo di 5.000 € più vicino",
+  fascia_500: "Fido base ≤ 5.000 € — arrotondato per eccesso (500 fino a 1.000 €, poi 1.000)",
+  fascia_5000: "Fido base > 5.000 € — arrotondato per eccesso (2.500 fino a 20.000 €, 5.000 fino a 50.000 €, poi 10.000)",
 };
 
 /** Regole per cui NON si può proporre un fido (né in massa né singolarmente). */
