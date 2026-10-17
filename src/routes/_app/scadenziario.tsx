@@ -6,7 +6,7 @@ import * as XLSX from "xlsx";
 import { scaricaWorkbook } from "@/lib/fido-teorico-export";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { InvioMassivoDialog } from "@/components/invio-massivo-dialog";
-import { puoInviareComunicazioniRecupero } from "@/lib/recupero-permessi";
+import { puoInviareComunicazioniRecupero, tipoAzioneConsentito } from "@/lib/recupero-permessi";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";

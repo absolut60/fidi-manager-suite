@@ -78,7 +78,7 @@ export function CreaAzioneDialog({
   // Reset on open
   useEffect(() => {
     if (open) {
-      setTipo(tipoIniziale);
+      setTipo(tipoAzioneConsentito(roles, tipoIniziale) ? tipoIniziale : "promemoria");
       setDataAzione(toDatetimeLocal(dataIniziale ?? new Date()));
       setNote("");
       setScadenzeSel(new Set());
