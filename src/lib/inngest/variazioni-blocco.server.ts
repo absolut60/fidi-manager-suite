@@ -150,6 +150,7 @@ export const notificaVariazioniBlocco = inngest.createFunction(
         if (error) throw new Error(`carica pendenti: ${error.message}`);
         const rows = (data ?? []) as unknown as Array<{
           id: string;
+          cliente_id: string | null;
           store_id: string | null;
           codice_gestionale: string | null;
           ragione_sociale: string | null;
@@ -159,6 +160,7 @@ export const notificaVariazioniBlocco = inngest.createFunction(
         for (const r of rows) {
           out.push({
             id: r.id,
+            cliente_id: r.cliente_id,
             store_id: r.store_id,
             codice_gestionale: r.codice_gestionale,
             ragione_sociale: r.ragione_sociale,
@@ -197,6 +199,67 @@ export const notificaVariazioniBlocco = inngest.createFunction(
       arr.push(p);
       perNegozio.set(p.store_id!, arr);
     }
+
+    // FM45: notifica in app anche agli agenti dei clienti variati (una per agente,
+    // solo i propri clienti, stesso tipo/testo/link dello store manager; mai l'autore
+    // dell'import). In modalità test nessuna notifica agli agenti reali.
+    // Va prima del ciclo negozi: le righe sono già in memoria e la marcatura resta ai negozi.
+    const notificheAgenti = await step.run("agenti", async () => {
+      if (isTest || !pendenti.length) return 0;
+      let autoreId: string | null = null;
+      if (importazioneId) {
+        const { data: imp } = await withTimeout(
+          supabaseAdmin.from("importazioni").select("eseguita_da").eq("id", importazioneId).maybeSingle(),
+          T_MS,
+          "autore import",
+        );
+        autoreId = ((imp as { eseguita_da?: string | null } | null)?.eseguita_da ?? null) as string | null;
+      }
+      const clienteIds = Array.from(new Set(pendenti.map((p) => p.cliente_id).filter((x): x is string => !!x)));
+      const mappa = await agentiPerCliente(clienteIds);
+      const perAgente = new Map<string, Pendente[]>();
+      for (const p of pendenti) {
+        if (!p.cliente_id) continue;
+        for (const a of mappa.get(p.cliente_id) ?? []) {
+          if (a === autoreId) continue;
+          const arr = perAgente.get(a) ?? [];
+          arr.push(p);
+          perAgente.set(a, arr);
+        }
+      }
+      if (!perAgente.size) return 0;
+      const righe = Array.from(perAgente, ([uid, lista]) => {
+        const negozi = Array.from(new Set(lista.map((r) => r.negozio ?? "sede")));
+        const nB = lista.filter((r) => r.tipo === "bloccato").length;
+        const nS = lista.filter((r) => r.tipo === "sbloccato").length;
+        return {
+          user_id: uid,
+          tipo: "variazioni_blocco_clienti",
+          titolo: `Variazioni blocco clienti — ${negozi.join(", ")}`,
+          messaggio: messaggioConteggi(nB, nS),
+          link: "/clienti-variazioni-blocco",
+          metadata: {
+            store_id: negozi.length === 1 ? lista[0].store_id : null,
+            importazione_id: importazioneId,
+            bloccati: nB,
+            sbloccati: nS,
+            test: false,
+            destinatario: "agente",
+          },
+        };
+      });
+      const { error } = await withTimeout(
+        supabaseAdmin.from("notifiche").insert(righe),
+        T_MS,
+        "insert notifiche agenti",
+      );
+      if (error) {
+        logger.error(`Notifiche agenti: ${error.message}`);
+        return 0;
+      }
+      logger.info(`Notifiche variazioni blocco agli agenti: ${righe.length}`);
+      return righe.length;
+    });
 
     const appUrl = process.env.VITE_APP_URL ?? "https://fidi-manager-suite.lovable.app";
     let negoziAvvisati = 0;
