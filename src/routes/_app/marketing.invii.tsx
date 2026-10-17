@@ -536,6 +536,7 @@ function InviiMarketingPage() {
 }
 
 import { MessageIdCell } from "@/components/message-id-cell";
+import { salvaWorkbook } from "@/lib/salva-workbook";
 
 type DestRow = {
   id: string;
@@ -707,7 +708,7 @@ function DettaglioCampagnaDialog({ campagnaId, inCorso, onClose }: { campagnaId:
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Destinatari");
-    XLSX.writeFile(wb, `campagna-destinatari-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    void salvaWorkbook(wb, `campagna-destinatari-${new Date().toISOString().slice(0, 10)}.xlsx`);
   }
 
   return (

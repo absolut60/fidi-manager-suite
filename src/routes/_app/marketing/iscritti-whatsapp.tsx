@@ -51,6 +51,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ClientePicker } from "@/components/preventivatore/ClientePicker";
+import { salvaWorkbook } from "@/lib/salva-workbook";
 
 export const Route = createFileRoute("/_app/marketing/iscritti-whatsapp")({
   component: IscrittiWhatsappPage,
@@ -348,7 +349,7 @@ export default function IscrittiWhatsappPage() {
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Iscritti WhatsApp");
       const today = new Date().toISOString().split("T")[0];
-      XLSX.writeFile(wb, `iscritti-whatsapp-${today}.xlsx`);
+      void salvaWorkbook(wb, `iscritti-whatsapp-${today}.xlsx`);
       toast.success(`Esportati ${rows.length} iscritti`);
     },
     onError: (e: any) => toast.error(e?.message ?? "Errore esportazione"),

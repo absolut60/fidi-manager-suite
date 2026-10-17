@@ -23,6 +23,7 @@
  */
 import * as XLSX from "xlsx";
 import { getFidoAttuale, FIDO_CLIENTE_SELECT } from "@/lib/fido-cliente";
+import { salvaFile } from "@/lib/salva-file";
 
 export type RawRichiestaTracciato = {
   id?: string;
@@ -162,14 +163,7 @@ export function generaTracciatoFidiGestionale(
   XLSX.utils.book_append_sheet(wb, ws, "Foglio1");
   const buf = XLSX.write(wb, { type: "array", bookType: "biff8" }) as ArrayBuffer;
   const blob = new Blob([buf], { type: "application/vnd.ms-excel" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = fileName;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  void salvaFile(blob, fileName);
 
   return { fileName, rows, includedRichiestaIds };
 }

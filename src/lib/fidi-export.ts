@@ -1,5 +1,6 @@
 import * as XLSX from "xlsx";
 import type { TipoRichiesta } from "./fidi";
+import { salvaFile } from "@/lib/salva-file";
 
 export type StatoExport = "da_esportare" | "esportata" | "processata" | "errore_export";
 
@@ -82,12 +83,5 @@ export function generaExcelFidi(rows: ExportRow[]): void {
   // SheetJS community 0.18.5 supporta bookType:'biff8'.
   const buf = XLSX.write(wb, { type: "array", bookType: "biff8" }) as ArrayBuffer;
   const blob = new Blob([buf], { type: "application/vnd.ms-excel" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `FidiManager_Export_${oggi}.xls`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  void salvaFile(blob, `FidiManager_Export_${oggi}.xls`);
 }

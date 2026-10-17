@@ -64,6 +64,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { salvaWorkbook } from "@/lib/salva-workbook";
+import { salvaFile } from "@/lib/salva-file";
 
 export const Route = createFileRoute("/_app/import-export")({
   component: ImportExportPage,
@@ -156,16 +158,7 @@ function BgProgressBlock({
                   const blob = new Blob(["\uFEFF" + csv], {
                     type: "text/csv;charset=utf-8",
                   });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = `report-saltati-${new Date()
-                    .toISOString()
-                    .slice(0, 10)}.csv`;
-                  document.body.appendChild(a);
-                  a.click();
-                  document.body.removeChild(a);
-                  URL.revokeObjectURL(url);
+                  void salvaFile(blob, `report-saltati-${new Date().toISOString().slice(0, 10)}.csv`);
                 }}
               >
                 <Download className="size-3 mr-1" />
@@ -192,16 +185,7 @@ function BgProgressBlock({
                       .map((c) => `"${String(c).replace(/"/g, '""')}"`)
                       .join("\n");
                   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = `codici-mancanti-${new Date()
-                    .toISOString()
-                    .slice(0, 10)}.csv`;
-                  document.body.appendChild(a);
-                  a.click();
-                  document.body.removeChild(a);
-                  URL.revokeObjectURL(url);
+                  void salvaFile(blob, `codici-mancanti-${new Date().toISOString().slice(0, 10)}.csv`);
                 }}
               >
                 <Download className="size-3 mr-1" />
@@ -778,7 +762,7 @@ function AnagraficaImportCard() {
     ]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Anagrafica");
-    XLSX.writeFile(wb, "template_anagrafica_clienti.xlsx");
+    void salvaWorkbook(wb, "template_anagrafica_clienti.xlsx");
   }
 
   return (
@@ -929,7 +913,7 @@ function RischioImportCard() {
     ]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Analisi rischio");
-    XLSX.writeFile(wb, "template_analisi_rischio.xlsx");
+    void salvaWorkbook(wb, "template_analisi_rischio.xlsx");
   }
 
   const result =
@@ -1998,7 +1982,7 @@ function ScadenziarioImportCard() {
     const ws = XLSX.utils.aoa_to_sheet([empty, head, ...samples]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "SCADENZIARIO");
-    XLSX.writeFile(wb, "template_scadenziario.xlsx");
+    void salvaWorkbook(wb, "template_scadenziario.xlsx");
   }
 
   const result =
@@ -2782,7 +2766,7 @@ async function downloadAnomalieXlsx(
   const ws = XLSX.utils.aoa_to_sheet([header, ...body]);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Anomalie");
-  XLSX.writeFile(wb, fname);
+  void salvaWorkbook(wb, fname);
 }
 
 function ExportCard() {
@@ -2854,7 +2838,7 @@ function ExportCard() {
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Email non valida");
       const fname = `clienti_scadenze_email_non_valida_${new Date().toISOString().slice(0, 10)}.xlsx`;
-      XLSX.writeFile(wb, fname);
+      void salvaWorkbook(wb, fname);
       await logEsportazione(fname, rows.length);
       toast.success(
         `Esportati ${rows.length} clienti con email non valida (${conScaduto.length} con scaduto, € ${totScadutoConScaduto.toFixed(2)})`,
@@ -2910,7 +2894,7 @@ function ExportCard() {
       const ws = XLSX.utils.json_to_sheet(flat);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Clienti");
-      XLSX.writeFile(wb, fname);
+      void salvaWorkbook(wb, fname);
       await logEsportazione(fname, flat.length);
       toast.success(`Esportati ${flat.length} clienti`);
     } catch (e) {
@@ -2950,7 +2934,7 @@ function ExportCard() {
       const ws = XLSX.utils.json_to_sheet(flat);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Richieste fido");
-      XLSX.writeFile(wb, fname);
+      void salvaWorkbook(wb, fname);
       await logEsportazione(fname, flat.length);
       toast.success(`Esportate ${flat.length} richieste`);
     } catch (e) {
@@ -3063,7 +3047,7 @@ function ExportCard() {
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Email da correggere");
       const fname = `email_da_correggere_gamma_${new Date().toISOString().slice(0, 10)}.xlsx`;
-      XLSX.writeFile(wb, fname);
+      void salvaWorkbook(wb, fname);
       await logEsportazione(fname, rows.length);
       toast.success(`Esportate ${rows.length} email`);
     } catch (e) {
