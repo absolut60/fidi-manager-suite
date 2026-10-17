@@ -116,6 +116,7 @@ const NAV: NavItem[] = [
   { to: "/recupero-crediti-promemoria", label: "Promemoria scadenza", icon: CalendarClock, roles: ["admin", "agente", "approvatore", "store_manager", "amministrazione"], group: "incassi" },
   // RECUPERO CREDITI
   { to: "/recupero-crediti", label: "Recupero Crediti", icon: HandCoins, roles: ["admin", "agente", "approvatore", "store_manager", "amministrazione"], group: "recupero" },
+  { to: "/recupero-crediti-promesse", label: "Promesse di pagamento", icon: HandCoins, roles: ["admin", "agente", "approvatore", "store_manager", "amministrazione"], group: "recupero" },
   { to: "/recupero-crediti-calendario", label: "Calendario Recupero", icon: CalendarClock, roles: ["admin", "agente", "approvatore", "store_manager", "amministrazione"], group: "recupero" },
   { to: "/recupero-agenzia", label: "Da passare all'agenzia", icon: Gavel, roles: ["admin", "direzione", "amministrazione", "recupero_crediti"], group: "recupero" },
   { to: "/piani-rientro", label: "Piani di rientro", icon: CalendarClock, roles: ["admin", "agente", "approvatore", "store_manager", "amministrazione"], group: "recupero" },
@@ -293,6 +294,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     "/cantieri",
     "/scadenziario",
     "/recupero-crediti",
+    "/recupero-crediti-promesse",
     "/recupero-crediti-calendario",
     "/recupero-crediti-promemoria",
     "/piani-rientro",
