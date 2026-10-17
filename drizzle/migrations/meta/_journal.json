@@ -344,6 +344,13 @@
       "when": 1792265473630,
       "tag": "0048_fm45_scadenziario_base_netto_coperture",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1792265644458,
+      "tag": "0049_fm45_scadenziario_base_join_coperture",
+      "breakpoints": true
     }
   ]
 }
