@@ -23,12 +23,67 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type Pendente = {
   id: string;
+  cliente_id: string | null;
   store_id: string | null;
   codice_gestionale: string | null;
   ragione_sociale: string | null;
   tipo: string;
   negozio: string | null;
 };
+
+/**
+ * Agenti attivi per cliente. GEMELLO TS di public.utenti_agente_cliente(uuid)
+ * (migrazione 0044, FM45): profilo attivo, ruolo 'agente',
+ * profili.codice_agente = clienti.codice_agente (cliente senza codice → nessuno).
+ * Query equivalente in blocco per non fare una RPC per ogni cliente.
+ * Se cambia la funzione SQL, cambia anche questa.
+ */
+async function agentiPerCliente(clienteIds: string[]): Promise<Map<string, string[]>> {
+  const out = new Map<string, string[]>();
+  if (!clienteIds.length) return out;
+  const codicePerCliente = new Map<string, string>();
+  const BATCH = 500;
+  for (let i = 0; i < clienteIds.length; i += BATCH) {
+    const { data, error } = await withTimeout(
+      supabaseAdmin.from("clienti").select("id, codice_agente").in("id", clienteIds.slice(i, i + BATCH)),
+      T_MS,
+      "clienti codice_agente",
+    );
+    if (error) throw new Error(`clienti codice_agente: ${error.message}`);
+    for (const c of (data ?? []) as Array<{ id: string; codice_agente: string | null }>) {
+      if (c.codice_agente) codicePerCliente.set(c.id, c.codice_agente);
+    }
+  }
+  const codici = Array.from(new Set(codicePerCliente.values()));
+  if (!codici.length) return out;
+  const { data: prof, error: eP } = await withTimeout(
+    supabaseAdmin.from("profili").select("id, codice_agente").in("codice_agente", codici).eq("attivo", true),
+    T_MS,
+    "profili agenti",
+  );
+  if (eP) throw new Error(`profili agenti: ${eP.message}`);
+  const profili = (prof ?? []) as Array<{ id: string; codice_agente: string | null }>;
+  if (!profili.length) return out;
+  const { data: ruoli, error: eR } = await withTimeout(
+    supabaseAdmin.from("user_roles").select("user_id").eq("role", "agente" as never).in("user_id", profili.map((p) => p.id)),
+    T_MS,
+    "user_roles agente",
+  );
+  if (eR) throw new Error(`user_roles agente: ${eR.message}`);
+  const agentiIds = new Set((ruoli ?? []).map((r) => r.user_id as string));
+  const agentiPerCodice = new Map<string, string[]>();
+  for (const p of profili) {
+    if (!p.codice_agente || !agentiIds.has(p.id)) continue;
+    const arr = agentiPerCodice.get(p.codice_agente) ?? [];
+    if (!arr.includes(p.id)) arr.push(p.id);
+    agentiPerCodice.set(p.codice_agente, arr);
+  }
+  for (const [cid, codice] of codicePerCliente) {
+    const a = agentiPerCodice.get(codice);
+    if (a?.length) out.set(cid, a);
+  }
+  return out;
+}
 
 async function marcaNotificate(ids: string[]): Promise<void> {
   const BATCH = 500;
@@ -85,7 +140,7 @@ export const notificaVariazioniBlocco = inngest.createFunction(
         const { data, error } = await withTimeout(
           supabaseAdmin
             .from("clienti_blocco_variazioni")
-            .select("id, store_id, codice_gestionale, ragione_sociale, tipo, stores(nome)")
+            .select("id, cliente_id, store_id, codice_gestionale, ragione_sociale, tipo, stores(nome)")
             .is("notificato_at", null)
             .order("id")
             .range(from, from + PAGE - 1),
