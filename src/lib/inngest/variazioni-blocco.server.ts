@@ -23,12 +23,67 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type Pendente = {
   id: string;
+  cliente_id: string | null;
   store_id: string | null;
   codice_gestionale: string | null;
   ragione_sociale: string | null;
   tipo: string;
   negozio: string | null;
 };
+
+/**
+ * Agenti attivi per cliente. GEMELLO TS di public.utenti_agente_cliente(uuid)
+ * (migrazione 0044, FM45): profilo attivo, ruolo 'agente',
+ * profili.codice_agente = clienti.codice_agente (cliente senza codice → nessuno).
+ * Query equivalente in blocco per non fare una RPC per ogni cliente.
+ * Se cambia la funzione SQL, cambia anche questa.
+ */
+async function agentiPerCliente(clienteIds: string[]): Promise<Map<string, string[]>> {
+  const out = new Map<string, string[]>();
+  if (!clienteIds.length) return out;
+  const codicePerCliente = new Map<string, string>();
+  const BATCH = 500;
+  for (let i = 0; i < clienteIds.length; i += BATCH) {
+    const { data, error } = await withTimeout(
+      supabaseAdmin.from("clienti").select("id, codice_agente").in("id", clienteIds.slice(i, i + BATCH)),
+      T_MS,
+      "clienti codice_agente",
+    );
+    if (error) throw new Error(`clienti codice_agente: ${error.message}`);
+    for (const c of (data ?? []) as Array<{ id: string; codice_agente: string | null }>) {
+      if (c.codice_agente) codicePerCliente.set(c.id, c.codice_agente);
+    }
+  }
+  const codici = Array.from(new Set(codicePerCliente.values()));
+  if (!codici.length) return out;
+  const { data: prof, error: eP } = await withTimeout(
+    supabaseAdmin.from("profili").select("id, codice_agente").in("codice_agente", codici).eq("attivo", true),
+    T_MS,
+    "profili agenti",
+  );
+  if (eP) throw new Error(`profili agenti: ${eP.message}`);
+  const profili = (prof ?? []) as Array<{ id: string; codice_agente: string | null }>;
+  if (!profili.length) return out;
+  const { data: ruoli, error: eR } = await withTimeout(
+    supabaseAdmin.from("user_roles").select("user_id").eq("role", "agente" as never).in("user_id", profili.map((p) => p.id)),
+    T_MS,
+    "user_roles agente",
+  );
+  if (eR) throw new Error(`user_roles agente: ${eR.message}`);
+  const agentiIds = new Set((ruoli ?? []).map((r) => r.user_id as string));
+  const agentiPerCodice = new Map<string, string[]>();
+  for (const p of profili) {
+    if (!p.codice_agente || !agentiIds.has(p.id)) continue;
+    const arr = agentiPerCodice.get(p.codice_agente) ?? [];
+    if (!arr.includes(p.id)) arr.push(p.id);
+    agentiPerCodice.set(p.codice_agente, arr);
+  }
+  for (const [cid, codice] of codicePerCliente) {
+    const a = agentiPerCodice.get(codice);
+    if (a?.length) out.set(cid, a);
+  }
+  return out;
+}
 
 async function marcaNotificate(ids: string[]): Promise<void> {
   const BATCH = 500;
@@ -85,7 +140,7 @@ export const notificaVariazioniBlocco = inngest.createFunction(
         const { data, error } = await withTimeout(
           supabaseAdmin
             .from("clienti_blocco_variazioni")
-            .select("id, store_id, codice_gestionale, ragione_sociale, tipo, stores(nome)")
+            .select("id, cliente_id, store_id, codice_gestionale, ragione_sociale, tipo, stores(nome)")
             .is("notificato_at", null)
             .order("id")
             .range(from, from + PAGE - 1),
@@ -95,6 +150,7 @@ export const notificaVariazioniBlocco = inngest.createFunction(
         if (error) throw new Error(`carica pendenti: ${error.message}`);
         const rows = (data ?? []) as unknown as Array<{
           id: string;
+          cliente_id: string | null;
           store_id: string | null;
           codice_gestionale: string | null;
           ragione_sociale: string | null;
@@ -104,6 +160,7 @@ export const notificaVariazioniBlocco = inngest.createFunction(
         for (const r of rows) {
           out.push({
             id: r.id,
+            cliente_id: r.cliente_id,
             store_id: r.store_id,
             codice_gestionale: r.codice_gestionale,
             ragione_sociale: r.ragione_sociale,
@@ -142,6 +199,67 @@ export const notificaVariazioniBlocco = inngest.createFunction(
       arr.push(p);
       perNegozio.set(p.store_id!, arr);
     }
+
+    // FM45: notifica in app anche agli agenti dei clienti variati (una per agente,
+    // solo i propri clienti, stesso tipo/testo/link dello store manager; mai l'autore
+    // dell'import). In modalità test nessuna notifica agli agenti reali.
+    // Va prima del ciclo negozi: le righe sono già in memoria e la marcatura resta ai negozi.
+    const notificheAgenti = await step.run("agenti", async () => {
+      if (isTest || !pendenti.length) return 0;
+      let autoreId: string | null = null;
+      if (importazioneId) {
+        const { data: imp } = await withTimeout(
+          supabaseAdmin.from("importazioni").select("eseguita_da").eq("id", importazioneId).maybeSingle(),
+          T_MS,
+          "autore import",
+        );
+        autoreId = ((imp as { eseguita_da?: string | null } | null)?.eseguita_da ?? null) as string | null;
+      }
+      const clienteIds = Array.from(new Set(pendenti.map((p) => p.cliente_id).filter((x): x is string => !!x)));
+      const mappa = await agentiPerCliente(clienteIds);
+      const perAgente = new Map<string, Pendente[]>();
+      for (const p of pendenti) {
+        if (!p.cliente_id) continue;
+        for (const a of mappa.get(p.cliente_id) ?? []) {
+          if (a === autoreId) continue;
+          const arr = perAgente.get(a) ?? [];
+          arr.push(p);
+          perAgente.set(a, arr);
+        }
+      }
+      if (!perAgente.size) return 0;
+      const righe = Array.from(perAgente, ([uid, lista]) => {
+        const negozi = Array.from(new Set(lista.map((r) => r.negozio ?? "sede")));
+        const nB = lista.filter((r) => r.tipo === "bloccato").length;
+        const nS = lista.filter((r) => r.tipo === "sbloccato").length;
+        return {
+          user_id: uid,
+          tipo: "variazioni_blocco_clienti",
+          titolo: `Variazioni blocco clienti — ${negozi.join(", ")}`,
+          messaggio: messaggioConteggi(nB, nS),
+          link: "/clienti-variazioni-blocco",
+          metadata: {
+            store_id: negozi.length === 1 ? lista[0].store_id : null,
+            importazione_id: importazioneId,
+            bloccati: nB,
+            sbloccati: nS,
+            test: false,
+            destinatario: "agente",
+          },
+        };
+      });
+      const { error } = await withTimeout(
+        supabaseAdmin.from("notifiche").insert(righe),
+        T_MS,
+        "insert notifiche agenti",
+      );
+      if (error) {
+        logger.error(`Notifiche agenti: ${error.message}`);
+        return 0;
+      }
+      logger.info(`Notifiche variazioni blocco agli agenti: ${righe.length}`);
+      return righe.length;
+    });
 
     const appUrl = process.env.VITE_APP_URL ?? "https://fidi-manager-suite.lovable.app";
     let negoziAvvisati = 0;
@@ -289,6 +407,7 @@ export const notificaVariazioniBlocco = inngest.createFunction(
       mailInviate,
       mailFallite,
       notifiche: notificheInserite,
+      notificheAgenti,
       test: isTest,
     };
   },

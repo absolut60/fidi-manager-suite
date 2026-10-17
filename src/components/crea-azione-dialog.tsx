@@ -9,6 +9,7 @@ import {
   fmtAllegatoBytes,
 } from "@/components/allegati-section";
 import { useAuth } from "@/hooks/use-auth";
+import { tipoAzioneConsentito } from "@/lib/recupero-permessi";
 import { classificaScadenza } from "@/lib/scadenze";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -57,7 +58,8 @@ export function CreaAzioneDialog({
   open, onOpenChange, clienteId: clienteIdProp, tipoIniziale = "promemoria", dataIniziale, onCreated,
 }: Props) {
   const qc = useQueryClient();
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
+  const tipiVisibili = TIPI.filter((t) => tipoAzioneConsentito(roles, t.value));
   const clienteFissato = !!clienteIdProp;
 
   const [tipo, setTipo] = useState<TipoAzione>(tipoIniziale);
@@ -76,7 +78,7 @@ export function CreaAzioneDialog({
   // Reset on open
   useEffect(() => {
     if (open) {
-      setTipo(tipoIniziale);
+      setTipo(tipoAzioneConsentito(roles, tipoIniziale) ? tipoIniziale : "promemoria");
       setDataAzione(toDatetimeLocal(dataIniziale ?? new Date()));
       setNote("");
       setScadenzeSel(new Set());
@@ -263,7 +265,7 @@ export function CreaAzioneDialog({
               <Select value={tipo} onValueChange={(v) => setTipo(v as TipoAzione)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {TIPI.map((t) => (
+                  {tipiVisibili.map((t) => (
                     <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
                   ))}
                 </SelectContent>
