@@ -7764,6 +7764,7 @@ export type Database = {
           p_importo_min?: number
           p_importo_min_a_scadere?: number
           p_mostra_a_credito?: boolean
+          p_netto_coperture?: boolean
           p_page?: number
           p_page_size?: number
           p_search?: string
@@ -7782,6 +7783,8 @@ export type Database = {
           bloccato: boolean
           cliente_id: string
           codice_gestionale: string
+          coperto_piani: number
+          coperto_promesse: number
           data_promessa: string
           fascia: string
           fatturato_cur: number
@@ -7805,6 +7808,7 @@ export type Database = {
           store_nome: string
           tot_a_scadere: number
           tot_scaduto: number
+          tot_scaduto_lordo: number
           total_count: number
         }[]
       }
