@@ -3,7 +3,7 @@
 // la somma delle righe coincide con i totali. Nessun ricalcolo qui, solo somme per la riga "Totale".
 import { useMemo, useState } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, ChevronDown, Info, Store } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, ChevronDown, Info, Store } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatEuro } from "@/lib/fidi";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -99,21 +99,25 @@ export function ScadenziarioPerStore({ params, aperto, onToggle, storeSelezionat
   const clic = (r: RigaStore) => (cliccabile && r.store_id ? () => onSelezionaStore(r.store_id!) : undefined);
   const val = (r: Pick<RigaStore, Chiave>, c: (typeof COLONNE)[number]) =>
     c.euro ? formatEuro(Number(r[c.k])) : String(r[c.k]);
-  const nomeCella = (r: RigaStore) => (
-    <span className="flex items-center gap-1 min-w-0">
-      <span className="break-words min-w-0">{r.store_nome}</span>
-      {!r.store_id && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button type="button" className="shrink-0 p-1 text-muted-foreground" aria-label={TESTO_SENZA} onClick={(e) => e.stopPropagation()}>
-              <Info className="size-3.5" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>{TESTO_SENZA}</TooltipContent>
-        </Tooltip>
-      )}
-    </span>
-  );
+  const nomeCella = (r: RigaStore) => {
+    const sel = !!r.store_id && r.store_id === storeSelezionato;
+    return (
+      <span className="flex items-center gap-1 min-w-0">
+        <span className="break-words min-w-0">{r.store_nome}</span>
+        {sel && <Check className="size-3.5 shrink-0 text-primary" aria-label="negozio selezionato" />}
+        {!r.store_id && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button type="button" className="shrink-0 p-1 text-muted-foreground" aria-label={TESTO_SENZA} onClick={(e) => e.stopPropagation()}>
+                <Info className="size-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>{TESTO_SENZA}</TooltipContent>
+          </Tooltip>
+        )}
+      </span>
+    );
+  };
 
   return (
     <div className="rounded-md border bg-card">
@@ -130,16 +134,27 @@ export function ScadenziarioPerStore({ params, aperto, onToggle, storeSelezionat
       </button>
       {aperto && (
         <div className="border-t">
+          {cliccabile && storeSelezionato !== "all" && (() => {
+            const nome = righe.find((r) => r.store_id === storeSelezionato)?.store_nome;
+            return nome ? (
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-1.5 text-xs text-muted-foreground border-b min-w-0">
+                <span className="min-w-0">Filtro: <span className="font-medium text-foreground break-words">{nome}</span></span>
+                <button type="button" onClick={() => onSelezionaStore(storeSelezionato)} className="underline underline-offset-2 hover:text-foreground shrink-0">
+                  Mostra tutti
+                </button>
+              </div>
+            ) : null;
+          })()}
           {/* Telefono: schede */}
           <ul className="md:hidden divide-y">
             {ordinate.map((r) => {
               const onClick = clic(r);
               const sel = !!r.store_id && r.store_id === storeSelezionato;
               return (
-                <li key={r.store_id ?? "senza"}>
+                <li key={r.store_id ?? "senza"} className={sel ? "border-l-2 border-l-primary" : "border-l-2 border-l-transparent"}>
                   <div
                     {...(onClick ? { role: "button", tabIndex: 0, onClick, onKeyDown: (e: React.KeyboardEvent) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } } } : {})}
-                    className={`px-3 py-2 ${onClick ? "cursor-pointer active:bg-muted/50" : ""} ${sel ? "bg-primary/5" : ""}`}
+                    className={`px-3 py-2 ${onClick ? "cursor-pointer active:bg-muted/50" : ""} ${sel ? "bg-primary/10" : ""}`}
                   >
                     <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
                       <div className="text-sm font-medium">{nomeCella(r)}</div>
@@ -156,7 +171,7 @@ export function ScadenziarioPerStore({ params, aperto, onToggle, storeSelezionat
               );
             })}
             <li className="px-3 py-2 grid grid-cols-[minmax(0,1fr)_auto] gap-2 text-sm font-semibold">
-              <span>Totale</span><span className="tabular-nums">{formatEuro(totale.tot_scaduto)}</span>
+              <span>Totale negozi</span><span className="tabular-nums">{formatEuro(totale.tot_scaduto)}</span>
             </li>
           </ul>
           {/* Desktop: tabella */}
@@ -186,10 +201,13 @@ export function ScadenziarioPerStore({ params, aperto, onToggle, storeSelezionat
                     <tr
                       key={r.store_id ?? "senza"}
                       onClick={onClick}
-                      className={`border-b last:border-b-0 ${onClick ? "cursor-pointer hover:bg-muted/50" : ""} ${sel ? "bg-primary/5" : ""}`}
+                      className={`border-b last:border-b-0 ${onClick ? "cursor-pointer hover:bg-muted/50" : ""} ${sel ? "bg-primary/10" : ""}`}
                     >
                       {COLONNE.map((c) => (
-                        <td key={c.k} className={`px-3 py-1.5 ${c.k === "store_nome" ? "text-left" : "text-right"} ${c.k === "tot_scaduto" ? "font-semibold text-destructive min-w-[120px]" : ""}`}>
+                        <td
+                          key={c.k}
+                          className={`px-3 py-1.5 ${c.k === "store_nome" ? `text-left border-l-2 ${sel ? "border-l-primary" : "border-l-transparent"}` : "text-right"} ${c.k === "tot_scaduto" ? "font-semibold text-destructive min-w-[120px]" : ""}`}
+                        >
                           {c.k === "store_nome" ? nomeCella(r) : val(r, c)}
                           {c.k === "tot_scaduto" && <Barretta v={r.tot_scaduto} max={max} />}
                         </td>
@@ -200,7 +218,7 @@ export function ScadenziarioPerStore({ params, aperto, onToggle, storeSelezionat
               </tbody>
               <tfoot>
                 <tr className="border-t font-semibold">
-                  <td className="px-3 py-2">Totale</td>
+                  <td className="px-3 py-2">Totale negozi</td>
                   {COLONNE.slice(1).map((c) => (
                     <td key={c.k} className="px-3 py-2 text-right">{val({ store_nome: "", ...totale }, c)}</td>
                   ))}

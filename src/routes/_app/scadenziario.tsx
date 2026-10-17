@@ -422,6 +422,8 @@ function ScadenziarioPage() {
   });
   // Totali lordi (stessi filtri, netto spento): servono solo per "lordo X €" / "su N" a filtro acceso.
   const paramsLordo = useMemo(() => ({ ...commonParams, p_netto_coperture: false }), [commonParams]);
+  // "Per punto vendita" mostra sempre tutti i negozi: senza il filtro Store (il negozio scelto resta solo evidenziato).
+  const paramsPerStore = useMemo(() => ({ ...commonParams, p_store_id: null }), [commonParams]);
   const { data: totaliLordo } = useQuery({
     queryKey: ["scadenziario-totali-v1", paramsLordo],
     enabled: nettoCoperture,
@@ -715,7 +717,7 @@ function ScadenziarioPage() {
           />
         )}
         <ScadenziarioPerStore
-          params={commonParams}
+          params={paramsPerStore}
           aperto={filtri.perStoreAperto === "auto" ? !isMobile : filtri.perStoreAperto === "si"}
           onToggle={() => setCampo("perStoreAperto", (filtri.perStoreAperto === "auto" ? !isMobile : filtri.perStoreAperto === "si") ? "no" : "si")}
           storeSelezionato={storeId}
