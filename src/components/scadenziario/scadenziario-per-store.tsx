@@ -3,7 +3,7 @@
 // la somma delle righe coincide con i totali. Nessun ricalcolo qui, solo somme per la riga "Totale".
 import { useMemo, useState } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, ChevronDown, Info, Store } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, ChevronDown, Info, Store } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatEuro } from "@/lib/fidi";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -99,21 +99,25 @@ export function ScadenziarioPerStore({ params, aperto, onToggle, storeSelezionat
   const clic = (r: RigaStore) => (cliccabile && r.store_id ? () => onSelezionaStore(r.store_id!) : undefined);
   const val = (r: Pick<RigaStore, Chiave>, c: (typeof COLONNE)[number]) =>
     c.euro ? formatEuro(Number(r[c.k])) : String(r[c.k]);
-  const nomeCella = (r: RigaStore) => (
-    <span className="flex items-center gap-1 min-w-0">
-      <span className="break-words min-w-0">{r.store_nome}</span>
-      {!r.store_id && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button type="button" className="shrink-0 p-1 text-muted-foreground" aria-label={TESTO_SENZA} onClick={(e) => e.stopPropagation()}>
-              <Info className="size-3.5" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>{TESTO_SENZA}</TooltipContent>
-        </Tooltip>
-      )}
-    </span>
-  );
+  const nomeCella = (r: RigaStore) => {
+    const sel = !!r.store_id && r.store_id === storeSelezionato;
+    return (
+      <span className="flex items-center gap-1 min-w-0">
+        <span className="break-words min-w-0">{r.store_nome}</span>
+        {sel && <Check className="size-3.5 shrink-0 text-primary" aria-label="negozio selezionato" />}
+        {!r.store_id && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button type="button" className="shrink-0 p-1 text-muted-foreground" aria-label={TESTO_SENZA} onClick={(e) => e.stopPropagation()}>
+                <Info className="size-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>{TESTO_SENZA}</TooltipContent>
+          </Tooltip>
+        )}
+      </span>
+    );
+  };
 
   return (
     <div className="rounded-md border bg-card">
