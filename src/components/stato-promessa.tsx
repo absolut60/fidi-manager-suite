@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { puoCambiareStatoPromessa } from "@/lib/recupero-permessi";
+import { QK_PREVISIONE_COPERTURE } from "@/components/scadenziario/coperture-scadenziario";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -80,6 +81,11 @@ export function SelettoreStatoPromessa({
     qc.invalidateQueries({ queryKey: ["promesse-previsione"] });
     qc.invalidateQueries({ queryKey: ["azioni-recupero-cliente", clienteId] });
     qc.invalidateQueries({ queryKey: ["azioni-recupero"] });
+    // La copertura dello scadenziario dipende dallo stato della promessa.
+    qc.invalidateQueries({ queryKey: ["scadenziario-paginata-v1"] });
+    qc.invalidateQueries({ queryKey: ["scadenziario-totali-v1"] });
+    qc.invalidateQueries({ queryKey: ["scadenziario-all-ids"] });
+    qc.invalidateQueries({ queryKey: [QK_PREVISIONE_COPERTURE] });
     onChanged?.();
   }
 
