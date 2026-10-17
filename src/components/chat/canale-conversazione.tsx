@@ -4,7 +4,8 @@ import {
   AzioniMessaggioAdmin, InfoMessaggio, SpunteLettura, formatOraMessaggio, haConfermeLettura,
   type LetturaMessaggio,
 } from "@/components/chat/indicatore-lettura";
-import { FileText, Paperclip, Search, Send, Smile, X } from "lucide-react";
+import { FileText, Paperclip, Send, Smile, X } from "lucide-react";
+import { MiniaturaAllegato, MiniaturaPdfLocale, formatBytes, tipoAllegato } from "@/components/allegati/anteprima-allegato";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -43,103 +44,14 @@ function sanitize(name: string) {
   return name.replace(/[^a-zA-Z0-9._-]/g, "_");
 }
 
-function formatBytes(b: number | null) {
-  if (!b && b !== 0) return "";
-  if (b < 1024) return `${b} B`;
-  if (b < 1024 * 1024) return `${(b / 1024).toFixed(0)} KB`;
-  return `${(b / 1024 / 1024).toFixed(1)} MB`;
-}
-
-async function scaricaFile(path: string, nomeFile: string) {
-  const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60);
-  if (error || !data?.signedUrl) {
-    toast.error("Impossibile scaricare il file");
-    return;
-  }
-  try {
-    const res = await fetch(data.signedUrl);
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = nomeFile;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  } catch {
-    toast.error("Impossibile scaricare il file");
-  }
-}
-
 function AllegatoMessaggio({ allegato }: { allegato: Allegato }) {
-  const isImg = (allegato.mime_type ?? "").startsWith("image/");
-  const isPdf = allegato.mime_type === "application/pdf";
-  const [url, setUrl] = useState<string | null>(null);
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    if (!isImg) return;
-    let active = true;
-    (async () => {
-      const { data } = await supabase.storage.from(BUCKET).createSignedUrl(allegato.storage_path, 60);
-      if (active) setUrl(data?.signedUrl ?? null);
-    })();
-    return () => {
-      active = false;
-    };
-  }, [allegato.storage_path, isImg]);
-
-  async function apriInScheda() {
-    const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(allegato.storage_path, 60);
-    if (error || !data?.signedUrl) {
-      toast.error("Impossibile aprire il file");
-      return;
-    }
-    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
-  }
-
-  if (isImg) {
-    return (
-      <>
-        {url ? (
-          <img
-            src={url}
-            alt={allegato.nome_file}
-            onClick={() => setOpen(true)}
-            className="mt-2 max-w-full sm:max-w-[200px] rounded-md cursor-pointer"
-          />
-        ) : (
-          <div className="mt-2 h-24 w-full max-w-[200px] rounded-md bg-background/30 animate-pulse" />
-        )}
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogContent className="max-w-4xl">
-            {url && <img src={url} alt={allegato.nome_file} className="w-full h-auto rounded-md" />}
-          </DialogContent>
-        </Dialog>
-      </>
-    );
-  }
-
   return (
-    <div className="mt-2 flex max-w-full items-center gap-2 rounded-md border bg-background/60 px-2 py-1.5 text-foreground">
-      <button
-        type="button"
-        onClick={() => scaricaFile(allegato.storage_path, allegato.nome_file)}
-        className="flex items-center gap-2 min-w-0 text-left"
-      >
-        <FileText className="size-4 shrink-0" />
-        <span className="text-xs break-all line-clamp-2 min-w-0">{allegato.nome_file}</span>
-        <span className="text-[10px] text-muted-foreground shrink-0">
-          {formatBytes(allegato.dimensione_bytes)}
-        </span>
-      </button>
-      {isPdf && (
-        <button type="button" onClick={apriInScheda} className="shrink-0" title="Apri">
-          <Search className="size-3.5" />
-        </button>
-      )}
-    </div>
+    <MiniaturaAllegato
+      storagePath={allegato.storage_path}
+      nomeFile={allegato.nome_file}
+      mimeType={allegato.mime_type}
+      dimensione={allegato.dimensione_bytes}
+    />
   );
 }
 
