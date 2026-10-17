@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { loadPdfJs } from "@/lib/pdfjs";
 import { salvaFileDaUrl } from "@/lib/salva-file";
 
-const BUCKET = "allegati";
+const BUCKET_DEFAULT = "allegati";
 const SCADENZA_URL_S = 600; // 10 minuti
 const LARGHEZZA_MINIATURA = 220;
 
@@ -34,12 +34,13 @@ export function tipoAllegato(mimeType: string | null | undefined, nomeFile: stri
 // ---------- URL firmati (cache con rinnovo) ----------
 const cacheUrl = new Map<string, { url: string; scade: number }>();
 
-export async function urlFirmatoAllegato(path: string): Promise<string> {
-  const c = cacheUrl.get(path);
+export async function urlFirmatoAllegato(path: string, bucket: string = BUCKET_DEFAULT): Promise<string> {
+  const chiave = `${bucket}::${path}`;
+  const c = cacheUrl.get(chiave);
   if (c && c.scade - Date.now() > 30_000) return c.url;
-  const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, SCADENZA_URL_S);
+  const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, SCADENZA_URL_S);
   if (error || !data?.signedUrl) throw new Error(error?.message ?? "URL non disponibile");
-  cacheUrl.set(path, { url: data.signedUrl, scade: Date.now() + SCADENZA_URL_S * 1000 });
+  cacheUrl.set(chiave, { url: data.signedUrl, scade: Date.now() + SCADENZA_URL_S * 1000 });
   return data.signedUrl;
 }
 
@@ -69,16 +70,17 @@ async function renderPrimaPagina(data: ArrayBuffer): Promise<MiniPdf> {
   }
 }
 
-function miniPdfRemota(path: string): Promise<MiniPdf> {
-  let p = cacheMiniPdf.get(path);
+function miniPdfRemota(path: string, bucket: string): Promise<MiniPdf> {
+  const chiave = `${bucket}::${path}`;
+  let p = cacheMiniPdf.get(chiave);
   if (!p) {
     p = (async () => {
-      const res = await fetch(await urlFirmatoAllegato(path));
+      const res = await fetch(await urlFirmatoAllegato(path, bucket));
       if (!res.ok) throw new Error("fetch");
       return renderPrimaPagina(await res.arrayBuffer());
     })();
-    p.catch(() => cacheMiniPdf.delete(path));
-    cacheMiniPdf.set(path, p);
+    p.catch(() => cacheMiniPdf.delete(chiave));
+    cacheMiniPdf.set(chiave, p);
   }
   return p;
 }
@@ -152,8 +154,8 @@ function SchedaPdf({
 
 // ---------- Miniatura da storage ----------
 export function MiniaturaAllegato({
-  storagePath, nomeFile, mimeType, dimensione,
-}: { storagePath: string; nomeFile: string; mimeType?: string | null; dimensione?: number | null }) {
+  storagePath, nomeFile, mimeType, dimensione, bucket = BUCKET_DEFAULT,
+}: { storagePath: string; nomeFile: string; mimeType?: string | null; dimensione?: number | null; bucket?: string }) {
   const tipo = tipoAllegato(mimeType, nomeFile);
   const { ref, visto } = useInVista<HTMLDivElement>();
   const [imgUrl, setImgUrl] = useState<string | null>(null);
@@ -168,10 +170,10 @@ export function MiniaturaAllegato({
     (async () => {
       try {
         if (tipo === "img") {
-          const u = await urlFirmatoAllegato(storagePath);
+          const u = await urlFirmatoAllegato(storagePath, bucket);
           if (attivo) setImgUrl(u);
         } else {
-          const m = await miniPdfRemota(storagePath);
+          const m = await miniPdfRemota(storagePath, bucket);
           if (attivo) setMini(m);
         }
       } catch {
@@ -179,13 +181,13 @@ export function MiniaturaAllegato({
       }
     })();
     return () => { attivo = false; };
-  }, [visto, tipo, storagePath]);
+  }, [visto, tipo, storagePath, bucket]);
 
   async function salvaDiretto() {
     if (salvando) return;
     setSalvando(true);
     try {
-      await salvaFileDaUrl(await urlFirmatoAllegato(storagePath), nomeFile);
+      await salvaFileDaUrl(await urlFirmatoAllegato(storagePath, bucket), nomeFile);
     } catch {
       toast.error("Impossibile scaricare il file");
     } finally {
@@ -201,7 +203,7 @@ export function MiniaturaAllegato({
             src={imgUrl}
             alt={nomeFile}
             onClick={() => setAperto(true)}
-            onError={() => cacheUrl.delete(storagePath)}
+            onError={() => cacheUrl.delete(`${bucket}::${storagePath}`)}
             className="mt-2 max-w-full sm:max-w-[220px] rounded-md cursor-pointer"
           />
         ) : errore ? (
@@ -221,6 +223,7 @@ export function MiniaturaAllegato({
           storagePath={storagePath}
           nomeFile={nomeFile}
           tipo={tipo}
+          bucket={bucket}
         />
       )}
     </div>
@@ -247,8 +250,9 @@ export function MiniaturaPdfLocale({ file }: { file: File }) {
 
 // ---------- Visualizzatore ----------
 export function VisualizzatoreAllegato({
-  open, onOpenChange, storagePath, nomeFile, tipo,
+  open, onOpenChange, storagePath, nomeFile, tipo, bucket = BUCKET_DEFAULT,
 }: {
+  bucket?: string;
   open: boolean;
   onOpenChange: (v: boolean) => void;
   storagePath: string;
@@ -271,7 +275,7 @@ export function VisualizzatoreAllegato({
 
     (async () => {
       try {
-        const url = await urlFirmatoAllegato(storagePath);
+        const url = await urlFirmatoAllegato(storagePath, bucket);
         if (tipo === "img") {
           if (!annullato) { setImgUrl(url); setCaricamento(false); }
           return;
@@ -316,12 +320,12 @@ export function VisualizzatoreAllegato({
       (doc as { destroy?: () => Promise<void> } | null)?.destroy?.().catch(() => {});
       if (paginaRef.current) paginaRef.current.innerHTML = "";
     };
-  }, [open, storagePath, tipo]);
+  }, [open, storagePath, tipo, bucket]);
 
   async function salva() {
     setSalvando(true);
     try {
-      await salvaFileDaUrl(await urlFirmatoAllegato(storagePath), nomeFile);
+      await salvaFileDaUrl(await urlFirmatoAllegato(storagePath, bucket), nomeFile);
     } catch {
       toast.error("Impossibile scaricare il file");
     } finally {
