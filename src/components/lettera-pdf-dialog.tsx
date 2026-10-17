@@ -151,7 +151,7 @@ export function LetteraPdfDialog({
             <div className="rounded-md border border-border bg-muted/30 px-4 py-3 text-sm">
               L'invio delle comunicazioni di recupero è riservato al Recupero crediti.
             </div>
-            <DialogFooter>
+            <DialogFooter className="gap-2 sm:gap-0 [&>button]:w-full sm:[&>button]:w-auto">
               <Button variant="outline" onClick={() => onOpenChange(false)}>Chiudi</Button>
             </DialogFooter>
           </div>
@@ -198,7 +198,7 @@ export function LetteraPdfDialog({
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="gap-2 sm:gap-0 [&>button]:w-full sm:[&>button]:w-auto">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
             Annulla
           </Button>
