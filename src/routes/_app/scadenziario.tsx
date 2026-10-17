@@ -34,7 +34,7 @@ import { TooltipAzioneRecupero } from "@/components/tooltip-azione-recupero";
 import { StadioSollecitoBadge } from "@/components/stadio-sollecito-badge";
 import { ClienteAttivitaRecuperoTab } from "@/components/cliente-attivita-recupero-tab";
 import { ScadenziarioKpi, DettaglioCoperturaRiga } from "@/components/scadenziario/scadenziario-kpi";
-import { CopertureScadenziario, QK_PREVISIONE_COPERTURE } from "@/components/scadenziario/coperture-scadenziario";
+import { CopertureScadenziario } from "@/components/scadenziario/coperture-scadenziario";
 
 export const Route = createFileRoute("/_app/scadenziario")({
   component: ScadenziarioPage,

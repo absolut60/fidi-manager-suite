@@ -107,7 +107,7 @@ export function CopertureScadenziario({ totali, storeId, agente }: {
           {totali.nDaVerificare > 0 && (
             <Link
               to="/recupero-crediti-promesse"
-              search={{ daVerificare: true } as never}
+              search={{ daVerificare: true }}
               className="text-xs font-medium text-destructive underline-offset-2 hover:underline py-1"
             >
               {totali.nDaVerificare} da verificare

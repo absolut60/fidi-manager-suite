@@ -2,7 +2,7 @@
 // Promessa = azioni_recupero con esito 'promessa_pagamento'. Visibilità: RLS esistenti.
 // Importo efficace: promesse_attive_importo_efficace() (fonte unica DB, non ricalcolato qui).
 // Previsione: get_previsione_incassi_coperture (riga origine='promessa').
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowDown, ArrowUp, HandCoins, Search } from "lucide-react";
@@ -32,6 +32,9 @@ export const Route = createFileRoute("/_app/recupero-crediti-promesse")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
+  // ?daVerificare=true (link dallo Scadenziario): apre la lista già filtrata sulle promesse da verificare.
+  validateSearch: (s: Record<string, unknown>): { daVerificare?: boolean } =>
+    s.daVerificare === true || s.daVerificare === "true" ? { daVerificare: true } : {},
   component: PromessePage,
 });
 
@@ -72,11 +75,15 @@ type SortKey = "cliente" | "negozio" | "data" | "importo" | "stato" | "inserita"
 function PromessePage() {
   const { user } = useAuth();
   const { nomeUtente } = useNomiUtenti();
-  const { filtri, setCampo } = useFiltriPagina("recupero-crediti-promesse", {
+  const { daVerificare: daVerificareUrl } = Route.useSearch();
+  const { filtri, setCampo, setParziale } = useFiltriPagina("recupero-crediti-promesse", {
     stato: "attiva", negozio: "tutti", agente: "tutti", search: "", soloDaVerificare: false,
     sortKey: "data" as SortKey, sortDir: "asc" as "asc" | "desc",
   }, { userId: user?.id });
   const { stato, negozio, agente, search, soloDaVerificare, sortKey, sortDir } = filtri;
+  useEffect(() => {
+    if (daVerificareUrl) setParziale({ stato: "attiva", soloDaVerificare: true });
+  }, [daVerificareUrl, setParziale]);
 
   const { data: stores = [] } = useQuery({
     queryKey: ["stores-lista-nomi"],
