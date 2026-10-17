@@ -1,4 +1,4 @@
-import { SelettoreStatoPromessa } from "@/components/stato-promessa";
+import { BadgeStatoPromessa, SelettoreStatoPromessa } from "@/components/stato-promessa";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -236,7 +236,8 @@ export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda }: { client
                 )}
                 <div className="flex flex-wrap items-center gap-1.5 text-muted-foreground">
                   entro il {fmtData(ultimaPromessa.data_promessa_pagamento)}
-                  {promessaScaduta && <Badge variant="destructive">Scaduta</Badge>}
+                  <BadgeStatoPromessa stato={ultimaPromessa.stato_promessa} />
+                  {promessaScaduta && (ultimaPromessa.stato_promessa ?? "attiva") === "attiva" && <Badge variant="destructive">Da verificare</Badge>}
                 </div>
               </div>
             ) : (

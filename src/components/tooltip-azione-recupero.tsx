@@ -7,6 +7,7 @@ import { TooltipDettaglio } from "@/components/tooltip-dettaglio";
 import { useAzioniRecuperoCliente, useOperatoriAttivita, type Azione } from "@/hooks/use-azioni-recupero-cliente";
 import { ESITO_AZIONE_LABEL, TIPO_AZIONE_LABEL, testoAzione } from "@/lib/azioni-recupero-ui";
 import { formatEuro } from "@/lib/fidi";
+import { labelStatoPromessa } from "@/components/stato-promessa";
 
 export type CriterioAzioneRecupero =
   | { azione: Azione }
@@ -86,6 +87,7 @@ function Dettaglio({ criterio, intestazione, etichetta }: {
             Promessa di pagamento{criterio.promessaData ? ` entro il ${fmtGiorno(criterio.promessaData)}` : ""}
           </div>
           {azione?.importo_riferimento != null && <div>Importo: {formatEuro(azione.importo_riferimento)}</div>}
+          {azione && <div>Stato: {labelStatoPromessa(azione.stato_promessa)}</div>}
         </>
       ) : azione ? (
         <div>
