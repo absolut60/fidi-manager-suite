@@ -65,7 +65,7 @@ async function renderPrimaPagina(data: ArrayBuffer): Promise<MiniPdf> {
     page.cleanup();
     return { dataUrl: canvas.toDataURL("image/jpeg", 0.85), pagine: doc.numPages, ratio: base.height / base.width };
   } finally {
-    doc.destroy().catch(() => {});
+    (doc as { destroy?: () => Promise<void> }).destroy?.().catch(() => {});
   }
 }
 
@@ -313,7 +313,7 @@ export function VisualizzatoreAllegato({
 
     return () => {
       annullato = true;
-      doc?.destroy().catch(() => {});
+      (doc as { destroy?: () => Promise<void> } | null)?.destroy?.().catch(() => {});
       if (paginaRef.current) paginaRef.current.innerHTML = "";
     };
   }, [open, storagePath, tipo]);
