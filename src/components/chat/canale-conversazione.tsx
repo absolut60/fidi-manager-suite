@@ -479,7 +479,7 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
                         locale: it,
                       })}
                     </span>
-                    {mio && !eliminato && m.created_at >= SOGLIA_CONFERME_LETTURA && lettureMie?.get(m.id) && (
+                    {mio && !eliminato && new Date(m.created_at).getTime() >= Date.parse(SOGLIA_CONFERME_LETTURA) && lettureMie?.get(m.id) && (
                       <IndicatoreLettura messaggioId={m.id} lettura={lettureMie.get(m.id)!} />
                     )}
                   </div>
