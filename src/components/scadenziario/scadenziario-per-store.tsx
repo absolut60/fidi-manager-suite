@@ -134,16 +134,27 @@ export function ScadenziarioPerStore({ params, aperto, onToggle, storeSelezionat
       </button>
       {aperto && (
         <div className="border-t">
+          {cliccabile && storeSelezionato !== "all" && (() => {
+            const nome = righe.find((r) => r.store_id === storeSelezionato)?.store_nome;
+            return nome ? (
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-1.5 text-xs text-muted-foreground border-b min-w-0">
+                <span className="min-w-0">Filtro: <span className="font-medium text-foreground break-words">{nome}</span></span>
+                <button type="button" onClick={() => onSelezionaStore(storeSelezionato)} className="underline underline-offset-2 hover:text-foreground shrink-0">
+                  Mostra tutti
+                </button>
+              </div>
+            ) : null;
+          })()}
           {/* Telefono: schede */}
           <ul className="md:hidden divide-y">
             {ordinate.map((r) => {
               const onClick = clic(r);
               const sel = !!r.store_id && r.store_id === storeSelezionato;
               return (
-                <li key={r.store_id ?? "senza"}>
+                <li key={r.store_id ?? "senza"} className={sel ? "border-l-2 border-l-primary" : "border-l-2 border-l-transparent"}>
                   <div
                     {...(onClick ? { role: "button", tabIndex: 0, onClick, onKeyDown: (e: React.KeyboardEvent) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } } } : {})}
-                    className={`px-3 py-2 ${onClick ? "cursor-pointer active:bg-muted/50" : ""} ${sel ? "bg-primary/5" : ""}`}
+                    className={`px-3 py-2 ${onClick ? "cursor-pointer active:bg-muted/50" : ""} ${sel ? "bg-primary/10" : ""}`}
                   >
                     <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
                       <div className="text-sm font-medium">{nomeCella(r)}</div>
