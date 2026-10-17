@@ -1,12 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Download, QrCode as QrIcon } from "lucide-react";
+import { Download, Loader2, QrCode as QrIcon } from "lucide-react";
+import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { QrCard } from "@/components/qr-card";
+import { salvaFileDaUrl } from "@/lib/salva-file";
 import locandinaA5 from "@/assets/locandina-whatsapp-A5.pdf.asset.json";
 import locandinaA6 from "@/assets/locandina-whatsapp-A6.pdf.asset.json";
-
 
 export const Route = createFileRoute("/_app/marketing/qr-whatsapp")({
   component: QrWhatsappPage,
@@ -15,20 +16,23 @@ export const Route = createFileRoute("/_app/marketing/qr-whatsapp")({
 const NUMERO_WA = "393407318447";
 const TESTO_CHAT = "Ciao MADE, voglio ricevere le vostre offerte su WhatsApp";
 
-function scaricaLocandina(url: string, nomeFile: string) {
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = nomeFile;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-}
-
 function QrWhatsappPage() {
   const [origin, setOrigin] = useState("");
+  const [inCorso, setInCorso] = useState<"A5" | "A6" | null>(null);
   useEffect(() => {
     setOrigin(window.location.origin);
   }, []);
+
+  async function scaricaLocandina(formato: "A5" | "A6", url: string) {
+    setInCorso(formato);
+    try {
+      await salvaFileDaUrl(url, `locandina-whatsapp-${formato}.pdf`);
+    } catch {
+      toast.error("Impossibile scaricare la locandina. Riprova.");
+    } finally {
+      setInCorso(null);
+    }
+  }
 
   const urlPagina = origin
     ? `${origin}/iscrizione-whatsapp?origine=qr_pagina`
@@ -38,32 +42,32 @@ function QrWhatsappPage() {
   )}`;
 
   return (
-    <div className="p-6 space-y-6 max-w-4xl">
+    <div className="space-y-6 max-w-4xl">
       <Card className="p-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
+          <div className="min-w-0">
             <h2 className="text-lg font-semibold">Locandina da bancone</h2>
             <p className="text-sm text-muted-foreground">
               Scarica la locandina pronta per la stampa in formato A5 o A6.
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-2">
             <Button
-              onClick={() =>
-                scaricaLocandina(locandinaA5.url, "locandina-whatsapp-A5.pdf")
-              }
-              className="gap-1.5"
+              onClick={() => scaricaLocandina("A5", locandinaA5.url)}
+              disabled={inCorso !== null}
+              className="gap-1.5 w-full sm:w-auto"
             >
-              <Download className="size-4" /> Scarica PDF A5
+              {inCorso === "A5" ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+              Scarica PDF A5
             </Button>
             <Button
               variant="outline"
-              onClick={() =>
-                scaricaLocandina(locandinaA6.url, "locandina-whatsapp-A6.pdf")
-              }
-              className="gap-1.5"
+              onClick={() => scaricaLocandina("A6", locandinaA6.url)}
+              disabled={inCorso !== null}
+              className="gap-1.5 w-full sm:w-auto"
             >
-              <Download className="size-4" /> Scarica PDF A6
+              {inCorso === "A6" ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+              Scarica PDF A6
             </Button>
           </div>
         </div>

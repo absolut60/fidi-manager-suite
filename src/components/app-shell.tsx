@@ -135,7 +135,7 @@ const NAV: NavItem[] = [
  { to: "/marketing/campagne", label: "Campagne email", icon: Mail, roles: ["admin", "direzione", "marketing"], group: "marketing" },
  { to: "/marketing/invii", label: "Invii massivi", icon: Megaphone, roles: ["admin", "direzione", "marketing"], group: "marketing" },
   { to: "/marketing/disiscrizioni", label: "Disiscrizioni", icon: UserX, roles: ["admin", "direzione", "marketing"], group: "marketing" },
-  { to: "/marketing/qr-whatsapp", label: "QR WhatsApp", icon: QrCode, roles: ["admin", "direzione", "marketing"], group: "marketing" },
+  { to: "/marketing/qr-whatsapp", label: "QR WhatsApp", icon: QrCode, roles: ["admin", "direzione", "marketing", "store_manager"], group: "marketing" },
   { to: "/marketing/iscritti-whatsapp", label: "Iscritti WhatsApp", icon: MessageCircle, roles: ["admin", "direzione", "marketing"], group: "marketing" },
   // STRUMENTI
   { to: "/import-export", label: "Import / Export", icon: FileSpreadsheet, roles: ["admin", "amministrazione_strumenti"], group: "strumenti" },
