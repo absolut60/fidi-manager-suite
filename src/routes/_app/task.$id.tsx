@@ -29,6 +29,7 @@ import type { Database } from "@/integrations/supabase/types";
 
 type TaskRow = Database["public"]["Tables"]["task"]["Row"];
 
+import { GRIGLIA_ALLEGATI, SchedaAllegato } from "@/components/allegati/anteprima-allegato";
 const ALLEGATI_BUCKET = "allegati";
 
 function sanitizeFileName(name: string): string {
@@ -165,7 +166,6 @@ function TaskDetailPage() {
   const [search, setSearch] = useState("");
   const [uploading, setUploading] = useState(false);
   const [dragging, setDragging] = useState(false);
-  const [preview, setPreview] = useState<null | { nome: string; url: string; mime: string | null }>(null);
   const [allegatoDaEliminare, setAllegatoDaEliminare] = useState<any>(null);
   const [showUnsaved, setShowUnsaved] = useState(false);
   const [editInitials, setEditInitials] = useState({ titolo: "", descrizione: "", areaId: "none", scadenza: "" });
@@ -222,38 +222,6 @@ function TaskDetailPage() {
     }
     setUploading(false);
     refreshAllegati();
-  }
-
-  async function scarica(path: string, nomeFile: string) {
-    const { data, error } = await supabase.storage.from(ALLEGATI_BUCKET).createSignedUrl(path, 60);
-    if (error || !data?.signedUrl) { toast.error("Impossibile scaricare il file"); return; }
-    try {
-      const res = await fetch(data.signedUrl);
-      if (!res.ok) throw new Error("Download fallito");
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = nomeFile;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      toast.error("Impossibile scaricare il file");
-    }
-  }
-
-  async function apriAnteprima(a: any) {
-    const { data, error } = await supabase.storage.from(ALLEGATI_BUCKET).createSignedUrl(a.storage_path, 60);
-    if (error || !data?.signedUrl) { toast.error("Impossibile aprire l'anteprima"); return; }
-    setPreview({ nome: a.nome_file, url: data.signedUrl, mime: a.mime_type });
-  }
-
-  async function apriInScheda(path: string) {
-    const { data, error } = await supabase.storage.from(ALLEGATI_BUCKET).createSignedUrl(path, 60);
-    if (error || !data?.signedUrl) { toast.error("Impossibile aprire il file"); return; }
-    window.open(data.signedUrl, "_blank", "noopener");
   }
 
   async function eliminaAllegato(a: any) {
@@ -545,38 +513,23 @@ function TaskDetailPage() {
                   Nessun allegato — trascina qui i file per caricarli
                 </div>
               ) : (
-                <ul className="divide-y">
-                  {(allegati ?? []).map((a: any) => {
-                    const Ico = iconFor(a.mime_type);
-                    return (
-                      <li key={a.id} className="flex items-center gap-3 py-2">
-                        <Ico className="size-5 text-muted-foreground shrink-0" />
-                        <div className="min-w-0 flex-1">
-                          <div className="text-sm font-medium truncate">{a.nome_file}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {fmtBytes(a.dimensione_bytes)} · {nomeUtente(a.caricato_da) ?? "—"} · {fmtData(a.created_at)}
-                          </div>
-                        </div>
-                        {a.mime_type?.startsWith("image/") ? (
-                          <Button size="sm" variant="ghost" onClick={() => apriAnteprima(a)} title="Anteprima">
-                            <Eye className="size-4" />
-                          </Button>
-                        ) : a.mime_type === "application/pdf" ? (
-                          <Button size="sm" variant="ghost" onClick={() => apriInScheda(a.storage_path)} title="Apri">
-                            <Search className="size-4" />
-                          </Button>
-                        ) : null}
-                        <Button size="sm" variant="ghost" onClick={() => scarica(a.storage_path, a.nome_file)} title="Scarica">
-                          <Download className="size-4" />
+                <ul className={GRIGLIA_ALLEGATI}>
+                  {(allegati ?? []).map((a: any) => (
+                    <SchedaAllegato
+                      key={a.id}
+                      storagePath={a.storage_path}
+                      nomeFile={a.nome_file}
+                      mimeType={a.mime_type}
+                      dimensione={a.dimensione_bytes}
+                      bucket={ALLEGATI_BUCKET}
+                      dettagli={<>{nomeUtente(a.caricato_da) ?? "—"} · {fmtData(a.created_at)}</>}
+                      azioni={(isAdmin || a.caricato_da === uid) ? (
+                        <Button size="icon" variant="ghost" className="size-10" onClick={() => setAllegatoDaEliminare(a)} title="Elimina" aria-label={`Elimina ${a.nome_file}`}>
+                          <Trash2 className="size-4 text-destructive" />
                         </Button>
-                        {(isAdmin || a.caricato_da === uid) && (
-                          <Button size="sm" variant="ghost" onClick={() => setAllegatoDaEliminare(a)} title="Elimina">
-                            <Trash2 className="size-4 text-destructive" />
-                          </Button>
-                        )}
-                      </li>
-                    );
-                  })}
+                      ) : null}
+                    />
+                  ))}
                 </ul>
               )}
             </CardContent>
@@ -637,15 +590,6 @@ function TaskDetailPage() {
       </Dialog>
 
 
-      {/* Anteprima allegato */}
-      <Dialog open={!!preview} onOpenChange={(o) => { if (!o) setPreview(null); }}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader><DialogTitle className="truncate">{preview?.nome}</DialogTitle></DialogHeader>
-          {preview?.mime?.startsWith("image/") && (
-            <img src={preview.url} alt={preview.nome} className="max-h-[75vh] w-full object-contain" />
-          )}
-        </DialogContent>
-      </Dialog>
 
       {/* Doppia conferma eliminazione */}
       <Dialog open={!!confirmDelete} onOpenChange={(o) => { if (!o) setConfirmDelete(null); }}>

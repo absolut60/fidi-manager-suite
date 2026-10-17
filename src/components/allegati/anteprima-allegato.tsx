@@ -370,3 +370,31 @@ export function VisualizzatoreAllegato({
     </Dialog>
   );
 }
+
+// ---------- Scheda in elenco (miniatura + dati + azioni sempre visibili) ----------
+/** Griglia standard per elenchi di allegati: 1–2 per riga a 360 px, affiancati su desktop. */
+export const GRIGLIA_ALLEGATI = "grid grid-cols-1 min-[360px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3";
+
+export function SchedaAllegato({
+  storagePath, nomeFile, mimeType, dimensione, bucket, dettagli, azioni,
+}: {
+  storagePath: string;
+  nomeFile: string;
+  mimeType?: string | null;
+  dimensione?: number | null;
+  bucket?: string;
+  dettagli?: React.ReactNode;
+  azioni?: React.ReactNode;
+}) {
+  return (
+    <li className="min-w-0 flex flex-col rounded-md border p-2">
+      <MiniaturaAllegato storagePath={storagePath} nomeFile={nomeFile} mimeType={mimeType} dimensione={dimensione} bucket={bucket} />
+      {(dettagli || azioni) && (
+        <div className="mt-1.5 flex items-start gap-1 min-w-0">
+          <div className="min-w-0 flex-1 text-xs text-muted-foreground break-words">{dettagli}</div>
+          {azioni && <div className="shrink-0 flex items-center">{azioni}</div>}
+        </div>
+      )}
+    </li>
+  );
+}

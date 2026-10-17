@@ -54,6 +54,7 @@ const fmtEuro = (v: number | null) =>
   v == null ? "—" : new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(v);
 const fmtDataOra = (v: string) =>
   new Date(v).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+import { GRIGLIA_ALLEGATI, SchedaAllegato } from "@/components/allegati/anteprima-allegato";
 const fmtBytes = (n: number | null) => {
   if (n == null) return "—";
   if (n < 1024) return `${n} B`;
@@ -111,7 +112,6 @@ function DettaglioRichiesta() {
   const [gestOpen, setGestOpen] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<null | "one" | "two">(null);
-  const [preview, setPreview] = useState<null | { nome: string; url: string; mime: string | null }>(null);
   const [allegatoDaEliminare, setAllegatoDaEliminare] = useState<any>(null);
 
 
@@ -225,38 +225,6 @@ function DettaglioRichiesta() {
     setDialog(null);
     setNote("");
     refresh();
-  }
-
-  async function scarica(path: string, nomeFile: string) {
-    const { data, error } = await supabase.storage.from("richieste-allegati").createSignedUrl(path, 60);
-    if (error || !data?.signedUrl) { toast.error("Impossibile scaricare il file"); return; }
-    try {
-      const res = await fetch(data.signedUrl);
-      if (!res.ok) throw new Error("Download fallito");
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = nomeFile;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      toast.error("Impossibile scaricare il file");
-    }
-  }
-
-  async function apriAnteprima(a: any) {
-    const { data, error } = await supabase.storage.from("richieste-allegati").createSignedUrl(a.storage_path, 60);
-    if (error || !data?.signedUrl) { toast.error("Impossibile aprire l'anteprima"); return; }
-    setPreview({ nome: a.nome_file, url: data.signedUrl, mime: a.mime_type });
-  }
-
-  async function apriInScheda(path: string) {
-    const { data, error } = await supabase.storage.from("richieste-allegati").createSignedUrl(path, 60);
-    if (error || !data?.signedUrl) { toast.error("Impossibile aprire il file"); return; }
-    window.open(data.signedUrl, "_blank", "noopener");
   }
 
   async function eliminaAllegato(a: any) {
@@ -440,44 +408,27 @@ function DettaglioRichiesta() {
           {(r.richieste_interne_allegati?.length ?? 0) === 0 ? (
             <div className="text-sm text-muted-foreground text-center py-4">Nessun allegato</div>
           ) : (
-            <ul className="divide-y">
+            <ul className={GRIGLIA_ALLEGATI}>
               {r.richieste_interne_allegati!.map((a: any) => {
-                const Ico = iconFor(a.mime_type);
                 const uploader = a.profili ? [a.profili.nome, a.profili.cognome].filter(Boolean).join(" ") : "—";
                 const canDeleteAllegato = hasRole("amministratore") || a.caricato_da === uid;
-                const isImage = !!a.mime_type && a.mime_type.startsWith("image/");
-                const isPdf = a.mime_type === "application/pdf";
                 return (
-                  <li key={a.id} className="flex items-center gap-3 py-2">
-                    <Ico className="size-5 text-muted-foreground shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium truncate">{a.nome_file}</div>
-                      <div className="text-xs text-muted-foreground">{fmtBytes(a.dimensione_bytes)} · {uploader} · {fmtDataOra(a.created_at)}</div>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      {isImage && (
-                        <Button size="sm" variant="ghost" onClick={() => void apriAnteprima(a)} title="Anteprima">
-                          <Eye className="size-4" />
-                        </Button>
-                      )}
-                      {isPdf && (
-                        <Button size="sm" variant="ghost" onClick={() => void apriInScheda(a.storage_path)} title="Apri">
-                          <Search className="size-4" />
-                        </Button>
-                      )}
-                      <Button size="sm" variant="ghost" onClick={() => void scarica(a.storage_path, a.nome_file)} title="Scarica">
-                        <Download className="size-4" />
+                  <SchedaAllegato
+                    key={a.id}
+                    storagePath={a.storage_path}
+                    nomeFile={a.nome_file}
+                    mimeType={a.mime_type}
+                    dimensione={a.dimensione_bytes}
+                    bucket="richieste-allegati"
+                    dettagli={<>{uploader} · {fmtDataOra(a.created_at)}</>}
+                    azioni={canDeleteAllegato ? (
+                      <Button size="icon" variant="ghost" className="size-10 text-destructive hover:text-destructive" onClick={() => setAllegatoDaEliminare(a)} title="Elimina" aria-label={`Elimina ${a.nome_file}`}>
+                        <Trash2 className="size-4" />
                       </Button>
-                      {canDeleteAllegato && (
-                        <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setAllegatoDaEliminare(a)} title="Elimina">
-                          <Trash2 className="size-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </li>
+                    ) : null}
+                  />
                 );
               })}
-
             </ul>
           )}
         </CardContent>
@@ -591,17 +542,6 @@ function DettaglioRichiesta() {
         </DialogContent>
       </Dialog>
 
-      {/* Anteprima immagine */}
-      <Dialog open={!!preview} onOpenChange={(o) => { if (!o) setPreview(null); }}>
-        <DialogContent className="max-w-4xl p-0 overflow-hidden">
-          <DialogHeader className="sr-only">
-            <DialogTitle>{preview?.nome ?? "Anteprima"}</DialogTitle>
-          </DialogHeader>
-          {preview && (
-            <img src={preview.url} alt={preview.nome} className="w-full h-auto max-h-[80vh] object-contain" />
-          )}
-        </DialogContent>
-      </Dialog>
 
       {/* Conferma eliminazione allegato */}
       <Dialog open={!!allegatoDaEliminare} onOpenChange={(o) => { if (!o) setAllegatoDaEliminare(null); }}>
