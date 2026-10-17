@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { IndicatoreLettura, SOGLIA_CONFERME_LETTURA, type LetturaMessaggio } from "@/components/chat/indicatore-lettura";
 import { FileText, Paperclip, Search, Send, Smile, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
@@ -105,10 +106,10 @@ function AllegatoMessaggio({ allegato }: { allegato: Allegato }) {
             src={url}
             alt={allegato.nome_file}
             onClick={() => setOpen(true)}
-            className="mt-2 max-w-[200px] rounded-md cursor-pointer"
+            className="mt-2 max-w-full sm:max-w-[200px] rounded-md cursor-pointer"
           />
         ) : (
-          <div className="mt-2 h-24 w-[200px] rounded-md bg-background/30 animate-pulse" />
+          <div className="mt-2 h-24 w-full max-w-[200px] rounded-md bg-background/30 animate-pulse" />
         )}
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogContent className="max-w-4xl">
@@ -120,14 +121,14 @@ function AllegatoMessaggio({ allegato }: { allegato: Allegato }) {
   }
 
   return (
-    <div className="mt-2 flex items-center gap-2 rounded-md border bg-background/60 px-2 py-1.5 text-foreground">
+    <div className="mt-2 flex max-w-full items-center gap-2 rounded-md border bg-background/60 px-2 py-1.5 text-foreground">
       <button
         type="button"
         onClick={() => scaricaFile(allegato.storage_path, allegato.nome_file)}
         className="flex items-center gap-2 min-w-0 text-left"
       >
         <FileText className="size-4 shrink-0" />
-        <span className="text-xs truncate max-w-[160px]">{allegato.nome_file}</span>
+        <span className="text-xs break-all line-clamp-2 min-w-0">{allegato.nome_file}</span>
         <span className="text-[10px] text-muted-foreground shrink-0">
           {formatBytes(allegato.dimensione_bytes)}
         </span>
@@ -155,6 +156,42 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
   const [previewLocale, setPreviewLocale] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const queryClient = useQueryClient();
+
+  // FM45: fonte unica per segnare letto il canale (ovunque il componente è usato).
+  const segnaLetto = useRef<() => void>(() => {});
+  segnaLetto.current = () => {
+    if (!canaleId) return;
+    void (async () => {
+      await supabase.rpc("segna_canale_letto", { _canale_id: canaleId });
+      queryClient.invalidateQueries({ queryKey: ["chat", "non-letti"] });
+      queryClient.invalidateQueries({ queryKey: ["menu", "non-letti"] });
+    })();
+  };
+
+  useEffect(() => {
+    if (!canaleId) return;
+    segnaLetto.current();
+    const onVis = () => {
+      if (document.visibilityState === "visible") segnaLetto.current();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [canaleId]);
+
+  // FM45: conferme di lettura dei miei messaggi (apertura, ogni 20 s, dopo invio).
+  const { data: lettureMie, refetch: ricaricaLetture } = useQuery({
+    queryKey: ["chat", "letture-miei", canaleId],
+    enabled: !!canaleId,
+    refetchInterval: 20_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_letture_miei_messaggi", { _canale_id: canaleId });
+      if (error) throw error;
+      const map = new Map<string, LetturaMessaggio>();
+      (data ?? []).forEach((r) => map.set(r.messaggio_id, { destinatari: r.destinatari, letti: r.letti }));
+      return map;
+    },
+  });
 
   // RPC accessibile a tutti gli utenti autenticati: la SELECT diretta su
   // "profili" restituisce solo la propria riga ai non-admin (RLS).
@@ -248,6 +285,9 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
         (payload) => {
           const nuovo = payload.new as Messaggio;
           if (!nuovo?.id) return;
+          if (nuovo.autore_id !== user?.id && document.visibilityState === "visible") {
+            segnaLetto.current();
+          }
           setMessaggi((prev) => {
             const esistente = prev.find((m) => m.id === nuovo.id);
             if (esistente) {
@@ -289,7 +329,7 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
       active = false;
       supabase.removeChannel(channel);
     };
-  }, [canaleId, instanceId]);
+  }, [canaleId, instanceId, user?.id]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: "end" });
@@ -355,6 +395,7 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
       }
       return [...prev, nuovo];
     });
+    void ricaricaLetture();
   }
 
   async function eliminaMessaggio(m: Messaggio) {
@@ -382,7 +423,7 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
   const puoInviare = !!testo.trim() || !!fileSelezionato;
 
   return (
-    <div className="flex flex-col h-full min-h-0">
+    <div className="flex flex-col h-full min-h-0 min-w-0">
       <ScrollArea className="flex-1 max-h-[55vh]">
         <div className="p-4 space-y-3">
           {messaggi.length === 0 && (
@@ -395,20 +436,20 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
             const eliminato = !!m.eliminato_at;
             const puoEliminare = !eliminato && (mio || isAdmin);
             return (
-              <div key={m.id} className={`group flex items-center gap-1 ${mio ? "justify-end" : "justify-start"}`}>
+              <div key={m.id} className={`group flex min-w-0 items-center gap-1 ${mio ? "justify-end" : "justify-start"}`}>
                 {mio && puoEliminare && (
                   <button
                     type="button"
                     aria-label="Elimina messaggio"
                     title="Elimina messaggio"
                     onClick={() => setMessaggioDaEliminare(m)}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                    className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
                   >
                     <Trash2 className="size-3.5" />
                   </button>
                 )}
                 <div
-                  className={`max-w-[80%] rounded-lg px-3 py-2 ${
+                  className={`max-w-[80%] min-w-0 rounded-lg px-3 py-2 ${
                     mio ? "bg-blue-400 text-white" : "bg-muted text-foreground"
                   }`}
                 >
@@ -422,20 +463,25 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
                   ) : (
                     <>
                       {m.testo && (
-                        <div className="text-sm whitespace-pre-wrap break-words">{m.testo}</div>
+                        <div className="text-sm whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{m.testo}</div>
                       )}
                       {m.allegato && <AllegatoMessaggio allegato={m.allegato} />}
                     </>
                   )}
                   <div
-                    className={`text-[10px] mt-1 ${
-                      mio ? "text-white/70" : "text-muted-foreground"
+                    className={`text-[10px] mt-1 flex flex-wrap items-center gap-x-2 ${
+                      mio ? "justify-end text-white/70" : "text-muted-foreground"
                     }`}
                   >
-                    {formatDistanceToNow(new Date(m.created_at), {
-                      addSuffix: true,
-                      locale: it,
-                    })}
+                    <span>
+                      {formatDistanceToNow(new Date(m.created_at), {
+                        addSuffix: true,
+                        locale: it,
+                      })}
+                    </span>
+                    {mio && !eliminato && new Date(m.created_at).getTime() >= Date.parse(SOGLIA_CONFERME_LETTURA) && lettureMie?.get(m.id) && (
+                      <IndicatoreLettura messaggioId={m.id} lettura={lettureMie.get(m.id)!} />
+                    )}
                   </div>
                 </div>
                 {!mio && puoEliminare && (
@@ -444,7 +490,7 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
                     aria-label="Elimina messaggio"
                     title="Elimina messaggio"
                     onClick={() => setMessaggioDaEliminare(m)}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                    className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
                   >
                     <Trash2 className="size-3.5" />
                   </button>
@@ -458,14 +504,14 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
 
       {fileSelezionato && (
         <div className="border-t px-3 pt-2">
-          <div className="inline-flex items-center gap-2 rounded-md border px-2 py-1.5">
+          <div className="inline-flex max-w-full items-center gap-2 rounded-md border px-2 py-1.5">
             {previewLocale ? (
               <img src={previewLocale} alt="" className="size-10 rounded object-cover" />
             ) : (
               <FileText className="size-4" />
             )}
-            <span className="text-xs truncate max-w-[180px]">{fileSelezionato.name}</span>
-            <span className="text-[10px] text-muted-foreground">
+            <span className="text-xs truncate min-w-0">{fileSelezionato.name}</span>
+            <span className="text-[10px] text-muted-foreground shrink-0">
               {formatBytes(fileSelezionato.size)}
             </span>
             <button
@@ -474,7 +520,7 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
                 setFileSelezionato(null);
                 if (fileInputRef.current) fileInputRef.current.value = "";
               }}
-              className="text-muted-foreground hover:text-foreground"
+              className="shrink-0 text-muted-foreground hover:text-foreground"
               aria-label="Rimuovi allegato"
             >
               <X className="size-3.5" />
@@ -483,7 +529,7 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
         </div>
       )}
 
-      <div className="border-t p-3 flex items-end gap-2">
+      <div className="border-t p-2 sm:p-3 flex items-end gap-1.5 sm:gap-2 min-w-0">
         <input
           ref={fileInputRef}
           type="file"
@@ -499,12 +545,13 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
           size="icon"
           onClick={() => fileInputRef.current?.click()}
           aria-label="Allega file"
+          className="shrink-0"
         >
           <Paperclip className="size-4" />
         </Button>
         <Popover open={emojiOpen} onOpenChange={setEmojiOpen}>
           <PopoverTrigger asChild>
-            <Button type="button" variant="outline" size="icon" aria-label="Emoji">
+            <Button type="button" variant="outline" size="icon" aria-label="Emoji" className="shrink-0">
               <Smile className="size-4" />
             </Button>
           </PopoverTrigger>
@@ -528,9 +575,9 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
           }}
           placeholder="Scrivi un messaggio…"
           rows={2}
-          className="resize-none"
+          className="resize-none flex-1 min-w-0"
         />
-        <Button onClick={inviaMessaggio} disabled={!puoInviare || invio} size="icon">
+        <Button onClick={inviaMessaggio} disabled={!puoInviare || invio} size="icon" className="shrink-0" aria-label="Invia">
           <Send className="size-4" />
         </Button>
       </div>
