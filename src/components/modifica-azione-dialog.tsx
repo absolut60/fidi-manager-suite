@@ -17,6 +17,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { AllegatiSection } from "@/components/allegati-section";
+import { parseNumeroIt } from "@/lib/numero-it";
 
 import { ESITI_AZIONE as ESITI, type EsitoAzione as Esito } from "@/lib/azioni-recupero-ui";
 
@@ -99,6 +100,12 @@ export function ModificaAzioneDialog({
       toast.error("Data non valida");
       return;
     }
+    // Diventa promessa: stesse regole dell'inserimento (data e importo > 0 obbligatori).
+    if (esito === "promessa_pagamento" && azione.esito !== "promessa_pagamento") {
+      if (!dataPromessa) { toast.error("Indica la data della promessa"); return; }
+      const n = parseNumeroIt(importo);
+      if (n == null || n <= 0) { toast.error("Indica l'importo promesso (maggiore di zero)"); return; }
+    }
     setSaving(true);
     try {
       const patch: {
@@ -117,7 +124,7 @@ export function ModificaAzioneDialog({
         const trimmed = importo.trim();
         if (trimmed === "") patch.importo_riferimento = null;
         else {
-          const n = Number(trimmed);
+          const n = parseNumeroIt(trimmed) ?? NaN;
           if (!isNaN(n)) patch.importo_riferimento = n;
         }
       }
@@ -215,10 +222,10 @@ export function ModificaAzioneDialog({
 
           {!isEmail && (
             <div className="space-y-1.5">
-              <Label>Importo di riferimento (€)</Label>
+              <Label>{esito === "promessa_pagamento" ? "Importo promesso (€) *" : "Importo di riferimento (€)"}</Label>
               <Input
-                type="number"
-                step="0.01"
+                type="text"
+                inputMode="decimal"
                 value={importo}
                 onChange={(e) => setImporto(e.target.value)}
                 placeholder="0,00"

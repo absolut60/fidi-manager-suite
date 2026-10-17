@@ -48,6 +48,7 @@ import { Route as AppRecuperoCreditiAndamentoRouteImport } from './routes/_app/r
 import { Route as AppRecuperoCreditiCalendarioRouteImport } from './routes/_app/recupero-crediti-calendario'
 import { Route as AppRecuperoCreditiCampagneRouteImport } from './routes/_app/recupero-crediti-campagne'
 import { Route as AppRecuperoCreditiPromemoriaRouteImport } from './routes/_app/recupero-crediti-promemoria'
+import { Route as AppRecuperoCreditiPromesseRouteImport } from './routes/_app/recupero-crediti-promesse'
 import { Route as AppRichiesteRouteImport } from './routes/_app/richieste'
 import { Route as AppScadenziarioRouteImport } from './routes/_app/scadenziario'
 import { Route as AppTaskRouteImport } from './routes/_app/task'
@@ -296,6 +297,12 @@ const AppRecuperoCreditiPromemoriaRoute =
   AppRecuperoCreditiPromemoriaRouteImport.update({
     id: '/recupero-crediti-promemoria',
     path: '/recupero-crediti-promemoria',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppRecuperoCreditiPromesseRoute =
+  AppRecuperoCreditiPromesseRouteImport.update({
+    id: '/recupero-crediti-promesse',
+    path: '/recupero-crediti-promesse',
     getParentRoute: () => AppRoute,
   } as any)
 const AppRichiesteRoute = AppRichiesteRouteImport.update({
@@ -595,6 +602,7 @@ export interface FileRoutesByFullPath {
   '/recupero-crediti-calendario': typeof AppRecuperoCreditiCalendarioRoute
   '/recupero-crediti-campagne': typeof AppRecuperoCreditiCampagneRoute
   '/recupero-crediti-promemoria': typeof AppRecuperoCreditiPromemoriaRoute
+  '/recupero-crediti-promesse': typeof AppRecuperoCreditiPromesseRoute
   '/richieste': typeof AppRichiesteRouteWithChildren
   '/scadenziario': typeof AppScadenziarioRoute
   '/task': typeof AppTaskRouteWithChildren
@@ -682,6 +690,7 @@ export interface FileRoutesByTo {
   '/recupero-crediti-calendario': typeof AppRecuperoCreditiCalendarioRoute
   '/recupero-crediti-campagne': typeof AppRecuperoCreditiCampagneRoute
   '/recupero-crediti-promemoria': typeof AppRecuperoCreditiPromemoriaRoute
+  '/recupero-crediti-promesse': typeof AppRecuperoCreditiPromesseRoute
   '/richieste': typeof AppRichiesteRouteWithChildren
   '/scadenziario': typeof AppScadenziarioRoute
   '/template-email': typeof AppTemplateEmailRoute
@@ -772,6 +781,7 @@ export interface FileRoutesById {
   '/_app/recupero-crediti-calendario': typeof AppRecuperoCreditiCalendarioRoute
   '/_app/recupero-crediti-campagne': typeof AppRecuperoCreditiCampagneRoute
   '/_app/recupero-crediti-promemoria': typeof AppRecuperoCreditiPromemoriaRoute
+  '/_app/recupero-crediti-promesse': typeof AppRecuperoCreditiPromesseRoute
   '/_app/richieste': typeof AppRichiesteRouteWithChildren
   '/_app/scadenziario': typeof AppScadenziarioRoute
   '/_app/task': typeof AppTaskRouteWithChildren
@@ -863,6 +873,7 @@ export interface FileRouteTypes {
     | '/recupero-crediti-calendario'
     | '/recupero-crediti-campagne'
     | '/recupero-crediti-promemoria'
+    | '/recupero-crediti-promesse'
     | '/richieste'
     | '/scadenziario'
     | '/task'
@@ -950,6 +961,7 @@ export interface FileRouteTypes {
     | '/recupero-crediti-calendario'
     | '/recupero-crediti-campagne'
     | '/recupero-crediti-promemoria'
+    | '/recupero-crediti-promesse'
     | '/richieste'
     | '/scadenziario'
     | '/template-email'
@@ -1039,6 +1051,7 @@ export interface FileRouteTypes {
     | '/_app/recupero-crediti-calendario'
     | '/_app/recupero-crediti-campagne'
     | '/_app/recupero-crediti-promemoria'
+    | '/_app/recupero-crediti-promesse'
     | '/_app/richieste'
     | '/_app/scadenziario'
     | '/_app/task'
@@ -1382,6 +1395,13 @@ declare module '@tanstack/react-router' {
       path: '/recupero-crediti-promemoria'
       fullPath: '/recupero-crediti-promemoria'
       preLoaderRoute: typeof AppRecuperoCreditiPromemoriaRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/recupero-crediti-promesse': {
+      id: '/_app/recupero-crediti-promesse'
+      path: '/recupero-crediti-promesse'
+      fullPath: '/recupero-crediti-promesse'
+      preLoaderRoute: typeof AppRecuperoCreditiPromesseRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/richieste': {
@@ -1829,6 +1849,7 @@ interface AppRouteChildren {
   AppRecuperoCreditiCalendarioRoute: typeof AppRecuperoCreditiCalendarioRoute
   AppRecuperoCreditiCampagneRoute: typeof AppRecuperoCreditiCampagneRoute
   AppRecuperoCreditiPromemoriaRoute: typeof AppRecuperoCreditiPromemoriaRoute
+  AppRecuperoCreditiPromesseRoute: typeof AppRecuperoCreditiPromesseRoute
   AppRichiesteRoute: typeof AppRichiesteRouteWithChildren
   AppScadenziarioRoute: typeof AppScadenziarioRoute
   AppTaskRoute: typeof AppTaskRouteWithChildren
@@ -1896,6 +1917,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppRecuperoCreditiCalendarioRoute: AppRecuperoCreditiCalendarioRoute,
   AppRecuperoCreditiCampagneRoute: AppRecuperoCreditiCampagneRoute,
   AppRecuperoCreditiPromemoriaRoute: AppRecuperoCreditiPromemoriaRoute,
+  AppRecuperoCreditiPromesseRoute: AppRecuperoCreditiPromesseRoute,
   AppRichiesteRoute: AppRichiesteRouteWithChildren,
   AppScadenziarioRoute: AppScadenziarioRoute,
   AppTaskRoute: AppTaskRouteWithChildren,

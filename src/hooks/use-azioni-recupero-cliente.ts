@@ -18,6 +18,7 @@ export type Azione = {
   data_azione: string;
   data_promessa_pagamento: string | null;
   importo_riferimento: number | null;
+  stato_promessa?: string | null;
   note: string | null;
   email_oggetto: string | null;
   email_corpo_html: string | null;
@@ -37,7 +38,7 @@ export function useAzioniRecuperoCliente(clienteId: string | null) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("azioni_recupero")
-        .select("id, cliente_id, operatore_id, tipo, esito, data_azione, data_promessa_pagamento, importo_riferimento, note, email_oggetto, email_corpo_html, email_destinatario, livello_sollecito, created_at")
+        .select("id, cliente_id, operatore_id, tipo, esito, data_azione, data_promessa_pagamento, importo_riferimento, stato_promessa, note, email_oggetto, email_corpo_html, email_destinatario, livello_sollecito, created_at")
         .eq("cliente_id", clienteId!)
         .order("data_azione", { ascending: false });
       if (error) throw error;

@@ -25,3 +25,13 @@ export function tipoAzioneConsentito(roles: readonly string[], tipo: string): bo
   const ammessi = tipiAzioneConsentiti(roles);
   return ammessi === null || ammessi.includes(tipo);
 }
+
+// Chi può cambiare lo stato di una promessa di pagamento
+// (attiva / mantenuta / disattesa / annullata).
+// Gemello SQL: trigger trg_azioni_recupero_stato_promessa su public.azioni_recupero
+// (migrazione 0047, FM45). Se cambia uno, cambia l'altro.
+export const RUOLI_STATO_PROMESSA = ["recupero_crediti", "amministrazione", "amministratore"] as const;
+
+export function puoCambiareStatoPromessa(roles: readonly string[]): boolean {
+  return RUOLI_STATO_PROMESSA.some((r) => roles.includes(r));
+}
