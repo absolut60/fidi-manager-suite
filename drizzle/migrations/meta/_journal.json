@@ -372,6 +372,13 @@
       "when": 1792266431232,
       "tag": "0052_fm45_scadenziario_dicui_e_lista_netto",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1792266492780,
+      "tag": "0053_fm45_per_store_full_join_fix",
+      "breakpoints": true
     }
   ]
 }
