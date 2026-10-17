@@ -417,8 +417,10 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
           <div className="inline-flex max-w-full items-center gap-2 rounded-md border px-2 py-1.5">
             {previewLocale ? (
               <img src={previewLocale} alt="" className="size-10 rounded object-cover" />
+            ) : tipoAllegato(fileSelezionato.type, fileSelezionato.name) === "pdf" ? (
+              <MiniaturaPdfLocale file={fileSelezionato} />
             ) : (
-              <FileText className="size-4" />
+              <FileText className="size-4 shrink-0" />
             )}
             <span className="text-xs truncate min-w-0">{fileSelezionato.name}</span>
             <span className="text-[10px] text-muted-foreground shrink-0">
