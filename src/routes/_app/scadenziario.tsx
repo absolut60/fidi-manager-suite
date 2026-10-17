@@ -33,6 +33,8 @@ import { TIPO_AZIONE_ICON, TIPO_AZIONE_LABEL, testoAzione } from "@/lib/azioni-r
 import { TooltipAzioneRecupero } from "@/components/tooltip-azione-recupero";
 import { StadioSollecitoBadge } from "@/components/stadio-sollecito-badge";
 import { ClienteAttivitaRecuperoTab } from "@/components/cliente-attivita-recupero-tab";
+import { ScadenziarioKpi, DettaglioCoperturaRiga } from "@/components/scadenziario/scadenziario-kpi";
+import { CopertureScadenziario, QK_PREVISIONE_COPERTURE } from "@/components/scadenziario/coperture-scadenziario";
 
 export const Route = createFileRoute("/_app/scadenziario")({
   component: ScadenziarioPage,
@@ -92,6 +94,9 @@ type ScadRow = {
   piano_rate_totali?: number | null;
   piano_prossima_rata_data?: string | null;
   piano_prossima_rata_importo?: number | null;
+  tot_scaduto_lordo?: number | string | null;
+  coperto_piani?: number | string | null;
+  coperto_promesse?: number | string | null;
   total_count: number | string;
 };
 
@@ -106,6 +111,11 @@ type TotaliRow = {
   tot_crediti: number | string;
   n_bonifici_esclusi: number;
   n_legale_esclusi: number;
+  tot_coperto_piani?: number | string | null;
+  tot_coperto_promesse?: number | string | null;
+  n_clienti_coperti_piani?: number | null;
+  n_clienti_coperti_promesse?: number | null;
+  n_promesse_da_verificare?: number | null;
 };
 
 function fasciaBadge(f: "0_30" | "31_60" | "oltre_60" | null) {
@@ -247,6 +257,7 @@ function ScadenziarioPage() {
     escludiLegale: true,
     avvisatoFilter: "tutti" as "tutti" | "con_azioni" | "senza_azioni",
     mostraACredito: false,
+    nettoCoperture: false,
     search: "",
     page: 1,
     sortBy: "tot_scaduto" as SortKey,
@@ -254,7 +265,7 @@ function ScadenziarioPage() {
   }, { userId: user?.id });
   // Store manager: sempre il proprio negozio, qualunque valore sia salvato (anche se il profilo arriva dopo).
   const storeId = isStoreManager ? (myStoreId ?? "all") : filtri.storeId;
-  const { agenteFiltro, fascia, importoMin, importoMinAScadere, situazione, statoBlocco, statoLegale, escludiBonifici, escludiLegale, avvisatoFilter, mostraACredito, search, page, sortBy, sortDir } = filtri;
+  const { agenteFiltro, fascia, importoMin, importoMinAScadere, situazione, statoBlocco, statoLegale, escludiBonifici, escludiLegale, avvisatoFilter, mostraACredito, nettoCoperture, search, page, sortBy, sortDir } = filtri;
   const setStoreId = (v: string) => setCampo("storeId", v);
   const setAgenteFiltro = (v: string) => setCampo("agenteFiltro", v);
   const setFascia = (v: string) => setCampo("fascia", v);
@@ -267,6 +278,7 @@ function ScadenziarioPage() {
   const setEscludiLegale = (v: boolean) => setCampo("escludiLegale", v);
   const setAvvisatoFilter = (v: typeof avvisatoFilter) => setCampo("avvisatoFilter", v);
   const setMostraACredito = (v: boolean) => setCampo("mostraACredito", v);
+  const setNettoCoperture = (v: boolean) => setCampo("nettoCoperture", v);
   const setSearch = (v: string) => setCampo("search", v);
   const setPage = (v: number | ((p: number) => number)) => setCampo("page", v);
   const setSortBy = (v: SortKey) => setCampo("sortBy", v);
@@ -295,7 +307,7 @@ function ScadenziarioPage() {
 
   // Reset selezione + pagina SOLO quando un filtro cambia davvero dopo il montaggio
   // (confronto con la firma precedente: al montaggio, anche in StrictMode, la pagina ripristinata resta).
-  const firmaFiltri = JSON.stringify([storeId, agenteFiltro, fascia, importoMin, importoMinAScadere, situazione, statoBlocco, statoLegale, escludiBonifici, escludiLegale, avvisatoFilter, mostraACredito, searchDebounced, sortBy, sortDir]);
+  const firmaFiltri = JSON.stringify([storeId, agenteFiltro, fascia, importoMin, importoMinAScadere, situazione, statoBlocco, statoLegale, escludiBonifici, escludiLegale, avvisatoFilter, mostraACredito, nettoCoperture, searchDebounced, sortBy, sortDir]);
   const firmaPrecedente = useRef(firmaFiltri);
   useEffect(() => {
     if (firmaPrecedente.current === firmaFiltri) return;
@@ -338,6 +350,7 @@ function ScadenziarioPage() {
     statoLegale !== "tutti",
     avvisatoFilter !== "tutti",
     mostraACredito,
+    nettoCoperture,
   ].filter(Boolean).length;
   const filtriDefault = filtriAttivi === 0 && search.trim() === "" && escludiBonifici && escludiLegale;
 
@@ -371,7 +384,8 @@ function ScadenziarioPage() {
     p_agente: agenteFiltro === "tutti" ? null : agenteFiltro,
     p_situazione: situazione,
     p_importo_min_a_scadere: minAScad,
-  }), [searchDebounced, storeId, fascia, statoBlocco, statoLegale, escludiBonifici, escludiLegale, avvisatoFilter, minImp, mostraACredito, agenteFiltro, situazione, minAScad]);
+    p_netto_coperture: nettoCoperture,
+  }), [searchDebounced, storeId, fascia, statoBlocco, statoLegale, escludiBonifici, escludiLegale, avvisatoFilter, minImp, mostraACredito, agenteFiltro, situazione, minAScad, nettoCoperture]);
 
   const { data: rows, isLoading } = useQuery({
     queryKey: ["scadenziario-paginata-v1", commonParams, sortBy, sortDir, page, annoCorrente, annoPrec],
@@ -396,6 +410,19 @@ function ScadenziarioPage() {
     placeholderData: keepPreviousData,
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_scadenziario_totali" as never, commonParams as never);
+      if (error) throw error;
+      const arr = (data ?? []) as unknown as TotaliRow[];
+      return arr[0] ?? null;
+    },
+  });
+  // Totali lordi (stessi filtri, netto spento): servono solo per "lordo X €" / "su N" a filtro acceso.
+  const paramsLordo = useMemo(() => ({ ...commonParams, p_netto_coperture: false }), [commonParams]);
+  const { data: totaliLordo } = useQuery({
+    queryKey: ["scadenziario-totali-v1", paramsLordo],
+    enabled: nettoCoperture,
+    placeholderData: keepPreviousData,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_scadenziario_totali" as never, paramsLordo as never);
       if (error) throw error;
       const arr = (data ?? []) as unknown as TotaliRow[];
       return arr[0] ?? null;
@@ -510,6 +537,7 @@ function ScadenziarioPage() {
         `Fatturato ${annoCorrente}`, `Fatturato ${annoPrec}`, "N. fatture scadute", "Totale scaduto",
         "N. fatture a scadere", "Totale a scadere", "Prossima scadenza", "Giorni ritardo max", "Fascia",
         "Azioni di recupero", "Promessa pagamento", "Piano di rientro",
+        "Scaduto lordo", "Coperto piani", "Coperto promesse",
       ];
       const aoa: unknown[][] = [intest, ...righe.map((r) => [
         r.ragione_sociale,
@@ -529,9 +557,12 @@ function ScadenziarioPage() {
         Number(r.avvisato_n ?? 0),
         r.ha_promessa ? dataExcel(r.data_promessa) ?? "Sì" : null,
         r.ha_piano_rientro ? "Sì" : "No",
+        Number(r.tot_scaduto_lordo ?? r.tot_scaduto ?? 0),
+        Number(r.coperto_piani ?? 0),
+        Number(r.coperto_promesse ?? 0),
       ])];
       const ws = XLSX.utils.aoa_to_sheet(aoa);
-      const EURO = new Set([5, 6, 8, 10]);
+      const EURO = new Set([5, 6, 8, 10, 17, 18, 19]);
       const DATE = new Set([11, 15]);
       for (let ri = 1; ri <= righe.length; ri++) {
         for (let c = 0; c < intest.length; c++) {
@@ -565,6 +596,7 @@ function ScadenziarioPage() {
         ["Escludi BOS", escludiBonifici ? "Sì" : "No"],
         ["Escludi gestione legale", escludiLegale ? "Sì" : "No"],
         ["Mostra clienti a credito", mostraACredito ? "Sì" : "No"],
+        ["Al netto di piani e promesse", nettoCoperture ? "Sì" : "No"],
         ["Ordinamento", `${SORT_LABEL[sortBy]} ${sortDir === "asc" ? "crescente" : "decrescente"}`],
       ];
       const wsF = XLSX.utils.aoa_to_sheet(filtriAoa);
@@ -633,34 +665,51 @@ function ScadenziarioPage() {
     <TooltipProvider delayDuration={200}>
     <div className="space-y-6">
       <header className="flex items-center gap-3">
-        <CalendarClock className="size-6 text-primary" />
-        <div>
+        <CalendarClock className="size-6 text-primary shrink-0" />
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold tracking-tight">Scadenziario</h1>
           <p className="text-sm text-muted-foreground">Clienti con scadenze aperte — scaduto e a scadere</p>
         </div>
       </header>
 
-      {/* KPI */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-        <KpiCard
-          label="Totale scaduto"
-          value={fmtEuro(mostraACredito ? kpi.totScad + kpi.totCrediti : kpi.totScad)}
-          icon={AlertTriangle}
-          tone="destructive"
-          sublabel={mostraACredito ? (kpi.totCrediti < 0 ? `netto note di credito (${fmtEuro(kpi.totCrediti)})` : "netto note di credito") : undefined}
-          tooltip={mostraACredito ? `Scaduto debitori: ${fmtEuro(kpi.totScad)} − Note di credito: ${fmtEuro(Math.abs(kpi.totCrediti))} = Netto: ${fmtEuro(kpi.totScad + kpi.totCrediti)}` : undefined}
+      {/* Dashboard compatta */}
+      <section className="space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+          <div className="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <h2 className="text-sm font-semibold uppercase text-foreground">Situazione</h2>
+            {nettoCoperture && (
+              <Badge variant="outline" className="border-primary/40 text-primary text-[11px]">al netto di piani e promesse</Badge>
+            )}
+          </div>
+          <div className="flex items-center gap-2 min-h-10">
+            <Switch id="netto-coperture" checked={nettoCoperture} onCheckedChange={setNettoCoperture} />
+            <Label htmlFor="netto-coperture" className="text-sm cursor-pointer">Al netto di piani e promesse</Label>
+          </div>
+        </div>
+        <ScadenziarioKpi
+          kpi={kpi}
+          mostraACredito={mostraACredito}
+          netto={nettoCoperture}
+          lordo={nettoCoperture && totaliLordo ? {
+            totScad: Number(totaliLordo.tot_scaduto ?? 0),
+            clientiScad: Number(totaliLordo.n_clienti_scaduti ?? 0),
+            totCrediti: Number(totaliLordo.tot_crediti ?? 0),
+          } : null}
         />
-        <KpiCard
-          label="Clienti con scaduto"
-          value={String(kpi.clientiScad)}
-          icon={FileText}
-          tone="warning"
-          sublabel={mostraACredito && kpi.nCrediti > 0 ? `di cui ${kpi.nCrediti} a credito` : undefined}
-        />
-        <KpiCard label="Totale a scadere" value={fmtEuro(kpi.totAScad)} icon={Calendar} tone="info" />
-        <KpiCard label="Clienti bloccati" value={String(kpi.bloccati)} icon={Ban} tone="destructive" />
-        <KpiCard label="Clienti in legale" value={String(kpi.inLegale)} icon={Scale} tone="warning" />
-      </div>
+        {totali && (
+          <CopertureScadenziario
+            storeId={storeId === "all" ? null : storeId}
+            agente={agenteFiltro === "tutti" ? null : agenteFiltro}
+            totali={{
+              totCopertoPiani: Number(totali.tot_coperto_piani ?? 0),
+              totCopertoPromesse: Number(totali.tot_coperto_promesse ?? 0),
+              nClientiPiani: Number(totali.n_clienti_coperti_piani ?? 0),
+              nClientiPromesse: Number(totali.n_clienti_coperti_promesse ?? 0),
+              nDaVerificare: Number(totali.n_promesse_da_verificare ?? 0),
+            }}
+          />
+        )}
+      </section>
       {mostraACredito && kpi.nCrediti > 0 && (
         <p className="text-xs text-muted-foreground -mt-2">
           Scomposizione totale scaduto: <span className="font-medium text-foreground">{fmtEuro(kpi.totScad)}</span> (debitori)
@@ -914,6 +963,7 @@ function ScadenziarioPage() {
                         { etichetta: "Scaduto", valore: (
                           <span className={`tabular-nums font-semibold ${totScad < 0 ? "text-emerald-700 dark:text-emerald-400" : totScad > 0 ? "text-destructive" : ""}`}>
                             {totScad !== 0 ? fmtEuro(totScad) : "—"}
+                            <DettaglioCoperturaRiga lordo={Number(r.tot_scaduto_lordo ?? totScad)} piani={Number(r.coperto_piani ?? 0)} promesse={Number(r.coperto_promesse ?? 0)} netto={nettoCoperture} />
                           </span>
                         ) },
                         { etichetta: "A scadere", valore: <span className="tabular-nums">{totAScad > 0 ? fmtEuro(totAScad) : "—"}</span> },
@@ -1059,6 +1109,7 @@ function ScadenziarioPage() {
                         <TableCell className="text-right tabular-nums">{r.n_scadute || "—"}</TableCell>
                         <TableCell className={`text-right tabular-nums font-semibold ${totScad < 0 ? "text-emerald-700 dark:text-emerald-400" : "text-destructive"}`}>
                           {totScad !== 0 ? fmtEuro(totScad) : "—"}
+                          <DettaglioCoperturaRiga lordo={Number(r.tot_scaduto_lordo ?? totScad)} piani={Number(r.coperto_piani ?? 0)} promesse={Number(r.coperto_promesse ?? 0)} netto={nettoCoperture} />
                         </TableCell>
                         <TableCell className="text-right tabular-nums">{r.n_a_scadere || "—"}</TableCell>
                         <TableCell className="text-right tabular-nums">
