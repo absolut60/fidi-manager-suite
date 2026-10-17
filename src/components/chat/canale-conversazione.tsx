@@ -1,10 +1,11 @@
 import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { IndicatoreLettura, SOGLIA_CONFERME_LETTURA, type LetturaMessaggio } from "@/components/chat/indicatore-lettura";
-import { FileText, Paperclip, Search, Send, Smile, Trash2, X } from "lucide-react";
+import {
+  AzioniMessaggioAdmin, InfoMessaggio, SpunteLettura, formatOraMessaggio, haConfermeLettura,
+  type LetturaMessaggio,
+} from "@/components/chat/indicatore-lettura";
+import { FileText, Paperclip, Search, Send, Smile, X } from "lucide-react";
 import { toast } from "sonner";
-import { formatDistanceToNow } from "date-fns";
-import { it } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -147,6 +148,8 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
   const isAdmin = hasRole("amministratore");
   const instanceId = useId();
   const [messaggioDaEliminare, setMessaggioDaEliminare] = useState<Messaggio | null>(null);
+  const [infoId, setInfoId] = useState<string | null>(null);
+  const [adminId, setAdminId] = useState<string | null>(null);
   const [messaggi, setMessaggi] = useState<Messaggio[]>([]);
   const [testo, setTesto] = useState("");
   const [invio, setInvio] = useState(false);
@@ -421,6 +424,8 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
   }
 
   const puoInviare = !!testo.trim() || !!fileSelezionato;
+  const msgInfo = infoId ? messaggi.find((x) => x.id === infoId) ?? null : null;
+  const msgAdmin = adminId ? messaggi.find((x) => x.id === adminId) ?? null : null;
 
   return (
     <div className="flex flex-col h-full min-h-0 min-w-0">
@@ -434,27 +439,32 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
           {messaggi.map((m) => {
             const mio = m.autore_id === user?.id;
             const eliminato = !!m.eliminato_at;
-            const puoEliminare = !eliminato && (mio || isAdmin);
+            const cliccabile = !eliminato && (mio || isAdmin);
+            const lettura = lettureMie?.get(m.id);
             return (
-              <div key={m.id} className={`group flex min-w-0 items-center gap-1 ${mio ? "justify-end" : "justify-start"}`}>
-                {mio && puoEliminare && (
-                  <button
-                    type="button"
-                    aria-label="Elimina messaggio"
-                    title="Elimina messaggio"
-                    onClick={() => setMessaggioDaEliminare(m)}
-                    className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                  >
-                    <Trash2 className="size-3.5" />
-                  </button>
-                )}
+              <div key={m.id} className={`flex min-w-0 ${mio ? "justify-end" : "justify-start"}`}>
                 <div
+                  role={cliccabile ? "button" : undefined}
+                  tabIndex={cliccabile ? 0 : undefined}
+                  aria-label={cliccabile ? (mio ? "Info messaggio" : "Azioni messaggio") : undefined}
+                  onClick={cliccabile ? () => (mio ? setInfoId(m.id) : setAdminId(m.id)) : undefined}
+                  onKeyDown={
+                    cliccabile
+                      ? (e) => {
+                          if (e.target !== e.currentTarget) return;
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            if (mio) setInfoId(m.id); else setAdminId(m.id);
+                          }
+                        }
+                      : undefined
+                  }
                   className={`max-w-[80%] min-w-0 rounded-lg px-3 py-2 ${
                     mio ? "bg-blue-400 text-white" : "bg-muted text-foreground"
-                  }`}
+                  } ${cliccabile ? "cursor-pointer" : ""}`}
                 >
                   {!mio && (
-                    <div className="text-[11px] font-semibold mb-0.5">
+                    <div className="text-[11px] font-semibold mb-0.5 break-words">
                       {nomeAutore.get(m.autore_id) ?? "—"}
                     </div>
                   )}
@@ -465,36 +475,24 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
                       {m.testo && (
                         <div className="text-sm whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{m.testo}</div>
                       )}
-                      {m.allegato && <AllegatoMessaggio allegato={m.allegato} />}
+                      {m.allegato && (
+                        <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                          <AllegatoMessaggio allegato={m.allegato} />
+                        </div>
+                      )}
                     </>
                   )}
                   <div
-                    className={`text-[10px] mt-1 flex flex-wrap items-center gap-x-2 ${
-                      mio ? "justify-end text-white/70" : "text-muted-foreground"
+                    className={`text-[10px] mt-1 flex items-center gap-1 ${
+                      mio ? "justify-end text-white/80" : "text-muted-foreground"
                     }`}
                   >
-                    <span>
-                      {formatDistanceToNow(new Date(m.created_at), {
-                        addSuffix: true,
-                        locale: it,
-                      })}
-                    </span>
-                    {mio && !eliminato && new Date(m.created_at).getTime() >= Date.parse(SOGLIA_CONFERME_LETTURA) && lettureMie?.get(m.id) && (
-                      <IndicatoreLettura messaggioId={m.id} lettura={lettureMie.get(m.id)!} />
+                    <span>{formatOraMessaggio(m.created_at)}</span>
+                    {mio && !eliminato && haConfermeLettura(m.created_at) && lettura && (
+                      <SpunteLettura lettura={lettura} />
                     )}
                   </div>
                 </div>
-                {!mio && puoEliminare && (
-                  <button
-                    type="button"
-                    aria-label="Elimina messaggio"
-                    title="Elimina messaggio"
-                    onClick={() => setMessaggioDaEliminare(m)}
-                    className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                  >
-                    <Trash2 className="size-3.5" />
-                  </button>
-                )}
               </div>
             );
           })}
@@ -581,6 +579,23 @@ export function CanaleConversazione({ canaleId }: { canaleId: string }) {
           <Send className="size-4" />
         </Button>
       </div>
+
+      <InfoMessaggio
+        messaggio={
+          msgInfo
+            ? { id: msgInfo.id, testo: msgInfo.testo, created_at: msgInfo.created_at, nomeAllegato: msgInfo.allegato?.nome_file ?? null }
+            : null
+        }
+        lettura={msgInfo ? lettureMie?.get(msgInfo.id) : undefined}
+        puoEliminare={!!msgInfo && !msgInfo.eliminato_at}
+        onElimina={() => { setMessaggioDaEliminare(msgInfo); setInfoId(null); }}
+        onOpenChange={(v) => { if (!v) setInfoId(null); }}
+      />
+      <AzioniMessaggioAdmin
+        open={!!msgAdmin && isAdmin}
+        onOpenChange={(v) => { if (!v) setAdminId(null); }}
+        onElimina={() => { setMessaggioDaEliminare(msgAdmin); setAdminId(null); }}
+      />
 
       <Dialog
         open={!!messaggioDaEliminare}
