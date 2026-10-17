@@ -7741,6 +7741,7 @@ export type Database = {
           p_importo_min?: number
           p_importo_min_a_scadere?: number
           p_mostra_a_credito?: boolean
+          p_netto_coperture?: boolean
           p_search?: string
           p_situazione?: string
           p_stato_blocco?: string
@@ -7807,6 +7808,35 @@ export type Database = {
           total_count: number
         }[]
       }
+      get_scadenziario_per_store: {
+        Args: {
+          p_agente?: string
+          p_avvisato?: string
+          p_escludi_bonifici?: boolean
+          p_escludi_legale?: boolean
+          p_fascia?: string
+          p_importo_min?: number
+          p_importo_min_a_scadere?: number
+          p_mostra_a_credito?: boolean
+          p_netto_coperture?: boolean
+          p_search?: string
+          p_situazione?: string
+          p_stato_blocco?: string
+          p_stato_legale?: string
+          p_store_id?: string
+        }
+        Returns: {
+          n_bloccati: number
+          n_clienti_scaduti: number
+          n_in_legale: number
+          store_id: string
+          store_nome: string
+          tot_a_scadere: number
+          tot_coperto_piani: number
+          tot_coperto_promesse: number
+          tot_scaduto: number
+        }[]
+      }
       get_scadenziario_totali: {
         Args: {
           p_agente?: string
@@ -7817,6 +7847,7 @@ export type Database = {
           p_importo_min?: number
           p_importo_min_a_scadere?: number
           p_mostra_a_credito?: boolean
+          p_netto_coperture?: boolean
           p_search?: string
           p_situazione?: string
           p_stato_blocco?: string
@@ -7826,12 +7857,17 @@ export type Database = {
         Returns: {
           n_bonifici_esclusi: number
           n_clienti_bloccati: number
+          n_clienti_coperti_piani: number
+          n_clienti_coperti_promesse: number
           n_clienti_crediti: number
           n_clienti_in_legale: number
           n_clienti_scaduti: number
           n_clienti_totali: number
           n_legale_esclusi: number
+          n_promesse_da_verificare: number
           tot_a_scadere: number
+          tot_coperto_piani: number
+          tot_coperto_promesse: number
           tot_crediti: number
           tot_scaduto: number
         }[]
@@ -8210,6 +8246,43 @@ export type Database = {
         Args: { _filtri: Json }
         Returns: {
           cliente_id: string
+        }[]
+      }
+      scadenziario_clienti_base: {
+        Args: {
+          p_agente?: string
+          p_avvisato?: string
+          p_escludi_bonifici?: boolean
+          p_escludi_legale?: boolean
+          p_fascia?: string
+          p_importo_min?: number
+          p_importo_min_a_scadere?: number
+          p_mostra_a_credito?: boolean
+          p_netto_coperture?: boolean
+          p_search?: string
+          p_situazione?: string
+          p_stato_blocco?: string
+          p_stato_legale?: string
+          p_store_id?: string
+        }
+        Returns: {
+          avvisato_n: number
+          bloccato: boolean
+          cliente_id: string
+          codice_agente: string
+          coperto_piani: number
+          coperto_promesse: number
+          fascia: string
+          in_gestione_legale: boolean
+          max_gg: number
+          n_a_scadere: number
+          n_promesse_data_passata: number
+          n_scadute: number
+          store_id: string
+          tot_a: number
+          tot_a_lordo: number
+          tot_s: number
+          tot_s_lordo: number
         }[]
       }
       scarta_righe_import: {

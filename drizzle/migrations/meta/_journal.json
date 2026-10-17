@@ -337,6 +337,13 @@
       "when": 1792260148833,
       "tag": "0047_fm45_promesse_stato_e_coperture",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1792265473630,
+      "tag": "0048_fm45_scadenziario_base_netto_coperture",
+      "breakpoints": true
     }
   ]
 }
