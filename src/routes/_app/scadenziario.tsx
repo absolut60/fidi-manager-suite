@@ -1510,6 +1510,8 @@ function AzioneRecuperoDialog({
   userId: string | null;
   onDone: () => void;
 }) {
+  const { roles } = useAuth();
+  const tipiAzione = (["email", "telefonata", "promemoria"] as const).filter((t) => tipoAzioneConsentito(roles, t));
   const [tipo, setTipo] = useState<"email" | "telefonata" | "promemoria">("telefonata");
   const [dataAzione, setDataAzione] = useState<string>(() => toLocalInputValue(new Date()));
   const [note, setNote] = useState("");
@@ -1591,8 +1593,8 @@ function AzioneRecuperoDialog({
         <div className="space-y-4">
           <div className="space-y-2">
             <Label>Tipo azione</Label>
-            <RadioGroup value={tipo} onValueChange={(v) => setTipo(v as typeof tipo)} className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              {(["email", "telefonata", "promemoria"] as const).map((t) => (
+            <RadioGroup value={tipo} onValueChange={(v) => setTipo(v as typeof tipo)} className={`grid grid-cols-1 gap-2 ${tipiAzione.length === 2 ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
+              {tipiAzione.map((t) => (
                 <label
                   key={t}
                   className={`flex items-center gap-2 border rounded-md px-3 py-2 cursor-pointer text-sm capitalize ${tipo === t ? "border-primary bg-primary/5" : ""}`}
