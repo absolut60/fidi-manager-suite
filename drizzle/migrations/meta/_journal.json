@@ -309,6 +309,13 @@
       "when": 1792160592329,
       "tag": "0043_fm44_profili_trigger_campi_protetti",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1792226809743,
+      "tag": "0044_fm45_agente_azioni_e_notifiche_recupero",
+      "breakpoints": true
     }
   ]
 }
