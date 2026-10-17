@@ -8197,6 +8197,10 @@ export type Database = {
         Args: { _task_id: string; _user_id: string }
         Returns: boolean
       }
+      utenti_agente_cliente: {
+        Args: { _cliente_id: string }
+        Returns: string[]
+      }
     }
     Enums: {
       app_role:
