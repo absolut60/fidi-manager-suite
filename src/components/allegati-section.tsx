@@ -18,6 +18,7 @@ import {
   File as FileIcon, Plus, Eye, UploadCloud,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { GRIGLIA_ALLEGATI, SchedaAllegato } from "@/components/allegati/anteprima-allegato";
 
 export type AllegatoEntitaTipo =
   | "cliente"
@@ -182,23 +183,6 @@ export function AllegatiSection({
     onError: (e: Error) => toast.error(e.message),
   });
 
-  async function openSigned(a: AllegatoRow, mode: "download" | "preview") {
-    const { data, error } = await supabase.storage
-      .from(ALLEGATI_BUCKET)
-      .createSignedUrl(a.storage_path, 60);
-    if (error || !data) { toast.error("Errore apertura file"); return; }
-    if (mode === "preview") {
-      window.open(data.signedUrl, "_blank", "noopener");
-      return;
-    }
-    const link = document.createElement("a");
-    link.href = data.signedUrl;
-    link.download = a.nome_file;
-    link.target = "_blank";
-    link.rel = "noopener";
-    link.click();
-  }
-
   const itemPad = compact ? "p-2" : "p-2.5";
 
   return (
@@ -223,50 +207,36 @@ export function AllegatiSection({
       ) : !data?.length ? (
         <div className="text-xs text-muted-foreground italic px-1">Nessun allegato.</div>
       ) : (
-        <ul className="divide-y border rounded-md">
+        <ul className={GRIGLIA_ALLEGATI}>
           {data.map((a) => {
             const canDelete = canManageAll || a.caricato_da === user?.id;
-            const previewable = isPreviewable(a.mime_type);
             return (
-              <li key={a.id} className={cn("flex items-center gap-3 text-sm", itemPad)}>
-                <div className="text-muted-foreground">{iconFor(a.mime_type)}</div>
-                <div className="flex-1 min-w-0">
-                  <button
-                    onClick={() => openSigned(a, previewable ? "preview" : "download")}
-                    className="text-primary hover:underline truncate block text-left w-full"
-                    title={a.nome_file}
-                  >
-                    {a.nome_file}
-                  </button>
-                  <div className="text-xs text-muted-foreground flex flex-wrap gap-x-2">
-                    <span>{fmtBytes(a.dimensione_bytes)}</span>
-                    <span>·</span>
-                    <span>{fmtDate(a.created_at)}</span>
-                  </div>
-                  {a.descrizione && (
-                    <div className="text-xs text-muted-foreground mt-0.5">{a.descrizione}</div>
-                  )}
-                </div>
-                {previewable && (
-                  <Button size="icon" variant="ghost" onClick={() => openSigned(a, "preview")} title="Anteprima">
-                    <Eye className="size-4" />
-                  </Button>
-                )}
-                <Button size="icon" variant="ghost" onClick={() => openSigned(a, "download")} title="Scarica">
-                  <Download className="size-4" />
-                </Button>
-                {canDelete && (
+              <SchedaAllegato
+                key={a.id}
+                storagePath={a.storage_path}
+                nomeFile={a.nome_file}
+                mimeType={a.mime_type}
+                dimensione={a.dimensione_bytes}
+                bucket={ALLEGATI_BUCKET}
+                dettagli={
+                  <>
+                    <div>{fmtDate(a.created_at)}</div>
+                    {a.descrizione && <div className="mt-0.5">{a.descrizione}</div>}
+                  </>
+                }
+                azioni={canDelete ? (
                   <Button
                     size="icon"
                     variant="ghost"
                     onClick={() => setToDelete(a)}
                     title="Elimina"
-                    className="text-destructive hover:text-destructive"
+                    aria-label={`Elimina ${a.nome_file}`}
+                    className="size-10 text-destructive hover:text-destructive"
                   >
                     <Trash2 className="size-4" />
                   </Button>
-                )}
-              </li>
+                ) : null}
+              />
             );
           })}
         </ul>
