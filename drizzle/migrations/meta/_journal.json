@@ -330,6 +330,13 @@
       "when": 1792228385353,
       "tag": "0046_fm45_chat_conferme_lettura",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1792260148833,
+      "tag": "0047_fm45_promesse_stato_e_coperture",
+      "breakpoints": true
     }
   ]
 }
