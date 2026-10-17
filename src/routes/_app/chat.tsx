@@ -132,15 +132,7 @@ function ChatPage() {
     if ((canali ?? []).some((c) => c.id === canaleParam)) setSelected(canaleParam);
   }, [canaleParam, canali]);
 
-  // Segna letto il canale aperto
-  useEffect(() => {
-    if (!selected) return;
-    void (async () => {
-      await supabase.rpc("segna_canale_letto", { _canale_id: selected } as never);
-      queryClient.invalidateQueries({ queryKey: ["chat", "non-letti"] });
-      queryClient.invalidateQueries({ queryKey: ["menu", "non-letti"] });
-    })();
-  }, [selected, queryClient]);
+  // FM45: la lettura del canale la segna CanaleConversazione (fonte unica).
 
 
 
@@ -230,9 +222,9 @@ function ChatPage() {
         </Button>
       </div>
 
-      <div className="grid lg:grid-cols-[280px_1fr] gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4">
         {/* Lista canali */}
-        <Card className={`p-2 ${selected ? "hidden lg:block" : "block"}`}>
+        <Card className={`p-2 min-w-0 ${selected ? "hidden lg:block" : "block"}`}>
           {loadingCanali ? (
             <div className="space-y-2 p-2">
               <Skeleton className="h-10 w-full" />
@@ -275,25 +267,27 @@ function ChatPage() {
         </Card>
 
         {/* Conversazione */}
-        <Card className={`flex flex-col min-h-[60vh] ${selected ? "flex" : "hidden lg:flex"}`}>
+        <Card className={`flex flex-col min-w-0 min-h-[60vh] ${selected ? "flex" : "hidden lg:flex"}`}>
           {!canaleCorrente ? (
             <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground p-8">
               Seleziona un canale per iniziare
             </div>
           ) : (
             <>
-              <div className="flex items-center gap-2 border-b px-4 py-3">
+              <div className="flex items-center gap-2 border-b px-3 sm:px-4 py-3">
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="lg:hidden"
+                  className="lg:hidden shrink-0"
                   onClick={() => setSelected(null)}
                 >
                   <ArrowLeft className="size-4 mr-1" /> Canali
                 </Button>
-                <div className="min-w-0">
-                  <div className="font-semibold truncate">{nomeCanale(canaleCorrente, nomiDiretti)}</div>
-                  <div className="text-[11px] text-muted-foreground">
+                <div className="min-w-0 flex-1">
+                  <div className="font-semibold truncate" title={nomeCanale(canaleCorrente, nomiDiretti)}>
+                    {nomeCanale(canaleCorrente, nomiDiretti)}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground truncate">
                     {TIPO_LABEL[canaleCorrente.tipo]}
                   </div>
                 </div>
@@ -302,10 +296,13 @@ function ChatPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="ml-auto text-destructive hover:text-destructive"
+                      className="shrink-0 h-10 sm:h-9 text-destructive hover:text-destructive"
                       onClick={() => setConfermaEliminaChat("one")}
+                      aria-label="Elimina chat"
+                      title="Elimina chat"
                     >
-                      <Trash2 className="size-4 mr-1.5" /> Elimina chat
+                      <Trash2 className="size-4 sm:mr-1.5" />
+                      <span className="hidden sm:inline">Elimina chat</span>
                     </Button>
                   )}
               </div>
