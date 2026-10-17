@@ -623,6 +623,9 @@ export type Database = {
           note: string | null
           operatore_id: string | null
           piano_rientro_id: string | null
+          stato_promessa: string | null
+          stato_promessa_aggiornato_at: string | null
+          stato_promessa_aggiornato_da: string | null
           tipo: string
           updated_at: string
         }
@@ -643,6 +646,9 @@ export type Database = {
           note?: string | null
           operatore_id?: string | null
           piano_rientro_id?: string | null
+          stato_promessa?: string | null
+          stato_promessa_aggiornato_at?: string | null
+          stato_promessa_aggiornato_da?: string | null
           tipo: string
           updated_at?: string
         }
@@ -663,6 +669,9 @@ export type Database = {
           note?: string | null
           operatore_id?: string | null
           piano_rientro_id?: string | null
+          stato_promessa?: string | null
+          stato_promessa_aggiornato_at?: string | null
+          stato_promessa_aggiornato_da?: string | null
           tipo?: string
           updated_at?: string
         }
@@ -693,6 +702,13 @@ export type Database = {
             columns: ["piano_rientro_id"]
             isOneToOne: false
             referencedRelation: "piani_rientro"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "azioni_recupero_stato_promessa_aggiornato_da_fkey"
+            columns: ["stato_promessa_aggiornato_da"]
+            isOneToOne: false
+            referencedRelation: "profili"
             referencedColumns: ["id"]
           },
         ]
@@ -6895,6 +6911,16 @@ export type Database = {
           duplicati: Json
         }[]
       }
+      coperture_scadenziario: {
+        Args: { _today?: string }
+        Returns: {
+          cliente_id: string
+          origine: string
+          piano_id: string
+          promessa_id: string
+          scadenza_id: string
+        }[]
+      }
       count_fidi_quasi_saturi: { Args: { _store_id?: string }; Returns: number }
       crea_cantiere_lite: {
         Args: {
@@ -7549,6 +7575,22 @@ export type Database = {
           nome: string
         }[]
       }
+      get_previsione_incassi_coperture: {
+        Args: { p_agente?: string; p_store_id?: string }
+        Returns: {
+          entro_30: number
+          entro_60: number
+          entro_90: number
+          giorni_medi_rientro: number
+          n_clienti: number
+          n_data_passata: number
+          n_elementi: number
+          oltre_90: number
+          origine: string
+          scaduto_non_incassato: number
+          totale_atteso: number
+        }[]
+      }
       get_privacy_base_clienti: {
         Args: { _cliente_ids: string[] }
         Returns: {
@@ -8005,6 +8047,24 @@ export type Database = {
         }
       }
       profilo_store_id_corrente: { Args: never; Returns: string }
+      promesse_attive_importo_cliente: {
+        Args: never
+        Returns: {
+          cliente_id: string
+          importo_promesse: number
+          n_promesse: number
+          n_promesse_data_passata: number
+        }[]
+      }
+      promesse_attive_importo_efficace: {
+        Args: never
+        Returns: {
+          cliente_id: string
+          data_promessa: string
+          importo_efficace: number
+          promessa_id: string
+        }[]
+      }
       prossimo_numero_ordine: { Args: { p_anno: number }; Returns: number }
       prossimo_numero_preventivo: { Args: { p_anno: number }; Returns: number }
       refresh_fatturato_mensile: { Args: never; Returns: string }
