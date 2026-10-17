@@ -171,7 +171,7 @@ export function ScadenziarioPerStore({ params, aperto, onToggle, storeSelezionat
               );
             })}
             <li className="px-3 py-2 grid grid-cols-[minmax(0,1fr)_auto] gap-2 text-sm font-semibold">
-              <span>Totale</span><span className="tabular-nums">{formatEuro(totale.tot_scaduto)}</span>
+              <span>Totale negozi</span><span className="tabular-nums">{formatEuro(totale.tot_scaduto)}</span>
             </li>
           </ul>
           {/* Desktop: tabella */}
@@ -201,10 +201,13 @@ export function ScadenziarioPerStore({ params, aperto, onToggle, storeSelezionat
                     <tr
                       key={r.store_id ?? "senza"}
                       onClick={onClick}
-                      className={`border-b last:border-b-0 ${onClick ? "cursor-pointer hover:bg-muted/50" : ""} ${sel ? "bg-primary/5" : ""}`}
+                      className={`border-b last:border-b-0 ${onClick ? "cursor-pointer hover:bg-muted/50" : ""} ${sel ? "bg-primary/10" : ""}`}
                     >
                       {COLONNE.map((c) => (
-                        <td key={c.k} className={`px-3 py-1.5 ${c.k === "store_nome" ? "text-left" : "text-right"} ${c.k === "tot_scaduto" ? "font-semibold text-destructive min-w-[120px]" : ""}`}>
+                        <td
+                          key={c.k}
+                          className={`px-3 py-1.5 ${c.k === "store_nome" ? `text-left border-l-2 ${sel ? "border-l-primary" : "border-l-transparent"}` : "text-right"} ${c.k === "tot_scaduto" ? "font-semibold text-destructive min-w-[120px]" : ""}`}
+                        >
                           {c.k === "store_nome" ? nomeCella(r) : val(r, c)}
                           {c.k === "tot_scaduto" && <Barretta v={r.tot_scaduto} max={max} />}
                         </td>
@@ -215,7 +218,7 @@ export function ScadenziarioPerStore({ params, aperto, onToggle, storeSelezionat
               </tbody>
               <tfoot>
                 <tr className="border-t font-semibold">
-                  <td className="px-3 py-2">Totale</td>
+                  <td className="px-3 py-2">Totale negozi</td>
                   {COLONNE.slice(1).map((c) => (
                     <td key={c.k} className="px-3 py-2 text-right">{val({ store_nome: "", ...totale }, c)}</td>
                   ))}
