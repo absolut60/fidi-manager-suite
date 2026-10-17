@@ -35,6 +35,8 @@ import { StadioSollecitoBadge } from "@/components/stadio-sollecito-badge";
 import { ClienteAttivitaRecuperoTab } from "@/components/cliente-attivita-recupero-tab";
 import { ScadenziarioKpi, DettaglioCoperturaRiga } from "@/components/scadenziario/scadenziario-kpi";
 import { CopertureScadenziario } from "@/components/scadenziario/coperture-scadenziario";
+import { ScadenziarioPerStore } from "@/components/scadenziario/scadenziario-per-store";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export const Route = createFileRoute("/_app/scadenziario")({
   component: ScadenziarioPage,
@@ -239,6 +241,7 @@ function toSelRow(r: ScadRow): SelRow {
 function ScadenziarioPage() {
   const navigate = useNavigate();
   const { role, profilo, user, roles } = useAuth();
+  const isMobile = useIsMobile();
   const puoInviare = puoInviareComunicazioniRecupero(roles as string[]);
   const isStoreManager = role === "store_manager";
   const myStoreId = profilo?.store_id ?? null;
@@ -258,6 +261,8 @@ function ScadenziarioPage() {
     avvisatoFilter: "tutti" as "tutti" | "con_azioni" | "senza_azioni",
     mostraACredito: false,
     nettoCoperture: false,
+    // Sezione "Per punto vendita": "auto" = aperta su desktop, chiusa su telefono.
+    perStoreAperto: "auto" as "auto" | "si" | "no",
     search: "",
     page: 1,
     sortBy: "tot_scaduto" as SortKey,
@@ -673,7 +678,7 @@ function ScadenziarioPage() {
       </header>
 
       {/* Dashboard compatta */}
-      <section className="space-y-2">
+      <section id="scadenziario-dashboard" className="space-y-2 scroll-mt-4">
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
           <div className="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1">
             <h2 className="text-sm font-semibold uppercase text-foreground">Situazione</h2>
@@ -709,6 +714,17 @@ function ScadenziarioPage() {
             }}
           />
         )}
+        <ScadenziarioPerStore
+          params={commonParams}
+          aperto={filtri.perStoreAperto === "auto" ? !isMobile : filtri.perStoreAperto === "si"}
+          onToggle={() => setCampo("perStoreAperto", (filtri.perStoreAperto === "auto" ? !isMobile : filtri.perStoreAperto === "si") ? "no" : "si")}
+          storeSelezionato={storeId}
+          cliccabile={!isStoreManager}
+          onSelezionaStore={(id) => {
+            setStoreId(storeId === id ? "all" : id);
+            document.getElementById("scadenziario-dashboard")?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }}
+        />
       </section>
       {mostraACredito && kpi.nCrediti > 0 && (
         <p className="text-xs text-muted-foreground -mt-2">
@@ -1239,25 +1255,6 @@ function ScadenziarioPage() {
       />
     </div>
     </TooltipProvider>
-  );
-}
-
-function KpiCard({ label, value, icon: Icon, tone, sublabel, tooltip }: { label: string; value: string; icon: typeof FileText; tone: "destructive" | "info" | "warning" | "default"; sublabel?: string; tooltip?: string }) {
-  const cls = tone === "destructive" ? "bg-destructive/10 text-destructive"
-    : tone === "info" ? "bg-primary/10 text-primary"
-    : tone === "warning" ? "bg-orange-500/10 text-orange-600"
-    : "bg-muted text-foreground";
-  return (
-    <Card className="p-4" title={tooltip}>
-      <div className="flex items-center justify-between">
-        <div className="min-w-0">
-          <p className="text-xs font-medium text-muted-foreground uppercase">{label}</p>
-          <p className="text-xl font-bold mt-1">{value}</p>
-          {sublabel && <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{sublabel}</p>}
-        </div>
-        <div className={`size-9 rounded-lg flex items-center justify-center ${cls} shrink-0 ml-2`}><Icon className="size-4" /></div>
-      </div>
-    </Card>
   );
 }
 

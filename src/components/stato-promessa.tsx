@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { puoCambiareStatoPromessa } from "@/lib/recupero-permessi";
 import { QK_PREVISIONE_COPERTURE } from "@/components/scadenziario/coperture-scadenziario";
+import { QK_SCADENZIARIO_PER_STORE } from "@/components/scadenziario/scadenziario-per-store";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -86,6 +87,7 @@ export function SelettoreStatoPromessa({
     qc.invalidateQueries({ queryKey: ["scadenziario-totali-v1"] });
     qc.invalidateQueries({ queryKey: ["scadenziario-all-ids"] });
     qc.invalidateQueries({ queryKey: [QK_PREVISIONE_COPERTURE] });
+    qc.invalidateQueries({ queryKey: [QK_SCADENZIARIO_PER_STORE] });
     onChanged?.();
   }
 
