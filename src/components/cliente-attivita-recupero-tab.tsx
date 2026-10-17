@@ -1,3 +1,4 @@
+import { SelettoreStatoPromessa } from "@/components/stato-promessa";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -128,6 +129,14 @@ export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda }: { client
   const testoUltima = ultimaFatta ? testoAzione(ultimaFatta) : null;
 
   async function updateEsito(id: string, nextEsito: Esito) {
+    // Una promessa richiede data e importo > 0: dal selettore rapido non si possono indicare.
+    if (nextEsito === "promessa_pagamento") {
+      const az = (azioni ?? []).find((x) => x.id === id);
+      if (!az?.data_promessa_pagamento || !(Number(az.importo_riferimento ?? 0) > 0)) {
+        toast.error("Per una promessa servono data e importo: usa «Registra promessa» o modifica l'azione");
+        return;
+      }
+    }
     const { error } = await supabase
       .from("azioni_recupero")
       .update({ esito: nextEsito })
@@ -541,6 +550,9 @@ function TimelineItem({
         </div>
         <div className="shrink-0 flex flex-col items-end gap-1.5">
           {esitoBadge(azione.esito)}
+          {azione.esito === "promessa_pagamento" && (
+            <SelettoreStatoPromessa azioneId={azione.id} clienteId={azione.cliente_id} stato={azione.stato_promessa} />
+          )}
           <Select value={azione.esito} onValueChange={(v) => onChangeEsito(v as Esito)}>
             <SelectTrigger className="h-7 w-[150px] text-xs">
               <SelectValue />

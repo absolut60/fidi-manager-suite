@@ -17,6 +17,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { AllegatiSection } from "@/components/allegati-section";
+import { parseNumeroIt } from "@/lib/numero-it";
 
 import { ESITI_AZIONE as ESITI, type EsitoAzione as Esito } from "@/lib/azioni-recupero-ui";
 
@@ -221,10 +222,10 @@ export function ModificaAzioneDialog({
 
           {!isEmail && (
             <div className="space-y-1.5">
-              <Label>Importo di riferimento (€)</Label>
+              <Label>{esito === "promessa_pagamento" ? "Importo promesso (€) *" : "Importo di riferimento (€)"}</Label>
               <Input
-                type="number"
-                step="0.01"
+                type="text"
+                inputMode="decimal"
                 value={importo}
                 onChange={(e) => setImporto(e.target.value)}
                 placeholder="0,00"
