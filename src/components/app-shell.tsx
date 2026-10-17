@@ -257,6 +257,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
 
 
+  // FM45: somma dei badge (fonte unica badgePerVoce) per pallini aggregati.
+  function sommaBadge(items: { to: string }[]) {
+    return items.reduce((tot, i) => tot + (badgePerVoce(i.to) ?? 0), 0);
+  }
+
   const userRoles = roles as string[];
   const hasUserRole = (r: string) => userRoles.includes(r);
   const isAdmin = hasUserRole("amministratore");
@@ -438,7 +443,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const iniziali = `${profilo?.nome?.[0] ?? ""}${profilo?.cognome?.[0] ?? ""}`.toUpperCase() || "?";
 
-  const SidebarContent = () => (
+  const totaleMenu = sommaBadge(visibleNav);
+
+  const SidebarContent = ({ mobile = false }: { mobile?: boolean }) => (
     <>
       <div className="px-5 py-5 border-b border-sidebar-border">
         <div className="flex flex-col gap-1.5">
@@ -483,6 +490,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <span className="flex-1 text-left text-[11px] font-semibold tracking-wider uppercase truncate">
                   {GROUP_LABELS[b.key]}
                 </span>
+                {!isOpen && sommaBadge(b.items) > 0 && (
+                  <PallinoBadge n={sommaBadge(b.items)} />
+                )}
                 {isOpen ? (
                   <ChevronDown className="size-3.5" />
                 ) : (
@@ -498,6 +508,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       active={isItemActive(item, currentPath)}
                       onNav={() => setMobileOpen(false)}
                       barColor={style.bar}
+                      badge={badgePerVoce(item.to)}
                     />
                   ))}
                 </ul>
@@ -529,7 +540,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </div>
             </div>
           </Link>
-          <NotificationsBell />
+          {!mobile && <NotificationsBell />}
           <button
             onClick={handleLogout}
             className="size-8 rounded-md hover:bg-sidebar-accent flex items-center justify-center text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors"
@@ -545,22 +556,31 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen flex w-full bg-background">
       <header className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-primary text-primary-foreground flex items-center justify-between px-4 z-40 border-b border-sidebar-border">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <img
             src={`data:image/png;base64,${LOGO_MADE_SIDEBAR_BASE64}`}
             alt="MADE"
-            className="w-32 h-auto block"
+            className="w-28 sm:w-32 h-auto block shrink-0"
             style={{ aspectRatio: "490 / 69" }}
           />
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setMobileOpen(!mobileOpen)}
-          className="text-primary-foreground hover:bg-sidebar-accent hover:text-primary-foreground"
-        >
-          {mobileOpen ? <X /> : <Menu />}
-        </Button>
+        <div className="flex items-center gap-1 shrink-0">
+          <NotificationsBell />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setMobileOpen(!mobileOpen)}
+            aria-label={totaleMenu > 0 ? `Menu, ${totaleMenu} da leggere` : "Menu"}
+            className="relative size-10 text-primary-foreground hover:bg-sidebar-accent hover:text-primary-foreground"
+          >
+            {mobileOpen ? <X /> : <Menu />}
+            {totaleMenu > 0 && (
+              <span className="absolute -top-0.5 -right-0.5">
+                <PallinoBadge n={totaleMenu} />
+              </span>
+            )}
+          </Button>
+        </div>
       </header>
 
       <aside className="hidden lg:flex w-64 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border fixed inset-y-0 left-0 z-30">
@@ -571,7 +591,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <>
           <div className="lg:hidden fixed inset-0 bg-black/50 z-40" onClick={() => setMobileOpen(false)} />
           <aside className="lg:hidden fixed inset-y-0 left-0 top-14 w-72 bg-sidebar text-sidebar-foreground flex flex-col z-50 border-r border-sidebar-border">
-            <SidebarContent />
+            <SidebarContent mobile />
           </aside>
         </>
       )}
@@ -621,12 +641,18 @@ function NavItemRow({
         <Icon className="size-4 shrink-0" />
         <span className="truncate flex-1">{item.label}</span>
         {!!badge && badge > 0 && (
-          <span className="ml-auto shrink-0 rounded-full bg-destructive text-destructive-foreground text-[10px] font-semibold leading-none px-1.5 py-1 min-w-[18px] text-center">
-            {badge > 9 ? "9+" : badge}
-          </span>
+          <span className="ml-auto shrink-0"><PallinoBadge n={badge} /></span>
         )}
       </Link>
     </li>
   );
 }
 
+
+function PallinoBadge({ n }: { n: number }) {
+  return (
+    <span aria-hidden className="inline-block shrink-0 rounded-full bg-destructive text-destructive-foreground text-[10px] font-semibold leading-none px-1.5 py-1 min-w-[18px] text-center">
+      {n > 9 ? "9+" : n}
+    </span>
+  );
+}
