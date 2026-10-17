@@ -3715,6 +3715,39 @@ export type Database = {
           },
         ]
       }
+      messaggi_letture: {
+        Row: {
+          letto_at: string
+          messaggio_id: string
+          user_id: string
+        }
+        Insert: {
+          letto_at?: string
+          messaggio_id: string
+          user_id: string
+        }
+        Update: {
+          letto_at?: string
+          messaggio_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messaggi_letture_messaggio_id_fkey"
+            columns: ["messaggio_id"]
+            isOneToOne: false
+            referencedRelation: "messaggi"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messaggi_letture_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profili"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messaggi_whatsapp: {
         Row: {
           aggiunto_da: string | null
@@ -7489,6 +7522,23 @@ export type Database = {
           metodo_descrizione: string
           numero_documento: string
           scadenza_id: string
+        }[]
+      }
+      get_letture_messaggio: {
+        Args: { _messaggio_id: string }
+        Returns: {
+          cognome: string
+          letto_at: string
+          nome: string
+          user_id: string
+        }[]
+      }
+      get_letture_miei_messaggi: {
+        Args: { _canale_id: string }
+        Returns: {
+          destinatari: number
+          letti: number
+          messaggio_id: string
         }[]
       }
       get_nomi_utenti: {
