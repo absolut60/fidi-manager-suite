@@ -291,6 +291,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     "/recupero-crediti-calendario",
     "/recupero-crediti-promemoria",
     "/piani-rientro",
+    "/clienti-variazioni-blocco",
   ]);
 
   const RICHIESTE_ROLES = [
