@@ -407,6 +407,7 @@ export const notificaVariazioniBlocco = inngest.createFunction(
       mailInviate,
       mailFallite,
       notifiche: notificheInserite,
+      notificheAgenti,
       test: isTest,
     };
   },
