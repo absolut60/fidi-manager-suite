@@ -351,6 +351,13 @@
       "when": 1792265644458,
       "tag": "0049_fm45_scadenziario_base_join_coperture",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1792265725880,
+      "tag": "0050_fm45_scadenziario_base_plpgsql",
+      "breakpoints": true
     }
   ]
 }
