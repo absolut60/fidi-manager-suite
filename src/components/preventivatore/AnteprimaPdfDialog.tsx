@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Download, Loader2, Mail, Printer, X } from "lucide-react";
 import { toast } from "sonner";
 import { loadPdfJs } from "@/lib/pdfjs";
+import { salvaFile } from "@/lib/salva-file";
 
 export function AnteprimaPdfDialog({
   open, onOpenChange, blob, fileName, onInviaEmail,
@@ -124,14 +125,8 @@ export function AnteprimaPdfDialog({
   }
 
   function handleEsporta() {
-    const url = blobUrlRef.current;
-    if (!url) return;
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    if (!pdfBlob) return;
+    void salvaFile(pdfBlob, fileName);
   }
 
   function handleEmail() {
@@ -169,14 +164,14 @@ export function AnteprimaPdfDialog({
               <div className="rounded border p-6 text-center text-sm text-destructive">
                 <p>{error}</p>
                 <Button onClick={handleEsporta} className="mt-3">
-                  Scarica PDF
+                  Scarica / Condividi
                 </Button>
               </div>
             )}
           </div>
         </div>
 
-        <DialogFooter className="px-6 pb-6 pt-2">
+        <DialogFooter className="px-4 sm:px-6 pb-4 sm:pb-6 pt-2 gap-2 sm:gap-0 [&>button]:w-full sm:[&>button]:w-auto">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Chiudi
           </Button>
@@ -190,7 +185,7 @@ export function AnteprimaPdfDialog({
           </Button>
           <Button onClick={handleEsporta}>
             <Download className="h-4 w-4 mr-2" />
-            Esporta
+            Scarica / Condividi
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,5 +1,6 @@
 import * as XLSX from "xlsx";
 import { unzipSync, zipSync, strToU8, strFromU8 } from "fflate";
+import { salvaFile } from "@/lib/salva-file";
 
 /** Colonne del foglio "Partecipanti" (ordine vincolante, letto dal parser di import). */
 export const INTESTAZIONI_PARTECIPANTI = [
@@ -167,11 +168,5 @@ export function scaricaModelloPartecipanti() {
   const blob = new Blob([bytes as unknown as BlobPart], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "modello-partecipanti.xlsx";
-
-  a.click();
-  URL.revokeObjectURL(url);
+  void salvaFile(blob, "modello-partecipanti.xlsx");
 }

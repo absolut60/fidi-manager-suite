@@ -25,6 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { Download, Upload, Search, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { salvaFile } from "@/lib/salva-file";
 
 export const Route = createFileRoute("/_app/articoli/")({
   head: () => ({ meta: [{ title: "Articoli — Sistema MADE" }] }),
@@ -132,14 +133,7 @@ function ArticoliListPage() {
     const ws = XLSX.utils.json_to_sheet(data);
     const csv = XLSX.utils.sheet_to_csv(ws, { FS: ";" });
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `articoli_gamma${onlyPotenziali ? "_potenziali" : ""}_${
-      new Date().toISOString().slice(0, 10)
-    }.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+    void salvaFile(blob, `articoli_gamma${onlyPotenziali ? "_potenziali" : ""}_${new Date().toISOString().slice(0, 10)}.csv`);
     toast.success(`Esportati ${rows.length} articoli`);
   }
 

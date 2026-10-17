@@ -10,6 +10,7 @@ import { unzipSync, zipSync } from "fflate";
 
 import { supabase } from "@/integrations/supabase/client";
 import { REGOLA_DESCRIZIONE } from "@/lib/fido-teorico";
+import { salvaFile } from "@/lib/salva-file";
 
 const PAGE = 1000;
 
@@ -578,13 +579,6 @@ export function scaricaWorkbook(wb: XLSX.WorkBook, nomeFile: string) {
   const blob = new Blob([out as BlobPart], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = nomeFile;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  void salvaFile(blob, nomeFile);
 }
 

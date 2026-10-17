@@ -8,6 +8,7 @@ import {
   arrotondaPerFornitore,
   fetchArticoliPerOrdine,
 } from "./output-api";
+import { salvaWorkbook } from "@/lib/salva-workbook";
 
 function fileName(prev: PreventivoConDettagli, tipo: string) {
   const num = (prev.numero ?? "senza-numero").replace(/[^A-Za-z0-9_-]+/g, "_");
@@ -37,7 +38,7 @@ export async function exportListaMaterialiXlsx(prev: PreventivoConDettagli) {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Materiali");
 
-  XLSX.writeFile(wb, fileName(prev, "lista-materiali"));
+  void salvaWorkbook(wb, fileName(prev, "lista-materiali"));
 }
 
 export async function exportListaFornitoreXlsx(prev: PreventivoConDettagli) {
@@ -92,5 +93,5 @@ export async function exportListaFornitoreXlsx(prev: PreventivoConDettagli) {
     XLSX.utils.book_append_sheet(wb, ws, sheetName);
   }
 
-  XLSX.writeFile(wb, fileName(prev, "ordine-fornitore"));
+  void salvaWorkbook(wb, fileName(prev, "ordine-fornitore"));
 }

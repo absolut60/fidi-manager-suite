@@ -19,6 +19,7 @@ import { caricaDatiClienteLettera, renderLettera, type TemplateLettera } from "@
 import { generaLetteraPdf } from "@/lib/lettera-pdf.functions";
 import { useConfig } from "@/hooks/use-config";
 import { puoInviareComunicazioniRecupero } from "@/lib/recupero-permessi";
+import { salvaFile } from "@/lib/salva-file";
 
 type Props = {
   open: boolean;
@@ -115,10 +116,7 @@ export function LetteraPdfDialog({
       const arr = new Uint8Array(bin.length);
       for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
       const blob = new Blob([arr], { type: "application/pdf" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = res.fileName; a.click();
-      URL.revokeObjectURL(url);
+      await salvaFile(blob, res.fileName);
 
       toast.success("Lettera generata e allegata");
       qc.invalidateQueries({ queryKey: ["allegati", "azione_recupero", res.azioneId] });
@@ -153,7 +151,7 @@ export function LetteraPdfDialog({
             <div className="rounded-md border border-border bg-muted/30 px-4 py-3 text-sm">
               L'invio delle comunicazioni di recupero è riservato al Recupero crediti.
             </div>
-            <DialogFooter>
+            <DialogFooter className="gap-2 sm:gap-0 [&>button]:w-full sm:[&>button]:w-auto">
               <Button variant="outline" onClick={() => onOpenChange(false)}>Chiudi</Button>
             </DialogFooter>
           </div>
@@ -200,7 +198,7 @@ export function LetteraPdfDialog({
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="gap-2 sm:gap-0 [&>button]:w-full sm:[&>button]:w-auto">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
             Annulla
           </Button>
