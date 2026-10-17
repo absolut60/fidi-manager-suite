@@ -99,6 +99,12 @@ export function ModificaAzioneDialog({
       toast.error("Data non valida");
       return;
     }
+    // Diventa promessa: stesse regole dell'inserimento (data e importo > 0 obbligatori).
+    if (esito === "promessa_pagamento" && azione.esito !== "promessa_pagamento") {
+      if (!dataPromessa) { toast.error("Indica la data della promessa"); return; }
+      const n = parseNumeroIt(importo);
+      if (n == null || n <= 0) { toast.error("Indica l'importo promesso (maggiore di zero)"); return; }
+    }
     setSaving(true);
     try {
       const patch: {
@@ -117,7 +123,7 @@ export function ModificaAzioneDialog({
         const trimmed = importo.trim();
         if (trimmed === "") patch.importo_riferimento = null;
         else {
-          const n = Number(trimmed);
+          const n = parseNumeroIt(trimmed) ?? NaN;
           if (!isNaN(n)) patch.importo_riferimento = n;
         }
       }

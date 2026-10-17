@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { SelettoreScadenzeAperte } from "@/components/selettore-scadenze-aperte";
+import { parseNumeroIt, formatNumeroIt } from "@/lib/numero-it";
 
 type Props = {
   open: boolean;
@@ -48,6 +49,8 @@ export function RegistraPromessaDialog({
   const [saving, setSaving] = useState(false);
   const [selectedScadenze, setSelectedScadenze] = useState<Set<string>>(new Set());
   const [totaleSelezionato, setTotaleSelezionato] = useState(0);
+  // true quando l'utente ha scritto l'importo a mano: non lo sovrascriviamo più.
+  const [importoManuale, setImportoManuale] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -57,6 +60,7 @@ export function RegistraPromessaDialog({
       setSaving(false);
       setSelectedScadenze(new Set());
       setTotaleSelezionato(0);
+      setImportoManuale(false);
     }
   }, [open, clienteId]);
 
@@ -83,6 +87,12 @@ export function RegistraPromessaDialog({
     [],
   );
 
+  // Proposta: somma delle fatture selezionate (modificabile).
+  useEffect(() => {
+    if (importoManuale) return;
+    setImporto(totaleSelezionato > 0 ? formatNumeroIt(totaleSelezionato, { minDecimals: 2, maxDecimals: 2 }) : "");
+  }, [totaleSelezionato, importoManuale]);
+
   async function handleSubmit() {
     if (saving) return;
     if (!dataPromessa) {
@@ -93,9 +103,10 @@ export function RegistraPromessaDialog({
       toast.error("La data della promessa non può essere nel passato");
       return;
     }
-    const importoNum = importo.trim() ? Number(importo.replace(",", ".")) : null;
-    if (importoNum != null && (!Number.isFinite(importoNum) || importoNum < 0)) {
-      toast.error("Importo non valido");
+    // Gemello del trigger trg_azioni_recupero_stato_promessa: importo obbligatorio > 0.
+    const importoNum = parseNumeroIt(importo);
+    if (importoNum == null || importoNum <= 0) {
+      toast.error("Indica l'importo promesso (maggiore di zero), es. 1.250,00");
       return;
     }
     setSaving(true);
@@ -159,7 +170,7 @@ export function RegistraPromessaDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-2 max-h-[70vh] overflow-y-auto">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="promessa-data">Data promessa *</Label>
               <Input
@@ -175,12 +186,12 @@ export function RegistraPromessaDialog({
             </div>
             <div className="space-y-1.5">
               <div className="flex items-center justify-between gap-2">
-                <Label htmlFor="promessa-importo">Importo (opzionale)</Label>
-                {selectedScadenze.size > 0 && (
+                <Label htmlFor="promessa-importo">Importo promesso *</Label>
+                {selectedScadenze.size > 0 && importoManuale && (
                   <button
                     type="button"
                     className="text-xs text-primary hover:underline"
-                    onClick={() => setImporto(String(totaleSelezionato.toFixed(2)))}
+                    onClick={() => setImportoManuale(false)}
                   >
                     Usa totale selezionato
                   </button>
@@ -188,14 +199,15 @@ export function RegistraPromessaDialog({
               </div>
               <Input
                 id="promessa-importo"
-                type="number"
+                type="text"
                 inputMode="decimal"
-                step="0.01"
-                min="0"
-                placeholder="€"
+                placeholder="es. 1.250,00 €"
                 value={importo}
-                onChange={(e) => setImporto(e.target.value)}
+                onChange={(e) => { setImportoManuale(true); setImporto(e.target.value); }}
               />
+              <p className="text-xs text-muted-foreground">
+                {selectedScadenze.size > 0 && !importoManuale ? "Proposto: somma delle fatture selezionate" : "Obbligatorio, maggiore di zero"}
+              </p>
             </div>
           </div>
           <div className="space-y-1.5">
