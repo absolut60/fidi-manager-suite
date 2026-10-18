@@ -70,7 +70,7 @@ export async function generaPdfPrivacyIscritto(opts: {
     // Non stampato (mostraConsensoMedia=false): il QR non raccoglie il consenso "media".
     consensoMarketingMedia: "no",
     consensoMarketingDiretto: whatsapp || marketingDiretto ? "si" : "no",
-    dettaglioCanaliMarketing: `Canali scelti dall'interessato: WhatsApp ${whatsapp ? "SI" : "NO"} - e-mail e altri contatti ${marketingDiretto ? "SI" : "NO"}.`,
+    consensiCanaliMarketing: { whatsapp, email: marketingDiretto },
     mostraConsensoMedia: false,
     dataFirma: opts.dataOraRaccolta,
     ...(opts.ip ? { ipRaccolta: opts.ip } : {}),
