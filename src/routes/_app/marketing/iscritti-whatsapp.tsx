@@ -347,7 +347,15 @@ export default function IscrittiWhatsappPage() {
     mutationFn: async (id: string) => {
       const { data, error } = await supabase.rpc("crea_lead_da_iscritto", { _id: id });
       if (error) throw error;
-      return data as { ok?: boolean; errore?: string; lead_id?: string };
+      const res = data as { ok?: boolean; errore?: string; lead_id?: string };
+      if (res?.ok !== false) {
+        try {
+          await allegaPrivacyIscritti({ data: { ids: [id] } });
+        } catch (e) {
+          console.error("[iscritti-whatsapp] allega privacy dopo crea lead:", e);
+        }
+      }
+      return res;
     },
     onSuccess: (res) => {
       if (res?.ok === false) toast.error(res.errore ?? "Operazione non riuscita");
