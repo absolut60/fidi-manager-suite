@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -117,7 +117,7 @@ function badgeDiagnostico(
   const avviso = info.decisione?.avviso ? (
     <Badge className="bg-amber-100 text-amber-800 border-amber-300">Impresa diversa</Badge>
   ) : null;
-  let base: React.ReactNode = null;
+  let base: ReactNode = null;
   if (info.esito === "ambiguo" && info.n_clienti_candidati >= 2)
     base = <Badge className="bg-amber-100 text-amber-800 border-amber-300">Più clienti possibili</Badge>;
   else if (info.esito === "collega_auto" && info.candidati_clienti[0])
@@ -270,6 +270,7 @@ export default function IscrittiWhatsappPage() {
         n_clienti_candidati: number;
         candidati_clienti: Array<{ cliente_id: string; ragione_sociale: string; motivi: string }>;
         candidati_lead: Array<{ lead_id: string; nominativo: string; motivi: string }>;
+        decisione?: { ok?: boolean; avviso?: string | null; regola?: string | null } | null;
       }>;
       const map: Record<string, (typeof arr)[number]> = {};
       for (const it of arr) map[it.iscritto_id] = it;
@@ -684,6 +685,9 @@ export default function IscrittiWhatsappPage() {
               {riconcilia?.azienda && (
                 <span className="block mt-1 text-xs">
                   Impresa dichiarata: <strong>{riconcilia.azienda}</strong>
+                  {classifica[riconcilia.id]?.decisione?.avviso ? (
+                    <Badge className="ml-2 bg-amber-100 text-amber-800 border-amber-300">Impresa diversa</Badge>
+                  ) : null}
                 </span>
               )}
             </DialogDescription>
