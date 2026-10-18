@@ -73,3 +73,31 @@ export function tipoAzioneVisualizzato(a: { tipo: string; esito?: string | null 
  * Gemello di isPromessaPagamento.
  */
 export const FILTRO_OR_PROMESSA = "tipo.eq.promessa_pagamento,esito.eq.promessa_pagamento";
+
+/** Data odierna locale in formato ISO (aaaa-mm-gg), per i confronti con data_promessa_pagamento. */
+export function oggiISOLocale(): string {
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+/** Giorni trascorsi da una data ISO (aaaa-mm-gg) a oggi (locale). */
+export function giorniDaOggi(iso: string): number {
+  const a = new Date(iso.slice(0, 10) + "T00:00:00").getTime();
+  const b = new Date(oggiISOLocale() + "T00:00:00").getTime();
+  return Math.round((b - a) / 86400000);
+}
+
+/**
+ * Fonte unica TS: promessa "da verificare" = stato attiva (NULL vale attiva)
+ * e scadenza promessa precedente a oggi. Usata da scheda Promesse del cliente,
+ * pagina Promesse di pagamento e riquadro "Ultima promessa" di Attività recupero.
+ */
+export function isPromessaDaVerificare(
+  a: { stato_promessa?: string | null; data_promessa_pagamento?: string | null },
+  oggi: string = oggiISOLocale(),
+): boolean {
+  return (a.stato_promessa ?? "attiva") === "attiva"
+    && !!a.data_promessa_pagamento
+    && a.data_promessa_pagamento.slice(0, 10) < oggi;
+}

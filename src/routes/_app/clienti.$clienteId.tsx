@@ -66,6 +66,9 @@ import { ClienteStoricoFidoTab } from "@/components/cliente-storico-fido-tab";
 import { ClienteInsolutiTab } from "@/components/cliente-insoluti-tab";
 import { useEsperienzaPagamentoCliente, testiPagateInRitardo } from "@/hooks/use-esperienza-pagamento";
 import { ClienteAttivitaRecuperoTab } from "@/components/cliente-attivita-recupero-tab";
+import { ClientePromesseTab } from "@/components/cliente-promesse-tab";
+import { useAzioniRecuperoCliente } from "@/hooks/use-azioni-recupero-cliente";
+import { isPromessaPagamento } from "@/lib/azioni-recupero-ui";
 import { AllegatiSection } from "@/components/allegati-section";
 import { ClienteFatturato } from "@/components/cliente-fatturato";
 import { ClienteMarketingTab } from "@/components/cliente-marketing-tab";
@@ -103,6 +106,7 @@ const TAB_VALUES = [
   "legali",
   "assicurazioni",
   "attivita",
+  "promesse",
   "allegati",
   "privacy",
   // legacy: vecchio contenitore "Dati Rischio" (retro-compatibilita' deep-link)
@@ -295,6 +299,11 @@ function ClienteDetail() {
         : "scadenziario"
       : (tab ?? "riepilogo");
   const isAgente = hasRole("agente");
+  // Conteggio per l'etichetta della scheda Promesse: stessa cache di Attività recupero.
+  const { azioni: azioniRecupero } = useAzioniRecuperoCliente(clienteId);
+  const nPromesseAttive = (azioniRecupero ?? []).filter(
+    (a) => isPromessaPagamento(a) && (a.stato_promessa ?? "attiva") === "attiva",
+  ).length;
   const { data: mestieri } = useCategorieSegmento("mestiere");
 
   const [openNew, setOpenNew] = useState(false);
@@ -590,6 +599,7 @@ function ClienteDetail() {
           <TabsTrigger value="scadenziario">Scadenziario</TabsTrigger>
           <TabsTrigger value="solleciti">Solleciti</TabsTrigger>
           <TabsTrigger value="piani">Piani di rientro</TabsTrigger>
+          <TabsTrigger value="promesse">Promesse ({nPromesseAttive} attive)</TabsTrigger>
           {!isStoreManager && <TabsTrigger value="legali">Pratiche legali</TabsTrigger>}
           {!isStoreManager && <TabsTrigger value="assicurazioni">Assicurazione</TabsTrigger>}
           <TabsTrigger value="attivita">Attività recupero</TabsTrigger>
@@ -853,7 +863,16 @@ function ClienteDetail() {
 
         <TabsContent value="attivita">
           <SectionErrorBoundary nome="Attività recupero">
-          <ClienteAttivitaRecuperoTab clienteId={clienteId} />
+          <ClienteAttivitaRecuperoTab
+            clienteId={clienteId}
+            onApriPromesse={() => navigate({ to: "/clienti/$clienteId", params: { clienteId }, search: (prev: any) => ({ ...prev, tab: "promesse" }) })}
+          />
+          </SectionErrorBoundary>
+        </TabsContent>
+
+        <TabsContent value="promesse">
+          <SectionErrorBoundary nome="Promesse">
+          <ClientePromesseTab clienteId={clienteId} />
           </SectionErrorBoundary>
         </TabsContent>
 
