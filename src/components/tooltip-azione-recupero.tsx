@@ -5,7 +5,7 @@
 import { useMemo, type ReactNode } from "react";
 import { TooltipDettaglio } from "@/components/tooltip-dettaglio";
 import { useAzioniRecuperoCliente, useOperatoriAttivita, type Azione } from "@/hooks/use-azioni-recupero-cliente";
-import { ESITO_AZIONE_LABEL, TIPO_AZIONE_LABEL, testoAzione } from "@/lib/azioni-recupero-ui";
+import { ESITO_AZIONE_LABEL, TIPO_AZIONE_LABEL, isPromessaPagamento, testoAzione, tipoAzioneVisualizzato } from "@/lib/azioni-recupero-ui";
 import { formatEuro } from "@/lib/fidi";
 import { labelStatoPromessa } from "@/components/stato-promessa";
 
@@ -54,11 +54,11 @@ function Dettaglio({ criterio, intestazione, etichetta }: {
     if ("promessaData" in criterio) {
       if (!criterio.promessaData) return null;
       const g = criterio.promessaData.slice(0, 10);
-      return lista.find((a) => a.esito === "promessa_pagamento" && (a.data_promessa_pagamento ?? "").slice(0, 10) === g) ?? null;
+      return lista.find((a) => isPromessaPagamento(a) && (a.data_promessa_pagamento ?? "").slice(0, 10) === g) ?? null;
     }
     if ("tipo" in criterio) {
       if (!criterio.tipo) return null;
-      const stessoTipo = lista.filter((a) => a.tipo === criterio.tipo);
+      const stessoTipo = lista.filter((a) => a.tipo === criterio.tipo || tipoAzioneVisualizzato(a) === criterio.tipo);
       const t = ms(criterio.data);
       const esatta = Number.isNaN(t) ? undefined : stessoTipo.find((a) => ms(a.data_azione) === t);
       if (esatta) return esatta;
@@ -74,7 +74,7 @@ function Dettaglio({ criterio, intestazione, etichetta }: {
     return `${o.nome ?? ""} ${o.cognome ?? ""}`.trim() || null;
   })();
 
-  const isPromessa = "promessaData" in criterio;
+  const isPromessa = "promessaData" in criterio || (azione != null && isPromessaPagamento(azione));
   const testo = azione ? testoAzione(azione) : null;
   const caricamento = !inMemoria && isLoading;
 
@@ -84,7 +84,7 @@ function Dettaglio({ criterio, intestazione, etichetta }: {
       {isPromessa ? (
         <>
           <div className={intestazione ? "" : "font-medium"}>
-            Promessa di pagamento{criterio.promessaData ? ` · scadenza promessa ${fmtGiorno(criterio.promessaData)}` : ""}
+            {etichetta && !("promessaData" in criterio) ? `${etichetta}: ` : ""}Promessa di pagamento{(() => { const d = "promessaData" in criterio ? criterio.promessaData : azione?.data_promessa_pagamento; return d ? ` · scadenza promessa ${fmtGiorno(d)}` : ""; })()}
           </div>
           {azione?.importo_riferimento != null && <div>Importo: {formatEuro(azione.importo_riferimento)}</div>}
           {azione && <div>Stato: {labelStatoPromessa(azione.stato_promessa)}</div>}
@@ -92,7 +92,7 @@ function Dettaglio({ criterio, intestazione, etichetta }: {
       ) : azione ? (
         <div>
           {etichetta ? `${etichetta}: ` : ""}
-          {TIPO_AZIONE_LABEL[azione.tipo] ?? azione.tipo}
+          {TIPO_AZIONE_LABEL[tipoAzioneVisualizzato(azione)] ?? azione.tipo}
           {azione.data_azione ? ` del ${fmtDataOra(azione.data_azione)}` : ""}
           {operatore ? ` · ${operatore}` : ""}
           {azione.esito ? ` · ${ESITO_AZIONE_LABEL[azione.esito] ?? azione.esito}` : ""}
