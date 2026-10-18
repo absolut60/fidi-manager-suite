@@ -342,7 +342,7 @@ export async function generaSchedaCliente(input: SchedaPdfInput): Promise<Uint8A
       testi.reduce((acc, t) => acc + wrapText(t, CW, 8, font).length * 8 * lh + 6 + 28, 0) +
       (testi.length - 1) * 12;
     const disponibile = y2 - (firmaY + 40);
-    while (consLH > 1.1 && altezza(consLH) > disponibile) consLH = Math.round((consLH - 0.05) * 100) / 100;
+    while (consLH > 1.0 && altezza(consLH) > disponibile) consLH = Math.round((consLH - 0.05) * 100) / 100;
   }
 
   y2 = drawConsentBlock(page2, y2, TESTO_PROFILAZIONE, toBool(input.consensoProfilazione));
