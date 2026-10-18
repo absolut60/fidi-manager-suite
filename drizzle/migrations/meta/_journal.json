@@ -421,6 +421,13 @@
       "when": 1792322705116,
       "tag": "0059_fm45_qr_whatsapp_motore_riconciliazione",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1792357415474,
+      "tag": "0060_fm45_p1_promessa_tipo_proprio",
+      "breakpoints": true
     }
   ]
 }

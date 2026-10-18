@@ -8050,6 +8050,10 @@ export type Database = {
         Args: { _sec_dopo_invio: number; _url_distinti_nel_burst: number }
         Returns: boolean
       }
+      is_promessa_pagamento: {
+        Args: { _esito: string; _tipo: string }
+        Returns: boolean
+      }
       lead_evento_provvisorio: { Args: { _lead_id: string }; Returns: boolean }
       livello_approvatore: { Args: { _user_id: string }; Returns: number }
       marca_comunicazioni_lette: {
