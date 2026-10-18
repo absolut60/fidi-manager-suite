@@ -309,6 +309,7 @@ export async function generaSchedaCliente(input: SchedaPdfInput): Promise<Uint8A
 
   // Interlinea dei soli riquadri consenso: 1.4 come sempre; ridotta solo con canali separati se lo spazio non basta.
   let consLH = 1.4;
+  let consRiga = 14;
   function drawConsentBlock(page: PDFPage, yPos: number, text: string, dato: boolean): number {
     const h = drawWrapped(page, text, ML, yPos, CW, 8, font, BLACK, consLH);
     yPos -= h + 6;
@@ -316,9 +317,9 @@ export async function generaSchedaCliente(input: SchedaPdfInput): Promise<Uint8A
     const si = dato ? "[X]" : "[ ]";
     const no = dato ? "[ ]" : "[X]";
     page.drawText(`${si}  fornisce il consenso`, { x: cx, y: yPos, size: 8, font, color: BLACK });
-    yPos -= 14;
+    yPos -= consRiga;
     page.drawText(`${no}  nega il consenso`, { x: cx, y: yPos, size: 8, font, color: BLACK });
-    yPos -= 14;
+    yPos -= consRiga;
     return yPos;
   }
 
@@ -338,11 +339,13 @@ export async function generaSchedaCliente(input: SchedaPdfInput): Promise<Uint8A
     const testi = [TESTO_PROFILAZIONE];
     if (input.mostraConsensoMedia !== false) testi.push(TESTO_MEDIA);
     testi.push(TESTO_WHATSAPP, TESTO_EMAIL);
-    const altezza = (lh: number) =>
-      testi.reduce((acc, t) => acc + wrapText(t, CW, 8, font).length * 8 * lh + 6 + 28, 0) +
+    const altezza = (lh: number, riga: number) =>
+      testi.reduce((acc, t) => acc + wrapText(t, CW, 8, font).length * 8 * lh + 6 + riga * 2, 0) +
       (testi.length - 1) * 12;
     const disponibile = y2 - (firmaY + 40);
-    while (consLH > 1.0 && altezza(consLH) > disponibile) consLH = Math.round((consLH - 0.05) * 100) / 100;
+    // Prima si riduce l'interlinea del testo (fino a 1,2), poi le righe fornisce/nega (fino a 11).
+    while (consLH > 1.2 && altezza(consLH, consRiga) > disponibile) consLH = Math.round((consLH - 0.05) * 100) / 100;
+    while (consRiga > 11 && altezza(consLH, consRiga) > disponibile) consRiga -= 1;
   }
 
   y2 = drawConsentBlock(page2, y2, TESTO_PROFILAZIONE, toBool(input.consensoProfilazione));
