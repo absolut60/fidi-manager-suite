@@ -23,3 +23,10 @@ Estratto dal knowledge di progetto il 08/10/2026 (sessione 40). Si aggiorna modi
 - **PDF privacy iscritto WhatsApp:** fonte unica `generaPdfPrivacyIscritto` (`src/lib/privacy-iscritto-whatsapp.server.ts`), generato per ogni iscrizione dalla pagina pubblica a prescindere dal collegamento; consensi letti da `consensi_log` dell'iscritto. Quando i canali marketing sono raccolti separatamente (QR WhatsApp, eventi) il PDF stampa un riquadro per WhatsApp e uno per email/altri contatti (`consensiCanaliMarketing` in `generaSchedaCliente`).
   - Allegato al contatto alla riconciliazione con `allegaPrivacyIscrittoAContatto` (data/IP della raccolta originale, nessuna email, regola FM37).
   - Vale anche per "Crea lead": `crea_lead_da_iscritto` crea il contatto del lead e adotta le prove consensi dell'iscritto.
+
+## Promessa di pagamento (FM45 P1/P2)
+
+- Una promessa di pagamento è un'azione di recupero (`azioni_recupero`) con `tipo = 'promessa_pagamento'`; alla creazione `esito = 'fatto'` (l'esito non si mostra né si modifica per le promesse).
+- Riconoscimento: fonte unica `isPromessaPagamento(a)` in `src/lib/azioni-recupero-ui.ts`, gemello SQL `public.is_promessa_pagamento(tipo, esito)`. Fino alla conversione (P3) riconoscono anche la forma vecchia `tipo 'nota' + esito 'promessa_pagamento'`; in P4 diventeranno solo il tipo. Per le query PostgREST usare `FILTRO_OR_PROMESSA`; per etichette/icone/filtri `tipoAzioneVisualizzato(a)`.
+- Lo stato si gestisce con `stato_promessa` (attiva/mantenuta/disattesa/annullata), regole in `puoCambiareStatoPromessa` (gemello: trigger `trg_azioni_recupero_stato_promessa`). Nessun esito.
+- Creazione solo da `RegistraPromessaDialog`; modifica da `ModificaAzioneDialog` (scadenza, importo, note, scadenze collegate; niente esito, niente cambio tipo).

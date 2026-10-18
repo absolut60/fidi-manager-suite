@@ -428,6 +428,13 @@
       "when": 1792357415474,
       "tag": "0060_fm45_p1_promessa_tipo_proprio",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1792357960918,
+      "tag": "0061_fm45_p2_revoke_anon_trigger_fn",
+      "breakpoints": true
     }
   ]
 }
