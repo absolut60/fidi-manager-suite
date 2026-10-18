@@ -400,6 +400,13 @@
       "when": 1792319666959,
       "tag": "0056_fm45_crea_contatto_iscritto_consensi",
       "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1792321719120,
+      "tag": "0057_fm45_crea_lead_da_iscritto_contatto_consensi",
+      "breakpoints": true
     }
   ]
 }
