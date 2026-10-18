@@ -29,7 +29,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { useEsperienzaPagamentoCliente, testiPagateInRitardo } from "@/hooks/use-esperienza-pagamento";
 import { useAzioniRecuperoCliente, useOperatoriAttivita, useStadioSollecitoCliente } from "@/hooks/use-azioni-recupero-cliente";
-import { FILTRO_OR_PROMESSA, TIPO_AZIONE_ICON, TIPO_AZIONE_LABEL, testoAzione, tipoAzioneVisualizzato } from "@/lib/azioni-recupero-ui";
+import { TIPO_PROMESSA, TIPO_AZIONE_ICON, TIPO_AZIONE_LABEL, testoAzione, tipoAzioneVisualizzato } from "@/lib/azioni-recupero-ui";
 import { TooltipAzioneRecupero } from "@/components/tooltip-azione-recupero";
 import { StadioSollecitoBadge } from "@/components/stadio-sollecito-badge";
 import { ClienteAttivitaRecuperoTab } from "@/components/cliente-attivita-recupero-tab";
@@ -1388,7 +1388,7 @@ function PromesseAttiveBlock({ clienteId }: { clienteId: string }) {
         .from("azioni_recupero")
         .select("id, data_promessa_pagamento, importo_riferimento, note")
         .eq("cliente_id", clienteId)
-        .or(FILTRO_OR_PROMESSA)
+        .eq("tipo", TIPO_PROMESSA)
         .gte("data_promessa_pagamento", oggi.toISOString().slice(0, 10))
         .order("data_promessa_pagamento", { ascending: true });
       if (error) throw error;
