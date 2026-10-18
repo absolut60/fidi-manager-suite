@@ -230,7 +230,7 @@ export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda, onApriProm
             {...(onApriPromesse ? {
               role: "link", tabIndex: 0, title: "Apri la scheda Promesse",
               onClick: onApriPromesse,
-              onKeyDown: (e: React.KeyboardEvent) => { if (e.key === "Enter") onApriPromesse(); },
+              onKeyDown: (e: { key: string }) => { if (e.key === "Enter") onApriPromesse(); },
             } : {})}
           >
             <div className="text-xs uppercase tracking-wider text-muted-foreground">Ultima promessa{onApriPromesse ? " →" : ""}</div>
