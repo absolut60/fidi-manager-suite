@@ -2,10 +2,12 @@
 // Promessa = azioni_recupero con esito 'promessa_pagamento'. Visibilità: RLS esistenti.
 // Importo efficace: promesse_attive_importo_efficace() (fonte unica DB, non ricalcolato qui).
 // Previsione: get_previsione_incassi_coperture (riga origine='promessa').
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, HandCoins, Search } from "lucide-react";
+import { ArrowDown, ArrowUp, HandCoins, Plus, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { RegistraPromessaSelectorDialog } from "@/components/registra-promessa-selector-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
@@ -74,6 +76,7 @@ type SortKey = "cliente" | "negozio" | "data" | "importo" | "stato" | "inserita"
 
 function PromessePage() {
   const { user } = useAuth();
+  const [nuovaOpen, setNuovaOpen] = useState(false);
   const { nomeUtente } = useNomiUtenti();
   const { daVerificare: daVerificareUrl } = Route.useSearch();
   const { filtri, setCampo, setParziale } = useFiltriPagina("recupero-crediti-promesse", {
@@ -217,13 +220,19 @@ function PromessePage() {
 
   return (
     <div className="space-y-4 min-w-0">
-      <div className="flex items-center gap-3 min-w-0">
-        <HandCoins className="size-7 text-primary shrink-0" />
-        <div className="min-w-0">
-          <h1 className="text-xl sm:text-2xl font-semibold">Promesse di pagamento</h1>
-          <p className="text-sm text-muted-foreground">Impegni di pagamento presi dai clienti e loro esito</p>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 min-w-0">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <HandCoins className="size-7 text-primary shrink-0" />
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-semibold">Promesse di pagamento</h1>
+            <p className="text-sm text-muted-foreground">Impegni di pagamento presi dai clienti e loro esito</p>
+          </div>
         </div>
+        <Button onClick={() => setNuovaOpen(true)} className="w-full sm:w-auto shrink-0 gap-1.5 min-h-10">
+          <Plus className="size-4" /><HandCoins className="size-4" /> Nuova promessa
+        </Button>
       </div>
+      <RegistraPromessaSelectorDialog open={nuovaOpen} onOpenChange={setNuovaOpen} />
 
       <Card className="p-3 sm:p-4 space-y-3">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
