@@ -129,7 +129,7 @@ function IscrizioneWhatsappPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Impresa (facoltativo)</Label>
+              <Label>Impresa</Label>
               <Input
                 placeholder="es. Rossi Costruzioni Srl"
                 value={azienda}
@@ -137,7 +137,7 @@ function IscrizioneWhatsappPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Email (facoltativa)</Label>
+              <Label>Email</Label>
               <Input
                 type="email"
                 inputMode="email"

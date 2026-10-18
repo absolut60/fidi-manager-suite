@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -150,6 +150,8 @@ export default function IscrittiWhatsappPage() {
   const [daCreareLead, setDaCreareLead] = useState<Iscritto | null>(null);
 
 
+  const navigate = useNavigate();
+
   useEffect(() => {
     setPagina(0);
   }, [stato, origine, q]);
@@ -201,6 +203,37 @@ export default function IscrittiWhatsappPage() {
       return { righe: (data ?? []) as Iscritto[], totale: count ?? 0 };
     },
   });
+
+  // Nomi dei collegati: una query in blocco per tabella sugli id della pagina.
+  const idsClienti = [...new Set((listaQuery.data?.righe ?? []).map((r) => r.cliente_id).filter((x): x is string => !!x))].sort();
+  const idsLead = [...new Set((listaQuery.data?.righe ?? []).filter((r) => !r.cliente_id).map((r) => r.lead_id).filter((x): x is string => !!x))].sort();
+  const nomiCollegatiQuery = useQuery({
+    queryKey: ["iscritti-whatsapp-nomi", idsClienti.join(","), idsLead.join(",")],
+    enabled: idsClienti.length + idsLead.length > 0,
+    queryFn: async () => {
+      const mappa: Record<string, string> = {};
+      const [cl, ld] = await Promise.all([
+        idsClienti.length ? supabase.from("clienti").select("id, ragione_sociale").in("id", idsClienti) : Promise.resolve({ data: [], error: null }),
+        idsLead.length ? supabase.from("lead").select("id, ragione_sociale, nome, cognome").in("id", idsLead) : Promise.resolve({ data: [], error: null }),
+      ]);
+      for (const c of (cl.data ?? []) as Array<{ id: string; ragione_sociale: string | null }>) if (c.ragione_sociale) mappa[c.id] = c.ragione_sociale;
+      for (const l of (ld.data ?? []) as Array<{ id: string; ragione_sociale: string | null; nome: string | null; cognome: string | null }>) {
+        const n = l.ragione_sociale?.trim() || `${l.nome ?? ""} ${l.cognome ?? ""}`.trim();
+        if (n) mappa[l.id] = n;
+      }
+      return mappa;
+    },
+  });
+  const nomiCollegati = nomiCollegatiQuery.data ?? {};
+
+  const apriRiga = (r: Iscritto) => {
+    if (r.cliente_id) navigate({ to: "/clienti/$clienteId", params: { clienteId: r.cliente_id } });
+    else if (r.lead_id) navigate({ to: "/lead/$leadId", params: { leadId: r.lead_id } });
+    else if (r.stato === "nuovo") {
+      setRiconcilia(r);
+      setClienteScelto(null);
+    }
+  };
 
   const idsNuovi = (listaQuery.data?.righe ?? [])
     .filter((r) => r.stato === "nuovo")
@@ -471,7 +504,7 @@ export default function IscrittiWhatsappPage() {
               </TableRow>
             ) : (
               righe.map((r) => (
-                <TableRow key={r.id}>
+                <TableRow key={r.id} className="cursor-pointer hover:bg-muted/60" onClick={() => apriRiga(r)}>
                   <TableCell className="font-mono text-sm">
                     {r.numero_raw ?? r.numero_norm ?? "—"}
                   </TableCell>
@@ -494,14 +527,14 @@ export default function IscrittiWhatsappPage() {
 
                   <TableCell>
                     {r.cliente_id ? (
-                      <Badge variant="secondary">Cliente</Badge>
+                      <div className="flex min-w-0 flex-col items-start gap-1"><Badge variant="secondary">Cliente</Badge>{nomiCollegati[r.cliente_id] && <span className="text-sm break-words line-clamp-2">{nomiCollegati[r.cliente_id]}</span>}</div>
                     ) : r.lead_id ? (
-                      <Badge variant="secondary">Lead</Badge>
+                      <div className="flex min-w-0 flex-col items-start gap-1"><Badge variant="secondary">Lead</Badge>{nomiCollegati[r.lead_id] && <span className="text-sm break-words line-clamp-2">{nomiCollegati[r.lead_id]}</span>}</div>
                     ) : (
                       "—"
                     )}
                   </TableCell>
-                  <TableCell className="text-right space-x-2">
+                  <TableCell className="text-right space-x-2" onClick={(e) => e.stopPropagation()}>
                     {r.stato === "nuovo" && (
                       <>
                         <Button
