@@ -192,7 +192,7 @@ export default function IscrittiWhatsappPage() {
       if (q) {
         const like = `%${q}%`;
         req = req.or(
-          `numero_raw.ilike.${like},nome.ilike.${like},cognome.ilike.${like},azienda.ilike.${like}`,
+          `numero_raw.ilike.${like},numero_norm.ilike.${like},nome.ilike.${like},cognome.ilike.${like},azienda.ilike.${like}`,
         );
       }
       req = req.range(pagina * PAGE_SIZE, pagina * PAGE_SIZE + PAGE_SIZE - 1);
