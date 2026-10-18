@@ -34,7 +34,7 @@ import { LetteraPdfDialog } from "@/components/lettera-pdf-dialog";
 import { puoInviareComunicazioniRecupero } from "@/lib/recupero-permessi";
 import type { TipoAzione } from "@/components/reminder-controls";
 import { useAzioniRecuperoCliente, useOperatoriAttivita, useStadioSollecitoCliente, type Azione } from "@/hooks/use-azioni-recupero-cliente";
-import { ESITO_AZIONE_LABEL, TIPO_AZIONE_ICON, TIPO_AZIONE_LABEL, testoAzione } from "@/lib/azioni-recupero-ui";
+import { ESITO_AZIONE_LABEL, TIPO_AZIONE_ICON, TIPO_AZIONE_LABEL, isPromessaPagamento, testoAzione, tipoAzioneVisualizzato } from "@/lib/azioni-recupero-ui";
 import { StadioSollecitoBadge } from "@/components/stadio-sollecito-badge";
 
 function fmtData(v: string) {
@@ -44,8 +44,9 @@ function fmtData(v: string) {
 
 type Esito = "da_fare" | "fatto" | "nessuna_risposta" | "promessa_pagamento" | "contestazione" | "pagato";
 
+// Scelte del menu esito: 'promessa_pagamento' non è più un esito (FM45 P2), resta solo in esitoBadge per i dati vecchi.
 const ESITI: { value: Esito; label: string }[] = (
-  ["da_fare", "fatto", "nessuna_risposta", "promessa_pagamento", "contestazione", "pagato"] as Esito[]
+  ["da_fare", "fatto", "nessuna_risposta", "contestazione", "pagato"] as Esito[]
 ).map((value) => ({ value, label: ESITO_AZIONE_LABEL[value] }));
 
 const TIPO_ICON = TIPO_AZIONE_ICON;
@@ -60,7 +61,7 @@ function esitoBadge(e: Esito) {
     contestazione: "bg-destructive text-destructive-foreground hover:bg-destructive",
     pagato: "bg-emerald-600 text-white hover:bg-emerald-600",
   };
-  return <Badge className={map[e]}>{ESITI.find((x) => x.value === e)?.label ?? e}</Badge>;
+  return <Badge className={map[e]}>{ESITO_AZIONE_LABEL[e] ?? e}</Badge>;
 }
 
 function fmtEuro(v: unknown) {
@@ -115,7 +116,7 @@ export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda }: { client
   const ultimaPromessa = useMemo(() => {
     let best: Azione | null = null;
     for (const a of azioni ?? []) {
-      if (a.esito !== "promessa_pagamento" || !a.data_promessa_pagamento) continue;
+      if (!isPromessaPagamento(a) || !a.data_promessa_pagamento) continue;
       if (!best || a.data_promessa_pagamento > (best.data_promessa_pagamento ?? "")) best = a;
     }
     return best;
@@ -129,14 +130,6 @@ export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda }: { client
   const testoUltima = ultimaFatta ? testoAzione(ultimaFatta) : null;
 
   async function updateEsito(id: string, nextEsito: Esito) {
-    // Una promessa richiede data e importo > 0: dal selettore rapido non si possono indicare.
-    if (nextEsito === "promessa_pagamento") {
-      const az = (azioni ?? []).find((x) => x.id === id);
-      if (!az?.data_promessa_pagamento || !(Number(az.importo_riferimento ?? 0) > 0)) {
-        toast.error("Per una promessa servono data e importo: usa «Registra promessa» o modifica l'azione");
-        return;
-      }
-    }
     const { error } = await supabase
       .from("azioni_recupero")
       .update({ esito: nextEsito })
@@ -250,7 +243,7 @@ export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda }: { client
             <div className="text-xs uppercase tracking-wider text-muted-foreground">Prossima pianificata</div>
             {prossima ? (
               <div className="mt-1 text-sm break-words">
-                <div className="font-medium">{TIPO_LABEL[prossima.tipo]}</div>
+                <div className="font-medium">{TIPO_LABEL[tipoAzioneVisualizzato(prossima)]}</div>
                 <div className="text-muted-foreground">
                   {fmtDateTime(prossima.data_azione)}
                   {prossima.operatore_id && operatoreMap[prossima.operatore_id] ? ` · ${operatoreMap[prossima.operatore_id]}` : ""}
@@ -267,7 +260,7 @@ export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda }: { client
             <div className="text-xs uppercase tracking-wider text-muted-foreground">Ultima azione fatta</div>
             {ultimaFatta ? (
               <div className="mt-1 text-sm break-words">
-                <div className="font-medium">{TIPO_LABEL[ultimaFatta.tipo]}</div>
+                <div className="font-medium">{TIPO_LABEL[tipoAzioneVisualizzato(ultimaFatta)]}</div>
                 <div className="text-muted-foreground">
                   {fmtDateTime(ultimaFatta.data_azione)}
                   {ultimaFatta.operatore_id && operatoreMap[ultimaFatta.operatore_id] ? ` · ${operatoreMap[ultimaFatta.operatore_id]}` : ""}
@@ -449,7 +442,7 @@ export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda }: { client
             <AlertDialogDescription asChild>
               <div className="space-y-2">
                 <div>
-                  {deleteAzione ? TIPO_LABEL[deleteAzione.tipo] : ""} del {deleteAzione ? fmtDateTime(deleteAzione.data_azione) : ""}.
+                  {deleteAzione ? TIPO_LABEL[tipoAzioneVisualizzato(deleteAzione)] : ""} del {deleteAzione ? fmtDateTime(deleteAzione.data_azione) : ""}.
                   Verranno rimossi anche eventuali allegati collegati (file e righe). L'operazione è irreversibile.
                 </div>
                 {deleteAzione?.tipo === "email" && deleteAzione.livello_sollecito != null && deleteAzione.livello_sollecito > 0 && (
@@ -508,7 +501,9 @@ function TimelineItem({
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const Icon = TIPO_ICON[azione.tipo] ?? Activity;
+  const tipoVis = tipoAzioneVisualizzato(azione);
+  const promessa = isPromessaPagamento(azione);
+  const Icon = TIPO_ICON[tipoVis] ?? Activity;
   const [showAllegati, setShowAllegati] = useState(false);
   return (
     <div className={`rounded-md border p-3 ${highlight ? "border-yellow-500/40 bg-yellow-500/5" : "border-border bg-background"}`}>
@@ -518,7 +513,7 @@ function TimelineItem({
         </div>
         <div className="flex-1 min-w-0 space-y-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-medium text-sm">{TIPO_LABEL[azione.tipo]}</span>
+            <span className="font-medium text-sm">{TIPO_LABEL[tipoVis] ?? tipoVis}</span>
             <span className="text-xs text-muted-foreground">{fmtDateTime(azione.data_azione)}</span>
             {operatoreName && (
               <span className="text-xs text-muted-foreground">· {operatoreName}</span>
@@ -550,10 +545,11 @@ function TimelineItem({
           </div>
         </div>
         <div className="shrink-0 flex flex-col items-end gap-1.5">
-          {esitoBadge(azione.esito)}
-          {azione.esito === "promessa_pagamento" && (
+          {/* Promessa: niente esito, solo lo stato (Attiva/Mantenuta/Disattesa/Annullata). */}
+          {promessa ? (
             <SelettoreStatoPromessa azioneId={azione.id} clienteId={azione.cliente_id} stato={azione.stato_promessa} />
-          )}
+          ) : (<>
+          {esitoBadge(azione.esito)}
           <Select value={azione.esito} onValueChange={(v) => onChangeEsito(v as Esito)}>
             <SelectTrigger className="h-7 w-[150px] text-xs">
               <SelectValue />
@@ -564,6 +560,7 @@ function TimelineItem({
               ))}
             </SelectContent>
           </Select>
+          </>)}
           {canEdit && (
             <div className="flex gap-1">
               <Button size="icon" variant="ghost" className="size-7" onClick={onEdit} title="Modifica">
