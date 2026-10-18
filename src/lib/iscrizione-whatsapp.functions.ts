@@ -70,7 +70,7 @@ export const iscriviWhatsapp = createServerFn({ method: "POST" })
     );
     if (error) throw new Error(error.message);
 
-    const out = res as { ok: boolean; errore?: string; esito?: string };
+    const out = res as { ok: boolean; errore?: string; esito?: string; numero?: string };
     if (!out?.ok) {
       throw new Error(
         out?.errore === "numero_non_valido"
@@ -183,6 +183,91 @@ export const iscriviWhatsapp = createServerFn({ method: "POST" })
       }
     } catch (e) {
       console.error("[iscrizione-whatsapp] generazione PDF/mail QR fallita", e);
+    }
+
+    // Notifica in app (push dal trigger esistente) ai destinatari configurati. Mai fatale.
+    try {
+      if (out.numero) {
+        const { data: iscr } = await supabaseAdmin
+          .from("iscritti_whatsapp")
+          .select("id, cliente_id, lead_id, stato, numero_norm")
+          .eq("numero_norm", out.numero)
+          .neq("stato", "ignorato")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        const { data: conf } = await supabaseAdmin
+          .from("configurazioni")
+          .select("valore")
+          .eq("chiave", "notifica_iscrizioni_whatsapp_destinatari")
+          .maybeSingle();
+        const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const ids = Array.from(
+          new Set(
+            (conf?.valore ?? "")
+              .split(",")
+              .map((s) => s.trim())
+              .filter((s) => uuidRe.test(s))
+          )
+        );
+        let destinatari: string[] = [];
+        if (ids.length > 0) {
+          const { data: prof } = await supabaseAdmin
+            .from("profili")
+            .select("id")
+            .in("id", ids)
+            .eq("attivo", true);
+          destinatari = (prof ?? []).map((p) => p.id);
+        }
+
+        if (iscr && destinatari.length > 0) {
+          let collegamento = "Da controllare: nessun cliente o lead collegato";
+          if (iscr.cliente_id) {
+            const { data: cl } = await supabaseAdmin
+              .from("clienti")
+              .select("ragione_sociale, codice_gestionale")
+              .eq("id", iscr.cliente_id)
+              .maybeSingle();
+            collegamento = `Collegato al cliente ${cl?.ragione_sociale ?? "?"} (${cl?.codice_gestionale ?? "?"}) per numero di cellulare`;
+          } else if (iscr.lead_id) {
+            const { data: ld } = await supabaseAdmin
+              .from("lead")
+              .select("ragione_sociale, nome, cognome")
+              .eq("id", iscr.lead_id)
+              .maybeSingle();
+            const nominativo =
+              ld?.ragione_sociale?.trim() ||
+              [ld?.nome, ld?.cognome].filter(Boolean).join(" ").trim() ||
+              "?";
+            collegamento = `Collegato al lead ${nominativo} per numero di cellulare`;
+          }
+          const azienda = (data.azienda ?? "").trim();
+          const messaggio =
+            collegamento +
+            (azienda ? ` · Impresa dichiarata: ${azienda}` : " · Nessuna impresa dichiarata") +
+            ` · Email: ${data.consenso_marketing ? "sì" : "no"}`;
+          const numeroNorm = iscr.numero_norm ?? out.numero;
+          const righe = destinatari.map((user_id) => ({
+            user_id,
+            tipo: "iscrizione_whatsapp",
+            titolo: `Nuova iscrizione WhatsApp: ${data.nome} ${data.cognome}`,
+            messaggio,
+            link: `/marketing/iscritti-whatsapp?q=${encodeURIComponent(numeroNorm)}`,
+            metadata: {
+              iscritto_id: iscr.id,
+              cliente_id: iscr.cliente_id,
+              lead_id: iscr.lead_id,
+              stato: iscr.stato,
+              origine: data.origine,
+            },
+          }));
+          const { error: eNot } = await supabaseAdmin.from("notifiche").insert(righe);
+          if (eNot) console.error("[iscrizione-whatsapp] notifica:", eNot.message);
+        }
+      }
+    } catch (e) {
+      console.error("[iscrizione-whatsapp] notifica", e);
     }
 
     return { ok: true };

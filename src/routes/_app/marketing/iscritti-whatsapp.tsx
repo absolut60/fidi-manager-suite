@@ -55,6 +55,9 @@ import { salvaWorkbook } from "@/lib/salva-workbook";
 
 export const Route = createFileRoute("/_app/marketing/iscritti-whatsapp")({
   component: IscrittiWhatsappPage,
+  // q facoltativo: precompila la ricerca (link dalla notifica iscrizione_whatsapp).
+  validateSearch: (s: Record<string, unknown>): { q?: string } =>
+    typeof s.q === "string" || typeof s.q === "number" ? { q: String(s.q) } : {},
 });
 
 const PAGE_SIZE = 50;
@@ -137,7 +140,8 @@ export default function IscrittiWhatsappPage() {
   const [pagina, setPagina] = useState(0);
   const [stato, setStato] = useState<string>("tutti");
   const [origine, setOrigine] = useState<string>("tutti");
-  const [ricerca, setRicerca] = useState("");
+  const { q: qIniziale } = Route.useSearch();
+  const [ricerca, setRicerca] = useState(qIniziale ?? "");
   const q = useDebounced(ricerca.trim().toLowerCase(), 300);
 
   const [riconcilia, setRiconcilia] = useState<Iscritto | null>(null);

@@ -379,6 +379,13 @@
       "when": 1792266492780,
       "tag": "0053_fm45_per_store_full_join_fix",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1792312032688,
+      "tag": "0054_fm45_notifica_iscrizione_whatsapp_catalogo",
+      "breakpoints": true
     }
   ]
 }
