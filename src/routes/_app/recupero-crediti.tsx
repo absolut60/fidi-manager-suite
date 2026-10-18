@@ -17,7 +17,6 @@ import {
   Phone,
   Bell,
   StickyNote,
-  HandCoins,
   FileText,
   Send,
   AlertTriangle,
