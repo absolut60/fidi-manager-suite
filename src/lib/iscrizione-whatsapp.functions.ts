@@ -78,84 +78,37 @@ export const iscriviWhatsapp = createServerFn({ method: "POST" })
           : "Non è stato possibile registrare l'iscrizione. Riprova."
       );
     }
-    // Prova documentale: PDF telematico + email + prova_path. Mai fatale.
+    // Prova documentale: PDF telematico + prova_path + email (se presente). Mai fatale.
     try {
-      const { data: isc } = await supabaseAdmin
-        .from("iscritti_whatsapp")
-        .select("id, contatto_id, cliente_id, email, nome, cognome, azienda, numero_norm")
-        .eq("numero_raw", data.numero)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      const { data: isc } = out.numero
+        ? await supabaseAdmin
+            .from("iscritti_whatsapp")
+            .select("id, contatto_id, email")
+            .eq("numero_norm", out.numero)
+            .neq("stato", "ignorato")
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle()
+        : { data: null };
 
-      const contattoId = isc?.contatto_id ?? null;
-      const emailDich = (isc?.email ?? data.email ?? "").trim();
-
-      if (isc && contattoId && emailDich) {
-        let ragioneSociale = (isc.azienda ?? "").trim();
-        let partitaIva: string | undefined;
-        let codiceFiscaleDich: string | undefined;
-        let residenza: string | undefined;
-        if (isc.cliente_id) {
-          const { risolviIntestazioneSoggetto } = await import("./intestazione-soggetto.server");
-          const soggetto = await risolviIntestazioneSoggetto({ cliente_id: isc.cliente_id });
-          if (soggetto.ragione_sociale) ragioneSociale = soggetto.ragione_sociale;
-          partitaIva = soggetto.partita_iva ?? undefined;
-          codiceFiscaleDich = soggetto.codice_fiscale ?? undefined;
-          residenza = [soggetto.indirizzo, soggetto.citta].filter(Boolean).join(" - ") || undefined;
-        }
-
+      if (isc) {
+        const contattoId = isc.contatto_id ?? null;
+        const emailDich = ((data.email ?? "").trim() || (isc.email ?? "").trim());
         const now = new Date();
-        const { generaSchedaCliente } = await import("./scheda-pdf");
-        const pdfBytes = await generaSchedaCliente({
-          tipo: "aggiornamento",
-          ragioneSociale,
-          dichiaranteNome: data.nome,
-          dichiaranteCognome: data.cognome,
-          ...(partitaIva ? { partitaIva } : {}),
-          ...(codiceFiscaleDich ? { codiceFiscaleDich } : {}),
-          ...(residenza ? { residenza } : {}),
-          cellulareDich: isc.numero_norm ?? data.numero,
-          emailDich,
-          consensoProfilazione: data.consenso_profilazione ? "si" : "no",
-          // Non stampato (mostraConsensoMedia=false): il QR non raccoglie il consenso "media".
-          consensoMarketingMedia: "no",
-          consensoMarketingDiretto: data.consenso_marketing ? "si" : "no",
-          mostraConsensoMedia: false,
-          dataFirma: now,
-          ...(ip ? { ipRaccolta: ip } : {}),
-          dataOraRaccolta: now.toLocaleString("it-IT", { timeZone: "Europe/Rome" }),
+        const { generaPdfPrivacyIscritto } = await import("./privacy-iscritto-whatsapp.server");
+        const { pdfBytes, ragioneSociale } = await generaPdfPrivacyIscritto({
+          iscrittoId: isc.id,
+          ip,
+          dataOraRaccolta: now,
         });
 
-        const pdfPath = `contatti/${contattoId}/privacy-qr-${now.getTime()}.pdf`;
+        const pdfPath = contattoId
+          ? `contatti/${contattoId}/privacy-qr-${now.getTime()}.pdf`
+          : `iscritti/${isc.id}/privacy-qr-${now.getTime()}.pdf`;
         const { error: ePdf } = await supabaseAdmin.storage
           .from("documenti-privacy")
           .upload(pdfPath, pdfBytes, { upsert: true, contentType: "application/pdf" });
         if (ePdf) throw new Error(ePdf.message);
-
-        const { data: pdfSigned, error: eSigned } = await supabaseAdmin.storage
-          .from("documenti-privacy")
-          .createSignedUrl(pdfPath, 60 * 60 * 24 * 365 * 10);
-        if (eSigned) throw new Error(eSigned.message);
-
-        // FM37: non sostituire un documento privacy già presente o firmato.
-        const { data: contEsistente, error: eCont } = await supabaseAdmin
-          .from("contatti")
-          .select("pdf_privacy_path, privacy_firmata")
-          .eq("id", contattoId)
-          .maybeSingle();
-        if (eCont) console.error("[iscrizione-whatsapp] lettura contatto fallita:", eCont.message);
-        const giaPresente =
-          !!eCont || !!contEsistente?.pdf_privacy_path || contEsistente?.privacy_firmata === true;
-        if (giaPresente) {
-          console.log(`[iscrizione-whatsapp] contatto ${contattoId}: documento privacy esistente preservato`);
-        } else {
-          const { error: eUpd } = await supabaseAdmin
-            .from("contatti")
-            .update({ pdf_privacy_url: pdfSigned.signedUrl, pdf_privacy_path: pdfPath })
-            .eq("id", contattoId);
-          if (eUpd) console.error("[iscrizione-whatsapp] update contatto PDF fallito:", eUpd.message);
-        }
 
         const { error: eLog } = await supabaseAdmin
           .from("consensi_log")
@@ -164,21 +117,49 @@ export const iscriviWhatsapp = createServerFn({ method: "POST" })
           .is("prova_path", null);
         if (eLog) console.error("[iscrizione-whatsapp] update prova_path fallito:", eLog.message);
 
-        try {
-          let binary = "";
-          for (let i = 0; i < pdfBytes.length; i++) binary += String.fromCharCode(pdfBytes[i]);
-          const { buildPrivacyPdfEmailPayload } = await import("./email-template");
-          const payload = buildPrivacyPdfEmailPayload({
-            toName: [data.nome, data.cognome].filter(Boolean).join(" ").trim() || "Cliente",
-            ragioneSociale,
-            dataFirma: now.toISOString(),
-            pdfBase64: btoa(binary),
-          });
-          const { sendEmailViaEdge } = await import("./inngest/send-email.server");
-          const esito = await sendEmailViaEdge({ to: emailDich, ...payload });
-          if (!esito.ok) console.error("[iscrizione-whatsapp] invio email QR fallito:", esito.err);
-        } catch (e) {
-          console.error("[iscrizione-whatsapp] invio email QR fallito:", e);
+        if (contattoId) {
+          const { data: pdfSigned, error: eSigned } = await supabaseAdmin.storage
+            .from("documenti-privacy")
+            .createSignedUrl(pdfPath, 60 * 60 * 24 * 365 * 10);
+          if (eSigned) throw new Error(eSigned.message);
+
+          // FM37: non sostituire un documento privacy già presente o firmato.
+          const { data: contEsistente, error: eCont } = await supabaseAdmin
+            .from("contatti")
+            .select("pdf_privacy_path, privacy_firmata")
+            .eq("id", contattoId)
+            .maybeSingle();
+          if (eCont) console.error("[iscrizione-whatsapp] lettura contatto fallita:", eCont.message);
+          const giaPresente =
+            !!eCont || !!contEsistente?.pdf_privacy_path || contEsistente?.privacy_firmata === true;
+          if (giaPresente) {
+            console.log(`[iscrizione-whatsapp] contatto ${contattoId}: documento privacy esistente preservato`);
+          } else {
+            const { error: eUpd } = await supabaseAdmin
+              .from("contatti")
+              .update({ pdf_privacy_url: pdfSigned.signedUrl, pdf_privacy_path: pdfPath })
+              .eq("id", contattoId);
+            if (eUpd) console.error("[iscrizione-whatsapp] update contatto PDF fallito:", eUpd.message);
+          }
+        }
+
+        if (emailDich) {
+          try {
+            let binary = "";
+            for (let i = 0; i < pdfBytes.length; i++) binary += String.fromCharCode(pdfBytes[i]);
+            const { buildPrivacyPdfEmailPayload } = await import("./email-template");
+            const payload = buildPrivacyPdfEmailPayload({
+              toName: [data.nome, data.cognome].filter(Boolean).join(" ").trim() || "Cliente",
+              ragioneSociale,
+              dataFirma: now.toISOString(),
+              pdfBase64: btoa(binary),
+            });
+            const { sendEmailViaEdge } = await import("./inngest/send-email.server");
+            const esito = await sendEmailViaEdge({ to: emailDich, ...payload });
+            if (!esito.ok) console.error("[iscrizione-whatsapp] invio email QR fallito:", esito.err);
+          } catch (e) {
+            console.error("[iscrizione-whatsapp] invio email QR fallito:", e);
+          }
         }
       }
     } catch (e) {
