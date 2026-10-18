@@ -393,6 +393,13 @@
       "when": 1792317248175,
       "tag": "0055_0055_export_iscritti_q_numero_norm",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1792319666959,
+      "tag": "0056_fm45_crea_contatto_iscritto_consensi",
+      "breakpoints": true
     }
   ]
 }
