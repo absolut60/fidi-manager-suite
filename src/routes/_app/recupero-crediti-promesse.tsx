@@ -301,7 +301,7 @@ function PromessePage() {
                   <Importo r={r} />
                 </div>
                 <div className="text-xs text-muted-foreground break-words">
-                  {storeNome.get(r.store_id ?? "") ?? "—"} · {r.n_fatture} fatt. · {nomeUtente(r.operatore_id) ?? "—"} il {fmtD(r.created_at)}
+                  {storeNome.get(r.store_id ?? "") ?? "—"} · {r.n_fatture} fatt. · inserita da {nomeUtente(r.operatore_id) ?? "—"} il {fmtD(r.created_at)}
                 </div>
               </Card>
             ))}
