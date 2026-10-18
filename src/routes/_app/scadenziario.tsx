@@ -29,7 +29,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { useEsperienzaPagamentoCliente, testiPagateInRitardo } from "@/hooks/use-esperienza-pagamento";
 import { useAzioniRecuperoCliente, useOperatoriAttivita, useStadioSollecitoCliente } from "@/hooks/use-azioni-recupero-cliente";
-import { TIPO_AZIONE_ICON, TIPO_AZIONE_LABEL, testoAzione } from "@/lib/azioni-recupero-ui";
+import { FILTRO_OR_PROMESSA, TIPO_AZIONE_ICON, TIPO_AZIONE_LABEL, testoAzione, tipoAzioneVisualizzato } from "@/lib/azioni-recupero-ui";
 import { TooltipAzioneRecupero } from "@/components/tooltip-azione-recupero";
 import { StadioSollecitoBadge } from "@/components/stadio-sollecito-badge";
 import { ClienteAttivitaRecuperoTab } from "@/components/cliente-attivita-recupero-tab";
@@ -1314,7 +1314,7 @@ function RecuperoStriscia({ clienteId, pianoRientro, aperto, onToggle }: {
   }, [dataUpdatedAt, qc, clienteId]);
 
   if (isLoading) return <Skeleton className="h-20 w-full" />;
-  const UltimaIcon = ultimaFatta ? (TIPO_AZIONE_ICON[ultimaFatta.tipo] ?? FileText) : null;
+  const UltimaIcon = ultimaFatta ? (TIPO_AZIONE_ICON[tipoAzioneVisualizzato(ultimaFatta)] ?? FileText) : null;
   const operatore = ultimaFatta ? nomeOperatore(ultimaFatta.operatore_id) : null;
   const testoUltima = ultimaFatta ? testoAzione(ultimaFatta) : null;
   const testoProssima = prossima ? testoAzione(prossima) : null;
@@ -1326,7 +1326,7 @@ function RecuperoStriscia({ clienteId, pianoRientro, aperto, onToggle }: {
           <div className="text-xs text-muted-foreground">Ultima azione fatta</div>
           {ultimaFatta && UltimaIcon ? (
             <div className="text-sm break-words">
-              <div className="font-medium flex items-center gap-1.5"><UltimaIcon className="size-4 shrink-0" />{TIPO_AZIONE_LABEL[ultimaFatta.tipo] ?? ultimaFatta.tipo}</div>
+              <div className="font-medium flex items-center gap-1.5"><UltimaIcon className="size-4 shrink-0" />{TIPO_AZIONE_LABEL[tipoAzioneVisualizzato(ultimaFatta)] ?? ultimaFatta.tipo}</div>
               <div className="text-muted-foreground">{fmtDataOra(ultimaFatta.data_azione)}{operatore ? ` · ${operatore}` : ""}</div>
               {testoUltima && (
                 <p className="mt-1 whitespace-pre-wrap break-words line-clamp-3" title={testoUltima}>{testoUltima}</p>
@@ -1339,7 +1339,7 @@ function RecuperoStriscia({ clienteId, pianoRientro, aperto, onToggle }: {
           {prossima ? (
             <div className={`text-sm break-words ${inRitardo ? "text-destructive" : ""}`}>
               <div className="font-medium flex flex-wrap items-center gap-1.5">
-                {TIPO_AZIONE_LABEL[prossima.tipo] ?? prossima.tipo}
+                {TIPO_AZIONE_LABEL[tipoAzioneVisualizzato(prossima)] ?? prossima.tipo}
                 {inRitardo && <Badge variant="destructive">In ritardo</Badge>}
               </div>
               <div>{fmtDataOra(prossima.data_azione)}</div>
@@ -1388,7 +1388,7 @@ function PromesseAttiveBlock({ clienteId }: { clienteId: string }) {
         .from("azioni_recupero")
         .select("id, data_promessa_pagamento, importo_riferimento, note")
         .eq("cliente_id", clienteId)
-        .eq("esito", "promessa_pagamento")
+        .or(FILTRO_OR_PROMESSA)
         .gte("data_promessa_pagamento", oggi.toISOString().slice(0, 10))
         .order("data_promessa_pagamento", { ascending: true });
       if (error) throw error;

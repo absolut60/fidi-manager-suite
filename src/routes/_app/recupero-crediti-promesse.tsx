@@ -1,7 +1,9 @@
 // Pagina "Promesse di pagamento" (menu Recupero crediti).
-// Promessa = azioni_recupero con esito 'promessa_pagamento'. Visibilità: RLS esistenti.
+// Promessa = azioni_recupero riconosciute da isPromessaPagamento (tipo 'promessa_pagamento';
+// fino a P3 anche la forma vecchia nota + esito). Filtro DB: FILTRO_OR_PROMESSA. Visibilità: RLS esistenti.
 // Importo efficace: promesse_attive_importo_efficace() (fonte unica DB, non ricalcolato qui).
 // Previsione: get_previsione_incassi_coperture (riga origine='promessa').
+import { FILTRO_OR_PROMESSA } from "@/lib/azioni-recupero-ui";
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -112,7 +114,7 @@ function PromessePage() {
       const { data, error } = await supabase
         .from("azioni_recupero")
         .select("id, cliente_id, operatore_id, created_at, data_promessa_pagamento, importo_riferimento, stato_promessa, cliente:clienti!inner(id, ragione_sociale, store_id, codice_agente), ponti:azioni_recupero_scadenze(count)" as never)
-        .eq("esito", "promessa_pagamento")
+        .or(FILTRO_OR_PROMESSA)
         .order("data_promessa_pagamento", { ascending: true });
       if (error) throw error;
       const { data: eff } = await supabase.rpc("promesse_attive_importo_efficace" as never);
