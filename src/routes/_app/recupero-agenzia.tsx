@@ -11,7 +11,7 @@ import { useFiltriPagina } from "@/hooks/use-filtri-pagina";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { formatEuro, formatDate } from "@/lib/fidi";
 import { classificaScadenza, isAnticipo } from "@/lib/scadenze";
-import { ESITI_AZIONE, type EsitoAzione } from "@/lib/azioni-recupero-ui";
+import { ESITI_AZIONE, ESITO_AZIONE_LABEL, type EsitoAzione } from "@/lib/azioni-recupero-ui";
 import { SchedaLista, ElencoSchede } from "@/components/lista-responsive";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -103,7 +103,7 @@ function useIngressi() {
 }
 
 const daGestire = (r: Riga) => r.azione?.esito === "da_fare";
-const etichettaEsito = (e: string) => ESITI_AZIONE.find((x) => x.value === e)?.label ?? e;
+const etichettaEsito = (e: string) => ESITO_AZIONE_LABEL[e] ?? e;
 
 function StatoBadge({ r }: { r: Riga }) {
   if (daGestire(r)) return <Badge variant="destructive" className="shrink-0">Da gestire</Badge>;
