@@ -379,7 +379,7 @@ function CalendarioPage() {
       navigate({
         to: "/clienti/$clienteId",
         params: { clienteId },
-        search: { tab: "insoluti", insolutiTab: "scadenziario" } as never,
+        search: { tab: "promesse" } as never,
       });
       return;
     }
