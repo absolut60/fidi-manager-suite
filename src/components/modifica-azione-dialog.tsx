@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Pencil, Lock, Mail, Phone, Bell, StickyNote, FileText, Calendar } from "lucide-react";
+import { Pencil, Lock, Mail, Phone, Bell, StickyNote, FileText, Calendar, HandCoins } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -19,7 +19,8 @@ import {
 import { AllegatiSection } from "@/components/allegati-section";
 import { parseNumeroIt } from "@/lib/numero-it";
 
-import { ESITI_AZIONE as ESITI, type EsitoAzione as Esito } from "@/lib/azioni-recupero-ui";
+import { ESITI_AZIONE as ESITI, isPromessaPagamento, tipoAzioneVisualizzato, type EsitoAzione as Esito } from "@/lib/azioni-recupero-ui";
+import { SelettoreScadenzeAperte } from "@/components/selettore-scadenze-aperte";
 
 const TIPO_META: Record<string, { label: string; Icon: typeof Mail }> = {
   email: { label: "email", Icon: Mail },
@@ -28,6 +29,7 @@ const TIPO_META: Record<string, { label: string; Icon: typeof Mail }> = {
   promemoria_scadenza: { label: "promemoria scadenza", Icon: Calendar },
   nota: { label: "nota", Icon: StickyNote },
   lettera: { label: "lettera", Icon: FileText },
+  promessa_pagamento: { label: "promessa di pagamento", Icon: HandCoins },
 };
 
 export type AzioneModificabile = {
@@ -65,7 +67,10 @@ export function ModificaAzioneDialog({
   const { user, roles } = useAuth();
   const isEmail = azione.tipo === "email";
   const isSollecito = isEmail && azione.livello_sollecito != null && azione.livello_sollecito > 0;
-  const meta = TIPO_META[azione.tipo] ?? { label: azione.tipo, Icon: FileText };
+  // Promessa (tipo nuovo o forma vecchia nota+esito): campi propri, niente esito né cambio tipo.
+  const isPromessa = isPromessaPagamento(azione);
+  const tipoVis = tipoAzioneVisualizzato(azione);
+  const meta = TIPO_META[tipoVis] ?? { label: tipoVis, Icon: FileText };
   const TipoIcon = meta.Icon;
   const titoloLabel = meta.label.charAt(0).toUpperCase() + meta.label.slice(1);
 
@@ -81,6 +86,25 @@ export function ModificaAzioneDialog({
   const [importo, setImporto] = useState<string>(azione.importo_riferimento != null ? String(azione.importo_riferimento) : "");
   const [note, setNote] = useState(azione.note ?? "");
   const [saving, setSaving] = useState(false);
+  // Scadenze collegate (solo promesse): iniziali dal ponte, poi selezione dell'utente.
+  const [scadIniziali, setScadIniziali] = useState<Set<string>>(new Set());
+  const [scadSel, setScadSel] = useState<Set<string>>(new Set());
+  const [scadVisibili, setScadVisibili] = useState<Set<string>>(new Set());
+  const handleScadState = useCallback((info: { scadenze: { id: string }[] }) => {
+    setScadVisibili(new Set(info.scadenze.map((x) => x.id)));
+  }, []);
+
+  useEffect(() => {
+    if (!open || !isPromessa) return;
+    let vivo = true;
+    supabase.from("azioni_recupero_scadenze").select("scadenza_id").eq("azione_id", azione.id).then(({ data }) => {
+      if (!vivo) return;
+      const ids = new Set((data ?? []).map((x) => x.scadenza_id as string));
+      setScadIniziali(ids);
+      setScadSel(new Set(ids));
+    });
+    return () => { vivo = false; };
+  }, [open, isPromessa, azione.id]);
 
   useEffect(() => {
     if (open) {
@@ -100,25 +124,26 @@ export function ModificaAzioneDialog({
       toast.error("Data non valida");
       return;
     }
-    // Diventa promessa: stesse regole dell'inserimento (data e importo > 0 obbligatori).
-    if (esito === "promessa_pagamento" && azione.esito !== "promessa_pagamento") {
-      if (!dataPromessa) { toast.error("Indica la data della promessa"); return; }
+    // Promessa: stesse regole dell'inserimento (data e importo > 0 obbligatori).
+    if (isPromessa) {
+      if (!dataPromessa) { toast.error("Indica la scadenza della promessa"); return; }
       const n = parseNumeroIt(importo);
       if (n == null || n <= 0) { toast.error("Indica l'importo promesso (maggiore di zero)"); return; }
     }
     setSaving(true);
     try {
       const patch: {
-        esito: Esito;
+        esito?: Esito;
         note: string | null;
         data_promessa_pagamento: string | null;
         data_azione?: string;
         importo_riferimento?: number | null;
       } = {
-        esito,
         note: note.trim() || null,
-        data_promessa_pagamento: esito === "promessa_pagamento" && dataPromessa ? dataPromessa : null,
+        data_promessa_pagamento: isPromessa && dataPromessa ? dataPromessa : null,
       };
+      // L'esito di una promessa non si tocca (resta quello salvato, anche nella forma vecchia).
+      if (!isPromessa) patch.esito = esito;
       if (!isEmail) {
         patch.data_azione = dt.toISOString();
         const trimmed = importo.trim();
@@ -133,6 +158,26 @@ export function ModificaAzioneDialog({
         .update(patch)
         .eq("id", azione.id);
       if (error) throw error;
+      if (isPromessa) {
+        // Solo le scadenze mostrate dal selettore possono essere tolte; quelle non più aperte restano.
+        const daTogliere = [...scadIniziali].filter((id) => scadVisibili.has(id) && !scadSel.has(id));
+        const daAggiungere = [...scadSel].filter((id) => !scadIniziali.has(id));
+        if (daTogliere.length > 0) {
+          const { error: eDel } = await supabase.from("azioni_recupero_scadenze")
+            .delete().eq("azione_id", azione.id).in("scadenza_id", daTogliere);
+          if (eDel) throw eDel;
+        }
+        if (daAggiungere.length > 0) {
+          const { error: eIns } = await supabase.from("azioni_recupero_scadenze")
+            .insert(daAggiungere.map((sid) => ({ azione_id: azione.id, scadenza_id: sid })));
+          if (eIns) throw eIns;
+        }
+        for (const k of [
+          "promesse-pagamento", "promesse-previsione",
+          "scadenziario-paginata-v1", "scadenziario-totali-v1", "scadenziario-all-ids",
+          "scadenziario-per-store", "scadenziario-previsione-coperture",
+        ]) qc.invalidateQueries({ queryKey: [k] });
+      }
       toast.success("Azione aggiornata");
       qc.invalidateQueries({ queryKey: ["azioni-recupero-cliente", azione.cliente_id] });
       qc.invalidateQueries({ queryKey: ["azioni-recupero"] });
@@ -197,7 +242,7 @@ export function ModificaAzioneDialog({
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className={isPromessa ? "grid grid-cols-1 gap-3" : "grid grid-cols-1 sm:grid-cols-2 gap-3"}>
             <div className="space-y-1.5">
               <Label>Data e ora</Label>
               <Input
@@ -207,7 +252,7 @@ export function ModificaAzioneDialog({
                 disabled={isEmail}
               />
             </div>
-            <div className="space-y-1.5">
+            {!isPromessa && <div className="space-y-1.5">
               <Label>Esito</Label>
               <Select value={esito} onValueChange={(v) => setEsito(v as Esito)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -217,12 +262,12 @@ export function ModificaAzioneDialog({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </div>}
           </div>
 
           {!isEmail && (
             <div className="space-y-1.5">
-              <Label>{esito === "promessa_pagamento" ? "Importo promesso (€) *" : "Importo di riferimento (€)"}</Label>
+              <Label>{isPromessa ? "Importo promesso (€) *" : "Importo di riferimento (€)"}</Label>
               <Input
                 type="text"
                 inputMode="decimal"
@@ -233,9 +278,9 @@ export function ModificaAzioneDialog({
             </div>
           )}
 
-          {esito === "promessa_pagamento" && (
+          {isPromessa && (
             <div className="space-y-1.5">
-              <Label>Scadenza promessa</Label>
+              <Label>Scadenza promessa *</Label>
               <Input
                 type="date"
                 value={dataPromessa}
@@ -252,6 +297,18 @@ export function ModificaAzioneDialog({
               onChange={(e) => setNote(e.target.value)}
             />
           </div>
+
+          {isPromessa && (
+            <SelettoreScadenzeAperte
+              clienteId={azione.cliente_id}
+              open={open}
+              selectedIds={scadSel}
+              onChange={setScadSel}
+              mostraBadgePiani={false}
+              titolo="Scadenze collegate (opzionale)"
+              onStateChange={handleScadState}
+            />
+          )}
 
           <Separator />
 

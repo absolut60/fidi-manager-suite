@@ -11,8 +11,9 @@ export function puoInviareComunicazioniRecupero(roles: readonly string[]): boole
 // Tipi di azione di recupero che un agente "puro" può registrare.
 // Gemello SQL: policy INSERT "Store manager e agente inseriscono azioni sui propri clienti"
 // su public.azioni_recupero (migrazione 0044, FM45). Se cambia uno, cambia l'altro.
+// FM45 P1/P2: aggiunto 'promessa_pagamento' (policy aggiornata nella migrazione 0060).
 // (La policy vieta all'agente anche l'esito 'piano_rientro'.)
-export const TIPI_AZIONE_AGENTE = ["nota", "promemoria", "telefonata"] as const;
+export const TIPI_AZIONE_AGENTE = ["nota", "promemoria", "telefonata", "promessa_pagamento"] as const;
 const RUOLI_TUTTI_I_TIPI = ["amministratore", "amministrazione", "direzione", "recupero_crediti"] as const;
 
 /** null = tutti i tipi consentiti; altrimenti l'elenco dei soli tipi ammessi. */

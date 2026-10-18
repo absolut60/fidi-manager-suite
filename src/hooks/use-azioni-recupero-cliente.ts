@@ -13,7 +13,7 @@ export type Azione = {
   id: string;
   cliente_id: string;
   operatore_id: string | null;
-  tipo: TipoAzione | "promemoria_scadenza";
+  tipo: TipoAzione | "promemoria_scadenza" | "promessa_pagamento";
   esito: EsitoAzione;
   data_azione: string;
   data_promessa_pagamento: string | null;

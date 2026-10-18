@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, Fragment } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, CalendarClock as CalendarClockIcon } from "lucide-react";
+import { isPromessaPagamento, tipoAzioneVisualizzato } from "@/lib/azioni-recupero-ui";
 import { FiltriCollassabili, SchedaLista, ElencoSchede } from "@/components/lista-responsive";
 import { CreaAzioneDialog } from "@/components/crea-azione-dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -75,7 +76,6 @@ const ESITI = [
   { value: "da_fare", label: "Da fare" },
   { value: "fatto", label: "Fatto" },
   { value: "nessuna_risposta", label: "Nessuna risposta" },
-  { value: "promessa_pagamento", label: "Promessa pagamento" },
   { value: "contestazione", label: "Contestazione" },
   { value: "pagato", label: "Pagato" },
 ] as const;
@@ -86,6 +86,8 @@ const TIPI = [
   { value: "promemoria", label: "Promemoria", icon: Bell },
   { value: "nota", label: "Nota", icon: StickyNote },
   { value: "lettera", label: "Lettera", icon: FileText },
+  // Promessa di pagamento: tipo proprio (FM45 P2). Riconosciuta con isPromessaPagamento.
+  { value: "promessa_pagamento", label: "Promessa di pagamento", icon: HandCoins },
 ] as const;
 
 type Esito = (typeof ESITI)[number]["value"];
@@ -309,10 +311,11 @@ function RecuperoCreditiPage() {
       let q = supabase
         .from("azioni_recupero")
         .select(
-          "id, esito, importo_riferimento, cliente:clienti!inner(id, store_id, ragione_sociale)"
+          "id, tipo, esito, importo_riferimento, cliente:clienti!inner(id, store_id, ragione_sociale)"
         );
       if (esitoFilter.size > 0) q = q.in("esito", Array.from(esitoFilter));
-      if (tipoFilter.size > 0) q = q.in("tipo", Array.from(tipoFilter));
+      // Filtro tipo applicato sotto con tipoAzioneVisualizzato: una promessa vecchia
+      // (nota + esito promessa) conta come promessa, non come nota.
       if (operatoreId !== "all" && !isRistretto) q = q.eq("operatore_id", operatoreId);
       if (dataDa) q = q.gte("data_azione", dataDa.toISOString());
       if (dataA) {
@@ -327,9 +330,10 @@ function RecuperoCreditiPage() {
       const rows = data ?? [];
       let totale = 0, daFare = 0, promesse = 0, importo = 0;
       for (const r of rows as any[]) {
+        if (tipoFilter.size > 0 && !tipoFilter.has(tipoAzioneVisualizzato(r) as Tipo)) continue;
         totale++;
         if (r.esito === "da_fare") daFare++;
-        if (r.esito === "promessa_pagamento") promesse++;
+        if (isPromessaPagamento(r)) promesse++;
         importo += Number(r.importo_riferimento ?? 0);
       }
       return { totale, daFare, promesse, importo };
