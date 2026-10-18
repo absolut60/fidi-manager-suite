@@ -305,7 +305,7 @@ function CalendarioPage() {
       };
     });
     return [...azEvents, ...rateEvents, ...promesseEvents];
-  }, [azioniQuery.data, rateQuery.data, promesseQuery.data]);
+  }, [azioniQuery.data, rateQuery.data, promesseQuery.data, tipoFilter]);
 
   const visibleEvents = useMemo(() => events.filter((event) => {
     if (soloMie && (event.extendedProps.kind !== "azione" || !("azione" in event.extendedProps) || event.extendedProps.azione.operatore_id !== user?.id)) return false;
