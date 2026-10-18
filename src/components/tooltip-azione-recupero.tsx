@@ -84,7 +84,7 @@ function Dettaglio({ criterio, intestazione, etichetta }: {
       {isPromessa ? (
         <>
           <div className={intestazione ? "" : "font-medium"}>
-            Promessa di pagamento{criterio.promessaData ? ` entro il ${fmtGiorno(criterio.promessaData)}` : ""}
+            Promessa di pagamento{criterio.promessaData ? ` · scadenza promessa ${fmtGiorno(criterio.promessaData)}` : ""}
           </div>
           {azione?.importo_riferimento != null && <div>Importo: {formatEuro(azione.importo_riferimento)}</div>}
           {azione && <div>Stato: {labelStatoPromessa(azione.stato_promessa)}</div>}

@@ -314,10 +314,10 @@ function PromessePage() {
                 <TableRow>
                   <Th k="cliente">Cliente</Th>
                   <Th k="negozio">Negozio</Th>
-                  <Th k="data">Data promessa</Th>
+                  <Th k="data">Scadenza promessa</Th>
                   <Th k="importo" right>Importo</Th>
                   <TableHead className="text-right">Fatture</TableHead>
-                  <Th k="inserita">Inserita da</Th>
+                  <Th k="inserita">Inserita da · il</Th>
                   <Th k="stato">Stato</Th>
                 </TableRow>
               </TableHeader>
