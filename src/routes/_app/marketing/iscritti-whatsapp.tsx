@@ -109,15 +109,31 @@ function badgeDiagnostico(
   info?: {
     esito: string;
     n_clienti_candidati: number;
-    candidati_clienti: Array<{ ragione_sociale: string }>;
+    candidati_clienti: Array<{ ragione_sociale: string; motivi?: string }>;
+    decisione?: { avviso?: string | null } | null;
   },
 ) {
   if (!info) return null;
+  const avviso = info.decisione?.avviso ? (
+    <Badge className="bg-amber-100 text-amber-800 border-amber-300">Impresa diversa</Badge>
+  ) : null;
+  let base: React.ReactNode = null;
   if (info.esito === "ambiguo" && info.n_clienti_candidati >= 2)
-    return <Badge className="bg-amber-100 text-amber-800 border-amber-300">Più clienti possibili</Badge>;
-  if (info.esito === "collega_auto" && info.candidati_clienti[0])
-    return <Badge className="bg-green-100 text-green-800 border-green-300">Cliente trovato: {info.candidati_clienti[0].ragione_sociale}</Badge>;
-  return null;
+    base = <Badge className="bg-amber-100 text-amber-800 border-amber-300">Più clienti possibili</Badge>;
+  else if (info.esito === "collega_auto" && info.candidati_clienti[0])
+    base = (
+      <Badge className="bg-green-100 text-green-800 border-green-300">
+        Cliente trovato: {info.candidati_clienti[0].ragione_sociale}
+        {info.candidati_clienti[0].motivi ? ` (${info.candidati_clienti[0].motivi})` : ""}
+      </Badge>
+    );
+  if (!base && !avviso) return null;
+  return (
+    <>
+      {base}
+      {avviso}
+    </>
+  );
 }
 
 
@@ -687,7 +703,7 @@ export default function IscrittiWhatsappPage() {
                   >
                     <span>{c.ragione_sociale}</span>
                     <span className="text-xs opacity-70">
-                      {c.motivi === "numero" ? "per numero" : c.motivi === "impresa" ? "per impresa" : c.motivi}
+                      {c.motivi}
                     </span>
                   </Button>
                 ))}
