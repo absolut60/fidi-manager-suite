@@ -370,9 +370,6 @@ export async function generaSchedaCliente(input: SchedaPdfInput): Promise<Uint8A
       y2 -= hDett + 6;
     }
   }
-  if (typeof globalThis !== "undefined" && (globalThis as { __SCHEDA_DEBUG__?: (y: number, f: number, lh: number) => void }).__SCHEDA_DEBUG__) {
-    (globalThis as unknown as { __SCHEDA_DEBUG__: (y: number, f: number, lh: number) => void }).__SCHEDA_DEBUG__(y2, firmaY, consLH);
-  }
 
   page2.drawText(`Li ${fmtFirma(input.dataFirma)} _______________`, { x: ML, y: firmaY, size: 8, font, color: BLACK });
   const firmaX = ML + CW * 0.55;
