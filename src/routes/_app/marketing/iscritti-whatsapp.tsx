@@ -52,6 +52,7 @@ import {
 } from "@/components/ui/table";
 import { ClientePicker } from "@/components/preventivatore/ClientePicker";
 import { salvaWorkbook } from "@/lib/salva-workbook";
+import { allegaPrivacyIscritti } from "@/lib/privacy-iscritti.functions";
 
 export const Route = createFileRoute("/_app/marketing/iscritti-whatsapp")({
   component: IscrittiWhatsappPage,
@@ -269,9 +270,25 @@ export default function IscrittiWhatsappPage() {
 
   const rimatchMutation = useMutation({
     mutationFn: async () => {
+      const { data: nuovi, error: eNuovi } = await supabase
+        .from("iscritti_whatsapp")
+        .select("id")
+        .eq("stato", "nuovo");
+      if (eNuovi) throw eNuovi;
+      const ids = (nuovi ?? []).map((r) => r.id);
       const { data, error } = await supabase.rpc("rimatch_iscritti_whatsapp");
       if (error) throw error;
-      return data as { ok?: boolean; collegati?: number; errore?: string };
+      const res = data as { ok?: boolean; collegati?: number; errore?: string };
+      if (res?.ok !== false && ids.length > 0) {
+        try {
+          for (let i = 0; i < ids.length; i += 200) {
+            await allegaPrivacyIscritti({ data: { ids: ids.slice(i, i + 200) } });
+          }
+        } catch (e) {
+          console.error("[iscritti-whatsapp] allega privacy dopo ri-verifica:", e);
+        }
+      }
+      return res;
     },
     onSuccess: (res) => {
       if (res?.ok === false) toast.error(res.errore ?? "Operazione non riuscita");
@@ -289,7 +306,15 @@ export default function IscrittiWhatsappPage() {
         _lead_id: undefined,
       });
       if (error) throw error;
-      return data as { ok?: boolean; errore?: string };
+      const res = data as { ok?: boolean; errore?: string };
+      if (res?.ok !== false) {
+        try {
+          await allegaPrivacyIscritti({ data: { ids: [p.id] } });
+        } catch (e) {
+          console.error("[iscritti-whatsapp] allega privacy dopo riconciliazione:", e);
+        }
+      }
+      return res;
     },
     onSuccess: (res) => {
       if (res?.ok === false) toast.error(res.errore ?? "Operazione non riuscita");
