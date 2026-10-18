@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, useNavigate, useRouterState } from "@tanstack/
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import { Plus, Search, Building, MapPin, Shield, ShieldOff, ArrowLeft, ArrowRight, Check, Pencil, PenTool, FileText, SlidersHorizontal, X, AlertCircle, Clock, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown, MessageSquare, Loader2 } from "lucide-react";
+import { Plus, Search, Building, MapPin, Shield, ShieldOff, ArrowLeft, ArrowRight, Check, Pencil, PenTool, FileText, SlidersHorizontal, X, AlertCircle, Clock, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown, MessageSquare, Loader2, HandCoins } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { FiltriCollassabili, SchedaLista, ElencoSchede } from "@/components/lista-responsive";
@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { isPromessaDaVerificare, oggiISOLocale } from "@/lib/azioni-recupero-ui";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -1097,6 +1098,67 @@ function ClientiPage() {
     },
   });
 
+  // Promesse di pagamento ATTIVE per le sole righe visibili. Prefisso
+  // "azioni-recupero" → invalidata da invalidaRecuperoCliente e dai dialog promessa.
+  const { data: promesseDisplayMap } = useQuery({
+    queryKey: ["azioni-recupero", "clienti-promesse-display", visibleClienteIds],
+    enabled: isListRoute && visibleClienteIds.length > 0,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const map = new Map<string, { n: number; totale: number; dataMin: string | null; daVerificare: boolean }>();
+      const { data, error } = await (supabase as any)
+        .from("azioni_recupero")
+        .select("cliente_id, data_promessa_pagamento, importo_riferimento")
+        .eq("tipo", "promessa_pagamento")
+        .eq("stato_promessa", "attiva")
+        .in("cliente_id", visibleClienteIds);
+      if (error) throw error;
+      const oggi = oggiISOLocale();
+      for (const r of (data ?? []) as Array<{ cliente_id: string; data_promessa_pagamento: string | null; importo_riferimento: number | null }>) {
+        const m = map.get(r.cliente_id) ?? { n: 0, totale: 0, dataMin: null, daVerificare: false };
+        m.n += 1;
+        m.totale += Number(r.importo_riferimento) || 0;
+        const d = r.data_promessa_pagamento?.slice(0, 10) ?? null;
+        if (d && (!m.dataMin || d < m.dataMin)) m.dataMin = d;
+        if (isPromessaDaVerificare({ stato_promessa: "attiva", data_promessa_pagamento: r.data_promessa_pagamento }, oggi)) m.daVerificare = true;
+        map.set(r.cliente_id, m);
+      }
+      return map;
+    },
+  });
+  const badgePromessa = (clienteId: string) => {
+    const p = promesseDisplayMap?.get(clienteId);
+    if (!p) return null;
+    const testo = p.daVerificare
+      ? "Promessa da verificare"
+      : `${p.n > 1 ? `${p.n} promesse` : "Promessa"} · ${fmtEuro(p.totale)}`;
+    const title = p.dataMin
+      ? `Promessa di pagamento entro il ${p.dataMin.slice(8, 10)}/${p.dataMin.slice(5, 7)}/${p.dataMin.slice(0, 4)}`
+      : "Promessa di pagamento";
+    return (
+      <Badge
+        role="link"
+        tabIndex={0}
+        title={title}
+        className={`gap-1 cursor-pointer ${p.daVerificare ? "bg-destructive/15 text-destructive hover:bg-destructive/25" : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/25"}`}
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation();
+          navigate({ to: "/clienti/$clienteId", params: { clienteId }, search: { tab: "promesse" } as never });
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            e.stopPropagation();
+            navigate({ to: "/clienti/$clienteId", params: { clienteId }, search: { tab: "promesse" } as never });
+          }
+        }}
+      >
+        <HandCoins className="size-3" /> {testo}
+      </Badge>
+    );
+  };
+
   // Fetch di tutti gli id filtrati (per "Seleziona tutti i filtrati")
   async function fetchAllFilteredRows(): Promise<any[]> {
     const cols = `id, ragione_sociale, store_id, ${FIDO_CLIENTE_SELECT}, totale_rischio`;
@@ -1928,6 +1990,7 @@ function ClientiPage() {
                       {c.ind_blocco === 1 && (
                         <Badge className="bg-yellow-500/15 text-yellow-700 dark:text-yellow-500">Blocco revocabile</Badge>
                       )}
+                      {badgePromessa(c.id)}
                     </>
                   }
                 />
@@ -2122,6 +2185,7 @@ function ClientiPage() {
                               ⚖️ Legale
                             </Badge>
                           )}
+                          {badgePromessa(c.id)}
                        </div>
                      </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
