@@ -5,7 +5,8 @@
 // Previsione: get_previsione_incassi_coperture (riga origine='promessa').
 import { FILTRO_OR_PROMESSA } from "@/lib/azioni-recupero-ui";
 import { useEffect, useMemo, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { giorniDaOggi, isPromessaDaVerificare, oggiISOLocale } from "@/lib/azioni-recupero-ui";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowDown, ArrowUp, HandCoins, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -48,16 +49,8 @@ const eur0 = (v: number | null | undefined) =>
   new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(Number(v ?? 0));
 const fmtD = (s: string | null | undefined) => (s ? new Date(s.slice(0, 10) + "T00:00:00").toLocaleDateString("it-IT") : "—");
 
-function oggiISO() {
-  const d = new Date();
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-}
-function giorniDa(iso: string): number {
-  const a = new Date(iso.slice(0, 10) + "T00:00:00").getTime();
-  const b = new Date(oggiISO() + "T00:00:00").getTime();
-  return Math.round((b - a) / 86400000);
-}
+const oggiISO = oggiISOLocale;
+const giorniDa = giorniDaOggi;
 
 type Row = {
   id: string;
@@ -158,7 +151,10 @@ function PromessePage() {
   });
 
   const oggi = oggiISO();
-  const daVerificare = (r: Row) => r.stato === "attiva" && !!r.data_promessa && r.data_promessa < oggi;
+  const navigate = useNavigate();
+  const apriCliente = (clienteId: string) =>
+    navigate({ to: "/clienti/$clienteId", params: { clienteId }, search: { tab: "promesse" } as never });
+  const daVerificare = (r: Row) => isPromessaDaVerificare({ stato_promessa: r.stato, data_promessa_pagamento: r.data_promessa }, oggi);
 
   // Perimetro (negozio, agente, ricerca): base degli indicatori.
   const perimetro = useMemo(() => {
@@ -290,13 +286,16 @@ function PromessePage() {
           {/* Telefono / tablet: schede compatte */}
           <div className="md:hidden space-y-2">
             {elenco.map((r) => (
-              <Card key={r.id} className="p-3 space-y-1.5">
+              <Card key={r.id} className="p-3 space-y-1.5 cursor-pointer transition-colors hover:bg-muted/50"
+                role="link" tabIndex={0} onClick={() => apriCliente(r.cliente_id)}
+                onKeyDown={(e) => { if (e.key === "Enter") apriCliente(r.cliente_id); }}>
                 <div className="flex items-start justify-between gap-2">
-                  <Link to="/clienti/$clienteId" params={{ clienteId: r.cliente_id }} search={{ tab: "attivita" } as never}
+                  <Link to="/clienti/$clienteId" params={{ clienteId: r.cliente_id }} search={{ tab: "promesse" } as never}
+                    onClick={(e) => e.stopPropagation()}
                     className="font-medium text-sm text-primary hover:underline break-words line-clamp-2 min-w-0">
                     {r.ragione_sociale}
                   </Link>
-                  <SelettoreStatoPromessa azioneId={r.id} clienteId={r.cliente_id} stato={r.stato} className="shrink-0" />
+                  <div className="shrink-0" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}><SelettoreStatoPromessa azioneId={r.id} clienteId={r.cliente_id} stato={r.stato} /></div>
                 </div>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
                   <DataPromessa r={r} verifica={daVerificare(r)} />
@@ -325,9 +324,10 @@ function PromessePage() {
               </TableHeader>
               <TableBody>
                 {elenco.map((r) => (
-                  <TableRow key={r.id}>
+                  <TableRow key={r.id} className="cursor-pointer hover:bg-muted/50" onClick={() => apriCliente(r.cliente_id)}>
                     <TableCell className="max-w-[280px]">
-                      <Link to="/clienti/$clienteId" params={{ clienteId: r.cliente_id }} search={{ tab: "attivita" } as never}
+                      <Link to="/clienti/$clienteId" params={{ clienteId: r.cliente_id }} search={{ tab: "promesse" } as never}
+                    onClick={(e) => e.stopPropagation()}
                         className="font-medium text-primary hover:underline break-words line-clamp-2">
                         {r.ragione_sociale}
                       </Link>
@@ -340,7 +340,7 @@ function PromessePage() {
                       <div>{nomeUtente(r.operatore_id) ?? "—"}</div>
                       <div className="text-xs text-muted-foreground">{fmtD(r.created_at)}</div>
                     </TableCell>
-                    <TableCell><SelettoreStatoPromessa azioneId={r.id} clienteId={r.cliente_id} stato={r.stato} /></TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}><SelettoreStatoPromessa azioneId={r.id} clienteId={r.cliente_id} stato={r.stato} /></TableCell>
                   </TableRow>
                 ))}
               </TableBody>
