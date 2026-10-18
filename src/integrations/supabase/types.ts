@@ -6849,6 +6849,23 @@ export type Database = {
         }
         Returns: string
       }
+      cerca_candidati_per_dati: {
+        Args: {
+          _cellulare: string
+          _codice_fiscale: string
+          _email: string
+          _escludi_lead_id?: string
+          _partita_iva: string
+          _ragione_sociale: string
+        }
+        Returns: {
+          etichetta: string
+          forte: boolean
+          id: string
+          motivi: string[]
+          tipo: string
+        }[]
+      }
       cerca_candidati_riconciliazione: {
         Args: { _partecipante_id: string }
         Returns: {
@@ -6989,6 +7006,10 @@ export type Database = {
           lead_id: string
           partecipante_id: string
         }[]
+      }
+      decidi_candidato_riconciliazione: {
+        Args: { _candidati: Json; _ragione_sociale_dichiarata: string }
+        Returns: Json
       }
       effective_store_filter: { Args: { _requested: string }; Returns: string }
       elenco_persone_whatsapp_segmento: {
