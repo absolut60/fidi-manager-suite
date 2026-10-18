@@ -52,8 +52,13 @@ export function RegistraPromessaDialog({
   // true quando l'utente ha scritto l'importo a mano: non lo sovrascriviamo più.
   const [importoManuale, setImportoManuale] = useState(false);
 
+  const [aperturaLabel, setAperturaLabel] = useState("");
+
   useEffect(() => {
     if (open) {
+      setAperturaLabel(new Date().toLocaleString("it-IT", {
+        timeZone: "Europe/Rome", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
+      }));
       setDataPromessa("");
       setImporto("");
       setNote("");
@@ -178,18 +183,34 @@ export function RegistraPromessaDialog({
         <div className="space-y-4 py-2 max-h-[70vh] overflow-y-auto">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="promessa-data">Data promessa *</Label>
-              <Input
-                id="promessa-data"
-                type="date"
-                min={todayISO()}
-                value={dataPromessa}
-                onChange={(e) => setDataPromessa(e.target.value)}
-              />
+              <Label htmlFor="promessa-inserimento">Data inserimento</Label>
+              {/* Solo informativa: il dato salvato resta data_azione = new Date() al salvataggio. */}
+              <Input id="promessa-inserimento" readOnly tabIndex={-1} value={aperturaLabel} className="bg-muted/50" />
+              <p className="text-xs text-muted-foreground">Compilata in automatico</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="promessa-data">Scadenza promessa *</Label>
+              <div className="relative">
+                <Input
+                  id="promessa-data"
+                  type="date"
+                  min={todayISO()}
+                  value={dataPromessa}
+                  onChange={(e) => setDataPromessa(e.target.value)}
+                  className={dataPromessa ? "" : "text-transparent focus:text-foreground"}
+                />
+                {!dataPromessa && (
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    Scegli la data
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-muted-foreground">
-                Entro quando il cliente ha promesso di pagare
+                Entro quando il cliente si è impegnato a pagare
               </p>
             </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <div className="flex items-center justify-between gap-2">
                 <Label htmlFor="promessa-importo">Importo promesso *</Label>

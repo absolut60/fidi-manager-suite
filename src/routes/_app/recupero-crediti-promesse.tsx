@@ -301,7 +301,7 @@ function PromessePage() {
                   <Importo r={r} />
                 </div>
                 <div className="text-xs text-muted-foreground break-words">
-                  {storeNome.get(r.store_id ?? "") ?? "—"} · {r.n_fatture} fatt. · {nomeUtente(r.operatore_id) ?? "—"} il {fmtD(r.created_at)}
+                  {storeNome.get(r.store_id ?? "") ?? "—"} · {r.n_fatture} fatt. · inserita da {nomeUtente(r.operatore_id) ?? "—"} il {fmtD(r.created_at)}
                 </div>
               </Card>
             ))}
@@ -314,10 +314,10 @@ function PromessePage() {
                 <TableRow>
                   <Th k="cliente">Cliente</Th>
                   <Th k="negozio">Negozio</Th>
-                  <Th k="data">Data promessa</Th>
+                  <Th k="data">Scadenza promessa</Th>
                   <Th k="importo" right>Importo</Th>
                   <TableHead className="text-right">Fatture</TableHead>
-                  <Th k="inserita">Inserita da</Th>
+                  <Th k="inserita">Inserita da · il</Th>
                   <Th k="stato">Stato</Th>
                 </TableRow>
               </TableHeader>

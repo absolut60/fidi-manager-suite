@@ -131,9 +131,9 @@ export function SelettoreScadenzeAperte({
                   />
                 </TableHead>
                 <TableHead>Documento</TableHead>
-                <TableHead>Data scadenza</TableHead>
+                <TableHead>Scadenza</TableHead>
                 <TableHead className="text-right">Importo</TableHead>
-                <TableHead className="text-right">gg ritardo</TableHead>
+                <TableHead className="text-right hidden sm:table-cell">gg ritardo</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -161,9 +161,9 @@ export function SelettoreScadenzeAperte({
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="text-sm">{fmtDate(s.data_scadenza)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{fmtEuro(s.importo_scadenza)}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-sm whitespace-nowrap">{fmtDate(s.data_scadenza)}{(s.giorni_ritardo ?? 0) > 0 && (<div className="sm:hidden mt-0.5"><Badge className="bg-orange-500 text-white hover:bg-orange-500 text-[10px] px-1.5 py-0">{s.giorni_ritardo} gg</Badge></div>)}</TableCell>
+                    <TableCell className="text-right tabular-nums whitespace-nowrap">{fmtEuro(s.importo_scadenza)}</TableCell>
+                    <TableCell className="text-right hidden sm:table-cell">
                       {(s.giorni_ritardo ?? 0) > 0 ? (
                         <Badge className="bg-orange-500 text-white hover:bg-orange-500">{s.giorni_ritardo} gg</Badge>
                       ) : "—"}

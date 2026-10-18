@@ -235,7 +235,7 @@ export function ModificaAzioneDialog({
 
           {esito === "promessa_pagamento" && (
             <div className="space-y-1.5">
-              <Label>Data promessa pagamento</Label>
+              <Label>Scadenza promessa</Label>
               <Input
                 type="date"
                 value={dataPromessa}

@@ -235,7 +235,7 @@ export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda }: { client
                   <div className="font-medium tabular-nums">{fmtEuro(ultimaPromessa.importo_riferimento)}</div>
                 )}
                 <div className="flex flex-wrap items-center gap-1.5 text-muted-foreground">
-                  entro il {fmtData(ultimaPromessa.data_promessa_pagamento)}
+                  Scadenza promessa: {fmtData(ultimaPromessa.data_promessa_pagamento)}
                   <BadgeStatoPromessa stato={ultimaPromessa.stato_promessa} />
                   {promessaScaduta && (ultimaPromessa.stato_promessa ?? "attiva") === "attiva" && <Badge variant="destructive">Da verificare</Badge>}
                 </div>
