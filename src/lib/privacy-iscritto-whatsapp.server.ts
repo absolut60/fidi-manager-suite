@@ -79,3 +79,70 @@ export async function generaPdfPrivacyIscritto(opts: {
 
   return { pdfBytes, ragioneSociale };
 }
+
+/**
+ * Allega al contatto il PDF privacy dell'iscritto dopo la riconciliazione.
+ * Idempotente; regola FM37 (non sostituisce documenti presenti o firmati).
+ * Data/IP della raccolta originale (prima riga consensi_log 'whatsapp').
+ * Non tocca consensi_log.prova_path e non invia email.
+ */
+export async function allegaPrivacyIscrittoAContatto(
+  iscrittoId: string,
+): Promise<{ allegato: boolean; motivo?: string }> {
+  const { data: isc, error: eIsc } = await supabaseAdmin
+    .from("iscritti_whatsapp")
+    .select("id, contatto_id, cliente_id")
+    .eq("id", iscrittoId)
+    .maybeSingle();
+  if (eIsc) throw new Error(eIsc.message);
+  if (!isc) return { allegato: false, motivo: "iscritto_non_trovato" };
+  const contattoId = isc.contatto_id;
+  if (!contattoId) return { allegato: false, motivo: "senza_contatto" };
+
+  const { data: cont, error: eCont } = await supabaseAdmin
+    .from("contatti")
+    .select("pdf_privacy_path, privacy_firmata")
+    .eq("id", contattoId)
+    .maybeSingle();
+  if (eCont) throw new Error(eCont.message);
+  if (!cont) return { allegato: false, motivo: "contatto_non_trovato" };
+  if (cont.pdf_privacy_path || cont.privacy_firmata === true) {
+    return { allegato: false, motivo: "documento_esistente" };
+  }
+
+  const { data: orig, error: eOrig } = await supabaseAdmin
+    .from("consensi_log")
+    .select("created_at, ip_address")
+    .eq("iscritto_id", iscrittoId)
+    .eq("tipo_consenso", "whatsapp")
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (eOrig) throw new Error(eOrig.message);
+  if (!orig) return { allegato: false, motivo: "raccolta_non_trovata" };
+
+  const { pdfBytes } = await generaPdfPrivacyIscritto({
+    iscrittoId,
+    ip: orig.ip_address ? String(orig.ip_address) : null,
+    dataOraRaccolta: new Date(orig.created_at),
+  });
+
+  const pdfPath = `contatti/${contattoId}/privacy-qr-${Date.now()}.pdf`;
+  const { error: ePdf } = await supabaseAdmin.storage
+    .from("documenti-privacy")
+    .upload(pdfPath, pdfBytes, { upsert: true, contentType: "application/pdf" });
+  if (ePdf) throw new Error(ePdf.message);
+
+  const { data: signed, error: eSigned } = await supabaseAdmin.storage
+    .from("documenti-privacy")
+    .createSignedUrl(pdfPath, 60 * 60 * 24 * 365 * 10);
+  if (eSigned) throw new Error(eSigned.message);
+
+  const { error: eUpd } = await supabaseAdmin
+    .from("contatti")
+    .update({ pdf_privacy_url: signed.signedUrl, pdf_privacy_path: pdfPath })
+    .eq("id", contattoId);
+  if (eUpd) throw new Error(eUpd.message);
+
+  return { allegato: true };
+}
