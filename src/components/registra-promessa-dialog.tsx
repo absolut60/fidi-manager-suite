@@ -147,6 +147,12 @@ export function RegistraPromessaDialog({
       qc.invalidateQueries({ queryKey: ["recupero-clienti-aggregato"] });
       qc.invalidateQueries({ queryKey: ["cruscotto_incassi_dettaglio"] });
       qc.invalidateQueries({ queryKey: ["azioni-calendario"] });
+      // Fonte unica: una nuova promessa cambia la copertura → pagina Promesse e Scadenziario.
+      for (const k of [
+        "promesse-pagamento", "promesse-previsione",
+        "scadenziario-paginata-v1", "scadenziario-totali-v1", "scadenziario-all-ids",
+        "scadenziario-per-store", "scadenziario-previsione-coperture",
+      ]) qc.invalidateQueries({ queryKey: [k] });
       onCreated?.();
       onOpenChange(false);
     } catch (e) {
