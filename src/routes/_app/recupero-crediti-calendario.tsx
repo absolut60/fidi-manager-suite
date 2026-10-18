@@ -1,4 +1,5 @@
 import { testoAzione } from "@/lib/azioni-recupero-ui";
+import { FILTRO_OR_PROMESSA } from "@/lib/azioni-recupero-ui";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -55,7 +56,6 @@ const ESITI = [
   { value: "da_fare", label: "Da fare" },
   { value: "fatto", label: "Fatto" },
   { value: "nessuna_risposta", label: "Nessuna risposta" },
-  { value: "promessa_pagamento", label: "Promessa pagamento" },
   { value: "contestazione", label: "Contestazione" },
   { value: "pagato", label: "Pagato" },
 ] as const;
@@ -66,6 +66,8 @@ const TIPI = [
   { value: "promemoria", label: "Promemoria", color: "#f59e0b" }, // ambra
   { value: "nota", label: "Nota", color: "#6b7280" }, // grigio
   { value: "lettera", label: "Lettera", color: "#8b5cf6" }, // viola
+  // Promessa di pagamento (FM45 P2): mostrata alla data della promessa, in entrambe le forme.
+  { value: "promessa_pagamento", label: "Promessa di pagamento", color: "#16a34a" }, // verde
 ] as const;
 
 type Tipo = (typeof TIPI)[number]["value"];
@@ -167,6 +169,8 @@ function CalendarioPage() {
         .lt("data_azione", range!.end);
 
       if (tipoFilter.size > 0) q = q.in("tipo", Array.from(tipoFilter));
+      // Le promesse hanno il loro evento (promesseQuery): qui solo le altre azioni.
+      q = q.neq("tipo", "promessa_pagamento");
       if (storeId !== "all") q = q.eq("cliente.store_id", storeId);
 
       const { data, error } = await q;
@@ -222,7 +226,8 @@ function CalendarioPage() {
     },
   });
 
-  // Promesse di pagamento: sempre visibili, non filtrate dai TIPI. Filtrate solo per store.
+  // Promesse di pagamento: alla data della promessa, entrambe le forme (FILTRO_OR_PROMESSA).
+  // Visibili senza filtro tipo o con il filtro "Promessa di pagamento". Filtrate per store.
   const promesseQuery = useQuery({
     queryKey: ["promesse-calendario", range?.start ?? null, range?.end ?? null, storeId],
     enabled: !!range,
@@ -232,7 +237,7 @@ function CalendarioPage() {
       let q = supabase
         .from("azioni_recupero")
         .select("id, cliente_id, data_promessa_pagamento, importo_riferimento, note, cliente:clienti!inner(id, ragione_sociale, store_id)")
-        .eq("esito", "promessa_pagamento")
+        .or(FILTRO_OR_PROMESSA)
         .not("data_promessa_pagamento", "is", null)
         .gte("data_promessa_pagamento", startISO)
         .lt("data_promessa_pagamento", endISO);
@@ -279,7 +284,8 @@ function CalendarioPage() {
         extendedProps: { kind: "rata_piano" as const, rata: r, isOverdue, cliente: r.piano.cliente.ragione_sociale, tipoLabel: `Rata #${r.numero_rata}`, note: null, importo: r.importo },
       };
     });
-    const promesseEvents = (promesseQuery.data ?? []).map((p) => {
+    const mostraPromesse = tipoFilter.size === 0 || tipoFilter.has("promessa_pagamento");
+    const promesseEvents = (mostraPromesse ? promesseQuery.data ?? [] : []).map((p) => {
       const isOverdue = p.data_promessa_pagamento < today;
       const color = "#16a34a"; // green-600
       const importoFmt = p.importo_riferimento != null
