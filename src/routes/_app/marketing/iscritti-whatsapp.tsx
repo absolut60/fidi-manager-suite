@@ -227,7 +227,9 @@ export default function IscrittiWhatsappPage() {
   const nomiCollegati = nomiCollegatiQuery.data ?? {};
 
   const apriRiga = (r: Iscritto) => {
-    if (r.cliente_id) navigate({ to: "/clienti/$clienteId", params: { clienteId: r.cliente_id } });
+    if (r.cliente_id && r.contatto_id)
+      navigate({ to: "/clienti/$clienteId", params: { clienteId: r.cliente_id }, search: { tab: "contatti" } });
+    else if (r.cliente_id) navigate({ to: "/clienti/$clienteId", params: { clienteId: r.cliente_id } });
     else if (r.lead_id) navigate({ to: "/lead/$leadId", params: { leadId: r.lead_id } });
     else if (r.stato === "nuovo") {
       setRiconcilia(r);
