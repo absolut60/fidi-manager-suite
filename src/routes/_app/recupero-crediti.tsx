@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, Fragment } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, CalendarClock as CalendarClockIcon } from "lucide-react";
+import { isPromessaPagamento, tipoAzioneVisualizzato } from "@/lib/azioni-recupero-ui";
 import { FiltriCollassabili, SchedaLista, ElencoSchede } from "@/components/lista-responsive";
 import { CreaAzioneDialog } from "@/components/crea-azione-dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -16,6 +17,7 @@ import {
   Phone,
   Bell,
   StickyNote,
+  HandCoins,
   FileText,
   Send,
   AlertTriangle,
