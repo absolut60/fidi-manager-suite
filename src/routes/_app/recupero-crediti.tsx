@@ -314,8 +314,7 @@ function RecuperoCreditiPage() {
           "id, tipo, esito, importo_riferimento, cliente:clienti!inner(id, store_id, ragione_sociale)"
         );
       if (esitoFilter.size > 0) q = q.in("esito", Array.from(esitoFilter));
-      // Filtro tipo applicato sotto con tipoAzioneVisualizzato: una promessa vecchia
-      // (nota + esito promessa) conta come promessa, non come nota.
+      // Filtro tipo applicato sotto con tipoAzioneVisualizzato.
       if (operatoreId !== "all" && !isRistretto) q = q.eq("operatore_id", operatoreId);
       if (dataDa) q = q.gte("data_azione", dataDa.toISOString());
       if (dataA) {
