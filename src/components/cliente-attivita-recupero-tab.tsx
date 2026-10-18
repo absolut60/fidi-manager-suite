@@ -1,5 +1,6 @@
 import { BadgeStatoPromessa, SelettoreStatoPromessa } from "@/components/stato-promessa";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
+import type { QueryClient } from "@tanstack/react-query";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -34,10 +35,10 @@ import { LetteraPdfDialog } from "@/components/lettera-pdf-dialog";
 import { puoInviareComunicazioniRecupero } from "@/lib/recupero-permessi";
 import type { TipoAzione } from "@/components/reminder-controls";
 import { useAzioniRecuperoCliente, useOperatoriAttivita, useStadioSollecitoCliente, type Azione } from "@/hooks/use-azioni-recupero-cliente";
-import { ESITO_AZIONE_LABEL, TIPO_AZIONE_ICON, TIPO_AZIONE_LABEL, isPromessaPagamento, testoAzione, tipoAzioneVisualizzato } from "@/lib/azioni-recupero-ui";
+import { ESITO_AZIONE_LABEL, TIPO_AZIONE_ICON, TIPO_AZIONE_LABEL, isPromessaDaVerificare, isPromessaPagamento, testoAzione, tipoAzioneVisualizzato } from "@/lib/azioni-recupero-ui";
 import { StadioSollecitoBadge } from "@/components/stadio-sollecito-badge";
 
-function fmtData(v: string) {
+export function fmtData(v: string) {
   const d = v.slice(0, 10).split("-");
   return d.length === 3 ? `${d[2]}/${d[1]}/${d[0]}` : v;
 }
@@ -64,11 +65,11 @@ function esitoBadge(e: Esito) {
   return <Badge className={map[e]}>{ESITO_AZIONE_LABEL[e] ?? e}</Badge>;
 }
 
-function fmtEuro(v: unknown) {
+export function fmtEuro(v: unknown) {
   const n = Number(v ?? 0);
   return new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
 }
-function fmtDateTime(v: unknown) {
+export function fmtDateTime(v: unknown) {
   if (!v) return "—";
   try {
     return new Date(String(v)).toLocaleString("it-IT", {
@@ -78,14 +79,50 @@ function fmtDateTime(v: unknown) {
 }
 
 
-export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda }: { clienteId: string; onApriScheda?: () => void }) {
+/** Invalidazione dopo creazione/modifica/eliminazione di un'azione di recupero (condivisa con la scheda Promesse). */
+export function invalidaRecuperoCliente(qc: QueryClient, clienteId: string) {
+  qc.invalidateQueries({ queryKey: ["azioni-recupero-cliente", clienteId] });
+  qc.invalidateQueries({ queryKey: ["azioni-recupero"] });
+  qc.invalidateQueries({ queryKey: ["azioni-recupero-metrics"] });
+  qc.invalidateQueries({ queryKey: ["azioni-recupero-counts"] });
+  qc.invalidateQueries({ queryKey: ["azioni-calendario"] });
+  qc.invalidateQueries({ queryKey: ["recupero-clienti"] });
+  qc.invalidateQueries({ queryKey: ["clienti-avvisati"] });
+  qc.invalidateQueries({ queryKey: ["recupero-stadio-cliente", clienteId] });
+}
+
+/** Permesso modifica/eliminazione di un'azione (stessa regola della timeline). */
+export function puoModificareAzione(roles: string[], userId: string | null | undefined, a: { operatore_id: string | null }): boolean {
+  const canManageAll = roles.includes("amministratore") || roles.includes("amministrazione") || roles.includes("direzione");
+  return canManageAll || a.operatore_id === (userId ?? "__none__");
+}
+
+/** Elimina un'azione rimuovendo prima gli allegati collegati (file + righe). */
+export async function eliminaAzioneConAllegati(azioneId: string): Promise<void> {
+  const { data: alleg, error: eAll } = await supabase
+    .from("allegati")
+    .select("id, storage_path")
+    .eq("entita_tipo", "azione_recupero")
+    .eq("entita_id", azioneId);
+  if (eAll) throw eAll;
+  if (alleg && alleg.length > 0) {
+    const paths = alleg.map((a) => a.storage_path).filter(Boolean);
+    if (paths.length > 0) {
+      await supabase.storage.from(ALLEGATI_BUCKET).remove(paths);
+    }
+    const ids = alleg.map((a) => a.id);
+    const { error: eDelAll } = await supabase.from("allegati").delete().in("id", ids);
+    if (eDelAll) throw eDelAll;
+  }
+  // azioni_recupero_scadenze ha ON DELETE CASCADE
+  const { error } = await supabase.from("azioni_recupero").delete().eq("id", azioneId);
+  if (error) throw error;
+}
+
+export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda, onApriPromesse }: { clienteId: string; onApriScheda?: () => void; onApriPromesse?: () => void }) {
   const qc = useQueryClient();
   const { user, roles } = useAuth();
   const puoInviare = puoInviareComunicazioniRecupero(roles as string[]);
-  const canManageAll =
-    roles.includes("amministratore") ||
-    roles.includes("amministrazione") ||
-    roles.includes("direzione");
 
   const [sollecitoOpen, setSollecitoOpen] = useState(false);
   const [emailLiberaOpen, setEmailLiberaOpen] = useState(false);
@@ -121,11 +158,7 @@ export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda }: { client
     }
     return best;
   }, [azioni]);
-  const promessaScaduta = useMemo(() => {
-    if (!ultimaPromessa?.data_promessa_pagamento) return false;
-    const oggi = new Date(); oggi.setHours(0, 0, 0, 0);
-    return new Date(ultimaPromessa.data_promessa_pagamento.slice(0, 10) + "T00:00:00") < oggi;
-  }, [ultimaPromessa]);
+  const promessaDaVerificare = ultimaPromessa ? isPromessaDaVerificare(ultimaPromessa) : false;
   const testoProssima = prossima ? testoAzione(prossima) : null;
   const testoUltima = ultimaFatta ? testoAzione(ultimaFatta) : null;
 
@@ -145,46 +178,18 @@ export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda }: { client
   }
 
   function canEditAzione(a: Azione): boolean {
-    return canManageAll || a.operatore_id === (user?.id ?? "__none__");
+    return puoModificareAzione(roles as string[], user?.id, a);
   }
 
   function invalidateRecupero() {
-    qc.invalidateQueries({ queryKey: ["azioni-recupero-cliente", clienteId] });
-    qc.invalidateQueries({ queryKey: ["azioni-recupero"] });
-    qc.invalidateQueries({ queryKey: ["azioni-recupero-metrics"] });
-    qc.invalidateQueries({ queryKey: ["azioni-recupero-counts"] });
-    qc.invalidateQueries({ queryKey: ["azioni-calendario"] });
-    qc.invalidateQueries({ queryKey: ["recupero-clienti"] });
-    qc.invalidateQueries({ queryKey: ["clienti-avvisati"] });
-    qc.invalidateQueries({ queryKey: ["recupero-stadio-cliente", clienteId] });
+    invalidaRecuperoCliente(qc, clienteId);
   }
 
   async function handleDelete() {
     if (!deleteAzione || deleting) return;
     setDeleting(true);
     try {
-      // Rimuovi allegati collegati (file + righe) per non lasciare orfani
-      const { data: alleg, error: eAll } = await supabase
-        .from("allegati")
-        .select("id, storage_path")
-        .eq("entita_tipo", "azione_recupero")
-        .eq("entita_id", deleteAzione.id);
-      if (eAll) throw eAll;
-      if (alleg && alleg.length > 0) {
-        const paths = alleg.map((a) => a.storage_path).filter(Boolean);
-        if (paths.length > 0) {
-          await supabase.storage.from(ALLEGATI_BUCKET).remove(paths);
-        }
-        const ids = alleg.map((a) => a.id);
-        const { error: eDelAll } = await supabase.from("allegati").delete().in("id", ids);
-        if (eDelAll) throw eDelAll;
-      }
-      // azioni_recupero_scadenze ha ON DELETE CASCADE
-      const { error } = await supabase
-        .from("azioni_recupero")
-        .delete()
-        .eq("id", deleteAzione.id);
-      if (error) throw error;
+      await eliminaAzioneConAllegati(deleteAzione.id);
       toast.success("Azione eliminata");
       setDeleteAzione(null);
       invalidateRecupero();
@@ -220,8 +225,15 @@ export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda }: { client
               )}
             </div>
           </div>
-          <div className="min-w-0">
-            <div className="text-xs uppercase tracking-wider text-muted-foreground">Ultima promessa</div>
+          <div
+            className={`min-w-0 ${onApriPromesse ? "-m-1.5 rounded-md p-1.5 cursor-pointer transition-colors hover:bg-muted/60" : ""}`}
+            {...(onApriPromesse ? {
+              role: "link", tabIndex: 0, title: "Apri la scheda Promesse",
+              onClick: onApriPromesse,
+              onKeyDown: (e: React.KeyboardEvent) => { if (e.key === "Enter") onApriPromesse(); },
+            } : {})}
+          >
+            <div className="text-xs uppercase tracking-wider text-muted-foreground">Ultima promessa{onApriPromesse ? " →" : ""}</div>
             {ultimaPromessa?.data_promessa_pagamento ? (
               <div className="mt-1 text-sm break-words">
                 {ultimaPromessa.importo_riferimento != null && (
@@ -230,7 +242,7 @@ export function ClienteAttivitaRecuperoTab({ clienteId, onApriScheda }: { client
                 <div className="flex flex-wrap items-center gap-1.5 text-muted-foreground">
                   Scadenza promessa: {fmtData(ultimaPromessa.data_promessa_pagamento)}
                   <BadgeStatoPromessa stato={ultimaPromessa.stato_promessa} />
-                  {promessaScaduta && (ultimaPromessa.stato_promessa ?? "attiva") === "attiva" && <Badge variant="destructive">Da verificare</Badge>}
+                  {promessaDaVerificare && <Badge variant="destructive">Da verificare</Badge>}
                 </div>
               </div>
             ) : (
@@ -482,7 +494,7 @@ function StatBlock({ label, value, tone }: { label: string; value: string; tone?
   );
 }
 
-function TimelineItem({
+export function TimelineItem({
   azione,
   operatoreName,
   highlight,
@@ -491,7 +503,9 @@ function TimelineItem({
   onViewEmail,
   onEdit,
   onDelete,
+  extra,
 }: {
+  extra?: ReactNode;
   azione: Azione;
   operatoreName: string | null;
   highlight?: boolean;
@@ -525,6 +539,7 @@ function TimelineItem({
               <Badge variant="outline" className="text-[10px] h-5">Sollecito {azione.livello_sollecito}</Badge>
             )}
           </div>
+          {extra}
           {azione.note && (
             <p className="text-sm text-foreground/80 whitespace-pre-wrap line-clamp-3">{azione.note}</p>
           )}
