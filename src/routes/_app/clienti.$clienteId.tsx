@@ -299,6 +299,11 @@ function ClienteDetail() {
         : "scadenziario"
       : (tab ?? "riepilogo");
   const isAgente = hasRole("agente");
+  // Conteggio per l'etichetta della scheda Promesse: stessa cache di Attività recupero.
+  const { azioni: azioniRecupero } = useAzioniRecuperoCliente(clienteId);
+  const nPromesseAttive = (azioniRecupero ?? []).filter(
+    (a) => isPromessaPagamento(a) && (a.stato_promessa ?? "attiva") === "attiva",
+  ).length;
   const { data: mestieri } = useCategorieSegmento("mestiere");
 
   const [openNew, setOpenNew] = useState(false);
