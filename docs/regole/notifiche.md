@@ -10,6 +10,7 @@ Quando arrivano in blocco, le notifiche si raggruppano; mai una notifica (e una 
 - Chi crea notifiche: metadata con la chiave di gruppo (es. `store_id` + `gruppo_etichetta`) e `SELECT DISTINCT user_id`. Non contare sulla riga restituita dall'insert.
 - UI: ordina per `aggiornata_at`, mostra `conteggio`, `NotificaRiga`, `contaNonLette` (mai contare solo le righe caricate); a ogni lettura `chiudiAvvisiNotifiche`/`chiudiTuttiGliAvvisi`. Nessun toast sugli aggiornamenti di gruppo.
 - Esito import: ogni import si chiude SOLO con `chiudiImportazione` (`functions.server.ts`), che scrive la riga e lancia l'evento `import/esito.notifica`; il job `notificaEsitoImport` manda notifica (`esito_import`, non raggruppato) ed email a chi l'ha lanciato. Problema vero = `importazioni.problemi` nello stesso update di `completata_at`. Testo solo in `src/lib/esito-import-messaggio.ts`.
+- Iscrizione WhatsApp (`iscrizione_whatsapp`, non raggruppato): prodotta da `iscriviWhatsapp` (solo pagina pubblica QR/link; iscrizione eventi esclusa), destinatari dalla chiave `configurazioni.notifica_iscrizioni_whatsapp_destinatari` (id utente separati da virgola, solo profili attivi); link `/marketing/iscritti-whatsapp?q={numero}`.
 
 ## Nota di recupero crediti (`nota_recupero`)
 - Ogni nuova azione di recupero di tipo "nota" notifica: tutti gli utenti attivi con ruolo `recupero_crediti` e gli `store_manager` attivi del negozio del cliente (`profili.store_id = clienti.store_id`, tutti se più di uno). Mai l'autore; ogni destinatario una sola volta.
