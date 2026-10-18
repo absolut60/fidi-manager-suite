@@ -109,7 +109,10 @@ export async function finalizzaRaccoltaPrivacy(opts: {
       : consensi.marketing_diretto ? "si" : "no",
     ...(whatsappSeparato
       ? {
-          dettaglioCanaliMarketing: `Canali scelti dall'interessato: WhatsApp ${opts.consensoWhatsapp ? "SI" : "NO"} - e-mail e altri contatti ${consensi.marketing_diretto ? "SI" : "NO"}.`,
+          consensiCanaliMarketing: {
+            whatsapp: opts.consensoWhatsapp === true,
+            email: consensi.marketing_diretto,
+          },
         }
       : {}),
     ...(opts.mostraConsensoMedia === false ? { mostraConsensoMedia: false } : {}),

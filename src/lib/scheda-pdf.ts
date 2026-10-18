@@ -25,6 +25,8 @@ export interface SchedaPdfInput {
   mostraConsensoMedia?: boolean;
   /** Riga facoltativa stampata sotto il blocco marketing diretto (es. canali scelti). Se assente il PDF è identico a prima. */
   dettaglioCanaliMarketing?: string;
+  /** Canali marketing raccolti separatamente (QR WhatsApp, eventi): un riquadro per WhatsApp e uno per email/altri contatti al posto del riquadro unico. Se presente, dettaglioCanaliMarketing non si stampa. */
+  consensiCanaliMarketing?: { whatsapp: boolean; email: boolean };
 }
 
 function toBool(v: unknown): boolean {
@@ -305,53 +307,70 @@ export async function generaSchedaCliente(input: SchedaPdfInput): Promise<Uint8A
   const introConsH = drawWrapped(page2, introConsText, ML, y2, CW, 8, font);
   y2 -= introConsH + 10;
 
+  // Interlinea dei soli riquadri consenso: 1.4 come sempre; ridotta solo con canali separati se lo spazio non basta.
+  let consLH = 1.4;
+  let consRiga = 14;
   function drawConsentBlock(page: PDFPage, yPos: number, text: string, dato: boolean): number {
-    const h = drawWrapped(page, text, ML, yPos, CW, 8, font);
+    const h = drawWrapped(page, text, ML, yPos, CW, 8, font, BLACK, consLH);
     yPos -= h + 6;
     const cx = PAGE_W / 2 - 56;
     const si = dato ? "[X]" : "[ ]";
     const no = dato ? "[ ]" : "[X]";
     page.drawText(`${si}  fornisce il consenso`, { x: cx, y: yPos, size: 8, font, color: BLACK });
-    yPos -= 14;
+    yPos -= consRiga;
     page.drawText(`${no}  nega il consenso`, { x: cx, y: yPos, size: 8, font, color: BLACK });
-    yPos -= 14;
+    yPos -= consRiga;
     return yPos;
   }
 
-  y2 = drawConsentBlock(
-    page2,
-    y2,
-    "al trattamento, ivi compresa la comunicazione ai soggetti di cui al punto 9 e la cessione al di fuori dell'Unione Europea, dei dati personali, ivi compresi quelli sensibili di cui all'art. 9 GDPR e le immagini dell'interessato per le finalita' di analisi anche con strumenti tecnologici automatizzati (profilazione) al fine di consentire al titolare di poter gestire un consolidato nazionale in tempo reale e al fine di poter analizzare i dati caricati sul software per poter indirizzare al meglio le strategie commerciali del network.",
-    toBool(input.consensoProfilazione),
-  );
+  const TESTO_PROFILAZIONE =
+    "al trattamento, ivi compresa la comunicazione ai soggetti di cui al punto 9 e la cessione al di fuori dell'Unione Europea, dei dati personali, ivi compresi quelli sensibili di cui all'art. 9 GDPR e le immagini dell'interessato per le finalita' di analisi anche con strumenti tecnologici automatizzati (profilazione) al fine di consentire al titolare di poter gestire un consolidato nazionale in tempo reale e al fine di poter analizzare i dati caricati sul software per poter indirizzare al meglio le strategie commerciali del network.";
+  const TESTO_MEDIA =
+    "al trattamento, ivi compresa la comunicazione ai soggetti di cui al punto 9 e la cessione al di fuori dell'Unione Europea, dei dati personali, ivi compresi quelli sensibili di cui all'art. 9 GDPR e le immagini dell'interessato per le finalita' di inserimento di dati, fotografie, articoli e riprese audiovisive nel proprio sito internet e nelle proprie pubblicazioni, social network, per la pubblicazione di fotografie e/o riprese audiovisive, corsi on line, pubblicazioni, brochure, presentazioni, cataloghi per fini didattici, pubblicitari e di marketing";
+  const PREFISSO_MARKETING =
+    "al trattamento, ivi compresa la comunicazione ai soggetti di cui al punto 9 e la cessione al di fuori dell'Unione Europea, dei dati personali, ivi compresi quelli sensibili di cui all'art. 9 GDPR e le immagini dell'interessato per le finalita' di invio di informative per finalita' pubblicitarie e di marketing";
+  const TESTO_MARKETING_UNICO = PREFISSO_MARKETING + ", anche via e-mail, sms, whatsapp.";
+  const TESTO_WHATSAPP = PREFISSO_MARKETING + " tramite WhatsApp.";
+  const TESTO_EMAIL = PREFISSO_MARKETING + " via e-mail, sms e altri contatti.";
+
+  const canali = input.consensiCanaliMarketing;
+  const firmaY = MB + 108;
+  if (canali) {
+    const testi = [TESTO_PROFILAZIONE];
+    if (input.mostraConsensoMedia !== false) testi.push(TESTO_MEDIA);
+    testi.push(TESTO_WHATSAPP, TESTO_EMAIL);
+    const altezza = (lh: number, riga: number) =>
+      testi.reduce((acc, t) => acc + wrapText(t, CW, 8, font).length * 8 * lh + 6 + riga * 2, 0) +
+      (testi.length - 1) * 12;
+    const disponibile = y2 - (firmaY + 40);
+    // Prima si riduce l'interlinea del testo (fino a 1,2), poi le righe fornisce/nega (fino a 11).
+    while (consLH > 1.2 && altezza(consLH, consRiga) > disponibile) consLH = Math.round((consLH - 0.05) * 100) / 100;
+    while (consRiga > 11 && altezza(consLH, consRiga) > disponibile) consRiga -= 1;
+  }
+
+  y2 = drawConsentBlock(page2, y2, TESTO_PROFILAZIONE, toBool(input.consensoProfilazione));
   if (input.mostraConsensoMedia !== false) {
     page2.drawText("Inoltre,", { x: ML, y: y2, size: 8, font, color: BLACK });
     y2 -= 12;
-
-    y2 = drawConsentBlock(
-      page2,
-      y2,
-      "al trattamento, ivi compresa la comunicazione ai soggetti di cui al punto 9 e la cessione al di fuori dell'Unione Europea, dei dati personali, ivi compresi quelli sensibili di cui all'art. 9 GDPR e le immagini dell'interessato per le finalita' di inserimento di dati, fotografie, articoli e riprese audiovisive nel proprio sito internet e nelle proprie pubblicazioni, social network, per la pubblicazione di fotografie e/o riprese audiovisive, corsi on line, pubblicazioni, brochure, presentazioni, cataloghi per fini didattici, pubblicitari e di marketing",
-      toBool(input.consensoMarketingMedia),
-    );
+    y2 = drawConsentBlock(page2, y2, TESTO_MEDIA, toBool(input.consensoMarketingMedia));
   }
-  page2.drawText("Inoltre,", { x: ML, y: y2, size: 8, font, color: BLACK });
-  y2 -= 12;
-
-  y2 = drawConsentBlock(
-    page2,
-    y2,
-    "al trattamento, ivi compresa la comunicazione ai soggetti di cui al punto 9 e la cessione al di fuori dell'Unione Europea, dei dati personali, ivi compresi quelli sensibili di cui all'art. 9 GDPR e le immagini dell'interessato per le finalita' di invio di informative per finalita' pubblicitarie e di marketing, anche via e-mail, sms, whatsapp.",
-    toBool(input.consensoMarketingDiretto),
-  );
-
-  if (input.dettaglioCanaliMarketing) {
-    const hDett = drawWrapped(page2, input.dettaglioCanaliMarketing, ML, y2, CW, 8, bold);
-    y2 -= hDett + 6;
+  if (canali) {
+    page2.drawText("Inoltre,", { x: ML, y: y2, size: 8, font, color: BLACK });
+    y2 -= 12;
+    y2 = drawConsentBlock(page2, y2, TESTO_WHATSAPP, canali.whatsapp);
+    page2.drawText("Inoltre,", { x: ML, y: y2, size: 8, font, color: BLACK });
+    y2 -= 12;
+    y2 = drawConsentBlock(page2, y2, TESTO_EMAIL, canali.email);
+  } else {
+    page2.drawText("Inoltre,", { x: ML, y: y2, size: 8, font, color: BLACK });
+    y2 -= 12;
+    y2 = drawConsentBlock(page2, y2, TESTO_MARKETING_UNICO, toBool(input.consensoMarketingDiretto));
+    if (input.dettaglioCanaliMarketing) {
+      const hDett = drawWrapped(page2, input.dettaglioCanaliMarketing, ML, y2, CW, 8, bold);
+      y2 -= hDett + 6;
+    }
   }
 
-
-  const firmaY = MB + 108;
   page2.drawText(`Li ${fmtFirma(input.dataFirma)} _______________`, { x: ML, y: firmaY, size: 8, font, color: BLACK });
   const firmaX = ML + CW * 0.55;
 
