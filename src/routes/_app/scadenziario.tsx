@@ -703,7 +703,9 @@ function ScadenziarioPage() {
             totCrediti: Number(totaliLordo.tot_crediti ?? 0),
           } : null}
         />
-        {totali && (
+        {/* Riquadro "Coperture" solo con il filtro "al netto" acceso: montandolo solo
+            qui, la query get_previsione_incassi_coperture non parte a filtro spento. */}
+        {nettoCoperture && totali && (
           <CopertureScadenziario
             storeId={storeId === "all" ? null : storeId}
             agente={agenteFiltro === "tutti" ? null : agenteFiltro}
