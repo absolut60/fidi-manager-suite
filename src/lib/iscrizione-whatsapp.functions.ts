@@ -203,14 +203,51 @@ export const iscriviWhatsapp = createServerFn({ method: "POST" })
         }
 
         if (iscr && destinatari.length > 0) {
-          let collegamento = "Da controllare: nessun cliente o lead collegato";
+          // Decisione del motore di riconciliazione (mai fatale: in errore si usa il testo base).
+          type Decisione = {
+            ok?: boolean;
+            motivi?: string[];
+            regola?: string | null;
+            avviso?: string | null;
+            motivo?: string;
+          };
+          let decisione: Decisione | null = null;
+          let esitoCls: string | null = null;
+          let nCandidati = 0;
+          try {
+            const { data: cls, error: eCls } = await supabaseAdmin.rpc(
+              "classifica_iscritto_whatsapp",
+              { _id: iscr.id },
+            );
+            if (eCls) throw eCls;
+            const c = cls as {
+              esito?: string;
+              decisione?: Decisione;
+              candidati_clienti?: unknown[];
+              candidati_lead?: unknown[];
+            } | null;
+            decisione = c?.decisione ?? null;
+            esitoCls = c?.esito ?? null;
+            nCandidati = (c?.candidati_clienti?.length ?? 0) + (c?.candidati_lead?.length ?? 0);
+          } catch (e) {
+            console.error("[iscrizione-whatsapp] classifica per notifica:", e);
+          }
+          const motiviTxt =
+            decisione?.ok && Array.isArray(decisione.motivi) && decisione.motivi.length > 0
+              ? ` · Motivo: ${decisione.motivi.join(", ")}`
+              : "";
+          const azienda = (data.azienda ?? "").trim();
+          const avvisoImpresa =
+            decisione?.avviso === "impresa_dichiarata_diversa" && azienda.length > 0;
+
+          let collegamento = "Da controllare: nessuna corrispondenza trovata";
           if (iscr.cliente_id) {
             const { data: cl } = await supabaseAdmin
               .from("clienti")
               .select("ragione_sociale, codice_gestionale")
               .eq("id", iscr.cliente_id)
               .maybeSingle();
-            collegamento = `Collegato al cliente ${cl?.ragione_sociale ?? "?"} (${cl?.codice_gestionale ?? "?"}) per numero di cellulare`;
+            collegamento = `Collegato al cliente ${cl?.ragione_sociale ?? "?"} (${cl?.codice_gestionale ?? "?"})${motiviTxt}`;
           } else if (iscr.lead_id) {
             const { data: ld } = await supabaseAdmin
               .from("lead")
@@ -221,12 +258,20 @@ export const iscriviWhatsapp = createServerFn({ method: "POST" })
               ld?.ragione_sociale?.trim() ||
               [ld?.nome, ld?.cognome].filter(Boolean).join(" ").trim() ||
               "?";
-            collegamento = `Collegato al lead ${nominativo} per numero di cellulare`;
+            collegamento = `Collegato al lead ${nominativo}${motiviTxt}`;
+          } else if (esitoCls === "ambiguo" && nCandidati > 0) {
+            const motivoTxt =
+              decisione?.motivo === "piu_imprese_omonime" ? "più imprese omonime" : "più candidati";
+            collegamento = `Da controllare: ${nCandidati} possibili corrispondenze (${motivoTxt})`;
           }
-          const azienda = (data.azienda ?? "").trim();
+          const collegato = !!(iscr.cliente_id || iscr.lead_id);
           const messaggio =
             collegamento +
-            (azienda ? ` · Impresa dichiarata: ${azienda}` : " · Nessuna impresa dichiarata") +
+            (collegato && avvisoImpresa
+              ? ` · ⚠ Impresa dichiarata diversa: ${azienda}`
+              : azienda
+                ? ` · Impresa dichiarata: ${azienda}`
+                : " · Nessuna impresa dichiarata") +
             ` · Email: ${data.consenso_marketing ? "sì" : "no"}`;
           const numeroNorm = iscr.numero_norm ?? out.numero;
           const righe = destinatari.map((user_id) => ({
@@ -241,6 +286,8 @@ export const iscriviWhatsapp = createServerFn({ method: "POST" })
               lead_id: iscr.lead_id,
               stato: iscr.stato,
               origine: data.origine,
+              regola: decisione?.regola ?? null,
+              avviso: decisione?.avviso ?? null,
             },
           }));
           const { error: eNot } = await supabaseAdmin.from("notifiche").insert(righe);
