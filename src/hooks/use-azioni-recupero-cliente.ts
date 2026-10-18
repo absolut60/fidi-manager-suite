@@ -7,7 +7,7 @@ import { useNomiUtentiQuery } from "@/hooks/use-nomi-utenti";
 import type { TipoAzione } from "@/components/reminder-controls";
 
 export type EsitoAzione =
-  | "da_fare" | "fatto" | "nessuna_risposta" | "promessa_pagamento" | "contestazione" | "pagato";
+  | "da_fare" | "fatto" | "nessuna_risposta" | "contestazione" | "pagato";
 
 export type Azione = {
   id: string;

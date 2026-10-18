@@ -43,9 +43,9 @@ export function fmtData(v: string) {
   return d.length === 3 ? `${d[2]}/${d[1]}/${d[0]}` : v;
 }
 
-type Esito = "da_fare" | "fatto" | "nessuna_risposta" | "promessa_pagamento" | "contestazione" | "pagato";
+type Esito = "da_fare" | "fatto" | "nessuna_risposta" | "contestazione" | "pagato";
 
-// Scelte del menu esito: 'promessa_pagamento' non è più un esito (FM45 P2), resta solo in esitoBadge per i dati vecchi.
+// Scelte del menu esito (la promessa è un tipo di azione, non un esito).
 const ESITI: { value: Esito; label: string }[] = (
   ["da_fare", "fatto", "nessuna_risposta", "contestazione", "pagato"] as Esito[]
 ).map((value) => ({ value, label: ESITO_AZIONE_LABEL[value] }));
@@ -58,7 +58,6 @@ function esitoBadge(e: Esito) {
     da_fare: "bg-yellow-500 text-white hover:bg-yellow-500",
     fatto: "bg-blue-500 text-white hover:bg-blue-500",
     nessuna_risposta: "bg-muted text-muted-foreground hover:bg-muted",
-    promessa_pagamento: "bg-orange-500 text-white hover:bg-orange-500",
     contestazione: "bg-destructive text-destructive-foreground hover:bg-destructive",
     pagato: "bg-emerald-600 text-white hover:bg-emerald-600",
   };

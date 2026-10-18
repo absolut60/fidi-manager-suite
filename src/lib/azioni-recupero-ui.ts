@@ -16,7 +16,6 @@ export const ESITO_AZIONE_LABEL: Record<string, string> = {
   da_fare: "Da fare",
   fatto: "Fatto",
   nessuna_risposta: "Nessuna risposta",
-  promessa_pagamento: "Promessa pagamento",
   contestazione: "Contestazione",
   pagato: "Pagato",
 };
@@ -32,9 +31,8 @@ export const TIPO_AZIONE_ICON: Record<string, typeof Mail> = {
 };
 
 // Esiti di un'azione di recupero (fonte unica per i dialog di modifica/chiusura).
-// 'promessa_pagamento' resta nel tipo e in ESITO_AZIONE_LABEL solo per i dati vecchi:
-// non è più una scelta (la promessa è un tipo di azione, con stato_promessa).
-export type EsitoAzione = "da_fare" | "fatto" | "nessuna_risposta" | "promessa_pagamento" | "contestazione" | "pagato";
+// La promessa non è un esito: è un tipo di azione ('promessa_pagamento') con stato_promessa.
+export type EsitoAzione = "da_fare" | "fatto" | "nessuna_risposta" | "contestazione" | "pagato";
 
 export const ESITI_AZIONE: { value: EsitoAzione; label: string }[] = [
   { value: "da_fare", label: "Da fare" },
@@ -56,23 +54,19 @@ export function testoAzione(a: { note: string | null; email_oggetto: string | nu
 /**
  * Fonte unica TS: l'azione è una promessa di pagamento.
  * Gemello SQL: public.is_promessa_pagamento(tipo, esito). Se cambia uno, cambia l'altro.
- * Forma transitoria (FM45 P2): riconosce sia il tipo nuovo sia la forma vecchia
- * tipo 'nota' + esito 'promessa_pagamento'. In P4 diventerà solo il tipo.
+ * Unica forma (FM45 P4): tipo 'promessa_pagamento'.
  */
 export function isPromessaPagamento(a: { tipo?: string | null; esito?: string | null }): boolean {
-  return a.tipo === "promessa_pagamento" || a.esito === "promessa_pagamento";
+  return a.tipo === TIPO_PROMESSA;
 }
 
-/** Tipo da mostrare (etichetta/icona/filtri): una promessa vecchia (nota) appare come promessa. */
+/** Tipo da mostrare (etichetta/icona/filtri). */
 export function tipoAzioneVisualizzato(a: { tipo: string; esito?: string | null }): string {
-  return isPromessaPagamento(a) ? "promessa_pagamento" : a.tipo;
+  return a.tipo;
 }
 
-/**
- * Filtro PostgREST (.or) che trova le promesse in entrambe le forme.
- * Gemello di isPromessaPagamento.
- */
-export const FILTRO_OR_PROMESSA = "tipo.eq.promessa_pagamento,esito.eq.promessa_pagamento";
+/** Valore del tipo azione "promessa di pagamento" (filtri PostgREST: .eq("tipo", TIPO_PROMESSA)). */
+export const TIPO_PROMESSA = "promessa_pagamento";
 
 /** Data odierna locale in formato ISO (aaaa-mm-gg), per i confronti con data_promessa_pagamento. */
 export function oggiISOLocale(): string {

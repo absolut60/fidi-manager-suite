@@ -3,8 +3,7 @@
 // - pagina recupero-crediti (toolbar)
 // - cruscotto incassi (azione di riga sulla lista "Da incassare")
 //
-// Persistenza: azioni_recupero (tipo='promessa_pagamento', esito='fatto' — FM45 P2;
-// le promesse vecchie hanno tipo 'nota' + esito 'promessa_pagamento', v. isPromessaPagamento,
+// Persistenza: azioni_recupero (tipo='promessa_pagamento', esito='fatto' — v. isPromessaPagamento,
 // data_promessa_pagamento=<data promessa>, importo_riferimento=<importo>).
 // Facoltativamente collega scadenze aperte via ponte azioni_recupero_scadenze.
 import { useCallback, useEffect, useState } from "react";

@@ -442,6 +442,13 @@
       "when": 1792359380055,
       "tag": "0062_fm45_notifica_promessa_link_tab_promesse",
       "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1792359967124,
+      "tag": "0063_fm45_p4_promessa_solo_tipo",
+      "breakpoints": true
     }
   ]
 }

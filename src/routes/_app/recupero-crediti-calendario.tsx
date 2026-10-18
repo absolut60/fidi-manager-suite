@@ -1,5 +1,5 @@
 import { testoAzione } from "@/lib/azioni-recupero-ui";
-import { FILTRO_OR_PROMESSA } from "@/lib/azioni-recupero-ui";
+import { TIPO_PROMESSA } from "@/lib/azioni-recupero-ui";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -66,7 +66,7 @@ const TIPI = [
   { value: "promemoria", label: "Promemoria", color: "#f59e0b" }, // ambra
   { value: "nota", label: "Nota", color: "#6b7280" }, // grigio
   { value: "lettera", label: "Lettera", color: "#8b5cf6" }, // viola
-  // Promessa di pagamento (FM45 P2): mostrata alla data della promessa, in entrambe le forme.
+  // Promessa di pagamento (FM45 P2): mostrata alla data della promessa.
   { value: "promessa_pagamento", label: "Promessa di pagamento", color: "#16a34a" }, // verde
 ] as const;
 
@@ -226,7 +226,7 @@ function CalendarioPage() {
     },
   });
 
-  // Promesse di pagamento: alla data della promessa, entrambe le forme (FILTRO_OR_PROMESSA).
+  // Promesse di pagamento: alla data della promessa (tipo promessa_pagamento).
   // Visibili senza filtro tipo o con il filtro "Promessa di pagamento". Filtrate per store.
   const promesseQuery = useQuery({
     queryKey: ["promesse-calendario", range?.start ?? null, range?.end ?? null, storeId],
@@ -237,7 +237,7 @@ function CalendarioPage() {
       let q = supabase
         .from("azioni_recupero")
         .select("id, cliente_id, data_promessa_pagamento, importo_riferimento, note, cliente:clienti!inner(id, ragione_sociale, store_id)")
-        .or(FILTRO_OR_PROMESSA)
+        .eq("tipo", TIPO_PROMESSA)
         .not("data_promessa_pagamento", "is", null)
         .gte("data_promessa_pagamento", startISO)
         .lt("data_promessa_pagamento", endISO);

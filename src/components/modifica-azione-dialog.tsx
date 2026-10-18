@@ -67,7 +67,7 @@ export function ModificaAzioneDialog({
   const { user, roles } = useAuth();
   const isEmail = azione.tipo === "email";
   const isSollecito = isEmail && azione.livello_sollecito != null && azione.livello_sollecito > 0;
-  // Promessa (tipo nuovo o forma vecchia nota+esito): campi propri, niente esito né cambio tipo.
+  // Promessa (tipo promessa_pagamento): campi propri, niente esito né cambio tipo.
   const isPromessa = isPromessaPagamento(azione);
   const tipoVis = tipoAzioneVisualizzato(azione);
   const meta = TIPO_META[tipoVis] ?? { label: tipoVis, Icon: FileText };
@@ -142,7 +142,7 @@ export function ModificaAzioneDialog({
         note: note.trim() || null,
         data_promessa_pagamento: isPromessa && dataPromessa ? dataPromessa : null,
       };
-      // L'esito di una promessa non si tocca (resta quello salvato, anche nella forma vecchia).
+      // L'esito di una promessa non si tocca (resta quello salvato).
       if (!isPromessa) patch.esito = esito;
       if (!isEmail) {
         patch.data_azione = dt.toISOString();
