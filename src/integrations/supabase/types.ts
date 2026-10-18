@@ -6709,6 +6709,10 @@ export type Database = {
         Args: { _cliente_id: string; _isc_id: string }
         Returns: string
       }
+      _crea_contatto_lead_da_iscritto: {
+        Args: { _isc_id: string; _lead_id: string }
+        Returns: string
+      }
       agente_codice_corrente: { Args: never; Returns: string }
       agente_vede_record: {
         Args: {
