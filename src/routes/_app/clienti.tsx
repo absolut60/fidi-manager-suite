@@ -424,7 +424,8 @@ function ClientiPage() {
   // Carica tutti i clienti in chunk da 1000 per superare il limite Supabase.
   // Serve solo ai 4 filtri opzionali (stato fido, oltre fido, fido consumato >= X%, insoluti):
   // viene caricata solo quando almeno uno di essi è attivo.
-  const needsClassif = statoFido.size > 0 || soloOltreFido || advApplied.percConsumato != null || soloInsoluti;
+  // FM47 4a: stato fido e insoluti sono filtri della query principale; qui restano solo oltre fido e % consumato.
+  const needsClassif = soloOltreFido || advApplied.percConsumato != null;
   const { data: classifList, isError: classifError, refetch: refetchClassif } = useQuery({
     queryKey: ["clienti-classificazione"],
     enabled: isListRoute && needsClassif,
@@ -472,40 +473,6 @@ function ClientiPage() {
       }
       return ids;
     },
-  });
-
-  // Semaforo affidabilità precalcolato (tabella fido_teorico_cliente), letto in blocco
-  const { data: semaforoMap, isError: semaforoError, refetch: refetchSemaforo } = useQuery({
-    queryKey: ["clienti-semaforo-affidabilita"],
-    queryFn: async () => {
-      const map = new Map<string, SemaforoPre>();
-      let offset = 0;
-      const size = 1000;
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        const { data, error } = await (supabase as any)
-          .from("fido_teorico_cliente")
-          .select("cliente_id, semaforo_stadio, semaforo_motivo, semaforo_numero")
-          .range(offset, offset + size - 1);
-        if (error) throw error;
-        const batch = data ?? [];
-        for (const r of batch) {
-          map.set(r.cliente_id, {
-            stadio: (r.semaforo_stadio ?? null) as SemaforoColor | null,
-            motivo: r.semaforo_motivo ?? null,
-            numero: r.semaforo_numero == null ? null : Number(r.semaforo_numero),
-          });
-        }
-        if (batch.length < size) break;
-        offset += size;
-      }
-      return map;
-    },
-    staleTime: 60_000,
-    // Mappa completa necessaria solo quando il filtro Semaforo è attivo
-    // (per generare semaforoIds); per il solo pallino di display c'è la
-    // query mirata ["clienti-semaforo-display"] sulle righe visibili.
-    enabled: isListRoute && semaforoFiltro !== "tutti",
   });
 
   // ID set per filtro "Scaduto" (con / senza scaduto)
@@ -620,13 +587,6 @@ function ClientiPage() {
     enabled: fatturatoFiltro !== "tutti",
     staleTime: 60_000,
   });
-  const semaforoIds = useMemo<string[] | null>(() => {
-    if (semaforoFiltro === "tutti" || !semaforoMap) return null;
-    const ids: string[] = [];
-    for (const [id, s] of semaforoMap) if (s.stadio === semaforoFiltro) ids.push(id);
-    return ids;
-  }, [semaforoMap, semaforoFiltro]);
-
   // Clienti con richiesta fido in corso — regola unica: isRichiestaAttiva (fidi.ts)
   const needsRichiesteAttive = filtroRichiesta !== "tutti" || statoFido.has("in_revisione");
   const { data: richiesteAttiveIds, isError: richiesteError, refetch: refetchRichieste } = useQuery({
@@ -655,22 +615,13 @@ function ClientiPage() {
   });
   const richiesteReady = !needsRichiesteAttive || !!richiesteAttiveIds;
 
-  // ID set per filtro stato fido (server-side via .in)
+  // Stato fido: filtro della query principale (buildBaseQuery). Solo il caso
+  // "in revisione" da solo usa la lista id delle richieste attive.
+  const soloInRevisione = statoFido.size === 1 && statoFido.has("in_revisione");
   const statoFidoIds = useMemo<string[] | null>(() => {
-    if (statoFido.size === 0 || !classifList) return null;
-    const richiesteSet = new Set(richiesteAttiveIds ?? []);
-    return classifList.filter((c: any) => {
-      const fido = getFidoAttuale(c);
-      const scaduto = Number(c.scaduto ?? 0);
-      const matches = new Set<string>();
-      if (c.bloccato) matches.add("sospeso");
-      if (scaduto > 0) matches.add("scaduto");
-      if (!fido) matches.add("non_assegnato");
-      else if (!c.bloccato && scaduto === 0) matches.add("attivo");
-      if (richiesteSet.has(c.id)) matches.add("in_revisione");
-      return Array.from(statoFido).some((s) => matches.has(s));
-    }).map((c: any) => c.id);
-  }, [classifList, statoFido, richiesteAttiveIds]);
+    if (!soloInRevisione || !richiesteAttiveIds) return null;
+    return richiesteAttiveIds;
+  }, [soloInRevisione, richiesteAttiveIds]);
 
   // ID set per filtro "esposizione oltre il fido" (rischio + da evadere > fido gestionale)
   const oltreFidoIds = useMemo<string[] | null>(() => {
@@ -695,7 +646,7 @@ function ClientiPage() {
 
   // Fido teorico per l'intera anagrafica: una sola chiamata alla RPC,
   // usata sia per le colonne opzionali sia per filtro/ordinamento.
-  const fidoTeoricoAttivo = mostraFidoTeorico || scostamentoFiltro !== "tutti" || soloDaVerificare
+  const fidoTeoricoAttivo = mostraFidoTeorico
     || sortBy === "fido_proposto" || sortBy === "scostamento";
   const { data: fidoTeoricoMap, isError: fidoTeoricoError, refetch: refetchFidoTeorico } = useQuery({
     queryKey: ["fido-teorico-tutti"],
@@ -703,36 +654,6 @@ function ClientiPage() {
     staleTime: 10 * 60_000,
     queryFn: fetchFidoTeoricoTutti,
   });
-
-  const scostamentoIds = useMemo<string[] | null>(() => {
-    if (scostamentoFiltro === "tutti" || !fidoTeoricoMap) return null;
-    const ids: string[] = [];
-    for (const [id, r] of fidoTeoricoMap) {
-      const v = r.scostamento;
-      if (scostamentoFiltro === "positivo" && v > 0) ids.push(id);
-      else if (scostamentoFiltro === "negativo" && v < 0) ids.push(id);
-      else if (scostamentoFiltro === "nullo" && v === 0) ids.push(id);
-    }
-    return ids;
-  }, [fidoTeoricoMap, scostamentoFiltro]);
-
-  const daVerificareIds = useMemo<string[] | null>(() => {
-    if (!soloDaVerificare || !fidoTeoricoMap) return null;
-    const ids: string[] = [];
-    for (const [id, r] of fidoTeoricoMap) if (r.richiede_verifica) ids.push(id);
-    return ids;
-  }, [fidoTeoricoMap, soloDaVerificare]);
-
-  // ID set per preset "insoluti in corso" (attivo = true AND num_insoluti > 0)
-  const insolutiIds = useMemo<string[] | null>(() => {
-    if (!soloInsoluti || !classifList) return null;
-    return (classifList as any[])
-      .filter((c) => c.attivo !== false && Number(c.num_insoluti ?? 0) > 0)
-      .map((c) => c.id);
-  }, [classifList, soloInsoluti]);
-
-
-
 
   // Reset pagina SOLO quando un filtro cambia davvero dopo il montaggio (firma precedente).
   const firmaFiltri = JSON.stringify([search, statoCliente, statoAttivita, storeFiltro, F.statoFido, semaforoFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, filtroMestiere, filtroRichiesta, scadenziarioFiltro, totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, fasciaConcesso]);
@@ -749,9 +670,41 @@ function ClientiPage() {
 
   // Costruisce la query con TUTTI i filtri server-side (cumulativi AND, senza range di paginazione)
   function buildBaseQuery(selectCols: string, count: "exact" | undefined, opts?: { skipIncludeIds?: boolean }) {
+    // FM47 4a: semaforo / scostamento / da verificare filtrati dal database con
+    // un solo embed interno su fido_teorico_cliente (chi non ha riga resta escluso).
+    const ftcCols: string[] = [];
+    if (semaforoFiltro !== "tutti") ftcCols.push("semaforo_stadio");
+    if (scostamentoFiltro !== "tutti") ftcCols.push("scostamento");
+    if (soloDaVerificare) ftcCols.push("richiede_verifica");
+    const selectFinale = ftcCols.length > 0
+      ? `${selectCols}, fido_teorico_cliente!inner(${ftcCols.join(",")})`
+      : selectCols;
     let q = supabase
       .from("clienti")
-      .select(selectCols, count ? { count } : undefined);
+      .select(selectFinale, count ? { count } : undefined);
+
+    if (semaforoFiltro !== "tutti") q = q.eq("fido_teorico_cliente.semaforo_stadio", semaforoFiltro);
+    if (scostamentoFiltro === "positivo") q = q.gt("fido_teorico_cliente.scostamento", 0);
+    else if (scostamentoFiltro === "negativo") q = q.lt("fido_teorico_cliente.scostamento", 0);
+    // Come oggi: scostamento vuoto conta come 0.
+    else if (scostamentoFiltro === "nullo") q = q.or("scostamento.is.null,scostamento.eq.0", { referencedTable: "fido_teorico_cliente" });
+    if (soloDaVerificare) q = q.eq("fido_teorico_cliente.richiede_verifica", true);
+
+    // Stato fido (OR tra le voci). Stesse regole di prima: scaduto vuoto = 0, fido attuale = fido_gestionale.
+    if (statoFido.size > 0 && !soloInRevisione) {
+      const cond: string[] = [];
+      if (statoFido.has("sospeso")) cond.push("bloccato.is.true");
+      if (statoFido.has("scaduto")) cond.push("scaduto.gt.0");
+      if (statoFido.has("non_assegnato")) cond.push("fido_gestionale.is.null", "fido_gestionale.eq.0");
+      if (statoFido.has("attivo")) cond.push("and(fido_gestionale.not.is.null,fido_gestionale.neq.0,bloccato.is.false,or(scaduto.is.null,scaduto.eq.0))");
+      if (statoFido.has("in_revisione") && richiesteAttiveIds && richiesteAttiveIds.length > 0) {
+        cond.push(`id.in.(${richiesteAttiveIds.join(",")})`);
+      }
+      if (cond.length === 0) return { empty: true as const };
+      q = q.or(cond.join(","));
+    }
+    // Insoluti in corso: attivo = true AND num_insoluti > 0
+    if (soloInsoluti) q = q.gt("num_insoluti", 0).eq("attivo", true);
 
     if (statoCliente === "attivi") q = q.eq("attivo", true);
     else if (statoCliente === "disattivati") q = q.eq("attivo", false);
@@ -879,19 +832,16 @@ function ClientiPage() {
 
 
 
-  const classifReady = (!needsClassif || !!classifList)
-    && (semaforoFiltro === "tutti" || !!semaforoMap);
+  const classifReady = !needsClassif || !!classifList;
   const scadReady = !needsScadFull || !!scadenziarioMap;
   const isVirtualSort = VIRTUAL_SORT_COLS.includes(sortBy);
   const isFidoTeoricoSort = sortBy === "fido_proposto" || sortBy === "scostamento";
   // Ordinamento virtuale: serve la mappa completa (scadenziario o fido teorico).
   const virtualSortReady = !isVirtualSort
     || (isFidoTeoricoSort ? !!fidoTeoricoMap : !!scadenziarioMap);
-  const scostamentoReady = (scostamentoFiltro === "tutti" && !soloDaVerificare) || !!fidoTeoricoMap;
-  const insolutiReady = !soloInsoluti || !!classifList;
   const fermiReady = !soloFermi || !!fermiIds;
 
-  const privacyFilterReady = privacyFiltro === "tutti" || (scadReady && classifReady && isConfigReady && virtualSortReady && scostamentoReady && insolutiReady && fermiReady && richiesteReady);
+  const privacyFilterReady = privacyFiltro === "tutti" || (scadReady && classifReady && isConfigReady && virtualSortReady && fermiReady && richiesteReady);
   const { data: privacyFilterMap } = useQuery({
     queryKey: ["clienti-privacy-filter", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, filtroMestiere, filtroRichiesta, richiesteN: richiesteAttiveIds?.length ?? null, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, fasciaConcesso, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
     enabled: isListRoute && privacyFiltro !== "tutti" && privacyFilterReady,
@@ -931,23 +881,19 @@ function ClientiPage() {
   // Intersezione id set "include" (semaforo ∩ stato_fido ∩ scadenziario ∩ a_scadere ∩ perc consumato ∩ insoluti ∩ fermi ∩ privacy)
   const includeIdsFilter = useMemo<string[] | null>(() => {
     const sources: string[][] = [];
-    if (semaforoIds) sources.push(semaforoIds);
     if (statoFidoIds) sources.push(statoFidoIds);
     if (oltreFidoIds) sources.push(oltreFidoIds);
     if (scadenziarioIdsFilter?.mode === "include") sources.push(scadenziarioIdsFilter.ids);
     if (aScadereIds) sources.push(aScadereIds);
     if (fatturatoIds) sources.push(fatturatoIds);
     if (percConsumatoIds) sources.push(percConsumatoIds);
-    if (scostamentoIds) sources.push(scostamentoIds);
-    if (daVerificareIds) sources.push(daVerificareIds);
-    if (insolutiIds) sources.push(insolutiIds);
     if (fermiIds) sources.push(fermiIds);
     if (privacyIdsFilter) sources.push(privacyIdsFilter);
     if (filtroRichiesta === "solo" && richiesteAttiveIds) sources.push(richiesteAttiveIds);
     if (sources.length === 0) return null;
     const sets = sources.map((s) => new Set(s));
     return sources[0].filter((id) => sets.every((s) => s.has(id)));
-  }, [semaforoIds, statoFidoIds, oltreFidoIds, scadenziarioIdsFilter, aScadereIds, fatturatoIds, percConsumatoIds, scostamentoIds, daVerificareIds, insolutiIds, fermiIds, privacyIdsFilter, filtroRichiesta, richiesteAttiveIds]);
+  }, [statoFidoIds, oltreFidoIds, scadenziarioIdsFilter, aScadereIds, fatturatoIds, percConsumatoIds, fermiIds, privacyIdsFilter, filtroRichiesta, richiesteAttiveIds]);
 
   const { data: clientiResp, isLoading, isError: clientiError, refetch: refetchClienti } = useQuery({
     queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, filtroMestiere, filtroRichiesta, richiesteN: richiesteAttiveIds?.length ?? null, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, fasciaConcesso, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
@@ -1029,20 +975,19 @@ function ClientiPage() {
       if (error) throw error;
       return { rows: data ?? [], count: count ?? (data?.length ?? 0) };
     },
-    enabled: isListRoute && scadReady && classifReady && isConfigReady && virtualSortReady && scostamentoReady && insolutiReady && fermiReady && richiesteReady,
+    enabled: isListRoute && scadReady && classifReady && isConfigReady && virtualSortReady && fermiReady && richiesteReady,
   });
   const clienti = (clientiResp?.rows ?? []) as any[];
   const totaleClienti = clientiResp?.count ?? 0;
   // FM47: attesa onesta delle mappe da cui dipende la query principale (disabilitata nel frattempo).
-  const listaInAttesa = isListRoute && !(scadReady && classifReady && isConfigReady && virtualSortReady && scostamentoReady && insolutiReady && fermiReady && richiesteReady);
-  const listaInErrore = clientiError || scadError || classifError || fermiError || fidoTeoricoError || richiesteError || semaforoError;
+  const listaInAttesa = isListRoute && !(scadReady && classifReady && isConfigReady && virtualSortReady && fermiReady && richiesteReady);
+  const listaInErrore = clientiError || scadError || classifError || fermiError || fidoTeoricoError || richiesteError;
   const riprovaLista = () => {
     if (scadError) void refetchScad();
     if (classifError) void refetchClassif();
     if (fermiError) void refetchFermi();
     if (fidoTeoricoError) void refetchFidoTeorico();
     if (richiesteError) void refetchRichieste();
-    if (semaforoError) void refetchSemaforo();
     if (clientiError) void refetchClienti();
   };
   const totalPages = Math.max(1, Math.ceil(totaleClienti / pageSize));
@@ -1969,7 +1914,7 @@ function ClientiPage() {
                   titolo={c.ragione_sociale}
                   selezione={!isAgente ? { checked: selectedIds.has(c.id), onChange: () => toggleSelect(c) } : undefined}
                   badge={(() => {
-                    const s = (semaforoMap ?? semaforoDisplayMap)?.get(c.id);
+                    const s = semaforoDisplayMap?.get(c.id);
                     const st = s?.stadio ?? null;
                     return (
                       <span
@@ -2063,7 +2008,7 @@ function ClientiPage() {
               </TableHeader>
               <TableBody>
                 {clienti.map((c: any) => {
-                  const sem = (semaforoMap ?? semaforoDisplayMap)?.get(c.id) ?? null;
+                  const sem = semaforoDisplayMap?.get(c.id) ?? null;
                   const residuo = c.fido_residuo;
                   const residuoNum = residuo == null ? null : Number(residuo);
                   const sc = (scadenziarioMap ?? scadenziarioDisplayMap)?.get(c.id);
