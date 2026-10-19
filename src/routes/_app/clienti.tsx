@@ -765,9 +765,10 @@ function ClientiPage() {
     const orderCol = isVirtualOrder ? "ragione_sociale" : sortBy;
     const orderAsc = isVirtualOrder ? true : sortDir === "asc";
     if (sortBy === "fido_proposto" || sortBy === "scostamento") {
-      // FM47: colonne calcolate fido_proposto(clienti) / fido_scostamento(clienti).
-      const col = sortBy === "fido_proposto" ? "fido_proposto" : "fido_scostamento";
-      q = q.order(col as never, { ascending: sortDir === "asc", nullsFirst: false });
+      // FM47 4c-bis: ordinamento sull'embed fido_teorico_cliente in UNA query
+      // (le colonne calcolate su clienti rivalutano le regole di accesso per riga: ~6,4 s).
+      const col = sortBy === "fido_proposto" ? "fido_proposto" : "scostamento";
+      q = q.order(`fido_teorico_cliente(${col})` as never, { ascending: sortDir === "asc", nullsFirst: false });
       q = q.order("ragione_sociale", { ascending: true });
     } else {
       q = q.order(orderCol, { ascending: orderAsc, nullsFirst: false });
