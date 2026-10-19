@@ -2,8 +2,6 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, Fragment, useEffect, useRef } from "react";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { AlertTriangle, Calendar, FileText, Ban, CalendarClock, Scale, ChevronDown, ChevronUp, Megaphone, Mail, Bell, ChevronLeft, ChevronRight, HandCoins, ArrowUp, ArrowDown, Download, Loader2, SlidersHorizontal, RotateCcw, Phone, StickyNote } from "lucide-react";
-import * as XLSX from "xlsx";
-import { scaricaWorkbook } from "@/lib/fido-teorico-export";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { InvioMassivoDialog } from "@/components/invio-massivo-dialog";
 import { puoInviareComunicazioniRecupero, tipoAzioneConsentito } from "@/lib/recupero-permessi";
@@ -537,6 +535,7 @@ function ScadenziarioPage() {
   async function esportaExcel() {
     setExporting(true);
     try {
+      const [XLSX, { scaricaWorkbook }] = await Promise.all([import("xlsx"), import("@/lib/fido-teorico-export")]);
       const righe = await caricaTutteLeRighe();
       const estrattoIl = new Date();
       const intest = [
