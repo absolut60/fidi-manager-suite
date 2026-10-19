@@ -484,6 +484,13 @@
       "when": 1792409863541,
       "tag": "0068_fm47_store_id_effettivo_responsabile_agenti",
       "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1792410686317,
+      "tag": "0069_0069_fm47_incassi_periodo_veloce",
+      "breakpoints": true
     }
   ]
 }
