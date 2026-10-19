@@ -7098,6 +7098,14 @@ export type Database = {
         Args: { c: Database["public"]["Tables"]["clienti"]["Row"] }
         Returns: number
       }
+      fido_proposto: {
+        Args: { c: Database["public"]["Tables"]["clienti"]["Row"] }
+        Returns: number
+      }
+      fido_scostamento: {
+        Args: { c: Database["public"]["Tables"]["clienti"]["Row"] }
+        Returns: number
+      }
       fn_email_valida: { Args: { _raw: string }; Returns: boolean }
       fn_telefono_valido: { Args: { _raw: string }; Returns: boolean }
       genera_snapshot: { Args: { _data: string }; Returns: string }
