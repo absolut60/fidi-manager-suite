@@ -449,6 +449,13 @@
       "when": 1792359967124,
       "tag": "0063_fm45_p4_promessa_solo_tipo",
       "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1792401366424,
+      "tag": "0064_fm47_previsione_coperture_visibilita_una_volta",
+      "breakpoints": true
     }
   ]
 }
