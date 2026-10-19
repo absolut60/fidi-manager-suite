@@ -463,6 +463,13 @@
       "when": 1792402203458,
       "tag": "0065_fm47_clienti_scadenziario_mappa",
       "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1792407421447,
+      "tag": "0066_fm47_dashboard_fidi_aggregati_eff_materialized",
+      "breakpoints": true
     }
   ]
 }
