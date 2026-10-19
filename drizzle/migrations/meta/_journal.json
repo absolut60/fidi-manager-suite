@@ -491,6 +491,13 @@
       "when": 1792410686317,
       "tag": "0069_0069_fm47_incassi_periodo_veloce",
       "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1792411143228,
+      "tag": "0070_fm47_cache_cruscotti",
+      "breakpoints": true
     }
   ]
 }
