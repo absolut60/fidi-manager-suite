@@ -615,7 +615,7 @@ function ClientiPage() {
     // FM47 4c-bis: ordinamento per Fido proposto / Scostamento via embed.
     const sortFidoTeorico = sortBy === "fido_proposto" || sortBy === "scostamento";
     const embedFiltroAttivo = semaforoFiltro !== "tutti" || scostamentoFiltro !== "tutti" || soloDaVerificare;
-    const ftcCols: string[] = [];
+    let ftcCols: string[] = [];
     if (semaforoFiltro !== "tutti") ftcCols.push("semaforo_stadio");
     if (scostamentoFiltro !== "tutti" && !ftcCols.includes("scostamento")) ftcCols.push("scostamento");
     if (soloDaVerificare) ftcCols.push("richiede_verifica");
