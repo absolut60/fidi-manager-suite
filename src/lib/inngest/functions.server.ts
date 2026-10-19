@@ -2384,6 +2384,21 @@ export const finalizeScadenziarioImport = inngest.createFunction(
         return true;
       });
 
+      // FM47: ricalcolo risultati pronti cruscotti (DSO, fatturato).
+      // Un errore di emissione NON fa fallire l'import.
+      await step.run("emetti-aggiorna-cache-cruscotti", async () => {
+        try {
+          await sendInngestEvents([
+            { name: "cruscotti/cache.aggiorna", data: { importazioneId } },
+          ]);
+        } catch (e) {
+          logger.error(
+            `Emissione aggiorna cache cruscotti fallita: ${e instanceof Error ? e.message : String(e)}`,
+          );
+        }
+        return true;
+      });
+
       // FM36: rilevazione clienti oltre 60gg → promemoria agenzia di recupero.
       // Un errore di emissione NON fa fallire l'import.
       await step.run("emetti-rilevazione-agenzia-recupero", async () => {

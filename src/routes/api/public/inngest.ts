@@ -27,6 +27,7 @@ import { ricalcolaFidoTeorico } from "@/lib/inngest/fido-teorico-ricalcolo.serve
 import { notificaVariazioniBlocco } from "@/lib/inngest/variazioni-blocco.server";
 import { rilevaAgenziaRecupero } from "@/lib/inngest/agenzia-recupero.server";
 import { notificaEsitoImport } from "@/lib/inngest/esito-import.server";
+import { aggiornaCacheCruscotti } from "@/lib/inngest/cache-cruscotti.server";
 
 
 
@@ -58,6 +59,7 @@ const handler = serve({
     notificaVariazioniBlocco,
     rilevaAgenziaRecupero,
     notificaEsitoImport,
+    aggiornaCacheCruscotti,
 
 
 
