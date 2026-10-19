@@ -728,8 +728,8 @@ function ClientiPage() {
     if (advApplied.presetScopertoInsoluto) q = q.eq("assicurazione_attiva", false).gt("scaduto", 0);
     // FM47 4b: "oltre il fido" e "% fido consumato" calcolati dal database
     // (colonne calcolate su clienti; fido_consumato_perc NULL esclude il cliente).
-    if (soloOltreFido) q = q.eq("esposizione_oltre_fido", true);
-    if (advApplied.percConsumato != null) q = q.gte("fido_consumato_perc", advApplied.percConsumato);
+    if (soloOltreFido) q = q.eq("esposizione_oltre_fido" as never, true);
+    if (advApplied.percConsumato != null) q = q.gte("fido_consumato_perc" as never, advApplied.percConsumato);
 
     // Include intersect (semaforo / stato fido / scadenziario include / a_scadere / insoluti / fermi / privacy)
     let largeInclude = false;
