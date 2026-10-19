@@ -505,6 +505,13 @@
       "when": 1792411805470,
       "tag": "0071_fm47_clienti_colonne_calcolate_fido",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1792412029004,
+      "tag": "0072_fm47_clienti_colonne_fido_teorico",
+      "breakpoints": true
     }
   ]
 }
