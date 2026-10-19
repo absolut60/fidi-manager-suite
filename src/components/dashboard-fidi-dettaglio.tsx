@@ -129,7 +129,7 @@ export function DashboardFidiDettaglio() {
                 <TableRow
                   key={r.chiave}
                   className="cursor-pointer"
-                  onClick={() => r.chiave !== "nessuna" && vaiClienti({ store: r.chiave })}
+                  onClick={() => vaiClienti({ store: r.chiave === "nessuna" ? "__none__" : r.chiave })}
                 >
                   <TableCell className="font-medium whitespace-nowrap">{r.etichetta}</TableCell>
                   <TableCell className="text-right tabular-nums">{numero(r.n_clienti)}</TableCell>
