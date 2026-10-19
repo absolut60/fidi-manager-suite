@@ -832,22 +832,20 @@ function ClientiPage() {
     return ids;
   }, [privacyFilterMap, privacyFiltro]);
 
-  // Intersezione id set "include" (semaforo ∩ stato_fido ∩ scadenziario ∩ a_scadere ∩ perc consumato ∩ insoluti ∩ fermi ∩ privacy)
+  // Intersezione id set "include" (semaforo ∩ stato_fido ∩ scadenziario ∩ a_scadere ∩ insoluti ∩ fermi ∩ privacy)
   const includeIdsFilter = useMemo<string[] | null>(() => {
     const sources: string[][] = [];
     if (statoFidoIds) sources.push(statoFidoIds);
-    if (oltreFidoIds) sources.push(oltreFidoIds);
     if (scadenziarioIdsFilter?.mode === "include") sources.push(scadenziarioIdsFilter.ids);
     if (aScadereIds) sources.push(aScadereIds);
     if (fatturatoIds) sources.push(fatturatoIds);
-    if (percConsumatoIds) sources.push(percConsumatoIds);
     if (fermiIds) sources.push(fermiIds);
     if (privacyIdsFilter) sources.push(privacyIdsFilter);
     if (filtroRichiesta === "solo" && richiesteAttiveIds) sources.push(richiesteAttiveIds);
     if (sources.length === 0) return null;
     const sets = sources.map((s) => new Set(s));
     return sources[0].filter((id) => sets.every((s) => s.has(id)));
-  }, [statoFidoIds, oltreFidoIds, scadenziarioIdsFilter, aScadereIds, fatturatoIds, percConsumatoIds, fermiIds, privacyIdsFilter, filtroRichiesta, richiesteAttiveIds]);
+  }, [statoFidoIds, scadenziarioIdsFilter, aScadereIds, fatturatoIds, fermiIds, privacyIdsFilter, filtroRichiesta, richiesteAttiveIds]);
 
   const { data: clientiResp, isLoading, isError: clientiError, refetch: refetchClienti } = useQuery({
     queryKey: ["clienti", { search, statoCliente, statoAttivita, storeFiltro, filtroBlocco, privacyFiltro, filtroAssic, filtroLegale, filtroTipoSoggetto, filtroAgente, filtroMestiere, filtroRichiesta, richiesteN: richiesteAttiveIds?.length ?? null, scadenziarioFiltro, semaforoFiltro, statoFidoArr: Array.from(statoFido).sort(), totaleRischioFiltro, aScadereFiltro, fatturatoFiltro, fidoFascia, sliderCommitted, page, pageSize, advApplied, sortBy, sortDir, scostamentoFiltro, soloDaVerificare, soloOltreFido, soloConFidoAttivo, soloInsoluti, soloFermi, fasciaConcesso, cutoffAttivo: config.cutoff_cliente_attivo_anno }],
